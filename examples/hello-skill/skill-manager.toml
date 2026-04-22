@@ -1,0 +1,60 @@
+# skill-manager metadata for hello-skill. Invisible to the agent runtime;
+# tooling-only. Top-level arrays come first — anything after a [table]
+# header belongs to that table.
+
+# Transitive skill deps. Prefixes:
+#   skill:<name>[@<version>]   registry lookup
+#   file:<path>                sub-skill bundled in this directory (resolved
+#                              relative to this skill's directory)
+skill_references = []
+
+# CLI tools the skill needs on PATH. `spec` selects the installer backend:
+#   pip:<pkg>[==ver]    platform-independent (bundled uv)
+#   npm:<pkg>[@ver]     platform-independent (bundled node/npm)
+#   brew:<pkg>          macOS/Linux (Homebrew; symlinked into bin/cli)
+#   tar:<name>          download+extract using the install targets below
+
+[[cli_dependencies]]
+spec = "pip:ruff==0.6.9"
+on_path = "ruff"
+
+[[cli_dependencies]]
+spec = "tar:rg"
+name = "rg"
+on_path = "rg"
+min_version = "14.0.0"
+
+[cli_dependencies.install.darwin-arm64]
+url = "https://github.com/BurntSushi/ripgrep/releases/download/14.1.1/ripgrep-14.1.1-aarch64-apple-darwin.tar.gz"
+archive = "tar.gz"
+binary = "ripgrep-14.1.1-aarch64-apple-darwin/rg"
+
+[cli_dependencies.install.linux-x64]
+url = "https://github.com/BurntSushi/ripgrep/releases/download/14.1.1/ripgrep-14.1.1-x86_64-unknown-linux-musl.tar.gz"
+archive = "tar.gz"
+binary = "ripgrep-14.1.1-x86_64-unknown-linux-musl/rg"
+
+# MCP servers the skill needs. skill-manager registers each with the gateway;
+# agents only ever see the gateway itself.
+
+[[mcp_dependencies]]
+name = "deepwiki"
+display_name = "DeepWiki"
+description = "Ask questions against GitHub repositories."
+
+[mcp_dependencies.load]
+type = "docker"
+image = "ghcr.io/cognition-ai/deepwiki-mcp:latest"
+args = ["--stdio"]
+
+[[mcp_dependencies.init_schema]]
+name = "api_key"
+type = "string"
+required = false
+secret = true
+description = "Optional Cognition API key."
+
+# skill-wide metadata (kept last because [skill] steals any trailing keys)
+[skill]
+name = "hello-skill"
+version = "0.1.0"

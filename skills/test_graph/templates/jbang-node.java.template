@@ -1,0 +1,47 @@
+///usr/bin/env jbang "$0" "$@" ; exit $?
+//SOURCES ../sdk/java/src/main/java/com/hayden/testgraphsdk/sdk/*.java
+/*
+ * IMPORTING USER CODE
+ * -------------------
+ * When this scaffold lives at <user-project>/test_graph/, `../..` from
+ * this script reaches the user project root. Add directives ABOVE this
+ * /* block (alongside the existing //SOURCES line):
+ *
+ *   //SOURCES ../../src/main/java/com/acme/domain/User.java
+ *   //SOURCES ../../src/main/java/com/acme/api/*.java
+ *   //DEPS com.fasterxml.jackson.core:jackson-databind:2.17.0
+ *
+ * Then `import com.acme.domain.User;` etc. in the body.
+ * See test-graph-skill/SKILL.md → "Importing user code".
+ */
+
+import com.hayden.testgraphsdk.sdk.Node;
+import com.hayden.testgraphsdk.sdk.NodeResult;
+import com.hayden.testgraphsdk.sdk.NodeSpec;
+
+public class __CLASS_NAME__ {
+    static final NodeSpec SPEC = NodeSpec.of("__NODE_ID__")
+            .kind(NodeSpec.Kind.__KIND_UPPER__)
+            // .dependsOn("some.upstream")
+            // .tags("ui", "smoke")
+            // .timeout("60s")
+            // .sideEffects("net:local")
+            // .input("baseUrl", "string")
+            // .output("success", "boolean")
+            ;
+
+    public static void main(String[] args) {
+        Node.run(args, SPEC, ctx -> {
+            // TODO: implement the validation body.
+            //   - Read inputs via ctx.input("key")
+            //   - Read upstream context via ctx.get("upstream.id", "key")
+            //   - Publish values downstream via NodeResult.publish("key", "value")
+            //
+            // The body type declares `throws Exception`, so you can call IO
+            // freely — anything that escapes is caught by Node.run and
+            // converted to NodeResult.error(id, e).
+            return NodeResult.pass("__NODE_ID__")
+                    .assertion("todo_implement", false);
+        });
+    }
+}

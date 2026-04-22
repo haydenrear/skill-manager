@@ -1,0 +1,23 @@
+digraph "smoke" {
+  rankdir=LR;
+  node [shape=box,fontname="Courier"];
+  "env.prepared" [label="env.prepared\n(fixture, jbang)"];
+  "registry.up" [label="registry.up\n(testbed, jbang)"];
+  "gateway.up" [label="gateway.up\n(testbed, jbang)"];
+  "hello.published" [label="hello.published\n(action, jbang)"];
+  "hello.installed" [label="hello.installed\n(action, jbang)"];
+  "search.finds" [label="search.finds\n(assertion, jbang)"];
+  "mcp.registered" [label="mcp.registered\n(action, jbang)"];
+  "mcp.tools.visible" [label="mcp.tools.visible\n(assertion, jbang)"];
+  "servers.down" [label="servers.down\n(evidence, jbang)"];
+  "env.prepared" -> "registry.up";
+  "env.prepared" -> "gateway.up";
+  "registry.up" -> "hello.published";
+  "hello.published" -> "hello.installed";
+  "hello.published" -> "search.finds";
+  "gateway.up" -> "mcp.registered";
+  "mcp.registered" -> "mcp.tools.visible";
+  "mcp.tools.visible" -> "servers.down";
+  "search.finds" -> "servers.down";
+  "hello.installed" -> "servers.down";
+}

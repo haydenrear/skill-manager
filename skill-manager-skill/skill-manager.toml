@@ -1,0 +1,11 @@
+# Tooling metadata for the skill-manager skill. The skill itself is a thin
+# window into the CLI — it has no CLI deps (the skill-manager binary is the
+# CLI) and no MCP deps. We leave these sections empty so the plan preview
+# stays boring when this skill is added.
+
+skill_references = []
+
+[skill]
+name = "skill-manager"
+version = "0.1.0"
+description = "Search the skill registry, install skills, and register MCP servers."

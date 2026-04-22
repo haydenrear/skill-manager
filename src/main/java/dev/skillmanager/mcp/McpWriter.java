@@ -1,0 +1,159 @@
+package dev.skillmanager.mcp;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import dev.skillmanager.agent.Agent;
+import dev.skillmanager.model.McpDependency;
+import dev.skillmanager.model.Skill;
+import dev.skillmanager.util.Fs;
+import dev.skillmanager.util.Log;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
+/**
+ * Registers every skill MCP dependency with the virtual MCP gateway, then
+ * writes a single {@code virtual-mcp-gateway} entry into each agent's MCP
+ * config pointing at the gateway. Agents see one MCP server; the gateway
+ * multiplexes tools from all registered downstream servers.
+ *
+ * <p>The gateway entry name is {@value #GATEWAY_ENTRY}. It replaces any
+ * previous entry by that name. Other entries in the agent config are left
+ * untouched.
+ */
+public final class McpWriter {
+
+    public static final String GATEWAY_ENTRY = "virtual-mcp-gateway";
+
+    private final ObjectMapper json = new ObjectMapper().enable(SerializationFeature.INDENT_OUTPUT);
+    private final GatewayConfig gateway;
+    private final GatewayClient client;
+
+    public McpWriter(GatewayConfig gateway) {
+        this.gateway = gateway;
+        this.client = new GatewayClient(gateway);
+    }
+
+    /** Register each skill's MCP deps with the gateway. Returns the set of servers actually registered. */
+    public List<String> registerAll(List<Skill> skills) throws IOException {
+        if (!client.ping()) {
+            Log.warn("gateway not reachable at %s — skipping dynamic registration", gateway.baseUrl());
+            Log.warn("start the gateway: python -m gateway.server --config <cfg> --host 127.0.0.1 --port 8080");
+            return List.of();
+        }
+        Map<String, McpDependency> merged = new LinkedHashMap<>();
+        for (Skill s : skills) for (McpDependency d : s.mcpDependencies()) merged.putIfAbsent(d.name(), d);
+
+        java.util.ArrayList<String> registered = new java.util.ArrayList<>();
+        for (McpDependency d : merged.values()) {
+            try {
+                var result = client.register(d, false);
+                registered.add(result.serverId());
+                Log.ok("gateway: registered %s (%s)", result.serverId(), d.load().type());
+                if (result.deployError() != null) Log.warn("gateway: deploy warning: %s", result.deployError());
+            } catch (IOException e) {
+                Log.warn("gateway: failed to register %s: %s", d.name(), e.getMessage());
+            }
+        }
+        if (!registered.isEmpty()) {
+            Log.info("gateway: %d server(s) registered live — no gateway restart needed.", registered.size());
+            Log.info("gateway: registrations persist in the gateway's dynamic-servers.json, so they rehydrate on next start.");
+        }
+        return registered;
+    }
+
+    /** Write the single virtual-mcp-gateway entry into the agent's MCP config. */
+    public void writeAgentEntry(Agent agent) throws IOException {
+        switch (agent.mcpConfigFormat()) {
+            case "claude" -> writeClaude(agent.mcpConfigPath());
+            case "codex-toml" -> writeCodexToml(agent.mcpConfigPath());
+            default -> Log.warn("unknown MCP format for agent %s", agent.id());
+        }
+    }
+
+    private void writeClaude(Path file) throws IOException {
+        Fs.ensureDir(file.getParent());
+        Map<String, Object> root;
+        if (Files.isRegularFile(file)) {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> loaded = json.readValue(file.toFile(), Map.class);
+            root = loaded != null ? loaded : new LinkedHashMap<>();
+        } else {
+            root = new LinkedHashMap<>();
+        }
+        @SuppressWarnings("unchecked")
+        Map<String, Object> servers = (Map<String, Object>) root.computeIfAbsent("mcpServers", k -> new LinkedHashMap<>());
+
+        Map<String, Object> entry = new LinkedHashMap<>();
+        entry.put("type", "http");
+        entry.put("url", gateway.mcpEndpoint().toString());
+        servers.put(GATEWAY_ENTRY, entry);
+
+        json.writeValue(file.toFile(), root);
+        Log.ok("claude: pointed %s → %s", GATEWAY_ENTRY, gateway.mcpEndpoint());
+    }
+
+    private void writeCodexToml(Path file) throws IOException {
+        Fs.ensureDir(file.getParent());
+        String existing = Files.isRegularFile(file) ? Files.readString(file) : "";
+        String tableHeader = "[mcp_servers." + GATEWAY_ENTRY.replace('-', '_') + "]";
+        String rebuilt = replaceOrAppendTable(existing, tableHeader,
+                tableHeader + "\nurl = \"" + gateway.mcpEndpoint() + "\"\n");
+        Files.writeString(file, rebuilt);
+        Log.ok("codex: pointed %s → %s", GATEWAY_ENTRY, gateway.mcpEndpoint());
+    }
+
+    public void removeAgentEntry(Agent agent) throws IOException {
+        Path file = agent.mcpConfigPath();
+        if (!Files.isRegularFile(file)) return;
+        switch (agent.mcpConfigFormat()) {
+            case "claude" -> {
+                @SuppressWarnings("unchecked")
+                Map<String, Object> root = json.readValue(file.toFile(), Map.class);
+                Object servers = root.get("mcpServers");
+                if (servers instanceof Map<?, ?> m && m.remove(GATEWAY_ENTRY) != null) {
+                    json.writeValue(file.toFile(), root);
+                    Log.ok("claude: removed %s entry", GATEWAY_ENTRY);
+                }
+            }
+            case "codex-toml" -> {
+                String existing = Files.readString(file);
+                String header = "[mcp_servers." + GATEWAY_ENTRY.replace('-', '_') + "]";
+                String rebuilt = replaceOrAppendTable(existing, header, "");
+                if (!rebuilt.equals(existing)) {
+                    Files.writeString(file, rebuilt);
+                    Log.ok("codex: removed %s table", GATEWAY_ENTRY);
+                }
+            }
+            default -> {}
+        }
+    }
+
+    /** Replace the TOML table that begins with {@code header} (up to the next table or EOF) with {@code replacement}. */
+    private String replaceOrAppendTable(String source, String header, String replacement) {
+        int start = source.indexOf(header);
+        if (start < 0) {
+            StringBuilder sb = new StringBuilder(source);
+            if (!sb.isEmpty() && sb.charAt(sb.length() - 1) != '\n') sb.append('\n');
+            sb.append(replacement);
+            return sb.toString();
+        }
+        int end = source.length();
+        int search = start + header.length();
+        while (search < source.length()) {
+            int nl = source.indexOf('\n', search);
+            if (nl < 0) break;
+            int nextLineStart = nl + 1;
+            if (nextLineStart < source.length() && source.charAt(nextLineStart) == '[') {
+                end = nextLineStart;
+                break;
+            }
+            search = nextLineStart;
+        }
+        return source.substring(0, start) + replacement + source.substring(end);
+    }
+}

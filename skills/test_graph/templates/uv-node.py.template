@@ -1,0 +1,47 @@
+# /// script
+# requires-python = ">=3.10"
+# dependencies = ["testgraphsdk"]
+# # To also import user code when this scaffold lives at <user-project>/test_graph/,
+# # add the user's package as a dependency and wire a [tool.uv.sources] path:
+# #   dependencies = ["testgraphsdk", "acme-domain"]
+# # and under [tool.uv.sources] below:
+# #   acme-domain = { path = "../..", editable = true }
+# # Then in the body:  from acme_domain import User
+# # See test-graph-skill/SKILL.md → "Importing user code".
+#
+# [tool.uv.sources]
+# testgraphsdk = { path = "../sdk/python", editable = true }
+# # acme-domain = { path = "../..", editable = true }
+# ///
+"""__NODE_ID__ — TODO: describe what this node validates."""
+from __future__ import annotations
+
+from testgraphsdk import NodeResult, NodeSpec, node
+
+
+SPEC = (
+    NodeSpec("__NODE_ID__")
+    .kind("__KIND__")
+    # .depends_on("some.upstream")
+    # .tags("smoke")
+    # .timeout("60s")
+    # .side_effects("db:writes")
+    # .input("username", "string")
+    # .output("userId", "string")
+)
+
+
+@node(SPEC)
+def main(ctx):
+    # TODO: implement the validation body.
+    #   - Read inputs via ctx.input("key")
+    #   - Read upstream context via ctx.get("upstream.id", "key")
+    #   - Publish values downstream via NodeResult.publish("key", "value")
+    return (
+        NodeResult.pass_("__NODE_ID__")
+        .assertion("todo_implement", False)
+    )
+
+
+if __name__ == "__main__":
+    main()

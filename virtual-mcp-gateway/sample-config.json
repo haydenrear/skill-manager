@@ -1,0 +1,28 @@
+{
+  "protocol_version": "2025-11-05",
+  "disclosure_ttl_seconds": 1800,
+  "mcp_servers": [],
+  "clients": [
+    {
+      "server_id": "local_stdio",
+      "transport": "stdio",
+      "command": ["python", "-m", "some_stdio_mcp_server"],
+      "tool_path_prefix": "stdio/local"
+    },
+    {
+      "server_id": "remote_http",
+      "transport": "streamable-http",
+      "url": "http://127.0.0.1:9000/mcp",
+      "headers": {
+        "authorization": "Bearer replace-me"
+      },
+      "tool_path_prefix": "http/remote"
+    },
+    {
+      "server_id": "legacy_sse",
+      "transport": "sse",
+      "url": "http://127.0.0.1:9100/sse",
+      "tool_path_prefix": "sse/legacy"
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+///usr/bin/env jbang "$0" "$@" ; exit $?
+//JAVA 21+
+//SOURCES src/main/java/dev/skillmanager/registry/dto/SkillSummary.java
+//SOURCES src/main/java/dev/skillmanager/registry/dto/SkillVersion.java
+//SOURCES src/main/java/dev/skillmanager/registry/dto/ListResponse.java
+//SOURCES src/main/java/dev/skillmanager/registry/dto/SearchResponse.java
+//SOURCES src/main/java/dev/skillmanager/registry/dto/PublishResponse.java
+//SOURCES src/main/java/dev/skillmanager/util/Archives.java
+//SOURCES src/main/java/dev/skillmanager/util/Fs.java
+//SOURCES server-java/src/main/java/dev/skillmanager/server/SkillRegistryApp.java
+//SOURCES server-java/src/main/java/dev/skillmanager/server/SkillRegistryController.java
+//SOURCES server-java/src/main/java/dev/skillmanager/server/SkillStorage.java
+//SOURCES server-java/src/main/java/dev/skillmanager/server/SkillIndexEntry.java
+//FILES application.properties=server-java/src/main/resources/application.properties
+//JAVA_OPTIONS -Dorg.slf4j.simpleLogger.defaultLogLevel=info
+//JAVA_OPTIONS -Dspring.main.banner-mode=off
+// Spring Boot starter brings its own logback-classic; don't pull slf4j-simple.
+//DEPS org.springframework.boot:spring-boot-starter-web:3.3.4
+//DEPS com.fasterxml.jackson.core:jackson-annotations:2.20
+//DEPS com.fasterxml.jackson.core:jackson-databind:2.20.2
+//DEPS org.apache.commons:commons-compress:1.27.1
+
+import dev.skillmanager.server.SkillRegistryApp;
+
+public class SkillManagerServer {
+    public static void main(String[] args) {
+        SkillRegistryApp.main(args);
+    }
+}

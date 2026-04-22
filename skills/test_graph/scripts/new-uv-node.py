@@ -1,0 +1,71 @@
+#!/usr/bin/env python3
+"""Create a new uv (Python) validation node from a template.
+
+Run from inside a scaffolded test_graph project (cwd anywhere within it).
+
+Usage:
+    new-uv-node.py <node-id> <kind>
+
+Kinds: testbed | fixture | action | assertion | evidence | report
+"""
+from __future__ import annotations
+
+import argparse
+import sys
+
+from _common import (
+    add_test_graph_root_arg,
+    render_template,
+    snake_name_from_id,
+    target_project_root,
+    target_sources_dir,
+    templates_dir,
+    validate_kind,
+    validate_node_id,
+)
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument("node_id", help="dotted lowercase node id, e.g. product.seeded")
+    parser.add_argument(
+        "kind",
+        help="node kind (testbed | fixture | action | assertion | evidence | report)",
+    )
+    add_test_graph_root_arg(parser)
+    args = parser.parse_args()
+
+    validate_node_id(args.node_id)
+    validate_kind(args.kind)
+
+    file_stem = snake_name_from_id(args.node_id)
+    template = templates_dir() / "uv-node.py.template"
+    out_path = target_sources_dir(args.test_graph_root) / f"{file_stem}.py"
+
+    if out_path.exists():
+        sys.exit(f"error: node already exists: {out_path}")
+
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text(
+        render_template(
+            template,
+            {
+                "__NODE_ID__": args.node_id,
+                "__KIND__": args.kind,
+            },
+        )
+    )
+
+    rel = out_path.relative_to(target_project_root(args.test_graph_root))
+    print(f"created {rel}")
+    print("next steps:")
+    print("  1. fill in the body")
+    print(f'  2. add `node("{rel}")` to build.gradle.kts')
+    print("     (or leave it out — it'll be pulled in transitively if something dependsOn it)")
+    print("  3. ./gradlew validationPlanGraph --name=<graph>   # dry-run the plan")
+    print(f"  4. ./gradlew <graph>                                # run the graph that includes {args.node_id}")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

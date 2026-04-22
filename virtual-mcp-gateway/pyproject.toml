@@ -1,0 +1,72 @@
+[project]
+name = "virtual-mcp-gateway"
+version = "0.1.0"
+description = "A virtual MCP gateway with progressive disclosure over downstream stdio, Streamable HTTP, and SSE MCP servers."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [
+  { name = "OpenAI" }
+]
+keywords = ["mcp", "model-context-protocol", "gateway", "streamable-http", "sse", "stdio"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Software Development :: Libraries",
+  "Topic :: Internet :: WWW/HTTP :: HTTP Servers"
+]
+dependencies = [
+  "fastapi>=0.115.0",
+  "uvicorn>=0.30.0",
+  "httpx>=0.27.0",
+  "mcp>=1.26.0,<2",
+  "pydantic>=2.8.0",
+  "spacy>=3.7.0"
+]
+
+[project.optional-dependencies]
+dev = [
+  "pyright>=1.1.400",
+  "pytest>=8.3.0",
+  "ruff>=0.6.0"
+]
+
+[project.scripts]
+virtual-mcp-gateway = "virtual_mcp_gateway.server:main"
+
+[tool.uv]
+dev-dependencies = [
+  "pyright>=1.1.400",
+  "pytest>=8.3.0",
+  "ruff>=0.6.0"
+]
+
+[tool.uv.build-backend]
+source-include = [
+  "sample-config.json"
+]
+
+[tool.pyright]
+venvPath = "."
+venv = ".venv"
+pythonVersion = "3.11"
+typeCheckingMode = "basic"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/virtual_mcp_gateway"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+  "/src",
+  "/README.md",
+  "/pyproject.toml",
+  "/sample-config.json"
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

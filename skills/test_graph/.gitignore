@@ -1,0 +1,17 @@
+.gradle/
+build/
+**/build/
+out/
+.idea/
+*.iml
+.DS_Store
+
+# Scratch/test-scaffold area — use `scaffold.py work/<something>` here.
+work/
+
+project_sdk_sources/sdk/python/.venv/
+project_sdk_sources/sdk/python/**/__pycache__/
+project_sdk_sources/sdk/python/**/*.egg-info/
+project_sdk_sources/sdk/python/dist/
+project_sdk_sources/sdk/python/build/
+**/__pycache__/**
