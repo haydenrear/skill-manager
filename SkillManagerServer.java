@@ -28,6 +28,13 @@
 //SOURCES server-java/src/main/java/dev/skillmanager/server/persistence/ImpressionRepository.java
 //SOURCES server-java/src/main/java/dev/skillmanager/server/persistence/ConversionRow.java
 //SOURCES server-java/src/main/java/dev/skillmanager/server/persistence/ConversionRepository.java
+//SOURCES server-java/src/main/java/dev/skillmanager/server/persistence/SkillName.java
+//SOURCES server-java/src/main/java/dev/skillmanager/server/persistence/SkillNameRepository.java
+//SOURCES server-java/src/main/java/dev/skillmanager/server/persistence/SkillVersionRow.java
+//SOURCES server-java/src/main/java/dev/skillmanager/server/persistence/SkillVersionRowRepository.java
+//SOURCES server-java/src/main/java/dev/skillmanager/server/publish/Semver.java
+//SOURCES server-java/src/main/java/dev/skillmanager/server/publish/PublishException.java
+//SOURCES server-java/src/main/java/dev/skillmanager/server/publish/SkillPublishService.java
 //SOURCES server-java/src/main/java/dev/skillmanager/server/ads/AdStatsController.java
 //FILES application.properties=server-java/src/main/resources/application.properties
 //JAVA_OPTIONS -Dorg.slf4j.simpleLogger.defaultLogLevel=info

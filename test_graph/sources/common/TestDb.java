@@ -48,10 +48,34 @@ public final class TestDb implements AutoCloseable {
         }
     }
 
+    /** Owner of a skill name, or null if the name isn't claimed. */
+    public String ownerOf(String skillName) throws SQLException {
+        try (PreparedStatement ps = conn.prepareStatement(
+                "SELECT owner_username FROM skill_names WHERE name = ?")) {
+            ps.setString(1, skillName);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? rs.getString(1) : null;
+            }
+        }
+    }
+
+    /** Publisher of a specific {@code name@version}, or null if not present. */
+    public String publisherOf(String skillName, String version) throws SQLException {
+        try (PreparedStatement ps = conn.prepareStatement(
+                "SELECT published_by FROM skill_versions WHERE name = ? AND version = ?")) {
+            ps.setString(1, skillName);
+            ps.setString(2, version);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? rs.getString(1) : null;
+            }
+        }
+    }
+
     public void truncateAll() throws SQLException {
         // Drop in FK-safe order; dev/test-only, so the brute RESTART IDENTITY CASCADE is fine.
         try (PreparedStatement ps = conn.prepareStatement(
-                "TRUNCATE TABLE impressions, conversions, users RESTART IDENTITY CASCADE")) {
+                "TRUNCATE TABLE impressions, conversions, skill_versions, skill_names, users "
+                        + "RESTART IDENTITY CASCADE")) {
             ps.executeUpdate();
         } catch (SQLException first) {
             // Tables may not exist yet on first run (registry hasn't booted).

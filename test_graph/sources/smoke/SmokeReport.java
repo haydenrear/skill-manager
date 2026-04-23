@@ -36,7 +36,10 @@ public class SmokeReport {
                     "agent.configs.correct",
                     "search.finds",
                     "mcp.tools.visible",
-                    "hello.installed")
+                    "hello.installed",
+                    "ownership.recorded",
+                    "semver.enforced",
+                    "immutability.enforced")
             .tags("report")
             .timeout("15s");
 

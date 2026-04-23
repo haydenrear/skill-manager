@@ -32,6 +32,9 @@ validationGraph {
         node("sources/smoke/HelloPublished.java")
         node("sources/smoke/HelloInstalled.java")
         node("sources/smoke/SearchFinds.java")
+        node("sources/smoke/OwnershipRecorded.java")
+        node("sources/smoke/SemverEnforced.java")
+        node("sources/smoke/ImmutabilityEnforced.java")
 
         node("sources/smoke/UmbrellaInstalled.java")
         node("sources/smoke/TransitiveClisPresent.java")

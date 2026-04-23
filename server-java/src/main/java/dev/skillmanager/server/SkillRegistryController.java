@@ -7,6 +7,8 @@ import dev.skillmanager.registry.dto.SkillSummary;
 import dev.skillmanager.registry.dto.SkillVersion;
 import dev.skillmanager.server.persistence.ConversionRepository;
 import dev.skillmanager.server.persistence.ConversionRow;
+import dev.skillmanager.server.publish.PublishException;
+import dev.skillmanager.server.publish.SkillPublishService;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
@@ -37,12 +39,15 @@ public class SkillRegistryController {
     private final SkillStorage storage;
     private final AdMatcher adMatcher;
     private final ConversionRepository conversions;
+    private final SkillPublishService publishService;
 
     public SkillRegistryController(SkillStorage storage, AdMatcher adMatcher,
-                                   ConversionRepository conversions) {
+                                   ConversionRepository conversions,
+                                   SkillPublishService publishService) {
         this.storage = storage;
         this.adMatcher = adMatcher;
         this.conversions = conversions;
+        this.publishService = publishService;
     }
 
     @GetMapping("/health")
@@ -123,9 +128,15 @@ public class SkillRegistryController {
         byte[] bytes = pkg.getBytes();
         SkillVersion record;
         try {
-            record = storage.publish(name, version, bytes, jwt.getSubject());
+            record = publishService.publish(name, version, bytes, jwt.getSubject());
         } catch (IllegalArgumentException e) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
+        } catch (PublishException.BadVersion e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
+        } catch (PublishException.Forbidden e) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, e.getMessage());
+        } catch (PublishException.Conflict e) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, e.getMessage());
         }
         PublishResponse out = new PublishResponse(
                 record.name(),
@@ -137,17 +148,28 @@ public class SkillRegistryController {
     }
 
     @DeleteMapping("/skills/{name}")
-    public Map<String, Object> deleteSkill(@PathVariable String name) throws IOException {
-        if (!storage.delete(name, null)) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "skill not found: " + name);
+    public Map<String, Object> deleteSkill(@PathVariable String name, @AuthenticationPrincipal Jwt jwt) throws IOException {
+        if (jwt == null) throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "delete requires a bearer token");
+        try {
+            if (!publishService.deleteSkill(name, jwt.getSubject())) {
+                throw new ResponseStatusException(HttpStatus.NOT_FOUND, "skill not found: " + name);
+            }
+        } catch (PublishException.Forbidden e) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, e.getMessage());
         }
         return Map.of("deleted", name);
     }
 
     @DeleteMapping("/skills/{name}/{version}")
-    public Map<String, Object> deleteVersion(@PathVariable String name, @PathVariable String version) throws IOException {
-        if (!storage.delete(name, version)) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "version not found: " + name + "@" + version);
+    public Map<String, Object> deleteVersion(@PathVariable String name, @PathVariable String version,
+                                             @AuthenticationPrincipal Jwt jwt) throws IOException {
+        if (jwt == null) throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "delete requires a bearer token");
+        try {
+            if (!publishService.deleteVersion(name, version, jwt.getSubject())) {
+                throw new ResponseStatusException(HttpStatus.NOT_FOUND, "version not found: " + name + "@" + version);
+            }
+        } catch (PublishException.Forbidden e) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, e.getMessage());
         }
         return Map.of("deleted", name + "@" + version);
     }

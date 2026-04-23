@@ -11,6 +11,9 @@ digraph "smoke" {
   "hello.published" [label="hello.published\n(action, jbang)"];
   "hello.installed" [label="hello.installed\n(action, jbang)"];
   "search.finds" [label="search.finds\n(assertion, jbang)"];
+  "ownership.recorded" [label="ownership.recorded\n(assertion, jbang)"];
+  "semver.enforced" [label="semver.enforced\n(assertion, jbang)"];
+  "immutability.enforced" [label="immutability.enforced\n(assertion, jbang)"];
   "umbrella.installed" [label="umbrella.installed\n(action, jbang)"];
   "transitive.clis.present" [label="transitive.clis.present\n(assertion, jbang)"];
   "mcp.registered" [label="mcp.registered\n(action, jbang)"];
@@ -37,6 +40,9 @@ digraph "smoke" {
   "jwt.valid" -> "hello.published";
   "hello.published" -> "hello.installed";
   "hello.published" -> "search.finds";
+  "hello.published" -> "ownership.recorded";
+  "hello.published" -> "semver.enforced";
+  "hello.published" -> "immutability.enforced";
   "env.prepared" -> "umbrella.installed";
   "umbrella.installed" -> "transitive.clis.present";
   "gateway.up" -> "mcp.registered";
@@ -58,6 +64,9 @@ digraph "smoke" {
   "search.finds" -> "smoke.report";
   "mcp.tools.visible" -> "smoke.report";
   "hello.installed" -> "smoke.report";
+  "ownership.recorded" -> "smoke.report";
+  "semver.enforced" -> "smoke.report";
+  "immutability.enforced" -> "smoke.report";
   "smoke.report" -> "servers.down";
   "servers.down" -> "postgres.down";
 }
