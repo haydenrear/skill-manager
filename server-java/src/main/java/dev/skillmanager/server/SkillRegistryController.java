@@ -5,12 +5,16 @@ import dev.skillmanager.registry.dto.PublishResponse;
 import dev.skillmanager.registry.dto.SearchResponse;
 import dev.skillmanager.registry.dto.SkillSummary;
 import dev.skillmanager.registry.dto.SkillVersion;
+import dev.skillmanager.server.persistence.ConversionRepository;
+import dev.skillmanager.server.persistence.ConversionRow;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -32,10 +36,13 @@ public class SkillRegistryController {
 
     private final SkillStorage storage;
     private final AdMatcher adMatcher;
+    private final ConversionRepository conversions;
 
-    public SkillRegistryController(SkillStorage storage, AdMatcher adMatcher) {
+    public SkillRegistryController(SkillStorage storage, AdMatcher adMatcher,
+                                   ConversionRepository conversions) {
         this.storage = storage;
         this.adMatcher = adMatcher;
+        this.conversions = conversions;
     }
 
     @GetMapping("/health")
@@ -54,14 +61,16 @@ public class SkillRegistryController {
             @RequestParam(value = "q", defaultValue = "") String q,
             @RequestParam(value = "limit", defaultValue = "20") int limit,
             @RequestParam(value = "no_ads", defaultValue = "false") boolean noAds,
-            @RequestParam(value = "sponsored_limit", defaultValue = "3") int sponsoredLimit
+            @RequestParam(value = "sponsored_limit", defaultValue = "3") int sponsoredLimit,
+            @AuthenticationPrincipal Jwt jwt
     ) throws IOException {
         // Organic lane is computed independently of any campaign data.
         List<SkillSummary> hits = storage.search(q, Math.max(1, Math.min(limit, 100)));
         // Sponsored lane lives in a separate array; caller can opt out.
+        String viewer = jwt == null ? null : jwt.getSubject();
         List<dev.skillmanager.registry.dto.SponsoredPlacement> sponsored = noAds
                 ? List.of()
-                : adMatcher.match(q, sponsoredLimit);
+                : adMatcher.match(q, sponsoredLimit, viewer);
         return new SearchResponse(q, hits, hits.size(), sponsored, sponsored.size());
     }
 
@@ -79,10 +88,22 @@ public class SkillRegistryController {
     }
 
     @GetMapping("/skills/{name}/{version}/download")
-    public ResponseEntity<Resource> download(@PathVariable String name, @PathVariable String version) throws IOException {
+    public ResponseEntity<Resource> download(
+            @PathVariable String name,
+            @PathVariable String version,
+            @RequestParam(value = "campaign_id", required = false) String campaignId,
+            @AuthenticationPrincipal Jwt jwt
+    ) throws IOException {
         String v = resolveVersion(name, version);
         Path path = storage.packagePath(name, v)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "package not found: " + name + "@" + v));
+        // Attribution: the client attaches ?campaign_id=<id> when the install
+        // was prompted by a sponsored placement. Anonymous downloads still
+        // record a conversion row — installer_login is null.
+        if (campaignId != null && !campaignId.isBlank()) {
+            String installer = jwt == null ? null : jwt.getSubject();
+            conversions.save(new ConversionRow(campaignId, name, v, installer));
+        }
         return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType("application/gzip"))
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + name + "-" + v + ".tar.gz\"")
@@ -93,12 +114,16 @@ public class SkillRegistryController {
     public ResponseEntity<PublishResponse> publish(
             @PathVariable String name,
             @PathVariable String version,
-            @RequestParam("package") MultipartFile pkg
+            @RequestParam("package") MultipartFile pkg,
+            @AuthenticationPrincipal Jwt jwt
     ) throws IOException {
+        if (jwt == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "publish requires a bearer token");
+        }
         byte[] bytes = pkg.getBytes();
         SkillVersion record;
         try {
-            record = storage.publish(name, version, bytes);
+            record = storage.publish(name, version, bytes, jwt.getSubject());
         } catch (IllegalArgumentException e) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
         }

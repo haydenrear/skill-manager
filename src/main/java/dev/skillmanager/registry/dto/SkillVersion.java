@@ -13,9 +13,16 @@ public record SkillVersion(
         double publishedAt,
         String sha256,
         long sizeBytes,
-        List<String> skillReferences
+        List<String> skillReferences,
+        String ownerUsername
 ) {
     public SkillVersion {
         skillReferences = skillReferences == null ? List.of() : List.copyOf(skillReferences);
+    }
+
+    /** Legacy 7-arg ctor for callers that predate owner attribution. */
+    public SkillVersion(String name, String version, String description, double publishedAt,
+                        String sha256, long sizeBytes, List<String> skillReferences) {
+        this(name, version, description, publishedAt, sha256, sizeBytes, skillReferences, null);
     }
 }

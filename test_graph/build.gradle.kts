@@ -5,64 +5,71 @@ plugins {
 /**
  * Two integration test graphs for skill-manager.
  *
- *   ./gradlew smoke       full registry + gateway + MCP flow (20 nodes)
- *   ./gradlew sponsored   registry-only ad auction (9 nodes)
+ *   ./gradlew smoke       full registry + gateway + MCP flow
+ *   ./gradlew sponsored   registry-only ad auction
  *
  * Validate first:
  *   ./gradlew validationPlanGraph --name=smoke
  *   ./gradlew validationPlanGraph --name=sponsored
+ *
+ * Layout:
+ *   sources/common/      shared infra nodes (env, postgres, registry, auth)
+ *   sources/smoke/       smoke-only nodes (gateway, MCP, agents)
+ *   sources/sponsored/   sponsored-only nodes (ad auction assertions)
  */
 validationGraph {
     sourcesDir("sources")
 
     testGraph("smoke") {
-        node("sources/EnvPrepared.java")
-        node("sources/RegistryUp.java")
-        node("sources/GatewayUp.java")
-        node("sources/EchoHttpUp.java")
+        node("sources/common/EnvPrepared.java")
+        node("sources/common/PostgresUp.java")
+        node("sources/common/RegistryUp.java")
+        node("sources/common/CiLoggedIn.java")
+        node("sources/common/JwtValid.java")
+        node("sources/smoke/GatewayUp.java")
+        node("sources/smoke/EchoHttpUp.java")
 
-        node("sources/HelloPublished.java")
-        node("sources/HelloInstalled.java")
-        node("sources/SearchFinds.java")
+        node("sources/smoke/HelloPublished.java")
+        node("sources/smoke/HelloInstalled.java")
+        node("sources/smoke/SearchFinds.java")
 
-        node("sources/UmbrellaInstalled.java")
-        node("sources/TransitiveClisPresent.java")
+        node("sources/smoke/UmbrellaInstalled.java")
+        node("sources/smoke/TransitiveClisPresent.java")
 
-        node("sources/McpRegistered.java")
-        node("sources/McpToolsVisible.java")
+        node("sources/smoke/McpRegistered.java")
+        node("sources/smoke/McpToolsVisible.java")
 
-        node("sources/EchoHttpRegistered.java")
-        node("sources/EchoHttpDeployed.java")
-        node("sources/McpToolSearchFinds.java")
-        node("sources/McpToolInvoked.java")
-        node("sources/EchoHttpRedeployed.java")
+        node("sources/smoke/EchoHttpRegistered.java")
+        node("sources/smoke/EchoHttpDeployed.java")
+        node("sources/smoke/McpToolSearchFinds.java")
+        node("sources/smoke/McpToolInvoked.java")
+        node("sources/smoke/EchoHttpRedeployed.java")
 
-        node("sources/AgentsSynced.java")
-        node("sources/AgentConfigsCorrect.java")
+        node("sources/smoke/AgentsSynced.java")
+        node("sources/smoke/AgentConfigsCorrect.java")
 
-        node("sources/SmokeReport.java")
-        node("sources/ServersDown.java")
+        node("sources/smoke/SmokeReport.java")
+        node("sources/smoke/ServersDown.java")
+        node("sources/common/PostgresDown.java").dependsOn("servers.down")
     }
 
-    /*
-     * `sponsored` — covers the ad-auction lane in the skill registry:
-     * publish two skills, create three campaigns (including a competing
-     * pair on the same keyword), then assert keyword match, no_ads
-     * suppression, organic lane stability, and highest-bid-wins.
-     */
     testGraph("sponsored") {
-        node("sources/EnvPrepared.java")
-        node("sources/RegistryUp.java")
+        node("sources/common/EnvPrepared.java")
+        node("sources/common/PostgresUp.java")
+        node("sources/common/RegistryUp.java")
+        node("sources/common/CiLoggedIn.java")
+        node("sources/common/JwtValid.java")
 
-        node("sources/ReviewerPublished.java")
-        node("sources/FormatterPublished.java")
-        node("sources/CampaignsCreated.java")
+        node("sources/sponsored/ReviewerPublished.java")
+        node("sources/sponsored/FormatterPublished.java")
+        node("sources/sponsored/CampaignsCreated.java")
 
-        node("sources/SponsoredSearchMatchesKeyword.java")
-        node("sources/SponsoredNoAdsSuppresses.java")
-        node("sources/SponsoredOrganicUnchanged.java")
-        node("sources/SponsoredHigherBidWins.java")
+        node("sources/sponsored/SponsoredSearchMatchesKeyword.java")
+        node("sources/sponsored/SponsoredNoAdsSuppresses.java")
+        node("sources/sponsored/SponsoredOrganicUnchanged.java")
+        node("sources/sponsored/SponsoredHigherBidWins.java")
 
-        node("sources/SponsoredTeardown.java")
+        node("sources/sponsored/SponsoredTeardown.java")
+        node("sources/common/PostgresDown.java").dependsOn("sponsored.teardown")
     }
 }

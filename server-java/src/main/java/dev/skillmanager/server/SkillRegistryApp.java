@@ -1,5 +1,6 @@
 package dev.skillmanager.server;
 
+import dev.skillmanager.server.persistence.ImpressionRepository;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
@@ -29,8 +30,8 @@ public class SkillRegistryApp {
     }
 
     @Bean
-    public AdMatcher adMatcher(CampaignStorage campaigns, SkillStorage skills) {
-        return new AdMatcher(campaigns, skills);
+    public AdMatcher adMatcher(CampaignStorage campaigns, SkillStorage skills, ImpressionRepository impressions) {
+        return new AdMatcher(campaigns, skills, impressions);
     }
 
     public static void main(String[] args) {

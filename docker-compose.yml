@@ -1,0 +1,22 @@
+services:
+  postgres:
+    image: localhost:5005/postgres-pgvector
+    container_name: skill-manager-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      # Primary db; the init script additionally provisions skill_registry_test.
+      POSTGRES_DB: skill_registry
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - skill-manager-pg:/var/lib/postgresql/data
+      - ./infra/postgres/init.sql:/docker-entrypoint-initdb.d/00-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d skill_registry"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+volumes:
+  skill-manager-pg:

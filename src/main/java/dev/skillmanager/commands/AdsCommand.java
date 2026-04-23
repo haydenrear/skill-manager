@@ -43,7 +43,7 @@ public final class AdsCommand implements Runnable {
             SkillStore store = SkillStore.defaultStore();
             store.init();
             RegistryConfig cfg = RegistryConfig.resolve(store, registryUrl);
-            var rows = new RegistryClient(cfg).listCampaigns();
+            var rows = RegistryClient.authenticated(store, cfg).listCampaigns();
             if (rows.isEmpty()) {
                 System.out.println("(no campaigns)");
                 return 0;
@@ -114,7 +114,7 @@ public final class AdsCommand implements Runnable {
             body.put("status", status);
             if (notes != null) body.put("notes", notes);
 
-            var created = new RegistryClient(cfg).createCampaign(body);
+            var created = RegistryClient.authenticated(store, cfg).createCampaign(body);
             Log.ok("created campaign %s (skill=%s sponsor=%s bid=%s¢)",
                     created.get("id"), created.get("skill_name"),
                     created.get("sponsor"), created.get("bid_cents"));
@@ -132,7 +132,7 @@ public final class AdsCommand implements Runnable {
             SkillStore store = SkillStore.defaultStore();
             store.init();
             RegistryConfig cfg = RegistryConfig.resolve(store, registryUrl);
-            boolean ok = new RegistryClient(cfg).deleteCampaign(id);
+            boolean ok = RegistryClient.authenticated(store, cfg).deleteCampaign(id);
             if (ok) Log.ok("deleted campaign %s", id);
             else Log.warn("campaign not found: %s", id);
             return ok ? 0 : 1;

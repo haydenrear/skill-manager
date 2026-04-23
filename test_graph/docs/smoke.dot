@@ -2,7 +2,10 @@ digraph "smoke" {
   rankdir=LR;
   node [shape=box,fontname="Courier"];
   "env.prepared" [label="env.prepared\n(fixture, jbang)"];
+  "postgres.up" [label="postgres.up\n(testbed, jbang)"];
   "registry.up" [label="registry.up\n(testbed, jbang)"];
+  "ci.logged.in" [label="ci.logged.in\n(action, jbang)"];
+  "jwt.valid" [label="jwt.valid\n(assertion, jbang)"];
   "gateway.up" [label="gateway.up\n(testbed, jbang)"];
   "echo.http.up" [label="echo.http.up\n(testbed, jbang)"];
   "hello.published" [label="hello.published\n(action, jbang)"];
@@ -21,10 +24,17 @@ digraph "smoke" {
   "agent.configs.correct" [label="agent.configs.correct\n(assertion, jbang)"];
   "smoke.report" [label="smoke.report\n(report, jbang)"];
   "servers.down" [label="servers.down\n(evidence, jbang)"];
+  "postgres.down" [label="postgres.down\n(evidence, jbang)"];
+  "env.prepared" -> "postgres.up";
   "env.prepared" -> "registry.up";
+  "postgres.up" -> "registry.up";
+  "registry.up" -> "ci.logged.in";
+  "ci.logged.in" -> "jwt.valid";
   "env.prepared" -> "gateway.up";
   "env.prepared" -> "echo.http.up";
   "registry.up" -> "hello.published";
+  "ci.logged.in" -> "hello.published";
+  "jwt.valid" -> "hello.published";
   "hello.published" -> "hello.installed";
   "hello.published" -> "search.finds";
   "env.prepared" -> "umbrella.installed";
@@ -49,4 +59,5 @@ digraph "smoke" {
   "mcp.tools.visible" -> "smoke.report";
   "hello.installed" -> "smoke.report";
   "smoke.report" -> "servers.down";
+  "servers.down" -> "postgres.down";
 }

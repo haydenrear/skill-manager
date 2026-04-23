@@ -28,7 +28,7 @@ public final class SearchCommand implements Callable<Integer> {
         SkillStore store = SkillStore.defaultStore();
         store.init();
         RegistryConfig cfg = RegistryConfig.resolve(store, registryUrl);
-        RegistryClient client = new RegistryClient(cfg);
+        RegistryClient client = RegistryClient.authenticated(store, cfg);
 
         RegistryClient.SearchResult result = client.searchWithSponsored(
                 query == null ? "" : query, limit, noAds);

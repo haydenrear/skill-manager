@@ -2,6 +2,8 @@ package dev.skillmanager.server;
 
 import dev.skillmanager.registry.dto.Campaign;
 import dev.skillmanager.registry.dto.SponsoredPlacement;
+import dev.skillmanager.server.persistence.ImpressionRepository;
+import dev.skillmanager.server.persistence.ImpressionRow;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -30,13 +32,24 @@ public final class AdMatcher {
 
     private final CampaignStorage campaigns;
     private final SkillStorage skills;
+    private final ImpressionRepository impressions;
 
-    public AdMatcher(CampaignStorage campaigns, SkillStorage skills) {
+    public AdMatcher(CampaignStorage campaigns, SkillStorage skills, ImpressionRepository impressions) {
         this.campaigns = campaigns;
         this.skills = skills;
+        this.impressions = impressions;
     }
 
     public List<SponsoredPlacement> match(String rawQuery, int limit) throws IOException {
+        return match(rawQuery, limit, null);
+    }
+
+    /**
+     * Match + record. Every returned placement is persisted as an
+     * {@link ImpressionRow} attributed to {@code viewerLogin} if the caller
+     * is authenticated, else anonymous.
+     */
+    public List<SponsoredPlacement> match(String rawQuery, int limit, String viewerLogin) throws IOException {
         int effectiveLimit = Math.max(0, Math.min(limit, 10));
         if (effectiveLimit == 0) return List.of();
 
@@ -71,6 +84,13 @@ public final class AdMatcher {
                     h.campaign().id(),
                     h.reason(),
                     h.campaign().bidCents()));
+            // Persist an impression per served placement so the stats endpoint
+            // can aggregate. Anonymous viewers get a null viewer_login row.
+            impressions.save(new ImpressionRow(
+                    h.campaign().id(),
+                    skillName,
+                    viewerLogin,
+                    rawQuery));
         }
         return out;
     }

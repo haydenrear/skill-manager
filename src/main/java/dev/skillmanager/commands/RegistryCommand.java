@@ -44,7 +44,7 @@ public final class RegistryCommand implements Runnable {
             SkillStore store = SkillStore.defaultStore();
             store.init();
             RegistryConfig cfg = RegistryConfig.resolve(store, null);
-            RegistryClient client = new RegistryClient(cfg);
+            RegistryClient client = RegistryClient.authenticated(store, cfg);
             System.out.println("base:    " + cfg.baseUrl());
             boolean reachable = client.ping();
             System.out.println("status:  " + (reachable ? "reachable" : "unreachable"));

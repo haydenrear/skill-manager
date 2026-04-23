@@ -106,6 +106,11 @@ public final class SkillStorage {
     // ------------------------------------------------------------- mutations
 
     public SkillVersion publish(String name, String version, byte[] payload) throws IOException {
+        return publish(name, version, payload, null);
+    }
+
+    public SkillVersion publish(String name, String version, byte[] payload, String ownerUsername)
+            throws IOException {
         validateName(name);
         validateVersion(version);
         PayloadMetadata meta = inspectTarball(payload);
@@ -122,7 +127,8 @@ public final class SkillStorage {
                 System.currentTimeMillis() / 1000.0,
                 digest,
                 payload.length,
-                List.copyOf(meta.skillReferences));
+                List.copyOf(meta.skillReferences),
+                ownerUsername);
         json.writeValue(vdir.resolve(METADATA_FILE).toFile(), record);
         updateIndex(name, meta.description, version);
         return record;

@@ -2,7 +2,10 @@ digraph "sponsored" {
   rankdir=LR;
   node [shape=box,fontname="Courier"];
   "env.prepared" [label="env.prepared\n(fixture, jbang)"];
+  "postgres.up" [label="postgres.up\n(testbed, jbang)"];
   "registry.up" [label="registry.up\n(testbed, jbang)"];
+  "ci.logged.in" [label="ci.logged.in\n(action, jbang)"];
+  "jwt.valid" [label="jwt.valid\n(assertion, jbang)"];
   "reviewer.published" [label="reviewer.published\n(action, jbang)"];
   "formatter.published" [label="formatter.published\n(action, jbang)"];
   "campaigns.created" [label="campaigns.created\n(action, jbang)"];
@@ -11,9 +14,18 @@ digraph "sponsored" {
   "sponsored.organic.unchanged" [label="sponsored.organic.unchanged\n(assertion, jbang)"];
   "sponsored.higher.bid.wins" [label="sponsored.higher.bid.wins\n(assertion, jbang)"];
   "sponsored.teardown" [label="sponsored.teardown\n(evidence, jbang)"];
+  "postgres.down" [label="postgres.down\n(evidence, jbang)"];
+  "env.prepared" -> "postgres.up";
   "env.prepared" -> "registry.up";
+  "postgres.up" -> "registry.up";
+  "registry.up" -> "ci.logged.in";
+  "ci.logged.in" -> "jwt.valid";
   "registry.up" -> "reviewer.published";
+  "ci.logged.in" -> "reviewer.published";
+  "jwt.valid" -> "reviewer.published";
   "registry.up" -> "formatter.published";
+  "ci.logged.in" -> "formatter.published";
+  "jwt.valid" -> "formatter.published";
   "reviewer.published" -> "campaigns.created";
   "formatter.published" -> "campaigns.created";
   "campaigns.created" -> "sponsored.search.matches.keyword";
@@ -24,4 +36,5 @@ digraph "sponsored" {
   "sponsored.no.ads.suppresses" -> "sponsored.teardown";
   "sponsored.organic.unchanged" -> "sponsored.teardown";
   "sponsored.higher.bid.wins" -> "sponsored.teardown";
+  "sponsored.teardown" -> "postgres.down";
 }

@@ -21,6 +21,7 @@ import java.util.Map;
 public final class RegistryClient {
 
     private final RegistryConfig config;
+    private final String bearerToken;   // may be null — public endpoints still work
     private final ObjectMapper json = new ObjectMapper();
     private final HttpClient http = HttpClient.newBuilder()
             .version(HttpClient.Version.HTTP_1_1)
@@ -28,7 +29,67 @@ public final class RegistryClient {
             .followRedirects(HttpClient.Redirect.NORMAL)
             .build();
 
-    public RegistryClient(RegistryConfig config) { this.config = config; }
+    public RegistryClient(RegistryConfig config) { this(config, null); }
+
+    public RegistryClient(RegistryConfig config, String bearerToken) {
+        this.config = config;
+        this.bearerToken = bearerToken;
+    }
+
+    /** Build a client that picks up the bearer token from {@link AuthStore}. */
+    public static RegistryClient authenticated(dev.skillmanager.store.SkillStore store, RegistryConfig config) {
+        return new RegistryClient(config, new AuthStore(store).load());
+    }
+
+    /**
+     * POST /oauth2/token — OAuth2 client_credentials grant against the registry's
+     * embedded authorization server. Returns the parsed token response.
+     */
+    public Map<String, Object> clientCredentialsToken(String clientId, String clientSecret, String scope)
+            throws IOException {
+        URI url = URI.create(strip(config.baseUrl().toString()) + "/oauth2/token");
+        StringBuilder form = new StringBuilder("grant_type=client_credentials");
+        if (scope != null && !scope.isBlank()) {
+            form.append("&scope=").append(URLEncoder.encode(scope, StandardCharsets.UTF_8));
+        }
+        String basic = java.util.Base64.getEncoder().encodeToString(
+                (clientId + ":" + clientSecret).getBytes(StandardCharsets.UTF_8));
+        HttpRequest req = HttpRequest.newBuilder(url)
+                .header("Content-Type", "application/x-www-form-urlencoded")
+                .header("Authorization", "Basic " + basic)
+                .timeout(Duration.ofSeconds(15))
+                .POST(HttpRequest.BodyPublishers.ofString(form.toString()))
+                .build();
+        try {
+            var resp = http.send(req, HttpResponse.BodyHandlers.ofString());
+            if (resp.statusCode() / 100 != 2) {
+                throw new IOException("token endpoint failed: HTTP " + resp.statusCode() + " " + resp.body());
+            }
+            @SuppressWarnings("unchecked")
+            Map<String, Object> parsed = json.readValue(resp.body(), Map.class);
+            return parsed;
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IOException("token request interrupted", e);
+        }
+    }
+
+    /** GET /auth/me — requires a bearer token. */
+    public Map<String, Object> me() throws IOException {
+        return get("/auth/me");
+    }
+
+    /** GET /ads/campaigns/{id}/stats — aggregate counters for a campaign. */
+    public Map<String, Object> campaignStats(String id) throws IOException {
+        return get("/ads/campaigns/" + encode(id) + "/stats");
+    }
+
+    private HttpRequest.Builder authed(HttpRequest.Builder b) {
+        if (bearerToken != null && !bearerToken.isBlank()) {
+            b.header("Authorization", "Bearer " + bearerToken);
+        }
+        return b;
+    }
 
     public boolean ping() {
         try {
@@ -70,10 +131,10 @@ public final class RegistryClient {
     public Map<String, Object> createCampaign(Map<String, Object> body) throws IOException {
         URI url = URI.create(strip(config.baseUrl().toString()) + "/ads/campaigns");
         String payload = json.writeValueAsString(body);
-        HttpRequest req = HttpRequest.newBuilder(url)
+        HttpRequest req = authed(HttpRequest.newBuilder(url)
                 .header("Content-Type", "application/json")
                 .timeout(Duration.ofSeconds(15))
-                .POST(HttpRequest.BodyPublishers.ofString(payload))
+                .POST(HttpRequest.BodyPublishers.ofString(payload)))
                 .build();
         try {
             var resp = http.send(req, HttpResponse.BodyHandlers.ofString());
@@ -91,7 +152,7 @@ public final class RegistryClient {
 
     public boolean deleteCampaign(String id) throws IOException {
         URI url = URI.create(strip(config.baseUrl().toString()) + "/ads/campaigns/" + encode(id));
-        HttpRequest req = HttpRequest.newBuilder(url).timeout(Duration.ofSeconds(10)).DELETE().build();
+        HttpRequest req = authed(HttpRequest.newBuilder(url).timeout(Duration.ofSeconds(10)).DELETE()).build();
         try {
             var resp = http.send(req, HttpResponse.BodyHandlers.ofString());
             if (resp.statusCode() == 404) return false;
@@ -119,10 +180,19 @@ public final class RegistryClient {
 
     /** Download a skill package; returns the size in bytes. */
     public long download(String name, String version, Path dst) throws IOException {
+        return download(name, version, dst, null);
+    }
+
+    /** Download with optional campaign_id attribution (records a conversion on the server). */
+    public long download(String name, String version, Path dst, String campaignId) throws IOException {
         String v = version == null || version.isBlank() ? "latest" : version;
-        URI url = URI.create(strip(config.baseUrl().toString()) + "/skills/" + encode(name) + "/" + encode(v) + "/download");
+        String q = campaignId == null || campaignId.isBlank()
+                ? ""
+                : "?campaign_id=" + encode(campaignId);
+        URI url = URI.create(strip(config.baseUrl().toString())
+                + "/skills/" + encode(name) + "/" + encode(v) + "/download" + q);
         try {
-            var resp = http.send(HttpRequest.newBuilder(url).timeout(Duration.ofSeconds(120)).GET().build(),
+            var resp = http.send(authed(HttpRequest.newBuilder(url).timeout(Duration.ofSeconds(120)).GET()).build(),
                     HttpResponse.BodyHandlers.ofInputStream());
             if (resp.statusCode() == 404) throw new IOException("not found: " + name + "@" + v);
             if (resp.statusCode() / 100 != 2) throw new IOException("HTTP " + resp.statusCode() + " from " + url);
@@ -140,10 +210,10 @@ public final class RegistryClient {
         URI url = URI.create(strip(config.baseUrl().toString()) + "/skills/" + encode(name) + "/" + encode(version));
         String boundary = "skill-manager-" + System.nanoTime();
         byte[] body = buildMultipart(boundary, tarball);
-        HttpRequest req = HttpRequest.newBuilder(url)
+        HttpRequest req = authed(HttpRequest.newBuilder(url)
                 .timeout(Duration.ofSeconds(120))
                 .header("Content-Type", "multipart/form-data; boundary=" + boundary)
-                .POST(HttpRequest.BodyPublishers.ofByteArray(body))
+                .POST(HttpRequest.BodyPublishers.ofByteArray(body)))
                 .build();
         try {
             var resp = http.send(req, HttpResponse.BodyHandlers.ofString());
@@ -185,7 +255,7 @@ public final class RegistryClient {
     private Map<String, Object> get(String path) throws IOException {
         URI url = URI.create(strip(config.baseUrl().toString()) + path);
         try {
-            var resp = http.send(HttpRequest.newBuilder(url).timeout(Duration.ofSeconds(15)).GET().build(),
+            var resp = http.send(authed(HttpRequest.newBuilder(url).timeout(Duration.ofSeconds(15)).GET()).build(),
                     HttpResponse.BodyHandlers.ofString());
             if (resp.statusCode() == 404) throw new IOException("not found: " + url);
             if (resp.statusCode() / 100 != 2) throw new IOException("HTTP " + resp.statusCode() + " from " + url);

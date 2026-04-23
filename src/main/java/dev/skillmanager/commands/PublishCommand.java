@@ -62,7 +62,7 @@ public final class PublishCommand implements Callable<Integer> {
         }
 
         RegistryConfig cfg = RegistryConfig.resolve(store, registryUrl);
-        RegistryClient client = new RegistryClient(cfg);
+        RegistryClient client = RegistryClient.authenticated(store, cfg);
         if (!client.ping()) {
             Log.error("registry not reachable at %s", cfg.baseUrl());
             return 2;
