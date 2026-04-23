@@ -1,0 +1,27 @@
+digraph "sponsored" {
+  rankdir=LR;
+  node [shape=box,fontname="Courier"];
+  "env.prepared" [label="env.prepared\n(fixture, jbang)"];
+  "registry.up" [label="registry.up\n(testbed, jbang)"];
+  "reviewer.published" [label="reviewer.published\n(action, jbang)"];
+  "formatter.published" [label="formatter.published\n(action, jbang)"];
+  "campaigns.created" [label="campaigns.created\n(action, jbang)"];
+  "sponsored.search.matches.keyword" [label="sponsored.search.matches.keyword\n(assertion, jbang)"];
+  "sponsored.no.ads.suppresses" [label="sponsored.no.ads.suppresses\n(assertion, jbang)"];
+  "sponsored.organic.unchanged" [label="sponsored.organic.unchanged\n(assertion, jbang)"];
+  "sponsored.higher.bid.wins" [label="sponsored.higher.bid.wins\n(assertion, jbang)"];
+  "sponsored.teardown" [label="sponsored.teardown\n(evidence, jbang)"];
+  "env.prepared" -> "registry.up";
+  "registry.up" -> "reviewer.published";
+  "registry.up" -> "formatter.published";
+  "reviewer.published" -> "campaigns.created";
+  "formatter.published" -> "campaigns.created";
+  "campaigns.created" -> "sponsored.search.matches.keyword";
+  "campaigns.created" -> "sponsored.no.ads.suppresses";
+  "campaigns.created" -> "sponsored.organic.unchanged";
+  "campaigns.created" -> "sponsored.higher.bid.wins";
+  "sponsored.search.matches.keyword" -> "sponsored.teardown";
+  "sponsored.no.ads.suppresses" -> "sponsored.teardown";
+  "sponsored.organic.unchanged" -> "sponsored.teardown";
+  "sponsored.higher.bid.wins" -> "sponsored.teardown";
+}

@@ -11,7 +11,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
 
-@Command(name = "search", description = "Search skills in the registry.")
+@Command(name = "search", description = "Search skills in the registry. Sponsored slots are rendered separately and can be hidden with --no-ads.")
 public final class SearchCommand implements Callable<Integer> {
 
     @Parameters(index = "0", arity = "0..1", description = "Search query (empty = list everything)")
@@ -19,7 +19,9 @@ public final class SearchCommand implements Callable<Integer> {
 
     @Option(names = "--limit", defaultValue = "20") int limit;
 
-    @Option(names = "--registry", description = "Registry base URL override") String registryUrl;
+    @Option(names = "--registry", description = "Registry URL override") String registryUrl;
+
+    @Option(names = "--no-ads", description = "Hide the sponsored section from this query's response") boolean noAds;
 
     @Override
     public Integer call() throws Exception {
@@ -28,20 +30,46 @@ public final class SearchCommand implements Callable<Integer> {
         RegistryConfig cfg = RegistryConfig.resolve(store, registryUrl);
         RegistryClient client = new RegistryClient(cfg);
 
-        List<Map<String, Object>> hits = client.search(query == null ? "" : query, limit);
-        if (hits.isEmpty()) {
+        RegistryClient.SearchResult result = client.searchWithSponsored(
+                query == null ? "" : query, limit, noAds);
+
+        if (result.organic().isEmpty() && result.sponsored().isEmpty()) {
             System.out.println("(no skills matched)");
             return 0;
         }
-        System.out.printf("%-28s %-10s %s%n", "NAME", "LATEST", "DESCRIPTION");
-        for (Map<String, Object> hit : hits) {
+
+        if (!result.sponsored().isEmpty()) {
+            System.out.println("sponsored");
+            System.out.println("─────────");
+            printRows(result.sponsored(), true);
+            System.out.println();
+        }
+
+        if (!result.organic().isEmpty()) {
+            System.out.println("organic");
+            System.out.println("───────");
+            printRows(result.organic(), false);
+        }
+        return 0;
+    }
+
+    private static void printRows(List<Map<String, Object>> rows, boolean sponsored) {
+        System.out.printf("%-28s %-10s %s%n", "NAME", "LATEST", sponsored ? "SPONSOR · REASON" : "DESCRIPTION");
+        for (Map<String, Object> hit : rows) {
             String name = String.valueOf(hit.getOrDefault("name", ""));
             Object latest = hit.get("latest_version");
             String latestStr = latest == null ? "-" : latest.toString();
-            String desc = String.valueOf(hit.getOrDefault("description", ""));
-            if (desc.length() > 60) desc = desc.substring(0, 57) + "...";
-            System.out.printf("%-28s %-10s %s%n", name, latestStr, desc);
+            String right;
+            if (sponsored) {
+                String sponsor = String.valueOf(hit.getOrDefault("sponsor", ""));
+                String reason = String.valueOf(hit.getOrDefault("reason", ""));
+                right = "[sponsored] " + sponsor + " · " + reason;
+            } else {
+                String desc = String.valueOf(hit.getOrDefault("description", ""));
+                if (desc.length() > 60) desc = desc.substring(0, 57) + "...";
+                right = desc;
+            }
+            System.out.printf("%-28s %-10s %s%n", name, latestStr, right);
         }
-        return 0;
     }
 }

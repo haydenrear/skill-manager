@@ -3,25 +3,14 @@ plugins {
 }
 
 /**
- * Integration test graph for skill-manager.
+ * Two integration test graphs for skill-manager.
  *
- *   ./gradlew smoke                                run the full graph
- *   ./gradlew validationPlanGraph --name=smoke     dry-run the plan
- *   ./gradlew validationReport                     aggregate per-node envelopes
+ *   ./gradlew smoke       full registry + gateway + MCP flow (20 nodes)
+ *   ./gradlew sponsored   registry-only ad auction (9 nodes)
  *
- * Lanes:
- *   fixture     env.prepared                      per-run SKILL_MANAGER_HOME + free ports
- *   testbed     registry.up / gateway.up /        server + gateway + echo fixture
- *               echo.http.up
- *   registry    hello.published → hello.installed → search.finds
- *   cli         umbrella.installed → transitive.clis.present
- *   mcp         mcp.registered → mcp.tools.visible  (docker stdio)
- *               echo.http.registered → echo.http.deployed → mcp.tool.search.finds
- *                                                          → mcp.tool.invoked
- *                                                          → echo.http.redeployed
- *   agents      agents.synced → agent.configs.correct     (fake HOME)
- *   report      smoke.report aggregates every envelope into smoke-report.md
- *   teardown    servers.down stops gateway + registry + echo fixture
+ * Validate first:
+ *   ./gradlew validationPlanGraph --name=smoke
+ *   ./gradlew validationPlanGraph --name=sponsored
  */
 validationGraph {
     sourcesDir("sources")
@@ -53,5 +42,27 @@ validationGraph {
 
         node("sources/SmokeReport.java")
         node("sources/ServersDown.java")
+    }
+
+    /*
+     * `sponsored` — covers the ad-auction lane in the skill registry:
+     * publish two skills, create three campaigns (including a competing
+     * pair on the same keyword), then assert keyword match, no_ads
+     * suppression, organic lane stability, and highest-bid-wins.
+     */
+    testGraph("sponsored") {
+        node("sources/EnvPrepared.java")
+        node("sources/RegistryUp.java")
+
+        node("sources/ReviewerPublished.java")
+        node("sources/FormatterPublished.java")
+        node("sources/CampaignsCreated.java")
+
+        node("sources/SponsoredSearchMatchesKeyword.java")
+        node("sources/SponsoredNoAdsSuppresses.java")
+        node("sources/SponsoredOrganicUnchanged.java")
+        node("sources/SponsoredHigherBidWins.java")
+
+        node("sources/SponsoredTeardown.java")
     }
 }

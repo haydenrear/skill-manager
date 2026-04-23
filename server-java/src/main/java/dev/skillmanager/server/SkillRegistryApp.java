@@ -11,12 +11,26 @@ import java.nio.file.Path;
 public class SkillRegistryApp {
 
     @Bean
-    public SkillStorage skillStorage() throws IOException {
+    public Path registryRoot() {
         String env = System.getenv("SKILL_REGISTRY_ROOT");
-        Path root = env != null && !env.isBlank()
+        return env != null && !env.isBlank()
                 ? Path.of(env)
                 : Path.of(System.getProperty("user.home"), ".skill-registry");
-        return new SkillStorage(root);
+    }
+
+    @Bean
+    public SkillStorage skillStorage(Path registryRoot) throws IOException {
+        return new SkillStorage(registryRoot);
+    }
+
+    @Bean
+    public CampaignStorage campaignStorage(Path registryRoot) throws IOException {
+        return new CampaignStorage(registryRoot);
+    }
+
+    @Bean
+    public AdMatcher adMatcher(CampaignStorage campaigns, SkillStorage skills) {
+        return new AdMatcher(campaigns, skills);
     }
 
     public static void main(String[] args) {

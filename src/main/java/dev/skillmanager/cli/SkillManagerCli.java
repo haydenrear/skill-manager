@@ -1,6 +1,7 @@
 package dev.skillmanager.cli;
 
 import dev.skillmanager.commands.AddCommand;
+import dev.skillmanager.commands.AdsCommand;
 import dev.skillmanager.commands.CliCommand;
 import dev.skillmanager.commands.CreateCommand;
 import dev.skillmanager.commands.DepsCommand;
@@ -40,7 +41,8 @@ import picocli.CommandLine.Option;
                 PolicyCommand.class,
                 PmCommand.class,
                 CliCommand.class,
-                CreateCommand.class
+                CreateCommand.class,
+                AdsCommand.class
         })
 public final class SkillManagerCli implements Runnable {
 

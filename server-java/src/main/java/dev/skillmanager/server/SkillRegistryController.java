@@ -31,9 +31,11 @@ import java.util.Map;
 public class SkillRegistryController {
 
     private final SkillStorage storage;
+    private final AdMatcher adMatcher;
 
-    public SkillRegistryController(SkillStorage storage) {
+    public SkillRegistryController(SkillStorage storage, AdMatcher adMatcher) {
         this.storage = storage;
+        this.adMatcher = adMatcher;
     }
 
     @GetMapping("/health")
@@ -50,10 +52,17 @@ public class SkillRegistryController {
     @GetMapping("/skills/search")
     public SearchResponse search(
             @RequestParam(value = "q", defaultValue = "") String q,
-            @RequestParam(value = "limit", defaultValue = "20") int limit
+            @RequestParam(value = "limit", defaultValue = "20") int limit,
+            @RequestParam(value = "no_ads", defaultValue = "false") boolean noAds,
+            @RequestParam(value = "sponsored_limit", defaultValue = "3") int sponsoredLimit
     ) throws IOException {
+        // Organic lane is computed independently of any campaign data.
         List<SkillSummary> hits = storage.search(q, Math.max(1, Math.min(limit, 100)));
-        return new SearchResponse(q, hits, hits.size());
+        // Sponsored lane lives in a separate array; caller can opt out.
+        List<dev.skillmanager.registry.dto.SponsoredPlacement> sponsored = noAds
+                ? List.of()
+                : adMatcher.match(q, sponsoredLimit);
+        return new SearchResponse(q, hits, hits.size(), sponsored, sponsored.size());
     }
 
     @GetMapping("/skills/{name}")

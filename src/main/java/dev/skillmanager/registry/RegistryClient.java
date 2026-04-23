@@ -46,9 +46,68 @@ public final class RegistryClient {
     }
 
     public List<Map<String, Object>> search(String query, int limit) throws IOException {
-        String path = "/skills/search?q=" + encode(query) + "&limit=" + limit;
-        return itemsOf(get(path));
+        return searchWithSponsored(query, limit, false).organic();
     }
+
+    /** Full search response: organic items + sponsored placements + counts. */
+    public SearchResult searchWithSponsored(String query, int limit, boolean noAds) throws IOException {
+        String path = "/skills/search?q=" + encode(query) + "&limit=" + limit
+                + (noAds ? "&no_ads=true" : "");
+        Map<String, Object> payload = get(path);
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> organic = payload.get("items") instanceof List<?> l
+                ? (List<Map<String, Object>>) l : List.of();
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> sponsored = payload.get("sponsored") instanceof List<?> l2
+                ? (List<Map<String, Object>>) l2 : List.of();
+        return new SearchResult(organic, sponsored);
+    }
+
+    public List<Map<String, Object>> listCampaigns() throws IOException {
+        return itemsOf(get("/ads/campaigns"));
+    }
+
+    public Map<String, Object> createCampaign(Map<String, Object> body) throws IOException {
+        URI url = URI.create(strip(config.baseUrl().toString()) + "/ads/campaigns");
+        String payload = json.writeValueAsString(body);
+        HttpRequest req = HttpRequest.newBuilder(url)
+                .header("Content-Type", "application/json")
+                .timeout(Duration.ofSeconds(15))
+                .POST(HttpRequest.BodyPublishers.ofString(payload))
+                .build();
+        try {
+            var resp = http.send(req, HttpResponse.BodyHandlers.ofString());
+            if (resp.statusCode() / 100 != 2) {
+                throw new IOException("createCampaign failed: HTTP " + resp.statusCode() + " " + resp.body());
+            }
+            @SuppressWarnings("unchecked")
+            Map<String, Object> parsed = json.readValue(resp.body(), Map.class);
+            return parsed;
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IOException("createCampaign interrupted", e);
+        }
+    }
+
+    public boolean deleteCampaign(String id) throws IOException {
+        URI url = URI.create(strip(config.baseUrl().toString()) + "/ads/campaigns/" + encode(id));
+        HttpRequest req = HttpRequest.newBuilder(url).timeout(Duration.ofSeconds(10)).DELETE().build();
+        try {
+            var resp = http.send(req, HttpResponse.BodyHandlers.ofString());
+            if (resp.statusCode() == 404) return false;
+            if (resp.statusCode() / 100 != 2) {
+                throw new IOException("deleteCampaign failed: HTTP " + resp.statusCode() + " " + resp.body());
+            }
+            return true;
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IOException("deleteCampaign interrupted", e);
+        }
+    }
+
+    public record SearchResult(
+            List<Map<String, Object>> organic,
+            List<Map<String, Object>> sponsored) {}
 
     public Map<String, Object> describe(String name) throws IOException {
         return get("/skills/" + encode(name));
