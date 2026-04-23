@@ -11,14 +11,19 @@ import picocli.CommandLine.Option;
 import java.util.concurrent.Callable;
 
 /**
- * Authenticates against the registry's embedded authorization server using
- * the {@code client_credentials} grant and caches the resulting JWT on disk.
+ * Authenticate against the registry and cache the bearer token.
  *
- * <p>The registry is its own IdP: every caller — CLI, test-graph CI, any
- * future integration — needs a registered OAuth2 client. Pass its
- * {@code client_id} / {@code client_secret} here; the cached token is
- * attached to every subsequent {@code skill-manager} request via the
- * {@code Authorization: Bearer} header.
+ * <p>Default flow is OAuth2 authorization_code + PKCE through a browser:
+ * {@code skill-manager login} opens a browser to {@code /oauth2/authorize}
+ * under the {@code skill-manager-cli} public client, binds a loopback
+ * HTTP server on 127.0.0.1 to receive the callback code, then exchanges
+ * it at {@code /oauth2/token}. Create an account first with
+ * {@code skill-manager create-account}.
+ *
+ * <p>{@code --client-credentials} is an internal, undocumented mode used
+ * only by first-party automation (test graphs, CI). It isn't shown in the
+ * usage banner. Passing {@code --client-id}/{@code --client-secret} opts
+ * into this mode.
  */
 @Command(
         name = "login",
@@ -26,14 +31,23 @@ import java.util.concurrent.Callable;
         subcommands = {LoginCommand.Logout.class, LoginCommand.Show.class})
 public final class LoginCommand implements Callable<Integer> {
 
-    @Option(names = "--client-id", required = true, description = "OAuth2 client id registered with the registry")
-    String clientId;
+    @Option(names = "--port", description = "Loopback port for the OAuth2 callback (default 8765)",
+            defaultValue = "8765")
+    int callbackPort;
 
-    @Option(names = "--client-secret", required = true, description = "OAuth2 client secret")
-    String clientSecret;
+    @Option(names = "--no-browser",
+            description = "Don't auto-open the browser; print the authorize URL instead")
+    boolean noBrowser;
 
-    @Option(names = "--scope", description = "Space-separated scopes to request; omit for the client's default scopes")
-    String scope;
+    // --- hidden client_credentials mode (first-party only) -------------------
+
+    @Option(names = "--client-credentials", hidden = true,
+            description = "Opt in to machine auth via client_credentials")
+    boolean clientCredentials;
+
+    @Option(names = "--client-id", hidden = true) String clientId;
+    @Option(names = "--client-secret", hidden = true) String clientSecret;
+    @Option(names = "--scope", hidden = true) String scope;
 
     @Option(names = "--registry", description = "Override the persisted registry URL") String registryUrl;
 
@@ -44,14 +58,28 @@ public final class LoginCommand implements Callable<Integer> {
         RegistryConfig cfg = RegistryConfig.resolve(store, registryUrl);
         RegistryClient client = new RegistryClient(cfg);
 
-        var resp = client.clientCredentialsToken(clientId, clientSecret, scope);
-        String token = (String) resp.get("access_token");
+        String token;
+        String principal;
+        if (clientCredentials || clientId != null) {
+            if (clientId == null || clientSecret == null) {
+                Log.error("--client-credentials requires --client-id and --client-secret");
+                return 2;
+            }
+            var resp = client.clientCredentialsToken(clientId, clientSecret, scope);
+            token = (String) resp.get("access_token");
+            principal = clientId;
+        } else {
+            var resp = client.browserLogin(callbackPort, !noBrowser);
+            token = (String) resp.get("access_token");
+            principal = "(browser login)";
+        }
+
         if (token == null || token.isBlank()) {
-            Log.error("server did not return access_token; response was: %s", resp);
+            Log.error("server did not return access_token");
             return 1;
         }
         new AuthStore(store).save(token);
-        Log.ok("logged in as %s (token cached at %s)", clientId, new AuthStore(store).file());
+        Log.ok("logged in as %s (token cached at %s)", principal, new AuthStore(store).file());
         return 0;
     }
 

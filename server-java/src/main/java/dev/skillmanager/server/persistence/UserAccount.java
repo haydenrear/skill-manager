@@ -32,23 +32,39 @@ public class UserAccount {
     @Column(name = "email", length = 320)
     private String email;
 
+    /**
+     * BCrypt hash of the user's login password. {@code null} for machine
+     * accounts (rows created by {@code TokenCustomizer} on a
+     * client_credentials issuance) — {@link UserAccountDetailsService}
+     * refuses to treat those as login-capable.
+     */
+    @Column(name = "password_hash", length = 120)
+    private String passwordHash;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
     public UserAccount() {}
 
     public UserAccount(String username, String displayName, String email) {
+        this(username, displayName, email, null);
+    }
+
+    public UserAccount(String username, String displayName, String email, String passwordHash) {
         this.username = username;
         this.displayName = displayName;
         this.email = email;
+        this.passwordHash = passwordHash;
         this.createdAt = Instant.now();
     }
 
     public String getUsername() { return username; }
     public String getDisplayName() { return displayName; }
     public String getEmail() { return email; }
+    public String getPasswordHash() { return passwordHash; }
     public Instant getCreatedAt() { return createdAt; }
 
     public void setDisplayName(String displayName) { this.displayName = displayName; }
     public void setEmail(String email) { this.email = email; }
+    public void setPasswordHash(String passwordHash) { this.passwordHash = passwordHash; }
 }

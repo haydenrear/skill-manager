@@ -94,6 +94,9 @@ public final class TestDb implements AutoCloseable {
         }
     }
 
+    /** Escape hatch for one-off queries that don't justify a dedicated method. */
+    public Connection connection() { return conn; }
+
     @Override public void close() throws SQLException { conn.close(); }
 
     private static String firstNonBlank(String a, String b) {

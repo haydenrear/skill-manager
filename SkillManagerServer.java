@@ -21,7 +21,9 @@
 //SOURCES server-java/src/main/java/dev/skillmanager/server/auth/AuthorizationServerConfig.java
 //SOURCES server-java/src/main/java/dev/skillmanager/server/auth/KeyStoreProvider.java
 //SOURCES server-java/src/main/java/dev/skillmanager/server/auth/AuthController.java
+//SOURCES server-java/src/main/java/dev/skillmanager/server/auth/RegisterController.java
 //SOURCES server-java/src/main/java/dev/skillmanager/server/auth/TokenCustomizer.java
+//SOURCES server-java/src/main/java/dev/skillmanager/server/auth/UserAccountDetailsService.java
 //SOURCES server-java/src/main/java/dev/skillmanager/server/persistence/UserAccount.java
 //SOURCES server-java/src/main/java/dev/skillmanager/server/persistence/UserAccountRepository.java
 //SOURCES server-java/src/main/java/dev/skillmanager/server/persistence/ImpressionRow.java

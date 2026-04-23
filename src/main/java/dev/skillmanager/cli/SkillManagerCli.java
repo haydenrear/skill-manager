@@ -3,6 +3,7 @@ package dev.skillmanager.cli;
 import dev.skillmanager.commands.AddCommand;
 import dev.skillmanager.commands.AdsCommand;
 import dev.skillmanager.commands.CliCommand;
+import dev.skillmanager.commands.CreateAccountCommand;
 import dev.skillmanager.commands.CreateCommand;
 import dev.skillmanager.commands.DepsCommand;
 import dev.skillmanager.commands.GatewayCommand;
@@ -44,7 +45,8 @@ import picocli.CommandLine.Option;
                 CliCommand.class,
                 CreateCommand.class,
                 AdsCommand.class,
-                LoginCommand.class
+                LoginCommand.class,
+                CreateAccountCommand.class
         })
 public final class SkillManagerCli implements Runnable {
 

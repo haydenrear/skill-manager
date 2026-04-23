@@ -7,31 +7,54 @@ import org.springframework.http.HttpMethod;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 
 /**
- * Resource-server filter chain (order 2; {@link AuthorizationServerConfig} owns
- * order 1 and claims {@code /oauth2/**} + {@code /.well-known/**}).
+ * Filter chains in priority order (highest first):
  *
- * <p>Public surface:
- *   GET /health, GET /skills(/...), GET /ads/campaigns(/...)
+ * <ol>
+ *   <li>{@link AuthorizationServerConfig#authServerFilterChain} (Order 1) —
+ *       Spring Authorization Server's own matchers: {@code /oauth2/**},
+ *       {@code /.well-known/**}, {@code /userinfo}, etc. Unauthenticated
+ *       requests to {@code /oauth2/authorize} fall through to the login
+ *       chain via the shared HTTP session.</li>
+ *   <li>{@link #browserLoginChain} (Order 2) — form login at {@code /login}
+ *       plus anonymous {@code POST /auth/register}. This is the side of
+ *       the app a human browser sees; {@link UserAccountDetailsService}
+ *       backs the authentication manager.</li>
+ *   <li>{@link #resourceServerChain} (Order 3) — stateless JWT bearer for
+ *       the rest of the API surface. Mutating endpoints require auth;
+ *       read-only lookups stay public.</li>
+ * </ol>
  *
- * <p>Authenticated surface (JWT bearer, RS256, verified against the JWKS
- * published by the embedded authorization server):
- *   POST /skills/{n}/{v}   publish
- *   DELETE /skills/...     removal
- *   POST /ads/campaigns    ad creation
- *   DELETE /ads/campaigns  ad removal
- *   GET  /auth/me          identity echo
+ * <p>The split matters because the resource-server chain is stateless and
+ * the browser-login chain is session-based; collapsing them would either
+ * force CSRF + sessions on API clients or lose form-login entirely.
  */
 @Configuration
 public class SecurityConfig {
 
     @Bean
     @Order(2)
-    public SecurityFilterChain http(HttpSecurity http) throws Exception {
+    public SecurityFilterChain browserLoginChain(HttpSecurity http) throws Exception {
+        http
+                .securityMatcher("/login", "/logout", "/error", "/auth/register")
+                .csrf(csrf -> csrf.ignoringRequestMatchers("/auth/register"))
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(HttpMethod.POST, "/auth/register").permitAll()
+                        .requestMatchers("/login", "/logout", "/error").permitAll()
+                        .anyRequest().authenticated())
+                .formLogin(Customizer.withDefaults());
+        return http.build();
+    }
+
+    @Bean
+    @Order(3)
+    public SecurityFilterChain resourceServerChain(HttpSecurity http) throws Exception {
         http
                 .csrf(AbstractHttpConfigurer::disable)
+                .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.GET,
                                 "/health",

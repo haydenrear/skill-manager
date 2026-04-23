@@ -56,6 +56,24 @@ validationGraph {
         node("sources/common/PostgresDown.java").dependsOn("servers.down")
     }
 
+    /*
+     * `browser-auth` — exercises the authorization_code + PKCE flow
+     * end-to-end through a real headless Chrome. Heavier than the other
+     * graphs (pulls Selenium + chromedriver) and run on demand rather
+     * than on every commit:
+     *
+     *   ./gradlew browser-auth
+     */
+    testGraph("browser-auth") {
+        node("sources/common/EnvPrepared.java")
+        node("sources/common/PostgresUp.java")
+        node("sources/common/RegistryUp.java")
+        node("sources/browser-auth/SeleniumReady.java")
+        node("sources/browser-auth/AccountCreated.java")
+        node("sources/browser-auth/BrowserAuthorized.java")
+        node("sources/common/PostgresDown.java").dependsOn("browser.authorized")
+    }
+
     testGraph("sponsored") {
         node("sources/common/EnvPrepared.java")
         node("sources/common/PostgresUp.java")

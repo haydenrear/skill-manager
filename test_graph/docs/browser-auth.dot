@@ -1,0 +1,18 @@
+digraph "browser-auth" {
+  rankdir=LR;
+  node [shape=box,fontname="Courier"];
+  "env.prepared" [label="env.prepared\n(fixture, jbang)"];
+  "postgres.up" [label="postgres.up\n(testbed, jbang)"];
+  "registry.up" [label="registry.up\n(testbed, jbang)"];
+  "selenium.ready" [label="selenium.ready\n(fixture, jbang)"];
+  "account.created" [label="account.created\n(action, jbang)"];
+  "browser.authorized" [label="browser.authorized\n(assertion, jbang)"];
+  "postgres.down" [label="postgres.down\n(evidence, jbang)"];
+  "env.prepared" -> "postgres.up";
+  "env.prepared" -> "registry.up";
+  "postgres.up" -> "registry.up";
+  "registry.up" -> "account.created";
+  "account.created" -> "browser.authorized";
+  "selenium.ready" -> "browser.authorized";
+  "browser.authorized" -> "postgres.down";
+}
