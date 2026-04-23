@@ -15,6 +15,7 @@ import dev.skillmanager.commands.PolicyCommand;
 import dev.skillmanager.commands.PublishCommand;
 import dev.skillmanager.commands.RegistryCommand;
 import dev.skillmanager.commands.RemoveCommand;
+import dev.skillmanager.commands.ResetPasswordCommand;
 import dev.skillmanager.commands.SearchCommand;
 import dev.skillmanager.commands.ShowCommand;
 import dev.skillmanager.commands.SyncCommand;
@@ -46,7 +47,8 @@ import picocli.CommandLine.Option;
                 CreateCommand.class,
                 AdsCommand.class,
                 LoginCommand.class,
-                CreateAccountCommand.class
+                CreateAccountCommand.class,
+                ResetPasswordCommand.class
         })
 public final class SkillManagerCli implements Runnable {
 
