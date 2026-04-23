@@ -386,6 +386,10 @@ public final class GatewayCommand implements Runnable {
 
     abstract static class McpCallBase implements Callable<Integer> {
         @Option(names = "--gateway", description = "Gateway base URL override") String gatewayUrl;
+        @Option(names = "--session-id",
+                description = "Stable x-session-id header. Pin this across a describe-tool + invoke pair "
+                        + "(or across agent runs) so the gateway shares disclosure state.")
+        String sessionId;
 
         public abstract int run(GatewayMcpClient mcp);
 
@@ -394,7 +398,7 @@ public final class GatewayCommand implements Runnable {
             SkillStore store = SkillStore.defaultStore();
             store.init();
             GatewayConfig cfg = GatewayConfig.resolve(store, gatewayUrl);
-            try (GatewayMcpClient mcp = new GatewayMcpClient(cfg)) {
+            try (GatewayMcpClient mcp = new GatewayMcpClient(cfg, sessionId)) {
                 return run(mcp);
             } catch (Exception e) {
                 Log.error("mcp call failed: %s", e.getMessage());

@@ -1,0 +1,10 @@
+# pycowsay is a tiny zero-dep python package used as the canonical uv
+# smoke-test target. `__zzz_nope_pycowsay` on_path forces a real install
+# (no pre-existing binary with that exact name on the host).
+[[cli_dependencies]]
+spec = "pip:pycowsay"
+on_path = "__zzz_nope_pycowsay"
+
+[skill]
+name = "pip-cli-skill"
+version = "0.1.0"

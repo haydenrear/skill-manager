@@ -1,0 +1,7 @@
+[[cli_dependencies]]
+spec = "npm:cowsay"
+on_path = "__zzz_nope_cowsay"
+
+[skill]
+name = "npm-cli-skill"
+version = "0.1.0"

@@ -294,6 +294,15 @@ class ToolRegistry:
                     tools = await client.refresh_tools()
                 except Exception:
                     logger.exception("Failed refreshing deployed server %s", server_id)
+                    # A transient refresh failure (streamable-http session
+                    # expiry, idle timeout on the downstream, etc.) must not
+                    # blank out the tool cache — preserve what the previous
+                    # successful refresh populated for this server.
+                    prior = self.tools_by_server.get(server_id)
+                    if prior:
+                        new_tools_by_server[server_id] = prior
+                        for path, tool in prior.items():
+                            new_tools_by_path[path] = tool
                     continue
 
                 deployment = self.deployments.get(server_id)

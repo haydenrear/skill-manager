@@ -1,0 +1,11 @@
+# Umbrella integration fixture: transitive sub-skills via file: references.
+# No CLI deps of its own — its children carry them, and the resolver should
+# install those transitively.
+skill_references = [
+    "file:./pip-dep",
+    "file:./npm-dep",
+]
+
+[skill]
+name = "umbrella-skill"
+version = "0.1.0"

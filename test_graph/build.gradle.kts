@@ -5,36 +5,53 @@ plugins {
 /**
  * Integration test graph for skill-manager.
  *
- * Nodes bring up the bundled Spring Boot registry server + virtual MCP
- * gateway in isolated per-run state, drive the CLI through a publish →
- * install → search loop, register an MCP server through the gateway,
- * prove it's visible via the Java MCP SDK, and tear everything down.
+ *   ./gradlew smoke                                run the full graph
+ *   ./gradlew validationPlanGraph --name=smoke     dry-run the plan
+ *   ./gradlew validationReport                     aggregate per-node envelopes
  *
- *   ./gradlew smoke                 run the full graph
- *   ./gradlew validationPlanGraph --name=smoke   dry-run the plan
- *   ./gradlew validationReport      aggregate per-node envelopes
+ * Lanes:
+ *   fixture     env.prepared                      per-run SKILL_MANAGER_HOME + free ports
+ *   testbed     registry.up / gateway.up /        server + gateway + echo fixture
+ *               echo.http.up
+ *   registry    hello.published → hello.installed → search.finds
+ *   cli         umbrella.installed → transitive.clis.present
+ *   mcp         mcp.registered → mcp.tools.visible  (docker stdio)
+ *               echo.http.registered → echo.http.deployed → mcp.tool.search.finds
+ *                                                          → mcp.tool.invoked
+ *                                                          → echo.http.redeployed
+ *   agents      agents.synced → agent.configs.correct     (fake HOME)
+ *   report      smoke.report aggregates every envelope into smoke-report.md
+ *   teardown    servers.down stops gateway + registry + echo fixture
  */
 validationGraph {
     sourcesDir("sources")
 
     testGraph("smoke") {
-        // Fixture + testbeds (pulled in transitively by downstream nodes,
-        // but listing them explicitly makes the plan readable).
         node("sources/EnvPrepared.java")
         node("sources/RegistryUp.java")
         node("sources/GatewayUp.java")
+        node("sources/EchoHttpUp.java")
 
-        // Registry side
         node("sources/HelloPublished.java")
         node("sources/HelloInstalled.java")
         node("sources/SearchFinds.java")
 
-        // MCP gateway side
+        node("sources/UmbrellaInstalled.java")
+        node("sources/TransitiveClisPresent.java")
+
         node("sources/McpRegistered.java")
         node("sources/McpToolsVisible.java")
 
-        // Teardown last — already declares dependsOn on the terminal
-        // assertion/action nodes in its spec, so it runs after them.
+        node("sources/EchoHttpRegistered.java")
+        node("sources/EchoHttpDeployed.java")
+        node("sources/McpToolSearchFinds.java")
+        node("sources/McpToolInvoked.java")
+        node("sources/EchoHttpRedeployed.java")
+
+        node("sources/AgentsSynced.java")
+        node("sources/AgentConfigsCorrect.java")
+
+        node("sources/SmokeReport.java")
         node("sources/ServersDown.java")
     }
 }

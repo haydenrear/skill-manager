@@ -24,12 +24,26 @@ public final class GatewayMcpClient implements AutoCloseable {
     private final ObjectMapper json = new ObjectMapper().enable(SerializationFeature.INDENT_OUTPUT);
 
     public GatewayMcpClient(GatewayConfig gateway) {
+        this(gateway, null);
+    }
+
+    /**
+     * @param sessionId optional {@code x-session-id} to inject on every request.
+     *                  Letting the caller pin this lets two CLI invocations (each
+     *                  a fresh process, each with its own MCP handshake) share
+     *                  the gateway's disclosure state — {@code describe-tool}
+     *                  in one call, {@code invoke} in the next.
+     */
+    public GatewayMcpClient(GatewayConfig gateway, String sessionId) {
         String base = stripSlash(gateway.baseUrl().toString());
-        var transport = HttpClientStreamableHttpTransport.builder(base)
+        var builder = HttpClientStreamableHttpTransport.builder(base)
                 .endpoint("/mcp")
                 .openConnectionOnStartup(false)
-                .resumableStreams(false)
-                .build();
+                .resumableStreams(false);
+        if (sessionId != null && !sessionId.isBlank()) {
+            builder.customizeRequest(req -> req.header("x-session-id", sessionId));
+        }
+        var transport = builder.build();
         this.client = McpClient.sync(transport)
                 .requestTimeout(Duration.ofSeconds(30))
                 .initializationTimeout(Duration.ofSeconds(30))
