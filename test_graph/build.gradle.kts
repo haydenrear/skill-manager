@@ -39,16 +39,26 @@ validationGraph {
         node("sources/smoke/UmbrellaInstalled.java")
         node("sources/smoke/TransitiveClisPresent.java")
 
-        node("sources/smoke/McpRegistered.java")
-        node("sources/smoke/McpToolsVisible.java")
+        // Install a skill whose MCP dep points at the echo fixture (scope =
+        // global-sticky). Registration happens transitively via skill install.
+        node("sources/smoke/EchoHttpSkillInstalled.java")
 
-        node("sources/smoke/EchoHttpRegistered.java")
+        // Assertions over the deployed echo server reached via a real MCP
+        // client (TgMcp) — no CLI passthrough.
         node("sources/smoke/EchoHttpDeployed.java")
+        node("sources/smoke/McpToolsVisible.java")
         node("sources/smoke/McpToolSearchFinds.java")
         node("sources/smoke/McpToolInvoked.java")
         node("sources/smoke/EchoHttpRedeployed.java")
 
-        node("sources/smoke/AgentsSynced.java")
+        // Deploy-per-session semantics. Each pair installs a throwaway
+        // fixture skill at a specific scope and asserts isolation / global
+        // visibility via TgMcp calls against two distinct sessions.
+        node("sources/smoke/EchoSessionSkillInstalled.java")
+        node("sources/smoke/McpSessionScopeIsolated.java")
+        node("sources/smoke/EchoGlobalSkillInstalled.java")
+        node("sources/smoke/McpGlobalScopeVisible.java")
+
         node("sources/smoke/AgentConfigsCorrect.java")
 
         node("sources/smoke/SmokeReport.java")
