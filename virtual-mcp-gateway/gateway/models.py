@@ -1,13 +1,17 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Literal, Optional
 import hashlib
 import json
 import time
 
 
 JsonObject = Dict[str, Any]
+
+Scope = Literal["session", "global", "global-sticky"]
+VALID_SCOPES: tuple[Scope, ...] = ("session", "global", "global-sticky")
+DEFAULT_SCOPE: Scope = "global-sticky"
 
 
 @dataclass(slots=True)
@@ -63,9 +67,23 @@ class MCPServerDefinition:
     save_last_init: bool = True
     idle_timeout_seconds: int | None = 1800
     auto_deploy: bool = False
+    default_scope: Scope = DEFAULT_SCOPE
 
     def schema_dict(self) -> List[JsonObject]:
         return [field.to_public_dict() for field in self.init_schema]
+
+    def missing_required_init(self, values: JsonObject | None) -> List[str]:
+        provided = dict(values or {})
+        missing: List[str] = []
+        for f in self.init_schema:
+            if not f.required:
+                continue
+            if f.name in provided:
+                continue
+            if f.default is not None:
+                continue
+            missing.append(f.name)
+        return missing
 
     def secret_field_names(self) -> set[str]:
         return {field.name for field in self.init_schema if field.secret}
@@ -107,6 +125,8 @@ class MCPServerDeployment:
     last_used_at: float
     init_values: JsonObject = field(default_factory=dict)
     deployed: bool = True
+    scope: Scope = "global"
+    session_id: Optional[str] = None
 
     def touch(self) -> None:
         self.last_used_at = time.time()
@@ -203,6 +223,29 @@ class SearchHit:
     tool: DownstreamTool
     score: float
     reason: str
+
+
+@dataclass(slots=True)
+class DeploymentError:
+    server_id: str
+    scope: Scope
+    attempted_at: float
+    message: str
+    session_id: Optional[str] = None
+    missing_required_init: List[str] = field(default_factory=list)
+
+    def to_public_dict(self) -> JsonObject:
+        payload: JsonObject = {
+            "server_id": self.server_id,
+            "scope": self.scope,
+            "attempted_at": self.attempted_at,
+            "message": self.message,
+        }
+        if self.session_id is not None:
+            payload["session_id"] = self.session_id
+        if self.missing_required_init:
+            payload["missing_required_init"] = list(self.missing_required_init)
+        return payload
 
 
 def stable_digest(value: Any) -> str:

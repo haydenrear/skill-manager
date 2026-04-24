@@ -16,6 +16,7 @@ from typing import Any, Dict, List
 logger = logging.getLogger(__name__)
 
 FILENAME = "dynamic-servers.json"
+LAST_INIT_FILENAME = "last-init.json"
 
 
 class DynamicServerStore:
@@ -73,4 +74,61 @@ class DynamicServerStore:
         if len(remaining) == before:
             return False
         self.save(remaining)
+        return True
+
+
+class LastInitStore:
+    """Persists the last-deployed initialization values for global-sticky
+    servers so they can be auto-redeployed after gateway restart.
+
+    Secrets are stored plaintext — same trust boundary as the parent data
+    directory. Encryption-at-rest is out of scope.
+    """
+
+    def __init__(self, data_dir: Path):
+        self.data_dir = Path(data_dir)
+        self.data_dir.mkdir(parents=True, exist_ok=True)
+        self.path = self.data_dir / LAST_INIT_FILENAME
+
+    def load(self) -> Dict[str, Dict[str, Any]]:
+        if not self.path.exists():
+            return {}
+        try:
+            data = json.loads(self.path.read_text())
+        except Exception:
+            logger.exception("failed to parse %s; starting empty", self.path)
+            return {}
+        if not isinstance(data, dict):
+            logger.warning("%s did not contain a JSON object; ignoring", self.path)
+            return {}
+        return {k: dict(v) for k, v in data.items() if isinstance(v, dict)}
+
+    def save(self, entries: Dict[str, Dict[str, Any]]) -> None:
+        tmp = tempfile.NamedTemporaryFile(
+            mode="w",
+            delete=False,
+            dir=str(self.data_dir),
+            prefix=".last-init.",
+            suffix=".json",
+        )
+        try:
+            json.dump(entries, tmp, indent=2, sort_keys=True)
+            tmp.flush()
+            tmp.close()
+            Path(tmp.name).replace(self.path)
+        except Exception:
+            Path(tmp.name).unlink(missing_ok=True)
+            raise
+
+    def set(self, server_id: str, values: Dict[str, Any]) -> None:
+        entries = self.load()
+        entries[server_id] = dict(values)
+        self.save(entries)
+
+    def remove(self, server_id: str) -> bool:
+        entries = self.load()
+        if server_id not in entries:
+            return False
+        entries.pop(server_id)
+        self.save(entries)
         return True
