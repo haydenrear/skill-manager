@@ -46,8 +46,18 @@ public class PostgresUp {
                 return NodeResult.fail("postgres.up", "missing " + compose);
             }
 
-            int rc = run(repoRoot, "docker", "compose", "-f", compose.toString(), "up", "-d", "postgres");
-            if (rc != 0) return NodeResult.fail("postgres.up", "docker compose up -d postgres exited " + rc);
+            // If a postgres container from a prior run is already up, cycle
+            // it so the test gets a clean start (fresh connections, no
+            // stale background work). Otherwise `up -d` creates it.
+            if (isPostgresRunning(repoRoot, compose)) {
+                int rcRestart = run(repoRoot, "docker", "compose", "-f", compose.toString(), "restart", "postgres");
+                if (rcRestart != 0) {
+                    return NodeResult.fail("postgres.up", "docker compose restart postgres exited " + rcRestart);
+                }
+            } else {
+                int rc = run(repoRoot, "docker", "compose", "-f", compose.toString(), "up", "-d", "postgres");
+                if (rc != 0) return NodeResult.fail("postgres.up", "docker compose up -d postgres exited " + rc);
+            }
 
             if (!waitForReady(Duration.ofSeconds(60))) {
                 return NodeResult.fail("postgres.up", "postgres not reachable on 5432 within 60s");
@@ -67,6 +77,21 @@ public class PostgresUp {
     private static int run(Path cwd, String... cmd) throws IOException, InterruptedException {
         ProcessBuilder pb = new ProcessBuilder(cmd).directory(cwd.toFile()).inheritIO();
         return pb.start().waitFor();
+    }
+
+    private static boolean isPostgresRunning(Path cwd, Path compose) throws IOException, InterruptedException {
+        ProcessBuilder pb = new ProcessBuilder(
+                "docker", "compose", "-f", compose.toString(),
+                "ps", "--services", "--filter", "status=running")
+                .directory(cwd.toFile())
+                .redirectErrorStream(true);
+        Process p = pb.start();
+        String out = new String(p.getInputStream().readAllBytes());
+        p.waitFor();
+        for (String line : out.split("\n")) {
+            if ("postgres".equals(line.trim())) return true;
+        }
+        return false;
     }
 
     private static boolean waitForReady(Duration timeout) {

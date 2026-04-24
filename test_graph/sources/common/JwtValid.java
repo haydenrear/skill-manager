@@ -47,7 +47,16 @@ public class JwtValid {
             if (!Files.isRegularFile(tokenFile)) {
                 return NodeResult.fail("jwt.valid", "no token at " + tokenFile);
             }
-            String token = Files.readString(tokenFile).trim();
+            // AuthStore writes a JSON blob now; pull the access_token field
+            // without dragging Jackson into this node.
+            String fileBody = Files.readString(tokenFile).trim();
+            java.util.regex.Matcher m = java.util.regex.Pattern
+                    .compile("\"access_token\"\\s*:\\s*\"([^\"]+)\"")
+                    .matcher(fileBody);
+            if (!m.find()) {
+                return NodeResult.fail("jwt.valid", "no access_token in " + tokenFile + ": " + fileBody);
+            }
+            String token = m.group(1);
 
             HttpClient http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(3)).build();
 

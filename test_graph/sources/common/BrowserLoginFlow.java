@@ -114,7 +114,7 @@ final class BrowserLoginFlow {
 
         Path tokenFile = Path.of(home, "auth.token");
         boolean tokenCached = Files.isRegularFile(tokenFile) && Files.size(tokenFile) > 0;
-        String token = tokenCached ? Files.readString(tokenFile).trim() : null;
+        String token = tokenCached ? extractAccessToken(Files.readString(tokenFile).trim()) : null;
 
         int meStatus = -1;
         boolean usernameMatches = false;
@@ -197,6 +197,21 @@ final class BrowserLoginFlow {
             }
         }
         return "kill issued but port still held by pid(s) " + pids.replace('\n', ',');
+    }
+
+    /**
+     * AuthStore may write either a bare token (legacy) or a small JSON
+     * blob carrying access + refresh tokens. The test only needs the
+     * access token, so pick it out of either shape.
+     */
+    private static String extractAccessToken(String body) {
+        if (body == null || body.isEmpty()) return null;
+        if (!body.startsWith("{")) return body;
+        // Tiny targeted match so we don't pull in Jackson here.
+        java.util.regex.Matcher m = java.util.regex.Pattern
+                .compile("\"access_token\"\\s*:\\s*\"([^\"]+)\"")
+                .matcher(body);
+        return m.find() ? m.group(1) : null;
     }
 
     private static boolean isLoopbackFree(int port) {

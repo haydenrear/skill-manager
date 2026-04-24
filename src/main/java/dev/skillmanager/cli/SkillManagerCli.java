@@ -19,6 +19,7 @@ import dev.skillmanager.commands.ResetPasswordCommand;
 import dev.skillmanager.commands.SearchCommand;
 import dev.skillmanager.commands.ShowCommand;
 import dev.skillmanager.commands.SyncCommand;
+import dev.skillmanager.registry.AuthenticationRequiredException;
 import dev.skillmanager.util.Log;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
@@ -68,6 +69,33 @@ public final class SkillManagerCli implements Runnable {
             if (root != null) Log.setVerbose(root.verbose);
             return new CommandLine.RunLast().execute(pr);
         });
+        // Surface auth-expiry as a stable, agent-parseable banner so the
+        // skill-manager-skill wrapper can relay it verbatim to the user.
+        cmd.setExecutionExceptionHandler((ex, c, pr) -> {
+            Throwable cause = unwrapAuth(ex);
+            if (cause != null) return printAuthBanner(cause.getMessage());
+            throw ex;
+        });
         return cmd.execute(args);
+    }
+
+    private static Throwable unwrapAuth(Throwable t) {
+        for (Throwable c = t; c != null; c = c.getCause()) {
+            if (c instanceof AuthenticationRequiredException) return c;
+        }
+        return null;
+    }
+
+    private static int printAuthBanner(String reason) {
+        System.err.println();
+        System.err.println("ACTION_REQUIRED: skill-manager login");
+        System.err.println("Reason: " + (reason == null ? "registry credentials are no longer valid" : reason));
+        System.err.println("Ask the user to run the following in their terminal, then retry the task:");
+        System.err.println();
+        System.err.println("    skill-manager login");
+        System.err.println();
+        System.err.println("A browser window will open for them to sign in. Tokens are refreshed automatically");
+        System.err.println("after that — this banner only fires if the refresh token is also expired.");
+        return AuthenticationRequiredException.EXIT_CODE;
     }
 }

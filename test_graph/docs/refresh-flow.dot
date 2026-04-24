@@ -1,0 +1,21 @@
+digraph "refresh-flow" {
+  rankdir=LR;
+  node [shape=box,fontname="Courier"];
+  "env.prepared" [label="env.prepared\n(fixture, jbang)"];
+  "postgres.up" [label="postgres.up\n(testbed, jbang)"];
+  "short.access.token.ttl" [label="short.access.token.ttl\n(fixture, jbang)"];
+  "registry.up" [label="registry.up\n(testbed, jbang)"];
+  "selenium.ready" [label="selenium.ready\n(fixture, jbang)"];
+  "account.created" [label="account.created\n(action, jbang)"];
+  "refresh.on.expiry" [label="refresh.on.expiry\n(assertion, jbang)"];
+  "postgres.down" [label="postgres.down\n(evidence, jbang)"];
+  "env.prepared" -> "postgres.up";
+  "env.prepared" -> "registry.up";
+  "postgres.up" -> "registry.up";
+  "short.access.token.ttl" -> "registry.up";
+  "registry.up" -> "account.created";
+  "account.created" -> "refresh.on.expiry";
+  "selenium.ready" -> "refresh.on.expiry";
+  "short.access.token.ttl" -> "refresh.on.expiry";
+  "refresh.on.expiry" -> "postgres.down";
+}

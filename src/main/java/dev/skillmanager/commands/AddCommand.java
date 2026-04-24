@@ -74,6 +74,15 @@ public final class AddCommand implements Callable<Integer> {
             resolver.commit(graph);
             audit.recordPlan(plan, "add");
 
+            // Tell agents where each skill now lives so they can load the
+            // SKILL.md without restarting — the skill-manager-skill leans
+            // on INSTALLED: lines to build its own inventory.
+            for (var r : graph.resolved()) {
+                System.out.println("INSTALLED: " + r.name()
+                        + (r.version() == null ? "" : "@" + r.version())
+                        + " -> " + store.skillDir(r.name()));
+            }
+
             if (!noInstall) CliInstallRecorder.run(plan, store);
 
             if (withMcp) {

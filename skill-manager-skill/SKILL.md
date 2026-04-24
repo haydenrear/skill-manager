@@ -36,6 +36,34 @@ All subcommands are run as `skill-manager <command>`. Most modifying commands ta
 
 `add` always builds a plan first — fetches the skill + every transitive reference into staging, then prints what will happen (fetches, CLI installs, MCP registrations). Nothing is committed to the store until consent is given.
 
+### Where skills land on disk
+
+Every installed skill gets a directory at `$SKILL_MANAGER_HOME/skills/<name>/` (defaults to `~/.skill-manager/skills/<name>/`). On a successful `add`, the CLI prints one line per newly-installed skill in a stable, parseable shape:
+
+```
+INSTALLED: hello-skill@0.1.0 -> /Users/you/.skill-manager/skills/hello-skill
+```
+
+Read those lines to find the `SKILL.md` you just acquired — no agent restart needed. The directory contains the skill's `SKILL.md`, any referenced assets, and the `skill-manager.toml` manifest.
+
+### Authentication
+
+Most reads (`search`, `show`, `list`, fetching a public skill) work without logging in. Mutating operations (`publish`, creating campaigns) require a bearer token that's cached at `$SKILL_MANAGER_HOME/auth.token` after the user runs `skill-manager login`.
+
+The CLI refreshes its access token silently from the saved refresh token — in practice the user logs in once a week (7-day refresh TTL) and never sees an auth prompt during normal work.
+
+When the refresh token is also expired or rejected, the CLI exits with code `7` and emits a stable banner on stderr:
+
+```
+ACTION_REQUIRED: skill-manager login
+Reason: <specifics>
+Ask the user to run the following in their terminal, then retry the task:
+
+    skill-manager login
+```
+
+**When you see `ACTION_REQUIRED: skill-manager login`, relay it to the user verbatim** (including the `skill-manager login` line so they can copy/paste), pause the task, and retry only after they confirm they've signed in. Never try to auth on their behalf — the browser flow needs their input.
+
 ### Working with the MCP gateway
 
 The gateway fronts every MCP server; agents only ever see one MCP endpoint. Most skill-manager MCP operations are executed via the official **Java MCP SDK** client so protocol negotiation happens properly.

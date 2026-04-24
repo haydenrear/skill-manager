@@ -68,6 +68,13 @@ public class RegistryUp {
             pb.environment().put("SKILL_REGISTRY_DB_URL", dbUrl);
             if (dbUser != null) pb.environment().put("SKILL_REGISTRY_DB_USER", dbUser);
             if (dbPassword != null) pb.environment().put("SKILL_REGISTRY_DB_PASSWORD", dbPassword);
+            // Optional short-TTL override from an upstream fixture (refresh-flow
+            // graph sets this to exercise real expiry; other graphs leave it
+            // unpublished and the server keeps its 1h default).
+            ctx.get("short.access.token.ttl", "seconds").ifPresent(s ->
+                    pb.environment().put("SKILL_REGISTRY_ACCESS_TOKEN_TTL_SECONDS", s));
+            ctx.get("short.access.token.ttl", "clockSkewSeconds").ifPresent(s ->
+                    pb.environment().put("SKILL_REGISTRY_JWT_CLOCK_SKEW_SECONDS", s));
             Process proc = pb.start();
             Files.writeString(pidFile, Long.toString(proc.pid()));
 

@@ -1,6 +1,7 @@
 package dev.skillmanager.commands;
 
 import dev.skillmanager.registry.AuthStore;
+import dev.skillmanager.registry.JwtFormat;
 import dev.skillmanager.registry.RegistryClient;
 import dev.skillmanager.registry.RegistryConfig;
 import dev.skillmanager.store.SkillStore;
@@ -8,6 +9,8 @@ import dev.skillmanager.util.Log;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 
+import java.time.Instant;
+import java.util.Map;
 import java.util.concurrent.Callable;
 
 /**
@@ -58,28 +61,39 @@ public final class LoginCommand implements Callable<Integer> {
         RegistryConfig cfg = RegistryConfig.resolve(store, registryUrl);
         RegistryClient client = new RegistryClient(cfg);
 
-        String token;
+        Map<String, Object> resp;
         String principal;
         if (clientCredentials || clientId != null) {
             if (clientId == null || clientSecret == null) {
                 Log.error("--client-credentials requires --client-id and --client-secret");
                 return 2;
             }
-            var resp = client.clientCredentialsToken(clientId, clientSecret, scope);
-            token = (String) resp.get("access_token");
+            resp = client.clientCredentialsToken(clientId, clientSecret, scope);
             principal = clientId;
         } else {
-            var resp = client.browserLogin(callbackPort, !noBrowser);
-            token = (String) resp.get("access_token");
+            resp = client.browserLogin(callbackPort, !noBrowser);
             principal = "(browser login)";
         }
 
-        if (token == null || token.isBlank()) {
+        String access = (String) resp.get("access_token");
+        if (access == null || access.isBlank()) {
             Log.error("server did not return access_token");
             return 1;
         }
-        new AuthStore(store).save(token);
-        Log.ok("logged in as %s (token cached at %s)", principal, new AuthStore(store).file());
+        if (!JwtFormat.looksLikeJwt(access)) {
+            Log.error("server returned an access_token that doesn't look like a JWT; refusing to cache");
+            return 1;
+        }
+        String refresh = (String) resp.get("refresh_token");
+        Instant expiresAt = null;
+        Object expIn = resp.get("expires_in");
+        if (expIn instanceof Number n) expiresAt = Instant.now().plusSeconds(n.longValue());
+
+        AuthStore as = new AuthStore(store);
+        as.save(new AuthStore.Tokens(access, refresh, expiresAt));
+        Log.ok("logged in as %s (token cached at %s%s)",
+                principal, as.file(),
+                refresh == null ? "" : "; refresh token stored for silent renewal");
         return 0;
     }
 
