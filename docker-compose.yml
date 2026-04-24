@@ -1,6 +1,6 @@
 services:
   postgres:
-    image: localhost:5005/postgres-pgvector
+    image: ${POSTGRES_IMAGE:-localhost:5005/postgres-pgvector}
     container_name: skill-manager-postgres
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
