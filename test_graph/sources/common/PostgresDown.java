@@ -4,6 +4,7 @@
 import com.hayden.testgraphsdk.sdk.Node;
 import com.hayden.testgraphsdk.sdk.NodeResult;
 import com.hayden.testgraphsdk.sdk.NodeSpec;
+import com.hayden.testgraphsdk.sdk.Procs;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -30,13 +31,14 @@ public class PostgresDown {
             }
             ProcessBuilder pb = new ProcessBuilder(
                     "docker", "compose", "-f", compose.toString(), "stop", "postgres")
-                    .directory(repoRoot.toFile()).inheritIO();
+                    .directory(repoRoot.toFile());
             int rc;
-            try { rc = pb.start().waitFor(); }
+            try { rc = Procs.runLogged(ctx, "compose-stop", pb); }
             catch (IOException | InterruptedException e) { return NodeResult.error("postgres.down", e); }
-            return (rc == 0
+            NodeResult result = rc == 0
                     ? NodeResult.pass("postgres.down")
-                    : NodeResult.fail("postgres.down", "docker compose stop exited " + rc))
+                    : NodeResult.fail("postgres.down", "docker compose stop exited " + rc);
+            return Procs.attach(result, ctx, "compose-stop", rc, 100)
                     .assertion("stopped", rc == 0);
         });
     }

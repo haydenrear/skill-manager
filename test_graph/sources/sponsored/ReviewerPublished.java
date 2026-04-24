@@ -4,6 +4,7 @@
 import com.hayden.testgraphsdk.sdk.Node;
 import com.hayden.testgraphsdk.sdk.NodeResult;
 import com.hayden.testgraphsdk.sdk.NodeSpec;
+import com.hayden.testgraphsdk.sdk.Procs;
 
 import java.nio.file.Path;
 
@@ -28,14 +29,14 @@ public class ReviewerPublished {
 
             ProcessBuilder pb = new ProcessBuilder(
                     sm.toString(), "publish", skill.toString(),
-                    "--registry", registryUrl)
-                    .inheritIO();
+                    "--registry", registryUrl);
             pb.environment().put("SKILL_MANAGER_HOME", home);
             pb.environment().put("SKILL_MANAGER_INSTALL_DIR", repoRoot.toString());
-            int rc = pb.start().waitFor();
-            return (rc == 0
+            int rc = Procs.runLogged(ctx, "publish", pb);
+            NodeResult result = rc == 0
                     ? NodeResult.pass("reviewer.published")
-                    : NodeResult.fail("reviewer.published", "publish exited " + rc))
+                    : NodeResult.fail("reviewer.published", "publish exited " + rc);
+            return Procs.attach(result, ctx, "publish", rc, 200)
                     .assertion("published_ok", rc == 0)
                     .metric("exitCode", rc);
         });

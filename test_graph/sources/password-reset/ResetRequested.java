@@ -6,6 +6,7 @@
 import com.hayden.testgraphsdk.sdk.Node;
 import com.hayden.testgraphsdk.sdk.NodeResult;
 import com.hayden.testgraphsdk.sdk.NodeSpec;
+import com.hayden.testgraphsdk.sdk.Procs;
 
 import java.nio.file.Path;
 import java.sql.PreparedStatement;
@@ -47,13 +48,14 @@ public class ResetRequested {
             ProcessBuilder pb = new ProcessBuilder(
                     sm.toString(), "reset-password",
                     "--email", email,
-                    "--registry", registryUrl)
-                    .inheritIO();
+                    "--registry", registryUrl);
             pb.environment().put("SKILL_MANAGER_HOME", home);
             pb.environment().put("SKILL_MANAGER_INSTALL_DIR", repoRoot.toString());
-            int rc = pb.start().waitFor();
+            int rc = Procs.runLogged(ctx, "reset-password", pb);
             if (rc != 0) {
-                return NodeResult.fail("reset.requested", "reset-password exited " + rc)
+                return Procs.attach(
+                        NodeResult.fail("reset.requested", "reset-password exited " + rc),
+                        ctx, "reset-password", rc, 200)
                         .assertion("cli_exit_zero", false);
             }
 
