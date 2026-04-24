@@ -11,18 +11,17 @@ import com.hayden.testgraphsdk.sdk.NodeSpec;
 import java.nio.file.Path;
 
 /**
- * End-to-end exercise of {@code skill-manager login}'s browser flow.
- *
- * <p>All the choreography lives in {@link BrowserLoginFlow}; this node
- * just invokes it with the credentials published by {@code
- * account.created} and fans the sub-steps out as discrete assertions
- * so a regression points at the right layer.
+ * Proves the {@code account.created} user can log in with the password
+ * they registered with — the "before" baseline for
+ * {@code password.changed}. Uses the shared {@link BrowserLoginFlow}
+ * so this is really only asserting the originally-provisioned password
+ * works end-to-end.
  */
-public class BrowserAuthorized {
-    static final NodeSpec SPEC = NodeSpec.of("browser.authorized")
+public class InitialLogin {
+    static final NodeSpec SPEC = NodeSpec.of("initial.login")
             .kind(NodeSpec.Kind.ASSERTION)
             .dependsOn("account.created", "selenium.ready")
-            .tags("auth", "oauth2", "browser")
+            .tags("auth", "browser")
             .sideEffects("proc:spawn", "net:local")
             .timeout("120s");
 
@@ -33,7 +32,7 @@ public class BrowserAuthorized {
             String username = ctx.get("account.created", "username").orElse(null);
             String password = ctx.get("account.created", "password").orElse(null);
             if (home == null || registryUrl == null || username == null || password == null) {
-                return NodeResult.fail("browser.authorized", "missing upstream context");
+                return NodeResult.fail("initial.login", "missing upstream context");
             }
             Path repoRoot = Path.of(System.getProperty("user.dir")).resolve("..").normalize();
             Path sm = repoRoot.resolve("skill-manager");
@@ -42,17 +41,11 @@ public class BrowserAuthorized {
                     sm.toString(), home, registryUrl, repoRoot.toString(), username, password);
 
             return (r.fullySucceeded()
-                    ? NodeResult.pass("browser.authorized")
-                    : NodeResult.fail("browser.authorized",
-                            "rc=" + r.cliExitCode + " tokenCached=" + r.tokenCached
-                                    + " meStatus=" + r.meStatus
+                    ? NodeResult.pass("initial.login")
+                    : NodeResult.fail("initial.login",
+                            "original-password login failed: rc=" + r.cliExitCode
                                     + "\ncli output:\n" + String.join("\n", r.cliOutput)))
-                    .assertion("cli_printed_authorize_url", r.authorizeUrlPrinted)
-                    .assertion("login_form_submitted", r.formSubmitted)
-                    .assertion("cli_exit_zero", r.cliExitCode == 0)
-                    .assertion("token_cached_on_disk", r.tokenCached)
-                    .assertion("me_returns_expected_username", r.usernameMatches)
-                    .metric("cli_exit_code", r.cliExitCode);
+                    .assertion("original_password_accepted", r.usernameMatches);
         });
     }
 }

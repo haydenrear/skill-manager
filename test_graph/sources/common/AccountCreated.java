@@ -29,7 +29,8 @@ public class AccountCreated {
             .tags("auth", "signup")
             .timeout("30s")
             .output("username", "string")
-            .output("password", "string");
+            .output("password", "string")
+            .output("email", "string");
 
     public static void main(String[] args) {
         Node.run(args, SPEC, ctx -> {
@@ -81,7 +82,8 @@ public class AccountCreated {
                     .assertion("email_persisted", EMAIL.equals(email))
                     .assertion("password_hash_is_bcrypt", hashLooksBcrypt)
                     .publish("username", USERNAME)
-                    .publish("password", PASSWORD);
+                    .publish("password", PASSWORD)
+                    .publish("email", EMAIL);
         });
     }
 }

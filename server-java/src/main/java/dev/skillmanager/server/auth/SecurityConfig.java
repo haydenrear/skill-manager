@@ -39,10 +39,11 @@ public class SecurityConfig {
     @Order(2)
     public SecurityFilterChain browserLoginChain(HttpSecurity http) throws Exception {
         http
-                .securityMatcher("/login", "/logout", "/error", "/auth/register")
-                .csrf(csrf -> csrf.ignoringRequestMatchers("/auth/register"))
+                .securityMatcher("/login", "/logout", "/error", "/auth/register", "/auth/password-reset/**")
+                .csrf(csrf -> csrf.ignoringRequestMatchers("/auth/register", "/auth/password-reset/**"))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.POST, "/auth/register").permitAll()
+                        .requestMatchers("/auth/password-reset/**").permitAll()
                         .requestMatchers("/login", "/logout", "/error").permitAll()
                         .anyRequest().authenticated())
                 .formLogin(Customizer.withDefaults());

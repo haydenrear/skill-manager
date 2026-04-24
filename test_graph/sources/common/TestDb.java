@@ -97,6 +97,19 @@ public final class TestDb implements AutoCloseable {
     /** Escape hatch for one-off queries that don't justify a dedicated method. */
     public Connection connection() { return conn; }
 
+    /** Most-recent unused password-reset token for {@code username}, or null. */
+    public String latestPasswordResetToken(String username) throws SQLException {
+        try (PreparedStatement ps = conn.prepareStatement(
+                "SELECT token FROM password_reset_tokens "
+                        + "WHERE username = ? AND used_at IS NULL "
+                        + "ORDER BY expires_at DESC LIMIT 1")) {
+            ps.setString(1, username);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? rs.getString(1) : null;
+            }
+        }
+    }
+
     @Override public void close() throws SQLException { conn.close(); }
 
     private static String firstNonBlank(String a, String b) {

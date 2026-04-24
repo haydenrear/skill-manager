@@ -68,10 +68,30 @@ validationGraph {
         node("sources/common/EnvPrepared.java")
         node("sources/common/PostgresUp.java")
         node("sources/common/RegistryUp.java")
-        node("sources/browser-auth/SeleniumReady.java")
-        node("sources/browser-auth/AccountCreated.java")
+        node("sources/common/SeleniumReady.java")
+        node("sources/common/AccountCreated.java")
         node("sources/browser-auth/BrowserAuthorized.java")
         node("sources/common/PostgresDown.java").dependsOn("browser.authorized")
+    }
+
+    /*
+     * `password-reset` — full self-serve password-reset flow end-to-end:
+     * account.created → initial.login → reset.requested → password.changed
+     * → final.login. Reads the reset token straight from Postgres so the
+     * graph is mail-free. Like browser-auth it pulls Selenium +
+     * chromedriver; run on demand, not every commit.
+     */
+    testGraph("password-reset") {
+        node("sources/common/EnvPrepared.java")
+        node("sources/common/PostgresUp.java")
+        node("sources/common/RegistryUp.java")
+        node("sources/common/SeleniumReady.java")
+        node("sources/common/AccountCreated.java")
+        node("sources/password-reset/InitialLogin.java")
+        node("sources/password-reset/ResetRequested.java")
+        node("sources/password-reset/PasswordChanged.java")
+        node("sources/password-reset/FinalLogin.java")
+        node("sources/common/PostgresDown.java").dependsOn("final.login")
     }
 
     testGraph("sponsored") {

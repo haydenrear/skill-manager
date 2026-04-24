@@ -24,6 +24,11 @@
 //SOURCES server-java/src/main/java/dev/skillmanager/server/auth/RegisterController.java
 //SOURCES server-java/src/main/java/dev/skillmanager/server/auth/TokenCustomizer.java
 //SOURCES server-java/src/main/java/dev/skillmanager/server/auth/UserAccountDetailsService.java
+//SOURCES server-java/src/main/java/dev/skillmanager/server/auth/reset/MailService.java
+//SOURCES server-java/src/main/java/dev/skillmanager/server/auth/reset/PasswordResetService.java
+//SOURCES server-java/src/main/java/dev/skillmanager/server/auth/reset/PasswordResetController.java
+//SOURCES server-java/src/main/java/dev/skillmanager/server/persistence/PasswordResetToken.java
+//SOURCES server-java/src/main/java/dev/skillmanager/server/persistence/PasswordResetTokenRepository.java
 //SOURCES server-java/src/main/java/dev/skillmanager/server/persistence/UserAccount.java
 //SOURCES server-java/src/main/java/dev/skillmanager/server/persistence/UserAccountRepository.java
 //SOURCES server-java/src/main/java/dev/skillmanager/server/persistence/ImpressionRow.java
@@ -47,6 +52,7 @@
 //DEPS org.springframework.boot:spring-boot-starter-security:3.3.4
 //DEPS org.springframework.boot:spring-boot-starter-oauth2-resource-server:3.3.4
 //DEPS org.springframework.boot:spring-boot-starter-oauth2-authorization-server:3.3.4
+//DEPS org.springframework.boot:spring-boot-starter-mail:3.3.4
 //DEPS org.postgresql:postgresql:42.7.4
 //DEPS org.bouncycastle:bcpkix-jdk18on:1.78.1
 //DEPS com.fasterxml.jackson.core:jackson-annotations:2.20

@@ -42,6 +42,31 @@ public final class RegistryClient {
     }
 
     /**
+     * POST /auth/password-reset/request — anonymous. Server always returns 2xx
+     * (enumeration defense), so we only check the response status and discard
+     * the body unless it's an error.
+     */
+    public void requestPasswordReset(String email) throws IOException {
+        URI url = URI.create(strip(config.baseUrl().toString()) + "/auth/password-reset/request");
+        Map<String, Object> body = new java.util.LinkedHashMap<>();
+        body.put("email", email);
+        HttpRequest req = HttpRequest.newBuilder(url)
+                .header("Content-Type", "application/json")
+                .timeout(Duration.ofSeconds(15))
+                .POST(HttpRequest.BodyPublishers.ofString(json.writeValueAsString(body)))
+                .build();
+        try {
+            var resp = http.send(req, HttpResponse.BodyHandlers.ofString());
+            if (resp.statusCode() / 100 != 2) {
+                throw new IOException("password-reset request failed: HTTP " + resp.statusCode() + " " + resp.body());
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IOException("password-reset request interrupted", e);
+        }
+    }
+
+    /**
      * POST /auth/register — anonymous signup. Returns the parsed user payload
      * (username, display_name, email). Throws on non-2xx including 409 name-taken
      * and 400 validation errors.
