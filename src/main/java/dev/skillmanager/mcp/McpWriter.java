@@ -90,26 +90,35 @@ public final class McpWriter {
         boolean canAutoDeploy = !McpDependency.SCOPE_SESSION.equals(scope) && missing.isEmpty();
 
         // Idempotency: skip expensive re-registration when the gateway is
-        // already in the state we want.
+        // already in the state we want — same scope AND same spec_digest.
+        // Digest drift (image bump, init_schema edit, transport change)
+        // forces re-register so the gateway runs the new spec.
         try {
             var existing = client.describe(dep.name());
             if (existing.isPresent() && scope.equals(existing.get().defaultScope())) {
                 var state = existing.get();
-                if (McpDependency.SCOPE_SESSION.equals(scope)) {
-                    Log.ok("gateway: %s already registered (scope=session)", dep.name());
-                    return InstallResult.registered(dep.name(), scope,
-                            "already registered (session scope — agent deploys per session)");
+                String desiredDigest = GatewayClient.specDigest(client.registerPayload(dep, canAutoDeploy));
+                boolean digestMatches = state.specDigest() != null
+                        && state.specDigest().equals(desiredDigest);
+                if (digestMatches) {
+                    if (McpDependency.SCOPE_SESSION.equals(scope)) {
+                        Log.ok("gateway: %s already registered (scope=session)", dep.name());
+                        return InstallResult.registered(dep.name(), scope,
+                                "already registered (session scope — agent deploys per session)");
+                    }
+                    if (state.deployed()) {
+                        Log.ok("gateway: %s already deployed (%s)", dep.name(), scope);
+                        return InstallResult.deployed(dep.name(), scope, "already deployed");
+                    }
+                    if (!missing.isEmpty()) {
+                        Log.warn("gateway: %s registered but not deployed — required init: %s",
+                                dep.name(), missing);
+                        return InstallResult.awaitingInit(dep.name(), scope, dep, missing);
+                    }
+                    // Registered, same scope, same digest, can deploy — fall through.
+                } else {
+                    Log.info("gateway: %s spec changed — re-registering", dep.name());
                 }
-                if (state.deployed()) {
-                    Log.ok("gateway: %s already deployed (%s)", dep.name(), scope);
-                    return InstallResult.deployed(dep.name(), scope, "already deployed");
-                }
-                if (!missing.isEmpty()) {
-                    Log.warn("gateway: %s registered but not deployed — required init: %s",
-                            dep.name(), missing);
-                    return InstallResult.awaitingInit(dep.name(), scope, dep, missing);
-                }
-                // Registered, same scope, can deploy — fall through to register+deploy.
             }
         } catch (IOException e) {
             Log.warn("gateway: describe %s failed: %s — continuing with register", dep.name(), e.getMessage());
@@ -198,13 +207,36 @@ public final class McpWriter {
         String existing = Files.isRegularFile(file) ? Files.readString(file) : "";
         String tableHeader = "[mcp_servers." + GATEWAY_ENTRY.replace('-', '_') + "]";
         boolean tableExisted = existing.contains(tableHeader);
-        boolean urlOk = tableExisted && existing.contains("url = \"" + gateway.mcpEndpoint() + "\"");
+        // Scope the url check to the gateway table only — a substring match
+        // against the whole file would succeed on an unrelated entry that
+        // happens to carry the same URL, even when our table is stale.
+        String tableBody = tableExisted ? sliceTable(existing, tableHeader) : "";
+        boolean urlOk = tableExisted && tableBody.contains("url = \"" + gateway.mcpEndpoint() + "\"");
         if (urlOk) return ConfigChange.UNCHANGED;
         String desiredTable = tableHeader + "\nurl = \"" + gateway.mcpEndpoint() + "\"\n";
         String rebuilt = replaceOrAppendTable(existing, tableHeader, desiredTable);
         Files.writeString(file, rebuilt);
         Log.ok("codex: pointed %s → %s", GATEWAY_ENTRY, gateway.mcpEndpoint());
         return tableExisted ? ConfigChange.UPDATED : ConfigChange.ADDED;
+    }
+
+    /** Return the substring of {@code source} covering the TOML table that begins with {@code header}, up to the next table or EOF. Empty if not found. */
+    private String sliceTable(String source, String header) {
+        int start = source.indexOf(header);
+        if (start < 0) return "";
+        int end = source.length();
+        int search = start + header.length();
+        while (search < source.length()) {
+            int nl = source.indexOf('\n', search);
+            if (nl < 0) break;
+            int nextLineStart = nl + 1;
+            if (nextLineStart < source.length() && source.charAt(nextLineStart) == '[') {
+                end = nextLineStart;
+                break;
+            }
+            search = nextLineStart;
+        }
+        return source.substring(start, end);
     }
 
     public void removeAgentEntry(Agent agent) throws IOException {

@@ -403,8 +403,24 @@ class ToolRegistry:
 
             self._store_deployment(server_id, effective_scope, session_id, client, deployment)
 
-            # Sticky init: persist for global/global-sticky only. Session
-            # deploys never touch the disk-persisted last-init.
+            try:
+                tools = await client.refresh_tools()
+            except Exception as exc:
+                self._record_error(server_id, effective_scope, session_id, f"refresh_tools failed: {exc}")
+                await self._teardown_existing_scope(server_id, effective_scope, session_id)
+                # _teardown_existing_scope only releases client + deployment;
+                # orphan tool entries would otherwise linger for ~10s until
+                # _refresh_scope wipes them, leaving describe/invoke divergent.
+                self._clear_server_tools(server_id, effective_scope, session_id)
+                raise
+
+            self._replace_server_tools(server_id, effective_scope, session_id, tools)
+
+            # Sticky init: persist for global/global-sticky only, and only
+            # after refresh_tools succeeded — otherwise a failed redeploy
+            # would poison last-init.json and _auto_redeploy_sticky would
+            # retry the bad init on every gateway restart. Session deploys
+            # never touch the disk-persisted last-init.
             if server_def.save_last_init and effective_scope != "session":
                 self.last_init_by_server[server_id] = dict(validated_init)
                 if effective_scope == "global-sticky" and self.last_init_store is not None:
@@ -412,15 +428,6 @@ class ToolRegistry:
                         self.last_init_store.set(server_id, dict(validated_init))
                     except Exception:
                         logger.exception("failed to persist last init for %s", server_id)
-
-            try:
-                tools = await client.refresh_tools()
-            except Exception as exc:
-                self._record_error(server_id, effective_scope, session_id, f"refresh_tools failed: {exc}")
-                await self._teardown_existing_scope(server_id, effective_scope, session_id)
-                raise
-
-            self._replace_server_tools(server_id, effective_scope, session_id, tools)
 
             # Successful deploy clears any matching error.
             self._clear_error(server_id, effective_scope, session_id)

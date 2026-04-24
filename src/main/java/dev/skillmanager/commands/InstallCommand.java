@@ -91,6 +91,19 @@ public final class InstallCommand implements Callable<Integer> {
                 return 2;
             }
 
+            // Ensure the gateway is reachable BEFORE committing the skill
+            // to the store. If we commit first and the gateway check then
+            // fails, `store.contains(top)` is permanently true and the
+            // user's only recovery is `remove` + retry — contradicting the
+            // "rerun" hint we'd print.
+            GatewayConfig gw = GatewayConfig.resolve(store, null);
+            if (!ensureGatewayRunning(store, gw)) {
+                Log.error("gateway at %s is unreachable and could not be started — "
+                        + "start it manually (`skill-manager gateway up`) and rerun",
+                        gw.baseUrl());
+                return 4;
+            }
+
             // Commit + record.
             resolver.commit(graph);
             audit.recordPlan(plan, "install");
@@ -105,18 +118,6 @@ public final class InstallCommand implements Callable<Integer> {
 
             // MCP gateway: register every installed skill's MCP deps.
             var all = store.listInstalled();
-            GatewayConfig gw = GatewayConfig.resolve(store, null);
-
-            // Auto-start the gateway if it's a local URL and currently
-            // unreachable. Fail the install if we can't bring it up — MCP
-            // registration and the agent's eventual tool-browse depend on
-            // it, so there's no point pretending install succeeded.
-            if (!ensureGatewayRunning(store, gw)) {
-                Log.error("gateway at %s is unreachable and could not be started — "
-                        + "start it manually (`skill-manager gateway up`) and rerun",
-                        gw.baseUrl());
-                return 4;
-            }
 
             McpWriter writer = new McpWriter(gw);
             var results = writer.registerAll(all);
