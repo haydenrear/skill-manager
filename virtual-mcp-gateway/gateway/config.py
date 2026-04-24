@@ -6,7 +6,7 @@ import json
 
 from pydantic import BaseModel, Field
 
-from .models import ClientConfig, DEFAULT_SCOPE, InitSchemaField, MCPServerDefinition, Scope, VALID_SCOPES
+from .models import ClientConfig, DEFAULT_SCOPE, InitSchemaField, MCPServerDefinition, Scope
 
 
 class InitSchemaFieldModel(BaseModel):
@@ -52,10 +52,9 @@ class MCPServerDefinitionModel(BaseModel):
     save_last_init: bool = True
     idle_timeout_seconds: int | None = 1800
     auto_deploy: bool = False
-    default_scope: str = DEFAULT_SCOPE
+    default_scope: Scope = DEFAULT_SCOPE
 
     def to_internal(self) -> MCPServerDefinition:
-        scope: Scope = self.default_scope if self.default_scope in VALID_SCOPES else DEFAULT_SCOPE  # type: ignore[assignment]
         return MCPServerDefinition(
             server_id=self.server_id,
             display_name=self.display_name or self.server_id,
@@ -65,7 +64,7 @@ class MCPServerDefinitionModel(BaseModel):
             save_last_init=self.save_last_init,
             idle_timeout_seconds=self.idle_timeout_seconds,
             auto_deploy=self.auto_deploy,
-            default_scope=scope,
+            default_scope=self.default_scope,
         )
 
 
