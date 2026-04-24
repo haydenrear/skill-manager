@@ -1,6 +1,7 @@
 package dev.skillmanager.mcp;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
 import dev.skillmanager.model.McpDependency;
 import dev.skillmanager.util.Log;
 
@@ -9,6 +10,9 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -21,6 +25,9 @@ public final class GatewayClient {
 
     private final GatewayConfig config;
     private final ObjectMapper json = new ObjectMapper();
+    /** Sorted-key canonical JSON — mirrors Python's json.dumps(sort_keys=True) for spec_digest. */
+    private static final ObjectMapper CANONICAL =
+            new ObjectMapper().configure(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS, true);
     private final HttpClient http = HttpClient.newBuilder()
             .version(HttpClient.Version.HTTP_1_1)
             .connectTimeout(Duration.ofSeconds(5))
@@ -91,6 +98,28 @@ public final class GatewayClient {
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new IOException("gateway describe interrupted", e);
+        }
+    }
+
+    /**
+     * SHA-256 over canonical-JSON of {"load_spec": ..., "init_schema": ...}
+     * from {@code payload}. Matches the gateway's {@code stable_digest} on
+     * {@code _describe_server_endpoint} so install-time idempotency can
+     * detect drift in the load spec or init schema.
+     */
+    public static String specDigest(Map<String, Object> payload) {
+        Map<String, Object> digestInput = new LinkedHashMap<>();
+        digestInput.put("load_spec", payload.get("load_spec"));
+        digestInput.put("init_schema", payload.getOrDefault("init_schema", List.of()));
+        try {
+            byte[] bytes = CANONICAL.writeValueAsBytes(digestInput);
+            MessageDigest sha = MessageDigest.getInstance("SHA-256");
+            byte[] hash = sha.digest(bytes);
+            StringBuilder hex = new StringBuilder(hash.length * 2);
+            for (byte b : hash) hex.append(String.format("%02x", b));
+            return hex.toString();
+        } catch (IOException | NoSuchAlgorithmException e) {
+            throw new IllegalStateException("spec digest failed", e);
         }
     }
 
