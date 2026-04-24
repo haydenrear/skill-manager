@@ -90,22 +90,30 @@ jobs:
       - name: Pre-pull postgres image
         run: docker pull "$POSTGRES_IMAGE"
 
+      # GatewayRuntime.pythonExecutable() auto-picks virtual-mcp-gateway/.venv/bin/python
+      # when it exists; `uv sync` materializes the venv with fastapi/uvicorn/mcp/etc.
+      # Without this step `skill-manager gateway up` spawns bare python3 and the
+      # gateway subprocess dies with ModuleNotFoundError before binding its port.
+      - name: Install gateway Python deps
+        run: uv sync --all-extras
+        working-directory: virtual-mcp-gateway
+
       - name: Plan graph
         run: python skills/test_graph/scripts/discover.py "${{ matrix.graph }}" --test-graph-root test_graph
 
       - name: Run graph
         run: python skills/test_graph/scripts/run.py "${{ matrix.graph }}" --test-graph-root test_graph
 
-      - name: Dump postgres logs on failure
-        if: failure()
-        run: docker compose logs postgres || true
+      - name: Collect diagnostics
+        if: always()
+        run: bash .github/scripts/collect-test-graph-diagnostics.sh
 
-      - name: Upload validation reports
+      - name: Upload diagnostics
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: validation-reports-${{ matrix.graph }}
-          path: test_graph/build/validation-reports/
+          name: diagnostics-${{ matrix.graph }}
+          path: ci-diagnostics/
           if-no-files-found: ignore
 
   test-graph-browser:
@@ -164,20 +172,24 @@ jobs:
       - name: Pre-pull postgres image
         run: docker pull "$POSTGRES_IMAGE"
 
+      - name: Install gateway Python deps
+        run: uv sync --all-extras
+        working-directory: virtual-mcp-gateway
+
       - name: Plan graph
         run: python skills/test_graph/scripts/discover.py "${{ matrix.graph }}" --test-graph-root test_graph
 
       - name: Run graph
         run: python skills/test_graph/scripts/run.py "${{ matrix.graph }}" --test-graph-root test_graph
 
-      - name: Dump postgres logs on failure
-        if: failure()
-        run: docker compose logs postgres || true
+      - name: Collect diagnostics
+        if: always()
+        run: bash .github/scripts/collect-test-graph-diagnostics.sh
 
-      - name: Upload validation reports
+      - name: Upload diagnostics
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: validation-reports-${{ matrix.graph }}
-          path: test_graph/build/validation-reports/
+          name: diagnostics-${{ matrix.graph }}
+          path: ci-diagnostics/
           if-no-files-found: ignore
