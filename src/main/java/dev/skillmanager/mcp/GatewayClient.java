@@ -14,6 +14,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 /** POSTs skill MCP dependencies to the virtual MCP gateway. */
 public final class GatewayClient {
@@ -42,16 +43,7 @@ public final class GatewayClient {
     }
 
     public RegisterResult register(McpDependency dep, boolean deploy) throws IOException {
-        Map<String, Object> body = new LinkedHashMap<>();
-        body.put("server_id", dep.name());
-        body.put("display_name", dep.displayName());
-        body.put("description", dep.description());
-        body.put("load_spec", serializeLoad(dep.load()));
-        body.put("init_schema", serializeSchema(dep.initSchema()));
-        if (!dep.initializationParams().isEmpty()) body.put("initialization_params", dep.initializationParams());
-        if (dep.idleTimeoutSeconds() != null) body.put("idle_timeout_seconds", dep.idleTimeoutSeconds());
-        body.put("deploy", deploy);
-
+        Map<String, Object> body = registerPayload(dep, deploy);
         String payload = json.writeValueAsString(body);
         HttpRequest req = HttpRequest.newBuilder(config.serversEndpoint())
                 .header("Content-Type", "application/json")
@@ -70,12 +62,51 @@ public final class GatewayClient {
                     Boolean.TRUE.equals(parsed.get("registered")),
                     Boolean.TRUE.equals(parsed.get("deployed")),
                     (String) parsed.get("transport"),
+                    (String) parsed.getOrDefault("default_scope", dep.defaultScope()),
+                    (String) parsed.get("scope"),
                     (String) parsed.get("deploy_error")
             );
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new IOException("gateway register interrupted", e);
         }
+    }
+
+    /** Describe a registered server. Returns empty if the gateway has no such entry. */
+    public Optional<ServerState> describe(String serverId) throws IOException {
+        URI uri = URI.create(stripSlash(config.serversEndpoint().toString()) + "/" + serverId);
+        HttpRequest req = HttpRequest.newBuilder(uri)
+                .timeout(Duration.ofSeconds(10))
+                .GET()
+                .build();
+        try {
+            HttpResponse<String> resp = http.send(req, HttpResponse.BodyHandlers.ofString());
+            if (resp.statusCode() == 404) return Optional.empty();
+            if (resp.statusCode() / 100 != 2) {
+                throw new IOException("gateway describe failed: HTTP " + resp.statusCode() + " " + resp.body());
+            }
+            @SuppressWarnings("unchecked")
+            Map<String, Object> parsed = json.readValue(resp.body(), Map.class);
+            return Optional.of(ServerState.fromMap(parsed));
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IOException("gateway describe interrupted", e);
+        }
+    }
+
+    /** Exposed for tests + digest comparison. */
+    public Map<String, Object> registerPayload(McpDependency dep, boolean deploy) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("server_id", dep.name());
+        body.put("display_name", dep.displayName());
+        body.put("description", dep.description());
+        body.put("load_spec", serializeLoad(dep.load()));
+        body.put("init_schema", serializeSchema(dep.initSchema()));
+        if (!dep.initializationParams().isEmpty()) body.put("initialization_params", dep.initializationParams());
+        if (dep.idleTimeoutSeconds() != null) body.put("idle_timeout_seconds", dep.idleTimeoutSeconds());
+        body.put("default_scope", dep.defaultScope());
+        body.put("deploy", deploy);
+        return body;
     }
 
     public boolean unregister(String serverId) throws IOException {
@@ -136,14 +167,17 @@ public final class GatewayClient {
     private List<Map<String, Object>> serializeSchema(List<McpDependency.InitField> schema) {
         List<Map<String, Object>> out = new ArrayList<>();
         for (McpDependency.InitField f : schema) {
+            // Include every field (even when null/empty) so the payload matches
+            // Python's InitSchemaFieldPayload.model_dump shape — required for
+            // the install-time spec_digest to line up across ends.
             Map<String, Object> m = new LinkedHashMap<>();
             m.put("name", f.name());
             m.put("type", f.type());
             m.put("description", f.description());
             m.put("required", f.required());
             m.put("secret", f.secret());
-            if (f.defaultValue() != null) m.put("default", f.defaultValue());
-            if (!f.enumValues().isEmpty()) m.put("enum", f.enumValues());
+            m.put("default", f.defaultValue());
+            m.put("enum", f.enumValues());
             out.add(m);
         }
         return out;
@@ -153,5 +187,45 @@ public final class GatewayClient {
         return s.endsWith("/") ? s.substring(0, s.length() - 1) : s;
     }
 
-    public record RegisterResult(String serverId, boolean registered, boolean deployed, String transport, String deployError) {}
+    public record RegisterResult(
+            String serverId,
+            boolean registered,
+            boolean deployed,
+            String transport,
+            String defaultScope,
+            String deployedScope,
+            String deployError) {}
+
+    /**
+     * State of a server as the gateway sees it. Used by install-time idempotency checks
+     * to decide whether to skip, redeploy, or re-register.
+     */
+    public record ServerState(
+            String serverId,
+            String defaultScope,
+            boolean deployed,
+            boolean deployedGlobally,
+            Map<String, Object> loadSpecDigestSource,
+            List<Map<String, Object>> initSchemaDigestSource,
+            String specDigest,
+            Map<String, Object> lastError) {
+
+        @SuppressWarnings("unchecked")
+        public static ServerState fromMap(Map<String, Object> m) {
+            List<Map<String, Object>> schema = (List<Map<String, Object>>) m.getOrDefault("init_schema", List.of());
+            Map<String, Object> loadSource = new LinkedHashMap<>();
+            loadSource.put("transport", m.get("transport"));
+            Map<String, Object> lastError = (Map<String, Object>) m.get("last_error");
+            return new ServerState(
+                    (String) m.get("server_id"),
+                    (String) m.getOrDefault("default_scope", McpDependency.DEFAULT_SCOPE),
+                    Boolean.TRUE.equals(m.get("deployed")),
+                    Boolean.TRUE.equals(m.get("deployed_globally")),
+                    loadSource,
+                    schema,
+                    (String) m.get("spec_digest"),
+                    lastError
+            );
+        }
+    }
 }

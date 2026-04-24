@@ -245,6 +245,7 @@ public final class SkillParser {
             TomlTable initParams = t.getTable("initialization");
             Map<String, Object> init = initParams == null ? Map.of() : tableToMap(initParams);
             Long idle = t.getLong("idle_timeout_seconds");
+            String defaultScope = t.getString("default_scope");
 
             out.add(new McpDependency(
                     name,
@@ -254,7 +255,8 @@ public final class SkillParser {
                     schema,
                     init,
                     asStringList(t.getArray("required_tools")),
-                    idle == null ? null : idle.intValue()
+                    idle == null ? null : idle.intValue(),
+                    defaultScope
             ));
         }
         return out;

@@ -15,7 +15,7 @@ public final class ListCommand implements Callable<Integer> {
         store.init();
         var skills = store.listInstalled();
         if (skills.isEmpty()) {
-            System.out.println("(no skills installed — use `skill-manager add <source>`)");
+            System.out.println("(no skills installed — use `skill-manager install <source>`)");
             return 0;
         }
         System.out.printf("%-28s %-10s %s%n", "NAME", "VERSION", "DESCRIPTION");

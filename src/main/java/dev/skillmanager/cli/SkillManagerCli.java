@@ -1,6 +1,5 @@
 package dev.skillmanager.cli;
 
-import dev.skillmanager.commands.AddCommand;
 import dev.skillmanager.commands.AdsCommand;
 import dev.skillmanager.commands.CliCommand;
 import dev.skillmanager.commands.CreateAccountCommand;
@@ -18,7 +17,6 @@ import dev.skillmanager.commands.RemoveCommand;
 import dev.skillmanager.commands.ResetPasswordCommand;
 import dev.skillmanager.commands.SearchCommand;
 import dev.skillmanager.commands.ShowCommand;
-import dev.skillmanager.commands.SyncCommand;
 import dev.skillmanager.registry.AuthenticationRequiredException;
 import dev.skillmanager.util.Log;
 import picocli.CommandLine;
@@ -32,10 +30,8 @@ import picocli.CommandLine.Option;
         description = "Build tool for agent skills: CLI deps, skill references, MCP servers.",
         subcommands = {
                 ListCommand.class,
-                AddCommand.class,
-                RemoveCommand.class,
                 InstallCommand.class,
-                SyncCommand.class,
+                RemoveCommand.class,
                 ShowCommand.class,
                 DepsCommand.class,
                 GatewayCommand.class,

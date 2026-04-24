@@ -24,7 +24,7 @@ public final class CliCommand implements Runnable {
             CliLock lock = CliLock.load(store);
             var all = lock.all();
             if (all.isEmpty()) {
-                System.out.println("(no CLI tools installed — run `skill-manager install`)");
+                System.out.println("(no CLI tools installed — install a skill that declares them)");
                 return 0;
             }
             System.out.printf("%-8s %-28s %-14s %s%n", "BACKEND", "TOOL", "VERSION", "REQUESTED BY");

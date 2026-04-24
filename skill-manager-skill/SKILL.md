@@ -26,9 +26,9 @@ All subcommands are run as `skill-manager <command>`. Most modifying commands ta
 | --- | --- |
 | Search by keyword | `skill-manager search "<query>"` |
 | Describe a hit | `skill-manager registry describe <name>` (also reachable via `curl <registry>/skills/<name>`) |
-| Install by name | `skill-manager add <name>[@<version>]` |
-| Install from local path | `skill-manager add ./path/to/skill` |
-| Install from a git repo | `skill-manager add github:user/repo` |
+| Install by name | `skill-manager install <name>[@<version>]` |
+| Install from local path | `skill-manager install ./path/to/skill` |
+| Install from a git repo | `skill-manager install github:user/repo` |
 | List installed | `skill-manager list` |
 | Show an installed skill | `skill-manager show <name>` |
 | Show transitive deps | `skill-manager deps <name>` |
@@ -66,22 +66,18 @@ Ask the user to run the following in their terminal, then retry the task:
 
 ### Working with the MCP gateway
 
-The gateway fronts every MCP server; agents only ever see one MCP endpoint. Most skill-manager MCP operations are executed via the official **Java MCP SDK** client so protocol negotiation happens properly.
+The gateway fronts every MCP server; agents only ever see one MCP endpoint. The CLI owns only the gateway process lifecycle — everything else happens over MCP.
 
 | Step | Command |
 | --- | --- |
 | Start / stop | `skill-manager gateway up` / `gateway down` |
 | See URL + health | `skill-manager gateway status` |
-| Register a server (REST) | `skill-manager gateway register <id> --docker <image>` or `--url <endpoint>` |
-| List registered | `skill-manager gateway servers` |
-| Describe a server | `skill-manager gateway describe-server <id>` |
-| Deploy / undeploy | `skill-manager gateway deploy <id>` / `undeploy <id>` |
-| Browse active tools | `skill-manager gateway tools [--prefix <p>]` |
-| Semantic search on tools | `skill-manager gateway search "<query>"` |
-| Describe a tool | `skill-manager gateway describe-tool <path>` |
-| Invoke a tool | `skill-manager gateway invoke <path> --args '{"…":"…"}'` |
 
-After an MCP dep is registered, it persists across gateway restarts — no restart reminder needed. Prefer asking the user for init params (secrets, tokens) at deploy time rather than hardcoding them.
+**How MCP servers get into the gateway**: by declaring them as `[[mcp_dependencies]]` in a skill's `skill-manager.toml` and installing that skill (`skill-manager install <skill>`). Registration is a side effect of install — there is no CLI to register an MCP server directly.
+
+**How agents use them**: call `browse_mcp_servers`, `describe_mcp_server`, `deploy_mcp_server`, `search_tools`, `describe_tool`, `invoke_tool` over MCP. These are the gateway's built-in virtual tools.
+
+After a skill's MCP deps are registered, they persist across gateway restarts. Prefer asking the user for init params (secrets, tokens) at deploy time rather than hardcoding them in the skill.
 
 ### Publishing your own skills
 
@@ -109,24 +105,22 @@ If a command produces a `CONFLICT [pip] <tool>` line, two installed skills want 
 ```
 skill-manager search "X"
 # pick a hit, then:
-skill-manager add <name> --dry-run     # review the plan
-skill-manager add <name> --yes
+skill-manager install <name> --dry-run     # review the plan
+skill-manager install <name> --yes
 ```
 
 **"What MCP tools can I use right now?"**
 
-```
-skill-manager gateway tools
-# or: skill-manager gateway search "<query>"
-```
+Call `browse_active_tools` or `search_tools` over MCP against the
+`virtual-mcp-gateway` entry in your MCP config. There is no CLI equivalent.
 
-**"Add a new MCP server from a docker image"**
+**"Add a new MCP server"**
 
-```
-skill-manager gateway register <server-id> \
-  --docker ghcr.io/publisher/image:tag --arg --stdio
-skill-manager gateway deploy <server-id> --init token=...
-```
+Make a skill (even a one-off) that declares the server as an
+`[[mcp_dependencies]]` entry in its `skill-manager.toml`, then
+`skill-manager install <skill>`. Registration with the gateway happens
+transitively. See "MCP dependencies" in the spec for the supported
+`load` types (docker, binary) and `default_scope` options.
 
 **"Publish the skill I just edited"**
 
