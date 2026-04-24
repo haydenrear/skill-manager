@@ -64,7 +64,7 @@ public final class CreateCommand implements Callable<Integer> {
         System.out.println("next steps:");
         System.out.println("  1. edit " + dir.resolve("SKILL.md") + " — write the agent-facing body");
         System.out.println("  2. edit " + dir.resolve("skill-manager.toml") + " — uncomment & customize deps");
-        System.out.println("  3. skill-manager add " + dir + "  (install locally to test)");
+        System.out.println("  3. skill-manager install " + dir + "  (install locally to test)");
         System.out.println("  4. skill-manager publish " + dir + "  (upload to the registry)");
         return 0;
     }

@@ -37,22 +37,25 @@ binary = "ripgrep-14.1.1-x86_64-unknown-linux-musl/rg"
 # MCP servers the skill needs. skill-manager registers each with the gateway;
 # agents only ever see the gateway itself.
 
+# Each entry is self-contained. Use inline tables (`load = { ... }` and
+# `init_schema = [ ... ]`) so each mcp_dependency's fields are visibly grouped.
+# Adding a second dependency is just another [[mcp_dependencies]] block.
+#
+# default_scope — how agents deploy this server. One of:
+#   session        — fresh deployment per agent session; init values ephemeral
+#   global         — shared across sessions; last init sticks for the process lifetime
+#   global-sticky  — shared across sessions; last init persists to disk and is
+#                    auto-redeployed when the gateway restarts (default)
+
 [[mcp_dependencies]]
 name = "deepwiki"
 display_name = "DeepWiki"
 description = "Ask questions against GitHub repositories."
-
-[mcp_dependencies.load]
-type = "docker"
-image = "ghcr.io/cognition-ai/deepwiki-mcp:latest"
-args = ["--stdio"]
-
-[[mcp_dependencies.init_schema]]
-name = "api_key"
-type = "string"
-required = false
-secret = true
-description = "Optional Cognition API key."
+default_scope = "global-sticky"
+load = { type = "docker", image = "ghcr.io/cognition-ai/deepwiki-mcp:latest", args = ["--stdio"] }
+init_schema = [
+    { name = "api_key", type = "string", required = false, secret = true, description = "Optional Cognition API key." },
+]
 
 # skill-wide metadata (kept last because [skill] steals any trailing keys)
 [skill]

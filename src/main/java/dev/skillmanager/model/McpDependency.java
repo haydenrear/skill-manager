@@ -21,12 +21,36 @@ public record McpDependency(
         List<InitField> initSchema,
         Map<String, Object> initializationParams,
         List<String> requiredTools,
-        Integer idleTimeoutSeconds
+        Integer idleTimeoutSeconds,
+        String defaultScope
 ) {
+    /** Scope names understood by the virtual MCP gateway. */
+    public static final String SCOPE_SESSION = "session";
+    public static final String SCOPE_GLOBAL = "global";
+    public static final String SCOPE_GLOBAL_STICKY = "global-sticky";
+    public static final String DEFAULT_SCOPE = SCOPE_GLOBAL_STICKY;
+    public static final java.util.Set<String> VALID_SCOPES =
+            java.util.Set.of(SCOPE_SESSION, SCOPE_GLOBAL, SCOPE_GLOBAL_STICKY);
+
     public McpDependency {
         initSchema = initSchema == null ? List.of() : List.copyOf(initSchema);
         initializationParams = initializationParams == null ? Map.of() : Map.copyOf(initializationParams);
         requiredTools = requiredTools == null ? List.of() : List.copyOf(requiredTools);
+        if (defaultScope == null || defaultScope.isBlank()) {
+            defaultScope = DEFAULT_SCOPE;
+        } else if (!VALID_SCOPES.contains(defaultScope)) {
+            throw new IllegalArgumentException(
+                    "default_scope must be one of " + VALID_SCOPES + ", got: " + defaultScope);
+        }
+    }
+
+    /** Required init-schema fields that have no default — must be provided at deploy time. */
+    public List<String> missingRequiredInit() {
+        List<String> missing = new java.util.ArrayList<>();
+        for (InitField f : initSchema) {
+            if (f.required() && f.defaultValue() == null) missing.add(f.name());
+        }
+        return missing;
     }
 
     public enum LoadType { DOCKER, BINARY }

@@ -91,14 +91,13 @@ cd ../../server
 | Command | Purpose |
 | --- | --- |
 | `skill-manager list` | List installed skills |
-| `skill-manager add <name>[@version]` | Install from the registry |
-| `skill-manager add <./path>` | Install from a local directory |
-| `skill-manager add github:user/repo` | Install from a git repo |
+| `skill-manager install <name>[@version]` | Install from the registry |
+| `skill-manager install <./path>` | Install from a local directory |
+| `skill-manager install github:user/repo` | Install from a git repo |
+| `skill-manager install file:<path>` | Install from an absolute local path |
 | `skill-manager remove <name>` | Remove a skill |
 | `skill-manager show <name>` | Metadata + deps |
 | `skill-manager deps [name]` | Transitive dep tree |
-| `skill-manager install` | Install CLI deps (dispatches pip/npm/brew/tar) |
-| `skill-manager sync --agent claude,codex` | Sync skills + register MCP with the gateway |
 
 ### Registry (publish / search / server config)
 
@@ -117,21 +116,11 @@ cd ../../server
 | `skill-manager gateway up / down` | Start / stop the bundled MCP gateway |
 | `skill-manager gateway status` | URL, pid, health |
 | `skill-manager gateway set <url>` | Persist the gateway URL |
-| `skill-manager gateway push` | Re-register every installed skill's MCP deps |
-| `skill-manager gateway unregister <id>` | Remove a dynamic server |
 
-### MCP pass-through (talks MCP to the gateway via the official Python SDK)
-
-| Command | Purpose |
-| --- | --- |
-| `skill-manager gateway list-tools` | Gateway MCP tool list |
-| `skill-manager gateway servers [--deployed]` | List registered MCP servers |
-| `skill-manager gateway deploy <id> [--init K=V …]` | Spin up an MCP server |
-| `skill-manager gateway undeploy <id>` | Spin it down |
-| `skill-manager gateway tools [--prefix P]` | Browse active tools |
-| `skill-manager gateway search "<query>"` | Semantic search |
-| `skill-manager gateway describe-tool <path>` | Full schema (discloses for session) |
-| `skill-manager gateway invoke <path> --args '{…}'` | Call a tool |
+MCP servers are registered **transitively** when a skill that declares them is
+installed — there is no direct "register MCP server" CLI. Agents interact with
+the gateway over MCP (browse/describe/deploy/invoke tools); the CLI only owns
+the gateway process lifecycle.
 
 ## Storage layout
 
