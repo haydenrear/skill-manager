@@ -40,6 +40,14 @@ shopt -u nullglob
 # 3. docker-compose postgres logs
 docker compose logs postgres > "$DIAG_DIR/postgres.log" 2>&1 || true
 
+# 4. Gradle / test_graph stdout+stderr (teed from the Plan/Run steps).
+#    This is the only place node scripts that use ProcessBuilder.inheritIO()
+#    (e.g. CiLoggedIn → skill-manager login) show up — their stderr never
+#    hits registry.log or the validation envelope.
+if [[ -d ci-logs ]]; then
+  cp -r ci-logs "$DIAG_DIR/gradle" 2>/dev/null || true
+fi
+
 #
 # Inline surfacing — group blocks so each file folds in the GH Actions UI.
 #
@@ -102,6 +110,18 @@ echo "::endgroup::"
 
 echo "::group::postgres.log (tail)"
 tail -200 "$DIAG_DIR/postgres.log" 2>/dev/null || true
+echo "::endgroup::"
+
+# The Gradle/test_graph run log is where inheritIO() subprocesses land
+# (skill-manager login from ci.logged.in, skill-manager gateway up from
+# gateway.up, etc.). Surface a generous tail so root causes are visible
+# without downloading the artifact.
+echo "::group::gradle run.log (tail 600)"
+[[ -f "$DIAG_DIR/gradle/run.log" ]] && tail -600 "$DIAG_DIR/gradle/run.log"
+echo "::endgroup::"
+
+echo "::group::gradle plan.log (tail 200)"
+[[ -f "$DIAG_DIR/gradle/plan.log" ]] && tail -200 "$DIAG_DIR/gradle/plan.log"
 echo "::endgroup::"
 
 # Surface any other *.log files under the per-run homes we haven't already
