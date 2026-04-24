@@ -18,7 +18,7 @@ public class HelloInstalled {
     static final NodeSpec SPEC = NodeSpec.of("hello.installed")
             .kind(NodeSpec.Kind.ACTION)
             .dependsOn("hello.published")
-            .tags("registry", "add")
+            .tags("registry", "install")
             .timeout("60s")
             .output("skillDir", "string");
 
@@ -34,9 +34,8 @@ public class HelloInstalled {
             Path sm = repoRoot.resolve("skill-manager");
 
             ProcessBuilder pb = new ProcessBuilder(
-                    sm.toString(), "add", "hello-skill",
-                    "--registry", registryUrl,
-                    "--yes", "--no-install")
+                    sm.toString(), "install", "hello-skill",
+                    "--registry", registryUrl)
                     .inheritIO();
             pb.environment().put("SKILL_MANAGER_HOME", home);
             pb.environment().put("SKILL_MANAGER_INSTALL_DIR", repoRoot.toString());

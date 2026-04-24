@@ -1,0 +1,14 @@
+# test_graph fixture template — stamped at runtime by ../../sources/smoke/_FixtureSkill.java.
+# Tokens __SKILL_NAME__, __SERVER_ID__, __SCOPE__, __MCP_URL__ are replaced
+# before the directory is handed to `skill-manager install file:<tempdir>`.
+
+[[mcp_dependencies]]
+name = "__SERVER_ID__"
+display_name = "echo fixture (__SCOPE__)"
+description = "HTTP echo MCP fixture registered at scope __SCOPE__ by test_graph."
+default_scope = "__SCOPE__"
+load = { type = "binary", transport = "streamable-http", url = "__MCP_URL__", install = {} }
+
+[skill]
+name = "__SKILL_NAME__"
+version = "0.0.1"
