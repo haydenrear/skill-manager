@@ -99,10 +99,22 @@ jobs:
         working-directory: virtual-mcp-gateway
 
       - name: Plan graph
-        run: python skills/test_graph/scripts/discover.py "${{ matrix.graph }}" --test-graph-root test_graph
+        run: |
+          mkdir -p ci-logs
+          set -o pipefail
+          python skills/test_graph/scripts/discover.py "${{ matrix.graph }}" --test-graph-root test_graph \
+            2>&1 | tee ci-logs/plan.log
 
+      # CiLoggedIn (and several other nodes) use ProcessBuilder.inheritIO(),
+      # so their subprocess stderr only reaches Gradle's stdout. Tee the full
+      # stream so the real error is recoverable from the uploaded artifact
+      # even after the live log scrolls / the run ages out.
       - name: Run graph
-        run: python skills/test_graph/scripts/run.py "${{ matrix.graph }}" --test-graph-root test_graph
+        run: |
+          mkdir -p ci-logs
+          set -o pipefail
+          python skills/test_graph/scripts/run.py "${{ matrix.graph }}" --test-graph-root test_graph \
+            2>&1 | tee ci-logs/run.log
 
       - name: Collect diagnostics
         if: always()
@@ -177,10 +189,22 @@ jobs:
         working-directory: virtual-mcp-gateway
 
       - name: Plan graph
-        run: python skills/test_graph/scripts/discover.py "${{ matrix.graph }}" --test-graph-root test_graph
+        run: |
+          mkdir -p ci-logs
+          set -o pipefail
+          python skills/test_graph/scripts/discover.py "${{ matrix.graph }}" --test-graph-root test_graph \
+            2>&1 | tee ci-logs/plan.log
 
+      # CiLoggedIn (and several other nodes) use ProcessBuilder.inheritIO(),
+      # so their subprocess stderr only reaches Gradle's stdout. Tee the full
+      # stream so the real error is recoverable from the uploaded artifact
+      # even after the live log scrolls / the run ages out.
       - name: Run graph
-        run: python skills/test_graph/scripts/run.py "${{ matrix.graph }}" --test-graph-root test_graph
+        run: |
+          mkdir -p ci-logs
+          set -o pipefail
+          python skills/test_graph/scripts/run.py "${{ matrix.graph }}" --test-graph-root test_graph \
+            2>&1 | tee ci-logs/run.log
 
       - name: Collect diagnostics
         if: always()
