@@ -4,6 +4,7 @@
 import com.hayden.testgraphsdk.sdk.Node;
 import com.hayden.testgraphsdk.sdk.NodeResult;
 import com.hayden.testgraphsdk.sdk.NodeSpec;
+import com.hayden.testgraphsdk.sdk.Procs;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -29,17 +30,19 @@ public class ServersDown {
             Path sm = repoRoot.resolve("skill-manager");
 
             boolean gatewayDown = false;
+            int rc = -1;
             try {
-                ProcessBuilder pb = new ProcessBuilder(sm.toString(), "gateway", "down").inheritIO();
+                ProcessBuilder pb = new ProcessBuilder(sm.toString(), "gateway", "down");
                 pb.environment().put("SKILL_MANAGER_HOME", home);
                 pb.environment().put("SKILL_MANAGER_INSTALL_DIR", repoRoot.toString());
-                gatewayDown = pb.start().waitFor() == 0;
+                rc = Procs.runLogged(ctx, "gateway-down", pb);
+                gatewayDown = rc == 0;
             } catch (Exception ignored) {}
 
             boolean registryDown = killByPidFile(Path.of(home, "test-graph", "registry.pid"));
             boolean echoDown = killByPidFile(Path.of(home, "test-graph", "echo-http.pid"));
 
-            return NodeResult.pass("servers.down")
+            return Procs.attach(NodeResult.pass("servers.down"), ctx, "gateway-down", rc, 100)
                     .assertion("gateway_down", gatewayDown)
                     .assertion("registry_down", registryDown)
                     .assertion("echo_fixture_down", echoDown);

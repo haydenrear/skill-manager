@@ -4,8 +4,10 @@
 //DEPS org.postgresql:postgresql:42.7.4
 
 import com.hayden.testgraphsdk.sdk.Node;
+import com.hayden.testgraphsdk.sdk.NodeContext;
 import com.hayden.testgraphsdk.sdk.NodeResult;
 import com.hayden.testgraphsdk.sdk.NodeSpec;
+import com.hayden.testgraphsdk.sdk.Procs;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -50,13 +52,17 @@ public class PostgresUp {
             // it so the test gets a clean start (fresh connections, no
             // stale background work). Otherwise `up -d` creates it.
             if (isPostgresRunning(repoRoot, compose)) {
-                int rcRestart = run(repoRoot, "docker", "compose", "-f", compose.toString(), "restart", "postgres");
+                int rcRestart = run(ctx, "compose-restart", repoRoot, "docker", "compose", "-f", compose.toString(), "restart", "postgres");
                 if (rcRestart != 0) {
-                    return NodeResult.fail("postgres.up", "docker compose restart postgres exited " + rcRestart);
+                    return Procs.attach(
+                            NodeResult.fail("postgres.up", "docker compose restart postgres exited " + rcRestart),
+                            ctx, "compose-restart", rcRestart, 200);
                 }
             } else {
-                int rc = run(repoRoot, "docker", "compose", "-f", compose.toString(), "up", "-d", "postgres");
-                if (rc != 0) return NodeResult.fail("postgres.up", "docker compose up -d postgres exited " + rc);
+                int rc = run(ctx, "compose-up", repoRoot, "docker", "compose", "-f", compose.toString(), "up", "-d", "postgres");
+                if (rc != 0) return Procs.attach(
+                        NodeResult.fail("postgres.up", "docker compose up -d postgres exited " + rc),
+                        ctx, "compose-up", rc, 200);
             }
 
             if (!waitForReady(Duration.ofSeconds(60))) {
@@ -74,9 +80,10 @@ public class PostgresUp {
         });
     }
 
-    private static int run(Path cwd, String... cmd) throws IOException, InterruptedException {
-        ProcessBuilder pb = new ProcessBuilder(cmd).directory(cwd.toFile()).inheritIO();
-        return pb.start().waitFor();
+    private static int run(NodeContext ctx, String label, Path cwd, String... cmd)
+            throws IOException, InterruptedException {
+        ProcessBuilder pb = new ProcessBuilder(cmd).directory(cwd.toFile());
+        return Procs.runLogged(ctx, label, pb);
     }
 
     private static boolean isPostgresRunning(Path cwd, Path compose) throws IOException, InterruptedException {

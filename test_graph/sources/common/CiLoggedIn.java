@@ -4,6 +4,7 @@
 import com.hayden.testgraphsdk.sdk.Node;
 import com.hayden.testgraphsdk.sdk.NodeResult;
 import com.hayden.testgraphsdk.sdk.NodeSpec;
+import com.hayden.testgraphsdk.sdk.Procs;
 
 import java.nio.file.Path;
 
@@ -46,14 +47,14 @@ public class CiLoggedIn {
                     "--client-id", CLIENT_ID,
                     "--client-secret", secret,
                     "--scope", "skill:publish ad:manage",
-                    "--registry", registryUrl)
-                    .inheritIO();
+                    "--registry", registryUrl);
             pb.environment().put("SKILL_MANAGER_HOME", home);
             pb.environment().put("SKILL_MANAGER_INSTALL_DIR", repoRoot.toString());
-            int rc = pb.start().waitFor();
-            return (rc == 0
+            int rc = Procs.runLogged(ctx, "login", pb);
+            NodeResult result = rc == 0
                     ? NodeResult.pass("ci.logged.in")
-                    : NodeResult.fail("ci.logged.in", "login exited " + rc))
+                    : NodeResult.fail("ci.logged.in", "login exited " + rc);
+            return Procs.attach(result, ctx, "login", rc, 200)
                     .assertion("token_cached", rc == 0)
                     .publish("clientId", CLIENT_ID);
         });

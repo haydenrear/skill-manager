@@ -4,6 +4,7 @@
 import com.hayden.testgraphsdk.sdk.Node;
 import com.hayden.testgraphsdk.sdk.NodeResult;
 import com.hayden.testgraphsdk.sdk.NodeSpec;
+import com.hayden.testgraphsdk.sdk.Procs;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -32,22 +33,23 @@ public class UmbrellaInstalled {
             Path umbrella = repoRoot.resolve("test_graph/fixtures/umbrella-skill");
 
             ProcessBuilder pb = new ProcessBuilder(
-                    sm.toString(), "install", umbrella.toString())
-                    .inheritIO();
+                    sm.toString(), "install", umbrella.toString());
             pb.environment().put("SKILL_MANAGER_HOME", home);
             pb.environment().put("SKILL_MANAGER_INSTALL_DIR", repoRoot.toString());
 
-            int rc = pb.start().waitFor();
+            int rc = Procs.runLogged(ctx, "install", pb);
 
             Path storeDir = Path.of(home, "skills");
             boolean umbrellaIn = Files.isDirectory(storeDir.resolve("umbrella-skill"));
             boolean pipIn = Files.isDirectory(storeDir.resolve("pip-cli-skill"));
             boolean npmIn = Files.isDirectory(storeDir.resolve("npm-cli-skill"));
 
-            return (rc == 0 && umbrellaIn && pipIn && npmIn
+            boolean pass = rc == 0 && umbrellaIn && pipIn && npmIn;
+            NodeResult result = pass
                     ? NodeResult.pass("umbrella.installed")
                     : NodeResult.fail("umbrella.installed",
-                            "rc=" + rc + " umbrella=" + umbrellaIn + " pip=" + pipIn + " npm=" + npmIn))
+                            "rc=" + rc + " umbrella=" + umbrellaIn + " pip=" + pipIn + " npm=" + npmIn);
+            return Procs.attach(result, ctx, "install", pass ? 0 : 1, 300)
                     .assertion("add_ok", rc == 0)
                     .assertion("umbrella_in_store", umbrellaIn)
                     .assertion("pip_transitive_in_store", pipIn)

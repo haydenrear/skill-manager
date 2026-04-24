@@ -2,8 +2,10 @@
 //SOURCES ../../sdk/java/src/main/java/com/hayden/testgraphsdk/sdk/*.java
 
 import com.hayden.testgraphsdk.sdk.Node;
+import com.hayden.testgraphsdk.sdk.NodeContext;
 import com.hayden.testgraphsdk.sdk.NodeResult;
 import com.hayden.testgraphsdk.sdk.NodeSpec;
+import com.hayden.testgraphsdk.sdk.Procs;
 
 import java.nio.file.Path;
 import java.util.List;
@@ -33,7 +35,7 @@ public class CampaignsCreated {
             Path repoRoot = Path.of(System.getProperty("user.dir")).resolve("..").normalize();
             Path sm = repoRoot.resolve("skill-manager");
 
-            int rcReviewer = run(sm, home, repoRoot, List.of(
+            int rcReviewer = run(ctx, "ads-reviewer", sm, home, repoRoot, List.of(
                     "ads", "create",
                     "--sponsor", "Acme Reviews Inc.",
                     "--skill", "reviewer-skill",
@@ -42,7 +44,7 @@ public class CampaignsCreated {
                     "--bid-cents", "500",
                     "--registry", registryUrl));
 
-            int rcFormatter = run(sm, home, repoRoot, List.of(
+            int rcFormatter = run(ctx, "ads-formatter", sm, home, repoRoot, List.of(
                     "ads", "create",
                     "--sponsor", "Acme Style Co.",
                     "--skill", "formatter-skill",
@@ -52,7 +54,7 @@ public class CampaignsCreated {
                     "--registry", registryUrl));
 
             // A second campaign on "review" — higher bid, promotes formatter.
-            int rcHighBid = run(sm, home, repoRoot, List.of(
+            int rcHighBid = run(ctx, "ads-highbid", sm, home, repoRoot, List.of(
                     "ads", "create",
                     "--sponsor", "Acme Style Co.",
                     "--skill", "formatter-skill",
@@ -62,24 +64,30 @@ public class CampaignsCreated {
                     "--registry", registryUrl));
 
             boolean ok = rcReviewer == 0 && rcFormatter == 0 && rcHighBid == 0;
-            return (ok
+            NodeResult result = ok
                     ? NodeResult.pass("campaigns.created")
                     : NodeResult.fail("campaigns.created",
                             "rcReviewer=" + rcReviewer + " rcFormatter=" + rcFormatter
-                                    + " rcHighBid=" + rcHighBid))
+                                    + " rcHighBid=" + rcHighBid);
+            // Attach each subprocess log (attach is a no-op on missing files).
+            Procs.attach(result, ctx, "ads-reviewer", rcReviewer, 100);
+            Procs.attach(result, ctx, "ads-formatter", rcFormatter, 100);
+            Procs.attach(result, ctx, "ads-highbid", rcHighBid, 100);
+            return result
                     .assertion("reviewer_campaign_created", rcReviewer == 0)
                     .assertion("formatter_campaign_created", rcFormatter == 0)
                     .assertion("high_bid_campaign_created", rcHighBid == 0);
         });
     }
 
-    private static int run(Path sm, String home, Path repoRoot, List<String> subArgs) throws Exception {
+    private static int run(NodeContext ctx, String label, Path sm, String home,
+                           Path repoRoot, List<String> subArgs) throws Exception {
         java.util.List<String> cmd = new java.util.ArrayList<>();
         cmd.add(sm.toString());
         cmd.addAll(subArgs);
-        ProcessBuilder pb = new ProcessBuilder(cmd).inheritIO();
+        ProcessBuilder pb = new ProcessBuilder(cmd);
         pb.environment().put("SKILL_MANAGER_HOME", home);
         pb.environment().put("SKILL_MANAGER_INSTALL_DIR", repoRoot.toString());
-        return pb.start().waitFor();
+        return Procs.runLogged(ctx, label, pb);
     }
 }

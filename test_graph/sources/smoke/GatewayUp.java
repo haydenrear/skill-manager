@@ -4,6 +4,7 @@
 import com.hayden.testgraphsdk.sdk.Node;
 import com.hayden.testgraphsdk.sdk.NodeResult;
 import com.hayden.testgraphsdk.sdk.NodeSpec;
+import com.hayden.testgraphsdk.sdk.Procs;
 
 import java.nio.file.Path;
 
@@ -38,24 +39,27 @@ public class GatewayUp {
             ProcessBuilder pb = new ProcessBuilder(
                     sm.toString(), "gateway", "up",
                     "--port", Integer.toString(port),
-                    "--wait-seconds", "45")
-                    .inheritIO();
+                    "--wait-seconds", "45");
             pb.environment().put("SKILL_MANAGER_HOME", home);
             pb.environment().put("SKILL_MANAGER_INSTALL_DIR", repoRoot.toString());
 
             int rc;
             try {
-                rc = pb.start().waitFor();
+                rc = Procs.runLogged(ctx, "gateway-up", pb);
             } catch (Exception e) {
                 return NodeResult.error("gateway.up", e);
             }
             if (rc != 0) {
-                return NodeResult.fail("gateway.up", "skill-manager gateway up exited " + rc);
+                return Procs.attach(
+                        NodeResult.fail("gateway.up", "skill-manager gateway up exited " + rc),
+                        ctx, "gateway-up", rc, 200);
             }
-            return NodeResult.pass("gateway.up")
-                    .assertion("gateway_healthy", true)
-                    .metric("port", port)
-                    .publish("baseUrl", "http://127.0.0.1:" + port);
+            return Procs.attach(
+                    NodeResult.pass("gateway.up")
+                            .assertion("gateway_healthy", true)
+                            .metric("port", port)
+                            .publish("baseUrl", "http://127.0.0.1:" + port),
+                    ctx, "gateway-up", rc, 0);
         });
     }
 }

@@ -28,14 +28,17 @@ public final class GatewayClient {
 
     private final GatewayConfig config;
     private final ObjectMapper json = new ObjectMapper();
-    /**
-     * Sorted-key canonical JSON — mirrors Python's
-     * {@code json.dumps(sort_keys=True, separators=(",", ":"))} byte-for-byte so
-     * spec digests match on both sides. {@link JsonGenerator.Feature#ESCAPE_NON_ASCII}
-     * reproduces Python's default {@code ensure_ascii=True} (non-ASCII → {@code \uXXXX});
-     * {@code WRITE_HEX_UPPER_CASE=false} matches Python's lowercase hex digits
-     * (Jackson defaults to uppercase, which would desync the digest on its own).
-     */
+    // Sorted-key canonical JSON — mirrors Python's
+    // json.dumps(sort_keys=True, separators=(",", ":")) byte-for-byte so spec
+    // digests match on both sides. ESCAPE_NON_ASCII reproduces Python's default
+    // ensure_ascii=True (non-ASCII becomes a backslash-u escape);
+    // WRITE_HEX_UPPER_CASE=false matches Python's lowercase hex digits (Jackson
+    // defaults to uppercase, which would desync the digest on its own).
+    //
+    // Note: this is deliberately a line comment, not a Javadoc — Java processes
+    // unicode escape sequences during lexing, *before* stripping comments, so
+    // putting a literal backslash-u sequence inside a /** ... */ block breaks
+    // compilation of every jbang entry point that //SOURCES this file.
     private static final ObjectMapper CANONICAL = new ObjectMapper(
             JsonFactory.builder()
                     .configure(JsonWriteFeature.WRITE_HEX_UPPER_CASE, false)

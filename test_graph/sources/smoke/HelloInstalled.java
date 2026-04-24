@@ -4,6 +4,7 @@
 import com.hayden.testgraphsdk.sdk.Node;
 import com.hayden.testgraphsdk.sdk.NodeResult;
 import com.hayden.testgraphsdk.sdk.NodeSpec;
+import com.hayden.testgraphsdk.sdk.Procs;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -35,14 +36,13 @@ public class HelloInstalled {
 
             ProcessBuilder pb = new ProcessBuilder(
                     sm.toString(), "install", "hello-skill",
-                    "--registry", registryUrl)
-                    .inheritIO();
+                    "--registry", registryUrl);
             pb.environment().put("SKILL_MANAGER_HOME", home);
             pb.environment().put("SKILL_MANAGER_INSTALL_DIR", repoRoot.toString());
 
             int rc;
             try {
-                rc = pb.start().waitFor();
+                rc = Procs.runLogged(ctx, "install", pb);
             } catch (Exception e) {
                 return NodeResult.error("hello.installed", e);
             }
@@ -51,9 +51,11 @@ public class HelloInstalled {
             boolean mdOk = Files.isRegularFile(skillDir.resolve("SKILL.md"));
             boolean tomlOk = Files.isRegularFile(skillDir.resolve("skill-manager.toml"));
 
-            return (rc == 0 && mdOk && tomlOk
+            boolean pass = rc == 0 && mdOk && tomlOk;
+            NodeResult result = pass
                     ? NodeResult.pass("hello.installed")
-                    : NodeResult.fail("hello.installed", "rc=" + rc + " md=" + mdOk + " toml=" + tomlOk))
+                    : NodeResult.fail("hello.installed", "rc=" + rc + " md=" + mdOk + " toml=" + tomlOk);
+            return Procs.attach(result, ctx, "install", pass ? 0 : 1, 200)
                     .assertion("add_ok", rc == 0)
                     .assertion("skill_md_present", mdOk)
                     .assertion("skill_manager_toml_present", tomlOk)
