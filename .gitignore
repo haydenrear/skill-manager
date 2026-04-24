@@ -44,6 +44,8 @@ out/
 ### Build/Runtime ###
 *.class
 *.jar
+# Gradle wrappers are meant to be committed — re-allow the jars after *.jar.
+!**/gradle/wrapper/gradle-wrapper.jar
 *.log
 .env*
 
