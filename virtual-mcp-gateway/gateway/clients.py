@@ -119,6 +119,12 @@ class MCPClientLibraryClient(DownstreamClient):
         self._session_lock = asyncio.Lock()
 
     async def initialize(self) -> None:
+        # If this transport always uses transient sessions (streamable-http,
+        # SSE), skip opening a persistent session — it would just get torn
+        # down on first real call and the teardown is what trips anyio's
+        # cross-task cancel-scope check.
+        if self._should_use_transient_session(None):
+            return
         await self._ensure_persistent_session()
 
     async def notify_initialized(self) -> None:
@@ -273,7 +279,13 @@ class StreamableHTTPMCPClient(MCPClientLibraryClient):
         self.endpoint = config.url
 
     def _should_use_transient_session(self, forwarded_headers: Optional[Dict[str, str]]) -> bool:
-        return bool(forwarded_headers)
+        # Always transient: a persistent streamable-http session is owned by
+        # the asyncio task that opened it, so closing it from a different
+        # task (e.g. a redeploy arriving on a new request handler) trips
+        # anyio's "exit cancel scope in a different task" guard. Transient
+        # sessions open+close inside the caller task, so there's nothing
+        # task-owned to unwind at teardown.
+        return True
 
     @contextlib.asynccontextmanager
     async def _transport_context(self, forwarded_headers: Optional[Dict[str, str]]) -> Any:
@@ -301,7 +313,8 @@ class SSEMCPClient(MCPClientLibraryClient):
         self.endpoint = config.url
 
     def _should_use_transient_session(self, forwarded_headers: Optional[Dict[str, str]]) -> bool:
-        return bool(forwarded_headers)
+        # Always transient — same rationale as StreamableHTTPMCPClient.
+        return True
 
     @contextlib.asynccontextmanager
     async def _transport_context(self, forwarded_headers: Optional[Dict[str, str]]) -> Any:
