@@ -1,5 +1,8 @@
 package dev.skillmanager.mcp;
 
+import com.fasterxml.jackson.core.JsonFactory;
+import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.core.json.JsonWriteFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import dev.skillmanager.model.McpDependency;
@@ -25,9 +28,20 @@ public final class GatewayClient {
 
     private final GatewayConfig config;
     private final ObjectMapper json = new ObjectMapper();
-    /** Sorted-key canonical JSON — mirrors Python's json.dumps(sort_keys=True) for spec_digest. */
-    private static final ObjectMapper CANONICAL =
-            new ObjectMapper().configure(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS, true);
+    /**
+     * Sorted-key canonical JSON — mirrors Python's
+     * {@code json.dumps(sort_keys=True, separators=(",", ":"))} byte-for-byte so
+     * spec digests match on both sides. {@link JsonGenerator.Feature#ESCAPE_NON_ASCII}
+     * reproduces Python's default {@code ensure_ascii=True} (non-ASCII → {@code \uXXXX});
+     * {@code WRITE_HEX_UPPER_CASE=false} matches Python's lowercase hex digits
+     * (Jackson defaults to uppercase, which would desync the digest on its own).
+     */
+    private static final ObjectMapper CANONICAL = new ObjectMapper(
+            JsonFactory.builder()
+                    .configure(JsonWriteFeature.WRITE_HEX_UPPER_CASE, false)
+                    .build())
+            .configure(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS, true)
+            .configure(JsonGenerator.Feature.ESCAPE_NON_ASCII, true);
     private final HttpClient http = HttpClient.newBuilder()
             .version(HttpClient.Version.HTTP_1_1)
             .connectTimeout(Duration.ofSeconds(5))
