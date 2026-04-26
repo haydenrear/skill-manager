@@ -38,6 +38,7 @@ validationGraph {
 
         node("sources/smoke/UmbrellaInstalled.java")
         node("sources/smoke/TransitiveClisPresent.java")
+        node("sources/smoke/EnvScriptReports.java")
 
         // Install a skill whose MCP dep points at the echo fixture (scope =
         // global-sticky). Registration happens transitively via skill install.
