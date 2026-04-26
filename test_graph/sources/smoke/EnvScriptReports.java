@@ -3,8 +3,10 @@
 //DEPS com.fasterxml.jackson.core:jackson-databind:2.20.2
 
 import com.hayden.testgraphsdk.sdk.Node;
+import com.hayden.testgraphsdk.sdk.NodeContext;
 import com.hayden.testgraphsdk.sdk.NodeResult;
 import com.hayden.testgraphsdk.sdk.NodeSpec;
+import com.hayden.testgraphsdk.sdk.Procs;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -58,15 +60,21 @@ public class EnvScriptReports {
 
             ObjectMapper om = new ObjectMapper();
             List<String> errors = new ArrayList<>();
+            int run1Rc = -1;
+            int run2Rc = -1;
 
             // ------ Run 1: explicit --skills (including a nonexistent one) ------
             JsonNode r1;
             try {
-                r1 = runEnvScript(om, envScript, home, List.of(
+                RunResult rr = runEnvScript(om, envScript, home, ctx, "env-run1", List.of(
                         "--skills", "pip-cli-skill", "npm-cli-skill", "nonexistent-skill"));
+                run1Rc = rr.rc;
+                r1 = rr.json;
             } catch (Exception e) {
-                return NodeResult.fail("env.script.reports",
-                        "failed to invoke env.py (run 1): " + e.getMessage());
+                return Procs.attach(
+                        NodeResult.fail("env.script.reports",
+                                "failed to invoke env.sh (run 1): " + e.getMessage()),
+                        ctx, "env-run1", 1, 200);
             }
 
             String reportedHome = textOrEmpty(r1.path("skill_manager_home"));
@@ -137,10 +145,16 @@ public class EnvScriptReports {
             // ------ Run 2: no --skills, dump-all ------
             JsonNode r2;
             try {
-                r2 = runEnvScript(om, envScript, home, List.of());
+                RunResult rr = runEnvScript(om, envScript, home, ctx, "env-run2", List.of());
+                run2Rc = rr.rc;
+                r2 = rr.json;
             } catch (Exception e) {
-                return NodeResult.fail("env.script.reports",
-                        "failed to invoke env.py (run 2): " + e.getMessage());
+                return Procs.attach(
+                        Procs.attach(
+                                NodeResult.fail("env.script.reports",
+                                        "failed to invoke env.sh (run 2): " + e.getMessage()),
+                                ctx, "env-run1", run1Rc, 200),
+                        ctx, "env-run2", 1, 200);
             }
 
             boolean run2RequestedNull = r2.path("skills_requested").isNull();
@@ -159,6 +173,11 @@ public class EnvScriptReports {
             NodeResult result = pass
                     ? NodeResult.pass("env.script.reports")
                     : NodeResult.fail("env.script.reports", String.join("; ", errors));
+
+            // Attach the per-run env.sh logs as artifacts so the captured
+            // JSON / stderr survives the run even when assertions pass.
+            result = Procs.attach(result, ctx, "env-run1", pass ? 0 : 1, 200);
+            result = Procs.attach(result, ctx, "env-run2", pass ? 0 : 1, 200);
 
             return result
                     .assertion("env_script_exists", true)
@@ -185,7 +204,14 @@ public class EnvScriptReports {
         });
     }
 
-    private static JsonNode runEnvScript(ObjectMapper om, Path script, String home, List<String> extraArgs)
+    private static final class RunResult {
+        final int rc;
+        final JsonNode json;
+        RunResult(int rc, JsonNode json) { this.rc = rc; this.json = json; }
+    }
+
+    private static RunResult runEnvScript(ObjectMapper om, Path script, String home,
+                                          NodeContext ctx, String label, List<String> extraArgs)
             throws Exception {
         List<String> cmd = new ArrayList<>();
         cmd.add(script.toString());
@@ -194,25 +220,36 @@ public class EnvScriptReports {
         pb.environment().put("SKILL_MANAGER_HOME", home);
         Process p = pb.start();
         StringBuilder out = new StringBuilder();
+        StringBuilder err = new StringBuilder();
+        // Sequential drain is safe: env.py emits a small JSON blob plus a
+        // few lines of stderr — neither is large enough to fill an OS pipe.
         try (BufferedReader r = new BufferedReader(new InputStreamReader(p.getInputStream()))) {
             String line;
             while ((line = r.readLine()) != null) {
                 out.append(line).append('\n');
             }
         }
-        StringBuilder err = new StringBuilder();
         try (BufferedReader r = new BufferedReader(new InputStreamReader(p.getErrorStream()))) {
             String line;
             while ((line = r.readLine()) != null) {
                 err.append(line).append('\n');
-                System.err.println("[env.py] " + line);
             }
         }
         int rc = p.waitFor();
+
+        // Persist a per-invocation log in the standard Procs location so it
+        // surfaces both as a node-logs/<nodeId>.<label>.log file on disk and
+        // as an artifact pointer on the envelope (via Procs.attach above).
+        Path log = Procs.logFile(ctx, label);
+        Files.writeString(log,
+                "$ " + String.join(" ", cmd) + "\nrc=" + rc
+                        + "\n--- stdout ---\n" + out
+                        + "\n--- stderr ---\n" + err);
+
         if (rc != 0) {
-            throw new RuntimeException("env.py exited rc=" + rc + " stderr=" + err);
+            throw new RuntimeException("env.sh exited rc=" + rc + " stderr=" + err);
         }
-        return om.readTree(out.toString());
+        return new RunResult(rc, om.readTree(out.toString()));
     }
 
     private static String textOrEmpty(JsonNode n) {
