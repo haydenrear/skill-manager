@@ -35,9 +35,12 @@ PACKAGE_MANAGERS = {
 
 def skill_manager_home() -> Path:
     env = os.environ.get("SKILL_MANAGER_HOME")
-    if env:
-        return Path(env).expanduser()
-    return Path.home() / ".skill-manager"
+    base = Path(env).expanduser() if env else Path.home() / ".skill-manager"
+    # Normalize to absolute without resolving symlinks — callers rely on
+    # bin/cli/<name> being a stable, user-facing entry point. A relative
+    # SKILL_MANAGER_HOME would otherwise leak relative paths into the
+    # JSON contract and break callers that cd before invoking.
+    return base if base.is_absolute() else base.absolute()
 
 
 def on_path(tool: str) -> str | None:
@@ -47,7 +50,9 @@ def on_path(tool: str) -> str | None:
             continue
         candidate = Path(part) / tool
         if candidate.is_file() and os.access(candidate, os.X_OK):
-            return str(candidate)
+            # Absolute, but don't follow symlinks — preserves the
+            # PATH-visible identity of the executable for callers.
+            return str(candidate if candidate.is_absolute() else candidate.absolute())
     return None
 
 
