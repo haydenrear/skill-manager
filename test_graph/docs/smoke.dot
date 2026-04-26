@@ -16,6 +16,7 @@ digraph "smoke" {
   "immutability.enforced" [label="immutability.enforced\n(assertion, jbang)"];
   "umbrella.installed" [label="umbrella.installed\n(action, jbang)"];
   "transitive.clis.present" [label="transitive.clis.present\n(assertion, jbang)"];
+  "env.script.reports" [label="env.script.reports\n(assertion, jbang)"];
   "echo.http.skill.installed" [label="echo.http.skill.installed\n(action, jbang)"];
   "echo.http.deployed" [label="echo.http.deployed\n(assertion, jbang)"];
   "mcp.tools.visible" [label="mcp.tools.visible\n(assertion, jbang)"];
@@ -47,6 +48,7 @@ digraph "smoke" {
   "hello.published" -> "immutability.enforced";
   "env.prepared" -> "umbrella.installed";
   "umbrella.installed" -> "transitive.clis.present";
+  "umbrella.installed" -> "env.script.reports";
   "gateway.up" -> "echo.http.skill.installed";
   "echo.http.up" -> "echo.http.skill.installed";
   "echo.http.skill.installed" -> "echo.http.deployed";
