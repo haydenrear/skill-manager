@@ -282,6 +282,50 @@ public final class SkillParser {
                     url
             );
         }
+        if ("npm".equalsIgnoreCase(type)) {
+            String pkg = t.getString("package");
+            if (pkg == null || pkg.isBlank()) {
+                throw new IllegalArgumentException(
+                        "npm load spec requires `package` (e.g. \"@runpod/mcp-server\")");
+            }
+            return new McpDependency.NpmLoad(
+                    pkg,
+                    stringOr(t.getString("version"), "latest"),
+                    asStringList(t.getArray("args")),
+                    env,
+                    transport,
+                    url
+            );
+        }
+        if ("uv".equalsIgnoreCase(type)) {
+            String pkg = t.getString("package");
+            if (pkg == null || pkg.isBlank()) {
+                throw new IllegalArgumentException(
+                        "uv load spec requires `package` (e.g. \"tb-query-mcp\")");
+            }
+            return new McpDependency.UvLoad(
+                    pkg,
+                    t.getString("version"),     // null = latest, no `--from` pin
+                    t.getString("entry_point"), // null = use package's default script
+                    asStringList(t.getArray("args")),
+                    env,
+                    transport,
+                    url
+            );
+        }
+        if ("shell".equalsIgnoreCase(type)) {
+            java.util.List<String> command = asStringList(t.getArray("command"));
+            if (command.isEmpty()) {
+                throw new IllegalArgumentException(
+                        "shell load spec requires `command` (e.g. command = [\"my-script.sh\", \"--mcp\"])");
+            }
+            return new McpDependency.ShellLoad(
+                    command,
+                    env,
+                    transport,
+                    url
+            );
+        }
         if ("binary".equalsIgnoreCase(type)) {
             Map<String, McpDependency.InstallTarget> targets = new LinkedHashMap<>();
             TomlTable installTable = t.getTable("install");

@@ -3,6 +3,7 @@ package dev.skillmanager.plan;
 import dev.skillmanager.model.CliDependency;
 import dev.skillmanager.model.McpDependency;
 import dev.skillmanager.resolve.ResolvedGraph;
+import dev.skillmanager.tools.ToolDependency;
 import java.util.List;
 
 public sealed interface PlanAction {
@@ -17,7 +18,14 @@ public sealed interface PlanAction {
 
     enum Severity { INFO, NOTICE, WARN, DANGER }
 
-    enum Section { RESOLVE, STORE, CLI, MCP, NOTES }
+    /**
+     * Order matters: sections render in this order in the plan output and
+     * execute in this order at install time. {@code TOOLS} runs before
+     * {@code CLI} and {@code MCP} so every backend / MCP load has its
+     * runtime ({@code uv}, {@code npx}, {@code docker}) available before
+     * it's invoked.
+     */
+    enum Section { RESOLVE, STORE, TOOLS, CLI, MCP, NOTES }
 
     // ---------------------------------------------------------------- actions
 
@@ -56,6 +64,58 @@ public sealed interface PlanAction {
         @Override public String title() { return name + (version == null ? "" : "@" + version); }
     }
 
+    /**
+     * Make a runtime tool ({@code uv}, {@code npx}, {@code docker}, …)
+     * available before any CLI install or MCP register runs. One entry
+     * per unique tool — produced by {@code PlanBuilder} after collecting
+     * {@code requiredToolIds()} from every CLI and MCP dep in the graph.
+     *
+     * <p>Severity ladder:
+     * <ul>
+     *   <li>{@code Bundled} — {@link Severity#NOTICE}: skill-manager
+     *       handles the install itself; the user is just being told it
+     *       will happen.</li>
+     *   <li>{@code External} on PATH — {@link Severity#INFO}: nothing to
+     *       do at install time, the tool is already there.</li>
+     *   <li>{@code External} missing — {@link Severity#WARN}: install
+     *       can proceed (install-time work doesn't need the external
+     *       tool), but a downstream {@code RegisterMcpServer} (and any
+     *       deploy of that server) will fail until the operator
+     *       installs it. Plan output surfaces the install hint.</li>
+     * </ul>
+     */
+    record EnsureTool(ToolDependency tool, boolean missingOnPath) implements PlanAction {
+        @Override public Severity severity() {
+            if (tool instanceof ToolDependency.Bundled) return Severity.NOTICE;
+            return missingOnPath ? Severity.WARN : Severity.INFO;
+        }
+        @Override public Section section() { return Section.TOOLS; }
+        @Override public String title() {
+            String prefix = tool instanceof ToolDependency.Bundled ? "bundle " : "check ";
+            return prefix + tool.id() + "  (" + tool.displayName() + ")";
+        }
+        @Override public List<String> notes() {
+            List<String> out = new java.util.ArrayList<>();
+            if (!tool.requestedBy().isEmpty()) {
+                out.add("requested by: " + String.join(", ", tool.requestedBy()));
+            }
+            if (tool instanceof ToolDependency.Bundled) {
+                out.add("will install under $SKILL_MANAGER_HOME/pm/" + tool.pm().id + "/ if missing");
+            } else if (tool instanceof ToolDependency.External ext) {
+                if (missingOnPath) {
+                    out.add("not on PATH — " + (ext.installHint() == null
+                            ? "install via the vendor's instructions"
+                            : ext.installHint()));
+                    out.add("install proceeds, but deploys requiring '"
+                            + tool.id() + "' will fail until it's installed");
+                } else {
+                    out.add("already on PATH");
+                }
+            }
+            return out;
+        }
+    }
+
     record RunCliInstall(String skillName, CliDependency dep) implements PlanAction {
         @Override public Severity severity() {
             String b = dep.backend();
@@ -89,6 +149,10 @@ public sealed interface PlanAction {
             return switch (dep.load()) {
                 case McpDependency.DockerLoad d -> Severity.WARN;
                 case McpDependency.BinaryLoad b -> b.initScript() != null ? Severity.DANGER : Severity.WARN;
+                case McpDependency.NpmLoad n -> Severity.WARN;
+                case McpDependency.UvLoad u -> Severity.WARN;
+                // Shell load runs an arbitrary command — no sandbox; flag as DANGER.
+                case McpDependency.ShellLoad s -> Severity.DANGER;
             };
         }
         @Override public Section section() { return Section.MCP; }
@@ -96,6 +160,12 @@ public sealed interface PlanAction {
             String kind = switch (dep.load()) {
                 case McpDependency.DockerLoad d -> "docker " + d.image();
                 case McpDependency.BinaryLoad b -> "binary " + (b.binPath() != null ? b.binPath() : "<none>");
+                case McpDependency.NpmLoad n -> "npm " + n.packageName()
+                        + (n.version() != null ? "@" + n.version() : "");
+                case McpDependency.UvLoad u -> "uv " + u.packageName()
+                        + (u.version() != null ? "==" + u.version() : "");
+                case McpDependency.ShellLoad s -> "shell "
+                        + (s.command().isEmpty() ? "<empty>" : s.command().get(0));
             };
             return dep.name() + "  (" + kind + ")";
         }
@@ -105,6 +175,23 @@ public sealed interface PlanAction {
             switch (dep.load()) {
                 case McpDependency.DockerLoad d -> { if (d.pull()) out.add("will docker pull " + d.image()); }
                 case McpDependency.BinaryLoad b -> { if (b.initScript() != null) out.add("init_script will run: " + b.initScript()); }
+                case McpDependency.NpmLoad n -> {
+                    out.add("will spawn `npx -y " + n.packageName()
+                            + (n.version() != null ? "@" + n.version() : "")
+                            + "` via bundled node");
+                }
+                case McpDependency.UvLoad u -> {
+                    out.add("will spawn `uv tool run "
+                            + (u.version() != null
+                                    ? "--from " + u.packageName() + "==" + u.version() + " "
+                                    + (u.entryPoint() != null ? u.entryPoint() : u.packageName())
+                                    : u.packageName())
+                            + "` via bundled uv");
+                }
+                case McpDependency.ShellLoad s -> {
+                    out.add("will spawn shell command verbatim — no sandbox: "
+                            + String.join(" ", s.command()));
+                }
             }
             return out;
         }

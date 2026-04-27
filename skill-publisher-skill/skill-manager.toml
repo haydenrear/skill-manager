@@ -1,0 +1,12 @@
+# Tooling metadata for the skill-publisher skill. The skill is pure
+# documentation — it explains how to author SKILL.md + skill-manager.toml
+# and run the publish/install round-trip — so it has no CLI deps and no
+# MCP deps. The empty arrays keep the install plan boring when this skill
+# is added.
+
+skill_references = []
+
+[skill]
+name = "skill-publisher"
+version = "0.1.0"
+description = "Onboard a directory to skill-manager: declare deps, publish, and validate the round-trip install."

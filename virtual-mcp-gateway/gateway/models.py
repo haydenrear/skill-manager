@@ -55,6 +55,12 @@ class ClientConfig:
     env_header_prefix: str = "x-env-"
     include_header_names: List[str] = field(default_factory=list)
     exclude_header_names: List[str] = field(default_factory=list)
+    # Stdio-only: extra env vars injected into the spawned subprocess.
+    # Used by the npm load type for host-env passthrough of secrets such
+    # as API keys. The stdio client picks this up via getattr in
+    # clients.py:_transport_context; ``None`` means "inherit the gateway's
+    # environment unchanged".
+    env: Dict[str, str] | None = None
 
 
 @dataclass(slots=True)

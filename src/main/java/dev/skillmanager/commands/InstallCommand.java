@@ -84,7 +84,12 @@ public final class InstallCommand implements Callable<Integer> {
             }
 
             CliLock lock = CliLock.load(store);
-            InstallPlan plan = new PlanBuilder(policy, lock).plan(graph, true, true, store.cliBinDir());
+            // Pass the runtime so the planner can presence-check external
+            // tools (docker, brew) and emit accurate EnsureTool entries.
+            dev.skillmanager.pm.PackageManagerRuntime pmRuntime =
+                    new dev.skillmanager.pm.PackageManagerRuntime(store);
+            InstallPlan plan = new PlanBuilder(policy, lock, pmRuntime)
+                    .plan(graph, true, true, store.cliBinDir());
             PlanPrinter.print(plan);
             if (plan.blocked()) {
                 Log.error("plan has blocked items — see policy at %s", store.root().resolve("policy.toml"));
@@ -112,6 +117,12 @@ public final class InstallCommand implements Callable<Integer> {
                         + (r.version() == null ? "" : "@" + r.version())
                         + " -> " + store.skillDir(r.name()));
             }
+
+            // Tools (uv, npx, docker, brew, …) — bundle bundleables, presence-
+            // check externals. Runs once per unique tool, regardless of how
+            // many CLI / MCP deps in the graph need it. See PlanAction.EnsureTool
+            // and dev.skillmanager.tools.ToolInstallRecorder.
+            dev.skillmanager.tools.ToolInstallRecorder.run(plan, store);
 
             // CLI deps.
             CliInstallRecorder.run(plan, store);

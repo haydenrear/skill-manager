@@ -70,18 +70,70 @@ public final class PackageManagerRuntime {
         return null;
     }
 
-    /** Return the bundled {@code tool} path, installing the pinned default version if missing. */
+    /** Return the bundled {@code tool} path, installing the pinned default version if missing.
+     *  Throws if the providing PM is external — use {@link #ensureAvailable} when the
+     *  caller doesn't know up front whether the tool is bundleable. */
     public String ensureBundled(String tool) throws IOException {
         String existing = bundledPath(tool);
         if (existing != null) return existing;
         for (PackageManager pm : PackageManager.values()) {
-            if (pm.providedTools().contains(tool)) {
-                install(pm, null);
-                String after = bundledPath(tool);
-                if (after != null) return after;
+            if (!pm.providedTools().contains(tool)) continue;
+            if (!pm.bundleable()) {
+                throw new IOException("tool '" + tool + "' is provided by external "
+                        + pm.id + "; use ensureAvailable() instead. " + pm.installHint());
             }
+            install(pm, null);
+            String after = bundledPath(tool);
+            if (after != null) return after;
         }
         throw new IOException("no bundled package manager provides tool: " + tool);
+    }
+
+    /**
+     * Unified entry point: ensure {@code tool} is callable, regardless of
+     * whether the providing {@link PackageManager} is bundleable or external.
+     *
+     * <ul>
+     *   <li>Bundleable provider — {@link #ensureBundled} (downloads if missing).</li>
+     *   <li>External provider — checks the gateway / CLI process PATH; throws
+     *       {@link IOException} with the install hint if missing.</li>
+     * </ul>
+     *
+     * <p>Returns the absolute path to the executable. The unified
+     * {@code ToolDependency} planning step uses this so a single call
+     * site handles every kind of MCP load and CLI backend.
+     */
+    public String ensureAvailable(String tool) throws IOException {
+        PackageManager pm = PackageManager.providerOf(tool);
+        if (pm == null) {
+            throw new IOException("no known package manager provides tool: " + tool);
+        }
+        if (pm.bundleable()) return ensureBundled(tool);
+        // External: presence-check on PATH.
+        String onPath = systemPath(tool);
+        if (onPath != null) return onPath;
+        throw new IOException(
+                "external tool '" + tool + "' is required but not on PATH. "
+                        + (pm.installHint() == null ? "" : pm.installHint()));
+    }
+
+    /** Bundled path if installed, else system PATH, else null. Never installs. */
+    public String availablePath(String tool) {
+        String bundled = bundledPath(tool);
+        if (bundled != null) return bundled;
+        return systemPath(tool);
+    }
+
+    /** Locate {@code tool} on the gateway/CLI process PATH. Returns null if missing. */
+    public String systemPath(String tool) {
+        if (tool == null) return null;
+        String path = System.getenv("PATH");
+        if (path == null) return null;
+        for (String part : path.split(java.io.File.pathSeparator)) {
+            Path candidate = Path.of(part, tool);
+            if (Files.isExecutable(candidate)) return candidate.toString();
+        }
+        return null;
     }
 
     public Path resolveCurrentBinary(PackageManager pm, String tool) {

@@ -63,7 +63,7 @@ validationGraph {
         node("sources/smoke/AgentConfigsCorrect.java")
 
         node("sources/smoke/SmokeReport.java")
-        node("sources/smoke/ServersDown.java")
+        node("sources/common/ServersDown.java").dependsOn("smoke.report")
         node("sources/common/PostgresDown.java").dependsOn("servers.down")
     }
 
@@ -121,6 +121,45 @@ validationGraph {
         node("sources/password-reset/FinalLogin.java")
         node("sources/password-reset/RefreshHonored.java")
         node("sources/common/PostgresDown.java").dependsOn("refresh.honored")
+    }
+
+    /*
+     * `hyper-experiments` — onboarding round-trip for the
+     * hyper-experiments-skill repo:
+     *
+     *   1. git clone (or copy from HYPER_LOCAL_DIR) the source.
+     *   2. publish to the per-run registry as `hyper-experiments`.
+     *   3. install by name from a fresh cwd (not the checkout).
+     *   4. assert tb-query CLI dep landed under bin/cli/.
+     *   5. assert runpod MCP dep is registered with the gateway.
+     *   6. teardown.
+     *
+     * Kept off the default `smoke` graph because it pulls a remote
+     * source by default; opt in explicitly:
+     *
+     *   ./gradlew hyper-experiments
+     *   HYPER_LOCAL_DIR=/path/to/hyper-experiments-skill ./gradlew hyper-experiments
+     *
+     * Documented as a case study in
+     * skill-publisher-skill/references/runpod-mcp-onboarding.md.
+     */
+    testGraph("hyper-experiments") {
+        node("sources/common/EnvPrepared.java")
+        node("sources/common/PostgresUp.java")
+        node("sources/common/RegistryUp.java")
+        node("sources/common/CiLoggedIn.java")
+        node("sources/common/JwtValid.java")
+        node("sources/smoke/GatewayUp.java")
+
+        node("sources/hyper/HyperCheckout.java")
+        node("sources/hyper/HyperPublished.java")
+        node("sources/hyper/HyperInstalled.java")
+        node("sources/hyper/HyperCliTbquery.java")
+        node("sources/hyper/HyperRunpodRegistered.java")
+
+        node("sources/common/ServersDown.java")
+                .dependsOn("hyper.cli.tbquery", "hyper.runpod.registered")
+        node("sources/common/PostgresDown.java").dependsOn("servers.down")
     }
 
     testGraph("sponsored") {

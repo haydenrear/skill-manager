@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 import dev.skillmanager.agent.Agent;
 import dev.skillmanager.model.McpDependency;
 import dev.skillmanager.model.Skill;
+import dev.skillmanager.store.SkillStore;
 import dev.skillmanager.util.Fs;
 import dev.skillmanager.util.Log;
 
@@ -40,6 +41,18 @@ public final class McpWriter {
     public McpWriter(GatewayConfig gateway) {
         this.gateway = gateway;
         this.client = new GatewayClient(gateway);
+    }
+
+    /**
+     * @deprecated runtime-tool bootstrap is now driven by
+     * {@code dev.skillmanager.tools.ToolInstallRecorder} via
+     * {@code PlanAction.EnsureTool} actions in the install plan. The
+     * {@code SkillStore} arg is no longer needed; this overload is kept
+     * for source compatibility and forwards to {@link #McpWriter(GatewayConfig)}.
+     */
+    @Deprecated
+    public McpWriter(GatewayConfig gateway, SkillStore store) {
+        this(gateway);
     }
 
     /**
@@ -83,7 +96,11 @@ public final class McpWriter {
         }
     }
 
-    /** Install-time decision for one dependency. See ticket: deploy-per-session.md. */
+    /** Install-time decision for one dependency. See ticket: deploy-per-session.md.
+     *  Runtime tools the gateway needs ({@code uv}, {@code npx}, {@code docker})
+     *  are guaranteed available before this method runs by
+     *  {@code ToolInstallRecorder} executing the {@code Section.TOOLS}
+     *  group of the install plan. */
     private InstallResult installOne(McpDependency dep) {
         String scope = dep.defaultScope();
         List<String> missing = dep.missingRequiredInit();

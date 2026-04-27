@@ -56,6 +56,67 @@ class BinaryLoadSpec(BaseModel):
     url: str | None = None  # required when transport != stdio
 
 
+class UvLoadSpec(BaseModel):
+    """MCP server distributed as a Python package, run via skill-manager's
+    bundled ``uv`` as ``uv tool run [--from <pkg>==<ver>] <entry> [args]``
+    (or ``uv tool run <pkg> [args]`` when no version is pinned).
+
+    Resolution order for ``uv``:
+      1. ``$SKILL_MANAGER_HOME/pm/uv/current/bin/uv`` (bundled by
+         skill-manager when a pip-CLI dep is installed, or proactively
+         by ``McpWriter.ensureGatewayPrerequisites`` when this load type
+         is registered).
+      2. ``shutil.which("uv")`` (system PATH fallback).
+    """
+
+    type: str = Field(default="uv", frozen=True)
+    package: str
+    version: str | None = None  # None = `uv tool run <pkg>` without --from pin
+    entry_point: str | None = None  # None = use package's default script
+    args: List[str] = Field(default_factory=list)
+    env: Dict[str, str] = Field(default_factory=dict)
+    transport: str = "stdio"
+    url: str | None = None
+
+
+class ShellLoadSpec(BaseModel):
+    """Escape hatch — run an arbitrary shell command as a stdio MCP server.
+
+    No download, no resolution, no PATH magic; whatever's named in
+    ``command[0]`` must already be reachable from the gateway. The
+    ``env`` map follows the same host-passthrough convention as the
+    other load types: empty values are pulled from the gateway's
+    environment at registration time.
+    """
+
+    type: str = Field(default="shell", frozen=True)
+    command: List[str]
+    env: Dict[str, str] = Field(default_factory=dict)
+    transport: str = "stdio"
+    url: str | None = None
+
+
+class NpmLoadSpec(BaseModel):
+    """MCP server distributed as an npm package, run as
+    ``npx -y <package>@<version> [args]`` over stdio.
+
+    The provisioner resolves ``npx`` from skill-manager's bundled Node
+    first (``$SKILL_MANAGER_HOME/pm/node/current/bin/npx``), falling
+    back to ``shutil.which("npx")`` on the gateway's PATH. Empty-value
+    entries in :attr:`env` are passed through from the gateway process
+    environment, mirroring the docker convention so a manifest can
+    declare ``env = {{API_KEY = ""}}`` without committing the value.
+    """
+
+    type: str = Field(default="npm", frozen=True)
+    package: str
+    version: str = "latest"
+    args: List[str] = Field(default_factory=list)
+    env: Dict[str, str] = Field(default_factory=dict)
+    transport: str = "stdio"  # "stdio" | "streamable-http" | "sse"
+    url: str | None = None  # required when transport != stdio
+
+
 class DockerLoadSpec(BaseModel):
     type: str = Field(default="docker", frozen=True)
     image: str
@@ -71,27 +132,50 @@ class DockerLoadSpec(BaseModel):
 
 
 class LoadSpec(BaseModel):
-    """Tagged-union wrapper. Exactly one of ``docker`` / ``binary`` is set."""
+    """Tagged-union wrapper. Exactly one of
+    ``docker`` / ``binary`` / ``npm`` / ``uv`` / ``shell`` is set."""
 
     type: str
     docker: DockerLoadSpec | None = None
     binary: BinaryLoadSpec | None = None
+    npm: NpmLoadSpec | None = None
+    uv: UvLoadSpec | None = None
+    shell: ShellLoadSpec | None = None
 
     @model_validator(mode="after")
     def _populate_variant(self) -> "LoadSpec":
+        excluded = {"type", "docker", "binary", "npm", "uv", "shell"}
         # Allow flat form: {type: "docker", image: "..."} instead of {type: "docker", docker: {...}}
         if self.type == "docker" and self.docker is None:
-            extras = self.model_dump(exclude={"type", "docker", "binary"}, exclude_none=True)
+            extras = self.model_dump(exclude=excluded, exclude_none=True)
             if extras:
                 self.docker = DockerLoadSpec(**extras)
         elif self.type == "binary" and self.binary is None:
-            extras = self.model_dump(exclude={"type", "docker", "binary"}, exclude_none=True)
+            extras = self.model_dump(exclude=excluded, exclude_none=True)
             if extras:
                 self.binary = BinaryLoadSpec(**extras)
+        elif self.type == "npm" and self.npm is None:
+            extras = self.model_dump(exclude=excluded, exclude_none=True)
+            if extras:
+                self.npm = NpmLoadSpec(**extras)
+        elif self.type == "uv" and self.uv is None:
+            extras = self.model_dump(exclude=excluded, exclude_none=True)
+            if extras:
+                self.uv = UvLoadSpec(**extras)
+        elif self.type == "shell" and self.shell is None:
+            extras = self.model_dump(exclude=excluded, exclude_none=True)
+            if extras:
+                self.shell = ShellLoadSpec(**extras)
         if self.type == "docker" and self.docker is None:
             raise ValueError("docker load spec requires 'docker' block or flat fields")
         if self.type == "binary" and self.binary is None:
             raise ValueError("binary load spec requires 'binary' block or flat fields")
+        if self.type == "npm" and self.npm is None:
+            raise ValueError("npm load spec requires 'npm' block or flat fields")
+        if self.type == "uv" and self.uv is None:
+            raise ValueError("uv load spec requires 'uv' block or flat fields")
+        if self.type == "shell" and self.shell is None:
+            raise ValueError("shell load spec requires 'shell' block or flat fields")
         return self
 
     model_config = {"extra": "allow"}
@@ -143,6 +227,15 @@ class Provisioner:
         if load_spec.type == "binary":
             assert load_spec.binary is not None
             return await self._provision_binary(server_id, load_spec.binary)
+        if load_spec.type == "npm":
+            assert load_spec.npm is not None
+            return await self._provision_npm(server_id, load_spec.npm)
+        if load_spec.type == "uv":
+            assert load_spec.uv is not None
+            return await self._provision_uv(server_id, load_spec.uv)
+        if load_spec.type == "shell":
+            assert load_spec.shell is not None
+            return await self._provision_shell(server_id, load_spec.shell)
         raise ValueError(f"Unknown load type: {load_spec.type}")
 
     # ------------------------------------------------------------------ docker
@@ -164,7 +257,14 @@ class Provisioner:
         if spec.platform:
             cmd += ["--platform", spec.platform]
         for key, value in spec.env.items():
-            cmd += ["-e", f"{key}={value}"]
+            # Empty value is treated as host-env passthrough: docker forwards
+            # whatever `key` is set to in the gateway process. This lets a
+            # skill manifest declare `env = { API_KEY = "" }` to surface a
+            # secret requirement without hard-coding the value.
+            if value == "":
+                cmd += ["-e", key]
+            else:
+                cmd += ["-e", f"{key}={value}"]
         for volume in spec.volumes:
             cmd += ["-v", volume]
         cmd.append(spec.image)
@@ -173,6 +273,101 @@ class Provisioner:
         cmd += list(spec.args)
 
         return ClientConfig(server_id=server_id, transport="stdio", command=cmd)
+
+    # ------------------------------------------------------------------ npm
+    async def _provision_npm(self, server_id: str, spec: NpmLoadSpec) -> ClientConfig:
+        if spec.transport != "stdio":
+            if not spec.url:
+                raise ValueError("non-stdio npm load spec requires 'url'")
+            return ClientConfig(
+                server_id=server_id,
+                transport=spec.transport,
+                url=spec.url,
+                headers={},
+            )
+
+        npx = _resolve_npx()
+        if npx is None:
+            raise RuntimeError(
+                "npm load spec requires `npx` to be available — install Node "
+                "(e.g. `skill-manager install <skill-with-npm-cli-dep>` will "
+                "bootstrap a bundled copy under "
+                "$SKILL_MANAGER_HOME/pm/node/current/bin/npx) "
+                "or put npx on the gateway's PATH."
+            )
+
+        version = spec.version or "latest"
+        package_at_version = f"{spec.package}@{version}" if version else spec.package
+
+        cmd: List[str] = [npx, "-y", package_at_version, *spec.args]
+
+        env = _materialize_env_passthrough(spec.env)
+        return ClientConfig(
+            server_id=server_id,
+            transport="stdio",
+            command=cmd,
+            env=env or None,
+        )
+
+    # ------------------------------------------------------------------ uv
+    async def _provision_uv(self, server_id: str, spec: UvLoadSpec) -> ClientConfig:
+        if spec.transport != "stdio":
+            if not spec.url:
+                raise ValueError("non-stdio uv load spec requires 'url'")
+            return ClientConfig(
+                server_id=server_id,
+                transport=spec.transport,
+                url=spec.url,
+                headers={},
+            )
+
+        uv = _resolve_uv()
+        if uv is None:
+            raise RuntimeError(
+                "uv load spec requires `uv` to be available — install Python's "
+                "uv (https://docs.astral.sh/uv/) or let skill-manager bootstrap "
+                "a bundled copy under "
+                "$SKILL_MANAGER_HOME/pm/uv/current/bin/uv (happens automatically "
+                "when a skill with a uv MCP load is installed)."
+            )
+
+        cmd: List[str] = [uv, "tool", "run"]
+        if spec.version:
+            cmd += ["--from", f"{spec.package}=={spec.version}"]
+            cmd.append(spec.entry_point or spec.package)
+        else:
+            # No version pin: rely on uv tool run's default-script resolution.
+            cmd.append(spec.entry_point or spec.package)
+        cmd += list(spec.args)
+
+        env = _materialize_env_passthrough(spec.env)
+        return ClientConfig(
+            server_id=server_id,
+            transport="stdio",
+            command=cmd,
+            env=env or None,
+        )
+
+    # ------------------------------------------------------------------ shell
+    async def _provision_shell(self, server_id: str, spec: ShellLoadSpec) -> ClientConfig:
+        if spec.transport != "stdio":
+            if not spec.url:
+                raise ValueError("non-stdio shell load spec requires 'url'")
+            return ClientConfig(
+                server_id=server_id,
+                transport=spec.transport,
+                url=spec.url,
+                headers={},
+            )
+        if not spec.command:
+            raise ValueError("shell load spec requires non-empty 'command'")
+        env = _materialize_env_passthrough(spec.env)
+        return ClientConfig(
+            server_id=server_id,
+            transport="stdio",
+            command=list(spec.command),
+            env=env or None,
+        )
 
     # ------------------------------------------------------------------ binary
     async def _provision_binary(self, server_id: str, spec: BinaryLoadSpec) -> ClientConfig:
@@ -337,3 +532,69 @@ def default_data_dir() -> Path:
     if override:
         return Path(override)
     return Path(tempfile.gettempdir()) / "virtual-mcp-gateway"
+
+
+def _materialize_env_passthrough(env: Dict[str, str]) -> Dict[str, str]:
+    """Resolve a load spec's ``env`` map.
+
+    Empty values are pulled from the gateway process environment (host
+    passthrough); concrete values are kept as-is. Missing host vars are
+    dropped silently — let the spawned MCP server raise its own clearer
+    "missing API key" error rather than the gateway second-guessing.
+    """
+    out: Dict[str, str] = {}
+    for key, value in env.items():
+        if value == "":
+            pulled = os.environ.get(key)
+            if pulled is not None:
+                out[key] = pulled
+        else:
+            out[key] = value
+    return out
+
+
+def _resolve_npx() -> str | None:
+    """Locate ``npx`` for spawning npm-distributed MCP servers.
+
+    Resolution order (mirrors skill-manager's bundled-PM convention):
+
+    1. ``$SKILL_MANAGER_HOME/pm/node/current/bin/npx`` — the bundled Node
+       skill-manager installs when a skill declares an ``npm:`` CLI dep
+       or, after this change, an ``npm`` MCP load. Preferred so the
+       gateway uses the same Node version skill-manager pinned at install
+       time.
+    2. ``shutil.which("npx")`` — system PATH fallback for environments
+       where Node is provided by the OS / a developer's existing
+       toolchain.
+
+    Returns ``None`` when neither path resolves; the caller raises a
+    user-facing error rather than letting the spawn fail with an opaque
+    "no such file or directory".
+    """
+    return _resolve_bundled_tool("node", "npx")
+
+
+def _resolve_uv() -> str | None:
+    """Locate ``uv`` for spawning Python-distributed MCP servers.
+
+    Same resolution order as :func:`_resolve_npx`:
+
+    1. ``$SKILL_MANAGER_HOME/pm/uv/current/bin/uv`` — bundled by
+       skill-manager when a {pip CLI dep | uv MCP load} is installed.
+    2. ``shutil.which("uv")`` — system PATH fallback.
+    """
+    return _resolve_bundled_tool("uv", "uv")
+
+
+def _resolve_bundled_tool(pm_id: str, tool_name: str) -> str | None:
+    """Shared resolution for tools provided by skill-manager's bundled
+    package managers (pm/<pm_id>/current/bin/<tool>), with a system-PATH
+    fallback. Both npm-load and uv-load go through here so the gateway
+    has one place that knows about the bundled-PM convention.
+    """
+    sm_home = os.environ.get("SKILL_MANAGER_HOME")
+    if sm_home:
+        bundled = Path(sm_home) / "pm" / pm_id / "current" / "bin" / tool_name
+        if bundled.is_file() and os.access(bundled, os.X_OK):
+            return str(bundled)
+    return shutil.which(tool_name)

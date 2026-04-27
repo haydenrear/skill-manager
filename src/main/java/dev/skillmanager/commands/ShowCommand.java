@@ -51,6 +51,12 @@ public final class ShowCommand implements Callable<Integer> {
                 String typeInfo = switch (m.load()) {
                     case McpDependency.DockerLoad d -> "docker " + d.image();
                     case McpDependency.BinaryLoad b -> "binary (" + b.install().size() + " target(s))";
+                    case McpDependency.NpmLoad n -> "npm " + n.packageName()
+                            + (n.version() != null ? "@" + n.version() : "");
+                    case McpDependency.UvLoad u -> "uv " + u.packageName()
+                            + (u.version() != null ? "==" + u.version() : "");
+                    case McpDependency.ShellLoad sh -> "shell "
+                            + (sh.command().isEmpty() ? "<empty>" : sh.command().get(0));
                 };
                 System.out.println("  - " + m.name() + "  load=" + typeInfo);
             }
