@@ -50,6 +50,34 @@ public class HyperInstalled {
             pb.environment().put("SKILL_MANAGER_HOME", home);
             pb.environment().put("SKILL_MANAGER_INSTALL_DIR", repoRoot.toString());
 
+            // Map X_RUNPOD_KEY -> RUNPOD_API_KEY so McpWriter's env-init
+            // scan finds the runpod manifest's required field and the
+            // gateway can auto-deploy at install time. CI provisions
+            // X_RUNPOD_KEY from secrets.X_RUNPOD_KEY; locally the operator
+            // exports it before invoking ./gradlew hyper-experiments.
+            String runpodKey = System.getenv("X_RUNPOD_KEY");
+            if (runpodKey != null && !runpodKey.isBlank()) {
+                pb.environment().put("RUNPOD_API_KEY", runpodKey);
+            }
+
+            // Force the pip backend to actually bundle tb-query under
+            // $home/bin/cli/ instead of short-circuiting on the host's
+            // pre-existing copy. PipBackend.install checks isOnPath(onPath)
+            // and bails out when the binary is already reachable; our
+            // hyper.cli.tbquery assertion needs the bundled artifact to
+            // exist, so we strip the host-tb-query directory from the
+            // install subprocess's PATH.
+            String hostTbQuery = locateOnPath(System.getenv("PATH"), "tb-query");
+            if (hostTbQuery != null) {
+                Path tbqDir = Path.of(hostTbQuery).getParent();
+                String scrubbed = java.util.Arrays.stream(
+                                pb.environment().getOrDefault("PATH", "")
+                                        .split(java.io.File.pathSeparator))
+                        .filter(p -> tbqDir == null || !tbqDir.toString().equals(p))
+                        .collect(java.util.stream.Collectors.joining(java.io.File.pathSeparator));
+                pb.environment().put("PATH", scrubbed);
+            }
+
             int rc;
             try {
                 rc = Procs.runLogged(ctx, "install", pb);
@@ -73,5 +101,21 @@ public class HyperInstalled {
                     .metric("exitCode", rc)
                     .publish("skillDir", skillDir.toString());
         });
+    }
+
+    /**
+     * Resolve {@code tool} against the supplied {@code pathEnv} string.
+     * Used (instead of {@link System#getenv}) so the scrubbed PATH the
+     * install subprocess will actually run with is deterministic — we
+     * read the host PATH once, find the entry to remove, then write the
+     * scrubbed version back into {@code pb.environment()}.
+     */
+    private static String locateOnPath(String pathEnv, String tool) {
+        if (pathEnv == null || tool == null) return null;
+        for (String part : pathEnv.split(java.io.File.pathSeparator)) {
+            Path candidate = Path.of(part, tool);
+            if (Files.isExecutable(candidate)) return candidate.toString();
+        }
+        return null;
     }
 }

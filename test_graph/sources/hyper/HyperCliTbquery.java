@@ -40,14 +40,19 @@ public class HyperCliTbquery {
                 return NodeResult.fail("hyper.cli.tbquery", "missing env.prepared context");
             }
 
-            Path tbq = Path.of(home).resolve("bin/cli/tb-query");
-            boolean exists = Files.isRegularFile(tbq) || Files.isSymbolicLink(tbq);
+            // The hyper-experiments graph forces the bundle install path
+            // by scrubbing the host's tb-query directory from the install
+            // subprocess's PATH (see HyperInstalled). So tb-query MUST land
+            // under $home/bin/cli/ — anything else means the bundle path
+            // didn't actually run, and we'd be silently testing nothing.
+            Path bundled = Path.of(home).resolve("bin/cli/tb-query");
+            boolean bundledOk = Files.isRegularFile(bundled) || Files.isSymbolicLink(bundled);
             int rc = -1;
             String runtimeError = "";
 
-            if (exists) {
+            if (bundledOk) {
                 try {
-                    ProcessBuilder pb = new ProcessBuilder(tbq.toString(), "--help");
+                    ProcessBuilder pb = new ProcessBuilder(bundled.toString(), "--help");
                     rc = Procs.runLogged(ctx, "tb-query-help", pb);
                 } catch (Exception e) {
                     runtimeError = e.getMessage();
@@ -55,7 +60,7 @@ public class HyperCliTbquery {
             }
 
             String binCliListing = "";
-            if (!exists || rc != 0) {
+            if (!bundledOk || rc != 0) {
                 Path binCli = Path.of(home).resolve("bin/cli");
                 if (Files.isDirectory(binCli)) {
                     try {
@@ -67,21 +72,22 @@ public class HyperCliTbquery {
                 }
             }
 
-            boolean pass = exists && rc == 0;
+            boolean pass = bundledOk && rc == 0;
             String reason = pass ? ""
-                    : "tb-query missing or non-functional (path=" + tbq
-                            + " exists=" + exists + " rc=" + rc
+                    : "tb-query bundle path failed (path=" + bundled
+                            + " bundled=" + bundledOk
+                            + " rc=" + rc
                             + (runtimeError.isEmpty() ? "" : " err=" + runtimeError)
                             + " bin/cli=[" + binCliListing + "])";
 
             NodeResult result = pass
                     ? NodeResult.pass("hyper.cli.tbquery")
                     : NodeResult.fail("hyper.cli.tbquery", reason);
-            if (exists) {
+            if (bundledOk) {
                 result = Procs.attach(result, ctx, "tb-query-help", rc, 200);
             }
             return result
-                    .assertion("tb_query_on_disk", exists)
+                    .assertion("tb_query_bundled_under_home", bundledOk)
                     .assertion("tb_query_runs_help", rc == 0)
                     .metric("helpExitCode", rc);
         });

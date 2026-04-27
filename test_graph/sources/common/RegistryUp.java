@@ -1,5 +1,6 @@
 ///usr/bin/env jbang "$0" "$@" ; exit $?
 //SOURCES ../../sdk/java/src/main/java/com/hayden/testgraphsdk/sdk/*.java
+//SOURCES ../lib/StaleProcCleanup.java
 
 import com.hayden.testgraphsdk.sdk.Node;
 import com.hayden.testgraphsdk.sdk.NodeResult;
@@ -52,6 +53,18 @@ public class RegistryUp {
             Path pidFile = tgDir.resolve("registry.pid");
             Path registryRoot = homeDir.resolve("registry-data");
             Files.createDirectories(registryRoot);
+
+            // Kill any registry processes left over from a previous run that
+            // crashed before teardown. Random per-run ports + pidfiles under
+            // the previous home mean those processes can't be reaped via the
+            // current run's pidfile alone — match by command line instead.
+            // SkillManagerServer.java is the JBang entry; SkillRegistryApp
+            // is the Spring Boot @SpringBootApplication once jbang re-execs
+            // into java.
+            StaleProcCleanup.killByCommandLineMatch(
+                    ctx, "registry-stale-cleanup",
+                    "SkillManagerServer.java",
+                    "dev.skillmanager.server.SkillRegistryApp");
 
             Path repoRoot = Path.of(System.getProperty("user.dir")).resolve("..").normalize();
             Path serverScript = repoRoot.resolve("SkillManagerServer.java");

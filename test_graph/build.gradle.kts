@@ -26,6 +26,10 @@ validationGraph {
         node("sources/common/RegistryUp.java")
         node("sources/common/CiLoggedIn.java")
         node("sources/common/JwtValid.java")
+        // Materialize virtual-mcp-gateway/.venv before gateway.up so a
+        // fresh checkout doesn't crash with "ModuleNotFoundError: uvicorn".
+        // Idempotent — uv sync short-circuits on a populated lock.
+        node("sources/common/GatewayPythonVenvReady.java")
         node("sources/smoke/GatewayUp.java")
         node("sources/smoke/EchoHttpUp.java")
 
@@ -39,6 +43,16 @@ validationGraph {
         node("sources/smoke/UmbrellaInstalled.java")
         node("sources/smoke/TransitiveClisPresent.java")
         node("sources/smoke/EnvScriptReports.java")
+
+        // Validate the unified ToolDependency / EnsureTool path on the
+        // MCP side: install a fixture that declares one MCP load per
+        // non-binary type (npm, uv, docker), then assert that the
+        // install pipeline bundled the right runtimes under
+        // $SKILL_MANAGER_HOME/pm/ and registered all three servers
+        // with the gateway. This is the MCP analogue of
+        // umbrella.installed → transitive.clis.present.
+        node("sources/smoke/McpToolLoadsInstalled.java")
+        node("sources/smoke/McpToolLoadsBundled.java")
 
         // Install a skill whose MCP dep points at the echo fixture (scope =
         // global-sticky). Registration happens transitively via skill install.
@@ -76,6 +90,7 @@ validationGraph {
      *   ./gradlew browser-auth
      */
     testGraph("browser-auth") {
+        node("sources/common/GatewayPythonVenvReady.java")
         node("sources/common/EnvPrepared.java")
         node("sources/common/PostgresUp.java")
         node("sources/common/RegistryUp.java")
@@ -99,6 +114,7 @@ validationGraph {
      * browser-auth graph; run on demand.
      */
     testGraph("refresh-flow") {
+        node("sources/common/GatewayPythonVenvReady.java")
         node("sources/common/EnvPrepared.java")
         node("sources/common/PostgresUp.java")
         node("sources/refresh-flow/ShortAccessTokenTtl.java")
@@ -110,6 +126,7 @@ validationGraph {
     }
 
     testGraph("password-reset") {
+        node("sources/common/GatewayPythonVenvReady.java")
         node("sources/common/EnvPrepared.java")
         node("sources/common/PostgresUp.java")
         node("sources/common/RegistryUp.java")
@@ -149,6 +166,8 @@ validationGraph {
         node("sources/common/RegistryUp.java")
         node("sources/common/CiLoggedIn.java")
         node("sources/common/JwtValid.java")
+        // Bring the gateway venv up before the gateway itself.
+        node("sources/common/GatewayPythonVenvReady.java")
         node("sources/smoke/GatewayUp.java")
 
         node("sources/hyper/HyperCheckout.java")
@@ -156,13 +175,22 @@ validationGraph {
         node("sources/hyper/HyperInstalled.java")
         node("sources/hyper/HyperCliTbquery.java")
         node("sources/hyper/HyperRunpodRegistered.java")
+        // After install with X_RUNPOD_KEY in env, runpod auto-deployed.
+        // Enumerate its tools, then invoke list-gpu-types to prove the
+        // npx subprocess actually started, the API key reached it via
+        // the install-time env-init path, and the gateway can talk to
+        // it. Each step dumps its full response to a log artifact.
+        node("sources/hyper/HyperRunpodDeployed.java")
+        node("sources/hyper/HyperRunpodTools.java")
+        node("sources/hyper/HyperRunpodToolInvoked.java")
 
         node("sources/common/ServersDown.java")
-                .dependsOn("hyper.cli.tbquery", "hyper.runpod.registered")
+                .dependsOn("hyper.cli.tbquery", "hyper.runpod.tool.invoked")
         node("sources/common/PostgresDown.java").dependsOn("servers.down")
     }
 
     testGraph("sponsored") {
+        node("sources/common/GatewayPythonVenvReady.java")
         node("sources/common/EnvPrepared.java")
         node("sources/common/PostgresUp.java")
         node("sources/common/RegistryUp.java")

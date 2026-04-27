@@ -1,0 +1,38 @@
+# Smoke-graph fixture exercising the three non-binary MCP load types.
+# All three deps use scope = "session" so the gateway registers them but
+# never auto-deploys; spawning npx / uv / docker happens only at deploy
+# time, which the test does not trigger.
+
+skill_references = []
+
+# npm load — drives PlanBuilder to require "npx", which ToolRegistry
+# resolves to PackageManager.NODE → bundled into pm/node/.
+[[mcp_dependencies]]
+name = "mcp-tool-load-npm"
+display_name = "test fixture: npm-load"
+description = "Validates that an npm MCP load triggers Node bundling and registers with the gateway."
+default_scope = "session"
+load = { type = "npm", package = "@example/no-such-package", version = "0.0.1" }
+
+# uv load — drives PlanBuilder to require "uv", bundled into pm/uv/.
+[[mcp_dependencies]]
+name = "mcp-tool-load-uv"
+display_name = "test fixture: uv-load"
+description = "Validates that a uv MCP load triggers uv bundling and registers with the gateway."
+default_scope = "session"
+load = { type = "uv", package = "example-no-such-package", version = "0.0.1" }
+
+# docker load — drives PlanBuilder to require "docker", which is external
+# (PackageManager.DOCKER, bundleable=false). The plan emits a
+# presence-check EnsureTool entry; install proceeds whether or not docker
+# is on PATH. pull = false so registration never docker-pulls the image.
+[[mcp_dependencies]]
+name = "mcp-tool-load-docker"
+display_name = "test fixture: docker-load"
+description = "Validates that a docker MCP load presence-checks docker and registers with the gateway."
+default_scope = "session"
+load = { type = "docker", image = "alpine:3", pull = false }
+
+[skill]
+name = "mcp-tool-loads-skill"
+version = "0.0.1"
