@@ -107,7 +107,19 @@ jobs:
         run: uv sync --all-extras
         working-directory: virtual-mcp-gateway
 
+      # hyper-experiments asserts a real runpod deploy + tool invoke;
+      # without X_RUNPOD_KEY the deploy step fails. Forks don't get
+      # repository secrets, so secrets.X_RUNPOD_KEY is empty there and
+      # we'd fail every external PR regardless of what changed. Skip
+      # the plan + run when the secret isn't available; smoke and
+      # sponsored carry the PR.
+      - name: Skip hyper-experiments without RunPod secret
+        if: matrix.graph == 'hyper-experiments' && env.X_RUNPOD_KEY == ''
+        run: |
+          echo "::warning::Skipping hyper-experiments graph: secrets.X_RUNPOD_KEY not available (likely a fork PR). Run locally with X_RUNPOD_KEY exported to exercise this graph."
+
       - name: Plan graph
+        if: matrix.graph != 'hyper-experiments' || env.X_RUNPOD_KEY != ''
         run: |
           mkdir -p ci-logs
           set -o pipefail
@@ -119,6 +131,7 @@ jobs:
       # stream so the real error is recoverable from the uploaded artifact
       # even after the live log scrolls / the run ages out.
       - name: Run graph
+        if: matrix.graph != 'hyper-experiments' || env.X_RUNPOD_KEY != ''
         run: |
           mkdir -p ci-logs
           set -o pipefail
