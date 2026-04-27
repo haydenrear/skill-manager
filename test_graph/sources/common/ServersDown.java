@@ -11,13 +11,19 @@ import java.nio.file.Path;
 
 /**
  * Teardown: stop the gateway (via CLI) and the registry + echo-http fixture
- * (via the PID files they wrote). Runs after every assertion + the report,
- * so smoke-report.md gets a clean run before we pull the rug.
+ * (via PID files they wrote). Per-graph "wait until X is done" edges are
+ * added from the DSL via {@code .dependsOn(...)} — this script declares no
+ * graph-specific dependencies so it can be reused across smoke,
+ * hyper-experiments, and any future graph that brings up the same
+ * registry/gateway pair.
+ *
+ * <p>The echo-http kill is best-effort: if the pid file isn't present (the
+ * graph never spawned the fixture), {@link #killByPidFile} returns true and
+ * the corresponding assertion passes trivially.
  */
 public class ServersDown {
     static final NodeSpec SPEC = NodeSpec.of("servers.down")
             .kind(NodeSpec.Kind.EVIDENCE)
-            .dependsOn("smoke.report")
             .tags("teardown")
             .timeout("30s");
 

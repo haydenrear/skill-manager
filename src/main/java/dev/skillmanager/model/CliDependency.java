@@ -47,6 +47,28 @@ public record CliDependency(
         return colon < 0 ? "" : spec.substring(colon + 1);
     }
 
+    /**
+     * Tool ids the install plan must guarantee are available before this
+     * CLI dep can be installed. Mirrors the same surface on
+     * {@code McpDependency.LoadSpec.requiredToolIds()} so {@code PlanBuilder}
+     * can collect both into one deduplicated {@code EnsureTool} group.
+     *
+     * <ul>
+     *   <li>{@code pip:} → uv (skill-manager bundles)</li>
+     *   <li>{@code npm:} → npm  (skill-manager bundles via Node)</li>
+     *   <li>{@code brew:} → brew (external; presence-check only)</li>
+     *   <li>{@code tar:} → none (the backend downloads the binary itself)</li>
+     * </ul>
+     */
+    public java.util.Set<String> requiredToolIds() {
+        return switch (backend()) {
+            case "pip" -> java.util.Set.of("uv");
+            case "npm" -> java.util.Set.of("npm");
+            case "brew" -> java.util.Set.of("brew");
+            default -> java.util.Set.of();
+        };
+    }
+
     public record InstallTarget(
             String url,
             String archive,

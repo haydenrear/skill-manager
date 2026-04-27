@@ -206,6 +206,32 @@ public final class GatewayClient {
                 if (b.transport() != null) out.put("transport", b.transport());
                 if (b.url() != null) out.put("url", b.url());
             }
+            case McpDependency.NpmLoad n -> {
+                out.put("type", "npm");
+                out.put("package", n.packageName());
+                out.put("version", n.version() == null ? "latest" : n.version());
+                if (!n.args().isEmpty()) out.put("args", n.args());
+                if (!n.env().isEmpty()) out.put("env", n.env());
+                if (n.transport() != null) out.put("transport", n.transport());
+                if (n.url() != null) out.put("url", n.url());
+            }
+            case McpDependency.UvLoad u -> {
+                out.put("type", "uv");
+                out.put("package", u.packageName());
+                if (u.version() != null) out.put("version", u.version());
+                if (u.entryPoint() != null) out.put("entry_point", u.entryPoint());
+                if (!u.args().isEmpty()) out.put("args", u.args());
+                if (!u.env().isEmpty()) out.put("env", u.env());
+                if (u.transport() != null) out.put("transport", u.transport());
+                if (u.url() != null) out.put("url", u.url());
+            }
+            case McpDependency.ShellLoad s -> {
+                out.put("type", "shell");
+                out.put("command", s.command());
+                if (!s.env().isEmpty()) out.put("env", s.env());
+                if (s.transport() != null) out.put("transport", s.transport());
+                if (s.url() != null) out.put("url", s.url());
+            }
         }
         return out;
     }

@@ -104,6 +104,11 @@ public final class GatewayRuntime {
                 .redirectOutput(logFile().toFile());
         // Stable dir: dynamic-servers.json + downloaded MCP binaries live here.
         pb.environment().put("VMG_DATA_DIR", gatewayDataDir().toString());
+        // The gateway resolves bundled npx/uv from $SKILL_MANAGER_HOME/pm/...
+        // when spawning npm-load and uv-load MCP servers, so make sure the
+        // home is on the gateway's environment regardless of how the
+        // operator invoked `skill-manager gateway up`.
+        pb.environment().put("SKILL_MANAGER_HOME", store.root().toString());
         Process proc = pb.start();
         Files.writeString(pidFile(), Long.toString(proc.pid()));
         Log.info("gateway pid=%d log=%s", proc.pid(), logFile());
