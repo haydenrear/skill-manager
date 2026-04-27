@@ -67,7 +67,19 @@ public final class GatewayClient {
     }
 
     public RegisterResult register(McpDependency dep, boolean deploy) throws IOException {
-        Map<String, Object> body = registerPayload(dep, deploy);
+        return register(dep, deploy, Map.of());
+    }
+
+    /**
+     * Register {@code dep} with the gateway, optionally auto-deploying.
+     * The {@code extraInitValues} map is merged with the manifest's
+     * {@code initialization_params} (env wins) so install-time secrets
+     * supplied via the {@code RUNPOD_API_KEY=$X_RUNPOD_KEY} pattern flow
+     * into the auto-deploy call. See {@code McpWriter.installOne}.
+     */
+    public RegisterResult register(McpDependency dep, boolean deploy,
+                                   Map<String, Object> extraInitValues) throws IOException {
+        Map<String, Object> body = registerPayload(dep, deploy, extraInitValues);
         String payload = json.writeValueAsString(body);
         HttpRequest req = HttpRequest.newBuilder(config.serversEndpoint())
                 .header("Content-Type", "application/json")
@@ -142,13 +154,30 @@ public final class GatewayClient {
 
     /** Exposed for tests + digest comparison. */
     public Map<String, Object> registerPayload(McpDependency dep, boolean deploy) {
+        return registerPayload(dep, deploy, Map.of());
+    }
+
+    /**
+     * Build the gateway register payload, merging {@code extraInitValues}
+     * with the manifest's {@code initialization_params}. Env-supplied
+     * values (the {@code extraInitValues} map; see
+     * {@code McpWriter.installOne}) take precedence over manifest
+     * defaults so an operator can override at install time without
+     * editing the skill.
+     */
+    public Map<String, Object> registerPayload(McpDependency dep, boolean deploy,
+                                               Map<String, Object> extraInitValues) {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("server_id", dep.name());
         body.put("display_name", dep.displayName());
         body.put("description", dep.description());
         body.put("load_spec", serializeLoad(dep.load()));
         body.put("init_schema", serializeSchema(dep.initSchema()));
-        if (!dep.initializationParams().isEmpty()) body.put("initialization_params", dep.initializationParams());
+
+        Map<String, Object> mergedInit = new LinkedHashMap<>(dep.initializationParams());
+        if (extraInitValues != null) mergedInit.putAll(extraInitValues);
+        if (!mergedInit.isEmpty()) body.put("initialization_params", mergedInit);
+
         if (dep.idleTimeoutSeconds() != null) body.put("idle_timeout_seconds", dep.idleTimeoutSeconds());
         body.put("default_scope", dep.defaultScope());
         body.put("deploy", deploy);

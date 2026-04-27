@@ -753,11 +753,20 @@ class ToolRegistry:
         if deployment_payload is None and deployed_globally:
             deployment_payload = self._deployment_payload(server_def, self.global_deployments[server_id])
 
+        # Surface the load_spec discriminator so operators (and tests) can
+        # tell at a glance what kind of downstream is being fronted —
+        # docker / binary / npm / uv / shell — without having to parse the
+        # internal client command. transport alone isn't enough: stdio is
+        # shared across docker/npm/uv/shell.
+        load_spec = self.load_specs.get(server_id)
+        load_type = load_spec.type if load_spec is not None else None
+
         payload = {
             "server_id": server_def.server_id,
             "display_name": server_def.display_name,
             "description": server_def.description,
             "transport": server_def.client.transport,
+            "load_type": load_type,
             "init_schema": server_def.schema_dict(),
             "save_last_init": server_def.save_last_init,
             "idle_timeout_seconds": server_def.idle_timeout_seconds,
@@ -858,6 +867,29 @@ class ToolRegistry:
             config.tool_path_prefix = str(init_values["tool_path_prefix"])
         if "namespace" in init_values:
             config.namespace = str(init_values["namespace"])
+
+        # Init values that name an init_schema field flow into the spawned
+        # subprocess's environment for stdio transports — this is how a
+        # secret like RUNPOD_API_KEY supplied at install time
+        # (RUNPOD_API_KEY=$X_RUNPOD_KEY skill-manager install ...) actually
+        # reaches the npx / uv subprocess. The keys above are excluded
+        # because they have dedicated handling.
+        if config.transport == "stdio":
+            special_keys = {"url", "headers", "command", "tool_path_prefix", "namespace"}
+            schema_names = {f.name for f in server_def.init_schema}
+            env_overrides: dict[str, str] = {}
+            for key, value in init_values.items():
+                if key in special_keys:
+                    continue
+                if key not in schema_names:
+                    continue
+                if value is None:
+                    continue
+                env_overrides[key] = str(value)
+            if env_overrides:
+                merged_env = dict(config.env or {})
+                merged_env.update(env_overrides)
+                config.env = merged_env
 
         return config
 

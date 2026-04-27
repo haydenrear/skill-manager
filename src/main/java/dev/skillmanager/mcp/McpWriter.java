@@ -96,15 +96,51 @@ public final class McpWriter {
         }
     }
 
-    /** Install-time decision for one dependency. See ticket: deploy-per-session.md.
-     *  Runtime tools the gateway needs ({@code uv}, {@code npx}, {@code docker})
-     *  are guaranteed available before this method runs by
-     *  {@code ToolInstallRecorder} executing the {@code Section.TOOLS}
-     *  group of the install plan. */
+    /**
+     * Install-time decision for one dependency. See ticket:
+     * deploy-per-session.md.
+     *
+     * <p>Runtime tools the gateway needs ({@code uv}, {@code npx},
+     * {@code docker}) are guaranteed available before this method runs
+     * by {@code ToolInstallRecorder} executing the {@code Section.TOOLS}
+     * group of the install plan.
+     *
+     * <p><b>Init from environment:</b> for each {@code init_schema}
+     * field declared by the dep, this method reads {@link System#getenv}
+     * for an env var with the same name. When found (non-blank), the
+     * value is folded into the registration's {@code initialization_params}
+     * and counts toward the auto-deploy decision — so a manifest
+     * declaring {@code RUNPOD_API_KEY} as required+secret can still
+     * auto-deploy at install time when the operator runs
+     * {@code RUNPOD_API_KEY=$X_RUNPOD_KEY skill-manager install ...}.
+     * Manifest-supplied {@code initialization_params} still apply; env
+     * values override them.
+     */
     private InstallResult installOne(McpDependency dep) {
         String scope = dep.defaultScope();
-        List<String> missing = dep.missingRequiredInit();
+
+        // Pull init values from the install process's environment. Any
+        // init_schema field whose name matches an env var fills its slot;
+        // everything else stays missing.
+        Map<String, Object> envInit = new LinkedHashMap<>();
+        for (var f : dep.initSchema()) {
+            String v = System.getenv(f.name());
+            if (v != null && !v.isBlank()) envInit.put(f.name(), v);
+        }
+
+        // Effective missing = required + no-default + not in envInit.
+        List<String> missing = new java.util.ArrayList<>();
+        for (var f : dep.initSchema()) {
+            if (!f.required()) continue;
+            if (f.defaultValue() != null) continue;
+            if (envInit.containsKey(f.name())) continue;
+            missing.add(f.name());
+        }
+
         boolean canAutoDeploy = !McpDependency.SCOPE_SESSION.equals(scope) && missing.isEmpty();
+        if (!envInit.isEmpty()) {
+            Log.info("gateway: %s init from env: %s", dep.name(), envInit.keySet());
+        }
 
         // Idempotency: skip expensive re-registration when the gateway is
         // already in the state we want — same scope AND same spec_digest.
@@ -114,7 +150,8 @@ public final class McpWriter {
             var existing = client.describe(dep.name());
             if (existing.isPresent() && scope.equals(existing.get().defaultScope())) {
                 var state = existing.get();
-                String desiredDigest = GatewayClient.specDigest(client.registerPayload(dep, canAutoDeploy));
+                String desiredDigest = GatewayClient.specDigest(
+                        client.registerPayload(dep, canAutoDeploy, envInit));
                 boolean digestMatches = state.specDigest() != null
                         && state.specDigest().equals(desiredDigest);
                 if (digestMatches) {
@@ -142,7 +179,7 @@ public final class McpWriter {
         }
 
         try {
-            var r = client.register(dep, canAutoDeploy);
+            var r = client.register(dep, canAutoDeploy, envInit);
             Log.ok("gateway: registered %s (%s, scope=%s)", r.serverId(), dep.load().type(), scope);
             if (r.deployError() != null) {
                 Log.warn("gateway: deploy failed for %s: %s", dep.name(), r.deployError());

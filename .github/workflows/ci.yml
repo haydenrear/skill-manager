@@ -43,7 +43,16 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        graph: [smoke, sponsored]
+        # `hyper-experiments` exercises the install-time env-init path:
+        # X_RUNPOD_KEY (provisioned from secrets at the job level below)
+        # is mapped to RUNPOD_API_KEY in HyperInstalled before the
+        # install subprocess runs, which auto-deploys runpod-mcp and
+        # lets the downstream nodes invoke list-gpu-types.
+        graph: [smoke, sponsored, hyper-experiments]
+    env:
+      # Set on every matrix job — only hyper-experiments actually uses it,
+      # but it's harmless for the others (they never read it).
+      X_RUNPOD_KEY: ${{ secrets.X_RUNPOD_KEY }}
     steps:
       - uses: actions/checkout@v4
 

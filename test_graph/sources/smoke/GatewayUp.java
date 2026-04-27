@@ -1,5 +1,6 @@
 ///usr/bin/env jbang "$0" "$@" ; exit $?
 //SOURCES ../../sdk/java/src/main/java/com/hayden/testgraphsdk/sdk/*.java
+//SOURCES ../lib/StaleProcCleanup.java
 
 import com.hayden.testgraphsdk.sdk.Node;
 import com.hayden.testgraphsdk.sdk.NodeResult;
@@ -19,6 +20,10 @@ public class GatewayUp {
     static final NodeSpec SPEC = NodeSpec.of("gateway.up")
             .kind(NodeSpec.Kind.TESTBED)
             .dependsOn("env.prepared")
+            // Transitive: any graph that includes gateway.up auto-pulls in
+            // the venv-ready fixture, so a fresh checkout doesn't fail with
+            // "ModuleNotFoundError: uvicorn" on first run.
+            .dependsOn("gateway.python.venv.ready")
             .tags("gateway", "mcp")
             .sideEffects("net:local", "proc:spawn")
             .timeout("60s")
@@ -32,6 +37,15 @@ public class GatewayUp {
                 return NodeResult.fail("gateway.up", "missing env.prepared context");
             }
             int port = Integer.parseInt(portStr);
+
+            // Kill any virtual-mcp-gateway processes left over from a
+            // previous run that crashed before teardown. Pidfiles live
+            // under random per-run homes, so command-line match is the
+            // only reliable signal across runs.
+            StaleProcCleanup.killByCommandLineMatch(
+                    ctx, "gateway-stale-cleanup",
+                    "gateway.server",
+                    "virtual-mcp-gateway");
 
             Path repoRoot = Path.of(System.getProperty("user.dir")).resolve("..").normalize();
             Path sm = repoRoot.resolve("skill-manager");
