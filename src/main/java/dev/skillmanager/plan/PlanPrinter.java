@@ -28,6 +28,13 @@ public final class PlanPrinter {
 
         printSection(sections, PlanAction.Section.RESOLVE, "resolve & download");
         printSection(sections, PlanAction.Section.STORE, "install into store");
+        // TOOLS sits between STORE and CLI/MCP — same execution order as
+        // ToolInstallRecorder so the printed plan matches what the
+        // installer actually runs. EnsureTool entries surface
+        // bundle-on-install actions for uv/node and PATH presence
+        // checks for external tools (docker, brew); without this line
+        // the operator never sees a missing-docker WARN before launch.
+        printSection(sections, PlanAction.Section.TOOLS, "tools (bundle / presence-check)");
         printSection(sections, PlanAction.Section.CLI, "cli dependencies");
         printSection(sections, PlanAction.Section.MCP, "mcp dependencies (registered with gateway)");
         printSection(sections, PlanAction.Section.NOTES, "notes");
