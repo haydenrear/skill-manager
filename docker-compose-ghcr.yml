@@ -1,0 +1,46 @@
+# Self-host the released SkillManagerServer image from GHCR alongside Postgres.
+#
+# Usage:
+#   docker compose -f docker-compose-ghcr.yml up -d
+#   docker compose -f docker-compose-ghcr.yml pull   # bump to latest tag
+#
+# Data persists under ./data/ (gitignored). Hibernate creates schema on first
+# boot via spring.jpa.hibernate.ddl-auto=update — no init script needed.
+services:
+  postgres:
+    image: postgres:16
+    container_name: skill-manager-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: skill_registry
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d skill_registry"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+    restart: unless-stopped
+
+  skill-manager-server:
+    image: ${SKILL_MANAGER_SERVER_IMAGE:-ghcr.io/haydenrear/skill-manager-server:latest}
+    container_name: skill-manager-server
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      SKILL_REGISTRY_DB_URL: jdbc:postgresql://postgres:5432/skill_registry
+      SKILL_REGISTRY_DB_USER: ${POSTGRES_USER:-postgres}
+      SKILL_REGISTRY_DB_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      SKILL_REGISTRY_ROOT: /var/lib/skill-registry
+      SKILL_REGISTRY_KEYSTORE_PASSWORD: ${SKILL_REGISTRY_KEYSTORE_PASSWORD:-changeit}
+      SKILL_REGISTRY_CI_SECRET: ${SKILL_REGISTRY_CI_SECRET:-dev-ci-secret-change-me}
+      CLOUD_COM_LLC_PASSWORD: ${CLOUD_COM_LLC_PASSWORD:-}
+    ports:
+      - "${SKILL_MANAGER_SERVER_PORT:-8080}:8080"
+    volumes:
+      - ./data/registry:/var/lib/skill-registry
+    restart: unless-stopped
