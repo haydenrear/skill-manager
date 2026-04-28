@@ -189,6 +189,39 @@ validationGraph {
         node("sources/common/PostgresDown.java").dependsOn("servers.down")
     }
 
+    /*
+     * `onboard` — single-command bootstrap path that ships in the CLI as
+     * `skill-manager onboard`. Two halves:
+     *
+     *   1. The Spring `SkillBootstrapper` bean has seeded
+     *      `skill-manager` and `skill-publisher` into the registry by
+     *      the time `registry.up` reports healthy
+     *      (`onboard.seeded.by.server`).
+     *   2. The CLI command actually installs both skills end-to-end
+     *      and leaves the gateway up
+     *      (`onboard.completed` → `onboard.skills.installed` /
+     *       `onboard.gateway.healthy`).
+     */
+    testGraph("onboard") {
+        node("sources/common/EnvPrepared.java")
+        node("sources/common/GatewayPythonVenvReady.java")
+        node("sources/common/PostgresUp.java")
+        node("sources/common/RegistryUp.java")
+        node("sources/common/CiLoggedIn.java")
+        node("sources/common/JwtValid.java")
+
+        node("sources/onboard/OnboardSeededByServer.java")
+        node("sources/onboard/OnboardCompleted.java")
+        node("sources/onboard/OnboardSkillsInstalled.java")
+        node("sources/onboard/OnboardGatewayHealthy.java")
+        node("sources/onboard/OnboardAgentConfigsWritten.java")
+
+        node("sources/common/ServersDown.java")
+                .dependsOn("onboard.skills.installed", "onboard.gateway.healthy",
+                        "onboard.agent.configs.written")
+        node("sources/common/PostgresDown.java").dependsOn("servers.down")
+    }
+
     testGraph("sponsored") {
         node("sources/common/GatewayPythonVenvReady.java")
         node("sources/common/EnvPrepared.java")

@@ -42,6 +42,7 @@
 //SOURCES server-java/src/main/java/dev/skillmanager/server/publish/Semver.java
 //SOURCES server-java/src/main/java/dev/skillmanager/server/publish/PublishException.java
 //SOURCES server-java/src/main/java/dev/skillmanager/server/publish/SkillPublishService.java
+//SOURCES server-java/src/main/java/dev/skillmanager/server/bootstrap/SkillBootstrapper.java
 //SOURCES server-java/src/main/java/dev/skillmanager/server/ads/AdStatsController.java
 //FILES application.properties=server-java/src/main/resources/application.properties
 //JAVA_OPTIONS -Dorg.slf4j.simpleLogger.defaultLogLevel=info

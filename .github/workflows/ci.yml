@@ -48,7 +48,7 @@ jobs:
         # is mapped to RUNPOD_API_KEY in HyperInstalled before the
         # install subprocess runs, which auto-deploys runpod-mcp and
         # lets the downstream nodes invoke list-gpu-types.
-        graph: [smoke, sponsored, hyper-experiments]
+        graph: [smoke, sponsored, onboard, hyper-experiments]
     env:
       # Set on every matrix job — only hyper-experiments actually uses it,
       # but it's harmless for the others (they never read it).
