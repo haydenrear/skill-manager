@@ -1,0 +1,26 @@
+{
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+  "release-type": "simple",
+  "include-v-in-tag": true,
+  "bump-minor-pre-major": true,
+  "bump-patch-for-minor-pre-major": false,
+  "packages": {
+    ".": {
+      "package-name": "skill-manager",
+      "extra-files": [
+        {
+          "type": "generic",
+          "path": "src/main/java/dev/skillmanager/cli/SkillManagerCli.java"
+        },
+        {
+          "type": "generic",
+          "path": "SkillManagerServer.java"
+        },
+        {
+          "type": "python",
+          "path": "virtual-mcp-gateway/pyproject.toml"
+        }
+      ]
+    }
+  }
+}

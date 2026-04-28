@@ -55,6 +55,50 @@ public final class GatewayRuntime {
         return "python3";
     }
 
+    /**
+     * Bootstrap the gateway venv via {@code uv sync} when it's missing.
+     * Brew-installed users get the gateway source tree but no .venv, so the
+     * first {@code gateway up} would otherwise fall back to bare python3 and
+     * crash with ModuleNotFoundError. Returns silently if the venv already
+     * exists or if a custom interpreter is pinned via SKILL_MANAGER_PYTHON.
+     */
+    public void ensureVenv() throws IOException {
+        if (System.getenv("SKILL_MANAGER_PYTHON") != null) return;
+        Path src = gatewaySource();
+        if (Files.isExecutable(src.resolve(".venv/bin/python"))) return;
+        if (!Files.isDirectory(src)) {
+            throw new IOException("gateway source not found at " + src);
+        }
+        if (which("uv") == null) {
+            throw new IOException(
+                    "virtual-mcp-gateway needs a Python venv but `uv` is not on PATH.\n" +
+                    "Install uv (https://docs.astral.sh/uv/) — e.g. `brew install uv` — and re-run `skill-manager gateway up`.\n" +
+                    "Alternatively, point SKILL_MANAGER_PYTHON at a Python interpreter with the gateway deps already installed.");
+        }
+        Log.info("bootstrapping gateway venv via `uv sync` in %s", src);
+        ProcessBuilder pb = new ProcessBuilder("uv", "sync", "--all-extras")
+                .directory(src.toFile())
+                .inheritIO();
+        try {
+            int rc = pb.start().waitFor();
+            if (rc != 0) throw new IOException("`uv sync` exited with status " + rc);
+        } catch (InterruptedException ie) {
+            Thread.currentThread().interrupt();
+            throw new IOException("`uv sync` interrupted", ie);
+        }
+    }
+
+    private static String which(String tool) {
+        String path = System.getenv("PATH");
+        if (path == null) return null;
+        for (String dir : path.split(java.io.File.pathSeparator)) {
+            if (dir.isEmpty()) continue;
+            Path p = Path.of(dir, tool);
+            if (Files.isExecutable(p)) return p.toString();
+        }
+        return null;
+    }
+
     public boolean isRunning() {
         Long pid = readPid();
         if (pid == null) return false;
