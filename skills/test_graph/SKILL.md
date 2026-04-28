@@ -37,11 +37,20 @@ Node scripts live next to the user's repo (`<user-repo>/test_graph/sources/`), s
 
 Pull in only the specific files / packages a node needs (be specific with globs); see the **Importing user code into a node** section below for the patterns.
 
-## Don't modify `sdk/` or `build-logic/` in the scaffold
+## `sdk/` and `build-logic/` are symlinks into this skill repo
 
-The `sdk/` (Java + Python helper packages) and `build-logic/` (Gradle plugin, tasks, executors, toolchain) trees in a scaffolded project are vendored copies of this skill's `project_sdk_sources/` payload. They're planned to live in a central artifact and stay byte-identical across every project that scaffolds from this skill — that's how cross-project upgrades (toolchain pinning, new tasks, plugin fixes) ship to all consumers at once.
+When `scaffold.py` lays out a new `<repo>/test_graph/`, two of its subtrees are created as symlinks rather than copies:
 
-Edit only `sources/` and `build.gradle.kts` in the scaffolded project. If you genuinely need to change behavior under `sdk/` or `build-logic/`, the change belongs in **this** skill repo's `project_sdk_sources/` and gets re-scaffolded (or rsynced) into consumers — never patched in-place in a downstream project.
+- `<repo>/test_graph/sdk/`        →  `<skill>/project_sdk_sources/sdk/`
+- `<repo>/test_graph/build-logic/` → `<skill>/project_sdk_sources/build-logic/`
+
+That's deliberate: the SDK helpers (Java + Python) and the Gradle plugin/tasks/executors are shared infrastructure that should stay byte-identical across every scaffold. Symlinking means an upstream upgrade (toolchain pinning, new task, plugin fix) lands in every consumer scaffold the next time they invoke Gradle — no rsync, no per-project drift.
+
+The corollary: **don't edit anything under `sdk/` or `build-logic/` from inside a consumer scaffold**. The symlink is transparent — saving a file in `<repo>/test_graph/sdk/...` writes through to `<skill>/project_sdk_sources/sdk/...` and breaks every other consumer of this skill. Real changes belong in the skill repo and get committed there.
+
+Everything else in the scaffold (`sources/`, `build.gradle.kts`, `settings.gradle.kts`, `gradle/`, `gradlew`, `examples/`) stays as a copy because those are user-edited per-project.
+
+Falling back to copies when symlinks aren't available (Windows without developer mode, FUSE mounts that reject symlinks): `scaffold.py --copy-sdk`. The scaffold then becomes a snapshot — upstream upgrades require re-scaffolding or manual rsync.
 
 ## Two roots the scripts care about
 

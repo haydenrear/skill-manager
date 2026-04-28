@@ -11,10 +11,10 @@ import java.util.Map;
 /**
  * Canonical per-node reporting envelope.
  *
- * Reporting fields (status, assertions, artifacts, metrics, logs) are
- * for the report aggregator. The {@code published} map is this node's
- * contribution to downstream Context[] — i.e. the data a later node
- * can read via {@code ctx.get(nodeId, key)}.
+ * Reporting fields (status, assertions, artifacts, metrics, logs,
+ * processes) are for the report aggregator. The {@code published}
+ * map is this node's contribution to downstream Context[] — i.e.
+ * the data a later node can read via {@code ctx.get(nodeId, key)}.
  *
  * Two surfaces, one object: report once, publish downstream.
  */
@@ -113,76 +113,59 @@ public final class NodeResult {
         return new ContextItem(nodeId, new LinkedHashMap<>(published));
     }
 
+    /**
+     * Build the canonical envelope JSON.
+     *
+     * <p>Implementation is "build a {@link LinkedHashMap} and let
+     * {@link JsonMapper#MAPPER} serialize it" — Jackson handles
+     * escaping, null-suppression, indentation, and the embedded
+     * {@link ProcessRecord} list. Insertion order is preserved by
+     * LinkedHashMap, so the field order downstream tooling sees stays
+     * stable across releases.
+     */
     public String toJson() {
-        StringBuilder sb = new StringBuilder();
-        sb.append('{');
-        kv(sb, "nodeId", nodeId, true);
-        kvRaw(sb, "status", Json.quote(status.wire()), false);
-        if (startedAt != null) kvRaw(sb, "startedAt", Json.quote(startedAt.toString()), false);
-        if (endedAt != null) kvRaw(sb, "endedAt", Json.quote(endedAt.toString()), false);
-        if (failureMessage != null) kv(sb, "failureMessage", failureMessage, false);
-        if (errorStack != null) kv(sb, "errorStack", errorStack, false);
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("nodeId", nodeId);
+        out.put("status", status.wire());
+        if (startedAt != null) out.put("startedAt", startedAt.toString());
+        if (endedAt != null) out.put("endedAt", endedAt.toString());
+        // Conditional puts for the optional fields — JsonMapper preserves
+        // null elsewhere on purpose (ProcessRecord carries semantic nulls),
+        // so suppression has to happen at the put-site here.
+        if (failureMessage != null) out.put("failureMessage", failureMessage);
+        if (errorStack != null) out.put("errorStack", errorStack);
 
-        sb.append(",\"assertions\":[");
-        for (int i = 0; i < assertions.size(); i++) {
-            if (i > 0) sb.append(',');
-            Assertion a = assertions.get(i);
-            sb.append("{\"name\":").append(Json.quote(a.name))
-              .append(",\"status\":").append(Json.quote(a.status.wire())).append('}');
+        List<Map<String, Object>> assertionMaps = new ArrayList<>(assertions.size());
+        for (Assertion a : assertions) {
+            Map<String, Object> m = new LinkedHashMap<>();
+            m.put("name", a.name);
+            m.put("status", a.status.wire());
+            assertionMaps.add(m);
         }
-        sb.append(']');
+        out.put("assertions", assertionMaps);
 
-        sb.append(",\"artifacts\":[");
-        for (int i = 0; i < artifacts.size(); i++) {
-            if (i > 0) sb.append(',');
-            Artifact a = artifacts.get(i);
-            sb.append("{\"type\":").append(Json.quote(a.type))
-              .append(",\"path\":").append(Json.quote(a.path)).append('}');
+        List<Map<String, Object>> artifactMaps = new ArrayList<>(artifacts.size());
+        for (Artifact a : artifacts) {
+            Map<String, Object> m = new LinkedHashMap<>();
+            m.put("type", a.type);
+            m.put("path", a.path);
+            artifactMaps.add(m);
         }
-        sb.append(']');
+        out.put("artifacts", artifactMaps);
 
-        sb.append(",\"metrics\":{");
-        int i = 0;
-        for (var e : metrics.entrySet()) {
-            if (i++ > 0) sb.append(',');
-            sb.append(Json.quote(e.getKey())).append(':').append(e.getValue().toString());
+        List<Map<String, Object>> processMaps = new ArrayList<>(processes.size());
+        for (ProcessRecord p : processes) processMaps.add(p.toMap());
+        out.put("processes", processMaps);
+
+        out.put("metrics", metrics);
+        out.put("logs", logs);
+        out.put("published", published);
+
+        try {
+            return JsonMapper.MAPPER.writeValueAsString(out);
+        } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
+            throw new RuntimeException("failed to serialize NodeResult for " + nodeId, e);
         }
-        sb.append('}');
-
-        sb.append(",\"processes\":[");
-        for (int p = 0; p < processes.size(); p++) {
-            if (p > 0) sb.append(',');
-            sb.append(processes.get(p).toJson());
-        }
-        sb.append(']');
-
-        sb.append(",\"logs\":[");
-        for (int j = 0; j < logs.size(); j++) {
-            if (j > 0) sb.append(',');
-            sb.append(Json.quote(logs.get(j)));
-        }
-        sb.append(']');
-
-        sb.append(",\"published\":{");
-        int k = 0;
-        for (var e : published.entrySet()) {
-            if (k++ > 0) sb.append(',');
-            sb.append(Json.quote(e.getKey())).append(':').append(Json.quote(e.getValue()));
-        }
-        sb.append('}');
-
-        sb.append('}');
-        return sb.toString();
-    }
-
-    private static void kv(StringBuilder sb, String k, String v, boolean first) {
-        if (!first) sb.append(',');
-        sb.append(Json.quote(k)).append(':').append(Json.quote(v));
-    }
-
-    private static void kvRaw(StringBuilder sb, String k, String rawValue, boolean first) {
-        if (!first) sb.append(',');
-        sb.append(Json.quote(k)).append(':').append(rawValue);
     }
 
     private record Assertion(String name, NodeStatus status) {}
