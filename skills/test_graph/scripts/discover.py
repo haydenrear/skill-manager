@@ -1,15 +1,17 @@
 #!/usr/bin/env python3
 """Discover test graphs and their execution plans.
 
-Run from inside a scaffolded test_graph project (cwd anywhere within it).
+Auto-detects the scaffolded test_graph project — works whether you're
+inside the scaffold, at the project repo root (with a ``test_graph/``
+subdir), or pass ``--test-graph-root`` / set ``TEST_GRAPH_ROOT``.
 
 Usage:
     discover.py                  # list all registered test graphs
     discover.py <graph-name>     # plan + adjacency + render DAG to docs/
 
 When a graph name is passed, this script also writes the graphviz DOT
-for the graph to `<project>/docs/<graph>.dot`, and — if `dot` is on
-PATH — renders `<project>/docs/<graph>.png`.
+for the graph to ``<project>/docs/<graph>.dot``, and — if ``dot`` is on
+PATH — renders ``<project>/docs/<graph>.png``.
 """
 from __future__ import annotations
 
@@ -22,17 +24,18 @@ import sys
 from _common import add_test_graph_root_arg, run_gradle, target_project_root
 
 
-def _gradlew_cmd(test_graph_root) -> list[str]:
-    root = target_project_root(test_graph_root)
+def _gradlew_cmd(root_override: str | None) -> tuple[list[str], "Path"]:
+    root = target_project_root(root_override)
     gw = root / "gradlew"
-    return [str(gw)] if gw.exists() else ["gradle"]
+    return ([str(gw)] if gw.exists() else ["gradle"]), root
 
 
-def _capture_gradle(args: list[str], test_graph_root) -> subprocess.CompletedProcess:
+def _capture_gradle(args: list[str], root_override: str | None) -> subprocess.CompletedProcess:
     """Run gradlew from the target project with stdout captured."""
+    cmd, root = _gradlew_cmd(root_override)
     return subprocess.run(
-        _gradlew_cmd(test_graph_root) + args,
-        cwd=target_project_root(test_graph_root),
+        cmd + args,
+        cwd=root,
         env=os.environ.copy(),
         capture_output=True,
         text=True,
@@ -50,7 +53,10 @@ def main() -> int:
     args = parser.parse_args()
 
     if args.graph is None:
-        return run_gradle(["--console=plain", "-q", "validationListGraphs"], args.test_graph_root)
+        return run_gradle(
+            ["--console=plain", "-q", "validationListGraphs"],
+            args.test_graph_root,
+        )
 
     # 1. Plan + adjacency to stdout for the user.
     code = run_gradle(

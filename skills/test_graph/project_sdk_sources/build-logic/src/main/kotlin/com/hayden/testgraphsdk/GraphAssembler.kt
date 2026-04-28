@@ -23,13 +23,14 @@ internal object GraphAssembler {
         spec: TestGraphSpec,
         sourcesDirs: List<File>,
         projectDir: File,
+        tools: ToolPaths,
     ): List<ValidationNodeSpec> {
         val nodes = linkedMapOf<String, ValidationNodeSpec>()
         val explicitIds = mutableListOf<String>()
 
         // 1. Describe + apply overlays.
         for ((file, overlay) in spec.explicitNodes) {
-            val described = NodeDescribeLoader.describe(file, projectDir)
+            val described = NodeDescribeLoader.describe(file, projectDir, tools)
             val merged = overlay.applyTo(described)
             if (nodes.containsKey(merged.id)) {
                 error("duplicate node id '${merged.id}' in graph '${spec.name}'")
@@ -41,7 +42,7 @@ internal object GraphAssembler {
         // 2. Index the sourcesDirs.
         val sourceIndex = linkedMapOf<String, ValidationNodeSpec>()
         for (dir in sourcesDirs) {
-            for ((id, s) in NodeDescribeLoader.indexDir(dir, projectDir)) {
+            for ((id, s) in NodeDescribeLoader.indexDir(dir, projectDir, tools)) {
                 sourceIndex.putIfAbsent(id, s)
             }
         }

@@ -2,6 +2,7 @@ package com.hayden.testgraphsdk.tasks
 
 import com.hayden.testgraphsdk.GraphAssembler
 import com.hayden.testgraphsdk.TestGraphSpec
+import com.hayden.testgraphsdk.Toolchain
 import org.gradle.api.DefaultTask
 import org.gradle.api.file.DirectoryProperty
 import org.gradle.api.provider.Property
@@ -73,7 +74,8 @@ abstract class ValidationPlanGraphTask : DefaultTask() {
         val spec = graphs[target.get()] ?: error(
             "no test graph '${target.get()}' — available: ${graphs.keys.ifEmpty { setOf("(none)") }}"
         )
-        val plan = GraphAssembler.plan(spec, sourcesDirsProvider(), projectDirectory.get().asFile)
+        val tools = Toolchain.resolve(project)
+        val plan = GraphAssembler.plan(spec, sourcesDirsProvider(), projectDirectory.get().asFile, tools)
         val idW = (plan.maxOfOrNull { it.id.length } ?: 4).coerceAtLeast(4)
 
         // 1. Execution plan (topo-ordered).
@@ -130,7 +132,8 @@ abstract class ValidationGraphDotTask : DefaultTask() {
         val spec = graphs[target.get()] ?: error(
             "no test graph '${target.get()}' — available: ${graphs.keys.ifEmpty { setOf("(none)") }}"
         )
-        val plan = GraphAssembler.plan(spec, sourcesDirsProvider(), projectDirectory.get().asFile)
+        val tools = Toolchain.resolve(project)
+        val plan = GraphAssembler.plan(spec, sourcesDirsProvider(), projectDirectory.get().asFile, tools)
 
         println("digraph \"${spec.name}\" {")
         println("  rankdir=LR;")

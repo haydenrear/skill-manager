@@ -36,10 +36,6 @@ public class __CLASS_NAME__ {
             //   - Read inputs via ctx.input("key")
             //   - Read upstream context via ctx.get("upstream.id", "key")
             //   - Publish values downstream via NodeResult.publish("key", "value")
-            //
-            // The body type declares `throws Exception`, so you can call IO
-            // freely — anything that escapes is caught by Node.run and
-            // converted to NodeResult.error(id, e).
             return NodeResult.pass("__NODE_ID__")
                     .assertion("todo_implement", false);
         });
