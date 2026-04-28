@@ -63,7 +63,15 @@
 import dev.skillmanager.server.SkillRegistryApp;
 
 public class SkillManagerServer {
+    // x-release-please-start-version
+    public static final String VERSION = "0.1.0";
+    // x-release-please-end
+
     public static void main(String[] args) {
+        if (args.length == 1 && ("--version".equals(args[0]) || "-V".equals(args[0]))) {
+            System.out.println("skill-manager-server " + VERSION);
+            return;
+        }
         SkillRegistryApp.main(args);
     }
 }

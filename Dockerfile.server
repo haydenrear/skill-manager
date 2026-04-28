@@ -1,0 +1,24 @@
+# syntax=docker/dockerfile:1.7
+#
+# Builds the SkillManagerServer Spring Boot fatjar via JBang and packages it
+# into a slim eclipse-temurin runtime image. Consumed by .github/workflows/release.yml.
+
+FROM eclipse-temurin:21-jdk AS build
+WORKDIR /src
+
+ENV JBANG_DIR=/root/.jbang
+RUN curl -Ls https://sh.jbang.dev | bash -s - app setup \
+    && ln -sf /root/.jbang/bin/jbang /usr/local/bin/jbang
+
+COPY . .
+
+RUN mkdir -p /out \
+    && jbang export fatjar --force -O /out/skill-manager-server.jar SkillManagerServer.java
+
+FROM eclipse-temurin:21-jre
+WORKDIR /app
+
+COPY --from=build /out/skill-manager-server.jar /app/skill-manager-server.jar
+
+EXPOSE 8080
+ENTRYPOINT ["java", "-jar", "/app/skill-manager-server.jar"]

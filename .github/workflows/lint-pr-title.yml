@@ -1,0 +1,43 @@
+name: Lint PR title
+
+# Enforce Conventional Commit format on PR titles. With squash-merge +
+# "Default to PR title" enabled in repo settings, the PR title becomes the
+# commit message on main, which is what release-please reads to compute the
+# next version. A non-conventional title would be silently dropped from the
+# release calculation, so we hard-fail on PRs that don't conform.
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+
+permissions:
+  pull-requests: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: amannn/action-semantic-pull-request@v5
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          types: |
+            feat
+            fix
+            perf
+            docs
+            chore
+            refactor
+            test
+            style
+            ci
+            build
+            revert
+          requireScope: false
+          subjectPattern: ^[A-Za-z].+$
+          subjectPatternError: |
+            The subject (text after the type prefix) should start with a letter and not be empty.
+            Examples:
+              feat: add brew tap publishing
+              fix(gateway): handle missing uv binary
+              chore!: drop Java 17 support

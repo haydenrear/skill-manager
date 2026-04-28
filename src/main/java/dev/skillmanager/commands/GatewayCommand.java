@@ -49,6 +49,7 @@ public final class GatewayCommand implements Runnable {
                 Log.info("gateway already running (pid=%d)", rt.readPid());
                 return 0;
             }
+            rt.ensureVenv();
             rt.start(host, port);
             String baseUrl = "http://" + host + ":" + port;
             if (!rt.waitForHealthy(baseUrl, Duration.ofSeconds(waitSeconds))) {

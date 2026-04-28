@@ -1,0 +1,196 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    name: release-please (open/merge release PR)
+    runs-on: ubuntu-latest
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
+      version: ${{ steps.release.outputs.version }}
+      major: ${{ steps.release.outputs.major }}
+      minor: ${{ steps.release.outputs.minor }}
+      patch: ${{ steps.release.outputs.patch }}
+    steps:
+      - id: release
+        uses: googleapis/release-please-action@v4
+        with:
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+  publish-cli:
+    name: Build CLI tarball + attach to release
+    needs: release-please
+    if: ${{ needs.release-please.outputs.release_created == 'true' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.release-please.outputs.tag_name }}
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - uses: jbangdev/setup-jbang@main
+
+      - name: Build fatjars
+        run: |
+          mkdir -p dist/lib dist/bin dist/share
+          jbang export fatjar --force -O dist/lib/skill-manager.jar SkillManager.java
+          jbang export fatjar --force -O dist/lib/skill-manager-server.jar SkillManagerServer.java
+
+      - name: Assemble tarball
+        env:
+          VERSION: ${{ needs.release-please.outputs.version }}
+        run: |
+          set -euo pipefail
+          STAGE="skill-manager-${VERSION}"
+          mkdir -p "${STAGE}/bin" "${STAGE}/lib" "${STAGE}/share"
+
+          # Brew-installable launchers — call java -jar directly, no jbang at runtime.
+          # Resolve through symlinks so HOMEBREW_PREFIX/bin/skill-manager → libexec/bin/skill-manager works.
+          cat > "${STAGE}/bin/skill-manager" <<'EOS'
+          #!/usr/bin/env bash
+          set -e
+          SRC="${BASH_SOURCE[0]}"
+          while [ -L "$SRC" ]; do
+            TGT="$(readlink "$SRC")"
+            case "$TGT" in /*) SRC="$TGT" ;; *) SRC="$(dirname "$SRC")/$TGT" ;; esac
+          done
+          DIR="$(cd "$(dirname "$SRC")/.." && pwd)"
+          export SKILL_MANAGER_INSTALL_DIR="$DIR/share"
+          exec java -jar "$DIR/lib/skill-manager.jar" "$@"
+          EOS
+
+          cat > "${STAGE}/bin/skill-manager-server" <<'EOS'
+          #!/usr/bin/env bash
+          set -e
+          SRC="${BASH_SOURCE[0]}"
+          while [ -L "$SRC" ]; do
+            TGT="$(readlink "$SRC")"
+            case "$TGT" in /*) SRC="$TGT" ;; *) SRC="$(dirname "$SRC")/$TGT" ;; esac
+          done
+          DIR="$(cd "$(dirname "$SRC")/.." && pwd)"
+          export SKILL_MANAGER_INSTALL_DIR="$DIR/share"
+          exec java -jar "$DIR/lib/skill-manager-server.jar" "$@"
+          EOS
+
+          chmod +x "${STAGE}/bin/skill-manager" "${STAGE}/bin/skill-manager-server"
+
+          cp dist/lib/skill-manager.jar "${STAGE}/lib/"
+          cp dist/lib/skill-manager-server.jar "${STAGE}/lib/"
+
+          # Ship the gateway source tree (uv-managed). Users get uv via
+          # `depends_on "uv"` in the brew formula and `uv sync` runs lazily
+          # the first time `skill-manager gateway up` is invoked.
+          rsync -a --exclude='.venv' --exclude='__pycache__' --exclude='.pytest_cache' \
+              virtual-mcp-gateway "${STAGE}/share/"
+
+          [ -f README.md ] && cp README.md "${STAGE}/"
+          [ -f LICENSE ] && cp LICENSE "${STAGE}/" || true
+
+          tar czf "${STAGE}.tar.gz" "${STAGE}"
+          sha256sum "${STAGE}.tar.gz" | tee "${STAGE}.tar.gz.sha256"
+
+      - name: Upload tarball to GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ needs.release-please.outputs.tag_name }}
+          VERSION: ${{ needs.release-please.outputs.version }}
+        run: |
+          gh release upload "${TAG}" \
+            "skill-manager-${VERSION}.tar.gz" \
+            "skill-manager-${VERSION}.tar.gz.sha256" \
+            --clobber
+
+      - uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: skill-manager-${{ needs.release-please.outputs.version }}.tar.gz
+
+  publish-server-image:
+    name: Build server container + push to GHCR
+    needs: release-please
+    if: ${{ needs.release-please.outputs.release_created == 'true' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.release-please.outputs.tag_name }}
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/skill-manager-server
+          tags: |
+            type=raw,value=${{ needs.release-please.outputs.version }}
+            type=raw,value=v${{ needs.release-please.outputs.version }}
+            type=raw,value=latest
+            type=semver,pattern={{major}}.{{minor}},value=${{ needs.release-please.outputs.version }}
+            type=semver,pattern={{major}},value=${{ needs.release-please.outputs.version }}
+
+      - id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile.server
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - uses: actions/attest-build-provenance@v2
+        with:
+          subject-name: ghcr.io/${{ github.repository_owner }}/skill-manager-server
+          subject-digest: ${{ steps.build.outputs.digest }}
+          push-to-registry: true
+
+  bump-homebrew-tap:
+    name: Bump skill-manager/homebrew-tap formula
+    needs: [release-please, publish-cli]
+    if: ${{ needs.release-please.outputs.release_created == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: mislav/bump-homebrew-formula-action@v3
+        with:
+          formula-name: skill-manager
+          formula-path: Formula/skill-manager.rb
+          homebrew-tap: haydenrear/homebrew-skill-manager
+          base-branch: main
+          download-url: https://github.com/${{ github.repository }}/releases/download/${{ needs.release-please.outputs.tag_name }}/skill-manager-${{ needs.release-please.outputs.version }}.tar.gz
+          commit-message: |
+            skill-manager ${{ needs.release-please.outputs.version }}
+
+            Released by ${{ github.repository }} @ ${{ needs.release-please.outputs.tag_name }}
+        env:
+          # Fine-grained PAT with write access to haydenrear/homebrew-skill-manager.
+          # GITHUB_TOKEN can't push to a different repo; this secret bridges that gap.
+          COMMITTER_TOKEN: ${{ secrets.SKILL_MANAGER_HOMBREW_TAP_BUMPER }}
