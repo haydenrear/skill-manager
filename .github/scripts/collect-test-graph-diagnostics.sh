@@ -50,29 +50,44 @@ fi
 
 #
 # Inline surfacing — group blocks so each file folds in the GH Actions UI.
+# report.md is first because it's the at-a-glance run report with status
+# + duration + per-node assertions/processes already aggregated. The
+# raw summary.json + per-envelope dumps below are the deeper-dive
+# fallbacks.
 #
+
+echo "::group::report.md"
+for f in "$DIAG_DIR"/validation-reports/*/report.md; do
+  [[ -f "$f" ]] || continue
+  echo "--- $f ---"
+  cat "$f"
+  echo
+done
+echo "::endgroup::"
 
 echo "::group::summary.json"
 find "$DIAG_DIR/validation-reports" -name summary.json -print -exec cat {} \; 2>/dev/null || true
 echo "::endgroup::"
 
+# Failing/errored node envelopes: status is "passed" / "failed" /
+# "errored" / "skipped" (see PlanExecutor.VALID_STATUSES). Earlier
+# revisions of this script grepped for an "outcome" field that never
+# existed — fixed alongside report.md plumbing.
 echo "::group::failing / errored node envelopes"
 if command -v jq >/dev/null 2>&1; then
-  # Prefer jq for a clean outcome check.
   for f in "$DIAG_DIR"/validation-reports/*/envelope/*.json; do
     [[ -f "$f" ]] || continue
-    outcome="$(jq -r '.outcome // .result // empty' "$f" 2>/dev/null)"
-    if [[ "$outcome" == "fail" || "$outcome" == "error" ]]; then
-      echo "--- $f (outcome=$outcome) ---"
+    status="$(jq -r '.status // empty' "$f" 2>/dev/null)"
+    if [[ "$status" == "failed" || "$status" == "errored" ]]; then
+      echo "--- $f (status=$status) ---"
       cat "$f"
       echo
     fi
   done
 else
-  # Fallback grep — catches "outcome":"fail" / "error" regardless of spacing.
   for f in "$DIAG_DIR"/validation-reports/*/envelope/*.json; do
     [[ -f "$f" ]] || continue
-    if grep -Eq '"outcome"[[:space:]]*:[[:space:]]*"(fail|error)"' "$f"; then
+    if grep -Eq '"status"[[:space:]]*:[[:space:]]*"(failed|errored)"' "$f"; then
       echo "--- $f ---"
       cat "$f"
       echo
