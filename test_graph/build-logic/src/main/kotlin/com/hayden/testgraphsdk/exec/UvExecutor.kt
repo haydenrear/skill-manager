@@ -4,6 +4,11 @@ import com.hayden.testgraphsdk.ValidationRuntime
 
 /**
  * @param uvPath absolute path to the uv binary resolved by Toolchain.
+ *
+ * Same stdout-capture contract as {@link JBangExecutor}: merged
+ * stdout+stderr redirected to {@code invocation.stdoutLog} so a node
+ * that crashes before populating {@code --result-out} (uv resolution
+ * error, ImportError, segfault) still leaves a forensics trail.
  */
 class UvExecutor(private val uvPath: String) : ValidationExecutor {
     override val runtimeName: String = "uv"
@@ -18,9 +23,11 @@ class UvExecutor(private val uvPath: String) : ValidationExecutor {
         argv += rt.entryFile
         argv += standardArgs(invocation)
 
+        invocation.stdoutLog.parentFile?.mkdirs()
         val process = ProcessBuilder(argv)
             .directory(invocation.projectDir.asFile)
-            .inheritIO()
+            .redirectErrorStream(true)
+            .redirectOutput(invocation.stdoutLog)
             .start()
         return process.waitFor()
     }
