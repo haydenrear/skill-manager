@@ -5,6 +5,7 @@ import com.hayden.testgraphsdk.sdk.Node;
 import com.hayden.testgraphsdk.sdk.NodeResult;
 import com.hayden.testgraphsdk.sdk.NodeSpec;
 import com.hayden.testgraphsdk.sdk.Procs;
+import com.hayden.testgraphsdk.sdk.ProcessRecord;
 
 import java.nio.file.Path;
 
@@ -50,11 +51,13 @@ public class CiLoggedIn {
                     "--registry", registryUrl);
             pb.environment().put("SKILL_MANAGER_HOME", home);
             pb.environment().put("SKILL_MANAGER_INSTALL_DIR", repoRoot.toString());
-            int rc = Procs.runLogged(ctx, "login", pb);
+            ProcessRecord proc = Procs.run(ctx, "login", pb);
+            int rc = proc.exitCode();
             NodeResult result = rc == 0
                     ? NodeResult.pass("ci.logged.in")
                     : NodeResult.fail("ci.logged.in", "login exited " + rc);
-            return Procs.attach(result, ctx, "login", rc, 200)
+            return result
+                    .process(proc)
                     .assertion("token_cached", rc == 0)
                     .publish("clientId", CLIENT_ID);
         });

@@ -7,6 +7,7 @@ import com.hayden.testgraphsdk.sdk.NodeContext;
 import com.hayden.testgraphsdk.sdk.NodeResult;
 import com.hayden.testgraphsdk.sdk.NodeSpec;
 import com.hayden.testgraphsdk.sdk.Procs;
+import com.hayden.testgraphsdk.sdk.ProcessRecord;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -15,6 +16,7 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -60,21 +62,21 @@ public class EnvScriptReports {
 
             ObjectMapper om = new ObjectMapper();
             List<String> errors = new ArrayList<>();
-            int run1Rc = -1;
-            int run2Rc = -1;
+            ProcessRecord run1Rec = null;
+            ProcessRecord run2Rec = null;
 
             // ------ Run 1: explicit --skills (including a nonexistent one) ------
             JsonNode r1;
             try {
                 RunResult rr = runEnvScript(om, envScript, home, ctx, "env-run1", List.of(
                         "--skills", "pip-cli-skill", "npm-cli-skill", "nonexistent-skill"));
-                run1Rc = rr.rc;
+                run1Rec = rr.record;
                 r1 = rr.json;
             } catch (Exception e) {
-                return Procs.attach(
-                        NodeResult.fail("env.script.reports",
-                                "failed to invoke env.sh (run 1): " + e.getMessage()),
-                        ctx, "env-run1", 1, 200);
+                NodeResult fail = NodeResult.fail("env.script.reports",
+                        "failed to invoke env.sh (run 1): " + e.getMessage());
+                if (run1Rec != null) fail = fail.process(run1Rec);
+                return fail;
             }
 
             String reportedHome = textOrEmpty(r1.path("skill_manager_home"));
@@ -146,15 +148,13 @@ public class EnvScriptReports {
             JsonNode r2;
             try {
                 RunResult rr = runEnvScript(om, envScript, home, ctx, "env-run2", List.of());
-                run2Rc = rr.rc;
+                run2Rec = rr.record;
                 r2 = rr.json;
             } catch (Exception e) {
-                return Procs.attach(
-                        Procs.attach(
-                                NodeResult.fail("env.script.reports",
-                                        "failed to invoke env.sh (run 2): " + e.getMessage()),
-                                ctx, "env-run1", run1Rc, 200),
-                        ctx, "env-run2", 1, 200);
+                NodeResult fail = NodeResult.fail("env.script.reports",
+                        "failed to invoke env.sh (run 2): " + e.getMessage());
+                if (run1Rec != null) fail = fail.process(run1Rec);
+                return fail;
             }
 
             boolean run2RequestedNull = r2.path("skills_requested").isNull();
@@ -174,10 +174,10 @@ public class EnvScriptReports {
                     ? NodeResult.pass("env.script.reports")
                     : NodeResult.fail("env.script.reports", String.join("; ", errors));
 
-            // Attach the per-run env.sh logs as artifacts so the captured
-            // JSON / stderr survives the run even when assertions pass.
-            result = Procs.attach(result, ctx, "env-run1", pass ? 0 : 1, 200);
-            result = Procs.attach(result, ctx, "env-run2", pass ? 0 : 1, 200);
+            // Attach the per-run env.sh process records so the captured
+            // JSON / stderr surface in the envelope even on success.
+            if (run1Rec != null) result = result.process(run1Rec);
+            if (run2Rec != null) result = result.process(run2Rec);
 
             return result
                     .assertion("env_script_exists", true)
@@ -205,9 +205,12 @@ public class EnvScriptReports {
     }
 
     private static final class RunResult {
-        final int rc;
+        final ProcessRecord record;
         final JsonNode json;
-        RunResult(int rc, JsonNode json) { this.rc = rc; this.json = json; }
+        RunResult(ProcessRecord record, JsonNode json) {
+            this.record = record;
+            this.json = json;
+        }
     }
 
     private static RunResult runEnvScript(ObjectMapper om, Path script, String home,
@@ -218,7 +221,9 @@ public class EnvScriptReports {
         cmd.addAll(extraArgs);
         ProcessBuilder pb = new ProcessBuilder(cmd).redirectErrorStream(false);
         pb.environment().put("SKILL_MANAGER_HOME", home);
+        Instant startedAt = Instant.now();
         Process p = pb.start();
+        long pid = p.pid();
         StringBuilder out = new StringBuilder();
         StringBuilder err = new StringBuilder();
         // Sequential drain is safe: env.py emits a small JSON blob plus a
@@ -236,20 +241,25 @@ public class EnvScriptReports {
             }
         }
         int rc = p.waitFor();
+        Instant endedAt = Instant.now();
 
-        // Persist a per-invocation log in the standard Procs location so it
-        // surfaces both as a node-logs/<nodeId>.<label>.log file on disk and
-        // as an artifact pointer on the envelope (via Procs.attach above).
+        // Persist a per-invocation log in the standard Procs location so
+        // the captured JSON / stderr survives the run, and hand-construct
+        // a ProcessRecord pointing at it so the envelope carries the
+        // structured per-subprocess metadata.
         Path log = Procs.logFile(ctx, label);
         Files.writeString(log,
                 "$ " + String.join(" ", cmd) + "\nrc=" + rc
                         + "\n--- stdout ---\n" + out
                         + "\n--- stderr ---\n" + err);
+        ProcessRecord record = new ProcessRecord(
+                label, cmd, startedAt, endedAt, rc, pid,
+                Procs.relativeToReport(ctx, log), null);
 
         if (rc != 0) {
             throw new RuntimeException("env.sh exited rc=" + rc + " stderr=" + err);
         }
-        return new RunResult(rc, om.readTree(out.toString()));
+        return new RunResult(record, om.readTree(out.toString()));
     }
 
     private static String textOrEmpty(JsonNode n) {

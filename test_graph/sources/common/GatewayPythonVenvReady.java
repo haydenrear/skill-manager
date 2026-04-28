@@ -5,6 +5,7 @@ import com.hayden.testgraphsdk.sdk.Node;
 import com.hayden.testgraphsdk.sdk.NodeResult;
 import com.hayden.testgraphsdk.sdk.NodeSpec;
 import com.hayden.testgraphsdk.sdk.Procs;
+import com.hayden.testgraphsdk.sdk.ProcessRecord;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -45,16 +46,11 @@ public class GatewayPythonVenvReady {
 
             ProcessBuilder pb = new ProcessBuilder("uv", "sync", "--all-extras")
                     .directory(gatewayDir.toFile());
-            int rc;
-            try {
-                rc = Procs.runLogged(ctx, "uv-sync", pb);
-            } catch (Exception e) {
-                return NodeResult.error("gateway.python.venv.ready", e);
-            }
+            ProcessRecord proc = Procs.run(ctx, "uv-sync", pb);
+            int rc = proc.exitCode();
             if (rc != 0) {
-                return Procs.attach(
-                        NodeResult.fail("gateway.python.venv.ready", "uv sync exited " + rc),
-                        ctx, "uv-sync", rc, 200);
+                return NodeResult.fail("gateway.python.venv.ready", "uv sync exited " + rc)
+                        .process(proc);
             }
 
             Path venvPython = gatewayDir.resolve(".venv/bin/python");
@@ -63,7 +59,8 @@ public class GatewayPythonVenvReady {
                     ? NodeResult.pass("gateway.python.venv.ready")
                     : NodeResult.fail("gateway.python.venv.ready",
                             "uv sync succeeded but .venv/bin/python missing at " + venvPython);
-            return Procs.attach(result, ctx, "uv-sync", rc, 200)
+            return result
+                    .process(proc)
                     .assertion("uv_sync_ok", rc == 0)
                     .assertion("venv_python_present", ok)
                     .publish("venvPython", venvPython.toString());

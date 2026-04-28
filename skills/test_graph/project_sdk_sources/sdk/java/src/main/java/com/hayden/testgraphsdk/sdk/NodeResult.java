@@ -28,6 +28,7 @@ public final class NodeResult {
     private Instant endedAt;
     private final List<Assertion> assertions = new ArrayList<>();
     private final List<Artifact> artifacts = new ArrayList<>();
+    private final List<ProcessRecord> processes = new ArrayList<>();
     private final Map<String, Number> metrics = new LinkedHashMap<>();
     private final List<String> logs = new ArrayList<>();
     private final Map<String, String> published = new LinkedHashMap<>();
@@ -74,6 +75,19 @@ public final class NodeResult {
 
     public NodeResult log(String line) {
         logs.add(line);
+        return this;
+    }
+
+    /**
+     * Attach a structured record for one subprocess this node spawned.
+     * Mirrors {@link #assertion(String, boolean)} / {@link #metric(String, Number)}
+     * — fluent, no hidden state, no implicit pass/fail. Pass/fail stays
+     * the node author's call: some nodes want a non-zero exit code as
+     * the success signal, so {@code .process()} only records facts.
+     * Express the intended outcome via {@link #assertion(String, boolean)}.
+     */
+    public NodeResult process(ProcessRecord record) {
+        processes.add(record);
         return this;
     }
 
@@ -134,6 +148,13 @@ public final class NodeResult {
             sb.append(Json.quote(e.getKey())).append(':').append(e.getValue().toString());
         }
         sb.append('}');
+
+        sb.append(",\"processes\":[");
+        for (int p = 0; p < processes.size(); p++) {
+            if (p > 0) sb.append(',');
+            sb.append(processes.get(p).toJson());
+        }
+        sb.append(']');
 
         sb.append(",\"logs\":[");
         for (int j = 0; j < logs.size(); j++) {

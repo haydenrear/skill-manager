@@ -5,6 +5,7 @@ import com.hayden.testgraphsdk.sdk.Node;
 import com.hayden.testgraphsdk.sdk.NodeResult;
 import com.hayden.testgraphsdk.sdk.NodeSpec;
 import com.hayden.testgraphsdk.sdk.Procs;
+import com.hayden.testgraphsdk.sdk.ProcessRecord;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -35,20 +36,17 @@ public class ServersDown {
             Path repoRoot = Path.of(System.getProperty("user.dir")).resolve("..").normalize();
             Path sm = repoRoot.resolve("skill-manager");
 
-            boolean gatewayDown = false;
-            int rc = -1;
-            try {
-                ProcessBuilder pb = new ProcessBuilder(sm.toString(), "gateway", "down");
-                pb.environment().put("SKILL_MANAGER_HOME", home);
-                pb.environment().put("SKILL_MANAGER_INSTALL_DIR", repoRoot.toString());
-                rc = Procs.runLogged(ctx, "gateway-down", pb);
-                gatewayDown = rc == 0;
-            } catch (Exception ignored) {}
+            ProcessBuilder pb = new ProcessBuilder(sm.toString(), "gateway", "down");
+            pb.environment().put("SKILL_MANAGER_HOME", home);
+            pb.environment().put("SKILL_MANAGER_INSTALL_DIR", repoRoot.toString());
+            ProcessRecord gatewayDownProc = Procs.run(ctx, "gateway-down", pb);
+            boolean gatewayDown = gatewayDownProc.exitCode() == 0;
 
             boolean registryDown = killByPidFile(Path.of(home, "test-graph", "registry.pid"));
             boolean echoDown = killByPidFile(Path.of(home, "test-graph", "echo-http.pid"));
 
-            return Procs.attach(NodeResult.pass("servers.down"), ctx, "gateway-down", rc, 100)
+            return NodeResult.pass("servers.down")
+                    .process(gatewayDownProc)
                     .assertion("gateway_down", gatewayDown)
                     .assertion("registry_down", registryDown)
                     .assertion("echo_fixture_down", echoDown);
