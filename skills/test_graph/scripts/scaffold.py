@@ -1,27 +1,45 @@
 #!/usr/bin/env python3
 """Scaffold a test_graph project into <repo-root>/test_graph/.
 
-Copies the contents of `project_sdk_sources/` (SDKs, Gradle plugin, build
-files, example node scripts, Gradle wrapper) into a new `test_graph/`
-subdirectory under the given repo root. The target `test_graph/` must
-not already exist or must be empty.
+Copies the contents of ``project_sdk_sources/`` (SDKs, Gradle plugin,
+build files, example node scripts, Gradle wrapper) into a new
+``test_graph/`` subdirectory under the given repo root. The target
+``test_graph/`` must not already exist or must be empty.
+
+The ``sdk/`` and ``build-logic/`` subtrees are created as **symlinks**
+into the skill repo's ``project_sdk_sources/`` rather than copies, so
+upstream upgrades land in every consumer scaffold without rsync. Move
+or delete the skill repo and the symlinks dangle — that's the cost,
+and it's why the rest of the scaffold (sources/, build.gradle.kts,
+gradle wrapper, examples) stays as a copy: those are user-edited.
 
 Usage:
     scaffold.py <repo-root>
+    scaffold.py <repo-root> --copy-sdk    # snapshot copies instead of symlinks
 
 Example:
     scaffold.py ~/projects/myapp
-        → creates ~/projects/myapp/test_graph/ populated with the scaffold.
+        → creates ~/projects/myapp/test_graph/ populated with the
+          scaffold; sdk/ and build-logic/ symlink into the skill repo.
 """
 from __future__ import annotations
 
 import argparse
+import os
 import shutil
 import stat
 import sys
 from pathlib import Path
 
 from _common import project_sdk_sources
+
+
+# Subtrees scaffolded as symlinks into the skill repo. Updating the
+# skill propagates instantly to every consumer scaffold — no manual
+# rsync, no drift between project copies. The flip side: a moved or
+# deleted skill repo dangles every consumer's symlink, so don't blow
+# away the skill checkout while a project depends on it.
+SYMLINK_TARGETS = {"sdk", "build-logic"}
 
 
 def _ignore(dirname: str, names: list[str]) -> list[str]:
@@ -40,6 +58,14 @@ def main() -> int:
     parser.add_argument(
         "repo_root",
         help="your project's repo root — scaffold goes into <repo_root>/test_graph/",
+    )
+    parser.add_argument(
+        "--copy-sdk",
+        action="store_true",
+        help="Snapshot-copy sdk/ and build-logic/ instead of symlinking. "
+             "Use when the consumer needs to be self-contained "
+             "(detached environments, archives, Windows without "
+             "developer-mode symlink permission).",
     )
     args = parser.parse_args()
 
@@ -64,8 +90,26 @@ def main() -> int:
             "repo may be broken."
         )
 
+    symlinks_used: list[str] = []
     for child in src.iterdir():
         dest = target / child.name
+        if child.name in SYMLINK_TARGETS and not args.copy_sdk:
+            # Absolute symlink so the scaffold remains valid no matter
+            # where the consumer cd's to. Resolve through `child` so a
+            # symlinked skill repo (e.g. one mounted into a container)
+            # still gets its real path stamped in.
+            try:
+                os.symlink(child.resolve(), dest, target_is_directory=child.is_dir())
+                symlinks_used.append(child.name)
+                continue
+            except OSError as e:
+                # Falling back to a copy keeps us working on Windows
+                # without developer-mode and on filesystems that reject
+                # symlinks (some FUSE mounts). Note loudly.
+                print(
+                    f"warning: could not symlink {child.name} (falling back to copy): {e}",
+                    file=sys.stderr,
+                )
         if child.is_dir():
             shutil.copytree(child, dest, ignore=_ignore, dirs_exist_ok=False)
         else:
@@ -77,6 +121,9 @@ def main() -> int:
         gw.chmod(gw.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
 
     print(f"scaffolded test_graph project at {target}")
+    if symlinks_used:
+        print(f"  symlinked into skill repo: {', '.join(sorted(symlinks_used))}")
+        print(f"  (changes to {src} take effect immediately in this scaffold)")
     print()
     print("next steps:")
     print(f"  cd {target}")

@@ -1,7 +1,9 @@
 package com.hayden.testgraphsdk.sdk;
 
 import java.time.Instant;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Structured record of one subprocess a node spawned. Attached to
@@ -70,29 +72,26 @@ public final class ProcessRecord {
         return endedAt.toEpochMilli() - startedAt.toEpochMilli();
     }
 
-    String toJson() {
-        StringBuilder sb = new StringBuilder();
-        sb.append('{');
-        sb.append("\"label\":").append(Json.quote(label));
-        sb.append(",\"command\":[");
-        for (int i = 0; i < command.size(); i++) {
-            if (i > 0) sb.append(',');
-            sb.append(Json.quote(command.get(i)));
-        }
-        sb.append(']');
-        if (startedAt != null) {
-            sb.append(",\"startedAt\":").append(Json.quote(startedAt.toString()));
-        }
-        if (endedAt != null) {
-            sb.append(",\"endedAt\":").append(Json.quote(endedAt.toString()));
-        }
-        sb.append(",\"exitCode\":").append(exitCode);
-        sb.append(",\"pid\":").append(pid == null ? "null" : pid.toString());
-        sb.append(",\"log\":");
-        sb.append(logPath == null ? "null" : Json.quote(logPath));
-        sb.append(",\"error\":");
-        sb.append(error == null ? "null" : Json.quote(error));
-        sb.append('}');
-        return sb.toString();
+    /**
+     * Project the record into the canonical JSON shape as a
+     * {@link LinkedHashMap}. {@link NodeResult#toJson} embeds these
+     * maps and lets {@link JsonMapper#MAPPER} serialize the whole
+     * envelope in one pass — Jackson handles escaping, null fields,
+     * and the {@code List<String>} for {@code command} natively.
+     *
+     * <p>Insertion order matches the documented field order so the
+     * envelope JSON is stable for downstream readers.
+     */
+    Map<String, Object> toMap() {
+        Map<String, Object> m = new LinkedHashMap<>();
+        m.put("label", label);
+        m.put("command", command);
+        if (startedAt != null) m.put("startedAt", startedAt.toString());
+        if (endedAt != null) m.put("endedAt", endedAt.toString());
+        m.put("exitCode", exitCode);
+        m.put("pid", pid);                 // null is preserved as JSON null
+        m.put("log", logPath);
+        m.put("error", error);
+        return m;
     }
 }
