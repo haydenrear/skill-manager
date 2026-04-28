@@ -104,6 +104,56 @@ validationGraph {
 
 **Merge policy**: collections are unioned; scalars override if set. The script is always the floor — the DSL can only add edges or tighten constraints, never hide a dep the script declared.
 
+## Toolchain (jbang + uv)
+
+The plugin resolves both runtime binaries at task-execution time and logs the choice:
+
+```
+[toolchain] jbang=0.137.0 (path: /opt/homebrew/bin/jbang)
+[toolchain] uv=0.7.2 (path: /opt/homebrew/bin/uv)
+```
+
+Resolution rules per tool:
+
+1. If `override-<tool>-version` is set AND the version on `PATH` matches it → use PATH.
+2. If override is set AND PATH differs (or tool isn't on PATH) → download the override version to `<project>/.bin/`.
+3. No override + tool on PATH → use PATH.
+4. No override + not on PATH → download the default version.
+
+Tasks invoke the tools by **absolute path**, so a resolved binary always takes precedence over `PATH` when the plugin drives it.
+
+### Gradle properties
+
+| Property                     | Default   | Effect                                             |
+| ---------------------------- | --------- | -------------------------------------------------- |
+| `override-jbang-version`     | `0.137.0` | Pin the jbang version (download if PATH differs).  |
+| `override-uv-version`        | `0.7.2`   | Pin the uv version (download if PATH differs).     |
+
+Pass on the CLI:
+
+```bash
+./gradlew smoke -Poverride-jbang-version=0.118.0 -Poverride-uv-version=0.6.0
+```
+
+Or put in `gradle.properties` at the scaffolded project root:
+
+```properties
+override-jbang-version=0.118.0
+override-uv-version=0.6.0
+```
+
+### Cache layout
+
+Downloaded binaries live under the project root (gitignored):
+
+```
+<test_graph>/.bin/
+  jbang-<version>/bin/jbang
+  uv-<version>/uv
+```
+
+Delete `.bin/` to force redownload. Defaults are bumped by editing `Toolchain.DEFAULT_JBANG_VERSION` / `DEFAULT_UV_VERSION` in `build-logic/`.
+
 ## Gradle tasks
 
 | Task                                    | Purpose                                              |

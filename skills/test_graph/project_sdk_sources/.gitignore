@@ -1,0 +1,26 @@
+# Gradle
+.gradle/
+build/
+**/build/
+out/
+
+# IDE
+.idea/
+*.iml
+
+# OS
+.DS_Store
+
+# Toolchain downloads (jbang / uv). Override versions via
+# -Poverride-jbang-version=<v> / -Poverride-uv-version=<v>.
+.bin/
+
+# Python SDK packaging scratch
+sdk/python/.venv/
+sdk/python/**/__pycache__/
+sdk/python/**/*.egg-info/
+sdk/python/dist/
+sdk/python/build/
+
+# uv caches inside script invocations
+**/__pycache__/**

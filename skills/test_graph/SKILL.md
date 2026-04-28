@@ -19,27 +19,49 @@ This whole repo IS the skill. The skill's scripts live in `scripts/`, templates 
 - Data flows downstream through an accumulated `Context[]` — each upstream node contributes one `ContextItem { nodeId, data }`. Publish with `NodeResult.publish(k, v)`; read with `ctx.get(upstreamId, key)`.
 - Reports are one JSON envelope per node, aggregated into `summary.json` per run, all under `build/validation-reports/<runId>/` of the scaffolded project.
 
+## Dependency nodes are the reuse seam
+
+Anything that provisions or tears down infrastructure — Docker containers, language runtimes, registries, gateways, package-manager state, port allocations, fixture data — belongs in a **dependency node** (typically `kind=testbed` or `kind=fixture`). Action / assertion nodes then `dependsOn(...)` those, and the same dependency node is shared across every graph that needs it.
+
+A node like `app.running` should be a single `sources/AppRunning.java` (or `.py`) that's reused unmodified by `smoke`, `regression`, `nightly`, etc. — not duplicated. That's the whole point of the topo-sorted DAG: any node, no matter how heavy its setup, runs once per execution and downstream nodes pick up its `Context` output.
+
+Don't push infrastructure work into action / assertion nodes. If two graphs need the same testbed, they should both depend on the same testbed node. If you find yourself copy-pasting setup logic between nodes, extract a new dependency node and have both depend on it.
+
+## Test contracts run against real code
+
+Node scripts live next to the user's repo (`<user-repo>/test_graph/sources/`), so they can `//SOURCES ../../src/main/java/...` (JBang) or `[tool.uv.sources]` at `../..` (Python) to pull production sources directly into the validation runtime. That means:
+
+- The test exercises the same classes / modules the production app does — no parallel "test-only" port of the contract.
+- Refactors in production code surface as compile breaks in the node (JBang) or import errors (uv), not as silent test rot.
+- Contracts are visible: a node's `//SOURCES` block lists exactly which production files it depends on.
+
+Pull in only the specific files / packages a node needs (be specific with globs); see the **Importing user code into a node** section below for the patterns.
+
+## Don't modify `sdk/` or `build-logic/` in the scaffold
+
+The `sdk/` (Java + Python helper packages) and `build-logic/` (Gradle plugin, tasks, executors, toolchain) trees in a scaffolded project are vendored copies of this skill's `project_sdk_sources/` payload. They're planned to live in a central artifact and stay byte-identical across every project that scaffolds from this skill — that's how cross-project upgrades (toolchain pinning, new tasks, plugin fixes) ship to all consumers at once.
+
+Edit only `sources/` and `build.gradle.kts` in the scaffolded project. If you genuinely need to change behavior under `sdk/` or `build-logic/`, the change belongs in **this** skill repo's `project_sdk_sources/` and gets re-scaffolded (or rsynced) into consumers — never patched in-place in a downstream project.
+
 ## Two roots the scripts care about
 
 - **`<skill>`** — this repo (where SKILL.md / scripts/ / templates/ / project_sdk_sources/ live).
 - **`<test_graph>`** — the scaffolded project the user is operating on (has a `settings.gradle.kts`). Typically lives at `<user-repo>/test_graph/`.
 
-The scripts detect `<test_graph>` automatically by walking up from cwd looking for `settings.gradle.kts`. When running from outside the scaffold (CI, outer repo root, etc.), override with `--test-graph-root <path>` / `-R` or `TEST_GRAPH_ROOT=<path>`.
+The scripts auto-detect `<test_graph>` so most invocations work without flags. Resolution order (highest precedence first):
 
-## What lives where inside the scaffold
-
-```
-<test_graph>/
-  build.gradle.kts          ← compose test graphs here (edit)
-  settings.gradle.kts       ← detection marker (leave alone)
-  sources/                  ← YOUR NODE SCRIPTS go here (edit)
-  sdk/                      ← SHARED SDK — do not modify
-  build-logic/              ← plugin internals — do not modify
-  gradle/, gradlew          ← wrapper — do not modify
-  examples/                 ← reference patterns (read-only)
-```
-
-The only places you write code are `sources/` (via `new-*-node.py`) and `build.gradle.kts` (graph composition). Everything under `sdk/`, `build-logic/`, `gradle/`, and `gradlew` was copied in by `scaffold.py` and is treated as vendored shared code — changes there belong in the skill itself, not in individual test_graph projects.
+1. `--test-graph-root` / `-R` flag.
+2. `TEST_GRAPH_ROOT` env var.
+3. Walk up from cwd looking for `settings.gradle.kts` — wins when you're inside the scaffold.
+4. **Project repo root convenience** — fall back to `<cwd>/test_graph/` if it carries `settings.gradle.kts` and a `build.gradle.kts` that mentions `validationGraph`. So a user at `<user-repo>/` can run scripts directly without flags:
+   ```bash
+   cd <user-repo>                                            # NOT <user-repo>/test_graph
+   <skill>/scripts/discover.py                               # → targets ./test_graph/
+   <skill>/scripts/run.py smoke                              # → ./test_graph/
+   <skill>/scripts/run.py --all                              # every graph, sequentially
+   <skill>/scripts/clean.py                                  # wipes ./test_graph/build/
+   ```
+   The `validationGraph` substring check guards against picking up an unrelated `test_graph` directory.
 
 ## Workflows
 
@@ -64,20 +86,11 @@ cd <user-repo-root>/test_graph
 
 ### 2. Create a new JBang (Java) node
 
-Works from anywhere — `cd` into the scaffold so `settings.gradle.kts` is
-reachable, set `TEST_GRAPH_ROOT`, or pass `--test-graph-root` / `-R`:
+Run from inside the scaffolded test_graph project.
 
 ```bash
-# Auto-detect (cwd is under the scaffold)
-cd <user-repo>/test_graph
 <skill>/scripts/new-jbang-node.py <node-id> <kind>
 # e.g. <skill>/scripts/new-jbang-node.py checkout.smoke assertion
-
-# Explicit override (common from a CI or from the outer repo root)
-<skill>/scripts/new-jbang-node.py <node-id> <kind> \
-    --test-graph-root <user-repo>/test_graph
-TEST_GRAPH_ROOT=<user-repo>/test_graph \
-    <skill>/scripts/new-jbang-node.py <node-id> <kind>
 ```
 
 Creates `sources/<ClassName>.java` in the active test_graph project from the skill's template. The class name is derived from the node id.
@@ -87,8 +100,6 @@ After creation: edit the file to fill in the body, then reference it from a `tes
 **Kinds**: `testbed | fixture | action | assertion | evidence | report` — see **Picking a kind** below.
 
 ### 3. Create a new uv (Python) node
-
-Same override flags as the JBang variant — `-R` / `--test-graph-root` / `TEST_GRAPH_ROOT`.
 
 ```bash
 <skill>/scripts/new-uv-node.py <node-id> <kind>
@@ -119,18 +130,13 @@ Every `testGraph(...)` registers a Gradle task with the same name. Multiple grap
 
 ### 5. Discover graphs and plans
 
-**Always run `discover.py <graph>` before `run.py <graph>`** — the planner
-surfaces unresolved `dependsOn` ids, describe failures, and topology issues
-cheaply, before any testbed is spawned or port is bound. Treat `discover.py`
-as a type-check, not an optional step.
-
 ```bash
 <skill>/scripts/discover.py                     # list all registered test graphs
 <skill>/scripts/discover.py <graph-name>        # plan + adjacency + render DAG to docs/
-
-# All commands support --test-graph-root / -R and TEST_GRAPH_ROOT:
-<skill>/scripts/discover.py <graph-name> --test-graph-root <user-repo>/test_graph
-TEST_GRAPH_ROOT=<user-repo>/test_graph <skill>/scripts/discover.py
+# equivalent raw Gradle (from inside the scaffolded project):
+./gradlew validationListGraphs
+./gradlew validationPlanGraph --name=<graph>
+./gradlew validationGraphDot  --name=<graph>    # DOT only (pipe-friendly)
 ```
 
 `discover.py <graph>` writes `<test_graph>/docs/<graph>.dot` and — if graphviz's `dot` is on PATH — renders `<test_graph>/docs/<graph>.png`.
@@ -145,32 +151,51 @@ cat /tmp/spec.json
 
 ### 6. Run a graph
 
-Always use `run.py` — never invoke `./gradlew <graph>` directly. The wrapper:
-
-- threads the `--test-graph-root` / `TEST_GRAPH_ROOT` override through,
-- chains `validationReport` automatically,
-- gives you consistent output.
-
 ```bash
 <skill>/scripts/run.py <graph-name>
-<skill>/scripts/run.py <graph-name> --test-graph-root <path>
-TEST_GRAPH_ROOT=<path> <skill>/scripts/run.py <graph-name>
+# or directly, from inside the scaffolded project:
+./gradlew <graph-name>
+./gradlew validationReport
 ```
 
 Output lives at `<test_graph>/build/validation-reports/<runId>/` — one envelope per node under `envelope/`, plus a unified `summary.json` after `validationReport` runs.
 
-### Standard authoring loop
+### 7. Run every registered graph
 
-When building or changing a graph, always follow this order:
+```bash
+<skill>/scripts/run.py --all
+# or directly:
+./gradlew validationRunAll
+```
 
-1. `new-jbang-node.py <id> <kind>` (or the uv variant) — scaffold the node script from the skill's template.
-2. Fill in the node body. Run `jbang sources/X.java --describe-out=/tmp/spec.json` locally to confirm the spec parses.
-3. Wire it into `build.gradle.kts` with a `node("sources/X.java")` in the relevant `testGraph("…") { … }`.
-4. `discover.py <graph>` — confirm the plan is what you expect **before** spawning anything.
-5. `run.py <graph>` — execute.
-6. Inspect `build/validation-reports/<runId>/summary.json`.
+`validationRunAll` fans out to every `testGraph(...)` declared in `build.gradle.kts` and chains them serially in declaration order — so testbed nodes don't compete for shared local resources when Gradle's worker pool is wider than 1. The task is `finalizedBy validationReport`, so a single `summary.json` is written across all graphs at the end.
 
-Skipping step 4 is the #1 cause of wasted test cycles — you'll only find out at step 5 that a dep id was mistyped, after you've booted three testbeds.
+### 8. Clean the build directory
+
+```bash
+./gradlew clean
+```
+
+Plain `clean` from Gradle's `base` plugin (which the validation plugin auto-applies). Removes `build/` — including `build/validation-reports/`, so prior runs are wiped. Use before a fresh `validationRunAll` if you want a clean baseline.
+
+## Where validation reports live
+
+Every run writes under the scaffolded project's `build/` directory:
+
+```
+<test_graph>/build/validation-reports/<runId>/
+  envelope/
+    <node-id>.json              # one per executed node — status, assertions, metrics, published, logs[]
+  node-logs/                    # subprocess stdout+stderr captured per (node, label)
+    <node-id>.<label>.log       # e.g. ci.logged.in.login.log
+  summary.json                  # aggregate (written by validationReport / finalizedBy)
+  docs/<graph>.dot              # graphviz source from `discover.py <graph>`
+  docs/<graph>.png              # rendered if graphviz `dot` is on PATH
+```
+
+`<runId>` is a timestamp like `20260428-184103`, so multiple runs accumulate side-by-side until `clean` (or `clean.py`) wipes them.
+
+The structured `envelope/<node-id>.json` carries everything a CI artifact uploader needs — including absolute paths to any captured subprocess logs, so a downstream artifact bundle round-trips losslessly. CI workflows should upload `build/validation-reports/` wholesale.
 
 ## Importing user code into a node
 
@@ -268,6 +293,23 @@ Prefer the `[tool.uv.sources]` form — it gives you dependency isolation, edita
 ### Keeping node scripts portable
 
 Whether you import user code via `//SOURCES` or `[tool.uv.sources]`, the relative path from `test_graph/sources/<script>` to the user-repo root is always `../..`. Keep the depth at two levels and document any deviation in the script's file header.
+
+## Toolchain (jbang + uv)
+
+The plugin resolves both runtimes at task-execution time — using whatever's on `PATH` by default, and downloading to `<test_graph>/.bin/` only when a version override is requested that doesn't match PATH, or when the tool isn't installed. Every run logs its choice:
+
+```
+[toolchain] jbang=0.137.0 (path: /opt/homebrew/bin/jbang)
+[toolchain] uv=0.7.2 (path: /opt/homebrew/bin/uv)
+```
+
+Pin a version with Gradle properties when you need reproducibility:
+
+```bash
+./gradlew smoke -Poverride-jbang-version=0.118.0 -Poverride-uv-version=0.6.0
+```
+
+The downloaded binaries live at `<test_graph>/.bin/jbang-<v>/bin/jbang` and `<test_graph>/.bin/uv-<v>/uv`. `.bin/` is gitignored. Full table in [`reference.md`](reference.md) → **Toolchain**.
 
 ## Picking a kind
 

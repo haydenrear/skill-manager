@@ -14,12 +14,12 @@ import java.io.File
  */
 internal object NodeDescribeLoader {
 
-    /** Describe one script file. */
-    fun describe(file: File, projectDir: File): ValidationNodeSpec {
+    /** Describe one script file using the given resolved tool paths. */
+    fun describe(file: File, projectDir: File, tools: ToolPaths): ValidationNodeSpec {
         require(file.isFile) { "node script not found: ${file.path}" }
         val runtime = runtimeFor(file, projectDir)
         val out = File.createTempFile("validation-describe-", ".json").apply { deleteOnExit() }
-        val argv = invocationFor(runtime, file) + "--describe-out=${out.absolutePath}"
+        val argv = invocationFor(runtime, file, tools) + "--describe-out=${out.absolutePath}"
 
         val process = ProcessBuilder(argv)
             .directory(projectDir)
@@ -42,13 +42,13 @@ internal object NodeDescribeLoader {
      * Describe every .java / .py script under a directory.
      * Returns a map keyed by the spec id.
      */
-    fun indexDir(dir: File, projectDir: File): Map<String, ValidationNodeSpec> {
+    fun indexDir(dir: File, projectDir: File, tools: ToolPaths): Map<String, ValidationNodeSpec> {
         require(dir.isDirectory) { "sources dir not found: ${dir.path}" }
         val out = linkedMapOf<String, ValidationNodeSpec>()
         dir.listFiles { f -> f.isFile && f.extension in setOf("java", "py") }
             ?.sortedBy { it.name }
             ?.forEach { file ->
-                val spec = describe(file, projectDir)
+                val spec = describe(file, projectDir, tools)
                 if (out.containsKey(spec.id)) {
                     error("duplicate node id '${spec.id}' in ${dir.path} " +
                             "(second source: ${file.name})")
@@ -67,10 +67,10 @@ internal object NodeDescribeLoader {
         }
     }
 
-    private fun invocationFor(runtime: ValidationRuntime, file: File): List<String> =
+    private fun invocationFor(runtime: ValidationRuntime, file: File, tools: ToolPaths): List<String> =
         when (runtime) {
-            is ValidationRuntime.JBang -> listOf("jbang", file.absolutePath)
-            is ValidationRuntime.Uv    -> listOf("uv", "run", file.absolutePath)
+            is ValidationRuntime.JBang -> listOf(tools.jbang, file.absolutePath)
+            is ValidationRuntime.Uv    -> listOf(tools.uv, "run", file.absolutePath)
         }
 
     private fun parseSpec(json: String, runtime: ValidationRuntime): ValidationNodeSpec {

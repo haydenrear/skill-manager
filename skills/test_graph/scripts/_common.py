@@ -2,20 +2,32 @@
 
 Two roots to keep straight:
 
-1. `skill_root()` — the root of THIS repository (where SKILL.md lives).
-   Used by scaffold to locate `project_sdk_sources/` and by
-   `new-*-node.py` to locate the templates.
+1. ``skill_root()`` — the root of THIS repository (where SKILL.md lives).
+   Used by scaffold to locate ``project_sdk_sources/`` and by
+   ``new-*-node.py`` to locate the templates.
 
-2. `target_project_root()` — the scaffolded test_graph project the user
-   is currently operating on. Detected by walking up from cwd looking
-   for `settings.gradle.kts`. Used by `discover.py`, `run.py`, and the
-   `new-*-node.py` scripts when writing new files into `sources/`.
+2. ``target_project_root()`` — the scaffolded test_graph project the
+   user is currently operating on. Resolution (highest precedence
+   first):
+
+       a. ``--test-graph-root`` flag
+       b. ``TEST_GRAPH_ROOT`` env var
+       c. Walk up from cwd looking for ``settings.gradle.kts`` — the
+          scaffold marker. This wins when the user has cd'd into the
+          scaffolded project (or any of its subdirs).
+       d. Fall back to ``<cwd>/test_graph/`` if it carries both
+          ``settings.gradle.kts`` and a ``build.gradle.kts`` that
+          mentions ``validationGraph``. This is the "running from the
+          project repo root" convenience: a user at
+          ``/path/to/myrepo/`` can invoke the scripts without flags
+          and have them target ``/path/to/myrepo/test_graph/``.
 
 The two-root split lets one checked-out skill serve many scaffolded
 projects without path guessing or per-invocation flags.
 """
 from __future__ import annotations
 
+import argparse
 import os
 import re
 import subprocess
@@ -51,14 +63,21 @@ def target_project_root(override: str | Path | None = None) -> Path:
 
     Resolution order:
 
-    1. ``override`` argument (typically ``--test-graph-root`` on a script).
+    1. ``override`` argument (typically ``--test-graph-root`` on a
+       script).
     2. ``TEST_GRAPH_ROOT`` environment variable.
-    3. Walk up from cwd looking for ``settings.gradle.kts`` (the scaffold
-       marker).
+    3. Walk up from cwd looking for ``settings.gradle.kts`` — the
+       scaffold marker.
+    4. Fall back to ``<cwd>/test_graph/`` when it carries
+       ``settings.gradle.kts`` AND a ``build.gradle.kts`` containing
+       the literal ``validationGraph`` (the DSL entry point); this is
+       the "running from the project repo root" shortcut. The
+       ``validationGraph`` substring check guards against picking up an
+       unrelated ``test_graph`` directory from some other tool.
 
-    Any explicit override must still point at a directory containing a
-    ``settings.gradle.kts`` — otherwise we'd silently write into a
-    non-test_graph tree.
+    Any explicit override (1 or 2) must still point at a directory
+    containing ``settings.gradle.kts`` — otherwise we'd silently write
+    into a non-test_graph tree.
     """
     if override is None:
         override = os.environ.get("TEST_GRAPH_ROOT")
@@ -72,20 +91,49 @@ def target_project_root(override: str | Path | None = None) -> Path:
             )
         return root
 
-    cur = Path.cwd().resolve()
+    cwd = Path.cwd().resolve()
+
+    # (3) Walk up — wins when the user is anywhere inside a scaffold.
+    cur = cwd
     while True:
         if (cur / "settings.gradle.kts").is_file():
             return cur
         if cur.parent == cur:
-            sys.exit(
-                "error: not inside a test_graph project (no settings.gradle.kts "
-                "found walking up from cwd).\n"
-                "  Scaffold one first with:  "
-                f"{skill_root() / 'scripts' / 'scaffold.py'} <repo-root>\n"
-                "  Then cd into <repo-root>/test_graph before re-running,\n"
-                "  or pass --test-graph-root <path> / set TEST_GRAPH_ROOT."
-            )
+            break
         cur = cur.parent
+
+    # (4) "Running from project repo root" — look for ./test_graph/.
+    candidate = cwd / "test_graph"
+    if _looks_like_test_graph_root(candidate):
+        return candidate
+
+    sys.exit(
+        "error: not inside a test_graph project and no scaffolded test_graph/ "
+        "found in the current directory.\n"
+        "  Scaffold one first with:  "
+        f"{skill_root() / 'scripts' / 'scaffold.py'} <repo-root>\n"
+        "  Then either cd into <repo-root>/test_graph, run from <repo-root> "
+        "directly, or pass --test-graph-root <path> / set TEST_GRAPH_ROOT."
+    )
+
+
+def _looks_like_test_graph_root(candidate: Path) -> bool:
+    """True if ``candidate`` is plausibly a scaffolded test_graph project.
+
+    Two cheap signals: ``settings.gradle.kts`` must exist, and
+    ``build.gradle.kts`` must mention the ``validationGraph`` DSL
+    entry point. The text scan stays a substring match — we don't
+    invoke a Gradle parser just to detect the scaffold.
+    """
+    if not (candidate / "settings.gradle.kts").is_file():
+        return False
+    bg = candidate / "build.gradle.kts"
+    if not bg.is_file():
+        return False
+    try:
+        return "validationGraph" in bg.read_text(encoding="utf-8", errors="ignore")
+    except OSError:
+        return False
 
 
 def target_sources_dir(override: str | Path | None = None) -> Path:
@@ -93,14 +141,19 @@ def target_sources_dir(override: str | Path | None = None) -> Path:
     return target_project_root(override) / "sources"
 
 
-def add_test_graph_root_arg(parser) -> None:
-    """Add the standard `--test-graph-root` / `-R` flag to a CLI parser."""
+def add_test_graph_root_arg(parser: argparse.ArgumentParser) -> None:
+    """Add the standard ``--test-graph-root`` / ``-R`` flag to a CLI.
+
+    Default is left as ``None`` so :func:`target_project_root` falls
+    through to ``TEST_GRAPH_ROOT`` env or auto-detection.
+    """
     parser.add_argument(
         "--test-graph-root",
         "-R",
         default=None,
-        help="Path to the scaffolded test_graph project "
-             "(default: walk up from cwd, or TEST_GRAPH_ROOT env var)",
+        help="Path to the scaffolded test_graph project. Defaults to "
+             "auto-detection: walk up from cwd, then look for ./test_graph/ "
+             "in the current directory, then fall back to TEST_GRAPH_ROOT env.",
     )
 
 
@@ -137,7 +190,7 @@ def render_template(template_path: Path, replacements: dict[str, str]) -> str:
 
 
 def run_gradle(args: list[str], test_graph_root: str | Path | None = None) -> int:
-    """Invoke gradlew from the active scaffolded project.
+    """Invoke ``gradlew`` from the active scaffolded project.
 
     Inherits stdio so the user sees output live. Accepts the same
     ``test_graph_root`` override as :func:`target_project_root`.

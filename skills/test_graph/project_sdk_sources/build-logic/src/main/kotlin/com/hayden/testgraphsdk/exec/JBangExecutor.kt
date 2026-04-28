@@ -2,7 +2,10 @@ package com.hayden.testgraphsdk.exec
 
 import com.hayden.testgraphsdk.ValidationRuntime
 
-class JBangExecutor : ValidationExecutor {
+/**
+ * @param jbangPath absolute path to the jbang binary resolved by Toolchain.
+ */
+class JBangExecutor(private val jbangPath: String) : ValidationExecutor {
     override val runtimeName: String = "jbang"
 
     override fun execute(invocation: NodeInvocation): Int {
@@ -10,7 +13,7 @@ class JBangExecutor : ValidationExecutor {
             ?: error("JBangExecutor cannot run a ${invocation.spec.runtime.name} node (${invocation.spec.id})")
 
         val argv = mutableListOf<String>()
-        argv += "jbang"
+        argv += jbangPath
         argv += rt.entryFile
         argv += standardArgs(invocation)
 

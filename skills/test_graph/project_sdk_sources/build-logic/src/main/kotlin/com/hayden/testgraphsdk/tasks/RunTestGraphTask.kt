@@ -2,6 +2,7 @@ package com.hayden.testgraphsdk.tasks
 
 import com.hayden.testgraphsdk.GraphAssembler
 import com.hayden.testgraphsdk.TestGraphSpec
+import com.hayden.testgraphsdk.Toolchain
 import com.hayden.testgraphsdk.exec.ExecutorRegistry
 import com.hayden.testgraphsdk.exec.PlanExecutor
 import org.gradle.api.DefaultTask
@@ -44,7 +45,8 @@ abstract class RunTestGraphTask : DefaultTask() {
     @TaskAction
     fun run() {
         val projDir = projectDirectory.get().asFile
-        val plan = GraphAssembler.plan(graphSpec, sourcesDirsProvider(), projDir)
+        val tools = Toolchain.resolve(project)
+        val plan = GraphAssembler.plan(graphSpec, sourcesDirsProvider(), projDir, tools)
         val runId = RunIds.next()
         val reportDir = reportRoot.dir(runId).get()
         reportDir.asFile.mkdirs()
@@ -57,7 +59,7 @@ abstract class RunTestGraphTask : DefaultTask() {
         }
 
         PlanExecutor(
-            ExecutorRegistry.defaults(),
+            ExecutorRegistry.defaults(tools),
             projectDirectory.get(), reportDir, runId, logger,
         ).run(plan)
 

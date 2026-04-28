@@ -1,5 +1,6 @@
 package com.hayden.testgraphsdk.exec
 
+import com.hayden.testgraphsdk.ToolPaths
 import com.hayden.testgraphsdk.ValidationNodeSpec
 import org.gradle.api.file.Directory
 
@@ -36,10 +37,10 @@ class ExecutorRegistry(private val executors: Map<String, ValidationExecutor>) {
             ?: error("no executor registered for runtime '${spec.runtime.name}' (node ${spec.id})")
 
     companion object {
-        fun defaults(): ExecutorRegistry = ExecutorRegistry(
+        fun defaults(tools: ToolPaths): ExecutorRegistry = ExecutorRegistry(
             mapOf(
-                "jbang" to JBangExecutor(),
-                "uv" to UvExecutor(),
+                "jbang" to JBangExecutor(tools.jbang),
+                "uv"    to UvExecutor(tools.uv),
             )
         )
     }

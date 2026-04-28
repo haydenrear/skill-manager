@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """Create a new uv (Python) validation node from a template.
 
-Run from inside a scaffolded test_graph project (cwd anywhere within it).
+Auto-detects the scaffolded test_graph project (cwd anywhere within it,
+or the project repo root containing a ``test_graph/`` subdir, or pass
+``--test-graph-root`` / set ``TEST_GRAPH_ROOT``).
 
 Usage:
     new-uv-node.py <node-id> <kind>

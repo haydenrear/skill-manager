@@ -3,7 +3,6 @@ package com.hayden.testgraphsdk.sdk;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
-import java.util.function.Function;
 
 /**
  * Entry point for JBang-executed validation nodes.
@@ -25,7 +24,7 @@ public final class Node {
 
     private Node() {}
 
-    public static void run(String[] args, NodeSpec spec, Function<NodeContext, NodeResult> body) {
+    public static void run(String[] args, NodeSpec spec, NodeBody body) {
         String describeOut = findArg(args, "--describe-out=");
         if (describeOut != null) {
             writeDescribe(describeOut, spec);
