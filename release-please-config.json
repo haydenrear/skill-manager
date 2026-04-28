@@ -17,8 +17,9 @@
           "path": "SkillManagerServer.java"
         },
         {
-          "type": "python",
-          "path": "virtual-mcp-gateway/pyproject.toml"
+          "type": "toml",
+          "path": "virtual-mcp-gateway/pyproject.toml",
+          "jsonpath": "$.project.version"
         }
       ]
     }
