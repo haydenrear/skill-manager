@@ -59,6 +59,11 @@ open class ValidationGraphExtension(internal val project: Project) {
             sourcesDirsProvider = { outerExt.sourcesDirs.toList() }
             projectDirectory.set(project.layout.projectDirectory)
             reportRoot.set(project.layout.buildDirectory.dir("validation-reports"))
+            // Always emit report.md + summary.json after a graph runs,
+            // even when invoked directly as `./gradlew <graph>`. Without
+            // this, only run.py / validationRunAll trigger the rollup —
+            // surprising for a developer poking at one graph.
+            finalizedBy("validationReport")
         }
     }
 }
