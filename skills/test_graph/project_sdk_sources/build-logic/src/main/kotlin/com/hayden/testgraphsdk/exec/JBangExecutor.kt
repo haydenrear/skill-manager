@@ -4,6 +4,13 @@ import com.hayden.testgraphsdk.ValidationRuntime
 
 /**
  * @param jbangPath absolute path to the jbang binary resolved by Toolchain.
+ *
+ * The spawned node-process has its merged stdout+stderr redirected to
+ * {@code invocation.stdoutLog} so it survives past the live console
+ * scroll and forensics are recoverable when the SDK never gets a
+ * chance to populate {@code --result-out} (jbang compile error, JVM
+ * crash, OOM at fork time, etc.). PlanExecutor stamps the path onto
+ * the canonical envelope as {@code capturedStdoutLog}.
  */
 class JBangExecutor(private val jbangPath: String) : ValidationExecutor {
     override val runtimeName: String = "jbang"
@@ -17,9 +24,11 @@ class JBangExecutor(private val jbangPath: String) : ValidationExecutor {
         argv += rt.entryFile
         argv += standardArgs(invocation)
 
+        invocation.stdoutLog.parentFile?.mkdirs()
         val process = ProcessBuilder(argv)
             .directory(invocation.projectDir.asFile)
-            .inheritIO()
+            .redirectErrorStream(true)
+            .redirectOutput(invocation.stdoutLog)
             .start()
         return process.waitFor()
     }
