@@ -183,6 +183,19 @@ public final class PackageManagerRuntime {
     }
 
     public Path install(PackageManager pm, String version) throws IOException {
+        // External PMs (docker, brew, …) carry no defaultVersion / downloadUrl
+        // / installFromExtracted — they're system-managed. Calling this
+        // method on one is a programmer error from the caller's side; turn
+        // the resulting UnsupportedOperationException stack trace into a
+        // clean, actionable message.
+        if (!pm.bundleable()) {
+            throw new IOException(
+                    "package manager '" + pm.id + "' is external (system-managed); "
+                            + "skill-manager cannot install it. "
+                            + (pm.installHint() == null ? "" : pm.installHint())
+                            + "  (Use ensureAvailable(\"" + pm.binaryName()
+                            + "\") for a presence-check that works for both kinds.)");
+        }
         if (version == null || version.isBlank()) version = pm.defaultVersion;
 
         Path vdir = versionDir(pm, version);

@@ -591,10 +591,51 @@ def _resolve_bundled_tool(pm_id: str, tool_name: str) -> str | None:
     package managers (pm/<pm_id>/current/bin/<tool>), with a system-PATH
     fallback. Both npm-load and uv-load go through here so the gateway
     has one place that knows about the bundled-PM convention.
+
+    Mirrors the Java-side ``PackageManagerRuntime.resolveCurrentBinary``
+    logic for the ``current`` pointer:
+
+    - Symlink (POSIX default) → follow it; the OS resolves the executable.
+    - Regular directory (filesystems where the symlink wasn't possible
+      and skill-manager copied the version dir) → use directly.
+    - Regular file (skill-manager's text-pointer fallback for
+      filesystems without symlink support, e.g. Windows without
+      elevation, some network mounts) → read its contents as the
+      version name and resolve ``pm/<pm_id>/<version>/bin/<tool>``.
+
+    Returns ``None`` when neither the bundled path nor system PATH
+    resolves; callers raise a user-facing error in that case.
     """
     sm_home = os.environ.get("SKILL_MANAGER_HOME")
     if sm_home:
-        bundled = Path(sm_home) / "pm" / pm_id / "current" / "bin" / tool_name
-        if bundled.is_file() and os.access(bundled, os.X_OK):
-            return str(bundled)
+        pm_dir = Path(sm_home) / "pm" / pm_id
+        current = pm_dir / "current"
+        bundled = _resolve_via_current_pointer(pm_dir, current, tool_name)
+        if bundled is not None:
+            return bundled
     return shutil.which(tool_name)
+
+
+def _resolve_via_current_pointer(
+        pm_dir: Path, current: Path, tool_name: str) -> str | None:
+    """Resolve ``current/bin/<tool_name>`` honoring all three layouts
+    skill-manager might write: symlink, real directory, or text-pointer
+    file. Returns the executable path or ``None``."""
+    # Symlink or real directory: resolve through normal path semantics.
+    if current.is_symlink() or current.is_dir():
+        candidate = current / "bin" / tool_name
+        if candidate.is_file() and os.access(candidate, os.X_OK):
+            return str(candidate)
+        return None
+    # Text-pointer fallback: contents are the version dir name under pm_dir.
+    if current.is_file():
+        try:
+            version = current.read_text().strip()
+        except OSError:
+            return None
+        if not version:
+            return None
+        candidate = pm_dir / version / "bin" / tool_name
+        if candidate.is_file() and os.access(candidate, os.X_OK):
+            return str(candidate)
+    return None
