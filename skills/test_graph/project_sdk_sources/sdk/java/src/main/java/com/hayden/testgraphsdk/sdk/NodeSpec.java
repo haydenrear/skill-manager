@@ -53,45 +53,34 @@ public final class NodeSpec {
 
     public String id() { return id; }
 
-    /** Serialize to the spec JSON the plugin's describe-loader consumes. */
+    /**
+     * Serialize to the spec JSON the plugin's describe-loader consumes.
+     * Builds a {@link LinkedHashMap} (insertion-order preserved) and
+     * lets {@link JsonMapper#MAPPER} handle escaping + indentation.
+     */
     public String toJson() {
-        StringBuilder sb = new StringBuilder();
-        sb.append('{');
-        sb.append("\"id\":").append(Json.quote(id));
-        sb.append(",\"kind\":").append(Json.quote(kind.name().toLowerCase()));
-        sb.append(",\"runtime\":\"jbang\"");
-        sb.append(",\"dependsOn\":"); appendStringList(sb, dependsOn);
-        sb.append(",\"tags\":"); appendStringList(sb, new ArrayList<>(tags));
-        sb.append(",\"timeout\":").append(Json.quote(timeout));
-        sb.append(",\"cacheable\":").append(cacheable);
-        sb.append(",\"sideEffects\":"); appendStringList(sb, new ArrayList<>(sideEffects));
-        sb.append(",\"inputs\":"); appendStringMap(sb, inputs);
-        sb.append(",\"outputs\":"); appendStringMap(sb, outputs);
-        sb.append(",\"reports\":{")
-          .append("\"structuredJson\":").append(reportStructuredJson)
-          .append(",\"junitXml\":").append(reportJunitXml)
-          .append(",\"cucumber\":").append(reportCucumber)
-          .append('}');
-        sb.append('}');
-        return sb.toString();
-    }
+        Map<String, Object> reports = new LinkedHashMap<>();
+        reports.put("structuredJson", reportStructuredJson);
+        reports.put("junitXml", reportJunitXml);
+        reports.put("cucumber", reportCucumber);
 
-    private static void appendStringList(StringBuilder sb, List<String> items) {
-        sb.append('[');
-        for (int i = 0; i < items.size(); i++) {
-            if (i > 0) sb.append(',');
-            sb.append(Json.quote(items.get(i)));
-        }
-        sb.append(']');
-    }
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("id", id);
+        out.put("kind", kind.name().toLowerCase());
+        out.put("runtime", "jbang");
+        out.put("dependsOn", dependsOn);
+        out.put("tags", new ArrayList<>(tags));
+        out.put("timeout", timeout);
+        out.put("cacheable", cacheable);
+        out.put("sideEffects", new ArrayList<>(sideEffects));
+        out.put("inputs", inputs);
+        out.put("outputs", outputs);
+        out.put("reports", reports);
 
-    private static void appendStringMap(StringBuilder sb, Map<String, String> m) {
-        sb.append('{');
-        int i = 0;
-        for (var e : m.entrySet()) {
-            if (i++ > 0) sb.append(',');
-            sb.append(Json.quote(e.getKey())).append(':').append(Json.quote(e.getValue()));
+        try {
+            return JsonMapper.MAPPER.writeValueAsString(out);
+        } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
+            throw new RuntimeException("failed to serialize NodeSpec for " + id, e);
         }
-        sb.append('}');
     }
 }
