@@ -5,10 +5,10 @@ import com.hayden.testgraphsdk.sdk.Node;
 import com.hayden.testgraphsdk.sdk.NodeResult;
 import com.hayden.testgraphsdk.sdk.NodeSpec;
 import com.hayden.testgraphsdk.sdk.Procs;
+import com.hayden.testgraphsdk.sdk.ProcessRecord;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.List;
 
 /**
  * Asserts the {@code tb-query} CLI dependency landed on disk after install.
@@ -48,15 +48,12 @@ public class HyperCliTbquery {
             Path bundled = Path.of(home).resolve("bin/cli/tb-query");
             boolean bundledOk = Files.isRegularFile(bundled) || Files.isSymbolicLink(bundled);
             int rc = -1;
-            String runtimeError = "";
+            ProcessRecord proc = null;
 
             if (bundledOk) {
-                try {
-                    ProcessBuilder pb = new ProcessBuilder(bundled.toString(), "--help");
-                    rc = Procs.runLogged(ctx, "tb-query-help", pb);
-                } catch (Exception e) {
-                    runtimeError = e.getMessage();
-                }
+                ProcessBuilder pb = new ProcessBuilder(bundled.toString(), "--help");
+                proc = Procs.run(ctx, "tb-query-help", pb);
+                rc = proc.exitCode();
             }
 
             String binCliListing = "";
@@ -73,6 +70,7 @@ public class HyperCliTbquery {
             }
 
             boolean pass = bundledOk && rc == 0;
+            String runtimeError = proc != null && proc.error() != null ? proc.error() : "";
             String reason = pass ? ""
                     : "tb-query bundle path failed (path=" + bundled
                             + " bundled=" + bundledOk
@@ -83,8 +81,8 @@ public class HyperCliTbquery {
             NodeResult result = pass
                     ? NodeResult.pass("hyper.cli.tbquery")
                     : NodeResult.fail("hyper.cli.tbquery", reason);
-            if (bundledOk) {
-                result = Procs.attach(result, ctx, "tb-query-help", rc, 200);
+            if (proc != null) {
+                result = result.process(proc);
             }
             return result
                     .assertion("tb_query_bundled_under_home", bundledOk)

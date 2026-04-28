@@ -7,6 +7,7 @@ import com.hayden.testgraphsdk.sdk.Node;
 import com.hayden.testgraphsdk.sdk.NodeResult;
 import com.hayden.testgraphsdk.sdk.NodeSpec;
 import com.hayden.testgraphsdk.sdk.Procs;
+import com.hayden.testgraphsdk.sdk.ProcessRecord;
 
 import java.nio.file.Path;
 import java.sql.PreparedStatement;
@@ -52,11 +53,11 @@ public class AccountCreated {
                     "--registry", registryUrl);
             pb.environment().put("SKILL_MANAGER_HOME", home);
             pb.environment().put("SKILL_MANAGER_INSTALL_DIR", repoRoot.toString());
-            int rc = Procs.runLogged(ctx, "create-account", pb);
+            ProcessRecord proc = Procs.run(ctx, "create-account", pb);
+            int rc = proc.exitCode();
             if (rc != 0) {
-                return Procs.attach(
-                        NodeResult.fail("account.created", "create-account exited " + rc),
-                        ctx, "create-account", rc, 200)
+                return NodeResult.fail("account.created", "create-account exited " + rc)
+                        .process(proc)
                         .assertion("cli_exit_zero", false).metric("exitCode", rc);
             }
 
@@ -80,6 +81,7 @@ public class AccountCreated {
             }
 
             return NodeResult.pass("account.created")
+                    .process(proc)
                     .assertion("row_exists", rowPresent)
                     .assertion("email_persisted", EMAIL.equals(email))
                     .assertion("password_hash_is_bcrypt", hashLooksBcrypt)

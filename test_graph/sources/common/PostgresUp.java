@@ -8,6 +8,7 @@ import com.hayden.testgraphsdk.sdk.NodeContext;
 import com.hayden.testgraphsdk.sdk.NodeResult;
 import com.hayden.testgraphsdk.sdk.NodeSpec;
 import com.hayden.testgraphsdk.sdk.Procs;
+import com.hayden.testgraphsdk.sdk.ProcessRecord;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -51,28 +52,33 @@ public class PostgresUp {
             // If a postgres container from a prior run is already up, cycle
             // it so the test gets a clean start (fresh connections, no
             // stale background work). Otherwise `up -d` creates it.
+            ProcessRecord composeProc;
             if (isPostgresRunning(repoRoot, compose)) {
-                int rcRestart = run(ctx, "compose-restart", repoRoot, "docker", "compose", "-f", compose.toString(), "restart", "postgres");
-                if (rcRestart != 0) {
-                    return Procs.attach(
-                            NodeResult.fail("postgres.up", "docker compose restart postgres exited " + rcRestart),
-                            ctx, "compose-restart", rcRestart, 200);
+                composeProc = run(ctx, "compose-restart", repoRoot, "docker", "compose", "-f", compose.toString(), "restart", "postgres");
+                if (composeProc.exitCode() != 0) {
+                    return NodeResult.fail("postgres.up",
+                            "docker compose restart postgres exited " + composeProc.exitCode())
+                            .process(composeProc);
                 }
             } else {
-                int rc = run(ctx, "compose-up", repoRoot, "docker", "compose", "-f", compose.toString(), "up", "-d", "postgres");
-                if (rc != 0) return Procs.attach(
-                        NodeResult.fail("postgres.up", "docker compose up -d postgres exited " + rc),
-                        ctx, "compose-up", rc, 200);
+                composeProc = run(ctx, "compose-up", repoRoot, "docker", "compose", "-f", compose.toString(), "up", "-d", "postgres");
+                if (composeProc.exitCode() != 0) {
+                    return NodeResult.fail("postgres.up",
+                            "docker compose up -d postgres exited " + composeProc.exitCode())
+                            .process(composeProc);
+                }
             }
 
             if (!waitForReady(Duration.ofSeconds(60))) {
-                return NodeResult.fail("postgres.up", "postgres not reachable on 5432 within 60s");
+                return NodeResult.fail("postgres.up", "postgres not reachable on 5432 within 60s")
+                        .process(composeProc);
             }
 
             // Wipe residue from any prior run.
             try (TestDb db = TestDb.open()) { db.truncateAll(); }
 
             return NodeResult.pass("postgres.up")
+                    .process(composeProc)
                     .assertion("reachable", true)
                     .publish("dbUrl", DB_URL)
                     .publish("dbUser", DB_USER)
@@ -80,10 +86,9 @@ public class PostgresUp {
         });
     }
 
-    private static int run(NodeContext ctx, String label, Path cwd, String... cmd)
-            throws IOException, InterruptedException {
+    private static ProcessRecord run(NodeContext ctx, String label, Path cwd, String... cmd) {
         ProcessBuilder pb = new ProcessBuilder(cmd).directory(cwd.toFile());
-        return Procs.runLogged(ctx, label, pb);
+        return Procs.run(ctx, label, pb);
     }
 
     private static boolean isPostgresRunning(Path cwd, Path compose) throws IOException, InterruptedException {

@@ -7,6 +7,7 @@ import com.hayden.testgraphsdk.sdk.Node;
 import com.hayden.testgraphsdk.sdk.NodeResult;
 import com.hayden.testgraphsdk.sdk.NodeSpec;
 import com.hayden.testgraphsdk.sdk.Procs;
+import com.hayden.testgraphsdk.sdk.ProcessRecord;
 
 import java.nio.file.Path;
 import java.sql.PreparedStatement;
@@ -51,11 +52,11 @@ public class ResetRequested {
                     "--registry", registryUrl);
             pb.environment().put("SKILL_MANAGER_HOME", home);
             pb.environment().put("SKILL_MANAGER_INSTALL_DIR", repoRoot.toString());
-            int rc = Procs.runLogged(ctx, "reset-password", pb);
+            ProcessRecord proc = Procs.run(ctx, "reset-password", pb);
+            int rc = proc.exitCode();
             if (rc != 0) {
-                return Procs.attach(
-                        NodeResult.fail("reset.requested", "reset-password exited " + rc),
-                        ctx, "reset-password", rc, 200)
+                return NodeResult.fail("reset.requested", "reset-password exited " + rc)
+                        .process(proc)
                         .assertion("cli_exit_zero", false);
             }
 
@@ -82,6 +83,7 @@ public class ResetRequested {
                         .assertion("token_row_persisted", false);
             }
             return NodeResult.pass("reset.requested")
+                    .process(proc)
                     .assertion("cli_exit_zero", true)
                     .assertion("token_row_persisted", true)
                     .assertion("token_not_expired", futureExpiry)

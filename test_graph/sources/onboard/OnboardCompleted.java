@@ -5,6 +5,7 @@ import com.hayden.testgraphsdk.sdk.Node;
 import com.hayden.testgraphsdk.sdk.NodeResult;
 import com.hayden.testgraphsdk.sdk.NodeSpec;
 import com.hayden.testgraphsdk.sdk.Procs;
+import com.hayden.testgraphsdk.sdk.ProcessRecord;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -62,11 +63,13 @@ public class OnboardCompleted {
             pb.environment().put("CLAUDE_HOME", agentHome.toString());
             pb.environment().put("CODEX_HOME", agentHome.resolve(".codex").toString());
 
-            int rc = Procs.runLogged(ctx, "onboard", pb);
+            ProcessRecord proc = Procs.run(ctx, "onboard", pb);
+            int rc = proc.exitCode();
             NodeResult result = rc == 0
                     ? NodeResult.pass("onboard.completed")
                     : NodeResult.fail("onboard.completed", "onboard exited " + rc);
-            return Procs.attach(result, ctx, "onboard", rc, 300)
+            return result
+                    .process(proc)
                     .assertion("onboard_exit_zero", rc == 0)
                     .metric("exitCode", rc)
                     .publish("home", home)

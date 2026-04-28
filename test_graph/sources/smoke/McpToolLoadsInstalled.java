@@ -5,6 +5,7 @@ import com.hayden.testgraphsdk.sdk.Node;
 import com.hayden.testgraphsdk.sdk.NodeResult;
 import com.hayden.testgraphsdk.sdk.NodeSpec;
 import com.hayden.testgraphsdk.sdk.Procs;
+import com.hayden.testgraphsdk.sdk.ProcessRecord;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -55,12 +56,8 @@ public class McpToolLoadsInstalled {
             pb.environment().put("SKILL_MANAGER_HOME", home);
             pb.environment().put("SKILL_MANAGER_INSTALL_DIR", repoRoot.toString());
 
-            int rc;
-            try {
-                rc = Procs.runLogged(ctx, "install", pb);
-            } catch (Exception e) {
-                return NodeResult.error("mcp.tool.loads.installed", e);
-            }
+            ProcessRecord proc = Procs.run(ctx, "install", pb);
+            int rc = proc.exitCode();
 
             Path skillDir = Path.of(home).resolve("skills/mcp-tool-loads-skill");
             boolean mdOk = Files.isRegularFile(skillDir.resolve("SKILL.md"));
@@ -71,7 +68,8 @@ public class McpToolLoadsInstalled {
                     ? NodeResult.pass("mcp.tool.loads.installed")
                     : NodeResult.fail("mcp.tool.loads.installed",
                             "rc=" + rc + " md=" + mdOk + " toml=" + tomlOk);
-            return Procs.attach(result, ctx, "install", pass ? 0 : 1, 300)
+            return result
+                    .process(proc)
                     .assertion("install_ok", rc == 0)
                     .assertion("skill_md_present", mdOk)
                     .assertion("skill_manager_toml_present", tomlOk)

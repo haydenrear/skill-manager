@@ -5,6 +5,7 @@ import com.hayden.testgraphsdk.sdk.Node;
 import com.hayden.testgraphsdk.sdk.NodeResult;
 import com.hayden.testgraphsdk.sdk.NodeSpec;
 import com.hayden.testgraphsdk.sdk.Procs;
+import com.hayden.testgraphsdk.sdk.ProcessRecord;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -73,12 +74,12 @@ public class HyperCheckout {
         ProcessBuilder pb = new ProcessBuilder(
                 "git", "clone", "--depth", "1", "--branch", ref,
                 url, dest.toString());
-        int rc = Procs.runLogged(ctx, "git-clone", pb);
+        ProcessRecord proc = Procs.run(ctx, "git-clone", pb);
+        int rc = proc.exitCode();
         if (rc != 0) {
-            return Procs.attach(
-                    NodeResult.fail("hyper.checkout",
-                            "git clone " + url + "@" + ref + " exited " + rc),
-                    ctx, "git-clone", rc, 200);
+            return NodeResult.fail("hyper.checkout",
+                    "git clone " + url + "@" + ref + " exited " + rc)
+                    .process(proc);
         }
 
         boolean manifestOk = Files.isRegularFile(dest.resolve("skill-manager.toml"));
@@ -91,7 +92,8 @@ public class HyperCheckout {
                         "missing manifest/SKILL.md after clone (toml=" + manifestOk
                                 + " md=" + skillMdOk + ")");
 
-        return Procs.attach(result, ctx, "git-clone", rc, 200)
+        return result
+                .process(proc)
                 .assertion("clone_ok", rc == 0)
                 .assertion("skill_md_present", skillMdOk)
                 .assertion("manifest_present", manifestOk)

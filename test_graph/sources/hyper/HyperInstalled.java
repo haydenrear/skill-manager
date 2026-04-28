@@ -5,6 +5,7 @@ import com.hayden.testgraphsdk.sdk.Node;
 import com.hayden.testgraphsdk.sdk.NodeResult;
 import com.hayden.testgraphsdk.sdk.NodeSpec;
 import com.hayden.testgraphsdk.sdk.Procs;
+import com.hayden.testgraphsdk.sdk.ProcessRecord;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -78,12 +79,8 @@ public class HyperInstalled {
                 pb.environment().put("PATH", scrubbed);
             }
 
-            int rc;
-            try {
-                rc = Procs.runLogged(ctx, "install", pb);
-            } catch (Exception e) {
-                return NodeResult.error("hyper.installed", e);
-            }
+            ProcessRecord proc = Procs.run(ctx, "install", pb);
+            int rc = proc.exitCode();
 
             Path skillDir = Path.of(home).resolve("skills/hyper-experiments");
             boolean mdOk = Files.isRegularFile(skillDir.resolve("SKILL.md"));
@@ -94,7 +91,8 @@ public class HyperInstalled {
                     ? NodeResult.pass("hyper.installed")
                     : NodeResult.fail("hyper.installed",
                             "rc=" + rc + " md=" + mdOk + " toml=" + tomlOk);
-            return Procs.attach(result, ctx, "install", pass ? 0 : 1, 200)
+            return result
+                    .process(proc)
                     .assertion("install_ok", rc == 0)
                     .assertion("skill_md_present", mdOk)
                     .assertion("skill_manager_toml_present", tomlOk)
