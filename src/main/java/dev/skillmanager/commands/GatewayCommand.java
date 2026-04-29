@@ -39,26 +39,65 @@ public final class GatewayCommand implements Runnable {
         @Option(names = "--host", defaultValue = "127.0.0.1") String host;
         @Option(names = "--port", defaultValue = "51717") int port;
         @Option(names = "--wait-seconds", defaultValue = "15") int waitSeconds;
+        @Option(names = "--no-sync-agents",
+                description = "Don't update agent MCP configs to point at the gateway URL.")
+        boolean noSyncAgents;
 
         @Override
         public Integer call() throws Exception {
             SkillStore store = SkillStore.defaultStore();
             store.init();
             GatewayRuntime rt = new GatewayRuntime(store);
+            String baseUrl;
             if (rt.isRunning()) {
                 Log.info("gateway already running (pid=%d)", rt.readPid());
-                return 0;
+                // Sync against the persisted URL — that's what agents should
+                // point at. If the user later changed it via `gateway set`,
+                // the configs will pick up the drift.
+                baseUrl = GatewayConfig.resolve(store, null).baseUrl().toString();
+            } else {
+                rt.ensureVenv();
+                rt.start(host, port);
+                baseUrl = "http://" + host + ":" + port;
+                if (!rt.waitForHealthy(baseUrl, Duration.ofSeconds(waitSeconds))) {
+                    Log.error("gateway did not become healthy within %ds; see %s", waitSeconds, rt.logFile());
+                    return 1;
+                }
+                GatewayConfig.persist(store, baseUrl);
+                Log.ok("gateway up at %s", baseUrl);
             }
-            rt.ensureVenv();
-            rt.start(host, port);
-            String baseUrl = "http://" + host + ":" + port;
-            if (!rt.waitForHealthy(baseUrl, Duration.ofSeconds(waitSeconds))) {
-                Log.error("gateway did not become healthy within %ds; see %s", waitSeconds, rt.logFile());
-                return 1;
+            if (!noSyncAgents) {
+                syncAgents(store, GatewayConfig.resolve(store, null));
             }
-            GatewayConfig.persist(store, baseUrl);
-            Log.ok("gateway up at %s", baseUrl);
             return 0;
+        }
+    }
+
+    /**
+     * Write the {@code virtual-mcp-gateway} entry into every known agent's
+     * MCP config, pointing at {@code gw.mcpEndpoint()}. Idempotent: existing
+     * entries with the right URL are left alone; stale URLs are rewritten.
+     * Mirrors what {@code install} does at the end of its run, so a user who
+     * brings the gateway up directly (or `gateway set`s a new URL) gets the
+     * same convergence without having to reinstall a skill.
+     */
+    private static void syncAgents(SkillStore store, GatewayConfig gw) {
+        McpWriter writer = new McpWriter(gw);
+        for (Agent agent : Agent.all()) {
+            try {
+                McpWriter.ConfigChange change = writer.writeAgentEntry(agent);
+                switch (change) {
+                    case ADDED -> Log.ok("%s: added virtual-mcp-gateway → %s",
+                            agent.id(), gw.mcpEndpoint());
+                    case UPDATED -> Log.ok("%s: updated virtual-mcp-gateway → %s",
+                            agent.id(), gw.mcpEndpoint());
+                    case UNCHANGED -> Log.info("%s: already pointed at %s",
+                            agent.id(), gw.mcpEndpoint());
+                    case SKIPPED -> {}
+                }
+            } catch (Exception e) {
+                Log.warn("%s: mcp config update failed — %s", agent.id(), e.getMessage());
+            }
         }
     }
 
