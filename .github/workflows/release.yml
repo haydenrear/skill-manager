@@ -58,8 +58,30 @@ jobs:
           fi
 
           echo "Comparing ${PREV_TAG}..${TAG}"
-          CHANGED="$(git diff --name-only "${PREV_TAG}" "${TAG}")"
-          echo "Changed files:"
+          # release-please bumps `VERSION = "x.y.z"` (Java) and
+          # `version = "x.y.z"` (TOML) in step with every release. Without
+          # filtering, the regexes below would trip for every release and
+          # rebuild artifacts whose real source didn't change.
+          #
+          # `git diff -I<regex>` filters such hunks at the patch level —
+          # but `git diff --name-only -I<regex>` does NOT honor `-I` (the
+          # name-only path operates pre-patch and reports any tree diff).
+          # So we list candidates with --name-only, then re-check each one
+          # with `--quiet -I` (which DOES honor the filter) and drop files
+          # whose only remaining diff is a version-string bump. Keep the
+          # patterns in sync with release-please-config.json's `extra-files`.
+          CHANGED="$(git diff --no-ext-diff --name-only "${PREV_TAG}" "${TAG}" | while IFS= read -r f; do
+            [ -z "$f" ] && continue
+            if git diff --no-ext-diff --quiet \
+                 -I'VERSION = "' \
+                 -I'^version = "' \
+                 "${PREV_TAG}" "${TAG}" -- "$f"; then
+              printf '  ignored (version-only bump): %s\n' "$f" >&2
+              continue
+            fi
+            printf '%s\n' "$f"
+          done)"
+          echo "Changed files (excluding release-please version-only bumps):"
           printf '%s\n' "${CHANGED}"
 
           # CLI tarball sources: launcher script, JBang entry, java sources, gateway tree.
