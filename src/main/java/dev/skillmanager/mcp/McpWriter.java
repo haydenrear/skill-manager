@@ -64,7 +64,7 @@ public final class McpWriter {
     public List<InstallResult> registerAll(List<Skill> skills) throws IOException {
         if (!client.ping()) {
             Log.warn("gateway not reachable at %s — skipping dynamic registration", gateway.baseUrl());
-            Log.warn("start the gateway: python -m gateway.server --config <cfg> --host 127.0.0.1 --port 8080");
+            Log.warn("start the gateway: python -m gateway.server --config <cfg> --host 127.0.0.1 --port 51717");
             return List.of();
         }
         Map<String, McpDependency> merged = new LinkedHashMap<>();

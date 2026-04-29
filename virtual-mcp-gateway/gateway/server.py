@@ -556,7 +556,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Virtual MCP Gateway")
     parser.add_argument("--config", required=True, help="Path to gateway JSON config")
     parser.add_argument("--host", default="127.0.0.1")
-    parser.add_argument("--port", type=int, default=8080)
+    parser.add_argument("--port", type=int, default=51717)
     parser.add_argument("--log-level", default="info")
     args = parser.parse_args()
 

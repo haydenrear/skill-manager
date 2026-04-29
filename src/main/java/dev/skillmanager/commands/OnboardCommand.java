@@ -145,7 +145,7 @@ public final class OnboardCommand implements Callable<Integer> {
         }
         URI base = gw.baseUrl();
         String host = base.getHost() == null ? "127.0.0.1" : base.getHost();
-        int port = base.getPort() > 0 ? base.getPort() : 8080;
+        int port = base.getPort() > 0 ? base.getPort() : 51717;
         GatewayRuntime rt = new GatewayRuntime(store);
         try {
             if (!rt.isRunning()) {
