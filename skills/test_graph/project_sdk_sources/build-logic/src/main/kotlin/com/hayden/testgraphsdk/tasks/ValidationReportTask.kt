@@ -40,37 +40,48 @@ abstract class ValidationReportTask : DefaultTask() {
             logger.lifecycle("no reports dir at ${root.absolutePath}")
             return
         }
-        val latest: File = root.listFiles { f -> f.isDirectory }
-            ?.maxByOrNull { it.lastModified() }
-            ?: run {
-                logger.lifecycle("no runs found under ${root.absolutePath}")
-                return
-            }
+        // `validationRunAll` is finalizedBy this task once after every
+        // graph has finished, but each graph creates its own timestamped
+        // run dir. Walk every dir that has an envelope/ — write one
+        // summary.json + report.md per run dir. Idempotent: re-running
+        // overwrites the existing files.
+        val runDirs = root.listFiles { f -> f.isDirectory && File(f, "envelope").isDirectory }
+            ?.sortedBy { it.name }
+            ?: emptyList()
+        if (runDirs.isEmpty()) {
+            logger.lifecycle("no runs found under ${root.absolutePath}")
+            return
+        }
+        for (runDir in runDirs) {
+            writeRunReport(runDir)
+        }
+    }
 
-        val envelopeFiles = File(latest, "envelope").listFiles { f -> f.extension == "json" }
+    private fun writeRunReport(runDir: File) {
+        val envelopeFiles = File(runDir, "envelope").listFiles { f -> f.extension == "json" }
             ?.sortedBy { it.name } ?: emptyList()
 
-        // 1. summary.json — same shape as before, machine-readable.
+        // 1. summary.json — machine-readable concatenation.
         val summarySb = StringBuilder()
         summarySb.append('{')
-        summarySb.append("\"runId\":\"").append(latest.name).append("\",")
+        summarySb.append("\"runId\":\"").append(runDir.name).append("\",")
         summarySb.append("\"nodes\":[")
         envelopeFiles.forEachIndexed { i, f ->
             if (i > 0) summarySb.append(',')
             summarySb.append(f.readText().trim())
         }
         summarySb.append("]}")
-        val summaryOut = File(latest, "summary.json")
+        val summaryOut = File(runDir, "summary.json")
         summaryOut.writeText(summarySb.toString())
 
-        // 2. report.md — human-friendly run report.
+        // 2. report.md — human-friendly per-run report.
         val parsed = envelopeFiles.mapNotNull { f ->
             val raw = f.readText()
             val obj = try { MiniJson.parse(raw) as? Map<*, *> } catch (e: Exception) { null }
             obj?.let { f to it }
         }
-        val markdown = renderReport(latest.name, parsed)
-        val reportOut = File(latest, "report.md")
+        val markdown = renderReport(runDir.name, parsed)
+        val reportOut = File(runDir, "report.md")
         reportOut.writeText(markdown)
 
         logger.lifecycle(
