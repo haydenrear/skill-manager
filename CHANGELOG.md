@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.1](https://github.com/haydenrear/skill-manager/compare/v0.3.0...v0.3.1) (2026-04-29)
+
+
+### Bug Fixes
+
+* skip CI test-graph for non-tested file changes ([#25](https://github.com/haydenrear/skill-manager/issues/25)) ([d767dea](https://github.com/haydenrear/skill-manager/commit/d767dea8131534d3bbff8b43b57ebd128ae4465a))
+
 ## [0.3.0](https://github.com/haydenrear/skill-manager/compare/v0.2.4...v0.3.0) (2026-04-29)
 
 
