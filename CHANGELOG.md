@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.1](https://github.com/haydenrear/skill-manager/compare/skill-manager-v0.2.0...skill-manager-v0.2.1) (2026-04-29)
+
+
+### Bug Fixes
+
+* pass tag-name to bump-homebrew-formula-action ([#14](https://github.com/haydenrear/skill-manager/issues/14)) ([5d47890](https://github.com/haydenrear/skill-manager/commit/5d478902496a662bd0ac8b2d2d2fc1160594b714))
+
 ## [0.2.0](https://github.com/haydenrear/skill-manager/compare/skill-manager-v0.1.0...skill-manager-v0.2.0) (2026-04-28)
 
 
