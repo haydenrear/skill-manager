@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.0](https://github.com/haydenrear/skill-manager/compare/v0.4.0...v0.5.0) (2026-04-29)
+
+
+### Features
+
+* Feature/default port virtual mcp 51717 ([#29](https://github.com/haydenrear/skill-manager/issues/29)) ([9eab98f](https://github.com/haydenrear/skill-manager/commit/9eab98f65d1dcf663da0585600a924cfaa522295))
+
 ## [0.4.0](https://github.com/haydenrear/skill-manager/compare/v0.3.1...v0.4.0) (2026-04-29)
 
 
