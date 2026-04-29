@@ -206,4 +206,4 @@ jobs:
           # Fine-grained PAT with Contents+PullRequests write on the tap
           # repo — used by the cross-repo client to push the formula
           # branch and open the bump PR.
-          COMMITTER_TOKEN: ${{ secrets.SKILL_MANAGER_HOMBREW_TAP_BUMPER }}
+          COMMITTER_TOKEN: ${{ secrets.SKILL_MANAGER_HOMEBREW_TAP_BUMPER }}
