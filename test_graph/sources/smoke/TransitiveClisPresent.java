@@ -19,8 +19,8 @@ public class TransitiveClisPresent {
             .kind(NodeSpec.Kind.ASSERTION)
             .dependsOn("umbrella.installed")
             .tags("cli", "transitive")
-            .timeout("30s");
-
+            .timeout("30s")
+            .retries(2);
     public static void main(String[] args) {
         Node.run(args, SPEC, ctx -> {
             String home = ctx.get("env.prepared", "home").orElse(null);

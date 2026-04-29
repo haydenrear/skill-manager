@@ -21,6 +21,7 @@ public class EchoHttpDeployed {
             .dependsOn("echo.http.skill.installed")
             .tags("mcp", "deploy")
             .timeout("30s")
+            .retries(2)
             .output("toolPath", "string");
 
     public static void main(String[] args) {

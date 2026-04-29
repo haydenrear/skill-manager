@@ -52,30 +52,52 @@ class PlanExecutor(
 
             val resultOut = File(tmpResultsDir, "${spec.id}.json")
             val stdoutLog = File(nodeLogsDir, "${spec.id}.stdout.log")
-            // Defensive: clear any leftover from a previous run so the
-            // "did the SDK write anything" check below is unambiguous.
-            resultOut.delete()
+            val timeoutMillis = TimeoutParser.parseMillis(spec.timeout)
+            val maxAttempts = spec.retries + 1
 
-            val invocation = NodeInvocation(
-                spec = spec,
-                projectDir = projectDir,
-                reportDir = reportDir,
-                runId = runId,
-                contextArg = contextArg,
-                resultOut = resultOut,
-                stdoutLog = stdoutLog,
-            )
+            var execOutcome: ExecutionOutcome = ExecutionOutcome.TimedOut
+            var startedAt = Instant.now()
+            var endedAt = startedAt
+            for (attempt in 1..maxAttempts) {
+                if (attempt > 1) {
+                    logger.lifecycle(
+                        "    retry ${attempt - 1}/${spec.retries} after timeout — " +
+                                "previous attempt exceeded ${spec.timeout}"
+                    )
+                }
+                // Defensive: clear leftover --result-out from the prior
+                // attempt (or from a stale earlier run). The "did the SDK
+                // write anything" check in buildEnvelope below relies on
+                // this being unambiguous.
+                resultOut.delete()
 
-            val startedAt = Instant.now()
-            val exitCode = registry.forNode(spec).execute(invocation)
-            val endedAt = Instant.now()
+                val invocation = NodeInvocation(
+                    spec = spec,
+                    projectDir = projectDir,
+                    reportDir = reportDir,
+                    runId = runId,
+                    contextArg = contextArg,
+                    resultOut = resultOut,
+                    stdoutLog = stdoutLog,
+                    timeoutMillis = timeoutMillis,
+                )
+
+                startedAt = Instant.now()
+                execOutcome = registry.forNode(spec).execute(invocation)
+                endedAt = Instant.now()
+
+                // Stop retrying as soon as the executor reports the child
+                // returned, regardless of exit code — only timeouts are
+                // retryable. A body-returned `failed` should fail fast.
+                if (execOutcome is ExecutionOutcome.Completed) break
+            }
 
             val envelope = File(envelopeDir, "${spec.id}.json")
             val outcome = buildEnvelope(
                 spec = spec,
                 resultOut = resultOut,
                 stdoutLog = stdoutLog,
-                exitCode = exitCode,
+                execOutcome = execOutcome,
                 executorStartedAt = startedAt,
                 executorEndedAt = endedAt,
                 reportRoot = reportRoot,
@@ -113,8 +135,12 @@ class PlanExecutor(
 
     /**
      * Post-process the SDK's --result-out file into the canonical
-     * envelope. Four cases:
+     * envelope. Five cases:
      *
+     *   0. executor reported a timeout → synthesize an "errored"
+     *      envelope with `timed out` reason; the partial stdout log is
+     *      the forensics channel. Skips reading --result-out (the
+     *      child was force-killed mid-write so it's at best partial).
      *   1. result-out exists & parses & status valid → inject the
      *      executor-stamped fields ({@code executorStartedAt},
      *      {@code executorEndedAt}, {@code capturedStdoutLog},
@@ -129,12 +155,24 @@ class PlanExecutor(
         spec: ValidationNodeSpec,
         resultOut: File,
         stdoutLog: File,
-        exitCode: Int,
+        execOutcome: ExecutionOutcome,
         executorStartedAt: Instant,
         executorEndedAt: Instant,
         reportRoot: File,
     ): EnvelopeOutcome {
         val stdoutRel = relativeToReport(reportRoot, stdoutLog)
+
+        if (execOutcome is ExecutionOutcome.TimedOut) {
+            val attempts = spec.retries + 1
+            val attemptsClause = if (attempts > 1) " across $attempts attempts" else ""
+            return synthesized(
+                spec, "errored",
+                "node timed out after ${spec.timeout}$attemptsClause; " +
+                        "executor force-killed the subprocess (see capturedStdoutLog)",
+                stdoutRel, -1, executorStartedAt, executorEndedAt,
+            )
+        }
+        val exitCode = (execOutcome as ExecutionOutcome.Completed).exitCode
 
         if (!resultOut.isFile) {
             return synthesized(

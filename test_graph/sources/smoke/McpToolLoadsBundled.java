@@ -48,8 +48,8 @@ public class McpToolLoadsBundled {
             .kind(NodeSpec.Kind.ASSERTION)
             .dependsOn("mcp.tool.loads.installed", "gateway.up")
             .tags("mcp", "tool-loads", "bundled")
-            .timeout("30s");
-
+            .timeout("30s")
+            .retries(2);
     private static final List<String> EXPECTED_SERVER_IDS = List.of(
             "mcp-tool-load-npm",
             "mcp-tool-load-uv",

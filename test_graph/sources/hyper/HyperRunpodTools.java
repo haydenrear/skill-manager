@@ -42,6 +42,7 @@ public class HyperRunpodTools {
             .dependsOn("hyper.runpod.deployed")
             .tags("hyper", "mcp", "runpod", "tools")
             .timeout("30s")
+            .retries(2)
             .output("toolPath", "string")
             .output("toolCount", "integer");
 

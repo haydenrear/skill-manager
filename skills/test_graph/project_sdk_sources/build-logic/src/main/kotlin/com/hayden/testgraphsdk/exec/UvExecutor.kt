@@ -13,7 +13,7 @@ import com.hayden.testgraphsdk.ValidationRuntime
 class UvExecutor(private val uvPath: String) : ValidationExecutor {
     override val runtimeName: String = "uv"
 
-    override fun execute(invocation: NodeInvocation): Int {
+    override fun execute(invocation: NodeInvocation): ExecutionOutcome {
         val rt = invocation.spec.runtime as? ValidationRuntime.Uv
             ?: error("UvExecutor cannot run a ${invocation.spec.runtime.name} node (${invocation.spec.id})")
 
@@ -29,6 +29,6 @@ class UvExecutor(private val uvPath: String) : ValidationExecutor {
             .redirectErrorStream(true)
             .redirectOutput(invocation.stdoutLog)
             .start()
-        return process.waitFor()
+        return awaitWithTimeout(process, invocation.timeoutMillis)
     }
 }

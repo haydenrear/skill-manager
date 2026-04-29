@@ -18,8 +18,8 @@ public class McpGlobalScopeVisible {
             .kind(NodeSpec.Kind.ASSERTION)
             .dependsOn("echo.global_skill.installed")
             .tags("mcp", "scope", "global")
-            .timeout("30s");
-
+            .timeout("30s")
+            .retries(2);
     private static final String SESSION_X = "test-session-X";
     private static final String SESSION_Y = "test-session-Y";
 

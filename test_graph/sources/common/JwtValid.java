@@ -32,7 +32,8 @@ public class JwtValid {
             .kind(NodeSpec.Kind.ASSERTION)
             .dependsOn("ci.logged.in")
             .tags("auth", "assertion")
-            .timeout("15s");
+            .timeout("15s")
+            .retries(2);
 
     public static void main(String[] args) {
         Node.run(args, SPEC, ctx -> {

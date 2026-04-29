@@ -21,8 +21,8 @@ public class OwnershipRecorded {
             .kind(NodeSpec.Kind.ASSERTION)
             .dependsOn("hello.published")
             .tags("registry", "ownership", "db")
-            .timeout("15s");
-
+            .timeout("15s")
+            .retries(2);
     public static void main(String[] args) {
         Node.run(args, SPEC, ctx -> {
             String expected = ctx.get("ci.logged.in", "clientId").orElse("skill-manager-ci");

@@ -18,12 +18,12 @@ import java.util.Properties;
  *   <li>{@code SKILL_MANAGER_GATEWAY_URL} env var</li>
  *   <li>{@code --gateway} CLI option (passed to constructor)</li>
  *   <li>Persisted {@code gateway.properties} in the store root</li>
- *   <li>Default: {@code http://127.0.0.1:8080}</li>
+ *   <li>Default: {@code http://127.0.0.1:51717}</li>
  * </ol>
  */
 public final class GatewayConfig {
 
-    public static final String DEFAULT_URL = "http://127.0.0.1:8080";
+    public static final String DEFAULT_URL = "http://127.0.0.1:51717";
     private static final String FILE = "gateway.properties";
     private static final String KEY = "gateway.url";
 

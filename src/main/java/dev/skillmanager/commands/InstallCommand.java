@@ -177,7 +177,7 @@ public final class InstallCommand implements Callable<Integer> {
             return false;
         }
 
-        int port = base.getPort() > 0 ? base.getPort() : 8080;
+        int port = base.getPort() > 0 ? base.getPort() : 51717;
         GatewayRuntime rt = new GatewayRuntime(store);
         try {
             if (!rt.isRunning()) {

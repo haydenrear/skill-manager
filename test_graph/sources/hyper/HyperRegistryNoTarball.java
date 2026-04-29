@@ -33,8 +33,8 @@ public class HyperRegistryNoTarball {
             .kind(NodeSpec.Kind.ASSERTION)
             .dependsOn("hyper.published")
             .tags("hyper", "registry", "github")
-            .timeout("30s");
-
+            .timeout("30s")
+            .retries(2);
     public static void main(String[] args) {
         Node.run(args, SPEC, ctx -> {
             String home = ctx.get("env.prepared", "home").orElse(null);

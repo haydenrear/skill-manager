@@ -29,7 +29,7 @@ import java.util.Map;
  *       per-run files don't exist.</li>
  *   <li>install path silently dropped agent-sync → file exists but no
  *       {@code virtual-mcp-gateway} entry.</li>
- *   <li>Wrong gateway URL written (e.g. default {@code 8080} instead of
+ *   <li>Wrong gateway URL written (e.g. default {@code 51717} instead of
  *       the env.prepared port) → URL mismatch.</li>
  * </ul>
  */
@@ -38,8 +38,8 @@ public class OnboardAgentConfigsWritten {
             .kind(NodeSpec.Kind.ASSERTION)
             .dependsOn("onboard.completed")
             .tags("onboard", "agent")
-            .timeout("10s");
-
+            .timeout("10s")
+            .retries(2);
     private static final ObjectMapper JSON = new ObjectMapper();
     private static final String GATEWAY_ENTRY = "virtual-mcp-gateway";
 

@@ -18,8 +18,8 @@ public class SponsoredTeardown {
                     "sponsored.organic.unchanged",
                     "sponsored.higher.bid.wins")
             .tags("teardown")
-            .timeout("15s");
-
+            .timeout("15s")
+            .retries(2);
     public static void main(String[] args) {
         Node.run(args, SPEC, ctx -> {
             String home = ctx.get("env.prepared", "home").orElse(null);

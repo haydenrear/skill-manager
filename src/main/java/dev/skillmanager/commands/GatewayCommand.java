@@ -37,7 +37,7 @@ public final class GatewayCommand implements Runnable {
     @Command(name = "up", description = "Start the bundled virtual MCP gateway as a background process.")
     public static final class Up implements Callable<Integer> {
         @Option(names = "--host", defaultValue = "127.0.0.1") String host;
-        @Option(names = "--port", defaultValue = "8080") int port;
+        @Option(names = "--port", defaultValue = "51717") int port;
         @Option(names = "--wait-seconds", defaultValue = "15") int waitSeconds;
 
         @Override
@@ -87,7 +87,7 @@ public final class GatewayCommand implements Runnable {
 
     @Command(name = "set", description = "Persist the gateway URL.")
     public static final class Set implements Callable<Integer> {
-        @Parameters(index = "0", description = "Base URL, e.g. http://127.0.0.1:8080") String url;
+        @Parameters(index = "0", description = "Base URL, e.g. http://127.0.0.1:51717") String url;
         @Override
         public Integer call() throws Exception {
             SkillStore store = SkillStore.defaultStore();

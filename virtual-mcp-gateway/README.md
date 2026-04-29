@@ -38,7 +38,7 @@ This gateway solves that by putting a stable virtual registry in front of downst
 python -m venv .venv
 source .venv/bin/activate
 pip install -e .
-python -m gateway.server --config sample-config.json --host 127.0.0.1 --port 8080
+python -m gateway.server --config sample-config.json --host 127.0.0.1 --port 51717
 ```
 
 ## Notes

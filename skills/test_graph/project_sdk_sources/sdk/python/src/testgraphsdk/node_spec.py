@@ -22,6 +22,7 @@ class NodeSpec:
     _depends_on: list[str] = field(default_factory=list)
     _tags: list[str] = field(default_factory=list)
     _timeout: str = "60s"
+    _retries: int = 0
     _cacheable: bool = False
     _side_effects: list[str] = field(default_factory=list)
     _inputs: dict[str, str] = field(default_factory=dict)
@@ -45,6 +46,18 @@ class NodeSpec:
 
     def timeout(self, v: str) -> "NodeSpec":
         self._timeout = v
+        return self
+
+    def retries(self, n: int) -> "NodeSpec":
+        """Extra attempts the executor makes on a timeout outcome.
+
+        Default 0 — fail fast on the first timeout. Only set ``> 0`` for
+        nodes that are safe to re-run; most graph nodes are stateful
+        (start a server, claim a port, cache a token) and would leave
+        orphaned state on retry. Triggers only on timeout, never on a
+        body-returned ``NodeResult.fail(...)``.
+        """
+        self._retries = max(0, n)
         return self
 
     def cacheable(self, b: bool = True) -> "NodeSpec":
@@ -80,6 +93,7 @@ class NodeSpec:
                 "dependsOn": list(self._depends_on),
                 "tags": list(self._tags),
                 "timeout": self._timeout,
+                "retries": self._retries,
                 "cacheable": self._cacheable,
                 "sideEffects": list(self._side_effects),
                 "inputs": dict(self._inputs),

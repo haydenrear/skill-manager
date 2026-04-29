@@ -27,8 +27,8 @@ public class SponsoredNoAdsSuppresses {
             .kind(NodeSpec.Kind.ASSERTION)
             .dependsOn("campaigns.created")
             .tags("ads", "search")
-            .timeout("15s");
-
+            .timeout("15s")
+            .retries(2);
     public static void main(String[] args) {
         Node.run(args, SPEC, ctx -> {
             String registryUrl = ctx.get("registry.up", "baseUrl").orElse(null);

@@ -85,6 +85,7 @@ internal object NodeDescribeLoader {
             dependsOn = MiniJson.stringList(root["dependsOn"]),
             tags = MiniJson.stringList(root["tags"]).toSet(),
             timeout = MiniJson.str(root["timeout"]) ?: "60s",
+            retries = (root["retries"] as? Long)?.toInt()?.coerceAtLeast(0) ?: 0,
             cacheable = MiniJson.bool(root["cacheable"]),
             sideEffects = MiniJson.stringList(root["sideEffects"]).toSet(),
             inputs = MiniJson.stringMap(root["inputs"]),
