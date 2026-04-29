@@ -164,10 +164,9 @@ cat /tmp/spec.json
 <skill>/scripts/run.py <graph-name>
 # or directly, from inside the scaffolded project:
 ./gradlew <graph-name>
-./gradlew validationReport
 ```
 
-Output lives at `<test_graph>/build/validation-reports/<runId>/` — one envelope per node under `envelope/`, plus a unified `summary.json` after `validationReport` runs.
+Output lives at `<test_graph>/build/validation-reports/<runId>/` — one envelope per node under `envelope/`, plus a unified `summary.json` and `report.md` written inline by the graph task at the end of plan execution. Run `./gradlew validationReport` to re-render those rollups for every existing run dir (e.g. after editing an envelope by hand).
 
 ### 7. Run every registered graph
 
@@ -177,7 +176,7 @@ Output lives at `<test_graph>/build/validation-reports/<runId>/` — one envelop
 ./gradlew validationRunAll
 ```
 
-`validationRunAll` fans out to every `testGraph(...)` declared in `build.gradle.kts` and chains them serially in declaration order — so testbed nodes don't compete for shared local resources when Gradle's worker pool is wider than 1. The task is `finalizedBy validationReport`, so a single `summary.json` is written across all graphs at the end.
+`validationRunAll` fans out to every `testGraph(...)` declared in `build.gradle.kts` and chains them serially in declaration order — so testbed nodes don't compete for shared local resources when Gradle's worker pool is wider than 1. Each per-graph task writes its own `summary.json` + `report.md` inline; `validationRunAll` doesn't need a finalizer (a shared finalizer would dedupe across graph tasks and leave some run dirs without a report).
 
 ### 8. Clean the build directory
 
@@ -197,7 +196,8 @@ Every run writes under the scaffolded project's `build/` directory:
     <node-id>.json              # one per executed node — status, assertions, metrics, published, logs[]
   node-logs/                    # subprocess stdout+stderr captured per (node, label)
     <node-id>.<label>.log       # e.g. ci.logged.in.login.log
-  summary.json                  # aggregate (written by validationReport / finalizedBy)
+  summary.json                  # aggregate (written inline at the end of the graph run)
+  report.md                     # human-readable rollup (same)
   docs/<graph>.dot              # graphviz source from `discover.py <graph>`
   docs/<graph>.png              # rendered if graphviz `dot` is on PATH
 ```

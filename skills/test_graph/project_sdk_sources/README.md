@@ -8,8 +8,8 @@ Scaffolded test-graph project. See the upstream skill for full docs
 ```bash
 ./gradlew validationListGraphs              # list available test graphs
 ./gradlew validationPlanGraph --name=smoke  # dry-run the topo-ordered plan
-./gradlew smoke                             # run the smoke graph
-./gradlew validationReport                  # aggregate envelopes into summary.json
+./gradlew smoke                             # run the smoke graph (rollup is inline)
+./gradlew validationReport                  # re-render rollups for every existing run dir
 ```
 
 ## Layout
@@ -53,5 +53,6 @@ Each run writes under `build/validation-reports/<runId>/`:
 ```
 build/validation-reports/<runId>/
   envelope/<nodeId>.json    per-node envelope
-  summary.json              unified summary (after validationReport)
+  summary.json              unified summary (written inline at end of run)
+  report.md                 markdown rollup (same)
 ```

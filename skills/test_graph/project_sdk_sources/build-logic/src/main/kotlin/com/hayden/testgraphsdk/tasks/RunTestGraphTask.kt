@@ -63,6 +63,19 @@ abstract class RunTestGraphTask : DefaultTask() {
             projectDirectory.get(), reportDir, runId, logger,
         ).run(plan)
 
+        // Roll this graph's per-node envelopes into summary.json + report.md
+        // right here, while we still own this run dir. Doing it inline avoids
+        // the Gradle finalizer dedup that left some run dirs without a
+        // report when one `validationReport` finalizer was shared across
+        // multiple graph tasks (smoke, sponsored, ...) inside a single
+        // `validationRunAll` invocation.
+        if (RunReportWriter.writeRunReport(reportDir.asFile)) {
+            logger.lifecycle(
+                "wrote ${File(reportDir.asFile, "summary.json").absolutePath} + " +
+                        "${File(reportDir.asFile, "report.md").absolutePath}"
+            )
+        }
+
         logger.lifecycle("testGraph '${graphSpec.name}' done. reports: ${reportDir.asFile.absolutePath}")
     }
 }
