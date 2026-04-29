@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.1](https://github.com/haydenrear/skill-manager/compare/v0.5.0...v0.5.1) (2026-04-29)
+
+
+### Bug Fixes
+
+* **gateway:** sync agent MCP configs as part of `gateway up` ([#31](https://github.com/haydenrear/skill-manager/issues/31)) ([f9cf724](https://github.com/haydenrear/skill-manager/commit/f9cf724954d3090d23c0e38f8d4eda07eb987883))
+
 ## [0.5.0](https://github.com/haydenrear/skill-manager/compare/v0.4.0...v0.5.0) (2026-04-29)
 
 
