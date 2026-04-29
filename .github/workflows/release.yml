@@ -181,6 +181,10 @@ jobs:
     steps:
       - uses: mislav/bump-homebrew-formula-action@v3
         with:
+          # Same-repo client reads our own release for the asset SHA. Without
+          # an explicit `token`, the action falls back to COMMITTER_TOKEN,
+          # which is scoped only to the tap repo and 401s on this repo.
+          token: ${{ secrets.GITHUB_TOKEN }}
           formula-name: skill-manager
           formula-path: Formula/skill-manager.rb
           homebrew-tap: haydenrear/homebrew-skill-manager
