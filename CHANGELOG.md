@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.0](https://github.com/haydenrear/skill-manager/compare/v0.3.1...v0.4.0) (2026-04-29)
+
+
+### Features
+
+* Feature/skill sym ([#27](https://github.com/haydenrear/skill-manager/issues/27)) ([e579ae4](https://github.com/haydenrear/skill-manager/commit/e579ae43a6d5c67a4833e5558183187e9a17d79b))
+
 ## [0.3.1](https://github.com/haydenrear/skill-manager/compare/v0.3.0...v0.3.1) (2026-04-29)
 
 
