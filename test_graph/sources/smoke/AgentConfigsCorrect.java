@@ -61,7 +61,7 @@ public class AgentConfigsCorrect {
             pb.environment().put("SKILL_MANAGER_HOME", fakeSm.toString());
             pb.environment().put("SKILL_MANAGER_INSTALL_DIR", repoRoot.toString());
             // Without this the install in the fake home falls back to
-            // http://127.0.0.1:8080 instead of the test gateway's ephemeral port.
+            // http://127.0.0.1:51717 instead of the test gateway's ephemeral port.
             pb.environment().put("SKILL_MANAGER_GATEWAY_URL", gatewayUrl);
             StringBuilder out = new StringBuilder();
             Process p = pb.start();

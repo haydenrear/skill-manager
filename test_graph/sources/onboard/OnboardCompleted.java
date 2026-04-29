@@ -55,9 +55,9 @@ public class OnboardCompleted {
             pb.environment().put("SKILL_MANAGER_HOME", home);
             pb.environment().put("SKILL_MANAGER_INSTALL_DIR", repoRoot.toString());
             // Pin the gateway port to the env-allocated one so onboard's
-            // gateway-up doesn't try to bind 8080 (already taken on most
-            // dev boxes). InstallCommand reads this through the same
-            // GatewayConfig.resolve path.
+            // gateway-up doesn't try to bind 51717 (the default, which may
+            // already be in use). InstallCommand reads this through the
+            // same GatewayConfig.resolve path.
             pb.environment().put("SKILL_MANAGER_GATEWAY_URL",
                     "http://127.0.0.1:" + gatewayPort);
             pb.environment().put("CLAUDE_HOME", agentHome.toString());
