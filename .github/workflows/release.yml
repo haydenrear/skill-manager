@@ -27,10 +27,62 @@ jobs:
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
 
-  publish-cli:
-    name: Build CLI tarball + attach to release
+  detect-changes:
+    name: Detect which artifact sources changed since previous release
     needs: release-please
     if: ${{ needs.release-please.outputs.release_created == 'true' }}
+    runs-on: ubuntu-latest
+    outputs:
+      cli_changed: ${{ steps.diff.outputs.cli_changed }}
+      server_changed: ${{ steps.diff.outputs.server_changed }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ needs.release-please.outputs.tag_name }}
+
+      - id: diff
+        env:
+          TAG: ${{ needs.release-please.outputs.tag_name }}
+        run: |
+          set -euo pipefail
+          # Previous tag = most recent tag reachable from the parent of the
+          # release commit. First-ever release has no parent tag, in which
+          # case we run all artifact jobs.
+          PREV_TAG="$(git describe --tags --abbrev=0 "${TAG}^" 2>/dev/null || true)"
+          if [ -z "${PREV_TAG}" ]; then
+            echo "No previous tag — first release; building all artifacts."
+            echo "cli_changed=true" >> "$GITHUB_OUTPUT"
+            echo "server_changed=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "Comparing ${PREV_TAG}..${TAG}"
+          CHANGED="$(git diff --name-only "${PREV_TAG}" "${TAG}")"
+          echo "Changed files:"
+          printf '%s\n' "${CHANGED}"
+
+          # CLI tarball sources: launcher script, JBang entry, java sources, gateway tree.
+          if printf '%s\n' "${CHANGED}" | grep -E '^(SkillManager\.java|skill-manager|src/main/|virtual-mcp-gateway/)' >/dev/null; then
+            cli_changed=true
+          else
+            cli_changed=false
+          fi
+          # Pushing the multi-arch server image is heavy; only rebuild when
+          # the launcher, JBang server entry, or server-java tree changed.
+          if printf '%s\n' "${CHANGED}" | grep -E '^(SkillManagerServer\.java|skill-manager-server|server-java/)' >/dev/null; then
+            server_changed=true
+          else
+            server_changed=false
+          fi
+          echo "cli_changed=${cli_changed}" >> "$GITHUB_OUTPUT"
+          echo "server_changed=${server_changed}" >> "$GITHUB_OUTPUT"
+          echo "cli_changed=${cli_changed} server_changed=${server_changed}"
+
+  publish-cli:
+    name: Build CLI tarball + attach to release
+    needs: [release-please, detect-changes]
+    if: ${{ needs.release-please.outputs.release_created == 'true' && needs.detect-changes.outputs.cli_changed == 'true' }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -113,8 +165,8 @@ jobs:
 
   publish-server-image:
     name: Build server container + push to GHCR
-    needs: release-please
-    if: ${{ needs.release-please.outputs.release_created == 'true' }}
+    needs: [release-please, detect-changes]
+    if: ${{ needs.release-please.outputs.release_created == 'true' && needs.detect-changes.outputs.server_changed == 'true' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
