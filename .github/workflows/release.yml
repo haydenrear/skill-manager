@@ -48,11 +48,14 @@ jobs:
 
       - uses: jbangdev/setup-jbang@main
 
-      - name: Build fatjars
+      # Server fatjar is intentionally not built here — the server ships
+      # via the GHCR container image (see publish-server-image job). Brew
+      # users who want to run the server use `docker compose -f
+      # docker-compose-ghcr.yml up`.
+      - name: Build CLI fatjar
         run: |
           mkdir -p dist/lib dist/bin dist/share
           jbang export fatjar --force -O dist/lib/skill-manager.jar SkillManager.java
-          jbang export fatjar --force -O dist/lib/skill-manager-server.jar SkillManagerServer.java
 
       - name: Assemble tarball
         env:
@@ -62,8 +65,8 @@ jobs:
           STAGE="skill-manager-${VERSION}"
           mkdir -p "${STAGE}/bin" "${STAGE}/lib" "${STAGE}/share"
 
-          # Brew-installable launchers — call java -jar directly, no jbang at runtime.
-          # Resolve through symlinks so HOMEBREW_PREFIX/bin/skill-manager → libexec/bin/skill-manager works.
+          # Brew-installable launcher — calls java -jar directly, no jbang at runtime.
+          # Resolves through symlinks so HOMEBREW_PREFIX/bin/skill-manager → libexec/bin/skill-manager works.
           cat > "${STAGE}/bin/skill-manager" <<'EOS'
           #!/usr/bin/env bash
           set -e
@@ -77,23 +80,9 @@ jobs:
           exec java -jar "$DIR/lib/skill-manager.jar" "$@"
           EOS
 
-          cat > "${STAGE}/bin/skill-manager-server" <<'EOS'
-          #!/usr/bin/env bash
-          set -e
-          SRC="${BASH_SOURCE[0]}"
-          while [ -L "$SRC" ]; do
-            TGT="$(readlink "$SRC")"
-            case "$TGT" in /*) SRC="$TGT" ;; *) SRC="$(dirname "$SRC")/$TGT" ;; esac
-          done
-          DIR="$(cd "$(dirname "$SRC")/.." && pwd)"
-          export SKILL_MANAGER_INSTALL_DIR="$DIR/share"
-          exec java -jar "$DIR/lib/skill-manager-server.jar" "$@"
-          EOS
-
-          chmod +x "${STAGE}/bin/skill-manager" "${STAGE}/bin/skill-manager-server"
+          chmod +x "${STAGE}/bin/skill-manager"
 
           cp dist/lib/skill-manager.jar "${STAGE}/lib/"
-          cp dist/lib/skill-manager-server.jar "${STAGE}/lib/"
 
           # Ship the gateway source tree (uv-managed). Users get uv via
           # `depends_on "uv"` in the brew formula and `uv sync` runs lazily
@@ -137,6 +126,12 @@ jobs:
         with:
           ref: ${{ needs.release-please.outputs.tag_name }}
 
+      # QEMU enables linux/arm64 cross-builds on the amd64 GitHub-hosted runner.
+      # Without this the build-push step skips arm64 silently.
+      - uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+
       - uses: docker/setup-buildx-action@v3
 
       - uses: docker/login-action@v3
@@ -162,6 +157,7 @@ jobs:
           context: .
           file: Dockerfile.server
           push: true
+          platforms: linux/amd64,linux/arm64
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha

@@ -10,9 +10,9 @@
 # as the structure is recognizable.
 class SkillManager < Formula
   desc "Build tool for agent skills: CLI deps, skill references, MCP servers"
-  homepage "https://github.com/skill-manager/skill-manager"
-  url "https://github.com/skill-manager/skill-manager/releases/download/v0.1.0/skill-manager-0.1.0.tar.gz"
-  sha256 "0000000000000000000000000000000000000000000000000000000000000000"
+  homepage "https://github.com/haydenrear/skill-manager"
+  url "https://github.com/haydenrear/skill-manager/releases/download/v0.3.0/skill-manager-0.3.0.tar.gz"
+  sha256 "20b60ef5a2831cbc399288bafa9af51b6a861bfb96d88270c507d2b1846c4971"
   license "Apache-2.0"
 
   depends_on "openjdk@21"
@@ -21,7 +21,6 @@ class SkillManager < Formula
   def install
     libexec.install Dir["*"]
     bin.install_symlink libexec/"bin/skill-manager"
-    bin.install_symlink libexec/"bin/skill-manager-server"
   end
 
   def caveats
@@ -33,6 +32,10 @@ class SkillManager < Formula
       Java is provided by openjdk@21 (a brew dependency). If `java -version`
       fails, run:
         brew link --force openjdk@21
+      The skill-manager registry server is published as a container image at
+      ghcr.io/haydenrear/skill-manager-server. To self-host:
+        docker compose -f docker-compose-ghcr.yml up -d
+      (see https://github.com/haydenrear/skill-manager)
     EOS
   end
 
