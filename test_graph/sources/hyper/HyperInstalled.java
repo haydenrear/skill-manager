@@ -31,8 +31,10 @@ public class HyperInstalled {
     public static void main(String[] args) {
         Node.run(args, SPEC, ctx -> {
             String home = ctx.get("env.prepared", "home").orElse(null);
+            String claudeHome = ctx.get("env.prepared", "claudeHome").orElse(null);
+            String codexHome = ctx.get("env.prepared", "codexHome").orElse(null);
             String registryUrl = ctx.get("registry.up", "baseUrl").orElse(null);
-            if (home == null || registryUrl == null) {
+            if (home == null || claudeHome == null || codexHome == null || registryUrl == null) {
                 return NodeResult.fail("hyper.installed", "missing upstream context");
             }
 
@@ -50,6 +52,8 @@ public class HyperInstalled {
             pb.directory(freshCwd.toFile());
             pb.environment().put("SKILL_MANAGER_HOME", home);
             pb.environment().put("SKILL_MANAGER_INSTALL_DIR", repoRoot.toString());
+            pb.environment().put("CLAUDE_HOME", claudeHome);
+            pb.environment().put("CODEX_HOME", codexHome);
 
             // Map X_RUNPOD_KEY -> RUNPOD_API_KEY so McpWriter's env-init
             // scan finds the runpod manifest's required field and the

@@ -76,6 +76,11 @@ validationGraph {
 
         node("sources/smoke/AgentConfigsCorrect.java")
 
+        // Lock in the install-time symlink contract: every install must
+        // drop <CLAUDE_HOME>/.claude/skills/<name> and
+        // <CODEX_HOME>/skills/<name> symlinks pointing at the store path.
+        node("sources/smoke/AgentSkillSymlinks.java")
+
         node("sources/smoke/SmokeReport.java")
         node("sources/common/ServersDown.java").dependsOn("smoke.report")
         node("sources/common/PostgresDown.java").dependsOn("servers.down")

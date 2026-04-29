@@ -27,7 +27,11 @@ public class UmbrellaInstalled {
     public static void main(String[] args) {
         Node.run(args, SPEC, ctx -> {
             String home = ctx.get("env.prepared", "home").orElse(null);
-            if (home == null) return NodeResult.fail("umbrella.installed", "missing env.prepared context");
+            String claudeHome = ctx.get("env.prepared", "claudeHome").orElse(null);
+            String codexHome = ctx.get("env.prepared", "codexHome").orElse(null);
+            if (home == null || claudeHome == null || codexHome == null) {
+                return NodeResult.fail("umbrella.installed", "missing env.prepared context");
+            }
 
             Path repoRoot = Path.of(System.getProperty("user.dir")).resolve("..").normalize();
             Path sm = repoRoot.resolve("skill-manager");
@@ -37,6 +41,8 @@ public class UmbrellaInstalled {
                     sm.toString(), "install", umbrella.toString());
             pb.environment().put("SKILL_MANAGER_HOME", home);
             pb.environment().put("SKILL_MANAGER_INSTALL_DIR", repoRoot.toString());
+            pb.environment().put("CLAUDE_HOME", claudeHome);
+            pb.environment().put("CODEX_HOME", codexHome);
 
             ProcessRecord proc = Procs.run(ctx, "install", pb);
             int rc = proc.exitCode();

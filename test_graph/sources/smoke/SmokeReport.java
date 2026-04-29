@@ -34,6 +34,7 @@ public class SmokeReport {
                     "mcp.tool.invoked",
                     "echo.http.redeployed",
                     "agent.configs.correct",
+                    "agent.skill.symlinks",
                     "search.finds",
                     "mcp.tools.visible",
                     "hello.installed",

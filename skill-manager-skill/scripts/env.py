@@ -13,6 +13,8 @@ Usage:
     env.py                              # dump every installed skill
     env.py --skills hello-skill foo     # restrict to specific skills
     env.py --skills hello-skill --pretty
+    env.py --for claude                 # skill paths under ~/.claude/skills
+    env.py --for codex                  # skill paths under ~/.codex/skills
 """
 
 from __future__ import annotations
@@ -41,6 +43,28 @@ def skill_manager_home() -> Path:
     # SKILL_MANAGER_HOME would otherwise leak relative paths into the
     # JSON contract and break callers that cd before invoking.
     return base if base.is_absolute() else base.absolute()
+
+
+# Mirrors dev.skillmanager.agent.{Claude,Codex}Agent — the Java install
+# code drops symlinks at <agent_skills_dir>/<name> -> <home>/skills/<name>
+# for each installed skill, so env.py can hand callers either the original
+# store path or the agent-visible symlink path.
+def claude_skills_dir() -> Path:
+    env = os.environ.get("CLAUDE_HOME")
+    base = Path(env).expanduser() if env else Path.home()
+    return (base / ".claude" / "skills").absolute()
+
+
+def codex_skills_dir() -> Path:
+    env = os.environ.get("CODEX_HOME")
+    base = Path(env).expanduser() if env else Path.home() / ".codex"
+    return (base / "skills").absolute()
+
+
+AGENT_SKILL_DIRS = {
+    "claude": claude_skills_dir,
+    "codex": codex_skills_dir,
+}
 
 
 def on_path(tool: str) -> str | None:
@@ -187,7 +211,38 @@ def list_installed_skills(home: Path) -> list[str]:
     )
 
 
-def collect(home: Path, requested: list[str] | None) -> dict:
+def resolve_skill_paths(name: str, home: Path, prefer: str | None) -> dict:
+    """Build the path block for a single resolved skill.
+
+    Always reports the original store path under ``$SKILL_MANAGER_HOME/skills``
+    plus per-agent symlink paths (only those that actually exist on disk).
+    The top-level ``path`` field obeys ``prefer``:
+
+    - ``None`` (no ``--for``) → original store path.
+    - ``"claude"`` / ``"codex"`` → that agent's symlink path if present,
+      otherwise fall back to the original so callers always get a usable path.
+    """
+    original = (home / "skills" / name).absolute()
+    agents: dict[str, str] = {}
+    for agent_id, dir_fn in AGENT_SKILL_DIRS.items():
+        candidate = dir_fn() / name
+        if candidate.exists() or candidate.is_symlink():
+            agents[agent_id] = str(candidate)
+
+    if prefer and prefer in agents:
+        path = agents[prefer]
+    else:
+        path = str(original)
+
+    return {
+        "name": name,
+        "path": path,
+        "original": str(original),
+        "agents": agents,
+    }
+
+
+def collect(home: Path, requested: list[str] | None, prefer: str | None) -> dict:
     skills_dir = home / "skills"
     cli_bin_dir = home / "bin" / "cli"
 
@@ -201,8 +256,10 @@ def collect(home: Path, requested: list[str] | None) -> dict:
 
     clis: dict[str, dict] = {}
     missing_clis: list[dict] = []
+    skills: dict[str, dict] = {}
 
     for skill in targets:
+        skills[skill] = resolve_skill_paths(skill, home, prefer)
         manifest = load_skill_manifest(skills_dir / skill)
         if not manifest:
             continue
@@ -219,6 +276,8 @@ def collect(home: Path, requested: list[str] | None) -> dict:
         "skills_requested": requested,
         "skills_resolved": targets,
         "skills_unknown": missing_skills,
+        "skills": skills,
+        "skills_for": prefer,
         "package_managers": package_manager_paths(home),
         "clis": clis,
         "missing": missing_clis,
@@ -241,6 +300,17 @@ def main(argv: list[str]) -> int:
         help="restrict output to these installed skills (default: all installed)",
     )
     parser.add_argument(
+        "--for",
+        dest="for_agent",
+        choices=sorted(AGENT_SKILL_DIRS.keys()),
+        default=None,
+        help=(
+            "report each skill's path under the named agent's skills dir "
+            "(falling back to the original store path when the agent has "
+            "no symlink). Default: original store path."
+        ),
+    )
+    parser.add_argument(
         "--pretty",
         action="store_true",
         help="pretty-print the JSON output",
@@ -248,7 +318,7 @@ def main(argv: list[str]) -> int:
     args = parser.parse_args(argv)
 
     home = skill_manager_home()
-    result = collect(home, args.skills)
+    result = collect(home, args.skills, args.for_agent)
 
     indent = 2 if args.pretty else None
     json.dump(result, sys.stdout, indent=indent, sort_keys=False)
