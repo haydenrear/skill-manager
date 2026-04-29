@@ -75,9 +75,29 @@ public final class Fetcher {
         }
 
         RegistryConfig cfg = RegistryConfig.resolve(store, null);
-        RegistryClient client = new RegistryClient(cfg);
-        Log.step("registry: fetching %s%s from %s", name,
+        RegistryClient client = RegistryClient.authenticated(store, cfg);
+        Log.step("registry: resolving %s%s from %s", name,
                 resolvedVersion == null ? "" : "@" + resolvedVersion, cfg.baseUrl());
+
+        // The registry is metadata-only by default; ask which github URL +
+        // SHA backs this version, then clone directly from there.
+        java.util.Map<String, Object> meta = client.describeVersion(
+                name, resolvedVersion == null || resolvedVersion.isBlank() ? "latest" : resolvedVersion);
+        String githubUrl = (String) meta.get("github_url");
+        if (githubUrl != null && !githubUrl.isBlank()) {
+            String gitSha = (String) meta.get("git_sha");
+            String gitRef = (String) meta.get("git_ref");
+            String checkoutRef = gitSha != null && !gitSha.isBlank() ? gitSha : gitRef;
+            Log.step("registry → github: clone %s @ %s", githubUrl,
+                    checkoutRef == null ? "HEAD" : checkoutRef);
+            return new FetchResult(
+                    gitClone(githubUrl + ".git", checkoutRef, workspace),
+                    ResolvedGraph.SourceKind.REGISTRY, 0, gitSha);
+        }
+
+        // Legacy tarball-published version (only reachable when the server
+        // has skill-registry.publish.allow-file-upload=true and an old row
+        // is being installed).
         Path tar = workspace.resolve(name + ".tar.gz");
         long bytes = client.download(name, resolvedVersion, tar);
         String sha = sha256(tar);

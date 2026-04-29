@@ -9,6 +9,7 @@ import dev.skillmanager.server.persistence.ConversionRepository;
 import dev.skillmanager.server.persistence.ConversionRow;
 import dev.skillmanager.server.publish.PublishException;
 import dev.skillmanager.server.publish.SkillPublishService;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
@@ -21,6 +22,7 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -40,14 +42,17 @@ public class SkillRegistryController {
     private final AdMatcher adMatcher;
     private final ConversionRepository conversions;
     private final SkillPublishService publishService;
+    private final boolean allowFileUpload;
 
     public SkillRegistryController(SkillStorage storage, AdMatcher adMatcher,
                                    ConversionRepository conversions,
-                                   SkillPublishService publishService) {
+                                   SkillPublishService publishService,
+                                   @Value("${skill-registry.publish.allow-file-upload:false}") boolean allowFileUpload) {
         this.storage = storage;
         this.adMatcher = adMatcher;
         this.conversions = conversions;
         this.publishService = publishService;
+        this.allowFileUpload = allowFileUpload;
     }
 
     @GetMapping("/health")
@@ -115,6 +120,39 @@ public class SkillRegistryController {
                 .body(new FileSystemResource(path));
     }
 
+    /**
+     * GitHub-pointer publish — the default path going forward. Body:
+     * {@code {"github_url": "https://github.com/owner/repo", "git_ref": "v0.1.0"}}.
+     * Server fetches the toml + SKILL.md at that ref, derives the skill name
+     * + version from the toml (defaulting to {@code 0.0.1} if absent), and
+     * persists a metadata-only row pointing at the resolved commit SHA.
+     */
+    @PostMapping("/skills/register")
+    public ResponseEntity<SkillVersion> register(
+            @RequestBody RegisterRequest body,
+            @AuthenticationPrincipal Jwt jwt
+    ) throws IOException {
+        if (jwt == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "register requires a bearer token");
+        }
+        if (body == null || body.githubUrl() == null || body.githubUrl().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "github_url is required");
+        }
+        SkillVersion record;
+        try {
+            record = publishService.registerFromGithub(body.githubUrl(), body.gitRef(), jwt.getSubject());
+        } catch (PublishException.BadVersion e) {
+            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, e.getMessage());
+        } catch (PublishException.Forbidden e) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, e.getMessage());
+        } catch (PublishException.Conflict e) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, e.getMessage());
+        }
+        return ResponseEntity.status(HttpStatus.CREATED).body(record);
+    }
+
+    public record RegisterRequest(String githubUrl, String gitRef) {}
+
     @PostMapping("/skills/{name}/{version}")
     public ResponseEntity<PublishResponse> publish(
             @PathVariable String name,
@@ -122,6 +160,11 @@ public class SkillRegistryController {
             @RequestParam("package") MultipartFile pkg,
             @AuthenticationPrincipal Jwt jwt
     ) throws IOException {
+        if (!allowFileUpload) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "file-upload publish is disabled on this server. Use POST /skills/register with a github_url, "
+                            + "or set skill-registry.publish.allow-file-upload=true to re-enable the legacy backend.");
+        }
         if (jwt == null) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "publish requires a bearer token");
         }
@@ -142,7 +185,7 @@ public class SkillRegistryController {
                 record.name(),
                 record.version(),
                 record.sha256(),
-                record.sizeBytes(),
+                record.sizeBytes() == null ? 0L : record.sizeBytes(),
                 "/skills/" + record.name() + "/" + record.version() + "/download");
         return ResponseEntity.status(HttpStatus.CREATED).body(out);
     }
