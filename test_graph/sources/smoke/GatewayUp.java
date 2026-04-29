@@ -34,7 +34,9 @@ public class GatewayUp {
         Node.run(args, SPEC, ctx -> {
             String home = ctx.get("env.prepared", "home").orElse(null);
             String portStr = ctx.get("env.prepared", "gatewayPort").orElse(null);
-            if (home == null || portStr == null) {
+            String claudeHome = ctx.get("env.prepared", "claudeHome").orElse(null);
+            String codexHome = ctx.get("env.prepared", "codexHome").orElse(null);
+            if (home == null || portStr == null || claudeHome == null || codexHome == null) {
                 return NodeResult.fail("gateway.up", "missing env.prepared context");
             }
             int port = Integer.parseInt(portStr);
@@ -57,6 +59,11 @@ public class GatewayUp {
                     "--wait-seconds", "45");
             pb.environment().put("SKILL_MANAGER_HOME", home);
             pb.environment().put("SKILL_MANAGER_INSTALL_DIR", repoRoot.toString());
+            // gateway up now syncs agent MCP configs as part of its run —
+            // sandbox CLAUDE_HOME / CODEX_HOME to the per-run agent dirs
+            // so the test doesn't clobber the developer's real configs.
+            pb.environment().put("CLAUDE_HOME", claudeHome);
+            pb.environment().put("CODEX_HOME", codexHome);
 
             ProcessRecord proc = Procs.run(ctx, "gateway-up", pb);
             int rc = proc.exitCode();
