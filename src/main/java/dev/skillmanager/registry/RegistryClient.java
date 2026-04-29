@@ -350,6 +350,31 @@ public final class RegistryClient {
         }
     }
 
+    /**
+     * Register a github-hosted skill with the registry. Server fetches the
+     * skill-manager.toml at {@code gitRef}, derives name+version from it,
+     * and persists a metadata-only row. Returns the parsed SkillVersion.
+     */
+    public Map<String, Object> registerGithub(String githubUrl, String gitRef) throws IOException {
+        URI url = URI.create(strip(config.baseUrl().toString()) + "/skills/register");
+        Map<String, Object> body = new java.util.LinkedHashMap<>();
+        body.put("github_url", githubUrl);
+        if (gitRef != null && !gitRef.isBlank()) body.put("git_ref", gitRef);
+        String payload = json.writeValueAsString(body);
+        HttpResponse<String> resp = sendAuthed(
+                bearer -> addAuth(HttpRequest.newBuilder(url)
+                        .header("Content-Type", "application/json")
+                        .timeout(Duration.ofSeconds(60))
+                        .POST(HttpRequest.BodyPublishers.ofString(payload)), bearer).build(),
+                HttpResponse.BodyHandlers.ofString());
+        if (resp.statusCode() / 100 != 2) {
+            throw new IOException("register failed: HTTP " + resp.statusCode() + " " + resp.body());
+        }
+        @SuppressWarnings("unchecked")
+        Map<String, Object> parsed = json.readValue(resp.body(), Map.class);
+        return parsed;
+    }
+
     public PublishResult publish(String name, String version, Path tarball) throws IOException {
         URI url = URI.create(strip(config.baseUrl().toString()) + "/skills/" + encode(name) + "/" + encode(version));
         String boundary = "skill-manager-" + System.nanoTime();

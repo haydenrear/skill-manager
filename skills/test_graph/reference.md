@@ -162,7 +162,7 @@ Delete `.bin/` to force redownload. Defaults are bumped by editing `Toolchain.DE
 | `validationListGraphs`                  | List all registered graphs + their explicit nodes.   |
 | `validationPlanGraph --name=<graph>`    | Plan (topo table + dependency adjacency).            |
 | `validationGraphDot --name=<graph>`     | Emit graphviz DOT only (pipe-friendly).              |
-| `validationReport`                      | Aggregate latest run's envelopes into summary.json.  |
+| `validationReport`                      | Re-render summary.json + report.md for every existing run dir (manual rebuild — graph tasks already write their own rollup inline). |
 
 `discover.py <graph>` wraps `validationPlanGraph` (for the human console output) and `validationGraphDot` (for `docs/<graph>.dot`), and renders `docs/<graph>.png` if `dot` is on PATH.
 
@@ -271,7 +271,8 @@ Each run writes under `build/validation-reports/<runId>/`:
 build/validation-reports/<runId>/
   envelope/<nodeId>.json     # canonical per-node envelope
   context/step-NNN.json      # (optional) spilled context payloads
-  summary.json               # aggregated summary (after validationReport)
+  summary.json               # aggregated summary (written inline at end of run)
+  report.md                  # markdown rollup (same)
 ```
 
 `summary.json` is the machine-readable handoff for CI, dashboards, agents.

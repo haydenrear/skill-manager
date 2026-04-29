@@ -76,9 +76,13 @@ class ValidationGraphPlugin : Plugin<Project> {
         // in the build script is included.
         val runAll = project.tasks.register("validationRunAll", DefaultTask::class.java) {
             group = "validation"
-            description = "Run every registered test graph sequentially, then aggregate reports."
-            // Roll up envelopes once at the end rather than per-graph.
-            finalizedBy("validationReport")
+            description = "Run every registered test graph sequentially."
+            // No `finalizedBy("validationReport")` — each RunTestGraphTask
+            // emits its own summary.json + report.md inline at the end of
+            // plan execution. A finalizer at this layer plus the same
+            // finalizer on every graph task historically deduped to a
+            // single execution against one run dir, leaving the others
+            // without a report under multi-graph invocations.
         }
         project.afterEvaluate {
             val graphTasks = ext.graphs.keys.mapNotNull { project.tasks.findByName(it) }

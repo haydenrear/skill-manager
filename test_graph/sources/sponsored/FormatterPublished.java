@@ -30,6 +30,7 @@ public class FormatterPublished {
 
             ProcessBuilder pb = new ProcessBuilder(
                     sm.toString(), "publish", skill.toString(),
+                    "--upload-tarball",
                     "--registry", registryUrl);
             pb.environment().put("SKILL_MANAGER_HOME", home);
             pb.environment().put("SKILL_MANAGER_INSTALL_DIR", repoRoot.toString());

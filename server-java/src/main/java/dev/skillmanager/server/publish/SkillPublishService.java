@@ -44,6 +44,48 @@ public class SkillPublishService {
         this.versions = versions;
     }
 
+    /**
+     * Register a github-hosted skill. Pulls the toml + SKILL.md out of the
+     * repo at {@code gitRef}, derives name+version from the toml (defaulting
+     * to {@code 0.0.1} if absent), then runs the same ownership/immutability
+     * checks as the legacy upload path.
+     */
+    @Transactional
+    public SkillVersion registerFromGithub(String githubUrl, String gitRef, String username) throws IOException {
+        GitHubFetcher.SkillMetadata meta;
+        try {
+            meta = GitHubFetcher.fetch(githubUrl, gitRef);
+        } catch (GitHubFetcher.FetchException e) {
+            throw new PublishException.BadVersion(e.getMessage());
+        }
+
+        String name = meta.name();
+        String version = meta.version();
+        if (!Semver.isValid(version)) {
+            throw new PublishException.BadVersion(
+                    "skill-manager.toml [skill].version is not valid semver: " + version);
+        }
+
+        SkillName owner = names.findById(name).orElse(null);
+        if (owner == null) {
+            names.save(new SkillName(name, username));
+        } else if (!owner.getOwnerUsername().equals(username)) {
+            throw new PublishException.Forbidden(
+                    "name '" + name + "' is owned by " + owner.getOwnerUsername());
+        }
+
+        SkillVersionRow.Key key = new SkillVersionRow.Key(name, version);
+        if (versions.existsById(key)) {
+            throw new PublishException.Conflict(name + "@" + version + " already published");
+        }
+
+        SkillVersion record = storage.registerGithub(
+                name, version, meta.description(), meta.skillReferences(),
+                username, githubUrl, gitRef, meta.gitSha());
+        versions.save(SkillVersionRow.github(name, version, username, githubUrl, gitRef, meta.gitSha()));
+        return record;
+    }
+
     @Transactional
     public SkillVersion publish(String name, String version, byte[] payload, String username) throws IOException {
         if (!Semver.isValid(version)) {

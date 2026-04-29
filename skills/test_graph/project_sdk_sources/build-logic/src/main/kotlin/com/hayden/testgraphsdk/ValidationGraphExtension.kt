@@ -59,11 +59,13 @@ open class ValidationGraphExtension(internal val project: Project) {
             sourcesDirsProvider = { outerExt.sourcesDirs.toList() }
             projectDirectory.set(project.layout.projectDirectory)
             reportRoot.set(project.layout.buildDirectory.dir("validation-reports"))
-            // Always emit report.md + summary.json after a graph runs,
-            // even when invoked directly as `./gradlew <graph>`. Without
-            // this, only run.py / validationRunAll trigger the rollup —
-            // surprising for a developer poking at one graph.
-            finalizedBy("validationReport")
+            // No `finalizedBy("validationReport")` here. Each
+            // RunTestGraphTask writes its own summary.json + report.md
+            // inline at the end of plan execution; a shared finalizer
+            // gets deduped across multiple graph tasks in a single
+            // build invocation, which used to leave some run dirs
+            // without a report. `validationReport` is still available
+            // as a manual rebuild over every existing run dir.
         }
     }
 }

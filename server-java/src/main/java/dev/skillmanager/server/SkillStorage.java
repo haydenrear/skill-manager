@@ -120,7 +120,7 @@ public final class SkillStorage {
         Files.write(vdir.resolve(PACKAGE_FILE), payload);
 
         String digest = sha256(payload);
-        SkillVersion record = new SkillVersion(
+        SkillVersion record = SkillVersion.tarball(
                 name,
                 version,
                 meta.description,
@@ -131,6 +131,33 @@ public final class SkillStorage {
                 ownerUsername);
         json.writeValue(vdir.resolve(METADATA_FILE).toFile(), record);
         updateIndex(name, meta.description, version);
+        return record;
+    }
+
+    /**
+     * Register a github-hosted skill version. Writes metadata.json + updates
+     * index.json without storing any tarball; install-time fetch goes
+     * straight to {@code github_url} at {@code git_sha}.
+     */
+    public SkillVersion registerGithub(String name, String version, String description,
+                                       List<String> skillReferences, String ownerUsername,
+                                       String githubUrl, String gitRef, String gitSha) throws IOException {
+        validateName(name);
+        validateVersion(version);
+        Path vdir = versionDir(name, version);
+        Files.createDirectories(vdir);
+        SkillVersion record = SkillVersion.github(
+                name,
+                version,
+                description == null ? "" : description,
+                System.currentTimeMillis() / 1000.0,
+                skillReferences == null ? List.of() : List.copyOf(skillReferences),
+                ownerUsername,
+                githubUrl,
+                gitRef,
+                gitSha);
+        json.writeValue(vdir.resolve(METADATA_FILE).toFile(), record);
+        updateIndex(name, record.description(), version);
         return record;
     }
 

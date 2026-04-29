@@ -95,5 +95,6 @@ Each run writes under `<test_graph>/build/validation-reports/<runId>/`:
 ```
 build/validation-reports/<runId>/
   envelope/<nodeId>.json    per-node envelope
-  summary.json              unified summary (after validationReport)
+  summary.json              unified summary (written inline at end of run)
+  report.md                 markdown rollup (same)
 ```

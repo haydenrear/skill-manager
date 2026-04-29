@@ -36,6 +36,7 @@ public class SemverEnforced {
 
             ProcessBuilder pb = new ProcessBuilder(
                     sm.toString(), "publish", skill.toString(),
+                    "--upload-tarball",
                     "--version", "not-semver",
                     "--registry", registryUrl)
                     .redirectErrorStream(true);

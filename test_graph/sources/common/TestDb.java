@@ -82,6 +82,24 @@ public final class TestDb implements AutoCloseable {
             // Swallow only the "relation does not exist" class so real errors surface.
             if (!"42P01".equals(first.getSQLState())) throw first;
         }
+
+        // Hibernate's `ddl-auto=update` only ADDS columns — it never relaxes
+        // NOT NULL constraints. The github-publish path inserts rows with
+        // sha256/size_bytes null, but a database left over from a pre-refactor
+        // server boot still has those columns NOT NULL. Drop the constraints
+        // explicitly here; ALTER ... DROP NOT NULL is idempotent.
+        for (String alter : new String[]{
+                "ALTER TABLE skill_versions ALTER COLUMN sha256 DROP NOT NULL",
+                "ALTER TABLE skill_versions ALTER COLUMN size_bytes DROP NOT NULL",
+        }) {
+            try (PreparedStatement ps = conn.prepareStatement(alter)) {
+                ps.executeUpdate();
+            } catch (SQLException e) {
+                // 42P01 = relation doesn't exist yet (first ever run).
+                // 42703 = column doesn't exist (table predates the github columns; benign).
+                if (!"42P01".equals(e.getSQLState()) && !"42703".equals(e.getSQLState())) throw e;
+            }
+        }
     }
 
     private long countWhere(String table, String column, String value) throws SQLException {

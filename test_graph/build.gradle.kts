@@ -76,6 +76,11 @@ validationGraph {
 
         node("sources/smoke/AgentConfigsCorrect.java")
 
+        // Lock in the install-time symlink contract: every install must
+        // drop <CLAUDE_HOME>/.claude/skills/<name> and
+        // <CODEX_HOME>/skills/<name> symlinks pointing at the store path.
+        node("sources/smoke/AgentSkillSymlinks.java")
+
         node("sources/smoke/SmokeReport.java")
         node("sources/common/ServersDown.java").dependsOn("smoke.report")
         node("sources/common/PostgresDown.java").dependsOn("servers.down")
@@ -163,7 +168,12 @@ validationGraph {
     testGraph("hyper-experiments") {
         node("sources/common/EnvPrepared.java")
         node("sources/common/PostgresUp.java")
+        // Flips SKILL_REGISTRY_ALLOW_FILE_UPLOAD=false on the registry
+        // server so this graph exercises the github-only publish path
+        // end-to-end (the production default).
+        node("sources/hyper/EnvPreparedHyper.java")
         node("sources/common/RegistryUp.java")
+                .dependsOn("env.hyper.prepared")
         node("sources/common/CiLoggedIn.java")
         node("sources/common/JwtValid.java")
         // Bring the gateway venv up before the gateway itself.
@@ -172,6 +182,10 @@ validationGraph {
 
         node("sources/hyper/HyperCheckout.java")
         node("sources/hyper/HyperPublished.java")
+        // Asserts the registry persisted a github pointer only — no tarball
+        // bytes on disk, sha256/size_bytes null in skill_versions for the
+        // hyper-experiments rows.
+        node("sources/hyper/HyperRegistryNoTarball.java")
         node("sources/hyper/HyperInstalled.java")
         node("sources/hyper/HyperCliTbquery.java")
         node("sources/hyper/HyperRunpodRegistered.java")

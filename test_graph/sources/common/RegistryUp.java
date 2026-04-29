@@ -81,6 +81,15 @@ public class RegistryUp {
             pb.environment().put("SKILL_REGISTRY_DB_URL", dbUrl);
             if (dbUser != null) pb.environment().put("SKILL_REGISTRY_DB_USER", dbUser);
             if (dbPassword != null) pb.environment().put("SKILL_REGISTRY_DB_PASSWORD", dbPassword);
+            // Publish backend toggle. Production servers default false
+            // (github-pointer publishes only); smoke / sponsored / onboard /
+            // refresh-flow still drive the legacy multipart path via
+            // `skill-manager publish --upload-tarball`, so we default to
+            // true here. The hyper-experiments graph adds an
+            // env.hyper.prepared node that overrides this back to false to
+            // exercise POST /skills/register end-to-end.
+            String allowUpload = ctx.get("env.hyper.prepared", "allowFileUpload").orElse("true");
+            pb.environment().put("SKILL_REGISTRY_ALLOW_FILE_UPLOAD", allowUpload);
             // Optional short-TTL override from an upstream fixture (refresh-flow
             // graph sets this to exercise real expiry; other graphs leave it
             // unpublished and the server keeps its 1h default).

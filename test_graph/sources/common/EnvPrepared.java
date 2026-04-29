@@ -15,6 +15,11 @@ import java.nio.file.Path;
  *
  *   - A fresh {@code SKILL_MANAGER_HOME} so no pre-existing local state
  *     (skills/, bin/, gateway pid files) interferes with the run.
+ *   - Sandboxed {@code CLAUDE_HOME} / {@code CODEX_HOME} so install-time
+ *     symlinks (under {@code .claude/skills}, {@code .codex/skills}) and
+ *     MCP-config writes (under {@code .claude.json},
+ *     {@code .codex/config.toml}) land inside the temp home rather than
+ *     polluting the developer's real {@code ~/}.
  *   - Two free TCP ports: one for the Java skill registry server, one
  *     for the virtual MCP gateway.
  *
@@ -25,6 +30,8 @@ public class EnvPrepared {
             .kind(NodeSpec.Kind.FIXTURE)
             .tags("env")
             .output("home", "string")
+            .output("claudeHome", "string")
+            .output("codexHome", "string")
             .output("registryPort", "integer")
             .output("gatewayPort", "integer");
 
@@ -33,15 +40,31 @@ public class EnvPrepared {
             Path home = Files.createTempDirectory("sm-testgraph-");
             Files.createDirectories(home.resolve("test-graph"));
 
+            // Match OnboardCompleted's layout: ClaudeAgent treats $CLAUDE_HOME
+            // as the parent of {.claude/, .claude.json}; CodexAgent treats
+            // $CODEX_HOME as the dir holding {skills/, config.toml}. So
+            // claudeHome=$home/agent-home and codexHome=$home/agent-home/.codex
+            // gives:
+            //   $home/agent-home/.claude/skills/<name>
+            //   $home/agent-home/.codex/skills/<name>
+            Path agentHome = home.resolve("agent-home");
+            Path codexHome = agentHome.resolve(".codex");
+            Files.createDirectories(agentHome);
+            Files.createDirectories(codexHome);
+
             int registryPort = freePort();
             int gatewayPort = freePort();
 
             return NodeResult.pass("env.prepared")
                     .assertion("home_created", Files.isDirectory(home))
+                    .assertion("agent_home_created", Files.isDirectory(agentHome))
+                    .assertion("codex_home_created", Files.isDirectory(codexHome))
                     .assertion("ports_allocated", registryPort > 0 && gatewayPort > 0)
                     .metric("registryPort", registryPort)
                     .metric("gatewayPort", gatewayPort)
                     .publish("home", home.toString())
+                    .publish("claudeHome", agentHome.toString())
+                    .publish("codexHome", codexHome.toString())
                     .publish("registryPort", Integer.toString(registryPort))
                     .publish("gatewayPort", Integer.toString(gatewayPort));
         });

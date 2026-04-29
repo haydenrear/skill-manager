@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
-"""Run a test graph by name (or every registered graph), then aggregate reports.
+"""Run a test graph by name (or every registered graph).
 
 Every ``testGraph("X") { ... }`` in build.gradle.kts registers a Gradle
 task named ``X``. This script invokes ``./gradlew X`` for a single graph,
 or ``./gradlew validationRunAll`` to fan out across every registered
-graph in declared order. Both paths chain through ``validationReport``
-to roll the per-node envelopes into ``summary.json``.
+graph in declared order. Each ``RunTestGraphTask`` rolls its own
+per-node envelopes into ``summary.json`` + ``report.md`` inline at the
+end of plan execution, so every run dir under
+``build/validation-reports/<runId>/`` gets a report regardless of how
+many graphs the invocation spans.
 
 Usage:
     run.py <graph-name>           # single graph (e.g. run.py smoke)
@@ -43,20 +46,16 @@ def main() -> int:
         parser.error("either <graph> or --all is required")
 
     if args.run_all:
-        # validationRunAll is finalizedBy validationReport, so the
-        # rollup happens automatically — no second invocation needed.
+        # Each RunTestGraphTask now writes its own summary.json +
+        # report.md inline; no second invocation needed to roll up.
         return run_gradle(
             ["--console=plain", "validationRunAll"],
             args.test_graph_root,
         )
 
-    code = run_gradle(["--console=plain", args.graph], args.test_graph_root)
-    if code != 0:
-        return code
-    return run_gradle(
-        ["--console=plain", "-q", "validationReport"],
-        args.test_graph_root,
-    )
+    # Single-graph path: same story — the per-graph task emits its own
+    # rollup inline, so we don't need a second `validationReport` call.
+    return run_gradle(["--console=plain", args.graph], args.test_graph_root)
 
 
 if __name__ == "__main__":
