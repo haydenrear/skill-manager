@@ -3,8 +3,34 @@ name: CI
 on:
   push:
     branches: [main]
+    # Skip the test-graph matrix when a push only touches files that don't
+    # affect tested code (release-please's bookkeeping, brew formula, docs,
+    # workflow YAML, server Dockerfile). The release.yml workflow still runs
+    # on those pushes; only this CI workflow short-circuits.
+    paths-ignore:
+      - '.github/workflows/**'
+      - 'CHANGELOG.md'
+      - 'version.txt'
+      - '.release-please-manifest.json'
+      - 'release-please-config.json'
+      - 'infra/homebrew/**'
+      - 'infra/homebrew-skill-manager/**'
+      - 'Dockerfile.server'
+      - 'docker-compose-ghcr.yml'
+      - '*.md'
   pull_request:
     branches: [main]
+    paths-ignore:
+      - '.github/workflows/**'
+      - 'CHANGELOG.md'
+      - 'version.txt'
+      - '.release-please-manifest.json'
+      - 'release-please-config.json'
+      - 'infra/homebrew/**'
+      - 'infra/homebrew-skill-manager/**'
+      - 'Dockerfile.server'
+      - 'docker-compose-ghcr.yml'
+      - '*.md'
   workflow_dispatch:
 
 # Public pgvector image substituted for the local-registry one used in dev.
