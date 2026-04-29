@@ -185,6 +185,13 @@ jobs:
           formula-path: Formula/skill-manager.rb
           homebrew-tap: haydenrear/homebrew-skill-manager
           base-branch: main
+          # Required because the workflow runs on push-to-main, not a tag
+          # push — without this the action falls back to GITHUB_REF and
+          # throws `invalid ref: refs/heads/main`. release-please's tag
+          # carries the component prefix (skill-manager-v0.2.0) which
+          # confuses the action's version comparator, so flatten to v<X>
+          # using the version output directly.
+          tag-name: v${{ needs.release-please.outputs.version }}
           download-url: https://github.com/${{ github.repository }}/releases/download/${{ needs.release-please.outputs.tag_name }}/skill-manager-${{ needs.release-please.outputs.version }}.tar.gz
           commit-message: |
             skill-manager ${{ needs.release-please.outputs.version }}
