@@ -13,19 +13,25 @@ import java.nio.file.Path;
  * Registers the {@code hyper-experiments} skill with the local registry as
  * a github-pointer publish — the default backend in production.
  *
- * <p>Drives {@code skill-manager publish} from inside the checkout produced
- * by {@code hyper.checkout}; the CLI auto-detects {@code remote.origin.url}
- * and we pin the ref via {@code --ref} (default {@code main}, override via
- * {@code HYPER_GIT_REF} on {@code hyper.checkout}). The server fetches the
- * toml at that ref over the GitHub REST API and persists a metadata-only
- * row keyed on the resolved SHA.
+ * <p>Two-phase test:
+ * <ol>
+ *   <li>First call attempts {@code skill-manager publish --upload-tarball}.
+ *       The server has {@code SKILL_REGISTRY_ALLOW_FILE_UPLOAD=false} via
+ *       {@code env.hyper.prepared}, so the multipart endpoint returns 403.
+ *       The CLI propagates the failure and exits non-zero — we assert that.</li>
+ *   <li>Second call drops {@code --upload-tarball} and registers via
+ *       {@code POST /skills/register}; expected to succeed.</li>
+ * </ol>
+ *
+ * <p>Together those two calls prove the server-side gate is honored AND
+ * that the github register path actually persists a row.
  */
 public class HyperPublished {
     static final NodeSpec SPEC = NodeSpec.of("hyper.published")
             .kind(NodeSpec.Kind.ACTION)
             .dependsOn("hyper.checkout", "registry.up", "ci.logged.in", "jwt.valid")
             .tags("hyper", "registry", "publish", "github")
-            .timeout("90s")
+            .timeout("120s")
             .output("skillName", "string");
 
     public static void main(String[] args) {
@@ -54,6 +60,19 @@ public class HyperPublished {
             String ref = System.getenv("HYPER_GIT_REF");
             if (ref == null || ref.isBlank()) ref = "main";
 
+            // Phase 1: legacy multipart upload — must be rejected by the
+            // gated /skills/{name}/{version} endpoint.
+            ProcessBuilder rejectPb = new ProcessBuilder(
+                    sm.toString(), "publish", skillDir,
+                    "--upload-tarball",
+                    "--registry", registryUrl);
+            rejectPb.environment().put("SKILL_MANAGER_HOME", home);
+            rejectPb.environment().put("SKILL_MANAGER_INSTALL_DIR", repoRoot.toString());
+            ProcessRecord rejectProc = Procs.run(ctx, "publish-tarball-rejected", rejectPb);
+            int rejectRc = rejectProc.exitCode();
+            boolean uploadRejected = rejectRc != 0;
+
+            // Phase 2: github-pointer register — the production path.
             ProcessBuilder pb = new ProcessBuilder(
                     sm.toString(), "publish", skillDir,
                     "--github-url", githubUrl,
@@ -61,16 +80,24 @@ public class HyperPublished {
                     "--registry", registryUrl);
             pb.environment().put("SKILL_MANAGER_HOME", home);
             pb.environment().put("SKILL_MANAGER_INSTALL_DIR", repoRoot.toString());
-
             ProcessRecord proc = Procs.run(ctx, "publish", pb);
             int rc = proc.exitCode();
-            NodeResult result = rc == 0
+            boolean registerOk = rc == 0;
+
+            boolean pass = uploadRejected && registerOk;
+            NodeResult result = pass
                     ? NodeResult.pass("hyper.published")
-                    : NodeResult.fail("hyper.published", "publish exited " + rc);
+                    : NodeResult.fail("hyper.published",
+                            "uploadRejected=" + uploadRejected
+                                    + " registerOk=" + registerOk
+                                    + " (rejectRc=" + rejectRc + ", registerRc=" + rc + ")");
             return result
+                    .process(rejectProc)
                     .process(proc)
-                    .assertion("published_ok", rc == 0)
-                    .metric("exitCode", rc)
+                    .assertion("upload_tarball_rejected", uploadRejected)
+                    .assertion("github_register_ok", registerOk)
+                    .metric("rejectExitCode", rejectRc)
+                    .metric("registerExitCode", rc)
                     .publish("skillName", "hyper-experiments");
         });
     }

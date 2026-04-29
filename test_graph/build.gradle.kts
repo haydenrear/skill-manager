@@ -177,6 +177,10 @@ validationGraph {
 
         node("sources/hyper/HyperCheckout.java")
         node("sources/hyper/HyperPublished.java")
+        // Asserts the registry persisted a github pointer only — no tarball
+        // bytes on disk, sha256/size_bytes null in skill_versions for the
+        // hyper-experiments rows.
+        node("sources/hyper/HyperRegistryNoTarball.java")
         node("sources/hyper/HyperInstalled.java")
         node("sources/hyper/HyperCliTbquery.java")
         node("sources/hyper/HyperRunpodRegistered.java")
