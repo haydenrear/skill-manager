@@ -28,6 +28,7 @@ public class CiLoggedIn {
             .dependsOn("registry.up")
             .tags("auth")
             .timeout("30s")
+            .retries(2)
             .output("clientId", "string");
 
     public static void main(String[] args) {

@@ -33,6 +33,7 @@ public class GatewayPythonVenvReady {
             .tags("gateway", "python", "venv")
             .sideEffects("net:remote", "fs:write")
             .timeout("180s")
+            .retries(2)
             .output("venvPython", "string");
 
     public static void main(String[] args) {

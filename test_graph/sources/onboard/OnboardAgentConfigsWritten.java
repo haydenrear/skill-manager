@@ -38,8 +38,8 @@ public class OnboardAgentConfigsWritten {
             .kind(NodeSpec.Kind.ASSERTION)
             .dependsOn("onboard.completed")
             .tags("onboard", "agent")
-            .timeout("10s");
-
+            .timeout("10s")
+            .retries(2);
     private static final ObjectMapper JSON = new ObjectMapper();
     private static final String GATEWAY_ENTRY = "virtual-mcp-gateway";
 

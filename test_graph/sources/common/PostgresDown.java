@@ -20,7 +20,8 @@ public class PostgresDown {
             .kind(NodeSpec.Kind.EVIDENCE)
             .tags("postgres", "teardown")
             .sideEffects("docker")
-            .timeout("30s");
+            .timeout("30s")
+            .retries(2);
 
     public static void main(String[] args) {
         Node.run(args, SPEC, ctx -> {

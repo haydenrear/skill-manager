@@ -21,12 +21,14 @@ class NodeOverlay(internal val file: File) {
     internal val extraTags = linkedSetOf<String>()
     internal val extraSideEffects = linkedSetOf<String>()
     internal var timeoutOverride: String? = null
+    internal var retriesOverride: Int? = null
     internal var cacheableOverride: Boolean? = null
 
     fun dependsOn(vararg ids: String): NodeOverlay { extraDependsOn.addAll(ids); return this }
     fun tags(vararg t: String): NodeOverlay { extraTags.addAll(t); return this }
     fun sideEffects(vararg s: String): NodeOverlay { extraSideEffects.addAll(s); return this }
     fun timeout(v: String): NodeOverlay { timeoutOverride = v; return this }
+    fun retries(n: Int): NodeOverlay { retriesOverride = n.coerceAtLeast(0); return this }
     fun cacheable(b: Boolean): NodeOverlay { cacheableOverride = b; return this }
 
     internal fun applyTo(spec: ValidationNodeSpec): ValidationNodeSpec =
@@ -35,6 +37,7 @@ class NodeOverlay(internal val file: File) {
             tags = spec.tags + extraTags,
             sideEffects = spec.sideEffects + extraSideEffects,
             timeout = timeoutOverride ?: spec.timeout,
+            retries = retriesOverride ?: spec.retries,
             cacheable = cacheableOverride ?: spec.cacheable,
         )
 }

@@ -4,6 +4,7 @@ import com.hayden.testgraphsdk.ToolPaths
 import com.hayden.testgraphsdk.ValidationNodeSpec
 import org.gradle.api.file.Directory
 import java.io.File
+import java.util.concurrent.TimeUnit
 
 /**
  * Everything an executor needs to dispatch one node invocation.
@@ -35,7 +36,28 @@ data class NodeInvocation(
     val contextArg: String? = null,
     val resultOut: File,
     val stdoutLog: File,
+    /**
+     * Wall-clock budget for one attempt, parsed once from
+     * [ValidationNodeSpec.timeout] by `PlanExecutor`. Executors enforce
+     * this via `process.waitFor(timeoutMillis, MILLISECONDS)` and
+     * `destroyForcibly()` on miss — so a wedged jbang resolve / hung
+     * subprocess can't stall the graph past this bound.
+     */
+    val timeoutMillis: Long,
 )
+
+/**
+ * Outcome of one execution attempt. Kept as a sealed type so
+ * `PlanExecutor` can distinguish "timed out → maybe retry" from
+ * "completed (any exit code) → final result; build envelope from
+ * --result-out". A non-zero exit code is NOT a retry trigger — only a
+ * timeout is.
+ */
+sealed class ExecutionOutcome {
+    data class Completed(val exitCode: Int) : ExecutionOutcome()
+    /** Process didn't return within [NodeInvocation.timeoutMillis]; `destroyForcibly()` was called. */
+    object TimedOut : ExecutionOutcome()
+}
 
 /**
  * Runtime adapter — knows how to spawn one node invocation.
@@ -45,7 +67,7 @@ data class NodeInvocation(
  */
 interface ValidationExecutor {
     val runtimeName: String
-    fun execute(invocation: NodeInvocation): Int
+    fun execute(invocation: NodeInvocation): ExecutionOutcome
 }
 
 class ExecutorRegistry(private val executors: Map<String, ValidationExecutor>) {
@@ -61,6 +83,37 @@ class ExecutorRegistry(private val executors: Map<String, ValidationExecutor>) {
             )
         )
     }
+}
+
+/**
+ * Wait for [process] up to [timeoutMillis]; if it doesn't return in time,
+ * call `destroyForcibly()` and report a [ExecutionOutcome.TimedOut]. Used
+ * by every concrete [ValidationExecutor] so the timeout-enforcement
+ * semantics live in one place — adding a new runtime needs only to
+ * spawn the process and call this.
+ *
+ * Timeouts <= 0 are treated as "no bound" and degrade to a plain
+ * `waitFor()`; the spec parser doesn't emit those today, but the helper
+ * stays well-defined for hand-built invocations.
+ */
+internal fun awaitWithTimeout(process: Process, timeoutMillis: Long): ExecutionOutcome {
+    if (timeoutMillis <= 0L) {
+        return ExecutionOutcome.Completed(process.waitFor())
+    }
+    val finished = process.waitFor(timeoutMillis, TimeUnit.MILLISECONDS)
+    if (!finished) {
+        // destroyForcibly is best-effort; on Linux it sends SIGKILL to
+        // the immediate child. The deeper jbang-spawned JVM may linger
+        // briefly but won't block this thread further — waitFor returns
+        // as soon as the direct child reaps.
+        process.destroyForcibly()
+        // Drain so the kill actually completes before we hand control
+        // back to PlanExecutor (which is about to overwrite the stdout
+        // log file on retry).
+        try { process.waitFor(2, TimeUnit.SECONDS) } catch (_: InterruptedException) {}
+        return ExecutionOutcome.TimedOut
+    }
+    return ExecutionOutcome.Completed(process.exitValue())
 }
 
 /**

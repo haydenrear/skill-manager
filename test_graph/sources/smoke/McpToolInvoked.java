@@ -18,8 +18,8 @@ public class McpToolInvoked {
             .kind(NodeSpec.Kind.ASSERTION)
             .dependsOn("echo.http.deployed")
             .tags("mcp", "invoke")
-            .timeout("45s");
-
+            .timeout("45s")
+            .retries(2);
     public static void main(String[] args) {
         Node.run(args, SPEC, ctx -> {
             String gatewayUrl = ctx.get("gateway.up", "baseUrl").orElse(null);
