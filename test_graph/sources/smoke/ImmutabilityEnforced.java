@@ -36,6 +36,7 @@ public class ImmutabilityEnforced {
 
             ProcessBuilder pb = new ProcessBuilder(
                     sm.toString(), "publish", skill.toString(),
+                    "--upload-tarball",
                     "--registry", registryUrl)
                     .redirectErrorStream(true);
             pb.environment().put("SKILL_MANAGER_HOME", home);

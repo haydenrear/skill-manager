@@ -163,7 +163,12 @@ validationGraph {
     testGraph("hyper-experiments") {
         node("sources/common/EnvPrepared.java")
         node("sources/common/PostgresUp.java")
+        // Flips SKILL_REGISTRY_ALLOW_FILE_UPLOAD=false on the registry
+        // server so this graph exercises the github-only publish path
+        // end-to-end (the production default).
+        node("sources/hyper/EnvPreparedHyper.java")
         node("sources/common/RegistryUp.java")
+                .dependsOn("env.hyper.prepared")
         node("sources/common/CiLoggedIn.java")
         node("sources/common/JwtValid.java")
         // Bring the gateway venv up before the gateway itself.

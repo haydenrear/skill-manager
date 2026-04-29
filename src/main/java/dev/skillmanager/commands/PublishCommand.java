@@ -4,7 +4,9 @@ import dev.skillmanager.model.Skill;
 import dev.skillmanager.model.SkillParser;
 import dev.skillmanager.registry.RegistryClient;
 import dev.skillmanager.registry.RegistryConfig;
+import dev.skillmanager.registry.SkillPackager;
 import dev.skillmanager.store.SkillStore;
+import dev.skillmanager.util.Fs;
 import dev.skillmanager.util.Log;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.lib.Ref;
@@ -24,16 +26,17 @@ import java.util.Map;
 import java.util.concurrent.Callable;
 
 /**
- * Register a skill in the current working directory with the registry.
+ * Register a skill with the registry. Default: github-pointer publish — auto-detect
+ * the local repo's {@code remote.origin.url}, find a tag matching {@code v<version>}
+ * (or pass {@code --ref} for branch / SHA), POST to {@code /skills/register}. The
+ * server resolves the ref to a SHA and persists the pointer.
  *
- * <p>The server is metadata-only — there is no tarball upload. We auto-detect
- * the local repo's {@code remote.origin.url}, find the tag matching the
- * skill version (preferring {@code v<version>} then {@code <version>}), and
- * POST the pair to {@code /skills/register}. The server resolves the ref
- * to a SHA and persists the pointer.
+ * <p>Legacy: pass {@code --upload-tarball} to bundle the directory and POST it to
+ * the multipart endpoint. Requires the server to set
+ * {@code skill-registry.publish.allow-file-upload=true}.
  */
 @Command(name = "publish",
-        description = "Register the current skill repo with the registry as a github-hosted version.")
+        description = "Register the current skill with the registry (github-pointer by default).")
 public final class PublishCommand implements Callable<Integer> {
 
     @Parameters(index = "0", arity = "0..1",
@@ -48,6 +51,14 @@ public final class PublishCommand implements Callable<Integer> {
     @Option(names = "--github-url",
             description = "Override the github URL discovered from `remote.origin.url`.")
     String githubUrlOverride;
+
+    @Option(names = "--upload-tarball",
+            description = "Use the legacy multipart-upload backend (server must allow it).")
+    boolean uploadTarball;
+
+    @Option(names = "--version",
+            description = "Override version for --upload-tarball backend; ignored otherwise.")
+    String versionOverride;
 
     @Option(names = "--registry", description = "Registry base URL override")
     String registryUrl;
@@ -67,6 +78,10 @@ public final class PublishCommand implements Callable<Integer> {
         }
 
         Skill skill = SkillParser.load(src);
+        return uploadTarball ? publishViaTarball(store, src, skill) : publishViaGithub(store, src, skill);
+    }
+
+    private int publishViaGithub(SkillStore store, Path src, Skill skill) throws IOException {
         String version = skill.version();
         if (version == null || version.isBlank()) version = "0.0.1";
 
@@ -74,7 +89,8 @@ public final class PublishCommand implements Callable<Integer> {
                 ? githubUrlOverride
                 : detectGithubRemote(src);
         if (githubUrl == null) {
-            Log.error("no github remote found in %s — set `remote.origin.url` or pass --github-url", src);
+            Log.error("no github remote found in %s — set `remote.origin.url`, pass --github-url, "
+                    + "or pass --upload-tarball for the legacy backend.", src);
             return 1;
         }
 
@@ -102,9 +118,38 @@ public final class PublishCommand implements Callable<Integer> {
         }
 
         Map<String, Object> result = client.registerGithub(githubUrl, ref);
-        Log.ok("registered %s@%s",
-                result.get("name"), result.get("version"));
+        Log.ok("registered %s@%s", result.get("name"), result.get("version"));
         Log.info("git_sha:      %s", result.get("git_sha"));
+        return 0;
+    }
+
+    private int publishViaTarball(SkillStore store, Path src, Skill skill) throws IOException {
+        String effectiveVersion = versionOverride != null ? versionOverride : skill.version();
+        if (effectiveVersion == null || effectiveVersion.isBlank()) {
+            Log.error("skill has no version (set [skill].version in skill-manager.toml or pass --version)");
+            return 1;
+        }
+
+        Path outDir = store.cacheDir().resolve("publish");
+        Fs.ensureDir(outDir);
+        Path tar = SkillPackager.pack(src, outDir);
+        Log.ok("packaged %s (%d bytes) → %s", skill.name(), Files.size(tar), tar);
+
+        if (dryRun) {
+            Log.info("--dry-run: not uploading");
+            return 0;
+        }
+
+        RegistryConfig cfg = RegistryConfig.resolve(store, registryUrl);
+        RegistryClient client = RegistryClient.authenticated(store, cfg);
+        if (!client.ping()) {
+            Log.error("registry not reachable at %s", cfg.baseUrl());
+            return 2;
+        }
+
+        var result = client.publish(skill.name(), effectiveVersion, tar);
+        Log.ok("published %s@%s (sha256=%s, %d bytes)", result.name(), result.version(), result.sha256(), result.sizeBytes());
+        Log.info("download: %s%s", cfg.baseUrl(), result.downloadUrl());
         return 0;
     }
 

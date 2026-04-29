@@ -34,8 +34,12 @@ public class HelloPublished {
             Path sm = repoRoot.resolve("skill-manager");
             Path helloSkill = repoRoot.resolve("examples/hello-skill");
 
+            // examples/hello-skill is bundled inside this repo (no separate
+            // github remote of its own) so publish via the legacy multipart
+            // backend; RegistryUp sets SKILL_REGISTRY_ALLOW_FILE_UPLOAD=true.
             ProcessBuilder pb = new ProcessBuilder(
                     sm.toString(), "publish", helloSkill.toString(),
+                    "--upload-tarball",
                     "--registry", registryUrl);
             pb.environment().put("SKILL_MANAGER_HOME", home);
             pb.environment().put("SKILL_MANAGER_INSTALL_DIR", repoRoot.toString());
