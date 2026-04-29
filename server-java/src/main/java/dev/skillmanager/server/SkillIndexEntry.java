@@ -1,7 +1,7 @@
 package dev.skillmanager.server;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-import dev.skillmanager.registry.dto.SkillSummary;
+import dev.skillmanager.shared.dto.SkillSummary;
 
 import java.util.ArrayList;
 import java.util.List;

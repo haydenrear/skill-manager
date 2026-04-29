@@ -69,8 +69,11 @@ jobs:
             cli_changed=false
           fi
           # Pushing the multi-arch server image is heavy; only rebuild when
-          # the launcher, JBang server entry, or server-java tree changed.
-          if printf '%s\n' "${CHANGED}" | grep -E '^(SkillManagerServer\.java|skill-manager-server|server-java/)' >/dev/null; then
+          # the launcher, JBang server entry, server-java tree, or the
+          # CLI-side `shared/` package (DTOs + Archives/Fs the server
+          # JBang fatjar pulls in via //SOURCES) changed. Anything else
+          # under src/main/ is CLI-only.
+          if printf '%s\n' "${CHANGED}" | grep -E '^(SkillManagerServer\.java|skill-manager-server|server-java/|src/main/java/dev/skillmanager/shared/)' >/dev/null; then
             server_changed=true
           else
             server_changed=false

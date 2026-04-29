@@ -6,7 +6,7 @@ import dev.skillmanager.registry.RegistryClient;
 import dev.skillmanager.registry.RegistryConfig;
 import dev.skillmanager.registry.SkillPackager;
 import dev.skillmanager.store.SkillStore;
-import dev.skillmanager.util.Fs;
+import dev.skillmanager.shared.util.Fs;
 import dev.skillmanager.util.Log;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.lib.Ref;

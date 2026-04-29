@@ -1,8 +1,8 @@
 package dev.skillmanager.pm;
 
 import dev.skillmanager.store.SkillStore;
-import dev.skillmanager.util.Archives;
-import dev.skillmanager.util.Fs;
+import dev.skillmanager.shared.util.Archives;
+import dev.skillmanager.shared.util.Fs;
 import dev.skillmanager.util.Log;
 
 import java.io.IOException;

@@ -1,7 +1,7 @@
 package dev.skillmanager.lock;
 
 import dev.skillmanager.store.SkillStore;
-import dev.skillmanager.util.Fs;
+import dev.skillmanager.shared.util.Fs;
 import org.tomlj.Toml;
 import org.tomlj.TomlArray;
 import org.tomlj.TomlParseResult;

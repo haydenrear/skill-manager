@@ -1,6 +1,6 @@
 package dev.skillmanager.pm;
 
-import dev.skillmanager.util.Fs;
+import dev.skillmanager.shared.util.Fs;
 import dev.skillmanager.util.Platform;
 
 import java.io.IOException;

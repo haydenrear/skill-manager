@@ -1,4 +1,4 @@
-package dev.skillmanager.registry.dto;
+package dev.skillmanager.shared.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 

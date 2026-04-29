@@ -5,7 +5,7 @@ import dev.skillmanager.model.SkillParser;
 import dev.skillmanager.model.SkillReference;
 import dev.skillmanager.store.Fetcher;
 import dev.skillmanager.store.SkillStore;
-import dev.skillmanager.util.Fs;
+import dev.skillmanager.shared.util.Fs;
 import dev.skillmanager.util.Log;
 
 import java.io.IOException;

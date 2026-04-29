@@ -2,7 +2,7 @@ package dev.skillmanager.registry;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.skillmanager.store.SkillStore;
-import dev.skillmanager.util.Fs;
+import dev.skillmanager.shared.util.Fs;
 
 import java.io.IOException;
 import java.nio.file.Files;

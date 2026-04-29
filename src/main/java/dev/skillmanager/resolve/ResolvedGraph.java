@@ -1,7 +1,7 @@
 package dev.skillmanager.resolve;
 
 import dev.skillmanager.model.Skill;
-import dev.skillmanager.util.Fs;
+import dev.skillmanager.shared.util.Fs;
 
 import java.io.IOException;
 import java.nio.file.Path;

@@ -1,7 +1,7 @@
 package dev.skillmanager.server;
 
-import dev.skillmanager.registry.dto.Campaign;
-import dev.skillmanager.registry.dto.CreateCampaignRequest;
+import dev.skillmanager.shared.dto.Campaign;
+import dev.skillmanager.shared.dto.CreateCampaignRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;

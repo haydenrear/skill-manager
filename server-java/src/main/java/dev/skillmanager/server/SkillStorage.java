@@ -2,9 +2,9 @@ package dev.skillmanager.server;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
-import dev.skillmanager.registry.dto.SkillSummary;
-import dev.skillmanager.registry.dto.SkillVersion;
-import dev.skillmanager.util.Archives;
+import dev.skillmanager.shared.dto.SkillSummary;
+import dev.skillmanager.shared.dto.SkillVersion;
+import dev.skillmanager.shared.util.Archives;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;

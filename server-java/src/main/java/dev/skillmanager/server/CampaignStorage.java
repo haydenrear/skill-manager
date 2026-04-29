@@ -3,8 +3,8 @@ package dev.skillmanager.server;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.SerializationFeature;
-import dev.skillmanager.registry.dto.Campaign;
-import dev.skillmanager.registry.dto.CreateCampaignRequest;
+import dev.skillmanager.shared.dto.Campaign;
+import dev.skillmanager.shared.dto.CreateCampaignRequest;
 
 import java.io.IOException;
 import java.nio.file.Files;

@@ -1,6 +1,6 @@
 package dev.skillmanager.server.ads;
 
-import dev.skillmanager.registry.dto.Campaign;
+import dev.skillmanager.shared.dto.Campaign;
 import dev.skillmanager.server.CampaignStorage;
 import dev.skillmanager.server.persistence.ConversionRepository;
 import dev.skillmanager.server.persistence.ImpressionRepository;

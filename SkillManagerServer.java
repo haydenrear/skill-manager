@@ -1,15 +1,15 @@
 ///usr/bin/env jbang "$0" "$@" ; exit $?
 //JAVA 21+
-//SOURCES src/main/java/dev/skillmanager/registry/dto/SkillSummary.java
-//SOURCES src/main/java/dev/skillmanager/registry/dto/SkillVersion.java
-//SOURCES src/main/java/dev/skillmanager/registry/dto/ListResponse.java
-//SOURCES src/main/java/dev/skillmanager/registry/dto/SearchResponse.java
-//SOURCES src/main/java/dev/skillmanager/registry/dto/PublishResponse.java
-//SOURCES src/main/java/dev/skillmanager/registry/dto/Campaign.java
-//SOURCES src/main/java/dev/skillmanager/registry/dto/CreateCampaignRequest.java
-//SOURCES src/main/java/dev/skillmanager/registry/dto/SponsoredPlacement.java
-//SOURCES src/main/java/dev/skillmanager/util/Archives.java
-//SOURCES src/main/java/dev/skillmanager/util/Fs.java
+//SOURCES src/main/java/dev/skillmanager/shared/dto/SkillSummary.java
+//SOURCES src/main/java/dev/skillmanager/shared/dto/SkillVersion.java
+//SOURCES src/main/java/dev/skillmanager/shared/dto/ListResponse.java
+//SOURCES src/main/java/dev/skillmanager/shared/dto/SearchResponse.java
+//SOURCES src/main/java/dev/skillmanager/shared/dto/PublishResponse.java
+//SOURCES src/main/java/dev/skillmanager/shared/dto/Campaign.java
+//SOURCES src/main/java/dev/skillmanager/shared/dto/CreateCampaignRequest.java
+//SOURCES src/main/java/dev/skillmanager/shared/dto/SponsoredPlacement.java
+//SOURCES src/main/java/dev/skillmanager/shared/util/Archives.java
+//SOURCES src/main/java/dev/skillmanager/shared/util/Fs.java
 //SOURCES server-java/src/main/java/dev/skillmanager/server/SkillRegistryApp.java
 //SOURCES server-java/src/main/java/dev/skillmanager/server/SkillRegistryController.java
 //SOURCES server-java/src/main/java/dev/skillmanager/server/SkillStorage.java

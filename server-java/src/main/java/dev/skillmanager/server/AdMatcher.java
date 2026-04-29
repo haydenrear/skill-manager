@@ -1,7 +1,7 @@
 package dev.skillmanager.server;
 
-import dev.skillmanager.registry.dto.Campaign;
-import dev.skillmanager.registry.dto.SponsoredPlacement;
+import dev.skillmanager.shared.dto.Campaign;
+import dev.skillmanager.shared.dto.SponsoredPlacement;
 import dev.skillmanager.server.persistence.ImpressionRepository;
 import dev.skillmanager.server.persistence.ImpressionRow;
 
@@ -74,7 +74,7 @@ public final class AdMatcher {
             if (out.size() >= effectiveLimit) break;
             String skillName = h.campaign().skillName();
             if (!seenSkills.add(skillName)) continue;
-            Optional<dev.skillmanager.registry.dto.SkillSummary> summary = skills.describe(skillName);
+            Optional<dev.skillmanager.shared.dto.SkillSummary> summary = skills.describe(skillName);
             if (summary.isEmpty()) continue; // ad points at a missing skill — drop
             out.add(new SponsoredPlacement(
                     skillName,

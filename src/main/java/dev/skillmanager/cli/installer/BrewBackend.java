@@ -2,7 +2,7 @@ package dev.skillmanager.cli.installer;
 
 import dev.skillmanager.model.CliDependency;
 import dev.skillmanager.store.SkillStore;
-import dev.skillmanager.util.Fs;
+import dev.skillmanager.shared.util.Fs;
 import dev.skillmanager.util.Log;
 import dev.skillmanager.util.Platform;
 

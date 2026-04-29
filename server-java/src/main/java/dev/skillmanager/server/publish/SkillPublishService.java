@@ -1,6 +1,6 @@
 package dev.skillmanager.server.publish;
 
-import dev.skillmanager.registry.dto.SkillVersion;
+import dev.skillmanager.shared.dto.SkillVersion;
 import dev.skillmanager.server.SkillStorage;
 import dev.skillmanager.server.persistence.SkillName;
 import dev.skillmanager.server.persistence.SkillNameRepository;

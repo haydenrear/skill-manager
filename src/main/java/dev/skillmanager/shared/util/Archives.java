@@ -1,4 +1,4 @@
-package dev.skillmanager.util;
+package dev.skillmanager.shared.util;
 
 import org.apache.commons.compress.archivers.ArchiveEntry;
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry;

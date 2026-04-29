@@ -1,7 +1,7 @@
 package dev.skillmanager.registry;
 
 import dev.skillmanager.store.SkillStore;
-import dev.skillmanager.util.Fs;
+import dev.skillmanager.shared.util.Fs;
 
 import java.io.IOException;
 import java.net.URI;

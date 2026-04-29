@@ -1,11 +1,11 @@
 package dev.skillmanager.store;
 
-import dev.skillmanager.util.Archives;
+import dev.skillmanager.shared.util.Archives;
 import dev.skillmanager.model.SkillParser;
 import dev.skillmanager.registry.RegistryClient;
 import dev.skillmanager.registry.RegistryConfig;
 import dev.skillmanager.resolve.ResolvedGraph;
-import dev.skillmanager.util.Fs;
+import dev.skillmanager.shared.util.Fs;
 import dev.skillmanager.util.Log;
 import org.eclipse.jgit.api.Git;
 

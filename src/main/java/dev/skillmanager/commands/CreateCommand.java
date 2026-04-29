@@ -1,6 +1,6 @@
 package dev.skillmanager.commands;
 
-import dev.skillmanager.util.Fs;
+import dev.skillmanager.shared.util.Fs;
 import dev.skillmanager.util.Log;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;

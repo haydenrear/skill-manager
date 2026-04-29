@@ -1,10 +1,10 @@
 package dev.skillmanager.server;
 
-import dev.skillmanager.registry.dto.ListResponse;
-import dev.skillmanager.registry.dto.PublishResponse;
-import dev.skillmanager.registry.dto.SearchResponse;
-import dev.skillmanager.registry.dto.SkillSummary;
-import dev.skillmanager.registry.dto.SkillVersion;
+import dev.skillmanager.shared.dto.ListResponse;
+import dev.skillmanager.shared.dto.PublishResponse;
+import dev.skillmanager.shared.dto.SearchResponse;
+import dev.skillmanager.shared.dto.SkillSummary;
+import dev.skillmanager.shared.dto.SkillVersion;
 import dev.skillmanager.server.persistence.ConversionRepository;
 import dev.skillmanager.server.persistence.ConversionRow;
 import dev.skillmanager.server.publish.PublishException;
@@ -78,7 +78,7 @@ public class SkillRegistryController {
         List<SkillSummary> hits = storage.search(q, Math.max(1, Math.min(limit, 100)));
         // Sponsored lane lives in a separate array; caller can opt out.
         String viewer = jwt == null ? null : jwt.getSubject();
-        List<dev.skillmanager.registry.dto.SponsoredPlacement> sponsored = noAds
+        List<dev.skillmanager.shared.dto.SponsoredPlacement> sponsored = noAds
                 ? List.of()
                 : adMatcher.match(q, sponsoredLimit, viewer);
         return new SearchResponse(q, hits, hits.size(), sponsored, sponsored.size());

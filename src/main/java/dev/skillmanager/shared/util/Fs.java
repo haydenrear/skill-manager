@@ -1,4 +1,4 @@
-package dev.skillmanager.util;
+package dev.skillmanager.shared.util;
 
 import java.io.IOException;
 import java.nio.file.FileVisitResult;
