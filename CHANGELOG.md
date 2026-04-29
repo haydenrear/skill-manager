@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.4](https://github.com/haydenrear/skill-manager/compare/skill-manager-v0.2.3...skill-manager-v0.2.4) (2026-04-29)
+
+
+### Bug Fixes
+
+* rename homebrew-tap secret to fix HOMBREW typo ([#20](https://github.com/haydenrear/skill-manager/issues/20)) ([5812051](https://github.com/haydenrear/skill-manager/commit/5812051bcbfa46201355834af81cbd2eef426e8d))
+
 ## [0.2.3](https://github.com/haydenrear/skill-manager/compare/skill-manager-v0.2.2...skill-manager-v0.2.3) (2026-04-29)
 
 
