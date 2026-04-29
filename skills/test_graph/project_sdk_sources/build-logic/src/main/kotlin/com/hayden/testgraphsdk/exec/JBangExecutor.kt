@@ -15,7 +15,7 @@ import com.hayden.testgraphsdk.ValidationRuntime
 class JBangExecutor(private val jbangPath: String) : ValidationExecutor {
     override val runtimeName: String = "jbang"
 
-    override fun execute(invocation: NodeInvocation): Int {
+    override fun execute(invocation: NodeInvocation): ExecutionOutcome {
         val rt = invocation.spec.runtime as? ValidationRuntime.JBang
             ?: error("JBangExecutor cannot run a ${invocation.spec.runtime.name} node (${invocation.spec.id})")
 
@@ -30,6 +30,6 @@ class JBangExecutor(private val jbangPath: String) : ValidationExecutor {
             .redirectErrorStream(true)
             .redirectOutput(invocation.stdoutLog)
             .start()
-        return process.waitFor()
+        return awaitWithTimeout(process, invocation.timeoutMillis)
     }
 }

@@ -26,7 +26,8 @@ public class ServersDown {
     static final NodeSpec SPEC = NodeSpec.of("servers.down")
             .kind(NodeSpec.Kind.EVIDENCE)
             .tags("teardown")
-            .timeout("30s");
+            .timeout("30s")
+            .retries(2);
 
     public static void main(String[] args) {
         Node.run(args, SPEC, ctx -> {

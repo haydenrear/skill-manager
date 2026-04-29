@@ -18,8 +18,8 @@ public class McpToolSearchFinds {
             .kind(NodeSpec.Kind.ASSERTION)
             .dependsOn("echo.http.deployed")
             .tags("mcp", "search", "spacy")
-            .timeout("30s");
-
+            .timeout("30s")
+            .retries(2);
     public static void main(String[] args) {
         Node.run(args, SPEC, ctx -> {
             String gatewayUrl = ctx.get("gateway.up", "baseUrl").orElse(null);

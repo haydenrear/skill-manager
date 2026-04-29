@@ -28,6 +28,7 @@ public final class NodeSpec {
     private final List<String> dependsOn = new ArrayList<>();
     private final Set<String> tags = new LinkedHashSet<>();
     private String timeout = "60s";
+    private int retries = 0;
     private boolean cacheable = false;
     private final Set<String> sideEffects = new LinkedHashSet<>();
     private final Map<String, String> inputs = new LinkedHashMap<>();
@@ -44,6 +45,19 @@ public final class NodeSpec {
     public NodeSpec dependsOn(String... ids)         { dependsOn.addAll(Arrays.asList(ids)); return this; }
     public NodeSpec tags(String... t)                { tags.addAll(Arrays.asList(t)); return this; }
     public NodeSpec timeout(String v)                { this.timeout = v; return this; }
+    /**
+     * Number of <em>extra</em> attempts the executor should make if the
+     * spawned node-process exceeds {@link #timeout(String)}. Default 0 —
+     * fail fast on the first timeout. Anything {@code > 0} only kicks in
+     * for nodes that are safe to re-run; most graph nodes are stateful
+     * (start a server, write a pidfile, claim a port) and would leave
+     * orphaned state if retried, so opt in deliberately.
+     *
+     * <p>Retries trigger only on a timeout outcome from the executor;
+     * a body that returns {@code NodeResult.fail(...)} (or any
+     * non-timeout exit code) is final on the first attempt.
+     */
+    public NodeSpec retries(int n)                   { this.retries = Math.max(0, n); return this; }
     public NodeSpec cacheable(boolean b)             { this.cacheable = b; return this; }
     public NodeSpec sideEffects(String... s)         { sideEffects.addAll(Arrays.asList(s)); return this; }
     public NodeSpec input(String name, String type)  { inputs.put(name, type); return this; }
@@ -71,6 +85,7 @@ public final class NodeSpec {
         out.put("dependsOn", dependsOn);
         out.put("tags", new ArrayList<>(tags));
         out.put("timeout", timeout);
+        out.put("retries", retries);
         out.put("cacheable", cacheable);
         out.put("sideEffects", new ArrayList<>(sideEffects));
         out.put("inputs", inputs);

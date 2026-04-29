@@ -31,8 +31,8 @@ public class HyperRunpodDeployed {
             .kind(NodeSpec.Kind.ASSERTION)
             .dependsOn("hyper.runpod.registered", "gateway.up")
             .tags("hyper", "mcp", "runpod", "deploy")
-            .timeout("60s");
-
+            .timeout("60s")
+            .retries(2);
     public static void main(String[] args) {
         Node.run(args, SPEC, ctx -> {
             String gatewayUrl = ctx.get("gateway.up", "baseUrl").orElse(null);

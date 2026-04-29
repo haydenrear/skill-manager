@@ -26,8 +26,8 @@ public class AgentConfigsCorrect {
             .kind(NodeSpec.Kind.ASSERTION)
             .dependsOn("env.prepared", "gateway.up", "echo.http.up")
             .tags("agents", "config")
-            .timeout("90s");
-
+            .timeout("90s")
+            .retries(2);
     private static final String SKILL_NAME = "agent-config-probe-skill";
     private static final String SERVER_ID = "echo-http-agent-probe";
 

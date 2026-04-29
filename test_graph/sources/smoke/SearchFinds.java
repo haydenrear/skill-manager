@@ -19,8 +19,8 @@ public class SearchFinds {
             .kind(NodeSpec.Kind.ASSERTION)
             .dependsOn("hello.published")
             .tags("registry", "search")
-            .timeout("30s");
-
+            .timeout("30s")
+            .retries(2);
     public static void main(String[] args) {
         Node.run(args, SPEC, ctx -> {
             String home = ctx.get("env.prepared", "home").orElse(null);

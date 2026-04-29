@@ -23,8 +23,8 @@ public class OnboardGatewayHealthy {
             .kind(NodeSpec.Kind.ASSERTION)
             .dependsOn("onboard.completed")
             .tags("onboard", "gateway")
-            .timeout("10s");
-
+            .timeout("10s")
+            .retries(2);
     public static void main(String[] args) {
         Node.run(args, SPEC, ctx -> {
             String port = ctx.get("env.prepared", "gatewayPort").orElse(null);

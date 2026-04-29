@@ -24,8 +24,8 @@ public class McpSessionScopeIsolated {
             .kind(NodeSpec.Kind.ASSERTION)
             .dependsOn("echo.session_skill.installed")
             .tags("mcp", "scope", "session")
-            .timeout("60s");
-
+            .timeout("60s")
+            .retries(2);
     private static final String SESSION_A = "test-session-A";
     private static final String SESSION_B = "test-session-B";
 

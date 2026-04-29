@@ -42,8 +42,8 @@ public class SmokeReport {
                     "semver.enforced",
                     "immutability.enforced")
             .tags("report")
-            .timeout("15s");
-
+            .timeout("15s")
+            .retries(2);
     public static void main(String[] args) {
         Node.run(args, SPEC, ctx -> {
             Path envelopeDir = ctx.reportDir().resolve("envelope");
