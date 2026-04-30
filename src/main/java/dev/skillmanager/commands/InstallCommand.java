@@ -45,11 +45,19 @@ import java.util.concurrent.Callable;
  */
 @Command(
         name = "install",
-        description = "Install a skill and everything it depends on."
+        description = "Install a skill and everything it depends on. Sources can be a registry name "
+                + "(`name[@version]`), a github coordinate (`github:user/repo`), a git URL "
+                + "(`git+https://...`), or a local directory (`./path`, `/abs/path`, or `file:<path>`). "
+                + "Local-directory installs do not contact the registry — useful for iterating on "
+                + "a skill from a working tree without publishing first. Use `skill-manager sync "
+                + "<name> --from <dir>` to refresh an already-installed skill from the same dir."
 )
 public final class InstallCommand implements Callable<Integer> {
 
-    @Parameters(index = "0", description = "Source: name[@version], github:user/repo, git+https://..., or local path")
+    @Parameters(index = "0",
+            description = "Source: name[@version] (registry), github:user/repo, git+https://..., "
+                    + "or a local directory (./path, /abs/path, file:<path>) — local sources do not "
+                    + "contact the registry.")
     String source;
 
     @Option(names = {"--version", "--ref"}, description = "Registry version / git ref") String version;

@@ -220,6 +220,48 @@ login`. Subcommands:
 ./skill-manager login logout   # forget the cached tokens
 ```
 
+## Iterate on a skill locally — no server, no publish
+
+If you just want to install or update a skill from a directory on
+disk (a working tree, a git checkout, an in-flight branch), you don't
+need the registry server, an account, or a publish step. Two flows:
+
+### First-time install from a directory
+
+```bash
+./skill-manager install ./path/to/my-skill
+# or with an absolute path:
+./skill-manager install file:/abs/path/to/my-skill
+```
+
+`install` resolves local paths directly — it copies the directory into
+`$SKILL_MANAGER_HOME/skills/<name>/`, runs CLI-dep installation, and
+registers any MCP servers the skill declares with the gateway. The
+registry is never contacted.
+
+### Refresh an already-installed skill from a directory
+
+After you've made edits in the source dir, push them back into the
+installed copy without a publish round-trip:
+
+```bash
+./skill-manager sync my-skill --from ./path/to/my-skill
+```
+
+That runs `git diff --no-index` between the store entry and the source
+dir, prints the diff to stdout, and prompts before overwriting. Pass
+`-y` / `--yes` to skip the prompt in scripts. Once approved, `sync`
+copies the source over the store entry, then continues with its
+normal side effects (re-register MCP servers, refresh agent symlinks
+and MCP-config entries).
+
+If the diff is empty, sync says so and continues straight to the
+side-effect refresh.
+
+The full publish-then-install round-trip below is only needed when you
+want the skill to be installable by *name* (e.g. for transitive
+`skill_references` from another skill).
+
 ## Local publish + install round-trip
 
 Once the registry is up locally and the CLI is pointed at it, you can
@@ -287,10 +329,11 @@ persisted registry for one invocation (typically
 | --- | --- |
 | `skill-manager list` | List installed skills |
 | `skill-manager install <name>[@version]` | Install from the registry |
-| `skill-manager install <./path>` | Install from a local directory |
+| `skill-manager install <./path>` | Install from a local directory (no registry call) |
 | `skill-manager install github:user/repo` | Install from a git repo |
-| `skill-manager install file:<path>` | Install from an absolute local path |
+| `skill-manager install file:<path>` | Install from an absolute local path (no registry call) |
 | `skill-manager sync [<name>]` | Re-run install side effects (MCP register, agent symlinks) without re-fetching |
+| `skill-manager sync <name> --from <dir>` | Diff the store against `<dir>`, prompt, apply, then re-run side effects |
 | `skill-manager upgrade <name> \| --all` | Upgrade installed skills; rolls back on install failure |
 | `skill-manager upgrade --self` | Upgrade the CLI itself via `brew upgrade haydenrear/skill-manager/skill-manager` |
 | `skill-manager uninstall <name>` | Full uninstall — store entry, all agent symlinks, orphan MCP servers |
