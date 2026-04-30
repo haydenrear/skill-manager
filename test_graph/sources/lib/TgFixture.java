@@ -25,18 +25,47 @@ public final class TgFixture {
             String serverId,
             String scope,
             String mcpUrl) throws IOException {
+        return stampTemplate(templateDir, destRoot, skillName, Map.of(
+                "__SKILL_NAME__", skillName,
+                "__SERVER_ID__", serverId,
+                "__SCOPE__", scope,
+                "__MCP_URL__", mcpUrl
+        ));
+    }
+
+    /**
+     * Stamp the {@code echo-skill-stdio-template} template, which pins a
+     * shell-load stdio MCP server invoking the python fixture. The two
+     * extra tokens — venv python and fixture script path — are absolute
+     * paths the gateway will exec.
+     */
+    public static Path stampEchoSkillStdio(
+            Path templateDir,
+            Path destRoot,
+            String skillName,
+            String serverId,
+            String scope,
+            String venvPython,
+            String fixturePath) throws IOException {
+        return stampTemplate(templateDir, destRoot, skillName, Map.of(
+                "__SKILL_NAME__", skillName,
+                "__SERVER_ID__", serverId,
+                "__SCOPE__", scope,
+                "__VENV_PYTHON__", venvPython,
+                "__FIXTURE_PATH__", fixturePath
+        ));
+    }
+
+    private static Path stampTemplate(
+            Path templateDir,
+            Path destRoot,
+            String skillName,
+            Map<String, String> tokens) throws IOException {
         Path dest = destRoot.resolve(skillName);
         if (Files.exists(dest)) {
             deleteRecursive(dest);
         }
         Files.createDirectories(dest);
-
-        Map<String, String> tokens = Map.of(
-                "__SKILL_NAME__", skillName,
-                "__SERVER_ID__", serverId,
-                "__SCOPE__", scope,
-                "__MCP_URL__", mcpUrl
-        );
 
         try (Stream<Path> s = Files.walk(templateDir)) {
             for (Path p : (Iterable<Path>) s::iterator) {
