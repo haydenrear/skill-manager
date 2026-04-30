@@ -18,6 +18,9 @@ import dev.skillmanager.commands.RemoveCommand;
 import dev.skillmanager.commands.ResetPasswordCommand;
 import dev.skillmanager.commands.SearchCommand;
 import dev.skillmanager.commands.ShowCommand;
+import dev.skillmanager.commands.SyncCommand;
+import dev.skillmanager.commands.UninstallCommand;
+import dev.skillmanager.commands.UpgradeCommand;
 import dev.skillmanager.registry.AuthenticationRequiredException;
 import dev.skillmanager.util.Log;
 import picocli.CommandLine;
@@ -34,7 +37,10 @@ import picocli.CommandLine.Option;
         subcommands = {
                 ListCommand.class,
                 InstallCommand.class,
+                UninstallCommand.class,
                 RemoveCommand.class,
+                SyncCommand.class,
+                UpgradeCommand.class,
                 ShowCommand.class,
                 DepsCommand.class,
                 GatewayCommand.class,

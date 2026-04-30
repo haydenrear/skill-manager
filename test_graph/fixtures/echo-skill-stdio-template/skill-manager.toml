@@ -1,0 +1,20 @@
+# test_graph fixture template — stamped at runtime by ../../sources/lib/TgFixture.java.
+# Tokens __SKILL_NAME__, __SERVER_ID__, __SCOPE__, __VENV_PYTHON__,
+# __FIXTURE_PATH__ are replaced before the directory is handed to
+# `skill-manager install file:<tempdir>`.
+#
+# Uses a `shell` load with transport = "stdio" so the gateway spawns the
+# python fixture as a long-lived subprocess and talks MCP over its
+# stdin/stdout pipes. This is the exact code path the StdioMCPClient
+# worker-task fix exercises.
+
+[[mcp_dependencies]]
+name = "__SERVER_ID__"
+display_name = "echo stdio fixture (__SCOPE__)"
+description = "Stdio echo MCP fixture registered at scope __SCOPE__ by test_graph."
+default_scope = "__SCOPE__"
+load = { type = "shell", transport = "stdio", command = ["__VENV_PYTHON__", "__FIXTURE_PATH__", "--transport", "stdio", "--name", "__SERVER_ID__"] }
+
+[skill]
+name = "__SKILL_NAME__"
+version = "0.0.1"

@@ -165,7 +165,7 @@ public final class InstallCommand implements Callable<Integer> {
      * {@code /health}. Returns {@code true} when the gateway is alive by
      * the time we return.
      */
-    private static boolean ensureGatewayRunning(SkillStore store, GatewayConfig gw) {
+    static boolean ensureGatewayRunning(SkillStore store, GatewayConfig gw) {
         GatewayClient ping = new GatewayClient(gw);
         if (ping.ping()) return true;
 

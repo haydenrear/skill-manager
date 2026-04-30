@@ -74,6 +74,28 @@ validationGraph {
         node("sources/smoke/EchoGlobalSkillInstalled.java")
         node("sources/smoke/McpGlobalScopeVisible.java")
 
+        // Stdio MCP coverage. The gateway's StdioMCPClient owns its
+        // session in a dedicated worker task — these nodes prove the
+        // worker model handles parallel invocations correctly at both
+        // global-sticky scope (one shared subprocess) and session
+        // scope (one subprocess per agent session).
+        node("sources/smoke/EchoStdioSkillInstalled.java")
+        node("sources/smoke/McpStdioToolInvoked.java")
+        node("sources/smoke/McpStdioParallelGlobalSticky.java")
+        node("sources/smoke/EchoStdioSessionSkillInstalled.java")
+        node("sources/smoke/McpStdioParallelSession.java")
+
+        // CLI lifecycle commands beyond install:
+        //   - sync repairs install-time invariants (drifted symlinks,
+        //     missed MCP deploys after env change),
+        //   - uninstall is the full counterpart to install (store +
+        //     symlinks + orphan MCP unregister),
+        //   - upgrade rolls back to the prior version when the new one
+        //     fails to install.
+        node("sources/smoke/SkillSynced.java")
+        node("sources/smoke/SkillUninstalled.java")
+        node("sources/smoke/SkillUpgradeRolledBack.java")
+
         node("sources/smoke/AgentConfigsCorrect.java")
 
         // Lock in the install-time symlink contract: every install must
