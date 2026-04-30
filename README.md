@@ -169,6 +169,55 @@ What this means in practice:
   the container starts. Everything else (token issuance, validation,
   rotation by replacing the file and restarting) is already wired.
 
+## Authenticate against the registry
+
+Mutating operations — `publish`, creating campaigns, `ads` — need a
+bearer token. Reads (`search`, `show`, `list`, public skill installs)
+do not. Both commands below require the registry server to be running
+and reachable, and they both accept `--registry <url>` if you haven't
+persisted it yet.
+
+### Create an account
+
+```bash
+# server must be running first — Option A or B above.
+./skill-manager create-account \
+    --username my-user \
+    --email me@example.com \
+    --display-name "My User" \
+    --registry http://localhost:8080
+# password is prompted (>=10 chars). Use --password=<pw> to skip the prompt
+# in scripts; never paste real secrets into shell history.
+```
+
+### Log in
+
+```bash
+./skill-manager login --registry http://localhost:8080
+```
+
+Opens a browser to the registry's authorization endpoint, runs the
+PKCE-protected `authorization_code` flow against a loopback callback
+on `127.0.0.1:8765`, and writes the resulting access + refresh tokens
+to `~/.skill-manager/auth.token`. From then on every authed CLI call
+attaches the bearer transparently.
+
+`--no-browser` prints the authorize URL instead of launching a
+browser (useful over SSH or in headless containers); paste it into a
+local browser, complete the flow, and the loopback callback still
+catches the redirect on the machine that ran `login`.
+
+The CLI silently refreshes the access token from the cached refresh
+token (7-day TTL) — in steady state you log in once a week. When the
+refresh token is also expired or rejected, the CLI exits with code
+`7` and a stable banner asking the user to re-run `skill-manager
+login`. Subcommands:
+
+```bash
+./skill-manager login show     # print the cached identity (/auth/me)
+./skill-manager login logout   # forget the cached tokens
+```
+
 ## Local publish + install round-trip
 
 Once the registry is up locally and the CLI is pointed at it, you can
@@ -179,12 +228,19 @@ touching GitHub:
 # 1. (Once per shell) start the local registry with file upload enabled
 SKILL_REGISTRY_ALLOW_FILE_UPLOAD=TRUE ./skill-manager-server &
 
-# 2. Publish a local skill directory as a tarball into the registry
+# 2. Authenticate (publish needs a bearer token; install doesn't).
+#    Skip if you've already created an account and logged in.
+./skill-manager create-account \
+    --username my-user --email me@example.com \
+    --registry http://localhost:8080
+./skill-manager login --registry http://localhost:8080
+
+# 3. Publish a local skill directory as a tarball into the registry
 ./skill-manager publish ../hyper-experiments-skill \
     --upload-tarball \
     --registry http://localhost:8080
 
-# 3. Install it back by name from a fresh cwd
+# 4. Install it back by name from a fresh cwd
 ./skill-manager install hyper-experiments \
     --registry http://localhost:8080
 ```
@@ -250,6 +306,16 @@ persisted registry for one invocation (typically
 | `skill-manager publish [<path>] --upload-tarball` | Multipart-publish into a `SKILL_REGISTRY_ALLOW_FILE_UPLOAD=TRUE` server |
 | `skill-manager publish --dry-run` | Just build the tarball |
 | `skill-manager search "<query>"` | Lexical search |
+
+### Authentication
+
+| Command | Purpose |
+| --- | --- |
+| `skill-manager create-account --username <u> --email <e>` | Register a new user (server must be running) |
+| `skill-manager login` | Browser PKCE flow; cache tokens at `~/.skill-manager/auth.token` |
+| `skill-manager login --no-browser` | Print the authorize URL instead of opening a browser |
+| `skill-manager login show` | Print the cached identity (`/auth/me`) |
+| `skill-manager login logout` | Forget the cached tokens |
 
 ### Gateway lifecycle
 
