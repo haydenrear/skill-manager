@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Bash wrapper so users can invoke `./skill-manager ...` from anywhere.
 # Exports SKILL_MANAGER_INSTALL_DIR so Java can locate bundled assets
-# (the virtual-mcp-gateway/ source tree).
+# (the virtual-mcp-gateway/ source tree)...
 set -e
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 export SKILL_MANAGER_INSTALL_DIR="$DIR"
