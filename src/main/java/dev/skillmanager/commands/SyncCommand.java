@@ -60,8 +60,9 @@ public final class SyncCommand implements Callable<Integer> {
 
     @Option(names = "--from",
             description = "Local directory to pull skill content from (must contain SKILL.md). "
-                    + "Diffs the store entry against this dir via `git diff --no-index`, prompts "
-                    + "for approval, then overwrites the store with the source dir's contents. "
+                    + "Lists changed files via `git diff --no-index --name-status` (re-run "
+                    + "without --name-status to inspect the full diff), prompts for approval, "
+                    + "then overwrites the store with the source dir's contents. "
                     + "Requires <name>. Does not contact the registry.")
     Path fromDir;
 
@@ -167,13 +168,15 @@ public final class SyncCommand implements Callable<Integer> {
         }
         Path storeDir = store.skillDir(skillName);
 
-        Log.step("git diff --no-index %s %s", storeDir, src);
-        // `git diff --no-index` works on arbitrary paths outside any repo
-        // and is universally available on dev boxes; BSD `diff` (default
-        // on macOS) doesn't support --no-index. Exit codes mirror diff:
-        // 0 = identical, 1 = differences found, 128 = git error.
-        StringBuilder diff = new StringBuilder();
-        ProcessBuilder pb = new ProcessBuilder("git", "diff", "--no-index",
+        // List changed files only — full content diff is verbose for
+        // bigger skills and the user can re-run the same git command
+        // without --name-status when they actually want to read it.
+        // `git diff --no-index` works on arbitrary paths outside any
+        // repo; BSD `diff` (macOS default) doesn't support --no-index.
+        // Exit codes: 0 = identical, 1 = differences found, 128 = git error.
+        Log.step("git diff --no-index --name-status %s %s", storeDir, src);
+        StringBuilder summary = new StringBuilder();
+        ProcessBuilder pb = new ProcessBuilder("git", "diff", "--no-index", "--name-status",
                 "--", storeDir.toString(), src.toString())
                 .redirectErrorStream(true);
         Process p;
@@ -187,18 +190,24 @@ public final class SyncCommand implements Callable<Integer> {
             String line;
             while ((line = r.readLine()) != null) {
                 System.out.println(line);
-                diff.append(line).append('\n');
+                summary.append(line).append('\n');
             }
         }
         int rc = p.waitFor();
-        if (rc == 0 || diff.length() == 0) {
+        if (rc == 0 || summary.length() == 0) {
             Log.ok("%s: store and %s are identical — nothing to apply", skillName, src);
             return 0;
         }
         if (rc != 1) {
-            Log.error("`git diff --no-index` exited %d (output above)", rc);
+            Log.error("`git diff --no-index --name-status` exited %d (output above)", rc);
             return 1;
         }
+
+        System.out.println();
+        System.out.println("To inspect the full diff before deciding, run:");
+        System.out.println();
+        System.out.println("    git diff --no-index " + storeDir + " " + src);
+        System.out.println();
 
         if (!yes) {
             System.out.println();
