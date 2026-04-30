@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Bash wrapper for the Java Spring Boot skill registry server
+# Bash wrapper for the Java Spring Boot skill registry server.
 set -e
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 export SKILL_MANAGER_INSTALL_DIR="$DIR"
