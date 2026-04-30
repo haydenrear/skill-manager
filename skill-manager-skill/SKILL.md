@@ -32,6 +32,8 @@ skill-manager list
 
 The MCP servers behind those skills are discoverable, deployable, and callable only through the gateway's virtual tools below — not through any tool-catalog or search primitive your harness might also expose. When the user asks "what MCP tools do I have", "deploy server X", "the env var is set now, try again", or "call tool Y", route the call through the gateway's virtual tools.
 
+For the full architectural reference — what the gateway does, how scopes work, the disclosure gate, and how to debug a server that won't deploy — see [`references/virtual-mcp-gateway.md`](references/virtual-mcp-gateway.md).
+
 ### Gateway virtual tool reference
 
 Call all of these on the `virtual-mcp-gateway` MCP server.
@@ -88,7 +90,7 @@ All subcommands are run as `skill-manager <command>`. Most modifying commands ta
 | Step | Command |
 | --- | --- |
 | Search by keyword | `skill-manager search "<query>"` |
-| Describe a hit | `skill-manager registry describe <name>` (also reachable via `curl <registry>/skills/<name>`) |
+| Describe a hit | `skill-manager registry describe <name>` |
 | Install by name | `skill-manager install <name>[@<version>]` |
 | Install from local path | `skill-manager install ./path/to/skill` |
 | Install from a git repo | `skill-manager install github:user/repo` |
