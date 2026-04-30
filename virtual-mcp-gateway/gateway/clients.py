@@ -36,6 +36,21 @@ except ImportError as exc:  # pragma: no cover - exercised only when an older SD
     if _MCP_IMPORT_ERROR is None:
         _MCP_IMPORT_ERROR = exc
 
+try:
+    import anyio
+
+    _BROKEN_SESSION_ERRORS: tuple = (
+        anyio.ClosedResourceError,
+        anyio.BrokenResourceError,
+        anyio.EndOfStream,
+        BrokenPipeError,
+        ConnectionResetError,
+        ProcessLookupError,
+        EOFError,
+    )
+except ImportError:  # pragma: no cover - anyio is an mcp dependency.
+    _BROKEN_SESSION_ERRORS = (BrokenPipeError, ConnectionResetError, ProcessLookupError, EOFError)
+
 
 class MCPError(RuntimeError):
     pass
@@ -132,14 +147,13 @@ class MCPClientLibraryClient(DownstreamClient):
 
     async def list_tools(self, forwarded_headers: Optional[Dict[str, str]] = None) -> List[DownstreamTool]:
         try:
-            if self._should_use_transient_session(forwarded_headers):
-                result = await self._run_with_temporary_session(
-                    forwarded_headers,
-                    lambda session: self._list_tools_with_session(session, forwarded_headers=forwarded_headers),
-                )
-            else:
-                session = await self._ensure_persistent_session()
-                result = await self._list_tools_with_session(session, forwarded_headers=forwarded_headers)
+            result = await self._run_with_reopen(
+                forwarded_headers,
+                "list",
+                lambda session: self._list_tools_with_session(
+                    session, forwarded_headers=forwarded_headers
+                ),
+            )
             return self._normalize_tools(list(result.tools))
         except Exception as exc:
             raise MCPError(f"{self.config.transport} downstream error for tools/list: {exc}") from exc
@@ -151,27 +165,62 @@ class MCPClientLibraryClient(DownstreamClient):
         forwarded_headers: Optional[Dict[str, str]] = None,
     ) -> Dict[str, Any]:
         try:
-            if self._should_use_transient_session(forwarded_headers):
-                result = await self._run_with_temporary_session(
-                    forwarded_headers,
-                    lambda session: self._call_tool_with_session(
-                        session,
-                        tool_name,
-                        arguments,
-                        forwarded_headers=forwarded_headers,
-                    ),
-                )
-            else:
-                session = await self._ensure_persistent_session()
-                result = await self._call_tool_with_session(
+            result = await self._run_with_reopen(
+                forwarded_headers,
+                "call",
+                lambda session: self._call_tool_with_session(
                     session,
                     tool_name,
                     arguments,
                     forwarded_headers=forwarded_headers,
-                )
+                ),
+            )
             return _model_to_dict(result)
         except Exception as exc:
             raise MCPError(f"{self.config.transport} downstream error for tools/call: {exc}") from exc
+
+    async def _run_with_reopen(
+        self,
+        forwarded_headers: Optional[Dict[str, str]],
+        kind: str,
+        op: Any,
+    ) -> Any:
+        """Run `op` with one retry on broken-session transport errors.
+
+        Each retry opens a fresh session (transient path) or a fresh
+        persistent session (after discarding the broken one). The retry is
+        only triggered for connection-level failures listed in
+        `_BROKEN_SESSION_ERRORS`; protocol-level errors (e.g. tool returns an
+        MCP error result) propagate without retry.
+        """
+        last_exc: Optional[BaseException] = None
+        for attempt in range(2):
+            try:
+                if self._should_use_transient_session(forwarded_headers):
+                    return await self._run_with_temporary_session(forwarded_headers, op)
+                session = await self._ensure_persistent_session()
+                return await op(session)
+            except _BROKEN_SESSION_ERRORS as exc:
+                last_exc = exc
+                logger.error(
+                    "%s session for %s broken on tools/%s (%s); reopening",
+                    self.config.transport,
+                    self.server_id,
+                    kind,
+                    type(exc).__name__,
+                )
+                if not self._should_use_transient_session(forwarded_headers):
+                    await self._discard_persistent_session()
+        assert last_exc is not None
+        raise last_exc
+
+    async def _discard_persistent_session(self) -> None:
+        async with self._session_lock:
+            self._persistent_session = None
+            stack, self._persistent_stack = self._persistent_stack, None
+        if stack is not None:
+            with contextlib.suppress(BaseException):
+                await stack.aclose()
 
     async def close(self) -> None:
         async with self._session_lock:
@@ -330,10 +379,179 @@ class SSEMCPClient(MCPClientLibraryClient):
 
 
 class StdioMCPClient(MCPClientLibraryClient):
+    """Stdio downstream client backed by a single worker task.
+
+    Stdio MCP servers are subprocesses with a single pair of pipes; the MCP
+    `ClientSession` already serializes requests over them. Owning the streams
+    in one long-lived worker task fixes anyio's cross-task cancel-scope guard
+    (which was tripping `ClosedResourceError` when the refresh loop and a
+    request handler took turns talking to a session opened in a third task)
+    while preserving the global-sticky semantics of one shared subprocess
+    per deployment.
+    """
+
     def __init__(self, config: ClientConfig):
         super().__init__(config)
         if not config.command:
             raise ValueError(f"stdio client {config.server_id} requires command")
+        self._worker_task: Optional[asyncio.Task[None]] = None
+        self._worker_queue: Optional[asyncio.Queue[Optional[tuple]]] = None
+        self._worker_lock = asyncio.Lock()
+
+    async def initialize(self) -> None:
+        async with self._worker_lock:
+            if self._worker_task is not None and not self._worker_task.done():
+                return
+            self._worker_queue = asyncio.Queue()
+            self._worker_task = asyncio.get_event_loop().create_task(
+                self._worker_loop(),
+                name=f"stdio-worker-{self.server_id}",
+            )
+
+    async def list_tools(self, forwarded_headers: Optional[Dict[str, str]] = None) -> List[DownstreamTool]:
+        try:
+            await self.ensure_initialized()
+            result = await self._dispatch(
+                lambda session: self._list_tools_with_session(
+                    session, forwarded_headers=forwarded_headers
+                )
+            )
+            return self._normalize_tools(list(result.tools))
+        except Exception as exc:
+            raise MCPError(
+                f"{self.config.transport} downstream error for tools/list: {exc}"
+            ) from exc
+
+    async def call_tool(
+        self,
+        tool_name: str,
+        arguments: Dict[str, Any],
+        forwarded_headers: Optional[Dict[str, str]] = None,
+    ) -> Dict[str, Any]:
+        try:
+            await self.ensure_initialized()
+            result = await self._dispatch(
+                lambda session: self._call_tool_with_session(
+                    session,
+                    tool_name,
+                    arguments,
+                    forwarded_headers=forwarded_headers,
+                )
+            )
+            return _model_to_dict(result)
+        except Exception as exc:
+            raise MCPError(
+                f"{self.config.transport} downstream error for tools/call: {exc}"
+            ) from exc
+
+    async def close(self) -> None:
+        async with self._worker_lock:
+            queue = self._worker_queue
+            task = self._worker_task
+            self._worker_queue = None
+            self._worker_task = None
+            self._initialized = False
+            self.cached_tools = {}
+        if queue is not None:
+            await queue.put(None)
+        if task is not None:
+            try:
+                await asyncio.wait_for(asyncio.shield(task), timeout=10)
+            except asyncio.TimeoutError:
+                task.cancel()
+                with contextlib.suppress(BaseException):
+                    await task
+            except BaseException:
+                # Worker task errors during close are logged by the worker itself.
+                pass
+
+    async def _dispatch(self, op: Any) -> Any:
+        queue = self._worker_queue
+        task = self._worker_task
+        if queue is None or task is None:
+            raise MCPError(f"stdio client {self.server_id} is not initialized")
+        if task.done():
+            cause = task.exception() if not task.cancelled() else None
+            raise MCPError(
+                f"stdio client {self.server_id} worker is not running"
+            ) from cause
+        loop = asyncio.get_event_loop()
+        future: asyncio.Future[Any] = loop.create_future()
+        await queue.put((op, future))
+        return await future
+
+    async def _worker_loop(self) -> None:
+        assert self._worker_queue is not None
+        queue = self._worker_queue
+        session: Optional[ClientSession] = None
+        stack: Optional[contextlib.AsyncExitStack] = None
+        try:
+            while True:
+                item = await queue.get()
+                if item is None:
+                    break
+                op, future = item
+                if future.done():
+                    continue
+                last_exc: Optional[BaseException] = None
+                for attempt in range(2):
+                    try:
+                        if session is None:
+                            stack = contextlib.AsyncExitStack()
+                            try:
+                                session = await self._open_session(
+                                    stack, forwarded_headers=None
+                                )
+                            except BaseException:
+                                with contextlib.suppress(BaseException):
+                                    await stack.aclose()
+                                stack = None
+                                raise
+                        result = await op(session)
+                        future.set_result(result)
+                        last_exc = None
+                        break
+                    except _BROKEN_SESSION_ERRORS as exc:
+                        last_exc = exc
+                        logger.error(
+                            "stdio session for %s broken (%s); reopening",
+                            self.server_id,
+                            type(exc).__name__,
+                        )
+                        if stack is not None:
+                            with contextlib.suppress(BaseException):
+                                await stack.aclose()
+                            stack = None
+                        session = None
+                    except Exception as exc:
+                        future.set_exception(exc)
+                        last_exc = None
+                        break
+                if last_exc is not None:
+                    future.set_exception(last_exc)
+        except asyncio.CancelledError:
+            raise
+        except BaseException:
+            logger.exception("stdio worker for %s crashed", self.server_id)
+        finally:
+            if stack is not None:
+                with contextlib.suppress(BaseException):
+                    await stack.aclose()
+            self._drain_queue_with_error(queue)
+
+    def _drain_queue_with_error(self, queue: "asyncio.Queue[Optional[tuple]]") -> None:
+        while True:
+            try:
+                pending = queue.get_nowait()
+            except asyncio.QueueEmpty:
+                return
+            if pending is None:
+                continue
+            _, pending_future = pending
+            if not pending_future.done():
+                pending_future.set_exception(
+                    MCPError(f"stdio client {self.server_id} worker exited")
+                )
 
     @contextlib.asynccontextmanager
     async def _transport_context(self, forwarded_headers: Optional[Dict[str, str]]) -> Any:
