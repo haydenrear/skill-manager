@@ -99,13 +99,15 @@ that mints JWTs for the CLI's `skill-manager login`. Two ways to run it.
 ### Option A — local with `./skill-manager-server`
 
 ```bash
+docker compose up -d                                  # spin up your postgres store
 ./skill-manager-server                                # default port 8080
 SKILL_REGISTRY_ALLOW_FILE_UPLOAD=TRUE ./skill-manager-server   # also accept --upload-tarball
 ```
 
 Data lives at `~/.skill-registry/` (persistence-friendly: keystore,
-schema, files). Postgres is bundled via H2 in this mode, suitable for
-local dev only.
+schema, files). Postgres is started from docker compose in this mode. 
+You can see the data from postgres in data/ from where you call the 
+docker compose command. You can edit it there as well.
 
 `SKILL_REGISTRY_ALLOW_FILE_UPLOAD=TRUE` enables the legacy multipart
 publish backend — needed when you want to push a local skill directly
