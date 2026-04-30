@@ -32,6 +32,7 @@ services:
       postgres:
         condition: service_healthy
     environment:
+      SKILL_REGISTRY_ALLOW_FILE_UPLOAD: TRUE
       SKILL_REGISTRY_DB_URL: jdbc:postgresql://postgres:5432/skill_registry
       SKILL_REGISTRY_DB_USER: ${POSTGRES_USER:-postgres}
       SKILL_REGISTRY_DB_PASSWORD: ${POSTGRES_PASSWORD:-postgres}

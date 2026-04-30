@@ -1,6 +1,6 @@
 ---
 name: skill-manager
-description: Search the skill registry, install skills, and register MCP servers from the agent's context. Use when the user asks to find, add, remove, or inspect skills and MCP servers.
+description: Search and install agent skills. For any skill-manager-managed skill, MCP tools and CLI tools are resolved transitively — CLI tools land under $SKILL_MANAGER_HOME/bin/cli/ (resolve absolute paths via env.sh), and MCP tools are registered with the virtual-mcp-gateway, which is then how you manage, deploy, and invoke them (browse_mcp_servers / describe_mcp_server / deploy_mcp_server with init params and secrets / browse_active_tools / search_tools / describe_tool / invoke_tool). Identify skill-manager-managed skills with `skill-manager list`. Use whenever the user asks to find, add, remove, inspect, sync, or upgrade a skill, or to manage / deploy / invoke an MCP tool that came from one.
 ---
 
 # skill-manager
@@ -10,11 +10,74 @@ You can **discover and install** skills and MCP servers on demand using the `ski
 ## When to use this skill
 
 - The user asks what skills are available ("what skills do I have?" / "find a skill for X").
-- The user asks to install, remove, publish, or inspect a skill.
+- The user asks to install, remove, publish, upgrade, or inspect a skill.
 - The user asks to add, describe, deploy, or invoke an MCP server / tool through the gateway.
+- The user asks "what MCP tools can I use" or "what's available right now" — for skills surfaced by `skill-manager list`, route through the gateway (see next section).
 - You've identified a capability gap — e.g. a task needs a CLI tool or MCP server you don't yet have — and you should propose finding one.
 
-Always narrate the plan before running commands that modify state. Install/publish/register are side-effecting; confirm the scope before acting.
+Always narrate the plan before running commands that modify state. Install/publish/register/upgrade are side-effecting; confirm the scope before acting.
+
+## How skill-manager-managed MCP and CLI tools are reached
+
+When you install a skill via `skill-manager install`, both kinds of tools that skill declares are resolved transitively across the whole skill graph:
+
+- **CLI tools** (`[[cli_dependencies]]` in any reachable `skill-manager.toml`) land under `$SKILL_MANAGER_HOME/bin/cli/`. Use the `env.sh` / `env.py` helper (described in **Locating CLIs by absolute path** below) to get their absolute paths so you bypass anything conflicting on the user's `PATH`.
+- **MCP tools** (`[[mcp_dependencies]]`) are registered with the **virtual-mcp-gateway** — the single MCP endpoint every agent's MCP config points at. The gateway is then how you manage, deploy, and invoke them. There is no CLI for any of those operations.
+
+To know which skills (and therefore which MCP servers and CLI tools) are skill-manager-managed in the current environment, run:
+
+```
+skill-manager list
+```
+
+The MCP servers behind those skills are discoverable, deployable, and callable only through the gateway's virtual tools below — not through any tool-catalog or search primitive your harness might also expose. When the user asks "what MCP tools do I have", "deploy server X", "the env var is set now, try again", or "call tool Y", route the call through the gateway's virtual tools.
+
+### Gateway virtual tool reference
+
+Call all of these on the `virtual-mcp-gateway` MCP server.
+
+**Discovery**
+
+- `browse_mcp_servers()` — list every registered downstream server with `default_scope`, deployment state, tool counts, last error. Start here whenever the user asks what's available.
+- `describe_mcp_server(server_id)` — full record for one server: `init_schema` (the env vars / secrets it needs), `default_scope`, `deployment` (`initialized_at`, `expires_at`, `init_values` with secrets redacted), `last_error`. Read this **before** deploying so you know what `initialization_params` to ask the user for.
+- `browse_active_tools(server_id?)` — list tools currently exposed by deployed servers. Optional `server_id` narrows to one. Returns `tool_path`, `tool_name`, `description`.
+- `search_tools(query)` — semantic search across active tool names + descriptions. Use this when the user describes a *capability* rather than naming a tool.
+- `describe_tool(tool_path)` — full schema (JSON-Schema for `arguments`, server init schema). **Calling this also satisfies the gateway's per-session disclosure gate**, so you must call it at least once per session+tool before `invoke_tool` will accept the call.
+
+**Deployment** (only available through the gateway — no CLI equivalent)
+
+- `deploy_mcp_server(server_id, scope?, initialization_params?, reuse_last_initialization?)` — deploy or re-deploy a registered server. Pass `initialization_params` as `{ "FIELD_NAME": "value", ... }` for any required `init_schema` fields the gateway is missing (typically API keys, endpoints). `scope` defaults to the server's `default_scope`; pass `"session"` to deploy only for the current agent session, isolated from other agents. `reuse_last_initialization=true` re-uses the values from the last successful deploy when nothing has changed but the server idle-timed-out.
+- `refresh_registry()` — force a registry refresh. Rarely needed; `skill-manager install` and `sync` already trigger refreshes.
+
+**Invocation**
+
+- `invoke_tool(tool_path, arguments)` — call a downstream tool. `tool_path` is `<server_id>/<tool_name>` (read it off `browse_active_tools` or `search_tools`). `arguments` is a JSON object matching the schema returned by `describe_tool`.
+
+### Common flows
+
+**"What MCP tools do I have right now?"**
+
+1. `browse_mcp_servers()` to see registered servers and their deployment state.
+2. `browse_active_tools()` (no filter) to see what's currently callable.
+3. If something the user wants is registered but not deployed, follow the deployment flow.
+
+**"I need a tool that does X" (capability search)**
+
+1. `search_tools(query="X")` → pick the most relevant result.
+2. `describe_tool(tool_path=…)` to confirm the argument shape.
+3. `invoke_tool(tool_path=…, arguments=…)`.
+
+**"Deploy / re-deploy server X" (especially after the user just set an env var or rotated a secret)**
+
+1. `describe_mcp_server(server_id="X")` to read its `init_schema` and current `last_error`.
+2. Ask the user for any required+missing values (don't fabricate API keys).
+3. `deploy_mcp_server(server_id="X", initialization_params={…})`.
+4. Alternative: if the user just exported the env var into their shell and re-launched their agent, run `skill-manager sync` from the CLI — it re-registers every installed skill's MCP deps and picks up env-var values for required init fields, so all eligible servers get auto-deployed in one shot.
+
+**"Invoke tool Y"**
+
+1. `describe_tool(tool_path="server/tool")` once per session for the disclosure gate.
+2. `invoke_tool(tool_path="server/tool", arguments={…})`.
 
 ## The CLI at a glance
 
@@ -32,7 +95,10 @@ All subcommands are run as `skill-manager <command>`. Most modifying commands ta
 | List installed | `skill-manager list` |
 | Show an installed skill | `skill-manager show <name>` |
 | Show transitive deps | `skill-manager deps <name>` |
-| Remove | `skill-manager remove <name>` |
+| Re-run install side effects (MCP deploy, agent symlinks) without re-fetching | `skill-manager sync [<name>]` |
+| Upgrade to the latest registry version (rolls back on failure) | `skill-manager upgrade <name>` / `--all` / `--self` |
+| Uninstall (clears store + agent symlinks + orphan MCP servers) | `skill-manager uninstall <name>` |
+| Lower-level remove (store entry only; doesn't unlink agents by default) | `skill-manager remove <name> [--from claude,codex]` |
 
 `add` always builds a plan first — fetches the skill + every transitive reference into staging, then prints what will happen (fetches, CLI installs, MCP registrations). Nothing is committed to the store until consent is given.
 
@@ -96,18 +162,17 @@ Ask the user to run the following in their terminal, then retry the task:
 
 ### Working with the MCP gateway
 
-The gateway fronts every MCP server; agents only ever see one MCP endpoint. The CLI owns only the gateway process lifecycle — everything else happens over MCP.
+The gateway fronts every MCP server registered by a skill-manager-managed skill; agents only ever see one MCP endpoint. The CLI owns only the gateway process lifecycle — everything else happens over MCP via the virtual tools documented in **How skill-manager-managed MCP and CLI tools are reached** above.
 
 | Step | Command |
 | --- | --- |
 | Start / stop | `skill-manager gateway up` / `gateway down` |
 | See URL + health | `skill-manager gateway status` |
+| Re-register every installed skill's MCP deps and retry deploy with current env | `skill-manager sync` |
 
 **How MCP servers get into the gateway**: by declaring them as `[[mcp_dependencies]]` in a skill's `skill-manager.toml` and installing that skill (`skill-manager install <skill>`). Registration is a side effect of install — there is no CLI to register an MCP server directly.
 
-**How agents use them**: call `browse_mcp_servers`, `describe_mcp_server`, `deploy_mcp_server`, `search_tools`, `describe_tool`, `invoke_tool` over MCP. These are the gateway's built-in virtual tools.
-
-After a skill's MCP deps are registered, they persist across gateway restarts. Prefer asking the user for init params (secrets, tokens) at deploy time rather than hardcoding them in the skill.
+After a skill's MCP deps are registered, they persist across gateway restarts. Prefer asking the user for init params (secrets, tokens) at deploy time via `deploy_mcp_server` rather than hardcoding them in the skill.
 
 ### Publishing your own skills
 
@@ -141,8 +206,12 @@ skill-manager install <name> --yes
 
 **"What MCP tools can I use right now?"**
 
-Call `browse_active_tools` or `search_tools` over MCP against the
-`virtual-mcp-gateway` entry in your MCP config. There is no CLI equivalent.
+Run `skill-manager list` first to confirm which skills are
+skill-manager-managed in this environment, then use the gateway's
+virtual tools — `browse_mcp_servers` followed by
+`browse_active_tools` (or `search_tools` for capability-based search).
+See **How skill-manager-managed MCP and CLI tools are reached** above
+for the full flow. There is no CLI equivalent for the MCP side.
 
 **"Add a new MCP server"**
 
