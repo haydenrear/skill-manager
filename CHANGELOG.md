@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.6.0](https://github.com/haydenrear/skill-manager/compare/v0.5.1...v0.6.0) (2026-04-30)
+
+
+### Features
+
+* **cli:** add uninstall, sync, upgrade commands + stdio MCP smoke coverage ([4e74673](https://github.com/haydenrear/skill-manager/commit/4e74673ab679ed97ff5d3dc5e6bd1780c4bbae3c))
+* **cli:** sync --from &lt;dir&gt; for local skill iteration without publish ([9fb8c54](https://github.com/haydenrear/skill-manager/commit/9fb8c54c49c4c4b0f3f6c784fc2455afc227191b))
+
+
+### Bug Fixes
+
+* **gateway:** self-heal broken MCP downstream sessions ([0292a2f](https://github.com/haydenrear/skill-manager/commit/0292a2fcb48f04ef2036f2978e338b3ca64e5d9c))
+* **release:** drop release-please version-only bumps from change detection ([72bf149](https://github.com/haydenrear/skill-manager/commit/72bf1490aaaceb7cb3848bd14363913b0ad51ecc))
+
 ## [0.5.1](https://github.com/haydenrear/skill-manager/compare/v0.5.0...v0.5.1) (2026-04-29)
 
 
