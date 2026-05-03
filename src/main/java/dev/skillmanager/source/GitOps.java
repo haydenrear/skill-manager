@@ -99,8 +99,29 @@ public final class GitOps {
      * fetched commit hash, or null on failure.
      */
     public static String fetchHead(Path dir, String remote) {
-        Result fetch = run(dir, List.of("git", "fetch", "--no-tags", "--quiet", remote, "HEAD"));
-        if (fetch.exit != 0) return null;
+        return fetchRef(dir, remote, "HEAD");
+    }
+
+    /**
+     * Fetch a specific {@code ref} (HEAD, a branch, a tag, or a sha)
+     * from {@code remote} into {@code FETCH_HEAD}. Returns the
+     * resolved commit hash, or null on failure.
+     *
+     * <p>Modern git supports fetching by sha when the server has
+     * {@code uploadpack.allowAnySHA1InWant=true} (github does); for
+     * other servers a branch/tag name is the safer ref.
+     */
+    public static String fetchRef(Path dir, String remote, String ref) {
+        Result fetch = run(dir, List.of("git", "fetch", "--no-tags", "--quiet", remote, ref));
+        if (fetch.exit != 0) {
+            // Fall back to a full fetch then resolve — useful when the
+            // remote rejects fetch-by-sha and the sha is reachable from
+            // the default branch we'd otherwise get on a plain fetch.
+            Result fullFetch = run(dir, List.of("git", "fetch", "--no-tags", "--quiet", remote));
+            if (fullFetch.exit != 0) return null;
+            Result rev = run(dir, List.of("git", "rev-parse", ref));
+            return rev.exit == 0 ? rev.stdout.trim() : null;
+        }
         Result rev = run(dir, List.of("git", "rev-parse", "FETCH_HEAD"));
         return rev.exit == 0 ? rev.stdout.trim() : null;
     }

@@ -48,8 +48,11 @@ public class SourceSyncRefusesWithoutFrom {
             Path repoRoot = Path.of(System.getProperty("user.dir")).resolve("..").normalize();
             Path sm = repoRoot.resolve("skill-manager");
 
+            // --git-latest because the fixture isn't in the registry;
+            // without it sync would warn+skip ("no server git_sha") and
+            // never exercise the dirty-refuse path we're testing.
             ProcessBuilder pb = new ProcessBuilder(
-                    sm.toString(), "sync", skillName)
+                    sm.toString(), "sync", skillName, "--git-latest")
                     .redirectErrorStream(true);
             pb.environment().put("SKILL_MANAGER_HOME", home);
             pb.environment().put("SKILL_MANAGER_INSTALL_DIR", repoRoot.toString());
