@@ -332,8 +332,15 @@ validationGraph {
         node("sources/source-tracking/SourceSyncRefusesWithoutFrom.java")
         node("sources/source-tracking/SourceSyncMergesClean.java")
         node("sources/source-tracking/SourceSyncProducesConflict.java")
+        // `skill-manager sync` (no name) iterates every git-tracked
+        // install through the implicit-origin pull, accumulates the
+        // refused/conflicted ones, and emits a single aggregate
+        // summary at the end. By this point in the graph the fixture
+        // has commits ahead of the install-time baseline, so it
+        // shows up as needing --merge.
+        node("sources/source-tracking/SourceSyncAllAggregates.java")
 
         node("sources/common/ServersDown.java")
-                .dependsOn("source.sync.produces_conflict")
+                .dependsOn("source.sync.all_aggregates")
     }
 }
