@@ -58,7 +58,10 @@ public class GlsFixtureBootstrapped {
                     "skill_references = []\n"
                             + "[skill]\nname = \"" + SKILL_NAME + "\"\nversion = \"0.0.1\"\n");
 
-            int initRc = git(dir, "init", "--quiet");
+            // -b main pins the default branch so downstream nodes can
+            // assert/sync against a known branch name regardless of the
+            // host machine's `init.defaultBranch` setting.
+            int initRc = git(dir, "init", "-b", "main", "--quiet");
             int addRc = git(dir, "add", "-A");
             int commitRc = git(dir,
                     "-c", "user.email=fixture@skillmanager.local",

@@ -35,6 +35,18 @@ public record SkillSource(
         String origin,
         /** SHA the skill was last pinned to. Null when {@link #kind} is not git-backed. */
         String gitHash,
+        /**
+         * The ref to track for {@code sync --git-latest}: a branch name
+         * (so successive syncs follow that branch), a tag name (fixed
+         * point — sync becomes a no-op), or {@code null} if the install
+         * left HEAD detached on a sha that doesn't match any tag. With
+         * null, {@code --git-latest} falls back to {@code HEAD} (the
+         * remote's default branch) and warns that the install is
+         * sha-pinned. Default sync (no {@code --git-latest}) ignores
+         * this field entirely — it merges the registry's published
+         * git_sha for the latest version.
+         */
+        String gitRef,
         /** ISO-8601 timestamp (string for cross-version JSON portability without a jsr310 dep). */
         String installedAt
 ) {

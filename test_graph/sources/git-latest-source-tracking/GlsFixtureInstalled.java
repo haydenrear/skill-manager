@@ -70,31 +70,38 @@ public class GlsFixtureInstalled {
 
             boolean storeHasGit = Files.isDirectory(storeDir.resolve(".git"));
             boolean sourceJsonExists = Files.isRegularFile(sourceJson);
-            String kind = null, hash = null, origin = null;
+            String kind = null, hash = null, origin = null, gitRef = null;
             if (sourceJsonExists) {
                 JsonNode n = new ObjectMapper().readTree(sourceJson.toFile());
                 kind = n.get("kind") == null ? null : n.get("kind").asText();
                 hash = n.get("gitHash") == null ? null : n.get("gitHash").asText();
                 origin = n.get("origin") == null ? null : n.get("origin").asText();
+                gitRef = n.get("gitRef") == null ? null : n.get("gitRef").asText();
             }
             boolean kindIsGit = "GIT".equals(kind);
             boolean hashMatches = hash != null && hash.equals(initialHash);
             boolean originIsFixturePath = origin != null && origin.equals(fixtureDir);
+            // Fixture was bootstrapped with `git init -b main`; the
+            // install must detect "main" so `sync --git-latest` knows
+            // which branch to fetch instead of falling back to remote
+            // HEAD.
+            boolean gitRefIsMain = "main".equals(gitRef);
 
             boolean pass = storeHasGit && sourceJsonExists && kindIsGit
-                    && hashMatches && originIsFixturePath;
+                    && hashMatches && originIsFixturePath && gitRefIsMain;
             return (pass
                     ? NodeResult.pass("gls.fixture.installed")
                     : NodeResult.fail("gls.fixture.installed",
                             "storeHasGit=" + storeHasGit + " json=" + sourceJsonExists
                                     + " kind=" + kind + " hashMatches=" + hashMatches
-                                    + " origin=" + origin))
+                                    + " origin=" + origin + " gitRef=" + gitRef))
                     .assertion("install_exit_zero", true)
                     .assertion("store_has_git_dir", storeHasGit)
                     .assertion("source_json_written", sourceJsonExists)
                     .assertion("source_kind_is_git", kindIsGit)
                     .assertion("source_hash_matches_fixture_head", hashMatches)
                     .assertion("source_origin_pins_fixture_path", originIsFixturePath)
+                    .assertion("source_git_ref_is_main", gitRefIsMain)
                     .publish("storeDir", storeDir.toString());
         });
     }

@@ -78,29 +78,38 @@ public class SourceFixtureInstalled {
             String kind = null;
             String recordedHash = null;
             String recordedOrigin = null;
+            String recordedRef = null;
             if (sourceJsonExists) {
                 JsonNode n = new ObjectMapper().readTree(sourceJson.toFile());
                 kind = textOrNull(n, "kind");
                 recordedHash = textOrNull(n, "gitHash");
                 recordedOrigin = textOrNull(n, "origin");
+                recordedRef = textOrNull(n, "gitRef");
             }
             boolean kindIsGit = "GIT".equals(kind);
             boolean hashMatches = recordedHash != null && recordedHash.equals(initialHash);
             boolean originPresent = recordedOrigin != null && !recordedOrigin.isBlank();
+            // Fixture was created with `git init -b main`, so the
+            // install should detect "main" as the install-time ref —
+            // not null (which would mean detached HEAD on a sha).
+            boolean refIsMain = "main".equals(recordedRef);
 
-            boolean pass = storeHasGit && sourceJsonExists && kindIsGit && hashMatches && originPresent;
+            boolean pass = storeHasGit && sourceJsonExists && kindIsGit
+                    && hashMatches && originPresent && refIsMain;
             return (pass
                     ? NodeResult.pass("source.fixture.installed")
                     : NodeResult.fail("source.fixture.installed",
                             "storeHasGit=" + storeHasGit + " sourceJson=" + sourceJsonExists
                                     + " kind=" + kind + " hashMatches=" + hashMatches
-                                    + " origin=" + recordedOrigin))
+                                    + " origin=" + recordedOrigin
+                                    + " gitRef=" + recordedRef))
                     .assertion("install_exit_zero", true)
                     .assertion("store_has_git_dir", storeHasGit)
                     .assertion("source_json_written", sourceJsonExists)
                     .assertion("source_kind_is_git", kindIsGit)
                     .assertion("source_hash_matches_fixture_head", hashMatches)
                     .assertion("source_origin_present", originPresent)
+                    .assertion("source_git_ref_is_main", refIsMain)
                     .publish("storeDir", storeDir.toString())
                     .publish("sourceJson", sourceJson.toString());
         });

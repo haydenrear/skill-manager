@@ -44,6 +44,37 @@ public final class GitOps {
     }
 
     /**
+     * Detect the install-time ref to track for {@code sync --git-latest}.
+     *
+     * <ul>
+     *   <li>On a named branch (the common case for an unspecified-ref
+     *       install or a {@code --branch} clone): returns the branch
+     *       name (e.g. {@code "main"}).</li>
+     *   <li>Detached HEAD on a tagged commit: returns the tag name
+     *       (e.g. {@code "v1.0.0"}). Sync against a tag is a no-op,
+     *       which preserves version pinning.</li>
+     *   <li>Detached HEAD on a sha with no matching tag: returns null
+     *       — the caller can decide whether to fall back to
+     *       {@code "HEAD"} (the remote's default branch) or refuse.</li>
+     * </ul>
+     */
+    public static String detectInstallRef(Path dir) {
+        // Branch: succeeds when on a real branch, fails on detached HEAD.
+        Result branch = run(dir, List.of("git", "symbolic-ref", "--short", "--quiet", "HEAD"));
+        if (branch.exit == 0) {
+            String b = branch.stdout.trim();
+            if (!b.isBlank()) return b;
+        }
+        // Tag: only an exact-match tag points at HEAD (annotated or lightweight).
+        Result tag = run(dir, List.of("git", "describe", "--tags", "--exact-match", "HEAD"));
+        if (tag.exit == 0) {
+            String t = tag.stdout.trim();
+            if (!t.isBlank()) return t;
+        }
+        return null;
+    }
+
+    /**
      * Set origin to {@code url}. Adds the remote if missing, updates it
      * if present. Idempotent.
      */
