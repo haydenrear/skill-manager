@@ -4,6 +4,7 @@ import dev.skillmanager.model.Skill;
 import dev.skillmanager.registry.RegistryClient;
 import dev.skillmanager.registry.RegistryConfig;
 import dev.skillmanager.shared.util.Fs;
+import dev.skillmanager.source.GitOps;
 import dev.skillmanager.store.SkillStore;
 import dev.skillmanager.util.Log;
 import picocli.CommandLine.Command;
@@ -57,6 +58,14 @@ public final class UpgradeCommand implements Callable<Integer> {
                     + "lookup and the inner install both target the same registry).")
     String registryUrl;
 
+    @Option(names = "--merge",
+            description = "Forwarded to sync for git-tracked skills: when local edits exist, "
+                    + "snapshot them and run a 3-way merge against the new version's git_sha "
+                    + "instead of refusing. On conflict, leaves the working tree for resolution. "
+                    + "Has no effect on non-git skills (which always go through the destructive "
+                    + "backup + reinstall path with rollback on failure).")
+    boolean merge;
+
     @Override
     public Integer call() throws Exception {
         int selfRc = 0;
@@ -93,33 +102,35 @@ public final class UpgradeCommand implements Callable<Integer> {
 
         RegistryClient registry = RegistryClient.authenticated(store, RegistryConfig.resolve(store, null));
 
-        int failures = 0;
+        int worstRc = 0;
         for (Skill s : targets) {
+            int rc;
             try {
-                if (!upgradeOne(store, registry, s)) failures++;
+                rc = upgradeOne(store, registry, s);
             } catch (Exception e) {
                 Log.error("upgrade %s failed: %s", s.name(), e.getMessage());
-                failures++;
+                rc = 5;
             }
+            if (rc > worstRc) worstRc = rc;
         }
-        return failures > 0 ? 5 : selfRc;
+        return worstRc > 0 ? worstRc : selfRc;
     }
 
     /**
-     * @return {@code true} if the skill is now on the latest version (either
-     *         freshly upgraded, or already up-to-date), {@code false} on a
-     *         rollback or unrecoverable failure.
+     * Returns 0 on success / no-op, or a sync-style exit code on failure:
+     * 5 (legacy upgrade-failure / rollback), 7 (sync refused — re-run
+     * with --merge), 8 (sync merge had conflicts the user must resolve).
      */
-    private boolean upgradeOne(SkillStore store, RegistryClient registry, Skill installed) throws Exception {
+    private int upgradeOne(SkillStore store, RegistryClient registry, Skill installed) throws Exception {
         String currentVersion = installed.version();
         String latestVersion = fetchLatestVersion(registry, installed.name());
         if (latestVersion == null) {
             Log.warn("%s: registry has no latest version — skipping", installed.name());
-            return false;
+            return 5;
         }
         if (currentVersion != null && currentVersion.equals(latestVersion)) {
             Log.ok("%s already at latest (%s)", installed.name(), currentVersion);
-            return true;
+            return 0;
         }
 
         Log.step("upgrading %s: %s → %s",
@@ -127,6 +138,41 @@ public final class UpgradeCommand implements Callable<Integer> {
                 currentVersion == null ? "?" : currentVersion,
                 latestVersion);
 
+        // Git-tracked installs upgrade through the same fetch +
+        // server_git_sha + merge path that `sync <name>` uses. That
+        // preserves user edits (3-way merge instead of overwrite),
+        // surfaces conflicts as exit 8 with the working tree left
+        // for the user to resolve, and refuses dirty installs unless
+        // --merge was passed. Non-git installs (legacy tarball
+        // publishes, file: of a non-git directory) fall back to the
+        // destructive backup + reinstall path because there's no
+        // upstream branch to merge against.
+        Path skillDir = store.skillDir(installed.name());
+        if (GitOps.isGitRepo(skillDir) && GitOps.isAvailable()) {
+            SyncCommand sync = new SyncCommand();
+            sync.name = installed.name();
+            sync.merge = merge;
+            sync.registryUrl = registryUrl;
+            Integer rc = sync.call();
+            int code = (rc == null) ? 5 : rc;
+            if (code == 0) {
+                Log.ok("upgraded %s to %s (via git merge)", installed.name(), latestVersion);
+            }
+            return code;
+        }
+
+        Log.warn("%s: not git-tracked — falling back to backup + reinstall "
+                + "(local edits to the store dir will be lost)", installed.name());
+        return upgradeViaBackupReinstall(store, installed, currentVersion, latestVersion);
+    }
+
+    /**
+     * Pre-merge fallback: move the install dir aside, run a fresh
+     * install for the new version, restore on failure. Used for
+     * non-git installs where there's no upstream to merge against.
+     */
+    private int upgradeViaBackupReinstall(SkillStore store, Skill installed,
+                                          String currentVersion, String latestVersion) throws Exception {
         Path skillDir = store.skillDir(installed.name());
         Path backup = store.cacheDir().resolve(
                 "upgrade-backup-" + installed.name() + "-" + System.currentTimeMillis());
@@ -148,18 +194,17 @@ public final class UpgradeCommand implements Callable<Integer> {
             rollback(store, installed.name(), skillDir, backup);
             Log.error("upgrade %s failed (install exit %s) — rolled back to %s",
                     installed.name(), rc, currentVersion);
-            return false;
+            return 5;
         }
 
-        // Success — drop the backup.
         try {
             Fs.deleteRecursive(backup);
         } catch (Exception e) {
             Log.warn("upgrade %s: failed to delete backup %s — %s",
                     installed.name(), backup, e.getMessage());
         }
-        Log.ok("upgraded %s to %s", installed.name(), latestVersion);
-        return true;
+        Log.ok("upgraded %s to %s (via backup + reinstall)", installed.name(), latestVersion);
+        return 0;
     }
 
     private static void rollback(SkillStore store, String skillName, Path skillDir, Path backup) {
