@@ -146,6 +146,24 @@ public final class SyncCommand implements Callable<Integer> {
             targets = store.listInstalled();
             if (!targets.isEmpty()) {
                 gitSyncRc = syncAllGit(store, targets);
+                // syncAllGit may have merged TOML updates that added or
+                // removed MCP / CLI deps. Reload from disk so the
+                // McpWriter.registerAll pass below sees the post-merge
+                // manifests, not the pre-merge snapshot. (The per-skill
+                // branch above already loads `targets` after its own
+                // applyFromImplicitOrigin call, so it doesn't have
+                // this problem.)
+                //
+                // Known gaps still not covered after this reload:
+                //   - CLI deps added by the merge aren't installed —
+                //     sync doesn't run ToolInstallRecorder /
+                //     CliInstallRecorder. User has to re-run install.
+                //   - Transitive skill_references added by the merge
+                //     aren't resolved or fetched. Same workaround.
+                //   - MCP deps removed by the merge stay registered
+                //     as orphans on the gateway. Uninstall handles
+                //     this; sync doesn't yet.
+                targets = store.listInstalled();
             }
         }
         if (targets.isEmpty()) {
