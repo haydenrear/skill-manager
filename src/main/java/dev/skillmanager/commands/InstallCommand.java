@@ -231,6 +231,7 @@ public final class InstallCommand implements Callable<Integer> {
                 SkillSource.Kind kind;
                 String origin;
                 String hash = null;
+                String gitRef = null;
                 if (GitOps.isGitRepo(skillDir)) {
                     kind = SkillSource.Kind.GIT;
                     // Prefer the resolver's source string (the URL the user / registry
@@ -256,12 +257,18 @@ public final class InstallCommand implements Callable<Integer> {
                         }
                     }
                     hash = GitOps.headHash(skillDir);
+                    // Track the install-time ref so `sync --git-latest`
+                    // pulls the right line later. Branch installs follow
+                    // the branch; tag installs stay pinned to the tag;
+                    // sha-detached installs leave gitRef null and fall
+                    // back to remote HEAD with a warning.
+                    gitRef = GitOps.detectInstallRef(skillDir);
                 } else {
                     kind = SkillSource.Kind.LOCAL_DIR;
                     origin = r.source();
                 }
                 sources.write(new SkillSource(
-                        r.name(), r.version(), kind, origin, hash, now));
+                        r.name(), r.version(), kind, origin, hash, gitRef, now));
             } catch (Exception e) {
                 Log.warn("could not record source provenance for %s: %s", r.name(), e.getMessage());
             }

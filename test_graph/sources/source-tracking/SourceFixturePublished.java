@@ -64,7 +64,10 @@ public class SourceFixturePublished {
 
             // Real git repo so install lands with .git in the store and
             // the source-tracking flow flips into kind=GIT mode.
-            int initRc = git(dir, "init", "--quiet");
+            // -b main pins the default branch so downstream nodes can
+            // assert/sync against a known branch name regardless of the
+            // host machine's `init.defaultBranch` setting.
+            int initRc = git(dir, "init", "-b", "main", "--quiet");
             int addRc = git(dir, "add", "-A");
             int commitRc = git(dir,
                     "-c", "user.email=fixture@skillmanager.local",

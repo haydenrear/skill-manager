@@ -305,7 +305,20 @@ public final class SyncCommand implements Callable<Integer> {
         String targetRef;
         String targetVersion = null;
         if (gitLatest) {
-            targetRef = "HEAD";
+            // Track the install-time ref when we know it (branch/tag);
+            // fall back to HEAD (remote's default branch) for sha-pinned
+            // installs and warn so the surprise is visible.
+            String tracked = src != null ? src.gitRef() : null;
+            if (tracked != null && !tracked.isBlank()) {
+                targetRef = tracked;
+            } else {
+                targetRef = "HEAD";
+                if (src != null && src.gitHash() != null) {
+                    Log.warn("%s: install was sha-pinned (no branch/tag tracked); "
+                            + "--git-latest will fetch the remote's default branch HEAD",
+                            skillName);
+                }
+            }
         } else {
             ServerVersion sv = lookupServerVersion(store, skillName);
             if (sv == null) {
@@ -554,9 +567,12 @@ public final class SyncCommand implements Callable<Integer> {
                 SkillSourceStore sources = new SkillSourceStore(SkillStore.defaultStore());
                 SkillSource old = sources.read(skillName).orElse(null);
                 if (old != null) {
+                    // Preserve the original gitRef — sync moved HEAD but
+                    // the branch/tag we're tracking didn't change.
                     sources.write(new SkillSource(
                             old.name(), old.version(), old.kind(), old.origin(),
                             GitOps.headHash(storeDir),
+                            old.gitRef(),
                             java.time.OffsetDateTime.now(java.time.ZoneOffset.UTC).toString()));
                 }
             } catch (Exception e) {
