@@ -98,6 +98,12 @@ public final class SyncCommand implements Callable<Integer> {
             return 2;
         }
 
+        // Track the worst per-skill git-sync exit code across the run.
+        // We don't fail-fast in all-skills mode — we want one
+        // aggregate summary at the end naming every skill that needs
+        // attention, then we still run the MCP / agent refresh.
+        int gitSyncRc = 0;
+
         List<Skill> targets;
         if (name != null && !name.isBlank()) {
             if (!store.contains(name)) {
@@ -119,6 +125,9 @@ public final class SyncCommand implements Callable<Integer> {
             targets = List.of(store.load(name).orElseThrow());
         } else {
             targets = store.listInstalled();
+            if (!targets.isEmpty()) {
+                gitSyncRc = syncAllGit(store, targets);
+            }
         }
         if (targets.isEmpty()) {
             Log.warn("no skills installed");
@@ -132,7 +141,8 @@ public final class SyncCommand implements Callable<Integer> {
                 Log.error("gateway at %s is unreachable and could not be started — "
                         + "start it manually (`skill-manager gateway up`) and rerun",
                         gw.baseUrl());
-                return 4;
+                // Surface the more user-actionable code if git also flagged things.
+                return Math.max(4, gitSyncRc);
             }
             McpWriter writer = new McpWriter(gw);
             var results = writer.registerAll(targets);
@@ -160,7 +170,70 @@ public final class SyncCommand implements Callable<Integer> {
                 }
             }
         }
-        return 0;
+        return gitSyncRc;
+    }
+
+    /**
+     * All-skills git sync. For every installed skill that has a
+     * pinned upstream (git-tracked with origin set on the source
+     * record), run the same implicit-origin pull as {@code sync
+     * <name>} would. Don't bail on the first refusal — collect
+     * per-skill outcomes and emit one aggregate summary at the end
+     * so the user sees the whole picture in one pass.
+     *
+     * <p>Returns the worst exit code observed: {@code 8} (any
+     * conflict) > {@code 7} (any extra-local-changes refusal) >
+     * {@code 0} (clean). Non-git skills and git skills with no
+     * configured upstream contribute {@code 0} silently.
+     */
+    private int syncAllGit(SkillStore store, List<Skill> targets) {
+        java.util.List<String> refused = new java.util.ArrayList<>();
+        java.util.List<String> conflicted = new java.util.ArrayList<>();
+        int worstRc = 0;
+        for (Skill s : targets) {
+            int rc;
+            try {
+                rc = applyFromImplicitOrigin(store, s.name());
+            } catch (Exception e) {
+                Log.warn("%s: git sync failed — %s", s.name(), e.getMessage());
+                continue;
+            }
+            if (rc == 7) refused.add(s.name());
+            else if (rc == 8) conflicted.add(s.name());
+            if (rc > worstRc) worstRc = rc;
+        }
+        if (!refused.isEmpty() || !conflicted.isEmpty()) {
+            printSyncAllSummary(refused, conflicted);
+        }
+        return worstRc;
+    }
+
+    /**
+     * One block listing every skill that needs follow-up, with the
+     * exact {@code skill-manager sync … --merge} command per row so
+     * an agent / human can copy-paste resolve.
+     */
+    private static void printSyncAllSummary(java.util.List<String> refused,
+                                            java.util.List<String> conflicted) {
+        System.err.println();
+        int total = refused.size() + conflicted.size();
+        System.err.println("sync summary: " + total + " skill(s) need attention");
+        if (!refused.isEmpty()) {
+            System.err.println();
+            System.err.println("  Extra local changes — re-run with --merge to bring upstream in:");
+            for (String n : refused) {
+                System.err.println("    skill-manager sync " + n + " --merge");
+            }
+        }
+        if (!conflicted.isEmpty()) {
+            System.err.println();
+            System.err.println("  Conflicted — resolve in the store dir, then `git commit` "
+                    + "or `git merge --abort`:");
+            for (String n : conflicted) {
+                System.err.println("    " + n);
+            }
+        }
+        System.err.println();
     }
 
     /**
