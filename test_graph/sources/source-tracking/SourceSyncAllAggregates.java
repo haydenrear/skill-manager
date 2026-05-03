@@ -53,7 +53,11 @@ public class SourceSyncAllAggregates {
             Path repoRoot = Path.of(System.getProperty("user.dir")).resolve("..").normalize();
             Path sm = repoRoot.resolve("skill-manager");
 
-            ProcessBuilder pb = new ProcessBuilder(sm.toString(), "sync")
+            // --git-latest because the per-run home only has skills installed
+            // via file: (no registry presence). Default sync would warn+skip
+            // every one of them; --git-latest exercises the implicit-origin
+            // pull that the dirty-fixture is meant to trigger.
+            ProcessBuilder pb = new ProcessBuilder(sm.toString(), "sync", "--git-latest")
                     .redirectErrorStream(true);
             pb.environment().put("SKILL_MANAGER_HOME", home);
             pb.environment().put("SKILL_MANAGER_INSTALL_DIR", repoRoot.toString());
@@ -75,7 +79,10 @@ public class SourceSyncAllAggregates {
             boolean exitedSeven = rc == 7;
             boolean summaryHeader = body.contains("sync summary:")
                     && body.contains("skill(s) need attention");
-            String expectedRecipe = "skill-manager sync " + skillName + " --merge";
+            // Recipe should preserve the --git-latest flag we invoked sync
+            // with — re-running the suggested command shouldn't silently
+            // change which ref gets pulled.
+            String expectedRecipe = "skill-manager sync " + skillName + " --git-latest --merge";
             boolean fixtureListed = body.contains(expectedRecipe);
 
             boolean pass = exitedSeven && summaryHeader && fixtureListed;

@@ -5,6 +5,8 @@ import dev.skillmanager.mcp.GatewayConfig;
 import dev.skillmanager.mcp.McpWriter;
 import dev.skillmanager.model.Skill;
 import dev.skillmanager.model.SkillParser;
+import dev.skillmanager.registry.RegistryClient;
+import dev.skillmanager.registry.RegistryConfig;
 import dev.skillmanager.shared.util.Fs;
 import dev.skillmanager.source.GitOps;
 import dev.skillmanager.source.SkillSource;
@@ -12,6 +14,8 @@ import dev.skillmanager.source.SkillSourceStore;
 import dev.skillmanager.store.SkillStore;
 import dev.skillmanager.sync.SkillSync;
 import dev.skillmanager.util.Log;
+
+import java.util.Map;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
@@ -80,6 +84,18 @@ public final class SyncCommand implements Callable<Integer> {
                     + "state for you (or the agent) to resolve.")
     boolean merge;
 
+    @Option(names = "--git-latest",
+            description = "Skip the registry; pull origin HEAD instead of the server-published "
+                    + "version's git_sha. Useful when iterating ahead of a published version, "
+                    + "or for skills that aren't in the registry. Fails if the install has no "
+                    + "git remote.")
+    boolean gitLatest;
+
+    @Option(names = "--registry",
+            description = "Registry URL override for this invocation (persisted). Only used when "
+                    + "--git-latest is NOT set, since otherwise sync doesn't talk to the registry.")
+    String registryUrl;
+
     @Option(names = "--skip-agents",
             description = "Don't refresh agent symlinks or MCP-config entries.")
     boolean skipAgents;
@@ -96,6 +112,9 @@ public final class SyncCommand implements Callable<Integer> {
         if (fromDir != null && (name == null || name.isBlank())) {
             Log.error("--from requires a skill name (got --from %s with no <name>)", fromDir);
             return 2;
+        }
+        if (registryUrl != null && !registryUrl.isBlank()) {
+            RegistryConfig.resolve(store, registryUrl);
         }
 
         // Track the worst per-skill git-sync exit code across the run.
@@ -277,13 +296,71 @@ public final class SyncCommand implements Callable<Integer> {
             return 0;
         }
 
+        // Default sync target: the registry's latest published version
+        // for this skill. The gitSha pinned to that version is what
+        // upgrades are stabilized against. --git-latest opts out and
+        // pulls origin HEAD instead — useful when iterating ahead of
+        // a published version or when the skill isn't in the registry
+        // at all.
+        String targetRef;
+        String targetVersion = null;
+        if (gitLatest) {
+            targetRef = "HEAD";
+        } else {
+            ServerVersion sv = lookupServerVersion(store, skillName);
+            if (sv == null) {
+                Log.warn("%s: no server-published git_sha for latest version — re-run with "
+                        + "--git-latest to pull origin HEAD instead", skillName);
+                return 0;
+            }
+            targetRef = sv.gitSha;
+            targetVersion = sv.version;
+        }
+
         String baseline = src != null ? src.gitHash() : null;
         boolean dirty = GitOps.isDirty(storeDir, baseline);
+
+        // No-op: clean working tree AND already at the resolved target.
+        // Only checkable for sha targets; HEAD requires a fetch to know.
+        if (!dirty && !"HEAD".equals(targetRef) && targetRef.equals(baseline)) {
+            Log.ok("%s: already at server version %s (%s)", skillName,
+                    targetVersion == null ? "?" : targetVersion,
+                    baseline.substring(0, Math.min(7, baseline.length())));
+            return 0;
+        }
+
         if (dirty && !merge) {
             printMergeInstructions(skillName, storeDir, upstream, true, false);
             return 7;
         }
-        return runGitMerge(storeDir, upstream, skillName);
+        return runGitMerge(storeDir, upstream, targetRef, skillName);
+    }
+
+    /** Result of a registry lookup for the latest server-blessed git ref. */
+    private record ServerVersion(String version, String gitSha, String githubUrl) {}
+
+    /**
+     * Ask the registry for the latest version of {@code skillName} and
+     * pull out its {@code git_sha} (along with the version label and
+     * github URL for messaging). Returns null when the lookup fails or
+     * the registered version has no git pointer (legacy tarball
+     * publish, or skill not in the registry at all).
+     */
+    private static ServerVersion lookupServerVersion(SkillStore store, String skillName) {
+        try {
+            RegistryConfig cfg = RegistryConfig.resolve(store, null);
+            RegistryClient registry = RegistryClient.authenticated(store, cfg);
+            Map<String, Object> meta = registry.describeVersion(skillName, "latest");
+            String gitSha = (String) meta.get("git_sha");
+            if (gitSha == null || gitSha.isBlank()) return null;
+            return new ServerVersion(
+                    (String) meta.get("version"),
+                    gitSha,
+                    (String) meta.get("github_url"));
+        } catch (Exception e) {
+            Log.warn("registry: lookup of latest %s failed — %s", skillName, e.getMessage());
+            return null;
+        }
     }
 
     /**
@@ -336,7 +413,7 @@ public final class SyncCommand implements Callable<Integer> {
                         return 7;
                     }
                 } else {
-                    return runGitMerge(storeDir, src.toString(), skillName);
+                    return runGitMerge(storeDir, src.toString(), "HEAD", skillName);
                 }
             }
             // Clean working tree + no --merge → fall through to diff+overwrite.
@@ -406,9 +483,9 @@ public final class SyncCommand implements Callable<Integer> {
      * (or the calling agent) needs to merge upstream into the local
      * working tree. Format is stable so harnesses can match on it.
      */
-    private static void printMergeInstructions(String skillName, Path storeDir,
-                                                String upstream, boolean upstreamIsGit,
-                                                boolean explicitFrom) {
+    private void printMergeInstructions(String skillName, Path storeDir,
+                                        String upstream, boolean upstreamIsGit,
+                                        boolean explicitFrom) {
         Log.error("%s has extra local changes (working tree edits or commits ahead of the installed baseline).",
                 skillName);
         System.err.println();
@@ -416,8 +493,13 @@ public final class SyncCommand implements Callable<Integer> {
             System.err.println("Sync would overwrite them. Re-run with --merge to bring upstream in via a real");
             System.err.println("3-way merge instead:");
             System.err.println();
-            String fromArg = explicitFrom ? " --from " + upstream : "";
-            System.err.println("    skill-manager sync " + skillName + fromArg + " --merge");
+            // Preserve the flags the caller actually used so the recipe
+            // re-runs the same operation (--git-latest changes which ref
+            // gets fetched, --from changes the upstream entirely).
+            String flags = (explicitFrom ? " --from " + upstream : "")
+                    + (gitLatest ? " --git-latest" : "")
+                    + " --merge";
+            System.err.println("    skill-manager sync " + skillName + flags);
             System.err.println();
             System.err.println("Or merge by hand with git:");
             System.err.println();
@@ -447,7 +529,7 @@ public final class SyncCommand implements Callable<Integer> {
      * HEAD. On conflict, leave the working tree conflicted, list the
      * files, and exit non-zero so the caller can resolve.
      */
-    private int runGitMerge(Path storeDir, String upstream, String skillName) {
+    private int runGitMerge(Path storeDir, String upstream, String ref, String skillName) {
         // Snapshot any working-tree changes onto HEAD so `git merge`
         // produces a real 3-way merge (and surfaces real conflicts in
         // the working tree) instead of refusing with "your local
@@ -458,10 +540,10 @@ public final class SyncCommand implements Callable<Integer> {
             Log.info("%s: snapshotted local edits as %s", skillName, snapshot.substring(0, 7));
         }
 
-        Log.step("git fetch %s HEAD && git merge FETCH_HEAD (in %s)", upstream, storeDir);
-        String fetchedHash = GitOps.fetchHead(storeDir, upstream);
+        Log.step("git fetch %s %s && git merge FETCH_HEAD (in %s)", upstream, ref, storeDir);
+        String fetchedHash = GitOps.fetchRef(storeDir, upstream, ref);
         if (fetchedHash == null) {
-            Log.error("`git fetch %s HEAD` failed in %s", upstream, storeDir);
+            Log.error("`git fetch %s %s` failed in %s", upstream, ref, storeDir);
             return 1;
         }
         GitOps.MergeOutcome outcome = GitOps.mergeFetchHead(storeDir);
