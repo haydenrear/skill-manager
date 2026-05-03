@@ -220,8 +220,17 @@ validationGraph {
         node("sources/hyper/HyperRunpodTools.java")
         node("sources/hyper/HyperRunpodToolInvoked.java")
 
+        // Source-provenance + sync --merge against the real github-published
+        // hyper-experiments install: assert the install landed as kind=GIT
+        // with origin pinned to the github URL, then reset the install
+        // backwards one commit and verify `sync --merge` restores it
+        // through a real `git fetch` + `git merge FETCH_HEAD` round-trip.
+        node("sources/hyper/HyperSourceRecorded.java")
+        node("sources/hyper/HyperSyncMergesUpstream.java")
+
         node("sources/common/ServersDown.java")
-                .dependsOn("hyper.cli.tbquery", "hyper.runpod.tool.invoked")
+                .dependsOn("hyper.cli.tbquery", "hyper.runpod.tool.invoked",
+                        "hyper.sync.merges.upstream")
         node("sources/common/PostgresDown.java").dependsOn("servers.down")
     }
 
@@ -277,5 +286,40 @@ validationGraph {
 
         node("sources/sponsored/SponsoredTeardown.java")
         node("sources/common/PostgresDown.java").dependsOn("sponsored.teardown")
+    }
+
+    /*
+     * `source-tracking` — covers per-skill git provenance tracking +
+     * `skill-manager sync --from <dir>` / `--merge` against a
+     * file-coordinate install. Self-contained: stamps a git skill into
+     * a temp dir, installs it via `file:`, then exercises:
+     *
+     *   - install records sources/<name>.json with kind=GIT
+     *   - sync --from on a dirty store refuses (exit 7) with structured
+     *     merge instructions
+     *   - sync --from --merge with a non-conflicting upstream commit
+     *     succeeds, preserving the local edit and advancing the recorded
+     *     gitHash
+     *   - sync --from --merge with conflicting commits exits 8 and
+     *     leaves the working tree in the conflicted state with
+     *     <<<< / >>>> markers
+     *
+     * No registry / postgres needed — only env.prepared + the gateway
+     * (install touches it). The github side of the same flow is tested
+     * by the `hyper-experiments` graph.
+     */
+    testGraph("source-tracking") {
+        node("sources/common/EnvPrepared.java")
+        node("sources/common/GatewayPythonVenvReady.java")
+        node("sources/smoke/GatewayUp.java")
+
+        node("sources/source-tracking/SourceFixturePublished.java")
+        node("sources/source-tracking/SourceFixtureInstalled.java")
+        node("sources/source-tracking/SourceSyncRefusesOnDirty.java")
+        node("sources/source-tracking/SourceSyncMergesClean.java")
+        node("sources/source-tracking/SourceSyncProducesConflict.java")
+
+        node("sources/common/ServersDown.java")
+                .dependsOn("source.sync.produces_conflict")
     }
 }
