@@ -234,6 +234,12 @@ validationGraph {
         //      file survives the 3-way merge, source-record hash
         //      refreshed
         node("sources/hyper/HyperSourceRecorded.java")
+        // DB-side round-trip: the postgres row for hyper@<version>
+        // has the same gitSha that install wrote into the
+        // sources/<name>.json record AND that the install dir's
+        // `git rev-parse HEAD` reports. If any of the three drift,
+        // server-versioned sync would target the wrong commit.
+        node("sources/hyper/HyperServerHashMatchesInstall.java")
         node("sources/hyper/HyperSyncCleanNoOp.java")
         node("sources/hyper/HyperSyncRefusesOnLocalCommit.java")
         node("sources/hyper/HyperSyncMergesAfterCommit.java")
@@ -342,5 +348,42 @@ validationGraph {
 
         node("sources/common/ServersDown.java")
                 .dependsOn("source.sync.all_aggregates")
+    }
+
+    /*
+     * `git-latest-source-tracking` — exercises `skill-manager sync …
+     * --git-latest` end-to-end against a self-contained file: git
+     * fixture (no registry needed). Covers:
+     *
+     *   1. fixture.bootstrapped + fixture.installed — install pins
+     *      origin to the fixture path; .git/ + sources/<name>.json
+     *      land correctly.
+     *   2. fast_forwards — fixture advances upstream; sync --git-latest
+     *      brings the install up to date (clean fast-forward), source
+     *      record gitHash refreshes.
+     *   3. refuses_on_local_commit — local commit on top of upstream;
+     *      sync --git-latest (no --merge) exits 7 with the recipe
+     *      preserving the --git-latest flag in its suggested re-run.
+     *   4. merges_after_local_commit — sync --git-latest --merge,
+     *      with another non-conflicting upstream commit, succeeds via
+     *      a real 3-way merge; local commit survives.
+     *   5. conflict — diverging edits to SKILL.md on both sides;
+     *      --git-latest --merge exits 8, working tree shows
+     *      UU SKILL.md with standard <<<< / ==== / >>>> markers.
+     */
+    testGraph("git-latest-source-tracking") {
+        node("sources/common/EnvPrepared.java")
+        node("sources/common/GatewayPythonVenvReady.java")
+        node("sources/smoke/GatewayUp.java")
+
+        node("sources/git-latest-source-tracking/GlsFixtureBootstrapped.java")
+        node("sources/git-latest-source-tracking/GlsFixtureInstalled.java")
+        node("sources/git-latest-source-tracking/GlsFastForwards.java")
+        node("sources/git-latest-source-tracking/GlsRefusesOnLocalCommit.java")
+        node("sources/git-latest-source-tracking/GlsMergesAfterLocalCommit.java")
+        node("sources/git-latest-source-tracking/GlsConflict.java")
+
+        node("sources/common/ServersDown.java")
+                .dependsOn("gls.conflict")
     }
 }
