@@ -14,6 +14,9 @@ import dev.skillmanager.plan.PlanPrinter;
 import dev.skillmanager.policy.Policy;
 import dev.skillmanager.resolve.ResolvedGraph;
 import dev.skillmanager.resolve.Resolver;
+import dev.skillmanager.source.GitOps;
+import dev.skillmanager.source.SkillSource;
+import dev.skillmanager.source.SkillSourceStore;
 import dev.skillmanager.store.SkillStore;
 import dev.skillmanager.sync.SkillSync;
 import dev.skillmanager.util.Log;
@@ -120,6 +123,7 @@ public final class InstallCommand implements Callable<Integer> {
             // Commit + record.
             resolver.commit(graph);
             audit.recordPlan(plan, "install");
+            recordSourceProvenance(store, graph);
             for (var r : graph.resolved()) {
                 System.out.println("INSTALLED: " + r.name()
                         + (r.version() == null ? "" : "@" + r.version())
@@ -203,6 +207,69 @@ public final class InstallCommand implements Callable<Integer> {
             Log.error("failed to start gateway: %s", e.getMessage());
             return false;
         }
+    }
+
+    /**
+     * Write a {@link SkillSource} record per just-committed skill into
+     * {@code <store>/sources/<name>.json}. Captures whether the install
+     * came in as a git clone (we'll find {@code .git/} under the store
+     * dir) or a plain copy (local-dir / tarball-extract). For git
+     * installs, also pin {@code origin} to the resolved URL so future
+     * fetches go to the right place even if jgit's clone defaulted
+     * to something we don't want.
+     *
+     * <p>Best-effort — failures are warned and swallowed so we never
+     * break the install just because we couldn't write the provenance
+     * file.
+     */
+    private static void recordSourceProvenance(SkillStore store, ResolvedGraph graph) {
+        SkillSourceStore sources = new SkillSourceStore(store);
+        String now = java.time.OffsetDateTime.now(java.time.ZoneOffset.UTC).toString();
+        for (ResolvedGraph.Resolved r : graph.resolved()) {
+            try {
+                java.nio.file.Path skillDir = store.skillDir(r.name());
+                SkillSource.Kind kind;
+                String origin;
+                String hash = null;
+                if (GitOps.isGitRepo(skillDir)) {
+                    kind = SkillSource.Kind.GIT;
+                    // Prefer the resolver's source string (the URL the user / registry
+                    // pointed us at) over whatever jgit set, so re-cloning later goes
+                    // to the same upstream.
+                    String resolvedUrl = gitUrlFromSource(r.source());
+                    if (resolvedUrl != null) {
+                        GitOps.setOrigin(skillDir, resolvedUrl);
+                        origin = resolvedUrl;
+                    } else {
+                        origin = GitOps.originUrl(skillDir);
+                    }
+                    hash = GitOps.headHash(skillDir);
+                } else {
+                    kind = SkillSource.Kind.LOCAL_DIR;
+                    origin = r.source();
+                }
+                sources.write(new SkillSource(
+                        r.name(), r.version(), kind, origin, hash, now));
+            } catch (Exception e) {
+                Log.warn("could not record source provenance for %s: %s", r.name(), e.getMessage());
+            }
+        }
+    }
+
+    /**
+     * Pull a git URL out of the install source coordinate. Handles
+     * {@code github:}, {@code git+https://...}, {@code ssh://}, plain
+     * {@code .git} URLs. Returns null for registry / local sources.
+     */
+    private static String gitUrlFromSource(String source) {
+        if (source == null) return null;
+        String s = source.trim();
+        if (s.startsWith("github:")) {
+            return "https://github.com/" + s.substring("github:".length()) + ".git";
+        }
+        if (s.startsWith("git+")) return s.substring("git+".length());
+        if (s.startsWith("ssh://") || s.startsWith("git@") || s.endsWith(".git")) return s;
+        return null;
     }
 
     private static void printAgentConfigSummary(

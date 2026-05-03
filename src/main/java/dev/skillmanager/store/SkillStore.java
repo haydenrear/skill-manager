@@ -22,6 +22,7 @@ public final class SkillStore {
     private final Path venvsDir;
     private final Path npmDir;
     private final Path cacheDir;
+    private final Path sourcesDir;
 
     public SkillStore(Path root) {
         this.root = root;
@@ -32,6 +33,10 @@ public final class SkillStore {
         this.venvsDir = root.resolve("venvs");
         this.npmDir = root.resolve("npm");
         this.cacheDir = root.resolve("cache");
+        // Per-skill provenance JSON: kind (git / local), origin, git hash,
+        // version. Lives outside skills/<name>/ so file ops on the skill
+        // dir (delete + copy during sync) don't blow it away.
+        this.sourcesDir = root.resolve("sources");
     }
 
     public static SkillStore defaultStore() {
@@ -50,6 +55,7 @@ public final class SkillStore {
     public Path venvsDir() { return venvsDir; }
     public Path npmDir() { return npmDir; }
     public Path cacheDir() { return cacheDir; }
+    public Path sourcesDir() { return sourcesDir; }
 
     public void init() throws IOException {
         Fs.ensureDir(root);
@@ -60,6 +66,7 @@ public final class SkillStore {
         Fs.ensureDir(venvsDir);
         Fs.ensureDir(npmDir);
         Fs.ensureDir(cacheDir);
+        Fs.ensureDir(sourcesDir);
     }
 
     public Path skillDir(String name) {
