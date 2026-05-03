@@ -6,6 +6,9 @@ import dev.skillmanager.mcp.McpWriter;
 import dev.skillmanager.model.Skill;
 import dev.skillmanager.model.SkillParser;
 import dev.skillmanager.shared.util.Fs;
+import dev.skillmanager.source.GitOps;
+import dev.skillmanager.source.SkillSource;
+import dev.skillmanager.source.SkillSourceStore;
 import dev.skillmanager.store.SkillStore;
 import dev.skillmanager.sync.SkillSync;
 import dev.skillmanager.util.Log;
@@ -69,6 +72,13 @@ public final class SyncCommand implements Callable<Integer> {
     @Option(names = {"-y", "--yes"},
             description = "Skip the approval prompt for --from and apply the diff unconditionally.")
     boolean yes;
+
+    @Option(names = "--merge",
+            description = "When the target skill is git-tracked and --from is also a git repo, "
+                    + "fetch its HEAD and `git merge` it onto the installed copy instead of "
+                    + "overwriting. On conflict, leaves the working tree in the conflicted "
+                    + "state for you (or the agent) to resolve.")
+    boolean merge;
 
     @Option(names = "--skip-agents",
             description = "Don't refresh agent symlinks or MCP-config entries.")
@@ -155,6 +165,14 @@ public final class SyncCommand implements Callable<Integer> {
      * approval, replace the store contents. Returns {@code 0} on
      * success or no-op (no diff / user-aborted), nonzero on validation
      * failure.
+     *
+     * <p>For git-tracked skills (a {@code .git/} dir under the store),
+     * detects local edits (working tree dirty, commits ahead of the
+     * recorded baseline) before any overwrite. Without {@code --merge}
+     * the dirty state aborts with structured merge instructions. With
+     * {@code --merge} and a git-backed source dir, attempts a {@code
+     * git fetch + git merge FETCH_HEAD} from the source's HEAD onto
+     * the installed copy.
      */
     private int applyFromLocalDir(SkillStore store, String skillName, Path fromDir) throws Exception {
         Path src = fromDir.toAbsolutePath().normalize();
@@ -167,6 +185,36 @@ public final class SyncCommand implements Callable<Integer> {
             return 1;
         }
         Path storeDir = store.skillDir(skillName);
+
+        // Source-tracking-aware path: if the installed copy is git-backed,
+        // protect user edits and offer a real merge instead of an
+        // overwrite. Falls through to the plain diff+overwrite flow when
+        // either side isn't git.
+        SkillSourceStore sources = new SkillSourceStore(store);
+        SkillSource src0 = sources.read(skillName).orElse(null);
+        boolean storeIsGit = GitOps.isGitRepo(storeDir);
+        boolean srcIsGit = GitOps.isGitRepo(src);
+        if (storeIsGit && GitOps.isAvailable()) {
+            String baseline = src0 != null ? src0.gitHash() : null;
+            boolean dirty = GitOps.isDirty(storeDir, baseline);
+            if (dirty && !merge) {
+                printMergeInstructions(skillName, storeDir, src, srcIsGit);
+                return 7;
+            }
+            if (merge) {
+                if (!srcIsGit) {
+                    Log.warn("--merge requested but %s is not a git repo; falling back "
+                            + "to diff + overwrite (will refuse if dirty)", src);
+                    if (dirty) {
+                        printMergeInstructions(skillName, storeDir, src, false);
+                        return 7;
+                    }
+                } else {
+                    return runGitMerge(storeDir, src, skillName);
+                }
+            }
+            // Clean working tree + no --merge → fall through to diff+overwrite.
+        }
 
         // List changed files only — full content diff is verbose for
         // bigger skills and the user can re-run the same git command
@@ -225,5 +273,90 @@ public final class SyncCommand implements Callable<Integer> {
         Fs.copyRecursive(src, storeDir);
         Log.ok("%s: applied changes from %s", skillName, src);
         return 0;
+    }
+
+    /**
+     * Print exit-code-7 banner with the exact git commands an operator
+     * (or the calling agent) needs to merge upstream into the local
+     * working tree. Format is stable so harnesses can match on it.
+     */
+    private static void printMergeInstructions(String skillName, Path storeDir, Path src, boolean srcIsGit) {
+        Log.error("%s has local changes (working tree dirty or commits ahead of installed baseline).",
+                skillName);
+        System.err.println();
+        System.err.println("Aborting to avoid clobbering your edits. Resolve one of these ways:");
+        System.err.println();
+        if (srcIsGit) {
+            System.err.println("  # Merge the source dir's HEAD into your local edits:");
+            System.err.println("  cd " + storeDir);
+            System.err.println("  git fetch " + src + " HEAD");
+            System.err.println("  git merge FETCH_HEAD");
+            System.err.println();
+            System.err.println("  # Or have skill-manager attempt the merge for you:");
+            System.err.println("  skill-manager sync " + skillName + " --from " + src + " --merge");
+        } else {
+            System.err.println("  # The source dir is not a git repo, so there's no upstream branch to merge.");
+            System.err.println("  # Inspect the diff, copy the changes you want by hand, commit them, then re-run:");
+            System.err.println("  git diff --no-index " + storeDir + " " + src);
+            System.err.println("  # Or accept the overwrite (loses local changes):");
+            System.err.println("  rm -rf " + storeDir + " && cp -R " + src + " " + storeDir);
+        }
+        System.err.println();
+    }
+
+    /**
+     * Run {@code git fetch <src> HEAD} then {@code git merge FETCH_HEAD}
+     * inside {@code storeDir}. On success, refresh the source-record
+     * baseline to the new HEAD. On conflict, leave the working tree
+     * conflicted, list the files, and exit non-zero so the caller can
+     * resolve.
+     */
+    private int runGitMerge(Path storeDir, Path src, String skillName) {
+        // Snapshot any working-tree changes onto HEAD so `git merge`
+        // produces a real 3-way merge (and surfaces real conflicts in
+        // the working tree) instead of refusing with "your local
+        // changes would be overwritten by merge".
+        String snapshot = GitOps.commitWorkingChanges(storeDir,
+                "skill-manager: snapshot local edits before merge");
+        if (snapshot != null) {
+            Log.info("%s: snapshotted local edits as %s", skillName, snapshot.substring(0, 7));
+        }
+
+        Log.step("git fetch %s HEAD && git merge FETCH_HEAD (in %s)", src, storeDir);
+        String fetchedHash = GitOps.fetchHead(storeDir, src.toString());
+        if (fetchedHash == null) {
+            Log.error("`git fetch %s HEAD` failed in %s", src, storeDir);
+            return 1;
+        }
+        GitOps.MergeOutcome outcome = GitOps.mergeFetchHead(storeDir);
+        if (outcome.ok()) {
+            Log.ok("%s: merged %s into %s", skillName, fetchedHash.substring(0, 7), storeDir);
+            // Pin the new baseline so the next sync's dirty-check uses it.
+            try {
+                SkillSourceStore sources = new SkillSourceStore(SkillStore.defaultStore());
+                SkillSource old = sources.read(skillName).orElse(null);
+                if (old != null) {
+                    sources.write(new SkillSource(
+                            old.name(), old.version(), old.kind(), old.origin(),
+                            GitOps.headHash(storeDir),
+                            java.time.OffsetDateTime.now(java.time.ZoneOffset.UTC).toString()));
+                }
+            } catch (Exception e) {
+                Log.warn("merged ok but could not refresh source record: %s", e.getMessage());
+            }
+            return 0;
+        }
+        if (!outcome.conflictedFiles().isEmpty()) {
+            Log.error("%s: merge has conflicts in %d file(s):", skillName, outcome.conflictedFiles().size());
+            for (String f : outcome.conflictedFiles()) {
+                System.err.println("    " + f);
+            }
+            System.err.println();
+            System.err.println("Resolve in " + storeDir + ", then `git commit` to finish, or");
+            System.err.println("`git merge --abort` to back out.");
+            return 8;
+        }
+        Log.error("git merge failed (no conflict files reported): %s", outcome.log());
+        return 1;
     }
 }
