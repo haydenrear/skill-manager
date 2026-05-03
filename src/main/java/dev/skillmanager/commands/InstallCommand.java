@@ -241,7 +241,19 @@ public final class InstallCommand implements Callable<Integer> {
                         GitOps.setOrigin(skillDir, resolvedUrl);
                         origin = resolvedUrl;
                     } else {
-                        origin = GitOps.originUrl(skillDir);
+                        // file: install of a git repo. If the source path on
+                        // disk is itself a git repo we can later fetch from,
+                        // pin origin to it so `skill-manager sync <name>`
+                        // (no --from) has somewhere to pull from. Falls back
+                        // to whatever .git/config already had as origin.
+                        String filePath = filePathFromSource(r.source());
+                        if (filePath != null
+                                && GitOps.isGitRepo(java.nio.file.Path.of(filePath))) {
+                            GitOps.setOrigin(skillDir, filePath);
+                            origin = filePath;
+                        } else {
+                            origin = GitOps.originUrl(skillDir);
+                        }
                     }
                     hash = GitOps.headHash(skillDir);
                 } else {
@@ -270,6 +282,22 @@ public final class InstallCommand implements Callable<Integer> {
         if (s.startsWith("git+")) return s.substring("git+".length());
         if (s.startsWith("ssh://") || s.startsWith("git@") || s.endsWith(".git")) return s;
         return null;
+    }
+
+    /**
+     * Resolve a {@code file:}-style coord to an absolute filesystem
+     * path. Returns null for registry / git coords.
+     */
+    private static String filePathFromSource(String source) {
+        if (source == null) return null;
+        String s = source.trim();
+        if (s.startsWith("file:")) s = s.substring("file:".length());
+        else if (!s.startsWith("/") && !s.startsWith("./") && !s.startsWith("../")) return null;
+        try {
+            return java.nio.file.Path.of(s).toAbsolutePath().normalize().toString();
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     private static void printAgentConfigSummary(
