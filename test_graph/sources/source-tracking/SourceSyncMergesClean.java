@@ -26,7 +26,9 @@ import java.nio.file.StandardOpenOption;
 public class SourceSyncMergesClean {
     static final NodeSpec SPEC = NodeSpec.of("source.sync.merges_clean")
             .kind(NodeSpec.Kind.ASSERTION)
-            .dependsOn("source.sync.refuses_on_dirty")
+            // After both refuse-tests so they all share the same dirty
+            // store and don't race each other.
+            .dependsOn("source.sync.refuses_without_from")
             .tags("source-tracking", "sync", "merge")
             .timeout("60s");
 

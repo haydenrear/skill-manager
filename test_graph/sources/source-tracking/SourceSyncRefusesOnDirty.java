@@ -77,7 +77,7 @@ public class SourceSyncRefusesOnDirty {
 
             boolean exitedSeven = rc == 7;
             // The banner is structured so harnesses can match on it.
-            boolean mentionsLocalChanges = body.contains("has local changes");
+            boolean mentionsLocalChanges = body.contains("extra local changes");
             boolean mentionsFetch = body.contains("git fetch") && body.contains("HEAD");
             boolean mentionsMergeFlag = body.contains("--merge");
             // Local edit must still be on disk — sync mustn't have clobbered it.

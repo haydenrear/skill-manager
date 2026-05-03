@@ -220,17 +220,27 @@ validationGraph {
         node("sources/hyper/HyperRunpodTools.java")
         node("sources/hyper/HyperRunpodToolInvoked.java")
 
-        // Source-provenance + sync --merge against the real github-published
-        // hyper-experiments install: assert the install landed as kind=GIT
-        // with origin pinned to the github URL, then reset the install
-        // backwards one commit and verify `sync --merge` restores it
-        // through a real `git fetch` + `git merge FETCH_HEAD` round-trip.
+        // Source-provenance + sync against the real github-published
+        // hyper-experiments install — exercises the implicit-origin
+        // path (install pins the github URL as the source-record
+        // origin, so sync without --from just works):
+        //   1. recorded — kind=GIT, origin=github URL, hash=HEAD
+        //   2. clean.noop — sync after install succeeds, no working-tree
+        //      drift
+        //   3. refuses.on.local.commit — reset to HEAD~1 + add a unique
+        //      local commit; sync (no --merge) exits 7 with --merge in
+        //      its banner
+        //   4. merges.after.commit — sync --merge succeeds, the local
+        //      file survives the 3-way merge, source-record hash
+        //      refreshed
         node("sources/hyper/HyperSourceRecorded.java")
-        node("sources/hyper/HyperSyncMergesUpstream.java")
+        node("sources/hyper/HyperSyncCleanNoOp.java")
+        node("sources/hyper/HyperSyncRefusesOnLocalCommit.java")
+        node("sources/hyper/HyperSyncMergesAfterCommit.java")
 
         node("sources/common/ServersDown.java")
                 .dependsOn("hyper.cli.tbquery", "hyper.runpod.tool.invoked",
-                        "hyper.sync.merges.upstream")
+                        "hyper.sync.merges.after.commit")
         node("sources/common/PostgresDown.java").dependsOn("servers.down")
     }
 
@@ -316,6 +326,10 @@ validationGraph {
         node("sources/source-tracking/SourceFixturePublished.java")
         node("sources/source-tracking/SourceFixtureInstalled.java")
         node("sources/source-tracking/SourceSyncRefusesOnDirty.java")
+        // Same dirty store, but without --from — exercises the
+        // implicit-origin path that uses the source-record's pinned
+        // origin (the fixture path).
+        node("sources/source-tracking/SourceSyncRefusesWithoutFrom.java")
         node("sources/source-tracking/SourceSyncMergesClean.java")
         node("sources/source-tracking/SourceSyncProducesConflict.java")
 

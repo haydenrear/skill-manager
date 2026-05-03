@@ -112,6 +112,9 @@ public final class SyncCommand implements Callable<Integer> {
             if (fromDir != null) {
                 int rc = applyFromLocalDir(store, name, fromDir);
                 if (rc != 0) return rc;
+            } else {
+                int rc = applyFromImplicitOrigin(store, name);
+                if (rc != 0) return rc;
             }
             targets = List.of(store.load(name).orElseThrow());
         } else {
@@ -161,6 +164,56 @@ public final class SyncCommand implements Callable<Integer> {
     }
 
     /**
+     * Pull upstream changes for a git-tracked skill, using whatever
+     * origin was recorded at install time (the {@link SkillSource}
+     * record's {@code origin} field, or {@code git remote get-url
+     * origin} as a fallback). This is what runs when the user types
+     * {@code skill-manager sync <name>} without {@code --from}: the
+     * install already opened the git repo and pinned the upstream, so
+     * sync should just use it.
+     *
+     * <p>Behaviour:
+     *
+     * <ul>
+     *   <li>Skill not git-tracked, or no origin configured → no-op,
+     *       returns 0 so the caller continues into the MCP / agent
+     *       refresh.</li>
+     *   <li>Working tree clean → fetch + merge (typically a no-op or
+     *       fast-forward). Refreshes the source-record baseline on
+     *       success.</li>
+     *   <li>Dirty (working tree edits or commits ahead of baseline)
+     *       and {@code --merge} not set → prints structured refusal
+     *       with the exact {@code skill-manager sync … --merge} +
+     *       by-hand git recipe and returns 7.</li>
+     *   <li>Dirty and {@code --merge} set → snapshot local edits,
+     *       fetch, merge. Conflict → returns 8 with conflict files
+     *       listed, working tree left for the user to resolve.</li>
+     * </ul>
+     */
+    private int applyFromImplicitOrigin(SkillStore store, String skillName) {
+        Path storeDir = store.skillDir(skillName);
+        if (!GitOps.isGitRepo(storeDir) || !GitOps.isAvailable()) return 0;
+
+        SkillSourceStore sources = new SkillSourceStore(store);
+        SkillSource src = sources.read(skillName).orElse(null);
+        String upstream = src != null && src.origin() != null && !src.origin().isBlank()
+                ? src.origin()
+                : GitOps.originUrl(storeDir);
+        if (upstream == null || upstream.isBlank()) {
+            Log.info("%s: git-tracked but no upstream origin configured — skipping git pull", skillName);
+            return 0;
+        }
+
+        String baseline = src != null ? src.gitHash() : null;
+        boolean dirty = GitOps.isDirty(storeDir, baseline);
+        if (dirty && !merge) {
+            printMergeInstructions(skillName, storeDir, upstream, true, false);
+            return 7;
+        }
+        return runGitMerge(storeDir, upstream, skillName);
+    }
+
+    /**
      * Diff {@code <store>/<name>} against {@code fromDir} and, on
      * approval, replace the store contents. Returns {@code 0} on
      * success or no-op (no diff / user-aborted), nonzero on validation
@@ -198,7 +251,7 @@ public final class SyncCommand implements Callable<Integer> {
             String baseline = src0 != null ? src0.gitHash() : null;
             boolean dirty = GitOps.isDirty(storeDir, baseline);
             if (dirty && !merge) {
-                printMergeInstructions(skillName, storeDir, src, srcIsGit);
+                printMergeInstructions(skillName, storeDir, src.toString(), srcIsGit, true);
                 return 7;
             }
             if (merge) {
@@ -206,11 +259,11 @@ public final class SyncCommand implements Callable<Integer> {
                     Log.warn("--merge requested but %s is not a git repo; falling back "
                             + "to diff + overwrite (will refuse if dirty)", src);
                     if (dirty) {
-                        printMergeInstructions(skillName, storeDir, src, false);
+                        printMergeInstructions(skillName, storeDir, src.toString(), false, true);
                         return 7;
                     }
                 } else {
-                    return runGitMerge(storeDir, src, skillName);
+                    return runGitMerge(storeDir, src.toString(), skillName);
                 }
             }
             // Clean working tree + no --merge → fall through to diff+overwrite.
@@ -280,38 +333,48 @@ public final class SyncCommand implements Callable<Integer> {
      * (or the calling agent) needs to merge upstream into the local
      * working tree. Format is stable so harnesses can match on it.
      */
-    private static void printMergeInstructions(String skillName, Path storeDir, Path src, boolean srcIsGit) {
-        Log.error("%s has local changes (working tree dirty or commits ahead of installed baseline).",
+    private static void printMergeInstructions(String skillName, Path storeDir,
+                                                String upstream, boolean upstreamIsGit,
+                                                boolean explicitFrom) {
+        Log.error("%s has extra local changes (working tree edits or commits ahead of the installed baseline).",
                 skillName);
         System.err.println();
-        System.err.println("Aborting to avoid clobbering your edits. Resolve one of these ways:");
-        System.err.println();
-        if (srcIsGit) {
-            System.err.println("  # Merge the source dir's HEAD into your local edits:");
-            System.err.println("  cd " + storeDir);
-            System.err.println("  git fetch " + src + " HEAD");
-            System.err.println("  git merge FETCH_HEAD");
+        if (upstreamIsGit) {
+            System.err.println("Sync would overwrite them. Re-run with --merge to bring upstream in via a real");
+            System.err.println("3-way merge instead:");
             System.err.println();
-            System.err.println("  # Or have skill-manager attempt the merge for you:");
-            System.err.println("  skill-manager sync " + skillName + " --from " + src + " --merge");
+            String fromArg = explicitFrom ? " --from " + upstream : "";
+            System.err.println("    skill-manager sync " + skillName + fromArg + " --merge");
+            System.err.println();
+            System.err.println("Or merge by hand with git:");
+            System.err.println();
+            System.err.println("    cd " + storeDir);
+            System.err.println("    git fetch " + upstream + " HEAD");
+            System.err.println("    git merge FETCH_HEAD");
         } else {
-            System.err.println("  # The source dir is not a git repo, so there's no upstream branch to merge.");
-            System.err.println("  # Inspect the diff, copy the changes you want by hand, commit them, then re-run:");
-            System.err.println("  git diff --no-index " + storeDir + " " + src);
-            System.err.println("  # Or accept the overwrite (loses local changes):");
-            System.err.println("  rm -rf " + storeDir + " && cp -R " + src + " " + storeDir);
+            System.err.println("The source dir is not a git repo, so there's no upstream branch to merge.");
+            System.err.println("Inspect the diff, copy the changes you want by hand, commit them, then re-run:");
+            System.err.println();
+            System.err.println("    git diff --no-index " + storeDir + " " + upstream);
+            System.err.println();
+            System.err.println("Or accept the overwrite (loses local changes):");
+            System.err.println();
+            System.err.println("    rm -rf " + storeDir + " && cp -R " + upstream + " " + storeDir);
         }
         System.err.println();
     }
 
     /**
-     * Run {@code git fetch <src> HEAD} then {@code git merge FETCH_HEAD}
-     * inside {@code storeDir}. On success, refresh the source-record
-     * baseline to the new HEAD. On conflict, leave the working tree
-     * conflicted, list the files, and exit non-zero so the caller can
-     * resolve.
+     * Run {@code git fetch <upstream> HEAD} then {@code git merge
+     * FETCH_HEAD} inside {@code storeDir}. {@code upstream} can be a
+     * URL, a configured remote name, or a path on disk — whatever
+     * {@code git fetch} accepts.
+     *
+     * <p>On success, refresh the source-record baseline to the new
+     * HEAD. On conflict, leave the working tree conflicted, list the
+     * files, and exit non-zero so the caller can resolve.
      */
-    private int runGitMerge(Path storeDir, Path src, String skillName) {
+    private int runGitMerge(Path storeDir, String upstream, String skillName) {
         // Snapshot any working-tree changes onto HEAD so `git merge`
         // produces a real 3-way merge (and surfaces real conflicts in
         // the working tree) instead of refusing with "your local
@@ -322,10 +385,10 @@ public final class SyncCommand implements Callable<Integer> {
             Log.info("%s: snapshotted local edits as %s", skillName, snapshot.substring(0, 7));
         }
 
-        Log.step("git fetch %s HEAD && git merge FETCH_HEAD (in %s)", src, storeDir);
-        String fetchedHash = GitOps.fetchHead(storeDir, src.toString());
+        Log.step("git fetch %s HEAD && git merge FETCH_HEAD (in %s)", upstream, storeDir);
+        String fetchedHash = GitOps.fetchHead(storeDir, upstream);
         if (fetchedHash == null) {
-            Log.error("`git fetch %s HEAD` failed in %s", src, storeDir);
+            Log.error("`git fetch %s HEAD` failed in %s", upstream, storeDir);
             return 1;
         }
         GitOps.MergeOutcome outcome = GitOps.mergeFetchHead(storeDir);
