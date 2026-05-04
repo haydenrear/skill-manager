@@ -73,10 +73,29 @@ public final class SyncGitHandler {
             return EffectReceipt.ok(e, new ContextFact.SyncGitUpToDate(skillName, target.displayLabel()));
         }
         if (dirty && !e.merge()) {
+            printMergeInstructions(skillName, storeDir, upstream, e.gitLatest());
             return EffectReceipt.partial(e, "extra local changes — re-run with --merge",
                     new ContextFact.SyncGitRefused(skillName));
         }
         return runGitMerge(ctx, storeDir, upstream, target.ref, skillName, e);
+    }
+
+    private static void printMergeInstructions(String skillName, Path storeDir, String upstream,
+                                               boolean gitLatest) {
+        Log.error("%s has extra local changes (working tree edits or commits ahead of installed baseline).",
+                skillName);
+        System.err.println();
+        System.err.println("Sync would overwrite them. Re-run with --merge:");
+        System.err.println();
+        String flags = (gitLatest ? " --git-latest" : "") + " --merge";
+        System.err.println("    skill-manager sync " + skillName + flags);
+        System.err.println();
+        System.err.println("Or merge by hand:");
+        System.err.println();
+        System.err.println("    cd " + storeDir);
+        System.err.println("    git fetch " + upstream + " HEAD");
+        System.err.println("    git merge FETCH_HEAD");
+        System.err.println();
     }
 
     private static TargetResolution resolveTarget(SkillStore store, EffectContext ctx,
