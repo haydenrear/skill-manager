@@ -1,7 +1,11 @@
 package dev.skillmanager.commands;
 
+import dev.skillmanager.app.PostUpdateUseCase;
+import dev.skillmanager.effects.DryRunInterpreter;
+import dev.skillmanager.effects.LiveInterpreter;
+import dev.skillmanager.effects.Program;
+import dev.skillmanager.effects.ProgramInterpreter;
 import dev.skillmanager.lifecycle.SkillReconciler;
-import dev.skillmanager.lifecycle.SkillSideEffects;
 import dev.skillmanager.mcp.GatewayConfig;
 import dev.skillmanager.model.Skill;
 import dev.skillmanager.model.SkillParser;
@@ -92,6 +96,13 @@ public final class SyncCommand implements Callable<Integer> {
             description = "Don't re-register MCP servers with the gateway.")
     public boolean skipMcp;
 
+    @Option(names = "--dry-run",
+            description = "Build the post-update Program and print the effects it would run, "
+                    + "without mutating the filesystem, gateway, or registry. Git fetch/merge "
+                    + "still happens (sync's primary job is the merge); the dry-run only "
+                    + "covers the post-update side-effects pipeline.")
+    public boolean dryRun;
+
     @Override
     public Integer call() throws Exception {
         SkillStore store = SkillStore.defaultStore();
@@ -105,16 +116,16 @@ public final class SyncCommand implements Callable<Integer> {
             RegistryConfig.resolve(store, registryUrl);
         }
 
-        // Don't fail-fast on gateway unreachable: SkillSideEffects records
-        // GATEWAY_UNAVAILABLE per skill and the next command's reconciler
-        // retries. This means git work still happens even if the gateway
-        // is down — the user can recover the MCP-side later.
+        // Don't fail-fast on gateway unreachable: the RegisterMcp effect
+        // records GATEWAY_UNAVAILABLE per skill and the next command's
+        // reconciler retries. Git work still happens — the user can
+        // recover the MCP-side later.
         GatewayConfig gw = GatewayConfig.resolve(store, null);
         if (!skipMcp) InstallCommand.ensureGatewayRunning(store, gw);
 
         SkillReconciler.reconcile(store, gw);
 
-        Map<String, Set<String>> preMcpDeps = SkillSideEffects.snapshotMcpDeps(store);
+        Map<String, Set<String>> preMcpDeps = PostUpdateUseCase.snapshotMcpDeps(store);
 
         int gitSyncRc = 0;
         List<Skill> targets;
@@ -141,10 +152,11 @@ public final class SyncCommand implements Callable<Integer> {
             return 0;
         }
 
-        SkillSideEffects.resolveMissingTransitives(store, targets);
-        SkillSideEffects.Result result = SkillSideEffects.runPostUpdate(
+        Program<PostUpdateUseCase.Report> program = PostUpdateUseCase.buildProgram(
                 store, gw, preMcpDeps, !skipMcp, !skipAgents);
-        SkillSideEffects.printAgentConfigSummary(result, gw.mcpEndpoint().toString());
+        ProgramInterpreter interpreter = dryRun ? new DryRunInterpreter() : new LiveInterpreter(store);
+        PostUpdateUseCase.Report report = interpreter.run(program);
+        PostUpdateUseCase.printAgentConfigSummary(report, gw.mcpEndpoint().toString());
         return gitSyncRc;
     }
 

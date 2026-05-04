@@ -1,6 +1,8 @@
 package dev.skillmanager.commands;
 
-import dev.skillmanager.lifecycle.SkillSideEffects;
+import dev.skillmanager.app.PostUpdateUseCase;
+import dev.skillmanager.effects.LiveInterpreter;
+import dev.skillmanager.effects.Program;
 import dev.skillmanager.lock.CliLock;
 import dev.skillmanager.mcp.GatewayClient;
 import dev.skillmanager.mcp.GatewayConfig;
@@ -126,9 +128,10 @@ public final class InstallCommand implements Callable<Integer> {
                         + " -> " + store.skillDir(r.name()));
             }
 
-            SkillSideEffects.Result result = SkillSideEffects.runPostUpdate(
+            Program<PostUpdateUseCase.Report> program = PostUpdateUseCase.buildProgram(
                     store, gw, java.util.Map.of(), true, true);
-            SkillSideEffects.printAgentConfigSummary(result, gw.mcpEndpoint().toString());
+            PostUpdateUseCase.Report report = new LiveInterpreter(store).run(program);
+            PostUpdateUseCase.printAgentConfigSummary(report, gw.mcpEndpoint().toString());
             return 0;
         } finally {
             graph.cleanup();
