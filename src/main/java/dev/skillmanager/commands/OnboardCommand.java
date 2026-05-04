@@ -8,8 +8,6 @@ import dev.skillmanager.effects.ProgramInterpreter;
 import dev.skillmanager.effects.SkillEffect;
 import dev.skillmanager.mcp.GatewayClient;
 import dev.skillmanager.mcp.GatewayConfig;
-import dev.skillmanager.plan.InstallPlan;
-import dev.skillmanager.plan.PlanPrinter;
 import dev.skillmanager.policy.Policy;
 import dev.skillmanager.resolve.ResolvedGraph;
 import dev.skillmanager.resolve.Resolver;
@@ -103,47 +101,39 @@ public final class OnboardCommand implements Callable<Integer> {
         if (!toResolve.isEmpty()) {
             Resolver resolver = new Resolver(store);
             ResolvedGraph graph = resolver.resolveAll(toResolve);
-            try {
-                InstallPlan plan = InstallUseCase.buildPlan(store, graph);
-                PlanPrinter.print(plan);
-                if (plan.blocked()) {
-                    Log.error("plan has blocked items — see policy at %s",
-                            store.root().resolve("policy.toml"));
-                    return 2;
-                }
-
-                // One program per command (composition rule): chain the
-                // install with the gateway-up via Program.then so they share
-                // one interpreter call + one EffectContext.
-                Program<InstallUseCase.Report> install = InstallUseCase.buildProgram(
-                        gw, registryUrl, graph, plan, dryRun);
-                Program<OnboardReport> program;
-                if (skipGateway) {
-                    program = new Program<>(
-                            install.operationId(),
-                            install.effects(),
-                            receipts -> {
-                                InstallUseCase.Report r = install.decoder().decode(receipts);
-                                return new OnboardReport(r.committed().size(), r.errorCount());
-                            });
-                } else {
-                    Program<Integer> gateway = new Program<>(
-                            "onboard-gw-" + UUID.randomUUID(),
-                            List.of(new SkillEffect.EnsureGateway(gw)),
-                            receipts -> 0);
-                    program = install.then(gateway,
-                            (instReport, gwRc) -> new OnboardReport(
-                                    instReport.committed().size(), instReport.errorCount()));
-                }
-                ProgramInterpreter interp = dryRun
-                        ? new DryRunInterpreter()
-                        : new LiveInterpreter(store, gw);
-                OnboardReport report = interp.run(program);
-                installedCount = report.installed;
-                if (!dryRun && report.errorCount > 0) rc = 1;
-            } finally {
-                graph.cleanup();
+            // CleanupResolvedGraph is wired into InstallUseCase as
+            // alwaysAfter — no manual try/finally cleanup here.
+            Program<InstallUseCase.Report> install = InstallUseCase.buildProgram(
+                    gw, registryUrl, graph, dryRun);
+            Program<OnboardReport> program;
+            if (skipGateway) {
+                program = new Program<>(
+                        install.operationId(),
+                        install.effects(),
+                        install.alwaysAfter(),
+                        receipts -> {
+                            // Slice off the alwaysAfter receipts the
+                            // interpreter appended; the InstallUseCase
+                            // decoder operates on the main-effect slice.
+                            int n = install.effects().size();
+                            InstallUseCase.Report r = install.decoder().decode(receipts.subList(0, n));
+                            return new OnboardReport(r.committed().size(), r.errorCount());
+                        });
+            } else {
+                Program<Integer> gateway = new Program<>(
+                        "onboard-gw-" + UUID.randomUUID(),
+                        List.of(new SkillEffect.EnsureGateway(gw)),
+                        receipts -> 0);
+                program = install.then(gateway,
+                        (instReport, gwRc) -> new OnboardReport(
+                                instReport.committed().size(), instReport.errorCount()));
             }
+            ProgramInterpreter interp = dryRun
+                    ? new DryRunInterpreter()
+                    : new LiveInterpreter(store, gw);
+            OnboardReport report = interp.run(program);
+            installedCount = report.installed;
+            if (!dryRun && report.errorCount > 0) rc = 1;
         } else if (!skipGateway) {
             // Nothing to install but the user still wants the gateway up.
             Program<Integer> gateway = new Program<>(

@@ -51,4 +51,13 @@ public record EffectReceipt(
     public static EffectReceipt failed(SkillEffect effect, List<ContextFact> facts, String message) {
         return new EffectReceipt(effect, EffectStatus.FAILED, facts, message, Instant.now());
     }
+
+    /**
+     * Halt the program — interpreter SKIPS every remaining effect in
+     * {@link Program#effects()} (with reason "halted") but still runs
+     * {@link Program#alwaysAfter()}.
+     */
+    public static EffectReceipt halted(SkillEffect effect, String reason, ContextFact... facts) {
+        return new EffectReceipt(effect, EffectStatus.HALTED, List.of(facts), reason, Instant.now());
+    }
 }

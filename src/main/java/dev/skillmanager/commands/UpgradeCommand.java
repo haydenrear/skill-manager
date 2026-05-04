@@ -17,8 +17,6 @@ import picocli.CommandLine.Parameters;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.Callable;
 
 /**
@@ -94,22 +92,21 @@ public final class UpgradeCommand implements Callable<Integer> {
         // Reject non-git skills upfront — the SyncGit handler would skip them
         // and record NEEDS_GIT_MIGRATION, but the user specifically asked
         // to upgrade these so a hard error is the right surface.
-        List<String> targetNames = new ArrayList<>();
+        List<SyncUseCase.Target> targetList = new ArrayList<>();
         for (Skill s : targets) {
             if (!GitOps.isGitRepo(store.skillDir(s.name())) || !GitOps.isAvailable()) {
                 Log.error("%s: not git-tracked — only git-tracked installs can be upgraded. "
                         + "Reinstall from a github source.", s.name());
                 return 5;
             }
-            targetNames.add(s.name());
+            targetList.add(new SyncUseCase.Target.Git(s.name()));
         }
 
         GatewayConfig gw = GatewayConfig.resolve(store, null);
 
-        Map<String, Set<String>> preMcpDeps = PostUpdateUseCase.snapshotMcpDeps(store);
-        Program<SyncUseCase.Report> program = SyncUseCase.buildProgram(
-                store, gw, registryUrl, targetNames, /*gitLatest=*/false, merge,
-                true, true, preMcpDeps);
+        SyncUseCase.Options opts = new SyncUseCase.Options(
+                registryUrl, /*gitLatest=*/false, merge, true, true, /*yes=*/false);
+        Program<SyncUseCase.Report> program = SyncUseCase.buildProgram(store, gw, opts, targetList);
         ProgramInterpreter interpreter = dryRun ? new DryRunInterpreter() : new LiveInterpreter(store, gw);
         SyncUseCase.Report report = interpreter.run(program);
         SyncUseCase.printSyncSummary(report);

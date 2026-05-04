@@ -29,6 +29,13 @@ public final class DryRunInterpreter implements ProgramInterpreter {
             describe(++i, effect);
             receipts.add(EffectReceipt.ok(effect, new ContextFact.DryRun()));
         }
+        if (!program.alwaysAfter().isEmpty()) {
+            System.out.println("alwaysAfter (" + program.alwaysAfter().size() + "):");
+            for (SkillEffect effect : program.alwaysAfter()) {
+                describe(++i, effect);
+                receipts.add(EffectReceipt.ok(effect, new ContextFact.DryRun()));
+            }
+        }
         System.out.println();
         return program.decoder().decode(receipts);
     }
@@ -44,8 +51,7 @@ public final class DryRunInterpreter implements ProgramInterpreter {
             case SkillEffect.CommitSkillsToStore e ->
                     Log.step("[%d] commit %d skill(s) to store", n, e.graph().resolved().size());
             case SkillEffect.RecordAuditPlan e ->
-                    Log.step("[%d] append audit entry (verb=%s, %d action(s))", n,
-                            e.verb(), e.plan().actions().size());
+                    Log.step("[%d] append audit entry (verb=%s)", n, e.verb());
             case SkillEffect.RecordSourceProvenance e ->
                     Log.step("[%d] write source/<name>.json for %d skill(s)", n,
                             e.graph().resolved().size());
@@ -77,6 +83,8 @@ public final class DryRunInterpreter implements ProgramInterpreter {
             }
             case SkillEffect.UnregisterMcpOrphan e ->
                     Log.step("[%d] unregister orphan MCP server %s", n, e.serverId());
+            case SkillEffect.UnregisterMcpOrphans e ->
+                    Log.step("[%d] diff snapshot vs live and unregister orphans", n);
             case SkillEffect.SyncAgents e ->
                     Log.step("[%d] sync agents over %d skill(s)", n, e.skills().size());
             case SkillEffect.SyncGit e ->
@@ -119,6 +127,25 @@ public final class DryRunInterpreter implements ProgramInterpreter {
                     Log.step("[%d] initialize policy.toml if missing", n);
             case SkillEffect.LoadOutstandingErrors e ->
                     Log.step("[%d] load outstanding errors", n);
+            case SkillEffect.SnapshotMcpDeps e ->
+                    Log.step("[%d] snapshot pre-mutation MCP deps", n);
+            case SkillEffect.RejectIfAlreadyInstalled e ->
+                    Log.step("[%d] reject if %s already installed", n, e.skillName());
+            case SkillEffect.BuildInstallPlan e ->
+                    Log.step("[%d] build install plan over %d skill(s)",
+                            n, e.graph().resolved().size());
+            case SkillEffect.RunInstallPlan e ->
+                    Log.step("[%d] expand + run install plan (gateway=%s)",
+                            n, e.gateway() == null ? "<none>" : e.gateway().baseUrl());
+            case SkillEffect.CleanupResolvedGraph e ->
+                    Log.step("[%d] cleanup staged graph (%d skill(s))",
+                            n, e.graph().resolved().size());
+            case SkillEffect.PrintInstalledSummary e ->
+                    Log.step("[%d] print INSTALLED summary for %d skill(s)",
+                            n, e.graph().resolved().size());
+            case SkillEffect.SyncFromLocalDir e ->
+                    Log.step("[%d] sync %s from %s (merge=%s, yes=%s)",
+                            n, e.skillName(), e.fromDir(), e.merge(), e.yes());
         }
     }
 }
