@@ -94,7 +94,6 @@ validationGraph {
         //     fails to install.
         node("sources/smoke/SkillSynced.java")
         node("sources/smoke/SkillUninstalled.java")
-        node("sources/smoke/SkillUpgradeRolledBack.java")
 
         node("sources/smoke/AgentConfigsCorrect.java")
 

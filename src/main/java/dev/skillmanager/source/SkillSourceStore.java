@@ -8,13 +8,10 @@ import dev.skillmanager.store.SkillStore;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.Optional;
 
-/**
- * Read / write {@link SkillSource} records as JSON under
- * {@code <store>/sources/<name>.json}. One file per installed skill,
- * created by {@code skill-manager install} and read by sync / upgrade.
- */
 public final class SkillSourceStore {
 
     private static final ObjectMapper JSON = new ObjectMapper()
@@ -32,11 +29,9 @@ public final class SkillSourceStore {
 
     public void write(SkillSource source) throws IOException {
         Fs.ensureDir(store.sourcesDir());
-        Path out = file(source.name());
-        JSON.writerWithDefaultPrettyPrinter().writeValue(out.toFile(), source);
+        JSON.writerWithDefaultPrettyPrinter().writeValue(file(source.name()).toFile(), source);
     }
 
-    /** Read the source record for {@code skillName}, or empty if absent / unreadable. */
     public Optional<SkillSource> read(String skillName) {
         Path f = file(skillName);
         if (!Files.isRegularFile(f)) return Optional.empty();
@@ -50,5 +45,21 @@ public final class SkillSourceStore {
     public void delete(String skillName) throws IOException {
         Path f = file(skillName);
         if (Files.exists(f)) Files.delete(f);
+    }
+
+    public void addError(String skillName, SkillSource.ErrorKind kind, String message) throws IOException {
+        Optional<SkillSource> cur = read(skillName);
+        if (cur.isEmpty()) return;
+        write(cur.get().withErrorAdded(new SkillSource.SkillError(kind, message, nowIso())));
+    }
+
+    public void clearError(String skillName, SkillSource.ErrorKind kind) throws IOException {
+        Optional<SkillSource> cur = read(skillName);
+        if (cur.isEmpty() || !cur.get().hasError(kind)) return;
+        write(cur.get().withErrorRemoved(kind));
+    }
+
+    public static String nowIso() {
+        return OffsetDateTime.now(ZoneOffset.UTC).toString();
     }
 }

@@ -73,7 +73,10 @@ public final class SkillManagerCli implements Runnable {
         cmd.setExecutionStrategy(pr -> {
             SkillManagerCli root = pr.commandSpec().root().userObject() instanceof SkillManagerCli c ? c : null;
             if (root != null) Log.setVerbose(root.verbose);
-            return new CommandLine.RunLast().execute(pr);
+            tryReconcile();
+            int rc = new CommandLine.RunLast().execute(pr);
+            tryPrintOutstandingErrors();
+            return rc;
         });
         // Surface auth-expiry as a stable, agent-parseable banner so the
         // skill-manager-skill wrapper can relay it verbatim to the user.
@@ -90,6 +93,23 @@ public final class SkillManagerCli implements Runnable {
             if (c instanceof AuthenticationRequiredException) return c;
         }
         return null;
+    }
+
+    private static void tryReconcile() {
+        try {
+            dev.skillmanager.store.SkillStore store = dev.skillmanager.store.SkillStore.defaultStore();
+            store.init();
+            dev.skillmanager.mcp.GatewayConfig gw = dev.skillmanager.mcp.GatewayConfig.resolve(store, null);
+            dev.skillmanager.lifecycle.SkillReconciler.reconcile(store, gw);
+        } catch (Throwable ignored) {}
+    }
+
+    private static void tryPrintOutstandingErrors() {
+        try {
+            dev.skillmanager.store.SkillStore store = dev.skillmanager.store.SkillStore.defaultStore();
+            store.init();
+            dev.skillmanager.lifecycle.SkillReconciler.printOutstandingErrors(store);
+        } catch (Throwable ignored) {}
     }
 
     private static int printAuthBanner(String reason) {
