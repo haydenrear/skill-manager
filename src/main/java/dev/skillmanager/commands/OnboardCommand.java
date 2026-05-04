@@ -6,11 +6,9 @@ import dev.skillmanager.effects.LiveInterpreter;
 import dev.skillmanager.effects.Program;
 import dev.skillmanager.effects.ProgramInterpreter;
 import dev.skillmanager.effects.SkillEffect;
-import dev.skillmanager.lock.CliLock;
 import dev.skillmanager.mcp.GatewayClient;
 import dev.skillmanager.mcp.GatewayConfig;
 import dev.skillmanager.plan.InstallPlan;
-import dev.skillmanager.plan.PlanBuilder;
 import dev.skillmanager.plan.PlanPrinter;
 import dev.skillmanager.policy.Policy;
 import dev.skillmanager.resolve.ResolvedGraph;
@@ -80,7 +78,6 @@ public final class OnboardCommand implements Callable<Integer> {
         SkillStore store = SkillStore.defaultStore();
         store.init();
         Policy.writeDefaultIfMissing(store);
-        Policy policy = Policy.load(store);
         GatewayConfig gw = GatewayConfig.resolve(store, null);
 
         // Filter out skills that are already installed — onboard is idempotent.
@@ -107,11 +104,7 @@ public final class OnboardCommand implements Callable<Integer> {
             Resolver resolver = new Resolver(store);
             ResolvedGraph graph = resolver.resolveAll(toResolve);
             try {
-                CliLock lock = CliLock.load(store);
-                dev.skillmanager.pm.PackageManagerRuntime pmRuntime =
-                        new dev.skillmanager.pm.PackageManagerRuntime(store);
-                InstallPlan plan = new PlanBuilder(policy, lock, pmRuntime)
-                        .plan(graph, true, true, store.cliBinDir());
+                InstallPlan plan = InstallUseCase.buildPlan(store, graph);
                 PlanPrinter.print(plan);
                 if (plan.blocked()) {
                     Log.error("plan has blocked items — see policy at %s",

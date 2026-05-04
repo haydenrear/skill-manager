@@ -80,6 +80,7 @@ public final class LiveInterpreter implements ProgramInterpreter {
             case SkillEffect.StopGateway e -> stopGateway(e);
             case SkillEffect.ConfigureGateway e -> configureGateway(e, ctx);
             case SkillEffect.SetupPackageManagerRuntime e -> setupPmRuntime(e);
+            case SkillEffect.InstallPackageManager e -> installPackageManager(e);
             case SkillEffect.CommitSkillsToStore e -> commitSkills(e, ctx);
             case SkillEffect.RecordAuditPlan e -> recordAudit(e, ctx);
             case SkillEffect.RecordSourceProvenance e -> recordProvenance(e, ctx);
@@ -268,11 +269,7 @@ public final class LiveInterpreter implements ProgramInterpreter {
             dev.skillmanager.resolve.Resolver resolver = new dev.skillmanager.resolve.Resolver(ctx.store());
             dev.skillmanager.resolve.ResolvedGraph graph = resolver.resolveAll(unmet);
             try {
-                Policy policy = Policy.load(ctx.store());
-                CliLock lock = CliLock.load(ctx.store());
-                PackageManagerRuntime pmRuntime = new PackageManagerRuntime(ctx.store());
-                InstallPlan plan = new PlanBuilder(policy, lock, pmRuntime)
-                        .plan(graph, true, true, ctx.store().cliBinDir());
+                InstallPlan plan = dev.skillmanager.app.InstallUseCase.buildPlan(ctx.store(), graph);
                 if (plan.blocked()) {
                     facts.add(new ContextFact.TransitiveFailed("plan blocked"));
                     return EffectReceipt.partial(e, facts, "transitive plan has blocked items");
@@ -561,6 +558,19 @@ public final class LiveInterpreter implements ProgramInterpreter {
         }
         return failed == 0 ? EffectReceipt.ok(e, facts)
                 : EffectReceipt.partial(e, facts, failed + " package manager(s) unavailable");
+    }
+
+    private EffectReceipt installPackageManager(SkillEffect.InstallPackageManager e) {
+        try {
+            PackageManagerRuntime rt = new PackageManagerRuntime(store);
+            Path installed = rt.install(e.pm(), e.version());
+            String version = e.version() == null ? e.pm().defaultVersion : e.version();
+            Log.ok("installed package manager %s@%s at %s", e.pm().id, version, installed);
+            return EffectReceipt.ok(e,
+                    new ContextFact.PackageManagerInstalled(e.pm().id, version, installed.toString()));
+        } catch (Exception ex) {
+            return EffectReceipt.failed(e, ex.getMessage());
+        }
     }
 
     private EffectReceipt ensureTool(SkillEffect.EnsureTool e) {

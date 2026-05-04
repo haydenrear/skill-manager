@@ -95,6 +95,9 @@ public final class DryRunInterpreter implements ProgramInterpreter {
                     Log.step("[%d] persist gateway URL = %s", n, e.url());
             case SkillEffect.SetupPackageManagerRuntime e ->
                     Log.step("[%d] setup PM runtime: %d tool(s)", n, e.tools().size());
+            case SkillEffect.InstallPackageManager e ->
+                    Log.step("[%d] install package manager %s@%s", n, e.pm().id,
+                            e.version() == null ? e.pm().defaultVersion : e.version());
             case SkillEffect.EnsureTool e ->
                     Log.step("[%d] ensure tool %s (missingOnPath=%s)", n,
                             e.tool().id(), e.missingOnPath());

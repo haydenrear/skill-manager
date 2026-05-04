@@ -29,15 +29,26 @@ public final class PmCommand implements Runnable {
     public static final class Install implements Callable<Integer> {
         @Parameters(index = "0", description = "Tool: uv | node") String tool;
         @Option(names = "--version", description = "Version (default: package manager's pinned version)") String version;
+        @Option(names = "--dry-run",
+                description = "Print the effect that would run without executing it.")
+        boolean dryRun;
 
         @Override
         public Integer call() throws Exception {
             SkillStore store = SkillStore.defaultStore();
             store.init();
             PackageManager pm = PackageManager.byId(tool);
-            PackageManagerRuntime rt = new PackageManagerRuntime(store);
-            rt.install(pm, version);
-            return 0;
+            Program<Integer> program = new Program<>(
+                    "pm-install-" + UUID.randomUUID(),
+                    java.util.List.of(new SkillEffect.InstallPackageManager(pm, version)),
+                    receipts -> {
+                        for (var r : receipts) {
+                            if (r.status() == dev.skillmanager.effects.EffectStatus.FAILED) return 1;
+                        }
+                        return 0;
+                    });
+            ProgramInterpreter interp = dryRun ? new DryRunInterpreter() : new LiveInterpreter(store, null);
+            return interp.run(program);
         }
     }
 

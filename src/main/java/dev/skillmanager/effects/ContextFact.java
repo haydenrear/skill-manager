@@ -98,6 +98,7 @@ public sealed interface ContextFact {
     // ---- Package-manager runtime ----
     record PackageManagerReady(String pmId, String version, boolean wasMissing) implements ContextFact {}
     record PackageManagerUnavailable(String pmId, String message) implements ContextFact {}
+    record PackageManagerInstalled(String pmId, String version, String installPath) implements ContextFact {}
 
     // ---- Decomposed plan-action effects ----
     record ToolEnsured(String toolId, boolean missingOnPath, boolean bundled) implements ContextFact {}
