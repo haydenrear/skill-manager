@@ -5,12 +5,18 @@ import dev.skillmanager.effects.EffectReceipt;
 import dev.skillmanager.effects.EffectStatus;
 import dev.skillmanager.effects.Program;
 import dev.skillmanager.effects.SkillEffect;
+import dev.skillmanager.lock.CliLock;
 import dev.skillmanager.mcp.GatewayConfig;
 import dev.skillmanager.mcp.McpWriter;
 import dev.skillmanager.model.Skill;
 import dev.skillmanager.plan.InstallPlan;
+import dev.skillmanager.plan.PlanBuilder;
+import dev.skillmanager.pm.PackageManagerRuntime;
+import dev.skillmanager.policy.Policy;
 import dev.skillmanager.resolve.ResolvedGraph;
+import dev.skillmanager.store.SkillStore;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -47,6 +53,22 @@ public final class InstallUseCase {
             List<String> orphansUnregistered) {
 
         public static Report empty() { return new Report(0, List.of(), Map.of(), List.of()); }
+    }
+
+    /**
+     * Build the {@link InstallPlan} from {@code graph} — owns the
+     * {@link Policy}, {@link CliLock}, and {@link PackageManagerRuntime}
+     * wiring so commands don't construct them inline. The returned plan
+     * may be {@linkplain InstallPlan#blocked() blocked}; callers should
+     * print it ({@link dev.skillmanager.plan.PlanPrinter}) and refuse to
+     * proceed before passing it to {@link #buildProgram}.
+     */
+    public static InstallPlan buildPlan(SkillStore store, ResolvedGraph graph) throws IOException {
+        Policy policy = Policy.load(store);
+        CliLock lock = CliLock.load(store);
+        PackageManagerRuntime pmRuntime = new PackageManagerRuntime(store);
+        return new PlanBuilder(policy, lock, pmRuntime)
+                .plan(graph, true, true, store.cliBinDir());
     }
 
     public static Program<Report> buildProgram(GatewayConfig gw, String registryOverride,

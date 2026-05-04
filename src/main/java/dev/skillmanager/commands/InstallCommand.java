@@ -6,10 +6,8 @@ import dev.skillmanager.effects.DryRunInterpreter;
 import dev.skillmanager.effects.LiveInterpreter;
 import dev.skillmanager.effects.Program;
 import dev.skillmanager.effects.ProgramInterpreter;
-import dev.skillmanager.lock.CliLock;
 import dev.skillmanager.mcp.GatewayConfig;
 import dev.skillmanager.plan.InstallPlan;
-import dev.skillmanager.plan.PlanBuilder;
 import dev.skillmanager.plan.PlanPrinter;
 import dev.skillmanager.policy.Policy;
 import dev.skillmanager.resolve.ResolvedGraph;
@@ -64,7 +62,6 @@ public final class InstallCommand implements Callable<Integer> {
         SkillStore store = SkillStore.defaultStore();
         store.init();
         Policy.writeDefaultIfMissing(store);
-        Policy policy = Policy.load(store);
 
         Log.step("resolving %s", source);
         Resolver resolver = new Resolver(store);
@@ -78,11 +75,9 @@ public final class InstallCommand implements Callable<Integer> {
                 return 3;
             }
 
-            CliLock lock = CliLock.load(store);
-            dev.skillmanager.pm.PackageManagerRuntime pmRuntime =
-                    new dev.skillmanager.pm.PackageManagerRuntime(store);
-            InstallPlan plan = new PlanBuilder(policy, lock, pmRuntime)
-                    .plan(graph, true, true, store.cliBinDir());
+            // InstallUseCase owns the Policy / CliLock / PackageManagerRuntime
+            // wiring; the command only needs the resolved graph + store.
+            InstallPlan plan = InstallUseCase.buildPlan(store, graph);
             PlanPrinter.print(plan);
             if (plan.blocked()) {
                 Log.error("plan has blocked items — see policy at %s", store.root().resolve("policy.toml"));

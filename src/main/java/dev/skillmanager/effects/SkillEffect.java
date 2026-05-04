@@ -5,6 +5,7 @@ import dev.skillmanager.model.CliDependency;
 import dev.skillmanager.model.McpDependency;
 import dev.skillmanager.model.Skill;
 import dev.skillmanager.plan.InstallPlan;
+import dev.skillmanager.pm.PackageManager;
 import dev.skillmanager.resolve.ResolvedGraph;
 import dev.skillmanager.source.SkillSource;
 import dev.skillmanager.tools.ToolDependency;
@@ -29,6 +30,7 @@ public sealed interface SkillEffect permits
         SkillEffect.StopGateway,
         SkillEffect.ConfigureGateway,
         SkillEffect.SetupPackageManagerRuntime,
+        SkillEffect.InstallPackageManager,
         SkillEffect.CommitSkillsToStore,
         SkillEffect.RecordAuditPlan,
         SkillEffect.RecordSourceProvenance,
@@ -157,6 +159,13 @@ public sealed interface SkillEffect permits
      * Replaces inline {@code PackageManagerRuntime} probing in {@code PlanBuilder}.
      */
     record SetupPackageManagerRuntime(List<ToolDependency> tools) implements SkillEffect {}
+
+    /**
+     * Install a specific {@link PackageManager} at {@code version} (or its
+     * default if {@code version} is null). Drives {@code pm install <tool>}
+     * through the effect program.
+     */
+    record InstallPackageManager(PackageManager pm, String version) implements SkillEffect {}
 
     // ---------------------------------------------- decomposed plan-action effects
 
