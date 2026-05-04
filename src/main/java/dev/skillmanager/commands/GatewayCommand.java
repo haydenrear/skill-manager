@@ -47,6 +47,9 @@ public final class GatewayCommand implements Runnable {
     public static final class Up implements Callable<Integer> {
         @Option(names = "--host", defaultValue = "127.0.0.1") String host;
         @Option(names = "--port", defaultValue = "51717") int port;
+        @Option(names = "--wait-seconds", defaultValue = "20",
+                description = "How long to wait for /health before declaring the gateway unhealthy.")
+        int waitSeconds;
         @Option(names = "--no-sync-agents",
                 description = "Don't update agent MCP configs to point at the gateway URL.")
         boolean noSyncAgents;
@@ -64,7 +67,7 @@ public final class GatewayCommand implements Runnable {
             GatewayConfig gw = GatewayConfig.resolve(store, url);
 
             List<SkillEffect> effects = new ArrayList<>();
-            effects.add(new SkillEffect.EnsureGateway(gw));
+            effects.add(new SkillEffect.EnsureGateway(gw, java.time.Duration.ofSeconds(waitSeconds)));
             if (!noSyncAgents) effects.add(new SkillEffect.SyncAgents(List.of(), gw));
             Program<Integer> program = new Program<>(
                     "gateway-up-" + UUID.randomUUID(),

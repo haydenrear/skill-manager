@@ -75,7 +75,11 @@ public sealed interface SkillEffect permits
      * {@code /health}. Failure modes: gateway not local + unreachable, or
      * local-start exceeded the health-check timeout.
      */
-    record EnsureGateway(GatewayConfig gateway) implements SkillEffect {}
+    record EnsureGateway(GatewayConfig gateway, java.time.Duration timeout) implements SkillEffect {
+        public EnsureGateway(GatewayConfig gateway) {
+            this(gateway, java.time.Duration.ofSeconds(20));
+        }
+    }
 
     /**
      * Move every staged skill in the {@link ResolvedGraph} into the store.

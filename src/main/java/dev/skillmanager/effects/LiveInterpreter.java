@@ -170,12 +170,15 @@ public final class LiveInterpreter implements ProgramInterpreter {
                 Log.step("starting virtual MCP gateway on %s:%d", host, port);
                 rt.start(host, port);
             }
-            if (rt.waitForHealthy(base.toString(), java.time.Duration.ofSeconds(20))) {
+            java.time.Duration wait = e.timeout() == null
+                    ? java.time.Duration.ofSeconds(20)
+                    : e.timeout();
+            if (rt.waitForHealthy(base.toString(), wait)) {
                 Log.ok("gateway up at %s", base);
                 GatewayConfig.persist(store, base.toString());
                 return EffectReceipt.ok(e, new ContextFact.GatewayStarted(host, port));
             }
-            Log.error("gateway did not become healthy within 20s; see %s", rt.logFile());
+            Log.error("gateway did not become healthy within %ds; see %s", wait.toSeconds(), rt.logFile());
             return EffectReceipt.failed(e, "health check timed out");
         } catch (Exception ex) {
             Log.error("failed to start gateway: %s", ex.getMessage());
