@@ -1,8 +1,8 @@
 package dev.skillmanager.commands;
 
-import dev.skillmanager.agent.Agent;
+import dev.skillmanager.lifecycle.SkillReconciler;
+import dev.skillmanager.lifecycle.SkillSideEffects;
 import dev.skillmanager.mcp.GatewayConfig;
-import dev.skillmanager.mcp.McpWriter;
 import dev.skillmanager.model.Skill;
 import dev.skillmanager.model.SkillParser;
 import dev.skillmanager.registry.RegistryClient;
@@ -12,10 +12,7 @@ import dev.skillmanager.source.GitOps;
 import dev.skillmanager.source.SkillSource;
 import dev.skillmanager.source.SkillSourceStore;
 import dev.skillmanager.store.SkillStore;
-import dev.skillmanager.sync.SkillSync;
 import dev.skillmanager.util.Log;
-
-import java.util.Map;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
@@ -25,84 +22,75 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.Callable;
 
 /**
- * {@code skill-manager sync [name] [--from <dir>]} — re-run the
- * install-time side effects for already-installed skills, and
- * optionally pull fresh content from a local working directory before
- * doing so.
+ * {@code sync [name] [--from <dir>] [--git-latest] [--merge]} — pull upstream
+ * changes for git-tracked installs and re-run the install side-effects
+ * pipeline (tools, CLI deps, MCP register, agent symlinks).
  *
- * <p>Two motivating cases:
- *
+ * <p>Resolution order for the merge target ref:
  * <ul>
- *   <li>A skill declared an MCP server with a required env var that
- *       wasn't set during {@code install}, so the gateway registered
- *       the server but never deployed it. After exporting the env
- *       var, {@code sync} re-registers and tries to deploy. Also
- *       re-syncs agent symlinks and re-asserts the {@code
- *       virtual-mcp-gateway} entry in each agent's MCP config.</li>
- *   <li>You're iterating on a skill from a local git checkout and
- *       want to apply your in-flight edits to the installed copy
- *       without going through publish + install. {@code --from
- *       <dir>} runs {@code diff -urN --no-index} between the
- *       store entry and the source dir, prints it for review,
- *       prompts before overwriting (skip with {@code --yes}), and
- *       then continues into the normal sync.</li>
+ *   <li>{@code --from <dir>} given → uses that dir as the upstream.</li>
+ *   <li>{@code --git-latest} given → fetches the install-time {@code gitRef}
+ *       (branch / tag) from the recorded origin.</li>
+ *   <li>Default → asks the registry for the latest published version's
+ *       {@code git_sha}; falls back to the install-time {@code gitRef} when
+ *       the skill isn't in the registry (github-direct installs).</li>
  * </ul>
  *
- * <p>With no argument, syncs every installed skill. With a name, syncs just
- * that skill (but the agent's MCP-config entry is rewritten the same way —
- * it's a single shared entry, not per-skill). {@code --from} requires a
- * name, since it operates on exactly one skill.
+ * <p>The merge stashes any working-tree changes (staged + unstaged + untracked)
+ * before fetching, then pops the stash on top of the merged HEAD. A conflicting
+ * stash-pop sets the skill's status to {@link SkillSource.Status#MERGE_CONFLICT};
+ * the next command's reconciler clears it once the user resolves.
+ *
+ * <p>Pre-flight: gateway is checked before any git mutation. Non-git installs
+ * are not supported — convert them to a git source if you want sync.
  */
 @Command(name = "sync",
-        description = "Re-run install side effects (MCP deploy, agent symlinks) for installed skills, "
-                + "optionally pulling content from a local source directory first.")
+        description = "Pull upstream + re-run install side effects for git-tracked skills.")
 public final class SyncCommand implements Callable<Integer> {
 
     @Parameters(index = "0", arity = "0..1", description = "Skill name to sync (default: all installed)")
-    String name;
+    public String name;
 
     @Option(names = "--from",
             description = "Local directory to pull skill content from (must contain SKILL.md). "
-                    + "Lists changed files via `git diff --no-index --name-status` (re-run "
-                    + "without --name-status to inspect the full diff), prompts for approval, "
-                    + "then overwrites the store with the source dir's contents. "
-                    + "Requires <name>. Does not contact the registry.")
-    Path fromDir;
+                    + "Without --merge: shows diff and prompts before overwriting. "
+                    + "With --merge and a git-backed source: 3-way merge against the source's HEAD. "
+                    + "Requires <name>.")
+    public Path fromDir;
 
     @Option(names = {"-y", "--yes"},
-            description = "Skip the approval prompt for --from and apply the diff unconditionally.")
-    boolean yes;
+            description = "Skip the approval prompt for --from.")
+    public boolean yes;
 
     @Option(names = "--merge",
-            description = "When the target skill is git-tracked and --from is also a git repo, "
-                    + "fetch its HEAD and `git merge` it onto the installed copy instead of "
-                    + "overwriting. On conflict, leaves the working tree in the conflicted "
-                    + "state for you (or the agent) to resolve.")
-    boolean merge;
+            description = "Allow a real 3-way merge against the resolved upstream when local edits exist. "
+                    + "Conflicts leave the working tree in conflicted state and set the skill's "
+                    + "status to MERGE_CONFLICT until resolved.")
+    public boolean merge;
 
     @Option(names = "--git-latest",
-            description = "Skip the registry; pull origin HEAD instead of the server-published "
-                    + "version's git_sha. Useful when iterating ahead of a published version, "
-                    + "or for skills that aren't in the registry. Fails if the install has no "
-                    + "git remote.")
-    boolean gitLatest;
+            description = "Skip the registry; fetch the install-time gitRef (branch / tag) instead of the "
+                    + "server-published version's git_sha.")
+    public boolean gitLatest;
 
     @Option(names = "--registry",
-            description = "Registry URL override for this invocation (persisted). Only used when "
-                    + "--git-latest is NOT set, since otherwise sync doesn't talk to the registry.")
-    String registryUrl;
+            description = "Registry URL override for this invocation (persisted).")
+    public String registryUrl;
 
     @Option(names = "--skip-agents",
             description = "Don't refresh agent symlinks or MCP-config entries.")
-    boolean skipAgents;
+    public boolean skipAgents;
 
     @Option(names = "--skip-mcp",
             description = "Don't re-register MCP servers with the gateway.")
-    boolean skipMcp;
+    public boolean skipMcp;
 
     @Override
     public Integer call() throws Exception {
@@ -110,59 +98,41 @@ public final class SyncCommand implements Callable<Integer> {
         store.init();
 
         if (fromDir != null && (name == null || name.isBlank())) {
-            Log.error("--from requires a skill name (got --from %s with no <name>)", fromDir);
+            Log.error("--from requires a skill name");
             return 2;
         }
         if (registryUrl != null && !registryUrl.isBlank()) {
             RegistryConfig.resolve(store, registryUrl);
         }
 
-        // Track the worst per-skill git-sync exit code across the run.
-        // We don't fail-fast in all-skills mode — we want one
-        // aggregate summary at the end naming every skill that needs
-        // attention, then we still run the MCP / agent refresh.
-        int gitSyncRc = 0;
+        // Don't fail-fast on gateway unreachable: SkillSideEffects records
+        // GATEWAY_UNAVAILABLE per skill and the next command's reconciler
+        // retries. This means git work still happens even if the gateway
+        // is down — the user can recover the MCP-side later.
+        GatewayConfig gw = GatewayConfig.resolve(store, null);
+        if (!skipMcp) InstallCommand.ensureGatewayRunning(store, gw);
 
+        SkillReconciler.reconcile(store, gw);
+
+        Map<String, Set<String>> preMcpDeps = SkillSideEffects.snapshotMcpDeps(store);
+
+        int gitSyncRc = 0;
         List<Skill> targets;
         if (name != null && !name.isBlank()) {
             if (!store.contains(name)) {
-                if (fromDir != null) {
-                    Log.error("not installed: %s — install it first with `skill-manager install file:%s`",
-                            name, fromDir.toAbsolutePath());
-                } else {
-                    Log.error("not installed: %s", name);
-                }
+                Log.error("not installed: %s", name);
                 return 1;
             }
-            if (fromDir != null) {
-                int rc = applyFromLocalDir(store, name, fromDir);
-                if (rc != 0) return rc;
-            } else {
-                int rc = applyFromImplicitOrigin(store, name);
-                if (rc != 0) return rc;
-            }
+            int rc = (fromDir != null)
+                    ? applyFromLocalDir(store, name, fromDir)
+                    : applyFromImplicitOrigin(store, name);
+            if (rc != 0 && rc != 7 && rc != 8) return rc;
+            gitSyncRc = rc;
             targets = List.of(store.load(name).orElseThrow());
         } else {
             targets = store.listInstalled();
             if (!targets.isEmpty()) {
                 gitSyncRc = syncAllGit(store, targets);
-                // syncAllGit may have merged TOML updates that added or
-                // removed MCP / CLI deps. Reload from disk so the
-                // McpWriter.registerAll pass below sees the post-merge
-                // manifests, not the pre-merge snapshot. (The per-skill
-                // branch above already loads `targets` after its own
-                // applyFromImplicitOrigin call, so it doesn't have
-                // this problem.)
-                //
-                // Known gaps still not covered after this reload:
-                //   - CLI deps added by the merge aren't installed —
-                //     sync doesn't run ToolInstallRecorder /
-                //     CliInstallRecorder. User has to re-run install.
-                //   - Transitive skill_references added by the merge
-                //     aren't resolved or fetched. Same workaround.
-                //   - MCP deps removed by the merge stay registered
-                //     as orphans on the gateway. Uninstall handles
-                //     this; sync doesn't yet.
                 targets = store.listInstalled();
             }
         }
@@ -171,67 +141,21 @@ public final class SyncCommand implements Callable<Integer> {
             return 0;
         }
 
-        GatewayConfig gw = GatewayConfig.resolve(store, null);
-
-        if (!skipMcp) {
-            if (!InstallCommand.ensureGatewayRunning(store, gw)) {
-                Log.error("gateway at %s is unreachable and could not be started — "
-                        + "start it manually (`skill-manager gateway up`) and rerun",
-                        gw.baseUrl());
-                // Surface the more user-actionable code if git also flagged things.
-                return Math.max(4, gitSyncRc);
-            }
-            McpWriter writer = new McpWriter(gw);
-            var results = writer.registerAll(targets);
-            writer.printInstallResults(results);
-        }
-
-        if (!skipAgents) {
-            // Symlink + MCP-config refresh always operates on the full
-            // installed set, since the gateway entry is shared. When the
-            // user named a single skill, only its symlink gets rebuilt.
-            List<Skill> linkSet = (name != null && !name.isBlank())
-                    ? targets
-                    : store.listInstalled();
-            McpWriter writer = new McpWriter(gw);
-            for (Agent agent : Agent.all()) {
-                try {
-                    new SkillSync(store).sync(agent, linkSet, true);
-                } catch (Exception e) {
-                    Log.warn("%s: skill sync failed — %s", agent.id(), e.getMessage());
-                }
-                try {
-                    writer.writeAgentEntry(agent);
-                } catch (Exception e) {
-                    Log.warn("%s: mcp config update failed — %s", agent.id(), e.getMessage());
-                }
-            }
-        }
+        SkillSideEffects.resolveMissingTransitives(store, targets);
+        SkillSideEffects.Result result = SkillSideEffects.runPostUpdate(
+                store, gw, preMcpDeps, !skipMcp, !skipAgents);
+        SkillSideEffects.printAgentConfigSummary(result, gw.mcpEndpoint().toString());
         return gitSyncRc;
     }
 
-    /**
-     * All-skills git sync. For every installed skill that has a
-     * pinned upstream (git-tracked with origin set on the source
-     * record), run the same implicit-origin pull as {@code sync
-     * <name>} would. Don't bail on the first refusal — collect
-     * per-skill outcomes and emit one aggregate summary at the end
-     * so the user sees the whole picture in one pass.
-     *
-     * <p>Returns the worst exit code observed: {@code 8} (any
-     * conflict) > {@code 7} (any extra-local-changes refusal) >
-     * {@code 0} (clean). Non-git skills and git skills with no
-     * configured upstream contribute {@code 0} silently.
-     */
     private int syncAllGit(SkillStore store, List<Skill> targets) {
-        java.util.List<String> refused = new java.util.ArrayList<>();
-        java.util.List<String> conflicted = new java.util.ArrayList<>();
+        List<String> refused = new ArrayList<>();
+        List<String> conflicted = new ArrayList<>();
         int worstRc = 0;
         for (Skill s : targets) {
             int rc;
-            try {
-                rc = applyFromImplicitOrigin(store, s.name());
-            } catch (Exception e) {
+            try { rc = applyFromImplicitOrigin(store, s.name()); }
+            catch (Exception e) {
                 Log.warn("%s: git sync failed — %s", s.name(), e.getMessage());
                 continue;
             }
@@ -239,175 +163,150 @@ public final class SyncCommand implements Callable<Integer> {
             else if (rc == 8) conflicted.add(s.name());
             if (rc > worstRc) worstRc = rc;
         }
-        if (!refused.isEmpty() || !conflicted.isEmpty()) {
-            printSyncAllSummary(refused, conflicted);
-        }
+        if (!refused.isEmpty() || !conflicted.isEmpty()) printSyncAllSummary(refused, conflicted);
         return worstRc;
     }
 
-    /**
-     * One block listing every skill that needs follow-up, with the
-     * exact {@code skill-manager sync … --merge} command per row so
-     * an agent / human can copy-paste resolve.
-     */
-    private static void printSyncAllSummary(java.util.List<String> refused,
-                                            java.util.List<String> conflicted) {
+    private static void printSyncAllSummary(List<String> refused, List<String> conflicted) {
         System.err.println();
-        int total = refused.size() + conflicted.size();
-        System.err.println("sync summary: " + total + " skill(s) need attention");
+        System.err.println("sync summary: " + (refused.size() + conflicted.size()) + " skill(s) need attention");
         if (!refused.isEmpty()) {
             System.err.println();
             System.err.println("  Extra local changes — re-run with --merge to bring upstream in:");
-            for (String n : refused) {
-                System.err.println("    skill-manager sync " + n + " --merge");
-            }
+            for (String n : refused) System.err.println("    skill-manager sync " + n + " --merge");
         }
         if (!conflicted.isEmpty()) {
             System.err.println();
-            System.err.println("  Conflicted — resolve in the store dir, then `git commit` "
-                    + "or `git merge --abort`:");
-            for (String n : conflicted) {
-                System.err.println("    " + n);
-            }
+            System.err.println("  Conflicted — resolve in the store dir, then `git commit` or `git merge --abort`:");
+            for (String n : conflicted) System.err.println("    " + n);
         }
         System.err.println();
     }
 
-    /**
-     * Pull upstream changes for a git-tracked skill, using whatever
-     * origin was recorded at install time (the {@link SkillSource}
-     * record's {@code origin} field, or {@code git remote get-url
-     * origin} as a fallback). This is what runs when the user types
-     * {@code skill-manager sync <name>} without {@code --from}: the
-     * install already opened the git repo and pinned the upstream, so
-     * sync should just use it.
-     *
-     * <p>Behaviour:
-     *
-     * <ul>
-     *   <li>Skill not git-tracked, or no origin configured → no-op,
-     *       returns 0 so the caller continues into the MCP / agent
-     *       refresh.</li>
-     *   <li>Working tree clean → fetch + merge (typically a no-op or
-     *       fast-forward). Refreshes the source-record baseline on
-     *       success.</li>
-     *   <li>Dirty (working tree edits or commits ahead of baseline)
-     *       and {@code --merge} not set → prints structured refusal
-     *       with the exact {@code skill-manager sync … --merge} +
-     *       by-hand git recipe and returns 7.</li>
-     *   <li>Dirty and {@code --merge} set → snapshot local edits,
-     *       fetch, merge. Conflict → returns 8 with conflict files
-     *       listed, working tree left for the user to resolve.</li>
-     * </ul>
-     */
-    private int applyFromImplicitOrigin(SkillStore store, String skillName) {
+    private int applyFromImplicitOrigin(SkillStore store, String skillName) throws IOException {
         Path storeDir = store.skillDir(skillName);
-        if (!GitOps.isGitRepo(storeDir) || !GitOps.isAvailable()) return 0;
-
         SkillSourceStore sources = new SkillSourceStore(store);
         SkillSource src = sources.read(skillName).orElse(null);
+
+        if (!GitOps.isAvailable() || !GitOps.isGitRepo(storeDir)) {
+            sources.addError(skillName, SkillSource.ErrorKind.NEEDS_GIT_MIGRATION,
+                    "not git-tracked — reinstall from a git source to enable sync/upgrade");
+            return 0;
+        }
+        sources.clearError(skillName, SkillSource.ErrorKind.NEEDS_GIT_MIGRATION);
+
         String upstream = src != null && src.origin() != null && !src.origin().isBlank()
                 ? src.origin()
                 : GitOps.originUrl(storeDir);
         if (upstream == null || upstream.isBlank()) {
-            Log.info("%s: git-tracked but no upstream origin configured — skipping git pull", skillName);
+            sources.addError(skillName, SkillSource.ErrorKind.NO_GIT_REMOTE,
+                    "git-tracked but no origin remote configured");
             return 0;
         }
+        sources.clearError(skillName, SkillSource.ErrorKind.NO_GIT_REMOTE);
 
-        // Default sync target: the registry's latest published version
-        // for this skill. The gitSha pinned to that version is what
-        // upgrades are stabilized against. --git-latest opts out and
-        // pulls origin HEAD instead — useful when iterating ahead of
-        // a published version or when the skill isn't in the registry
-        // at all.
-        String targetRef;
-        String targetVersion = null;
-        if (gitLatest) {
-            // Track the install-time ref when we know it (branch/tag);
-            // fall back to HEAD (remote's default branch) for sha-pinned
-            // installs and warn so the surprise is visible.
-            String tracked = src != null ? src.gitRef() : null;
-            if (tracked != null && !tracked.isBlank()) {
-                targetRef = tracked;
-            } else {
-                targetRef = "HEAD";
-                if (src != null && src.gitHash() != null) {
-                    Log.warn("%s: install was sha-pinned (no branch/tag tracked); "
-                            + "--git-latest will fetch the remote's default branch HEAD",
-                            skillName);
-                }
-            }
-        } else {
-            ServerVersion sv = lookupServerVersion(store, skillName);
-            if (sv == null) {
-                Log.warn("%s: no server-published git_sha for latest version — re-run with "
-                        + "--git-latest to pull origin HEAD instead", skillName);
-                return 0;
-            }
-            targetRef = sv.gitSha;
-            targetVersion = sv.version;
-        }
+        TargetRef target = resolveTarget(store, sources, src, skillName, storeDir, upstream);
+        if (target == null) return 0;  // resolveTarget already recorded the cause
 
         String baseline = src != null ? src.gitHash() : null;
         boolean dirty = GitOps.isDirty(storeDir, baseline);
-
-        // No-op: clean working tree AND already at the resolved target.
-        // Only checkable for sha targets; HEAD requires a fetch to know.
-        if (!dirty && !"HEAD".equals(targetRef) && targetRef.equals(baseline)) {
-            Log.ok("%s: already at server version %s (%s)", skillName,
-                    targetVersion == null ? "?" : targetVersion,
+        if (!dirty && target.sha != null && target.sha.equals(baseline)) {
+            Log.ok("%s: already at %s (%s)", skillName, target.displayLabel(),
                     baseline.substring(0, Math.min(7, baseline.length())));
             return 0;
         }
-
         if (dirty && !merge) {
             printMergeInstructions(skillName, storeDir, upstream, true, false);
             return 7;
         }
-        return runGitMerge(storeDir, upstream, targetRef, skillName);
+        return runGitMerge(store, sources, storeDir, upstream, target.ref, skillName);
     }
 
-    /** Result of a registry lookup for the latest server-blessed git ref. */
+    /**
+     * Routes by {@link SkillSource.InstallSource}:
+     * <ul>
+     *   <li>REGISTRY: must reach the server. {@link SkillSource.ErrorKind#REGISTRY_UNAVAILABLE}
+     *       on failure. Won't downgrade — if local version &gt;= server version, no-op.</li>
+     *   <li>GIT / LOCAL_FILE: pull from the recorded gitRef (or remote default branch).</li>
+     * </ul>
+     * {@code --git-latest} bypasses the routing entirely — always uses the recorded gitRef.
+     */
+    private TargetRef resolveTarget(SkillStore store, SkillSourceStore sources, SkillSource src,
+                                    String skillName, Path storeDir, String upstream) throws IOException {
+        if (gitLatest) {
+            String tracked = src != null ? src.gitRef() : null;
+            if (tracked != null && !tracked.isBlank()) return new TargetRef(tracked, null, null);
+            Log.warn("%s: install was sha-pinned (no branch/tag tracked); --git-latest fetches remote HEAD",
+                    skillName);
+            return new TargetRef("HEAD", null, null);
+        }
+
+        SkillSource.InstallSource installSource = src != null && src.installSource() != null
+                ? src.installSource()
+                : SkillSource.InstallSource.UNKNOWN;
+
+        if (installSource == SkillSource.InstallSource.REGISTRY) {
+            ServerVersion sv = lookupServerVersion(store, skillName);
+            if (sv == null) {
+                sources.addError(skillName, SkillSource.ErrorKind.REGISTRY_UNAVAILABLE,
+                        "registry didn't return a git_sha for latest " + skillName);
+                return null;
+            }
+            sources.clearError(skillName, SkillSource.ErrorKind.REGISTRY_UNAVAILABLE);
+            String localVer = src != null ? src.version() : null;
+            if (localVer != null && compareVersions(localVer, sv.version) >= 0) {
+                Log.ok("%s: at %s (>= registry's latest %s) — no upgrade needed",
+                        skillName, localVer, sv.version);
+                return null;
+            }
+            return new TargetRef(sv.gitSha, sv.gitSha, "v" + sv.version);
+        }
+
+        // Non-registry installs: always pull from git remote. No version compare.
+        String tracked = src != null ? src.gitRef() : null;
+        if (tracked != null && !tracked.isBlank()) return new TargetRef(tracked, null, tracked);
+        String defaultBranch = GitOps.remoteDefaultBranch(storeDir, upstream);
+        if (defaultBranch != null) return new TargetRef(defaultBranch, null, defaultBranch);
+        return new TargetRef("HEAD", null, "HEAD");
+    }
+
+    /** Naive numeric semver compare (X.Y.Z); pre-release suffixes treated as equal. */
+    private static int compareVersions(String a, String b) {
+        if (a == null || b == null) return 0;
+        String[] aParts = a.split("[.\\-]");
+        String[] bParts = b.split("[.\\-]");
+        int n = Math.max(aParts.length, bParts.length);
+        for (int i = 0; i < n; i++) {
+            int ai = i < aParts.length ? parseIntSafe(aParts[i]) : 0;
+            int bi = i < bParts.length ? parseIntSafe(bParts[i]) : 0;
+            if (ai != bi) return Integer.compare(ai, bi);
+        }
+        return 0;
+    }
+
+    private static int parseIntSafe(String s) {
+        try { return Integer.parseInt(s); } catch (NumberFormatException e) { return 0; }
+    }
+
+    private record TargetRef(String ref, String sha, String label) {
+        String displayLabel() { return label != null ? label : ref; }
+    }
+
     private record ServerVersion(String version, String gitSha, String githubUrl) {}
 
-    /**
-     * Ask the registry for the latest version of {@code skillName} and
-     * pull out its {@code git_sha} (along with the version label and
-     * github URL for messaging). Returns null when the lookup fails or
-     * the registered version has no git pointer (legacy tarball
-     * publish, or skill not in the registry at all).
-     */
     private static ServerVersion lookupServerVersion(SkillStore store, String skillName) {
         try {
-            RegistryConfig cfg = RegistryConfig.resolve(store, null);
-            RegistryClient registry = RegistryClient.authenticated(store, cfg);
+            RegistryClient registry = RegistryClient.authenticated(store, RegistryConfig.resolve(store, null));
             Map<String, Object> meta = registry.describeVersion(skillName, "latest");
             String gitSha = (String) meta.get("git_sha");
             if (gitSha == null || gitSha.isBlank()) return null;
             return new ServerVersion(
-                    (String) meta.get("version"),
-                    gitSha,
-                    (String) meta.get("github_url"));
+                    (String) meta.get("version"), gitSha, (String) meta.get("github_url"));
         } catch (Exception e) {
-            Log.warn("registry: lookup of latest %s failed — %s", skillName, e.getMessage());
             return null;
         }
     }
 
-    /**
-     * Diff {@code <store>/<name>} against {@code fromDir} and, on
-     * approval, replace the store contents. Returns {@code 0} on
-     * success or no-op (no diff / user-aborted), nonzero on validation
-     * failure.
-     *
-     * <p>For git-tracked skills (a {@code .git/} dir under the store),
-     * detects local edits (working tree dirty, commits ahead of the
-     * recorded baseline) before any overwrite. Without {@code --merge}
-     * the dirty state aborts with structured merge instructions. With
-     * {@code --merge} and a git-backed source dir, attempts a {@code
-     * git fetch + git merge FETCH_HEAD} from the source's HEAD onto
-     * the installed copy.
-     */
     private int applyFromLocalDir(SkillStore store, String skillName, Path fromDir) throws Exception {
         Path src = fromDir.toAbsolutePath().normalize();
         if (!Files.isDirectory(src)) {
@@ -419,15 +318,11 @@ public final class SyncCommand implements Callable<Integer> {
             return 1;
         }
         Path storeDir = store.skillDir(skillName);
-
-        // Source-tracking-aware path: if the installed copy is git-backed,
-        // protect user edits and offer a real merge instead of an
-        // overwrite. Falls through to the plain diff+overwrite flow when
-        // either side isn't git.
         SkillSourceStore sources = new SkillSourceStore(store);
         SkillSource src0 = sources.read(skillName).orElse(null);
         boolean storeIsGit = GitOps.isGitRepo(storeDir);
         boolean srcIsGit = GitOps.isGitRepo(src);
+
         if (storeIsGit && GitOps.isAvailable()) {
             String baseline = src0 != null ? src0.gitHash() : null;
             boolean dirty = GitOps.isDirty(storeDir, baseline);
@@ -437,34 +332,24 @@ public final class SyncCommand implements Callable<Integer> {
             }
             if (merge) {
                 if (!srcIsGit) {
-                    Log.warn("--merge requested but %s is not a git repo; falling back "
-                            + "to diff + overwrite (will refuse if dirty)", src);
                     if (dirty) {
                         printMergeInstructions(skillName, storeDir, src.toString(), false, true);
                         return 7;
                     }
                 } else {
-                    return runGitMerge(storeDir, src.toString(), "HEAD", skillName);
+                    return runGitMerge(store, sources, storeDir, src.toString(), "HEAD", skillName);
                 }
             }
-            // Clean working tree + no --merge → fall through to diff+overwrite.
         }
 
-        // List changed files only — full content diff is verbose for
-        // bigger skills and the user can re-run the same git command
-        // without --name-status when they actually want to read it.
-        // `git diff --no-index` works on arbitrary paths outside any
-        // repo; BSD `diff` (macOS default) doesn't support --no-index.
-        // Exit codes: 0 = identical, 1 = differences found, 128 = git error.
         Log.step("git diff --no-index --name-status %s %s", storeDir, src);
         StringBuilder summary = new StringBuilder();
         ProcessBuilder pb = new ProcessBuilder("git", "diff", "--no-index", "--name-status",
                 "--", storeDir.toString(), src.toString())
                 .redirectErrorStream(true);
         Process p;
-        try {
-            p = pb.start();
-        } catch (IOException e) {
+        try { p = pb.start(); }
+        catch (IOException e) {
             Log.error("`git` not available on PATH: %s", e.getMessage());
             return 1;
         }
@@ -481,18 +366,17 @@ public final class SyncCommand implements Callable<Integer> {
             return 0;
         }
         if (rc != 1) {
-            Log.error("`git diff --no-index --name-status` exited %d (output above)", rc);
+            Log.error("`git diff --no-index --name-status` exited %d", rc);
             return 1;
         }
 
         System.out.println();
-        System.out.println("To inspect the full diff before deciding, run:");
+        System.out.println("To inspect the full diff, run:");
         System.out.println();
         System.out.println("    git diff --no-index " + storeDir + " " + src);
         System.out.println();
 
         if (!yes) {
-            System.out.println();
             System.out.print("Apply these changes to " + storeDir + "? [y/N] ");
             System.out.flush();
             BufferedReader stdin = new BufferedReader(new InputStreamReader(System.in));
@@ -502,113 +386,107 @@ public final class SyncCommand implements Callable<Integer> {
                 return 0;
             }
         }
-
         Fs.deleteRecursive(storeDir);
         Fs.copyRecursive(src, storeDir);
         Log.ok("%s: applied changes from %s", skillName, src);
         return 0;
     }
 
-    /**
-     * Print exit-code-7 banner with the exact git commands an operator
-     * (or the calling agent) needs to merge upstream into the local
-     * working tree. Format is stable so harnesses can match on it.
-     */
-    private void printMergeInstructions(String skillName, Path storeDir,
-                                        String upstream, boolean upstreamIsGit,
-                                        boolean explicitFrom) {
-        Log.error("%s has extra local changes (working tree edits or commits ahead of the installed baseline).",
+    private void printMergeInstructions(String skillName, Path storeDir, String upstream,
+                                        boolean upstreamIsGit, boolean explicitFrom) {
+        Log.error("%s has extra local changes (working tree edits or commits ahead of installed baseline).",
                 skillName);
         System.err.println();
         if (upstreamIsGit) {
-            System.err.println("Sync would overwrite them. Re-run with --merge to bring upstream in via a real");
-            System.err.println("3-way merge instead:");
+            System.err.println("Sync would overwrite them. Re-run with --merge:");
             System.err.println();
-            // Preserve the flags the caller actually used so the recipe
-            // re-runs the same operation (--git-latest changes which ref
-            // gets fetched, --from changes the upstream entirely).
             String flags = (explicitFrom ? " --from " + upstream : "")
                     + (gitLatest ? " --git-latest" : "")
                     + " --merge";
             System.err.println("    skill-manager sync " + skillName + flags);
             System.err.println();
-            System.err.println("Or merge by hand with git:");
+            System.err.println("Or merge by hand:");
             System.err.println();
             System.err.println("    cd " + storeDir);
             System.err.println("    git fetch " + upstream + " HEAD");
             System.err.println("    git merge FETCH_HEAD");
         } else {
-            System.err.println("The source dir is not a git repo, so there's no upstream branch to merge.");
-            System.err.println("Inspect the diff, copy the changes you want by hand, commit them, then re-run:");
+            System.err.println("Source dir is not a git repo — no upstream branch to merge.");
+            System.err.println("Inspect the diff and apply changes by hand:");
             System.err.println();
             System.err.println("    git diff --no-index " + storeDir + " " + upstream);
-            System.err.println();
-            System.err.println("Or accept the overwrite (loses local changes):");
-            System.err.println();
-            System.err.println("    rm -rf " + storeDir + " && cp -R " + upstream + " " + storeDir);
         }
         System.err.println();
     }
 
     /**
-     * Run {@code git fetch <upstream> HEAD} then {@code git merge
-     * FETCH_HEAD} inside {@code storeDir}. {@code upstream} can be a
-     * URL, a configured remote name, or a path on disk — whatever
-     * {@code git fetch} accepts.
-     *
-     * <p>On success, refresh the source-record baseline to the new
-     * HEAD. On conflict, leave the working tree conflicted, list the
-     * files, and exit non-zero so the caller can resolve.
+     * Stash → fetch → merge → pop. Stash gives us natural rollback (reset +
+     * pop) on any unexpected failure, and pop conflicts surface
+     * local-vs-upstream collisions as MERGE_CONFLICT state for the
+     * reconciler to validate on subsequent commands.
      */
-    private int runGitMerge(Path storeDir, String upstream, String ref, String skillName) {
-        // Snapshot any working-tree changes onto HEAD so `git merge`
-        // produces a real 3-way merge (and surfaces real conflicts in
-        // the working tree) instead of refusing with "your local
-        // changes would be overwritten by merge".
-        String snapshot = GitOps.commitWorkingChanges(storeDir,
-                "skill-manager: snapshot local edits before merge");
-        if (snapshot != null) {
-            Log.info("%s: snapshotted local edits as %s", skillName, snapshot.substring(0, 7));
-        }
+    private int runGitMerge(SkillStore store, SkillSourceStore sources, Path storeDir,
+                            String upstream, String ref, String skillName) {
+        String preHead = GitOps.headHash(storeDir);
+        boolean stashed = GitOps.stashAll(storeDir, "skill-manager-sync");
 
         Log.step("git fetch %s %s && git merge FETCH_HEAD (in %s)", upstream, ref, storeDir);
         String fetchedHash = GitOps.fetchRef(storeDir, upstream, ref);
         if (fetchedHash == null) {
-            Log.error("`git fetch %s %s` failed in %s", upstream, ref, storeDir);
+            Log.error("`git fetch %s %s` failed", upstream, ref);
+            if (stashed) GitOps.stashPop(storeDir);
             return 1;
         }
+
         GitOps.MergeOutcome outcome = GitOps.mergeFetchHead(storeDir);
-        if (outcome.ok()) {
-            Log.ok("%s: merged %s into %s", skillName, fetchedHash.substring(0, 7), storeDir);
-            // Pin the new baseline so the next sync's dirty-check uses it.
-            try {
-                SkillSourceStore sources = new SkillSourceStore(SkillStore.defaultStore());
-                SkillSource old = sources.read(skillName).orElse(null);
-                if (old != null) {
-                    // Preserve the original gitRef — sync moved HEAD but
-                    // the branch/tag we're tracking didn't change.
-                    sources.write(new SkillSource(
-                            old.name(), old.version(), old.kind(), old.origin(),
-                            GitOps.headHash(storeDir),
-                            old.gitRef(),
-                            java.time.OffsetDateTime.now(java.time.ZoneOffset.UTC).toString()));
-                }
-            } catch (Exception e) {
-                Log.warn("merged ok but could not refresh source record: %s", e.getMessage());
+        if (!outcome.ok()) {
+            if (!outcome.conflictedFiles().isEmpty()) {
+                logConflict(skillName, storeDir, outcome.conflictedFiles());
+                tryAddError(sources, skillName, SkillSource.ErrorKind.MERGE_CONFLICT,
+                        "merge conflict against " + upstream + " " + ref);
+                return 8;
             }
-            return 0;
+            GitOps.mergeAbort(storeDir);
+            GitOps.resetHard(storeDir, preHead);
+            if (stashed) GitOps.stashPop(storeDir);
+            return 1;
         }
-        if (!outcome.conflictedFiles().isEmpty()) {
-            Log.error("%s: merge has conflicts in %d file(s):", skillName, outcome.conflictedFiles().size());
-            for (String f : outcome.conflictedFiles()) {
-                System.err.println("    " + f);
-            }
-            System.err.println();
-            System.err.println("Resolve in " + storeDir + ", then `git commit` to finish, or");
-            System.err.println("`git merge --abort` to back out.");
+
+        if (stashed && !GitOps.stashPop(storeDir)) {
+            // Pop conflict — local edits collided with merged content. Stash entry
+            // stays at stash@{0} so the user can finish the merge by hand.
+            List<String> conflicted = GitOps.unmergedFiles(storeDir);
+            logConflict(skillName, storeDir, conflicted);
+            tryAddError(sources, skillName, SkillSource.ErrorKind.MERGE_CONFLICT,
+                    "stash pop conflict after merging " + upstream + " " + ref
+                            + " — local changes preserved at stash@{0}");
             return 8;
         }
-        Log.error("git merge failed (no conflict files reported): %s", outcome.log());
-        return 1;
+
+        Log.ok("%s: merged %s", skillName, fetchedHash.substring(0, Math.min(7, fetchedHash.length())));
+        try {
+            sources.read(skillName).ifPresent(old -> {
+                try { sources.write(old.withGitMoved(GitOps.headHash(storeDir), SkillSourceStore.nowIso())); }
+                catch (IOException e) { Log.warn("could not refresh source record for %s: %s", skillName, e.getMessage()); }
+            });
+            sources.clearError(skillName, SkillSource.ErrorKind.MERGE_CONFLICT);
+        } catch (Exception e) {
+            Log.warn("could not refresh source record for %s: %s", skillName, e.getMessage());
+        }
+        return 0;
+    }
+
+    private static void logConflict(String skillName, Path storeDir, List<String> conflicted) {
+        Log.error("%s: merge conflict in %d file(s):", skillName, conflicted.size());
+        for (String f : conflicted) System.err.println("    " + f);
+        System.err.println();
+        System.err.println("Resolve in " + storeDir + ", then `git add` + `git commit`,");
+        System.err.println("or `git merge --abort` (and `git stash drop` if applicable) to back out.");
+    }
+
+    private static void tryAddError(SkillSourceStore sources, String skillName,
+                                    SkillSource.ErrorKind kind, String message) {
+        try { sources.addError(skillName, kind, message); }
+        catch (IOException e) { Log.warn("could not record error for %s: %s", skillName, e.getMessage()); }
     }
 }

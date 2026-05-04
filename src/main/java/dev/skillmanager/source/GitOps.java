@@ -8,16 +8,10 @@ import java.nio.file.Path;
 import java.util.List;
 
 /**
- * Thin shell-out wrapper around {@code git} for the operations the
- * skill-manager source-tracking flow needs. Uses ProcessBuilder rather
- * than JGit because (a) we already shell out for {@code git diff
- * --no-index} elsewhere, (b) JGit has quirks around fetching from a
- * filesystem path with no upstream branch, and (c) the porcelain
- * commands here are stable across git versions.
- *
- * <p>Every method takes the working directory of the git repo as its
- * first argument. Callers should check {@link #isAvailable()} once at
- * startup and {@link #isGitRepo(Path)} per-skill before any other call.
+ * Shell-out wrapper around {@code git} for the source-tracking flow.
+ * ProcessBuilder rather than JGit because we already shell out for
+ * {@code git diff --no-index} elsewhere and JGit has quirks around
+ * filesystem-path remotes and stash semantics.
  */
 public final class GitOps {
 
@@ -31,53 +25,28 @@ public final class GitOps {
         return Files.isDirectory(dir.resolve(".git"));
     }
 
-    /** Current HEAD commit, or null if the repo is empty / read fails. */
     public static String headHash(Path dir) {
         Result r = run(dir, List.of("git", "rev-parse", "HEAD"));
         return r.exit == 0 ? r.stdout.trim() : null;
     }
 
-    /** Origin URL, or null if no origin remote is configured. */
     public static String originUrl(Path dir) {
         Result r = run(dir, List.of("git", "remote", "get-url", "origin"));
         return r.exit == 0 ? r.stdout.trim() : null;
     }
 
     /**
-     * Detect the install-time ref to track for {@code sync --git-latest}.
-     *
-     * <ul>
-     *   <li>On a named branch (the common case for an unspecified-ref
-     *       install or a {@code --branch} clone): returns the branch
-     *       name (e.g. {@code "main"}).</li>
-     *   <li>Detached HEAD on a tagged commit: returns the tag name
-     *       (e.g. {@code "v1.0.0"}). Sync against a tag is a no-op,
-     *       which preserves version pinning.</li>
-     *   <li>Detached HEAD on a sha with no matching tag: returns null
-     *       — the caller can decide whether to fall back to
-     *       {@code "HEAD"} (the remote's default branch) or refuse.</li>
-     * </ul>
+     * Branch name (named branch), tag name (detached HEAD on a tag), or null
+     * (detached HEAD on a sha). Drives {@code sync --git-latest}.
      */
     public static String detectInstallRef(Path dir) {
-        // Branch: succeeds when on a real branch, fails on detached HEAD.
         Result branch = run(dir, List.of("git", "symbolic-ref", "--short", "--quiet", "HEAD"));
-        if (branch.exit == 0) {
-            String b = branch.stdout.trim();
-            if (!b.isBlank()) return b;
-        }
-        // Tag: only an exact-match tag points at HEAD (annotated or lightweight).
+        if (branch.exit == 0 && !branch.stdout.trim().isBlank()) return branch.stdout.trim();
         Result tag = run(dir, List.of("git", "describe", "--tags", "--exact-match", "HEAD"));
-        if (tag.exit == 0) {
-            String t = tag.stdout.trim();
-            if (!t.isBlank()) return t;
-        }
+        if (tag.exit == 0 && !tag.stdout.trim().isBlank()) return tag.stdout.trim();
         return null;
     }
 
-    /**
-     * Set origin to {@code url}. Adds the remote if missing, updates it
-     * if present. Idempotent.
-     */
     public static boolean setOrigin(Path dir, String url) {
         if (originUrl(dir) != null) {
             return run(dir, List.of("git", "remote", "set-url", "origin", url)).exit == 0;
@@ -85,38 +54,11 @@ public final class GitOps {
         return run(dir, List.of("git", "remote", "add", "origin", url)).exit == 0;
     }
 
-    /**
-     * Commit any uncommitted (staged + unstaged + untracked) changes
-     * onto HEAD as a single commit with {@code message}. Returns the
-     * new HEAD on success, null on failure or if there was nothing to
-     * commit. Configures user.name / user.email for this one invocation
-     * so empty environments (CI runners with no global git identity)
-     * still get a valid commit.
-     */
-    public static String commitWorkingChanges(Path dir, String message) {
-        if (porcelainStatus(dir).isBlank()) return null;
-        if (run(dir, List.of("git", "add", "-A")).exit != 0) return null;
-        Result commit = run(dir, List.of("git",
-                "-c", "user.email=skill-manager@localhost",
-                "-c", "user.name=skill-manager",
-                "commit", "--quiet", "-m", message));
-        return commit.exit == 0 ? headHash(dir) : null;
-    }
-
-    /**
-     * {@code git status --porcelain} output. Empty string means the
-     * working tree is clean (no staged, unstaged, or untracked changes).
-     */
     public static String porcelainStatus(Path dir) {
         Result r = run(dir, List.of("git", "status", "--porcelain"));
         return r.exit == 0 ? r.stdout : "";
     }
 
-    /**
-     * {@code true} when the working tree has staged / unstaged / untracked
-     * changes <i>or</i> HEAD has advanced past {@code baselineHash}.
-     * Either signal indicates user-side edits a sync would clobber.
-     */
     public static boolean isDirty(Path dir, String baselineHash) {
         if (!porcelainStatus(dir).isBlank()) return true;
         if (baselineHash == null || baselineHash.isBlank()) return false;
@@ -124,30 +66,56 @@ public final class GitOps {
         return head != null && !head.equals(baselineHash);
     }
 
+    /** Files left in unmerged ({@code UU}) state after a failed merge or stash pop. */
+    public static List<String> unmergedFiles(Path dir) {
+        Result r = run(dir, List.of("git", "diff", "--name-only", "--diff-filter=U"));
+        if (r.exit != 0 || r.stdout.isBlank()) return List.of();
+        return List.of(r.stdout.trim().split("\\r?\\n"));
+    }
+
     /**
-     * Fetch the {@code HEAD} of {@code remote} (a URL, a path, or a
-     * configured remote name) into {@code FETCH_HEAD}. Returns the
-     * fetched commit hash, or null on failure.
+     * {@code git stash push --include-untracked}. Returns true if anything was
+     * stashed (working tree had changes), false if the tree was clean (nothing
+     * to do) or the stash failed.
      */
+    public static boolean stashAll(Path dir, String message) {
+        if (porcelainStatus(dir).isBlank()) return false;
+        Result r = run(dir, List.of("git",
+                "-c", "user.email=skill-manager@localhost",
+                "-c", "user.name=skill-manager",
+                "stash", "push", "--include-untracked", "-m", message));
+        return r.exit == 0;
+    }
+
+    /**
+     * {@code git stash pop}. Returns true on clean pop, false on conflict (the
+     * stash entry is preserved at {@code stash@{0}} so the user can resolve and
+     * re-pop manually, which is the expected UX for local-vs-upstream collisions).
+     */
+    public static boolean stashPop(Path dir) {
+        return run(dir, List.of("git", "stash", "pop")).exit == 0;
+    }
+
+    public static boolean resetHard(Path dir, String ref) {
+        return run(dir, List.of("git", "reset", "--hard", "--quiet", ref)).exit == 0;
+    }
+
+    public static boolean mergeAbort(Path dir) {
+        return run(dir, List.of("git", "merge", "--abort")).exit == 0;
+    }
+
     public static String fetchHead(Path dir, String remote) {
         return fetchRef(dir, remote, "HEAD");
     }
 
     /**
-     * Fetch a specific {@code ref} (HEAD, a branch, a tag, or a sha)
-     * from {@code remote} into {@code FETCH_HEAD}. Returns the
-     * resolved commit hash, or null on failure.
-     *
-     * <p>Modern git supports fetching by sha when the server has
-     * {@code uploadpack.allowAnySHA1InWant=true} (github does); for
-     * other servers a branch/tag name is the safer ref.
+     * Fetches {@code ref} from {@code remote} into FETCH_HEAD. Falls back to a
+     * full fetch + rev-parse when the remote rejects fetch-by-sha (older git
+     * servers without {@code uploadpack.allowAnySHA1InWant}).
      */
     public static String fetchRef(Path dir, String remote, String ref) {
         Result fetch = run(dir, List.of("git", "fetch", "--no-tags", "--quiet", remote, ref));
         if (fetch.exit != 0) {
-            // Fall back to a full fetch then resolve — useful when the
-            // remote rejects fetch-by-sha and the sha is reachable from
-            // the default branch we'd otherwise get on a plain fetch.
             Result fullFetch = run(dir, List.of("git", "fetch", "--no-tags", "--quiet", remote));
             if (fullFetch.exit != 0) return null;
             Result rev = run(dir, List.of("git", "rev-parse", ref));
@@ -158,31 +126,32 @@ public final class GitOps {
     }
 
     /**
-     * Attempt a {@code git merge --no-edit FETCH_HEAD}. On success,
-     * {@link MergeOutcome#ok} is true. On a conflict, {@code ok} is
-     * false and {@link MergeOutcome#conflictedFiles} lists the files
-     * with merge markers; the working tree is left in the conflict
-     * state for the user to resolve. On any other failure (no upstream,
-     * detached HEAD, etc.) we abort with {@code git merge --abort}.
+     * {@code git ls-remote --symref <remote> HEAD} → the remote's default branch
+     * name (e.g. {@code "main"}). Used as the implicit ref when an install was
+     * sha-detached and didn't record a {@code gitRef}.
      */
-    public static MergeOutcome mergeFetchHead(Path dir) {
-        Result merge = run(dir, List.of("git", "merge", "--no-edit", "FETCH_HEAD"));
-        if (merge.exit == 0) {
-            return new MergeOutcome(true, List.of(), merge.stdout + merge.stderr);
+    public static String remoteDefaultBranch(Path dir, String remote) {
+        Result r = run(dir, List.of("git", "ls-remote", "--symref", remote, "HEAD"));
+        if (r.exit != 0 || r.stdout.isBlank()) return null;
+        for (String line : r.stdout.split("\\r?\\n")) {
+            if (line.startsWith("ref: ")) {
+                int tab = line.indexOf('\t');
+                String full = (tab > 0 ? line.substring("ref: ".length(), tab) : line.substring("ref: ".length())).trim();
+                if (full.startsWith("refs/heads/")) return full.substring("refs/heads/".length());
+                return full;
+            }
         }
-        Result conflicts = run(dir, List.of("git", "diff", "--name-only", "--diff-filter=U"));
-        List<String> conflicted = conflicts.exit == 0 && !conflicts.stdout.isBlank()
-                ? List.of(conflicts.stdout.trim().split("\\r?\\n"))
-                : List.of();
-        if (conflicted.isEmpty()) {
-            // Non-conflict failure (e.g. dirty working tree, no upstream).
-            // Leave nothing in a half-merged state.
-            run(dir, List.of("git", "merge", "--abort"));
-        }
-        return new MergeOutcome(false, conflicted, merge.stdout + merge.stderr);
+        return null;
     }
 
-    /** Result of {@link #mergeFetchHead}. */
+    public static MergeOutcome mergeFetchHead(Path dir) {
+        Result merge = run(dir, List.of("git", "merge", "--no-edit", "FETCH_HEAD"));
+        if (merge.exit == 0) return new MergeOutcome(true, List.of(), merge.stdout);
+        List<String> conflicted = unmergedFiles(dir);
+        if (conflicted.isEmpty()) mergeAbort(dir);
+        return new MergeOutcome(false, conflicted, merge.stdout);
+    }
+
     public record MergeOutcome(boolean ok, List<String> conflictedFiles, String log) {}
 
     private record Result(int exit, String stdout, String stderr) {}
