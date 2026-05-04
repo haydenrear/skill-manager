@@ -21,14 +21,15 @@ import java.util.Set;
 import java.util.UUID;
 
 /**
- * Builds the {@link Program} that runs after install / sync / upgrade have
- * mutated the store. Pure: no side effects, just produces effect data the
- * caller hands to an interpreter.
+ * Builds the {@link Program} that runs after install / sync / upgrade
+ * have mutated the store. Pure: no side effects, just produces effect
+ * data the caller hands to an interpreter.
  *
- * <p>The {@code preMcpDeps} map is the pre-mutation snapshot of each
- * skill's MCP dep names — diffed against the live state to emit
- * {@link SkillEffect.UnregisterMcpOrphan} effects for any server no
- * surviving skill still declares.
+ * <p>The pre-mutation MCP-dep snapshot is captured by a
+ * {@link SkillEffect.SnapshotMcpDeps} effect at the start of the program
+ * (writes into {@link dev.skillmanager.effects.EffectContext#preMcpDeps()})
+ * and consumed by a single {@link SkillEffect.UnregisterMcpOrphans} effect
+ * at the end — no preMcpDeps argument plumbed through the use case.
  */
 public final class PostUpdateUseCase {
 
@@ -45,22 +46,18 @@ public final class PostUpdateUseCase {
 
     public static Program<Report> buildProgram(SkillStore store,
                                                GatewayConfig gw,
-                                               Map<String, Set<String>> preMcpDeps,
                                                boolean withMcp,
                                                boolean withAgents) throws IOException {
         List<Skill> live = store.listInstalled();
         List<SkillEffect> effects = new ArrayList<>();
 
+        if (withMcp) effects.add(new SkillEffect.SnapshotMcpDeps());
         effects.add(new SkillEffect.ResolveTransitives(live));
         effects.add(new SkillEffect.InstallTools(live));
         effects.add(new SkillEffect.InstallCli(live));
         if (withMcp) effects.add(new SkillEffect.RegisterMcp(live, gw));
         if (withAgents) effects.add(new SkillEffect.SyncAgents(live, gw));
-        if (withMcp) {
-            for (String orphan : computeOrphans(preMcpDeps, live)) {
-                effects.add(new SkillEffect.UnregisterMcpOrphan(orphan, gw));
-            }
-        }
+        if (withMcp) effects.add(new SkillEffect.UnregisterMcpOrphans(gw));
 
         return new Program<>("post-update-" + UUID.randomUUID(), effects, PostUpdateUseCase::decode);
     }
@@ -84,6 +81,7 @@ public final class PostUpdateUseCase {
         return new Report(errorCount, agentChanges, orphans);
     }
 
+    /** Helper used by the {@link SkillEffect.UnregisterMcpOrphans} handler. */
     public static List<String> computeOrphans(Map<String, Set<String>> preMcpDeps, List<Skill> postSkills) {
         Set<String> stillReferenced = new HashSet<>();
         for (Skill s : postSkills) {
@@ -98,6 +96,7 @@ public final class PostUpdateUseCase {
         return orphans;
     }
 
+    /** Helper used by the {@link SkillEffect.SnapshotMcpDeps} handler. */
     public static Map<String, Set<String>> snapshotMcpDeps(SkillStore store) throws IOException {
         Map<String, Set<String>> snapshot = new LinkedHashMap<>();
         for (Skill s : store.listInstalled()) {

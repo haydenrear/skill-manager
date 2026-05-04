@@ -24,23 +24,18 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * Builds the {@link Program} {@code install} runs after the resolver has
- * staged the dep graph. Every step is an effect with its own receipt:
+ * Builds the install {@link Program}. Every side effect is its own
+ * effect — pre-flight (registry override, gateway up), pre-condition
+ * checks ({@link SkillEffect.RejectIfAlreadyInstalled}), plan-build
+ * ({@link SkillEffect.BuildInstallPlan}), commit, audit, provenance,
+ * transitive resolution, plan expansion + execution
+ * ({@link SkillEffect.RunInstallPlan}), agent sync, and orphan
+ * unregister.
  *
- * <ol>
- *   <li>{@link SkillEffect.ConfigureRegistry} — persist a {@code --registry} override (no-op if blank).</li>
- *   <li>{@link SkillEffect.EnsureGateway} — start the local gateway if not already running.</li>
- *   <li>{@link SkillEffect.CommitSkillsToStore} — move staged skill dirs into the store; rolls back partials on failure.</li>
- *   <li>{@link SkillEffect.RecordAuditPlan} — append the {@code "install"} audit entry.</li>
- *   <li>{@link SkillEffect.RecordSourceProvenance} — write {@code sources/<name>.json} for the committed graph.</li>
- *   <li>{@link SkillEffect.ResolveTransitives} — install any unmet {@code skill_references}.</li>
- *   <li>{@link SkillEffect.InstallTools} → {@link SkillEffect.InstallCli}.</li>
- *   <li>{@link SkillEffect.RegisterMcp} → {@link SkillEffect.SyncAgents}.</li>
- * </ol>
- *
- * <p>Dry-run drops the commit / audit / provenance effects so nothing
- * touches the store, but keeps the post-update tail so the user sees the
- * full effect chain.
+ * <p>{@link SkillEffect.CleanupResolvedGraph} is wired into
+ * {@link Program#alwaysAfter()} so the staged temp dirs always get
+ * removed — even when {@link SkillEffect.BuildInstallPlan} or any
+ * earlier effect halts the program.
  */
 public final class InstallUseCase {
 
@@ -56,12 +51,9 @@ public final class InstallUseCase {
     }
 
     /**
-     * Build the {@link InstallPlan} from {@code graph} — owns the
-     * {@link Policy}, {@link CliLock}, and {@link PackageManagerRuntime}
-     * wiring so commands don't construct them inline. The returned plan
-     * may be {@linkplain InstallPlan#blocked() blocked}; callers should
-     * print it ({@link dev.skillmanager.plan.PlanPrinter}) and refuse to
-     * proceed before passing it to {@link #buildProgram}.
+     * Helper still used by the {@link SkillEffect.BuildInstallPlan} handler
+     * — owns the {@link Policy} / {@link CliLock} / {@link
+     * PackageManagerRuntime} wiring.
      */
     public static InstallPlan buildPlan(SkillStore store, ResolvedGraph graph) throws IOException {
         Policy policy = Policy.load(store);
@@ -72,26 +64,35 @@ public final class InstallUseCase {
     }
 
     public static Program<Report> buildProgram(GatewayConfig gw, String registryOverride,
-                                               ResolvedGraph graph, InstallPlan plan,
-                                               boolean dryRun) {
+                                               ResolvedGraph graph, boolean dryRun) {
         List<SkillEffect> effects = new ArrayList<>(
                 ResolveContextUseCase.preflight(gw, registryOverride, !dryRun));
+        effects.add(new SkillEffect.SnapshotMcpDeps());
+
+        // The "remove first" guard for the top-level skill — was inline in
+        // InstallCommand.
+        String top = graph.resolved().isEmpty() ? null : graph.resolved().get(0).name();
+        if (top != null) effects.add(new SkillEffect.RejectIfAlreadyInstalled(top));
+
+        // Plan-build at exec time so handlers see fresh state.
+        effects.add(new SkillEffect.BuildInstallPlan(graph));
+
         if (!dryRun) {
             effects.add(new SkillEffect.CommitSkillsToStore(graph));
-            effects.add(new SkillEffect.RecordAuditPlan(plan, "install"));
+            effects.add(new SkillEffect.RecordAuditPlan("install"));
             effects.add(new SkillEffect.RecordSourceProvenance(graph));
+            effects.add(new SkillEffect.PrintInstalledSummary(graph));
         }
 
         List<Skill> skills = graph.skills();
         effects.add(new SkillEffect.ResolveTransitives(skills));
-        // Expand the plan into per-action effects (one EnsureTool per unique
-        // tool, one RunCliInstall per CLI dep, one RegisterMcpServer per MCP
-        // dep) — finer-grained receipts than the bulk InstallTools / InstallCli
-        // / RegisterMcp effects, plus a SetupPackageManagerRuntime up front.
-        effects.addAll(PlanExpander.expand(plan, gw));
+        effects.add(new SkillEffect.RunInstallPlan(gw));
         effects.add(new SkillEffect.SyncAgents(skills, gw));
+        effects.add(new SkillEffect.UnregisterMcpOrphans(gw));
 
-        return new Program<>("install-" + UUID.randomUUID(), effects, InstallUseCase::decode);
+        Program<Report> p = new Program<>("install-" + UUID.randomUUID(), effects, InstallUseCase::decode);
+        // Always cleanup staged temp dirs, even if the program halted.
+        return p.withFinally(new SkillEffect.CleanupResolvedGraph(graph));
     }
 
     private static Report decode(List<EffectReceipt> receipts) {

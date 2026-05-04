@@ -7,8 +7,6 @@ import dev.skillmanager.effects.LiveInterpreter;
 import dev.skillmanager.effects.Program;
 import dev.skillmanager.effects.ProgramInterpreter;
 import dev.skillmanager.mcp.GatewayConfig;
-import dev.skillmanager.plan.InstallPlan;
-import dev.skillmanager.plan.PlanPrinter;
 import dev.skillmanager.policy.Policy;
 import dev.skillmanager.resolve.ResolvedGraph;
 import dev.skillmanager.resolve.Resolver;
@@ -21,11 +19,12 @@ import picocli.CommandLine.Parameters;
 import java.util.concurrent.Callable;
 
 /**
- * {@code skill-manager install <source>} resolves and stages the dep graph,
- * then drives an {@link InstallUseCase} program — every side effect (registry
- * config, gateway start, store commit, audit log, source provenance,
- * transitives, tools/CLI/MCP/agents) is its own effect with a receipt and
- * failure mode the interpreter can act on.
+ * {@code skill-manager install <source>} resolves and stages the dep
+ * graph, then drives an {@link InstallUseCase} program. Every side
+ * effect — registry override, gateway start, pre-condition checks,
+ * plan build, commit, audit, source provenance, transitive resolution,
+ * tool/CLI/MCP per-action effects, agent sync, orphan unregister, and
+ * staged-graph cleanup — is its own effect with a receipt.
  */
 @Command(
         name = "install",
@@ -53,8 +52,8 @@ public final class InstallCommand implements Callable<Integer> {
     public String registryUrl;
 
     @Option(names = "--dry-run",
-            description = "Resolve, plan, and print the post-install effects without committing the "
-                    + "skill to the store, contacting the gateway, or running side effects.")
+            description = "Resolve, plan, and print the install effects without committing to the "
+                    + "store, contacting the gateway, or running side effects.")
     public boolean dryRun;
 
     @Override
@@ -66,49 +65,23 @@ public final class InstallCommand implements Callable<Integer> {
         Log.step("resolving %s", source);
         Resolver resolver = new Resolver(store);
         ResolvedGraph graph = resolver.resolve(source, version);
-        try {
-            var resolvedList = graph.resolved();
-            String top = resolvedList.isEmpty() ? null : resolvedList.get(0).name();
-            if (top != null && store.contains(top)) {
-                Log.error("skill '%s' is already installed at %s — remove it first (skill-manager remove %s)",
-                        top, store.skillDir(top), top);
-                return 3;
-            }
 
-            // InstallUseCase owns the Policy / CliLock / PackageManagerRuntime
-            // wiring; the command only needs the resolved graph + store.
-            InstallPlan plan = InstallUseCase.buildPlan(store, graph);
-            PlanPrinter.print(plan);
-            if (plan.blocked()) {
-                Log.error("plan has blocked items — see policy at %s", store.root().resolve("policy.toml"));
-                return 2;
-            }
+        // Resolve gateway URL — the Program's EnsureGateway effect handles
+        // the actual probe + start + persist; gateway resolution itself
+        // doesn't side-effect.
+        GatewayConfig gw = GatewayConfig.resolve(store, null);
 
-            // Resolve the gateway BEFORE building the program so EnsureGateway
-            // can target the right URL even when a registry override is also
-            // pending (registry is persisted via the program effect; gateway
-            // resolution doesn't depend on it).
-            GatewayConfig gw = GatewayConfig.resolve(store, null);
+        Program<InstallUseCase.Report> program = InstallUseCase.buildProgram(
+                gw, registryUrl, graph, dryRun);
+        ProgramInterpreter interpreter = dryRun ? new DryRunInterpreter() : new LiveInterpreter(store, gw);
+        InstallUseCase.Report report = interpreter.run(program);
 
-            Program<InstallUseCase.Report> program = InstallUseCase.buildProgram(
-                    gw, registryUrl, graph, plan, dryRun);
-            ProgramInterpreter interpreter = dryRun ? new DryRunInterpreter() : new LiveInterpreter(store, gw);
-            InstallUseCase.Report report = interpreter.run(program);
+        if (dryRun) return 0;
 
-            if (dryRun) return 0;
-
-            for (var r : graph.resolved()) {
-                System.out.println("INSTALLED: " + r.name()
-                        + (r.version() == null ? "" : "@" + r.version())
-                        + " -> " + store.skillDir(r.name()));
-            }
-            PostUpdateUseCase.printAgentConfigSummary(
-                    new PostUpdateUseCase.Report(report.errorCount(),
-                            report.agentConfigChanges(), report.orphansUnregistered()),
-                    gw.mcpEndpoint().toString());
-            return report.errorCount() == 0 ? 0 : 4;
-        } finally {
-            graph.cleanup();
-        }
+        PostUpdateUseCase.printAgentConfigSummary(
+                new PostUpdateUseCase.Report(report.errorCount(),
+                        report.agentConfigChanges(), report.orphansUnregistered()),
+                gw.mcpEndpoint().toString());
+        return report.errorCount() == 0 ? 0 : 4;
     }
 }

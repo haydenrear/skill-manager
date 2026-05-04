@@ -13,27 +13,44 @@ import dev.skillmanager.source.SkillSourceStore;
 import dev.skillmanager.store.SkillStore;
 
 import java.io.IOException;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 
 /**
- * One program for both {@code sync} and {@code upgrade}: a {@link
- * SkillEffect.SyncGit} per target, then the same post-update tail as
- * {@link PostUpdateUseCase} (resolve transitives, install tools/CLI, register
- * MCP, sync agents, unregister orphans).
+ * One program for both {@code sync} and {@code upgrade}: a per-target
+ * effect (either {@link SkillEffect.SyncGit} or {@link
+ * SkillEffect.SyncFromLocalDir}), then the post-update tail (transitives,
+ * tools/CLI/MCP, agents) plus orphan-detection.
  *
- * <p>The use case is install-source-aware at plan time — for each target we
- * read the {@link SkillSource} once and bake the {@link
- * SkillSource.InstallSource} into the {@link SkillEffect.SyncGit} record so
- * dry-run output shows which routing arm runs for each skill.
+ * <p>{@code preMcpDeps} is captured by an in-program {@link
+ * SkillEffect.SnapshotMcpDeps} effect — no snapshot argument plumbed
+ * through. Per-skill {@link SkillSource.InstallSource} is read at
+ * use-case-build time and baked into each {@link SkillEffect.SyncGit}
+ * record so dry-run output shows the routing arm.
  */
 public final class SyncUseCase {
 
     private SyncUseCase() {}
+
+    /** All non-target sync flags as one record so the buildProgram signature stays small. */
+    public record Options(
+            String registryOverride,
+            boolean gitLatest,
+            boolean merge,
+            boolean withMcp,
+            boolean withAgents,
+            boolean yesForFromDir) {}
+
+    /** A single sync target — either a git fetch+merge against origin, or apply from a local dir. */
+    public sealed interface Target {
+        String skillName();
+        record Git(String skillName) implements Target {}
+        record FromDir(String skillName, Path dir) implements Target {}
+    }
 
     public record Report(
             int worstRc,
@@ -50,41 +67,39 @@ public final class SyncUseCase {
 
     public static Program<Report> buildProgram(SkillStore store,
                                                GatewayConfig gw,
-                                               String registryOverride,
-                                               List<String> targetNames,
-                                               boolean gitLatest,
-                                               boolean merge,
-                                               boolean withMcp,
-                                               boolean withAgents,
-                                               Map<String, Set<String>> preMcpDeps) throws IOException {
+                                               Options options,
+                                               List<Target> targets) throws IOException {
         SkillSourceStore sources = new SkillSourceStore(store);
         List<SkillEffect> effects = new ArrayList<>(
-                ResolveContextUseCase.preflight(gw, registryOverride, withMcp));
+                ResolveContextUseCase.preflight(gw, options.registryOverride(), options.withMcp()));
 
-        for (String name : targetNames) {
-            SkillSource src = sources.read(name).orElse(null);
-            SkillSource.InstallSource is = src != null && src.installSource() != null
-                    ? src.installSource()
-                    : SkillSource.InstallSource.UNKNOWN;
-            effects.add(new SkillEffect.SyncGit(name, is, gitLatest, merge));
+        if (options.withMcp()) effects.add(new SkillEffect.SnapshotMcpDeps());
+
+        for (Target t : targets) {
+            switch (t) {
+                case Target.Git g -> {
+                    SkillSource src = sources.read(g.skillName()).orElse(null);
+                    SkillSource.InstallSource is = src != null && src.installSource() != null
+                            ? src.installSource()
+                            : SkillSource.InstallSource.UNKNOWN;
+                    effects.add(new SkillEffect.SyncGit(
+                            g.skillName(), is, options.gitLatest(), options.merge()));
+                }
+                case Target.FromDir f -> effects.add(new SkillEffect.SyncFromLocalDir(
+                        f.skillName(), f.dir(), options.merge(), options.yesForFromDir()));
+            }
         }
 
-        // Post-update tail. Read live skills here — handlers will see the
-        // post-merge content because each SyncGit handler invalidates the
-        // source cache, but the live skill list is read at plan time.
-        // Handlers that take List<Skill> walk the in-memory list — install/CLI
-        // installers re-read manifests from disk inside their plan builder.
+        // Post-update tail. Read live skills here as informational; the
+        // bulk install/CLI/MCP handlers re-read manifests from disk inside
+        // their plan builder, so post-merge state is what runs.
         List<Skill> live = store.listInstalled();
         effects.add(new SkillEffect.ResolveTransitives(live));
         effects.add(new SkillEffect.InstallTools(live));
         effects.add(new SkillEffect.InstallCli(live));
-        if (withMcp) effects.add(new SkillEffect.RegisterMcp(live, gw));
-        if (withAgents) effects.add(new SkillEffect.SyncAgents(live, gw));
-        if (withMcp) {
-            for (String orphan : PostUpdateUseCase.computeOrphans(preMcpDeps, live)) {
-                effects.add(new SkillEffect.UnregisterMcpOrphan(orphan, gw));
-            }
-        }
+        if (options.withMcp()) effects.add(new SkillEffect.RegisterMcp(live, gw));
+        if (options.withAgents()) effects.add(new SkillEffect.SyncAgents(live, gw));
+        if (options.withMcp()) effects.add(new SkillEffect.UnregisterMcpOrphans(gw));
 
         return new Program<>("sync-" + UUID.randomUUID(), effects, SyncUseCase::decode);
     }
@@ -99,7 +114,8 @@ public final class SyncUseCase {
 
         for (EffectReceipt r : receipts) {
             if (r.status() == EffectStatus.FAILED) errorCount++;
-            if (r.effect() instanceof SkillEffect.SyncGit
+            if ((r.effect() instanceof SkillEffect.SyncGit
+                    || r.effect() instanceof SkillEffect.SyncFromLocalDir)
                     && (r.status() == EffectStatus.PARTIAL || r.status() == EffectStatus.FAILED)) {
                 errorCount++;
             }

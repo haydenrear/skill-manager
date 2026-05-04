@@ -1,6 +1,7 @@
 package dev.skillmanager.effects;
 
 import dev.skillmanager.mcp.GatewayConfig;
+import dev.skillmanager.plan.InstallPlan;
 import dev.skillmanager.source.SkillSource;
 import dev.skillmanager.source.SkillSourceStore;
 import dev.skillmanager.store.SkillStore;
@@ -9,6 +10,7 @@ import java.io.IOException;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * Thread-through state for one program execution: the store + gateway, and a
@@ -25,6 +27,23 @@ public final class EffectContext {
     private final GatewayConfig gateway;
     private final SkillSourceStore sourceStore;
     private Map<String, SkillSource> cache;
+
+    /**
+     * Plan slot — written by the {@link SkillEffect.BuildInstallPlan}
+     * handler, read by every later effect that needs the plan
+     * ({@link SkillEffect.RecordAuditPlan},
+     * {@link SkillEffect.RunInstallPlan}). Lets us build the plan at exec
+     * time (post-merge for sync) without passing it as an effect field.
+     */
+    private InstallPlan plan;
+
+    /**
+     * Pre-mutation snapshot of every installed skill's MCP-dep names.
+     * Captured by {@link SkillEffect.SnapshotMcpDeps} before any effect
+     * mutates the store; consumed by orphan-detection effects after
+     * mutations are done.
+     */
+    private Map<String, Set<String>> preMcpDeps;
 
     public EffectContext(SkillStore store, GatewayConfig gateway) {
         this.store = store;
@@ -46,6 +65,14 @@ public final class EffectContext {
     }
 
     public void invalidate() { cache = null; }
+
+    public void setPlan(InstallPlan plan) { this.plan = plan; }
+    public InstallPlan plan() { return plan; }
+
+    public void setPreMcpDeps(Map<String, Set<String>> snapshot) { this.preMcpDeps = snapshot; }
+    public Map<String, Set<String>> preMcpDeps() {
+        return preMcpDeps == null ? Map.of() : preMcpDeps;
+    }
 
     public void addError(String skill, SkillSource.ErrorKind kind, String message) throws IOException {
         sourceStore.addError(skill, kind, message);

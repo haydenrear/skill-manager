@@ -62,12 +62,31 @@ public final class LiveInterpreter implements ProgramInterpreter {
      */
     public <R> R runWithContext(Program<R> program, EffectContext ctx) {
         List<EffectReceipt> receipts = new ArrayList<>();
+        boolean halted = false;
         for (SkillEffect effect : program.effects()) {
+            if (halted) {
+                receipts.add(EffectReceipt.skipped(effect, "halted"));
+                continue;
+            }
+            EffectReceipt r;
+            try {
+                r = execute(effect, ctx);
+            } catch (Exception ex) {
+                Log.warn("effect %s failed: %s", effect.getClass().getSimpleName(), ex.getMessage());
+                r = EffectReceipt.failed(effect, ex.getMessage());
+            }
+            receipts.add(r);
+            if (r.status() == EffectStatus.HALTED) halted = true;
+        }
+        // alwaysAfter runs unconditionally — for cleanup that must happen
+        // even when the main effect chain halted (e.g. CleanupResolvedGraph).
+        for (SkillEffect effect : program.alwaysAfter()) {
             try {
                 receipts.add(execute(effect, ctx));
-            } catch (Exception e) {
-                Log.warn("effect %s failed: %s", effect.getClass().getSimpleName(), e.getMessage());
-                receipts.add(EffectReceipt.failed(effect, e.getMessage()));
+            } catch (Exception ex) {
+                Log.warn("cleanup effect %s failed: %s",
+                        effect.getClass().getSimpleName(), ex.getMessage());
+                receipts.add(EffectReceipt.failed(effect, ex.getMessage()));
             }
         }
         return program.decoder().decode(receipts);
@@ -81,6 +100,13 @@ public final class LiveInterpreter implements ProgramInterpreter {
             case SkillEffect.ConfigureGateway e -> configureGateway(e, ctx);
             case SkillEffect.SetupPackageManagerRuntime e -> setupPmRuntime(e);
             case SkillEffect.InstallPackageManager e -> installPackageManager(e);
+            case SkillEffect.SnapshotMcpDeps e -> snapshotMcpDeps(e, ctx);
+            case SkillEffect.RejectIfAlreadyInstalled e -> rejectIfInstalled(e, ctx);
+            case SkillEffect.BuildInstallPlan e -> buildInstallPlan(e, ctx);
+            case SkillEffect.RunInstallPlan e -> runInstallPlan(e, ctx);
+            case SkillEffect.CleanupResolvedGraph e -> cleanupGraph(e);
+            case SkillEffect.PrintInstalledSummary e -> printInstalledSummary(e, ctx);
+            case SkillEffect.SyncFromLocalDir e -> syncFromLocalDir(e, ctx);
             case SkillEffect.CommitSkillsToStore e -> commitSkills(e, ctx);
             case SkillEffect.RecordAuditPlan e -> recordAudit(e, ctx);
             case SkillEffect.RecordSourceProvenance e -> recordProvenance(e, ctx);
@@ -90,6 +116,7 @@ public final class LiveInterpreter implements ProgramInterpreter {
             case SkillEffect.RunCliInstall e -> runCliInstall(e, ctx);
             case SkillEffect.RegisterMcpServer e -> registerMcpServer(e, ctx);
             case SkillEffect.UnregisterMcpOrphan e -> unregisterOrphan(e);
+            case SkillEffect.UnregisterMcpOrphans e -> unregisterOrphans(e, ctx);
             case SkillEffect.SyncAgents e -> syncAgents(e, ctx);
             case SkillEffect.SyncGit e -> SyncGitHandler.run(e, ctx);
             case SkillEffect.RemoveSkillFromStore e -> removeFromStore(e, ctx);
@@ -189,8 +216,12 @@ public final class LiveInterpreter implements ProgramInterpreter {
     }
 
     private EffectReceipt recordAudit(SkillEffect.RecordAuditPlan e, EffectContext ctx) {
+        InstallPlan plan = ctx.plan();
+        if (plan == null) {
+            return EffectReceipt.skipped(e, "no plan in context (BuildInstallPlan didn't run)");
+        }
         try {
-            new dev.skillmanager.plan.AuditLog(ctx.store()).recordPlan(e.plan(), e.verb());
+            new dev.skillmanager.plan.AuditLog(ctx.store()).recordPlan(plan, e.verb());
             return EffectReceipt.ok(e, new ContextFact.AuditRecorded(e.verb()));
         } catch (Exception ex) {
             return EffectReceipt.failed(e, ex.getMessage());
@@ -269,15 +300,9 @@ public final class LiveInterpreter implements ProgramInterpreter {
             dev.skillmanager.resolve.Resolver resolver = new dev.skillmanager.resolve.Resolver(ctx.store());
             dev.skillmanager.resolve.ResolvedGraph graph = resolver.resolveAll(unmet);
             try {
-                InstallPlan plan = dev.skillmanager.app.InstallUseCase.buildPlan(ctx.store(), graph);
-                if (plan.blocked()) {
-                    facts.add(new ContextFact.TransitiveFailed("plan blocked"));
-                    return EffectReceipt.partial(e, facts, "transitive plan has blocked items");
-                }
-
                 Program<dev.skillmanager.app.InstallUseCase.Report> sub =
                         dev.skillmanager.app.InstallUseCase.buildProgram(
-                                ctx.gateway(), null, graph, plan, false);
+                                ctx.gateway(), null, graph, false);
                 dev.skillmanager.app.InstallUseCase.Report report = runWithContext(sub, ctx);
                 for (String name : report.committed()) {
                     facts.add(new ContextFact.TransitiveInstalled(name));
@@ -351,6 +376,30 @@ public final class LiveInterpreter implements ProgramInterpreter {
         return erroredCount == 0
                 ? EffectReceipt.ok(e, facts)
                 : EffectReceipt.partial(e, facts, erroredCount + " skill(s) had MCP errors");
+    }
+
+    private EffectReceipt unregisterOrphans(SkillEffect.UnregisterMcpOrphans e, EffectContext ctx) {
+        var preMcpDeps = ctx.preMcpDeps();
+        if (preMcpDeps.isEmpty()) return EffectReceipt.skipped(e, "no snapshot in context");
+        try {
+            List<String> orphans = dev.skillmanager.app.PostUpdateUseCase.computeOrphans(
+                    preMcpDeps, ctx.store().listInstalled());
+            if (orphans.isEmpty()) return EffectReceipt.ok(e);
+            List<SkillEffect> sub = new ArrayList<>();
+            for (String id : orphans) sub.add(new SkillEffect.UnregisterMcpOrphan(id, e.gateway()));
+            Program<List<ContextFact>> subProgram = new Program<>(
+                    "orphans-" + java.util.UUID.randomUUID(),
+                    sub,
+                    receipts -> {
+                        List<ContextFact> all = new ArrayList<>();
+                        for (EffectReceipt r : receipts) all.addAll(r.facts());
+                        return all;
+                    });
+            List<ContextFact> all = runWithContext(subProgram, ctx);
+            return EffectReceipt.ok(e, all);
+        } catch (Exception ex) {
+            return EffectReceipt.failed(e, ex.getMessage());
+        }
     }
 
     private EffectReceipt unregisterOrphan(SkillEffect.UnregisterMcpOrphan e) {
@@ -501,6 +550,93 @@ public final class LiveInterpreter implements ProgramInterpreter {
         String tail = slash >= 0 ? s.substring(slash + 1) : s;
         return tail.isBlank() ? null : tail;
     }
+
+    // -------------------------------------------------- pre-flight precondition checks
+
+    private EffectReceipt snapshotMcpDeps(SkillEffect.SnapshotMcpDeps e, EffectContext ctx) {
+        try {
+            ctx.setPreMcpDeps(dev.skillmanager.app.PostUpdateUseCase.snapshotMcpDeps(ctx.store()));
+            return EffectReceipt.ok(e);
+        } catch (Exception ex) {
+            return EffectReceipt.failed(e, ex.getMessage());
+        }
+    }
+
+    private EffectReceipt rejectIfInstalled(SkillEffect.RejectIfAlreadyInstalled e, EffectContext ctx) {
+        if (e.skillName() == null || e.skillName().isBlank()) return EffectReceipt.skipped(e, "no name");
+        if (ctx.store().contains(e.skillName())) {
+            Log.error("skill '%s' is already installed at %s — remove it first (skill-manager remove %s)",
+                    e.skillName(), ctx.store().skillDir(e.skillName()), e.skillName());
+            return EffectReceipt.halted(e, "already installed: " + e.skillName());
+        }
+        return EffectReceipt.ok(e);
+    }
+
+    private EffectReceipt buildInstallPlan(SkillEffect.BuildInstallPlan e, EffectContext ctx) {
+        try {
+            InstallPlan plan = dev.skillmanager.app.InstallUseCase.buildPlan(ctx.store(), e.graph());
+            dev.skillmanager.plan.PlanPrinter.print(plan);
+            ctx.setPlan(plan);
+            if (plan.blocked()) {
+                Log.error("plan has blocked items — see policy at %s",
+                        ctx.store().root().resolve("policy.toml"));
+                return EffectReceipt.halted(e, "plan has blocked items");
+            }
+            return EffectReceipt.ok(e);
+        } catch (Exception ex) {
+            return EffectReceipt.failed(e, ex.getMessage());
+        }
+    }
+
+    private EffectReceipt runInstallPlan(SkillEffect.RunInstallPlan e, EffectContext ctx) {
+        InstallPlan plan = ctx.plan();
+        if (plan == null) return EffectReceipt.skipped(e, "no plan in context");
+        List<SkillEffect> sub = dev.skillmanager.app.PlanExpander.expand(plan, e.gateway());
+        // Run as a sub-program through the same context so source-cache /
+        // error-state / plan slot stay shared. The sub-program's facts roll
+        // up into the parent receipt — decoders see them as if the plan
+        // actions had been emitted directly.
+        Program<SubResult> subProgram = new Program<>(
+                "plan-expand-" + java.util.UUID.randomUUID(),
+                sub,
+                receipts -> {
+                    List<ContextFact> all = new ArrayList<>();
+                    int failed = 0;
+                    for (EffectReceipt r : receipts) {
+                        all.addAll(r.facts());
+                        if (r.status() == EffectStatus.FAILED || r.status() == EffectStatus.PARTIAL) failed++;
+                    }
+                    return new SubResult(all, failed);
+                });
+        SubResult sr = runWithContext(subProgram, ctx);
+        return sr.failed == 0
+                ? EffectReceipt.ok(e, sr.facts)
+                : EffectReceipt.partial(e, sr.facts, sr.failed + " plan-action effect(s) failed");
+    }
+
+    private EffectReceipt cleanupGraph(SkillEffect.CleanupResolvedGraph e) {
+        try {
+            e.graph().cleanup();
+            return EffectReceipt.ok(e);
+        } catch (Exception ex) {
+            return EffectReceipt.failed(e, ex.getMessage());
+        }
+    }
+
+    private EffectReceipt printInstalledSummary(SkillEffect.PrintInstalledSummary e, EffectContext ctx) {
+        for (var r : e.graph().resolved()) {
+            System.out.println("INSTALLED: " + r.name()
+                    + (r.version() == null ? "" : "@" + r.version())
+                    + " -> " + ctx.store().skillDir(r.name()));
+        }
+        return EffectReceipt.ok(e);
+    }
+
+    private EffectReceipt syncFromLocalDir(SkillEffect.SyncFromLocalDir e, EffectContext ctx) {
+        return SyncFromLocalDirHandler.run(e, ctx);
+    }
+
+    private record SubResult(List<ContextFact> facts, int failed) {}
 
     // -------------------------------------------------- gateway lifecycle
 

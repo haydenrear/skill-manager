@@ -31,6 +31,13 @@ public sealed interface SkillEffect permits
         SkillEffect.ConfigureGateway,
         SkillEffect.SetupPackageManagerRuntime,
         SkillEffect.InstallPackageManager,
+        SkillEffect.SnapshotMcpDeps,
+        SkillEffect.RejectIfAlreadyInstalled,
+        SkillEffect.BuildInstallPlan,
+        SkillEffect.RunInstallPlan,
+        SkillEffect.CleanupResolvedGraph,
+        SkillEffect.PrintInstalledSummary,
+        SkillEffect.SyncFromLocalDir,
         SkillEffect.CommitSkillsToStore,
         SkillEffect.RecordAuditPlan,
         SkillEffect.RecordSourceProvenance,
@@ -40,6 +47,7 @@ public sealed interface SkillEffect permits
         SkillEffect.RunCliInstall,
         SkillEffect.RegisterMcpServer,
         SkillEffect.UnregisterMcpOrphan,
+        SkillEffect.UnregisterMcpOrphans,
         SkillEffect.SyncAgents,
         SkillEffect.SyncGit,
         SkillEffect.RemoveSkillFromStore,
@@ -78,8 +86,12 @@ public sealed interface SkillEffect permits
      */
     record CommitSkillsToStore(ResolvedGraph graph) implements SkillEffect {}
 
-    /** Append the install plan to the audit log under {@code verb} ({@code "install"} / {@code "sync"} / etc.). */
-    record RecordAuditPlan(InstallPlan plan, String verb) implements SkillEffect {}
+    /**
+     * Append the install plan to the audit log under {@code verb}
+     * ({@code "install"} / {@code "sync"} / etc.). Reads the plan from
+     * {@link EffectContext#plan()} — must run after {@link BuildInstallPlan}.
+     */
+    record RecordAuditPlan(String verb) implements SkillEffect {}
 
     /** Walk the committed graph and write {@code sources/<name>.json} for each skill. */
     record RecordSourceProvenance(ResolvedGraph graph) implements SkillEffect {}
@@ -101,6 +113,15 @@ public sealed interface SkillEffect permits
 
     /** Unregister an MCP server no surviving skill still declares. */
     record UnregisterMcpOrphan(String serverId, GatewayConfig gateway) implements SkillEffect {}
+
+    /**
+     * Diff {@link EffectContext#preMcpDeps()} against the live store and
+     * unregister every MCP server no surviving skill still declares.
+     * Reads the pre-snapshot at exec time so orphan-detection sees the
+     * actual post-mutation state — the snapshot must have been captured
+     * by an earlier {@link SnapshotMcpDeps} effect.
+     */
+    record UnregisterMcpOrphans(GatewayConfig gateway) implements SkillEffect {}
 
     /** Refresh agent symlinks + MCP-config entries for every known agent. */
     record SyncAgents(List<Skill> skills, GatewayConfig gateway) implements SkillEffect {}
@@ -166,6 +187,59 @@ public sealed interface SkillEffect permits
      * through the effect program.
      */
     record InstallPackageManager(PackageManager pm, String version) implements SkillEffect {}
+
+    // -------------------------------------------------- pre-flight precondition checks
+
+    /**
+     * Halt the program if {@code skillName} is already in the store —
+     * lets {@code install}'s "remove first" guard live in the program
+     * instead of as inline command code.
+     */
+    record RejectIfAlreadyInstalled(String skillName) implements SkillEffect {}
+
+    /**
+     * Capture every installed skill's MCP-dep names BEFORE any mutating
+     * effect runs. The orphan-detection effect later compares this
+     * snapshot against the post-mutation store to figure out which
+     * MCP servers no surviving skill still declares.
+     */
+    record SnapshotMcpDeps() implements SkillEffect {}
+
+    /**
+     * Build the {@link InstallPlan} for {@code graph}, print it, store it
+     * in {@link EffectContext#plan()}, and HALT if the plan has blocked
+     * items. Replaces inline {@code PlanBuilder} construction in commands.
+     */
+    record BuildInstallPlan(ResolvedGraph graph) implements SkillEffect {}
+
+    /**
+     * Read the plan from {@link EffectContext#plan()}, expand it via
+     * {@code PlanExpander}, and run the per-action sub-program through
+     * {@link dev.skillmanager.effects.LiveInterpreter#runWithContext}.
+     * Plan-build at exec time means {@code sync}'s post-merge state is
+     * what's expanded — finally fixing the pre-merge plan staleness.
+     */
+    record RunInstallPlan(GatewayConfig gateway) implements SkillEffect {}
+
+    /**
+     * Always-after cleanup: drops the resolver's staged temp dirs.
+     * Belongs in {@link Program#alwaysAfter()} so it runs even after a
+     * halt or failure mid-program.
+     */
+    record CleanupResolvedGraph(ResolvedGraph graph) implements SkillEffect {}
+
+    /** Print the {@code INSTALLED:} lines for each committed skill in the graph. */
+    record PrintInstalledSummary(ResolvedGraph graph) implements SkillEffect {}
+
+    /**
+     * {@code sync --from <dir>} apply: copy / 3-way-merge content from a
+     * local directory. Drives the diff display, the (optional) stdin
+     * confirm, and either {@code Fs.copyRecursive} or
+     * {@link SyncGitHandler#runMerge}. The interactive prompt is part of
+     * the effect — dry-run prints a description instead.
+     */
+    record SyncFromLocalDir(String skillName, java.nio.file.Path fromDir,
+                            boolean merge, boolean yes) implements SkillEffect {}
 
     // ---------------------------------------------- decomposed plan-action effects
 
