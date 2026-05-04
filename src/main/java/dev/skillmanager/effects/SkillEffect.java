@@ -42,6 +42,7 @@ public sealed interface SkillEffect permits
         SkillEffect.SyncGit,
         SkillEffect.RemoveSkillFromStore,
         SkillEffect.UnlinkAgentSkill,
+        SkillEffect.UnlinkAgentMcpEntry,
         SkillEffect.ScaffoldSkill,
         SkillEffect.InitializePolicy,
         SkillEffect.LoadOutstandingErrors,
@@ -175,6 +176,9 @@ public sealed interface SkillEffect permits
 
     /** Remove an agent's symlink (or copied dir) of {@code skillName}. */
     record UnlinkAgentSkill(String agentId, String skillName) implements SkillEffect {}
+
+    /** Remove the {@code virtual-mcp-gateway} entry from a single agent's MCP config. */
+    record UnlinkAgentMcpEntry(String agentId, GatewayConfig gateway) implements SkillEffect {}
 
     // ---------------------------------------------------------- scaffolding
 

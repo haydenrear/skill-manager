@@ -85,6 +85,7 @@ public sealed interface ContextFact {
     record SkillRemovedFromStore(String name) implements ContextFact {}
     record AgentSkillUnlinked(String agentId, String skillName) implements ContextFact {}
     record AgentSkillUnlinkFailed(String agentId, String skillName, String message) implements ContextFact {}
+    record AgentMcpEntryRemoved(String agentId) implements ContextFact {}
 
     // ---- Gateway lifecycle ----
     record GatewayStopped() implements ContextFact {}

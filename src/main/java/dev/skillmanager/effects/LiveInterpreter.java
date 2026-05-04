@@ -48,7 +48,19 @@ public final class LiveInterpreter implements ProgramInterpreter {
 
     @Override
     public <R> R run(Program<R> program) {
-        EffectContext ctx = new EffectContext(store, gateway);
+        return runWithContext(program, new EffectContext(store, gateway));
+    }
+
+    /**
+     * Run a (sub-)program against an existing {@link EffectContext} —
+     * source-record cache stays warm, error writes from the parent
+     * program are visible, and any error writes by the sub-program are
+     * visible to subsequent effects in the parent. Use this when a handler
+     * legitimately needs to run another program (e.g. transitive resolution
+     * or a future compensation pass) instead of constructing a new
+     * interpreter.
+     */
+    public <R> R runWithContext(Program<R> program, EffectContext ctx) {
         List<EffectReceipt> receipts = new ArrayList<>();
         for (SkillEffect effect : program.effects()) {
             try {
@@ -72,7 +84,7 @@ public final class LiveInterpreter implements ProgramInterpreter {
             case SkillEffect.RecordAuditPlan e -> recordAudit(e, ctx);
             case SkillEffect.RecordSourceProvenance e -> recordProvenance(e, ctx);
             case SkillEffect.OnboardSource e -> onboardSource(e, ctx);
-            case SkillEffect.ResolveTransitives e -> resolveTransitives(e);
+            case SkillEffect.ResolveTransitives e -> resolveTransitives(e, ctx);
             case SkillEffect.EnsureTool e -> ensureTool(e);
             case SkillEffect.RunCliInstall e -> runCliInstall(e, ctx);
             case SkillEffect.RegisterMcpServer e -> registerMcpServer(e, ctx);
@@ -81,6 +93,7 @@ public final class LiveInterpreter implements ProgramInterpreter {
             case SkillEffect.SyncGit e -> SyncGitHandler.run(e, ctx);
             case SkillEffect.RemoveSkillFromStore e -> removeFromStore(e, ctx);
             case SkillEffect.UnlinkAgentSkill e -> unlinkAgentSkill(e);
+            case SkillEffect.UnlinkAgentMcpEntry e -> unlinkAgentMcpEntry(e);
             case SkillEffect.ScaffoldSkill e -> scaffoldSkill(e);
             case SkillEffect.InitializePolicy e -> initializePolicy(e, ctx);
             case SkillEffect.LoadOutstandingErrors e -> loadOutstandingErrors(e, ctx);
@@ -224,26 +237,65 @@ public final class LiveInterpreter implements ProgramInterpreter {
         return EffectReceipt.ok(e, new ContextFact.SkillOnboarded(skill.name(), kind));
     }
 
-    private EffectReceipt resolveTransitives(SkillEffect.ResolveTransitives e) {
+    /**
+     * Walk every installed skill's {@code skill_references}, gather the
+     * unmet ones into a single {@link dev.skillmanager.resolve.ResolvedGraph}
+     * via {@link dev.skillmanager.resolve.Resolver#resolveAll}, and run a
+     * sub-{@link dev.skillmanager.app.InstallUseCase} program against the
+     * shared {@link EffectContext} via {@link #runWithContext}.
+     *
+     * <p>Reads live skills from the store at exec time so a sync that
+     * brought new {@code skill_references} via merge sees them — the
+     * {@code e.skills()} list is informational (pre-merge snapshot).
+     */
+    private EffectReceipt resolveTransitives(SkillEffect.ResolveTransitives e, EffectContext ctx) {
         List<ContextFact> facts = new ArrayList<>();
-        int failedCount = 0;
-        for (Skill s : e.skills()) {
-            for (SkillReference ref : s.skillReferences()) {
-                String coord = referenceToCoord(ref, store, s.name());
-                String name = ref.name() != null ? ref.name() : guessName(coord);
-                if (name == null || name.isBlank() || store.contains(name)) continue;
-                Log.step("transitive: %s declares unmet skill_reference %s — installing", s.name(), coord);
-                if (invokeInstall(coord, ref.version()) == 0) {
-                    facts.add(new ContextFact.TransitiveInstalled(name));
-                } else {
-                    facts.add(new ContextFact.TransitiveFailed(coord));
-                    failedCount++;
+        try {
+            List<dev.skillmanager.resolve.Resolver.Coord> unmet = new ArrayList<>();
+            java.util.Set<String> seenName = new java.util.LinkedHashSet<>();
+            for (Skill s : ctx.store().listInstalled()) {
+                for (SkillReference ref : s.skillReferences()) {
+                    String coord = referenceToCoord(ref, ctx.store(), s.name());
+                    String name = ref.name() != null ? ref.name() : guessName(coord);
+                    if (name == null || name.isBlank() || ctx.store().contains(name)) continue;
+                    if (!seenName.add(name)) continue;
+                    Log.step("transitive: %s declares unmet skill_reference %s", s.name(), coord);
+                    unmet.add(new dev.skillmanager.resolve.Resolver.Coord(coord, ref.version()));
                 }
             }
+            if (unmet.isEmpty()) return EffectReceipt.ok(e, facts);
+
+            dev.skillmanager.resolve.Resolver resolver = new dev.skillmanager.resolve.Resolver(ctx.store());
+            dev.skillmanager.resolve.ResolvedGraph graph = resolver.resolveAll(unmet);
+            try {
+                Policy policy = Policy.load(ctx.store());
+                CliLock lock = CliLock.load(ctx.store());
+                PackageManagerRuntime pmRuntime = new PackageManagerRuntime(ctx.store());
+                InstallPlan plan = new PlanBuilder(policy, lock, pmRuntime)
+                        .plan(graph, true, true, ctx.store().cliBinDir());
+                if (plan.blocked()) {
+                    facts.add(new ContextFact.TransitiveFailed("plan blocked"));
+                    return EffectReceipt.partial(e, facts, "transitive plan has blocked items");
+                }
+
+                Program<dev.skillmanager.app.InstallUseCase.Report> sub =
+                        dev.skillmanager.app.InstallUseCase.buildProgram(
+                                ctx.gateway(), null, graph, plan, false);
+                dev.skillmanager.app.InstallUseCase.Report report = runWithContext(sub, ctx);
+                for (String name : report.committed()) {
+                    facts.add(new ContextFact.TransitiveInstalled(name));
+                }
+                int failed = report.errorCount();
+                return failed == 0
+                        ? EffectReceipt.ok(e, facts)
+                        : EffectReceipt.partial(e, facts, failed + " transitive sub-effect(s) failed");
+            } finally {
+                graph.cleanup();
+            }
+        } catch (Exception ex) {
+            Log.warn("resolveTransitives failed: %s", ex.getMessage());
+            return EffectReceipt.failed(e, facts, ex.getMessage());
         }
-        return failedCount == 0
-                ? EffectReceipt.ok(e, facts)
-                : EffectReceipt.partial(e, facts, failedCount + " transitive install(s) failed");
     }
 
     private EffectReceipt installTools(SkillEffect.InstallTools e) throws IOException {
@@ -453,20 +505,6 @@ public final class LiveInterpreter implements ProgramInterpreter {
         return tail.isBlank() ? null : tail;
     }
 
-    private static int invokeInstall(String coord, String version) {
-        try {
-            dev.skillmanager.commands.InstallCommand inst =
-                    new dev.skillmanager.commands.InstallCommand();
-            inst.source = coord;
-            inst.version = version;
-            Integer rc = inst.call();
-            return rc == null ? 1 : rc;
-        } catch (Exception e) {
-            Log.warn("transitive install of %s threw: %s", coord, e.getMessage());
-            return 1;
-        }
-    }
-
     // -------------------------------------------------- gateway lifecycle
 
     private EffectReceipt stopGateway(SkillEffect.StopGateway e) {
@@ -612,6 +650,16 @@ public final class LiveInterpreter implements ProgramInterpreter {
             ctx.invalidate();
             Log.ok("removed %s from store", e.skillName());
             return EffectReceipt.ok(e, new ContextFact.SkillRemovedFromStore(e.skillName()));
+        } catch (Exception ex) {
+            return EffectReceipt.failed(e, ex.getMessage());
+        }
+    }
+
+    private EffectReceipt unlinkAgentMcpEntry(SkillEffect.UnlinkAgentMcpEntry e) {
+        try {
+            Agent agent = Agent.byId(e.agentId());
+            new McpWriter(e.gateway()).removeAgentEntry(agent);
+            return EffectReceipt.ok(e, new ContextFact.AgentMcpEntryRemoved(e.agentId()));
         } catch (Exception ex) {
             return EffectReceipt.failed(e, ex.getMessage());
         }
