@@ -108,7 +108,12 @@ public final class SkillManagerCli implements Runnable {
         try {
             dev.skillmanager.store.SkillStore store = dev.skillmanager.store.SkillStore.defaultStore();
             store.init();
-            dev.skillmanager.lifecycle.SkillReconciler.printOutstandingErrors(store);
+            dev.skillmanager.mcp.GatewayConfig gw =
+                    dev.skillmanager.mcp.GatewayConfig.resolve(store, null);
+            dev.skillmanager.app.ReportUseCase.Report report =
+                    new dev.skillmanager.effects.LiveInterpreter(store, gw)
+                            .run(dev.skillmanager.app.ReportUseCase.buildProgram());
+            dev.skillmanager.app.ReportUseCase.print(report, store);
         } catch (Throwable ignored) {}
     }
 

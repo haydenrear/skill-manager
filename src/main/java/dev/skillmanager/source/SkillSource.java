@@ -60,7 +60,9 @@ public record SkillSource(
         /** Skill has no .git/ in the store — can't sync or upgrade until reinstalled from a git source. */
         NEEDS_GIT_MIGRATION,
         /** {@link InstallSource#REGISTRY} install but the registry was unreachable. */
-        REGISTRY_UNAVAILABLE
+        REGISTRY_UNAVAILABLE,
+        /** A specific agent's symlink/copy of this skill failed — message carries the agent id. */
+        AGENT_SYNC_FAILED
     }
 
     @JsonIgnore

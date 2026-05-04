@@ -27,12 +27,23 @@ public final class RegistryCommand implements Runnable {
     public static final class Set implements Callable<Integer> {
         @Parameters(index = "0", description = "Base URL, e.g. http://127.0.0.1:8090") String url;
 
+        @picocli.CommandLine.Option(names = "--dry-run",
+                description = "Print the effect that would persist the URL without writing.")
+        boolean dryRun;
+
         @Override
         public Integer call() throws Exception {
             SkillStore store = SkillStore.defaultStore();
             store.init();
-            RegistryConfig.persist(store, url);
-            Log.ok("registry URL set: %s", url);
+            dev.skillmanager.effects.Program<Integer> program =
+                    new dev.skillmanager.effects.Program<>(
+                            "registry-set-" + java.util.UUID.randomUUID(),
+                            java.util.List.of(new dev.skillmanager.effects.SkillEffect.ConfigureRegistry(url)),
+                            receipts -> 0);
+            dev.skillmanager.effects.ProgramInterpreter interp = dryRun
+                    ? new dev.skillmanager.effects.DryRunInterpreter()
+                    : new dev.skillmanager.effects.LiveInterpreter(store, null);
+            interp.run(program);
             return 0;
         }
     }

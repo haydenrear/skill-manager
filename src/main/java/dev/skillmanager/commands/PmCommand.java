@@ -1,19 +1,27 @@
 package dev.skillmanager.commands;
 
+import dev.skillmanager.effects.DryRunInterpreter;
+import dev.skillmanager.effects.LiveInterpreter;
+import dev.skillmanager.effects.Program;
+import dev.skillmanager.effects.ProgramInterpreter;
+import dev.skillmanager.effects.SkillEffect;
 import dev.skillmanager.pm.PackageManager;
 import dev.skillmanager.pm.PackageManagerRuntime;
 import dev.skillmanager.store.SkillStore;
+import dev.skillmanager.tools.ToolDependency;
+import dev.skillmanager.tools.ToolRegistry;
 import dev.skillmanager.util.Log;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
 
+import java.util.UUID;
 import java.util.concurrent.Callable;
 
 @Command(
         name = "pm",
         description = "Manage bundled, version-pinned package managers (uv, node/npm).",
-        subcommands = {PmCommand.Install.class, PmCommand.List.class, PmCommand.Which.class})
+        subcommands = {PmCommand.Install.class, PmCommand.List.class, PmCommand.Which.class, PmCommand.Setup.class})
 public final class PmCommand implements Runnable {
     @Override public void run() { new picocli.CommandLine(this).usage(System.out); }
 
@@ -53,6 +61,47 @@ public final class PmCommand implements Runnable {
                         String.join(", ", i.versions()));
             }
             return 0;
+        }
+    }
+
+    @Command(name = "setup",
+            description = "Validate / bootstrap the bundled package managers via the SetupPackageManagerRuntime effect.")
+    public static final class Setup implements Callable<Integer> {
+        @Parameters(arity = "0..*",
+                description = "Tool ids to ensure (e.g. uv, npx, docker). Default: every bundleable tool.")
+        java.util.List<String> tools;
+
+        @Option(names = "--dry-run",
+                description = "Print the effect that would run without executing it.")
+        boolean dryRun;
+
+        @Override
+        public Integer call() throws Exception {
+            SkillStore store = SkillStore.defaultStore();
+            store.init();
+            java.util.List<ToolDependency> deps = new java.util.ArrayList<>();
+            java.util.List<String> requested = (tools == null || tools.isEmpty())
+                    ? java.util.List.of("uv", "node", "npm", "npx")
+                    : tools;
+            for (String id : requested) {
+                ToolDependency dep = ToolRegistry.byId(id);
+                if (dep != null) deps.add(dep);
+                else Log.warn("unknown tool id: %s", id);
+            }
+            Program<Integer> program = new Program<>(
+                    "pm-setup-" + UUID.randomUUID(),
+                    java.util.List.of(new SkillEffect.SetupPackageManagerRuntime(deps)),
+                    receipts -> {
+                        int errs = 0;
+                        for (var r : receipts) {
+                            if (r.status() == dev.skillmanager.effects.EffectStatus.FAILED
+                                    || r.status() == dev.skillmanager.effects.EffectStatus.PARTIAL) errs++;
+                        }
+                        return errs;
+                    });
+            ProgramInterpreter interp = dryRun ? new DryRunInterpreter() : new LiveInterpreter(store, null);
+            int rc = interp.run(program);
+            return rc == 0 ? 0 : 1;
         }
     }
 

@@ -1,6 +1,11 @@
 package dev.skillmanager.commands;
 
-import dev.skillmanager.shared.util.Fs;
+import dev.skillmanager.effects.DryRunInterpreter;
+import dev.skillmanager.effects.LiveInterpreter;
+import dev.skillmanager.effects.Program;
+import dev.skillmanager.effects.ProgramInterpreter;
+import dev.skillmanager.effects.SkillEffect;
+import dev.skillmanager.store.SkillStore;
 import dev.skillmanager.util.Log;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
@@ -8,6 +13,10 @@ import picocli.CommandLine.Parameters;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.Callable;
 
 /**
@@ -38,6 +47,10 @@ public final class CreateCommand implements Callable<Integer> {
     @Option(names = "--force", description = "Overwrite an existing directory")
     boolean force;
 
+    @Option(names = "--dry-run",
+            description = "Print the effect that would scaffold the skill without writing anything.")
+    boolean dryRun;
+
     @Override
     public Integer call() throws Exception {
         Path parent = parentDir != null ? parentDir : Path.of(System.getProperty("user.dir"));
@@ -50,14 +63,23 @@ public final class CreateCommand implements Callable<Integer> {
             }
             return 1;
         }
-        if (!Files.exists(dir)) Fs.ensureDir(dir);
-
         String effectiveDescription = description == null || description.isBlank()
                 ? "TODO: one-sentence description of what this skill helps the agent do. Mention when the agent should use it."
                 : description;
 
-        Files.writeString(dir.resolve("SKILL.md"), renderSkillMd(name, effectiveDescription));
-        Files.writeString(dir.resolve("skill-manager.toml"), renderToml(name, version, effectiveDescription));
+        Map<String, String> files = new LinkedHashMap<>();
+        files.put("SKILL.md", renderSkillMd(name, effectiveDescription));
+        files.put("skill-manager.toml", renderToml(name, version, effectiveDescription));
+
+        SkillStore store = SkillStore.defaultStore();
+        store.init();
+        Program<Integer> program = new Program<>(
+                "create-" + UUID.randomUUID(),
+                List.of(new SkillEffect.ScaffoldSkill(dir, name, files)),
+                receipts -> 0);
+        ProgramInterpreter interp = dryRun ? new DryRunInterpreter() : new LiveInterpreter(store, null);
+        interp.run(program);
+        if (dryRun) return 0;
 
         Log.ok("created skill: %s", dir);
         System.out.println();
