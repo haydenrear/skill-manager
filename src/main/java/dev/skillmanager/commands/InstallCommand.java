@@ -82,6 +82,11 @@ public final class InstallCommand implements Callable<Integer> {
                 new PostUpdateUseCase.Report(report.errorCount(),
                         report.agentConfigChanges(), report.orphansUnregistered()),
                 gw.mcpEndpoint().toString());
-        return report.errorCount() == 0 ? 0 : 4;
+        // Install succeeds when the skill committed — post-commit failures
+        // (MCP register, transitive install, agent sync) are tracked as
+        // outstanding errors on the source record for the reconciler to
+        // retry. Exit 4 is reserved for "nothing committed" (commit
+        // failed or program halted before commit).
+        return report.committed().isEmpty() ? 4 : 0;
     }
 }

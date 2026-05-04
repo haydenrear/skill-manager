@@ -74,6 +74,26 @@ public final class EffectContext {
         return preMcpDeps == null ? Map.of() : preMcpDeps;
     }
 
+    /**
+     * Snapshot of the slots that sub-programs may write to. Use with
+     * {@link #restore} to bracket a sub-program so its writes don't leak
+     * into the parent — e.g. {@link SkillEffect.ResolveTransitives}'s
+     * sub-{@link dev.skillmanager.app.InstallUseCase} program calls
+     * {@link SkillEffect.BuildInstallPlan} which would otherwise clobber
+     * the parent's plan slot before the parent's
+     * {@link SkillEffect.RunInstallPlan} reads it.
+     */
+    public Snapshot snapshot() {
+        return new Snapshot(plan, preMcpDeps);
+    }
+
+    public void restore(Snapshot s) {
+        this.plan = s.plan;
+        this.preMcpDeps = s.preMcpDeps;
+    }
+
+    public record Snapshot(InstallPlan plan, Map<String, Set<String>> preMcpDeps) {}
+
     public void addError(String skill, SkillSource.ErrorKind kind, String message) throws IOException {
         sourceStore.addError(skill, kind, message);
         invalidate();
