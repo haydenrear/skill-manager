@@ -31,10 +31,26 @@ public final class Resolver {
 
     public Resolver(SkillStore store) { this.store = store; }
 
+    /** A top-level skill source to resolve, plus an optional pinned version / git ref. */
+    public record Coord(String source, String version) {}
+
     public ResolvedGraph resolve(String source, String version) throws IOException {
+        return resolveAll(List.of(new Coord(source, version)));
+    }
+
+    /**
+     * Resolve a batch of top-level sources + their transitive deps into a
+     * single shared {@link ResolvedGraph}. Lets {@code onboard} (or any
+     * future bulk install) build one graph + one install plan + one
+     * {@link dev.skillmanager.app.InstallUseCase} program over every
+     * skill, instead of running the whole install pipeline once per
+     * top-level — which would re-resolve, re-fetch, re-commit per skill
+     * and re-run the post-update tail repeatedly.
+     */
+    public ResolvedGraph resolveAll(List<Coord> coords) throws IOException {
         ResolvedGraph graph = new ResolvedGraph();
         Deque<Pending> queue = new ArrayDeque<>();
-        queue.push(new Pending(source, version, null));
+        for (Coord c : coords) queue.push(new Pending(c.source(), c.version(), null));
 
         while (!queue.isEmpty()) {
             Pending p = queue.pop();

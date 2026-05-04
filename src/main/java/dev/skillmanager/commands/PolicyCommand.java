@@ -38,12 +38,24 @@ public final class PolicyCommand implements Runnable {
 
     @Command(name = "init", description = "Write the default policy file if missing.")
     public static final class Init implements Callable<Integer> {
+        @picocli.CommandLine.Option(names = "--dry-run",
+                description = "Print the effect that would initialize the policy without writing.")
+        boolean dryRun;
+
         @Override
         public Integer call() throws Exception {
             SkillStore store = SkillStore.defaultStore();
             store.init();
-            Policy.writeDefaultIfMissing(store);
-            Log.ok("policy file: %s", store.root().resolve(Policy.FILENAME));
+            dev.skillmanager.effects.Program<Integer> program =
+                    new dev.skillmanager.effects.Program<>(
+                            "policy-init-" + java.util.UUID.randomUUID(),
+                            java.util.List.of(new dev.skillmanager.effects.SkillEffect.InitializePolicy()),
+                            receipts -> 0);
+            dev.skillmanager.effects.ProgramInterpreter interp = dryRun
+                    ? new dev.skillmanager.effects.DryRunInterpreter()
+                    : new dev.skillmanager.effects.LiveInterpreter(store, null);
+            interp.run(program);
+            if (!dryRun) Log.ok("policy file: %s", store.root().resolve(Policy.FILENAME));
             return 0;
         }
     }

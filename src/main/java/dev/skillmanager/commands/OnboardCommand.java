@@ -1,51 +1,49 @@
 package dev.skillmanager.commands;
 
+import dev.skillmanager.app.InstallUseCase;
+import dev.skillmanager.effects.DryRunInterpreter;
+import dev.skillmanager.effects.LiveInterpreter;
+import dev.skillmanager.effects.Program;
+import dev.skillmanager.effects.ProgramInterpreter;
+import dev.skillmanager.effects.SkillEffect;
+import dev.skillmanager.lock.CliLock;
 import dev.skillmanager.mcp.GatewayClient;
 import dev.skillmanager.mcp.GatewayConfig;
-import dev.skillmanager.mcp.GatewayRuntime;
+import dev.skillmanager.plan.InstallPlan;
+import dev.skillmanager.plan.PlanBuilder;
+import dev.skillmanager.plan.PlanPrinter;
+import dev.skillmanager.policy.Policy;
+import dev.skillmanager.resolve.ResolvedGraph;
+import dev.skillmanager.resolve.Resolver;
 import dev.skillmanager.store.SkillStore;
 import dev.skillmanager.util.Log;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 
-import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.Callable;
 
 /**
- * One-shot onboarding for a fresh checkout / install: install the two
- * bundled skills the rest of the workflow assumes are present
- * ({@code skill-manager-skill}, {@code skill-publisher-skill}), then ensure
- * the virtual MCP gateway is up.
+ * One-shot onboarding for a fresh checkout / install. Builds a SINGLE
+ * {@link ResolvedGraph} containing every bundled skill that isn't yet in
+ * the store (skipping ones already installed), then drives ONE
+ * {@link InstallUseCase} program over the combined graph.
  *
- * <p>The two skills live as subdirectories of the install root the bash
- * wrapper already exports as {@code SKILL_MANAGER_INSTALL_DIR}. We resolve
- * each path locally and feed it to the existing {@link InstallCommand} —
- * no network round-trip when the skills ship alongside the CLI. If a
- * registry has them seeded (which the {@code SkillBootstrapper} server
- * bean does on startup) the user could equally well install by name; the
- * local path is just the zero-config default.
- *
- * <p>Idempotent: an already-installed skill is reported and skipped, not
- * re-installed (the underlying install path errors on duplicate, which we
- * treat as already-onboarded). Gateway start is also a no-op when the
- * gateway is already healthy.
+ * <p>Avoids invoking {@link InstallCommand} per-skill — that would
+ * re-resolve, re-commit, re-run the full post-update tail (transitives,
+ * tools, CLI, MCP, agents) once per skill. With a unified graph, each
+ * step (commit, audit, provenance, tools, CLI, MCP, agents) runs once.
  */
 @Command(
         name = "onboard",
-        description = "Install the bundled skills and start the virtual MCP gateway."
+        description = "Install the bundled skills (one shared install program) and start the gateway."
 )
 public final class OnboardCommand implements Callable<Integer> {
 
-    /**
-     * Names of the bundled skill subdirectories under the install root.
-     * Kept in sync with {@code SkillBootstrapper.BUNDLED_SKILLS} on the
-     * server side — both lists have to agree for the install-by-name
-     * fallback (against a server with bootstrap seeded) to work.
-     */
     private static final List<String> BUNDLED_SKILLS = List.of(
             "skill-manager-skill",
             "skill-publisher-skill"
@@ -58,12 +56,16 @@ public final class OnboardCommand implements Callable<Integer> {
     Path installDir;
 
     @Option(names = "--registry",
-            description = "Registry URL override (forwarded to install).")
+            description = "Registry URL override (forwarded to the install program).")
     String registryUrl;
 
     @Option(names = "--skip-gateway",
             description = "Install skills only, don't ensure the gateway is up.")
     boolean skipGateway;
+
+    @Option(names = "--dry-run",
+            description = "Print the effects the program would run without executing them.")
+    boolean dryRun;
 
     @Override
     public Integer call() throws Exception {
@@ -77,90 +79,75 @@ public final class OnboardCommand implements Callable<Integer> {
 
         SkillStore store = SkillStore.defaultStore();
         store.init();
+        Policy.writeDefaultIfMissing(store);
+        Policy policy = Policy.load(store);
+        GatewayConfig gw = GatewayConfig.resolve(store, null);
 
-        int installed = 0;
+        // Filter out skills that are already installed — onboard is idempotent.
+        List<Resolver.Coord> toResolve = new ArrayList<>();
         int skipped = 0;
-        int failed = 0;
         for (String name : BUNDLED_SKILLS) {
             Path skillDir = root.resolve(name);
             if (!Files.isDirectory(skillDir) || !Files.isRegularFile(skillDir.resolve("SKILL.md"))) {
                 Log.error("bundled skill %s not found at %s", name, skillDir);
-                failed++;
-                continue;
+                return 2;
             }
-            // Read the manifest's [skill].name (which may differ from the
-            // directory name — e.g. skill-manager-skill ships skill name
-            // "skill-manager"). Use that for the already-installed check.
             String skillName = readSkillName(skillDir, name);
             if (store.contains(skillName)) {
                 Log.info("%s already installed at %s — skipping", skillName, store.skillDir(skillName));
                 skipped++;
                 continue;
             }
-            int rc = invokeInstall(skillDir.toString());
-            if (rc == 0) {
-                Log.ok("installed %s", skillName);
-                installed++;
-            } else {
-                // installCommand already logged its own diagnostic — we
-                // just summarize at the end. Keep going so a failure on
-                // skill-manager-skill doesn't hide a separate failure on
-                // skill-publisher-skill.
-                Log.warn("install %s exited %d", skillName, rc);
-                failed++;
+            toResolve.add(new Resolver.Coord(skillDir.toString(), null));
+        }
+
+        int installedCount = 0;
+        int rc = 0;
+        if (!toResolve.isEmpty()) {
+            Resolver resolver = new Resolver(store);
+            ResolvedGraph graph = resolver.resolveAll(toResolve);
+            try {
+                CliLock lock = CliLock.load(store);
+                dev.skillmanager.pm.PackageManagerRuntime pmRuntime =
+                        new dev.skillmanager.pm.PackageManagerRuntime(store);
+                InstallPlan plan = new PlanBuilder(policy, lock, pmRuntime)
+                        .plan(graph, true, true, store.cliBinDir());
+                PlanPrinter.print(plan);
+                if (plan.blocked()) {
+                    Log.error("plan has blocked items — see policy at %s",
+                            store.root().resolve("policy.toml"));
+                    return 2;
+                }
+
+                Program<InstallUseCase.Report> program = InstallUseCase.buildProgram(
+                        gw, registryUrl, graph, plan, dryRun);
+                ProgramInterpreter interp = dryRun
+                        ? new DryRunInterpreter()
+                        : new LiveInterpreter(store, gw);
+                InstallUseCase.Report report = interp.run(program);
+                installedCount = report.committed().size();
+                if (!dryRun && report.errorCount() > 0) rc = 1;
+            } finally {
+                graph.cleanup();
             }
         }
 
-        if (!skipGateway) {
-            ensureGatewayUp(store);
+        if (!skipGateway && rc == 0) {
+            Program<Integer> gwProgram = new Program<>(
+                    "onboard-gw-" + UUID.randomUUID(),
+                    List.of(new SkillEffect.EnsureGateway(gw)),
+                    receipts -> 0);
+            ProgramInterpreter gwInterp = dryRun
+                    ? new DryRunInterpreter()
+                    : new LiveInterpreter(store, gw);
+            gwInterp.run(gwProgram);
         }
 
         System.out.println();
-        System.out.println("onboard summary: installed=" + installed
-                + " skipped=" + skipped + " failed=" + failed
+        System.out.println("onboard summary: installed=" + installedCount
+                + " skipped=" + skipped
                 + (skipGateway ? "" : " gateway=" + gatewayStatus(store)));
-        return failed == 0 ? 0 : 1;
-    }
-
-    /**
-     * Run the existing {@link InstallCommand} as if the user had typed
-     * {@code skill-manager install <skillDir>} — same SkillStore commit,
-     * same gateway-bootstrap, same agent-config sync. Picocli runs the
-     * sub-call in the same JVM; we forward our verbose flag and registry
-     * override so the underlying command sees consistent state.
-     */
-    private int invokeInstall(String source) throws Exception {
-        InstallCommand sub = new InstallCommand();
-        sub.source = source;
-        sub.registryUrl = registryUrl;
-        return sub.call();
-    }
-
-    private static void ensureGatewayUp(SkillStore store) throws java.io.IOException {
-        GatewayConfig gw = GatewayConfig.resolve(store, null);
-        GatewayClient client = new GatewayClient(gw);
-        if (client.ping()) {
-            Log.ok("gateway already up at %s", gw.baseUrl());
-            return;
-        }
-        URI base = gw.baseUrl();
-        String host = base.getHost() == null ? "127.0.0.1" : base.getHost();
-        int port = base.getPort() > 0 ? base.getPort() : 51717;
-        GatewayRuntime rt = new GatewayRuntime(store);
-        try {
-            if (!rt.isRunning()) {
-                Log.step("starting virtual MCP gateway on %s:%d", host, port);
-                rt.start(host, port);
-            }
-            if (rt.waitForHealthy(gw.baseUrl().toString(), Duration.ofSeconds(20))) {
-                Log.ok("gateway up at %s", gw.baseUrl());
-                GatewayConfig.persist(store, gw.baseUrl().toString());
-            } else {
-                Log.error("gateway did not become healthy within 20s; see %s", rt.logFile());
-            }
-        } catch (Exception e) {
-            Log.error("failed to start gateway: %s", e.getMessage());
-        }
+        return rc;
     }
 
     private static String gatewayStatus(SkillStore store) {
@@ -183,8 +170,6 @@ public final class OnboardCommand implements Callable<Integer> {
             if (hasBundledSkills(p)) return p;
         }
         Path cwd = Path.of(System.getProperty("user.dir")).toAbsolutePath();
-        // Walk up the same way SkillBootstrapper does so dev runs from a
-        // subdir (e.g. test_graph/) still find the bundled skills.
         Path cur = cwd;
         while (cur != null) {
             if (hasBundledSkills(cur)) return cur;
@@ -200,12 +185,6 @@ public final class OnboardCommand implements Callable<Integer> {
         return true;
     }
 
-    /**
-     * Pull {@code [skill].name} out of {@code skill-manager.toml} so we
-     * use the canonical name for the already-installed check (the
-     * directory name doesn't always match: {@code skill-manager-skill/}
-     * publishes as {@code skill-manager}).
-     */
     private static String readSkillName(Path skillDir, String fallback) {
         Path toml = skillDir.resolve("skill-manager.toml");
         if (!Files.isRegularFile(toml)) return fallback;
@@ -234,5 +213,4 @@ public final class OnboardCommand implements Callable<Integer> {
         } catch (Exception ignored) {}
         return fallback;
     }
-
 }

@@ -1,6 +1,11 @@
 package dev.skillmanager.commands;
 
 import dev.skillmanager.agent.Agent;
+import dev.skillmanager.effects.DryRunInterpreter;
+import dev.skillmanager.effects.LiveInterpreter;
+import dev.skillmanager.effects.Program;
+import dev.skillmanager.effects.ProgramInterpreter;
+import dev.skillmanager.effects.SkillEffect;
 import dev.skillmanager.mcp.GatewayClient;
 import dev.skillmanager.mcp.GatewayConfig;
 import dev.skillmanager.mcp.GatewayRuntime;
@@ -11,14 +16,19 @@ import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
 
-import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.Callable;
 
 /**
- * Virtual MCP gateway lifecycle. No MCP-passthrough subcommands here —
- * agents talk to the gateway over MCP directly; skill-install registers
- * MCP servers transitively. This command only manages the local gateway
- * process.
+ * Virtual MCP gateway lifecycle, modeled as effect programs:
+ * <ul>
+ *   <li>{@code up} → {@link SkillEffect.EnsureGateway} + (optional) {@link SkillEffect.SyncAgents}</li>
+ *   <li>{@code down} → {@link SkillEffect.StopGateway}</li>
+ *   <li>{@code set} → {@link SkillEffect.ConfigureGateway}</li>
+ *   <li>{@code status} → read-only inspection (no effects)</li>
+ * </ul>
  */
 @Command(
         name = "gateway",
@@ -38,66 +48,38 @@ public final class GatewayCommand implements Runnable {
     public static final class Up implements Callable<Integer> {
         @Option(names = "--host", defaultValue = "127.0.0.1") String host;
         @Option(names = "--port", defaultValue = "51717") int port;
-        @Option(names = "--wait-seconds", defaultValue = "15") int waitSeconds;
         @Option(names = "--no-sync-agents",
                 description = "Don't update agent MCP configs to point at the gateway URL.")
         boolean noSyncAgents;
+        @Option(names = "--dry-run",
+                description = "Print the effects the program would run without executing them.")
+        boolean dryRun;
 
         @Override
         public Integer call() throws Exception {
             SkillStore store = SkillStore.defaultStore();
             store.init();
-            GatewayRuntime rt = new GatewayRuntime(store);
-            String baseUrl;
-            if (rt.isRunning()) {
-                Log.info("gateway already running (pid=%d)", rt.readPid());
-                // Sync against the persisted URL — that's what agents should
-                // point at. If the user later changed it via `gateway set`,
-                // the configs will pick up the drift.
-                baseUrl = GatewayConfig.resolve(store, null).baseUrl().toString();
-            } else {
-                rt.ensureVenv();
-                rt.start(host, port);
-                baseUrl = "http://" + host + ":" + port;
-                if (!rt.waitForHealthy(baseUrl, Duration.ofSeconds(waitSeconds))) {
-                    Log.error("gateway did not become healthy within %ds; see %s", waitSeconds, rt.logFile());
-                    return 1;
-                }
-                GatewayConfig.persist(store, baseUrl);
-                Log.ok("gateway up at %s", baseUrl);
-            }
-            if (!noSyncAgents) {
-                syncAgents(store, GatewayConfig.resolve(store, null));
-            }
-            return 0;
-        }
-    }
+            String url = "http://" + host + ":" + port;
+            // Use the override form so EnsureGateway sees the requested URL
+            // and so it gets persisted on success.
+            GatewayConfig gw = GatewayConfig.resolve(store, url);
 
-    /**
-     * Write the {@code virtual-mcp-gateway} entry into every known agent's
-     * MCP config, pointing at {@code gw.mcpEndpoint()}. Idempotent: existing
-     * entries with the right URL are left alone; stale URLs are rewritten.
-     * Mirrors what {@code install} does at the end of its run, so a user who
-     * brings the gateway up directly (or `gateway set`s a new URL) gets the
-     * same convergence without having to reinstall a skill.
-     */
-    private static void syncAgents(SkillStore store, GatewayConfig gw) {
-        McpWriter writer = new McpWriter(gw);
-        for (Agent agent : Agent.all()) {
-            try {
-                McpWriter.ConfigChange change = writer.writeAgentEntry(agent);
-                switch (change) {
-                    case ADDED -> Log.ok("%s: added virtual-mcp-gateway → %s",
-                            agent.id(), gw.mcpEndpoint());
-                    case UPDATED -> Log.ok("%s: updated virtual-mcp-gateway → %s",
-                            agent.id(), gw.mcpEndpoint());
-                    case UNCHANGED -> Log.info("%s: already pointed at %s",
-                            agent.id(), gw.mcpEndpoint());
-                    case SKIPPED -> {}
-                }
-            } catch (Exception e) {
-                Log.warn("%s: mcp config update failed — %s", agent.id(), e.getMessage());
-            }
+            List<SkillEffect> effects = new ArrayList<>();
+            effects.add(new SkillEffect.EnsureGateway(gw));
+            if (!noSyncAgents) effects.add(new SkillEffect.SyncAgents(List.of(), gw));
+            Program<Integer> program = new Program<>(
+                    "gateway-up-" + UUID.randomUUID(),
+                    effects,
+                    receipts -> {
+                        int errs = 0;
+                        for (var r : receipts) {
+                            if (r.status() == dev.skillmanager.effects.EffectStatus.FAILED) errs++;
+                        }
+                        return errs;
+                    });
+            ProgramInterpreter interp = dryRun ? new DryRunInterpreter() : new LiveInterpreter(store, gw);
+            int rc = interp.run(program);
+            return rc == 0 ? 0 : 1;
         }
     }
 
@@ -107,17 +89,30 @@ public final class GatewayCommand implements Runnable {
                 description = "Also remove the virtual-mcp-gateway entry from agent MCP configs")
         boolean clearAgents;
 
+        @Option(names = "--dry-run",
+                description = "Print the effects the program would run without executing them.")
+        boolean dryRun;
+
         @Override
         public Integer call() throws Exception {
             SkillStore store = SkillStore.defaultStore();
             store.init();
-            GatewayRuntime rt = new GatewayRuntime(store);
-            boolean stopped = rt.stop(Duration.ofSeconds(10));
-            if (stopped) Log.ok("gateway stopped");
-            else Log.info("gateway was not running");
-            if (clearAgents) {
-                GatewayConfig cfg = GatewayConfig.resolve(store, null);
-                McpWriter writer = new McpWriter(cfg);
+            GatewayConfig gw = GatewayConfig.resolve(store, null);
+
+            List<SkillEffect> effects = new ArrayList<>();
+            effects.add(new SkillEffect.StopGateway(gw));
+            // Agent config-entry removal is rare enough that keeping it
+            // inline (after the effect program) is simpler than minting an
+            // UnlinkAgentMcp effect just for this one --clear-agents flag.
+            Program<Integer> program = new Program<>(
+                    "gateway-down-" + UUID.randomUUID(),
+                    effects,
+                    receipts -> 0);
+            ProgramInterpreter interp = dryRun ? new DryRunInterpreter() : new LiveInterpreter(store, gw);
+            interp.run(program);
+
+            if (!dryRun && clearAgents) {
+                McpWriter writer = new McpWriter(gw);
                 for (Agent agent : Agent.all()) writer.removeAgentEntry(agent);
             }
             return 0;
@@ -127,12 +122,20 @@ public final class GatewayCommand implements Runnable {
     @Command(name = "set", description = "Persist the gateway URL.")
     public static final class Set implements Callable<Integer> {
         @Parameters(index = "0", description = "Base URL, e.g. http://127.0.0.1:51717") String url;
+        @Option(names = "--dry-run",
+                description = "Print the effect that would run without executing it.")
+        boolean dryRun;
+
         @Override
         public Integer call() throws Exception {
             SkillStore store = SkillStore.defaultStore();
             store.init();
-            GatewayConfig.persist(store, url);
-            Log.ok("gateway URL set: %s", url);
+            Program<Integer> program = new Program<>(
+                    "gateway-set-" + UUID.randomUUID(),
+                    List.of(new SkillEffect.ConfigureGateway(url)),
+                    receipts -> 0);
+            ProgramInterpreter interp = dryRun ? new DryRunInterpreter() : new LiveInterpreter(store, null);
+            interp.run(program);
             return 0;
         }
     }

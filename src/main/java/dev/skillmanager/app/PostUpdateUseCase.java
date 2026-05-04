@@ -1,5 +1,6 @@
 package dev.skillmanager.app;
 
+import dev.skillmanager.effects.ContextFact;
 import dev.skillmanager.effects.EffectReceipt;
 import dev.skillmanager.effects.EffectStatus;
 import dev.skillmanager.effects.Program;
@@ -51,7 +52,8 @@ public final class PostUpdateUseCase {
         List<SkillEffect> effects = new ArrayList<>();
 
         effects.add(new SkillEffect.ResolveTransitives(live));
-        effects.add(new SkillEffect.InstallToolsAndCli(live));
+        effects.add(new SkillEffect.InstallTools(live));
+        effects.add(new SkillEffect.InstallCli(live));
         if (withMcp) effects.add(new SkillEffect.RegisterMcp(live, gw));
         if (withAgents) effects.add(new SkillEffect.SyncAgents(live, gw));
         if (withMcp) {
@@ -69,23 +71,20 @@ public final class PostUpdateUseCase {
         List<String> orphans = new ArrayList<>();
         for (EffectReceipt r : receipts) {
             if (r.status() == EffectStatus.FAILED || r.status() == EffectStatus.PARTIAL) errorCount++;
-            switch (r.effect()) {
-                case SkillEffect.SyncAgents ignored -> {
-                    @SuppressWarnings("unchecked")
-                    Map<McpWriter.ConfigChange, List<String>> ac =
-                            (Map<McpWriter.ConfigChange, List<String>>) r.facts().get("agentConfigChanges");
-                    if (ac != null) agentChanges.putAll(ac);
+            for (ContextFact f : r.facts()) {
+                switch (f) {
+                    case ContextFact.AgentMcpConfigChanged c -> agentChanges
+                            .computeIfAbsent(c.change(), k -> new ArrayList<>())
+                            .add(c.agentId() + " (" + c.configPath() + ")");
+                    case ContextFact.OrphanUnregistered o -> orphans.add(o.serverId());
+                    default -> {}
                 }
-                case SkillEffect.UnregisterMcpOrphan u -> {
-                    if (r.status() == EffectStatus.OK) orphans.add(u.serverId());
-                }
-                default -> {}
             }
         }
         return new Report(errorCount, agentChanges, orphans);
     }
 
-    private static List<String> computeOrphans(Map<String, Set<String>> preMcpDeps, List<Skill> postSkills) {
+    public static List<String> computeOrphans(Map<String, Set<String>> preMcpDeps, List<Skill> postSkills) {
         Set<String> stillReferenced = new HashSet<>();
         for (Skill s : postSkills) {
             for (McpDependency d : s.mcpDependencies()) stillReferenced.add(d.name());

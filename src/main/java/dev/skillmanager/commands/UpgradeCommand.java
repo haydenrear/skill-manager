@@ -1,5 +1,12 @@
 package dev.skillmanager.commands;
 
+import dev.skillmanager.app.PostUpdateUseCase;
+import dev.skillmanager.app.SyncUseCase;
+import dev.skillmanager.effects.DryRunInterpreter;
+import dev.skillmanager.effects.LiveInterpreter;
+import dev.skillmanager.effects.Program;
+import dev.skillmanager.effects.ProgramInterpreter;
+import dev.skillmanager.mcp.GatewayConfig;
 import dev.skillmanager.model.Skill;
 import dev.skillmanager.source.GitOps;
 import dev.skillmanager.store.SkillStore;
@@ -8,19 +15,21 @@ import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.Callable;
 
 /**
  * {@code upgrade [name|--all] [--self] [--merge]} — version bump for
- * git-tracked skills via {@link SyncCommand}, plus optional Homebrew
- * upgrade of the CLI itself.
+ * git-tracked skills, plus optional Homebrew upgrade of the CLI itself.
  *
- * <p>Always delegates to sync per skill (no version-match short-circuit) so
- * MCP / CLI / agent state converges to the post-merge manifests every time —
- * a previous {@code sync} may have already moved the content but skipped a
- * step. Sync handles the registry → git_sha lookup, github-direct fallback,
- * and dirty-state guards.
+ * <p>Drives the same {@link SyncUseCase} program as {@code sync} — no
+ * command-from-command instantiation. The
+ * {@link dev.skillmanager.effects.SkillEffect.SyncGit} handler does the
+ * registry lookup / non-downgrade / git fetch+merge per target, then the
+ * post-update tail (transitives, tools, CLI, MCP, agents) runs once.
  *
  * <p>Non-git installs are not supported — convert them to a git source first.
  */
@@ -43,9 +52,12 @@ public final class UpgradeCommand implements Callable<Integer> {
     String registryUrl;
 
     @Option(names = "--merge",
-            description = "Forwarded to sync: when local edits exist, run a 3-way merge against "
-                    + "the new version's git_sha instead of refusing.")
+            description = "Run a 3-way merge against the new version's git_sha when local edits exist.")
     boolean merge;
+
+    @Option(names = "--dry-run",
+            description = "Print the effects the program would run without executing them.")
+    boolean dryRun;
 
     @Override
     public Integer call() throws Exception {
@@ -61,6 +73,8 @@ public final class UpgradeCommand implements Callable<Integer> {
 
         SkillStore store = SkillStore.defaultStore();
         store.init();
+        // Registry override is persisted by the ConfigureRegistry effect that
+        // SyncUseCase prepends — no inline RegistryConfig.resolve needed.
 
         List<Skill> targets;
         if (all) {
@@ -77,31 +91,36 @@ public final class UpgradeCommand implements Callable<Integer> {
             return selfRc;
         }
 
-        int worstRc = 0;
+        // Reject non-git skills upfront — the SyncGit handler would skip them
+        // and record NEEDS_GIT_MIGRATION, but the user specifically asked
+        // to upgrade these so a hard error is the right surface.
+        List<String> targetNames = new ArrayList<>();
         for (Skill s : targets) {
-            int rc;
-            try { rc = upgradeOne(store, s); }
-            catch (Exception e) {
-                Log.error("upgrade %s failed: %s", s.name(), e.getMessage());
-                rc = 5;
+            if (!GitOps.isGitRepo(store.skillDir(s.name())) || !GitOps.isAvailable()) {
+                Log.error("%s: not git-tracked — only git-tracked installs can be upgraded. "
+                        + "Reinstall from a github source.", s.name());
+                return 5;
             }
-            if (rc > worstRc) worstRc = rc;
+            targetNames.add(s.name());
         }
-        return worstRc > 0 ? worstRc : selfRc;
-    }
 
-    private int upgradeOne(SkillStore store, Skill installed) throws Exception {
-        if (!GitOps.isGitRepo(store.skillDir(installed.name())) || !GitOps.isAvailable()) {
-            Log.error("%s: not git-tracked — only git-tracked installs can be upgraded. "
-                    + "Reinstall from a github source to enable upgrades.", installed.name());
-            return 5;
+        GatewayConfig gw = GatewayConfig.resolve(store, null);
+
+        Map<String, Set<String>> preMcpDeps = PostUpdateUseCase.snapshotMcpDeps(store);
+        Program<SyncUseCase.Report> program = SyncUseCase.buildProgram(
+                store, gw, registryUrl, targetNames, /*gitLatest=*/false, merge,
+                true, true, preMcpDeps);
+        ProgramInterpreter interpreter = dryRun ? new DryRunInterpreter() : new LiveInterpreter(store, gw);
+        SyncUseCase.Report report = interpreter.run(program);
+        SyncUseCase.printSyncSummary(report);
+        if (!report.agentConfigChanges().isEmpty()) {
+            PostUpdateUseCase.printAgentConfigSummary(
+                    new PostUpdateUseCase.Report(report.errorCount(),
+                            report.agentConfigChanges(), report.orphansUnregistered()),
+                    gw.mcpEndpoint().toString());
         }
-        SyncCommand sync = new SyncCommand();
-        sync.name = installed.name();
-        sync.merge = merge;
-        sync.registryUrl = registryUrl;
-        Integer rc = sync.call();
-        return rc == null ? 5 : rc;
+        int worst = report.worstRc();
+        return worst > 0 ? worst : selfRc;
     }
 
     private static final String BREW_TAP = "haydenrear/skill-manager";
