@@ -9,7 +9,6 @@ import dev.skillmanager.effects.SkillEffect;
 import dev.skillmanager.mcp.GatewayClient;
 import dev.skillmanager.mcp.GatewayConfig;
 import dev.skillmanager.mcp.GatewayRuntime;
-import dev.skillmanager.mcp.McpWriter;
 import dev.skillmanager.store.SkillStore;
 import dev.skillmanager.util.Log;
 import picocli.CommandLine.Command;
@@ -101,20 +100,17 @@ public final class GatewayCommand implements Runnable {
 
             List<SkillEffect> effects = new ArrayList<>();
             effects.add(new SkillEffect.StopGateway(gw));
-            // Agent config-entry removal is rare enough that keeping it
-            // inline (after the effect program) is simpler than minting an
-            // UnlinkAgentMcp effect just for this one --clear-agents flag.
+            if (clearAgents) {
+                for (Agent agent : Agent.all()) {
+                    effects.add(new SkillEffect.UnlinkAgentMcpEntry(agent.id(), gw));
+                }
+            }
             Program<Integer> program = new Program<>(
                     "gateway-down-" + UUID.randomUUID(),
                     effects,
                     receipts -> 0);
             ProgramInterpreter interp = dryRun ? new DryRunInterpreter() : new LiveInterpreter(store, gw);
             interp.run(program);
-
-            if (!dryRun && clearAgents) {
-                McpWriter writer = new McpWriter(gw);
-                for (Agent agent : Agent.all()) writer.removeAgentEntry(agent);
-            }
             return 0;
         }
     }

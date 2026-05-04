@@ -119,28 +119,48 @@ public final class OnboardCommand implements Callable<Integer> {
                     return 2;
                 }
 
-                Program<InstallUseCase.Report> program = InstallUseCase.buildProgram(
+                // One program per command (composition rule): chain the
+                // install with the gateway-up via Program.then so they share
+                // one interpreter call + one EffectContext.
+                Program<InstallUseCase.Report> install = InstallUseCase.buildProgram(
                         gw, registryUrl, graph, plan, dryRun);
+                Program<OnboardReport> program;
+                if (skipGateway) {
+                    program = new Program<>(
+                            install.operationId(),
+                            install.effects(),
+                            receipts -> {
+                                InstallUseCase.Report r = install.decoder().decode(receipts);
+                                return new OnboardReport(r.committed().size(), r.errorCount());
+                            });
+                } else {
+                    Program<Integer> gateway = new Program<>(
+                            "onboard-gw-" + UUID.randomUUID(),
+                            List.of(new SkillEffect.EnsureGateway(gw)),
+                            receipts -> 0);
+                    program = install.then(gateway,
+                            (instReport, gwRc) -> new OnboardReport(
+                                    instReport.committed().size(), instReport.errorCount()));
+                }
                 ProgramInterpreter interp = dryRun
                         ? new DryRunInterpreter()
                         : new LiveInterpreter(store, gw);
-                InstallUseCase.Report report = interp.run(program);
-                installedCount = report.committed().size();
-                if (!dryRun && report.errorCount() > 0) rc = 1;
+                OnboardReport report = interp.run(program);
+                installedCount = report.installed;
+                if (!dryRun && report.errorCount > 0) rc = 1;
             } finally {
                 graph.cleanup();
             }
-        }
-
-        if (!skipGateway && rc == 0) {
-            Program<Integer> gwProgram = new Program<>(
+        } else if (!skipGateway) {
+            // Nothing to install but the user still wants the gateway up.
+            Program<Integer> gateway = new Program<>(
                     "onboard-gw-" + UUID.randomUUID(),
                     List.of(new SkillEffect.EnsureGateway(gw)),
                     receipts -> 0);
-            ProgramInterpreter gwInterp = dryRun
+            ProgramInterpreter interp = dryRun
                     ? new DryRunInterpreter()
                     : new LiveInterpreter(store, gw);
-            gwInterp.run(gwProgram);
+            interp.run(gateway);
         }
 
         System.out.println();
@@ -149,6 +169,9 @@ public final class OnboardCommand implements Callable<Integer> {
                 + (skipGateway ? "" : " gateway=" + gatewayStatus(store)));
         return rc;
     }
+
+    /** Combined report for the install + gateway-up chain. */
+    private record OnboardReport(int installed, int errorCount) {}
 
     private static String gatewayStatus(SkillStore store) {
         try {
