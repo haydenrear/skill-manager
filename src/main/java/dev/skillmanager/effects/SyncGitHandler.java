@@ -59,23 +59,29 @@ public final class SyncGitHandler {
         }
         ctx.clearError(skillName, SkillSource.ErrorKind.NO_GIT_REMOTE);
 
+        // Dirty check FIRST — if the working tree / HEAD diverges from the
+        // install baseline, we refuse before doing any registry lookup. The
+        // version short-circuit ("local >= server, no upgrade needed") would
+        // otherwise mask local commits the user wants to keep, silently
+        // returning success while leaving the divergence in place.
+        String baseline = src != null ? src.gitHash() : null;
+        boolean dirty = GitOps.isDirty(storeDir, baseline);
+        if (dirty && !e.merge()) {
+            printMergeInstructions(skillName, storeDir, upstream, e.gitLatest());
+            return EffectReceipt.partial(e, "extra local changes — re-run with --merge",
+                    new ContextFact.SyncGitRefused(skillName));
+        }
+
         TargetResolution tr = resolveTarget(store, ctx, e, src, skillName, storeDir, upstream);
         if (tr.fact != null) {
             return EffectReceipt.ok(e, tr.fact);
         }
         TargetRef target = tr.ref;
 
-        String baseline = src != null ? src.gitHash() : null;
-        boolean dirty = GitOps.isDirty(storeDir, baseline);
         if (!dirty && target.sha != null && target.sha.equals(baseline)) {
             Log.ok("%s: already at %s (%s)", skillName, target.displayLabel(),
                     baseline.substring(0, Math.min(7, baseline.length())));
             return EffectReceipt.ok(e, new ContextFact.SyncGitUpToDate(skillName, target.displayLabel()));
-        }
-        if (dirty && !e.merge()) {
-            printMergeInstructions(skillName, storeDir, upstream, e.gitLatest());
-            return EffectReceipt.partial(e, "extra local changes — re-run with --merge",
-                    new ContextFact.SyncGitRefused(skillName));
         }
         return runGitMerge(ctx, storeDir, upstream, target.ref, skillName, e);
     }

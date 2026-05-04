@@ -306,7 +306,13 @@ public final class LiveInterpreter implements ProgramInterpreter {
                 Program<dev.skillmanager.app.InstallUseCase.Report> sub =
                         dev.skillmanager.app.InstallUseCase.buildProgram(
                                 ctx.gateway(), null, graph, false);
-                dev.skillmanager.app.InstallUseCase.Report report = runWithContext(sub, ctx);
+                // Save+restore ctx slots so the sub-program's BuildInstallPlan
+                // and SnapshotMcpDeps don't clobber the parent program's
+                // plan / pre-snapshot.
+                EffectContext.Snapshot snap = ctx.snapshot();
+                dev.skillmanager.app.InstallUseCase.Report report;
+                try { report = runWithContext(sub, ctx); }
+                finally { ctx.restore(snap); }
                 for (String name : report.committed()) {
                     facts.add(new ContextFact.TransitiveInstalled(name));
                 }
@@ -398,7 +404,10 @@ public final class LiveInterpreter implements ProgramInterpreter {
                         for (EffectReceipt r : receipts) all.addAll(r.facts());
                         return all;
                     });
-            List<ContextFact> all = runWithContext(subProgram, ctx);
+            EffectContext.Snapshot snap = ctx.snapshot();
+            List<ContextFact> all;
+            try { all = runWithContext(subProgram, ctx); }
+            finally { ctx.restore(snap); }
             return EffectReceipt.ok(e, all);
         } catch (Exception ex) {
             return EffectReceipt.failed(e, ex.getMessage());
@@ -611,7 +620,10 @@ public final class LiveInterpreter implements ProgramInterpreter {
                     }
                     return new SubResult(all, failed);
                 });
-        SubResult sr = runWithContext(subProgram, ctx);
+        EffectContext.Snapshot snap = ctx.snapshot();
+        SubResult sr;
+        try { sr = runWithContext(subProgram, ctx); }
+        finally { ctx.restore(snap); }
         return sr.failed == 0
                 ? EffectReceipt.ok(e, sr.facts)
                 : EffectReceipt.partial(e, sr.facts, sr.failed + " plan-action effect(s) failed");
@@ -726,15 +738,16 @@ public final class LiveInterpreter implements ProgramInterpreter {
 
     private EffectReceipt runCliInstall(SkillEffect.RunCliInstall e, EffectContext ctx) {
         try {
-            // Build a one-action plan and feed it through the existing recorder.
-            // This keeps the lock-file write logic in one place; we just emit
-            // facts at the per-effect granularity.
+            // Build a CLI-only plan for the owning skill and feed it through
+            // the existing recorder — keeps the lock-file write logic in one
+            // place. PlanBuilder.plan(skills, withCli, withMcp, cliBinDir):
+            // withCli=true so RunCliInstall actions land in the plan.
             Policy policy = Policy.load(store);
             CliLock lock = CliLock.load(store);
             PackageManagerRuntime pmRuntime = new PackageManagerRuntime(store);
             List<Skill> single = List.of(skillFromName(e.skillName()));
             InstallPlan plan = new PlanBuilder(policy, lock, pmRuntime)
-                    .plan(single, false, true, store.cliBinDir());
+                    .plan(single, true, false, store.cliBinDir());
             CliInstallRecorder.run(plan, store);
             return EffectReceipt.ok(e,
                     new ContextFact.CliInstalled(e.skillName(), e.dep().name(), e.dep().backend()));
@@ -766,6 +779,7 @@ public final class LiveInterpreter implements ProgramInterpreter {
             // single-dep skill and let it run.
             Skill solo = withSingleMcpDep(carrier, e.dep());
             List<InstallResult> results = writer.registerAll(List.of(solo));
+            writer.printInstallResults(results);
             for (InstallResult r : results) {
                 if (InstallResult.Status.ERROR.code.equals(r.status())) {
                     ctx.addError(e.skillName(), SkillSource.ErrorKind.MCP_REGISTRATION_FAILED,

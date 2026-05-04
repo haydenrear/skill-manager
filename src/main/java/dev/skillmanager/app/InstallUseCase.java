@@ -85,8 +85,14 @@ public final class InstallUseCase {
         }
 
         List<Skill> skills = graph.skills();
-        effects.add(new SkillEffect.ResolveTransitives(skills));
+        // RunInstallPlan FIRST so the parent's plan (already in ctx from
+        // BuildInstallPlan above) executes before ResolveTransitives spins
+        // up sub-programs that would otherwise overwrite ctx.plan.
+        // (Save/restore handles the leak path defensively, but this order
+        // keeps the dependency chain clear: parent's tools/CLI/MCP go in,
+        // then any safety-net transitive resolution happens.)
         effects.add(new SkillEffect.RunInstallPlan(gw));
+        effects.add(new SkillEffect.ResolveTransitives(skills));
         effects.add(new SkillEffect.SyncAgents(skills, gw));
         effects.add(new SkillEffect.UnregisterMcpOrphans(gw));
 
