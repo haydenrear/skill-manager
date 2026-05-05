@@ -81,7 +81,8 @@ public final class CreateCommand implements Callable<Integer> {
         interp.run(program);
         if (dryRun) return 0;
 
-        Log.ok("created skill: %s", dir);
+        // Renderer already prints "created skill: <dir>" via the
+        // SkillScaffolded fact — no second log here.
         System.out.println();
         System.out.println("next steps:");
         System.out.println("  1. edit " + dir.resolve("SKILL.md") + " — write the agent-facing body");

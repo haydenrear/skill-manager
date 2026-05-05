@@ -134,8 +134,10 @@ public final class ConsoleProgramRenderer implements ProgramRenderer {
                         x.skillName(), x.conflictedFiles().size());
                 for (String cf : x.conflictedFiles()) System.err.println("    " + cf);
                 System.err.println();
-                System.err.println("Resolve in " + storeDir + ", then `git add` + `git commit`,");
-                System.err.println("or `git merge --abort` (and `git stash drop` if applicable) to back out.");
+                System.err.println("Resolve in " + storeDir + ", then `git add` + `git commit`.");
+                System.err.println("To back out: `git merge --abort` (or `git reset --hard HEAD` after a stash-pop conflict).");
+                System.err.println("If sync stashed local changes, they're preserved at `stash@{0}` — run `git stash pop`");
+                System.err.println("once the working tree is clean. Only run `git stash drop` if you want to discard them.");
                 conflictedSkills.add(x.skillName());
             }
             case ContextFact.SyncGitFailed x ->

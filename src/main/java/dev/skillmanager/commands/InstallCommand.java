@@ -61,6 +61,15 @@ public final class InstallCommand implements Callable<Integer> {
         store.init();
         Policy.writeDefaultIfMissing(store);
 
+        // Apply --registry BEFORE resolution so the graph is built against
+        // the same registry the program's ConfigureRegistry effect will
+        // persist. Otherwise the override only takes effect for the next
+        // command and the current install resolves against the old URL.
+        // Skipped on dry-run to avoid persisting state during a no-op.
+        if (!dryRun && registryUrl != null && !registryUrl.isBlank()) {
+            dev.skillmanager.registry.RegistryConfig.resolve(store, registryUrl);
+        }
+
         Log.step("resolving %s", source);
         Resolver resolver = new Resolver(store);
         ResolvedGraph graph = resolver.resolve(source, version);

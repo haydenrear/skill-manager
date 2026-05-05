@@ -2,7 +2,6 @@ package dev.skillmanager.commands;
 
 import dev.skillmanager.policy.Policy;
 import dev.skillmanager.store.SkillStore;
-import dev.skillmanager.util.Log;
 import picocli.CommandLine.Command;
 
 import java.nio.file.Files;
@@ -55,7 +54,8 @@ public final class PolicyCommand implements Runnable {
                     ? new dev.skillmanager.effects.DryRunInterpreter()
                     : new dev.skillmanager.effects.LiveInterpreter(store, null);
             interp.run(program);
-            if (!dryRun) Log.ok("policy file: %s", store.root().resolve(Policy.FILENAME));
+            // Renderer already prints "policy file: <path>" via the
+            // PolicyInitialized fact — no second log here.
             return 0;
         }
     }

@@ -329,15 +329,34 @@ public final class LiveInterpreter implements ProgramInterpreter {
     }
 
     private EffectReceipt installTools(SkillEffect.InstallTools e) throws IOException {
-        InstallPlan plan = buildPlan(e.skills());
+        List<Skill> skills = freshen(e.skills());
+        InstallPlan plan = buildPlan(skills);
         ToolInstallRecorder.run(plan, store);
-        return EffectReceipt.ok(e, new ContextFact.ToolsInstalledFor(e.skills().size()));
+        return EffectReceipt.ok(e, new ContextFact.ToolsInstalledFor(skills.size()));
     }
 
     private EffectReceipt installCli(SkillEffect.InstallCli e) throws IOException {
-        InstallPlan plan = buildPlan(e.skills());
+        List<Skill> skills = freshen(e.skills());
+        InstallPlan plan = buildPlan(skills);
         CliInstallRecorder.run(plan, store);
-        return EffectReceipt.ok(e, new ContextFact.CliInstalledFor(e.skills().size()));
+        return EffectReceipt.ok(e, new ContextFact.CliInstalledFor(skills.size()));
+    }
+
+    /**
+     * Reload the named skills from disk so the handler sees any manifest
+     * changes from a sync's merge step. Skills whose dirs vanished (rare —
+     * concurrent uninstall) fall back to the supplied stale value.
+     */
+    private List<Skill> freshen(List<Skill> stale) {
+        List<Skill> out = new ArrayList<>(stale.size());
+        for (Skill s : stale) {
+            try {
+                out.add(store.load(s.name()).orElse(s));
+            } catch (IOException io) {
+                out.add(s);
+            }
+        }
+        return out;
     }
 
     private InstallPlan buildPlan(List<Skill> skills) throws IOException {
@@ -349,8 +368,9 @@ public final class LiveInterpreter implements ProgramInterpreter {
     }
 
     private EffectReceipt registerMcp(SkillEffect.RegisterMcp e, EffectContext ctx) throws IOException {
+        List<Skill> skills = freshen(e.skills());
         if (!new GatewayClient(e.gateway()).ping()) {
-            for (Skill s : e.skills()) {
+            for (Skill s : skills) {
                 if (s.mcpDependencies().isEmpty()) continue;
                 ctx.addError(s.name(), SkillSource.ErrorKind.GATEWAY_UNAVAILABLE,
                         "gateway at " + e.gateway().baseUrl() + " unreachable");
@@ -359,16 +379,16 @@ public final class LiveInterpreter implements ProgramInterpreter {
         }
 
         McpWriter writer = new McpWriter(e.gateway());
-        List<InstallResult> results = writer.registerAll(e.skills());
+        List<InstallResult> results = writer.registerAll(skills);
 
-        for (Skill s : e.skills()) {
+        for (Skill s : skills) {
             if (s.mcpDependencies().isEmpty()) continue;
             ctx.clearError(s.name(), SkillSource.ErrorKind.GATEWAY_UNAVAILABLE);
         }
         List<ContextFact> facts = new ArrayList<>();
         int erroredCount = 0;
         for (InstallResult r : results) {
-            String owner = ownerOf(e.skills(), r.serverId());
+            String owner = ownerOf(skills, r.serverId());
             if (owner == null) continue;
             if (InstallResult.Status.ERROR.code.equals(r.status())) {
                 ctx.addError(owner, SkillSource.ErrorKind.MCP_REGISTRATION_FAILED,
@@ -433,12 +453,13 @@ public final class LiveInterpreter implements ProgramInterpreter {
      * keep going.
      */
     private EffectReceipt syncAgents(SkillEffect.SyncAgents e, EffectContext ctx) {
+        List<Skill> skills = freshen(e.skills());
         McpWriter writer = new McpWriter(e.gateway());
         List<ContextFact> facts = new ArrayList<>();
         int failed = 0;
         for (Agent agent : Agent.all()) {
             SkillSync syncer = new SkillSync(store);
-            for (Skill s : e.skills()) {
+            for (Skill s : skills) {
                 try {
                     syncer.sync(agent, List.of(s), true);
                     facts.add(new ContextFact.AgentSkillSynced(agent.id(), s.name()));
@@ -495,12 +516,6 @@ public final class LiveInterpreter implements ProgramInterpreter {
                     cleared = true;
                 }
             }
-            case GATEWAY_UNAVAILABLE -> {
-                if (ctx.gateway() != null && new GatewayClient(ctx.gateway()).ping()) {
-                    ctx.clearError(e.skillName(), SkillSource.ErrorKind.GATEWAY_UNAVAILABLE);
-                    cleared = true;
-                }
-            }
             case NO_GIT_REMOTE -> {
                 if (GitOps.isGitRepo(dir) && GitOps.originUrl(dir) != null) {
                     ctx.clearError(e.skillName(), SkillSource.ErrorKind.NO_GIT_REMOTE);
@@ -513,8 +528,11 @@ public final class LiveInterpreter implements ProgramInterpreter {
                     cleared = true;
                 }
             }
-            case AGENT_SYNC_FAILED, MCP_REGISTRATION_FAILED, REGISTRY_UNAVAILABLE -> {
-                // No cheap probe — handlers clear these directly on success
+            case GATEWAY_UNAVAILABLE, AGENT_SYNC_FAILED,
+                 MCP_REGISTRATION_FAILED, REGISTRY_UNAVAILABLE -> {
+                // No cheap "is it really fixed" probe — pinging the gateway
+                // tells us nothing about whether THIS skill's MCPs are
+                // registered, etc. Handlers clear these on actual success
                 // (RegisterMcp / SyncAgents / SyncGit registry lookup).
             }
         }
@@ -599,28 +617,27 @@ public final class LiveInterpreter implements ProgramInterpreter {
         if (plan == null) return EffectReceipt.skipped(e, "no plan in context");
         List<SkillEffect> sub = dev.skillmanager.app.PlanExpander.expand(plan, e.gateway());
         // Run as a sub-program through the same context so source-cache /
-        // error-state / plan slot stay shared. The sub-program's facts roll
-        // up into the parent receipt — decoders see them as if the plan
-        // actions had been emitted directly.
-        Program<SubResult> subProgram = new Program<>(
+        // error-state / plan slot stay shared. The shared renderer already
+        // prints each sub-receipt as it lands, so we only roll up an
+        // ok/partial summary — re-emitting sub-facts on the parent receipt
+        // would cause every plan-action line to print twice.
+        Program<Integer> subProgram = new Program<>(
                 "plan-expand-" + java.util.UUID.randomUUID(),
                 sub,
                 receipts -> {
-                    List<ContextFact> all = new ArrayList<>();
                     int failed = 0;
                     for (EffectReceipt r : receipts) {
-                        all.addAll(r.facts());
                         if (r.status() == EffectStatus.FAILED || r.status() == EffectStatus.PARTIAL) failed++;
                     }
-                    return new SubResult(all, failed);
+                    return failed;
                 });
         EffectContext.Snapshot snap = ctx.snapshot();
-        SubResult sr;
-        try { sr = runWithContext(subProgram, ctx); }
+        int failed;
+        try { failed = runWithContext(subProgram, ctx); }
         finally { ctx.restore(snap); }
-        return sr.failed == 0
-                ? EffectReceipt.ok(e, sr.facts)
-                : EffectReceipt.partial(e, sr.facts, sr.failed + " plan-action effect(s) failed");
+        return failed == 0
+                ? EffectReceipt.ok(e)
+                : EffectReceipt.partial(e, failed + " plan-action effect(s) failed");
     }
 
     private EffectReceipt cleanupGraph(SkillEffect.CleanupResolvedGraph e) {
@@ -644,8 +661,6 @@ public final class LiveInterpreter implements ProgramInterpreter {
     private EffectReceipt syncFromLocalDir(SkillEffect.SyncFromLocalDir e, EffectContext ctx) {
         return SyncFromLocalDirHandler.run(e, ctx);
     }
-
-    private record SubResult(List<ContextFact> facts, int failed) {}
 
     // -------------------------------------------------- gateway lifecycle
 

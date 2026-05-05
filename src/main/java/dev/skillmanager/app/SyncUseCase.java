@@ -90,9 +90,14 @@ public final class SyncUseCase {
             }
         }
 
-        // Post-update tail. Read live skills here as informational; the
-        // bulk install/CLI/MCP handlers re-read manifests from disk inside
-        // their plan builder, so post-merge state is what runs.
+        // Post-update tail. The skill list captured here is the *names*
+        // of installed skills at use-case-build time (pre-merge). The
+        // ResolveTransitives handler re-reads ctx.store().listInstalled()
+        // at exec time, so any newly-pulled-in skill refs go through a
+        // full sub-install (which covers their tools/cli/mcp/agents).
+        // The bulk InstallTools/InstallCli/RegisterMcp/SyncAgents handlers
+        // re-load each named skill's manifest from disk, so updated deps
+        // on existing skills are picked up post-merge.
         List<Skill> live = store.listInstalled();
         effects.add(new SkillEffect.ResolveTransitives(live));
         effects.add(new SkillEffect.InstallTools(live));
@@ -113,14 +118,16 @@ public final class SyncUseCase {
         List<String> orphans = new ArrayList<>();
 
         for (EffectReceipt r : receipts) {
-            if (r.status() == EffectStatus.FAILED) errorCount++;
-            if ((r.effect() instanceof SkillEffect.SyncGit
-                    || r.effect() instanceof SkillEffect.SyncFromLocalDir)
-                    && (r.status() == EffectStatus.PARTIAL || r.status() == EffectStatus.FAILED)) {
+            // Each receipt counts at most once: PARTIAL on the per-target sync
+            // effects (SyncGit / SyncFromLocalDir) flags refused/conflicted as
+            // an error; everything else only counts on FAILED. RegisterMcp
+            // PARTIAL also counts (some skills had MCP registration errors).
+            boolean isSyncTarget = r.effect() instanceof SkillEffect.SyncGit
+                    || r.effect() instanceof SkillEffect.SyncFromLocalDir;
+            boolean isMcpRegister = r.effect() instanceof SkillEffect.RegisterMcp;
+            if (r.status() == EffectStatus.FAILED) {
                 errorCount++;
-            }
-            if (r.effect() instanceof SkillEffect.RegisterMcp
-                    && (r.status() == EffectStatus.PARTIAL || r.status() == EffectStatus.FAILED)) {
+            } else if (r.status() == EffectStatus.PARTIAL && (isSyncTarget || isMcpRegister)) {
                 errorCount++;
             }
             for (ContextFact f : r.facts()) {

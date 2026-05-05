@@ -131,6 +131,19 @@ public final class SyncFromLocalDirHandler {
         } catch (IOException ex) {
             return EffectReceipt.failed(e, ex.getMessage());
         }
+        // Refresh the source record so its gitHash matches what's actually
+        // on disk now. Without this, a future `sync` would compare against
+        // the pre-copy baseline and report bogus drift / refuse the merge.
+        if (GitOps.isGitRepo(storeDir)) {
+            String newHash = GitOps.headHash(storeDir);
+            if (newHash != null) {
+                ctx.source(skillName).ifPresent(old -> {
+                    try {
+                        ctx.writeSource(old.withGitMoved(newHash, SkillSourceStore.nowIso()));
+                    } catch (IOException ignored) {}
+                });
+            }
+        }
         return EffectReceipt.ok(e);
     }
 
