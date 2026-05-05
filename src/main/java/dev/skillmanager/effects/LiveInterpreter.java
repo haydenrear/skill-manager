@@ -8,6 +8,7 @@ import dev.skillmanager.mcp.GatewayConfig;
 import dev.skillmanager.mcp.InstallResult;
 import dev.skillmanager.mcp.McpWriter;
 import dev.skillmanager.model.McpDependency;
+import dev.skillmanager.model.AgentUnit;
 import dev.skillmanager.model.Skill;
 import dev.skillmanager.model.UnitReference;
 import dev.skillmanager.plan.InstallPlan;
@@ -364,8 +365,10 @@ public final class LiveInterpreter implements ProgramInterpreter {
         Policy policy = Policy.load(store);
         CliLock lock = CliLock.load(store);
         PackageManagerRuntime pmRuntime = new PackageManagerRuntime(store);
+        List<AgentUnit> units = new java.util.ArrayList<>(skills.size());
+        for (Skill s : skills) units.add(s.asUnit());
         return new PlanBuilder(policy, lock, pmRuntime)
-                .plan(skills, true, true, store.cliBinDir());
+                .plan(units, true, true, store.cliBinDir());
     }
 
     private EffectReceipt registerMcp(SkillEffect.RegisterMcp e, EffectContext ctx) throws IOException {
@@ -752,9 +755,9 @@ public final class LiveInterpreter implements ProgramInterpreter {
             Policy policy = Policy.load(store);
             CliLock lock = CliLock.load(store);
             PackageManagerRuntime pmRuntime = new PackageManagerRuntime(store);
-            List<Skill> single = List.of(skillFromName(e.skillName()));
+            AgentUnit unit = skillFromName(e.skillName()).asUnit();
             InstallPlan plan = new PlanBuilder(policy, lock, pmRuntime)
-                    .plan(single, true, false, store.cliBinDir());
+                    .plan(List.of(unit), true, false, store.cliBinDir());
             CliInstallRecorder.run(plan, store);
             return EffectReceipt.ok(e,
                     new ContextFact.CliInstalled(e.skillName(), e.dep().name(), e.dep().backend()));

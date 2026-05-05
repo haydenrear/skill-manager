@@ -48,12 +48,12 @@ public final class PlanExpander {
         }
         for (PlanAction a : plan.actions()) {
             if (a instanceof PlanAction.RunCliInstall c) {
-                out.add(new SkillEffect.RunCliInstall(c.skillName(), c.dep()));
+                out.add(new SkillEffect.RunCliInstall(c.unitName(), c.dep()));
             }
         }
         for (PlanAction a : plan.actions()) {
             if (a instanceof PlanAction.RegisterMcpServer m) {
-                out.add(new SkillEffect.RegisterMcpServer(m.skillName(), m.dep(), gw));
+                out.add(new SkillEffect.RegisterMcpServer(m.unitName(), m.dep(), gw));
             }
         }
         return out;

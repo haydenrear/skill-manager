@@ -22,10 +22,10 @@ public final class CliInstallRecorder {
         for (PlanAction a : plan.actions()) {
             if (!(a instanceof PlanAction.RunCliInstall rc)) continue;
             try {
-                registry.installOne(rc.dep(), store, rc.skillName());
+                registry.installOne(rc.dep(), store, rc.unitName());
                 var req = RequestedVersion.of(rc.dep());
                 String sha = findHash(rc.dep());
-                lock.recordInstall(rc.dep().backend(), req.tool(), req.version(), rc.dep().spec(), sha, rc.skillName());
+                lock.recordInstall(rc.dep().backend(), req.tool(), req.version(), rc.dep().spec(), sha, rc.unitName());
             } catch (Exception e) {
                 Log.warn("cli: %s failed: %s", rc.dep().name(), e.getMessage());
             }

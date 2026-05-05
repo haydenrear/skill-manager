@@ -78,7 +78,7 @@ public final class Resolver {
                     staging,
                     fetched.bytesDownloaded(),
                     fetched.sha256(),
-                    skill,
+                    skill.asUnit(),
                     reused,
                     p.requestedBy == null ? List.of() : List.of(p.requestedBy)
             ));
@@ -114,7 +114,7 @@ public final class Resolver {
             Fs.ensureDir(dst.getParent());
             // r.stagedDir() is the fetch workspace; the actual skill root is under it.
             // Re-locate the skill root (mirrors Fetcher logic).
-            Path skillRoot = r.skill().sourcePath();
+            Path skillRoot = r.unit().sourcePath();
             Fs.copyRecursive(skillRoot, dst);
             Log.ok("installed %s", r.name());
         }
