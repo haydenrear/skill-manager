@@ -45,15 +45,24 @@ public final class EffectContext {
      */
     private Map<String, Set<String>> preMcpDeps;
 
+    /** Single user-facing renderer for this program-execution tree. */
+    private final ProgramRenderer renderer;
+
     public EffectContext(SkillStore store, GatewayConfig gateway) {
+        this(store, gateway, ProgramRenderer.NOOP);
+    }
+
+    public EffectContext(SkillStore store, GatewayConfig gateway, ProgramRenderer renderer) {
         this.store = store;
         this.gateway = gateway;
         this.sourceStore = new SkillSourceStore(store);
+        this.renderer = renderer;
     }
 
     public SkillStore store() { return store; }
     public GatewayConfig gateway() { return gateway; }
     public SkillSourceStore sourceStore() { return sourceStore; }
+    public ProgramRenderer renderer() { return renderer; }
 
     public Map<String, SkillSource> sources() {
         if (cache == null) cache = loadAll();

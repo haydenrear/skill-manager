@@ -105,15 +105,17 @@ public final class SkillManagerCli implements Runnable {
     }
 
     private static void tryPrintOutstandingErrors() {
+        // The closing report-as-program runs through ConsoleProgramRenderer:
+        // OutstandingError facts are emitted by LoadOutstandingErrors and
+        // the renderer's onComplete prints the banner. No extra printer call
+        // needed here.
         try {
             dev.skillmanager.store.SkillStore store = dev.skillmanager.store.SkillStore.defaultStore();
             store.init();
             dev.skillmanager.mcp.GatewayConfig gw =
                     dev.skillmanager.mcp.GatewayConfig.resolve(store, null);
-            dev.skillmanager.app.ReportUseCase.Report report =
-                    new dev.skillmanager.effects.LiveInterpreter(store, gw)
-                            .run(dev.skillmanager.app.ReportUseCase.buildProgram());
-            dev.skillmanager.app.ReportUseCase.print(report, store);
+            new dev.skillmanager.effects.LiveInterpreter(store, gw)
+                    .run(dev.skillmanager.app.ReportUseCase.buildProgram());
         } catch (Throwable ignored) {}
     }
 
