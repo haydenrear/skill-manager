@@ -90,12 +90,12 @@ public final class DryRunInterpreter implements ProgramInterpreter {
             case SkillEffect.SyncGit e ->
                     Log.step("[%d] git-sync %s (installSource=%s, gitLatest=%s, merge=%s)",
                             n, e.skillName(), e.installSource(), e.gitLatest(), e.merge());
-            case SkillEffect.AddSkillError e ->
-                    Log.step("[%d] add error %s on %s: %s", n, e.kind(), e.skillName(), e.message());
-            case SkillEffect.ClearSkillError e ->
-                    Log.step("[%d] clear error %s on %s", n, e.kind(), e.skillName());
+            case SkillEffect.AddUnitError e ->
+                    Log.step("[%d] add error %s on %s: %s", n, e.kind(), e.unitName(), e.message());
+            case SkillEffect.ClearUnitError e ->
+                    Log.step("[%d] clear error %s on %s", n, e.kind(), e.unitName());
             case SkillEffect.ValidateAndClearError e ->
-                    Log.step("[%d] validate-and-clear error %s on %s", n, e.kind(), e.skillName());
+                    Log.step("[%d] validate-and-clear error %s on %s", n, e.kind(), e.unitName());
             case SkillEffect.StopGateway e ->
                     Log.step("[%d] stop gateway at %s", n,
                             e.gateway() == null ? "<none>" : e.gateway().baseUrl());
@@ -111,10 +111,10 @@ public final class DryRunInterpreter implements ProgramInterpreter {
                             e.tool().id(), e.missingOnPath());
             case SkillEffect.RunCliInstall e ->
                     Log.step("[%d] cli-install %s [%s] %s", n,
-                            e.skillName(), e.dep().backend(), e.dep().name());
+                            e.unitName(), e.dep().backend(), e.dep().name());
             case SkillEffect.RegisterMcpServer e ->
                     Log.step("[%d] register mcp server %s for %s",
-                            n, e.dep().name(), e.skillName());
+                            n, e.dep().name(), e.unitName());
             case SkillEffect.RemoveSkillFromStore e ->
                     Log.step("[%d] remove %s from store", n, e.skillName());
             case SkillEffect.UnlinkAgentSkill e ->
@@ -130,7 +130,7 @@ public final class DryRunInterpreter implements ProgramInterpreter {
             case SkillEffect.SnapshotMcpDeps e ->
                     Log.step("[%d] snapshot pre-mutation MCP deps", n);
             case SkillEffect.RejectIfAlreadyInstalled e ->
-                    Log.step("[%d] reject if %s already installed", n, e.skillName());
+                    Log.step("[%d] reject if %s already installed", n, e.unitName());
             case SkillEffect.BuildInstallPlan e ->
                     Log.step("[%d] build install plan over %d skill(s)",
                             n, e.graph().resolved().size());

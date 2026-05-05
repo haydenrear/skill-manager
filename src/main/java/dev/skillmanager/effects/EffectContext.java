@@ -69,8 +69,16 @@ public final class EffectContext {
         return cache;
     }
 
+    /**
+     * Look up an {@link InstalledUnit} by name — kind-agnostic. Falls back
+     * to a direct {@link UnitStore#read} when the cache (built from the
+     * skill-only {@code listInstalled}) misses, so plugin-kind units land
+     * here too.
+     */
     public Optional<InstalledUnit> source(String name) {
-        return Optional.ofNullable(sources().get(name));
+        InstalledUnit cached = sources().get(name);
+        if (cached != null) return Optional.of(cached);
+        return sourceStore.read(name);
     }
 
     public void invalidate() { cache = null; }

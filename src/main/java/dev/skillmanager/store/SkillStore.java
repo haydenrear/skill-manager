@@ -105,6 +105,18 @@ public final class SkillStore {
         return Files.isDirectory(skillDir(name)) && Files.isRegularFile(skillDir(name).resolve(SkillParser.SKILL_FILENAME));
     }
 
+    /**
+     * Kind-agnostic install check: a unit named {@code name} is installed
+     * if its directory exists under either {@code skills/} or {@code plugins/}
+     * with the appropriate manifest file.
+     */
+    public boolean containsUnit(String name) {
+        if (contains(name)) return true;
+        Path pd = pluginsDir.resolve(name);
+        return Files.isDirectory(pd)
+                && Files.isRegularFile(pd.resolve(".claude-plugin/plugin.json"));
+    }
+
     public Optional<Skill> load(String name) throws IOException {
         Path d = skillDir(name);
         if (!Files.isDirectory(d)) return Optional.empty();

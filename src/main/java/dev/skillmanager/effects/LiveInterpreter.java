@@ -134,8 +134,8 @@ public final class LiveInterpreter implements ProgramInterpreter {
             case SkillEffect.ScaffoldSkill e -> scaffoldSkill(e);
             case SkillEffect.InitializePolicy e -> initializePolicy(e, ctx);
             case SkillEffect.LoadOutstandingErrors e -> loadOutstandingErrors(e, ctx);
-            case SkillEffect.AddSkillError e -> addError(e, ctx);
-            case SkillEffect.ClearSkillError e -> clearError(e, ctx);
+            case SkillEffect.AddUnitError e -> addError(e, ctx);
+            case SkillEffect.ClearUnitError e -> clearError(e, ctx);
             case SkillEffect.ValidateAndClearError e -> validateAndClear(e, ctx);
             case SkillEffect.InstallTools e -> installTools(e);
             case SkillEffect.InstallCli e -> installCli(e);
@@ -500,35 +500,35 @@ public final class LiveInterpreter implements ProgramInterpreter {
         catch (IOException io) { Log.warn("could not clear %s on %s: %s", kind, skillName, io.getMessage()); }
     }
 
-    private EffectReceipt addError(SkillEffect.AddSkillError e, EffectContext ctx) throws IOException {
-        ctx.addError(e.skillName(), e.kind(), e.message());
-        return EffectReceipt.ok(e, new ContextFact.ErrorAdded(e.skillName(), e.kind()));
+    private EffectReceipt addError(SkillEffect.AddUnitError e, EffectContext ctx) throws IOException {
+        ctx.addError(e.unitName(), e.kind(), e.message());
+        return EffectReceipt.ok(e, new ContextFact.ErrorAdded(e.unitName(), e.kind()));
     }
 
-    private EffectReceipt clearError(SkillEffect.ClearSkillError e, EffectContext ctx) throws IOException {
-        ctx.clearError(e.skillName(), e.kind());
-        return EffectReceipt.ok(e, new ContextFact.ErrorCleared(e.skillName(), e.kind()));
+    private EffectReceipt clearError(SkillEffect.ClearUnitError e, EffectContext ctx) throws IOException {
+        ctx.clearError(e.unitName(), e.kind());
+        return EffectReceipt.ok(e, new ContextFact.ErrorCleared(e.unitName(), e.kind()));
     }
 
     private EffectReceipt validateAndClear(SkillEffect.ValidateAndClearError e, EffectContext ctx) throws IOException {
-        Path dir = ctx.store().skillDir(e.skillName());
+        Path dir = ctx.store().skillDir(e.unitName());
         boolean cleared = false;
         switch (e.kind()) {
             case MERGE_CONFLICT -> {
                 if (GitOps.isGitRepo(dir) && GitOps.unmergedFiles(dir).isEmpty()) {
-                    ctx.clearError(e.skillName(), InstalledUnit.ErrorKind.MERGE_CONFLICT);
+                    ctx.clearError(e.unitName(), InstalledUnit.ErrorKind.MERGE_CONFLICT);
                     cleared = true;
                 }
             }
             case NO_GIT_REMOTE -> {
                 if (GitOps.isGitRepo(dir) && GitOps.originUrl(dir) != null) {
-                    ctx.clearError(e.skillName(), InstalledUnit.ErrorKind.NO_GIT_REMOTE);
+                    ctx.clearError(e.unitName(), InstalledUnit.ErrorKind.NO_GIT_REMOTE);
                     cleared = true;
                 }
             }
             case NEEDS_GIT_MIGRATION -> {
                 if (GitOps.isGitRepo(dir)) {
-                    ctx.clearError(e.skillName(), InstalledUnit.ErrorKind.NEEDS_GIT_MIGRATION);
+                    ctx.clearError(e.unitName(), InstalledUnit.ErrorKind.NEEDS_GIT_MIGRATION);
                     cleared = true;
                 }
             }
@@ -540,7 +540,7 @@ public final class LiveInterpreter implements ProgramInterpreter {
                 // (RegisterMcp / SyncAgents / SyncGit registry lookup).
             }
         }
-        return EffectReceipt.ok(e, new ContextFact.ErrorValidated(e.skillName(), e.kind(), cleared));
+        return EffectReceipt.ok(e, new ContextFact.ErrorValidated(e.unitName(), e.kind(), cleared));
     }
 
     private static String ownerOf(List<Skill> skills, String mcpServerId) {
@@ -591,12 +591,17 @@ public final class LiveInterpreter implements ProgramInterpreter {
     }
 
     private EffectReceipt rejectIfInstalled(SkillEffect.RejectIfAlreadyInstalled e, EffectContext ctx) {
-        if (e.skillName() == null || e.skillName().isBlank()) return EffectReceipt.skipped(e, "no name");
-        if (ctx.store().contains(e.skillName())) {
+        if (e.unitName() == null || e.unitName().isBlank()) return EffectReceipt.skipped(e, "no name");
+        if (ctx.store().containsUnit(e.unitName())) {
+            // Resolve to the kind-aware directory if we have an InstalledUnit
+            // record; fall back to skillDir for the legacy lookup so the
+            // halt message still points at something reasonable.
+            Path at = ctx.source(e.unitName())
+                    .map(u -> ctx.store().unitDir(u.name(), u.unitKind()))
+                    .orElseGet(() -> ctx.store().skillDir(e.unitName()));
             return EffectReceipt.halted(e,
-                    "skill '" + e.skillName() + "' is already installed at "
-                            + ctx.store().skillDir(e.skillName())
-                            + " — remove it first (skill-manager remove " + e.skillName() + ")");
+                    "unit '" + e.unitName() + "' is already installed at " + at
+                            + " — remove it first (skill-manager remove " + e.unitName() + ")");
         }
         return EffectReceipt.ok(e);
     }
@@ -748,72 +753,77 @@ public final class LiveInterpreter implements ProgramInterpreter {
 
     private EffectReceipt runCliInstall(SkillEffect.RunCliInstall e, EffectContext ctx) {
         try {
-            // Build a CLI-only plan for the owning skill and feed it through
-            // the existing recorder — keeps the lock-file write logic in one
-            // place. PlanBuilder.plan(skills, withCli, withMcp, cliBinDir):
-            // withCli=true so RunCliInstall actions land in the plan.
+            // Build a CLI-only plan around the dep and unit name supplied by
+            // the effect — synthesized so plugin-kind units (whose dirs live
+            // under plugins/, not skills/) work without a kind-specific
+            // disk lookup. The leaf claim is "the work is the same regardless
+            // of the unit's kind"; using e.unitName() / e.dep() directly
+            // makes that concrete.
             Policy policy = Policy.load(store);
             CliLock lock = CliLock.load(store);
             PackageManagerRuntime pmRuntime = new PackageManagerRuntime(store);
-            AgentUnit unit = skillFromName(e.skillName()).asUnit();
+            AgentUnit unit = singleCliUnit(e.unitName(), e.dep());
             InstallPlan plan = new PlanBuilder(policy, lock, pmRuntime)
                     .plan(List.of(unit), true, false, store.cliBinDir());
             CliInstallRecorder.run(plan, store);
             return EffectReceipt.ok(e,
-                    new ContextFact.CliInstalled(e.skillName(), e.dep().name(), e.dep().backend()));
+                    new ContextFact.CliInstalled(e.unitName(), e.dep().name(), e.dep().backend()));
         } catch (Exception ex) {
             return EffectReceipt.failed(e,
-                    List.of(new ContextFact.CliInstallFailed(e.skillName(), e.dep().name(), ex.getMessage())),
+                    List.of(new ContextFact.CliInstallFailed(e.unitName(), e.dep().name(), ex.getMessage())),
                     ex.getMessage());
         }
     }
 
-    private Skill skillFromName(String name) throws IOException {
-        return store.load(name).orElseThrow(() -> new IOException("skill not in store: " + name));
+    private static AgentUnit singleCliUnit(String unitName, dev.skillmanager.model.CliDependency dep) {
+        return new Skill(unitName, unitName, null,
+                List.of(dep), List.of(), List.of(),
+                java.util.Map.of(), "", null).asUnit();
+    }
+
+    private static Skill singleMcpSkill(String unitName, McpDependency dep) {
+        return new Skill(unitName, unitName, null,
+                List.of(), List.of(), List.of(dep),
+                java.util.Map.of(), "", null);
     }
 
     private EffectReceipt registerMcpServer(SkillEffect.RegisterMcpServer e, EffectContext ctx) {
         if (!new GatewayClient(e.gateway()).ping()) {
             try {
-                ctx.addError(e.skillName(), InstalledUnit.ErrorKind.GATEWAY_UNAVAILABLE,
+                ctx.addError(e.unitName(), InstalledUnit.ErrorKind.GATEWAY_UNAVAILABLE,
                         "gateway at " + e.gateway().baseUrl() + " unreachable");
             } catch (IOException io) {
-                Log.warn("could not record gateway-unavailable for %s: %s", e.skillName(), io.getMessage());
+                Log.warn("could not record gateway-unavailable for %s: %s", e.unitName(), io.getMessage());
             }
             return EffectReceipt.skipped(e, "gateway unreachable");
         }
         try {
             McpWriter writer = new McpWriter(e.gateway());
-            Skill carrier = skillFromName(e.skillName());
-            // Filter to just this dep — registerAll loops, so we synthesize a
-            // single-dep skill and let it run.
-            Skill solo = withSingleMcpDep(carrier, e.dep());
+            // Synthesize a single-dep skill so registerAll has exactly one
+            // server to register. No on-disk unit lookup — works the same
+            // whether unitName names a skill (skills/<n>) or a plugin
+            // (plugins/<n>).
+            Skill solo = singleMcpSkill(e.unitName(), e.dep());
             List<InstallResult> results = writer.registerAll(List.of(solo));
             List<ContextFact> facts = new ArrayList<>();
             int errored = 0;
             for (InstallResult r : results) {
                 if (InstallResult.Status.ERROR.code.equals(r.status())) {
-                    ctx.addError(e.skillName(), InstalledUnit.ErrorKind.MCP_REGISTRATION_FAILED,
+                    ctx.addError(e.unitName(), InstalledUnit.ErrorKind.MCP_REGISTRATION_FAILED,
                             r.serverId() + ": " + r.message());
-                    facts.add(new ContextFact.McpServerRegistrationFailed(e.skillName(), r));
+                    facts.add(new ContextFact.McpServerRegistrationFailed(e.unitName(), r));
                     errored++;
                 } else {
-                    facts.add(new ContextFact.McpServerRegistered(e.skillName(), r));
+                    facts.add(new ContextFact.McpServerRegistered(e.unitName(), r));
                 }
             }
-            if (errored == 0) ctx.clearError(e.skillName(), InstalledUnit.ErrorKind.MCP_REGISTRATION_FAILED);
+            if (errored == 0) ctx.clearError(e.unitName(), InstalledUnit.ErrorKind.MCP_REGISTRATION_FAILED);
             return errored == 0
                     ? EffectReceipt.ok(e, facts)
                     : EffectReceipt.partial(e, facts, "register failed");
         } catch (Exception ex) {
             return EffectReceipt.failed(e, ex.getMessage());
         }
-    }
-
-    private static Skill withSingleMcpDep(Skill original, McpDependency only) {
-        return new Skill(original.name(), original.description(), original.version(),
-                original.cliDependencies(), original.skillReferences(), List.of(only),
-                original.rawFrontmatter(), original.body(), original.sourcePath());
     }
 
     // --------------------------------------------------- store / agent removal

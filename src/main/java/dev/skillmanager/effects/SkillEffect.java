@@ -56,8 +56,8 @@ public sealed interface SkillEffect permits
         SkillEffect.ScaffoldSkill,
         SkillEffect.InitializePolicy,
         SkillEffect.LoadOutstandingErrors,
-        SkillEffect.AddSkillError,
-        SkillEffect.ClearSkillError,
+        SkillEffect.AddUnitError,
+        SkillEffect.ClearUnitError,
         SkillEffect.ValidateAndClearError,
         SkillEffect.InstallTools,
         SkillEffect.InstallCli,
@@ -153,11 +153,11 @@ public sealed interface SkillEffect permits
             boolean merge
     ) implements SkillEffect {}
 
-    /** Set an error on a skill's source record. */
-    record AddSkillError(String skillName, InstalledUnit.ErrorKind kind, String message) implements SkillEffect {}
+    /** Set an error on a unit's source record. */
+    record AddUnitError(String unitName, InstalledUnit.ErrorKind kind, String message) implements SkillEffect {}
 
-    /** Drop an error from a skill's source record. */
-    record ClearSkillError(String skillName, InstalledUnit.ErrorKind kind) implements SkillEffect {}
+    /** Drop an error from a unit's source record. */
+    record ClearUnitError(String unitName, InstalledUnit.ErrorKind kind) implements SkillEffect {}
 
     /**
      * Reconciler effect: probe for the resolution condition for {@code kind}
@@ -165,7 +165,7 @@ public sealed interface SkillEffect permits
      * gateway reachable for {@link InstalledUnit.ErrorKind#GATEWAY_UNAVAILABLE}).
      * Clears the error if validation passes; leaves it for the next command otherwise.
      */
-    record ValidateAndClearError(String skillName, InstalledUnit.ErrorKind kind) implements SkillEffect {}
+    record ValidateAndClearError(String unitName, InstalledUnit.ErrorKind kind) implements SkillEffect {}
 
     // -------------------------------------------------------- gateway lifecycle
 
@@ -195,11 +195,11 @@ public sealed interface SkillEffect permits
     // -------------------------------------------------- pre-flight precondition checks
 
     /**
-     * Halt the program if {@code skillName} is already in the store —
+     * Halt the program if {@code unitName} is already in the store —
      * lets {@code install}'s "remove first" guard live in the program
      * instead of as inline command code.
      */
-    record RejectIfAlreadyInstalled(String skillName) implements SkillEffect {}
+    record RejectIfAlreadyInstalled(String unitName) implements SkillEffect {}
 
     /**
      * Capture every installed skill's MCP-dep names BEFORE any mutating
@@ -251,10 +251,10 @@ public sealed interface SkillEffect permits
     record EnsureTool(ToolDependency tool, boolean missingOnPath) implements SkillEffect {}
 
     /** One per CLI dep: run the backend installer and append the lock entry. */
-    record RunCliInstall(String skillName, CliDependency dep) implements SkillEffect {}
+    record RunCliInstall(String unitName, CliDependency dep) implements SkillEffect {}
 
     /** One per MCP dep: register the server with the gateway. */
-    record RegisterMcpServer(String skillName, McpDependency dep, GatewayConfig gateway) implements SkillEffect {}
+    record RegisterMcpServer(String unitName, McpDependency dep, GatewayConfig gateway) implements SkillEffect {}
 
     // ----------------------------------------------------- store / agent removal
 
