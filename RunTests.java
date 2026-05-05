@@ -28,6 +28,11 @@ import dev.skillmanager.model.PluginParserDriftWarnsTest;
 import dev.skillmanager.model.PluginParserTest;
 import dev.skillmanager.model.SkillUnitWrapsSkillTest;
 import dev.skillmanager.model.UnitReferenceFromTomlTest;
+import dev.skillmanager.resolve.ResolverContainedSkillNotMatchedTest;
+import dev.skillmanager.resolve.ResolverDeterminismTest;
+import dev.skillmanager.resolve.ResolverDirectGitDetectsKindTest;
+import dev.skillmanager.resolve.ResolverHeterogeneousRefsTest;
+import dev.skillmanager.resolve.ResolverKindFilterTest;
 import dev.skillmanager.store.InstalledUnitRoundTripTest;
 import dev.skillmanager.store.MigrationFromSkillSourceTest;
 import dev.skillmanager.store.UnitStoreDirChoiceTest;
@@ -58,6 +63,11 @@ public class RunTests {
         failures += UnitStoreDirChoiceTest.run();
         failures += InstalledUnitRoundTripTest.run();
         failures += MigrationFromSkillSourceTest.run();
+        failures += ResolverKindFilterTest.run();
+        failures += ResolverHeterogeneousRefsTest.run();
+        failures += ResolverContainedSkillNotMatchedTest.run();
+        failures += ResolverDirectGitDetectsKindTest.run();
+        failures += ResolverDeterminismTest.run();
 
         System.out.println();
         if (failures == 0) {
