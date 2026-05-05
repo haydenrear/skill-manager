@@ -48,46 +48,54 @@ public final class LiveInterpreter implements ProgramInterpreter {
 
     @Override
     public <R> R run(Program<R> program) {
-        return runWithContext(program, new EffectContext(store, gateway));
+        ConsoleProgramRenderer renderer = new ConsoleProgramRenderer(store, gateway);
+        EffectContext ctx = new EffectContext(store, gateway, renderer);
+        R result = runWithContext(program, ctx);
+        renderer.onComplete();
+        return result;
     }
 
     /**
      * Run a (sub-)program against an existing {@link EffectContext} —
      * source-record cache stays warm, error writes from the parent
      * program are visible, and any error writes by the sub-program are
-     * visible to subsequent effects in the parent. Use this when a handler
-     * legitimately needs to run another program (e.g. transitive resolution
-     * or a future compensation pass) instead of constructing a new
-     * interpreter.
+     * visible to subsequent effects in the parent. The renderer is
+     * shared with the parent so accumulated state survives the
+     * boundary; only the top-level {@link #run} calls
+     * {@link ProgramRenderer#onComplete}.
      */
     public <R> R runWithContext(Program<R> program, EffectContext ctx) {
+        ProgramRenderer renderer = ctx.renderer();
         List<EffectReceipt> receipts = new ArrayList<>();
         boolean halted = false;
         for (SkillEffect effect : program.effects()) {
             if (halted) {
-                receipts.add(EffectReceipt.skipped(effect, "halted"));
+                EffectReceipt r = EffectReceipt.skipped(effect, "halted");
+                receipts.add(r);
+                renderer.onReceipt(r);
                 continue;
             }
             EffectReceipt r;
             try {
                 r = execute(effect, ctx);
             } catch (Exception ex) {
-                Log.warn("effect %s failed: %s", effect.getClass().getSimpleName(), ex.getMessage());
                 r = EffectReceipt.failed(effect, ex.getMessage());
             }
             receipts.add(r);
+            renderer.onReceipt(r);
             if (r.status() == EffectStatus.HALTED) halted = true;
         }
         // alwaysAfter runs unconditionally — for cleanup that must happen
         // even when the main effect chain halted (e.g. CleanupResolvedGraph).
         for (SkillEffect effect : program.alwaysAfter()) {
+            EffectReceipt r;
             try {
-                receipts.add(execute(effect, ctx));
+                r = execute(effect, ctx);
             } catch (Exception ex) {
-                Log.warn("cleanup effect %s failed: %s",
-                        effect.getClass().getSimpleName(), ex.getMessage());
-                receipts.add(EffectReceipt.failed(effect, ex.getMessage()));
+                r = EffectReceipt.failed(effect, ex.getMessage());
             }
+            receipts.add(r);
+            renderer.onReceipt(r);
         }
         return program.decoder().decode(receipts);
     }
@@ -140,11 +148,9 @@ public final class LiveInterpreter implements ProgramInterpreter {
         }
         try {
             dev.skillmanager.registry.RegistryConfig.resolve(ctx.store(), e.url());
-            Log.ok("registry: %s", e.url());
             return EffectReceipt.ok(e, new ContextFact.RegistryConfigured(e.url()));
         } catch (Exception ex) {
-            Log.error("invalid registry URL %s: %s", e.url(), ex.getMessage());
-            return EffectReceipt.failed(e, "invalid URL: " + ex.getMessage());
+            return EffectReceipt.failed(e, "invalid registry URL " + e.url() + ": " + ex.getMessage());
         }
     }
 
@@ -158,7 +164,6 @@ public final class LiveInterpreter implements ProgramInterpreter {
         String host = base.getHost();
         boolean isLocal = "127.0.0.1".equals(host) || "localhost".equals(host) || "0.0.0.0".equals(host);
         if (!isLocal) {
-            Log.warn("gateway at %s is unreachable and not local — not attempting to start", base);
             return EffectReceipt.partial(e, "remote gateway unreachable",
                     new ContextFact.GatewayUnreachable(host));
         }
@@ -167,22 +172,20 @@ public final class LiveInterpreter implements ProgramInterpreter {
         try {
             if (!rt.isRunning()) {
                 rt.ensureVenv();
-                Log.step("starting virtual MCP gateway on %s:%d", host, port);
                 rt.start(host, port);
             }
             java.time.Duration wait = e.timeout() == null
                     ? java.time.Duration.ofSeconds(20)
                     : e.timeout();
             if (rt.waitForHealthy(base.toString(), wait)) {
-                Log.ok("gateway up at %s", base);
                 GatewayConfig.persist(store, base.toString());
                 return EffectReceipt.ok(e, new ContextFact.GatewayStarted(host, port));
             }
-            Log.error("gateway did not become healthy within %ds; see %s", wait.toSeconds(), rt.logFile());
-            return EffectReceipt.failed(e, "health check timed out");
+            return EffectReceipt.failed(e,
+                    "gateway did not become healthy within " + wait.toSeconds()
+                            + "s; see " + rt.logFile());
         } catch (Exception ex) {
-            Log.error("failed to start gateway: %s", ex.getMessage());
-            return EffectReceipt.failed(e, ex.getMessage());
+            return EffectReceipt.failed(e, "failed to start gateway: " + ex.getMessage());
         }
     }
 
@@ -201,10 +204,8 @@ public final class LiveInterpreter implements ProgramInterpreter {
                 dev.skillmanager.shared.util.Fs.copyRecursive(skillRoot, dst);
                 committed.add(r.name());
                 facts.add(new ContextFact.SkillCommitted(r.name()));
-                Log.ok("installed %s", r.name());
             }
         } catch (Exception ex) {
-            Log.error("commit failed after %d skill(s): %s — rolling back", committed.size(), ex.getMessage());
             for (String name : committed) {
                 try {
                     dev.skillmanager.shared.util.Fs.deleteRecursive(ctx.store().skillDir(name));
@@ -268,7 +269,6 @@ public final class LiveInterpreter implements ProgramInterpreter {
                     SkillSourceStore.nowIso()));
         }
         ctx.writeSource(source);
-        Log.info("onboarded %s (kind=%s)", skill.name(), kind);
         return EffectReceipt.ok(e, new ContextFact.SkillOnboarded(skill.name(), kind));
     }
 
@@ -294,7 +294,6 @@ public final class LiveInterpreter implements ProgramInterpreter {
                     String name = ref.name() != null ? ref.name() : guessName(coord);
                     if (name == null || name.isBlank() || ctx.store().contains(name)) continue;
                     if (!seenName.add(name)) continue;
-                    Log.step("transitive: %s declares unmet skill_reference %s", s.name(), coord);
                     unmet.add(new dev.skillmanager.resolve.Resolver.Coord(coord, ref.version()));
                 }
             }
@@ -324,8 +323,7 @@ public final class LiveInterpreter implements ProgramInterpreter {
                 graph.cleanup();
             }
         } catch (Exception ex) {
-            Log.warn("resolveTransitives failed: %s", ex.getMessage());
-            return EffectReceipt.failed(e, facts, ex.getMessage());
+            return EffectReceipt.failed(e, facts, "resolveTransitives failed: " + ex.getMessage());
         }
     }
 
@@ -361,7 +359,6 @@ public final class LiveInterpreter implements ProgramInterpreter {
 
         McpWriter writer = new McpWriter(e.gateway());
         List<InstallResult> results = writer.registerAll(e.skills());
-        writer.printInstallResults(results);
 
         for (Skill s : e.skills()) {
             if (s.mcpDependencies().isEmpty()) continue;
@@ -375,11 +372,11 @@ public final class LiveInterpreter implements ProgramInterpreter {
             if (InstallResult.Status.ERROR.code.equals(r.status())) {
                 ctx.addError(owner, SkillSource.ErrorKind.MCP_REGISTRATION_FAILED,
                         r.serverId() + ": " + r.message());
-                facts.add(new ContextFact.McpRegistrationFailed(owner, r.serverId(), r.message()));
+                facts.add(new ContextFact.McpServerRegistrationFailed(owner, r));
                 erroredCount++;
             } else {
                 ctx.clearError(owner, SkillSource.ErrorKind.MCP_REGISTRATION_FAILED);
-                facts.add(new ContextFact.McpRegistered(owner, r.serverId()));
+                facts.add(new ContextFact.McpServerRegistered(owner, r));
             }
         }
         return erroredCount == 0
@@ -419,7 +416,6 @@ public final class LiveInterpreter implements ProgramInterpreter {
         if (!client.ping()) return EffectReceipt.skipped(e, "gateway unreachable");
         try {
             if (client.unregister(e.serverId())) {
-                Log.ok("gateway: unregistered orphan %s", e.serverId());
                 return EffectReceipt.ok(e, new ContextFact.OrphanUnregistered(e.serverId()));
             }
             return EffectReceipt.skipped(e, "not registered");
@@ -447,7 +443,6 @@ public final class LiveInterpreter implements ProgramInterpreter {
                     facts.add(new ContextFact.AgentSkillSynced(agent.id(), s.name()));
                     tryClearError(ctx, s.name(), SkillSource.ErrorKind.AGENT_SYNC_FAILED);
                 } catch (Exception ex) {
-                    Log.warn("%s: skill sync failed for %s — %s", agent.id(), s.name(), ex.getMessage());
                     facts.add(new ContextFact.AgentSkillSyncFailed(agent.id(), s.name(), ex.getMessage()));
                     tryAddError(ctx, s.name(), SkillSource.ErrorKind.AGENT_SYNC_FAILED,
                             agent.id() + ": " + ex.getMessage());
@@ -459,7 +454,6 @@ public final class LiveInterpreter implements ProgramInterpreter {
                 facts.add(new ContextFact.AgentMcpConfigChanged(
                         agent.id(), change, agent.mcpConfigPath().toString()));
             } catch (Exception ex) {
-                Log.warn("%s: mcp config update failed — %s", agent.id(), ex.getMessage());
                 facts.add(new ContextFact.AgentMcpConfigFailed(agent.id(), ex.getMessage()));
                 failed++;
             }
@@ -523,7 +517,6 @@ public final class LiveInterpreter implements ProgramInterpreter {
                 // (RegisterMcp / SyncAgents / SyncGit registry lookup).
             }
         }
-        if (cleared) Log.ok("reconcile: %s cleared %s", e.skillName(), e.kind());
         return EffectReceipt.ok(e, new ContextFact.ErrorValidated(e.skillName(), e.kind(), cleared));
     }
 
@@ -577,9 +570,10 @@ public final class LiveInterpreter implements ProgramInterpreter {
     private EffectReceipt rejectIfInstalled(SkillEffect.RejectIfAlreadyInstalled e, EffectContext ctx) {
         if (e.skillName() == null || e.skillName().isBlank()) return EffectReceipt.skipped(e, "no name");
         if (ctx.store().contains(e.skillName())) {
-            Log.error("skill '%s' is already installed at %s — remove it first (skill-manager remove %s)",
-                    e.skillName(), ctx.store().skillDir(e.skillName()), e.skillName());
-            return EffectReceipt.halted(e, "already installed: " + e.skillName());
+            return EffectReceipt.halted(e,
+                    "skill '" + e.skillName() + "' is already installed at "
+                            + ctx.store().skillDir(e.skillName())
+                            + " — remove it first (skill-manager remove " + e.skillName() + ")");
         }
         return EffectReceipt.ok(e);
     }
@@ -590,9 +584,8 @@ public final class LiveInterpreter implements ProgramInterpreter {
             dev.skillmanager.plan.PlanPrinter.print(plan);
             ctx.setPlan(plan);
             if (plan.blocked()) {
-                Log.error("plan has blocked items — see policy at %s",
-                        ctx.store().root().resolve("policy.toml"));
-                return EffectReceipt.halted(e, "plan has blocked items");
+                return EffectReceipt.halted(e, "plan has blocked items — see policy at "
+                        + ctx.store().root().resolve("policy.toml"));
             }
             return EffectReceipt.ok(e);
         } catch (Exception ex) {
@@ -661,7 +654,6 @@ public final class LiveInterpreter implements ProgramInterpreter {
         try {
             if (!rt.isRunning()) return EffectReceipt.skipped(e, "not running");
             rt.stop(java.time.Duration.ofSeconds(10));
-            Log.ok("gateway stopped");
             return EffectReceipt.ok(e, new ContextFact.GatewayStopped());
         } catch (Exception ex) {
             return EffectReceipt.failed(e, ex.getMessage());
@@ -672,7 +664,6 @@ public final class LiveInterpreter implements ProgramInterpreter {
         if (e.url() == null || e.url().isBlank()) return EffectReceipt.skipped(e, "no URL");
         try {
             GatewayConfig.persist(ctx.store(), e.url());
-            Log.ok("gateway URL persisted: %s", e.url());
             return EffectReceipt.ok(e, new ContextFact.GatewayConfigured(e.url()));
         } catch (Exception ex) {
             return EffectReceipt.failed(e, "could not persist: " + ex.getMessage());
@@ -716,7 +707,6 @@ public final class LiveInterpreter implements ProgramInterpreter {
             PackageManagerRuntime rt = new PackageManagerRuntime(store);
             Path installed = rt.install(e.pm(), e.version());
             String version = e.version() == null ? e.pm().defaultVersion : e.version();
-            Log.ok("installed package manager %s@%s at %s", e.pm().id, version, installed);
             return EffectReceipt.ok(e,
                     new ContextFact.PackageManagerInstalled(e.pm().id, version, installed.toString()));
         } catch (Exception ex) {
@@ -779,18 +769,22 @@ public final class LiveInterpreter implements ProgramInterpreter {
             // single-dep skill and let it run.
             Skill solo = withSingleMcpDep(carrier, e.dep());
             List<InstallResult> results = writer.registerAll(List.of(solo));
-            writer.printInstallResults(results);
+            List<ContextFact> facts = new ArrayList<>();
+            int errored = 0;
             for (InstallResult r : results) {
                 if (InstallResult.Status.ERROR.code.equals(r.status())) {
                     ctx.addError(e.skillName(), SkillSource.ErrorKind.MCP_REGISTRATION_FAILED,
                             r.serverId() + ": " + r.message());
-                    return EffectReceipt.partial(e, "register failed",
-                            new ContextFact.McpServerRegistrationFailed(e.skillName(), r.serverId(), r.message()));
+                    facts.add(new ContextFact.McpServerRegistrationFailed(e.skillName(), r));
+                    errored++;
+                } else {
+                    facts.add(new ContextFact.McpServerRegistered(e.skillName(), r));
                 }
             }
-            ctx.clearError(e.skillName(), SkillSource.ErrorKind.MCP_REGISTRATION_FAILED);
-            return EffectReceipt.ok(e,
-                    new ContextFact.McpServerRegistered(e.skillName(), e.dep().name()));
+            if (errored == 0) ctx.clearError(e.skillName(), SkillSource.ErrorKind.MCP_REGISTRATION_FAILED);
+            return errored == 0
+                    ? EffectReceipt.ok(e, facts)
+                    : EffectReceipt.partial(e, facts, "register failed");
         } catch (Exception ex) {
             return EffectReceipt.failed(e, ex.getMessage());
         }
@@ -811,7 +805,6 @@ public final class LiveInterpreter implements ProgramInterpreter {
             dev.skillmanager.shared.util.Fs.deleteRecursive(dir);
             try { ctx.sourceStore().delete(e.skillName()); } catch (Exception ignored) {}
             ctx.invalidate();
-            Log.ok("removed %s from store", e.skillName());
             return EffectReceipt.ok(e, new ContextFact.SkillRemovedFromStore(e.skillName()));
         } catch (Exception ex) {
             return EffectReceipt.failed(e, ex.getMessage());

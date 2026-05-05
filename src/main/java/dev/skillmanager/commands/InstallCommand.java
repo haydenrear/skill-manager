@@ -1,7 +1,6 @@
 package dev.skillmanager.commands;
 
 import dev.skillmanager.app.InstallUseCase;
-import dev.skillmanager.app.PostUpdateUseCase;
 import dev.skillmanager.effects.DryRunInterpreter;
 import dev.skillmanager.effects.LiveInterpreter;
 import dev.skillmanager.effects.Program;
@@ -77,16 +76,12 @@ public final class InstallCommand implements Callable<Integer> {
         InstallUseCase.Report report = interpreter.run(program);
 
         if (dryRun) return 0;
-
-        PostUpdateUseCase.printAgentConfigSummary(
-                new PostUpdateUseCase.Report(report.errorCount(),
-                        report.agentConfigChanges(), report.orphansUnregistered()),
-                gw.mcpEndpoint().toString());
-        // Install succeeds when the skill committed — post-commit failures
-        // (MCP register, transitive install, agent sync) are tracked as
-        // outstanding errors on the source record for the reconciler to
-        // retry. Exit 4 is reserved for "nothing committed" (commit
-        // failed or program halted before commit).
+        // Renderer printed every user-facing line; the only command-level
+        // decision left is the exit code. Install succeeds when the skill
+        // committed — post-commit failures (MCP register, transitive install,
+        // agent sync) are tracked as outstanding errors on the source record
+        // for the reconciler to retry. Exit 4 is reserved for "nothing
+        // committed" (commit failed or program halted before commit).
         return report.committed().isEmpty() ? 4 : 0;
     }
 }

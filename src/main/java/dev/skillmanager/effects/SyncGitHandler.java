@@ -67,54 +67,31 @@ public final class SyncGitHandler {
         String baseline = src != null ? src.gitHash() : null;
         boolean dirty = GitOps.isDirty(storeDir, baseline);
         if (dirty && !e.merge()) {
-            printMergeInstructions(skillName, storeDir, upstream, e.gitLatest());
             return EffectReceipt.partial(e, "extra local changes — re-run with --merge",
-                    new ContextFact.SyncGitRefused(skillName));
+                    new ContextFact.SyncGitRefused(skillName, upstream, e.gitLatest()));
         }
 
-        TargetResolution tr = resolveTarget(store, ctx, e, src, skillName, storeDir, upstream);
+        TargetResolution tr = resolveTarget(store, ctx, e, src, skillName, storeDir, upstream, dirty);
         if (tr.fact != null) {
             return EffectReceipt.ok(e, tr.fact);
         }
         TargetRef target = tr.ref;
 
         if (!dirty && target.sha != null && target.sha.equals(baseline)) {
-            Log.ok("%s: already at %s (%s)", skillName, target.displayLabel(),
-                    baseline.substring(0, Math.min(7, baseline.length())));
             return EffectReceipt.ok(e, new ContextFact.SyncGitUpToDate(skillName, target.displayLabel()));
         }
         return runGitMerge(ctx, storeDir, upstream, target.ref, skillName, e);
     }
 
-    private static void printMergeInstructions(String skillName, Path storeDir, String upstream,
-                                               boolean gitLatest) {
-        Log.error("%s has extra local changes (working tree edits or commits ahead of installed baseline).",
-                skillName);
-        System.err.println();
-        System.err.println("Sync would overwrite them. Re-run with --merge:");
-        System.err.println();
-        String flags = (gitLatest ? " --git-latest" : "") + " --merge";
-        System.err.println("    skill-manager sync " + skillName + flags);
-        System.err.println();
-        System.err.println("Or merge by hand:");
-        System.err.println();
-        System.err.println("    cd " + storeDir);
-        System.err.println("    git fetch " + upstream + " HEAD");
-        System.err.println("    git merge FETCH_HEAD");
-        System.err.println();
-    }
-
     private static TargetResolution resolveTarget(SkillStore store, EffectContext ctx,
                                                   SkillEffect.SyncGit e, SkillSource src,
                                                   String skillName, Path storeDir,
-                                                  String upstream) throws IOException {
+                                                  String upstream, boolean dirty) throws IOException {
         if (e.gitLatest()) {
             String tracked = src != null ? src.gitRef() : null;
             if (tracked != null && !tracked.isBlank()) {
                 return TargetResolution.ref(new TargetRef(tracked, null, null));
             }
-            Log.warn("%s: install was sha-pinned (no branch/tag tracked); --git-latest fetches remote HEAD",
-                    skillName);
             return TargetResolution.ref(new TargetRef("HEAD", null, null));
         }
 
@@ -131,9 +108,11 @@ public final class SyncGitHandler {
             }
             ctx.clearError(skillName, SkillSource.ErrorKind.REGISTRY_UNAVAILABLE);
             String localVer = src != null ? src.version() : null;
-            if (localVer != null && compareVersions(localVer, sv.version) >= 0) {
-                Log.ok("%s: at %s (>= registry's latest %s) — no upgrade needed",
-                        skillName, localVer, sv.version);
+            // Only short-circuit on "no upgrade needed" when the working tree
+            // is clean. If dirty + --merge, the user explicitly wants to fold
+            // local changes against upstream even though versions match —
+            // fall through to the merge against the recorded git_sha.
+            if (!dirty && localVer != null && compareVersions(localVer, sv.version) >= 0) {
                 return TargetResolution.fact(new ContextFact.SyncGitNoUpgradeNeeded(skillName, localVer));
             }
             return TargetResolution.ref(new TargetRef(sv.gitSha, sv.gitSha, "v" + sv.version));
@@ -159,7 +138,7 @@ public final class SyncGitHandler {
             case 0 -> EffectReceipt.ok(effect,
                     new ContextFact.SyncGitMerged(skillName, result.fetchedHash));
             case 8 -> EffectReceipt.partial(effect, "merge conflict",
-                    new ContextFact.SyncGitConflicted(skillName));
+                    new ContextFact.SyncGitConflicted(skillName, result.conflictedFiles));
             default -> EffectReceipt.failed(effect,
                     List.of(new ContextFact.SyncGitFailed(skillName, "git fetch/merge rc=" + result.rc)),
                     "git fetch/merge failed (rc=" + result.rc + ")");
@@ -178,10 +157,8 @@ public final class SyncGitHandler {
         String preHead = GitOps.headHash(storeDir);
         boolean stashed = GitOps.stashAll(storeDir, "skill-manager-sync");
 
-        Log.step("git fetch %s %s && git merge FETCH_HEAD (in %s)", upstream, ref, storeDir);
         String fetchedHash = GitOps.fetchRef(storeDir, upstream, ref);
         if (fetchedHash == null) {
-            Log.error("`git fetch %s %s` failed", upstream, ref);
             if (stashed) GitOps.stashPop(storeDir);
             return new MergeResult(1, null);
         }
@@ -189,10 +166,9 @@ public final class SyncGitHandler {
         GitOps.MergeOutcome outcome = GitOps.mergeFetchHead(storeDir);
         if (!outcome.ok()) {
             if (!outcome.conflictedFiles().isEmpty()) {
-                logConflict(skillName, storeDir, outcome.conflictedFiles());
                 tryAddError(ctx, skillName, SkillSource.ErrorKind.MERGE_CONFLICT,
                         "merge conflict against " + upstream + " " + ref);
-                return new MergeResult(8, null);
+                return new MergeResult(8, null, outcome.conflictedFiles());
             }
             GitOps.mergeAbort(storeDir);
             GitOps.resetHard(storeDir, preHead);
@@ -202,14 +178,12 @@ public final class SyncGitHandler {
 
         if (stashed && !GitOps.stashPop(storeDir)) {
             List<String> conflicted = GitOps.unmergedFiles(storeDir);
-            logConflict(skillName, storeDir, conflicted);
             tryAddError(ctx, skillName, SkillSource.ErrorKind.MERGE_CONFLICT,
                     "stash pop conflict after merging " + upstream + " " + ref
                             + " — local changes preserved at stash@{0}");
-            return new MergeResult(8, null);
+            return new MergeResult(8, null, conflicted);
         }
 
-        Log.ok("%s: merged %s", skillName, fetchedHash.substring(0, Math.min(7, fetchedHash.length())));
         try {
             ctx.source(skillName).ifPresent(old -> {
                 try {
@@ -225,14 +199,8 @@ public final class SyncGitHandler {
         return new MergeResult(0, fetchedHash);
     }
 
-    public record MergeResult(int rc, String fetchedHash) {}
-
-    private static void logConflict(String skillName, Path storeDir, List<String> conflicted) {
-        Log.error("%s: merge conflict in %d file(s):", skillName, conflicted.size());
-        for (String f : conflicted) System.err.println("    " + f);
-        System.err.println();
-        System.err.println("Resolve in " + storeDir + ", then `git add` + `git commit`,");
-        System.err.println("or `git merge --abort` (and `git stash drop` if applicable) to back out.");
+    public record MergeResult(int rc, String fetchedHash, List<String> conflictedFiles) {
+        public MergeResult(int rc, String fetchedHash) { this(rc, fetchedHash, List.of()); }
     }
 
     private static void tryAddError(EffectContext ctx, String skillName,

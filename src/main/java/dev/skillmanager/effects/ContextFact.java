@@ -1,5 +1,6 @@
 package dev.skillmanager.effects;
 
+import dev.skillmanager.mcp.InstallResult;
 import dev.skillmanager.mcp.McpWriter;
 import dev.skillmanager.source.SkillSource;
 
@@ -59,8 +60,8 @@ public sealed interface ContextFact {
     // ---- Sync git ----
     record SyncGitUpToDate(String skillName, String label) implements ContextFact {}
     record SyncGitMerged(String skillName, String fetchedHash) implements ContextFact {}
-    record SyncGitRefused(String skillName) implements ContextFact {}
-    record SyncGitConflicted(String skillName) implements ContextFact {}
+    record SyncGitRefused(String skillName, String upstream, boolean gitLatest) implements ContextFact {}
+    record SyncGitConflicted(String skillName, java.util.List<String> conflictedFiles) implements ContextFact {}
     record SyncGitFailed(String skillName, String reason) implements ContextFact {}
     record SyncGitNotGitTracked(String skillName) implements ContextFact {}
     record SyncGitNoOrigin(String skillName) implements ContextFact {}
@@ -104,6 +105,7 @@ public sealed interface ContextFact {
     record ToolEnsured(String toolId, boolean missingOnPath, boolean bundled) implements ContextFact {}
     record CliInstalled(String skillName, String depName, String backend) implements ContextFact {}
     record CliInstallFailed(String skillName, String depName, String message) implements ContextFact {}
-    record McpServerRegistered(String skillName, String serverId) implements ContextFact {}
-    record McpServerRegistrationFailed(String skillName, String serverId, String message) implements ContextFact {}
+    /** Carries the full {@link InstallResult} so the renderer can emit the JSON block + summary. */
+    record McpServerRegistered(String skillName, InstallResult result) implements ContextFact {}
+    record McpServerRegistrationFailed(String skillName, InstallResult result) implements ContextFact {}
 }

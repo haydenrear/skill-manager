@@ -1,6 +1,5 @@
 package dev.skillmanager.commands;
 
-import dev.skillmanager.app.PostUpdateUseCase;
 import dev.skillmanager.app.SyncUseCase;
 import dev.skillmanager.effects.DryRunInterpreter;
 import dev.skillmanager.effects.LiveInterpreter;
@@ -97,13 +96,6 @@ public final class SyncCommand implements Callable<Integer> {
         Program<SyncUseCase.Report> program = SyncUseCase.buildProgram(store, gw, opts, targets);
         ProgramInterpreter interpreter = dryRun ? new DryRunInterpreter() : new LiveInterpreter(store, gw);
         SyncUseCase.Report report = interpreter.run(program);
-        SyncUseCase.printSyncSummary(report);
-        if (!report.agentConfigChanges().isEmpty()) {
-            PostUpdateUseCase.printAgentConfigSummary(
-                    new PostUpdateUseCase.Report(report.errorCount(),
-                            report.agentConfigChanges(), report.orphansUnregistered()),
-                    gw.mcpEndpoint().toString());
-        }
         return report.worstRc();
     }
 
