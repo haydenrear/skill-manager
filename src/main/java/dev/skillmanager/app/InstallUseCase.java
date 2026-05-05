@@ -65,8 +65,19 @@ public final class InstallUseCase {
 
     public static Program<Report> buildProgram(GatewayConfig gw, String registryOverride,
                                                ResolvedGraph graph, boolean dryRun) {
+        return buildProgram(gw, registryOverride, graph, dryRun, !dryRun);
+    }
+
+    /**
+     * Variant that lets the caller suppress the gateway preflight (used by
+     * {@code onboard --skip-gateway} so a no-gateway install really stays
+     * no-gateway — including the post-update tail's MCP register / agent
+     * sync, which are also gated behind {@code withGateway}).
+     */
+    public static Program<Report> buildProgram(GatewayConfig gw, String registryOverride,
+                                               ResolvedGraph graph, boolean dryRun, boolean withGateway) {
         List<SkillEffect> effects = new ArrayList<>(
-                ResolveContextUseCase.preflight(gw, registryOverride, !dryRun));
+                ResolveContextUseCase.preflight(gw, registryOverride, withGateway && !dryRun));
         effects.add(new SkillEffect.SnapshotMcpDeps());
 
         // The "remove first" guard for the top-level skill — was inline in
@@ -108,9 +119,18 @@ public final class InstallUseCase {
         List<String> orphans = new ArrayList<>();
         for (EffectReceipt r : receipts) {
             if (r.status() == EffectStatus.FAILED || r.status() == EffectStatus.PARTIAL) errorCount++;
+            // CommitSkillsToStore emits SkillCommitted as each skill copies
+            // and CommitRolledBack on failure. A FAILED commit means every
+            // SkillCommitted fact in that receipt was rolled back — don't
+            // count them as committed (would otherwise return exit 0 from
+            // a rolled-back install).
+            boolean commitFailed = r.status() == EffectStatus.FAILED
+                    && r.effect() instanceof SkillEffect.CommitSkillsToStore;
             for (ContextFact f : r.facts()) {
                 switch (f) {
-                    case ContextFact.SkillCommitted c -> committed.add(c.name());
+                    case ContextFact.SkillCommitted c -> {
+                        if (!commitFailed) committed.add(c.name());
+                    }
                     case ContextFact.AgentMcpConfigChanged c -> agentChanges
                             .computeIfAbsent(c.change(), k -> new ArrayList<>())
                             .add(c.agentId() + " (" + c.configPath() + ")");

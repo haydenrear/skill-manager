@@ -45,9 +45,10 @@ public record Program<R>(
     /**
      * Concatenate {@code this} with {@code next}, producing a single
      * program whose decoder combines the two reports via {@code combine}.
-     * Receipts are partitioned by effect index — {@code this.effects.size()}
-     * receipts go to {@code this.decoder}, the rest to {@code next.decoder}.
-     * Cleanup lists from both programs are concatenated.
+     * The interpreter runs main effects first (in concatenated order), then
+     * cleanup effects (in concatenated order). Each component decoder
+     * receives only its own slice of main-effect receipts; alwaysAfter
+     * receipts are cleanup-only and not surfaced to either decoder.
      */
     public <U, V> Program<V> then(Program<U> next, BiFunction<R, U, V> combine) {
         List<SkillEffect> combinedEffects = new ArrayList<>(effects.size() + next.effects().size());
@@ -56,15 +57,13 @@ public record Program<R>(
         List<SkillEffect> combinedFinally = new ArrayList<>(alwaysAfter.size() + next.alwaysAfter().size());
         combinedFinally.addAll(alwaysAfter);
         combinedFinally.addAll(next.alwaysAfter());
-        int firstSize = effects.size();
+        int firstMainSize = effects.size();
+        int secondMainSize = next.effects().size();
         ResultDecoder<R> firstDecoder = decoder;
         ResultDecoder<U> secondDecoder = next.decoder();
         ResultDecoder<V> combined = receipts -> {
-            // The decoder receives only the main-effect receipts (alwaysAfter
-            // receipts are appended by the interpreter but are cleanup-only —
-            // their reports are not part of the user-facing R/U types).
-            R r1 = firstDecoder.decode(receipts.subList(0, firstSize));
-            U r2 = secondDecoder.decode(receipts.subList(firstSize, receipts.size()));
+            R r1 = firstDecoder.decode(receipts.subList(0, firstMainSize));
+            U r2 = secondDecoder.decode(receipts.subList(firstMainSize, firstMainSize + secondMainSize));
             return combine.apply(r1, r2);
         };
         return new Program<>(operationId + "+" + next.operationId(), combinedEffects, combinedFinally, combined);

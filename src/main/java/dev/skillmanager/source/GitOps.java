@@ -118,6 +118,16 @@ public final class GitOps {
         if (fetch.exit != 0) {
             Result fullFetch = run(dir, List.of("git", "fetch", "--no-tags", "--quiet", remote));
             if (fullFetch.exit != 0) return null;
+            // Branch refs ("main", "develop") must resolve to the just-fetched
+            // remote-tracking branch (refs/remotes/<remote>/<ref>) — falling
+            // back to plain "rev-parse <ref>" would resolve the stale local
+            // branch and return the wrong sha. Try remote-tracking first;
+            // tags and full shas resolve identically either way, so the bare
+            // <ref> fallback only fires for those.
+            Result remoteRev = run(dir, List.of("git", "rev-parse", remote + "/" + ref));
+            if (remoteRev.exit == 0 && !remoteRev.stdout.trim().isBlank()) {
+                return remoteRev.stdout.trim();
+            }
             Result rev = run(dir, List.of("git", "rev-parse", ref));
             return rev.exit == 0 ? rev.stdout.trim() : null;
         }

@@ -45,8 +45,13 @@ public final class GatewayCommand implements Runnable {
 
     @Command(name = "up", description = "Start the bundled virtual MCP gateway as a background process.")
     public static final class Up implements Callable<Integer> {
-        @Option(names = "--host", defaultValue = "127.0.0.1") String host;
-        @Option(names = "--port", defaultValue = "51717") int port;
+        // Nullable so we can tell apart "user passed --host/--port" from
+        // "use the persisted URL." Picocli leaves these null if the option
+        // wasn't supplied.
+        @Option(names = "--host", description = "Host to bind (default: persisted, else 127.0.0.1)")
+        String host;
+        @Option(names = "--port", description = "Port to bind (default: persisted, else 51717)")
+        Integer port;
         @Option(names = "--wait-seconds", defaultValue = "20",
                 description = "How long to wait for /health before declaring the gateway unhealthy.")
         int waitSeconds;
@@ -61,10 +66,21 @@ public final class GatewayCommand implements Runnable {
         public Integer call() throws Exception {
             SkillStore store = SkillStore.defaultStore();
             store.init();
-            String url = "http://" + host + ":" + port;
-            // Use the override form so EnsureGateway sees the requested URL
-            // and so it gets persisted on success.
-            GatewayConfig gw = GatewayConfig.resolve(store, url);
+
+            // If neither --host nor --port were supplied, defer to the
+            // already-persisted URL (or the default) — this preserves the
+            // already-running detection: pinging the persisted URL hits
+            // the running gateway. Only when the user explicitly overrides
+            // host/port do we build a custom URL (and even then, persist
+            // is deferred to EnsureGateway's healthy-start path).
+            GatewayConfig gw;
+            if (host == null && port == null) {
+                gw = GatewayConfig.resolve(store, null);
+            } else {
+                String h = host != null ? host : "127.0.0.1";
+                int p = port != null ? port : 51717;
+                gw = GatewayConfig.of(java.net.URI.create("http://" + h + ":" + p));
+            }
 
             List<SkillEffect> effects = new ArrayList<>();
             effects.add(new SkillEffect.EnsureGateway(gw, java.time.Duration.ofSeconds(waitSeconds)));

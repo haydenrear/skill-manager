@@ -59,6 +59,14 @@ public final class GatewayConfig {
         return new GatewayConfig(URI.create(DEFAULT_URL));
     }
 
+    /**
+     * Build a non-persisted config from an explicit URL. Use for paths
+     * that want EnsureGateway's success-path persist (LiveInterpreter
+     * persists on healthy start) without writing the URL up front — that
+     * would leave a stale URL on disk if the gateway never came up.
+     */
+    public static GatewayConfig of(URI baseUrl) { return new GatewayConfig(baseUrl); }
+
     public static void persist(SkillStore store, String url) throws IOException {
         Fs.ensureDir(store.root());
         Properties props = new Properties();

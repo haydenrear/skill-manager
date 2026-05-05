@@ -104,7 +104,7 @@ public final class OnboardCommand implements Callable<Integer> {
             // CleanupResolvedGraph is wired into InstallUseCase as
             // alwaysAfter — no manual try/finally cleanup here.
             Program<InstallUseCase.Report> install = InstallUseCase.buildProgram(
-                    gw, registryUrl, graph, dryRun);
+                    gw, registryUrl, graph, dryRun, !skipGateway);
             Program<OnboardReport> program;
             if (skipGateway) {
                 program = new Program<>(

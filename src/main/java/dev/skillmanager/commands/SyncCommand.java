@@ -85,6 +85,14 @@ public final class SyncCommand implements Callable<Integer> {
 
         GatewayConfig gw = GatewayConfig.resolve(store, null);
 
+        // A user-named skill that isn't installed is an error (exit 3),
+        // distinct from the empty-store case (no targets, exit 0 with a
+        // warning).
+        if (name != null && !name.isBlank() && !store.contains(name)) {
+            Log.error("not installed: %s", name);
+            return 3;
+        }
+
         List<SyncUseCase.Target> targets = resolveTargets(store);
         if (targets.isEmpty()) {
             Log.warn("no skills installed");
@@ -101,10 +109,6 @@ public final class SyncCommand implements Callable<Integer> {
 
     private List<SyncUseCase.Target> resolveTargets(SkillStore store) throws IOException {
         if (name != null && !name.isBlank()) {
-            if (!store.contains(name)) {
-                Log.error("not installed: %s", name);
-                return List.of();
-            }
             return fromDir != null
                     ? List.of(new SyncUseCase.Target.FromDir(name, fromDir))
                     : List.of(new SyncUseCase.Target.Git(name));
