@@ -41,8 +41,13 @@ public final class SyncGitHandler {
         SkillSource src = ctx.source(skillName).orElse(null);
 
         if (!GitOps.isAvailable() || !GitOps.isGitRepo(storeDir)) {
-            ctx.addError(skillName, SkillSource.ErrorKind.NEEDS_GIT_MIGRATION,
-                    "not git-tracked — reinstall from a git source to enable sync/upgrade");
+            // Bundled skills (skill-manager / skill-publisher) ship in-tree
+            // with the CLI and have no .git/ on purpose — see issue #44.
+            // Suppress the persistent NEEDS_GIT_MIGRATION error for them.
+            if (!dev.skillmanager.lifecycle.BundledSkills.isBundled(skillName)) {
+                ctx.addError(skillName, SkillSource.ErrorKind.NEEDS_GIT_MIGRATION,
+                        "not git-tracked — reinstall from a git source to enable sync/upgrade");
+            }
             return EffectReceipt.partial(e, "not git-tracked",
                     new ContextFact.SyncGitNotGitTracked(skillName));
         }
