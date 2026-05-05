@@ -87,7 +87,7 @@ public final class SkillParser {
 
     // ------------------------------------------------------ skill-manager.toml
 
-    private static TomlParseResult loadToml(Path path) throws IOException {
+    static TomlParseResult loadToml(Path path) throws IOException {
         if (!Files.isRegularFile(path)) return null;
         TomlParseResult result = Toml.parse(path);
         if (result.hasErrors()) {
@@ -102,12 +102,19 @@ public final class SkillParser {
      * TOML's block-scoping means keys written after {@code [skill]} belong to
      * that table. We read list-keys from whichever table has them (root or
      * {@code [skill]}), so users don't have to worry about section ordering.
+     * Plugins use {@link #findArrayUnder(TomlTable, String, String)} with
+     * fallback table {@code "plugin"}.
      */
     private static TomlArray findArray(TomlTable root, String key) {
+        return findArrayUnder(root, key, "skill");
+    }
+
+    /** Generalized version of {@link #findArray} taking the fallback table name. */
+    static TomlArray findArrayUnder(TomlTable root, String key, String fallbackTable) {
         TomlArray arr = root.getArray(key);
         if (arr != null) return arr;
-        TomlTable skill = root.getTable("skill");
-        return skill == null ? null : skill.getArray(key);
+        TomlTable nested = root.getTable(fallbackTable);
+        return nested == null ? null : nested.getArray(key);
     }
 
     private static Object findValue(TomlTable root, String key) {
@@ -117,9 +124,14 @@ public final class SkillParser {
         return skill == null ? null : skill.get(key);
     }
 
-    private static List<CliDependency> parseCliDependencies(TomlTable root) {
+    static List<CliDependency> parseCliDependencies(TomlTable root) {
+        return parseCliDependencies(root, "skill");
+    }
+
+    /** Generalized version that takes the fallback table name (e.g. {@code "plugin"}). */
+    static List<CliDependency> parseCliDependencies(TomlTable root, String fallbackTable) {
         List<CliDependency> out = new ArrayList<>();
-        TomlArray arr = findArray(root, "cli_dependencies");
+        TomlArray arr = findArrayUnder(root, "cli_dependencies", fallbackTable);
         if (arr == null) return out;
         for (int i = 0; i < arr.size(); i++) {
             TomlTable t = arr.getTable(i);
@@ -190,9 +202,27 @@ public final class SkillParser {
         return SkillReference.registry(c);
     }
 
-    private static List<SkillReference> parseSkillReferences(TomlTable root) {
+    /**
+     * Read references from the {@code skill_references} key (root or
+     * under {@code [skill]}). Used by {@link SkillParser}; plugins
+     * use {@link #parseReferences(TomlTable, String, String)} with
+     * key {@code "references"} and table {@code "plugin"}.
+     */
+    static List<SkillReference> parseSkillReferences(TomlTable root) {
+        return parseReferences(root, "skill_references", "skill");
+    }
+
+    /**
+     * Generalized reference parsing: looks for {@code key} at the root
+     * or, if not found, under {@code tableName}.
+     */
+    static List<SkillReference> parseReferences(TomlTable root, String key, String tableName) {
         List<SkillReference> out = new ArrayList<>();
-        Object raw = findValue(root, "skill_references");
+        Object raw = root.get(key);
+        if (raw == null) {
+            TomlTable nested = root.getTable(tableName);
+            if (nested != null) raw = nested.get(key);
+        }
         if (!(raw instanceof TomlArray arr)) return out;
         for (int i = 0; i < arr.size(); i++) {
             Object item = arr.get(i);
@@ -210,9 +240,14 @@ public final class SkillParser {
         return out;
     }
 
-    private static List<McpDependency> parseMcpDependencies(TomlTable root) {
+    static List<McpDependency> parseMcpDependencies(TomlTable root) {
+        return parseMcpDependencies(root, "skill");
+    }
+
+    /** Generalized version that takes the fallback table name (e.g. {@code "plugin"}). */
+    static List<McpDependency> parseMcpDependencies(TomlTable root, String fallbackTable) {
         List<McpDependency> out = new ArrayList<>();
-        TomlArray arr = findArray(root, "mcp_dependencies");
+        TomlArray arr = findArrayUnder(root, "mcp_dependencies", fallbackTable);
         if (arr == null) return out;
         for (int i = 0; i < arr.size(); i++) {
             TomlTable t = arr.getTable(i);
