@@ -1,6 +1,8 @@
 package dev.skillmanager.resolve;
 
+import dev.skillmanager.model.AgentUnit;
 import dev.skillmanager.model.Skill;
+import dev.skillmanager.model.SkillUnit;
 import dev.skillmanager.shared.util.Fs;
 
 import java.io.IOException;
@@ -11,7 +13,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * All transitively-resolved skills, staged in scratch directories, ready to be
+ * All transitively-resolved units, staged in scratch directories, ready to be
  * committed into the store once the user consents. Supports clean rollback by
  * calling {@link #cleanup()} if consent is denied.
  */
@@ -27,10 +29,22 @@ public final class ResolvedGraph {
             Path stagedDir,
             long bytesDownloaded,
             String sha256,
-            Skill skill,
+            AgentUnit unit,
             boolean reusedFromStore,
             List<String> requestedBy
-    ) {}
+    ) {
+        /**
+         * Transitional accessor — down-casts to {@link Skill} for legacy
+         * effects that have not yet been widened to {@link AgentUnit}.
+         * Use {@link #unit()} going forward; this shim is removed in ticket 08.
+         */
+        @Deprecated
+        public Skill skill() {
+            if (unit instanceof SkillUnit su) return su.skill();
+            throw new UnsupportedOperationException(
+                    "Unit '" + name + "' is a plugin; callers must use unit() instead of skill()");
+        }
+    }
 
     private final Map<String, Resolved> byName = new LinkedHashMap<>();
 
@@ -46,6 +60,14 @@ public final class ResolvedGraph {
 
     public List<Resolved> resolved() { return new ArrayList<>(byName.values()); }
 
+    public List<AgentUnit> units() {
+        List<AgentUnit> out = new ArrayList<>();
+        for (Resolved r : byName.values()) out.add(r.unit());
+        return out;
+    }
+
+    /** @deprecated Use {@link #units()} — kept for legacy effects until ticket 08. */
+    @Deprecated
     public List<Skill> skills() {
         List<Skill> out = new ArrayList<>();
         for (Resolved r : byName.values()) out.add(r.skill());

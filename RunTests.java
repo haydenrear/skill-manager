@@ -28,6 +28,10 @@ import dev.skillmanager.model.PluginParserDriftWarnsTest;
 import dev.skillmanager.model.PluginParserTest;
 import dev.skillmanager.model.SkillUnitWrapsSkillTest;
 import dev.skillmanager.model.UnitReferenceFromTomlTest;
+import dev.skillmanager.plan.CycleDetectionTest;
+import dev.skillmanager.plan.MixedKindTopoOrderTest;
+import dev.skillmanager.plan.PlanPolicyCategorizationTest;
+import dev.skillmanager.plan.PlanShapeInvariantTest;
 import dev.skillmanager.resolve.ResolverContainedSkillNotMatchedTest;
 import dev.skillmanager.resolve.ResolverDeterminismTest;
 import dev.skillmanager.resolve.ResolverDirectGitDetectsKindTest;
@@ -68,6 +72,10 @@ public class RunTests {
         failures += ResolverContainedSkillNotMatchedTest.run();
         failures += ResolverDirectGitDetectsKindTest.run();
         failures += ResolverDeterminismTest.run();
+        failures += PlanShapeInvariantTest.run();
+        failures += CycleDetectionTest.run();
+        failures += MixedKindTopoOrderTest.run();
+        failures += PlanPolicyCategorizationTest.run();
 
         System.out.println();
         if (failures == 0) {

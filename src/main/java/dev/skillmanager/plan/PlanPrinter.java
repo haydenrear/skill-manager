@@ -41,7 +41,7 @@ public final class PlanPrinter {
 
         long totalBytes = 0;
         for (PlanAction a : plan.actions()) {
-            if (a instanceof PlanAction.FetchSkill f) totalBytes += f.resolved().bytesDownloaded();
+            if (a instanceof PlanAction.FetchUnit f) totalBytes += f.resolved().bytesDownloaded();
         }
         if (totalBytes > 0) {
             System.out.println();
@@ -82,7 +82,7 @@ public final class PlanPrinter {
                 for (PlanAction.CliVersionConflict c : plan.conflicts()) {
                     System.err.println("  ✗ " + c.dep().backend() + ":" + c.dep().name()
                             + "  requested " + (c.requestedVersion() == null ? "any" : c.requestedVersion())
-                            + " for " + c.skillName()
+                            + " for " + c.unitName()
                             + "  ·  locked at " + c.lockedVersion()
                             + (c.previouslyRequestedBy().isEmpty() ? "" : " by " + String.join(", ", c.previouslyRequestedBy())));
                 }
