@@ -12,6 +12,7 @@ import dev.skillmanager.store.SkillStore;
 
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -60,6 +61,30 @@ public final class TestHarness {
                 null, null, null, UnitStore.nowIso(), null, kind);
         new UnitStore(store).write(u);
         ctx.invalidate();
+    }
+
+    /**
+     * Materialize the on-disk presence checked by {@link SkillStore#contains}
+     * / {@link SkillStore#containsPlugin}: a SKILL kind drops a {@code SKILL.md}
+     * under {@code skills/<name>}; a PLUGIN kind drops {@code .claude-plugin/plugin.json}
+     * under {@code plugins/<name>}. The minimum surface effects like
+     * {@link SkillEffect.RejectIfAlreadyInstalled} need to detect "installed".
+     */
+    public void scaffoldUnitDir(String name, UnitKind kind) throws IOException {
+        switch (kind) {
+            case SKILL -> {
+                Path dir = store.skillDir(name);
+                Files.createDirectories(dir);
+                Files.writeString(dir.resolve("SKILL.md"),
+                        "---\nname: " + name + "\ndescription: harness\n---\nbody\n");
+            }
+            case PLUGIN -> {
+                Path dir = store.pluginsDir().resolve(name);
+                Files.createDirectories(dir.resolve(".claude-plugin"));
+                Files.writeString(dir.resolve(".claude-plugin/plugin.json"),
+                        "{ \"name\": \"" + name + "\" }\n");
+            }
+        }
     }
 
     /** Reload the source record for {@code name} from disk. */

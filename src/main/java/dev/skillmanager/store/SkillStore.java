@@ -1,5 +1,6 @@
 package dev.skillmanager.store;
 
+import dev.skillmanager.model.PluginParser;
 import dev.skillmanager.model.Skill;
 import dev.skillmanager.model.SkillParser;
 import dev.skillmanager.model.UnitKind;
@@ -105,16 +106,21 @@ public final class SkillStore {
         return Files.isDirectory(skillDir(name)) && Files.isRegularFile(skillDir(name).resolve(SkillParser.SKILL_FILENAME));
     }
 
-    /**
-     * Kind-agnostic install check: a unit named {@code name} is installed
-     * if its directory exists under either {@code skills/} or {@code plugins/}
-     * with the appropriate manifest file.
-     */
-    public boolean containsUnit(String name) {
-        if (contains(name)) return true;
+    /** True iff {@code plugins/<name>/.claude-plugin/plugin.json} exists. */
+    public boolean containsPlugin(String name) {
         Path pd = pluginsDir.resolve(name);
         return Files.isDirectory(pd)
-                && Files.isRegularFile(pd.resolve(".claude-plugin/plugin.json"));
+                && Files.isRegularFile(pd.resolve(PluginParser.PLUGIN_JSON_PATH));
+    }
+
+    /**
+     * Kind-agnostic install check: true if the unit's directory exists
+     * with the appropriate manifest under either {@code skills/} (via
+     * {@link #contains(String)}) or {@code plugins/} (via
+     * {@link #containsPlugin(String)}).
+     */
+    public boolean containsUnit(String name) {
+        return contains(name) || containsPlugin(name);
     }
 
     public Optional<Skill> load(String name) throws IOException {
