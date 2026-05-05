@@ -199,6 +199,8 @@ version = "0.4.2"
 description = "Tools for understanding a repo end-to-end."
 
 # References. Heterogeneous: plugins or skills, in either direction.
+# These are unioned with every contained skill's `skill_references` to
+# form the plugin's effective reference set.
 references = [
   "plugin:shared-tools",
   "skill:hello-skill@1.0.0",
@@ -216,18 +218,13 @@ name = "shared-mcp"
 [mcp_dependencies.load]
 type = "docker"
 image = "ghcr.io/me/shared-mcp:1.2.0"
-
-# Public surface: which contained skills are globally addressable.
-# Anything not listed here is private — only reachable via the plugin
-# install, never via `skill-manager install <name>` directly.
-[[exports.skills]]
-name = "summarize-repo"
-path = "skills/summarize-repo"
-
-[[exports.skills]]
-name = "diff-narrative"
-path = "skills/diff-narrative"
 ```
+
+There is no `[[exports.skills]]` table. Every directory under
+`<plugin>/skills/<x>/` that has a `SKILL.md` is a contained skill; it
+contributes its toml's deps and references to the plugin and is
+visible to the harness via `~/.claude/plugins/<plugin>/skills/<x>/`,
+but it is not separately installable, addressable, or depend-on-able.
 
 If `plugin.json` already provides `name`/`version`/`description`, the
 `[plugin]` section may be omitted. When both files have the field,
@@ -257,30 +254,47 @@ version = "1.0.0"
 
 ### Composition rules (plugin → contained skills)
 
-- `cli_dependencies` and `mcp_dependencies` from
-  `skill-manager-plugin.toml` are unioned with those from each contained
-  skill. Conflicts (same name, different version) flow through the
-  existing `cli-lock.toml` / `CONFLICT` machinery.
-- `references` from `skill-manager-plugin.toml` are unioned with each
-  contained skill's `skill_references`. Cycles are detected at plan time.
+At parse time, the plugin parser walks `<plugin>/skills/*/` and reads
+each contained skill's `SKILL.md` + optional `skill-manager.toml`.
+From those tomls plus the plugin's own toml, it computes the plugin's
+effective dep set:
+
+- `cli_dependencies` = plugin-level ∪ every contained skill's.
+  Conflicts (same name, different version) flow through the existing
+  `cli-lock.toml` / `CONFLICT` machinery.
+- `mcp_dependencies` = plugin-level ∪ every contained skill's. Same
+  conflict resolution.
+- `references` = plugin-level `references` ∪ every contained skill's
+  `skill_references`. Cycles detected at plan time.
 - Identity precedence: `skill-manager-plugin.toml` > `plugin.json` >
   inferred from directory name.
 
-### Contained skill visibility
+Contained skills are kept around as `ContainedSkill` records on the
+`PluginUnit` so removal/upgrade can re-walk them (e.g. to know which
+MCP servers the plugin currently has registered, even if the
+plugin-level toml didn't declare them directly). They are never
+exposed as `AgentUnit`s.
 
-```
-default                       →  private (only reachable via the plugin)
-listed in [[exports.skills]]  →  public (addressable as `skill:<name>`)
-```
+### Contained skill addressability
 
-A private contained skill is still visible to the harness once the plugin
-is installed (it lives in `<plugin>/skills/<x>/` and the agent reads
-that directory), but `skill-manager install <name>` will not match it.
-The only way to install it is to install its parent plugin.
+Contained skills are **not** addressable as coords. There is no
+`skill:<contained-skill-name>` form, no `<plugin>/<skill>` form,
+no separate install. The plugin is the unit of distribution; the
+contained skills are its implementation.
 
-If two installed plugins both export a skill with the same name, the
-resolver flags ambiguity and the user must use `<plugin>/<skill>` to
-pick (see Coordinate grammar).
+The agent harness still sees contained skills via the plugin's
+projected directory (`~/.claude/plugins/<plugin>/skills/<x>/`),
+because Claude Code reads plugins recursively. Skill-manager does
+nothing special to expose or hide them — they're just files inside
+the plugin clone.
+
+The trade-off: you lose the ability to depend on a single skill from
+a plugin without pulling in the whole plugin. If you want that,
+publish the skill as a bare skill, not as a contained skill. This is
+the simplification we explicitly chose: it eliminates the
+double-management problem (a contained skill referenced both directly
+and transitively via its parent plugin) and keeps the resolver's
+output set narrow (plugins + bare skills only).
 
 ### `plugin.json` — what we read and don't read
 
@@ -312,12 +326,12 @@ my-plugin/
 ├── skill-manager-plugin.toml        # NEW: skill-manager metadata
 ├── .mcp.json                        # optional, Claude-facing
 ├── skills/
-│   ├── summarize-repo/              # exported (public)
+│   ├── summarize-repo/              # contained (deps unioned to plugin level)
 │   │   ├── SKILL.md
 │   │   └── skill-manager.toml
-│   ├── diff-narrative/              # exported (public)
+│   ├── diff-narrative/
 │   │   └── SKILL.md
-│   └── _internal-helpers/           # private (not in [[exports.skills]])
+│   └── internal-helpers/
 │       └── SKILL.md
 ├── commands/
 ├── agents/
@@ -329,10 +343,9 @@ my-plugin/
 Coordinates are how users name a unit. Grammar:
 
 ```
-coord       := kinded | bare | direct | local | plugin-skill
+coord       := kinded | bare | direct | local
 kinded      := ("skill:" | "plugin:") name [ "@" version ]
 bare        := name [ "@" version ]              # kind inferred at resolve time
-plugin-skill:= name "/" name                     # plugin/skill — disambiguates exported-skill collisions
 direct      := "github:" owner "/" repo [ "#" ref ] | "git+" url [ "#" ref ]
 local       := "file://" abs-path | "./" rel | "../" rel | "/" abs
 
@@ -345,16 +358,176 @@ Resolution rules (deterministic):
 | Coord | Resolution |
 | --- | --- |
 | `hello-skill` | Registry lookup; first match wins. If both a skill and a plugin share the name → error, ask user to disambiguate with `skill:` or `plugin:`. |
-| `skill:hello-skill` | Registry lookup; only consider skills (and exported skills inside installed/ resolvable plugins). |
+| `skill:hello-skill` | Registry lookup; only consider bare skills. (Contained skills are never matched.) |
 | `plugin:repo-intelligence` | Registry lookup; only consider plugins. |
-| `repo-intelligence/summarize-repo` | Disambiguates an exported skill that collides with another export — picks `summarize-repo` from the `repo-intelligence` plugin specifically. |
-| `github:me/x` | Direct git, default branch. |
-| `git+https://github.com/me/x#v1.2.0` | Direct git, pinned ref. |
-| `file:///abs/path` / `./rel` | Local path. |
+| `github:me/x` | Direct git, default branch. The clone is inspected on disk for `.claude-plugin/plugin.json` (→ plugin) or `SKILL.md` at root (→ skill) to determine kind. |
+| `git+https://github.com/me/x#v1.2.0` | Direct git, pinned ref. Same kind detection. |
+| `file:///abs/path` / `./rel` | Local path. Same kind detection. |
 
-Ambiguity (multi-kind same name, multiple exported skills with same name)
-errors with a list of candidates and the exact pinned coords to use. No
-silent wrong-pick path.
+Ambiguity (multi-kind same name in the registry) errors with the
+candidate list and the exact pinned coords to use. No silent
+wrong-pick path. Contained skills never participate in resolution, so
+there is no contained-skill ambiguity to resolve.
+
+## Effect graph: plugin/skill substitutability
+
+The codebase just refactored to an effect-program model
+(`effects/Program.java`, `effects/SkillEffect.java`,
+`effects/LiveInterpreter.java`). The new abstraction must preserve and
+extend that model: a plugin and a bare skill should produce
+**structurally identical effect graphs**, with `unit.kind()` as data
+carried on the descriptor — not as a type that branches the graph
+shape. The only place the graph shape can diverge is at the parser; from
+the resolved graph onward, every effect should be kind-agnostic.
+
+This is the "swap a plugin for a skill" property: if `repo-intelligence`
+resolves to a skill in one configuration and a plugin in another, the
+emitted `Program` differs only in the descriptor values — same effect
+sequence, same compensations, same `Program.then` composition.
+
+### What's typed on `Skill` today (and what needs to widen)
+
+Survey of the existing effect surface:
+
+| Site | Current type | After |
+| --- | --- | --- |
+| `SkillEffect.ResolveTransitives` | `List<Skill> skills` | `List<AgentUnit> units` |
+| `SkillEffect.InstallTools` | `List<Skill> skills` | `List<AgentUnit> units` |
+| `SkillEffect.InstallCli` | `List<Skill> skills` | `List<AgentUnit> units` |
+| `SkillEffect.RegisterMcp` | `List<Skill> skills` | `List<AgentUnit> units` |
+| `SkillEffect.SyncAgents` | `List<Skill> skills` | `List<AgentUnit> units` |
+| `SkillEffect.OnboardSource` | `Skill skill` | `AgentUnit unit` |
+| `SkillEffect.RunCliInstall` | `String skillName, CliDependency dep` | `String unitName, CliDependency dep` (no shape change) |
+| `SkillEffect.RegisterMcpServer` | `String skillName, McpDependency dep, ...` | `String unitName, McpDependency dep, ...` |
+| `SkillEffect.RemoveSkillFromStore` | `String skillName` | `String unitName` |
+| `SkillEffect.UnlinkAgentSkill` | `String agentId, String skillName` | `String agentId, String unitName, UnitKind kind` (handler picks `pluginsDir` / `skillsDir`) |
+| `SkillEffect.SyncGit` | `String skillName, ...` | `String unitName, ...` |
+| `SkillEffect.RejectIfAlreadyInstalled` | `String skillName` | `String unitName` |
+| `SkillEffect.AddSkillError` / `ClearSkillError` / `ValidateAndClearError` | `String skillName, ...` | `String unitName, ...` |
+| `SkillEffect.ScaffoldSkill` | `Path dir, String skillName, Map<...>` | unchanged for `scaffold skill`; new `ScaffoldPlugin` parallel effect (different file map) |
+| `PlanAction.FetchSkill` | `ResolvedGraph.Resolved` (carries `Skill`) | `FetchUnit` carrying a `Resolved` whose `unit` is `AgentUnit` |
+| `PlanAction.InstallSkillIntoStore` | `String name, String version` | `InstallUnitIntoStore(String name, String version, UnitKind kind)` |
+| `PlanAction.RunCliInstall` / `RegisterMcpServer` | already keyed by `skillName` + dep — rename field only |
+| `ResolvedGraph.Resolved` | `Skill skill` | `AgentUnit unit` (kind on the unit) |
+| `EffectContext.source(name)` | `Optional<SkillSource>` | `Optional<InstalledUnit>` (carries kind) |
+| `SkillStore.skillDir(name)` | one tree | `UnitStore.unitDir(name, kind)` — picks `plugins/` or `skills/` |
+| `Agent.skillsDir()` | one path | adds `pluginsDir()`; sync handler uses the unit's kind to choose |
+
+The renames are mechanical. The key observation: **most effects already
+take a name + a dep record + a gateway/store handle**. Those don't
+change shape — they only need `unitName` to be looked up against
+`InstalledUnit` (which carries the kind) instead of `SkillSource` (which
+implies skill).
+
+### Where kind actually matters (and is contained)
+
+Five places, all isolated:
+
+1. **Parsing** — `SkillParser` vs. `PluginParser`. The parser is the
+   factory that produces `AgentUnit`s. Plugin parser additionally walks
+   `<plugin>/skills/*/` and unions deps + references into the
+   `PluginUnit`'s effective dep set.
+2. **Store directory choice** — `UnitStore.unitDir(name, kind)` picks
+   `plugins/` or `skills/`. One method, one switch.
+3. **Projector** — Claude projector links `~/.claude/plugins/<x>` for
+   plugins, `~/.claude/skills/<x>` for skills. The handler reads
+   `unit.kind()` and dispatches.
+4. **Scaffold** — `ScaffoldPlugin` is a separate effect from `ScaffoldSkill`
+   because the file map differs (`.claude-plugin/plugin.json` +
+   `skill-manager-plugin.toml` vs. `SKILL.md` + `skill-manager.toml`).
+5. **Removal re-walk** — `UninstallUnit` for a plugin re-parses
+   `<plugin>/skills/*/skill-manager.toml` to recover the effective dep set
+   so `*_IfOrphan` compensations don't leak. For a skill, no re-walk
+   needed. The handler dispatches on `unit.kind()` once.
+
+Everywhere else (CLI install, MCP register, agent sync routing, error
+recording, audit log, source-provenance writes) is already keyed on
+`(name, dep)` pairs and is structurally kind-agnostic.
+
+### Effect graph composition (the swap)
+
+The planner emits the same backbone for both kinds:
+
+```
+[FetchUnit]
+[InstallUnitIntoStore]
+[EnsureTool ×N]              # union of plugin-level + contained-skill tool needs
+[RunCliInstall ×N]           # one per CLI dep in the unit's effective set
+[RegisterMcpServer ×N]       # one per MCP dep in the unit's effective set
+[OnboardSource]              # writes installed/<name>.json with kind=plugin|skill
+[Project ×agents]            # projector picks the right agent dir
+```
+
+For a plugin, `effective set = plugin-level toml ∪ each contained
+skill's toml`. For a skill, `effective set = skill's toml`. The planner
+computes the union from the `AgentUnit` (the parser already did the
+work) and emits the same effect shape regardless.
+
+`Program.then` composability falls out for free: an
+`install repo-intelligence (plugin)` program can be concatenated with an
+`install hello-skill (skill)` program because the effect sequences are
+the same shape, the decoders both produce `InstallReport`, and the
+`then`-combiner just merges. No kind-aware glue.
+
+Compensations have the same property. The `*_IfOrphan` handlers consult
+`EffectContext.sources()` (the unit map keyed by name + kind) and ask
+"is this dep still claimed by any surviving unit?" — they don't care
+whether the surviving owner is a plugin or a skill.
+
+### Substitution scenarios
+
+The "swap when we see it" property covers three concrete cases:
+
+1. **Coord-kind reinterpretation.** A coord `repo-intelligence` resolves
+   to a skill today, plugin tomorrow (registry republished). `upgrade`
+   produces the same effect graph backbone; the diff is `kind` on the
+   descriptor. The store dir + projector dispatch handle the actual
+   plugin vs skill move at execution time.
+2. **Heterogeneous transitive deps.** A skill references
+   `plugin:foo`, a plugin references `skill:bar`. The planner walks the
+   reference DAG without branching: each node yields the same
+   `[FetchUnit, InstallUnitIntoStore, ...]` sub-program, concatenated
+   via `Program.then`.
+3. **Mixed install set.** `install plugin:p1 skill:s1 plugin:p2` builds
+   one `Program` whose effects are interleaved by topological order
+   over the union of dep graphs. No special handling for the mixed
+   case.
+
+### Required widening order (incremental)
+
+To preserve build-greenness during the refactor:
+
+1. Introduce `AgentUnit` sealed interface; make existing `Skill` carry
+   `SkillUnit` (delegate to the existing record). Keep `Skill` callsites
+   working by exposing `Skill` as a static factory that returns
+   `SkillUnit`.
+2. Widen `ResolvedGraph.Resolved` to carry `AgentUnit unit`. Keep a
+   transitional `skill()` accessor that down-casts (warns at boundary).
+3. Widen each `SkillEffect` variant in dependency order: leaves first
+   (`RegisterMcpServer`, `RunCliInstall` — name-keyed, smallest blast
+   radius), then list-typed (`RegisterMcp`, `InstallCli`, etc.), then
+   the orchestrating ones (`ResolveTransitives`, `SyncAgents`).
+4. Rename `SkillStore` → `UnitStore`, add `pluginsDir()` and
+   `unitDir(name, kind)`. The skills-only path stays the default until
+   the first plugin install lands.
+5. Add `PluginParser`. From this point on, the resolver can return a
+   plugin descriptor and the rest of the graph already speaks `AgentUnit`.
+6. Add `Projector` interface. Replace direct symlink calls in
+   `SyncAgents` handler with `projector.apply(...)`.
+
+Each step keeps tests green; no flag day.
+
+### What this gives us
+
+- One effect graph shape for both kinds; one `Program` composition story.
+- New unit kinds in the future (e.g. "agent" as a top-level unit, if
+  Claude grows that) plug in by adding a new `AgentUnit` permit, a
+  parser, a store dir, and a projector branch — no effect-layer
+  changes.
+- Compensations are uniform: `Uninstall*IfOrphan` queries the unit
+  map, doesn't care about kind.
+- `Program.then` continues to be the only composition primitive.
+  Mixed-kind install sets don't need a new operator.
 
 ## Storage layout
 
@@ -532,8 +705,7 @@ PLAN: install repo-intelligence@0.4.2 (plugin)
   ! CLI           : 1 dependency (cowsay==6.0)
   + COMMANDS      : 4 slash commands
   + AGENTS        : 1 agent
-  + SKILLS        : 2 exported (summarize-repo, diff-narrative)
-                  : 1 private (_internal-helpers)
+  + SKILLS        : 3 contained (summarize-repo, diff-narrative, internal-helpers)
 ```
 
 `!` lines require explicit confirmation if their policy flag is true.
@@ -592,10 +764,17 @@ back to its pre-upgrade state.
 
 `skill-manager uninstall <name>`:
 
-1. Plan: `UnprojectIfOrphan` per agent, `UnregisterMcpServerIfOrphan`,
-   `UninstallCliDependencyIfOrphan`, `DeleteClone`,
+1. Re-parse the unit on disk to recover its full effective dep set.
+   For a plugin, this means re-walking `<plugin>/skills/*/skill-manager.toml`
+   to know every MCP server and CLI tool the plugin currently has
+   registered (since the plugin's effective deps are the union of
+   plugin-level + every contained skill's). Without this re-walk we'd
+   leak orphan registrations from contained skills.
+2. Plan: for each (CLI dep, MCP dep) in the union,
+   `UninstallCliDependencyIfOrphan`, `UnregisterMcpServerIfOrphan`.
+   Then `UnprojectIfOrphan` per agent, `DeleteClone`,
    `RestoreInstalledUnit(none)`, `UpdateUnitsLock`.
-2. Execute. (`if orphan` handlers consult the rest of the lock to decide
+3. Execute. (`if orphan` handlers consult the rest of the lock to decide
    whether the dep is still required by another installed unit.)
 
 ## Publish flow
@@ -624,8 +803,8 @@ hello-skill           skill   1.0.0      def456    registry
 
 `skill-manager show <name>`:
 
-- Plugin → contained skills (public/private split), unioned deps,
-  source/ref/sha.
+- Plugin → list of contained skills (just names, since none are
+  addressable), unioned effective deps, source/ref/sha.
 - Skill → unchanged.
 
 ## CLI verb summary (delta vs. today)
@@ -634,7 +813,7 @@ New:
 
 - `lock status` — show lock vs. disk diff
 - `sync --lock <path>` — reproduce from a vendored lock
-- `<plugin>/<skill>` and `plugin:<name>` coord forms
+- `plugin:<name>` and `skill:<name>` coord forms (kind-pinned lookup)
 
 Unchanged in user-facing shape (extended internally for plugins):
 
@@ -659,9 +838,19 @@ Unchanged in user-facing shape (extended internally for plugins):
    on-disk shape. Errors on multi-kind same-name ambiguity.
 6. **Planner.** Widens to `AgentUnit`. Walks plugin contents, unions
    deps, detects ref cycles, emits the policy categorization.
-7. **Effects + journal.** Shape every effect with a compensation. Add
-   `RollbackJournal`. Re-route `InstallCommand`, `UpgradeCommand`,
-   `UninstallCommand` through the executor.
+7. **Effect-layer widening.** Widen `SkillEffect` and `PlanAction`
+   field types from `Skill` to `AgentUnit` and from `skillName` to
+   `unitName`, in the order specified in **Effect graph:
+   plugin/skill substitutability → Required widening order**. Each
+   step keeps tests green. End state: every effect except
+   `ScaffoldSkill` / `ScaffoldPlugin` and the projector dispatch is
+   structurally kind-agnostic.
+8. **Effects + journal (compensations).** Shape every effect with a
+   compensation. Add `RollbackJournal`. Re-route `InstallCommand`,
+   `UpgradeCommand`, `UninstallCommand` through the executor. The
+   `Uninstall` plan-builder for plugins re-walks
+   `<plugin>/skills/*/skill-manager.toml` to recover the effective
+   dep set before emitting `*_IfOrphan` effects.
 8. **`units.lock.toml`.** Read/write. `lock status`. `sync --lock`.
    Update `install`/`upgrade`/`uninstall` to flip the lock at commit.
 9. **Projector.** `Projector` interface. `ClaudeProjector`,
@@ -670,19 +859,381 @@ Unchanged in user-facing shape (extended internally for plugins):
 11. **Publish.** Detect plugin vs bare skill at publish dir. Bundle
     plugin contents.
 12. **Search/list/show.** Surface `kind` + `sha` columns. Show contained
-    skills (public/private split) for plugins.
-13. **Tests.** New test_graph nodes:
-    - plugin install from local path
-    - plugin install from github
-    - private contained skill is not globally addressable
-    - exported contained skill is addressable as `skill:<name>`
-    - skill referencing a plugin (`skill_references = ["plugin:..."]`)
-    - plugin referencing a skill
-    - cycle detection across heterogeneous refs
-    - upgrade rolls back on failure
-    - lock-driven sync reproduces a known-good install set
-    - bare-skill install path is byte-identical to today
+    skills (just names) for plugins.
+13. **Tests.** See the dedicated **Testing strategy** section. Two
+    layers, added incrementally — each implementation step above owns
+    its tests:
+    - **Layer 1 (test graph)**: parallel `*Plugin*` nodes for every
+      existing skill scenario in `smoke/` and `source-tracking/`, plus
+      plugin-specific nodes for contained-skill non-addressability,
+      uninstall re-walk, heterogeneous refs, lock-driven reproduce.
+    - **Layer 2 (unit)**: fast combinatorial coverage of command
+      contracts with IO mocked at the edge. Sweeps command × unit
+      kind × install source × pre-state × dep mix × failure injection
+      × policy. Substitutability is one axis. Whole suite under 30s.
 14. **Docs.** Update `skill-manager-skill/SKILL.md` and `README.md`.
+
+## Testing strategy
+
+> Layer 2's purpose is **fast combinatorial coverage of command
+> contracts with IO mocked at the edge**. The test_graph stays the
+> production-fidelity layer — real binaries, real gateway, real git.
+> Unit tests get permutation throughput; the test_graph gets fidelity.
+> Substitutability across `UnitKind` is one axis of permutation, not
+> the only one.
+
+Two layers, addressing different failure modes:
+
+| Layer | What it proves | Where it lives |
+| --- | --- | --- |
+| **Test graph (system)** | The CLI end-to-end behaves correctly with real binaries, real gateway, real git. Replicates the existing skill matrix (install, sync, upgrade, uninstall, MCP register, agent symlink, ownership, transitive deps) for plugins. | `test_graph/sources/<package>/` (JBang action nodes), with new fixtures under `test_graph/fixtures/`. |
+| **Unit (combinatorial contracts)** | Command flows respect their contracts under every reasonable permutation of inputs and failure injections. IO mocked at the edges; thousands of permutations run in seconds. Substitutability across `UnitKind` is one axis among many. | `src/test/java/dev/skillmanager/...` (currently empty — this introduces the directory). |
+
+### Layer 1 — Test graph (replicate existing skill scenarios for plugins)
+
+The existing `test_graph/sources/smoke/` and `source-tracking/` packages
+are the spine. Every node that takes a skill action gets a parallel
+node that takes the equivalent plugin action. We don't replace; we
+parallel. The shared infrastructure nodes (gateway up, env prepared,
+agent configs written) stay singular.
+
+#### New fixtures (under `test_graph/fixtures/`)
+
+| Fixture | Purpose | Equivalent skill fixture |
+| --- | --- | --- |
+| `echo-plugin-template/` | Minimal plugin: `.claude-plugin/plugin.json` + `skill-manager-plugin.toml` + `skills/echo/SKILL.md`. Used by every install/uninstall happy-path test. | `echo-skill-template/` |
+| `echo-plugin-stdio-template/` | Plugin variant carrying an MCP stdio dep. | `echo-skill-stdio-template/` |
+| `mcp-tool-loads-plugin/` | Plugin whose contained skill declares an MCP dep that requires bundling (`uv` / `npx`). Verifies effective-dep-set rollup. | `mcp-tool-loads-skill/` |
+| `umbrella-plugin/` | Plugin with two contained skills, each declaring distinct CLI deps (one pip, one npm). Verifies dep union and conflict surface. | `umbrella-skill/` |
+| `formatter-plugin/` | Plugin referencing another plugin (`references = ["plugin:foo"]`). Verifies plugin→plugin transitive resolution. | `formatter-skill/` |
+| `mixed-plugin/` | Plugin whose contained skills' `skill_references` point to one bare skill and one plugin. Verifies heterogeneous transitive deps under a plugin install. | (new — no skill equivalent) |
+| `cross-ref-skill/` | Bare skill whose `skill_references` includes `plugin:echo-plugin-template`. Verifies skill→plugin transitive resolution. | (new — no skill equivalent) |
+| `private-collision-plugin/` | Plugin with a contained skill whose name collides with an installed bare skill. Verifies the contained skill is *not* separately installable and doesn't conflict with the bare skill in the resolver. | (new) |
+
+#### New / parallel test_graph nodes
+
+For every existing smoke node listed below, a `*Plugin*` parallel is
+added (same shape, plugin fixture, asserts the plugin-specific paths
+under `~/.skill-manager/plugins/` and `~/.claude/plugins/`):
+
+| Existing skill node | Parallel plugin node | What it proves |
+| --- | --- | --- |
+| `HelloPublished` / `HelloInstalled` | `HelloPluginPublished` / `HelloPluginInstalled` | Registry → client → store commit for plugins. |
+| `EchoStdioSkillInstalled` | `EchoStdioPluginInstalled` | MCP stdio dep declared at the plugin level registers with the gateway. |
+| `EchoHttpSkillInstalled` / `EchoHttpDeployed` | `EchoHttpPluginInstalled` / `EchoHttpPluginDeployed` | HTTP MCP server flow from a plugin. |
+| `EchoSessionSkillInstalled` / `EchoGlobalSkillInstalled` | `EchoSessionPluginInstalled` / `EchoGlobalPluginInstalled` | Scope routing from plugin. |
+| `UmbrellaInstalled` | `UmbrellaPluginInstalled` | Effective-dep-set union: plugin-level deps + every contained skill's deps land under `bin/cli/` and the gateway. |
+| `TransitiveClisPresent` | `TransitivePluginClisPresent` | CLI deps from contained skills produce the same `bin/cli/` symlinks as if those skills were bare. |
+| `AgentSkillSymlinks` | `AgentPluginSymlinks` | `~/.claude/plugins/<name>` symlink lands; `~/.claude/skills/<name>` does *not* land for any contained skill. |
+| `AgentConfigsCorrect` | `AgentConfigsCorrectPlugin` | Codex receives no plugin symlink in v1 (Codex projector handles bare skills only); `~/.codex/skills/<contained-skill>` does *not* appear. |
+| `OwnershipRecorded` | `OwnershipRecordedPlugin` | `installed/<name>.json` records `kind=plugin`, the right `install_source`, sha, and the union of dep names. |
+| `SkillSynced` | `PluginSynced` | `sync` re-registers plugin's effective MCP deps after gateway loss. |
+| `SkillUninstalled` | `PluginUninstalled` | Uninstalling a plugin tears down every dep registered from its contained skills (re-walk verification). No orphan MCP / CLI rows survive. |
+| `McpToolInvoked` | `McpToolInvokedFromPlugin` | A tool registered from inside a plugin is invokable through the gateway with the same flow as a skill-registered tool. |
+| `McpToolLoadsBundled` / `McpToolLoadsInstalled` | `McpToolLoadsFromPlugin` | Bundle install works for plugin-declared MCP deps. |
+| `SearchFinds` | (registry behavior unchanged this round — search remains as-is) | — |
+| `SemverEnforced` / `ImmutabilityEnforced` | `SemverEnforcedPlugin` / `ImmutabilityEnforcedPlugin` | Version policy applies to plugins. |
+| `SourceFixturePublished` / `SourceFixtureInstalled` | `SourceFixturePluginPublished` / `SourceFixturePluginInstalled` | Source-tracking provenance for plugins. |
+| `SourceSyncMergesClean` / `...ProducesConflict` / `...RefusesOnDirty` / `...RefusesWithoutFrom` | `...PluginMergesClean` / `...PluginProducesConflict` / `...PluginRefusesOnDirty` / `...PluginRefusesWithoutFrom` | git-tracked sync semantics for plugins. |
+| `SourceSyncAllAggregates` | `SourceSyncAllAggregatesPlugin` | Aggregated sync handles a mix of plugin + skill installs in one pass. |
+
+#### New nodes (no skill parallel — these are plugin-specific)
+
+| Node | What it proves |
+| --- | --- |
+| `PluginContainedSkillNotAddressable` | `skill-manager install <contained-skill-name>` errors with "not found" after the parent plugin is installed; the contained skill is reachable only through the plugin. |
+| `PluginUninstallReWalkPreventsOrphan` | After installing a plugin whose contained skill declared an MCP dep, uninstalling the plugin removes that MCP server. Without the re-walk, this test would leak. |
+| `SkillReferencesPlugin` | A bare skill with `skill_references = ["plugin:..."]` triggers a transitive plugin install. |
+| `PluginReferencesSkill` | A plugin with `references = ["skill:..."]` triggers a transitive skill install. |
+| `PluginCycleDetected` | Cycle plugin-A → plugin-B → plugin-A is reported at plan time with the offending chain. |
+| `PluginPluginJsonDriftWarns` | Plugin where `plugin.json.name` and `skill-manager-plugin.toml.[plugin].name` disagree → install proceeds with a warning, toml wins. |
+| `PluginMcpDoubleDeclarationWarns` | Plugin declaring the same MCP server in both `.mcp.json` and `skill-manager-plugin.toml` → warning emitted, only the toml entry registers with the gateway. |
+| `PluginEmptyTomlInstalls` | Plugin with no `skill-manager-plugin.toml` (only `plugin.json` + skills) installs cleanly; only effect is the projector symlink. |
+| `LockReproducesInstallSet` | After installing a mix of plugins + skills, deleting the store, and `sync --lock <path>`, the resulting tree byte-matches the original. |
+| `LockUnchangedOnPartialUpgradeFailure` | A planned upgrade for two units fails on the second; the lock is unchanged from its pre-upgrade state, the first unit is rolled back. |
+| `MixedKindInstallSetTopologicalOrder` | `install plugin:p1 skill:s1 plugin:p2` with cross-kind references produces a single Program with effects topologically ordered; intermediate state during install never has a unit visible to the agent before its deps are. |
+
+### Layer 2 — Unit tests (fast combinatorial contract coverage)
+
+**Purpose.** Layer 1 (test_graph) exercises the system end-to-end the
+way it'll run in production — real binaries, real gateway, real git.
+That's slow and high-fidelity. Layer 2 has the opposite job: blow
+through hundreds of permutations per second to verify the *contracts*
+hold across every reasonable combination of inputs, and crucially
+across every reasonable failure injection. IO is mocked at the edges
+so a single test runs in milliseconds; we trade fidelity for throughput
+and use that throughput to cover combinatorics Layer 1 can't afford.
+
+The test_graph stays the source of truth for "does this actually work
+on a real machine." Layer 2 is the source of truth for "does this
+respect its contract under every shape of input I can throw at it."
+
+#### Mock boundary (what's faked, what's real)
+
+```
+                ┌────────────────────────────────────────┐
+                │           Real (in-process)            │
+                │  parsers, resolver, planner,           │
+                │  Program/then composer,                │
+                │  effect interpreter dispatch,          │
+                │  decoders, audit, conflict detection,  │
+                │  lock read/write, policy gating        │
+                └────────────────────────────────────────┘
+                                 ↑↓
+                ┌────────────────────────────────────────┐
+                │          Faked at the edge             │
+                │  Filesystem      → InMemoryFs          │
+                │  Gateway HTTP    → FakeGateway         │
+                │  Registry HTTP   → FakeRegistry        │
+                │  Git ops         → FakeGit             │
+                │  Subprocess      → FakeProcessRunner   │
+                │  Clock / sleep   → FakeClock           │
+                └────────────────────────────────────────┘
+```
+
+Everything above the line runs for real. The seam is the same set of
+adapters `LiveInterpreter` already uses — we just wire the Fake side
+in instead. The existing `DryRunInterpreter` is *not* what these tests
+use: dry-run skips effects entirely. Layer 2 needs the effects to
+*execute against fakes* so we observe state transitions (lock written,
+unit-store map updated, MCP register/unregister calls captured,
+journal entries emitted, compensations triggered).
+
+The fakes are deterministic and inspectable — every fake exposes its
+recorded calls plus a builder for canned responses, so a test can say
+"FakeGateway, return 503 on the third register call" and observe the
+compensation cascade.
+
+#### Permutation axes
+
+The combinatorial space worth covering. A single `CommandScenarioTest`
+parameterizes across these axes and asserts contracts at the end:
+
+| Axis | Values |
+| --- | --- |
+| **Command** | `install`, `upgrade`, `uninstall`, `sync`, `sync --lock`, `remove` |
+| **Unit kind** | `SKILL`, `PLUGIN` |
+| **Install source** | `REGISTRY`, `GIT`, `LOCAL_FILE` |
+| **Pre-state** | empty store, already-installed-same-version, already-installed-different-version, installed-with-`MERGE_CONFLICT`-error, installed-with-`GATEWAY_UNAVAILABLE`-error, installed-from-different-source |
+| **Reference shape** | none, refs-to-skill, refs-to-plugin, plugin→skill→plugin chain, diamond, cycle |
+| **Dep mix** | none, CLI-only, MCP-only, CLI+MCP, CLI-conflict, MCP same-name-different-load |
+| **Lock state** | absent, in-sync, ahead-of-disk, behind-disk, conflicting-rows |
+| **Policy** | each `policy.install.*` flag on/off |
+| **Failure injection** | none, `clone`-fails, `checkout`-fails, `cli-install`-fails, `mcp-register`-fails, `projector`-fails, `lock-write`-fails (× at which step in the sequence) |
+| **Yes flag** | `--yes`, interactive-confirm, interactive-deny |
+
+Most tests don't sweep the full Cartesian product (~hundreds of
+millions of cells). A scenario picks a focused subset — typically two
+or three axes at full sweep with the rest pinned — chosen so the
+contract under test is exercised across every value that could
+plausibly affect it. Tags (`@Tag("install")`, `@Tag("rollback")`)
+let CI run subsets quickly while a nightly job runs the whole sweep.
+
+#### Contracts being verified
+
+The contracts the unit tests pin down. Each contract has at least one
+test that sweeps the relevant axes:
+
+1. **Effect-graph shape invariance.** For equivalent inputs, the
+   emitted `Program.effects()` sequence is identical across `UnitKind`,
+   modulo the four kind-divergence points (store dir, projector,
+   scaffold, uninstall re-walk). This is the substitutability claim
+   from the previous version — preserved as one contract among many.
+2. **Compensation pairing.** Every effect emitted on the success path
+   has a registered compensation, and every compensation undoes its
+   counterpart's observable state on the fakes. Sweep: failure
+   injection at every step, assert journal walks back cleanly.
+3. **Lock atomicity.** The lock file is byte-identical to its
+   pre-command state if and only if the command did not commit. Sweep:
+   inject failure at each effect index, assert
+   `units.lock.toml-before == units.lock.toml-after`.
+4. **No orphan registrations.** After uninstall (any source kind, any
+   pre-state with deps held by other units, any unit kind), the
+   FakeGateway has *exactly* the MCP servers claimed by the surviving
+   units. Sweep: pre-state × ref-shape × unit-kind.
+5. **Plan policy gating.** `--yes` cannot bypass `!`-marked policy
+   lines. Sweep: every policy flag × every dep mix that triggers it.
+6. **Resolver determinism.** Same coord + same registry state →
+   same descriptor (sha-pinned). Sweep: kind filter × ambiguous-name
+   pre-state × source override.
+7. **Heterogeneous reference walk.** Plugin↔skill reference chains
+   topologically order correctly; cycles surface at plan time, not at
+   exec time. Sweep: ref-shape × unit-kind at the cycle node.
+8. **Idempotence of `sync --lock`.** Running `sync --lock <path>`
+   twice produces identical disk state on the second run. Sweep:
+   unit-kind × pre-state × dep mix.
+9. **Migration safety.** Legacy `sources/<name>.json` → new
+   `installed/<name>.json`, with kind defaulting to `SKILL`, runs
+   exactly once per file. Sweep: pre-state × file content variants.
+
+#### Test substrate
+
+```
+src/test/java/dev/skillmanager/
+├── _lib/
+│   ├── fakes/
+│   │   ├── InMemoryFs.java               # rooted at a virtual /; supports symlinks
+│   │   ├── FakeGateway.java              # records register/unregister, scriptable failures
+│   │   ├── FakeRegistry.java             # canned descriptors per (name, version)
+│   │   ├── FakeGit.java                  # clone/fetch/checkout against in-memory repos
+│   │   ├── FakeProcessRunner.java        # CLI install backends route through here
+│   │   └── FakeClock.java
+│   ├── fixtures/
+│   │   ├── DepSpec.java                  # CLI / MCP / refs description, kind-agnostic
+│   │   ├── UnitFixtures.java             # buildEquivalent(kind, DepSpec) → AgentUnit
+│   │   ├── PreStates.java                # canned UnitStore + journal pre-states
+│   │   └── Scenarios.java                # named permutation slices for tests to consume
+│   ├── harness/
+│   │   ├── TestHarness.java              # wires Fakes into LiveInterpreter, returns observable receipts/state
+│   │   └── ContractAssertions.java       # assertEffectShapeInvariant, assertNoOrphans, assertLockAtomic, ...
+│   └── matrix/
+│       └── ScenarioMatrix.java           # JUnit 5 ArgumentsProvider that yields the permutation slices
+├── model/
+│   ├── PluginParserTest.java
+│   └── EffectiveDepUnionTest.java
+├── resolve/
+│   ├── ResolverKindFilterTest.java
+│   └── ResolverHeterogeneousRefsTest.java
+├── plan/
+│   ├── PlanShapeInvariantTest.java        # contract #1
+│   ├── CycleDetectionTest.java            # contract #7
+│   └── PolicyGatingTest.java              # contract #5
+├── effects/
+│   ├── CompensationPairingTest.java       # contract #2
+│   ├── HandlerSubstitutabilityTest.java   # contract #1, handler granularity
+│   ├── ProgramComposabilityTest.java
+│   └── KindAwareDispatchTest.java         # the four divergence points are pinned
+├── command/
+│   ├── InstallScenarioTest.java           # full ScenarioMatrix sweep over install
+│   ├── UpgradeScenarioTest.java           # full sweep over upgrade
+│   ├── UninstallScenarioTest.java         # full sweep, asserts contract #4
+│   ├── SyncScenarioTest.java
+│   └── SyncFromLockScenarioTest.java      # contract #8
+├── lock/
+│   ├── LockReadWriteTest.java
+│   ├── LockAtomicityTest.java             # contract #3
+│   └── LockDiffTest.java
+├── store/
+│   └── MigrationFromSkillSourceTest.java  # contract #9
+└── project/
+    ├── ClaudeProjectorTest.java
+    └── CodexProjectorTest.java
+```
+
+#### What a permutation test looks like
+
+```java
+@ParameterizedTest
+@ArgumentsSource(ScenarioMatrix.InstallSlice.class)
+void installRespectsContracts(Scenario s) {
+    var harness = TestHarness.from(s);
+
+    var result = harness.run(s.command());
+
+    ContractAssertions.assertEffectShapeInvariant(harness, s);
+    ContractAssertions.assertCompensationsPaired(harness);
+    ContractAssertions.assertLockAtomic(harness, s);
+    ContractAssertions.assertNoOrphanRegistrations(harness);
+    ContractAssertions.assertExitCodeMatches(s.expectedOutcome(), result);
+}
+```
+
+`ScenarioMatrix.InstallSlice` yields one `Scenario` per axis cell
+relevant to install. A single test method covers thousands of cells
+and reports failures with the full scenario as the test display name
+(`install / PLUGIN / GIT / dep:CLI+MCP / pre:empty / fail-injection:none`)
+so a regression maps unambiguously to a row.
+
+#### Failure-injection sweep
+
+The most expensive contract — and the most valuable. For each command,
+for each step index in its emitted effect sequence, force that step's
+fake to fail and assert:
+
+- The journal walked back fully (no half-applied state on any fake).
+- The lock is byte-identical to pre-command.
+- The unit-store map is byte-identical to pre-command.
+- No MCP server is registered with the gateway that wasn't there
+  before.
+- No CLI tool is in `bin/cli/` that wasn't there before.
+- The exit code matches the failure category (the rollback was
+  intentional, not an additional crash).
+
+This is mechanical to write once and prevents a whole class of
+regressions where a future effect addition forgets its compensation.
+
+#### Speed budget
+
+- Per-test: <10ms median, <50ms p99.
+- Per scenario sweep (install / upgrade / uninstall / sync): <5s on
+  developer laptop.
+- Full Layer 2 suite: <30s.
+
+These budgets are how we keep the layer useful. If a test starts
+needing real IO, it belongs in the test_graph, not Layer 2.
+
+#### What we explicitly don't unit-test
+
+- **End-to-end behavior of registry HTTP, gateway HTTP, git, package
+  managers.** The test_graph (Layer 1) covers those.
+- **Policy file parsing edge cases beyond what command flow exercises.**
+  Add focused TOML parser tests if real bugs appear.
+- **CLI flag parsing.** Picocli is well-tested; we test command flow,
+  not flag plumbing.
+
+### Test-fixture build helpers
+
+The `_lib/fixtures/` package builds the `AgentUnit`s and pre-states
+both layers consume:
+
+```java
+public final class UnitFixtures {
+    public static AgentUnit buildEquivalent(UnitKind kind, DepSpec deps);
+    public static AgentUnit plugin(String name, ContainedSkillSpec... contained);
+    public static AgentUnit skill(String name, DepSpec deps);
+    public static Path materializeOnDisk(InMemoryFs fs, AgentUnit unit);
+}
+```
+
+For Layer 1 (test_graph), a parallel `test_graph/fixtures/_lib/`
+exposes scaffold helpers that write real directories:
+
+```java
+public final class PluginFixture {
+    public static Path scaffold(Path tempRoot, String name, ContainedSkillSpec... contained);
+}
+public final class SkillFixture {
+    public static Path scaffold(Path tempRoot, String name, DepSpec deps);
+}
+```
+
+`DepSpec` and `ContainedSkillSpec` are shared between the two layers
+(packaged so test_graph JBang nodes can also `import` them). This is
+how we keep the two layers aligned: a single source-of-truth for what
+"a skill with a CLI dep and an MCP dep" looks like, materialized
+either in-memory (Layer 2) or on disk (Layer 1).
+
+### Scope and ordering
+
+The tests are added alongside the implementation, not after. Each step
+in the implementation order owns its tests:
+
+- Step 1 (`AgentUnit` + manifest model) → `model/PluginParserTest`,
+  `EffectiveDepUnionTest`.
+- Step 5 (Resolver) → `resolve/*Test`.
+- Step 6 (Planner) → `plan/PlanShapeInvariantTest`, `CycleDetectionTest`.
+- Step 7 (Effect-layer widening) → `effects/HandlerSubstitutabilityTest`
+  added incrementally as each effect is widened (leaf effects first).
+- Step 8 (Effects + journal) → `effects/CompensationOrphanTest`,
+  `ProgramComposabilityTest`.
+- Step 9 (Projector) → `project/*Test`.
+- Step 4 / migration → `store/MigrationFromSkillSourceTest`.
+- Step 8 / lock → `lock/*Test`.
+
+Test_graph parallel nodes are landed in the same step that introduces
+their behavior; the smoke graph stays green at every commit by gating
+the new nodes behind a `kind=plugin` tag until the plugin install path
+is functional.
 
 ## Migration notes
 
@@ -726,12 +1277,14 @@ These aren't in scope this round but the architecture leaves room:
 - **Marketplace trust policy.** Lands inside `policy` when sources
   arrive.
 
-## Open questions
+## Decisions captured (previously open)
 
-1. **Lockfile location and ergonomics for project-vendored locks.** Is
-   `units.lock.toml` at repo root the convention, or under
-   `.skill-manager/`?
-2. **Private contained skill discovery by the agent.** A private
-   contained skill is in the plugin dir, so the harness will see it.
-   Acceptable, or should we hide private skills via subdirectory naming
-   conventions?
+- **Lockfile location for project-vendored locks.** Repo root —
+  `units.lock.toml` lives next to the project's other lockfiles. The
+  per-machine default is still `$SKILL_MANAGER_HOME/units.lock.toml`;
+  `--lock <path>` overrides for project use.
+- **Contained skill addressability.** Bundle-internal. Parsed for
+  deps, never addressable, never separately installable, never
+  depend-on-able. The harness sees them via the plugin's projected
+  directory; that's fine because they're part of the plugin, not a
+  separate installable surface.
