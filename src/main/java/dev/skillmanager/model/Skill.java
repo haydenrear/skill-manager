@@ -9,7 +9,7 @@ public record Skill(
         String description,
         String version,
         List<CliDependency> cliDependencies,
-        List<SkillReference> skillReferences,
+        List<UnitReference> skillReferences,
         List<McpDependency> mcpDependencies,
         Map<String, Object> rawFrontmatter,
         String body,

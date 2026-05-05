@@ -9,7 +9,7 @@ import dev.skillmanager.mcp.InstallResult;
 import dev.skillmanager.mcp.McpWriter;
 import dev.skillmanager.model.McpDependency;
 import dev.skillmanager.model.Skill;
-import dev.skillmanager.model.SkillReference;
+import dev.skillmanager.model.UnitReference;
 import dev.skillmanager.plan.InstallPlan;
 import dev.skillmanager.plan.PlanBuilder;
 import dev.skillmanager.pm.PackageManagerRuntime;
@@ -290,7 +290,7 @@ public final class LiveInterpreter implements ProgramInterpreter {
             List<dev.skillmanager.resolve.Resolver.Coord> unmet = new ArrayList<>();
             java.util.Set<String> seenName = new java.util.LinkedHashSet<>();
             for (Skill s : ctx.store().listInstalled()) {
-                for (SkillReference ref : s.skillReferences()) {
+                for (UnitReference ref : s.skillReferences()) {
                     String coord = referenceToCoord(ref, ctx.store(), s.name());
                     String name = ref.name() != null ? ref.name() : guessName(coord);
                     if (name == null || name.isBlank() || ctx.store().contains(name)) continue;
@@ -548,7 +548,7 @@ public final class LiveInterpreter implements ProgramInterpreter {
         return null;
     }
 
-    private static String referenceToCoord(SkillReference ref, SkillStore store, String parentSkillName) {
+    private static String referenceToCoord(UnitReference ref, SkillStore store, String parentSkillName) {
         if (ref.isLocal()) {
             Path rel = Path.of(ref.path());
             if (rel.isAbsolute()) return rel.toString();

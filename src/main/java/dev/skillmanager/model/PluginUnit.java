@@ -37,7 +37,7 @@ public record PluginUnit(
         String description,
         List<CliDependency> cliDependencies,
         List<McpDependency> mcpDependencies,
-        List<SkillReference> references,
+        List<UnitReference> references,
         List<ContainedSkill> containedSkills,
         Map<String, Object> declaredMcpServers,
         List<String> warnings,
@@ -85,11 +85,11 @@ public record PluginUnit(
     }
 
     /** Same as {@link #unionCli} for references. */
-    public static List<SkillReference> unionRefs(
-            List<SkillReference> pluginLevel,
+    public static List<UnitReference> unionRefs(
+            List<UnitReference> pluginLevel,
             List<ContainedSkill> contained
     ) {
-        List<SkillReference> out = new ArrayList<>(pluginLevel == null ? List.of() : pluginLevel);
+        List<UnitReference> out = new ArrayList<>(pluginLevel == null ? List.of() : pluginLevel);
         if (contained != null) for (ContainedSkill cs : contained) out.addAll(cs.references());
         return out;
     }

@@ -1,7 +1,7 @@
 package dev.skillmanager.commands;
 
 import dev.skillmanager.model.Skill;
-import dev.skillmanager.model.SkillReference;
+import dev.skillmanager.model.UnitReference;
 import dev.skillmanager.store.SkillStore;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
@@ -53,7 +53,7 @@ public final class DepsCommand implements Callable<Integer> {
         if (mcp && !s.mcpDependencies().isEmpty()) {
             for (var d : s.mcpDependencies()) System.out.println(indent + "  [mcp] " + d.name());
         }
-        for (SkillReference r : s.skillReferences()) {
+        for (UnitReference r : s.skillReferences()) {
             String childName = r.name();
             if (childName == null && r.isLocal()) {
                 Path p = Path.of(r.path());

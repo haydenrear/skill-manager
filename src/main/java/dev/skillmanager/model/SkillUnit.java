@@ -26,6 +26,6 @@ public record SkillUnit(Skill skill) implements AgentUnit {
     @Override public UnitKind kind() { return UnitKind.SKILL; }
     @Override public List<CliDependency> cliDependencies() { return skill.cliDependencies(); }
     @Override public List<McpDependency> mcpDependencies() { return skill.mcpDependencies(); }
-    @Override public List<SkillReference> references() { return skill.skillReferences(); }
+    @Override public List<UnitReference> references() { return skill.skillReferences(); }
     @Override public Path sourcePath() { return skill.sourcePath(); }
 }

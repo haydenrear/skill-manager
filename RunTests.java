@@ -21,10 +21,13 @@
 //DEPS io.modelcontextprotocol.sdk:mcp:1.1.1
 //DEPS org.slf4j:slf4j-simple:2.0.16
 
+import dev.skillmanager.model.CoordParserTest;
+import dev.skillmanager.model.CoordRoundTripTest;
 import dev.skillmanager.model.EffectiveDepUnionTest;
 import dev.skillmanager.model.PluginParserDriftWarnsTest;
 import dev.skillmanager.model.PluginParserTest;
 import dev.skillmanager.model.SkillUnitWrapsSkillTest;
+import dev.skillmanager.model.UnitReferenceFromTomlTest;
 
 /**
  * Layer-2 unit-test runner. Each test class exposes a {@code static int
@@ -46,6 +49,9 @@ public class RunTests {
         failures += PluginParserDriftWarnsTest.run();
         failures += EffectiveDepUnionTest.run();
         failures += SkillUnitWrapsSkillTest.run();
+        failures += CoordParserTest.run();
+        failures += CoordRoundTripTest.run();
+        failures += UnitReferenceFromTomlTest.run();
 
         System.out.println();
         if (failures == 0) {

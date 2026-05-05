@@ -59,7 +59,7 @@ public sealed interface AgentUnit permits PluginUnit, SkillUnit {
      * <p>Reference resolution and kind filtering happen at the resolver
      * layer (ticket 04). At parse time these are simply collected.
      */
-    List<SkillReference> references();
+    List<UnitReference> references();
 
     Path sourcePath();
 }

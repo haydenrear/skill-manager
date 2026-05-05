@@ -53,7 +53,7 @@ public final class SkillParser {
         }
 
         List<CliDependency> cli = toml == null ? List.of() : parseCliDependencies(toml);
-        List<SkillReference> refs = toml == null ? List.of() : parseSkillReferences(toml);
+        List<UnitReference> refs = toml == null ? List.of() : parseSkillReferences(toml);
         List<McpDependency> mcp = toml == null ? List.of() : parseMcpDependencies(toml);
 
         return new Skill(name, description, version, cli, refs, mcp, parsed.frontmatter, parsed.body, skillDir.toAbsolutePath());
@@ -178,28 +178,20 @@ public final class SkillParser {
     }
 
     /**
-     * Parse a bare-string reference coordinate.
+     * Parse a bare-string reference coordinate. Thin shim over
+     * {@link Coord#parse(String)} that wraps the result in a
+     * {@link UnitReference} with the kind filter derived from the
+     * coord shape. The {@code skill:} / {@code plugin:} / {@code github:} /
+     * {@code git+} / {@code file://} / {@code ./} / {@code /} forms
+     * are all handled by {@link Coord#parse(String)}; this method
+     * exists for backwards compatibility with callers that already
+     * expect a {@link UnitReference}.
      *
-     * <ul>
-     *   <li>{@code skill:<name>[@<version>]} → registry lookup</li>
-     *   <li>{@code file:<path>} → local path (absolute, or relative to the declaring skill)</li>
-     *   <li>{@code ./path}, {@code ../path}, {@code /path} → local path (backward compat)</li>
-     *   <li>{@code <name>[@<version>]} → registry lookup (backward compat)</li>
-     * </ul>
+     * <p>Returns {@code null} for blank / null input.
      */
-    public static SkillReference parseCoord(String coord) {
+    public static UnitReference parseCoord(String coord) {
         if (coord == null || coord.isBlank()) return null;
-        String c = coord.trim();
-        if (c.startsWith("skill:")) {
-            return SkillReference.registry(c.substring("skill:".length()));
-        }
-        if (c.startsWith("file:")) {
-            return new SkillReference(null, null, c.substring("file:".length()));
-        }
-        if (c.startsWith("./") || c.startsWith("../") || c.startsWith("/")) {
-            return new SkillReference(null, null, c);
-        }
-        return SkillReference.registry(c);
+        return UnitReference.of(Coord.parse(coord));
     }
 
     /**
@@ -208,16 +200,19 @@ public final class SkillParser {
      * use {@link #parseReferences(TomlTable, String, String)} with
      * key {@code "references"} and table {@code "plugin"}.
      */
-    static List<SkillReference> parseSkillReferences(TomlTable root) {
+    static List<UnitReference> parseSkillReferences(TomlTable root) {
         return parseReferences(root, "skill_references", "skill");
     }
 
     /**
      * Generalized reference parsing: looks for {@code key} at the root
-     * or, if not found, under {@code tableName}.
+     * or, if not found, under {@code tableName}. Inline-table entries
+     * (e.g. {@code [[skill_references]] name = "x" path = "./y"}) are
+     * built via {@link UnitReference#legacy(String, String, String)}.
+     * Bare-string entries route through {@link Coord#parse(String)}.
      */
-    static List<SkillReference> parseReferences(TomlTable root, String key, String tableName) {
-        List<SkillReference> out = new ArrayList<>();
+    static List<UnitReference> parseReferences(TomlTable root, String key, String tableName) {
+        List<UnitReference> out = new ArrayList<>();
         Object raw = root.get(key);
         if (raw == null) {
             TomlTable nested = root.getTable(tableName);
@@ -230,11 +225,11 @@ public final class SkillParser {
                 String path = t.getString("path");
                 String name = t.getString("name");
                 String version = t.getString("version");
-                if (name != null || path != null) {
-                    out.add(new SkillReference(name, version, path));
-                }
+                UnitReference ref = UnitReference.legacy(name, version, path);
+                if (ref != null) out.add(ref);
             } else if (item instanceof String coord) {
-                out.add(parseCoord(coord));
+                UnitReference ref = parseCoord(coord);
+                if (ref != null) out.add(ref);
             }
         }
         return out;
