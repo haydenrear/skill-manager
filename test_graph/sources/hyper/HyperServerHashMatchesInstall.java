@@ -43,7 +43,7 @@ public class HyperServerHashMatchesInstall {
                         "missing env.prepared context");
             }
             Path storeDir = Path.of(home).resolve("skills").resolve("hyper-experiments");
-            Path sourceJson = Path.of(home).resolve("sources").resolve("hyper-experiments.json");
+            Path sourceJson = Path.of(home).resolve("installed").resolve("hyper-experiments.json");
             if (!Files.isRegularFile(sourceJson)) {
                 return NodeResult.fail("hyper.server.hash.matches.install",
                         "missing source record at " + sourceJson);

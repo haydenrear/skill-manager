@@ -6,8 +6,8 @@ import dev.skillmanager.effects.EffectStatus;
 import dev.skillmanager.effects.Program;
 import dev.skillmanager.effects.SkillEffect;
 import dev.skillmanager.model.Skill;
-import dev.skillmanager.source.SkillSource;
-import dev.skillmanager.source.SkillSourceStore;
+import dev.skillmanager.source.InstalledUnit;
+import dev.skillmanager.source.UnitStore;
 import dev.skillmanager.store.SkillStore;
 
 import java.io.IOException;
@@ -38,7 +38,7 @@ public final class ReconcileUseCase {
     }
 
     public static Program<Report> buildProgram(SkillStore store) throws IOException {
-        SkillSourceStore sources = new SkillSourceStore(store);
+        UnitStore sources = new UnitStore(store);
         List<Skill> installed = store.listInstalled();
         List<SkillEffect> effects = new ArrayList<>();
         for (Skill s : installed) {
@@ -49,7 +49,7 @@ public final class ReconcileUseCase {
         for (Skill s : installed) {
             sources.read(s.name()).ifPresent(src -> {
                 if (!src.hasErrors()) return;
-                for (SkillSource.SkillError err : List.copyOf(src.errors())) {
+                for (InstalledUnit.UnitError err : List.copyOf(src.errors())) {
                     effects.add(new SkillEffect.ValidateAndClearError(s.name(), err.kind()));
                 }
             });

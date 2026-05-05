@@ -3,8 +3,8 @@ package dev.skillmanager.effects;
 import dev.skillmanager.model.SkillParser;
 import dev.skillmanager.shared.util.Fs;
 import dev.skillmanager.source.GitOps;
-import dev.skillmanager.source.SkillSource;
-import dev.skillmanager.source.SkillSourceStore;
+import dev.skillmanager.source.InstalledUnit;
+import dev.skillmanager.source.UnitStore;
 import dev.skillmanager.store.SkillStore;
 
 import java.io.BufferedReader;
@@ -139,7 +139,7 @@ public final class SyncFromLocalDirHandler {
             if (newHash != null) {
                 ctx.source(skillName).ifPresent(old -> {
                     try {
-                        ctx.writeSource(old.withGitMoved(newHash, SkillSourceStore.nowIso()));
+                        ctx.writeSource(old.withGitMoved(newHash, UnitStore.nowIso()));
                     } catch (IOException ignored) {}
                 });
             }
@@ -148,7 +148,7 @@ public final class SyncFromLocalDirHandler {
     }
 
     private static String sourceHash(SkillStore store, String skillName) {
-        return new SkillSourceStore(store).read(skillName)
-                .map(SkillSource::gitHash).orElse(null);
+        return new UnitStore(store).read(skillName)
+                .map(InstalledUnit::gitHash).orElse(null);
     }
 }

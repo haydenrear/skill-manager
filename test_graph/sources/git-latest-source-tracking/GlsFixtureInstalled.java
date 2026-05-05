@@ -18,7 +18,7 @@ import java.nio.file.Path;
  * Asserts the install pipeline:
  *
  * <ul>
- *   <li>Wrote {@code <home>/sources/<name>.json} with kind=GIT,
+ *   <li>Wrote {@code <home>/installed/<name>.json} with kind=GIT,
  *       gitHash matching the fixture's HEAD, and origin pinned to
  *       the fixture path (so {@code sync --git-latest} has somewhere
  *       to fetch from without --from).</li>
@@ -66,7 +66,7 @@ public class GlsFixtureInstalled {
             if (rc != 0) return NodeResult.fail("gls.fixture.installed", "install rc=" + rc);
 
             Path storeDir = Path.of(home).resolve("skills").resolve(skillName);
-            Path sourceJson = Path.of(home).resolve("sources").resolve(skillName + ".json");
+            Path sourceJson = Path.of(home).resolve("installed").resolve(skillName + ".json");
 
             boolean storeHasGit = Files.isDirectory(storeDir.resolve(".git"));
             boolean sourceJsonExists = Files.isRegularFile(sourceJson);

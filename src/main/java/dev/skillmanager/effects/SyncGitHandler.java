@@ -3,8 +3,8 @@ package dev.skillmanager.effects;
 import dev.skillmanager.registry.RegistryClient;
 import dev.skillmanager.registry.RegistryConfig;
 import dev.skillmanager.source.GitOps;
-import dev.skillmanager.source.SkillSource;
-import dev.skillmanager.source.SkillSourceStore;
+import dev.skillmanager.source.InstalledUnit;
+import dev.skillmanager.source.UnitStore;
 import dev.skillmanager.store.SkillStore;
 import dev.skillmanager.util.Log;
 
@@ -38,31 +38,31 @@ public final class SyncGitHandler {
         SkillStore store = ctx.store();
         String skillName = e.skillName();
         Path storeDir = store.skillDir(skillName);
-        SkillSource src = ctx.source(skillName).orElse(null);
+        InstalledUnit src = ctx.source(skillName).orElse(null);
 
         if (!GitOps.isAvailable() || !GitOps.isGitRepo(storeDir)) {
             // Bundled skills (skill-manager / skill-publisher) ship in-tree
             // with the CLI and have no .git/ on purpose — see issue #44.
             // Suppress the persistent NEEDS_GIT_MIGRATION error for them.
             if (!dev.skillmanager.lifecycle.BundledSkills.isBundled(skillName)) {
-                ctx.addError(skillName, SkillSource.ErrorKind.NEEDS_GIT_MIGRATION,
+                ctx.addError(skillName, InstalledUnit.ErrorKind.NEEDS_GIT_MIGRATION,
                         "not git-tracked — reinstall from a git source to enable sync/upgrade");
             }
             return EffectReceipt.partial(e, "not git-tracked",
                     new ContextFact.SyncGitNotGitTracked(skillName));
         }
-        ctx.clearError(skillName, SkillSource.ErrorKind.NEEDS_GIT_MIGRATION);
+        ctx.clearError(skillName, InstalledUnit.ErrorKind.NEEDS_GIT_MIGRATION);
 
         String upstream = src != null && src.origin() != null && !src.origin().isBlank()
                 ? src.origin()
                 : GitOps.originUrl(storeDir);
         if (upstream == null || upstream.isBlank()) {
-            ctx.addError(skillName, SkillSource.ErrorKind.NO_GIT_REMOTE,
+            ctx.addError(skillName, InstalledUnit.ErrorKind.NO_GIT_REMOTE,
                     "git-tracked but no origin remote configured");
             return EffectReceipt.partial(e, "no origin remote",
                     new ContextFact.SyncGitNoOrigin(skillName));
         }
-        ctx.clearError(skillName, SkillSource.ErrorKind.NO_GIT_REMOTE);
+        ctx.clearError(skillName, InstalledUnit.ErrorKind.NO_GIT_REMOTE);
 
         // Dirty check FIRST — if the working tree / HEAD diverges from the
         // install baseline, we refuse before doing any registry lookup. The
@@ -89,7 +89,7 @@ public final class SyncGitHandler {
     }
 
     private static TargetResolution resolveTarget(SkillStore store, EffectContext ctx,
-                                                  SkillEffect.SyncGit e, SkillSource src,
+                                                  SkillEffect.SyncGit e, InstalledUnit src,
                                                   String skillName, Path storeDir,
                                                   String upstream, boolean dirty) throws IOException {
         if (e.gitLatest()) {
@@ -100,18 +100,18 @@ public final class SyncGitHandler {
             return TargetResolution.ref(new TargetRef("HEAD", null, null));
         }
 
-        SkillSource.InstallSource installSource = src != null && src.installSource() != null
+        InstalledUnit.InstallSource installSource = src != null && src.installSource() != null
                 ? src.installSource()
-                : SkillSource.InstallSource.UNKNOWN;
+                : InstalledUnit.InstallSource.UNKNOWN;
 
-        if (installSource == SkillSource.InstallSource.REGISTRY) {
+        if (installSource == InstalledUnit.InstallSource.REGISTRY) {
             ServerVersion sv = lookupServerVersion(store, skillName);
             if (sv == null) {
-                ctx.addError(skillName, SkillSource.ErrorKind.REGISTRY_UNAVAILABLE,
+                ctx.addError(skillName, InstalledUnit.ErrorKind.REGISTRY_UNAVAILABLE,
                         "registry didn't return a git_sha for latest " + skillName);
                 return TargetResolution.fact(new ContextFact.SyncGitRegistryUnavailable(skillName));
             }
-            ctx.clearError(skillName, SkillSource.ErrorKind.REGISTRY_UNAVAILABLE);
+            ctx.clearError(skillName, InstalledUnit.ErrorKind.REGISTRY_UNAVAILABLE);
             String localVer = src != null ? src.version() : null;
             // Only short-circuit on "no upgrade needed" when the working tree
             // is clean. If dirty + --merge, the user explicitly wants to fold
@@ -171,7 +171,7 @@ public final class SyncGitHandler {
         GitOps.MergeOutcome outcome = GitOps.mergeFetchHead(storeDir);
         if (!outcome.ok()) {
             if (!outcome.conflictedFiles().isEmpty()) {
-                tryAddError(ctx, skillName, SkillSource.ErrorKind.MERGE_CONFLICT,
+                tryAddError(ctx, skillName, InstalledUnit.ErrorKind.MERGE_CONFLICT,
                         "merge conflict against " + upstream + " " + ref);
                 return new MergeResult(8, null, outcome.conflictedFiles());
             }
@@ -183,7 +183,7 @@ public final class SyncGitHandler {
 
         if (stashed && !GitOps.stashPop(storeDir)) {
             List<String> conflicted = GitOps.unmergedFiles(storeDir);
-            tryAddError(ctx, skillName, SkillSource.ErrorKind.MERGE_CONFLICT,
+            tryAddError(ctx, skillName, InstalledUnit.ErrorKind.MERGE_CONFLICT,
                     "stash pop conflict after merging " + upstream + " " + ref
                             + " — local changes preserved at stash@{0}");
             return new MergeResult(8, null, conflicted);
@@ -192,12 +192,12 @@ public final class SyncGitHandler {
         try {
             ctx.source(skillName).ifPresent(old -> {
                 try {
-                    ctx.writeSource(old.withGitMoved(GitOps.headHash(storeDir), SkillSourceStore.nowIso()));
+                    ctx.writeSource(old.withGitMoved(GitOps.headHash(storeDir), UnitStore.nowIso()));
                 } catch (IOException ex) {
                     Log.warn("could not refresh source record for %s: %s", skillName, ex.getMessage());
                 }
             });
-            ctx.clearError(skillName, SkillSource.ErrorKind.MERGE_CONFLICT);
+            ctx.clearError(skillName, InstalledUnit.ErrorKind.MERGE_CONFLICT);
         } catch (Exception ex) {
             Log.warn("could not refresh source record for %s: %s", skillName, ex.getMessage());
         }
@@ -209,7 +209,7 @@ public final class SyncGitHandler {
     }
 
     private static void tryAddError(EffectContext ctx, String skillName,
-                                    SkillSource.ErrorKind kind, String message) {
+                                    InstalledUnit.ErrorKind kind, String message) {
         try { ctx.addError(skillName, kind, message); }
         catch (IOException e) { Log.warn("could not record error for %s: %s", skillName, e.getMessage()); }
     }

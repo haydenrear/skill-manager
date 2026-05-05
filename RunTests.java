@@ -28,6 +28,9 @@ import dev.skillmanager.model.PluginParserDriftWarnsTest;
 import dev.skillmanager.model.PluginParserTest;
 import dev.skillmanager.model.SkillUnitWrapsSkillTest;
 import dev.skillmanager.model.UnitReferenceFromTomlTest;
+import dev.skillmanager.store.InstalledUnitRoundTripTest;
+import dev.skillmanager.store.MigrationFromSkillSourceTest;
+import dev.skillmanager.store.UnitStoreDirChoiceTest;
 
 /**
  * Layer-2 unit-test runner. Each test class exposes a {@code static int
@@ -52,6 +55,9 @@ public class RunTests {
         failures += CoordParserTest.run();
         failures += CoordRoundTripTest.run();
         failures += UnitReferenceFromTomlTest.run();
+        failures += UnitStoreDirChoiceTest.run();
+        failures += InstalledUnitRoundTripTest.run();
+        failures += MigrationFromSkillSourceTest.run();
 
         System.out.println();
         if (failures == 0) {

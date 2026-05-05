@@ -2,6 +2,7 @@ package dev.skillmanager.store;
 
 import dev.skillmanager.model.Skill;
 import dev.skillmanager.model.SkillParser;
+import dev.skillmanager.model.UnitKind;
 import dev.skillmanager.shared.util.Fs;
 
 import java.io.IOException;
@@ -16,27 +17,30 @@ public final class SkillStore {
 
     private final Path root;
     private final Path skillsDir;
+    private final Path pluginsDir;
     private final Path binDir;
     private final Path cliBinDir;
     private final Path mcpBinDir;
     private final Path venvsDir;
     private final Path npmDir;
     private final Path cacheDir;
-    private final Path sourcesDir;
+    private final Path installedDir;
 
     public SkillStore(Path root) {
         this.root = root;
         this.skillsDir = root.resolve("skills");
+        this.pluginsDir = root.resolve("plugins");
         this.binDir = root.resolve("bin");
         this.cliBinDir = binDir.resolve("cli");
         this.mcpBinDir = binDir.resolve("mcp");
         this.venvsDir = root.resolve("venvs");
         this.npmDir = root.resolve("npm");
         this.cacheDir = root.resolve("cache");
-        // Per-skill provenance JSON: kind (git / local), origin, git hash,
-        // version. Lives outside skills/<name>/ so file ops on the skill
-        // dir (delete + copy during sync) don't blow it away.
-        this.sourcesDir = root.resolve("sources");
+        // Per-unit metadata JSON: storage kind (git / local), origin, git
+        // hash, version, and now unitKind (skill / plugin). Renamed from
+        // sources/ to installed/ in ticket 03; legacy files are migrated
+        // by UnitStore.migrateFromLegacy on next reconcile.
+        this.installedDir = root.resolve("installed");
     }
 
     public static SkillStore defaultStore() {
@@ -49,28 +53,52 @@ public final class SkillStore {
 
     public Path root() { return root; }
     public Path skillsDir() { return skillsDir; }
+    public Path pluginsDir() { return pluginsDir; }
     public Path binDir() { return binDir; }
     public Path cliBinDir() { return cliBinDir; }
     public Path mcpBinDir() { return mcpBinDir; }
     public Path venvsDir() { return venvsDir; }
     public Path npmDir() { return npmDir; }
     public Path cacheDir() { return cacheDir; }
-    public Path sourcesDir() { return sourcesDir; }
+    public Path installedDir() { return installedDir; }
+
+    /**
+     * Deprecated alias for {@link #installedDir()}. Kept for one
+     * release so any out-of-tree caller still using the old name
+     * resolves to the same path. Internal callers should migrate to
+     * {@link #installedDir()}.
+     */
+    @Deprecated
+    public Path sourcesDir() { return installedDir; }
 
     public void init() throws IOException {
         Fs.ensureDir(root);
         Fs.ensureDir(skillsDir);
+        Fs.ensureDir(pluginsDir);
         Fs.ensureDir(binDir);
         Fs.ensureDir(cliBinDir);
         Fs.ensureDir(mcpBinDir);
         Fs.ensureDir(venvsDir);
         Fs.ensureDir(npmDir);
         Fs.ensureDir(cacheDir);
-        Fs.ensureDir(sourcesDir);
+        Fs.ensureDir(installedDir);
     }
 
     public Path skillDir(String name) {
         return skillsDir.resolve(name);
+    }
+
+    /**
+     * Per-unit on-disk directory keyed on {@link UnitKind}. Plugins land
+     * under {@code plugins/<name>}; skills under {@code skills/<name>}.
+     * Effects that do not yet know the kind continue to call
+     * {@link #skillDir(String)}.
+     */
+    public Path unitDir(String name, UnitKind kind) {
+        return switch (kind) {
+            case PLUGIN -> pluginsDir.resolve(name);
+            case SKILL -> skillsDir.resolve(name);
+        };
     }
 
     public boolean contains(String name) {

@@ -2,7 +2,7 @@ package dev.skillmanager.effects;
 
 import dev.skillmanager.mcp.InstallResult;
 import dev.skillmanager.mcp.McpWriter;
-import dev.skillmanager.source.SkillSource;
+import dev.skillmanager.source.InstalledUnit;
 
 /**
  * Typed outcome each effect handler emits on its receipt — replaces the
@@ -35,7 +35,7 @@ public sealed interface ContextFact {
     record ProvenanceRecorded(int count) implements ContextFact {}
 
     // ---- Onboard (reconciler) ----
-    record SkillOnboarded(String skillName, SkillSource.Kind kind) implements ContextFact {}
+    record SkillOnboarded(String skillName, InstalledUnit.Kind kind) implements ContextFact {}
 
     // ---- Transitives ----
     record TransitiveInstalled(String name) implements ContextFact {}
@@ -69,9 +69,9 @@ public sealed interface ContextFact {
     record SyncGitNoUpgradeNeeded(String skillName, String version) implements ContextFact {}
 
     // ---- Error management (sources/<name>.json mutations) ----
-    record ErrorAdded(String skillName, SkillSource.ErrorKind kind) implements ContextFact {}
-    record ErrorCleared(String skillName, SkillSource.ErrorKind kind) implements ContextFact {}
-    record ErrorValidated(String skillName, SkillSource.ErrorKind kind, boolean cleared)
+    record ErrorAdded(String skillName, InstalledUnit.ErrorKind kind) implements ContextFact {}
+    record ErrorCleared(String skillName, InstalledUnit.ErrorKind kind) implements ContextFact {}
+    record ErrorValidated(String skillName, InstalledUnit.ErrorKind kind, boolean cleared)
             implements ContextFact {}
 
     /**
@@ -79,7 +79,7 @@ public sealed interface ContextFact {
      * effect — the closing report walks these to render the "skills with
      * outstanding errors" banner.
      */
-    record OutstandingError(String skillName, SkillSource.ErrorKind kind, String message)
+    record OutstandingError(String skillName, InstalledUnit.ErrorKind kind, String message)
             implements ContextFact {}
 
     // ---- Skill-store mutations ----

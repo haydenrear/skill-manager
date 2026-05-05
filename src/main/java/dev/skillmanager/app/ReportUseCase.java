@@ -4,7 +4,7 @@ import dev.skillmanager.effects.ContextFact;
 import dev.skillmanager.effects.EffectReceipt;
 import dev.skillmanager.effects.Program;
 import dev.skillmanager.effects.SkillEffect;
-import dev.skillmanager.source.SkillSource;
+import dev.skillmanager.source.InstalledUnit;
 import dev.skillmanager.store.SkillStore;
 
 import java.nio.file.Path;
@@ -27,7 +27,7 @@ public final class ReportUseCase {
 
     private ReportUseCase() {}
 
-    public record Report(Map<String, List<SkillSource.SkillError>> errorsBySkill) {
+    public record Report(Map<String, List<InstalledUnit.UnitError>> errorsBySkill) {
         public boolean isEmpty() { return errorsBySkill.isEmpty(); }
     }
 
@@ -39,12 +39,12 @@ public final class ReportUseCase {
     }
 
     private static Report decode(List<EffectReceipt> receipts) {
-        Map<String, List<SkillSource.SkillError>> bySkill = new LinkedHashMap<>();
+        Map<String, List<InstalledUnit.UnitError>> bySkill = new LinkedHashMap<>();
         for (EffectReceipt r : receipts) {
             for (ContextFact f : r.facts()) {
                 if (f instanceof ContextFact.OutstandingError oe) {
                     bySkill.computeIfAbsent(oe.skillName(), k -> new java.util.ArrayList<>())
-                            .add(new SkillSource.SkillError(oe.kind(), oe.message(), null));
+                            .add(new InstalledUnit.UnitError(oe.kind(), oe.message(), null));
                 }
             }
         }
@@ -62,8 +62,8 @@ public final class ReportUseCase {
             System.err.println();
             System.err.println("  " + skillName + ":");
             // dedupe error kinds (handlers may emit the same kind twice across receipts)
-            LinkedHashSet<SkillSource.ErrorKind> seen = new LinkedHashSet<>();
-            for (SkillSource.SkillError err : entry.getValue()) {
+            LinkedHashSet<InstalledUnit.ErrorKind> seen = new LinkedHashSet<>();
+            for (InstalledUnit.UnitError err : entry.getValue()) {
                 if (!seen.add(err.kind())) continue;
                 System.err.println("    - " + err.kind() + ": " + err.message());
                 System.err.println("      → " + hint(err.kind(), skillName, dir));
@@ -72,7 +72,7 @@ public final class ReportUseCase {
         System.err.println();
     }
 
-    private static String hint(SkillSource.ErrorKind kind, String skillName, Path storeDir) {
+    private static String hint(InstalledUnit.ErrorKind kind, String skillName, Path storeDir) {
         return switch (kind) {
             case GATEWAY_UNAVAILABLE -> "start the gateway: skill-manager gateway up";
             case MCP_REGISTRATION_FAILED -> "retry: skill-manager sync " + skillName;

@@ -8,8 +8,8 @@ import dev.skillmanager.effects.SkillEffect;
 import dev.skillmanager.mcp.GatewayConfig;
 import dev.skillmanager.mcp.McpWriter;
 import dev.skillmanager.model.Skill;
-import dev.skillmanager.source.SkillSource;
-import dev.skillmanager.source.SkillSourceStore;
+import dev.skillmanager.source.InstalledUnit;
+import dev.skillmanager.source.UnitStore;
 import dev.skillmanager.store.SkillStore;
 
 import java.io.IOException;
@@ -28,7 +28,7 @@ import java.util.UUID;
  *
  * <p>{@code preMcpDeps} is captured by an in-program {@link
  * SkillEffect.SnapshotMcpDeps} effect — no snapshot argument plumbed
- * through. Per-skill {@link SkillSource.InstallSource} is read at
+ * through. Per-skill {@link InstalledUnit.InstallSource} is read at
  * use-case-build time and baked into each {@link SkillEffect.SyncGit}
  * record so dry-run output shows the routing arm.
  */
@@ -69,7 +69,7 @@ public final class SyncUseCase {
                                                GatewayConfig gw,
                                                Options options,
                                                List<Target> targets) throws IOException {
-        SkillSourceStore sources = new SkillSourceStore(store);
+        UnitStore sources = new UnitStore(store);
         List<SkillEffect> effects = new ArrayList<>(
                 ResolveContextUseCase.preflight(gw, options.registryOverride(), options.withMcp()));
 
@@ -78,10 +78,10 @@ public final class SyncUseCase {
         for (Target t : targets) {
             switch (t) {
                 case Target.Git g -> {
-                    SkillSource src = sources.read(g.skillName()).orElse(null);
-                    SkillSource.InstallSource is = src != null && src.installSource() != null
+                    InstalledUnit src = sources.read(g.skillName()).orElse(null);
+                    InstalledUnit.InstallSource is = src != null && src.installSource() != null
                             ? src.installSource()
-                            : SkillSource.InstallSource.UNKNOWN;
+                            : InstalledUnit.InstallSource.UNKNOWN;
                     effects.add(new SkillEffect.SyncGit(
                             g.skillName(), is, options.gitLatest(), options.merge()));
                 }
