@@ -2,7 +2,7 @@ package dev.skillmanager.effects;
 
 import dev.skillmanager.model.McpDependency;
 import dev.skillmanager.model.Skill;
-import dev.skillmanager.model.SkillReference;
+import dev.skillmanager.model.UnitReference;
 import dev.skillmanager.util.Log;
 
 import java.util.ArrayList;
@@ -60,7 +60,7 @@ public final class DryRunInterpreter implements ProgramInterpreter {
             case SkillEffect.ResolveTransitives e -> {
                 Log.step("[%d] resolve transitives over %d skill(s)", n, e.skills().size());
                 for (Skill s : e.skills()) {
-                    for (SkillReference ref : s.skillReferences()) {
+                    for (UnitReference ref : s.skillReferences()) {
                         String coord = ref.path() != null ? "file:" + ref.path()
                                 : ref.version() != null ? ref.name() + "@" + ref.version()
                                 : ref.name();

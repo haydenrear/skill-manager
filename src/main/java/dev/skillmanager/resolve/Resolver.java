@@ -2,7 +2,7 @@ package dev.skillmanager.resolve;
 
 import dev.skillmanager.model.Skill;
 import dev.skillmanager.model.SkillParser;
-import dev.skillmanager.model.SkillReference;
+import dev.skillmanager.model.UnitReference;
 import dev.skillmanager.store.Fetcher;
 import dev.skillmanager.store.SkillStore;
 import dev.skillmanager.shared.util.Fs;
@@ -84,7 +84,7 @@ public final class Resolver {
             ));
 
             Path originDir = fetched.dir();
-            for (SkillReference ref : skill.skillReferences()) {
+            for (UnitReference ref : skill.skillReferences()) {
                 String childSource;
                 String childVersion;
                 if (ref.isLocal()) {

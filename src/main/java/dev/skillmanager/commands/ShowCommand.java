@@ -3,7 +3,7 @@ package dev.skillmanager.commands;
 import dev.skillmanager.model.CliDependency;
 import dev.skillmanager.model.McpDependency;
 import dev.skillmanager.model.Skill;
-import dev.skillmanager.model.SkillReference;
+import dev.skillmanager.model.UnitReference;
 import dev.skillmanager.store.SkillStore;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Parameters;
@@ -38,7 +38,7 @@ public final class ShowCommand implements Callable<Integer> {
         }
         if (!s.skillReferences().isEmpty()) {
             System.out.println("\nskill references:");
-            for (SkillReference r : s.skillReferences()) {
+            for (UnitReference r : s.skillReferences()) {
                 String label;
                 if (r.isLocal()) label = r.path() + "  (local)";
                 else label = r.name() + (r.version() == null ? "" : "@" + r.version()) + "  (registry)";

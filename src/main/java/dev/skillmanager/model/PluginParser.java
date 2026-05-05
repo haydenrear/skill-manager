@@ -99,7 +99,7 @@ public final class PluginParser {
         List<McpDependency> pluginMcp = toml == null
                 ? List.of()
                 : SkillParser.parseMcpDependencies(toml, "plugin");
-        List<SkillReference> pluginRefs = toml == null
+        List<UnitReference> pluginRefs = toml == null
                 ? List.of()
                 : SkillParser.parseReferences(toml, "references", "plugin");
 
@@ -109,7 +109,7 @@ public final class PluginParser {
         // ---- effective dep set = plugin-level ∪ contained-skill-level ----
         List<CliDependency> effectiveCli = PluginUnit.unionCli(pluginCli, contained);
         List<McpDependency> effectiveMcp = PluginUnit.unionMcp(pluginMcp, contained);
-        List<SkillReference> effectiveRefs = PluginUnit.unionRefs(pluginRefs, contained);
+        List<UnitReference> effectiveRefs = PluginUnit.unionRefs(pluginRefs, contained);
 
         // ---- harness-facing mcpServers map (kept for ticket 09's warning) ----
         Map<String, Object> declaredMcpServers = mapValue(pluginJson.get("mcpServers"));

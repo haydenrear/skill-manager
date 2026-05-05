@@ -104,7 +104,7 @@ public final class EffectiveDepUnionTest {
                     PluginUnit unit = UnitFixtures.scaffoldPlugin(tmp, "p5", pluginLevel, contained);
                     assertSize(2, unit.references(), "two references");
                     Set<String> refNames = new HashSet<>();
-                    for (SkillReference r : unit.references()) refNames.add(r.name());
+                    for (UnitReference r : unit.references()) refNames.add(r.name());
                     assertTrue(refNames.contains("p-ref"), "plugin-level ref unioned");
                     assertTrue(refNames.contains("s-ref"), "contained ref unioned");
                 })

@@ -29,5 +29,5 @@ public record ContainedSkill(Skill skill) {
     public Path sourcePath() { return skill.sourcePath(); }
     public List<CliDependency> cliDependencies() { return skill.cliDependencies(); }
     public List<McpDependency> mcpDependencies() { return skill.mcpDependencies(); }
-    public List<SkillReference> references() { return skill.skillReferences(); }
+    public List<UnitReference> references() { return skill.skillReferences(); }
 }
