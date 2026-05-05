@@ -592,18 +592,17 @@ public final class LiveInterpreter implements ProgramInterpreter {
 
     private EffectReceipt rejectIfInstalled(SkillEffect.RejectIfAlreadyInstalled e, EffectContext ctx) {
         if (e.unitName() == null || e.unitName().isBlank()) return EffectReceipt.skipped(e, "no name");
-        if (ctx.store().containsUnit(e.unitName())) {
-            // Resolve to the kind-aware directory if we have an InstalledUnit
-            // record; fall back to skillDir for the legacy lookup so the
-            // halt message still points at something reasonable.
-            Path at = ctx.source(e.unitName())
-                    .map(u -> ctx.store().unitDir(u.name(), u.unitKind()))
-                    .orElseGet(() -> ctx.store().skillDir(e.unitName()));
-            return EffectReceipt.halted(e,
-                    "unit '" + e.unitName() + "' is already installed at " + at
-                            + " — remove it first (skill-manager remove " + e.unitName() + ")");
-        }
-        return EffectReceipt.ok(e);
+        if (!ctx.store().containsUnit(e.unitName())) return EffectReceipt.ok(e);
+        // Resolve the halt-message path from the actual on-disk layout —
+        // a missing InstalledUnit record (e.g. plugin onboarded before
+        // ticket 03's record-write landed) shouldn't make us point at the
+        // wrong directory.
+        Path at = ctx.store().contains(e.unitName())
+                ? ctx.store().skillDir(e.unitName())
+                : ctx.store().unitDir(e.unitName(), dev.skillmanager.model.UnitKind.PLUGIN);
+        return EffectReceipt.halted(e,
+                "unit '" + e.unitName() + "' is already installed at " + at
+                        + " — remove it first (skill-manager remove " + e.unitName() + ")");
     }
 
     private EffectReceipt buildInstallPlan(SkillEffect.BuildInstallPlan e, EffectContext ctx) {

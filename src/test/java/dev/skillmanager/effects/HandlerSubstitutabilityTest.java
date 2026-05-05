@@ -104,6 +104,19 @@ public final class HandlerSubstitutabilityTest {
                 assertEquals(EffectStatus.OK, r.status(),
                         k + ": RejectIfAlreadyInstalled OK when absent");
             });
+
+            suite.test(k + " — RejectIfAlreadyInstalled HALTS when unit present on disk", () -> {
+                TestHarness h = TestHarness.create();
+                h.scaffoldUnitDir("widget", kind);
+                EffectReceipt r = h.run(new SkillEffect.RejectIfAlreadyInstalled("widget"));
+                assertEquals(EffectStatus.HALTED, r.status(),
+                        k + ": RejectIfAlreadyInstalled HALTED when present");
+                String expectedDir = (kind == UnitKind.SKILL
+                        ? h.store().skillDir("widget")
+                        : h.store().pluginsDir().resolve("widget")).toString();
+                assertTrue(r.errorMessage() != null && r.errorMessage().contains(expectedDir),
+                        k + ": halt message points at on-disk location (" + expectedDir + ")");
+            });
         }
 
         return suite.runAll();
