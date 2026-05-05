@@ -155,9 +155,20 @@ public final class ConsoleProgramRenderer implements ProgramRenderer {
             case ContextFact.ErrorValidated x -> {
                 if (x.cleared()) Log.ok("reconcile: %s cleared %s", x.skillName(), x.kind());
             }
-            case ContextFact.OutstandingError x -> outstandingErrors
-                    .computeIfAbsent(x.skillName(), k -> new java.util.LinkedHashMap<>())
-                    .putIfAbsent(x.kind(), x.message());
+            case ContextFact.OutstandingError x -> {
+                // Bundled skills (skill-manager / skill-publisher) ship
+                // in-tree with no .git/ — suppress NEEDS_GIT_MIGRATION
+                // for them so the closing banner doesn't keep nagging.
+                // Tracked in #44; once they move to their own repos this
+                // suppression goes away.
+                if (x.kind() == SkillSource.ErrorKind.NEEDS_GIT_MIGRATION
+                        && dev.skillmanager.lifecycle.BundledSkills.isBundled(x.skillName())) {
+                    break;
+                }
+                outstandingErrors
+                        .computeIfAbsent(x.skillName(), k -> new java.util.LinkedHashMap<>())
+                        .putIfAbsent(x.kind(), x.message());
+            }
 
             // ---- skill-store mutations ----
             case ContextFact.SkillRemovedFromStore x -> Log.ok("removed %s from store", x.name());

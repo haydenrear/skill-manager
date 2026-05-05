@@ -257,12 +257,13 @@ public final class LiveInterpreter implements ProgramInterpreter {
         SkillSource source = new SkillSource(
                 skill.name(), skill.version(), kind, SkillSource.InstallSource.UNKNOWN,
                 origin, hash, gitRef, SkillSourceStore.nowIso(), null);
-        if (kind == SkillSource.Kind.LOCAL_DIR) {
+        if (kind == SkillSource.Kind.LOCAL_DIR
+                && !dev.skillmanager.lifecycle.BundledSkills.isBundled(skill.name())) {
             source = source.withErrorAdded(new SkillSource.SkillError(
                     SkillSource.ErrorKind.NEEDS_GIT_MIGRATION,
                     "skill is not git-tracked — sync/upgrade unavailable until reinstalled from a git source",
                     SkillSourceStore.nowIso()));
-        } else if (origin == null || origin.isBlank()) {
+        } else if (kind == SkillSource.Kind.GIT && (origin == null || origin.isBlank())) {
             source = source.withErrorAdded(new SkillSource.SkillError(
                     SkillSource.ErrorKind.NO_GIT_REMOTE,
                     "git-tracked but no origin remote configured",
