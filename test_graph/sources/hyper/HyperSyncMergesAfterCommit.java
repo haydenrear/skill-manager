@@ -77,7 +77,7 @@ public class HyperSyncMergesAfterCommit {
             // hash — the new HEAD is either the merge commit (if local +
             // upstream actually diverged) or the upstream HEAD (if local
             // was a no-op fast-forward).
-            Path sourceJson = Path.of(home).resolve("sources").resolve("hyper-experiments.json");
+            Path sourceJson = Path.of(home).resolve("installed").resolve("hyper-experiments.json");
             JsonNode n = new ObjectMapper().readTree(sourceJson.toFile());
             String recordedHash = n.get("gitHash") == null ? null : n.get("gitHash").asText();
             boolean recordRefreshed = recordedHash != null

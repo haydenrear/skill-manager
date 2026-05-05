@@ -41,7 +41,7 @@ public class HyperSourceRecorded {
                 return NodeResult.fail("hyper.source.recorded", "missing env.prepared context");
             }
             Path storeDir = Path.of(home).resolve("skills").resolve("hyper-experiments");
-            Path sourceJson = Path.of(home).resolve("sources").resolve("hyper-experiments.json");
+            Path sourceJson = Path.of(home).resolve("installed").resolve("hyper-experiments.json");
 
             boolean storeHasGit = Files.isDirectory(storeDir.resolve(".git"));
             boolean sourceJsonExists = Files.isRegularFile(sourceJson);

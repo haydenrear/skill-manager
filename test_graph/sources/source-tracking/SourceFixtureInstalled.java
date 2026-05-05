@@ -18,7 +18,7 @@ import java.nio.file.Path;
  * and asserts the install pipeline:
  *
  * <ul>
- *   <li>Wrote a {@code <store>/sources/<name>.json} record with
+ *   <li>Wrote a {@code <store>/installed/<name>.json} record with
  *       {@code kind=GIT}, a non-blank {@code gitHash} matching the
  *       fixture's HEAD, and an {@code origin} that's either the
  *       fixture path or the upstream URL it was cloned from.</li>
@@ -71,7 +71,7 @@ public class SourceFixtureInstalled {
             }
 
             Path storeDir = Path.of(home).resolve("skills").resolve(skillName);
-            Path sourceJson = Path.of(home).resolve("sources").resolve(skillName + ".json");
+            Path sourceJson = Path.of(home).resolve("installed").resolve(skillName + ".json");
 
             boolean storeHasGit = Files.isDirectory(storeDir.resolve(".git"));
             boolean sourceJsonExists = Files.isRegularFile(sourceJson);

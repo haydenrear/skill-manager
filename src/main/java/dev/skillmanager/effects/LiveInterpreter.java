@@ -15,8 +15,8 @@ import dev.skillmanager.plan.PlanBuilder;
 import dev.skillmanager.pm.PackageManagerRuntime;
 import dev.skillmanager.policy.Policy;
 import dev.skillmanager.source.GitOps;
-import dev.skillmanager.source.SkillSource;
-import dev.skillmanager.source.SkillSourceStore;
+import dev.skillmanager.source.InstalledUnit;
+import dev.skillmanager.source.UnitStore;
 import dev.skillmanager.store.SkillStore;
 import dev.skillmanager.sync.SkillSync;
 import dev.skillmanager.tools.ToolDependency;
@@ -244,30 +244,31 @@ public final class LiveInterpreter implements ProgramInterpreter {
             return EffectReceipt.skipped(e, "source record already present");
         }
         Path skillDir = ctx.store().skillDir(skill.name());
-        SkillSource.Kind kind;
+        InstalledUnit.Kind kind;
         String origin = null, hash = null, gitRef = null;
         if (GitOps.isGitRepo(skillDir)) {
-            kind = SkillSource.Kind.GIT;
+            kind = InstalledUnit.Kind.GIT;
             origin = GitOps.originUrl(skillDir);
             hash = GitOps.headHash(skillDir);
             gitRef = GitOps.detectInstallRef(skillDir);
         } else {
-            kind = SkillSource.Kind.LOCAL_DIR;
+            kind = InstalledUnit.Kind.LOCAL_DIR;
         }
-        SkillSource source = new SkillSource(
-                skill.name(), skill.version(), kind, SkillSource.InstallSource.UNKNOWN,
-                origin, hash, gitRef, SkillSourceStore.nowIso(), null);
-        if (kind == SkillSource.Kind.LOCAL_DIR
+        InstalledUnit source = new InstalledUnit(
+                skill.name(), skill.version(), kind, InstalledUnit.InstallSource.UNKNOWN,
+                origin, hash, gitRef, UnitStore.nowIso(), null,
+                dev.skillmanager.model.UnitKind.SKILL);
+        if (kind == InstalledUnit.Kind.LOCAL_DIR
                 && !dev.skillmanager.lifecycle.BundledSkills.isBundled(skill.name())) {
-            source = source.withErrorAdded(new SkillSource.SkillError(
-                    SkillSource.ErrorKind.NEEDS_GIT_MIGRATION,
+            source = source.withErrorAdded(new InstalledUnit.UnitError(
+                    InstalledUnit.ErrorKind.NEEDS_GIT_MIGRATION,
                     "skill is not git-tracked — sync/upgrade unavailable until reinstalled from a git source",
-                    SkillSourceStore.nowIso()));
-        } else if (kind == SkillSource.Kind.GIT && (origin == null || origin.isBlank())) {
-            source = source.withErrorAdded(new SkillSource.SkillError(
-                    SkillSource.ErrorKind.NO_GIT_REMOTE,
+                    UnitStore.nowIso()));
+        } else if (kind == InstalledUnit.Kind.GIT && (origin == null || origin.isBlank())) {
+            source = source.withErrorAdded(new InstalledUnit.UnitError(
+                    InstalledUnit.ErrorKind.NO_GIT_REMOTE,
                     "git-tracked but no origin remote configured",
-                    SkillSourceStore.nowIso()));
+                    UnitStore.nowIso()));
         }
         ctx.writeSource(source);
         return EffectReceipt.ok(e, new ContextFact.SkillOnboarded(skill.name(), kind));
@@ -372,7 +373,7 @@ public final class LiveInterpreter implements ProgramInterpreter {
         if (!new GatewayClient(e.gateway()).ping()) {
             for (Skill s : skills) {
                 if (s.mcpDependencies().isEmpty()) continue;
-                ctx.addError(s.name(), SkillSource.ErrorKind.GATEWAY_UNAVAILABLE,
+                ctx.addError(s.name(), InstalledUnit.ErrorKind.GATEWAY_UNAVAILABLE,
                         "gateway at " + e.gateway().baseUrl() + " unreachable");
             }
             return EffectReceipt.skipped(e, "gateway unreachable");
@@ -383,7 +384,7 @@ public final class LiveInterpreter implements ProgramInterpreter {
 
         for (Skill s : skills) {
             if (s.mcpDependencies().isEmpty()) continue;
-            ctx.clearError(s.name(), SkillSource.ErrorKind.GATEWAY_UNAVAILABLE);
+            ctx.clearError(s.name(), InstalledUnit.ErrorKind.GATEWAY_UNAVAILABLE);
         }
         List<ContextFact> facts = new ArrayList<>();
         int erroredCount = 0;
@@ -391,12 +392,12 @@ public final class LiveInterpreter implements ProgramInterpreter {
             String owner = ownerOf(skills, r.serverId());
             if (owner == null) continue;
             if (InstallResult.Status.ERROR.code.equals(r.status())) {
-                ctx.addError(owner, SkillSource.ErrorKind.MCP_REGISTRATION_FAILED,
+                ctx.addError(owner, InstalledUnit.ErrorKind.MCP_REGISTRATION_FAILED,
                         r.serverId() + ": " + r.message());
                 facts.add(new ContextFact.McpServerRegistrationFailed(owner, r));
                 erroredCount++;
             } else {
-                ctx.clearError(owner, SkillSource.ErrorKind.MCP_REGISTRATION_FAILED);
+                ctx.clearError(owner, InstalledUnit.ErrorKind.MCP_REGISTRATION_FAILED);
                 facts.add(new ContextFact.McpServerRegistered(owner, r));
             }
         }
@@ -448,7 +449,7 @@ public final class LiveInterpreter implements ProgramInterpreter {
     /**
      * Per-(agent, skill) sync. Each pair gets its own try/catch and its own
      * {@link ContextFact}. A failure for one (agent, skill) records
-     * {@link SkillSource.ErrorKind#AGENT_SYNC_FAILED} on the skill so the
+     * {@link InstalledUnit.ErrorKind#AGENT_SYNC_FAILED} on the skill so the
      * outstanding-errors banner surfaces it; other (agent, skill) pairs
      * keep going.
      */
@@ -463,10 +464,10 @@ public final class LiveInterpreter implements ProgramInterpreter {
                 try {
                     syncer.sync(agent, List.of(s), true);
                     facts.add(new ContextFact.AgentSkillSynced(agent.id(), s.name()));
-                    tryClearError(ctx, s.name(), SkillSource.ErrorKind.AGENT_SYNC_FAILED);
+                    tryClearError(ctx, s.name(), InstalledUnit.ErrorKind.AGENT_SYNC_FAILED);
                 } catch (Exception ex) {
                     facts.add(new ContextFact.AgentSkillSyncFailed(agent.id(), s.name(), ex.getMessage()));
-                    tryAddError(ctx, s.name(), SkillSource.ErrorKind.AGENT_SYNC_FAILED,
+                    tryAddError(ctx, s.name(), InstalledUnit.ErrorKind.AGENT_SYNC_FAILED,
                             agent.id() + ": " + ex.getMessage());
                     failed++;
                 }
@@ -486,12 +487,12 @@ public final class LiveInterpreter implements ProgramInterpreter {
     }
 
     private static void tryAddError(EffectContext ctx, String skillName,
-                                    SkillSource.ErrorKind kind, String message) {
+                                    InstalledUnit.ErrorKind kind, String message) {
         try { ctx.addError(skillName, kind, message); }
         catch (IOException io) { Log.warn("could not record %s for %s: %s", kind, skillName, io.getMessage()); }
     }
 
-    private static void tryClearError(EffectContext ctx, String skillName, SkillSource.ErrorKind kind) {
+    private static void tryClearError(EffectContext ctx, String skillName, InstalledUnit.ErrorKind kind) {
         try { ctx.clearError(skillName, kind); }
         catch (IOException io) { Log.warn("could not clear %s on %s: %s", kind, skillName, io.getMessage()); }
     }
@@ -512,19 +513,19 @@ public final class LiveInterpreter implements ProgramInterpreter {
         switch (e.kind()) {
             case MERGE_CONFLICT -> {
                 if (GitOps.isGitRepo(dir) && GitOps.unmergedFiles(dir).isEmpty()) {
-                    ctx.clearError(e.skillName(), SkillSource.ErrorKind.MERGE_CONFLICT);
+                    ctx.clearError(e.skillName(), InstalledUnit.ErrorKind.MERGE_CONFLICT);
                     cleared = true;
                 }
             }
             case NO_GIT_REMOTE -> {
                 if (GitOps.isGitRepo(dir) && GitOps.originUrl(dir) != null) {
-                    ctx.clearError(e.skillName(), SkillSource.ErrorKind.NO_GIT_REMOTE);
+                    ctx.clearError(e.skillName(), InstalledUnit.ErrorKind.NO_GIT_REMOTE);
                     cleared = true;
                 }
             }
             case NEEDS_GIT_MIGRATION -> {
                 if (GitOps.isGitRepo(dir)) {
-                    ctx.clearError(e.skillName(), SkillSource.ErrorKind.NEEDS_GIT_MIGRATION);
+                    ctx.clearError(e.skillName(), InstalledUnit.ErrorKind.NEEDS_GIT_MIGRATION);
                     cleared = true;
                 }
             }
@@ -771,7 +772,7 @@ public final class LiveInterpreter implements ProgramInterpreter {
     private EffectReceipt registerMcpServer(SkillEffect.RegisterMcpServer e, EffectContext ctx) {
         if (!new GatewayClient(e.gateway()).ping()) {
             try {
-                ctx.addError(e.skillName(), SkillSource.ErrorKind.GATEWAY_UNAVAILABLE,
+                ctx.addError(e.skillName(), InstalledUnit.ErrorKind.GATEWAY_UNAVAILABLE,
                         "gateway at " + e.gateway().baseUrl() + " unreachable");
             } catch (IOException io) {
                 Log.warn("could not record gateway-unavailable for %s: %s", e.skillName(), io.getMessage());
@@ -789,7 +790,7 @@ public final class LiveInterpreter implements ProgramInterpreter {
             int errored = 0;
             for (InstallResult r : results) {
                 if (InstallResult.Status.ERROR.code.equals(r.status())) {
-                    ctx.addError(e.skillName(), SkillSource.ErrorKind.MCP_REGISTRATION_FAILED,
+                    ctx.addError(e.skillName(), InstalledUnit.ErrorKind.MCP_REGISTRATION_FAILED,
                             r.serverId() + ": " + r.message());
                     facts.add(new ContextFact.McpServerRegistrationFailed(e.skillName(), r));
                     errored++;
@@ -797,7 +798,7 @@ public final class LiveInterpreter implements ProgramInterpreter {
                     facts.add(new ContextFact.McpServerRegistered(e.skillName(), r));
                 }
             }
-            if (errored == 0) ctx.clearError(e.skillName(), SkillSource.ErrorKind.MCP_REGISTRATION_FAILED);
+            if (errored == 0) ctx.clearError(e.skillName(), InstalledUnit.ErrorKind.MCP_REGISTRATION_FAILED);
             return errored == 0
                     ? EffectReceipt.ok(e, facts)
                     : EffectReceipt.partial(e, facts, "register failed");
@@ -886,7 +887,7 @@ public final class LiveInterpreter implements ProgramInterpreter {
             for (Skill s : ctx.store().listInstalled()) {
                 ctx.source(s.name()).ifPresent(src -> {
                     if (!src.hasErrors()) return;
-                    for (SkillSource.SkillError err : src.errors()) {
+                    for (InstalledUnit.UnitError err : src.errors()) {
                         facts.add(new ContextFact.OutstandingError(s.name(), err.kind(), err.message()));
                     }
                 });

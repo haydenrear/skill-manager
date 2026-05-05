@@ -83,7 +83,7 @@ public class GlsFastForwards {
             boolean installAtUpstream = upstreamHash.equals(installHead);
 
             // Source record gitHash must now match the new upstream sha.
-            Path sourceJson = Path.of(home).resolve("sources").resolve(skillName + ".json");
+            Path sourceJson = Path.of(home).resolve("installed").resolve(skillName + ".json");
             JsonNode n = new ObjectMapper().readTree(sourceJson.toFile());
             String recordedHash = n.get("gitHash") == null ? null : n.get("gitHash").asText();
             boolean recordRefreshed = upstreamHash.equals(recordedHash)

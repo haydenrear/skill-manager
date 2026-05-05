@@ -7,7 +7,7 @@ import java.util.Set;
  * by {@code OnboardCommand} from {@code SKILL_MANAGER_INSTALL_DIR/<dir>/}
  * rather than fetched from a git remote, so they have no {@code .git/}
  * in the store and would otherwise carry permanent
- * {@link dev.skillmanager.source.SkillSource.ErrorKind#NEEDS_GIT_MIGRATION}.
+ * {@link dev.skillmanager.source.InstalledUnit.ErrorKind#NEEDS_GIT_MIGRATION}.
  *
  * <p>Suppression is a workaround. The real fix tracked in
  * <a href="https://github.com/haydenrear/skill-manager/issues/44">#44</a>

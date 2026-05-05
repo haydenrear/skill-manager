@@ -107,7 +107,7 @@ public class GlsMergesAfterLocalCommit {
             String postMergeHead = GlsFixtureBootstrapped.readHead(storeDir);
             boolean headAdvanced = postMergeHead != null && !postMergeHead.equals(preMergeHead);
 
-            Path sourceJson = Path.of(home).resolve("sources").resolve(skillName + ".json");
+            Path sourceJson = Path.of(home).resolve("installed").resolve(skillName + ".json");
             JsonNode n = new ObjectMapper().readTree(sourceJson.toFile());
             String recordedHash = n.get("gitHash") == null ? null : n.get("gitHash").asText();
             boolean recordRefreshed = postMergeHead != null && postMergeHead.equals(recordedHash);

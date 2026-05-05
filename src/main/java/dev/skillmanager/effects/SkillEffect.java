@@ -7,7 +7,7 @@ import dev.skillmanager.model.Skill;
 import dev.skillmanager.plan.InstallPlan;
 import dev.skillmanager.pm.PackageManager;
 import dev.skillmanager.resolve.ResolvedGraph;
-import dev.skillmanager.source.SkillSource;
+import dev.skillmanager.source.InstalledUnit;
 import dev.skillmanager.tools.ToolDependency;
 
 import java.nio.file.Path;
@@ -136,10 +136,10 @@ public sealed interface SkillEffect permits
      * shows which routing arm each skill takes:
      *
      * <ul>
-     *   <li>{@link SkillSource.InstallSource#REGISTRY} — ask the registry for
+     *   <li>{@link InstalledUnit.InstallSource#REGISTRY} — ask the registry for
      *       the latest version's git_sha; refuse to downgrade.</li>
-     *   <li>{@link SkillSource.InstallSource#GIT} / {@link SkillSource.InstallSource#LOCAL_FILE}
-     *       / {@link SkillSource.InstallSource#UNKNOWN} — pull the recorded
+     *   <li>{@link InstalledUnit.InstallSource#GIT} / {@link InstalledUnit.InstallSource#LOCAL_FILE}
+     *       / {@link InstalledUnit.InstallSource#UNKNOWN} — pull the recorded
      *       branch/tag from origin (no registry contact).</li>
      * </ul>
      *
@@ -148,24 +148,24 @@ public sealed interface SkillEffect permits
      */
     record SyncGit(
             String skillName,
-            SkillSource.InstallSource installSource,
+            InstalledUnit.InstallSource installSource,
             boolean gitLatest,
             boolean merge
     ) implements SkillEffect {}
 
     /** Set an error on a skill's source record. */
-    record AddSkillError(String skillName, SkillSource.ErrorKind kind, String message) implements SkillEffect {}
+    record AddSkillError(String skillName, InstalledUnit.ErrorKind kind, String message) implements SkillEffect {}
 
     /** Drop an error from a skill's source record. */
-    record ClearSkillError(String skillName, SkillSource.ErrorKind kind) implements SkillEffect {}
+    record ClearSkillError(String skillName, InstalledUnit.ErrorKind kind) implements SkillEffect {}
 
     /**
      * Reconciler effect: probe for the resolution condition for {@code kind}
-     * (e.g. working tree clean for {@link SkillSource.ErrorKind#MERGE_CONFLICT},
-     * gateway reachable for {@link SkillSource.ErrorKind#GATEWAY_UNAVAILABLE}).
+     * (e.g. working tree clean for {@link InstalledUnit.ErrorKind#MERGE_CONFLICT},
+     * gateway reachable for {@link InstalledUnit.ErrorKind#GATEWAY_UNAVAILABLE}).
      * Clears the error if validation passes; leaves it for the next command otherwise.
      */
-    record ValidateAndClearError(String skillName, SkillSource.ErrorKind kind) implements SkillEffect {}
+    record ValidateAndClearError(String skillName, InstalledUnit.ErrorKind kind) implements SkillEffect {}
 
     // -------------------------------------------------------- gateway lifecycle
 
@@ -287,7 +287,7 @@ public sealed interface SkillEffect permits
     /**
      * Walk every {@code sources/<name>.json}, emit one
      * {@link dev.skillmanager.effects.ContextFact.OutstandingError} per
-     * {@link SkillSource.SkillError}. Centralizes the closing report's IO
+     * {@link InstalledUnit.UnitError}. Centralizes the closing report's IO
      * so an unreadable source file becomes a receipt instead of a silent
      * skip.
      */

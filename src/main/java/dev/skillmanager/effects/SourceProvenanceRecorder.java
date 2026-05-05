@@ -2,8 +2,8 @@ package dev.skillmanager.effects;
 
 import dev.skillmanager.resolve.ResolvedGraph;
 import dev.skillmanager.source.GitOps;
-import dev.skillmanager.source.SkillSource;
-import dev.skillmanager.source.SkillSourceStore;
+import dev.skillmanager.source.InstalledUnit;
+import dev.skillmanager.source.UnitStore;
 import dev.skillmanager.util.Log;
 
 import java.nio.file.Path;
@@ -12,7 +12,7 @@ import java.nio.file.Path;
  * Walks a freshly-committed {@link ResolvedGraph} and writes
  * {@code sources/<name>.json} for every skill, capturing the git remote
  * (if any), HEAD hash, install ref, and the {@link
- * SkillSource.InstallSource} routing the user used. Per-skill failures
+ * InstalledUnit.InstallSource} routing the user used. Per-skill failures
  * are logged but never propagate — provenance is best-effort.
  */
 public final class SourceProvenanceRecorder {
@@ -20,17 +20,17 @@ public final class SourceProvenanceRecorder {
     private SourceProvenanceRecorder() {}
 
     public static void run(ResolvedGraph graph, EffectContext ctx) {
-        SkillSourceStore sources = ctx.sourceStore();
-        String now = SkillSourceStore.nowIso();
+        UnitStore sources = ctx.sourceStore();
+        String now = UnitStore.nowIso();
         for (ResolvedGraph.Resolved r : graph.resolved()) {
             try {
                 Path skillDir = ctx.store().skillDir(r.name());
-                SkillSource.Kind kind;
+                InstalledUnit.Kind kind;
                 String origin;
                 String hash = null;
                 String gitRef = null;
                 if (GitOps.isGitRepo(skillDir)) {
-                    kind = SkillSource.Kind.GIT;
+                    kind = InstalledUnit.Kind.GIT;
                     String resolvedUrl = gitUrlFromSource(r.source());
                     if (resolvedUrl != null) {
                         GitOps.setOrigin(skillDir, resolvedUrl);
@@ -47,25 +47,26 @@ public final class SourceProvenanceRecorder {
                     hash = GitOps.headHash(skillDir);
                     gitRef = GitOps.detectInstallRef(skillDir);
                 } else {
-                    kind = SkillSource.Kind.LOCAL_DIR;
+                    kind = InstalledUnit.Kind.LOCAL_DIR;
                     origin = r.source();
                 }
-                SkillSource.InstallSource installSource = mapInstallSource(r.sourceKind());
-                sources.write(new SkillSource(
+                InstalledUnit.InstallSource installSource = mapInstallSource(r.sourceKind());
+                sources.write(new InstalledUnit(
                         r.name(), r.version(), kind, installSource,
-                        origin, hash, gitRef, now, null));
+                        origin, hash, gitRef, now, null,
+                        dev.skillmanager.model.UnitKind.SKILL));
             } catch (Exception ex) {
                 Log.warn("could not record source provenance for %s: %s", r.name(), ex.getMessage());
             }
         }
     }
 
-    private static SkillSource.InstallSource mapInstallSource(ResolvedGraph.SourceKind sk) {
-        if (sk == null) return SkillSource.InstallSource.UNKNOWN;
+    private static InstalledUnit.InstallSource mapInstallSource(ResolvedGraph.SourceKind sk) {
+        if (sk == null) return InstalledUnit.InstallSource.UNKNOWN;
         return switch (sk) {
-            case REGISTRY -> SkillSource.InstallSource.REGISTRY;
-            case GIT -> SkillSource.InstallSource.GIT;
-            case LOCAL -> SkillSource.InstallSource.LOCAL_FILE;
+            case REGISTRY -> InstalledUnit.InstallSource.REGISTRY;
+            case GIT -> InstalledUnit.InstallSource.GIT;
+            case LOCAL -> InstalledUnit.InstallSource.LOCAL_FILE;
         };
     }
 

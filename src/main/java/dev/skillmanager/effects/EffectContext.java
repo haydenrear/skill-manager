@@ -2,8 +2,8 @@ package dev.skillmanager.effects;
 
 import dev.skillmanager.mcp.GatewayConfig;
 import dev.skillmanager.plan.InstallPlan;
-import dev.skillmanager.source.SkillSource;
-import dev.skillmanager.source.SkillSourceStore;
+import dev.skillmanager.source.InstalledUnit;
+import dev.skillmanager.source.UnitStore;
 import dev.skillmanager.store.SkillStore;
 
 import java.io.IOException;
@@ -14,7 +14,7 @@ import java.util.Set;
 
 /**
  * Thread-through state for one program execution: the store + gateway, and a
- * lazily-loaded snapshot of every {@link SkillSource} the program might read.
+ * lazily-loaded snapshot of every {@link InstalledUnit} the program might read.
  *
  * <p>Effects that mutate sources (errors set / cleared, baselines bumped after
  * a merge) call into the helpers on this class so the cache invalidates
@@ -25,8 +25,8 @@ public final class EffectContext {
 
     private final SkillStore store;
     private final GatewayConfig gateway;
-    private final SkillSourceStore sourceStore;
-    private Map<String, SkillSource> cache;
+    private final UnitStore sourceStore;
+    private Map<String, InstalledUnit> cache;
 
     /**
      * Plan slot — written by the {@link SkillEffect.BuildInstallPlan}
@@ -55,21 +55,21 @@ public final class EffectContext {
     public EffectContext(SkillStore store, GatewayConfig gateway, ProgramRenderer renderer) {
         this.store = store;
         this.gateway = gateway;
-        this.sourceStore = new SkillSourceStore(store);
+        this.sourceStore = new UnitStore(store);
         this.renderer = renderer;
     }
 
     public SkillStore store() { return store; }
     public GatewayConfig gateway() { return gateway; }
-    public SkillSourceStore sourceStore() { return sourceStore; }
+    public UnitStore sourceStore() { return sourceStore; }
     public ProgramRenderer renderer() { return renderer; }
 
-    public Map<String, SkillSource> sources() {
+    public Map<String, InstalledUnit> sources() {
         if (cache == null) cache = loadAll();
         return cache;
     }
 
-    public Optional<SkillSource> source(String name) {
+    public Optional<InstalledUnit> source(String name) {
         return Optional.ofNullable(sources().get(name));
     }
 
@@ -103,23 +103,23 @@ public final class EffectContext {
 
     public record Snapshot(InstallPlan plan, Map<String, Set<String>> preMcpDeps) {}
 
-    public void addError(String skill, SkillSource.ErrorKind kind, String message) throws IOException {
+    public void addError(String skill, InstalledUnit.ErrorKind kind, String message) throws IOException {
         sourceStore.addError(skill, kind, message);
         invalidate();
     }
 
-    public void clearError(String skill, SkillSource.ErrorKind kind) throws IOException {
+    public void clearError(String skill, InstalledUnit.ErrorKind kind) throws IOException {
         sourceStore.clearError(skill, kind);
         invalidate();
     }
 
-    public void writeSource(SkillSource source) throws IOException {
+    public void writeSource(InstalledUnit source) throws IOException {
         sourceStore.write(source);
         invalidate();
     }
 
-    private Map<String, SkillSource> loadAll() {
-        Map<String, SkillSource> out = new LinkedHashMap<>();
+    private Map<String, InstalledUnit> loadAll() {
+        Map<String, InstalledUnit> out = new LinkedHashMap<>();
         try {
             for (var skill : store.listInstalled()) {
                 sourceStore.read(skill.name()).ifPresent(s -> out.put(skill.name(), s));

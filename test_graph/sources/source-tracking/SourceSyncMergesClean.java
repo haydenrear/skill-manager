@@ -93,7 +93,7 @@ public class SourceSyncMergesClean {
             boolean upstreamApplied = Files.isRegularFile(Path.of(storeDir).resolve("CHANGELOG.md"));
 
             // Source record's gitHash must have advanced past the install-time hash.
-            Path sourceJson = Path.of(home).resolve("sources").resolve(skillName + ".json");
+            Path sourceJson = Path.of(home).resolve("installed").resolve(skillName + ".json");
             JsonNode n = new ObjectMapper().readTree(sourceJson.toFile());
             String recordedHash = n.get("gitHash") == null ? null : n.get("gitHash").asText();
             boolean hashAdvanced = recordedHash != null && !recordedHash.equals(initialHash);

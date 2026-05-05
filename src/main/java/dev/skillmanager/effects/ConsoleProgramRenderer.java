@@ -5,7 +5,7 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 import dev.skillmanager.mcp.GatewayConfig;
 import dev.skillmanager.mcp.InstallResult;
 import dev.skillmanager.mcp.McpWriter;
-import dev.skillmanager.source.SkillSource;
+import dev.skillmanager.source.InstalledUnit;
 import dev.skillmanager.store.SkillStore;
 import dev.skillmanager.util.Log;
 
@@ -42,7 +42,7 @@ public final class ConsoleProgramRenderer implements ProgramRenderer {
     private final Map<McpWriter.ConfigChange, List<String>> agentChanges = new LinkedHashMap<>();
     private final List<String> orphans = new ArrayList<>();
     private final List<InstallResult> mcpResults = new ArrayList<>();
-    private final Map<String, java.util.LinkedHashMap<SkillSource.ErrorKind, String>> outstandingErrors =
+    private final Map<String, java.util.LinkedHashMap<InstalledUnit.ErrorKind, String>> outstandingErrors =
             new LinkedHashMap<>();
 
     public ConsoleProgramRenderer(SkillStore store, GatewayConfig gateway) {
@@ -163,7 +163,7 @@ public final class ConsoleProgramRenderer implements ProgramRenderer {
                 // for them so the closing banner doesn't keep nagging.
                 // Tracked in #44; once they move to their own repos this
                 // suppression goes away.
-                if (x.kind() == SkillSource.ErrorKind.NEEDS_GIT_MIGRATION
+                if (x.kind() == InstalledUnit.ErrorKind.NEEDS_GIT_MIGRATION
                         && dev.skillmanager.lifecycle.BundledSkills.isBundled(x.skillName())) {
                     break;
                 }
@@ -273,7 +273,7 @@ public final class ConsoleProgramRenderer implements ProgramRenderer {
             Path dir = store.skillDir(skillName);
             System.err.println();
             System.err.println("  " + skillName + ":");
-            LinkedHashSet<SkillSource.ErrorKind> seen = new LinkedHashSet<>();
+            LinkedHashSet<InstalledUnit.ErrorKind> seen = new LinkedHashSet<>();
             for (var err : entry.getValue().entrySet()) {
                 if (!seen.add(err.getKey())) continue;
                 System.err.println("    - " + err.getKey() + ": " + err.getValue());
@@ -283,7 +283,7 @@ public final class ConsoleProgramRenderer implements ProgramRenderer {
         System.err.println();
     }
 
-    private static String outstandingHint(SkillSource.ErrorKind kind, String skillName, Path storeDir) {
+    private static String outstandingHint(InstalledUnit.ErrorKind kind, String skillName, Path storeDir) {
         return switch (kind) {
             case GATEWAY_UNAVAILABLE -> "start the gateway: skill-manager gateway up";
             case MCP_REGISTRATION_FAILED -> "retry: skill-manager sync " + skillName;
