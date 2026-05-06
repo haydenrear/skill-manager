@@ -35,6 +35,9 @@ import dev.skillmanager.effects.CompensationLogicTest;
 import dev.skillmanager.effects.CompensationOrphanTest;
 import dev.skillmanager.effects.CompensationPairingTest;
 import dev.skillmanager.effects.FailureInjectionSweepTest;
+import dev.skillmanager.lock.LockDiffTest;
+import dev.skillmanager.lock.LockReadWriteTest;
+import dev.skillmanager.lock.LockSchemaVersionTest;
 import dev.skillmanager.effects.HandlerSubstitutabilityTest;
 import dev.skillmanager.effects.KindAwareDispatchTest;
 import dev.skillmanager.effects.ListTypedHandlerSubstitutabilityTest;
@@ -92,6 +95,9 @@ public class RunTests {
         failures += CompensationOrphanTest.run();
         failures += UninstallScenarioTest.run();
         failures += FailureInjectionSweepTest.run();
+        failures += LockReadWriteTest.run();
+        failures += LockDiffTest.run();
+        failures += LockSchemaVersionTest.run();
 
         System.out.println();
         if (failures == 0) {
