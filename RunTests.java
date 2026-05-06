@@ -30,8 +30,12 @@ import dev.skillmanager.model.SkillUnitWrapsSkillTest;
 import dev.skillmanager.model.UnitReferenceFromTomlTest;
 import dev.skillmanager.plan.CycleDetectionTest;
 import dev.skillmanager.plan.MixedKindTopoOrderTest;
+import dev.skillmanager.command.CreatePluginScenarioTest;
 import dev.skillmanager.command.SyncFromLockScenarioTest;
 import dev.skillmanager.command.UninstallScenarioTest;
+import dev.skillmanager.effects.ScaffoldPluginTest;
+import dev.skillmanager.registry.PublishDetectsPluginTest;
+import dev.skillmanager.registry.PublishDetectsSkillTest;
 import dev.skillmanager.effects.CompensationLogicTest;
 import dev.skillmanager.effects.CompensationOrphanTest;
 import dev.skillmanager.effects.CompensationPairingTest;
@@ -110,6 +114,10 @@ public class RunTests {
         failures += ClaudeProjectorTest.run();
         failures += CodexProjectorTest.run();
         failures += ProjectorRegistryTest.run();
+        failures += PublishDetectsPluginTest.run();
+        failures += PublishDetectsSkillTest.run();
+        failures += ScaffoldPluginTest.run();
+        failures += CreatePluginScenarioTest.run();
 
         System.out.println();
         if (failures == 0) {

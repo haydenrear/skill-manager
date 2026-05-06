@@ -54,6 +54,7 @@ public sealed interface SkillEffect permits
         SkillEffect.UnlinkAgentUnit,
         SkillEffect.UnlinkAgentMcpEntry,
         SkillEffect.ScaffoldSkill,
+        SkillEffect.ScaffoldPlugin,
         SkillEffect.InitializePolicy,
         SkillEffect.LoadOutstandingErrors,
         SkillEffect.AddUnitError,
@@ -297,6 +298,17 @@ public sealed interface SkillEffect permits
      * expected to gate on {@code --force}).
      */
     record ScaffoldSkill(Path dir, String skillName, java.util.Map<String, String> files)
+            implements SkillEffect {}
+
+    /**
+     * Parallel to {@link ScaffoldSkill} but for plugin layouts. The file
+     * map carries plugin-specific paths ({@code .claude-plugin/plugin.json},
+     * {@code skill-manager-plugin.toml}, {@code skills/.gitkeep}, ...) so
+     * the handler doesn't have to know plugin structure — it just writes
+     * what it's given. Empty subdirs are represented by a {@code .gitkeep}
+     * placeholder entry in the map (e.g. {@code "skills/.gitkeep" → ""}).
+     */
+    record ScaffoldPlugin(Path dir, String pluginName, java.util.Map<String, String> files)
             implements SkillEffect {}
 
     /** Write {@code policy.toml} with the default policy if not present. */

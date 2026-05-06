@@ -1,9 +1,9 @@
 package dev.skillmanager.registry;
 
+import dev.skillmanager.model.PluginParser;
 import dev.skillmanager.model.SkillParser;
 
 import java.io.BufferedOutputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
@@ -14,30 +14,62 @@ import java.util.List;
 import java.util.stream.Stream;
 import java.util.zip.GZIPOutputStream;
 
-/** Builds a .tar.gz of a skill directory suitable for uploading to the registry. */
+/**
+ * Builds a {@code .tar.gz} of a unit directory suitable for uploading to
+ * the registry. Auto-detects plugin vs bare skill via
+ * {@link #detectKind}: plugins have {@code .claude-plugin/plugin.json};
+ * skills have {@code SKILL.md} at the root.
+ *
+ * <p>Bundle inclusion list per kind:
+ * <ul>
+ *   <li><b>SKILL</b>: every regular file under the dir, excluding hidden
+ *       entries (anything path-segmented under {@code .*} like
+ *       {@code .git/}, {@code .DS_Store}). Existing behavior, unchanged.</li>
+ *   <li><b>PLUGIN</b>: same exclusion logic, plus an explicit allow for
+ *       {@code .claude-plugin/} (the manifest dir) and {@code .mcp.json}
+ *       (Claude's runtime MCP config). Other dotfiles still excluded.</li>
+ * </ul>
+ *
+ * <p>The {@code .tar.gz} format is unchanged across kinds — only the file
+ * inclusion list differs. Server-side, the published bundle's
+ * {@code unit_kind} column drives kind-aware UI; that work lives in
+ * {@code server-java/} and is out of scope here.
+ */
 public final class SkillPackager {
+
+    public enum Kind { SKILL, PLUGIN }
 
     private SkillPackager() {}
 
-    public static Path pack(Path skillDir, Path outputDir) throws IOException {
-        if (!Files.isRegularFile(skillDir.resolve(SkillParser.SKILL_FILENAME))) {
-            throw new IOException("missing " + SkillParser.SKILL_FILENAME + " in " + skillDir);
-        }
+    /**
+     * Detect what kind of unit lives at {@code dir}. Plugin presence is
+     * checked first (via {@link PluginParser#looksLikePlugin}); bare
+     * skill is the fallback when {@code SKILL.md} sits at the root.
+     */
+    public static Kind detectKind(Path dir) throws IOException {
+        if (PluginParser.looksLikePlugin(dir)) return Kind.PLUGIN;
+        if (Files.isRegularFile(dir.resolve(SkillParser.SKILL_FILENAME))) return Kind.SKILL;
+        throw new IOException("not a recognizable unit dir (no .claude-plugin/plugin.json, no "
+                + SkillParser.SKILL_FILENAME + "): " + dir);
+    }
+
+    public static Path pack(Path unitDir, Path outputDir) throws IOException {
+        Kind kind = detectKind(unitDir);
         Files.createDirectories(outputDir);
-        Path out = outputDir.resolve(skillDir.getFileName() + ".tar.gz");
+        Path out = outputDir.resolve(unitDir.getFileName() + ".tar.gz");
 
         try (OutputStream fout = new BufferedOutputStream(Files.newOutputStream(out));
              GZIPOutputStream gzip = new GZIPOutputStream(fout)) {
-            writeTar(skillDir, gzip);
+            writeTar(unitDir, gzip, kind);
         }
         return out;
     }
 
-    private static void writeTar(Path root, OutputStream out) throws IOException {
+    private static void writeTar(Path root, OutputStream out, Kind kind) throws IOException {
         List<Path> files = new ArrayList<>();
         try (Stream<Path> s = Files.walk(root)) {
             s.filter(Files::isRegularFile)
-                    .filter(p -> !p.getFileName().toString().startsWith("."))
+                    .filter(p -> includeInBundle(root, p, kind))
                     .forEach(files::add);
         }
         for (Path p : files) {
@@ -47,6 +79,31 @@ public final class SkillPackager {
         }
         // End-of-archive: two 512-byte zero blocks.
         out.write(new byte[1024]);
+    }
+
+    /**
+     * Decide whether to include {@code file} in a bundle of {@code kind}.
+     * Skill bundles exclude every dotfile (legacy behavior). Plugin
+     * bundles allow {@code .claude-plugin/...} and {@code .mcp.json}
+     * — those are the manifest + runtime config the registry needs to
+     * recreate the plugin — but still exclude {@code .git}, IDE
+     * scratches, etc.
+     */
+    private static boolean includeInBundle(Path root, Path file, Kind kind) {
+        Path rel = root.relativize(file);
+        for (Path seg : rel) {
+            String s = seg.toString();
+            if (s.startsWith(".")) {
+                // Plugin bundle's allowlist: .claude-plugin/<anything> and the
+                // top-level .mcp.json file. Anything else .-prefixed stays out.
+                if (kind == Kind.PLUGIN) {
+                    if (s.equals(".claude-plugin")) return true;  // dir gate — children OK
+                    if (s.equals(".mcp.json") && seg.equals(rel.getFileName())) return true;
+                }
+                return false;
+            }
+        }
+        return true;
     }
 
     private static void writeTarEntry(OutputStream out, String name, byte[] data, boolean executable) throws IOException {

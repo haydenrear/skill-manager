@@ -27,11 +27,17 @@ import java.util.concurrent.Callable;
  * <p>Default output is {@code ./<name>/}; pass {@code --in <dir>} to write
  * under a different parent.
  */
-@Command(name = "create", description = "Scaffold a new skill directory.")
+@Command(name = "create", description = "Scaffold a new skill or plugin directory.")
 public final class CreateCommand implements Callable<Integer> {
 
-    @Parameters(index = "0", description = "Skill name (used as both directory name and [skill].name)")
+    public enum Kind { skill, plugin }
+
+    @Parameters(index = "0", description = "Unit name (used as both directory name and [skill]/[plugin].name)")
     String name;
+
+    @Option(names = "--kind", defaultValue = "skill",
+            description = "Kind of unit to scaffold: skill (default) or plugin.")
+    Kind kind;
 
     @Option(names = {"--in", "-i"}, description = "Parent directory (default: current working directory)")
     Path parentDir;
@@ -68,14 +74,23 @@ public final class CreateCommand implements Callable<Integer> {
                 : description;
 
         Map<String, String> files = new LinkedHashMap<>();
-        files.put("SKILL.md", renderSkillMd(name, effectiveDescription));
-        files.put("skill-manager.toml", renderToml(name, version, effectiveDescription));
+        SkillEffect scaffoldEffect;
+        if (kind == Kind.plugin) {
+            files.put(".claude-plugin/plugin.json", renderPluginJson(name, version, effectiveDescription));
+            files.put("skill-manager-plugin.toml", renderPluginToml(name, version, effectiveDescription));
+            files.put("skills/.gitkeep", "");
+            scaffoldEffect = new SkillEffect.ScaffoldPlugin(dir, name, files);
+        } else {
+            files.put("SKILL.md", renderSkillMd(name, effectiveDescription));
+            files.put("skill-manager.toml", renderToml(name, version, effectiveDescription));
+            scaffoldEffect = new SkillEffect.ScaffoldSkill(dir, name, files);
+        }
 
         SkillStore store = SkillStore.defaultStore();
         store.init();
         Program<Integer> program = new Program<>(
                 "create-" + UUID.randomUUID(),
-                List.of(new SkillEffect.ScaffoldSkill(dir, name, files)),
+                List.of(scaffoldEffect),
                 receipts -> 0);
         ProgramInterpreter interp = dryRun ? new DryRunInterpreter() : new LiveInterpreter(store, null);
         interp.run(program);
@@ -85,11 +100,74 @@ public final class CreateCommand implements Callable<Integer> {
         // SkillScaffolded fact — no second log here.
         System.out.println();
         System.out.println("next steps:");
-        System.out.println("  1. edit " + dir.resolve("SKILL.md") + " — write the agent-facing body");
-        System.out.println("  2. edit " + dir.resolve("skill-manager.toml") + " — uncomment & customize deps");
-        System.out.println("  3. skill-manager install " + dir + "  (install locally to test)");
-        System.out.println("  4. skill-manager publish " + dir + "  (upload to the registry)");
+        if (kind == Kind.plugin) {
+            System.out.println("  1. edit " + dir.resolve(".claude-plugin/plugin.json") + " — Claude's plugin manifest");
+            System.out.println("  2. edit " + dir.resolve("skill-manager-plugin.toml") + " — plugin-level deps");
+            System.out.println("  3. add contained skills under " + dir.resolve("skills") + "/");
+            System.out.println("  4. skill-manager install " + dir + "  (install locally to test)");
+            System.out.println("  5. skill-manager publish " + dir + "  (upload to the registry)");
+        } else {
+            System.out.println("  1. edit " + dir.resolve("SKILL.md") + " — write the agent-facing body");
+            System.out.println("  2. edit " + dir.resolve("skill-manager.toml") + " — uncomment & customize deps");
+            System.out.println("  3. skill-manager install " + dir + "  (install locally to test)");
+            System.out.println("  4. skill-manager publish " + dir + "  (upload to the registry)");
+        }
         return 0;
+    }
+
+    private static String renderPluginJson(String name, String version, String description) {
+        return """
+                {
+                  "name": "%s",
+                  "version": "%s",
+                  "description": %s
+                }
+                """.formatted(name, version, jsonString(description));
+    }
+
+    private static String renderPluginToml(String name, String version, String description) {
+        return """
+                # skill-manager-plugin.toml — tooling-only metadata for this plugin.
+                # Sits alongside .claude-plugin/plugin.json (which is Claude's runtime
+                # manifest); skill-manager reads this file. The two MUST agree on
+                # name + version, or skill-manager will warn at install time.
+
+                # Plugin-level CLI deps. Apply to the whole plugin (rare — most deps
+                # live on individual contained skills under skills/<name>/skill-manager.toml).
+                # [[cli_dependencies]]
+                # spec = "pip:cowsay==6.0"
+                # on_path = "cowsay"
+
+                # Plugin-level MCP deps. Same rationale — usually empty; contained
+                # skills declare their own.
+                # [[mcp_dependencies]]
+                # name = "..."
+
+                # References to other skills/plugins. Rarely needed at the plugin
+                # level — contained skills carry their own skill_references.
+                # references = []
+
+                [plugin]
+                name = "%s"
+                version = "%s"
+                description = %s
+                """.formatted(name, version, tomlString(description));
+    }
+
+    private static String jsonString(String s) {
+        StringBuilder sb = new StringBuilder("\"");
+        for (int i = 0; i < s.length(); i++) {
+            char c = s.charAt(i);
+            switch (c) {
+                case '\\' -> sb.append("\\\\");
+                case '"' -> sb.append("\\\"");
+                case '\n' -> sb.append("\\n");
+                case '\r' -> sb.append("\\r");
+                case '\t' -> sb.append("\\t");
+                default -> sb.append(c);
+            }
+        }
+        return sb.append("\"").toString();
     }
 
     private static String renderSkillMd(String name, String description) {

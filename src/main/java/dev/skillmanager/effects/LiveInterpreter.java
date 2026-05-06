@@ -169,6 +169,7 @@ public final class LiveInterpreter implements ProgramInterpreter {
             case SkillEffect.UnlinkAgentUnit e -> unlinkAgentUnit(e);
             case SkillEffect.UnlinkAgentMcpEntry e -> unlinkAgentMcpEntry(e);
             case SkillEffect.ScaffoldSkill e -> scaffoldSkill(e);
+            case SkillEffect.ScaffoldPlugin e -> scaffoldPlugin(e);
             case SkillEffect.InitializePolicy e -> initializePolicy(e, ctx);
             case SkillEffect.LoadOutstandingErrors e -> loadOutstandingErrors(e, ctx);
             case SkillEffect.AddUnitError e -> addError(e, ctx);
@@ -925,15 +926,31 @@ public final class LiveInterpreter implements ProgramInterpreter {
     // ---------------------------------------------------------- scaffolding
 
     private EffectReceipt scaffoldSkill(SkillEffect.ScaffoldSkill e) {
+        return writeScaffold(e, e.dir(), e.skillName(), e.files());
+    }
+
+    private EffectReceipt scaffoldPlugin(SkillEffect.ScaffoldPlugin e) {
+        return writeScaffold(e, e.dir(), e.pluginName(), e.files());
+    }
+
+    /**
+     * Shared scaffold-writer for {@link SkillEffect.ScaffoldSkill} and
+     * {@link SkillEffect.ScaffoldPlugin}. Creates parent dirs for each
+     * file in the map (so {@code "skills/.gitkeep"} works), and writes
+     * the rendered content as-is.
+     */
+    private EffectReceipt writeScaffold(SkillEffect effect, Path dir, String name,
+                                         java.util.Map<String, String> files) {
         try {
-            Path dir = e.dir();
             dev.skillmanager.shared.util.Fs.ensureDir(dir);
-            for (var entry : e.files().entrySet()) {
-                java.nio.file.Files.writeString(dir.resolve(entry.getKey()), entry.getValue());
+            for (var entry : files.entrySet()) {
+                Path target = dir.resolve(entry.getKey());
+                dev.skillmanager.shared.util.Fs.ensureDir(target.getParent());
+                java.nio.file.Files.writeString(target, entry.getValue());
             }
-            return EffectReceipt.ok(e, new ContextFact.SkillScaffolded(e.skillName(), dir.toString()));
+            return EffectReceipt.ok(effect, new ContextFact.SkillScaffolded(name, dir.toString()));
         } catch (Exception ex) {
-            return EffectReceipt.failed(e, ex.getMessage());
+            return EffectReceipt.failed(effect, ex.getMessage());
         }
     }
 
