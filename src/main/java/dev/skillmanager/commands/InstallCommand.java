@@ -2,9 +2,7 @@ package dev.skillmanager.commands;
 
 import dev.skillmanager.app.InstallUseCase;
 import dev.skillmanager.effects.DryRunInterpreter;
-import dev.skillmanager.effects.LiveInterpreter;
 import dev.skillmanager.effects.Program;
-import dev.skillmanager.effects.ProgramInterpreter;
 import dev.skillmanager.mcp.GatewayConfig;
 import dev.skillmanager.policy.Policy;
 import dev.skillmanager.resolve.ResolvedGraph;
@@ -81,10 +79,26 @@ public final class InstallCommand implements Callable<Integer> {
 
         Program<InstallUseCase.Report> program = InstallUseCase.buildProgram(
                 gw, registryUrl, graph, dryRun);
-        ProgramInterpreter interpreter = dryRun ? new DryRunInterpreter() : new LiveInterpreter(store, gw);
-        InstallUseCase.Report report = interpreter.run(program);
-
-        if (dryRun) return 0;
+        InstallUseCase.Report report;
+        if (dryRun) {
+            report = new DryRunInterpreter().run(program);
+            return 0;
+        }
+        // Live install runs through Executor: each successful effect
+        // records its compensation, and a FAILED downstream effect (e.g.
+        // gateway register fails after a clean commit) walks the journal
+        // back so no half-applied state survives. Outcome.rolledBack
+        // surfaces in the warn line; the report's committed list is
+        // already empty after rollback (DeleteUnitDir compensations
+        // deleted what CommitUnitsToStore put down), so the existing
+        // exit-code path naturally returns 4.
+        dev.skillmanager.effects.Executor.Outcome<InstallUseCase.Report> outcome =
+                new dev.skillmanager.effects.Executor(store, gw).run(program);
+        report = outcome.result();
+        if (outcome.rolledBack()) {
+            Log.warn("install rolled back %d effect(s) — no partial state retained",
+                    outcome.applied().size());
+        }
         // Renderer printed every user-facing line; the only command-level
         // decision left is the exit code. Install succeeds when the skill
         // committed — post-commit failures (MCP register, transitive install,

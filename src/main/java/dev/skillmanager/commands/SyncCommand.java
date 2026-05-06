@@ -103,8 +103,18 @@ public final class SyncCommand implements Callable<Integer> {
                 registryUrl, gitLatest, merge, !skipMcp, !skipAgents, yes);
         dev.skillmanager.effects.StagedProgram<SyncUseCase.Report> program =
                 SyncUseCase.buildProgram(store, gw, opts, targets);
-        ProgramInterpreter interpreter = dryRun ? new DryRunInterpreter(store) : new LiveInterpreter(store, gw);
-        SyncUseCase.Report report = interpreter.runStaged(program);
+        SyncUseCase.Report report;
+        if (dryRun) {
+            report = new DryRunInterpreter(store).runStaged(program);
+        } else {
+            dev.skillmanager.effects.Executor.Outcome<SyncUseCase.Report> outcome =
+                    new dev.skillmanager.effects.Executor(store, gw).runStaged(program);
+            report = outcome.result();
+            if (outcome.rolledBack()) {
+                Log.warn("sync rolled back %d effect(s) — store + gateway state restored",
+                        outcome.applied().size());
+            }
+        }
         // worstRc reflects the SyncGit fact severity (refused=7, conflicted=8,
         // sync-failed=1). errorCount picks up the post-update tail's failures
         // (gateway unreachable, MCP register errors, agent sync errors) — these

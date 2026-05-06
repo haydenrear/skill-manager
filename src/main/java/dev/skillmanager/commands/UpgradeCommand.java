@@ -120,8 +120,18 @@ public final class UpgradeCommand implements Callable<Integer> {
                 registryUrl, /*gitLatest=*/false, merge, true, true, /*yes=*/false);
         dev.skillmanager.effects.StagedProgram<SyncUseCase.Report> program =
                 SyncUseCase.buildProgram(store, gw, opts, targetList);
-        ProgramInterpreter interpreter = dryRun ? new DryRunInterpreter(store) : new LiveInterpreter(store, gw);
-        SyncUseCase.Report report = interpreter.runStaged(program);
+        SyncUseCase.Report report;
+        if (dryRun) {
+            report = new DryRunInterpreter(store).runStaged(program);
+        } else {
+            dev.skillmanager.effects.Executor.Outcome<SyncUseCase.Report> outcome =
+                    new dev.skillmanager.effects.Executor(store, gw).runStaged(program);
+            report = outcome.result();
+            if (outcome.rolledBack()) {
+                Log.warn("upgrade rolled back %d effect(s) — store + gateway state restored",
+                        outcome.applied().size());
+            }
+        }
         int worst = report.worstRc();
         return worst > 0 ? worst : selfRc;
     }
