@@ -385,4 +385,40 @@ validationGraph {
         node("sources/common/ServersDown.java")
                 .dependsOn("gls.conflict")
     }
+
+    /**
+     * Plugin smoke graph (ticket 15 — minimal subset).
+     *
+     * Exercises the plugin install pipeline end-to-end: publish a
+     * plugin bundle, install it, and verify the install lands the
+     * plugin under plugins/ (not skills/), the lock advances with the
+     * right kind, the Claude projector symlink lands, and the
+     * contained skill is NOT separately addressable from the registry.
+     *
+     * Kept off the default `smoke` graph today because it depends on
+     * server-side support for plugin bundles (server-java/ unit_kind
+     * column migration is deferred per ticket 13). Will start passing
+     * once that lands. The full sweep of *Plugin* parallel nodes
+     * (HelloPluginPublished is one of ~30 the ticket calls for) is its
+     * own follow-up — these three prove the end-to-end install path
+     * and document the pattern.
+     *
+     *   ./gradlew plugin-smoke
+     */
+    testGraph("plugin-smoke") {
+        node("sources/common/EnvPrepared.java")
+        node("sources/common/PostgresUp.java")
+        node("sources/common/RegistryUp.java")
+        node("sources/common/CiLoggedIn.java")
+        node("sources/common/JwtValid.java")
+        node("sources/common/GatewayPythonVenvReady.java")
+        node("sources/smoke/GatewayUp.java")
+
+        node("sources/smoke/HelloPluginPublished.java")
+        node("sources/smoke/HelloPluginInstalled.java")
+        node("sources/smoke/PluginContainedSkillNotAddressable.java")
+
+        node("sources/common/ServersDown.java")
+                .dependsOn("plugin.contained.skill.not.addressable")
+    }
 }

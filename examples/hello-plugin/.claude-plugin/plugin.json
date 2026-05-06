@@ -1,0 +1,5 @@
+{
+  "name": "hello-plugin",
+  "version": "0.1.0",
+  "description": "Example plugin demonstrating skill-manager plugin layout — contained skill, plugin-level deps, MCP via gateway."
+}
