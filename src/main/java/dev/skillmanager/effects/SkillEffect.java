@@ -4,7 +4,7 @@ import dev.skillmanager.mcp.GatewayConfig;
 import dev.skillmanager.model.AgentUnit;
 import dev.skillmanager.model.CliDependency;
 import dev.skillmanager.model.McpDependency;
-import dev.skillmanager.model.Skill;
+import dev.skillmanager.model.UnitKind;
 import dev.skillmanager.plan.InstallPlan;
 import dev.skillmanager.pm.PackageManager;
 import dev.skillmanager.resolve.ResolvedGraph;
@@ -39,10 +39,10 @@ public sealed interface SkillEffect permits
         SkillEffect.CleanupResolvedGraph,
         SkillEffect.PrintInstalledSummary,
         SkillEffect.SyncFromLocalDir,
-        SkillEffect.CommitSkillsToStore,
+        SkillEffect.CommitUnitsToStore,
         SkillEffect.RecordAuditPlan,
         SkillEffect.RecordSourceProvenance,
-        SkillEffect.OnboardSource,
+        SkillEffect.OnboardUnit,
         SkillEffect.EnsureTool,
         SkillEffect.RunCliInstall,
         SkillEffect.RegisterMcpServer,
@@ -50,8 +50,8 @@ public sealed interface SkillEffect permits
         SkillEffect.UnregisterMcpOrphans,
         SkillEffect.SyncAgents,
         SkillEffect.SyncGit,
-        SkillEffect.RemoveSkillFromStore,
-        SkillEffect.UnlinkAgentSkill,
+        SkillEffect.RemoveUnitFromStore,
+        SkillEffect.UnlinkAgentUnit,
         SkillEffect.UnlinkAgentMcpEntry,
         SkillEffect.ScaffoldSkill,
         SkillEffect.InitializePolicy,
@@ -82,13 +82,14 @@ public sealed interface SkillEffect permits
     }
 
     /**
-     * Move every staged skill in the {@link ResolvedGraph} into the store.
-     * Failure mode: copy throws midway → handler best-effort removes any
-     * skill dirs it just created so a rerun starts clean. The receipt
-     * lists which names committed for downstream effects (provenance,
-     * post-update) to reference.
+     * Move every staged unit in the {@link ResolvedGraph} into the store,
+     * routing each to {@code skills/<name>} or {@code plugins/<name>} per
+     * {@link AgentUnit#kind()}. Failure mode: copy throws midway → handler
+     * best-effort removes any unit dirs it just created so a rerun starts
+     * clean. The receipt lists which names committed for downstream
+     * effects (provenance, post-update) to reference.
      */
-    record CommitSkillsToStore(ResolvedGraph graph) implements SkillEffect {}
+    record CommitUnitsToStore(ResolvedGraph graph) implements SkillEffect {}
 
     /**
      * Append the install plan to the audit log under {@code verb}
@@ -100,8 +101,13 @@ public sealed interface SkillEffect permits
     /** Walk the committed graph and write {@code sources/<name>.json} for each skill. */
     record RecordSourceProvenance(ResolvedGraph graph) implements SkillEffect {}
 
-    /** Write a {@code sources/<name>.json} record for an installed skill that lacks one. */
-    record OnboardSource(Skill skill) implements SkillEffect {}
+    /**
+     * Write an {@code installed/<name>.json} record for a unit that lacks
+     * one. Routes through {@link dev.skillmanager.store.SkillStore#unitDir}
+     * for the source-dir probe so plugins under {@code plugins/<name>}
+     * onboard with the right git/transport detection.
+     */
+    record OnboardUnit(AgentUnit unit) implements SkillEffect {}
 
     /** Build the install plan from {@code units} and run runtime-tool installers (uv / npm / docker / brew). */
     record InstallTools(List<AgentUnit> units) implements SkillEffect {}
@@ -151,7 +157,8 @@ public sealed interface SkillEffect permits
      * recorded {@code gitRef}.
      */
     record SyncGit(
-            String skillName,
+            String unitName,
+            UnitKind kind,
             InstalledUnit.InstallSource installSource,
             boolean gitLatest,
             boolean merge
@@ -262,11 +269,19 @@ public sealed interface SkillEffect permits
 
     // ----------------------------------------------------- store / agent removal
 
-    /** Delete a skill's directory from the store (and best-effort delete its source record). */
-    record RemoveSkillFromStore(String skillName) implements SkillEffect {}
+    /**
+     * Delete a unit's directory from the store (skills/ for SKILL,
+     * plugins/ for PLUGIN) and best-effort delete its installed-source
+     * record.
+     */
+    record RemoveUnitFromStore(String unitName, UnitKind kind) implements SkillEffect {}
 
-    /** Remove an agent's symlink (or copied dir) of {@code skillName}. */
-    record UnlinkAgentSkill(String agentId, String skillName) implements SkillEffect {}
+    /**
+     * Remove an agent's symlink (or copied dir) of {@code unitName}.
+     * SKILL units are unlinked from {@link Agent#skillsDir()}; PLUGIN
+     * units from {@link Agent#pluginsDir()}.
+     */
+    record UnlinkAgentUnit(String agentId, String unitName, UnitKind kind) implements SkillEffect {}
 
     /** Remove the {@code virtual-mcp-gateway} entry from a single agent's MCP config. */
     record UnlinkAgentMcpEntry(String agentId, GatewayConfig gateway) implements SkillEffect {}

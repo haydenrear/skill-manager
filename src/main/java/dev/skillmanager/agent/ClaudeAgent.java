@@ -12,6 +12,11 @@ public final class ClaudeAgent implements Agent {
     }
 
     @Override
+    public Path pluginsDir() {
+        return claudeHome().resolve(".claude").resolve("plugins");
+    }
+
+    @Override
     public Path mcpConfigPath() {
         return claudeHome().resolve(".claude.json");
     }

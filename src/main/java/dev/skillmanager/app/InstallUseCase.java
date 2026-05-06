@@ -88,7 +88,7 @@ public final class InstallUseCase {
         effects.add(new SkillEffect.BuildInstallPlan(graph));
 
         if (!dryRun) {
-            effects.add(new SkillEffect.CommitSkillsToStore(graph));
+            effects.add(new SkillEffect.CommitUnitsToStore(graph));
             effects.add(new SkillEffect.RecordAuditPlan("install"));
             effects.add(new SkillEffect.RecordSourceProvenance(graph));
             effects.add(new SkillEffect.PrintInstalledSummary(graph));
@@ -121,13 +121,13 @@ public final class InstallUseCase {
         List<String> orphans = new ArrayList<>();
         for (EffectReceipt r : receipts) {
             if (r.status() == EffectStatus.FAILED || r.status() == EffectStatus.PARTIAL) errorCount++;
-            // CommitSkillsToStore emits SkillCommitted as each skill copies
+            // CommitUnitsToStore emits SkillCommitted as each unit copies
             // and CommitRolledBack on failure. A FAILED commit means every
             // SkillCommitted fact in that receipt was rolled back — don't
             // count them as committed (would otherwise return exit 0 from
             // a rolled-back install).
             boolean commitFailed = r.status() == EffectStatus.FAILED
-                    && r.effect() instanceof SkillEffect.CommitSkillsToStore;
+                    && r.effect() instanceof SkillEffect.CommitUnitsToStore;
             for (ContextFact f : r.facts()) {
                 switch (f) {
                     case ContextFact.SkillCommitted c -> {
