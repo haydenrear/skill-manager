@@ -31,6 +31,9 @@ import dev.skillmanager.model.UnitReferenceFromTomlTest;
 import dev.skillmanager.plan.CycleDetectionTest;
 import dev.skillmanager.plan.MixedKindTopoOrderTest;
 import dev.skillmanager.command.CreatePluginScenarioTest;
+import dev.skillmanager.command.ListShowsKindAndShaTest;
+import dev.skillmanager.command.SearchShowsKindTest;
+import dev.skillmanager.command.ShowPluginListsContainedSkillsTest;
 import dev.skillmanager.command.SyncFromLockScenarioTest;
 import dev.skillmanager.command.UninstallScenarioTest;
 import dev.skillmanager.effects.ScaffoldPluginTest;
@@ -118,6 +121,9 @@ public class RunTests {
         failures += PublishDetectsSkillTest.run();
         failures += ScaffoldPluginTest.run();
         failures += CreatePluginScenarioTest.run();
+        failures += ListShowsKindAndShaTest.run();
+        failures += SearchShowsKindTest.run();
+        failures += ShowPluginListsContainedSkillsTest.run();
 
         System.out.println();
         if (failures == 0) {
