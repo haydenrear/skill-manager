@@ -54,9 +54,15 @@ public final class SearchCommand implements Callable<Integer> {
     }
 
     private static void printRows(List<Map<String, Object>> rows, boolean sponsored) {
-        System.out.printf("%-28s %-10s %s%n", "NAME", "LATEST", sponsored ? "SPONSOR · REASON" : "DESCRIPTION");
+        // KIND column lands here too (ticket 14). Server-side may not yet
+        // emit unit_kind for legacy registries — fall back to "skill" for
+        // missing values so the column stays populated and parsable.
+        System.out.printf("%-28s %-7s %-10s %s%n",
+                "NAME", "KIND", "LATEST",
+                sponsored ? "SPONSOR · REASON" : "DESCRIPTION");
         for (Map<String, Object> hit : rows) {
             String name = String.valueOf(hit.getOrDefault("name", ""));
+            String kind = String.valueOf(hit.getOrDefault("unit_kind", "skill")).toLowerCase();
             Object latest = hit.get("latest_version");
             String latestStr = latest == null ? "-" : latest.toString();
             String right;
@@ -69,7 +75,7 @@ public final class SearchCommand implements Callable<Integer> {
                 if (desc.length() > 60) desc = desc.substring(0, 57) + "...";
                 right = desc;
             }
-            System.out.printf("%-28s %-10s %s%n", name, latestStr, right);
+            System.out.printf("%-28s %-7s %-10s %s%n", name, kind, latestStr, right);
         }
     }
 }

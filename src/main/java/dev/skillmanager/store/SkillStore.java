@@ -1,6 +1,8 @@
 package dev.skillmanager.store;
 
+import dev.skillmanager.model.AgentUnit;
 import dev.skillmanager.model.PluginParser;
+import dev.skillmanager.model.PluginUnit;
 import dev.skillmanager.model.Skill;
 import dev.skillmanager.model.SkillParser;
 import dev.skillmanager.model.UnitKind;
@@ -140,6 +142,39 @@ public final class SkillStore {
                     out.add(SkillParser.load(p));
                 } catch (IOException e) {
                     // skip unreadable skills
+                }
+            }
+        }
+        out.sort((a, b) -> a.name().compareToIgnoreCase(b.name()));
+        return out;
+    }
+
+    /**
+     * Kind-aware install listing. Returns every {@link AgentUnit} the
+     * store knows about — skills under {@code skills/} via
+     * {@link #listInstalled} plus plugins under {@code plugins/} via
+     * {@link PluginParser#load}. Sorted alphabetically by name across
+     * both kinds.
+     *
+     * <p>Used by the {@code list} / {@code search} surface from ticket 14
+     * (where plugins need their own row) and by code that wants the full
+     * "what's installed" view without down-casting (orphan checks,
+     * lock-vs-live drift, the reconciler in future).
+     */
+    public List<AgentUnit> listInstalledUnits() throws IOException {
+        List<AgentUnit> out = new ArrayList<>();
+        for (Skill s : listInstalled()) out.add(s.asUnit());
+        if (Files.isDirectory(pluginsDir)) {
+            try (Stream<Path> s = Files.list(pluginsDir)) {
+                for (Path p : (Iterable<Path>) s::iterator) {
+                    if (!Files.isDirectory(p)) continue;
+                    if (!Files.isRegularFile(p.resolve(PluginParser.PLUGIN_JSON_PATH))) continue;
+                    try {
+                        PluginUnit plugin = PluginParser.load(p);
+                        out.add(plugin);
+                    } catch (IOException e) {
+                        // skip unreadable plugins
+                    }
                 }
             }
         }
