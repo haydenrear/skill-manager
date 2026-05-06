@@ -155,7 +155,16 @@ public final class GitOps {
     }
 
     public static MergeOutcome mergeFetchHead(Path dir) {
-        Result merge = run(dir, List.of("git", "merge", "--no-edit", "FETCH_HEAD"));
+        // Identity must be supplied via `-c` overrides — fresh clones under
+        // SKILL_MANAGER_HOME inherit no global git identity, and on
+        // ephemeral runners (CI, containers) `user.email`/`user.name` are
+        // unset globally. Without them a non-fast-forward merge fails to
+        // create the merge commit with `fatal: empty ident name not allowed`
+        // and rc=1, even though there are no conflicts. Mirrors `stashAll`.
+        Result merge = run(dir, List.of("git",
+                "-c", "user.email=skill-manager@localhost",
+                "-c", "user.name=skill-manager",
+                "merge", "--no-edit", "FETCH_HEAD"));
         if (merge.exit == 0) return new MergeOutcome(true, List.of(), merge.stdout);
         List<String> conflicted = unmergedFiles(dir);
         if (conflicted.isEmpty()) mergeAbort(dir);

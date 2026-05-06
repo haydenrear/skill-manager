@@ -72,6 +72,11 @@ public class HyperSyncMergesAfterCommit {
             boolean wtClean = porcelain.isBlank();
             boolean localFileSurvived = Files.exists(storeDir.resolve(LOCAL_FILE));
             String postHead = run(storeDir, List.of("git", "rev-parse", "HEAD")).trim();
+            // Long-form `git status` is captured up front so it can land in
+            // the failure assertion below — short-circuiting on pass would
+            // hide the diagnostic, and recomputing in the failure branch
+            // would race against any cleanup the executor does.
+            String longStatus = run(storeDir, List.of("git", "status"));
 
             // Source record must have been refreshed past the install-time
             // hash — the new HEAD is either the merge commit (if local +
@@ -93,7 +98,10 @@ public class HyperSyncMergesAfterCommit {
                                     + " recordRefreshed=" + recordRefreshed
                                     + " (installed=" + installedHash
                                     + " head=" + postHead
-                                    + " recorded=" + recordedHash + ")"))
+                                    + " recorded=" + recordedHash + ")"
+                                    + "\n--- git status (storeDir) ---\n"
+                                    + longStatus
+                                    + "--- end git status ---"))
                     .assertion("merge_exit_zero", rc == 0)
                     .assertion("working_tree_clean_after_merge", wtClean)
                     .assertion("local_file_survived_merge", localFileSurvived)

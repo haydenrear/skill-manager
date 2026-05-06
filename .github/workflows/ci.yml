@@ -8,29 +8,29 @@ on:
     # workflow YAML, server Dockerfile). The release.yml workflow still runs
     # on those pushes; only this CI workflow short-circuits.
     paths-ignore:
-      - '.github/workflows/**'
-      - 'CHANGELOG.md'
-      - 'version.txt'
-      - '.release-please-manifest.json'
-      - 'release-please-config.json'
-      - 'infra/homebrew/**'
-      - 'infra/homebrew-skill-manager/**'
-      - 'Dockerfile.server'
-      - 'docker-compose-ghcr.yml'
-      - '*.md'
+      - ".github/workflows/**"
+      - "CHANGELOG.md"
+      - "version.txt"
+      - ".release-please-manifest.json"
+      - "release-please-config.json"
+      - "infra/homebrew/**"
+      - "infra/homebrew-skill-manager/**"
+      - "Dockerfile.server"
+      - "docker-compose-ghcr.yml"
+      - "*.md"
   pull_request:
     branches: [main]
     paths-ignore:
-      - '.github/workflows/**'
-      - 'CHANGELOG.md'
-      - 'version.txt'
-      - '.release-please-manifest.json'
-      - 'release-please-config.json'
-      - 'infra/homebrew/**'
-      - 'infra/homebrew-skill-manager/**'
-      - 'Dockerfile.server'
-      - 'docker-compose-ghcr.yml'
-      - '*.md'
+      - ".github/workflows/**"
+      - "CHANGELOG.md"
+      - "version.txt"
+      - ".release-please-manifest.json"
+      - "release-please-config.json"
+      - "infra/homebrew/**"
+      - "infra/homebrew-skill-manager/**"
+      - "Dockerfile.server"
+      - "docker-compose-ghcr.yml"
+      - "*.md"
   workflow_dispatch:
 
 # Public pgvector image substituted for the local-registry one used in dev.
@@ -74,7 +74,20 @@ jobs:
         # is mapped to RUNPOD_API_KEY in HyperInstalled before the
         # install subprocess runs, which auto-deploys runpod-mcp and
         # lets the downstream nodes invoke list-gpu-types.
-        graph: [smoke, sponsored, onboard, hyper-experiments]
+        #
+        # `plugin-smoke` covers the plugin layout publish/install path
+        # (.claude-plugin/plugin.json detection, contained-skill addressing).
+        # `source-tracking` + `git-latest-source-tracking` exercise the
+        # sync-from-source flows (local dir, git pin, fast-forward, merge,
+        # conflict) — these regressed silently during the policy-gate
+        # calibration in ticket 12 and only got caught locally.
+        graph:
+          - smoke
+          - onboard
+          - hyper-experiments
+          - plugin-smoke
+          - source-tracking
+          - git-latest-source-tracking
     env:
       # Set on every matrix job — only hyper-experiments actually uses it,
       # but it's harmless for the others (they never read it).
