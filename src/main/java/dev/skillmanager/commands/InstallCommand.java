@@ -53,6 +53,12 @@ public final class InstallCommand implements Callable<Integer> {
                     + "store, contacting the gateway, or running side effects.")
     public boolean dryRun;
 
+    @Option(names = {"-y", "--yes"},
+            description = "Skip interactive confirmation. Blocked by policy.install gates when "
+                    + "the plan emits a `!`-marked category that policy still requires "
+                    + "confirmation for — error names the specific policy flag to flip.")
+    public boolean yes;
+
     @Override
     public Integer call() throws Exception {
         SkillStore store = SkillStore.defaultStore();
@@ -76,6 +82,17 @@ public final class InstallCommand implements Callable<Integer> {
         // the actual probe + start + persist; gateway resolution itself
         // doesn't side-effect.
         GatewayConfig gw = GatewayConfig.resolve(store, null);
+
+        // Build a tentative plan + categorize so policy.install gates can
+        // decide whether --yes is acceptable BEFORE the program runs. The
+        // BuildInstallPlan effect will run the same plan-build inside the
+        // program; the cost of doing it twice (once here, once there) is
+        // a few ms of toml parsing — acceptable for the cleaner separation
+        // (no prompting from inside an effect).
+        if (!dryRun) {
+            int gateRc = checkPolicyGate(store, graph);
+            if (gateRc != 0) return gateRc;
+        }
 
         Program<InstallUseCase.Report> program = InstallUseCase.buildProgram(
                 store, gw, registryUrl, graph, dryRun);
@@ -106,5 +123,44 @@ public final class InstallCommand implements Callable<Integer> {
         // for the reconciler to retry. Exit 4 is reserved for "nothing
         // committed" (commit failed or program halted before commit).
         return report.committed().isEmpty() ? 4 : 0;
+    }
+
+    /**
+     * Build the plan, categorize, and gate against {@link Policy#install}.
+     * Returns 0 if the run can proceed, non-zero if it should abort
+     * (either rejected --yes or user said no at the prompt).
+     */
+    private int checkPolicyGate(SkillStore store, ResolvedGraph graph) throws Exception {
+        Policy policy = Policy.load(store);
+        dev.skillmanager.plan.InstallPlan plan = InstallUseCase.buildPlan(store, graph);
+        java.util.List<String> categorization =
+                dev.skillmanager.plan.PlanBuilder.categorize(graph.units(), plan);
+        java.util.List<dev.skillmanager.policy.PolicyGate.Category> violations =
+                dev.skillmanager.policy.PolicyGate.violations(categorization, policy.install());
+        if (violations.isEmpty()) return 0;
+
+        if (yes) {
+            Log.error("%s",
+                    dev.skillmanager.policy.PolicyGate.formatViolationMessage(violations));
+            return 5;
+        }
+        // Interactive confirmation. Print the categorization (so the user
+        // sees what they're approving), then prompt once. A more granular
+        // per-category prompt is overkill for v1 — single y/n covers the
+        // common case and the policy file is the way to flip individual
+        // categories off long-term.
+        System.out.println();
+        System.out.println("install will perform actions in these gated categories:");
+        for (var c : violations) System.out.println("  ! " + c.name());
+        System.out.println();
+        System.out.print("proceed? [y/N] ");
+        java.io.BufferedReader r = new java.io.BufferedReader(
+                new java.io.InputStreamReader(System.in));
+        String line = r.readLine();
+        if (line == null || !line.trim().equalsIgnoreCase("y")) {
+            Log.warn("install aborted at policy gate");
+            return 6;
+        }
+        return 0;
     }
 }
