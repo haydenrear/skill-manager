@@ -166,6 +166,9 @@ public final class DryRunInterpreter implements ProgramInterpreter {
                     Log.step("[%d] unlink %s (%s) from agent %s", n, e.unitName(), e.kind(), e.agentId());
             case SkillEffect.UnlinkAgentMcpEntry e ->
                     Log.step("[%d] remove virtual-mcp-gateway entry from agent %s", n, e.agentId());
+            case SkillEffect.ScaffoldPlugin e ->
+                    Log.step("[%d] scaffold plugin %s into %s (%d file(s))",
+                            n, e.pluginName(), e.dir(), e.files().size());
             case SkillEffect.ScaffoldSkill e ->
                     Log.step("[%d] scaffold skill %s into %s", n, e.skillName(), e.dir());
             case SkillEffect.InitializePolicy e ->
