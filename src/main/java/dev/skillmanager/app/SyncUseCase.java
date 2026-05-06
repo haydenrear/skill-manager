@@ -109,8 +109,11 @@ public final class SyncUseCase {
                     InstalledUnit.InstallSource is = src != null && src.installSource() != null
                             ? src.installSource()
                             : InstalledUnit.InstallSource.UNKNOWN;
+                    dev.skillmanager.model.UnitKind kind = src != null && src.unitKind() != null
+                            ? src.unitKind()
+                            : dev.skillmanager.model.UnitKind.SKILL;
                     effects.add(new SkillEffect.SyncGit(
-                            g.skillName(), is, options.gitLatest(), options.merge()));
+                            g.skillName(), kind, is, options.gitLatest(), options.merge()));
                 }
                 case Target.FromDir f -> effects.add(new SkillEffect.SyncFromLocalDir(
                         f.skillName(), f.dir(), options.merge(), options.yesForFromDir()));
@@ -150,7 +153,7 @@ public final class SyncUseCase {
             // Commit the newly-resolved units (their FetchUnit is implicit
             // in the resolver — extras.resolved() carries staged source
             // dirs ready to copy into the store).
-            effects.add(new SkillEffect.CommitSkillsToStore(extras));
+            effects.add(new SkillEffect.CommitUnitsToStore(extras));
             // Build the plan over the extras + run it (tools/CLI/MCP).
             effects.add(new SkillEffect.BuildInstallPlan(extras));
             effects.add(new SkillEffect.RecordSourceProvenance(extras));

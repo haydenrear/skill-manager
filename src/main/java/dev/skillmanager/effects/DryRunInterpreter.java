@@ -102,15 +102,16 @@ public final class DryRunInterpreter implements ProgramInterpreter {
             case SkillEffect.EnsureGateway e ->
                     Log.step("[%d] ensure gateway running at %s", n,
                             e.gateway() == null ? "<none>" : e.gateway().baseUrl());
-            case SkillEffect.CommitSkillsToStore e ->
-                    Log.step("[%d] commit %d skill(s) to store", n, e.graph().resolved().size());
+            case SkillEffect.CommitUnitsToStore e ->
+                    Log.step("[%d] commit %d unit(s) to store", n, e.graph().resolved().size());
             case SkillEffect.RecordAuditPlan e ->
                     Log.step("[%d] append audit entry (verb=%s)", n, e.verb());
             case SkillEffect.RecordSourceProvenance e ->
-                    Log.step("[%d] write source/<name>.json for %d skill(s)", n,
+                    Log.step("[%d] write installed/<name>.json for %d unit(s)", n,
                             e.graph().resolved().size());
-            case SkillEffect.OnboardSource e ->
-                    Log.step("[%d] onboard missing source record for %s", n, e.skill().name());
+            case SkillEffect.OnboardUnit e ->
+                    Log.step("[%d] onboard missing installed-record for %s (%s)",
+                            n, e.unit().name(), e.unit().kind());
             case SkillEffect.InstallTools e ->
                     Log.step("[%d] install runtime tools (uv/npm/docker/brew) for %d unit(s)",
                             n, e.units().size());
@@ -132,8 +133,8 @@ public final class DryRunInterpreter implements ProgramInterpreter {
             case SkillEffect.SyncAgents e ->
                     Log.step("[%d] sync agents over %d unit(s)", n, e.units().size());
             case SkillEffect.SyncGit e ->
-                    Log.step("[%d] git-sync %s (installSource=%s, gitLatest=%s, merge=%s)",
-                            n, e.skillName(), e.installSource(), e.gitLatest(), e.merge());
+                    Log.step("[%d] git-sync %s (kind=%s, installSource=%s, gitLatest=%s, merge=%s)",
+                            n, e.unitName(), e.kind(), e.installSource(), e.gitLatest(), e.merge());
             case SkillEffect.AddUnitError e ->
                     Log.step("[%d] add error %s on %s: %s", n, e.kind(), e.unitName(), e.message());
             case SkillEffect.ClearUnitError e ->
@@ -159,10 +160,10 @@ public final class DryRunInterpreter implements ProgramInterpreter {
             case SkillEffect.RegisterMcpServer e ->
                     Log.step("[%d] register mcp server %s for %s",
                             n, e.dep().name(), e.unitName());
-            case SkillEffect.RemoveSkillFromStore e ->
-                    Log.step("[%d] remove %s from store", n, e.skillName());
-            case SkillEffect.UnlinkAgentSkill e ->
-                    Log.step("[%d] unlink %s from agent %s", n, e.skillName(), e.agentId());
+            case SkillEffect.RemoveUnitFromStore e ->
+                    Log.step("[%d] remove %s (%s) from store", n, e.unitName(), e.kind());
+            case SkillEffect.UnlinkAgentUnit e ->
+                    Log.step("[%d] unlink %s (%s) from agent %s", n, e.unitName(), e.kind(), e.agentId());
             case SkillEffect.UnlinkAgentMcpEntry e ->
                     Log.step("[%d] remove virtual-mcp-gateway entry from agent %s", n, e.agentId());
             case SkillEffect.ScaffoldSkill e ->

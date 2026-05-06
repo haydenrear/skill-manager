@@ -36,8 +36,8 @@ public final class SyncGitHandler {
 
     public static EffectReceipt run(SkillEffect.SyncGit e, EffectContext ctx) throws IOException {
         SkillStore store = ctx.store();
-        String skillName = e.skillName();
-        Path storeDir = store.skillDir(skillName);
+        String skillName = e.unitName();
+        Path storeDir = store.unitDir(skillName, e.kind());
         InstalledUnit src = ctx.source(skillName).orElse(null);
 
         if (!GitOps.isAvailable() || !GitOps.isGitRepo(storeDir)) {

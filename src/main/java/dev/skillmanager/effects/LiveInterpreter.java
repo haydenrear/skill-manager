@@ -137,10 +137,10 @@ public final class LiveInterpreter implements ProgramInterpreter {
             case SkillEffect.CleanupResolvedGraph e -> cleanupGraph(e);
             case SkillEffect.PrintInstalledSummary e -> printInstalledSummary(e, ctx);
             case SkillEffect.SyncFromLocalDir e -> syncFromLocalDir(e, ctx);
-            case SkillEffect.CommitSkillsToStore e -> commitSkills(e, ctx);
+            case SkillEffect.CommitUnitsToStore e -> commitUnits(e, ctx);
             case SkillEffect.RecordAuditPlan e -> recordAudit(e, ctx);
             case SkillEffect.RecordSourceProvenance e -> recordProvenance(e, ctx);
-            case SkillEffect.OnboardSource e -> onboardSource(e, ctx);
+            case SkillEffect.OnboardUnit e -> onboardUnit(e, ctx);
             case SkillEffect.EnsureTool e -> ensureTool(e);
             case SkillEffect.RunCliInstall e -> runCliInstall(e, ctx);
             case SkillEffect.RegisterMcpServer e -> registerMcpServer(e, ctx);
@@ -148,8 +148,8 @@ public final class LiveInterpreter implements ProgramInterpreter {
             case SkillEffect.UnregisterMcpOrphans e -> unregisterOrphans(e, ctx);
             case SkillEffect.SyncAgents e -> syncAgents(e, ctx);
             case SkillEffect.SyncGit e -> SyncGitHandler.run(e, ctx);
-            case SkillEffect.RemoveSkillFromStore e -> removeFromStore(e, ctx);
-            case SkillEffect.UnlinkAgentSkill e -> unlinkAgentSkill(e);
+            case SkillEffect.RemoveUnitFromStore e -> removeFromStore(e, ctx);
+            case SkillEffect.UnlinkAgentUnit e -> unlinkAgentUnit(e);
             case SkillEffect.UnlinkAgentMcpEntry e -> unlinkAgentMcpEntry(e);
             case SkillEffect.ScaffoldSkill e -> scaffoldSkill(e);
             case SkillEffect.InitializePolicy e -> initializePolicy(e, ctx);
@@ -210,35 +210,38 @@ public final class LiveInterpreter implements ProgramInterpreter {
         }
     }
 
-    private EffectReceipt commitSkills(SkillEffect.CommitSkillsToStore e, EffectContext ctx) {
+    private EffectReceipt commitUnits(SkillEffect.CommitUnitsToStore e, EffectContext ctx) {
         var graph = e.graph();
         List<ContextFact> facts = new ArrayList<>();
-        // Track every dst we may have touched (deleted-old + about-to-copy)
-        // so a mid-copy failure rolls back the partially-written destination
-        // too — committed.add was previously gated on copy success, leaving
-        // a half-written dir behind on failure.
-        List<String> touched = new ArrayList<>();
-        List<String> committed = new ArrayList<>();
+        // Track every (name, kind) tuple we may have touched (deleted-old +
+        // about-to-copy) so a mid-copy failure rolls back the partially-
+        // written destination too — committed.add was previously gated on
+        // copy success, leaving a half-written dir behind on failure.
+        // Recording the kind alongside the name means rollback resolves the
+        // same dst directory the forward path used (skills/ for SKILL,
+        // plugins/ for PLUGIN).
+        record Touched(String name, dev.skillmanager.model.UnitKind kind) {}
+        List<Touched> touched = new ArrayList<>();
         try {
             for (var r : graph.resolved()) {
-                Path dst = ctx.store().skillDir(r.name());
+                dev.skillmanager.model.UnitKind k = r.unit().kind();
+                Path dst = ctx.store().unitDir(r.name(), k);
                 if (java.nio.file.Files.exists(dst)) {
                     dev.skillmanager.shared.util.Fs.deleteRecursive(dst);
                 }
                 dev.skillmanager.shared.util.Fs.ensureDir(dst.getParent());
-                touched.add(r.name());
-                Path skillRoot = r.skill().sourcePath();
-                dev.skillmanager.shared.util.Fs.copyRecursive(skillRoot, dst);
-                committed.add(r.name());
+                touched.add(new Touched(r.name(), k));
+                Path unitRoot = r.unit().sourcePath();
+                dev.skillmanager.shared.util.Fs.copyRecursive(unitRoot, dst);
                 facts.add(new ContextFact.SkillCommitted(r.name()));
             }
         } catch (Exception ex) {
-            for (String name : touched) {
+            for (Touched t : touched) {
                 try {
-                    dev.skillmanager.shared.util.Fs.deleteRecursive(ctx.store().skillDir(name));
-                    facts.add(new ContextFact.CommitRolledBack(name));
+                    dev.skillmanager.shared.util.Fs.deleteRecursive(ctx.store().unitDir(t.name(), t.kind()));
+                    facts.add(new ContextFact.CommitRolledBack(t.name()));
                 } catch (Exception cleanupErr) {
-                    Log.warn("rollback: could not delete %s — %s", name, cleanupErr.getMessage());
+                    Log.warn("rollback: could not delete %s — %s", t.name(), cleanupErr.getMessage());
                 }
             }
             return EffectReceipt.failed(e, facts, "commit failed: " + ex.getMessage());
@@ -265,40 +268,40 @@ public final class LiveInterpreter implements ProgramInterpreter {
         return EffectReceipt.ok(e, new ContextFact.ProvenanceRecorded(e.graph().resolved().size()));
     }
 
-    private EffectReceipt onboardSource(SkillEffect.OnboardSource e, EffectContext ctx) throws IOException {
-        Skill skill = e.skill();
-        if (ctx.source(skill.name()).isPresent()) {
-            return EffectReceipt.skipped(e, "source record already present");
+    private EffectReceipt onboardUnit(SkillEffect.OnboardUnit e, EffectContext ctx) throws IOException {
+        AgentUnit unit = e.unit();
+        if (ctx.source(unit.name()).isPresent()) {
+            return EffectReceipt.skipped(e, "installed-record already present");
         }
-        Path skillDir = ctx.store().skillDir(skill.name());
-        InstalledUnit.Kind kind;
+        Path unitDir = ctx.store().unitDir(unit.name(), unit.kind());
+        InstalledUnit.Kind transport;
         String origin = null, hash = null, gitRef = null;
-        if (GitOps.isGitRepo(skillDir)) {
-            kind = InstalledUnit.Kind.GIT;
-            origin = GitOps.originUrl(skillDir);
-            hash = GitOps.headHash(skillDir);
-            gitRef = GitOps.detectInstallRef(skillDir);
+        if (GitOps.isGitRepo(unitDir)) {
+            transport = InstalledUnit.Kind.GIT;
+            origin = GitOps.originUrl(unitDir);
+            hash = GitOps.headHash(unitDir);
+            gitRef = GitOps.detectInstallRef(unitDir);
         } else {
-            kind = InstalledUnit.Kind.LOCAL_DIR;
+            transport = InstalledUnit.Kind.LOCAL_DIR;
         }
         InstalledUnit source = new InstalledUnit(
-                skill.name(), skill.version(), kind, InstalledUnit.InstallSource.UNKNOWN,
+                unit.name(), unit.version(), transport, InstalledUnit.InstallSource.UNKNOWN,
                 origin, hash, gitRef, UnitStore.nowIso(), null,
-                dev.skillmanager.model.UnitKind.SKILL);
-        if (kind == InstalledUnit.Kind.LOCAL_DIR
-                && !dev.skillmanager.lifecycle.BundledSkills.isBundled(skill.name())) {
+                unit.kind());
+        if (transport == InstalledUnit.Kind.LOCAL_DIR
+                && !dev.skillmanager.lifecycle.BundledSkills.isBundled(unit.name())) {
             source = source.withErrorAdded(new InstalledUnit.UnitError(
                     InstalledUnit.ErrorKind.NEEDS_GIT_MIGRATION,
-                    "skill is not git-tracked — sync/upgrade unavailable until reinstalled from a git source",
+                    "unit is not git-tracked — sync/upgrade unavailable until reinstalled from a git source",
                     UnitStore.nowIso()));
-        } else if (kind == InstalledUnit.Kind.GIT && (origin == null || origin.isBlank())) {
+        } else if (transport == InstalledUnit.Kind.GIT && (origin == null || origin.isBlank())) {
             source = source.withErrorAdded(new InstalledUnit.UnitError(
                     InstalledUnit.ErrorKind.NO_GIT_REMOTE,
                     "git-tracked but no origin remote configured",
                     UnitStore.nowIso()));
         }
         ctx.writeSource(source);
-        return EffectReceipt.ok(e, new ContextFact.SkillOnboarded(skill.name(), kind));
+        return EffectReceipt.ok(e, new ContextFact.SkillOnboarded(unit.name(), transport));
     }
 
     private EffectReceipt installTools(SkillEffect.InstallTools e) throws IOException {
@@ -452,27 +455,26 @@ public final class LiveInterpreter implements ProgramInterpreter {
      */
     private EffectReceipt syncAgents(SkillEffect.SyncAgents e, EffectContext ctx) {
         List<AgentUnit> units = freshen(e.units());
-        // Per ticket-07 spec: SyncAgents keeps its skill-only symlink path
-        // until ticket 11 routes plugins through Projector. Plugin-kind
-        // units flow through unchanged here — per-skill symlink work skips
-        // them (they have no skills/<name> dir).
-        List<Skill> skills = new ArrayList<>();
-        for (AgentUnit u : units) {
-            if (u instanceof dev.skillmanager.model.SkillUnit su) skills.add(su.skill());
-        }
         McpWriter writer = new McpWriter(e.gateway());
         List<ContextFact> facts = new ArrayList<>();
         int failed = 0;
         for (Agent agent : Agent.all()) {
             SkillSync syncer = new SkillSync(store);
-            for (Skill s : skills) {
+            for (AgentUnit u : units) {
                 try {
-                    syncer.sync(agent, List.of(s), true);
-                    facts.add(new ContextFact.AgentSkillSynced(agent.id(), s.name()));
-                    tryClearError(ctx, s.name(), InstalledUnit.ErrorKind.AGENT_SYNC_FAILED);
+                    if (u instanceof dev.skillmanager.model.SkillUnit su) {
+                        syncer.sync(agent, List.of(su.skill()), true);
+                    } else {
+                        // Plugin-kind: provisional direct symlink under
+                        // agent.pluginsDir(). Ticket 11 (Projector) extracts
+                        // both arms into Projector.apply.
+                        symlinkPluginInto(agent, u.name(), ctx.store());
+                    }
+                    facts.add(new ContextFact.AgentSkillSynced(agent.id(), u.name()));
+                    tryClearError(ctx, u.name(), InstalledUnit.ErrorKind.AGENT_SYNC_FAILED);
                 } catch (Exception ex) {
-                    facts.add(new ContextFact.AgentSkillSyncFailed(agent.id(), s.name(), ex.getMessage()));
-                    tryAddError(ctx, s.name(), InstalledUnit.ErrorKind.AGENT_SYNC_FAILED,
+                    facts.add(new ContextFact.AgentSkillSyncFailed(agent.id(), u.name(), ex.getMessage()));
+                    tryAddError(ctx, u.name(), InstalledUnit.ErrorKind.AGENT_SYNC_FAILED,
                             agent.id() + ": " + ex.getMessage());
                     failed++;
                 }
@@ -489,6 +491,26 @@ public final class LiveInterpreter implements ProgramInterpreter {
         return failed == 0
                 ? EffectReceipt.ok(e, facts)
                 : EffectReceipt.partial(e, facts, failed + " agent step(s) failed");
+    }
+
+    /**
+     * Symlink {@code plugins/<name>} (in the store) into the agent's
+     * {@code pluginsDir()/<name>}. Provisional — ticket 11 replaces this
+     * with {@code Projector.apply}.
+     */
+    private static void symlinkPluginInto(Agent agent, String name, SkillStore store) throws IOException {
+        Path target = agent.pluginsDir().resolve(name);
+        dev.skillmanager.shared.util.Fs.ensureDir(agent.pluginsDir());
+        if (java.nio.file.Files.exists(target, java.nio.file.LinkOption.NOFOLLOW_LINKS)
+                || java.nio.file.Files.isSymbolicLink(target)) {
+            dev.skillmanager.shared.util.Fs.deleteRecursive(target);
+        }
+        Path src = store.unitDir(name, dev.skillmanager.model.UnitKind.PLUGIN);
+        try {
+            java.nio.file.Files.createSymbolicLink(target, src);
+        } catch (UnsupportedOperationException | IOException fallback) {
+            dev.skillmanager.shared.util.Fs.copyRecursive(src, target);
+        }
     }
 
     private static void tryAddError(EffectContext ctx, String skillName,
@@ -805,14 +827,14 @@ public final class LiveInterpreter implements ProgramInterpreter {
 
     // --------------------------------------------------- store / agent removal
 
-    private EffectReceipt removeFromStore(SkillEffect.RemoveSkillFromStore e, EffectContext ctx) {
+    private EffectReceipt removeFromStore(SkillEffect.RemoveUnitFromStore e, EffectContext ctx) {
         try {
-            Path dir = ctx.store().skillDir(e.skillName());
+            Path dir = ctx.store().unitDir(e.unitName(), e.kind());
             if (!java.nio.file.Files.exists(dir)) return EffectReceipt.skipped(e, "not in store");
             dev.skillmanager.shared.util.Fs.deleteRecursive(dir);
-            try { ctx.sourceStore().delete(e.skillName()); } catch (Exception ignored) {}
+            try { ctx.sourceStore().delete(e.unitName()); } catch (Exception ignored) {}
             ctx.invalidate();
-            return EffectReceipt.ok(e, new ContextFact.SkillRemovedFromStore(e.skillName()));
+            return EffectReceipt.ok(e, new ContextFact.SkillRemovedFromStore(e.unitName()));
         } catch (Exception ex) {
             return EffectReceipt.failed(e, ex.getMessage());
         }
@@ -828,19 +850,25 @@ public final class LiveInterpreter implements ProgramInterpreter {
         }
     }
 
-    private EffectReceipt unlinkAgentSkill(SkillEffect.UnlinkAgentSkill e) {
+    private EffectReceipt unlinkAgentUnit(SkillEffect.UnlinkAgentUnit e) {
         try {
             Agent agent = Agent.byId(e.agentId());
-            Path link = agent.skillsDir().resolve(e.skillName());
+            // Kind-aware: SKILL units sit under agent.skillsDir(), PLUGIN
+            // units under agent.pluginsDir(). Provisional direct-symlink
+            // path; ticket 11 swaps both arms for Projector.remove.
+            Path base = e.kind() == dev.skillmanager.model.UnitKind.PLUGIN
+                    ? agent.pluginsDir()
+                    : agent.skillsDir();
+            Path link = base.resolve(e.unitName());
             if (!java.nio.file.Files.exists(link, java.nio.file.LinkOption.NOFOLLOW_LINKS)
                     && !java.nio.file.Files.isSymbolicLink(link)) {
                 return EffectReceipt.skipped(e, "not present");
             }
             dev.skillmanager.shared.util.Fs.deleteRecursive(link);
-            return EffectReceipt.ok(e, new ContextFact.AgentSkillUnlinked(e.agentId(), e.skillName()));
+            return EffectReceipt.ok(e, new ContextFact.AgentSkillUnlinked(e.agentId(), e.unitName()));
         } catch (Exception ex) {
             return EffectReceipt.partial(e, "unlink failed",
-                    new ContextFact.AgentSkillUnlinkFailed(e.agentId(), e.skillName(), ex.getMessage()));
+                    new ContextFact.AgentSkillUnlinkFailed(e.agentId(), e.unitName(), ex.getMessage()));
         }
     }
 

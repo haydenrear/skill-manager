@@ -9,6 +9,16 @@ public sealed interface Agent permits ClaudeAgent, CodexAgent {
 
     Path skillsDir();
 
+    /**
+     * Directory containing this agent's plugin entries. Plugin install
+     * symlinks (and eventually projector-rendered config) land under
+     * {@code pluginsDir().resolve(<plugin-name>)}. Symmetrical with
+     * {@link #skillsDir()}; ticket 11 (Projector) replaces the direct
+     * symlink in {@link dev.skillmanager.effects.SkillEffect.SyncAgents}'s
+     * handler with a projector call.
+     */
+    Path pluginsDir();
+
     Path mcpConfigPath();
 
     String mcpConfigFormat();

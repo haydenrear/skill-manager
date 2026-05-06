@@ -41,9 +41,13 @@ public final class ReconcileUseCase {
         UnitStore sources = new UnitStore(store);
         List<Skill> installed = store.listInstalled();
         List<SkillEffect> effects = new ArrayList<>();
+        // Reconciler still iterates skill-only listInstalled — plugin-aware
+        // listing lands in ticket 11 (Projector) along with the kind-aware
+        // unit listing it requires. Skills onboard via SkillUnit so the
+        // unit-typed handler treats them uniformly.
         for (Skill s : installed) {
             if (sources.read(s.name()).isEmpty()) {
-                effects.add(new SkillEffect.OnboardSource(s));
+                effects.add(new SkillEffect.OnboardUnit(s.asUnit()));
             }
         }
         for (Skill s : installed) {

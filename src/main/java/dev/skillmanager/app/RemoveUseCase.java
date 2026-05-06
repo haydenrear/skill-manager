@@ -55,14 +55,22 @@ public final class RemoveUseCase {
 
         if (unregisterMcp) effects.addAll(ResolveContextUseCase.preflight(gw, null, true));
 
+        // Recover the unit's kind from its installed-record. Defaults to
+        // SKILL when unknown — for legacy records that predate ticket 03's
+        // unitKind field, that's what they were anyway.
+        dev.skillmanager.model.UnitKind kind = new dev.skillmanager.source.UnitStore(store)
+                .read(skillName)
+                .map(dev.skillmanager.source.InstalledUnit::unitKind)
+                .orElse(dev.skillmanager.model.UnitKind.SKILL);
+
         List<String> agents = agentsToUnlink == null
                 ? Agent.all().stream().map(Agent::id).toList()
                 : agentsToUnlink;
         for (String agentId : agents) {
-            effects.add(new SkillEffect.UnlinkAgentSkill(agentId, skillName));
+            effects.add(new SkillEffect.UnlinkAgentUnit(agentId, skillName, kind));
         }
 
-        effects.add(new SkillEffect.RemoveSkillFromStore(skillName));
+        effects.add(new SkillEffect.RemoveUnitFromStore(skillName, kind));
 
         if (unregisterMcp && !removedDeps.isEmpty()) {
             // Compute orphans against the projected post-remove state by
