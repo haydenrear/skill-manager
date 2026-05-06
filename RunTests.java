@@ -35,6 +35,7 @@ import dev.skillmanager.effects.CompensationLogicTest;
 import dev.skillmanager.effects.CompensationOrphanTest;
 import dev.skillmanager.effects.CompensationPairingTest;
 import dev.skillmanager.effects.FailureInjectionSweepTest;
+import dev.skillmanager.lock.LockAtomicityTest;
 import dev.skillmanager.lock.LockDiffTest;
 import dev.skillmanager.lock.LockReadWriteTest;
 import dev.skillmanager.lock.LockSchemaVersionTest;
@@ -98,6 +99,7 @@ public class RunTests {
         failures += LockReadWriteTest.run();
         failures += LockDiffTest.run();
         failures += LockSchemaVersionTest.run();
+        failures += LockAtomicityTest.run();
 
         System.out.println();
         if (failures == 0) {

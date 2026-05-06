@@ -43,7 +43,8 @@ public sealed interface Compensation permits
         Compensation.DeleteInstalledUnit,
         Compensation.UninstallCliIfOrphan,
         Compensation.UnregisterMcpIfOrphan,
-        Compensation.UnprojectIfOrphan {
+        Compensation.UnprojectIfOrphan,
+        Compensation.RestoreUnitsLock {
 
     /** Reverse of one {@link SkillEffect.CommitUnitsToStore} entry. */
     record DeleteUnitDir(String unitName, UnitKind kind) implements Compensation {}
@@ -72,4 +73,15 @@ public sealed interface Compensation permits
      * projection. Per-agent fan-out happens in the applier.
      */
     record UnprojectIfOrphan(String unitName, UnitKind kind) implements Compensation {}
+
+    /**
+     * Reverse of {@link SkillEffect.UpdateUnitsLock}. The applier
+     * re-writes {@code previous} atomically to {@code path} so the
+     * on-disk lock returns to its byte-identical pre-program state.
+     * Captured by {@code Executor.preStateCompensations} immediately
+     * before {@code UpdateUnitsLock} runs, so even if the write goes
+     * through and a downstream effect fails, the file flips back.
+     */
+    record RestoreUnitsLock(dev.skillmanager.lock.UnitsLock previous, java.nio.file.Path path)
+            implements Compensation {}
 }

@@ -170,6 +170,9 @@ public final class DryRunInterpreter implements ProgramInterpreter {
                     Log.step("[%d] scaffold skill %s into %s", n, e.skillName(), e.dir());
             case SkillEffect.InitializePolicy e ->
                     Log.step("[%d] initialize policy.toml if missing", n);
+            case SkillEffect.UpdateUnitsLock e ->
+                    Log.step("[%d] write units.lock.toml (%d unit(s)) → %s",
+                            n, e.target().units().size(), e.path());
             case SkillEffect.LoadOutstandingErrors e ->
                     Log.step("[%d] load outstanding errors", n);
             case SkillEffect.SnapshotMcpDeps e ->

@@ -78,7 +78,7 @@ public final class InstallCommand implements Callable<Integer> {
         GatewayConfig gw = GatewayConfig.resolve(store, null);
 
         Program<InstallUseCase.Report> program = InstallUseCase.buildProgram(
-                gw, registryUrl, graph, dryRun);
+                store, gw, registryUrl, graph, dryRun);
         InstallUseCase.Report report;
         if (dryRun) {
             report = new DryRunInterpreter().run(program);

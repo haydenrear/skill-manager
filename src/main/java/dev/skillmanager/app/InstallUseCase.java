@@ -62,9 +62,9 @@ public final class InstallUseCase {
                 .plan(graph, true, true, store.cliBinDir());
     }
 
-    public static Program<Report> buildProgram(GatewayConfig gw, String registryOverride,
-                                               ResolvedGraph graph, boolean dryRun) {
-        return buildProgram(gw, registryOverride, graph, dryRun, !dryRun);
+    public static Program<Report> buildProgram(SkillStore store, GatewayConfig gw, String registryOverride,
+                                               ResolvedGraph graph, boolean dryRun) throws IOException {
+        return buildProgram(store, gw, registryOverride, graph, dryRun, !dryRun);
     }
 
     /**
@@ -73,8 +73,9 @@ public final class InstallUseCase {
      * no-gateway — including the post-update tail's MCP register / agent
      * sync, which are also gated behind {@code withGateway}).
      */
-    public static Program<Report> buildProgram(GatewayConfig gw, String registryOverride,
-                                               ResolvedGraph graph, boolean dryRun, boolean withGateway) {
+    public static Program<Report> buildProgram(SkillStore store, GatewayConfig gw, String registryOverride,
+                                               ResolvedGraph graph, boolean dryRun, boolean withGateway)
+            throws IOException {
         List<SkillEffect> effects = new ArrayList<>(
                 ResolveContextUseCase.preflight(gw, registryOverride, withGateway && !dryRun));
         effects.add(new SkillEffect.SnapshotMcpDeps());
@@ -109,9 +110,60 @@ public final class InstallUseCase {
         effects.add(new SkillEffect.SyncAgents(tailUnits, gw));
         effects.add(new SkillEffect.UnregisterMcpOrphans(gw));
 
+        // Lock flip — last main effect. If anything before fails, the lock
+        // is never written. If this itself fails (rare — atomic move), no
+        // post-update state has been corrupted because there are no main
+        // effects after it. The Executor's RestoreUnitsLock compensation
+        // captures the pre-image at preState time so a hypothetical
+        // future trailing effect would still walk back cleanly.
+        if (!dryRun) {
+            effects.add(buildLockUpdate(store, graph));
+        }
+
         Program<Report> p = new Program<>("install-" + UUID.randomUUID(), effects, InstallUseCase::decode);
         // Always cleanup staged temp dirs, even if the program halted.
         return p.withFinally(new SkillEffect.CleanupResolvedGraph(graph));
+    }
+
+    /**
+     * Compute the post-install lock by upserting one {@link dev.skillmanager.lock.LockedUnit}
+     * per resolved unit on top of the current lock. The resolved-sha
+     * comes from the resolver's {@code Resolved} record; for non-git
+     * sources it's null, which is fine — the lock just records what we
+     * know about provenance.
+     */
+    private static SkillEffect.UpdateUnitsLock buildLockUpdate(SkillStore store, ResolvedGraph graph)
+            throws IOException {
+        java.nio.file.Path lockPath = dev.skillmanager.lock.UnitsLockReader.defaultPath(store);
+        dev.skillmanager.lock.UnitsLock current = dev.skillmanager.lock.UnitsLockReader.read(lockPath);
+        dev.skillmanager.lock.UnitsLock target = current;
+        for (var r : graph.resolved()) {
+            // Map the resolver's source-kind onto InstallSource. The mapping
+            // is approximate — the resolver doesn't currently distinguish
+            // git-via-registry vs git-direct on the Resolved record. The
+            // installed-record (written by RecordSourceProvenance) carries
+            // the authoritative InstallSource; the lock just snapshots it.
+            dev.skillmanager.source.InstalledUnit.InstallSource src = mapSourceKind(r.sourceKind());
+            target = target.withUnit(new dev.skillmanager.lock.LockedUnit(
+                    r.name(),
+                    r.unit().kind(),
+                    r.version(),
+                    src,
+                    null,            // origin discovered post-commit by RecordSourceProvenance
+                    null,            // ref same — captured by provenance
+                    r.sha256()       // best available at resolve time
+            ));
+        }
+        return new SkillEffect.UpdateUnitsLock(target, lockPath);
+    }
+
+    private static dev.skillmanager.source.InstalledUnit.InstallSource mapSourceKind(
+            ResolvedGraph.SourceKind k) {
+        return switch (k) {
+            case REGISTRY -> dev.skillmanager.source.InstalledUnit.InstallSource.REGISTRY;
+            case GIT -> dev.skillmanager.source.InstalledUnit.InstallSource.GIT;
+            case LOCAL -> dev.skillmanager.source.InstalledUnit.InstallSource.LOCAL_FILE;
+        };
     }
 
     private static Report decode(List<EffectReceipt> receipts) {

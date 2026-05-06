@@ -206,6 +206,10 @@ public final class ConsoleProgramRenderer implements ProgramRenderer {
                     x.depName(), x.backend(), x.skillName());
             case ContextFact.CliInstallFailed x -> Log.error(
                     "cli: %s install failed for %s — %s", x.depName(), x.skillName(), x.message());
+            case ContextFact.UnitsLockUpdated x -> Log.ok(
+                    "units.lock.toml: wrote %d unit(s) → %s", x.unitCount(), x.path());
+            case ContextFact.UnitsLockRestored x -> Log.warn(
+                    "units.lock.toml: restored prior content at %s (rollback)", x.path());
         }
     }
 
