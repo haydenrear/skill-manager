@@ -30,6 +30,7 @@ import dev.skillmanager.model.SkillUnitWrapsSkillTest;
 import dev.skillmanager.model.UnitReferenceFromTomlTest;
 import dev.skillmanager.plan.CycleDetectionTest;
 import dev.skillmanager.plan.MixedKindTopoOrderTest;
+import dev.skillmanager.effects.CompensationLogicTest;
 import dev.skillmanager.effects.HandlerSubstitutabilityTest;
 import dev.skillmanager.effects.KindAwareDispatchTest;
 import dev.skillmanager.effects.ListTypedHandlerSubstitutabilityTest;
@@ -82,6 +83,7 @@ public class RunTests {
         failures += HandlerSubstitutabilityTest.run();
         failures += ListTypedHandlerSubstitutabilityTest.run();
         failures += KindAwareDispatchTest.run();
+        failures += CompensationLogicTest.run();
 
         System.out.println();
         if (failures == 0) {
