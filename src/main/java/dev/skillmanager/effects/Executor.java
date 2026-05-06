@@ -377,20 +377,33 @@ public final class Executor {
                 dev.skillmanager.lock.UnitsLockWriter.atomicWrite(r.previous(), r.path());
             }
             case Compensation.UnprojectIfOrphan u -> {
-                // Per-agent fan-out: remove this unit's projection from every
-                // known agent. Mirrors what UnlinkAgentUnit does in the forward
-                // direction; ticket 11 swaps both arms for Projector.remove.
-                for (Agent agent : Agent.all()) {
-                    Path base = u.kind() == UnitKind.PLUGIN ? agent.pluginsDir() : agent.skillsDir();
-                    Path link = base.resolve(u.unitName());
-                    if (Files.exists(link, java.nio.file.LinkOption.NOFOLLOW_LINKS)
-                            || Files.isSymbolicLink(link)) {
-                        try { dev.skillmanager.shared.util.Fs.deleteRecursive(link); }
-                        catch (Exception ignored) {}
-                    }
-                }
+                // Route through ProjectorRegistry — same strategy that
+                // SyncAgents.apply / UnlinkAgentUnit use. Each projector
+                // decides whether the unit had a projection at all
+                // (CodexProjector returns empty for plugins, etc.).
+                AgentUnit transient_ = unitForUnproject(u.unitName(), u.kind());
+                dev.skillmanager.project.ProjectorRegistry.defaultRegistry().removeAll(transient_, store);
             }
         }
+    }
+
+    /**
+     * Synthesize a transient {@link AgentUnit} carrying just the name +
+     * kind needed for {@link dev.skillmanager.project.Projector#planProjection}.
+     * Mirrors the same trick {@code unlinkAgentUnit} uses — projector
+     * planning only reads the unit's interface, no manifest re-parse
+     * needed for a unit we're walking back.
+     */
+    private static AgentUnit unitForUnproject(String name, UnitKind kind) {
+        return switch (kind) {
+            case SKILL -> new Skill(name, name, null,
+                    java.util.List.of(), java.util.List.of(), java.util.List.of(),
+                    java.util.Map.of(), "", null).asUnit();
+            case PLUGIN -> new dev.skillmanager.model.PluginUnit(
+                    name, null, name,
+                    java.util.List.of(), java.util.List.of(), java.util.List.of(), java.util.List.of(),
+                    java.util.Map.of(), java.util.List.of(), null);
+        };
     }
 
     /** Package-private for {@code CompensationOrphanTest}. */

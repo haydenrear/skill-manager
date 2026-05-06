@@ -40,6 +40,9 @@ import dev.skillmanager.lock.LockAtomicityTest;
 import dev.skillmanager.lock.LockDiffTest;
 import dev.skillmanager.lock.LockReadWriteTest;
 import dev.skillmanager.lock.LockSchemaVersionTest;
+import dev.skillmanager.project.ClaudeProjectorTest;
+import dev.skillmanager.project.CodexProjectorTest;
+import dev.skillmanager.project.ProjectorRegistryTest;
 import dev.skillmanager.effects.HandlerSubstitutabilityTest;
 import dev.skillmanager.effects.KindAwareDispatchTest;
 import dev.skillmanager.effects.ListTypedHandlerSubstitutabilityTest;
@@ -102,6 +105,9 @@ public class RunTests {
         failures += LockSchemaVersionTest.run();
         failures += LockAtomicityTest.run();
         failures += SyncFromLockScenarioTest.run();
+        failures += ClaudeProjectorTest.run();
+        failures += CodexProjectorTest.run();
+        failures += ProjectorRegistryTest.run();
 
         System.out.println();
         if (failures == 0) {
