@@ -484,29 +484,44 @@ public final class LiveInterpreter implements ProgramInterpreter {
     private EffectReceipt syncAgents(SkillEffect.SyncAgents e, EffectContext ctx) {
         List<AgentUnit> units = freshen(e.units());
         McpWriter writer = new McpWriter(e.gateway());
+        dev.skillmanager.project.ProjectorRegistry projectors =
+                dev.skillmanager.project.ProjectorRegistry.defaultRegistry();
         List<ContextFact> facts = new ArrayList<>();
         int failed = 0;
-        for (Agent agent : Agent.all()) {
-            SkillSync syncer = new SkillSync(store);
+        // Per-projector x per-unit fan-out — replaces the ticket-08 split
+        // path (SkillSync vs direct plugin symlink) with one strategy
+        // call. Each projector's planProjection decides whether the unit
+        // even projects into its agent (e.g. CodexProjector returns empty
+        // for plugins). Per-(agent, unit) try/catch so one failure doesn't
+        // sink the whole sweep.
+        for (dev.skillmanager.project.Projector proj : projectors.projectors()) {
             for (AgentUnit u : units) {
                 try {
-                    if (u instanceof dev.skillmanager.model.SkillUnit su) {
-                        syncer.sync(agent, List.of(su.skill()), true);
-                    } else {
-                        // Plugin-kind: provisional direct symlink under
-                        // agent.pluginsDir(). Ticket 11 (Projector) extracts
-                        // both arms into Projector.apply.
-                        symlinkPluginInto(agent, u.name(), ctx.store());
+                    for (dev.skillmanager.project.Projection p : proj.planProjection(u, ctx.store())) {
+                        proj.apply(p);
                     }
-                    facts.add(new ContextFact.AgentSkillSynced(agent.id(), u.name()));
-                    tryClearError(ctx, u.name(), InstalledUnit.ErrorKind.AGENT_SYNC_FAILED);
+                    // No projection (e.g. Codex skipping a plugin) is not a
+                    // failure — but we also don't emit an "AgentSkillSynced"
+                    // fact for it since no work happened. Only fact when we
+                    // actually projected.
+                    if (!proj.planProjection(u, ctx.store()).isEmpty()) {
+                        facts.add(new ContextFact.AgentSkillSynced(proj.agentId(), u.name()));
+                        tryClearError(ctx, u.name(), InstalledUnit.ErrorKind.AGENT_SYNC_FAILED);
+                    }
                 } catch (Exception ex) {
-                    facts.add(new ContextFact.AgentSkillSyncFailed(agent.id(), u.name(), ex.getMessage()));
+                    facts.add(new ContextFact.AgentSkillSyncFailed(proj.agentId(), u.name(), ex.getMessage()));
                     tryAddError(ctx, u.name(), InstalledUnit.ErrorKind.AGENT_SYNC_FAILED,
-                            agent.id() + ": " + ex.getMessage());
+                            proj.agentId() + ": " + ex.getMessage());
                     failed++;
                 }
             }
+        }
+        // MCP config write is per-agent (not per-unit) and orthogonal to
+        // the projection — every agent that has skills/plugins also wants
+        // the virtual-mcp-gateway entry. Iterate Agent.all() directly so
+        // adding a Projector-less agent (display-only) wouldn't drop its
+        // MCP config write.
+        for (Agent agent : Agent.all()) {
             try {
                 McpWriter.ConfigChange change = writer.writeAgentEntry(agent);
                 facts.add(new ContextFact.AgentMcpConfigChanged(
@@ -519,26 +534,6 @@ public final class LiveInterpreter implements ProgramInterpreter {
         return failed == 0
                 ? EffectReceipt.ok(e, facts)
                 : EffectReceipt.partial(e, facts, failed + " agent step(s) failed");
-    }
-
-    /**
-     * Symlink {@code plugins/<name>} (in the store) into the agent's
-     * {@code pluginsDir()/<name>}. Provisional — ticket 11 replaces this
-     * with {@code Projector.apply}.
-     */
-    private static void symlinkPluginInto(Agent agent, String name, SkillStore store) throws IOException {
-        Path target = agent.pluginsDir().resolve(name);
-        dev.skillmanager.shared.util.Fs.ensureDir(agent.pluginsDir());
-        if (java.nio.file.Files.exists(target, java.nio.file.LinkOption.NOFOLLOW_LINKS)
-                || java.nio.file.Files.isSymbolicLink(target)) {
-            dev.skillmanager.shared.util.Fs.deleteRecursive(target);
-        }
-        Path src = store.unitDir(name, dev.skillmanager.model.UnitKind.PLUGIN);
-        try {
-            java.nio.file.Files.createSymbolicLink(target, src);
-        } catch (UnsupportedOperationException | IOException fallback) {
-            dev.skillmanager.shared.util.Fs.copyRecursive(src, target);
-        }
     }
 
     private static void tryAddError(EffectContext ctx, String skillName,
@@ -879,25 +874,52 @@ public final class LiveInterpreter implements ProgramInterpreter {
     }
 
     private EffectReceipt unlinkAgentUnit(SkillEffect.UnlinkAgentUnit e) {
-        try {
-            Agent agent = Agent.byId(e.agentId());
-            // Kind-aware: SKILL units sit under agent.skillsDir(), PLUGIN
-            // units under agent.pluginsDir(). Provisional direct-symlink
-            // path; ticket 11 swaps both arms for Projector.remove.
-            Path base = e.kind() == dev.skillmanager.model.UnitKind.PLUGIN
-                    ? agent.pluginsDir()
-                    : agent.skillsDir();
-            Path link = base.resolve(e.unitName());
-            if (!java.nio.file.Files.exists(link, java.nio.file.LinkOption.NOFOLLOW_LINKS)
-                    && !java.nio.file.Files.isSymbolicLink(link)) {
-                return EffectReceipt.skipped(e, "not present");
+        // Routed through the matching Projector — same strategy as
+        // SyncAgents.apply, just inverted. Synthesize a transient
+        // AgentUnit so planProjection can pick the right target dir.
+        AgentUnit u = unitForUnlink(e.unitName(), e.kind());
+        for (dev.skillmanager.project.Projector proj :
+                dev.skillmanager.project.ProjectorRegistry.defaultRegistry().projectors()) {
+            if (!proj.agentId().equalsIgnoreCase(e.agentId())) continue;
+            try {
+                List<dev.skillmanager.project.Projection> ps = proj.planProjection(u, store);
+                if (ps.isEmpty()) {
+                    return EffectReceipt.skipped(e, "no projection for kind " + e.kind() + " on " + proj.agentId());
+                }
+                boolean anyPresent = false;
+                for (dev.skillmanager.project.Projection p : ps) {
+                    if (java.nio.file.Files.exists(p.target(), java.nio.file.LinkOption.NOFOLLOW_LINKS)
+                            || java.nio.file.Files.isSymbolicLink(p.target())) {
+                        anyPresent = true;
+                        proj.remove(p);
+                    }
+                }
+                if (!anyPresent) return EffectReceipt.skipped(e, "not present");
+                return EffectReceipt.ok(e, new ContextFact.AgentSkillUnlinked(e.agentId(), e.unitName()));
+            } catch (Exception ex) {
+                return EffectReceipt.partial(e, "unlink failed",
+                        new ContextFact.AgentSkillUnlinkFailed(e.agentId(), e.unitName(), ex.getMessage()));
             }
-            dev.skillmanager.shared.util.Fs.deleteRecursive(link);
-            return EffectReceipt.ok(e, new ContextFact.AgentSkillUnlinked(e.agentId(), e.unitName()));
-        } catch (Exception ex) {
-            return EffectReceipt.partial(e, "unlink failed",
-                    new ContextFact.AgentSkillUnlinkFailed(e.agentId(), e.unitName(), ex.getMessage()));
         }
+        return EffectReceipt.skipped(e, "no projector for agent " + e.agentId());
+    }
+
+    /**
+     * Synthesize a transient {@link AgentUnit} carrying just the name +
+     * kind needed for {@link dev.skillmanager.project.Projector#planProjection}.
+     * Avoids forcing a disk re-parse for a unit we're about to unlink —
+     * the projector only reads the kind from the unit interface.
+     */
+    private static AgentUnit unitForUnlink(String name, dev.skillmanager.model.UnitKind kind) {
+        return switch (kind) {
+            case SKILL -> new Skill(name, name, null,
+                    List.of(), List.of(), List.of(),
+                    java.util.Map.of(), "", null).asUnit();
+            case PLUGIN -> new dev.skillmanager.model.PluginUnit(
+                    name, null, name,
+                    List.of(), List.of(), List.of(), List.of(),
+                    java.util.Map.of(), List.of(), null);
+        };
     }
 
     // ---------------------------------------------------------- scaffolding
