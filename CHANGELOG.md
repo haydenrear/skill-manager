@@ -1,5 +1,29 @@
 # Changelog
 
+## [0.8.0](https://github.com/haydenrear/skill-manager/compare/v0.7.0...v0.8.0) (2026-05-06)
+
+
+### Features
+
+* **lifecycle:** per-skill state machine, install-source routing, reconciler-on-every-command ([890e2c9](https://github.com/haydenrear/skill-manager/commit/890e2c9fb84c31d371489dd8bd6970d3d2e21164))
+* **plan:** ticket 05 — planner widening + heterogeneous DAG + cycle detection ([47a4576](https://github.com/haydenrear/skill-manager/commit/47a4576d19b563000a51a856c5e606df2a1c0e1f))
+* **source:** per-skill git provenance tracking + sync --merge for upstream pulls ([f83a165](https://github.com/haydenrear/skill-manager/commit/f83a165ec91157a4305aa32f94f5dafa213c9802))
+* **source:** track install-time git ref so --git-latest follows the right branch ([a495790](https://github.com/haydenrear/skill-manager/commit/a4957909f7001e98fbd524921bf94baf9d5219e0))
+* **sync:** aggregate git pulls across all installed skills + summary ([73811e5](https://github.com/haydenrear/skill-manager/commit/73811e53c943f35eaf933d9e6c1dc82976a7817b))
+* **sync:** implicit-origin pull + restructure hyper/source-tracking coverage ([45c19e7](https://github.com/haydenrear/skill-manager/commit/45c19e798c8d9974e4ad211d083de70c7c8ae828))
+* **sync:** server-published git_sha is the default merge target; --git-latest opts into HEAD ([ce08cad](https://github.com/haydenrear/skill-manager/commit/ce08cadbe329ee6cd56c1e9d97b7fa111ad10e52))
+
+
+### Bug Fixes
+
+* **effects:** correctness fixes from full test-graph run ([0de898b](https://github.com/haydenrear/skill-manager/commit/0de898b4a05743df136465bc967477057dc9870c))
+* **effects:** restore --wait-seconds + sync-refused banner after Phase 11 ([5955892](https://github.com/haydenrear/skill-manager/commit/5955892d5661c828776e0b6cf3cf895960a249cd))
+* **effects:** surface real failures swallowed by tail-effect handlers ([001925e](https://github.com/haydenrear/skill-manager/commit/001925e4f105e1168ddfc2fc78d221c8f9a58406))
+* **plugin-smoke:** unblock test_graph after tickets 12 + 13 + 15 ([1226ec5](https://github.com/haydenrear/skill-manager/commit/1226ec5eebd96fc117a44eb87eaf21247e545b9e))
+* **reconcile:** suppress NEEDS_GIT_MIGRATION for bundled skills ([512ea07](https://github.com/haydenrear/skill-manager/commit/512ea077ca37791b2a77937fce604d2b8b9b53c7))
+* **sync:** reload targets after all-skills git sync so MCP register sees the post-merge TOML ([9ac50d5](https://github.com/haydenrear/skill-manager/commit/9ac50d5e8bc3e114221bb8c8533fd509c4cf3212))
+* **sync:** supply git identity for merge commits + widen CI matrix ([aa08020](https://github.com/haydenrear/skill-manager/commit/aa0802070549521369a9f7eb2cfc7ec051328621))
+
 ## [0.7.0](https://github.com/haydenrear/skill-manager/compare/v0.6.0...v0.7.0) (2026-04-30)
 
 
