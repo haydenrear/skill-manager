@@ -1,8 +1,8 @@
 package dev.skillmanager.effects;
 
+import dev.skillmanager.model.AgentUnit;
 import dev.skillmanager.model.McpDependency;
 import dev.skillmanager.model.Skill;
-import dev.skillmanager.model.UnitReference;
 import dev.skillmanager.util.Log;
 
 import java.util.ArrayList;
@@ -13,18 +13,65 @@ import java.util.List;
  * registry. Returns OK receipts so the decoder produces a normal report
  * but no facts (the decoder can detect dry-run by checking
  * {@code receipt.facts().get("dryRun")}).
+ *
+ * <p>For {@link #runStaged}, callers supply a {@link SkillStore} so the
+ * stage-2 builder can read pre-merge live state. The dry-run still does
+ * not mutate anything; reads through the store are read-only.
  */
 public final class DryRunInterpreter implements ProgramInterpreter {
+
+    private final dev.skillmanager.store.SkillStore store;
+
+    public DryRunInterpreter() { this(null); }
+
+    public DryRunInterpreter(dev.skillmanager.store.SkillStore store) { this.store = store; }
 
     @Override
     public <R> R run(Program<R> program) {
         System.out.println();
         System.out.println("DRY RUN — no changes will be made");
         System.out.println("operation: " + program.operationId());
-        System.out.println("effects (" + program.effects().size() + "):");
+        List<EffectReceipt> receipts = describeProgram(program, 0);
+        System.out.println();
+        return program.decoder().decode(receipts);
+    }
 
+    @Override
+    public <R> R runStaged(StagedProgram<R> staged) {
+        System.out.println();
+        System.out.println("DRY RUN — no changes will be made");
+        System.out.println("operation: " + staged.operationId());
+        // Stage 2 is built from a live EffectContext; in dry-run we still
+        // build it so the user sees the shape, but it sees the *pre*-stage-1
+        // store (stage 1's effects haven't actually run). For sync this
+        // means stage 2 enumerates references known before the merge
+        // would have landed — same blind spot dry-run already had.
+        List<EffectReceipt> all = new ArrayList<>();
+        all.addAll(describeProgram(staged.stage1(), 0));
+        Program<?> stage2;
+        if (store == null) {
+            Log.warn("dry-run: no store supplied — stage 2 hidden in --dry-run; pass a store to DryRunInterpreter to enable");
+            stage2 = null;
+        } else {
+            EffectContext bridgeCtx = new EffectContext(store, null);
+            try {
+                stage2 = staged.stage2().apply(bridgeCtx);
+            } catch (Exception ex) {
+                Log.warn("dry-run: stage 2 builder failed (%s) — printing stage 1 only", ex.getMessage());
+                stage2 = null;
+            }
+        }
+        if (stage2 != null) {
+            all.addAll(describeProgram(stage2, all.size()));
+        }
+        System.out.println();
+        return staged.decoder().decode(all);
+    }
+
+    private List<EffectReceipt> describeProgram(Program<?> program, int startIdx) {
+        System.out.println("effects (" + program.effects().size() + "):");
         List<EffectReceipt> receipts = new ArrayList<>();
-        int i = 0;
+        int i = startIdx;
         for (SkillEffect effect : program.effects()) {
             describe(++i, effect);
             receipts.add(EffectReceipt.ok(effect, new ContextFact.DryRun()));
@@ -44,8 +91,7 @@ public final class DryRunInterpreter implements ProgramInterpreter {
                 receipts.add(EffectReceipt.ok(effect, new ContextFact.DryRun()));
             }
         }
-        System.out.println();
-        return program.decoder().decode(receipts);
+        return receipts;
     }
 
     private static void describe(int n, SkillEffect effect) {
@@ -65,28 +111,17 @@ public final class DryRunInterpreter implements ProgramInterpreter {
                             e.graph().resolved().size());
             case SkillEffect.OnboardSource e ->
                     Log.step("[%d] onboard missing source record for %s", n, e.skill().name());
-            case SkillEffect.ResolveTransitives e -> {
-                Log.step("[%d] resolve transitives over %d skill(s)", n, e.skills().size());
-                for (Skill s : e.skills()) {
-                    for (UnitReference ref : s.skillReferences()) {
-                        String coord = ref.path() != null ? "file:" + ref.path()
-                                : ref.version() != null ? ref.name() + "@" + ref.version()
-                                : ref.name();
-                        System.out.println("       - " + s.name() + " → " + coord);
-                    }
-                }
-            }
             case SkillEffect.InstallTools e ->
-                    Log.step("[%d] install runtime tools (uv/npm/docker/brew) for %d skill(s)",
-                            n, e.skills().size());
+                    Log.step("[%d] install runtime tools (uv/npm/docker/brew) for %d unit(s)",
+                            n, e.units().size());
             case SkillEffect.InstallCli e ->
-                    Log.step("[%d] install CLI deps for %d skill(s)", n, e.skills().size());
+                    Log.step("[%d] install CLI deps for %d unit(s)", n, e.units().size());
             case SkillEffect.RegisterMcp e -> {
                 Log.step("[%d] register MCP deps with %s", n,
                         e.gateway() == null ? "<none>" : e.gateway().baseUrl());
-                for (Skill s : e.skills()) {
-                    for (McpDependency d : s.mcpDependencies()) {
-                        System.out.println("       - " + s.name() + " → " + d.name() + " (" + d.defaultScope() + ")");
+                for (AgentUnit u : e.units()) {
+                    for (McpDependency d : u.mcpDependencies()) {
+                        System.out.println("       - " + u.name() + " → " + d.name() + " (" + d.defaultScope() + ")");
                     }
                 }
             }
@@ -95,7 +130,7 @@ public final class DryRunInterpreter implements ProgramInterpreter {
             case SkillEffect.UnregisterMcpOrphans e ->
                     Log.step("[%d] diff snapshot vs live and unregister orphans", n);
             case SkillEffect.SyncAgents e ->
-                    Log.step("[%d] sync agents over %d skill(s)", n, e.skills().size());
+                    Log.step("[%d] sync agents over %d unit(s)", n, e.units().size());
             case SkillEffect.SyncGit e ->
                     Log.step("[%d] git-sync %s (installSource=%s, gitLatest=%s, merge=%s)",
                             n, e.skillName(), e.installSource(), e.gitLatest(), e.merge());

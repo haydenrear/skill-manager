@@ -118,9 +118,10 @@ public final class UpgradeCommand implements Callable<Integer> {
 
         SyncUseCase.Options opts = new SyncUseCase.Options(
                 registryUrl, /*gitLatest=*/false, merge, true, true, /*yes=*/false);
-        Program<SyncUseCase.Report> program = SyncUseCase.buildProgram(store, gw, opts, targetList);
-        ProgramInterpreter interpreter = dryRun ? new DryRunInterpreter() : new LiveInterpreter(store, gw);
-        SyncUseCase.Report report = interpreter.run(program);
+        dev.skillmanager.effects.StagedProgram<SyncUseCase.Report> program =
+                SyncUseCase.buildProgram(store, gw, opts, targetList);
+        ProgramInterpreter interpreter = dryRun ? new DryRunInterpreter(store) : new LiveInterpreter(store, gw);
+        SyncUseCase.Report report = interpreter.runStaged(program);
         int worst = report.worstRc();
         return worst > 0 ? worst : selfRc;
     }

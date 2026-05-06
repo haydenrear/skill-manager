@@ -1,13 +1,18 @@
 package dev.skillmanager.app;
 
 import dev.skillmanager.effects.ContextFact;
+import dev.skillmanager.effects.EffectContext;
 import dev.skillmanager.effects.EffectReceipt;
 import dev.skillmanager.effects.EffectStatus;
 import dev.skillmanager.effects.Program;
 import dev.skillmanager.effects.SkillEffect;
+import dev.skillmanager.effects.StagedProgram;
 import dev.skillmanager.mcp.GatewayConfig;
 import dev.skillmanager.mcp.McpWriter;
 import dev.skillmanager.model.Skill;
+import dev.skillmanager.model.UnitReference;
+import dev.skillmanager.resolve.Resolver;
+import dev.skillmanager.resolve.ResolvedGraph;
 import dev.skillmanager.source.InstalledUnit;
 import dev.skillmanager.source.UnitStore;
 import dev.skillmanager.store.SkillStore;
@@ -65,16 +70,38 @@ public final class SyncUseCase {
         }
     }
 
-    public static Program<Report> buildProgram(SkillStore store,
-                                               GatewayConfig gw,
-                                               Options options,
-                                               List<Target> targets) throws IOException {
+    /**
+     * Sync is a two-stage program. Stage 1 runs the per-target sync (git
+     * fetch+merge or apply-from-dir). Stage 2 is built post-merge: it
+     * scans the live store for {@code skill_references} that didn't
+     * exist before the merge, resolves them, then runs the post-update
+     * tail (InstallTools/Cli/RegisterMcp/SyncAgents/UnregisterOrphans)
+     * over the union of pre-existing units and the newly-resolved ones.
+     *
+     * <p>Stage 2's effect list is data-dependent — its shape comes from
+     * what stage 1 leaves in the store — so it can't be expressed as a
+     * static {@link Program}. The {@link StagedProgram} wrapper carries
+     * a stage-2 builder that the interpreter invokes after stage 1
+     * completes, with the same {@link EffectContext} threaded through.
+     */
+    public static StagedProgram<Report> buildProgram(SkillStore store,
+                                                     GatewayConfig gw,
+                                                     Options options,
+                                                     List<Target> targets) throws IOException {
+        Program<?> stage1 = buildStage1(store, gw, options, targets);
+        java.util.function.Function<EffectContext, Program<?>> stage2 =
+                ctx -> buildStage2(ctx, gw, options);
+        return new StagedProgram<>("sync-" + UUID.randomUUID(), stage1, stage2, SyncUseCase::decode);
+    }
+
+    private static Program<?> buildStage1(SkillStore store,
+                                          GatewayConfig gw,
+                                          Options options,
+                                          List<Target> targets) throws IOException {
         UnitStore sources = new UnitStore(store);
         List<SkillEffect> effects = new ArrayList<>(
                 ResolveContextUseCase.preflight(gw, options.registryOverride(), options.withMcp()));
-
         if (options.withMcp()) effects.add(new SkillEffect.SnapshotMcpDeps());
-
         for (Target t : targets) {
             switch (t) {
                 case Target.Git g -> {
@@ -89,24 +116,120 @@ public final class SyncUseCase {
                         f.skillName(), f.dir(), options.merge(), options.yesForFromDir()));
             }
         }
+        return new Program<>("sync-stage1-" + UUID.randomUUID(), effects, receipts -> null);
+    }
 
-        // Post-update tail. The skill list captured here is the *names*
-        // of installed skills at use-case-build time (pre-merge). The
-        // ResolveTransitives handler re-reads ctx.store().listInstalled()
-        // at exec time, so any newly-pulled-in skill refs go through a
-        // full sub-install (which covers their tools/cli/mcp/agents).
-        // The bulk InstallTools/InstallCli/RegisterMcp/SyncAgents handlers
-        // re-load each named skill's manifest from disk, so updated deps
-        // on existing skills are picked up post-merge.
-        List<Skill> live = store.listInstalled();
-        effects.add(new SkillEffect.ResolveTransitives(live));
-        effects.add(new SkillEffect.InstallTools(live));
-        effects.add(new SkillEffect.InstallCli(live));
-        if (options.withMcp()) effects.add(new SkillEffect.RegisterMcp(live, gw));
-        if (options.withAgents()) effects.add(new SkillEffect.SyncAgents(live, gw));
+    /**
+     * Stage 2 builder, invoked by the interpreter after stage 1 finishes.
+     * Reads the post-merge live store, resolves any references that point
+     * at units not in the store, commits them, then runs the post-update
+     * tail over the union (existing + newly-resolved). The bulk handlers
+     * reload manifests from disk per name so updated dep declarations on
+     * existing skills are picked up.
+     */
+    private static Program<?> buildStage2(EffectContext ctx, GatewayConfig gw, Options options) {
+        SkillStore store = ctx.store();
+        List<Skill> live;
+        try {
+            live = store.listInstalled();
+        } catch (IOException io) {
+            // Halt-via-empty-program: the surrounding command will see no
+            // tail effects and the sync still reports through stage 1's
+            // receipts. Realistically this only fails if the store dir is
+            // mid-rename, which is rare enough to warrant a no-op tail.
+            return new Program<>("sync-stage2-" + UUID.randomUUID(), List.of(), receipts -> null);
+        }
+        List<dev.skillmanager.model.AgentUnit> liveUnits = new ArrayList<>(live.size());
+        for (Skill s : live) liveUnits.add(s.asUnit());
+
+        List<SkillEffect> effects = new ArrayList<>();
+        List<SkillEffect> alwaysAfter = new ArrayList<>();
+
+        ResolvedGraph extras = discoverNewlySurfacedRefs(store, live);
+        if (!extras.resolved().isEmpty()) {
+            // Commit the newly-resolved units (their FetchUnit is implicit
+            // in the resolver — extras.resolved() carries staged source
+            // dirs ready to copy into the store).
+            effects.add(new SkillEffect.CommitSkillsToStore(extras));
+            // Build the plan over the extras + run it (tools/CLI/MCP).
+            effects.add(new SkillEffect.BuildInstallPlan(extras));
+            effects.add(new SkillEffect.RecordSourceProvenance(extras));
+            effects.add(new SkillEffect.RunInstallPlan(gw));
+            // Cleanup the resolver's staged temp dirs no matter how the
+            // tail goes.
+            alwaysAfter.add(new SkillEffect.CleanupResolvedGraph(extras));
+            // Re-list so the post-update tail sees the newly-committed units
+            // alongside the pre-existing ones.
+            try {
+                live = store.listInstalled();
+                liveUnits = new ArrayList<>(live.size());
+                for (Skill s : live) liveUnits.add(s.asUnit());
+            } catch (IOException ignored) { /* fall through with stale liveUnits */ }
+        }
+
+        effects.add(new SkillEffect.InstallTools(liveUnits));
+        effects.add(new SkillEffect.InstallCli(liveUnits));
+        if (options.withMcp()) effects.add(new SkillEffect.RegisterMcp(liveUnits, gw));
+        if (options.withAgents()) effects.add(new SkillEffect.SyncAgents(liveUnits, gw));
         if (options.withMcp()) effects.add(new SkillEffect.UnregisterMcpOrphans(gw));
 
-        return new Program<>("sync-" + UUID.randomUUID(), effects, SyncUseCase::decode);
+        Program<?> p = new Program<>("sync-stage2-" + UUID.randomUUID(), effects, receipts -> null);
+        for (SkillEffect cleanup : alwaysAfter) p = p.withFinally(cleanup);
+        return p;
+    }
+
+    /**
+     * Walk every live skill's references; any that don't resolve to a
+     * unit in the store gets resolved here. Returns an empty graph when
+     * everything is in order — the common no-op case.
+     */
+    private static ResolvedGraph discoverNewlySurfacedRefs(SkillStore store, List<Skill> live) {
+        List<Resolver.Coord> unmet = new ArrayList<>();
+        java.util.Set<String> seen = new java.util.LinkedHashSet<>();
+        for (Skill s : live) {
+            for (UnitReference ref : s.skillReferences()) {
+                String coord = referenceToCoord(ref, store, s.name());
+                String name = ref.name() != null ? ref.name() : guessName(coord);
+                if (name == null || name.isBlank() || store.contains(name)) continue;
+                if (!seen.add(name)) continue;
+                unmet.add(new Resolver.Coord(coord, ref.version()));
+            }
+        }
+        if (unmet.isEmpty()) return new ResolvedGraph();
+        try {
+            return new Resolver(store).resolveAll(unmet);
+        } catch (IOException io) {
+            // Resolver failure means we can't fan-out the new refs; fall
+            // through with no extras — the next sync run picks them up.
+            return new ResolvedGraph();
+        }
+    }
+
+    private static String referenceToCoord(UnitReference ref, SkillStore store, String parentSkillName) {
+        if (ref.isLocal()) {
+            Path rel = Path.of(ref.path());
+            if (rel.isAbsolute()) return rel.toString();
+            return store.skillDir(parentSkillName).resolve(rel).normalize().toString();
+        }
+        return ref.version() != null && !ref.version().isBlank()
+                ? ref.name() + "@" + ref.version()
+                : ref.name();
+    }
+
+    private static String guessName(String coord) {
+        if (coord == null) return null;
+        String s = coord;
+        int at = s.indexOf('@');
+        if (at >= 0) s = s.substring(0, at);
+        if (s.startsWith("file:")) s = s.substring("file:".length());
+        if (s.startsWith("github:")) {
+            int slash = s.lastIndexOf('/');
+            return slash >= 0 ? s.substring(slash + 1) : null;
+        }
+        if (s.endsWith(".git")) s = s.substring(0, s.length() - 4);
+        int slash = s.lastIndexOf('/');
+        String tail = slash >= 0 ? s.substring(slash + 1) : s;
+        return tail.isBlank() ? null : tail;
     }
 
     private static Report decode(List<EffectReceipt> receipts) {

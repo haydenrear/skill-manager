@@ -31,6 +31,7 @@ import dev.skillmanager.model.UnitReferenceFromTomlTest;
 import dev.skillmanager.plan.CycleDetectionTest;
 import dev.skillmanager.plan.MixedKindTopoOrderTest;
 import dev.skillmanager.effects.HandlerSubstitutabilityTest;
+import dev.skillmanager.effects.ListTypedHandlerSubstitutabilityTest;
 import dev.skillmanager.plan.PlanPolicyCategorizationTest;
 import dev.skillmanager.plan.PlanShapeInvariantTest;
 import dev.skillmanager.resolve.ResolverContainedSkillNotMatchedTest;
@@ -78,6 +79,7 @@ public class RunTests {
         failures += MixedKindTopoOrderTest.run();
         failures += PlanPolicyCategorizationTest.run();
         failures += HandlerSubstitutabilityTest.run();
+        failures += ListTypedHandlerSubstitutabilityTest.run();
 
         System.out.println();
         if (failures == 0) {
