@@ -177,7 +177,18 @@ public final class LiveInterpreter implements ProgramInterpreter {
             case SkillEffect.InstallTools e -> installTools(e);
             case SkillEffect.InstallCli e -> installCli(e);
             case SkillEffect.RegisterMcp e -> registerMcp(e, ctx);
+            case SkillEffect.UpdateUnitsLock e -> updateUnitsLock(e);
         };
+    }
+
+    private EffectReceipt updateUnitsLock(SkillEffect.UpdateUnitsLock e) {
+        try {
+            dev.skillmanager.lock.UnitsLockWriter.atomicWrite(e.target(), e.path());
+            return EffectReceipt.ok(e, new ContextFact.UnitsLockUpdated(
+                    e.path().toString(), e.target().units().size()));
+        } catch (IOException io) {
+            return EffectReceipt.failed(e, "could not write " + e.path() + ": " + io.getMessage());
+        }
     }
 
     private EffectReceipt configureRegistry(SkillEffect.ConfigureRegistry e, EffectContext ctx) {

@@ -61,7 +61,8 @@ public sealed interface SkillEffect permits
         SkillEffect.ValidateAndClearError,
         SkillEffect.InstallTools,
         SkillEffect.InstallCli,
-        SkillEffect.RegisterMcp {
+        SkillEffect.RegisterMcp,
+        SkillEffect.UpdateUnitsLock {
 
     /**
      * Persist a registry URL override and reload {@link
@@ -311,4 +312,20 @@ public sealed interface SkillEffect permits
      * skip.
      */
     record LoadOutstandingErrors() implements SkillEffect {}
+
+    /**
+     * Atomically flip {@code units.lock.toml} to {@code target} at
+     * {@code path}. The handler captures the prior lock as a
+     * {@link Compensation.RestoreUnitsLock} pre-state shape so a
+     * downstream failure walks the file back to its byte-identical
+     * pre-program state.
+     *
+     * <p>Programs append this effect once, just before commit-finalising
+     * effects. If an earlier effect fails the lock is never written.
+     * If a later effect fails the compensation re-writes the prior
+     * content. Either way the lock is the source-of-truth for the
+     * install set and never lands in a half-applied state.
+     */
+    record UpdateUnitsLock(dev.skillmanager.lock.UnitsLock target, java.nio.file.Path path)
+            implements SkillEffect {}
 }

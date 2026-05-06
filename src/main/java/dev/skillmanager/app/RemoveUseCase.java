@@ -83,6 +83,11 @@ public final class RemoveUseCase {
 
         effects.add(new SkillEffect.RemoveUnitFromStore(skillName, kind));
 
+        // Lock flip — drop the row for this unit. Last main effect so
+        // any earlier failure leaves the lock untouched.
+        java.nio.file.Path lockPath = dev.skillmanager.lock.UnitsLockReader.defaultPath(store);
+        dev.skillmanager.lock.UnitsLock current = dev.skillmanager.lock.UnitsLockReader.read(lockPath);
+        dev.skillmanager.lock.UnitsLock target = current.withoutUnit(skillName);
         if (unregisterMcp && !removedDeps.isEmpty()) {
             // Compute orphans against the projected post-remove state by
             // pretending skillName is gone. Iterates skill-only
@@ -106,6 +111,13 @@ public final class RemoveUseCase {
                 }
             }
         }
+
+        // Lock flip lands last — orphan-unregister is the only thing
+        // post-commit that could fail (gateway unreachable), and a failed
+        // orphan-unregister shouldn't leave the lock claiming the unit
+        // is still installed. Executor's RestoreUnitsLock walks back the
+        // disk write if anything trailing fails; for now nothing does.
+        effects.add(new SkillEffect.UpdateUnitsLock(target, lockPath));
 
         return new Program<>("remove-" + UUID.randomUUID(), effects, RemoveUseCase::decode);
     }

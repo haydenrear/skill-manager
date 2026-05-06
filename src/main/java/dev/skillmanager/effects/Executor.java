@@ -78,7 +78,7 @@ public final class Executor {
      * interpreter dispatch entirely, so the receipt's failure message is
      * synthetic.
      */
-    Executor withFaultInjection(java.util.function.IntPredicate failAtStep) {
+    public Executor withFaultInjection(java.util.function.IntPredicate failAtStep) {
         this.faultInjector = failAtStep;
         return this;
     }
@@ -216,6 +216,21 @@ public final class Executor {
                 yield ctx.source(e.unit().name()).isPresent()
                         ? List.of()
                         : List.of(new Compensation.DeleteInstalledUnit(e.unit().name()));
+            }
+            case SkillEffect.UpdateUnitsLock e -> {
+                // Capture the on-disk lock pre-image so the compensation can
+                // restore byte-for-byte. Reading at preState (not at apply
+                // time) is what makes the rollback atomic — by the time the
+                // walk runs, the file has been overwritten.
+                try {
+                    dev.skillmanager.lock.UnitsLock prev =
+                            dev.skillmanager.lock.UnitsLockReader.read(e.path());
+                    yield List.of(new Compensation.RestoreUnitsLock(prev, e.path()));
+                } catch (java.io.IOException io) {
+                    Log.warn("preState UpdateUnitsLock: could not snapshot %s — %s",
+                            e.path(), io.getMessage());
+                    yield List.of();
+                }
             }
             default -> List.of();
         };
@@ -357,6 +372,9 @@ public final class Executor {
                         try { client.unregister(u.dep().name()); } catch (Exception ignored) {}
                     }
                 }
+            }
+            case Compensation.RestoreUnitsLock r -> {
+                dev.skillmanager.lock.UnitsLockWriter.atomicWrite(r.previous(), r.path());
             }
             case Compensation.UnprojectIfOrphan u -> {
                 // Per-agent fan-out: remove this unit's projection from every

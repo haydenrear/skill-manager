@@ -108,4 +108,8 @@ public sealed interface ContextFact {
     /** Carries the full {@link InstallResult} so the renderer can emit the JSON block + summary. */
     record McpServerRegistered(String skillName, InstallResult result) implements ContextFact {}
     record McpServerRegistrationFailed(String skillName, InstallResult result) implements ContextFact {}
+
+    // ---- units.lock.toml ----
+    record UnitsLockUpdated(String path, int unitCount) implements ContextFact {}
+    record UnitsLockRestored(String path) implements ContextFact {}
 }

@@ -176,9 +176,54 @@ public final class SyncUseCase {
         if (options.withAgents()) effects.add(new SkillEffect.SyncAgents(liveUnits, gw));
         if (options.withMcp()) effects.add(new SkillEffect.UnregisterMcpOrphans(gw));
 
+        // Lock flip — last main effect. Targets the post-merge live state
+        // plus any newly-resolved extras. Sync's "bumped sha" rows are the
+        // primary thing that changes here: a skill's installed-record
+        // gitHash advances after the merge, and the lock follows.
+        effects.add(buildLockUpdate(store, live, extras));
+
         Program<?> p = new Program<>("sync-stage2-" + UUID.randomUUID(), effects, receipts -> null);
         for (SkillEffect cleanup : alwaysAfter) p = p.withFinally(cleanup);
         return p;
+    }
+
+    /**
+     * Compute the post-sync lock target. Reads the current lock and
+     * upserts one row per live skill (post-merge installed-record state)
+     * plus one row per extras unit (from the resolver's staged graph).
+     */
+    private static SkillEffect.UpdateUnitsLock buildLockUpdate(
+            SkillStore store, List<Skill> live, ResolvedGraph extras) {
+        try {
+            java.nio.file.Path lockPath = dev.skillmanager.lock.UnitsLockReader.defaultPath(store);
+            dev.skillmanager.lock.UnitsLock current = dev.skillmanager.lock.UnitsLockReader.read(lockPath);
+            UnitStore sources = new UnitStore(store);
+            dev.skillmanager.lock.UnitsLock target = current;
+            // Upsert post-merge state for every live skill — sync's primary
+            // mutation is gitHash advancing on the installed-record after
+            // a merge lands.
+            for (Skill s : live) {
+                InstalledUnit rec = sources.read(s.name()).orElse(null);
+                if (rec == null) continue;
+                target = target.withUnit(dev.skillmanager.lock.LockedUnit.fromInstalled(rec));
+            }
+            // Newly-resolved extras: derive a tentative row; the
+            // installed-record will land after RecordSourceProvenance and a
+            // future sync will refine it via the live-skill loop above.
+            for (var r : extras.resolved()) {
+                target = target.withUnit(new dev.skillmanager.lock.LockedUnit(
+                        r.name(), r.unit().kind(), r.version(),
+                        InstalledUnit.InstallSource.UNKNOWN, null, null, r.sha256()));
+            }
+            return new SkillEffect.UpdateUnitsLock(target, lockPath);
+        } catch (IOException io) {
+            // No graceful no-op effect type; return a "no diff" update so
+            // the program shape stays consistent. Worst case: lock isn't
+            // refreshed for this sync — next install/sync will try again.
+            return new SkillEffect.UpdateUnitsLock(
+                    dev.skillmanager.lock.UnitsLock.empty(),
+                    dev.skillmanager.lock.UnitsLockReader.defaultPath(store));
+        }
     }
 
     /**
