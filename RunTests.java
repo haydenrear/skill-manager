@@ -34,6 +34,7 @@ import dev.skillmanager.command.UninstallScenarioTest;
 import dev.skillmanager.effects.CompensationLogicTest;
 import dev.skillmanager.effects.CompensationOrphanTest;
 import dev.skillmanager.effects.CompensationPairingTest;
+import dev.skillmanager.effects.FailureInjectionSweepTest;
 import dev.skillmanager.effects.HandlerSubstitutabilityTest;
 import dev.skillmanager.effects.KindAwareDispatchTest;
 import dev.skillmanager.effects.ListTypedHandlerSubstitutabilityTest;
@@ -90,6 +91,7 @@ public class RunTests {
         failures += CompensationPairingTest.run();
         failures += CompensationOrphanTest.run();
         failures += UninstallScenarioTest.run();
+        failures += FailureInjectionSweepTest.run();
 
         System.out.println();
         if (failures == 0) {
