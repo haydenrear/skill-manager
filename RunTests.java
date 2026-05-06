@@ -48,6 +48,7 @@ import dev.skillmanager.effects.KindAwareDispatchTest;
 import dev.skillmanager.effects.ListTypedHandlerSubstitutabilityTest;
 import dev.skillmanager.plan.PlanPolicyCategorizationTest;
 import dev.skillmanager.plan.PlanShapeInvariantTest;
+import dev.skillmanager.plan.PolicyGatingTest;
 import dev.skillmanager.resolve.ResolverContainedSkillNotMatchedTest;
 import dev.skillmanager.resolve.ResolverDeterminismTest;
 import dev.skillmanager.resolve.ResolverDirectGitDetectsKindTest;
@@ -92,6 +93,7 @@ public class RunTests {
         failures += CycleDetectionTest.run();
         failures += MixedKindTopoOrderTest.run();
         failures += PlanPolicyCategorizationTest.run();
+        failures += PolicyGatingTest.run();
         failures += HandlerSubstitutabilityTest.run();
         failures += ListTypedHandlerSubstitutabilityTest.run();
         failures += KindAwareDispatchTest.run();

@@ -41,7 +41,8 @@ public record Policy(
         boolean allowDocker,
         Set<String> allowedRegistries,
         Set<String> allowedDockerPrefixes,
-        boolean requireConfirmation
+        boolean requireConfirmation,
+        InstallPolicy install
 ) {
 
     public static final String FILENAME = "policy.toml";
@@ -50,6 +51,7 @@ public record Policy(
         allowedBackends = Collections.unmodifiableSet(new LinkedHashSet<>(allowedBackends));
         allowedRegistries = Collections.unmodifiableSet(new LinkedHashSet<>(allowedRegistries));
         allowedDockerPrefixes = Collections.unmodifiableSet(new LinkedHashSet<>(allowedDockerPrefixes));
+        if (install == null) install = InstallPolicy.defaults();
     }
 
     public static Policy defaults() {
@@ -60,7 +62,8 @@ public record Policy(
                 true,
                 Set.of(),
                 Set.of(),
-                true
+                true,
+                InstallPolicy.defaults()
         );
     }
 
@@ -93,6 +96,17 @@ public record Policy(
             throw new IOException("policy.toml has errors: " + toml.errors());
         }
         Policy d = defaults();
+        InstallPolicy installDefaults = d.install();
+        InstallPolicy install = new InstallPolicy(
+                bool(toml, "install.require_confirmation_for_hooks",
+                        installDefaults.requireConfirmationForHooks()),
+                bool(toml, "install.require_confirmation_for_mcp",
+                        installDefaults.requireConfirmationForMcp()),
+                bool(toml, "install.require_confirmation_for_cli_deps",
+                        installDefaults.requireConfirmationForCliDeps()),
+                bool(toml, "install.require_confirmation_for_executable_commands",
+                        installDefaults.requireConfirmationForExecutableCommands())
+        );
         return new Policy(
                 stringSet(toml.getArray("allowed_backends"), d.allowedBackends),
                 bool(toml, "require_hash", d.requireHash),
@@ -100,7 +114,8 @@ public record Policy(
                 bool(toml, "allow_docker", d.allowDocker),
                 stringSet(toml.getArray("allowed_registries"), d.allowedRegistries),
                 stringSet(toml.getArray("allowed_docker_prefixes"), d.allowedDockerPrefixes),
-                bool(toml, "require_confirmation", d.requireConfirmation)
+                bool(toml, "require_confirmation", d.requireConfirmation),
+                install
         );
     }
 
@@ -137,6 +152,21 @@ public record Policy(
 
                 # Always show the install plan and require `y` (or --yes).
                 require_confirmation = %b
+
+                # Per-category confirmation gates.
+                # Each flag means "require interactive confirmation for this category".
+                # When the flag is on AND the plan-print emits the corresponding `!`-line
+                # (e.g. `! HOOKS`), `--yes` cannot bypass — the user has to flip the
+                # specific flag to false to install unattended.
+                #
+                # Defaults are conservative: every category needs confirmation. Loosen
+                # individual flags as you learn which categories are routine for your
+                # workflow.
+                [install]
+                require_confirmation_for_hooks = %b
+                require_confirmation_for_mcp = %b
+                require_confirmation_for_cli_deps = %b
+                require_confirmation_for_executable_commands = %b
                 """.formatted(
                         toToml(d.allowedBackends),
                         d.requireHash,
@@ -144,7 +174,11 @@ public record Policy(
                         d.allowDocker,
                         toToml(d.allowedDockerPrefixes),
                         toToml(d.allowedRegistries),
-                        d.requireConfirmation);
+                        d.requireConfirmation,
+                        d.install.requireConfirmationForHooks(),
+                        d.install.requireConfirmationForMcp(),
+                        d.install.requireConfirmationForCliDeps(),
+                        d.install.requireConfirmationForExecutableCommands());
         Files.writeString(file, content);
     }
 
