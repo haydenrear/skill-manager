@@ -59,11 +59,28 @@ public final class Executor {
     private final SkillStore store;
     private final GatewayConfig gateway;
     private final LiveInterpreter interpreter;
+    private java.util.function.IntPredicate faultInjector;
 
     public Executor(SkillStore store, GatewayConfig gateway) {
         this.store = store;
         this.gateway = gateway;
         this.interpreter = new LiveInterpreter(store, gateway);
+    }
+
+    /**
+     * Test-only seam for {@code FailureInjectionSweepTest}. Forces a FAILED
+     * receipt at any main-effect step whose 0-based index satisfies the
+     * predicate, before the underlying handler runs. Returning the same
+     * Executor allows fluent chaining at test setup. {@code null} disables
+     * injection (the production default).
+     *
+     * <p>Production code should never call this — it bypasses the
+     * interpreter dispatch entirely, so the receipt's failure message is
+     * synthetic.
+     */
+    Executor withFaultInjection(java.util.function.IntPredicate failAtStep) {
+        this.faultInjector = failAtStep;
+        return this;
     }
 
     public record Outcome<R>(R result, boolean rolledBack, List<Compensation> applied) {}
@@ -140,7 +157,9 @@ public final class Executor {
         List<EffectReceipt> receipts = new ArrayList<>();
         boolean halted = false;
         boolean failed = false;
+        int idx = -1;
         for (SkillEffect effect : program.effects()) {
+            idx++;
             if (halted || failed) {
                 EffectReceipt skip = EffectReceipt.skipped(effect, failed ? "rolled back" : "halted");
                 receipts.add(skip);
@@ -152,7 +171,13 @@ public final class Executor {
             // pre-execution; no-op for effects that don't touch records.
             List<Compensation> preState = preStateCompensations(effect, ctx);
 
-            EffectReceipt r = interpreter.runOne(effect, ctx);
+            EffectReceipt r;
+            if (faultInjector != null && faultInjector.test(idx)) {
+                r = EffectReceipt.failed(effect, "fault-injected at step " + idx);
+                ctx.renderer().onReceipt(r);
+            } else {
+                r = interpreter.runOne(effect, ctx);
+            }
             receipts.add(r);
 
             if (r.status() == EffectStatus.HALTED) {
