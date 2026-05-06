@@ -1,0 +1,13 @@
+# skill-manager-plugin.toml — tooling metadata for hello-plugin.
+# Sits alongside .claude-plugin/plugin.json (Claude's runtime manifest);
+# skill-manager reads this file. The two MUST agree on name + version
+# or skill-manager warns at install time.
+
+# Plugin-level dependencies are rare — most live on contained skills.
+# This example keeps the plugin level empty and lets the contained
+# skill (skills/hello-impl/) declare its own deps.
+
+[plugin]
+name = "hello-plugin"
+version = "0.1.0"
+description = "Example plugin demonstrating skill-manager plugin layout."

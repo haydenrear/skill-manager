@@ -1,0 +1,11 @@
+# Contained-skill metadata. The plugin's effective dep set is the
+# union of plugin-level deps + every contained skill's deps.
+
+[[cli_dependencies]]
+spec = "pip:ruff==0.6.9"
+on_path = "ruff"
+
+[skill]
+name = "hello-impl"
+version = "0.1.0"
+description = "Contained skill of hello-plugin."
