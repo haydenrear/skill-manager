@@ -8,8 +8,6 @@ import dev.skillmanager.effects.SkillEffect;
 import dev.skillmanager.lock.CliLock;
 import dev.skillmanager.mcp.GatewayConfig;
 import dev.skillmanager.mcp.McpWriter;
-import dev.skillmanager.model.Skill;
-import dev.skillmanager.model.SkillUnit;
 import dev.skillmanager.plan.InstallPlan;
 import dev.skillmanager.plan.PlanBuilder;
 import dev.skillmanager.pm.PackageManagerRuntime;
@@ -96,24 +94,19 @@ public final class InstallUseCase {
             effects.add(new SkillEffect.PrintInstalledSummary(graph));
         }
 
-        // Filter to skill-kind units — the bulk tail effects
-        // (ResolveTransitives, SyncAgents) still take List<Skill>; plugin
-        // units get their CLI/MCP wiring through the per-action effects
-        // emitted by RunInstallPlan and don't go through SyncAgents.
-        // Calling graph.skills() unfiltered would UOE on plugin installs.
-        List<Skill> skills = new ArrayList<>();
-        for (var r : graph.resolved()) {
-            if (r.unit() instanceof SkillUnit su) skills.add(su.skill());
-        }
-        // RunInstallPlan FIRST so the parent's plan (already in ctx from
-        // BuildInstallPlan above) executes before ResolveTransitives spins
-        // up sub-programs that would otherwise overwrite ctx.plan.
-        // (Save/restore handles the leak path defensively, but this order
-        // keeps the dependency chain clear: parent's tools/CLI/MCP go in,
-        // then any safety-net transitive resolution happens.)
+        // Tail effects fan out over the unit list. SyncAgents keeps its
+        // skill-only symlink path until ticket 11 — plugin-kind units pass
+        // through and the handler skips them, but typing them as AgentUnit
+        // avoids the deprecated graph.skills() down-cast.
+        //
+        // No ResolveTransitives here: Resolver.resolveAll already walks
+        // references transitively at use-case-build time, so the program's
+        // graph is the closed transitive set. The exec-time resolution
+        // pass exists only for sync, where post-merge content can surface
+        // new references that weren't visible at build time.
+        List<dev.skillmanager.model.AgentUnit> tailUnits = graph.units();
         effects.add(new SkillEffect.RunInstallPlan(gw));
-        effects.add(new SkillEffect.ResolveTransitives(skills));
-        effects.add(new SkillEffect.SyncAgents(skills, gw));
+        effects.add(new SkillEffect.SyncAgents(tailUnits, gw));
         effects.add(new SkillEffect.UnregisterMcpOrphans(gw));
 
         Program<Report> p = new Program<>("install-" + UUID.randomUUID(), effects, InstallUseCase::decode);

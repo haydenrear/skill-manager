@@ -101,9 +101,10 @@ public final class SyncCommand implements Callable<Integer> {
 
         SyncUseCase.Options opts = new SyncUseCase.Options(
                 registryUrl, gitLatest, merge, !skipMcp, !skipAgents, yes);
-        Program<SyncUseCase.Report> program = SyncUseCase.buildProgram(store, gw, opts, targets);
-        ProgramInterpreter interpreter = dryRun ? new DryRunInterpreter() : new LiveInterpreter(store, gw);
-        SyncUseCase.Report report = interpreter.run(program);
+        dev.skillmanager.effects.StagedProgram<SyncUseCase.Report> program =
+                SyncUseCase.buildProgram(store, gw, opts, targets);
+        ProgramInterpreter interpreter = dryRun ? new DryRunInterpreter(store) : new LiveInterpreter(store, gw);
+        SyncUseCase.Report report = interpreter.runStaged(program);
         // worstRc reflects the SyncGit fact severity (refused=7, conflicted=8,
         // sync-failed=1). errorCount picks up the post-update tail's failures
         // (gateway unreachable, MCP register errors, agent sync errors) — these

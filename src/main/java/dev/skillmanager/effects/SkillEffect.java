@@ -1,6 +1,7 @@
 package dev.skillmanager.effects;
 
 import dev.skillmanager.mcp.GatewayConfig;
+import dev.skillmanager.model.AgentUnit;
 import dev.skillmanager.model.CliDependency;
 import dev.skillmanager.model.McpDependency;
 import dev.skillmanager.model.Skill;
@@ -42,7 +43,6 @@ public sealed interface SkillEffect permits
         SkillEffect.RecordAuditPlan,
         SkillEffect.RecordSourceProvenance,
         SkillEffect.OnboardSource,
-        SkillEffect.ResolveTransitives,
         SkillEffect.EnsureTool,
         SkillEffect.RunCliInstall,
         SkillEffect.RegisterMcpServer,
@@ -103,17 +103,14 @@ public sealed interface SkillEffect permits
     /** Write a {@code sources/<name>.json} record for an installed skill that lacks one. */
     record OnboardSource(Skill skill) implements SkillEffect {}
 
-    /** Recursively install missing transitive {@code skill_references}. */
-    record ResolveTransitives(List<Skill> skills) implements SkillEffect {}
+    /** Build the install plan from {@code units} and run runtime-tool installers (uv / npm / docker / brew). */
+    record InstallTools(List<AgentUnit> units) implements SkillEffect {}
 
-    /** Build the install plan from {@code skills} and run runtime-tool installers (uv / npm / docker / brew). */
-    record InstallTools(List<Skill> skills) implements SkillEffect {}
+    /** Build the install plan from {@code units} and run CLI dep installers. */
+    record InstallCli(List<AgentUnit> units) implements SkillEffect {}
 
-    /** Build the install plan from {@code skills} and run CLI dep installers. */
-    record InstallCli(List<Skill> skills) implements SkillEffect {}
-
-    /** Register every skill's MCP deps with the gateway, capturing per-server outcomes. */
-    record RegisterMcp(List<Skill> skills, GatewayConfig gateway) implements SkillEffect {}
+    /** Register every unit's MCP deps with the gateway, capturing per-server outcomes. */
+    record RegisterMcp(List<AgentUnit> units, GatewayConfig gateway) implements SkillEffect {}
 
     /** Unregister an MCP server no surviving skill still declares. */
     record UnregisterMcpOrphan(String serverId, GatewayConfig gateway) implements SkillEffect {}
@@ -127,8 +124,15 @@ public sealed interface SkillEffect permits
      */
     record UnregisterMcpOrphans(GatewayConfig gateway) implements SkillEffect {}
 
-    /** Refresh agent symlinks + MCP-config entries for every known agent. */
-    record SyncAgents(List<Skill> skills, GatewayConfig gateway) implements SkillEffect {}
+    /**
+     * Refresh agent symlinks + MCP-config entries for every known agent.
+     *
+     * <p>Typed against {@link AgentUnit} as of ticket 07. Kind-aware
+     * dispatch (skill → symlink, plugin → projector entry) lands in
+     * ticket 11; until then the handler treats every unit as the
+     * pre-existing skill carrier.
+     */
+    record SyncAgents(List<AgentUnit> units, GatewayConfig gateway) implements SkillEffect {}
 
     /**
      * Pull upstream into a single git-tracked skill: stash → fetch → merge → pop.

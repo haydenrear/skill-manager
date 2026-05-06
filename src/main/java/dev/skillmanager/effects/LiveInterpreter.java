@@ -10,7 +10,6 @@ import dev.skillmanager.mcp.McpWriter;
 import dev.skillmanager.model.McpDependency;
 import dev.skillmanager.model.AgentUnit;
 import dev.skillmanager.model.Skill;
-import dev.skillmanager.model.UnitReference;
 import dev.skillmanager.plan.InstallPlan;
 import dev.skillmanager.plan.PlanBuilder;
 import dev.skillmanager.pm.PackageManagerRuntime;
@@ -56,6 +55,18 @@ public final class LiveInterpreter implements ProgramInterpreter {
         return result;
     }
 
+    @Override
+    public <R> R runStaged(StagedProgram<R> staged) {
+        ConsoleProgramRenderer renderer = new ConsoleProgramRenderer(store, gateway);
+        EffectContext ctx = new EffectContext(store, gateway, renderer);
+        List<EffectReceipt> all = new ArrayList<>();
+        all.addAll(runEffects(staged.stage1(), ctx));
+        Program<?> stage2 = staged.stage2().apply(ctx);
+        all.addAll(runEffects(stage2, ctx));
+        renderer.onComplete();
+        return staged.decoder().decode(all);
+    }
+
     /**
      * Run a (sub-)program against an existing {@link EffectContext} —
      * source-record cache stays warm, error writes from the parent
@@ -66,6 +77,16 @@ public final class LiveInterpreter implements ProgramInterpreter {
      * {@link ProgramRenderer#onComplete}.
      */
     public <R> R runWithContext(Program<R> program, EffectContext ctx) {
+        return program.decoder().decode(runEffects(program, ctx));
+    }
+
+    /**
+     * Drive a program's main effects + alwaysAfter cleanup against the
+     * supplied context, returning the flat receipt list. Decoder
+     * application is left to the caller so {@link #runStaged} can
+     * concatenate two stages' receipts before decoding once.
+     */
+    private List<EffectReceipt> runEffects(Program<?> program, EffectContext ctx) {
         ProgramRenderer renderer = ctx.renderer();
         List<EffectReceipt> receipts = new ArrayList<>();
         boolean halted = false;
@@ -98,7 +119,7 @@ public final class LiveInterpreter implements ProgramInterpreter {
             receipts.add(r);
             renderer.onReceipt(r);
         }
-        return program.decoder().decode(receipts);
+        return receipts;
     }
 
     private EffectReceipt execute(SkillEffect effect, EffectContext ctx) throws IOException {
@@ -120,7 +141,6 @@ public final class LiveInterpreter implements ProgramInterpreter {
             case SkillEffect.RecordAuditPlan e -> recordAudit(e, ctx);
             case SkillEffect.RecordSourceProvenance e -> recordProvenance(e, ctx);
             case SkillEffect.OnboardSource e -> onboardSource(e, ctx);
-            case SkillEffect.ResolveTransitives e -> resolveTransitives(e, ctx);
             case SkillEffect.EnsureTool e -> ensureTool(e);
             case SkillEffect.RunCliInstall e -> runCliInstall(e, ctx);
             case SkillEffect.RegisterMcpServer e -> registerMcpServer(e, ctx);
@@ -281,124 +301,80 @@ public final class LiveInterpreter implements ProgramInterpreter {
         return EffectReceipt.ok(e, new ContextFact.SkillOnboarded(skill.name(), kind));
     }
 
-    /**
-     * Walk every installed skill's {@code skill_references}, gather the
-     * unmet ones into a single {@link dev.skillmanager.resolve.ResolvedGraph}
-     * via {@link dev.skillmanager.resolve.Resolver#resolveAll}, and run a
-     * sub-{@link dev.skillmanager.app.InstallUseCase} program against the
-     * shared {@link EffectContext} via {@link #runWithContext}.
-     *
-     * <p>Reads live skills from the store at exec time so a sync that
-     * brought new {@code skill_references} via merge sees them — the
-     * {@code e.skills()} list is informational (pre-merge snapshot).
-     */
-    private EffectReceipt resolveTransitives(SkillEffect.ResolveTransitives e, EffectContext ctx) {
-        List<ContextFact> facts = new ArrayList<>();
-        try {
-            List<dev.skillmanager.resolve.Resolver.Coord> unmet = new ArrayList<>();
-            java.util.Set<String> seenName = new java.util.LinkedHashSet<>();
-            for (Skill s : ctx.store().listInstalled()) {
-                for (UnitReference ref : s.skillReferences()) {
-                    String coord = referenceToCoord(ref, ctx.store(), s.name());
-                    String name = ref.name() != null ? ref.name() : guessName(coord);
-                    if (name == null || name.isBlank() || ctx.store().contains(name)) continue;
-                    if (!seenName.add(name)) continue;
-                    unmet.add(new dev.skillmanager.resolve.Resolver.Coord(coord, ref.version()));
-                }
-            }
-            if (unmet.isEmpty()) return EffectReceipt.ok(e, facts);
-
-            dev.skillmanager.resolve.Resolver resolver = new dev.skillmanager.resolve.Resolver(ctx.store());
-            dev.skillmanager.resolve.ResolvedGraph graph = resolver.resolveAll(unmet);
-            try {
-                Program<dev.skillmanager.app.InstallUseCase.Report> sub =
-                        dev.skillmanager.app.InstallUseCase.buildProgram(
-                                ctx.gateway(), null, graph, false);
-                // Save+restore ctx slots so the sub-program's BuildInstallPlan
-                // and SnapshotMcpDeps don't clobber the parent program's
-                // plan / pre-snapshot.
-                EffectContext.Snapshot snap = ctx.snapshot();
-                dev.skillmanager.app.InstallUseCase.Report report;
-                try { report = runWithContext(sub, ctx); }
-                finally { ctx.restore(snap); }
-                for (String name : report.committed()) {
-                    facts.add(new ContextFact.TransitiveInstalled(name));
-                }
-                int failed = report.errorCount();
-                return failed == 0
-                        ? EffectReceipt.ok(e, facts)
-                        : EffectReceipt.partial(e, facts, failed + " transitive sub-effect(s) failed");
-            } finally {
-                graph.cleanup();
-            }
-        } catch (Exception ex) {
-            return EffectReceipt.failed(e, facts, "resolveTransitives failed: " + ex.getMessage());
-        }
-    }
-
     private EffectReceipt installTools(SkillEffect.InstallTools e) throws IOException {
-        List<Skill> skills = freshen(e.skills());
-        InstallPlan plan = buildPlan(skills);
+        List<AgentUnit> units = freshen(e.units());
+        InstallPlan plan = buildPlan(units);
         ToolInstallRecorder.run(plan, store);
-        return EffectReceipt.ok(e, new ContextFact.ToolsInstalledFor(skills.size()));
+        return EffectReceipt.ok(e, new ContextFact.ToolsInstalledFor(units.size()));
     }
 
     private EffectReceipt installCli(SkillEffect.InstallCli e) throws IOException {
-        List<Skill> skills = freshen(e.skills());
-        InstallPlan plan = buildPlan(skills);
+        List<AgentUnit> units = freshen(e.units());
+        InstallPlan plan = buildPlan(units);
         CliInstallRecorder.run(plan, store);
-        return EffectReceipt.ok(e, new ContextFact.CliInstalledFor(skills.size()));
+        return EffectReceipt.ok(e, new ContextFact.CliInstalledFor(units.size()));
     }
 
     /**
-     * Reload the named skills from disk so the handler sees any manifest
-     * changes from a sync's merge step. Skills whose dirs vanished (rare —
-     * concurrent uninstall) fall back to the supplied stale value.
+     * Reload skill-kind units from disk so the handler sees manifest
+     * changes from a sync's merge step. Plugin-kind units pass through
+     * unchanged (kind-aware reload lands in ticket 11). Skills whose
+     * dirs vanished (rare — concurrent uninstall) keep the supplied
+     * stale value.
      */
-    private List<Skill> freshen(List<Skill> stale) {
-        List<Skill> out = new ArrayList<>(stale.size());
-        for (Skill s : stale) {
-            try {
-                out.add(store.load(s.name()).orElse(s));
-            } catch (IOException io) {
-                out.add(s);
+    private List<AgentUnit> freshen(List<AgentUnit> stale) {
+        List<AgentUnit> out = new ArrayList<>(stale.size());
+        for (AgentUnit u : stale) {
+            if (u instanceof dev.skillmanager.model.SkillUnit) {
+                try {
+                    Skill reloaded = store.load(u.name()).orElse(null);
+                    out.add(reloaded != null ? reloaded.asUnit() : u);
+                } catch (IOException io) {
+                    out.add(u);
+                }
+            } else {
+                out.add(u);
             }
         }
         return out;
     }
 
-    private InstallPlan buildPlan(List<Skill> skills) throws IOException {
+    private InstallPlan buildPlan(List<AgentUnit> units) throws IOException {
         Policy policy = Policy.load(store);
         CliLock lock = CliLock.load(store);
         PackageManagerRuntime pmRuntime = new PackageManagerRuntime(store);
-        List<AgentUnit> units = new java.util.ArrayList<>(skills.size());
-        for (Skill s : skills) units.add(s.asUnit());
         return new PlanBuilder(policy, lock, pmRuntime)
                 .plan(units, true, true, store.cliBinDir());
     }
 
     private EffectReceipt registerMcp(SkillEffect.RegisterMcp e, EffectContext ctx) throws IOException {
-        List<Skill> skills = freshen(e.skills());
+        List<AgentUnit> units = freshen(e.units());
         if (!new GatewayClient(e.gateway()).ping()) {
-            for (Skill s : skills) {
-                if (s.mcpDependencies().isEmpty()) continue;
-                ctx.addError(s.name(), InstalledUnit.ErrorKind.GATEWAY_UNAVAILABLE,
+            for (AgentUnit u : units) {
+                if (u.mcpDependencies().isEmpty()) continue;
+                ctx.addError(u.name(), InstalledUnit.ErrorKind.GATEWAY_UNAVAILABLE,
                         "gateway at " + e.gateway().baseUrl() + " unreachable");
             }
             return EffectReceipt.skipped(e, "gateway unreachable");
         }
 
+        // McpWriter.registerAll still consumes List<Skill> — wrap each unit
+        // in a Skill carrier with just its name + MCP deps so plugin-kind
+        // units flow through. Pure-typing wrap; no on-disk lookup. The
+        // McpWriter widening lands in ticket 11.
+        List<Skill> mcpCarriers = new ArrayList<>(units.size());
+        for (AgentUnit u : units) mcpCarriers.add(asMcpCarrier(u));
         McpWriter writer = new McpWriter(e.gateway());
-        List<InstallResult> results = writer.registerAll(skills);
+        List<InstallResult> results = writer.registerAll(mcpCarriers);
 
-        for (Skill s : skills) {
-            if (s.mcpDependencies().isEmpty()) continue;
-            ctx.clearError(s.name(), InstalledUnit.ErrorKind.GATEWAY_UNAVAILABLE);
+        for (AgentUnit u : units) {
+            if (u.mcpDependencies().isEmpty()) continue;
+            ctx.clearError(u.name(), InstalledUnit.ErrorKind.GATEWAY_UNAVAILABLE);
         }
         List<ContextFact> facts = new ArrayList<>();
         int erroredCount = 0;
         for (InstallResult r : results) {
-            String owner = ownerOf(skills, r.serverId());
+            String owner = ownerOf(units, r.serverId());
             if (owner == null) continue;
             if (InstallResult.Status.ERROR.code.equals(r.status())) {
                 ctx.addError(owner, InstalledUnit.ErrorKind.MCP_REGISTRATION_FAILED,
@@ -412,7 +388,13 @@ public final class LiveInterpreter implements ProgramInterpreter {
         }
         return erroredCount == 0
                 ? EffectReceipt.ok(e, facts)
-                : EffectReceipt.partial(e, facts, erroredCount + " skill(s) had MCP errors");
+                : EffectReceipt.partial(e, facts, erroredCount + " unit(s) had MCP errors");
+    }
+
+    private static Skill asMcpCarrier(AgentUnit u) {
+        return new Skill(u.name(), u.description(), u.version(),
+                List.of(), List.of(), u.mcpDependencies(),
+                java.util.Map.of(), "", null);
     }
 
     private EffectReceipt unregisterOrphans(SkillEffect.UnregisterMcpOrphans e, EffectContext ctx) {
@@ -469,7 +451,15 @@ public final class LiveInterpreter implements ProgramInterpreter {
      * keep going.
      */
     private EffectReceipt syncAgents(SkillEffect.SyncAgents e, EffectContext ctx) {
-        List<Skill> skills = freshen(e.skills());
+        List<AgentUnit> units = freshen(e.units());
+        // Per ticket-07 spec: SyncAgents keeps its skill-only symlink path
+        // until ticket 11 routes plugins through Projector. Plugin-kind
+        // units flow through unchanged here — per-skill symlink work skips
+        // them (they have no skills/<name> dir).
+        List<Skill> skills = new ArrayList<>();
+        for (AgentUnit u : units) {
+            if (u instanceof dev.skillmanager.model.SkillUnit su) skills.add(su.skill());
+        }
         McpWriter writer = new McpWriter(e.gateway());
         List<ContextFact> facts = new ArrayList<>();
         int failed = 0;
@@ -555,40 +545,13 @@ public final class LiveInterpreter implements ProgramInterpreter {
         return EffectReceipt.ok(e, new ContextFact.ErrorValidated(e.unitName(), e.kind(), cleared));
     }
 
-    private static String ownerOf(List<Skill> skills, String mcpServerId) {
-        for (Skill s : skills) {
-            for (McpDependency d : s.mcpDependencies()) {
-                if (d.name().equals(mcpServerId)) return s.name();
+    private static String ownerOf(List<AgentUnit> units, String mcpServerId) {
+        for (AgentUnit u : units) {
+            for (McpDependency d : u.mcpDependencies()) {
+                if (d.name().equals(mcpServerId)) return u.name();
             }
         }
         return null;
-    }
-
-    private static String referenceToCoord(UnitReference ref, SkillStore store, String parentSkillName) {
-        if (ref.isLocal()) {
-            Path rel = Path.of(ref.path());
-            if (rel.isAbsolute()) return rel.toString();
-            return store.skillDir(parentSkillName).resolve(rel).normalize().toString();
-        }
-        return ref.version() != null && !ref.version().isBlank()
-                ? ref.name() + "@" + ref.version()
-                : ref.name();
-    }
-
-    private static String guessName(String coord) {
-        if (coord == null) return null;
-        String s = coord;
-        int at = s.indexOf('@');
-        if (at >= 0) s = s.substring(0, at);
-        if (s.startsWith("file:")) s = s.substring("file:".length());
-        if (s.startsWith("github:")) {
-            int slash = s.lastIndexOf('/');
-            return slash >= 0 ? s.substring(slash + 1) : null;
-        }
-        if (s.endsWith(".git")) s = s.substring(0, s.length() - 4);
-        int slash = s.lastIndexOf('/');
-        String tail = slash >= 0 ? s.substring(slash + 1) : s;
-        return tail.isBlank() ? null : tail;
     }
 
     // -------------------------------------------------- pre-flight precondition checks

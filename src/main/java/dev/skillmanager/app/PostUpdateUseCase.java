@@ -49,14 +49,18 @@ public final class PostUpdateUseCase {
                                                boolean withMcp,
                                                boolean withAgents) throws IOException {
         List<Skill> live = store.listInstalled();
+        List<dev.skillmanager.model.AgentUnit> liveUnits = new ArrayList<>(live.size());
+        for (Skill s : live) liveUnits.add(s.asUnit());
         List<SkillEffect> effects = new ArrayList<>();
 
+        // ResolveTransitives is sync-only — it catches new references that
+        // post-merge content surfaces. Post-update runs over the existing
+        // installed set; everything is already in the store.
         if (withMcp) effects.add(new SkillEffect.SnapshotMcpDeps());
-        effects.add(new SkillEffect.ResolveTransitives(live));
-        effects.add(new SkillEffect.InstallTools(live));
-        effects.add(new SkillEffect.InstallCli(live));
-        if (withMcp) effects.add(new SkillEffect.RegisterMcp(live, gw));
-        if (withAgents) effects.add(new SkillEffect.SyncAgents(live, gw));
+        effects.add(new SkillEffect.InstallTools(liveUnits));
+        effects.add(new SkillEffect.InstallCli(liveUnits));
+        if (withMcp) effects.add(new SkillEffect.RegisterMcp(liveUnits, gw));
+        if (withAgents) effects.add(new SkillEffect.SyncAgents(liveUnits, gw));
         if (withMcp) effects.add(new SkillEffect.UnregisterMcpOrphans(gw));
 
         return new Program<>("post-update-" + UUID.randomUUID(), effects, PostUpdateUseCase::decode);
