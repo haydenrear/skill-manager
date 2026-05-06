@@ -81,6 +81,23 @@ public final class LiveInterpreter implements ProgramInterpreter {
     }
 
     /**
+     * Run one effect against {@code ctx}, with the same exception-to-receipt
+     * trapping the main loop applies. Used by {@link Executor} so it can
+     * interleave compensation tracking between effects without rebuilding
+     * the dispatch machinery.
+     */
+    public EffectReceipt runOne(SkillEffect effect, EffectContext ctx) {
+        EffectReceipt r;
+        try {
+            r = execute(effect, ctx);
+        } catch (Exception ex) {
+            r = EffectReceipt.failed(effect, ex.getMessage());
+        }
+        ctx.renderer().onReceipt(r);
+        return r;
+    }
+
+    /**
      * Drive a program's main effects + alwaysAfter cleanup against the
      * supplied context, returning the flat receipt list. Decoder
      * application is left to the caller so {@link #runStaged} can
