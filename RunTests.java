@@ -30,6 +30,7 @@ import dev.skillmanager.model.SkillUnitWrapsSkillTest;
 import dev.skillmanager.model.UnitReferenceFromTomlTest;
 import dev.skillmanager.plan.CycleDetectionTest;
 import dev.skillmanager.plan.MixedKindTopoOrderTest;
+import dev.skillmanager.command.UninstallScenarioTest;
 import dev.skillmanager.effects.CompensationLogicTest;
 import dev.skillmanager.effects.CompensationOrphanTest;
 import dev.skillmanager.effects.CompensationPairingTest;
@@ -88,6 +89,7 @@ public class RunTests {
         failures += CompensationLogicTest.run();
         failures += CompensationPairingTest.run();
         failures += CompensationOrphanTest.run();
+        failures += UninstallScenarioTest.run();
 
         System.out.println();
         if (failures == 0) {
