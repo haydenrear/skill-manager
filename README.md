@@ -57,6 +57,82 @@ image = "ghcr.io/acme/deepwiki-mcp:latest"
 args = ["--stdio"]
 ```
 
+## Plugins (alongside skills)
+
+Plugins are skills' bigger sibling — a unit that bundles one or more
+contained skills plus shared metadata. Use a plugin when you want to
+ship a coherent set of skills together; use a bare skill for the
+single-purpose case.
+
+```
+my-plugin/
+  .claude-plugin/plugin.json       # Claude's runtime manifest
+  skill-manager-plugin.toml        # tooling-side metadata (parallel to skill-manager.toml)
+  skills/
+    do-the-thing/
+      SKILL.md
+      skill-manager.toml
+    do-another-thing/
+      SKILL.md
+      skill-manager.toml
+```
+
+Plugin-level `skill-manager-plugin.toml` is parallel to a skill's
+`skill-manager.toml` — same `[[cli_dependencies]]` / `[[mcp_dependencies]]`
+/ `references` shape. The plugin's effective dep set is the **union**
+of plugin-level deps and every contained skill's deps; `skill-manager
+show <plugin>` renders the union with attribution back to where each
+entry was declared.
+
+The `[plugin]` table mirrors `[skill]`:
+
+```toml
+[plugin]
+name = "my-plugin"
+version = "0.1.0"
+description = "What the plugin does."
+```
+
+A reference example lives at [`examples/hello-plugin/`](examples/hello-plugin/).
+
+### Coordinates
+
+When referencing other units, prefix with the kind to disambiguate when
+both kinds exist with the same name:
+
+| Form | Resolves to |
+| --- | --- |
+| `skill:hello-skill` | bare skill named `hello-skill` (registry) |
+| `plugin:repo-intelligence` | plugin named `repo-intelligence` (registry) |
+| `hello-skill` | either kind — registry warns on ambiguity |
+| `github:user/repo` | git source (kind detected at clone time) |
+| `file:./path` | local source (kind detected at parse time) |
+
+### Lockfile (`units.lock.toml`)
+
+Every install / sync / upgrade flips `~/.skill-manager/units.lock.toml`
+atomically at commit. The lock records `(name, kind, version,
+install_source, origin, ref, resolved_sha)` for every installed unit
+so a vendored lock can reproduce the install set byte-for-byte.
+
+| Command | Purpose |
+| --- | --- |
+| `skill-manager lock status` | Show drift between the lock and the live install set. |
+| `skill-manager sync --lock <path>` | Reconcile disk toward the supplied lock; idempotent. |
+| `skill-manager sync --refresh` | Re-write the lock from the live install set (after out-of-band edits). |
+
+## Migration notes
+
+First run after upgrade does these in-place migrations automatically;
+no user action required:
+
+- `~/.skill-manager/sources/` → `~/.skill-manager/installed/` (one-time
+  rename of the per-unit metadata dir; legacy records pick up
+  `unit_kind = "skill"` by default).
+- `units.lock.toml` is born lazy — generated on first install /
+  upgrade after the upgrade. Run `skill-manager sync --refresh` to
+  bootstrap it from the existing install set explicitly.
+
 ## Services
 
 | Piece | Language | Purpose |
