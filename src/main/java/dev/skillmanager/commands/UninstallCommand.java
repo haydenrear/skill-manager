@@ -38,8 +38,10 @@ public final class UninstallCommand implements Callable<Integer> {
     public Integer call() throws Exception {
         SkillStore store = SkillStore.defaultStore();
         store.init();
-        if (!store.contains(name)) {
-            Log.warn("skill not found: %s", name);
+        // Kind-agnostic existence check — uninstall has to work for plugins
+        // too, and plugins live under plugins/<name>, not skills/<name>.
+        if (!store.containsUnit(name)) {
+            Log.warn("unit not found: %s", name);
             return 1;
         }
         GatewayConfig gw = GatewayConfig.resolve(store, null);
