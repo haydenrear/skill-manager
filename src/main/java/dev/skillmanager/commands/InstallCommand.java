@@ -144,6 +144,16 @@ public final class InstallCommand implements Callable<Integer> {
                     dev.skillmanager.policy.PolicyGate.formatViolationMessage(violations));
             return 5;
         }
+        // Non-interactive context (no controlling TTY — pipe / CI / test
+        // harness). A prompt would block on EOF; fail fast with the same
+        // remediation message --yes gets so automation gets a clear
+        // exit instead of a 60s timeout.
+        if (System.console() == null) {
+            Log.error("install needs interactive confirmation but no TTY is attached");
+            Log.error("%s",
+                    dev.skillmanager.policy.PolicyGate.formatViolationMessage(violations));
+            return 5;
+        }
         // Interactive confirmation. Print the categorization (so the user
         // sees what they're approving), then prompt once. A more granular
         // per-category prompt is overkill for v1 — single y/n covers the

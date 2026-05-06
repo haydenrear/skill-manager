@@ -61,7 +61,7 @@ public class SkillUninstalled {
                     template, destRoot, SKILL_NAME, SERVER_ID, "global-sticky", mcpUrl);
 
             // Install.
-            int installRc = run(List.of(sm.toString(), "install", "file:" + skillDir),
+            int installRc = run(List.of(sm.toString(), "install", "file:" + skillDir, "--yes"),
                     home, claudeHome, codexHome, repoRoot);
             if (installRc != 0) {
                 return NodeResult.fail("skill.uninstalled", "fixture install rc=" + installRc);

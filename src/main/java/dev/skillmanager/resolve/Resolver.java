@@ -67,24 +67,35 @@ public final class Resolver {
                 Fs.deleteRecursive(staging);
                 throw e;
             }
-            Skill skill = SkillParser.load(fetched.dir());
+            // Kind-aware parse: plugins land at the bundle root with a
+            // .claude-plugin/plugin.json manifest; bare skills have a
+            // SKILL.md at the root. Without the plugin probe we'd descend
+            // into skills/<contained>/SKILL.md and install the contained
+            // skill as a top-level unit (was: ticket-15 plugin-smoke
+            // failure — install hello-plugin produced INSTALLED hello-impl).
+            dev.skillmanager.model.AgentUnit unit;
+            if (dev.skillmanager.model.PluginParser.looksLikePlugin(fetched.dir())) {
+                unit = dev.skillmanager.model.PluginParser.load(fetched.dir());
+            } else {
+                unit = SkillParser.load(fetched.dir()).asUnit();
+            }
 
-            boolean reused = store.contains(skill.name());
+            boolean reused = store.contains(unit.name());
             graph.add(new ResolvedGraph.Resolved(
-                    skill.name(),
-                    skill.version(),
+                    unit.name(),
+                    unit.version(),
                     coord,
                     fetched.kind(),
                     staging,
                     fetched.bytesDownloaded(),
                     fetched.sha256(),
-                    skill.asUnit(),
+                    unit,
                     reused,
                     p.requestedBy == null ? List.of() : List.of(p.requestedBy)
             ));
 
             Path originDir = fetched.dir();
-            for (UnitReference ref : skill.skillReferences()) {
+            for (UnitReference ref : unit.references()) {
                 String childSource;
                 String childVersion;
                 if (ref.isLocal()) {
@@ -96,12 +107,12 @@ public final class Resolver {
                     childSource = ref.name();
                     childVersion = ref.version();
                 } else {
-                    Log.warn("skipping reference with no name or path in %s", skill.name());
+                    Log.warn("skipping reference with no name or path in %s", unit.name());
                     continue;
                 }
                 String childName = ref.name() != null ? ref.name() : guessName(childSource);
                 if (childName != null && graph.contains(childName)) continue;
-                queue.push(new Pending(childSource, childVersion, skill.name()));
+                queue.push(new Pending(childSource, childVersion, unit.name()));
             }
         }
         return graph;

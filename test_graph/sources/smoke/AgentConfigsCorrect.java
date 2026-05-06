@@ -56,7 +56,7 @@ public class AgentConfigsCorrect {
                     "jbang", "run",
                     "-Duser.home=" + fakeHome,
                     repoRoot.resolve("SkillManager.java").toString(),
-                    "install", "file:" + skillDir)
+                    "install", "file:" + skillDir, "--yes")
                     .redirectErrorStream(true);
             pb.environment().put("SKILL_MANAGER_HOME", fakeSm.toString());
             pb.environment().put("SKILL_MANAGER_INSTALL_DIR", repoRoot.toString());
@@ -93,7 +93,7 @@ public class AgentConfigsCorrect {
                     "jbang", "run",
                     "-Duser.home=" + fakeHome,
                     repoRoot.resolve("SkillManager.java").toString(),
-                    "install", "file:" + skillDir2)
+                    "install", "file:" + skillDir2, "--yes")
                     .redirectErrorStream(true);
             pb2.environment().put("SKILL_MANAGER_HOME", fakeSm.toString());
             pb2.environment().put("SKILL_MANAGER_INSTALL_DIR", repoRoot.toString());

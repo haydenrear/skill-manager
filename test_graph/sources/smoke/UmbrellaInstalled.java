@@ -38,7 +38,7 @@ public class UmbrellaInstalled {
             Path umbrella = repoRoot.resolve("test_graph/fixtures/umbrella-skill");
 
             ProcessBuilder pb = new ProcessBuilder(
-                    sm.toString(), "install", umbrella.toString());
+                    sm.toString(), "install", umbrella.toString(), "--yes");
             pb.environment().put("SKILL_MANAGER_HOME", home);
             pb.environment().put("SKILL_MANAGER_INSTALL_DIR", repoRoot.toString());
             pb.environment().put("CLAUDE_HOME", claudeHome);

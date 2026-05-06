@@ -84,12 +84,15 @@ public final class PolicyGatingTest {
                 assertEquals(0, v.size(), "nothing to gate");
             });
 
-            // Mixed: CLI + MCP, all flags on → both violations.
+            // Mixed: CLI + MCP, all flags explicitly on → both violations.
+            // Uses an explicit all-true InstallPolicy rather than defaults
+            // since defaults loosen cli + mcp; the test pins the gate-fires
+            // semantic, not the default calibration.
             suite.test(label + " — CLI + MCP with both flags on → two violations", () -> {
                 List<String> cat = categorize(kind, tmp.resolve(label + "-mixed"),
                         DepSpec.of().cli("pip:foo==1.0").mcp("srv-a").build());
                 List<PolicyGate.Category> v = PolicyGate.violations(cat,
-                        InstallPolicy.defaults());
+                        new InstallPolicy(true, true, true, true));
                 assertEquals(2, v.size(), "both surface");
                 assertTrue(v.contains(PolicyGate.Category.CLI_DEPS), "CLI present");
                 assertTrue(v.contains(PolicyGate.Category.MCP), "MCP present");
@@ -142,10 +145,29 @@ public final class PolicyGatingTest {
             assertEquals(d.requireConfirmationForCliDeps(), p.install().requireConfirmationForCliDeps(), "cli");
             assertEquals(d.requireConfirmationForExecutableCommands(),
                     p.install().requireConfirmationForExecutableCommands(), "exec");
-            // All defaults are conservative (every category requires confirmation).
-            assertTrue(d.requireConfirmationForHooks() && d.requireConfirmationForMcp()
-                    && d.requireConfirmationForCliDeps() && d.requireConfirmationForExecutableCommands(),
-                    "every default flag is true");
+            // Calibration: hooks + executable_commands gated by default
+            // (genuinely dangerous); cli_deps + mcp loose by default
+            // (routine). Tightening is an explicit user choice in policy.toml.
+            assertTrue(d.requireConfirmationForHooks(), "hooks gated by default");
+            assertTrue(d.requireConfirmationForExecutableCommands(),
+                    "executable commands gated by default");
+            assertFalse(d.requireConfirmationForMcp(),
+                    "mcp loose by default (routine)");
+            assertFalse(d.requireConfirmationForCliDeps(),
+                    "cli deps loose by default (routine)");
+        });
+
+        suite.test("default policy: hello-skill-shaped plan (CLI + MCP) → no violations", () -> {
+            // Sanity: a normal install with a pip CLI dep + a docker MCP
+            // dep — the canonical hello-skill shape — must not trigger
+            // any policy gate under defaults. Otherwise automation
+            // (test_graph, scripted setup) breaks.
+            Path defaultTmp = Files.createTempDirectory("policy-gating-default-");
+            DepSpec deps = DepSpec.of().cli("pip:cowsay==6.0").mcp("srv-a").build();
+            List<String> cat = categorize(UnitKind.SKILL, defaultTmp, deps);
+            List<PolicyGate.Category> v = PolicyGate.violations(cat, InstallPolicy.defaults());
+            assertEquals(0, v.size(),
+                    "default policy doesn't gate the hello-skill shape (cli + mcp)");
         });
 
         return suite.runAll();

@@ -52,6 +52,25 @@ public class EnvPrepared {
             Files.createDirectories(agentHome);
             Files.createDirectories(codexHome);
 
+            // Test environments are explicitly permissive: drop a
+            // policy.toml that turns off every install-confirmation gate
+            // so unattended `skill-manager install --yes` succeeds even
+            // for fixtures that declare hooks (echo-stdio uses a shell
+            // load, which trips ! HOOKS by default). The skill-manager
+            // CLI's writeDefaultIfMissing skips when this file exists,
+            // so what we write here wins for the rest of the run.
+            Files.writeString(home.resolve("policy.toml"), """
+                    # Test-graph permissive policy. Production defaults gate hooks
+                    # + executable commands; tests run unattended so we relax all
+                    # install gates here. Production users keep the strict defaults.
+                    require_confirmation = false
+                    [install]
+                    require_confirmation_for_hooks = false
+                    require_confirmation_for_mcp = false
+                    require_confirmation_for_cli_deps = false
+                    require_confirmation_for_executable_commands = false
+                    """);
+
             int registryPort = freePort();
             int gatewayPort = freePort();
 

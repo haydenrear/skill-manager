@@ -1,5 +1,7 @@
 package dev.skillmanager.commands;
 
+import dev.skillmanager.model.AgentUnit;
+import dev.skillmanager.model.PluginParser;
 import dev.skillmanager.model.Skill;
 import dev.skillmanager.model.SkillParser;
 import dev.skillmanager.registry.RegistryClient;
@@ -72,17 +74,25 @@ public final class PublishCommand implements Callable<Integer> {
         store.init();
 
         Path src = (skillDir == null ? Path.of(System.getProperty("user.dir")) : skillDir).toAbsolutePath();
-        if (!Files.isRegularFile(src.resolve(SkillParser.SKILL_FILENAME))) {
-            Log.error("not a skill directory (no %s): %s", SkillParser.SKILL_FILENAME, src);
+        // Kind-aware: plugins have .claude-plugin/plugin.json, skills have
+        // SKILL.md at the root. Either is publishable; the bundle inclusion
+        // list switches per kind inside SkillPackager.pack.
+        SkillPackager.Kind kind;
+        try {
+            kind = SkillPackager.detectKind(src);
+        } catch (IOException ex) {
+            Log.error("not a publishable unit dir (need %s or %s): %s",
+                    SkillParser.SKILL_FILENAME, PluginParser.PLUGIN_JSON_PATH, src);
             return 1;
         }
-
-        Skill skill = SkillParser.load(src);
-        return uploadTarball ? publishViaTarball(store, src, skill) : publishViaGithub(store, src, skill);
+        AgentUnit unit = (kind == SkillPackager.Kind.PLUGIN)
+                ? PluginParser.load(src)
+                : SkillParser.load(src).asUnit();
+        return uploadTarball ? publishViaTarball(store, src, unit) : publishViaGithub(store, src, unit);
     }
 
-    private int publishViaGithub(SkillStore store, Path src, Skill skill) throws IOException {
-        String version = skill.version();
+    private int publishViaGithub(SkillStore store, Path src, AgentUnit unit) throws IOException {
+        String version = unit.version();
         if (version == null || version.isBlank()) version = "0.0.1";
 
         String githubUrl = githubUrlOverride != null
@@ -101,7 +111,7 @@ public final class PublishCommand implements Callable<Integer> {
             return 1;
         }
 
-        Log.info("skill:        %s@%s", skill.name(), version);
+        Log.info("unit:         %s@%s (%s)", unit.name(), version, unit.kind().name().toLowerCase());
         Log.info("github_url:   %s", githubUrl);
         Log.info("git_ref:      %s", ref);
 
@@ -123,17 +133,17 @@ public final class PublishCommand implements Callable<Integer> {
         return 0;
     }
 
-    private int publishViaTarball(SkillStore store, Path src, Skill skill) throws IOException {
-        String effectiveVersion = versionOverride != null ? versionOverride : skill.version();
+    private int publishViaTarball(SkillStore store, Path src, AgentUnit unit) throws IOException {
+        String effectiveVersion = versionOverride != null ? versionOverride : unit.version();
         if (effectiveVersion == null || effectiveVersion.isBlank()) {
-            Log.error("skill has no version (set [skill].version in skill-manager.toml or pass --version)");
+            Log.error("unit has no version (set [skill].version / [plugin].version or pass --version)");
             return 1;
         }
 
         Path outDir = store.cacheDir().resolve("publish");
         Fs.ensureDir(outDir);
         Path tar = SkillPackager.pack(src, outDir);
-        Log.ok("packaged %s (%d bytes) → %s", skill.name(), Files.size(tar), tar);
+        Log.ok("packaged %s (%d bytes) → %s", unit.name(), Files.size(tar), tar);
 
         if (dryRun) {
             Log.info("--dry-run: not uploading");
@@ -147,7 +157,7 @@ public final class PublishCommand implements Callable<Integer> {
             return 2;
         }
 
-        var result = client.publish(skill.name(), effectiveVersion, tar);
+        var result = client.publish(unit.name(), effectiveVersion, tar);
         Log.ok("published %s@%s (sha256=%s, %d bytes)", result.name(), result.version(), result.sha256(), result.sizeBytes());
         Log.info("download: %s%s", cfg.baseUrl(), result.downloadUrl());
         return 0;

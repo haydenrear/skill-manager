@@ -39,7 +39,8 @@ public class HelloInstalled {
 
             ProcessBuilder pb = new ProcessBuilder(
                     sm.toString(), "install", "hello-skill",
-                    "--registry", registryUrl);
+                    "--registry", registryUrl,
+                    "--yes");
             pb.environment().put("SKILL_MANAGER_HOME", home);
             pb.environment().put("SKILL_MANAGER_INSTALL_DIR", repoRoot.toString());
             pb.environment().put("CLAUDE_HOME", claudeHome);
