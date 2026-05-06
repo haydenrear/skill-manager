@@ -159,9 +159,12 @@ public record Policy(
                 # (e.g. `! HOOKS`), `--yes` cannot bypass — the user has to flip the
                 # specific flag to false to install unattended.
                 #
-                # Defaults are conservative: every category needs confirmation. Loosen
-                # individual flags as you learn which categories are routine for your
-                # workflow.
+                # Default calibration: only genuinely dangerous categories are gated by
+                # default. Hooks (arbitrary shell at install time) and executable commands
+                # (plugin commands/ binaries) stay on; CLI deps (pip / npm / brew) and
+                # MCP registrations are routine enough that gating them by default would
+                # break automation without meaningful safety gain. Tighten by setting
+                # individual flags to true.
                 [install]
                 require_confirmation_for_hooks = %b
                 require_confirmation_for_mcp = %b

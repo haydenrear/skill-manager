@@ -54,7 +54,7 @@ public class McpToolLoadsInstalled {
             }
 
             ProcessBuilder pb = new ProcessBuilder(
-                    sm.toString(), "install", fixture.toString());
+                    sm.toString(), "install", fixture.toString(), "--yes");
             pb.environment().put("SKILL_MANAGER_HOME", home);
             pb.environment().put("SKILL_MANAGER_INSTALL_DIR", repoRoot.toString());
             pb.environment().put("CLAUDE_HOME", claudeHome);

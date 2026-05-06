@@ -124,14 +124,37 @@ public final class Fetcher {
     }
 
     private static Path locateSkillRoot(Path dir) throws IOException {
+        // Plugin first — a plugin's bundle has .claude-plugin/plugin.json at
+        // the unit root plus a skills/<contained>/SKILL.md inside. Without
+        // the plugin probe we'd descend into the contained skill and
+        // install it as a top-level skill, dropping the plugin manifest
+        // entirely. Same fix as Resolver.resolveAll's unit-aware parse.
+        if (dev.skillmanager.model.PluginParser.looksLikePlugin(dir)) return dir;
         if (Files.isRegularFile(dir.resolve(SkillParser.SKILL_FILENAME))) return dir;
+        // Walk to depth 3 looking for a SKILL.md or a plugin manifest. If
+        // a bundle has both at different depths (e.g. a one-extra-wrapper
+        // case), prefer the plugin layout.
         try (var s = Files.walk(dir, 3)) {
-            return s.filter(p -> p.getFileName() != null
-                            && p.getFileName().toString().equals(SkillParser.SKILL_FILENAME)
-                            && Files.isRegularFile(p))
-                    .map(Path::getParent)
-                    .findFirst()
-                    .orElse(dir);
+            var matches = s.filter(p -> {
+                String n = p.getFileName() == null ? "" : p.getFileName().toString();
+                return (n.equals(SkillParser.SKILL_FILENAME) && Files.isRegularFile(p))
+                        || (n.equals("plugin.json") && Files.isRegularFile(p)
+                                && p.getParent() != null
+                                && ".claude-plugin".equals(p.getParent().getFileName().toString()));
+            }).toList();
+            // Plugin match wins (parent of plugin.json's parent dir).
+            for (Path m : matches) {
+                if ("plugin.json".equals(m.getFileName().toString())) {
+                    Path pluginRoot = m.getParent().getParent();
+                    return pluginRoot != null ? pluginRoot : dir;
+                }
+            }
+            for (Path m : matches) {
+                if (SkillParser.SKILL_FILENAME.equals(m.getFileName().toString())) {
+                    return m.getParent();
+                }
+            }
+            return dir;
         }
     }
 

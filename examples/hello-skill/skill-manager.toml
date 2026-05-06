@@ -48,14 +48,15 @@ binary = "ripgrep-14.1.1-x86_64-unknown-linux-musl/rg"
 #                    auto-redeployed when the gateway restarts (default)
 
 [[mcp_dependencies]]
-name = "deepwiki"
-display_name = "DeepWiki"
-description = "Ask questions against GitHub repositories."
+name = "sequential-thinking"
+display_name = "Sequential Thinking"
+description = "Structured step-by-step reasoning tool — public Anthropic MCP reference server."
 default_scope = "global-sticky"
-load = { type = "docker", image = "ghcr.io/cognition-ai/deepwiki-mcp:latest", args = ["--stdio"] }
-init_schema = [
-    { name = "api_key", type = "string", required = false, secret = true, description = "Optional Cognition API key." },
-]
+# Public stdio MCP server, anonymous-pull-friendly on Docker Hub.
+# (Previously referenced ghcr.io/cognition-ai/deepwiki-mcp:latest, which
+# isn't a published image — anonymous pulls 403'd and install rolled
+# the MCP registration to MCP_REGISTRATION_FAILED.)
+load = { type = "docker", image = "mcp/sequentialthinking:latest" }
 
 # skill-wide metadata (kept last because [skill] steals any trailing keys)
 [skill]

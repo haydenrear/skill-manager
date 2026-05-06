@@ -48,7 +48,8 @@ public class HyperInstalled {
 
             ProcessBuilder pb = new ProcessBuilder(
                     sm.toString(), "install", "hyper-experiments",
-                    "--registry", registryUrl);
+                    "--registry", registryUrl,
+                    "--yes");
             pb.directory(freshCwd.toFile());
             pb.environment().put("SKILL_MANAGER_HOME", home);
             pb.environment().put("SKILL_MANAGER_INSTALL_DIR", repoRoot.toString());

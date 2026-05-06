@@ -50,7 +50,7 @@ public class GlsFixtureInstalled {
             Path sm = repoRoot.resolve("skill-manager");
 
             ProcessBuilder pb = new ProcessBuilder(
-                    sm.toString(), "install", "file:" + fixtureDir)
+                    sm.toString(), "install", "file:" + fixtureDir, "--yes")
                     .redirectErrorStream(true);
             pb.environment().put("SKILL_MANAGER_HOME", home);
             pb.environment().put("SKILL_MANAGER_INSTALL_DIR", repoRoot.toString());

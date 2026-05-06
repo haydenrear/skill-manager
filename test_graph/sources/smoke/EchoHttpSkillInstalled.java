@@ -49,7 +49,7 @@ public class EchoHttpSkillInstalled {
                     template, destRoot, SKILL_NAME, SERVER_ID, "global-sticky", mcpUrl);
 
             ProcessBuilder pb = new ProcessBuilder(
-                    sm.toString(), "install", "file:" + skillDir)
+                    sm.toString(), "install", "file:" + skillDir, "--yes")
                     .redirectErrorStream(true);
             pb.environment().put("SKILL_MANAGER_HOME", home);
             pb.environment().put("SKILL_MANAGER_INSTALL_DIR", repoRoot.toString());
