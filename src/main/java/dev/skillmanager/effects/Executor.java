@@ -78,8 +78,65 @@ public final class Executor {
         }
     }
 
+    /**
+     * Run a {@link StagedProgram}: stage 1 first, then stage 2 built from
+     * the post-stage-1 ctx. Both stages contribute to a single journal so
+     * a stage-2 failure walks back stage-1 mutations too. Stage 2 doesn't
+     * run if stage 1 failed.
+     */
+    public <R> Outcome<R> runStaged(StagedProgram<R> staged) {
+        ConsoleProgramRenderer renderer = new ConsoleProgramRenderer(store, gateway);
+        EffectContext ctx = new EffectContext(store, gateway, renderer);
+        try {
+            RollbackJournal journal = new RollbackJournal();
+            List<EffectReceipt> all = new ArrayList<>();
+
+            StageOutcome s1 = runStage(staged.stage1(), ctx, journal);
+            all.addAll(s1.receipts);
+
+            boolean failed = s1.failed;
+            if (!failed) {
+                Program<?> stage2 = staged.stage2().apply(ctx);
+                StageOutcome s2 = runStage(stage2, ctx, journal);
+                all.addAll(s2.receipts);
+                failed = s2.failed;
+            }
+
+            List<Compensation> applied = List.of();
+            if (failed) {
+                applied = walkBack(journal, ctx);
+            } else {
+                journal.clear();
+            }
+            R result = staged.decoder().decode(all);
+            return new Outcome<>(result, failed, applied);
+        } finally {
+            renderer.onComplete();
+        }
+    }
+
     public <R> Outcome<R> runWithContext(Program<R> program, EffectContext ctx) {
         RollbackJournal journal = new RollbackJournal();
+        StageOutcome s = runStage(program, ctx, journal);
+        List<Compensation> applied = List.of();
+        if (s.failed) {
+            applied = walkBack(journal, ctx);
+        } else {
+            journal.clear();
+        }
+        R result = program.decoder().decode(s.receipts);
+        return new Outcome<>(result, s.failed, applied);
+    }
+
+    /**
+     * Drive one program's main effects + alwaysAfter cleanup, recording
+     * compensations as effects succeed. Stops the main loop on the first
+     * FAILED receipt. Does not walk the journal — the caller decides
+     * whether a stage 2 should still run, and only walks back at the end.
+     */
+    private record StageOutcome(List<EffectReceipt> receipts, boolean failed) {}
+
+    private StageOutcome runStage(Program<?> program, EffectContext ctx, RollbackJournal journal) {
         List<EffectReceipt> receipts = new ArrayList<>();
         boolean halted = false;
         boolean failed = false;
@@ -110,22 +167,12 @@ public final class Executor {
             journal.recordAll(preState);
             journal.recordAll(compensationsFor(effect, r));
         }
-
         // alwaysAfter always runs (cleanup); never compensated.
         for (SkillEffect effect : program.alwaysAfter()) {
             EffectReceipt r = interpreter.runOne(effect, ctx);
             receipts.add(r);
         }
-
-        List<Compensation> applied = List.of();
-        if (failed) {
-            applied = walkBack(journal, ctx);
-        } else {
-            journal.clear();
-        }
-
-        R result = program.decoder().decode(receipts);
-        return new Outcome<>(result, failed, applied);
+        return new StageOutcome(receipts, failed);
     }
 
     // ============================================================ derivation
@@ -246,7 +293,8 @@ public final class Executor {
         return applied;
     }
 
-    private void applyCompensation(Compensation c, EffectContext ctx) throws IOException {
+    /** Package-private for {@code CompensationOrphanTest}. */
+    void applyCompensation(Compensation c, EffectContext ctx) throws IOException {
         switch (c) {
             case Compensation.DeleteUnitDir d -> {
                 Path dir = ctx.store().unitDir(d.unitName(), d.kind());
@@ -302,7 +350,8 @@ public final class Executor {
         }
     }
 
-    private boolean isClaimedByOtherUnit(String rolledBackUnit, String depName) {
+    /** Package-private for {@code CompensationOrphanTest}. */
+    boolean isClaimedByOtherUnit(String rolledBackUnit, String depName) {
         try {
             for (Skill s : store.listInstalled()) {
                 if (s.name().equals(rolledBackUnit)) continue;
@@ -314,7 +363,8 @@ public final class Executor {
         return false;
     }
 
-    private boolean isMcpClaimedByOtherUnit(String rolledBackUnit, String serverName) {
+    /** Package-private for {@code CompensationOrphanTest}. */
+    boolean isMcpClaimedByOtherUnit(String rolledBackUnit, String serverName) {
         try {
             for (Skill s : store.listInstalled()) {
                 if (s.name().equals(rolledBackUnit)) continue;

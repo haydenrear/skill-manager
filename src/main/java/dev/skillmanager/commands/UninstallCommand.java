@@ -2,9 +2,8 @@ package dev.skillmanager.commands;
 
 import dev.skillmanager.app.RemoveUseCase;
 import dev.skillmanager.effects.DryRunInterpreter;
-import dev.skillmanager.effects.LiveInterpreter;
+import dev.skillmanager.effects.Executor;
 import dev.skillmanager.effects.Program;
-import dev.skillmanager.effects.ProgramInterpreter;
 import dev.skillmanager.mcp.GatewayConfig;
 import dev.skillmanager.store.SkillStore;
 import dev.skillmanager.util.Log;
@@ -46,8 +45,23 @@ public final class UninstallCommand implements Callable<Integer> {
         GatewayConfig gw = GatewayConfig.resolve(store, null);
         Program<RemoveUseCase.Report> program = RemoveUseCase.buildProgram(
                 store, gw, name, /*agentsToUnlink=*/null, /*unregisterMcp=*/!keepMcp);
-        ProgramInterpreter interpreter = dryRun ? new DryRunInterpreter() : new LiveInterpreter(store, gw);
-        RemoveUseCase.Report report = interpreter.run(program);
+        RemoveUseCase.Report report;
+        if (dryRun) {
+            report = new DryRunInterpreter().run(program);
+        } else {
+            // Uninstall runs through Executor: a mid-program failure (e.g.
+            // gateway unreachable when unregistering orphan MCP servers
+            // after the store dir was already deleted) walks the journal
+            // back. Without rollback the user would be left with the unit
+            // gone but the gateway still claiming its MCP server.
+            Executor.Outcome<RemoveUseCase.Report> outcome =
+                    new Executor(store, gw).run(program);
+            report = outcome.result();
+            if (outcome.rolledBack()) {
+                Log.warn("uninstall rolled back %d effect(s) — store + agent + gateway state restored",
+                        outcome.applied().size());
+            }
+        }
         return report.errorCount() == 0 ? 0 : 4;
     }
 }
