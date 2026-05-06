@@ -193,6 +193,11 @@ public final class LiveInterpreter implements ProgramInterpreter {
     private EffectReceipt commitSkills(SkillEffect.CommitSkillsToStore e, EffectContext ctx) {
         var graph = e.graph();
         List<ContextFact> facts = new ArrayList<>();
+        // Track every dst we may have touched (deleted-old + about-to-copy)
+        // so a mid-copy failure rolls back the partially-written destination
+        // too — committed.add was previously gated on copy success, leaving
+        // a half-written dir behind on failure.
+        List<String> touched = new ArrayList<>();
         List<String> committed = new ArrayList<>();
         try {
             for (var r : graph.resolved()) {
@@ -201,13 +206,14 @@ public final class LiveInterpreter implements ProgramInterpreter {
                     dev.skillmanager.shared.util.Fs.deleteRecursive(dst);
                 }
                 dev.skillmanager.shared.util.Fs.ensureDir(dst.getParent());
+                touched.add(r.name());
                 Path skillRoot = r.skill().sourcePath();
                 dev.skillmanager.shared.util.Fs.copyRecursive(skillRoot, dst);
                 committed.add(r.name());
                 facts.add(new ContextFact.SkillCommitted(r.name()));
             }
         } catch (Exception ex) {
-            for (String name : committed) {
+            for (String name : touched) {
                 try {
                     dev.skillmanager.shared.util.Fs.deleteRecursive(ctx.store().skillDir(name));
                     facts.add(new ContextFact.CommitRolledBack(name));
@@ -416,21 +422,27 @@ public final class LiveInterpreter implements ProgramInterpreter {
             List<String> orphans = dev.skillmanager.app.PostUpdateUseCase.computeOrphans(
                     preMcpDeps, ctx.store().listInstalled());
             if (orphans.isEmpty()) return EffectReceipt.ok(e);
-            List<SkillEffect> sub = new ArrayList<>();
-            for (String id : orphans) sub.add(new SkillEffect.UnregisterMcpOrphan(id, e.gateway()));
-            Program<List<ContextFact>> subProgram = new Program<>(
-                    "orphans-" + java.util.UUID.randomUUID(),
-                    sub,
-                    receipts -> {
-                        List<ContextFact> all = new ArrayList<>();
-                        for (EffectReceipt r : receipts) all.addAll(r.facts());
-                        return all;
-                    });
-            EffectContext.Snapshot snap = ctx.snapshot();
-            List<ContextFact> all;
-            try { all = runWithContext(subProgram, ctx); }
-            finally { ctx.restore(snap); }
-            return EffectReceipt.ok(e, all);
+            // Inline the per-orphan calls so facts land on this single
+            // receipt — running them through a sub-program would let the
+            // shared renderer print each OrphanUnregistered line, then
+            // print them again when this wrapper receipt renders.
+            GatewayClient client = new GatewayClient(e.gateway());
+            if (!client.ping()) return EffectReceipt.skipped(e, "gateway unreachable");
+            List<ContextFact> facts = new ArrayList<>();
+            int failed = 0;
+            for (String id : orphans) {
+                try {
+                    if (client.unregister(id)) {
+                        facts.add(new ContextFact.OrphanUnregistered(id));
+                    }
+                } catch (Exception ex) {
+                    failed++;
+                    Log.warn("orphan %s: %s", id, ex.getMessage());
+                }
+            }
+            return failed == 0
+                    ? EffectReceipt.ok(e, facts)
+                    : EffectReceipt.partial(e, facts, failed + " orphan(s) failed to unregister");
         } catch (Exception ex) {
             return EffectReceipt.failed(e, ex.getMessage());
         }
@@ -703,8 +715,8 @@ public final class LiveInterpreter implements ProgramInterpreter {
         for (ToolDependency tool : e.tools()) {
             if (tool instanceof ToolDependency.Bundled) {
                 try {
-                    String installed = rt.ensureBundled(tool.id());
-                    boolean wasMissing = installed != null;
+                    boolean wasMissing = rt.bundledPath(tool.id()) == null;
+                    rt.ensureBundled(tool.id());
                     facts.add(new ContextFact.PackageManagerReady(tool.id(),
                             tool.pm().defaultVersion, wasMissing));
                 } catch (Exception ex) {
@@ -751,20 +763,29 @@ public final class LiveInterpreter implements ProgramInterpreter {
     }
 
     private EffectReceipt runCliInstall(SkillEffect.RunCliInstall e, EffectContext ctx) {
+        // Single-dep, single-unit case — call the installer directly so the
+        // failure surfaces. Going through CliInstallRecorder.run swallows
+        // per-action exceptions (resilience for the bulk path) and the
+        // handler would always report ok regardless of whether the install
+        // actually succeeded.
         try {
-            // Build a CLI-only plan around the dep and unit name supplied by
-            // the effect — synthesized so plugin-kind units (whose dirs live
-            // under plugins/, not skills/) work without a kind-specific
-            // disk lookup. The leaf claim is "the work is the same regardless
-            // of the unit's kind"; using e.unitName() / e.dep() directly
-            // makes that concrete.
-            Policy policy = Policy.load(store);
-            CliLock lock = CliLock.load(store);
-            PackageManagerRuntime pmRuntime = new PackageManagerRuntime(store);
-            AgentUnit unit = singleCliUnit(e.unitName(), e.dep());
-            InstallPlan plan = new PlanBuilder(policy, lock, pmRuntime)
-                    .plan(List.of(unit), true, false, store.cliBinDir());
-            CliInstallRecorder.run(plan, store);
+            dev.skillmanager.cli.installer.InstallerRegistry registry =
+                    new dev.skillmanager.cli.installer.InstallerRegistry();
+            registry.installOne(e.dep(), store, e.unitName());
+            try {
+                CliLock lock = CliLock.load(store);
+                var req = dev.skillmanager.lock.RequestedVersion.of(e.dep());
+                String sha = null;
+                for (var t : e.dep().install().values()) {
+                    if (t.sha256() != null) { sha = t.sha256(); break; }
+                }
+                lock.recordInstall(e.dep().backend(), req.tool(), req.version(),
+                        e.dep().spec(), sha, e.unitName());
+                lock.save(store);
+            } catch (Exception lockErr) {
+                Log.warn("cli: %s installed but lock-record failed: %s",
+                        e.dep().name(), lockErr.getMessage());
+            }
             return EffectReceipt.ok(e,
                     new ContextFact.CliInstalled(e.unitName(), e.dep().name(), e.dep().backend()));
         } catch (Exception ex) {
@@ -772,12 +793,6 @@ public final class LiveInterpreter implements ProgramInterpreter {
                     List.of(new ContextFact.CliInstallFailed(e.unitName(), e.dep().name(), ex.getMessage())),
                     ex.getMessage());
         }
-    }
-
-    private static AgentUnit singleCliUnit(String unitName, dev.skillmanager.model.CliDependency dep) {
-        return new Skill(unitName, unitName, null,
-                List.of(dep), List.of(), List.of(),
-                java.util.Map.of(), "", null).asUnit();
     }
 
     private static Skill singleMcpSkill(String unitName, McpDependency dep) {

@@ -9,6 +9,7 @@ import dev.skillmanager.lock.CliLock;
 import dev.skillmanager.mcp.GatewayConfig;
 import dev.skillmanager.mcp.McpWriter;
 import dev.skillmanager.model.Skill;
+import dev.skillmanager.model.SkillUnit;
 import dev.skillmanager.plan.InstallPlan;
 import dev.skillmanager.plan.PlanBuilder;
 import dev.skillmanager.pm.PackageManagerRuntime;
@@ -95,7 +96,15 @@ public final class InstallUseCase {
             effects.add(new SkillEffect.PrintInstalledSummary(graph));
         }
 
-        List<Skill> skills = graph.skills();
+        // Filter to skill-kind units — the bulk tail effects
+        // (ResolveTransitives, SyncAgents) still take List<Skill>; plugin
+        // units get their CLI/MCP wiring through the per-action effects
+        // emitted by RunInstallPlan and don't go through SyncAgents.
+        // Calling graph.skills() unfiltered would UOE on plugin installs.
+        List<Skill> skills = new ArrayList<>();
+        for (var r : graph.resolved()) {
+            if (r.unit() instanceof SkillUnit su) skills.add(su.skill());
+        }
         // RunInstallPlan FIRST so the parent's plan (already in ctx from
         // BuildInstallPlan above) executes before ResolveTransitives spins
         // up sub-programs that would otherwise overwrite ctx.plan.
