@@ -81,6 +81,37 @@ Call all of these on the `virtual-mcp-gateway` MCP server.
 1. `describe_tool(tool_path="server/tool")` once per session for the disclosure gate.
 2. `invoke_tool(tool_path="server/tool", arguments={…})`.
 
+## Plugins and skills
+
+skill-manager installs two kinds of unit:
+
+- **Skills** — single `SKILL.md` + `skill-manager.toml`, one capability per skill. The traditional shape.
+- **Plugins** — a bundle that contains one or more skills plus shared metadata. Layout: `.claude-plugin/plugin.json` + `skill-manager-plugin.toml` + `skills/<contained>/`. Use plugins when you want to ship a coherent capability set together.
+
+When the user describes a capability you'd like to install, default to looking for a **skill** unless they explicitly ask for a plugin or the registry's matching unit is plugin-shaped. `skill-manager search` returns the kind in the `KIND` column; `skill-manager show <name>` prints a plugin-shaped detail view (header line + contained skills + unioned deps with attribution) when the unit is a plugin.
+
+When referencing other units in a `skill-manager.toml` or `skill-manager-plugin.toml`, prefix with the kind to disambiguate:
+
+- `skill:hello-skill` — bare skill named `hello-skill`
+- `plugin:repo-intelligence` — plugin named `repo-intelligence`
+- `hello-skill` (no prefix) — either kind; registry warns on ambiguity
+- `github:user/repo` / `file:./path` — kind detected from the source
+
+Contained skills inside a plugin are **not separately addressable** from the registry. `skill-manager install <contained-skill-name>` fails after the parent plugin is installed; install the parent plugin instead.
+
+## Lockfile (`units.lock.toml`)
+
+Every install / sync / upgrade / uninstall flips `~/.skill-manager/units.lock.toml` atomically at commit. The lock records `(name, kind, version, install_source, origin, ref, resolved_sha)` for every installed unit so a vendored lock can reproduce the install set byte-for-byte.
+
+| Step | Command | When to use |
+| --- | --- | --- |
+| Show drift | `skill-manager lock status` | Diagnose why install state disagrees with the lock. |
+| Reconcile to a vendored lock | `skill-manager sync --lock <path>` | Reproduce a known-good install set; idempotent. |
+| Re-write lock from live state | `skill-manager sync --refresh` | After out-of-band edits to `~/.skill-manager/skills/` or `plugins/`. |
+| Advance lock to latest | `skill-manager upgrade <name>` / `--all` | Upgrade and bump the lock atomically. |
+
+Suggest `sync --lock <path>` when the user wants to reproduce a vendored install set. Suggest `upgrade` when they want to advance to the registry's latest. Suggest `lock status` whenever drift is suspected (e.g. install commands behave unexpectedly after a manual edit).
+
 ## The CLI at a glance
 
 All subcommands are run as `skill-manager <command>`. Most modifying commands take `--dry-run` (show the plan) and `--yes` (skip interactive confirmation). Policy-gated actions will refuse to proceed without a plan review.
@@ -89,18 +120,23 @@ All subcommands are run as `skill-manager <command>`. Most modifying commands ta
 
 | Step | Command |
 | --- | --- |
-| Search by keyword | `skill-manager search "<query>"` |
+| Search by keyword (returns kind in the `KIND` column) | `skill-manager search "<query>"` |
 | Describe a hit | `skill-manager registry describe <name>` |
 | Install by name | `skill-manager install <name>[@<version>]` |
 | Install from local path | `skill-manager install ./path/to/skill` |
 | Install from a git repo | `skill-manager install github:user/repo` |
-| List installed | `skill-manager list` |
-| Show an installed skill | `skill-manager show <name>` |
+| List installed (shows kind + sha + source columns) | `skill-manager list` |
+| Show an installed unit (skill or plugin) | `skill-manager show <name>` |
 | Show transitive deps | `skill-manager deps <name>` |
+| Show drift between lock and live state | `skill-manager lock status` |
+| Reconcile to a vendored lock | `skill-manager sync --lock <path>` |
+| Re-write lock from live install set | `skill-manager sync --refresh` |
 | Re-run install side effects (MCP deploy, agent symlinks) without re-fetching | `skill-manager sync [<name>]` |
 | Upgrade to the latest registry version (rolls back on failure) | `skill-manager upgrade <name>` / `--all` / `--self` |
-| Uninstall (clears store + agent symlinks + orphan MCP servers) | `skill-manager uninstall <name>` |
+| Uninstall (clears store + agent projections + orphan MCP servers; plugin uninstall re-walks contained skills) | `skill-manager uninstall <name>` |
 | Lower-level remove (store entry only; doesn't unlink agents by default) | `skill-manager remove <name> [--from claude,codex]` |
+| Scaffold a new skill | `skill-manager create <name>` |
+| Scaffold a new plugin | `skill-manager create <name> --kind plugin` |
 
 `add` always builds a plan first — fetches the skill + every transitive reference into staging, then prints what will happen (fetches, CLI installs, MCP registrations). Nothing is committed to the store until consent is given.
 
@@ -114,14 +150,19 @@ INSTALLED: hello-skill@0.1.0 -> /Users/you/.skill-manager/skills/hello-skill
 
 Read those lines to find the `SKILL.md` you just acquired — no agent restart needed. The directory contains the skill's `SKILL.md`, any referenced assets, and the `skill-manager.toml` manifest.
 
-`install` also drops a symlink into every known agent's skills directory, pointing back at the store path:
+`install` also projects the unit into every known agent's tree, pointing back at the store path:
 
 ```
+# Skills:
 ~/.claude/skills/<name> -> ~/.skill-manager/skills/<name>
 ~/.codex/skills/<name>  -> ~/.skill-manager/skills/<name>
+
+# Plugins:
+~/.claude/plugins/<name> -> ~/.skill-manager/plugins/<name>
+# (Codex doesn't consume plugins yet — no projection on the Codex side.)
 ```
 
-Without those symlinks the agent runtime can't see the skill, so this happens unconditionally on every `install`. Use `env.sh --for claude` (or `--for codex`) to ask for the agent-visible path; default output reports the original store path.
+Without those projections the agent runtime can't see the unit, so this happens unconditionally on every `install`. Use `env.sh --for claude` (or `--for codex`) to ask for the agent-visible path; default output reports the original store path.
 
 ### Locating CLIs by absolute path (avoiding PATH conflicts)
 
