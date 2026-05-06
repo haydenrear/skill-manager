@@ -2,6 +2,7 @@ package dev.skillmanager.server.publish;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import dev.skillmanager.shared.util.BundleMetadata;
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
 import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream;
@@ -15,7 +16,6 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -37,7 +37,9 @@ public final class GitHubFetcher {
             String version,
             String description,
             List<String> skillReferences,
-            String gitSha
+            String gitSha,
+            /** {@code "skill"} or {@code "plugin"} — detected from the github tarball layout. */
+            String unitKind
     ) {}
 
     /** Recoverable failure: the repo / ref / toml is missing or malformed. Server should 422 the caller. */
@@ -79,13 +81,16 @@ public final class GitHubFetcher {
         String resolvedRef = (ref == null || ref.isBlank()) ? "HEAD" : ref;
 
         String gitSha = resolveSha(owner, repo, resolvedRef);
-        byte[] toml = null;
-        byte[] skillMd = null;
+        byte[] skillToml = null;       // standalone skill: skill-manager.toml at root
+        byte[] pluginToml = null;      // plugin: skill-manager-plugin.toml at root
+        byte[] pluginJson = null;      // plugin: .claude-plugin/plugin.json
+        byte[] skillMd = null;         // either layout: SKILL.md (root for skill, contained for plugin)
 
         // GitHub's tarball endpoint redirects to a codeload URL with a
-        // top-level prefix dir like "<owner>-<repo>-<sha>/". We only care
-        // about the suffix paths "<prefix>/skill-manager.toml" and
-        // "<prefix>/SKILL.md" (and any nested copies — first match wins).
+        // top-level prefix dir like "<owner>-<repo>-<sha>/". We accept both
+        // skill-only repos (root-level SKILL.md + skill-manager.toml) and
+        // plugin repos (root-level .claude-plugin/plugin.json plus optional
+        // skill-manager-plugin.toml plus contained skills/<name>/SKILL.md).
         URI tarballUri = URI.create(
                 "https://api.github.com/repos/" + owner + "/" + repo + "/tarball/" + gitSha);
         HttpRequest req = withGitHubAuth(HttpRequest.newBuilder(tarballUri))
@@ -115,26 +120,77 @@ public final class GitHubFetcher {
             while ((e = tar.getNextEntry()) != null) {
                 if (!tar.canReadEntryData(e) || e.isDirectory()) continue;
                 String name = e.getName();
-                if (toml == null && name.endsWith("/skill-manager.toml")) toml = readEntry(tar);
-                else if (skillMd == null && name.endsWith("/SKILL.md")) skillMd = readEntry(tar);
-                if (toml != null && skillMd != null) break;
+                if (pluginJson == null && name.endsWith("/.claude-plugin/plugin.json")) {
+                    pluginJson = readEntry(tar);
+                } else if (pluginToml == null && name.endsWith("/skill-manager-plugin.toml")) {
+                    pluginToml = readEntry(tar);
+                } else if (skillToml == null && name.endsWith("/skill-manager.toml")) {
+                    skillToml = readEntry(tar);
+                } else if (skillMd == null && name.endsWith("/SKILL.md")) {
+                    skillMd = readEntry(tar);
+                }
             }
         }
-        if (toml == null) {
-            throw new FetchException(
-                    "skill-manager.toml not found in " + owner + "/" + repo + "@" + resolvedRef);
+
+        boolean isPlugin = pluginJson != null;
+        String unitKind = isPlugin ? BundleMetadata.UNIT_KIND_PLUGIN : BundleMetadata.UNIT_KIND_SKILL;
+
+        String name;
+        String version;
+        String description;
+        List<String> refs;
+
+        if (isPlugin) {
+            // Identity precedence (matches the CLI's PluginParser): plugin.toml >
+            // plugin.json. Description likewise — falls back to plugin.json's
+            // description, then to the first contained SKILL.md frontmatter.
+            JsonNode pj = parseJson(pluginJson);
+            String pluginTomlText = pluginToml == null ? null : new String(pluginToml, StandardCharsets.UTF_8);
+            name = firstNonBlank(
+                    BundleMetadata.parseTomlString(pluginTomlText, "plugin", "name"),
+                    pj.path("name").asText(null));
+            version = firstNonBlank(
+                    BundleMetadata.parseTomlString(pluginTomlText, "plugin", "version"),
+                    pj.path("version").asText(null));
+            description = firstNonBlank(
+                    BundleMetadata.parseTomlString(pluginTomlText, "plugin", "description"),
+                    pj.path("description").asText(null),
+                    skillMd == null ? "" : BundleMetadata.parseSkillDescription(new String(skillMd, StandardCharsets.UTF_8)));
+            // Plugin references live under [plugin] in the plugin toml.
+            refs = pluginTomlText == null ? List.of() : BundleMetadata.parseSkillReferences(pluginTomlText);
+        } else {
+            if (skillToml == null) {
+                throw new FetchException(
+                        "neither skill-manager.toml nor .claude-plugin/plugin.json found in "
+                                + owner + "/" + repo + "@" + resolvedRef);
+            }
+            String tomlText = new String(skillToml, StandardCharsets.UTF_8);
+            name = BundleMetadata.parseTomlString(tomlText, "skill", "name");
+            version = BundleMetadata.parseTomlString(tomlText, "skill", "version");
+            description = skillMd == null ? "" : BundleMetadata.parseSkillDescription(new String(skillMd, StandardCharsets.UTF_8));
+            refs = BundleMetadata.parseSkillReferences(tomlText);
         }
 
-        String tomlText = new String(toml, StandardCharsets.UTF_8);
-        String name = parseTomlString(tomlText, "name");
         if (name == null || name.isBlank()) {
-            throw new FetchException("skill-manager.toml missing required [skill].name");
+            throw new FetchException(
+                    (isPlugin ? "plugin manifest" : "skill-manager.toml") + " missing required name");
         }
-        String version = parseTomlString(tomlText, "version");
         if (version == null || version.isBlank()) version = "0.0.1";
-        String description = skillMd == null ? "" : parseSkillDescription(new String(skillMd, StandardCharsets.UTF_8));
-        List<String> refs = parseSkillReferences(tomlText);
-        return new SkillMetadata(name, version, description, refs, gitSha);
+        if (description == null) description = "";
+        return new SkillMetadata(name, version, description, refs, gitSha, unitKind);
+    }
+
+    private static JsonNode parseJson(byte[] bytes) {
+        try {
+            return JSON.readTree(bytes);
+        } catch (IOException e) {
+            throw new FetchException("failed to parse plugin.json", e);
+        }
+    }
+
+    private static String firstNonBlank(String... vs) {
+        for (String v : vs) if (v != null && !v.isBlank()) return v;
+        return null;
     }
 
     /** Resolve a ref (tag/branch/SHA/HEAD) to the canonical commit SHA. */
@@ -188,76 +244,5 @@ public final class GitHubFetcher {
         int n;
         while ((n = tar.read(tmp)) > 0) buf.write(tmp, 0, n);
         return buf.toByteArray();
-    }
-
-    /** Extract a top-level [skill] {@code key = "value"} from a tomlj-free, line-based parse. */
-    static String parseTomlString(String toml, String key) {
-        boolean inSkillSection = false;
-        for (String raw : toml.split("\n")) {
-            String line = raw.trim();
-            if (line.isEmpty() || line.startsWith("#")) continue;
-            if (line.startsWith("[")) {
-                inSkillSection = line.equalsIgnoreCase("[skill]");
-                continue;
-            }
-            if (!inSkillSection) continue;
-            int eq = line.indexOf('=');
-            if (eq < 0) continue;
-            String k = line.substring(0, eq).trim();
-            if (!k.equalsIgnoreCase(key)) continue;
-            String v = line.substring(eq + 1).trim();
-            int hash = v.indexOf('#');
-            if (hash >= 0) v = v.substring(0, hash).trim();
-            if (v.length() >= 2 && (v.startsWith("\"") && v.endsWith("\"")
-                    || v.startsWith("'") && v.endsWith("'"))) {
-                v = v.substring(1, v.length() - 1);
-            }
-            return v;
-        }
-        return null;
-    }
-
-    /** Pull skill_references = [...] entries out of the toml. */
-    static List<String> parseSkillReferences(String toml) {
-        for (String raw : toml.split("\n")) {
-            String s = raw.trim();
-            if (s.startsWith("skill_references") && s.contains("=") && s.contains("[")) {
-                int start = s.indexOf('[') + 1;
-                int end = s.lastIndexOf(']');
-                if (end <= start) return List.of();
-                String inside = s.substring(start, end);
-                List<String> out = new ArrayList<>();
-                for (String part : inside.split(",")) {
-                    String p = part.strip();
-                    if (p.length() >= 2 && (p.startsWith("\"") && p.endsWith("\"")
-                            || p.startsWith("'") && p.endsWith("'"))) {
-                        p = p.substring(1, p.length() - 1);
-                    }
-                    if (!p.isEmpty()) out.add(p);
-                }
-                return out;
-            }
-        }
-        return List.of();
-    }
-
-    /** Pull `description: "..."` out of SKILL.md frontmatter. */
-    static String parseSkillDescription(String skillMd) {
-        if (skillMd == null || !skillMd.startsWith("---")) return "";
-        int end = skillMd.indexOf("\n---", 3);
-        if (end < 0) return "";
-        String frontmatter = skillMd.substring(4, end);
-        for (String line : frontmatter.split("\n")) {
-            String s = line.strip();
-            if (s.startsWith("description:")) {
-                String v = s.substring("description:".length()).strip();
-                if (v.length() >= 2 && (v.startsWith("\"") && v.endsWith("\"")
-                        || v.startsWith("'") && v.endsWith("'"))) {
-                    v = v.substring(1, v.length() - 1);
-                }
-                return v;
-            }
-        }
-        return "";
     }
 }

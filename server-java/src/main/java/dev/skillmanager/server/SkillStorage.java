@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 import dev.skillmanager.shared.dto.SkillSummary;
 import dev.skillmanager.shared.dto.SkillVersion;
 import dev.skillmanager.shared.util.Archives;
+import dev.skillmanager.shared.util.BundleMetadata;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -111,9 +112,19 @@ public final class SkillStorage {
 
     public SkillVersion publish(String name, String version, byte[] payload, String ownerUsername)
             throws IOException {
+        return publish(name, version, payload, ownerUsername, inspect(payload));
+    }
+
+    /**
+     * Variant taking a pre-computed {@link BundleInspection} — lets the
+     * publish service inspect the tarball once (for ownership/kind
+     * checks against {@code SkillName}) and pass the result through
+     * instead of re-extracting.
+     */
+    public SkillVersion publish(String name, String version, byte[] payload,
+                                String ownerUsername, BundleInspection meta) throws IOException {
         validateName(name);
         validateVersion(version);
-        PayloadMetadata meta = inspectTarball(payload);
 
         Path vdir = versionDir(name, version);
         Files.createDirectories(vdir);
@@ -123,14 +134,15 @@ public final class SkillStorage {
         SkillVersion record = SkillVersion.tarball(
                 name,
                 version,
-                meta.description,
+                meta.description(),
                 System.currentTimeMillis() / 1000.0,
                 digest,
                 payload.length,
-                List.copyOf(meta.skillReferences),
-                ownerUsername);
+                List.copyOf(meta.skillReferences()),
+                ownerUsername,
+                meta.unitKind());
         json.writeValue(vdir.resolve(METADATA_FILE).toFile(), record);
-        updateIndex(name, meta.description, version);
+        updateIndex(name, meta.description(), version, meta.unitKind());
         return record;
     }
 
@@ -141,11 +153,13 @@ public final class SkillStorage {
      */
     public SkillVersion registerGithub(String name, String version, String description,
                                        List<String> skillReferences, String ownerUsername,
-                                       String githubUrl, String gitRef, String gitSha) throws IOException {
+                                       String githubUrl, String gitRef, String gitSha,
+                                       String unitKind) throws IOException {
         validateName(name);
         validateVersion(version);
         Path vdir = versionDir(name, version);
         Files.createDirectories(vdir);
+        String kind = (unitKind == null || unitKind.isBlank()) ? BundleMetadata.UNIT_KIND_SKILL : unitKind;
         SkillVersion record = SkillVersion.github(
                 name,
                 version,
@@ -155,9 +169,10 @@ public final class SkillStorage {
                 ownerUsername,
                 githubUrl,
                 gitRef,
-                gitSha);
+                gitSha,
+                kind);
         json.writeValue(vdir.resolve(METADATA_FILE).toFile(), record);
-        updateIndex(name, record.description(), version);
+        updateIndex(name, record.description(), version, kind);
         return record;
     }
 
@@ -175,7 +190,7 @@ public final class SkillStorage {
             List<String> remaining = new ArrayList<>(idx.versions());
             remaining.remove(version);
             try {
-                writeIndex(name, new SkillIndexEntry(idx.name(), idx.description(), remaining));
+                writeIndex(name, new SkillIndexEntry(idx.name(), idx.description(), remaining, idx.unitKind()));
             } catch (IOException ignored) {}
         });
         return true;
@@ -199,17 +214,29 @@ public final class SkillStorage {
         json.writeValue(dir.resolve(INDEX_FILE).toFile(), entry);
     }
 
-    private void updateIndex(String name, String description, String version) throws IOException {
-        SkillIndexEntry entry = loadIndex(name).orElse(new SkillIndexEntry(name, "", new ArrayList<>()));
+    private void updateIndex(String name, String description, String version, String unitKind) throws IOException {
+        SkillIndexEntry entry = loadIndex(name)
+                .orElse(new SkillIndexEntry(name, "", new ArrayList<>(), BundleMetadata.UNIT_KIND_SKILL));
         List<String> versions = new ArrayList<>(entry.versions());
         String effectiveDesc = (description == null || description.isBlank()) ? entry.description() : description;
         if (!versions.contains(version)) versions.add(version);
-        writeIndex(name, new SkillIndexEntry(name, effectiveDesc, versions));
+        // Once a name is established as plugin or skill it doesn't change — preserve
+        // the existing kind on subsequent version adds (the publish service rejects
+        // mismatches at the SkillName layer; this is a defense-in-depth fallback).
+        String kind = entry.versions().isEmpty()
+                ? (unitKind == null || unitKind.isBlank() ? BundleMetadata.UNIT_KIND_SKILL : unitKind)
+                : entry.unitKind();
+        writeIndex(name, new SkillIndexEntry(name, effectiveDesc, versions, kind));
     }
 
-    private record PayloadMetadata(String description, List<String> skillReferences) {}
+    /** Result of extracting + scanning an uploaded bundle prior to writing it. */
+    public record BundleInspection(String description, List<String> skillReferences, String unitKind) {}
 
-    private PayloadMetadata inspectTarball(byte[] payload) throws IOException {
+    public BundleInspection inspect(byte[] payload) throws IOException {
+        return inspectTarball(payload);
+    }
+
+    private BundleInspection inspectTarball(byte[] payload) throws IOException {
         Path tmp = Files.createTempDirectory("skill-inspect-");
         try {
             // Archives.extractTarGz(InputStream,...) already wraps the stream in a
@@ -217,68 +244,22 @@ public final class SkillStorage {
             try (var bais = new ByteArrayInputStream(payload)) {
                 Archives.extractTarGz(bais, tmp);
             }
-            return new PayloadMetadata(findDescription(tmp), findReferences(tmp));
+            String description = BundleMetadata.findSkillMd(tmp)
+                    .map(p -> {
+                        try { return BundleMetadata.parseSkillDescription(Files.readString(p)); }
+                        catch (IOException e) { return ""; }
+                    })
+                    .orElse("");
+            List<String> refs = BundleMetadata.findSkillToml(tmp)
+                    .map(p -> {
+                        try { return BundleMetadata.parseSkillReferences(Files.readString(p)); }
+                        catch (IOException e) { return List.<String>of(); }
+                    })
+                    .orElse(List.of());
+            return new BundleInspection(description, refs, BundleMetadata.detectUnitKind(tmp));
         } finally {
             deleteRecursive(tmp);
         }
-    }
-
-    private String findDescription(Path dir) throws IOException {
-        try (Stream<Path> s = Files.walk(dir, 3)) {
-            Optional<Path> md = s.filter(p -> p.getFileName() != null && p.getFileName().toString().equals("SKILL.md")).findFirst();
-            if (md.isEmpty()) return "";
-            String content = Files.readString(md.get());
-            return parseDescription(content);
-        }
-    }
-
-    private List<String> findReferences(Path dir) throws IOException {
-        try (Stream<Path> s = Files.walk(dir, 3)) {
-            Optional<Path> toml = s.filter(p -> p.getFileName() != null && p.getFileName().toString().equals("skill-manager.toml")).findFirst();
-            if (toml.isEmpty()) return List.of();
-            String content = Files.readString(toml.get());
-            return parseReferences(content);
-        }
-    }
-
-    private static String parseDescription(String skillMd) {
-        if (!skillMd.startsWith("---")) return "";
-        int end = skillMd.indexOf("\n---", 3);
-        if (end < 0) return "";
-        String frontmatter = skillMd.substring(4, end);
-        for (String line : frontmatter.split("\n")) {
-            String s = line.strip();
-            if (s.startsWith("description:")) {
-                String v = s.substring("description:".length()).strip();
-                if ((v.startsWith("\"") && v.endsWith("\"") && v.length() >= 2) ||
-                        (v.startsWith("'") && v.endsWith("'") && v.length() >= 2)) {
-                    v = v.substring(1, v.length() - 1);
-                }
-                return v;
-            }
-        }
-        return "";
-    }
-
-    private static List<String> parseReferences(String tomlContent) {
-        for (String line : tomlContent.split("\n")) {
-            String s = line.strip();
-            if (s.startsWith("skill_references") && s.contains("=") && s.contains("[")) {
-                int start = s.indexOf('[') + 1;
-                int end = s.lastIndexOf(']');
-                if (end <= start) return List.of();
-                String inside = s.substring(start, end);
-                List<String> out = new ArrayList<>();
-                for (String part : inside.split(",")) {
-                    String p = part.strip();
-                    if (p.startsWith("\"") && p.endsWith("\"") && p.length() >= 2) p = p.substring(1, p.length() - 1);
-                    else if (p.startsWith("'") && p.endsWith("'") && p.length() >= 2) p = p.substring(1, p.length() - 1);
-                    if (!p.isEmpty()) out.add(p);
-                }
-                return out;
-            }
-        }
-        return List.of();
     }
 
     private static void validateName(String name) {

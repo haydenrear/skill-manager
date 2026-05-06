@@ -37,6 +37,10 @@ dependency chain is real (e.g. effect widening requires `AgentUnit`).
 | 14 | [`14-search-list-show-columns.md`](14-search-list-show-columns.md) | `kind` + `sha` columns; plugin contained-skills in `show` | 03, 11 |
 | 15 | [`15-test-graph-plugin-parallels.md`](15-test-graph-plugin-parallels.md) | Test_graph parallel `*Plugin*` nodes + new fixtures | 11 |
 | 16 | [`16-docs.md`](16-docs.md) | Update `skill-manager-skill/SKILL.md`, `README.md` | 15 |
+| 17 | [`17-test-graph-full-plugin-parallels.md`](17-test-graph-full-plugin-parallels.md) | Full `*Plugin*` parallel sweep + folding into default smoke | 15, 18 |
+| 18 | [`18-server-side-unit-kind.md`](18-server-side-unit-kind.md) | Server-side `unit_kind` column + API surface | 13 |
+| 19 | [`19-sync-lock-coord-recovery.md`](19-sync-lock-coord-recovery.md) | `sync --lock` reverse-coord engineering for "added" rows | 10 |
+| 20 | [`20-plugin-commands-and-exec-gate.md`](20-plugin-commands-and-exec-gate.md) | Plugin executable `commands/` + EXEC policy gate trigger | 11, 12 |
 
 ## Test ownership per ticket
 

@@ -10,6 +10,7 @@
 //SOURCES src/main/java/dev/skillmanager/shared/dto/SponsoredPlacement.java
 //SOURCES src/main/java/dev/skillmanager/shared/util/Archives.java
 //SOURCES src/main/java/dev/skillmanager/shared/util/Fs.java
+//SOURCES src/main/java/dev/skillmanager/shared/util/BundleMetadata.java
 //SOURCES server-java/src/main/java/dev/skillmanager/server/SkillRegistryApp.java
 //SOURCES server-java/src/main/java/dev/skillmanager/server/SkillRegistryController.java
 //SOURCES server-java/src/main/java/dev/skillmanager/server/SkillStorage.java
