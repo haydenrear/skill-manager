@@ -68,10 +68,17 @@ public class SkillPublishService {
 
         SkillName owner = names.findById(name).orElse(null);
         if (owner == null) {
-            names.save(new SkillName(name, username));
-        } else if (!owner.getOwnerUsername().equals(username)) {
-            throw new PublishException.Forbidden(
-                    "name '" + name + "' is owned by " + owner.getOwnerUsername());
+            names.save(new SkillName(name, username, meta.unitKind()));
+        } else {
+            if (!owner.getOwnerUsername().equals(username)) {
+                throw new PublishException.Forbidden(
+                        "name '" + name + "' is owned by " + owner.getOwnerUsername());
+            }
+            if (!owner.getUnitKind().equals(meta.unitKind())) {
+                throw new PublishException.Conflict(
+                        "name '" + name + "' was first published as a " + owner.getUnitKind()
+                                + "; cannot republish as a " + meta.unitKind());
+            }
         }
 
         SkillVersionRow.Key key = new SkillVersionRow.Key(name, version);
@@ -81,7 +88,7 @@ public class SkillPublishService {
 
         SkillVersion record = storage.registerGithub(
                 name, version, meta.description(), meta.skillReferences(),
-                username, githubUrl, gitRef, meta.gitSha());
+                username, githubUrl, gitRef, meta.gitSha(), meta.unitKind());
         versions.save(SkillVersionRow.github(name, version, username, githubUrl, gitRef, meta.gitSha()));
         return record;
     }
@@ -92,12 +99,24 @@ public class SkillPublishService {
             throw new PublishException.BadVersion("version is not valid semver: " + version);
         }
 
+        // Inspect the bundle once up front so the kind is known before we
+        // touch SkillName / write bytes. Storage.publish takes the inspected
+        // metadata back so it doesn't double-extract.
+        SkillStorage.BundleInspection meta = storage.inspect(payload);
+
         SkillName owner = names.findById(name).orElse(null);
         if (owner == null) {
-            names.save(new SkillName(name, username));
-        } else if (!owner.getOwnerUsername().equals(username)) {
-            throw new PublishException.Forbidden(
-                    "name '" + name + "' is owned by " + owner.getOwnerUsername());
+            names.save(new SkillName(name, username, meta.unitKind()));
+        } else {
+            if (!owner.getOwnerUsername().equals(username)) {
+                throw new PublishException.Forbidden(
+                        "name '" + name + "' is owned by " + owner.getOwnerUsername());
+            }
+            if (!owner.getUnitKind().equals(meta.unitKind())) {
+                throw new PublishException.Conflict(
+                        "name '" + name + "' was first published as a " + owner.getUnitKind()
+                                + "; cannot republish as a " + meta.unitKind());
+            }
         }
 
         SkillVersionRow.Key key = new SkillVersionRow.Key(name, version);
@@ -105,7 +124,7 @@ public class SkillPublishService {
             throw new PublishException.Conflict(name + "@" + version + " already published");
         }
 
-        SkillVersion record = storage.publish(name, version, payload, username);
+        SkillVersion record = storage.publish(name, version, payload, username, meta);
         versions.save(new SkillVersionRow(
                 name, version, record.sha256(), record.sizeBytes(), username));
         return record;
