@@ -88,17 +88,30 @@ public final class UpgradeCommand implements Callable<Integer> {
             return selfRc;
         }
 
-        // Reject non-git skills upfront — the SyncGit handler would skip them
-        // and record NEEDS_GIT_MIGRATION, but the user specifically asked
-        // to upgrade these so a hard error is the right surface.
+        // Non-git skills can't be upgraded. For an explicit single target
+        // that's a hard error; for --all we skip them with a warning and
+        // upgrade the git-tracked ones (so a single bundled/local-dir skill
+        // doesn't break upgrade --all entirely).
         List<SyncUseCase.Target> targetList = new ArrayList<>();
+        List<String> skipped = new ArrayList<>();
         for (Skill s : targets) {
             if (!GitOps.isGitRepo(store.skillDir(s.name())) || !GitOps.isAvailable()) {
+                if (all) {
+                    skipped.add(s.name());
+                    continue;
+                }
                 Log.error("%s: not git-tracked — only git-tracked installs can be upgraded. "
-                        + "Reinstall from a github source.", s.name());
+                        + "Reinstall from a github source or a add a git repo.", s.name());
                 return 5;
             }
             targetList.add(new SyncUseCase.Target.Git(s.name()));
+        }
+        for (String n : skipped) {
+            Log.warn("%s: not git-tracked — skipping (reinstall from a github source to upgrade)", n);
+        }
+        if (targetList.isEmpty()) {
+            Log.warn("no git-tracked skills to upgrade");
+            return selfRc;
         }
 
         GatewayConfig gw = GatewayConfig.resolve(store, null);

@@ -104,7 +104,13 @@ public final class SyncCommand implements Callable<Integer> {
         Program<SyncUseCase.Report> program = SyncUseCase.buildProgram(store, gw, opts, targets);
         ProgramInterpreter interpreter = dryRun ? new DryRunInterpreter() : new LiveInterpreter(store, gw);
         SyncUseCase.Report report = interpreter.run(program);
-        return report.worstRc();
+        // worstRc reflects the SyncGit fact severity (refused=7, conflicted=8,
+        // sync-failed=1). errorCount picks up the post-update tail's failures
+        // (gateway unreachable, MCP register errors, agent sync errors) — these
+        // wouldn't otherwise surface as a non-zero exit.
+        int worst = report.worstRc();
+        if (worst != 0) return worst;
+        return report.errorCount() > 0 ? 1 : 0;
     }
 
     private List<SyncUseCase.Target> resolveTargets(SkillStore store) throws IOException {

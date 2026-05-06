@@ -33,6 +33,14 @@ public final class DryRunInterpreter implements ProgramInterpreter {
             System.out.println("alwaysAfter (" + program.alwaysAfter().size() + "):");
             for (SkillEffect effect : program.alwaysAfter()) {
                 describe(++i, effect);
+                // CleanupResolvedGraph removes the resolver's staged temp
+                // dirs. The resolver ran before the dry-run gate (it has
+                // to — the program is built from the graph), so without
+                // actually executing the cleanup we'd leak temp dirs on
+                // every dry-run.
+                if (effect instanceof SkillEffect.CleanupResolvedGraph c) {
+                    try { c.graph().cleanup(); } catch (Exception ignored) {}
+                }
                 receipts.add(EffectReceipt.ok(effect, new ContextFact.DryRun()));
             }
         }
@@ -74,7 +82,8 @@ public final class DryRunInterpreter implements ProgramInterpreter {
             case SkillEffect.InstallCli e ->
                     Log.step("[%d] install CLI deps for %d skill(s)", n, e.skills().size());
             case SkillEffect.RegisterMcp e -> {
-                Log.step("[%d] register MCP deps with %s", n, e.gateway().baseUrl());
+                Log.step("[%d] register MCP deps with %s", n,
+                        e.gateway() == null ? "<none>" : e.gateway().baseUrl());
                 for (Skill s : e.skills()) {
                     for (McpDependency d : s.mcpDependencies()) {
                         System.out.println("       - " + s.name() + " → " + d.name() + " (" + d.defaultScope() + ")");

@@ -91,7 +91,8 @@ public final class GatewayCommand implements Runnable {
                     receipts -> {
                         int errs = 0;
                         for (var r : receipts) {
-                            if (r.status() == dev.skillmanager.effects.EffectStatus.FAILED) errs++;
+                            if (r.status() == dev.skillmanager.effects.EffectStatus.FAILED
+                                    || r.status() == dev.skillmanager.effects.EffectStatus.PARTIAL) errs++;
                         }
                         return errs;
                     });

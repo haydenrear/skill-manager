@@ -118,16 +118,18 @@ public final class SyncUseCase {
         List<String> orphans = new ArrayList<>();
 
         for (EffectReceipt r : receipts) {
-            // Each receipt counts at most once: PARTIAL on the per-target sync
-            // effects (SyncGit / SyncFromLocalDir) flags refused/conflicted as
-            // an error; everything else only counts on FAILED. RegisterMcp
-            // PARTIAL also counts (some skills had MCP registration errors).
+            // Each receipt counts at most once. PARTIAL counts on per-target
+            // sync (SyncGit / SyncFromLocalDir), RegisterMcp (some skills had
+            // MCP registration errors), and SyncAgents (per-(agent,skill)
+            // sync failures). Other PARTIAL paths are informational.
             boolean isSyncTarget = r.effect() instanceof SkillEffect.SyncGit
                     || r.effect() instanceof SkillEffect.SyncFromLocalDir;
             boolean isMcpRegister = r.effect() instanceof SkillEffect.RegisterMcp;
+            boolean isAgentSync = r.effect() instanceof SkillEffect.SyncAgents;
             if (r.status() == EffectStatus.FAILED) {
                 errorCount++;
-            } else if (r.status() == EffectStatus.PARTIAL && (isSyncTarget || isMcpRegister)) {
+            } else if (r.status() == EffectStatus.PARTIAL
+                    && (isSyncTarget || isMcpRegister || isAgentSync)) {
                 errorCount++;
             }
             for (ContextFact f : r.facts()) {
