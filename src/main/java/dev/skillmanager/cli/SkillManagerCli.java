@@ -8,6 +8,7 @@ import dev.skillmanager.commands.DepsCommand;
 import dev.skillmanager.commands.GatewayCommand;
 import dev.skillmanager.commands.InstallCommand;
 import dev.skillmanager.commands.ListCommand;
+import dev.skillmanager.commands.LockCommand;
 import dev.skillmanager.commands.LoginCommand;
 import dev.skillmanager.commands.OnboardCommand;
 import dev.skillmanager.commands.PmCommand;
@@ -36,6 +37,7 @@ import picocli.CommandLine.Option;
         description = "Build tool for agent skills: CLI deps, skill references, MCP servers.",
         subcommands = {
                 ListCommand.class,
+                LockCommand.class,
                 InstallCommand.class,
                 UninstallCommand.class,
                 RemoveCommand.class,

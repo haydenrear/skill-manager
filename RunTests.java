@@ -30,6 +30,7 @@ import dev.skillmanager.model.SkillUnitWrapsSkillTest;
 import dev.skillmanager.model.UnitReferenceFromTomlTest;
 import dev.skillmanager.plan.CycleDetectionTest;
 import dev.skillmanager.plan.MixedKindTopoOrderTest;
+import dev.skillmanager.command.SyncFromLockScenarioTest;
 import dev.skillmanager.command.UninstallScenarioTest;
 import dev.skillmanager.effects.CompensationLogicTest;
 import dev.skillmanager.effects.CompensationOrphanTest;
@@ -100,6 +101,7 @@ public class RunTests {
         failures += LockDiffTest.run();
         failures += LockSchemaVersionTest.run();
         failures += LockAtomicityTest.run();
+        failures += SyncFromLockScenarioTest.run();
 
         System.out.println();
         if (failures == 0) {
