@@ -49,7 +49,10 @@ import dev.skillmanager.lock.LockReadWriteTest;
 import dev.skillmanager.lock.LockSchemaVersionTest;
 import dev.skillmanager.project.ClaudeProjectorTest;
 import dev.skillmanager.project.CodexProjectorTest;
+import dev.skillmanager.project.HarnessPluginCliTest;
+import dev.skillmanager.project.PluginMarketplaceTest;
 import dev.skillmanager.project.ProjectorRegistryTest;
+import dev.skillmanager.effects.RefreshHarnessPluginsTest;
 import dev.skillmanager.effects.HandlerSubstitutabilityTest;
 import dev.skillmanager.effects.KindAwareDispatchTest;
 import dev.skillmanager.effects.ListTypedHandlerSubstitutabilityTest;
@@ -79,6 +82,14 @@ import dev.skillmanager.store.UnitStoreDirChoiceTest;
 public class RunTests {
 
     public static void main(String[] args) throws Exception {
+        // Force the harness-CLI plumbing into its "unavailable" branch
+        // for the entire suite — unit tests must never spawn `claude` /
+        // `codex` subprocesses that would mutate the developer's real
+        // harness config when those CLIs happen to be on PATH locally.
+        // The driver-level branching is exhaustively covered with
+        // fakes in HarnessPluginCliTest.
+        System.setProperty("skill-manager.harness-cli.disabled", "true");
+
         int failures = 0;
 
         failures += PluginParserTest.run();
@@ -117,6 +128,9 @@ public class RunTests {
         failures += ClaudeProjectorTest.run();
         failures += CodexProjectorTest.run();
         failures += ProjectorRegistryTest.run();
+        failures += PluginMarketplaceTest.run();
+        failures += HarnessPluginCliTest.run();
+        failures += RefreshHarnessPluginsTest.run();
         failures += PublishDetectsPluginTest.run();
         failures += PublishDetectsSkillTest.run();
         failures += ScaffoldPluginTest.run();

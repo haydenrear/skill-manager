@@ -109,17 +109,18 @@ public final class SyncCommand implements Callable<Integer> {
 
         GatewayConfig gw = GatewayConfig.resolve(store, null);
 
-        // A user-named skill that isn't installed is an error (exit 3),
+        // A user-named unit that isn't installed is an error (exit 3),
         // distinct from the empty-store case (no targets, exit 0 with a
-        // warning).
-        if (name != null && !name.isBlank() && !store.contains(name)) {
+        // warning). Kind-agnostic check — sync handles both skills and
+        // plugins.
+        if (name != null && !name.isBlank() && !store.containsUnit(name)) {
             Log.error("not installed: %s", name);
             return 3;
         }
 
         List<SyncUseCase.Target> targets = resolveTargets(store);
         if (targets.isEmpty()) {
-            Log.warn("no skills installed");
+            Log.warn("no units installed");
             return 0;
         }
 
@@ -154,8 +155,11 @@ public final class SyncCommand implements Callable<Integer> {
                     ? List.of(new SyncUseCase.Target.FromDir(name, fromDir))
                     : List.of(new SyncUseCase.Target.Git(name));
         }
+        // Walk every installed unit (skills + plugins) so a no-arg
+        // sync re-runs the post-update tail over the full set rather
+        // than missing plugin-kind units.
         List<SyncUseCase.Target> out = new ArrayList<>();
-        for (Skill s : store.listInstalled()) out.add(new SyncUseCase.Target.Git(s.name()));
+        for (var u : store.listInstalledUnits()) out.add(new SyncUseCase.Target.Git(u.name()));
         return out;
     }
 

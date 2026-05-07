@@ -84,6 +84,8 @@ public final class ReportUseCase {
                     + "(or use --git-latest to bypass the registry for git-tracked skills)";
             case AGENT_SYNC_FAILED -> "retry: skill-manager sync " + skillName
                     + " (will re-attempt the agent symlink)";
+            case HARNESS_CLI_UNAVAILABLE -> "install the missing harness CLI, then re-run "
+                    + "skill-manager sync " + skillName;
         };
     }
 }

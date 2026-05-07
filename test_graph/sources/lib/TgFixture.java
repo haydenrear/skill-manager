@@ -34,6 +34,51 @@ public final class TgFixture {
     }
 
     /**
+     * Stamp the {@code umbrella-plugin-template} fixture. Plugin-level
+     * deps (CLI + MCP) live in {@code skill-manager-plugin.toml}; the
+     * single contained skill at {@code skills/inner-impl/} declares its
+     * own (distinct) CLI + MCP deps. Both ends register at install
+     * time, which is what the plugin-smoke nodes assert.
+     */
+    public static Path stampUmbrellaPlugin(
+            Path templateDir,
+            Path destRoot,
+            String pluginName,
+            String pluginServerId,
+            String skillServerId,
+            String scope,
+            String mcpUrl) throws IOException {
+        return stampTemplate(templateDir, destRoot, pluginName, Map.of(
+                "__PLUGIN_NAME__", pluginName,
+                "__PLUGIN_SERVER_ID__", pluginServerId,
+                "__SKILL_SERVER_ID__", skillServerId,
+                "__SCOPE__", scope,
+                "__MCP_URL__", mcpUrl
+        ));
+    }
+
+    /**
+     * Stamp the {@code partner-skill-template} fixture. The partner
+     * skill claims the same MCP server name as the umbrella plugin's
+     * plugin-level dep, so uninstalling the plugin leaves the server
+     * registered (skill claim survives the orphan check).
+     */
+    public static Path stampPartnerSkill(
+            Path templateDir,
+            Path destRoot,
+            String skillName,
+            String sharedServerId,
+            String scope,
+            String mcpUrl) throws IOException {
+        return stampTemplate(templateDir, destRoot, skillName, Map.of(
+                "__SKILL_NAME__", skillName,
+                "__SHARED_SERVER_ID__", sharedServerId,
+                "__SCOPE__", scope,
+                "__MCP_URL__", mcpUrl
+        ));
+    }
+
+    /**
      * Stamp the {@code echo-skill-stdio-template} template, which pins a
      * shell-load stdio MCP server invoking the python fixture. The two
      * extra tokens — venv python and fixture script path — are absolute

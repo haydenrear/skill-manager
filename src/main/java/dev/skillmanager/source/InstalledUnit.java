@@ -91,7 +91,16 @@ public record InstalledUnit(
         /** {@link InstallSource#REGISTRY} install but the registry was unreachable. */
         REGISTRY_UNAVAILABLE,
         /** A specific agent's symlink/copy of this unit failed — message carries the agent id. */
-        AGENT_SYNC_FAILED
+        AGENT_SYNC_FAILED,
+        /**
+         * A harness CLI ({@code claude}, {@code codex}) needed to register
+         * a plugin with its harness was not on PATH. Plugin lands on disk +
+         * in the skill-manager marketplace, but the harness can't see it
+         * until the user installs the CLI. Self-clears on next sync once
+         * the binary is reachable. Message carries the missing binary
+         * name(s) and the suggested install command.
+         */
+        HARNESS_CLI_UNAVAILABLE
     }
 
     @JsonIgnore

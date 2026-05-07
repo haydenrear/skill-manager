@@ -112,4 +112,24 @@ public sealed interface ContextFact {
     // ---- units.lock.toml ----
     record UnitsLockUpdated(String path, int unitCount) implements ContextFact {}
     record UnitsLockRestored(String path) implements ContextFact {}
+
+    // ---- Harness plugin marketplace + CLI ----
+    /**
+     * The skill-manager-owned plugin marketplace at {@code path} has
+     * been regenerated to list {@code pluginCount} plugins.
+     */
+    record PluginMarketplaceRegenerated(String path, int pluginCount) implements ContextFact {}
+    /**
+     * One harness CLI completed a per-plugin operation.
+     * {@code op} is one of {@code "install"}, {@code "uninstall"},
+     * {@code "marketplace-add"}, {@code "marketplace-update"}.
+     */
+    record HarnessPluginCli(String agentId, String pluginName, String op, boolean ok, String message)
+            implements ContextFact {}
+    /**
+     * One harness CLI was not on PATH and the plugin couldn't register.
+     * {@code installHint} is the {@code brew install <bin>} command the
+     * banner surfaces.
+     */
+    record HarnessCliMissing(String agentId, String binary, String installHint) implements ContextFact {}
 }

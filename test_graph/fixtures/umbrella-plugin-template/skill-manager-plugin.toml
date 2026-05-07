@@ -1,0 +1,30 @@
+# test_graph fixture — stamped at runtime by TgFixture.stampUmbrellaPlugin.
+# Tokens __PLUGIN_NAME__, __PLUGIN_SERVER_ID__, __SCOPE__, __MCP_URL__
+# are replaced before the directory is handed to
+# `skill-manager install file:<tempdir>`.
+#
+# Plugin-level deps (CLI + MCP) sit alongside the contained-skill's
+# deps in skills/inner-impl/skill-manager.toml. The install pipeline
+# unions them at parse time — the test asserts that BOTH ends register
+# their CLI / MCP entries (i.e. "feature parity" with bare skills).
+
+[plugin]
+name = "__PLUGIN_NAME__"
+version = "0.0.1"
+description = "Umbrella plugin fixture — exercises plugin-level + contained-skill dep walking."
+
+# Plugin-level CLI dep. pycowsay is the canonical pip target test_graph
+# uses; the on_path "__zzz_nope_*" sentinel forces a real install.
+[[cli_dependencies]]
+spec = "pip:pycowsay"
+on_path = "__zzz_nope_pycowsay"
+
+# Plugin-level MCP dep. Distinct server_id from the contained skill's
+# so the gateway sees both registrations independently and the orphan
+# check distinguishes them.
+[[mcp_dependencies]]
+name = "__PLUGIN_SERVER_ID__"
+display_name = "umbrella plugin (plugin-level)"
+description = "HTTP echo MCP fixture registered at plugin level (scope __SCOPE__)."
+default_scope = "__SCOPE__"
+load = { type = "binary", transport = "streamable-http", url = "__MCP_URL__", install = {} }

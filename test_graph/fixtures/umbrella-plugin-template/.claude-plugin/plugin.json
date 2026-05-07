@@ -1,0 +1,5 @@
+{
+  "name": "__PLUGIN_NAME__",
+  "version": "0.0.1",
+  "description": "test_graph fixture — plugin with both plugin-level and contained-skill CLI + MCP deps. Stamped at runtime by TgFixture.stampUmbrellaPlugin."
+}

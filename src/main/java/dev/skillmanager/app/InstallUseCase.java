@@ -108,6 +108,11 @@ public final class InstallUseCase {
         List<dev.skillmanager.model.AgentUnit> tailUnits = graph.units();
         effects.add(new SkillEffect.RunInstallPlan(gw));
         effects.add(new SkillEffect.SyncAgents(tailUnits, gw));
+        // Plugin marketplace + harness CLI lifecycle. The reinstall list
+        // is the names of every plugin in this resolved graph — sync
+        // walks the full installed set, install only walks what's new
+        // (which is the same thing for a fresh install).
+        if (!dryRun) effects.add(SkillEffect.RefreshHarnessPlugins.reinstallAll(pluginNames(tailUnits)));
         effects.add(new SkillEffect.UnregisterMcpOrphans(gw));
 
         // Lock flip — last main effect. If anything before fails, the lock
@@ -155,6 +160,20 @@ public final class InstallUseCase {
             ));
         }
         return new SkillEffect.UpdateUnitsLock(target, lockPath);
+    }
+
+    /**
+     * Filter the resolved-graph unit list down to plugin names — what
+     * {@link SkillEffect.RefreshHarnessPlugins} drives through the
+     * harness CLIs. Skills aren't harness-CLI-managed and pass through
+     * the existing per-agent symlink path in {@code SyncAgents}.
+     */
+    private static List<String> pluginNames(List<dev.skillmanager.model.AgentUnit> units) {
+        List<String> out = new ArrayList<>();
+        for (var u : units) {
+            if (u.kind() == dev.skillmanager.model.UnitKind.PLUGIN) out.add(u.name());
+        }
+        return out;
     }
 
     private static dev.skillmanager.source.InstalledUnit.InstallSource mapSourceKind(

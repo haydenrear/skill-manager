@@ -31,90 +31,101 @@ public final class ClaudeProjectorTest {
     public static int run() throws Exception {
         Tests.Suite suite = Tests.suite("ClaudeProjectorTest");
 
-        for (UnitKind kind : UnitKind.values()) {
-            String label = kind.name().toLowerCase();
+        // Skill arm: full projection lifecycle (plan → apply → remove),
+        // identical to the pre-marketplace contract. Plugins now skip the
+        // projector entirely (handled by
+        // {@link dev.skillmanager.effects.SkillEffect.RefreshHarnessPlugins}),
+        // so the plugin arm only asserts "planProjection returns empty".
+        UnitKind kind = UnitKind.SKILL;
+        String label = kind.name().toLowerCase();
 
-            suite.test(label + " — planProjection produces one projection routing to the right dir", () -> {
-                TestHarness h = TestHarness.create();
-                Path agentRoot = Files.createTempDirectory("claude-proj-plan-");
-                ClaudeProjector p = new ClaudeProjector(
-                        agentRoot.resolve("skills"), agentRoot.resolve("plugins"));
-                AgentUnit u = installInStore(h, "widget", kind);
+        suite.test(label + " — planProjection produces one projection routing to skillsDir", () -> {
+            TestHarness h = TestHarness.create();
+            Path agentRoot = Files.createTempDirectory("claude-proj-plan-");
+            ClaudeProjector p = new ClaudeProjector(
+                    agentRoot.resolve("skills"), agentRoot.resolve("plugins"));
+            AgentUnit u = installInStore(h, "widget", kind);
 
-                List<Projection> projs = p.planProjection(u, h.store());
-                assertEquals(1, projs.size(), "exactly one projection");
-                Projection proj = projs.get(0);
-                assertEquals("claude", proj.agentId(), "agent");
-                assertEquals(kind, proj.kind(), "kind preserved");
-                Path expectedTarget = (kind == UnitKind.PLUGIN
-                        ? agentRoot.resolve("plugins")
-                        : agentRoot.resolve("skills")).resolve("widget");
-                assertEquals(expectedTarget, proj.target(), "target dir matches kind");
-                assertEquals(h.store().unitDir("widget", kind), proj.source(), "source from store.unitDir");
-            });
+            List<Projection> projs = p.planProjection(u, h.store());
+            assertEquals(1, projs.size(), "exactly one projection");
+            Projection proj = projs.get(0);
+            assertEquals("claude", proj.agentId(), "agent");
+            assertEquals(kind, proj.kind(), "kind preserved");
+            Path expectedTarget = agentRoot.resolve("skills").resolve("widget");
+            assertEquals(expectedTarget, proj.target(), "target dir is skillsDir");
+            assertEquals(h.store().unitDir("widget", kind), proj.source(), "source from store.unitDir");
+        });
 
-            suite.test(label + " — apply creates a symlink target → source", () -> {
-                TestHarness h = TestHarness.create();
-                Path agentRoot = Files.createTempDirectory("claude-proj-apply-");
-                ClaudeProjector p = new ClaudeProjector(
-                        agentRoot.resolve("skills"), agentRoot.resolve("plugins"));
-                AgentUnit u = installInStore(h, "widget", kind);
+        suite.test(label + " — apply creates a symlink target → source", () -> {
+            TestHarness h = TestHarness.create();
+            Path agentRoot = Files.createTempDirectory("claude-proj-apply-");
+            ClaudeProjector p = new ClaudeProjector(
+                    agentRoot.resolve("skills"), agentRoot.resolve("plugins"));
+            AgentUnit u = installInStore(h, "widget", kind);
 
-                Projection proj = p.planProjection(u, h.store()).get(0);
-                p.apply(proj);
+            Projection proj = p.planProjection(u, h.store()).get(0);
+            p.apply(proj);
 
-                assertTrue(Files.exists(proj.target(), LinkOption.NOFOLLOW_LINKS),
-                        "target exists");
-                // Either a real symlink or a copied dir (fallback) — both
-                // resolve to the source bytes.
-                assertTrue(Files.isSymbolicLink(proj.target()) || Files.isDirectory(proj.target()),
-                        "target is a symlink or copied dir");
-            });
+            assertTrue(Files.exists(proj.target(), LinkOption.NOFOLLOW_LINKS),
+                    "target exists");
+            assertTrue(Files.isSymbolicLink(proj.target()) || Files.isDirectory(proj.target()),
+                    "target is a symlink or copied dir");
+        });
 
-            suite.test(label + " — apply replaces a pre-existing target cleanly (idempotent)", () -> {
-                TestHarness h = TestHarness.create();
-                Path agentRoot = Files.createTempDirectory("claude-proj-replace-");
-                ClaudeProjector p = new ClaudeProjector(
-                        agentRoot.resolve("skills"), agentRoot.resolve("plugins"));
-                AgentUnit u = installInStore(h, "widget", kind);
+        suite.test(label + " — apply replaces a pre-existing target cleanly (idempotent)", () -> {
+            TestHarness h = TestHarness.create();
+            Path agentRoot = Files.createTempDirectory("claude-proj-replace-");
+            ClaudeProjector p = new ClaudeProjector(
+                    agentRoot.resolve("skills"), agentRoot.resolve("plugins"));
+            AgentUnit u = installInStore(h, "widget", kind);
 
-                Projection proj = p.planProjection(u, h.store()).get(0);
-                p.apply(proj);
-                p.apply(proj);  // second call: no-op (same source)
+            Projection proj = p.planProjection(u, h.store()).get(0);
+            p.apply(proj);
+            p.apply(proj);
 
-                // Still exactly one entry, still resolving to the source.
-                assertTrue(Files.exists(proj.target(), LinkOption.NOFOLLOW_LINKS), "target still there");
-            });
+            assertTrue(Files.exists(proj.target(), LinkOption.NOFOLLOW_LINKS), "target still there");
+        });
 
-            suite.test(label + " — remove deletes the target; idempotent", () -> {
-                TestHarness h = TestHarness.create();
-                Path agentRoot = Files.createTempDirectory("claude-proj-remove-");
-                ClaudeProjector p = new ClaudeProjector(
-                        agentRoot.resolve("skills"), agentRoot.resolve("plugins"));
-                AgentUnit u = installInStore(h, "widget", kind);
+        suite.test(label + " — remove deletes the target; idempotent", () -> {
+            TestHarness h = TestHarness.create();
+            Path agentRoot = Files.createTempDirectory("claude-proj-remove-");
+            ClaudeProjector p = new ClaudeProjector(
+                    agentRoot.resolve("skills"), agentRoot.resolve("plugins"));
+            AgentUnit u = installInStore(h, "widget", kind);
 
-                Projection proj = p.planProjection(u, h.store()).get(0);
-                p.apply(proj);
-                assertTrue(Files.exists(proj.target(), LinkOption.NOFOLLOW_LINKS), "applied");
+            Projection proj = p.planProjection(u, h.store()).get(0);
+            p.apply(proj);
+            assertTrue(Files.exists(proj.target(), LinkOption.NOFOLLOW_LINKS), "applied");
 
-                p.remove(proj);
-                assertFalse(Files.exists(proj.target(), LinkOption.NOFOLLOW_LINKS), "removed");
+            p.remove(proj);
+            assertFalse(Files.exists(proj.target(), LinkOption.NOFOLLOW_LINKS), "removed");
 
-                p.remove(proj);  // remove again — no-op, no exception
-            });
+            p.remove(proj);
+        });
 
-            suite.test(label + " — remove on never-applied projection is a no-op", () -> {
-                TestHarness h = TestHarness.create();
-                Path agentRoot = Files.createTempDirectory("claude-proj-noop-");
-                ClaudeProjector p = new ClaudeProjector(
-                        agentRoot.resolve("skills"), agentRoot.resolve("plugins"));
-                AgentUnit u = installInStore(h, "widget", kind);
+        suite.test(label + " — remove on never-applied projection is a no-op", () -> {
+            TestHarness h = TestHarness.create();
+            Path agentRoot = Files.createTempDirectory("claude-proj-noop-");
+            ClaudeProjector p = new ClaudeProjector(
+                    agentRoot.resolve("skills"), agentRoot.resolve("plugins"));
+            AgentUnit u = installInStore(h, "widget", kind);
 
-                Projection proj = p.planProjection(u, h.store()).get(0);
-                p.remove(proj);  // never applied → silent no-op
-                assertFalse(Files.exists(proj.target(), LinkOption.NOFOLLOW_LINKS), "still absent");
-            });
-        }
+            Projection proj = p.planProjection(u, h.store()).get(0);
+            p.remove(proj);
+            assertFalse(Files.exists(proj.target(), LinkOption.NOFOLLOW_LINKS), "still absent");
+        });
+
+        suite.test("plugin — planProjection returns empty (handled by RefreshHarnessPlugins)", () -> {
+            TestHarness h = TestHarness.create();
+            Path agentRoot = Files.createTempDirectory("claude-proj-plugin-");
+            ClaudeProjector p = new ClaudeProjector(
+                    agentRoot.resolve("skills"), agentRoot.resolve("plugins"));
+            AgentUnit u = installInStore(h, "widget", UnitKind.PLUGIN);
+
+            List<Projection> projs = p.planProjection(u, h.store());
+            assertEquals(0, projs.size(),
+                    "plugin arm yields no projection — marketplace flow owns it");
+        });
 
         return suite.runAll();
     }

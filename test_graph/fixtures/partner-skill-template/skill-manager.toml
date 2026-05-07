@@ -1,0 +1,20 @@
+# test_graph fixture — stamped at runtime by TgFixture.stampPartnerSkill.
+# Tokens __SKILL_NAME__, __SHARED_SERVER_ID__, __SCOPE__, __MCP_URL__
+# replaced before `skill-manager install file:<tempdir>`.
+#
+# This skill claims the SAME mcp_dependency.name that the umbrella
+# plugin's plugin-level toml declares — i.e. one MCP server, two
+# claimers (plugin + skill). The orphan-check on uninstall must see
+# the surviving skill's claim and KEEP the server registered, even
+# after the plugin is gone.
+
+[[mcp_dependencies]]
+name = "__SHARED_SERVER_ID__"
+display_name = "partner skill claim (shared with umbrella plugin)"
+description = "Shared HTTP echo MCP fixture — both umbrella-plugin (plugin level) and this partner skill claim it. Used by PluginUninstalledMixedOrphans to verify shared claims survive plugin uninstall."
+default_scope = "__SCOPE__"
+load = { type = "binary", transport = "streamable-http", url = "__MCP_URL__", install = {} }
+
+[skill]
+name = "__SKILL_NAME__"
+version = "0.0.1"

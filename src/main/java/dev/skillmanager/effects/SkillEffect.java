@@ -49,6 +49,7 @@ public sealed interface SkillEffect permits
         SkillEffect.UnregisterMcpOrphan,
         SkillEffect.UnregisterMcpOrphans,
         SkillEffect.SyncAgents,
+        SkillEffect.RefreshHarnessPlugins,
         SkillEffect.SyncGit,
         SkillEffect.RemoveUnitFromStore,
         SkillEffect.UnlinkAgentUnit,
@@ -141,6 +142,49 @@ public sealed interface SkillEffect permits
      * pre-existing skill carrier.
      */
     record SyncAgents(List<AgentUnit> units, GatewayConfig gateway) implements SkillEffect {}
+
+    /**
+     * Reconcile the skill-manager-owned plugin marketplace
+     * ({@code <store>/plugin-marketplace/}) and any harness CLIs
+     * ({@code claude}, {@code codex}) with the current installed-plugin
+     * set:
+     *
+     * <ol>
+     *   <li>Regenerate {@code marketplace.json} + the symlink tree from
+     *       {@link dev.skillmanager.store.SkillStore#listInstalledUnits()}.</li>
+     *   <li>For every harness driver whose CLI is on PATH:
+     *       {@code marketplace add} (idempotent), {@code marketplace
+     *       update}, then for each name in {@link #reinstall} run
+     *       uninstall+reinstall (so newly-bundled hooks load), and for
+     *       each name in {@link #uninstall} run uninstall.</li>
+     *   <li>For every harness driver whose CLI is missing on PATH,
+     *       record {@link
+     *       dev.skillmanager.source.InstalledUnit.ErrorKind#HARNESS_CLI_UNAVAILABLE}
+     *       on each plugin so the report surface tells the user how to
+     *       install the missing CLI.</li>
+     *   <li>One-time cleanup of the pre-marketplace
+     *       {@code <agentPluginsDir>/<name>} layout — delete any leftover
+     *       symlink/dir under the harness's old per-plugin namespace.</li>
+     * </ol>
+     *
+     * <p>Callers fill {@link #reinstall} for install/sync/upgrade flows
+     * and {@link #uninstall} for remove flows. The marketplace
+     * regeneration happens regardless — it's a function of current
+     * store state.
+     */
+    record RefreshHarnessPlugins(List<String> reinstall, List<String> uninstall)
+            implements SkillEffect {
+        public RefreshHarnessPlugins {
+            reinstall = reinstall == null ? List.of() : List.copyOf(reinstall);
+            uninstall = uninstall == null ? List.of() : List.copyOf(uninstall);
+        }
+        public static RefreshHarnessPlugins reinstallAll(List<String> names) {
+            return new RefreshHarnessPlugins(names, List.of());
+        }
+        public static RefreshHarnessPlugins removing(String name) {
+            return new RefreshHarnessPlugins(List.of(), List.of(name));
+        }
+    }
 
     /**
      * Pull upstream into a single git-tracked skill: stash → fetch → merge → pop.

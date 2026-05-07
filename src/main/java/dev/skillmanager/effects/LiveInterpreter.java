@@ -164,6 +164,7 @@ public final class LiveInterpreter implements ProgramInterpreter {
             case SkillEffect.UnregisterMcpOrphan e -> unregisterOrphan(e);
             case SkillEffect.UnregisterMcpOrphans e -> unregisterOrphans(e, ctx);
             case SkillEffect.SyncAgents e -> syncAgents(e, ctx);
+            case SkillEffect.RefreshHarnessPlugins e -> refreshHarnessPlugins(e, ctx);
             case SkillEffect.SyncGit e -> SyncGitHandler.run(e, ctx);
             case SkillEffect.RemoveUnitFromStore e -> removeFromStore(e, ctx);
             case SkillEffect.UnlinkAgentUnit e -> unlinkAgentUnit(e);
@@ -537,6 +538,133 @@ public final class LiveInterpreter implements ProgramInterpreter {
                 : EffectReceipt.partial(e, facts, failed + " agent step(s) failed");
     }
 
+    /**
+     * Reconcile the skill-manager plugin marketplace + each harness CLI's
+     * view of it with the current installed-plugin set. Idempotent across
+     * reruns; failures on one harness don't block the other.
+     *
+     * <h3>Order</h3>
+     * <ol>
+     *   <li>Regenerate {@code <store>/plugin-marketplace/}.</li>
+     *   <li>For each {@link dev.skillmanager.project.HarnessPluginCli.Driver}:
+     *       if available, marketplace add → marketplace update → for each
+     *       reinstall name run uninstall+install, for each uninstall name
+     *       run uninstall. Clear {@code HARNESS_CLI_UNAVAILABLE} on every
+     *       plugin once a successful add lands.</li>
+     *   <li>For each missing driver, record {@code HARNESS_CLI_UNAVAILABLE}
+     *       on every plugin in the marketplace with the {@code brew
+     *       install} hint so the closing report surfaces it.</li>
+     *   <li>One-time cleanup of legacy
+     *       {@code <agentPluginsDir>/<name>} entries.</li>
+     * </ol>
+     */
+    private EffectReceipt refreshHarnessPlugins(SkillEffect.RefreshHarnessPlugins e, EffectContext ctx) {
+        List<ContextFact> facts = new ArrayList<>();
+        int failed = 0;
+        List<String> currentPlugins;
+        dev.skillmanager.project.PluginMarketplace mp =
+                new dev.skillmanager.project.PluginMarketplace(ctx.store());
+        try {
+            currentPlugins = mp.regenerate();
+            facts.add(new ContextFact.PluginMarketplaceRegenerated(
+                    mp.manifestPath().toString(), currentPlugins.size()));
+        } catch (IOException io) {
+            return EffectReceipt.failed(e, "marketplace regeneration: " + io.getMessage());
+        }
+
+        // Plugins that should end up known to each harness CLI: the
+        // current set the user has installed. {@code uninstall} list is
+        // for plugins removed in the same program — the marketplace.json
+        // already excludes them, so we just need the harness to drop its
+        // own record.
+        List<String> reinstall = e.reinstall();
+        List<String> uninstall = e.uninstall();
+
+        // Legacy cleanup: pre-marketplace builds left symlinks under
+        // <agentPluginsDir>/<name>. Drop them so the harness doesn't
+        // try to load the plugin from the wrong namespace.
+        for (dev.skillmanager.agent.Agent agent : dev.skillmanager.agent.Agent.all()) {
+            try {
+                dev.skillmanager.project.PluginMarketplace.cleanupLegacyAgentPluginEntries(
+                        agent.pluginsDir(), currentPlugins);
+            } catch (IOException io) {
+                Log.warn("legacy plugin cleanup for %s: %s", agent.id(), io.getMessage());
+            }
+        }
+
+        for (dev.skillmanager.project.HarnessPluginCli.Driver driver
+                : dev.skillmanager.project.HarnessPluginCli.defaultDrivers()) {
+            if (!driver.available()) {
+                facts.add(new ContextFact.HarnessCliMissing(
+                        driver.agentId(), driver.binary(), driver.installHint()));
+                String msg = driver.binary() + " CLI not on PATH; install with: " + driver.installHint();
+                for (String pluginName : currentPlugins) {
+                    tryAddError(ctx, pluginName,
+                            InstalledUnit.ErrorKind.HARNESS_CLI_UNAVAILABLE,
+                            msg);
+                }
+                continue;
+            }
+            // CLI is on path — drive marketplace + per-plugin lifecycle.
+            try {
+                dev.skillmanager.project.HarnessPluginCli.Result added =
+                        driver.ensureMarketplaceAdded(mp.root());
+                facts.add(new ContextFact.HarnessPluginCli(
+                        driver.agentId(), null, "marketplace-add", added.ok(),
+                        added.ok() ? null : truncate(added.stderr().isBlank() ? added.stdout() : added.stderr())));
+                if (!added.ok()) failed++;
+
+                if (added.ok()) {
+                    dev.skillmanager.project.HarnessPluginCli.Result updated =
+                            driver.refreshMarketplace(mp.root());
+                    facts.add(new ContextFact.HarnessPluginCli(
+                            driver.agentId(), null, "marketplace-update", updated.ok(),
+                            updated.ok() ? null : truncate(updated.stderr())));
+                    if (!updated.ok()) failed++;
+                }
+
+                for (String name : reinstall) {
+                    dev.skillmanager.project.HarnessPluginCli.Result r = driver.reinstallPlugin(name);
+                    facts.add(new ContextFact.HarnessPluginCli(
+                            driver.agentId(), name, "install", r.ok(),
+                            r.ok() ? null : truncate(r.stderr())));
+                    if (!r.ok()) {
+                        tryAddError(ctx, name, InstalledUnit.ErrorKind.AGENT_SYNC_FAILED,
+                                driver.agentId() + " plugin install: " + truncate(r.stderr()));
+                        failed++;
+                    } else {
+                        tryClearError(ctx, name, InstalledUnit.ErrorKind.AGENT_SYNC_FAILED);
+                    }
+                }
+                for (String name : uninstall) {
+                    dev.skillmanager.project.HarnessPluginCli.Result r = driver.uninstallPlugin(name);
+                    facts.add(new ContextFact.HarnessPluginCli(
+                            driver.agentId(), name, "uninstall", r.ok(),
+                            r.ok() ? null : truncate(r.stderr())));
+                }
+                // CLI on PATH for this harness — clear any prior
+                // unavailability error on every current plugin.
+                for (String pluginName : currentPlugins) {
+                    tryClearError(ctx, pluginName, InstalledUnit.ErrorKind.HARNESS_CLI_UNAVAILABLE);
+                }
+            } catch (Exception ex) {
+                facts.add(new ContextFact.HarnessPluginCli(
+                        driver.agentId(), null, "marketplace-add", false, ex.getMessage()));
+                failed++;
+            }
+        }
+
+        return failed == 0
+                ? EffectReceipt.ok(e, facts)
+                : EffectReceipt.partial(e, facts, failed + " harness CLI step(s) failed");
+    }
+
+    private static String truncate(String s) {
+        if (s == null) return null;
+        String trimmed = s.strip();
+        return trimmed.length() <= 240 ? trimmed : trimmed.substring(0, 240) + "...";
+    }
+
     private static void tryAddError(EffectContext ctx, String skillName,
                                     InstalledUnit.ErrorKind kind, String message) {
         try { ctx.addError(skillName, kind, message); }
@@ -586,6 +714,21 @@ public final class LiveInterpreter implements ProgramInterpreter {
                 // tells us nothing about whether THIS skill's MCPs are
                 // registered, etc. Handlers clear these on actual success
                 // (RegisterMcp / SyncAgents / SyncGit registry lookup).
+            }
+            case HARNESS_CLI_UNAVAILABLE -> {
+                // Probe is cheap: are both harness CLIs on PATH? Fully
+                // available → drop the error. RefreshHarnessPlugins will
+                // also clear it on successful driver runs, but the
+                // reconciler runs without forcing the full plugin
+                // refresh, so we offer a fast self-clear path here.
+                boolean allAvailable = true;
+                for (var d : dev.skillmanager.project.HarnessPluginCli.defaultDrivers()) {
+                    if (!d.available()) { allAvailable = false; break; }
+                }
+                if (allAvailable) {
+                    ctx.clearError(e.unitName(), InstalledUnit.ErrorKind.HARNESS_CLI_UNAVAILABLE);
+                    cleared = true;
+                }
             }
         }
         return EffectReceipt.ok(e, new ContextFact.ErrorValidated(e.unitName(), e.kind(), cleared));

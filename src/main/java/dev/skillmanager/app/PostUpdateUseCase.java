@@ -61,6 +61,18 @@ public final class PostUpdateUseCase {
         effects.add(new SkillEffect.InstallCli(liveUnits));
         if (withMcp) effects.add(new SkillEffect.RegisterMcp(liveUnits, gw));
         if (withAgents) effects.add(new SkillEffect.SyncAgents(liveUnits, gw));
+        // Reconcile harness plugin marketplace alongside the symlink
+        // path. RegisterMcp covers MCP-side surfaces; this covers the
+        // plugin-marketplace side. Skill-only stores end up with an
+        // empty plugin list — the effect is still cheap (writes a
+        // marketplace.json with an empty plugins array).
+        if (withAgents) {
+            java.util.List<String> pluginNames = new java.util.ArrayList<>();
+            for (var u : liveUnits) {
+                if (u.kind() == dev.skillmanager.model.UnitKind.PLUGIN) pluginNames.add(u.name());
+            }
+            effects.add(SkillEffect.RefreshHarnessPlugins.reinstallAll(pluginNames));
+        }
         if (withMcp) effects.add(new SkillEffect.UnregisterMcpOrphans(gw));
 
         return new Program<>("post-update-" + UUID.randomUUID(), effects, PostUpdateUseCase::decode);

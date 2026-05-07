@@ -83,6 +83,15 @@ public final class RemoveUseCase {
 
         effects.add(new SkillEffect.RemoveUnitFromStore(skillName, kind));
 
+        // Plugin marketplace + harness CLI cleanup. Skip for skills —
+        // the marketplace only catalogs plugins. For plugins, regenerate
+        // the marketplace.json (skill is already gone from the store
+        // listing by this effect's execution time) and tell each
+        // available harness CLI to drop its record.
+        if (kind == UnitKind.PLUGIN) {
+            effects.add(SkillEffect.RefreshHarnessPlugins.removing(skillName));
+        }
+
         // Lock flip — drop the row for this unit. Last main effect so
         // any earlier failure leaves the lock untouched.
         java.nio.file.Path lockPath = dev.skillmanager.lock.UnitsLockReader.defaultPath(store);
@@ -90,20 +99,27 @@ public final class RemoveUseCase {
         dev.skillmanager.lock.UnitsLock target = current.withoutUnit(skillName);
         if (unregisterMcp && !removedDeps.isEmpty()) {
             // Compute orphans against the projected post-remove state by
-            // pretending skillName is gone. Iterates skill-only
-            // listInstalled — pre-ticket-11, plugin-contained-skill claims
-            // aren't surfaced here. That means: if a plugin we're NOT
-            // uninstalling declares the same MCP server we're tearing down,
-            // the orphan check won't see its claim and we'd unregister.
-            // Ticket 11's listInstalledUnits closes that gap. The risk is
-            // low in practice (most installs are single skills) and the
-            // executor's UnregisterMcpIfOrphan compensation re-checks at
-            // walk-back time anyway, so a wrongly-emitted unregister gets
-            // surfaced as a separate failure rather than corrupting state.
+            // pretending {@code skillName} is gone. Walk every installed
+            // unit (skills + plugins) so a surviving plugin claiming the
+            // same MCP server keeps it registered — matches the
+            // skill-claim path. PluginUnit.mcpDependencies() is already
+            // unioned across the plugin-level toml + every contained
+            // skill at parse time, so a single read covers all claims.
             Set<String> stillReferenced = new HashSet<>();
-            for (Skill s : store.listInstalled()) {
-                if (s.name().equals(skillName)) continue;
-                for (McpDependency d : s.mcpDependencies()) stillReferenced.add(d.name());
+            try {
+                for (var u : store.listInstalledUnits()) {
+                    if (u.name().equals(skillName)) continue;
+                    for (McpDependency d : u.mcpDependencies()) stillReferenced.add(d.name());
+                }
+            } catch (IOException io) {
+                // Fall back to skills-only on listing failure — better to
+                // miss a plugin claim and emit a wrongly-orphan unregister
+                // (which the gateway will reject if still in use) than to
+                // skip the orphan sweep entirely and leak a dead server.
+                for (Skill s : store.listInstalled()) {
+                    if (s.name().equals(skillName)) continue;
+                    for (McpDependency d : s.mcpDependencies()) stillReferenced.add(d.name());
+                }
             }
             for (McpDependency d : removedDeps) {
                 if (!stillReferenced.contains(d.name())) {
