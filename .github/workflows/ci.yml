@@ -68,6 +68,17 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
+      # Serialize the matrix to avoid a cold-cache stampede on Maven
+      # Central. Six parallel matrix jobs each pulling ~500MB of Spring
+      # Boot deps for the registry server (jbang `SkillManagerServer.java`)
+      # in the same few seconds is enough to trip Central's per-AS rate
+      # limits — failed downloads write `.lastUpdated` markers, the cache
+      # step archives them, and the poisoning then propagates to the next
+      # workflow run. With max-parallel: 1, the first job populates the
+      # cache cold; subsequent jobs restore from it via `restore-keys`
+      # and skip the network entirely. Wall time goes up but transient
+      # "Could not resolve" failures from `(absent)` artifacts go away.
+      max-parallel: 1
       matrix:
         # `hyper-experiments` exercises the install-time env-init path:
         # X_RUNPOD_KEY (provisioned from secrets at the job level below)
