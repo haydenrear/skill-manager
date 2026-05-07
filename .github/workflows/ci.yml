@@ -82,12 +82,12 @@ jobs:
         # conflict) — these regressed silently during the policy-gate
         # calibration in ticket 12 and only got caught locally.
         graph:
-          # - smoke
+          - smoke
           - onboard
-          # - hyper-experiments
-          # - plugin-smoke
-          # - source-tracking
-          # - git-latest-source-tracking
+          - hyper-experiments
+          - plugin-smoke
+          - source-tracking
+          - git-latest-source-tracking
     env:
       # Set on every matrix job — only hyper-experiments actually uses it,
       # but it's harmless for the others (they never read it).
@@ -134,6 +134,77 @@ jobs:
           path: ~/.jbang
           key: jbang-${{ runner.os }}-${{ hashFiles('**/*.java') }}
           restore-keys: jbang-${{ runner.os }}-
+
+      # Diagnostic: surface JBang/Maven cache state + Maven Central
+      # reachability before any jbang invocation runs. Helps tell apart:
+      #   1. cache poisoning (.lastUpdated markers on missing JARs say
+      #      "tried recently, do not retry"),
+      #   2. network / DNS / proxy failures from the runner,
+      #   3. genuine 404s on a published artifact.
+      # Runs unconditionally — cheap, and "absent in central" failures
+      # land in the next step, so we want this evidence captured first.
+      - name: Inspect JBang cache + Maven Central reachability
+        run: |
+          set +e
+          echo "--- jbang version ---"
+          jbang version 2>&1 || echo "(jbang not on PATH)"
+
+          echo
+          echo "--- ~/.jbang layout ---"
+          if [ -d "$HOME/.jbang" ]; then
+            du -sh "$HOME/.jbang" 2>/dev/null
+            find "$HOME/.jbang" -maxdepth 3 -type d 2>/dev/null | head -30
+          else
+            echo "(no ~/.jbang — fresh cache)"
+          fi
+
+          echo
+          echo "--- ~/.m2/repository size + dep counts ---"
+          if [ -d "$HOME/.m2/repository" ]; then
+            du -sh "$HOME/.m2/repository" 2>/dev/null
+            jar_count=$(find "$HOME/.m2/repository" -name '*.jar' 2>/dev/null | wc -l)
+            pom_count=$(find "$HOME/.m2/repository" -name '*.pom' 2>/dev/null | wc -l)
+            echo "jars=$jar_count poms=$pom_count"
+          else
+            echo "(no ~/.m2/repository)"
+          fi
+
+          echo
+          echo "--- failed-resolution markers (Maven .lastUpdated) ---"
+          # `.lastUpdated` next to a missing artifact is the proximate
+          # signal of poisoning. Print up to 30; redact home path.
+          marker_count=$(find "$HOME/.m2" "$HOME/.jbang" -name '*.lastUpdated' 2>/dev/null | wc -l)
+          echo "marker_count=$marker_count"
+          if [ "$marker_count" -gt 0 ]; then
+            find "$HOME/.m2" "$HOME/.jbang" -name '*.lastUpdated' 2>/dev/null \
+              | head -30 \
+              | sed "s|$HOME|~|g"
+            echo
+            echo "--- sample marker contents (first 3) ---"
+            find "$HOME/.m2" "$HOME/.jbang" -name '*.lastUpdated' 2>/dev/null \
+              | head -3 \
+              | while read f; do
+                  echo "::group::$(echo "$f" | sed "s|$HOME|~|g")"
+                  cat "$f" 2>/dev/null
+                  echo "::endgroup::"
+                done
+          fi
+
+          echo
+          echo "--- direct reachability of Maven Central ---"
+          # Probe a Spring Boot artifact that the registry server depends
+          # on. A non-200 here is the smoking gun for "Maven Central is
+          # genuinely refusing this runner" rather than cache state.
+          curl -sS -o /dev/null -w "spring-boot-starter-web 3.3.4 jar HEAD: %{http_code} (%{time_total}s)\n" \
+              -I https://repo1.maven.org/maven2/org/springframework/boot/spring-boot-starter-web/3.3.4/spring-boot-starter-web-3.3.4.jar
+          curl -sS -o /dev/null -w "spring-boot-starter-web 3.3.4 pom HEAD: %{http_code} (%{time_total}s)\n" \
+              -I https://repo1.maven.org/maven2/org/springframework/boot/spring-boot-starter-web/3.3.4/spring-boot-starter-web-3.3.4.pom
+          curl -sS -o /dev/null -w "central root GET:                 %{http_code} (%{time_total}s)\n" \
+              https://repo1.maven.org/maven2/
+
+          echo
+          echo "--- DNS for repo1.maven.org ---"
+          getent hosts repo1.maven.org 2>&1 || echo "(getent failed)"
 
       - name: Pre-pull postgres image
         run: docker pull "$POSTGRES_IMAGE"
