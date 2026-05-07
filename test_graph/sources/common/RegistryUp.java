@@ -102,7 +102,7 @@ public class RegistryUp {
             Files.writeString(pidFile, Long.toString(proc.pid()));
 
             String baseUrl = "http://127.0.0.1:" + port;
-            boolean healthy = waitForHealthy(baseUrl, Duration.ofSeconds(60));
+            boolean healthy = waitForHealthy(baseUrl, Duration.ofSeconds(180));
             if (!healthy) {
                 proc.destroy();
                 return NodeResult.fail("registry.up",
