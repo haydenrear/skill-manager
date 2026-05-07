@@ -164,14 +164,38 @@ public final class HarnessPluginCli {
      * installed locally. The handler treats unavailable drivers as
      * "record HARNESS_CLI_UNAVAILABLE", which is the contract the
      * unit-test sandbox wants to exercise.
+     *
+     * <p>Tests that need a specific driver set (e.g. one available, one
+     * missing — to assert the handler's mixed-availability behavior) can
+     * call {@link #overrideDriversForTesting(List)} with the list to use,
+     * and {@link #clearDriverOverrideForTesting()} when done. The
+     * override takes precedence over the system property.
      */
     public static List<Driver> defaultDrivers() {
+        List<Driver> override = TEST_OVERRIDE.get();
+        if (override != null) return override;
         if (Boolean.getBoolean("skill-manager.harness-cli.disabled")) {
             return List.of(new ForcedMissing("claude", "brew install claude"),
                     new ForcedMissing("codex", "brew install codex"));
         }
         return defaultDrivers(liveRunner());
     }
+
+    /**
+     * Test hook: substitute the driver list returned by
+     * {@link #defaultDrivers()}. Thread-local so concurrent test runs
+     * don't bleed.
+     */
+    public static void overrideDriversForTesting(List<Driver> drivers) {
+        TEST_OVERRIDE.set(drivers);
+    }
+
+    /** Test hook: drop the override set by {@link #overrideDriversForTesting}. */
+    public static void clearDriverOverrideForTesting() {
+        TEST_OVERRIDE.remove();
+    }
+
+    private static final ThreadLocal<List<Driver>> TEST_OVERRIDE = new ThreadLocal<>();
 
     /**
      * Driver that always reports unavailable + throws on any subprocess

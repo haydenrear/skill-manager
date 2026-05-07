@@ -3,12 +3,15 @@ package dev.skillmanager.effects;
 import dev.skillmanager._lib.harness.TestHarness;
 import dev.skillmanager._lib.test.Tests;
 import dev.skillmanager.model.UnitKind;
+import dev.skillmanager.project.HarnessPluginCli;
 import dev.skillmanager.project.PluginMarketplace;
 import dev.skillmanager.source.InstalledUnit;
 
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -138,6 +141,131 @@ public final class RefreshHarnessPluginsTest {
                     "error still on the source record");
         });
 
+        // Regression: HARNESS_CLI_UNAVAILABLE must reflect the union of
+        // missing drivers, not the iteration order. Previously, when
+        // the handler iterated [missing Claude, available Codex], Codex's
+        // success branch cleared the error Claude had just set —
+        // leaving the plugin appearing healthy even though Claude
+        // couldn't install it.
+        suite.test("HARNESS_CLI_UNAVAILABLE survives a later available driver in the same loop", () -> {
+            TestHarness h = TestHarness.create();
+            h.scaffoldUnitDir("alpha", UnitKind.PLUGIN);
+            h.seedUnit("alpha", UnitKind.PLUGIN);
+
+            HarnessPluginCli.overrideDriversForTesting(List.of(
+                    new FakeDriver("claude", false, "brew install claude"),
+                    new FakeDriver("codex", true, "brew install codex")));
+            try {
+                EffectReceipt r = h.run(SkillEffect.RefreshHarnessPlugins.reinstallAll(List.of("alpha")));
+                assertTrue(r.status() == EffectStatus.OK || r.status() == EffectStatus.PARTIAL,
+                        "effect completed (status=" + r.status() + ")");
+
+                Optional<InstalledUnit> alphaSrc = h.sourceOf("alpha");
+                assertTrue(alphaSrc.isPresent(), "alpha record present");
+                assertTrue(alphaSrc.get().hasError(
+                                InstalledUnit.ErrorKind.HARNESS_CLI_UNAVAILABLE),
+                        "missing claude must surface as HARNESS_CLI_UNAVAILABLE even when "
+                                + "codex is available later in the loop");
+            } finally {
+                HarnessPluginCli.clearDriverOverrideForTesting();
+            }
+        });
+
+        // Regression: AGENT_SYNC_FAILED set by Claude's failure must not
+        // be erased by Codex's vacuous success. Codex.reinstallPlugin is
+        // a no-op (the CLI doesn't support non-interactive install), and
+        // it returns ok=true. The handler used to call tryClearError on
+        // every ok result, which meant Codex's no-op overwrote a real
+        // Claude failure on the same plugin in the same loop.
+        suite.test("Claude-install failure stays put when Codex no-op succeeds in the same loop", () -> {
+            TestHarness h = TestHarness.create();
+            h.scaffoldUnitDir("alpha", UnitKind.PLUGIN);
+            h.seedUnit("alpha", UnitKind.PLUGIN);
+
+            FakeDriver claude = new FakeDriver("claude", true, "brew install claude");
+            claude.failReinstall = true;
+            FakeDriver codex = new FakeDriver("codex", true, "brew install codex");
+            // codex is a no-op-success driver — matches production Codex
+            // semantics.
+            HarnessPluginCli.overrideDriversForTesting(List.of(claude, codex));
+            try {
+                EffectReceipt r = h.run(SkillEffect.RefreshHarnessPlugins.reinstallAll(List.of("alpha")));
+                assertTrue(r.status() == EffectStatus.PARTIAL,
+                        "claude failure surfaces as PARTIAL receipt (was: " + r.status() + ")");
+
+                Optional<InstalledUnit> alphaSrc = h.sourceOf("alpha");
+                assertTrue(alphaSrc.isPresent(), "alpha record present");
+                assertTrue(alphaSrc.get().hasError(
+                                InstalledUnit.ErrorKind.AGENT_SYNC_FAILED),
+                        "claude install failure must remain recorded as AGENT_SYNC_FAILED "
+                                + "even though codex returned ok=true on its no-op reinstall");
+            } finally {
+                HarnessPluginCli.clearDriverOverrideForTesting();
+            }
+        });
+
+        suite.test("AGENT_SYNC_FAILED clears when every driver actually succeeds", () -> {
+            TestHarness h = TestHarness.create();
+            h.scaffoldUnitDir("alpha", UnitKind.PLUGIN);
+            h.seedUnit("alpha", UnitKind.PLUGIN);
+            // Pre-seed a stale failure from a hypothetical earlier sync.
+            h.context().addError("alpha", InstalledUnit.ErrorKind.AGENT_SYNC_FAILED,
+                    "stale claude failure");
+
+            FakeDriver claude = new FakeDriver("claude", true, "brew install claude");
+            FakeDriver codex = new FakeDriver("codex", true, "brew install codex");
+            HarnessPluginCli.overrideDriversForTesting(List.of(claude, codex));
+            try {
+                h.run(SkillEffect.RefreshHarnessPlugins.reinstallAll(List.of("alpha")));
+
+                Optional<InstalledUnit> alphaSrc = h.sourceOf("alpha");
+                assertTrue(alphaSrc.isPresent(), "alpha record present");
+                assertFalse(alphaSrc.get().hasError(
+                                InstalledUnit.ErrorKind.AGENT_SYNC_FAILED),
+                        "stale AGENT_SYNC_FAILED clears once every driver succeeds in this run");
+            } finally {
+                HarnessPluginCli.clearDriverOverrideForTesting();
+            }
+        });
+
         return suite.runAll();
+    }
+
+    /**
+     * Test driver that lets each test pin availability + per-call
+     * outcomes without spawning real claude/codex subprocesses.
+     */
+    private static final class FakeDriver implements HarnessPluginCli.Driver {
+        private final String agentId;
+        private final boolean available;
+        private final String installHint;
+        boolean failReinstall;
+        final List<String> reinstalls = new ArrayList<>();
+
+        FakeDriver(String agentId, boolean available, String installHint) {
+            this.agentId = agentId;
+            this.available = available;
+            this.installHint = installHint;
+        }
+        @Override public String agentId() { return agentId; }
+        @Override public String binary() { return agentId; }
+        @Override public String installHint() { return installHint; }
+        @Override public boolean available() { return available; }
+        @Override public HarnessPluginCli.Result ensureMarketplaceAdded(Path marketplaceRoot) {
+            return new HarnessPluginCli.Result(0, "added", "");
+        }
+        @Override public HarnessPluginCli.Result refreshMarketplace(Path marketplaceRoot) {
+            return new HarnessPluginCli.Result(0, "updated", "");
+        }
+        @Override public HarnessPluginCli.Result reinstallPlugin(String pluginName) throws IOException {
+            reinstalls.add(pluginName);
+            if (failReinstall) {
+                return new HarnessPluginCli.Result(1, "", agentId + " install failed");
+            }
+            return new HarnessPluginCli.Result(0, agentId + " installed " + pluginName, "");
+        }
+        @Override public HarnessPluginCli.Result uninstallPlugin(String pluginName) {
+            return new HarnessPluginCli.Result(0, "uninstalled", "");
+        }
     }
 }

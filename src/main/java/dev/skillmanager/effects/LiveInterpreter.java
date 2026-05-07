@@ -592,20 +592,48 @@ public final class LiveInterpreter implements ProgramInterpreter {
             }
         }
 
-        for (dev.skillmanager.project.HarnessPluginCli.Driver driver
-                : dev.skillmanager.project.HarnessPluginCli.defaultDrivers()) {
-            if (!driver.available()) {
+        // Resolve availability up front so HARNESS_CLI_UNAVAILABLE is set
+        // ONCE based on the union of missing drivers, not flickered per
+        // iteration. Iteration order would otherwise determine whether
+        // the error is set or cleared at end-of-loop — a real missing
+        // driver could be erased by a later available driver's success.
+        List<dev.skillmanager.project.HarnessPluginCli.Driver> drivers =
+                dev.skillmanager.project.HarnessPluginCli.defaultDrivers();
+        List<dev.skillmanager.project.HarnessPluginCli.Driver> missing = new ArrayList<>();
+        List<dev.skillmanager.project.HarnessPluginCli.Driver> available = new ArrayList<>();
+        for (var d : drivers) {
+            if (d.available()) available.add(d); else missing.add(d);
+        }
+        if (!missing.isEmpty()) {
+            StringBuilder msg = new StringBuilder("missing harness CLI on PATH: ");
+            for (int i = 0; i < missing.size(); i++) {
+                if (i > 0) msg.append(", ");
+                var d = missing.get(i);
+                msg.append(d.binary()).append(" (try: ").append(d.installHint()).append(")");
                 facts.add(new ContextFact.HarnessCliMissing(
-                        driver.agentId(), driver.binary(), driver.installHint()));
-                String msg = driver.binary() + " CLI not on PATH; install with: " + driver.installHint();
-                for (String pluginName : currentPlugins) {
-                    tryAddError(ctx, pluginName,
-                            InstalledUnit.ErrorKind.HARNESS_CLI_UNAVAILABLE,
-                            msg);
-                }
-                continue;
+                        d.agentId(), d.binary(), d.installHint()));
             }
-            // CLI is on path — drive marketplace + per-plugin lifecycle.
+            for (String pluginName : currentPlugins) {
+                tryAddError(ctx, pluginName,
+                        InstalledUnit.ErrorKind.HARNESS_CLI_UNAVAILABLE, msg.toString());
+            }
+        } else {
+            // Every required harness CLI is on PATH — drop any stale
+            // unavailability error from a prior sync.
+            for (String pluginName : currentPlugins) {
+                tryClearError(ctx, pluginName, InstalledUnit.ErrorKind.HARNESS_CLI_UNAVAILABLE);
+            }
+        }
+
+        // Per-plugin failure tracking across drivers. A plugin is "agent
+        // sync failed" only when at least one driver actually failed for
+        // it in this run; clearing a prior AGENT_SYNC_FAILED waits until
+        // every driver has attempted, so a vacuous success on one driver
+        // (Codex's reinstallPlugin is a no-op) can't erase the failure
+        // recorded by a real driver (Claude) earlier in the same loop.
+        java.util.Set<String> reinstallFailures = new java.util.HashSet<>();
+
+        for (var driver : available) {
             try {
                 dev.skillmanager.project.HarnessPluginCli.Result added =
                         driver.ensureMarketplaceAdded(mp.root());
@@ -629,11 +657,10 @@ public final class LiveInterpreter implements ProgramInterpreter {
                             driver.agentId(), name, "install", r.ok(),
                             r.ok() ? null : truncate(r.stderr())));
                     if (!r.ok()) {
+                        reinstallFailures.add(name);
                         tryAddError(ctx, name, InstalledUnit.ErrorKind.AGENT_SYNC_FAILED,
                                 driver.agentId() + " plugin install: " + truncate(r.stderr()));
                         failed++;
-                    } else {
-                        tryClearError(ctx, name, InstalledUnit.ErrorKind.AGENT_SYNC_FAILED);
                     }
                 }
                 for (String name : uninstall) {
@@ -642,15 +669,19 @@ public final class LiveInterpreter implements ProgramInterpreter {
                             driver.agentId(), name, "uninstall", r.ok(),
                             r.ok() ? null : truncate(r.stderr())));
                 }
-                // CLI on PATH for this harness — clear any prior
-                // unavailability error on every current plugin.
-                for (String pluginName : currentPlugins) {
-                    tryClearError(ctx, pluginName, InstalledUnit.ErrorKind.HARNESS_CLI_UNAVAILABLE);
-                }
             } catch (Exception ex) {
                 facts.add(new ContextFact.HarnessPluginCli(
                         driver.agentId(), null, "marketplace-add", false, ex.getMessage()));
                 failed++;
+            }
+        }
+
+        // Now that every available driver has attempted its installs,
+        // clear AGENT_SYNC_FAILED only on plugins where no driver
+        // failed in this run.
+        for (String name : reinstall) {
+            if (!reinstallFailures.contains(name)) {
+                tryClearError(ctx, name, InstalledUnit.ErrorKind.AGENT_SYNC_FAILED);
             }
         }
 
