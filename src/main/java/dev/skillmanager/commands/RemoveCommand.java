@@ -15,10 +15,13 @@ import picocli.CommandLine.Parameters;
 import java.util.List;
 import java.util.concurrent.Callable;
 
-@Command(name = "remove", aliases = "rm", description = "Remove an installed skill.")
+@Command(name = "remove", aliases = "rm",
+        description = "Remove an installed unit (skill or plugin) from the store. Lower-level "
+                + "than `uninstall` — by default does not unlink agent symlinks or unregister MCP "
+                + "servers. Use `uninstall` for the full cleanup.")
 public final class RemoveCommand implements Callable<Integer> {
 
-    @Parameters(index = "0", description = "Skill name")
+    @Parameters(index = "0", description = "Unit name (skill or plugin)")
     String name;
 
     @Option(names = "--from", description = "Also unlink from the given agent(s)", split = ",")
@@ -32,8 +35,8 @@ public final class RemoveCommand implements Callable<Integer> {
     public Integer call() throws Exception {
         SkillStore store = SkillStore.defaultStore();
         store.init();
-        if (!store.contains(name)) {
-            Log.warn("skill not found: %s", name);
+        if (!store.containsUnit(name)) {
+            Log.warn("unit not found: %s", name);
             return 1;
         }
         GatewayConfig gw = GatewayConfig.resolve(store, null);

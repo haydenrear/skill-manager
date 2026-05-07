@@ -1,36 +1,36 @@
 ---
 name: skill-manager
-description: Search and install agent skills. For any skill-manager-managed skill, MCP tools and CLI tools are resolved transitively — CLI tools land under $SKILL_MANAGER_HOME/bin/cli/ (resolve absolute paths via env.sh), and MCP tools are registered with the virtual-mcp-gateway, which is then how you manage, deploy, and invoke them (browse_mcp_servers / describe_mcp_server / deploy_mcp_server with init params and secrets / browse_active_tools / search_tools / describe_tool / invoke_tool). Identify skill-manager-managed skills with `skill-manager list`. Use whenever the user asks to find, add, remove, inspect, sync, or upgrade a skill, or to manage / deploy / invoke an MCP tool that came from one.
+description: Search and install agent skills and plugins. For any skill-manager-managed unit (skill or plugin), MCP tools and CLI tools are resolved transitively — CLI tools land under $SKILL_MANAGER_HOME/bin/cli/ (resolve absolute paths via env.sh), and MCP tools are registered with the virtual-mcp-gateway, which is then how you manage, deploy, and invoke them (browse_mcp_servers / describe_mcp_server / deploy_mcp_server with init params and secrets / browse_active_tools / search_tools / describe_tool / invoke_tool). Plugins additionally register with Claude/Codex via their CLIs through a skill-manager-owned local marketplace, so harness hooks/commands actually load. Identify skill-manager-managed units with `skill-manager list`. Use whenever the user asks to find, add, remove, inspect, sync, or upgrade a skill or plugin, or to manage / deploy / invoke an MCP tool that came from one.
 ---
 
 # skill-manager
 
-You can **discover and install** skills and MCP servers on demand using the `skill-manager` CLI. Treat this as your package manager for agent capabilities.
+You can **discover and install** skills, plugins, and MCP servers on demand using the `skill-manager` CLI. Treat this as your package manager for agent capabilities. Skills and plugins are the two unit kinds; everywhere below "unit" means either.
 
 ## When to use this skill
 
-- The user asks what skills are available ("what skills do I have?" / "find a skill for X").
-- The user asks to install, remove, publish, upgrade, or inspect a skill.
+- The user asks what skills/plugins are available ("what skills do I have?" / "find a plugin for X").
+- The user asks to install, remove, publish, upgrade, or inspect a skill or plugin.
 - The user asks to add, describe, deploy, or invoke an MCP server / tool through the gateway.
-- The user asks "what MCP tools can I use" or "what's available right now" — for skills surfaced by `skill-manager list`, route through the gateway (see next section).
+- The user asks "what MCP tools can I use" or "what's available right now" — for units surfaced by `skill-manager list`, route through the gateway (see next section).
 - You've identified a capability gap — e.g. a task needs a CLI tool or MCP server you don't yet have — and you should propose finding one.
 
 Always narrate the plan before running commands that modify state. Install/publish/register/upgrade are side-effecting; confirm the scope before acting.
 
 ## How skill-manager-managed MCP and CLI tools are reached
 
-When you install a skill via `skill-manager install`, both kinds of tools that skill declares are resolved transitively across the whole skill graph:
+When you install a unit via `skill-manager install`, both kinds of tools the unit declares are resolved transitively. For a plugin, the install pipeline walks **both** the plugin-level `skill-manager-plugin.toml` and every contained skill's `skill-manager.toml`, then unions the deps:
 
-- **CLI tools** (`[[cli_dependencies]]` in any reachable `skill-manager.toml`) land under `$SKILL_MANAGER_HOME/bin/cli/`. Use the `env.sh` / `env.py` helper (described in **Locating CLIs by absolute path** below) to get their absolute paths so you bypass anything conflicting on the user's `PATH`.
+- **CLI tools** (`[[cli_dependencies]]` in any reachable manifest) land under `$SKILL_MANAGER_HOME/bin/cli/`. Use the `env.sh` / `env.py` helper (described in **Locating CLIs by absolute path** below) to get their absolute paths so you bypass anything conflicting on the user's `PATH`.
 - **MCP tools** (`[[mcp_dependencies]]`) are registered with the **virtual-mcp-gateway** — the single MCP endpoint every agent's MCP config points at. The gateway is then how you manage, deploy, and invoke them. There is no CLI for any of those operations.
 
-To know which skills (and therefore which MCP servers and CLI tools) are skill-manager-managed in the current environment, run:
+To know which units (and therefore which MCP servers and CLI tools) are skill-manager-managed in the current environment, run:
 
 ```
 skill-manager list
 ```
 
-The MCP servers behind those skills are discoverable, deployable, and callable only through the gateway's virtual tools below — not through any tool-catalog or search primitive your harness might also expose. When the user asks "what MCP tools do I have", "deploy server X", "the env var is set now, try again", or "call tool Y", route the call through the gateway's virtual tools.
+The MCP servers behind those units are discoverable, deployable, and callable only through the gateway's virtual tools below — not through any tool-catalog or search primitive your harness might also expose. When the user asks "what MCP tools do I have", "deploy server X", "the env var is set now, try again", or "call tool Y", route the call through the gateway's virtual tools.
 
 For the full architectural reference — what the gateway does, how scopes work, the disclosure gate, and how to debug a server that won't deploy — see [`references/virtual-mcp-gateway.md`](references/virtual-mcp-gateway.md).
 
@@ -74,7 +74,7 @@ Call all of these on the `virtual-mcp-gateway` MCP server.
 1. `describe_mcp_server(server_id="X")` to read its `init_schema` and current `last_error`.
 2. Ask the user for any required+missing values (don't fabricate API keys).
 3. `deploy_mcp_server(server_id="X", initialization_params={…})`.
-4. Alternative: if the user just exported the env var into their shell and re-launched their agent, run `skill-manager sync` from the CLI — it re-registers every installed skill's MCP deps and picks up env-var values for required init fields, so all eligible servers get auto-deployed in one shot.
+4. Alternative: if the user just exported the env var into their shell and re-launched their agent, run `skill-manager sync` from the CLI — it re-registers every installed unit's MCP deps and picks up env-var values for required init fields, so all eligible servers get auto-deployed in one shot.
 
 **"Invoke tool Y"**
 
@@ -107,7 +107,7 @@ Every install / sync / upgrade / uninstall flips `~/.skill-manager/units.lock.to
 | --- | --- | --- |
 | Show drift | `skill-manager lock status` | Diagnose why install state disagrees with the lock. |
 | Reconcile to a vendored lock | `skill-manager sync --lock <path>` | Reproduce a known-good install set; idempotent. |
-| Re-write lock from live state | `skill-manager sync --refresh` | After out-of-band edits to `~/.skill-manager/skills/` or `plugins/`. |
+| Re-write lock from live state | `skill-manager sync --refresh` | After out-of-band edits to `~/.skill-manager/skills/` or `~/.skill-manager/plugins/`. |
 | Advance lock to latest | `skill-manager upgrade <name>` / `--all` | Upgrade and bump the lock atomically. |
 
 Suggest `sync --lock <path>` when the user wants to reproduce a vendored install set. Suggest `upgrade` when they want to advance to the registry's latest. Suggest `lock status` whenever drift is suspected (e.g. install commands behave unexpectedly after a manual edit).
@@ -116,14 +116,15 @@ Suggest `sync --lock <path>` when the user wants to reproduce a vendored install
 
 All subcommands are run as `skill-manager <command>`. Most modifying commands take `--dry-run` (show the plan) and `--yes` (skip interactive confirmation). Policy-gated actions will refuse to proceed without a plan review.
 
-### Discovering and installing skills
+### Discovering and installing units (skills + plugins)
 
 | Step | Command |
 | --- | --- |
 | Search by keyword (returns kind in the `KIND` column) | `skill-manager search "<query>"` |
 | Describe a hit | `skill-manager registry describe <name>` |
-| Install by name | `skill-manager install <name>[@<version>]` |
-| Install from local path | `skill-manager install ./path/to/skill` |
+| Install by name (kind auto-detected at parse time) | `skill-manager install <name>[@<version>]` |
+| Install kind-pinned | `skill-manager install skill:<name>` / `skill-manager install plugin:<name>` |
+| Install from local path | `skill-manager install ./path/to/unit` |
 | Install from a git repo | `skill-manager install github:user/repo` |
 | List installed (shows kind + sha + source columns) | `skill-manager list` |
 | Show an installed unit (skill or plugin) | `skill-manager show <name>` |
@@ -138,31 +139,68 @@ All subcommands are run as `skill-manager <command>`. Most modifying commands ta
 | Scaffold a new skill | `skill-manager create <name>` |
 | Scaffold a new plugin | `skill-manager create <name> --kind plugin` |
 
-`add` always builds a plan first — fetches the skill + every transitive reference into staging, then prints what will happen (fetches, CLI installs, MCP registrations). Nothing is committed to the store until consent is given.
+`install` always builds a plan first — fetches the unit + every transitive reference into staging, then prints what will happen (fetches, CLI installs, MCP registrations, plugin marketplace registrations). Nothing is committed to the store until consent is given.
 
-### Where skills land on disk
+#### Plugin install: detection + flow
 
-Every installed skill gets a directory at `$SKILL_MANAGER_HOME/skills/<name>/` (defaults to `~/.skill-manager/skills/<name>/`). On a successful `add`, the CLI prints one line per newly-installed skill in a stable, parseable shape:
+A unit is installed as a **plugin** when its root contains `.claude-plugin/plugin.json` (Claude Code's runtime manifest). Plugin layout — minimum viable:
+
+```
+my-plugin/
+├── .claude-plugin/plugin.json          # required — marker that this is a plugin
+├── skill-manager-plugin.toml           # optional sidecar (CLI deps, MCP deps, references)
+└── skills/<contained>/SKILL.md         # zero or more contained skills
+```
+
+`skill-manager-plugin.toml` is **optional**. A plugin without it still installs cleanly — the only side effect on top of bytes-on-disk is the marketplace + harness registration. When the sidecar is present, plugin-level `[[cli_dependencies]]` / `[[mcp_dependencies]]` / `references` get unioned with every contained skill's deps at parse time, so the install pipeline registers them all in one pass.
+
+Walk-through of `skill-manager install plugin:my-plugin`:
+
+1. Resolver fetches the source, detects `.claude-plugin/plugin.json` → kind=PLUGIN. Bytes go to `~/.skill-manager/plugins/my-plugin/`.
+2. Plan-build unions the plugin-level toml's deps with every contained skill's deps. Policy gates show `! HOOKS / ! MCP / ! CLI` lines — `--yes` is blocked when a flagged category still requires confirmation in `policy.toml`.
+3. CLI deps install into `~/.skill-manager/bin/cli/`; MCP servers register with the gateway.
+4. The skill-manager marketplace at `~/.skill-manager/plugin-marketplace/` regenerates and the plugin gets `claude plugin install my-plugin@skill-manager --scope user` (and `codex plugin marketplace add` if codex is on PATH). Hooks/commands/agents bundled in the plugin load on the agent's next session.
+5. `units.lock.toml` flips atomically with `kind = "plugin"`.
+
+### Where units land on disk
+
+Every installed unit gets a directory at `$SKILL_MANAGER_HOME/<skills|plugins>/<name>/` (defaults to `~/.skill-manager/`). Skills go to `skills/<name>/`; plugins to `plugins/<name>/`. On a successful install, the CLI prints one line per newly-installed unit in a stable, parseable shape:
 
 ```
 INSTALLED: hello-skill@0.1.0 -> /Users/you/.skill-manager/skills/hello-skill
+INSTALLED: my-plugin@0.4.2  -> /Users/you/.skill-manager/plugins/my-plugin
 ```
 
-Read those lines to find the `SKILL.md` you just acquired — no agent restart needed. The directory contains the skill's `SKILL.md`, any referenced assets, and the `skill-manager.toml` manifest.
+Read those lines to find the unit you just acquired — no agent restart needed. A skill's directory contains `SKILL.md`, referenced assets, and `skill-manager.toml`. A plugin's directory contains `.claude-plugin/plugin.json` (required), an optional `skill-manager-plugin.toml` sidecar, and a `skills/<contained>/` tree of contained skills.
 
-`install` also projects the unit into every known agent's tree, pointing back at the store path:
+#### How skills are exposed to agents
+
+Skills get a per-agent symlink pointing back at the store path:
 
 ```
-# Skills:
 ~/.claude/skills/<name> -> ~/.skill-manager/skills/<name>
 ~/.codex/skills/<name>  -> ~/.skill-manager/skills/<name>
-
-# Plugins:
-~/.claude/plugins/<name> -> ~/.skill-manager/plugins/<name>
-# (Codex doesn't consume plugins yet — no projection on the Codex side.)
 ```
 
-Without those projections the agent runtime can't see the unit, so this happens unconditionally on every `install`. Use `env.sh --for claude` (or `--for codex`) to ask for the agent-visible path; default output reports the original store path.
+#### How plugins are exposed to agents
+
+Plugins flow through a different mechanism — the harness CLIs (`claude plugin`, `codex plugin marketplace`) only install plugins from a configured marketplace, not from arbitrary symlinks. skill-manager owns a single local marketplace that catalogs every installed plugin:
+
+```
+~/.skill-manager/plugin-marketplace/
+├── .claude-plugin/marketplace.json     # auto-generated catalog ("name": "skill-manager")
+└── plugins/
+    └── <plugin-name> -> ~/.skill-manager/plugins/<plugin-name>
+```
+
+On every install / sync / upgrade / uninstall, skill-manager:
+
+1. Regenerates `marketplace.json` from the current installed-plugin set.
+2. If `claude` is on PATH: `claude plugin marketplace add <root>` (idempotent), `marketplace update skill-manager`, then `claude plugin uninstall <name>@skill-manager` followed by `claude plugin install <name>@skill-manager --scope user` for each plugin (the uninstall+reinstall cycle forces hooks/commands/agents to reload from the new bytes).
+3. If `codex` is on PATH: `codex plugin marketplace add <root>` (also idempotent — codex re-reads the local marketplace.json each time). Final plugin install in Codex requires the user's interactive `/plugins` UI; skill-manager registers the marketplace so the user can complete it.
+4. If either CLI is missing on PATH: skill-manager records `HARNESS_CLI_UNAVAILABLE` on each plugin's installed-record with a `brew install <bin>` hint. The error self-clears on the next sync once the binary is reachable — install of the plugin's bytes still completes regardless.
+
+Use `env.sh --for claude` (or `--for codex`) to ask for the agent-visible path of a skill; default output reports the original store path.
 
 ### Locating CLIs by absolute path (avoiding PATH conflicts)
 

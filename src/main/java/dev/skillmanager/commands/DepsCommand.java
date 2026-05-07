@@ -12,10 +12,14 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.Callable;
 
-@Command(name = "deps", description = "Show the transitive skill dependency tree.")
+@Command(name = "deps",
+        description = "Show the transitive dependency tree of an installed unit (skill or plugin). "
+                + "For plugins, the tree includes both plugin-level deps and every contained "
+                + "skill's deps (unioned at parse time).")
 public final class DepsCommand implements Callable<Integer> {
 
-    @Parameters(index = "0", arity = "0..1", description = "Skill name (omit for all)")
+    @Parameters(index = "0", arity = "0..1",
+            description = "Unit name — skill or plugin (omit for all installed)")
     String name;
 
     @Option(names = "--cli", description = "Include CLI deps")
