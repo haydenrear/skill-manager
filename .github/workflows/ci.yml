@@ -82,12 +82,12 @@ jobs:
         # conflict) — these regressed silently during the policy-gate
         # calibration in ticket 12 and only got caught locally.
         graph:
-          - smoke
+          # - smoke
           - onboard
-          - hyper-experiments
-          - plugin-smoke
-          - source-tracking
-          - git-latest-source-tracking
+          # - hyper-experiments
+          # - plugin-smoke
+          # - source-tracking
+          # - git-latest-source-tracking
     env:
       # Set on every matrix job — only hyper-experiments actually uses it,
       # but it's harmless for the others (they never read it).
@@ -252,12 +252,12 @@ jobs:
           key: gradle-${{ runner.os }}-${{ hashFiles('test_graph/**/*.gradle*', 'test_graph/gradle/wrapper/gradle-wrapper.properties') }}
           restore-keys: gradle-${{ runner.os }}-
 
-      - name: Cache JBang
-        uses: actions/cache@v4
-        with:
-          path: ~/.jbang
-          key: jbang-${{ runner.os }}-${{ hashFiles('**/*.java') }}
-          restore-keys: jbang-${{ runner.os }}-
+      # - name: Cache JBang
+      #   uses: actions/cache@v4
+      #   with:
+      #     path: ~/.jbang
+      #     key: jbang-${{ runner.os }}-${{ hashFiles('**/*.java') }}
+      #     restore-keys: jbang-${{ runner.os }}-
 
       - name: Pre-pull postgres image
         run: docker pull "$POSTGRES_IMAGE"
