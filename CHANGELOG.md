@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.9.0](https://github.com/haydenrear/skill-manager/compare/v0.8.0...v0.9.0) (2026-05-07)
+
+
+### Features
+
+* try to fix parallel jobs ([#51](https://github.com/haydenrear/skill-manager/issues/51)) ([268d928](https://github.com/haydenrear/skill-manager/commit/268d9289bdb91a802d1a41ff9211bdc645f1e386))
+
 ## [0.8.0](https://github.com/haydenrear/skill-manager/compare/v0.7.0...v0.8.0) (2026-05-06)
 
 
