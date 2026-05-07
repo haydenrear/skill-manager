@@ -132,9 +132,13 @@ public final class SyncUseCase {
      */
     private static Program<?> buildStage2(EffectContext ctx, GatewayConfig gw, Options options) {
         SkillStore store = ctx.store();
-        List<Skill> live;
+        // Kind-aware listing — covers skills under skills/ and plugins
+        // under plugins/. Skill-only listInstalled() (legacy) misses
+        // plugin-kind units, which silently skipped the post-update
+        // tail (RegisterMcp, SyncAgents, RefreshHarnessPlugins).
+        List<dev.skillmanager.model.AgentUnit> liveUnits;
         try {
-            live = store.listInstalled();
+            liveUnits = new ArrayList<>(store.listInstalledUnits());
         } catch (IOException io) {
             // Halt-via-empty-program: the surrounding command will see no
             // tail effects and the sync still reports through stage 1's
@@ -142,13 +146,19 @@ public final class SyncUseCase {
             // mid-rename, which is rare enough to warrant a no-op tail.
             return new Program<>("sync-stage2-" + UUID.randomUUID(), List.of(), receipts -> null);
         }
-        List<dev.skillmanager.model.AgentUnit> liveUnits = new ArrayList<>(live.size());
-        for (Skill s : live) liveUnits.add(s.asUnit());
 
         List<SkillEffect> effects = new ArrayList<>();
         List<SkillEffect> alwaysAfter = new ArrayList<>();
 
-        ResolvedGraph extras = discoverNewlySurfacedRefs(store, live);
+        // discoverNewlySurfacedRefs still consumes List<Skill> — pull the
+        // skill subset out for it. Plugins don't surface new refs through
+        // skill_references; their references live on the plugin / contained
+        // skills, both of which are already part of liveUnits.
+        List<Skill> liveSkills = new ArrayList<>();
+        for (var u : liveUnits) {
+            if (u instanceof dev.skillmanager.model.SkillUnit su) liveSkills.add(su.skill());
+        }
+        ResolvedGraph extras = discoverNewlySurfacedRefs(store, liveSkills);
         if (!extras.resolved().isEmpty()) {
             // Commit the newly-resolved units (their FetchUnit is implicit
             // in the resolver — extras.resolved() carries staged source
@@ -164,9 +174,7 @@ public final class SyncUseCase {
             // Re-list so the post-update tail sees the newly-committed units
             // alongside the pre-existing ones.
             try {
-                live = store.listInstalled();
-                liveUnits = new ArrayList<>(live.size());
-                for (Skill s : live) liveUnits.add(s.asUnit());
+                liveUnits = new ArrayList<>(store.listInstalledUnits());
             } catch (IOException ignored) { /* fall through with stale liveUnits */ }
         }
 
@@ -174,13 +182,24 @@ public final class SyncUseCase {
         effects.add(new SkillEffect.InstallCli(liveUnits));
         if (options.withMcp()) effects.add(new SkillEffect.RegisterMcp(liveUnits, gw));
         if (options.withAgents()) effects.add(new SkillEffect.SyncAgents(liveUnits, gw));
+        // Plugin marketplace + harness CLI lifecycle. Sync is the
+        // user-stated trigger for "uninstall+reinstall every plugin" so
+        // hooks reload from the just-merged bytes — pass every installed
+        // plugin name as the reinstall set.
+        if (options.withAgents()) {
+            List<String> pluginNames = new ArrayList<>();
+            for (var u : liveUnits) {
+                if (u.kind() == dev.skillmanager.model.UnitKind.PLUGIN) pluginNames.add(u.name());
+            }
+            effects.add(SkillEffect.RefreshHarnessPlugins.reinstallAll(pluginNames));
+        }
         if (options.withMcp()) effects.add(new SkillEffect.UnregisterMcpOrphans(gw));
 
         // Lock flip — last main effect. Targets the post-merge live state
         // plus any newly-resolved extras. Sync's "bumped sha" rows are the
-        // primary thing that changes here: a skill's installed-record
+        // primary thing that changes here: a unit's installed-record
         // gitHash advances after the merge, and the lock follows.
-        effects.add(buildLockUpdate(store, live, extras));
+        effects.add(buildLockUpdate(store, liveUnits, extras));
 
         Program<?> p = new Program<>("sync-stage2-" + UUID.randomUUID(), effects, receipts -> null);
         for (SkillEffect cleanup : alwaysAfter) p = p.withFinally(cleanup);
@@ -189,21 +208,23 @@ public final class SyncUseCase {
 
     /**
      * Compute the post-sync lock target. Reads the current lock and
-     * upserts one row per live skill (post-merge installed-record state)
+     * upserts one row per live unit (post-merge installed-record state)
      * plus one row per extras unit (from the resolver's staged graph).
+     * Plugins flow through the same path — the only thing the lock
+     * cares about is the installed-record per name.
      */
     private static SkillEffect.UpdateUnitsLock buildLockUpdate(
-            SkillStore store, List<Skill> live, ResolvedGraph extras) {
+            SkillStore store, List<dev.skillmanager.model.AgentUnit> live, ResolvedGraph extras) {
         try {
             java.nio.file.Path lockPath = dev.skillmanager.lock.UnitsLockReader.defaultPath(store);
             dev.skillmanager.lock.UnitsLock current = dev.skillmanager.lock.UnitsLockReader.read(lockPath);
             UnitStore sources = new UnitStore(store);
             dev.skillmanager.lock.UnitsLock target = current;
-            // Upsert post-merge state for every live skill — sync's primary
+            // Upsert post-merge state for every live unit — sync's primary
             // mutation is gitHash advancing on the installed-record after
             // a merge lands.
-            for (Skill s : live) {
-                InstalledUnit rec = sources.read(s.name()).orElse(null);
+            for (var u : live) {
+                InstalledUnit rec = sources.read(u.name()).orElse(null);
                 if (rec == null) continue;
                 target = target.withUnit(dev.skillmanager.lock.LockedUnit.fromInstalled(rec));
             }

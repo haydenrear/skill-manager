@@ -146,6 +146,23 @@ jobs:
         run: uv sync --all-extras
         working-directory: virtual-mcp-gateway
 
+      # plugin-smoke needs the Claude + Codex harness CLIs on PATH so
+      # the RefreshHarnessPlugins effect can drive `claude plugin
+      # install` / `codex plugin marketplace add` end-to-end. Other
+      # graphs don't touch these commands. The CLIs are installed via
+      # npm to keep the matrix host-agnostic; if either install fails,
+      # plugin-smoke's HelloPluginRegisteredWithHarness node falls
+      # back to its "missing-CLI recorded as error" assertion path,
+      # which still exercises the contract.
+      - name: Install Claude + Codex CLIs (plugin-smoke only)
+        if: matrix.graph == 'plugin-smoke'
+        run: |
+          set -e
+          npm install -g @anthropic-ai/claude-code || echo "::warning::claude install failed — plugin-smoke will hit the missing-CLI branch"
+          npm install -g @openai/codex || echo "::warning::codex install failed — plugin-smoke will hit the missing-CLI branch"
+          echo "claude → $(command -v claude || echo 'not on PATH')"
+          echo "codex  → $(command -v codex || echo 'not on PATH')"
+
       # hyper-experiments asserts a real runpod deploy + tool invoke;
       # without X_RUNPOD_KEY the deploy step fails. Forks don't get
       # repository secrets, so secrets.X_RUNPOD_KEY is empty there and

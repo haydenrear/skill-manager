@@ -13,16 +13,22 @@ import java.nio.file.Path;
 import java.util.List;
 
 /**
- * Projects skills and plugins into Claude's tree:
+ * Projects skills into Claude's tree. Plugins now flow through the
+ * skill-manager-owned plugin marketplace (see
+ * {@link PluginMarketplace}) and the {@code claude plugin} CLI rather
+ * than a per-plugin symlink, so this projector is skills-only — the
+ * {@link UnitKind#PLUGIN} arm returns an empty projection list.
+ *
  * <ul>
  *   <li>{@link UnitKind#SKILL} → {@code <claudeHome>/.claude/skills/<name>}</li>
- *   <li>{@link UnitKind#PLUGIN} → {@code <claudeHome>/.claude/plugins/<name>}</li>
+ *   <li>{@link UnitKind#PLUGIN} → no projection (handled by
+ *       {@link dev.skillmanager.effects.SkillEffect.RefreshHarnessPlugins})</li>
  * </ul>
  *
- * <p>Both arms produce a single projection (one symlink per unit per
- * agent). The projection is always "make target resolve to source",
- * which means {@code apply} and {@code remove} are about the link
- * itself — never the source bytes in the store.
+ * <p>The skill arm produces a single projection per unit; the projection
+ * is always "make target resolve to source", which means {@code apply}
+ * and {@code remove} are about the link itself — never the source bytes
+ * in the store.
  */
 public final class ClaudeProjector implements Projector {
 
@@ -46,8 +52,9 @@ public final class ClaudeProjector implements Projector {
 
     @Override
     public List<Projection> planProjection(AgentUnit unit, SkillStore store) {
+        if (unit.kind() != UnitKind.SKILL) return List.of();
         Path source = store.unitDir(unit.name(), unit.kind());
-        Path target = (unit.kind() == UnitKind.PLUGIN ? pluginsDir : skillsDir).resolve(unit.name());
+        Path target = skillsDir.resolve(unit.name());
         return List.of(new Projection(agentId(), source, target, unit.kind()));
     }
 

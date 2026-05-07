@@ -24,28 +24,38 @@ public final class SourceProvenanceRecorder {
         String now = UnitStore.nowIso();
         for (ResolvedGraph.Resolved r : graph.resolved()) {
             try {
-                Path skillDir = ctx.store().skillDir(r.name());
+                // Kind-aware dir lookup — plugins live under plugins/<name>,
+                // skills under skills/<name>. The pre-ticket-11 path always
+                // hit skillDir, which left every plugin's installed-record
+                // both inspecting the wrong dir for git/hash/ref AND
+                // hard-coding {@code unitKind=SKILL}. The latter made the
+                // RemoveUseCase (which reads {@code unitKind} from the
+                // record) treat every plugin as a skill at uninstall time —
+                // RemoveUnitFromStore then no-oped silently because
+                // {@code skills/<plugin-name>} didn't exist.
+                dev.skillmanager.model.UnitKind unitKind = r.unit().kind();
+                Path unitDir = ctx.store().unitDir(r.name(), unitKind);
                 InstalledUnit.Kind kind;
                 String origin;
                 String hash = null;
                 String gitRef = null;
-                if (GitOps.isGitRepo(skillDir)) {
+                if (GitOps.isGitRepo(unitDir)) {
                     kind = InstalledUnit.Kind.GIT;
                     String resolvedUrl = gitUrlFromSource(r.source());
                     if (resolvedUrl != null) {
-                        GitOps.setOrigin(skillDir, resolvedUrl);
+                        GitOps.setOrigin(unitDir, resolvedUrl);
                         origin = resolvedUrl;
                     } else {
                         String filePath = filePathFromSource(r.source());
                         if (filePath != null && GitOps.isGitRepo(Path.of(filePath))) {
-                            GitOps.setOrigin(skillDir, filePath);
+                            GitOps.setOrigin(unitDir, filePath);
                             origin = filePath;
                         } else {
-                            origin = GitOps.originUrl(skillDir);
+                            origin = GitOps.originUrl(unitDir);
                         }
                     }
-                    hash = GitOps.headHash(skillDir);
-                    gitRef = GitOps.detectInstallRef(skillDir);
+                    hash = GitOps.headHash(unitDir);
+                    gitRef = GitOps.detectInstallRef(unitDir);
                 } else {
                     kind = InstalledUnit.Kind.LOCAL_DIR;
                     origin = r.source();
@@ -54,7 +64,7 @@ public final class SourceProvenanceRecorder {
                 sources.write(new InstalledUnit(
                         r.name(), r.version(), kind, installSource,
                         origin, hash, gitRef, now, null,
-                        dev.skillmanager.model.UnitKind.SKILL));
+                        unitKind));
             } catch (Exception ex) {
                 Log.warn("could not record source provenance for %s: %s", r.name(), ex.getMessage());
             }

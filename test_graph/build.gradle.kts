@@ -413,12 +413,32 @@ validationGraph {
         node("sources/common/JwtValid.java")
         node("sources/common/GatewayPythonVenvReady.java")
         node("sources/smoke/GatewayUp.java")
+        // Echo MCP fixture — needed by the umbrella-plugin install
+        // (both plugin-level and contained-skill MCP deps target this
+        // server), and by the partner skill that re-claims the
+        // plugin-level server name.
+        node("sources/smoke/EchoHttpUp.java")
 
         node("sources/smoke/HelloPluginPublished.java")
         node("sources/smoke/HelloPluginInstalled.java")
+        node("sources/smoke/HelloPluginRegisteredWithHarness.java")
         node("sources/smoke/PluginContainedSkillNotAddressable.java")
 
+        // Plugin install with both plugin-level and contained-skill
+        // CLI + MCP deps — exercises the install pipeline's walk and
+        // proves feature parity with bare skills (every dep registers).
+        node("sources/smoke/UmbrellaPluginInstalled.java")
+        // Plugin sync — drift the marketplace, sync, assert restored.
+        node("sources/smoke/PluginSynced.java")
+        // Sibling skill that claims the umbrella plugin's plugin-level
+        // MCP server. The orphan check on the upcoming plugin uninstall
+        // must see this skill's claim and keep that server alive.
+        node("sources/smoke/PartnerSkillInstalled.java")
+        // Plugin uninstall with mixed orphan/non-orphan deps.
+        node("sources/smoke/PluginUninstalledMixedOrphans.java")
+
         node("sources/common/ServersDown.java")
-                .dependsOn("plugin.contained.skill.not.addressable")
+                .dependsOn("plugin.contained.skill.not.addressable",
+                        "plugin.uninstalled.mixed.orphans")
     }
 }

@@ -210,6 +210,24 @@ public final class ConsoleProgramRenderer implements ProgramRenderer {
                     "units.lock.toml: wrote %d unit(s) → %s", x.unitCount(), x.path());
             case ContextFact.UnitsLockRestored x -> Log.warn(
                     "units.lock.toml: restored prior content at %s (rollback)", x.path());
+
+            // ---- harness plugin marketplace + CLI ----
+            case ContextFact.PluginMarketplaceRegenerated x -> Log.ok(
+                    "marketplace: wrote %d plugin(s) → %s", x.pluginCount(), x.path());
+            case ContextFact.HarnessPluginCli x -> {
+                if (x.ok()) {
+                    if (x.pluginName() == null) Log.ok("%s: %s", x.agentId(), x.op());
+                    else Log.ok("%s: %s %s", x.agentId(), x.op(), x.pluginName());
+                } else {
+                    if (x.pluginName() == null) Log.warn("%s: %s failed — %s",
+                            x.agentId(), x.op(), x.message());
+                    else Log.warn("%s: %s %s failed — %s",
+                            x.agentId(), x.op(), x.pluginName(), x.message());
+                }
+            }
+            case ContextFact.HarnessCliMissing x -> Log.warn(
+                    "%s: CLI %s not on PATH — install with: %s",
+                    x.agentId(), x.binary(), x.installHint());
         }
     }
 
@@ -299,6 +317,8 @@ public final class ConsoleProgramRenderer implements ProgramRenderer {
                     + "(or use --git-latest to bypass the registry for git-tracked skills)";
             case AGENT_SYNC_FAILED -> "retry: skill-manager sync " + skillName
                     + " (will re-attempt the agent symlink)";
+            case HARNESS_CLI_UNAVAILABLE -> "install the missing harness CLI, then re-run "
+                    + "skill-manager sync " + skillName;
         };
     }
 

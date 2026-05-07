@@ -1,0 +1,25 @@
+# Contained-skill metadata for the umbrella-plugin fixture.
+# Stamped at runtime by TgFixture.stampUmbrellaPlugin (tokens
+# __SKILL_SERVER_ID__, __SCOPE__, __MCP_URL__).
+#
+# Skills inside a plugin are bundle-internal — the plugin's install
+# pipeline parses this file and unions its deps into the plugin's
+# effective dep set. Both the cli_dependency below and the
+# mcp_dependency below MUST register at plugin-install time
+# (alongside the plugin-level entries) for feature parity with bare
+# skills.
+
+[[cli_dependencies]]
+spec = "pip:cowsay==6.0"
+on_path = "__zzz_nope_cowsay"
+
+[[mcp_dependencies]]
+name = "__SKILL_SERVER_ID__"
+display_name = "umbrella plugin (contained skill)"
+description = "HTTP echo MCP fixture registered by the contained inner-impl skill (scope __SCOPE__)."
+default_scope = "__SCOPE__"
+load = { type = "binary", transport = "streamable-http", url = "__MCP_URL__", install = {} }
+
+[skill]
+name = "inner-impl"
+version = "0.0.1"

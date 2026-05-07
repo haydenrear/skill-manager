@@ -48,7 +48,7 @@ public final class ProjectorRegistryTest {
                     LinkOption.NOFOLLOW_LINKS), "Codex's target exists");
         });
 
-        suite.test("PLUGIN unit applies through Claude only — Codex skipped", () -> {
+        suite.test("PLUGIN unit produces no per-agent projection — handled by RefreshHarnessPlugins", () -> {
             TestHarness h = TestHarness.create();
             Path claudeRoot = Files.createTempDirectory("registry-claude-plugin-");
             Path codexRoot = Files.createTempDirectory("registry-codex-plugin-");
@@ -61,12 +61,16 @@ public final class ProjectorRegistryTest {
             AgentUnit u = installPlugin(h, "widget");
             List<Projection> applied = registry.applyAll(u, h.store());
 
-            assertEquals(1, applied.size(), "only Claude projected");
-            assertEquals("claude", applied.get(0).agentId(), "Claude's projection");
-            assertTrue(Files.exists(claudeRoot.resolve("plugins").resolve("widget"),
-                    LinkOption.NOFOLLOW_LINKS), "Claude target exists");
+            // Plugins flow through the skill-manager-owned marketplace +
+            // harness CLI ({@link
+            // dev.skillmanager.effects.SkillEffect.RefreshHarnessPlugins})
+            // rather than per-agent symlinks. Both projectors return an
+            // empty projection list for plugin kinds.
+            assertEquals(0, applied.size(), "no per-agent plugin projection");
+            assertFalse(Files.exists(claudeRoot.resolve("plugins").resolve("widget")),
+                    "Claude per-plugin namespace untouched");
             assertFalse(Files.exists(codexRoot.resolve("plugins").resolve("widget")),
-                    "Codex target absent");
+                    "Codex per-plugin namespace untouched");
             assertFalse(Files.exists(codexRoot.resolve("skills").resolve("widget")),
                     "Codex skills target also absent (plugin doesn't fall through to skills)");
         });
