@@ -31,13 +31,16 @@ import java.util.concurrent.Callable;
  * <p>Non-git installs are not supported — convert them to a git source first.
  */
 @Command(name = "upgrade",
-        description = "Upgrade installed git-tracked skills (and optionally skill-manager itself).")
+        description = "Upgrade installed git-tracked units — skills and plugins — to the latest "
+                + "registry version (and optionally skill-manager itself). Plugins re-register "
+                + "with Claude/Codex via their CLIs after the bytes update so hooks reload.")
 public final class UpgradeCommand implements Callable<Integer> {
 
-    @Parameters(index = "0", arity = "0..1", description = "Skill name to upgrade")
+    @Parameters(index = "0", arity = "0..1",
+            description = "Unit name to upgrade — skill or plugin")
     String name;
 
-    @Option(names = "--all", description = "Upgrade every installed skill.")
+    @Option(names = "--all", description = "Upgrade every installed unit (skills + plugins).")
     boolean all;
 
     @Option(names = {"--self", "--skill-manager"},

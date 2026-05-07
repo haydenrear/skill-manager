@@ -1,8 +1,11 @@
 # skill-manager
 
 A JBang-based CLI + Python services that acts as a **build tool for agent
-skills**. Like `uv` / `cargo` / `gradle`, but for skills: install, publish,
-search, manage dependencies, and register downstream MCP servers.
+skills and plugins**. Like `uv` / `cargo` / `gradle`, but for both unit
+kinds: install, publish, search, manage dependencies, and register
+downstream MCP servers. Plugins flow through a skill-manager-owned local
+marketplace and `claude plugin install` / `codex plugin marketplace add`
+so harness hooks/commands actually load.
 
 ## Anatomy of a skill
 

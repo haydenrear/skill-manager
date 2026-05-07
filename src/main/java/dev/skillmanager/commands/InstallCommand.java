@@ -25,19 +25,64 @@ import java.util.concurrent.Callable;
  */
 @Command(
         name = "install",
-        description = "Install a skill and everything it depends on. Sources can be a registry name "
-                + "(`name[@version]`), a github coordinate (`github:user/repo`), a git URL "
-                + "(`git+https://...`), or a local directory (`./path`, `/abs/path`, or `file:<path>`). "
-                + "Local-directory installs do not contact the registry — useful for iterating on "
-                + "a skill from a working tree without publishing first. Use `skill-manager sync "
-                + "<name> --from <dir>` to refresh an already-installed skill from the same dir."
+        description = """
+                Install a unit (skill or plugin) and everything it depends on.
+
+                Sources:
+                  - `name[@version]` — registry lookup
+                  - `skill:<name>` / `plugin:<name>` — kind-pinned registry lookup
+                  - `github:user/repo[@ref]` — direct git
+                  - `git+https://...` — direct git URL
+                  - `./path`, `/abs/path`, `file:<path>` — local directory
+                Local-directory installs do not contact the registry — useful
+                for iterating from a working tree without publishing first.
+
+                Plugin vs skill detection (at parse time, after fetch):
+                  - PLUGIN if the unit's root contains `.claude-plugin/plugin.json`
+                    (Claude Code's runtime manifest). An optional sidecar
+                    `skill-manager-plugin.toml` adds skill-manager metadata
+                    (CLI deps, MCP deps, references); a plugin without the
+                    sidecar still installs.
+                  - SKILL if the unit's root contains `SKILL.md` (and is not
+                    nested in a plugin).
+                Resolver errors out if the source matches neither shape.
+
+                What an install does:
+                  1. Fetch + stage the unit (and every transitive reference).
+                  2. Plan + show CLI / MCP / hooks the install will register
+                     (gated by `policy.install.*`; `--yes` is blocked when a
+                     `!`-marked category still requires confirmation).
+                  3. Commit bytes — skills land at
+                     `$SKILL_MANAGER_HOME/skills/<name>/`; plugins at
+                     `plugins/<name>/`.
+                  4. Install CLI deps (`bin/cli/`) + register MCP servers
+                     with the gateway. For plugins, the install pipeline
+                     walks the plugin's `skill-manager-plugin.toml` AND
+                     every contained skill's `skill-manager.toml` and
+                     unions the deps — no need to declare twice.
+                  5. Project units into each agent's tree:
+                     - Skills → symlinks at `<agentHome>/skills/<name>/`.
+                     - Plugins → entries in the skill-manager-owned
+                       marketplace at `<store>/plugin-marketplace/`, then
+                       `claude plugin install <name>@skill-manager` (and
+                       `codex plugin marketplace add` if either CLI is on
+                       PATH; otherwise the plugin records a
+                       `HARNESS_CLI_UNAVAILABLE` error with a brew-install
+                       hint that self-clears on the next sync).
+                  6. Atomically flip `units.lock.toml` at commit.
+
+                Use `skill-manager sync <name> --from <dir>` to refresh an
+                already-installed unit from the same directory.
+                """
 )
 public final class InstallCommand implements Callable<Integer> {
 
     @Parameters(index = "0",
-            description = "Source: name[@version] (registry), github:user/repo, git+https://..., "
-                    + "or a local directory (./path, /abs/path, file:<path>) — local sources do not "
-                    + "contact the registry.")
+            description = "Source: name[@version] (registry), skill:<name> / plugin:<name> "
+                    + "(kind-pinned), github:user/repo, git+https://..., or a local directory "
+                    + "(./path, /abs/path, file:<path>) — local sources do not contact the "
+                    + "registry. Plugins detected by the presence of `.claude-plugin/plugin.json` "
+                    + "at the unit root.")
     public String source;
 
     @Option(names = {"--version", "--ref"}, description = "Registry version / git ref")

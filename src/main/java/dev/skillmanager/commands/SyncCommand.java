@@ -29,14 +29,19 @@ import java.util.concurrent.Callable;
  * program — the command just resolves targets and hands off.
  */
 @Command(name = "sync",
-        description = "Pull upstream + re-run install side effects for git-tracked skills.")
+        description = "Pull upstream + re-run install side effects for git-tracked units (skills "
+                + "and plugins). For plugins this also regenerates the plugin marketplace at "
+                + "`$SKILL_MANAGER_HOME/plugin-marketplace/` and re-registers each plugin with "
+                + "Claude/Codex via their CLIs (uninstall+reinstall, so hooks reload).")
 public final class SyncCommand implements Callable<Integer> {
 
-    @Parameters(index = "0", arity = "0..1", description = "Skill name to sync (default: all installed)")
+    @Parameters(index = "0", arity = "0..1",
+            description = "Unit name to sync — skill or plugin (default: all installed)")
     public String name;
 
     @Option(names = "--from",
-            description = "Local directory to pull skill content from (must contain SKILL.md). "
+            description = "Local directory to pull unit content from (must contain SKILL.md "
+                    + "for a skill or .claude-plugin/plugin.json for a plugin). "
                     + "Without --merge: shows diff and prompts before overwriting. "
                     + "With --merge and a git-backed source: 3-way merge against the source's HEAD. "
                     + "Requires <name>.")

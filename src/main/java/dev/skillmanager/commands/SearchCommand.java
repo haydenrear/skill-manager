@@ -11,7 +11,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
 
-@Command(name = "search", description = "Search skills in the registry. Sponsored slots are rendered separately and can be hidden with --no-ads.")
+@Command(name = "search",
+        description = "Search the registry for skills and plugins (the KIND column shows which). "
+                + "Sponsored slots are rendered separately and can be hidden with --no-ads.")
 public final class SearchCommand implements Callable<Integer> {
 
     @Parameters(index = "0", arity = "0..1", description = "Search query (empty = list everything)")
@@ -34,7 +36,7 @@ public final class SearchCommand implements Callable<Integer> {
                 query == null ? "" : query, limit, noAds);
 
         if (result.organic().isEmpty() && result.sponsored().isEmpty()) {
-            System.out.println("(no skills matched)");
+            System.out.println("(no units matched)");
             return 0;
         }
 

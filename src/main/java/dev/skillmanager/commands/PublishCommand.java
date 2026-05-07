@@ -38,11 +38,15 @@ import java.util.concurrent.Callable;
  * {@code skill-registry.publish.allow-file-upload=true}.
  */
 @Command(name = "publish",
-        description = "Register the current skill with the registry (github-pointer by default).")
+        description = "Register a unit (skill or plugin) with the registry (github-pointer by "
+                + "default). Kind is detected from the source directory: `.claude-plugin/"
+                + "plugin.json` at the root publishes as a plugin; `SKILL.md` at the root "
+                + "publishes as a skill.")
 public final class PublishCommand implements Callable<Integer> {
 
     @Parameters(index = "0", arity = "0..1",
-            description = "Skill source directory (defaults to current working directory)")
+            description = "Unit source directory — skill or plugin (defaults to current "
+                    + "working directory). Kind detected from the directory shape.")
     Path skillDir;
 
     @Option(names = "--ref",

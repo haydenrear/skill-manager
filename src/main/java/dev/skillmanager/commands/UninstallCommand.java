@@ -20,10 +20,22 @@ import java.util.concurrent.Callable;
  * orphan-MCP unregistration on.
  */
 @Command(name = "uninstall", aliases = "un",
-        description = "Uninstall a skill: clear store entry, all agent symlinks, and orphan MCP servers.")
+        description = """
+                Uninstall a unit (skill or plugin) and its side effects.
+                Clears:
+                  - the store entry under `skills/<name>/` or `plugins/<name>/`,
+                  - every agent symlink (skills) or marketplace entry (plugins) +
+                    `claude plugin uninstall` (when claude is on PATH),
+                  - orphan MCP servers — i.e. servers no surviving installed
+                    unit (skill or plugin) still claims. Servers still claimed
+                    by another unit stay registered with the gateway.
+                Plugin uninstall re-walks the on-disk plugin (plugin.toml +
+                every contained skill's skill-manager.toml) so the orphan
+                check sees every dep the plugin claimed, not just the
+                plugin-level ones.""")
 public final class UninstallCommand implements Callable<Integer> {
 
-    @Parameters(index = "0", description = "Skill name")
+    @Parameters(index = "0", description = "Unit name (skill or plugin)")
     String name;
 
     @Option(names = "--keep-mcp",
