@@ -1,5 +1,8 @@
 package dev.skillmanager.project;
 
+import org.tomlj.Toml;
+import org.tomlj.TomlParseResult;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -9,6 +12,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -349,8 +353,20 @@ public final class HarnessPluginCli {
     public static final class Codex implements Driver {
 
         private final Runner runner;
+        private final Path configPathOverride;
 
-        public Codex(Runner runner) { this.runner = runner; }
+        public Codex(Runner runner) { this(runner, null); }
+
+        /**
+         * Constructor used by tests to point at a fixture
+         * {@code config.toml} instead of {@code $CODEX_HOME/config.toml}
+         * — so per-driver behavior can be exercised without depending
+         * on whatever's in the developer's real codex state.
+         */
+        public Codex(Runner runner, Path configPathOverride) {
+            this.runner = runner;
+            this.configPathOverride = configPathOverride;
+        }
 
         @Override public String agentId() { return "codex"; }
         @Override public String binary() { return "codex"; }
@@ -359,9 +375,7 @@ public final class HarnessPluginCli {
 
         @Override
         public Result ensureMarketplaceAdded(Path marketplaceRoot) throws IOException {
-            return runner.run(
-                    List.of(binary(), "plugin", "marketplace", "add", marketplaceRoot.toString()),
-                    Map.of());
+            return ensureRegisteredAt(marketplaceRoot);
         }
 
         @Override
@@ -369,12 +383,61 @@ public final class HarnessPluginCli {
             // codex's `marketplace upgrade <name>` only works for
             // git-backed sources — local-path marketplaces error with
             // "not configured as a Git marketplace". Re-running
-            // `marketplace add` is idempotent (codex prints
-            // "already added" and exits 0), so we use that as the
-            // refresh verb. The act of re-adding makes codex re-read
-            // the local marketplace.json on next access.
+            // `marketplace add` is idempotent for the same source path
+            // (codex prints "already added" and exits 0), but it errors
+            // with "already added from a different source" if the path
+            // changed (e.g. a new $SKILL_MANAGER_HOME, or a stale
+            // registration left behind by a prior install). We resolve
+            // both shapes via the shared {@link #ensureRegisteredAt}
+            // path: same path → no-op, mismatched path → remove +
+            // re-add (skill-manager owns this marketplace name), absent
+            // → add.
+            return ensureRegisteredAt(marketplaceRoot);
+        }
+
+        /**
+         * Reconcile codex's recorded source for the {@code skill-manager}
+         * marketplace with {@code marketplaceRoot}:
+         *
+         * <ul>
+         *   <li>Already registered with the same source path → no-op.</li>
+         *   <li>Registered with a different source path → run
+         *       {@code marketplace remove skill-manager} (skill-manager
+         *       owns the marketplace name; a different path here means
+         *       a stale registration we should fix) followed by
+         *       {@code add}. Both subprocess outcomes flow into the
+         *       returned {@link Result}.</li>
+         *   <li>Not registered → run {@code add}.</li>
+         * </ul>
+         */
+        private Result ensureRegisteredAt(Path marketplaceRoot) throws IOException {
+            String desired = marketplaceRoot.toAbsolutePath().toString();
+            Optional<String> existing = readMarketplaceSource(
+                    configPathOverride != null ? configPathOverride : codexConfigPath(),
+                    PluginMarketplace.NAME);
+            if (existing.isPresent()) {
+                String existingPath = existing.get();
+                if (sameSource(existingPath, desired)) {
+                    return new Result(0,
+                            "already added at " + existingPath,
+                            "");
+                }
+                // Stale registration at a different path. Remove first;
+                // ignore non-zero exits (the registration may have been
+                // partially torn down already). Then re-add.
+                Result removed = runner.run(
+                        List.of(binary(), "plugin", "marketplace", "remove", PluginMarketplace.NAME),
+                        Map.of());
+                Result added = runner.run(
+                        List.of(binary(), "plugin", "marketplace", "add", desired),
+                        Map.of());
+                String msg = "stale registration at " + existingPath
+                        + " replaced with " + desired
+                        + (removed.ok() ? "" : " (remove rc=" + removed.exitCode() + ")");
+                return new Result(added.exitCode(), msg, added.stderr());
+            }
             return runner.run(
-                    List.of(binary(), "plugin", "marketplace", "add", marketplaceRoot.toString()),
+                    List.of(binary(), "plugin", "marketplace", "add", desired),
                     Map.of());
         }
 
@@ -386,6 +449,61 @@ public final class HarnessPluginCli {
         @Override
         public Result uninstallPlugin(String pluginName) {
             return new Result(0, "[codex: uninstall via /plugins UI]", "");
+        }
+
+        /**
+         * Resolve {@code $CODEX_HOME/config.toml} (or {@code ~/.codex/config.toml}
+         * when the env var isn't set) — the file codex's CLI reads/writes
+         * when managing marketplaces.
+         */
+        static Path codexConfigPath() {
+            String env = System.getenv("CODEX_HOME");
+            Path root = (env != null && !env.isBlank())
+                    ? Path.of(env)
+                    : Path.of(System.getProperty("user.home"), ".codex");
+            return root.resolve("config.toml");
+        }
+
+        /**
+         * Read the {@code [marketplaces.&lt;name&gt;].source} value out of
+         * codex's {@code config.toml}, or {@link Optional#empty()} when
+         * the file doesn't exist, isn't parseable, or doesn't list this
+         * marketplace. Package-private so tests can supply a fixture
+         * config without involving the CLI.
+         */
+        static Optional<String> readMarketplaceSource(Path configPath, String marketplaceName) {
+            if (!Files.isRegularFile(configPath)) return Optional.empty();
+            try {
+                TomlParseResult parsed = Toml.parse(Files.readString(configPath));
+                String key = "marketplaces." + marketplaceName + ".source";
+                String value = parsed.getString(key);
+                return Optional.ofNullable(value);
+            } catch (IOException io) {
+                return Optional.empty();
+            }
+        }
+
+        /**
+         * True if {@code a} and {@code b} resolve to the same on-disk
+         * location. Handles symlink + relative-vs-absolute differences
+         * codex's recorded path may have ({@code /private/tmp/...} vs
+         * {@code /tmp/...} on macOS, etc.). Falls back to string equality
+         * when either path doesn't exist (e.g. a stale registration
+         * pointing at a deleted dir).
+         */
+        private static boolean sameSource(String a, String b) {
+            if (a.equals(b)) return true;
+            try {
+                Path pa = Path.of(a).toAbsolutePath().normalize();
+                Path pb = Path.of(b).toAbsolutePath().normalize();
+                if (pa.equals(pb)) return true;
+                if (Files.exists(pa) && Files.exists(pb)) {
+                    return pa.toRealPath().equals(pb.toRealPath());
+                }
+                return false;
+            } catch (IOException io) {
+                return false;
+            }
         }
     }
 
