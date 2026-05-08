@@ -107,23 +107,28 @@ public final class HarnessPluginCliTest {
                     "CLAUDE_CONFIG_DIR ends with .claude (was: " + configDir + ")");
         });
 
-        suite.test("Codex: ensureMarketplaceAdded runs `marketplace add <path>`", () -> {
+        suite.test("Codex: ensureMarketplaceAdded runs `marketplace add <path>` when not yet registered", () -> {
             CapturingRunner runner = new CapturingRunner();
             runner.script.add(new HarnessPluginCli.Result(0, "added", ""));
-            HarnessPluginCli.Codex driver = new HarnessPluginCli.Codex(runner);
+            // No config file → "absent" branch, runs add unconditionally.
+            HarnessPluginCli.Codex driver = new HarnessPluginCli.Codex(runner,
+                    java.nio.file.Files.createTempDirectory("codex-cfg-")
+                            .resolve("does-not-exist.toml"));
 
             driver.ensureMarketplaceAdded(Path.of("/tmp/mp"));
 
             List<String> cmd = runner.calls.get(0).cmd();
             assertEquals("codex", cmd.get(0), "codex binary");
             assertEquals("add", cmd.get(3), "add verb");
-            assertEquals("/tmp/mp", cmd.get(4), "marketplace root passed in");
+            assertTrue(cmd.get(4).endsWith("/tmp/mp"), "marketplace root passed in (was: " + cmd.get(4) + ")");
         });
 
         suite.test("Codex: refreshMarketplace re-runs `marketplace add <root>` (idempotent local-path refresh)", () -> {
             CapturingRunner runner = new CapturingRunner();
             runner.script.add(new HarnessPluginCli.Result(0, "Marketplace already added", ""));
-            HarnessPluginCli.Codex driver = new HarnessPluginCli.Codex(runner);
+            HarnessPluginCli.Codex driver = new HarnessPluginCli.Codex(runner,
+                    java.nio.file.Files.createTempDirectory("codex-cfg-")
+                            .resolve("does-not-exist.toml"));
 
             driver.refreshMarketplace(Path.of("/tmp/mp"));
 
@@ -131,7 +136,116 @@ public final class HarnessPluginCliTest {
             // codex's `marketplace upgrade` only handles git-backed
             // sources, so the local-path refresh path re-issues `add`.
             assertEquals("add", cmd.get(3), "add verb (idempotent local refresh)");
-            assertEquals("/tmp/mp", cmd.get(4), "passed marketplace root");
+            assertTrue(cmd.get(4).endsWith("/tmp/mp"), "passed marketplace root (was: " + cmd.get(4) + ")");
+        });
+
+        suite.test("Codex: skips re-add when config already lists our marketplace at the same path", () -> {
+            // Existing codex config registers skill-manager at the
+            // exact path we're about to ensure → driver returns ok
+            // without invoking the CLI at all.
+            java.nio.file.Path tmp = java.nio.file.Files.createTempDirectory("codex-cfg-");
+            java.nio.file.Path cfg = tmp.resolve("config.toml");
+            java.nio.file.Path desired = java.nio.file.Files.createTempDirectory("mp-");
+            java.nio.file.Files.writeString(cfg, """
+                    [marketplaces.skill-manager]
+                    last_updated = "2026-05-07T00:00:00Z"
+                    source_type = "local"
+                    source = "%s"
+                    """.formatted(desired.toAbsolutePath()));
+
+            CapturingRunner runner = new CapturingRunner();
+            HarnessPluginCli.Codex driver = new HarnessPluginCli.Codex(runner, cfg);
+
+            HarnessPluginCli.Result r = driver.ensureMarketplaceAdded(desired);
+
+            assertTrue(r.ok(), "driver reports ok");
+            assertEquals(0, runner.calls.size(),
+                    "no CLI invocation when registration matches");
+            assertTrue(r.stdout().contains("already added"),
+                    "result stdout signals the no-op path (was: " + r.stdout() + ")");
+        });
+
+        // Regression: this is the user-reported codex error
+        // ("marketplace 'skill-manager' is already added from a different
+        // source; remove it before adding this source"). Stale
+        // registration at a different path used to bubble up as
+        // marketplace-add failed for the whole sync.
+        suite.test("Codex: replaces stale registration when path mismatches (remove + re-add)", () -> {
+            java.nio.file.Path tmp = java.nio.file.Files.createTempDirectory("codex-cfg-");
+            java.nio.file.Path cfg = tmp.resolve("config.toml");
+            java.nio.file.Files.writeString(cfg, """
+                    [marketplaces.skill-manager]
+                    last_updated = "2026-05-07T00:00:00Z"
+                    source_type = "local"
+                    source = "/old/skill-manager-home/plugin-marketplace"
+                    """);
+
+            CapturingRunner runner = new CapturingRunner();
+            // Scripted: remove succeeds, add succeeds.
+            runner.script.add(new HarnessPluginCli.Result(0, "removed", ""));
+            runner.script.add(new HarnessPluginCli.Result(0, "added", ""));
+            HarnessPluginCli.Codex driver = new HarnessPluginCli.Codex(runner, cfg);
+            java.nio.file.Path desired = java.nio.file.Files.createTempDirectory("new-mp-");
+
+            HarnessPluginCli.Result r = driver.ensureMarketplaceAdded(desired);
+
+            assertTrue(r.ok(), "ok overall (add succeeded after remove cleared the stale entry)");
+            assertEquals(2, runner.calls.size(),
+                    "exactly two CLI calls (remove + add), got " + runner.calls.size());
+            assertEquals("remove", runner.calls.get(0).cmd().get(3),
+                    "first call removes the stale registration");
+            assertEquals("skill-manager", runner.calls.get(0).cmd().get(4),
+                    "remove targets our marketplace name");
+            assertEquals("add", runner.calls.get(1).cmd().get(3),
+                    "second call adds the desired path");
+            assertTrue(r.stdout().contains("stale registration"),
+                    "diagnostic message names the stale path (was: " + r.stdout() + ")");
+        });
+
+        suite.test("Codex: stale-registration replacement still ok when remove returns non-zero", () -> {
+            java.nio.file.Path tmp = java.nio.file.Files.createTempDirectory("codex-cfg-");
+            java.nio.file.Path cfg = tmp.resolve("config.toml");
+            java.nio.file.Files.writeString(cfg, """
+                    [marketplaces.skill-manager]
+                    source_type = "local"
+                    source = "/old/path"
+                    """);
+
+            CapturingRunner runner = new CapturingRunner();
+            // Remove fails (already partially torn down maybe), but we
+            // tolerate it and still run add. Final result follows the
+            // add outcome.
+            runner.script.add(new HarnessPluginCli.Result(1, "", "no such marketplace"));
+            runner.script.add(new HarnessPluginCli.Result(0, "added", ""));
+            HarnessPluginCli.Codex driver = new HarnessPluginCli.Codex(runner, cfg);
+            java.nio.file.Path desired = java.nio.file.Files.createTempDirectory("new-mp-");
+
+            HarnessPluginCli.Result r = driver.ensureMarketplaceAdded(desired);
+
+            assertTrue(r.ok(), "ok when add succeeds — remove failure tolerated");
+            assertEquals(2, runner.calls.size(), "still tries both remove and add");
+            assertTrue(r.stdout().contains("remove rc="),
+                    "diagnostic captures the non-zero remove rc (was: " + r.stdout() + ")");
+        });
+
+        suite.test("Codex: readMarketplaceSource returns empty for missing/unparseable config", () -> {
+            java.nio.file.Path tmp = java.nio.file.Files.createTempDirectory("codex-cfg-");
+            java.util.Optional<String> missing =
+                    HarnessPluginCli.Codex.readMarketplaceSource(tmp.resolve("nope"), "skill-manager");
+            assertTrue(missing.isEmpty(), "no file → empty");
+
+            java.nio.file.Path empty = tmp.resolve("empty.toml");
+            java.nio.file.Files.writeString(empty, "");
+            assertTrue(HarnessPluginCli.Codex.readMarketplaceSource(empty, "skill-manager").isEmpty(),
+                    "no marketplaces table → empty");
+
+            java.nio.file.Path unrelated = tmp.resolve("other.toml");
+            java.nio.file.Files.writeString(unrelated, """
+                    [marketplaces.someone-elses-marketplace]
+                    source = "/elsewhere"
+                    """);
+            assertTrue(HarnessPluginCli.Codex.readMarketplaceSource(unrelated, "skill-manager").isEmpty(),
+                    "different marketplace name → empty");
         });
 
         suite.test("Codex: reinstallPlugin / uninstallPlugin no-op (CLI doesn't support them)", () -> {

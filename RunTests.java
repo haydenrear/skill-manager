@@ -64,6 +64,8 @@ import dev.skillmanager.resolve.ResolverDeterminismTest;
 import dev.skillmanager.resolve.ResolverDirectGitDetectsKindTest;
 import dev.skillmanager.resolve.ResolverHeterogeneousRefsTest;
 import dev.skillmanager.resolve.ResolverKindFilterTest;
+import dev.skillmanager.registry.RegistryUnavailableExceptionTest;
+import dev.skillmanager.store.FetcherLocalSourceTest;
 import dev.skillmanager.store.InstalledUnitRoundTripTest;
 import dev.skillmanager.store.MigrationFromSkillSourceTest;
 import dev.skillmanager.store.UnitStoreDirChoiceTest;
@@ -102,6 +104,8 @@ public class RunTests {
         failures += UnitStoreDirChoiceTest.run();
         failures += InstalledUnitRoundTripTest.run();
         failures += MigrationFromSkillSourceTest.run();
+        failures += FetcherLocalSourceTest.run();
+        failures += RegistryUnavailableExceptionTest.run();
         failures += ResolverKindFilterTest.run();
         failures += ResolverHeterogeneousRefsTest.run();
         failures += ResolverContainedSkillNotMatchedTest.run();

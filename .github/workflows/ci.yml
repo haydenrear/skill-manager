@@ -39,6 +39,36 @@ env:
   POSTGRES_IMAGE: pgvector/pgvector:pg16
 
 jobs:
+  unit-tests:
+    name: skill-manager unit tests (RunTests.java)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Install JBang
+        uses: jbangdev/setup-jbang@main
+
+      # Cache JBang separately from the test-graph job — the unit suite
+      # only needs the much smaller dep set declared in RunTests.java
+      # (no Spring Boot), so a separate cache key keeps eviction
+      # pressure off the heavier graph cache. Restore-keys still falls
+      # back to any prior unit-tests cache.
+      - name: Cache JBang (unit tests)
+        uses: actions/cache@v4
+        with:
+          path: ~/.jbang
+          key: jbang-unit-${{ runner.os }}-${{ hashFiles('RunTests.java') }}
+          restore-keys: jbang-unit-${{ runner.os }}-
+
+      - name: Run unit tests
+        run: jbang RunTests.java
+
   gateway-tests:
     name: virtual-mcp-gateway pytest
     runs-on: ubuntu-latest

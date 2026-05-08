@@ -740,11 +740,15 @@ public final class LiveInterpreter implements ProgramInterpreter {
                 }
             }
             case GATEWAY_UNAVAILABLE, AGENT_SYNC_FAILED,
-                 MCP_REGISTRATION_FAILED, REGISTRY_UNAVAILABLE -> {
+                 MCP_REGISTRATION_FAILED, REGISTRY_UNAVAILABLE,
+                 AUTHENTICATION_NEEDED -> {
                 // No cheap "is it really fixed" probe — pinging the gateway
                 // tells us nothing about whether THIS skill's MCPs are
-                // registered, etc. Handlers clear these on actual success
-                // (RegisterMcp / SyncAgents / SyncGit registry lookup).
+                // registered, etc., and a registry-side auth-validity probe
+                // costs a real HTTP round-trip per unit. Handlers clear
+                // these on actual success (RegisterMcp / SyncAgents /
+                // SyncGit registry lookup → AUTHENTICATION_NEEDED clears
+                // the moment the next describeVersion succeeds).
             }
             case HARNESS_CLI_UNAVAILABLE -> {
                 // Probe is cheap: are both harness CLIs on PATH? Fully

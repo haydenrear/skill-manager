@@ -100,7 +100,17 @@ public record InstalledUnit(
          * the binary is reachable. Message carries the missing binary
          * name(s) and the suggested install command.
          */
-        HARNESS_CLI_UNAVAILABLE
+        HARNESS_CLI_UNAVAILABLE,
+        /**
+         * A registry call needed for this unit (sync's "what's the
+         * latest version's git_sha?" lookup, etc.) returned 401 / auth
+         * couldn't refresh. The user needs to {@code skill-manager login}
+         * before sync/upgrade can advance this unit. Self-clears on
+         * the next successful registry lookup. Distinct from {@link
+         * #REGISTRY_UNAVAILABLE} (server reachable, credentials
+         * rejected).
+         */
+        AUTHENTICATION_NEEDED
     }
 
     @JsonIgnore
