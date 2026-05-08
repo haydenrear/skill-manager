@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.10.0](https://github.com/haydenrear/skill-manager/compare/v0.9.0...v0.10.0) (2026-05-08)
+
+
+### Features
+
+* added fix for codex ([#53](https://github.com/haydenrear/skill-manager/issues/53)) ([ef8b44d](https://github.com/haydenrear/skill-manager/commit/ef8b44d926a4255cfd3ef365418bb325a8967da3))
+
 ## [0.9.0](https://github.com/haydenrear/skill-manager/compare/v0.8.0...v0.9.0) (2026-05-07)
 
 
