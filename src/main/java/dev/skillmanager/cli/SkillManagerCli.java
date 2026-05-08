@@ -33,7 +33,7 @@ import picocli.CommandLine.Option;
         name = "skill-manager",
         mixinStandardHelpOptions = true,
         // x-release-please-start-version
-        version = "skill-manager 0.9.0",
+        version = "skill-manager 0.10.0",
         // x-release-please-end
         description = "Build tool for agent skills: CLI deps, skill references, MCP servers.",
         subcommands = {
