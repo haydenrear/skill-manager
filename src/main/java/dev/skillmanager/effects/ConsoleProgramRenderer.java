@@ -148,6 +148,9 @@ public final class ConsoleProgramRenderer implements ProgramRenderer {
                     Log.warn("%s: git-tracked but no origin remote configured", x.skillName());
             case ContextFact.SyncGitRegistryUnavailable x ->
                     Log.warn("%s: registry didn't return a git_sha — leaving sync state unchanged", x.skillName());
+            case ContextFact.SyncGitAuthRequired x -> Log.warn(
+                    "%s: registry refused cached credentials (%s) — run `skill-manager login` and re-sync",
+                    x.skillName(), x.message());
             case ContextFact.SyncGitNoUpgradeNeeded x ->
                     Log.ok("%s: at %s (>= registry's latest) — no upgrade needed", x.skillName(), x.version());
 
@@ -319,6 +322,8 @@ public final class ConsoleProgramRenderer implements ProgramRenderer {
                     + " (will re-attempt the agent symlink)";
             case HARNESS_CLI_UNAVAILABLE -> "install the missing harness CLI, then re-run "
                     + "skill-manager sync " + skillName;
+            case AUTHENTICATION_NEEDED -> "run `skill-manager login`, then re-run "
+                    + "`skill-manager sync " + skillName + "`";
         };
     }
 

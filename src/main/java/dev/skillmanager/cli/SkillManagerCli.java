@@ -23,6 +23,7 @@ import dev.skillmanager.commands.SyncCommand;
 import dev.skillmanager.commands.UninstallCommand;
 import dev.skillmanager.commands.UpgradeCommand;
 import dev.skillmanager.registry.AuthenticationRequiredException;
+import dev.skillmanager.registry.RegistryUnavailableException;
 import dev.skillmanager.util.Log;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
@@ -80,19 +81,26 @@ public final class SkillManagerCli implements Runnable {
             tryPrintOutstandingErrors();
             return rc;
         });
-        // Surface auth-expiry as a stable, agent-parseable banner so the
-        // skill-manager-skill wrapper can relay it verbatim to the user.
+        // Surface auth-expiry + registry-unreachable as stable,
+        // agent-parseable banners so the skill-manager-skill wrapper can
+        // relay them verbatim to the user. Anything else falls through
+        // to picocli's default handler (full stack trace), which is the
+        // right diagnostic for unexpected failures.
         cmd.setExecutionExceptionHandler((ex, c, pr) -> {
-            Throwable cause = unwrapAuth(ex);
-            if (cause != null) return printAuthBanner(cause.getMessage());
+            AuthenticationRequiredException auth = unwrapCause(ex, AuthenticationRequiredException.class);
+            if (auth != null) return printAuthBanner(auth.getMessage());
+            RegistryUnavailableException unreachable =
+                    unwrapCause(ex, RegistryUnavailableException.class);
+            if (unreachable != null) return printRegistryUnreachableBanner(unreachable);
             throw ex;
         });
         return cmd.execute(args);
     }
 
-    private static Throwable unwrapAuth(Throwable t) {
+    @SuppressWarnings("unchecked")
+    private static <T extends Throwable> T unwrapCause(Throwable t, Class<T> kind) {
         for (Throwable c = t; c != null; c = c.getCause()) {
-            if (c instanceof AuthenticationRequiredException) return c;
+            if (kind.isInstance(c)) return (T) c;
         }
         return null;
     }
@@ -132,5 +140,39 @@ public final class SkillManagerCli implements Runnable {
         System.err.println("A browser window will open for them to sign in. Tokens are refreshed automatically");
         System.err.println("after that — this banner only fires if the refresh token is also expired.");
         return AuthenticationRequiredException.EXIT_CODE;
+    }
+
+    /**
+     * Render a friendly, actionable banner when the registry server
+     * isn't reachable. Replaces the raw {@code java.net.ConnectException}
+     * stack trace users used to see when running {@code create-account},
+     * {@code login}, {@code search}, {@code install <name>}, etc. with
+     * the registry server down.
+     */
+    private static int printRegistryUnreachableBanner(RegistryUnavailableException ex) {
+        System.err.println();
+        System.err.println("ERROR: registry unreachable");
+        System.err.println("URL:    " + ex.baseUrl());
+        Throwable cause = ex.getCause();
+        if (cause != null) {
+            String msg = cause.getMessage();
+            System.err.println("Cause:  " + cause.getClass().getSimpleName()
+                    + (msg == null || msg.isBlank() ? "" : " — " + msg));
+        }
+        System.err.println();
+        System.err.println("Likely fixes:");
+        System.err.println("  - The registry server isn't running at that URL. Start it (or wait for it");
+        System.err.println("    to come up) and retry the command.");
+        System.err.println("  - You're on the wrong URL. Override per-command with:");
+        System.err.println("        --registry <url>");
+        System.err.println("    or set persistently with:");
+        System.err.println("        skill-manager registry set <url>");
+        System.err.println("    or via env var:");
+        System.err.println("        SKILL_MANAGER_REGISTRY_URL=<url>");
+        System.err.println("  - For installing a unit from local disk (skipping the registry entirely):");
+        System.err.println("        skill-manager install ./path/to/dir");
+        System.err.println("        skill-manager install file:/abs/path");
+        System.err.println();
+        return RegistryUnavailableException.EXIT_CODE;
     }
 }
