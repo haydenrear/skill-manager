@@ -42,6 +42,14 @@ validationGraph {
 
         node("sources/smoke/UmbrellaInstalled.java")
         node("sources/smoke/TransitiveClisPresent.java")
+        // skill-script CLI backend coverage. Direct: install a fixture
+        // whose `skill-scripts/install.sh` touches a sentinel under
+        // bin/cli/. Transitive: install an umbrella whose only file:
+        // reference declares the skill-script dep — proves the backend
+        // fires for sub-skills resolved transitively, not just the
+        // top-level install target.
+        node("sources/smoke/SkillScriptInstalled.java")
+        node("sources/smoke/SkillScriptTransitive.java")
         node("sources/smoke/EnvScriptReports.java")
 
         // Validate the unified ToolDependency / EnsureTool path on the

@@ -1,0 +1,15 @@
+# skill-script CLI dep — runs scripts/install.sh from inside this skill.
+# The script lands a sentinel file under $SKILL_MANAGER_BIN_DIR so the
+# smoke graph can prove the backend executed (no real binary needed).
+
+[[cli_dependencies]]
+spec = "skill-script:skill-script-touched"
+on_path = "__zzz_nope_skill_script_touched"
+
+[cli_dependencies.install.any]
+script = "install.sh"
+binary = "skill-script-touched"
+
+[skill]
+name = "skill-script-skill"
+version = "0.1.0"

@@ -1,0 +1,15 @@
+# Inner sub-skill: declares a skill-script CLI dep that drops a distinct
+# sentinel file (so the transitive test can't pass on the standalone
+# fixture's side-effect).
+
+[[cli_dependencies]]
+spec = "skill-script:skill-script-transitive-touched"
+on_path = "__zzz_nope_skill_script_transitive_touched"
+
+[cli_dependencies.install.any]
+script = "install.sh"
+binary = "skill-script-transitive-touched"
+
+[skill]
+name = "skill-script-inner"
+version = "0.1.0"

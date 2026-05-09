@@ -98,6 +98,11 @@ public sealed interface PlanAction {
                 boolean anyHash = dep.install().values().stream().anyMatch(t -> t.sha256() != null);
                 return anyHash ? Severity.NOTICE : Severity.DANGER;
             }
+            // skill-script runs arbitrary shell shipped by the skill —
+            // there's no equivalent of sha256 verification, so this is
+            // always DANGER. Preview surfaces it loudly; the operator
+            // can tighten allowed_backends if they want to block.
+            if ("skill-script".equals(b)) return Severity.DANGER;
             return Severity.WARN;
         }
         @Override public Section section() { return Section.CLI; }
@@ -114,6 +119,17 @@ public sealed interface PlanAction {
             if ("pip".equals(dep.backend())) out.add("isolated install → UV tool or pip --user");
             if ("npm".equals(dep.backend())) out.add("per-skill prefix + will run the package's postinstall hook");
             if ("brew".equals(dep.backend())) out.add("brew formulas execute arbitrary ruby; symlinked into bin/cli");
+            if ("skill-script".equals(dep.backend())) {
+                String scriptPath = dep.install().values().stream()
+                        .map(CliDependency.InstallTarget::script)
+                        .filter(s -> s != null && !s.isBlank())
+                        .findFirst().orElse(null);
+                if (scriptPath != null) {
+                    out.add("runs skill-scripts/" + scriptPath + " from inside the skill — arbitrary shell");
+                } else {
+                    out.add("declares skill-script backend but no install.<platform>.script field");
+                }
+            }
             return out;
         }
     }
