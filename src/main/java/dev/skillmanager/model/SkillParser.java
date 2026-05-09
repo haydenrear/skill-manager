@@ -159,7 +159,9 @@ public final class SkillParser {
                             target.getString("archive"),
                             target.getString("binary"),
                             asStringList(target.getArray("extract")),
-                            target.getString("sha256")
+                            target.getString("sha256"),
+                            target.getString("script"),
+                            asStringList(target.getArray("args"))
                     ));
                 }
             }

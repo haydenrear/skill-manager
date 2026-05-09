@@ -1,0 +1,10 @@
+# Umbrella that pulls in skill-script-inner as a transitive sub-skill.
+# Mirrors the umbrella-skill pattern (pip-dep / npm-dep) but for the
+# skill-script CLI backend.
+skill_references = [
+    "file:./inner",
+]
+
+[skill]
+name = "skill-script-umbrella-skill"
+version = "0.1.0"

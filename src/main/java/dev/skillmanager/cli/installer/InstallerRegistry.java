@@ -20,6 +20,7 @@ public final class InstallerRegistry {
         register(new PipBackend());
         register(new NpmBackend());
         register(new BrewBackend());
+        register(new SkillScriptBackend());
     }
 
     public void register(InstallerBackend backend) {

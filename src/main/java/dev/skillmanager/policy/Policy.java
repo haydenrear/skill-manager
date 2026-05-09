@@ -56,7 +56,7 @@ public record Policy(
 
     public static Policy defaults() {
         return new Policy(
-                Set.of("tar", "pip", "npm", "brew"),
+                Set.of("tar", "pip", "npm", "brew", "skill-script"),
                 false,
                 false,
                 true,
@@ -130,7 +130,9 @@ public record Policy(
 
                 # Which CLI installer backends are permitted.
                 # Remove "npm" or "brew" to block them entirely (both can run arbitrary
-                # post-install hooks).
+                # post-install hooks). Remove "skill-script" to block CLI installs that
+                # run a script bundled inside the skill itself (escape hatch for private
+                # CLIs — runs arbitrary code from the publisher).
                 allowed_backends = %s
 
                 # Refuse tar installs that have no sha256. Recommended = true for prod.
