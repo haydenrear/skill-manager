@@ -50,6 +50,12 @@ validationGraph {
         // top-level install target.
         node("sources/smoke/SkillScriptInstalled.java")
         node("sources/smoke/SkillScriptTransitive.java")
+        // Locks in the content-fingerprint rerun gate: install once,
+        // sync (no script change → SKIP), edit install.sh, sync
+        // again (script change → re-fire). Runs in a private
+        // SKILL_MANAGER_HOME under env.prepared so the rest of the
+        // smoke graph's lock state isn't disturbed.
+        node("sources/smoke/SkillScriptRerunsOnChange.java")
         node("sources/smoke/EnvScriptReports.java")
 
         // Validate the unified ToolDependency / EnsureTool path on the
