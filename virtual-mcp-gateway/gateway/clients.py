@@ -52,6 +52,51 @@ except ImportError:  # pragma: no cover - anyio is an mcp dependency.
     _BROKEN_SESSION_ERRORS = (BrokenPipeError, ConnectionResetError, ProcessLookupError, EOFError)
 
 
+# Message fragments the MCP SDK + downstream stdio servers use when the
+# transport pipe dies mid-request. The SDK can wrap a typed
+# `anyio.ClosedResourceError` in its own `McpError` whose class isn't any
+# of the broken-session types above, so the typed-isinstance check alone
+# misses real pipe deaths and surfaces them as "permanent" errors. Match
+# by message AND by walking the cause chain so a stdio subprocess that
+# closes its pipes during an in-flight `tools/list` still triggers a
+# session reopen instead of being recorded as a deploy failure.
+_BROKEN_SESSION_MESSAGE_PATTERNS: tuple = (
+    "connection closed",
+    "broken pipe",
+    "end of file",
+    "endofstream",
+    "stream closed",
+    "stream is closed",
+    "process exited",
+    "process terminated",
+    "subprocess exited",
+)
+
+
+def _is_broken_session_error(exc: BaseException | None) -> bool:
+    """True if `exc` indicates the underlying transport pipe died.
+
+    Walks the chained cause / context so an SDK wrapper around a typed
+    `_BROKEN_SESSION_ERRORS` is still detected, then falls back to a
+    case-insensitive substring match on the message text. Matching by
+    message is intentionally broad — a false positive triggers one
+    extra reopen attempt (cheap) while a false negative leaves a real
+    pipe death recorded as a permanent deploy failure (the symptom this
+    helper exists to fix).
+    """
+    if exc is None:
+        return False
+    seen: set[int] = set()
+    cur: BaseException | None = exc
+    while cur is not None and id(cur) not in seen:
+        seen.add(id(cur))
+        if isinstance(cur, _BROKEN_SESSION_ERRORS):
+            return True
+        cur = cur.__cause__ or cur.__context__
+    text = str(exc).lower()
+    return any(p in text for p in _BROKEN_SESSION_MESSAGE_PATTERNS)
+
+
 class MCPError(RuntimeError):
     pass
 
@@ -200,14 +245,17 @@ class MCPClientLibraryClient(DownstreamClient):
                     return await self._run_with_temporary_session(forwarded_headers, op)
                 session = await self._ensure_persistent_session()
                 return await op(session)
-            except _BROKEN_SESSION_ERRORS as exc:
+            except Exception as exc:
+                if not _is_broken_session_error(exc):
+                    raise
                 last_exc = exc
                 logger.error(
-                    "%s session for %s broken on tools/%s (%s); reopening",
+                    "%s session for %s broken on tools/%s (%s: %s); reopening",
                     self.config.transport,
                     self.server_id,
                     kind,
                     type(exc).__name__,
+                    str(exc),
                 )
                 if not self._should_use_transient_session(forwarded_headers):
                     await self._discard_persistent_session()
@@ -511,22 +559,23 @@ class StdioMCPClient(MCPClientLibraryClient):
                         future.set_result(result)
                         last_exc = None
                         break
-                    except _BROKEN_SESSION_ERRORS as exc:
+                    except Exception as exc:
+                        if not _is_broken_session_error(exc):
+                            future.set_exception(exc)
+                            last_exc = None
+                            break
                         last_exc = exc
                         logger.error(
-                            "stdio session for %s broken (%s); reopening",
+                            "stdio session for %s broken (%s: %s); reopening subprocess",
                             self.server_id,
                             type(exc).__name__,
+                            str(exc),
                         )
                         if stack is not None:
                             with contextlib.suppress(BaseException):
                                 await stack.aclose()
                             stack = None
                         session = None
-                    except Exception as exc:
-                        future.set_exception(exc)
-                        last_exc = None
-                        break
                 if last_exc is not None:
                     future.set_exception(last_exc)
         except asyncio.CancelledError:

@@ -1,7 +1,9 @@
 package dev.skillmanager.effects;
 
+import dev.skillmanager.registry.AuthenticationRequiredException;
 import dev.skillmanager.registry.RegistryClient;
 import dev.skillmanager.registry.RegistryConfig;
+import dev.skillmanager.registry.RegistryUnavailableException;
 import dev.skillmanager.source.GitOps;
 import dev.skillmanager.source.InstalledUnit;
 import dev.skillmanager.source.UnitStore;
@@ -105,22 +107,41 @@ public final class SyncGitHandler {
                 : InstalledUnit.InstallSource.UNKNOWN;
 
         if (installSource == InstalledUnit.InstallSource.REGISTRY) {
-            ServerVersion sv = lookupServerVersion(store, skillName);
-            if (sv == null) {
-                ctx.addError(skillName, InstalledUnit.ErrorKind.REGISTRY_UNAVAILABLE,
-                        "registry didn't return a git_sha for latest " + skillName);
-                return TargetResolution.fact(new ContextFact.SyncGitRegistryUnavailable(skillName));
-            }
-            ctx.clearError(skillName, InstalledUnit.ErrorKind.REGISTRY_UNAVAILABLE);
-            String localVer = src != null ? src.version() : null;
-            // Only short-circuit on "no upgrade needed" when the working tree
-            // is clean. If dirty + --merge, the user explicitly wants to fold
-            // local changes against upstream even though versions match —
-            // fall through to the merge against the recorded git_sha.
-            if (!dirty && localVer != null && compareVersions(localVer, sv.version) >= 0) {
-                return TargetResolution.fact(new ContextFact.SyncGitNoUpgradeNeeded(skillName, localVer));
-            }
-            return TargetResolution.ref(new TargetRef(sv.gitSha, sv.gitSha, "v" + sv.version));
+            VersionLookup lookup = lookupServerVersion(store, skillName);
+            // Exhaustive switch over the sealed VersionLookup so adding
+            // a new failure mode (or success variant) lights up a
+            // compile error in this exact arm. The four current
+            // outcomes each map to a distinct ContextFact + ErrorKind
+            // pair so the closing report can point the user at the
+            // right remediation.
+            return switch (lookup) {
+                case VersionLookup.Found(ServerVersion sv) -> {
+                    ctx.clearError(skillName, InstalledUnit.ErrorKind.REGISTRY_UNAVAILABLE);
+                    ctx.clearError(skillName, InstalledUnit.ErrorKind.AUTHENTICATION_NEEDED);
+                    String localVer = src != null ? src.version() : null;
+                    // Only short-circuit on "no upgrade needed" when the working tree
+                    // is clean. If dirty + --merge, the user explicitly wants to fold
+                    // local changes against upstream even though versions match —
+                    // fall through to the merge against the recorded git_sha.
+                    if (!dirty && localVer != null && compareVersions(localVer, sv.version) >= 0) {
+                        yield TargetResolution.fact(new ContextFact.SyncGitNoUpgradeNeeded(skillName, localVer));
+                    }
+                    yield TargetResolution.ref(new TargetRef(sv.gitSha, sv.gitSha, "v" + sv.version));
+                }
+                case VersionLookup.AuthRequired(String message) -> {
+                    ctx.addError(skillName, InstalledUnit.ErrorKind.AUTHENTICATION_NEEDED, message);
+                    yield TargetResolution.fact(new ContextFact.SyncGitAuthRequired(skillName, message));
+                }
+                case VersionLookup.Unreachable(String message) -> {
+                    ctx.addError(skillName, InstalledUnit.ErrorKind.REGISTRY_UNAVAILABLE, message);
+                    yield TargetResolution.fact(new ContextFact.SyncGitRegistryUnavailable(skillName));
+                }
+                case VersionLookup.Empty ignored -> {
+                    ctx.addError(skillName, InstalledUnit.ErrorKind.REGISTRY_UNAVAILABLE,
+                            "registry didn't return a git_sha for latest " + skillName);
+                    yield TargetResolution.fact(new ContextFact.SyncGitRegistryUnavailable(skillName));
+                }
+            };
         }
 
         // Non-registry installs: always pull from git remote. No version compare.
@@ -226,16 +247,55 @@ public final class SyncGitHandler {
 
     private record ServerVersion(String version, String gitSha, String githubUrl) {}
 
-    private static ServerVersion lookupServerVersion(SkillStore store, String skillName) {
+    /**
+     * Sealed result for the registry version lookup. Lets the caller
+     * pattern-match exhaustively on the four possible outcomes —
+     * {@code Found}, {@code AuthRequired}, {@code Unreachable},
+     * {@code Empty} — each of which translates to a distinct
+     * {@link InstalledUnit.ErrorKind} and {@link ContextFact}. The
+     * older "return null on any failure" shape collapsed all three
+     * failure modes into "registry unavailable" and lost the
+     * auth-needed signal — users got "start the registry" guidance
+     * when their refresh token had expired.
+     */
+    sealed interface VersionLookup {
+        record Found(ServerVersion sv) implements VersionLookup {}
+        record AuthRequired(String message) implements VersionLookup {}
+        record Unreachable(String message) implements VersionLookup {}
+        record Empty() implements VersionLookup {}
+    }
+
+    static VersionLookup lookupServerVersion(SkillStore store, String skillName) {
         try {
             RegistryClient registry = RegistryClient.authenticated(store, RegistryConfig.resolve(store, null));
             Map<String, Object> meta = registry.describeVersion(skillName, "latest");
             String gitSha = (String) meta.get("git_sha");
-            if (gitSha == null || gitSha.isBlank()) return null;
-            return new ServerVersion(
-                    (String) meta.get("version"), gitSha, (String) meta.get("github_url"));
-        } catch (Exception e) {
-            return null;
+            if (gitSha == null || gitSha.isBlank()) return new VersionLookup.Empty();
+            return new VersionLookup.Found(new ServerVersion(
+                    (String) meta.get("version"), gitSha, (String) meta.get("github_url")));
+        } catch (AuthenticationRequiredException auth) {
+            // Refresh token also expired or never set — the structured
+            // error gets surfaced through the closing report's banner so
+            // the user sees a `skill-manager login` hint per affected
+            // unit, instead of the auth-required exception bubbling out
+            // of the effect (where runOne would just record it as a
+            // FAILED-receipt string and lose the actionable signal).
+            return new VersionLookup.AuthRequired(
+                    auth.getMessage() == null
+                            ? "registry refused cached credentials"
+                            : auth.getMessage());
+        } catch (RegistryUnavailableException down) {
+            return new VersionLookup.Unreachable(
+                    down.getMessage() == null
+                            ? "registry at " + down.baseUrl() + " is not reachable"
+                            : down.getMessage());
+        } catch (IOException io) {
+            // Non-2xx status, malformed body, mid-response TCP reset.
+            // Surfacing as REGISTRY_UNAVAILABLE keeps the pre-existing
+            // user-visible behavior for these less-common shapes.
+            Log.warn("registry: lookup of %s failed — %s", skillName, io.getMessage());
+            return new VersionLookup.Unreachable(
+                    "registry lookup failed: " + io.getMessage());
         }
     }
 

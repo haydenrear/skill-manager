@@ -205,9 +205,20 @@ public final class Executor {
     /**
      * Compensations that capture pre-execution state — needed so a successful
      * mutation can be reversed to its prior value (vs. just deleted).
+     *
+     * <p><b>Exhaustive on purpose.</b> Every {@link SkillEffect} permit
+     * is enumerated explicitly — most yield {@code List.of()} (no
+     * pre-state needed). The compiler is the contract: when a new
+     * effect lands in the sealed permits clause, this switch fails to
+     * compile until someone consciously decides whether the effect
+     * needs a pre-state snapshot. A {@code default ->} arm would
+     * silently absorb new effects as "no compensation" and turn
+     * rollback gaps into latent bugs that only surface when an effect
+     * fails downstream.
      */
     static List<Compensation> preStateCompensations(SkillEffect effect, EffectContext ctx) {
         return switch (effect) {
+            // ---- effects that need pre-state snapshotting ----
             case SkillEffect.AddUnitError e -> snapshotInstalled(e.unitName(), ctx);
             case SkillEffect.ClearUnitError e -> snapshotInstalled(e.unitName(), ctx);
             case SkillEffect.OnboardUnit e -> {
@@ -232,7 +243,46 @@ public final class Executor {
                     yield List.of();
                 }
             }
-            default -> List.of();
+            // ---- effects that don't need pre-state snapshotting ----
+            // Either pure (no mutation), idempotent over the existing
+            // state (next run produces the same result), or the
+            // post-state compensation in {@link #compensationsFor}
+            // already captures enough to walk back without a snapshot.
+            case SkillEffect.ConfigureRegistry e -> List.of();
+            case SkillEffect.EnsureGateway e -> List.of();
+            case SkillEffect.StopGateway e -> List.of();
+            case SkillEffect.ConfigureGateway e -> List.of();
+            case SkillEffect.SetupPackageManagerRuntime e -> List.of();
+            case SkillEffect.InstallPackageManager e -> List.of();
+            case SkillEffect.SnapshotMcpDeps e -> List.of();
+            case SkillEffect.RejectIfAlreadyInstalled e -> List.of();
+            case SkillEffect.BuildInstallPlan e -> List.of();
+            case SkillEffect.RunInstallPlan e -> List.of();
+            case SkillEffect.CleanupResolvedGraph e -> List.of();
+            case SkillEffect.PrintInstalledSummary e -> List.of();
+            case SkillEffect.SyncFromLocalDir e -> List.of();
+            case SkillEffect.CommitUnitsToStore e -> List.of();
+            case SkillEffect.RecordAuditPlan e -> List.of();
+            case SkillEffect.RecordSourceProvenance e -> List.of();
+            case SkillEffect.EnsureTool e -> List.of();
+            case SkillEffect.RunCliInstall e -> List.of();
+            case SkillEffect.RegisterMcpServer e -> List.of();
+            case SkillEffect.UnregisterMcpOrphan e -> List.of();
+            case SkillEffect.UnregisterMcpOrphans e -> List.of();
+            case SkillEffect.SyncAgents e -> List.of();
+            case SkillEffect.RefreshHarnessPlugins e -> List.of();
+            case SkillEffect.SyncGit e -> List.of();
+            case SkillEffect.RemoveUnitFromStore e -> List.of();
+            case SkillEffect.UnlinkAgentUnit e -> List.of();
+            case SkillEffect.UnlinkAgentMcpEntry e -> List.of();
+            case SkillEffect.ScaffoldSkill e -> List.of();
+            case SkillEffect.ScaffoldPlugin e -> List.of();
+            case SkillEffect.InitializePolicy e -> List.of();
+            case SkillEffect.LoadOutstandingErrors e -> List.of();
+            case SkillEffect.ValidateAndClearError e -> List.of();
+            case SkillEffect.InstallTools e -> List.of();
+            case SkillEffect.InstallCli e -> List.of();
+            case SkillEffect.RegisterMcp e -> List.of();
         };
     }
 
@@ -247,9 +297,19 @@ public final class Executor {
      * the effect just did. Pattern-matches on the effect record + the
      * receipt facts (which carry the per-item granularity for batched
      * effects like CommitUnitsToStore).
+     *
+     * <p><b>Exhaustive on purpose</b> — same rationale as
+     * {@link #preStateCompensations}: every permit listed explicitly
+     * so a new effect lights up a compile error here until someone
+     * decides whether it needs a rollback shape. The {@code default}
+     * shortcut would silently treat new effects as "no rollback,"
+     * which is the kind of bug that only manifests when something
+     * downstream of the new effect fails and the install ends up
+     * half-applied.
      */
     static List<Compensation> compensationsFor(SkillEffect effect, EffectReceipt receipt) {
         return switch (effect) {
+            // ---- effects that produce rollback shapes ----
             case SkillEffect.CommitUnitsToStore c -> {
                 // One DeleteUnitDir per resolved unit that emitted a
                 // SkillCommitted fact. Rollback is asymmetric to the
@@ -313,7 +373,61 @@ public final class Executor {
                 }
                 yield out;
             }
-            default -> List.of();
+            // ---- effects with no post-state rollback shape ----
+            // Each enumerated explicitly so adding a new effect that
+            // mutates state lights up a compile error here. Reasons
+            // for "no rollback" vary:
+            //   - pure read / probe (BuildInstallPlan, EnsureGateway)
+            //   - idempotent / re-runnable (SyncAgents writes are safe
+            //     to repeat — but SyncAgents IS handled above for
+            //     UnprojectIfOrphan; this comment covers the others)
+            //   - mutation already gated on idempotence elsewhere
+            //     (RefreshHarnessPlugins regenerates from store state
+            //     so the next run lands the same result)
+            //   - rollback handled by sub-effects (RunInstallPlan
+            //     expands into RunCliInstall / RegisterMcpServer, each
+            //     of which has its own rollback above)
+            //   - mutation is the rollback (RemoveUnitFromStore can't
+            //     un-remove without the bytes; relies on
+            //     CommitUnitsToStore's prior compensation chain)
+            //   - error-state mutation (AddUnitError / ClearUnitError)
+            //     gets its rollback from preStateCompensations'
+            //     RestoreInstalledUnit
+            //   - lock mutation gets rollback from preStateCompensations'
+            //     RestoreUnitsLock
+            case SkillEffect.ConfigureRegistry e -> List.of();
+            case SkillEffect.EnsureGateway e -> List.of();
+            case SkillEffect.StopGateway e -> List.of();
+            case SkillEffect.ConfigureGateway e -> List.of();
+            case SkillEffect.SetupPackageManagerRuntime e -> List.of();
+            case SkillEffect.InstallPackageManager e -> List.of();
+            case SkillEffect.SnapshotMcpDeps e -> List.of();
+            case SkillEffect.RejectIfAlreadyInstalled e -> List.of();
+            case SkillEffect.BuildInstallPlan e -> List.of();
+            case SkillEffect.RunInstallPlan e -> List.of();
+            case SkillEffect.CleanupResolvedGraph e -> List.of();
+            case SkillEffect.PrintInstalledSummary e -> List.of();
+            case SkillEffect.SyncFromLocalDir e -> List.of();
+            case SkillEffect.RecordAuditPlan e -> List.of();
+            case SkillEffect.OnboardUnit e -> List.of();
+            case SkillEffect.EnsureTool e -> List.of();
+            case SkillEffect.UnregisterMcpOrphan e -> List.of();
+            case SkillEffect.UnregisterMcpOrphans e -> List.of();
+            case SkillEffect.RefreshHarnessPlugins e -> List.of();
+            case SkillEffect.SyncGit e -> List.of();
+            case SkillEffect.RemoveUnitFromStore e -> List.of();
+            case SkillEffect.UnlinkAgentUnit e -> List.of();
+            case SkillEffect.UnlinkAgentMcpEntry e -> List.of();
+            case SkillEffect.ScaffoldSkill e -> List.of();
+            case SkillEffect.ScaffoldPlugin e -> List.of();
+            case SkillEffect.InitializePolicy e -> List.of();
+            case SkillEffect.LoadOutstandingErrors e -> List.of();
+            case SkillEffect.AddUnitError e -> List.of();
+            case SkillEffect.ClearUnitError e -> List.of();
+            case SkillEffect.ValidateAndClearError e -> List.of();
+            case SkillEffect.InstallTools e -> List.of();
+            case SkillEffect.InstallCli e -> List.of();
+            case SkillEffect.UpdateUnitsLock e -> List.of();
         };
     }
 

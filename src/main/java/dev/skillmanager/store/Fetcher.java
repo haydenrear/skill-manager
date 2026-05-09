@@ -34,9 +34,23 @@ public final class Fetcher {
     ) {}
 
     public static FetchResult fetch(String source, String version, Path workspace, SkillStore store) throws IOException {
-        String normalized = source == null ? "" : source.trim();
-        if (normalized.isEmpty()) throw new IOException("empty skill source");
+        String trimmed = source == null ? "" : source.trim();
+        if (trimmed.isEmpty()) throw new IOException("empty unit source");
 
+        // Track whether the user explicitly named a local source — i.e.
+        // anything that ISN'T a bare {@code name} for registry lookup.
+        // We use this to decide whether a "directory not found" should
+        // fail fast (explicit local) or fall through to the registry
+        // (bare name). Without this distinction, {@code install
+        // file:./typo-or-missing-dir} would silently fall through and
+        // surface as a confusing "registry unreachable" or HTTP 404
+        // when the directory genuinely just doesn't exist.
+        boolean explicitLocal = trimmed.startsWith("file:")
+                || trimmed.startsWith("./")
+                || trimmed.startsWith("../")
+                || trimmed.startsWith("/");
+
+        String normalized = trimmed;
         if (normalized.startsWith("file:")) normalized = normalized.substring("file:".length());
 
         if (normalized.startsWith("github:")) {
@@ -59,6 +73,20 @@ public final class Fetcher {
             Fs.ensureDir(staged);
             Fs.copyRecursive(localCandidate, staged);
             return new FetchResult(locateSkillRoot(staged), ResolvedGraph.SourceKind.LOCAL, 0, null);
+        }
+
+        if (explicitLocal) {
+            // User asked for a local source explicitly. The registry
+            // lookup is not a meaningful fallback here — it would
+            // either time out, 404, or surface a misleading "registry
+            // unreachable" banner that hides the actual mistake (typo
+            // in path, wrong CWD, deleted dir).
+            String detail = Files.exists(localCandidate)
+                    ? "exists but is not a directory"
+                    : "does not exist";
+            throw new IOException(
+                    "local source " + detail + ": " + localCandidate.toAbsolutePath()
+                            + " (parsed from '" + source + "')");
         }
 
         return fetchFromRegistry(normalized, version, workspace, store);

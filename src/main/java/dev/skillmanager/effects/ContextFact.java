@@ -66,6 +66,8 @@ public sealed interface ContextFact {
     record SyncGitNotGitTracked(String skillName) implements ContextFact {}
     record SyncGitNoOrigin(String skillName) implements ContextFact {}
     record SyncGitRegistryUnavailable(String skillName) implements ContextFact {}
+    /** Registry rejected the cached bearer + couldn't refresh — user must {@code skill-manager login}. */
+    record SyncGitAuthRequired(String skillName, String message) implements ContextFact {}
     record SyncGitNoUpgradeNeeded(String skillName, String version) implements ContextFact {}
 
     // ---- Error management (sources/<name>.json mutations) ----

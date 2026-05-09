@@ -98,6 +98,34 @@ public final class HandlerSubstitutabilityTest {
                         k + ": ErrorValidated(cleared=false) for AGENT_SYNC_FAILED");
             });
 
+            suite.test(k + " — ValidateAndClearError(AUTHENTICATION_NEEDED) keeps error (no probe)", () -> {
+                // AUTHENTICATION_NEEDED is set by SyncGitHandler when the
+                // registry rejects the cached bearer + refresh fails.
+                // Probing here would cost a real registry round-trip per
+                // unit; instead the error self-clears on the next
+                // successful describeVersion (SyncGitHandler clears
+                // both REGISTRY_UNAVAILABLE and AUTHENTICATION_NEEDED on
+                // a Found result). Same no-probe semantics as the other
+                // network-bound error kinds.
+                TestHarness h = TestHarness.create();
+                h.seedUnit("widget", kind);
+                h.run(new SkillEffect.AddUnitError(
+                        "widget", InstalledUnit.ErrorKind.AUTHENTICATION_NEEDED,
+                        "registry refused cached credentials"));
+                EffectReceipt r = h.run(new SkillEffect.ValidateAndClearError(
+                        "widget", InstalledUnit.ErrorKind.AUTHENTICATION_NEEDED));
+                assertEquals(EffectStatus.OK, r.status(), k + ": status");
+                assertTrue(
+                        r.facts().stream().anyMatch(f ->
+                                f instanceof ContextFact.ErrorValidated ev && !ev.cleared()),
+                        k + ": ErrorValidated(cleared=false) for AUTHENTICATION_NEEDED");
+                assertTrue(
+                        h.sourceOf("widget")
+                                .map(u -> u.hasError(InstalledUnit.ErrorKind.AUTHENTICATION_NEEDED))
+                                .orElse(false),
+                        k + ": error still recorded on the source record");
+            });
+
             suite.test(k + " — RejectIfAlreadyInstalled passes when unit absent from store", () -> {
                 TestHarness h = TestHarness.create();
                 EffectReceipt r = h.run(new SkillEffect.RejectIfAlreadyInstalled("no-such-unit"));

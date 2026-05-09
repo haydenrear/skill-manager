@@ -86,6 +86,8 @@ public final class ReportUseCase {
                     + " (will re-attempt the agent symlink)";
             case HARNESS_CLI_UNAVAILABLE -> "install the missing harness CLI, then re-run "
                     + "skill-manager sync " + skillName;
+            case AUTHENTICATION_NEEDED -> "run `skill-manager login`, then re-run "
+                    + "`skill-manager sync " + skillName + "`";
         };
     }
 }

@@ -477,6 +477,18 @@ public final class RegistryClient {
     private <T> HttpResponse<T> sendOnce(HttpRequest req, HttpResponse.BodyHandler<T> handler) throws IOException {
         try {
             return http.send(req, handler);
+        } catch (java.net.ConnectException
+                | java.net.UnknownHostException
+                | java.net.http.HttpConnectTimeoutException e) {
+            // Three shapes that all mean "we never got past TCP/DNS to
+            // the registry". Translate to a CLI-friendly unchecked
+            // exception so SkillManagerCli's exception handler can
+            // render a banner instead of dumping a stack trace.
+            // Other IOException shapes (timeout after connect,
+            // malformed response, TLS handshake failure mid-stream)
+            // keep bubbling — those are unusual enough that the full
+            // stack trace is the right diagnostic.
+            throw new RegistryUnavailableException(config.baseUrl().toString(), e);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new IOException("request interrupted", e);
