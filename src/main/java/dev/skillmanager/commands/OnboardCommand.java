@@ -33,6 +33,15 @@ import java.util.concurrent.Callable;
  * re-resolve, re-commit, re-run the full post-update tail (transitives,
  * tools, CLI, MCP, agents) once per skill. With a unified graph, each
  * step (commit, audit, provenance, tools, CLI, MCP, agents) runs once.
+ *
+ * <p>By default the bundled skills are fetched directly from their
+ * github repos (so brew installs work without a registry, and {@code
+ * upgrade} can fast-forward them like any other git-tracked unit). When
+ * {@code --install-dir} is passed (or {@code SKILL_MANAGER_INSTALL_DIR}
+ * points at a tree containing the {@code skill-manager-skill/} and
+ * {@code skill-publisher-skill/} directories) we install from those
+ * local paths instead — the in-tree dev / test path that lets you
+ * exercise uncommitted changes to either skill before they're pushed.
  */
 @Command(
         name = "onboard",
@@ -40,15 +49,27 @@ import java.util.concurrent.Callable;
 )
 public final class OnboardCommand implements Callable<Integer> {
 
-    private static final List<String> BUNDLED_SKILLS = List.of(
-            "skill-manager-skill",
-            "skill-publisher-skill"
+    /**
+     * Bundled skills onboard installs — directory name (in-tree),
+     * published skill name (matches {@code [skill].name} in the
+     * manifest, also the SkillStore directory), and the github coord
+     * for the default remote-fetch path.
+     */
+    private record BundledSkill(String dirName, String skillName, String githubCoord) {}
+
+    private static final List<BundledSkill> BUNDLED_SKILLS = List.of(
+            new BundledSkill("skill-manager-skill", "skill-manager",
+                    "github:haydenrear/skill-manager-skill"),
+            new BundledSkill("skill-publisher-skill", "skill-publisher",
+                    "github:haydenrear/skill-publisher-skill")
     );
 
     @Option(names = "--install-dir",
-            description = "Override the install root that contains the bundled skill "
-                    + "directories. Defaults to $SKILL_MANAGER_INSTALL_DIR (set by the "
-                    + "skill-manager bash wrapper) or the current working directory.")
+            description = "Install the bundled skills from local directories under this "
+                    + "root instead of cloning from github. Used by tests and in-tree dev "
+                    + "to exercise uncommitted edits. Defaults to $SKILL_MANAGER_INSTALL_DIR "
+                    + "if it points at a tree containing both bundled skill dirs; otherwise "
+                    + "onboard fetches from github.")
     Path installDir;
 
     @Option(names = "--registry",
@@ -66,12 +87,12 @@ public final class OnboardCommand implements Callable<Integer> {
     @Override
     public Integer call() throws Exception {
         Path root = resolveInstallRoot();
-        if (root == null) {
-            Log.error("could not locate install root containing %s. "
-                    + "Pass --install-dir or set SKILL_MANAGER_INSTALL_DIR.", BUNDLED_SKILLS);
-            return 2;
+        if (root != null) {
+            Log.step("onboarding from %s (local install dir)", root);
+        } else {
+            Log.step("onboarding from github (no local install dir found — "
+                    + "pass --install-dir to install from a working tree)");
         }
-        Log.step("onboarding from %s", root);
 
         SkillStore store = SkillStore.defaultStore();
         store.init();
@@ -81,19 +102,31 @@ public final class OnboardCommand implements Callable<Integer> {
         // Filter out skills that are already installed — onboard is idempotent.
         List<Resolver.Coord> toResolve = new ArrayList<>();
         int skipped = 0;
-        for (String name : BUNDLED_SKILLS) {
-            Path skillDir = root.resolve(name);
-            if (!Files.isDirectory(skillDir) || !Files.isRegularFile(skillDir.resolve("SKILL.md"))) {
-                Log.error("bundled skill %s not found at %s", name, skillDir);
-                return 2;
+        for (BundledSkill bundled : BUNDLED_SKILLS) {
+            String skillName;
+            String coord;
+            if (root != null) {
+                Path skillDir = root.resolve(bundled.dirName());
+                // resolveInstallRoot only returned non-null after
+                // hasBundledSkills() confirmed both SKILL.md files
+                // exist, so a missing dir here is a real bug, not a
+                // user error.
+                if (!Files.isDirectory(skillDir) || !Files.isRegularFile(skillDir.resolve("SKILL.md"))) {
+                    Log.error("bundled skill %s not found at %s", bundled.dirName(), skillDir);
+                    return 2;
+                }
+                skillName = readSkillName(skillDir, bundled.skillName());
+                coord = skillDir.toString();
+            } else {
+                skillName = bundled.skillName();
+                coord = bundled.githubCoord();
             }
-            String skillName = readSkillName(skillDir, name);
             if (store.contains(skillName)) {
                 Log.info("%s already installed at %s — skipping", skillName, store.skillDir(skillName));
                 skipped++;
                 continue;
             }
-            toResolve.add(new Resolver.Coord(skillDir.toString(), null));
+            toResolve.add(new Resolver.Coord(coord, null));
         }
 
         int installedCount = 0;
@@ -165,18 +198,36 @@ public final class OnboardCommand implements Callable<Integer> {
         }
     }
 
+    /**
+     * Locate a working tree containing both bundled skill directories,
+     * if one exists. Returns null when no local source is available — in
+     * that case onboard falls back to fetching the skills from github.
+     *
+     * <p>The lookup is deliberately silent on miss: a brew-installed
+     * {@code skill-manager} binary has {@code SKILL_MANAGER_INSTALL_DIR}
+     * pointing at a {@code share/} dir that does NOT contain the skill
+     * source trees, and that's the most common case where onboard
+     * should just clone from github rather than error out.
+     */
     private Path resolveInstallRoot() {
         if (installDir != null) {
             Path p = installDir.toAbsolutePath();
-            return hasBundledSkills(p) ? p : null;
+            if (!hasBundledSkills(p)) {
+                // --install-dir is an explicit user signal: if it
+                // doesn't contain the bundled skills, that's a typo /
+                // wrong path, not a request to fall through to github.
+                Log.warn("--install-dir %s does not contain both bundled skill directories — "
+                        + "falling back to github fetch", p);
+                return null;
+            }
+            return p;
         }
         String env = System.getenv("SKILL_MANAGER_INSTALL_DIR");
         if (env != null && !env.isBlank()) {
             Path p = Path.of(env).toAbsolutePath();
             if (hasBundledSkills(p)) return p;
         }
-        Path cwd = Path.of(System.getProperty("user.dir")).toAbsolutePath();
-        Path cur = cwd;
+        Path cur = Path.of(System.getProperty("user.dir")).toAbsolutePath();
         while (cur != null) {
             if (hasBundledSkills(cur)) return cur;
             cur = cur.getParent();
@@ -185,8 +236,10 @@ public final class OnboardCommand implements Callable<Integer> {
     }
 
     private static boolean hasBundledSkills(Path candidate) {
-        for (String name : BUNDLED_SKILLS) {
-            if (!Files.isRegularFile(candidate.resolve(name).resolve("SKILL.md"))) return false;
+        for (BundledSkill bundled : BUNDLED_SKILLS) {
+            if (!Files.isRegularFile(candidate.resolve(bundled.dirName()).resolve("SKILL.md"))) {
+                return false;
+            }
         }
         return true;
     }
