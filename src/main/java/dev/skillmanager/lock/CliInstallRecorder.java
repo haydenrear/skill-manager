@@ -25,7 +25,18 @@ public final class CliInstallRecorder {
                 registry.installOne(rc.dep(), store, rc.unitName());
                 var req = RequestedVersion.of(rc.dep());
                 String sha = findHash(rc.dep());
-                lock.recordInstall(rc.dep().backend(), req.tool(), req.version(), rc.dep().spec(), sha, rc.unitName());
+                // Stamp the post-install scripts-tree fingerprint into
+                // the lock for skill-script deps so the next pass can
+                // detect "scripts edited" and re-fire (instead of
+                // skipping forever via the on_path check the backend
+                // used to do). For other backends we pass null and
+                // recordInstall leaves the column empty.
+                String fingerprint = "skill-script".equals(rc.dep().backend())
+                        ? dev.skillmanager.cli.installer.SkillScriptBackend
+                                .fingerprintFor(store, rc.unitName(), rc.dep())
+                        : null;
+                lock.recordInstall(rc.dep().backend(), req.tool(), req.version(),
+                        rc.dep().spec(), sha, rc.unitName(), fingerprint);
             } catch (Exception e) {
                 Log.warn("cli: %s failed: %s", rc.dep().name(), e.getMessage());
             }

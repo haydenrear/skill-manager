@@ -1,5 +1,6 @@
 package dev.skillmanager.cli.installer;
 
+import dev.skillmanager.lock.CliLock;
 import dev.skillmanager.model.CliDependency;
 import dev.skillmanager.shared.util.Fs;
 import dev.skillmanager.store.SkillStore;
@@ -7,9 +8,12 @@ import dev.skillmanager.util.Log;
 import dev.skillmanager.util.Platform;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.security.MessageDigest;
 import java.util.ArrayList;
+import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -50,6 +54,42 @@ import java.util.Map;
  *
  * <p>Runs arbitrary code from the skill, so the install plan flags this
  * backend as {@code DANGER}.
+ *
+ * <h3>Re-run semantics</h3>
+ *
+ * <p>On every {@code install} / {@code sync} / {@code upgrade} pass the
+ * planner emits a {@code RunCliInstall} action for every CLI dep — but
+ * we don't want to re-execute a skill-script every time a user touches
+ * an unrelated skill. So this backend gates re-execution on a
+ * <em>content fingerprint</em>: a SHA-256 hash of every byte under the
+ * skill's {@code skill-scripts/} subtree, plus the script-relative path
+ * and its declared {@code args}. The fingerprint is persisted in the
+ * {@link CliLock} entry as {@code install_fingerprint}.
+ *
+ * <ul>
+ *   <li><b>First install</b> — no prior fingerprint; the script runs.</li>
+ *   <li><b>{@code sync} / {@code upgrade} with no upstream changes</b> —
+ *       fingerprint matches, declared binary is still present in
+ *       {@code bin/cli/} → skip.</li>
+ *   <li><b>{@code sync} / {@code upgrade} after upstream advances</b> —
+ *       if the merge changed any file under {@code skill-scripts/}, the
+ *       fingerprint flips and the script reruns. Files outside
+ *       {@code skill-scripts/} (e.g. {@code SKILL.md}) don't trigger a
+ *       rerun. Add args to the fingerprint via {@code install.<platform>.args}
+ *       so changing a flag re-fires too.</li>
+ *   <li><b>Manual {@code rm} of the binary</b> — declared binary missing
+ *       → script reruns even if the fingerprint matches (recovery
+ *       path).</li>
+ *   <li><b>{@code uninstall} + {@code install}</b> — note: today
+ *       {@link dev.skillmanager.app.RemoveUseCase} doesn't prune
+ *       {@code bin/cli/} (Executor.java compensation comment on
+ *       {@code UninstallCliIfOrphan} flags it as deferred), so the
+ *       binary lingers and the post-reinstall fingerprint check skips.
+ *       That matches the new "only on script change" rule but differs
+ *       from the historical "uninstall+install always reruns"
+ *       intuition. To force a rerun, edit the script (or any file
+ *       under {@code skill-scripts/}) or remove the binary.</li>
+ * </ul>
  */
 public final class SkillScriptBackend implements InstallerBackend {
 
@@ -73,10 +113,6 @@ public final class SkillScriptBackend implements InstallerBackend {
 
     @Override
     public void install(CliDependency dep, SkillStore store, String skillName) throws IOException {
-        if (dep.onPath() != null && isOnPath(dep.onPath())) {
-            Log.ok("cli: %s already on PATH", dep.onPath());
-            return;
-        }
         Fs.ensureDir(store.cliBinDir());
 
         CliDependency.InstallTarget target = pickTarget(dep);
@@ -94,6 +130,27 @@ public final class SkillScriptBackend implements InstallerBackend {
         Path script = resolved.script;
         Path skillRoot = resolved.skillRoot;
         Path scriptsDir = resolved.scriptsDir;
+
+        // Fingerprint-based skip. Compare the current scripts-tree hash
+        // against what the lock recorded last successful run. If the
+        // bytes haven't changed AND the binary is still where the
+        // script left it, skip. The on_path-only check that lived here
+        // before would short-circuit forever after the first install
+        // (since bin/cli/ is on the user's PATH), so a script edit
+        // never rebuilt — see ticket comment in the class javadoc.
+        String currentFingerprint = fingerprintScripts(scriptsDir, target.script(), target.args());
+        CliLock lock = CliLock.load(store);
+        String requestedTool = dev.skillmanager.lock.RequestedVersion.of(dep).tool();
+        CliLock.Entry prev = lock.get(id(), requestedTool);
+        if (prev != null
+                && prev.installFingerprint() != null
+                && prev.installFingerprint().equals(currentFingerprint)
+                && declaredBinaryStillPresent(target, store)) {
+            Log.ok("cli: skill-script %s — scripts unchanged since last install (skipping)",
+                    dep.name());
+            return;
+        }
+
         Fs.makeExecutable(script);
 
         List<String> cmd = new ArrayList<>();
@@ -131,6 +188,87 @@ public final class SkillScriptBackend implements InstallerBackend {
             Log.ok("cli: skill-script %s completed (no 'binary' declared — "
                     + "skipping post-run verification)", dep.name());
         }
+    }
+
+    /**
+     * SHA-256 over the entire {@code skill-scripts/} tree of the unit,
+     * the script's path-under-scriptsDir, and its arg list. Stable
+     * across re-runs as long as no byte under the dir changes.
+     *
+     * <p>Public so {@link dev.skillmanager.lock.CliInstallRecorder} can
+     * compute the same value after a successful install and stamp it
+     * into the lock — keeping the "skip iff fingerprint matches"
+     * decision in this class while keeping the persistence in the
+     * recorder.
+     *
+     * <p>If the unit isn't installed yet (no scripts dir on disk),
+     * returns {@code null} — the caller should treat that as "no prior
+     * fingerprint" and run unconditionally.
+     */
+    public static String fingerprintFor(SkillStore store, String unitName,
+                                        CliDependency dep) {
+        CliDependency.InstallTarget target = pickTarget(dep);
+        if (target == null || target.script() == null || target.script().isBlank()) return null;
+        try {
+            ResolvedScript resolved = resolveScript(store, unitName, target.script());
+            return fingerprintScripts(resolved.scriptsDir, target.script(), target.args());
+        } catch (IOException e) {
+            return null;
+        }
+    }
+
+    /**
+     * Hash every file under {@code scriptsDir} (recursive, lexical
+     * order on relative paths) plus the {@code script} path-spec and
+     * the {@code args} list. Lexical sort makes the hash deterministic
+     * regardless of filesystem walk order.
+     */
+    static String fingerprintScripts(Path scriptsDir, String scriptRel, List<String> args)
+            throws IOException {
+        try {
+            MessageDigest md = MessageDigest.getInstance("SHA-256");
+            // Domain-separation prefix so a future caller hashing
+            // differently structured input can't collide with this scheme.
+            md.update("skill-script-v1\0".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            md.update(("script:" + scriptRel + "\0")
+                    .getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            if (args != null) {
+                for (String a : args) {
+                    md.update(("arg:" + a + "\0")
+                            .getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                }
+            }
+            if (Files.isDirectory(scriptsDir)) {
+                List<Path> files;
+                try (var s = Files.walk(scriptsDir)) {
+                    files = s.filter(Files::isRegularFile).sorted().toList();
+                }
+                for (Path f : files) {
+                    String rel = scriptsDir.relativize(f).toString().replace('\\', '/');
+                    md.update(("file:" + rel + "\0")
+                            .getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                    try (InputStream in = Files.newInputStream(f)) {
+                        byte[] buf = new byte[8192];
+                        int n;
+                        while ((n = in.read(buf)) > 0) md.update(buf, 0, n);
+                    }
+                    md.update((byte) 0);
+                }
+            }
+            return HexFormat.of().formatHex(md.digest());
+        } catch (java.security.NoSuchAlgorithmException e) {
+            throw new IOException("SHA-256 unavailable", e);
+        }
+    }
+
+    private static boolean declaredBinaryStillPresent(CliDependency.InstallTarget target,
+                                                      SkillStore store) {
+        if (target.binary() == null || target.binary().isBlank()) {
+            // No binary declared = nothing to verify; fingerprint
+            // alone decides re-run.
+            return true;
+        }
+        return Files.isExecutable(store.cliBinDir().resolve(target.binary()));
     }
 
     private record ResolvedScript(Path script, Path skillRoot, Path scriptsDir) {}

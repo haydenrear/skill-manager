@@ -47,24 +47,38 @@ public final class CliLock {
             String spec,
             String sha256,
             List<String> requestedBy,
-            String installedAt
+            String installedAt,
+            String installFingerprint
     ) {
         public Entry {
             requestedBy = requestedBy == null ? List.of() : List.copyOf(requestedBy);
+        }
+
+        // Backwards-compat constructor — older callers (tests, in-tree
+        // construction without a fingerprint) keep working without
+        // touching them. New code uses the 8-arg form.
+        public Entry(String backend, String tool, String version, String spec,
+                     String sha256, List<String> requestedBy, String installedAt) {
+            this(backend, tool, version, spec, sha256, requestedBy, installedAt, null);
         }
 
         public Entry withRequester(String skillName) {
             if (requestedBy.contains(skillName)) return this;
             List<String> merged = new ArrayList<>(requestedBy);
             merged.add(skillName);
-            return new Entry(backend, tool, version, spec, sha256, merged, installedAt);
+            return new Entry(backend, tool, version, spec, sha256, merged, installedAt, installFingerprint);
         }
 
         public Entry withoutRequester(String skillName) {
             if (!requestedBy.contains(skillName)) return this;
             List<String> remaining = new ArrayList<>(requestedBy);
             remaining.remove(skillName);
-            return new Entry(backend, tool, version, spec, sha256, remaining, installedAt);
+            return new Entry(backend, tool, version, spec, sha256, remaining, installedAt, installFingerprint);
+        }
+
+        public Entry withInstallFingerprint(String fingerprint) {
+            return new Entry(backend, tool, version, spec, sha256,
+                    requestedBy, installedAt, fingerprint);
         }
     }
 
@@ -105,7 +119,8 @@ public final class CliLock {
                         t.getString("spec"),
                         t.getString("sha256"),
                         reqBy,
-                        t.getString("installed_at")
+                        t.getString("installed_at"),
+                        t.getString("install_fingerprint")
                 ));
             }
             if (!perTool.isEmpty()) entries.put(backendKey, perTool);
@@ -128,6 +143,9 @@ public final class CliLock {
                 if (e.sha256() != null) sb.append("sha256 = ").append(tomlString(e.sha256())).append('\n');
                 sb.append("requested_by = ").append(tomlStringArray(e.requestedBy())).append('\n');
                 if (e.installedAt() != null) sb.append("installed_at = ").append(tomlString(e.installedAt())).append('\n');
+                if (e.installFingerprint() != null) {
+                    sb.append("install_fingerprint = ").append(tomlString(e.installFingerprint())).append('\n');
+                }
                 sb.append('\n');
             }
         }
@@ -159,14 +177,31 @@ public final class CliLock {
 
     public Entry recordInstall(String backend, String tool, String version, String spec,
                                String sha256, String requester) {
+        return recordInstall(backend, tool, version, spec, sha256, requester, null);
+    }
+
+    /**
+     * Record a successful install AND stamp the per-dep
+     * {@code installFingerprint}. The fingerprint is opaque to this
+     * class — backends populate it however they want (skill-script
+     * hashes the {@code skill-scripts/} tree); the next
+     * install/sync/upgrade pass compares the stored value against a
+     * freshly computed one to decide whether to re-fire the install.
+     * Pass {@code null} for backends that don't (yet) support
+     * fingerprint-based rerun gating.
+     */
+    public Entry recordInstall(String backend, String tool, String version, String spec,
+                               String sha256, String requester, String fingerprint) {
         Entry existing = get(backend, tool);
         Entry updated;
         if (existing != null && java.util.Objects.equals(existing.version(), version)) {
             updated = existing.withRequester(requester);
+            if (fingerprint != null) updated = updated.withInstallFingerprint(fingerprint);
         } else {
             List<String> reqBy = new ArrayList<>();
             if (requester != null) reqBy.add(requester);
-            updated = new Entry(backend, tool, version, spec, sha256, reqBy, Instant.now().toString());
+            updated = new Entry(backend, tool, version, spec, sha256,
+                    reqBy, Instant.now().toString(), fingerprint);
         }
         put(updated);
         return updated;
