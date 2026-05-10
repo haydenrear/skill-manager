@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.11.0](https://github.com/haydenrear/skill-manager/compare/v0.10.0...v0.11.0) (2026-05-10)
+
+
+### Features
+
+* **cli:** skill-script backend — run install scripts bundled in a skill ([29058a6](https://github.com/haydenrear/skill-manager/commit/29058a636ff793eeb9f9268fbc40be342da70ac3))
+* **cli:** skill-script content-fingerprint rerun gate ([e640409](https://github.com/haydenrear/skill-manager/commit/e640409a9bd3dd7a307759e6478603443d4fc871))
+
+
+### Bug Fixes
+
+* **onboard:** install bundled skills from github by default ([a2b0145](https://github.com/haydenrear/skill-manager/commit/a2b0145e2528dfd2c7cc9f4be7bd7e7463e4e69d))
+
 ## [0.10.0](https://github.com/haydenrear/skill-manager/compare/v0.9.0...v0.10.0) (2026-05-08)
 
 
