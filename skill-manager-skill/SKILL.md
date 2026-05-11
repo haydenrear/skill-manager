@@ -126,6 +126,8 @@ All subcommands are run as `skill-manager <command>`. Most modifying commands ta
 | Install kind-pinned | `skill-manager install skill:<name>` / `skill-manager install plugin:<name>` |
 | Install from local path | `skill-manager install ./path/to/unit` |
 | Install from a git repo | `skill-manager install github:user/repo` |
+| Install from any git URL | `skill-manager install git+https://example.com/repo.git` |
+| One-shot bootstrap of the bundled skills (skill-manager + skill-publisher; clones them from github by default) | `skill-manager onboard` |
 | List installed (shows kind + sha + source columns) | `skill-manager list` |
 | Show an installed unit (skill or plugin) | `skill-manager show <name>` |
 | Show transitive deps | `skill-manager deps <name>` |
@@ -204,7 +206,9 @@ Use `env.sh --for claude` (or `--for codex`) to ask for the agent-visible path o
 
 ### Locating CLIs by absolute path (avoiding PATH conflicts)
 
-Installed CLI tools land in `$SKILL_MANAGER_HOME/bin/cli/`, but skill-manager does **not** mutate your PATH. To invoke a skill's CLI dependency without colliding with whatever the user already has on PATH (different `npm`, different `uv`, etc.), call `env.sh` to get absolute paths:
+Installed CLI tools land in `$SKILL_MANAGER_HOME/bin/cli/`, but skill-manager does **not** mutate your PATH. The supported `[[cli_dependencies]]` backends are `pip`, `npm`, `brew`, `tar`, and `skill-script` (the last runs an install script bundled inside the skill itself — the escape hatch for private CLIs that can't be published to a public package manager). All five land their final binary in the same `bin/cli/` dir; the difference is purely how the bytes get there.
+
+To invoke a skill's CLI dependency without colliding with whatever the user already has on PATH (different `npm`, different `uv`, etc.), call `env.sh` to get absolute paths:
 
 ```
 <skill-manager-skill>/scripts/env.sh --skills hello-skill pip-cli-skill
@@ -257,10 +261,12 @@ After a skill's MCP deps are registered, they persist across gateway restarts. P
 
 ### Publishing your own skills
 
+A skill or plugin is installable as soon as its bytes live anywhere `skill-manager install <source>` can reach — a github repo, an arbitrary git URL, a local path, or a tarball. The `publish` command is **only** for getting your unit into a skill-manager-server registry so it shows up in `skill-manager search`; it's not a prerequisite for distribution. For authoring guidance (the two-file contract, plugins, CLI deps including `skill-script`, MCP deps, validation), route the user to **skill-publisher** — `skill-manager install github:haydenrear/skill-publisher-skill` if they don't have it.
+
 | Step | Command |
 | --- | --- |
 | Inspect registry config | `skill-manager registry status` |
-| Package + upload | `skill-manager publish [<skill-dir>]` |
+| Package + upload to registry (only needed for search discoverability) | `skill-manager publish [<skill-dir>]` |
 | Package only (no upload) | `skill-manager publish <skill-dir> --dry-run` |
 
 A skill directory is any dir with:

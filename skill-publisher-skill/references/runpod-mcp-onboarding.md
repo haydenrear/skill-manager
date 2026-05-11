@@ -1,10 +1,19 @@
 # Case study — onboarding `hyper-experiments-skill` with runpod-mcp
 
-This is a worked example of the full skill-publisher workflow: take an
-existing directory of agent docs (`hyper-experiments-skill`), make it
-publishable, register an npm-distributed MCP server (runpod-mcp) through
-the docker `load` type, and validate the publish/install round-trip in a
-clean Docker container.
+This is a worked example of the manifest-authoring side of the
+skill-publisher workflow: take an existing directory of agent docs
+(`hyper-experiments-skill`), declare its dependencies in
+`skill-manager.toml`, register an npm-distributed MCP server
+(`@runpod/mcp-server`) with the local **virtual MCP gateway**, and
+validate the install round-trip in a clean Docker container.
+
+The interesting part is the *manifest*. Distribution (push to GitHub
+and run `skill-manager install github:…`) and the optional registry
+publish are both straightforward; this document focuses on the two
+manifest patterns that needed first-class support to land this skill:
+**npm-distributed MCP servers** and **host-env passthrough for
+secrets**. Both are features of the local virtual gateway, not of any
+remote service.
 
 The artifacts referenced below all live in this monorepo:
 
@@ -112,8 +121,16 @@ still override at deploy time.
 
 ## Validation — what to look for after install
 
+Install from the git source (no registry needed):
+
 ```bash
-skill-manager install hyper-experiments
+skill-manager install github:<owner>/hyper-experiments-skill
+```
+
+— or from a local checkout, if you're authoring against this skill:
+
+```bash
+skill-manager install /path/to/hyper-experiments-skill
 ```
 
 After install:
@@ -125,8 +142,8 @@ After install:
 3. `$SKILL_MANAGER_HOME/skills/hyper-experiments/SKILL.md` — the
    agent-facing copy.
 4. `$SKILL_MANAGER_HOME/bin/cli/tb-query` — the CLI binary.
-5. `browse_mcp_servers` over MCP — runpod is in the result with the
-   right `default_scope`.
+5. `browse_mcp_servers` over MCP (against the local virtual gateway) —
+   runpod is in the result with the right `default_scope`.
 6. `describe_mcp_server runpod` — the load spec is preserved verbatim,
    `init_schema` carries the `RUNPOD_API_KEY` description, and the
    server is registered but not yet deployed.
