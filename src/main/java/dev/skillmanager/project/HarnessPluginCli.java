@@ -324,13 +324,25 @@ public final class HarnessPluginCli {
          * {@code .claude/}). Passing it explicitly means a test run that
          * overrides {@code CLAUDE_HOME} keeps the CLI's writes inside
          * the same sandboxed home.
+         *
+         * <p>An explicit {@link dev.skillmanager.agent.AgentHomes#CLAUDE_CONFIG_DIR}
+         * override takes precedence over the {@link dev.skillmanager.agent.AgentHomes#CLAUDE_HOME}
+         * + {@code .claude} composition — needed for tests that want to
+         * point CLI subprocess writes at a fully bespoke config root,
+         * not just at {@code $CLAUDE_HOME/.claude}.
          */
         private static Map<String, String> claudeEnv() {
-            String claudeHome = System.getenv("CLAUDE_HOME");
-            String home = claudeHome != null && !claudeHome.isBlank()
-                    ? claudeHome
-                    : System.getProperty("user.home");
-            return Map.of("CLAUDE_CONFIG_DIR", Path.of(home, ".claude").toString());
+            Path explicit = dev.skillmanager.agent.AgentHomes
+                    .resolve(dev.skillmanager.agent.AgentHomes.CLAUDE_CONFIG_DIR);
+            if (explicit != null) {
+                return Map.of(dev.skillmanager.agent.AgentHomes.CLAUDE_CONFIG_DIR,
+                        explicit.toString());
+            }
+            Path home = dev.skillmanager.agent.AgentHomes.resolveOrDefault(
+                    dev.skillmanager.agent.AgentHomes.CLAUDE_HOME,
+                    Path.of(System.getProperty("user.home")));
+            return Map.of(dev.skillmanager.agent.AgentHomes.CLAUDE_CONFIG_DIR,
+                    home.resolve(".claude").toString());
         }
     }
 
@@ -454,13 +466,18 @@ public final class HarnessPluginCli {
         /**
          * Resolve {@code $CODEX_HOME/config.toml} (or {@code ~/.codex/config.toml}
          * when the env var isn't set) — the file codex's CLI reads/writes
-         * when managing marketplaces.
+         * when managing marketplaces. Routed through {@link
+         * dev.skillmanager.agent.AgentHomes} so a test-harness override
+         * pins this to a sandbox dir instead of the real {@code ~/.codex}.
+         *
+         * <p>Public so {@code AgentHomesTest} can assert the override
+         * plumbing without driving an entire subprocess scenario — the
+         * resolution rule is the contract, not an internal detail.
          */
-        static Path codexConfigPath() {
-            String env = System.getenv("CODEX_HOME");
-            Path root = (env != null && !env.isBlank())
-                    ? Path.of(env)
-                    : Path.of(System.getProperty("user.home"), ".codex");
+        public static Path codexConfigPath() {
+            Path root = dev.skillmanager.agent.AgentHomes.resolveOrDefault(
+                    dev.skillmanager.agent.AgentHomes.CODEX_HOME,
+                    Path.of(System.getProperty("user.home"), ".codex"));
             return root.resolve("config.toml");
         }
 

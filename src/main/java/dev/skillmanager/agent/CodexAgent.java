@@ -30,9 +30,7 @@ public final class CodexAgent implements Agent {
     @Override public String mcpConfigFormat() { return "codex-toml"; }
 
     private static Path codexHome() {
-        String env = System.getenv("CODEX_HOME");
-        return env != null && !env.isBlank()
-                ? Path.of(env)
-                : Path.of(System.getProperty("user.home"), ".codex");
+        return AgentHomes.resolveOrDefault(AgentHomes.CODEX_HOME,
+                Path.of(System.getProperty("user.home"), ".codex"));
     }
 }

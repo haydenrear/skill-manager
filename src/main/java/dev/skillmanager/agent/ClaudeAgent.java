@@ -33,10 +33,14 @@ public final class ClaudeAgent implements Agent {
      * shape: Codex puts everything under {@code ~/.codex/}, while Claude
      * scatters across {@code ~/.claude.json} (file) and {@code ~/.claude/}
      * (dir), so {@code CLAUDE_HOME} stands in for the parent of both.
+     *
+     * <p>Resolution routes through {@link AgentHomes} so a test harness
+     * can install a thread-local override without mutating
+     * {@code System.getenv()} — see {@code AgentHomes} javadoc for why
+     * (preventing real-~/.claude pollution from unit tests).
      */
     private static Path claudeHome() {
-        String env = System.getenv("CLAUDE_HOME");
-        if (env != null && !env.isBlank()) return Path.of(env);
-        return Path.of(System.getProperty("user.home"));
+        return AgentHomes.resolveOrDefault(AgentHomes.CLAUDE_HOME,
+                Path.of(System.getProperty("user.home")));
     }
 }

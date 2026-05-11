@@ -142,6 +142,7 @@ public class RunTests {
         failures += ListShowsKindAndShaTest.run();
         failures += SearchShowsKindTest.run();
         failures += ShowPluginListsContainedSkillsTest.run();
+        failures += dev.skillmanager.agent.AgentHomesTest.run();
 
         System.out.println();
         if (failures == 0) {
