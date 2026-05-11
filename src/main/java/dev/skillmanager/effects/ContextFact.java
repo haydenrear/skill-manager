@@ -39,7 +39,22 @@ public sealed interface ContextFact {
 
     // ---- Transitives ----
     record TransitiveInstalled(String name) implements ContextFact {}
-    record TransitiveFailed(String coord) implements ContextFact {}
+    /**
+     * One transitive resolve in a batch failed. Emitted once per
+     * failure so {@link ConsoleProgramRenderer} can list every
+     * problem in one run (vs. fail-fast on the first one, which
+     * masks the rest).
+     *
+     * @param coord       the source string we tried to resolve
+     *                    (registry name, github:owner/repo, file:..., etc.)
+     * @param requestedBy unit that declared this transitive ref —
+     *                    null for top-level coords the user passed
+     *                    directly on the CLI
+     * @param reason      one-line summary of the failure (auth refused,
+     *                    not found, network, etc.); the full message
+     *                    is on the underlying exception
+     */
+    record TransitiveFailed(String coord, String requestedBy, String reason) implements ContextFact {}
 
     // ---- Tools / CLI deps ----
     record ToolsInstalledFor(int skillCount) implements ContextFact {}

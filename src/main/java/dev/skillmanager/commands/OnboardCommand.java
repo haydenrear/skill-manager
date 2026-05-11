@@ -133,7 +133,18 @@ public final class OnboardCommand implements Callable<Integer> {
         int rc = 0;
         if (!toResolve.isEmpty()) {
             Resolver resolver = new Resolver(store);
-            ResolvedGraph graph = resolver.resolveAll(toResolve);
+            Resolver.ResolveOutcome outcome = resolver.resolveAll(toResolve);
+            if (outcome.hasFailures()) {
+                // Onboard installs a fixed bundled set; if any of them
+                // doesn't resolve we render the failures and bail with
+                // a typed exit code, same as InstallCommand. Half-
+                // onboard would leave the user in a confusing state
+                // (one bundled skill installed, the other not, with no
+                // record of why).
+                dev.skillmanager.resolve.TransitiveFailures.renderAll(outcome.failures());
+                return dev.skillmanager.resolve.TransitiveFailures.exitCodeFor(outcome.failures());
+            }
+            ResolvedGraph graph = outcome.graph();
             // CleanupResolvedGraph is wired into InstallUseCase as
             // alwaysAfter — no manual try/finally cleanup here.
             Program<InstallUseCase.Report> install = InstallUseCase.buildProgram(

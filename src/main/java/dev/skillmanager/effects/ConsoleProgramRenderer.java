@@ -85,7 +85,13 @@ public final class ConsoleProgramRenderer implements ProgramRenderer {
 
             // ---- transitives ----
             case ContextFact.TransitiveInstalled x -> Log.ok("transitive: installed %s", x.name());
-            case ContextFact.TransitiveFailed x -> Log.warn("transitive: install of %s failed", x.coord());
+            case ContextFact.TransitiveFailed x -> {
+                String who = x.requestedBy() == null || x.requestedBy().isBlank()
+                        ? "(top-level)"
+                        : "needed by " + x.requestedBy();
+                String why = x.reason() == null || x.reason().isBlank() ? "resolve failed" : x.reason();
+                Log.warn("transitive: %s [%s] — %s", x.coord(), who, why);
+            }
 
             // ---- bulk tool/CLI counters (legacy effects) ----
             case ContextFact.ToolsInstalledFor ignored -> { /* silent: per-tool facts cover it */ }
@@ -324,6 +330,8 @@ public final class ConsoleProgramRenderer implements ProgramRenderer {
                     + "skill-manager sync " + skillName;
             case AUTHENTICATION_NEEDED -> "run `skill-manager login`, then re-run "
                     + "`skill-manager sync " + skillName + "`";
+            case TRANSITIVE_RESOLVE_FAILED -> "fix the failing transitive (see the listed reason) "
+                    + "and re-run: skill-manager sync " + skillName;
         };
     }
 

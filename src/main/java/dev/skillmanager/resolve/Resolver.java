@@ -34,21 +34,75 @@ public final class Resolver {
     /** A top-level skill source to resolve, plus an optional pinned version / git ref. */
     public record Coord(String source, String version) {}
 
-    public ResolvedGraph resolve(String source, String version) throws IOException {
-        return resolveAll(List.of(new Coord(source, version)));
+    /**
+     * Per-coord resolve failure surfaced by {@link #resolveAllSafely(List)}.
+     * Carries enough attribution for the caller to (a) record a
+     * persistent error against {@code requestedBy} when it's already
+     * in the store (transitive-of-installed-unit case), and (b) emit
+     * a {@link dev.skillmanager.effects.ContextFact.TransitiveFailed}
+     * so the renderer reports every problem in one batch.
+     *
+     * @param source      the coord we tried to resolve
+     * @param requestedBy unit that declared this ref via skill_references —
+     *                    null for top-level coords the caller passed directly
+     * @param cause       underlying exception (a GitFetcherException, an
+     *                    IOException from a file:/ probe, a RegistryUnavailableException, etc.)
+     */
+    public record ResolveFailure(String source, String requestedBy, Throwable cause) {
+        /** One-line summary for renderer / banner — first line of the cause's message, trimmed. */
+        public String reason() {
+            String m = cause == null ? null : cause.getMessage();
+            if (m == null || m.isBlank()) return "resolve failed";
+            int newline = m.indexOf('\n');
+            String first = newline < 0 ? m : m.substring(0, newline);
+            return first.length() > 240 ? first.substring(0, 240) + "…" : first.trim();
+        }
+    }
+
+    /**
+     * Outcome of {@link #resolveAllSafely(List)} — the partial graph of
+     * everything that DID resolve, plus a list of per-coord failures.
+     * Lets callers iterate every coord (instead of fail-fast on the
+     * first IOException) so a batch can report N failures in one run
+     * AND install whatever pieces succeeded.
+     */
+    public record ResolveOutcome(ResolvedGraph graph, List<ResolveFailure> failures) {
+        public ResolveOutcome {
+            failures = failures == null ? List.of() : List.copyOf(failures);
+        }
+        public boolean hasFailures() { return !failures.isEmpty(); }
     }
 
     /**
      * Resolve a batch of top-level sources + their transitive deps into a
-     * single shared {@link ResolvedGraph}. Lets {@code onboard} (or any
+     * single shared {@link ResolvedGraph}, accompanied by the per-coord
+     * failures that occurred along the way. Lets {@code onboard} (or any
      * future bulk install) build one graph + one install plan + one
      * {@link dev.skillmanager.app.InstallUseCase} program over every
      * skill, instead of running the whole install pipeline once per
      * top-level — which would re-resolve, re-fetch, re-commit per skill
      * and re-run the post-update tail repeatedly.
+     *
+     * <p><b>Never throws on per-coord failure.</b> Each
+     * {@link Fetcher#fetch} exception is captured into the
+     * {@link ResolveOutcome#failures()} list — including its attribution
+     * to {@code requestedBy} — and the BFS continues with the next
+     * pending coord. Callers MUST inspect
+     * {@link ResolveOutcome#hasFailures()} and decide what the
+     * appropriate behavior is for their flow (sync emits a
+     * {@link dev.skillmanager.effects.ContextFact.TransitiveFailed}
+     * per failure plus records {@code TRANSITIVE_RESOLVE_FAILED} on
+     * the parent in the store; install/onboard render the failures
+     * and exit non-zero — see {@code TransitiveFailures} helpers).
+     *
+     * <p>Filesystem errors from creating the staging temp dir still
+     * propagate as {@link IOException} — those are bugs in the cache
+     * dir setup, not per-coord failures, and a top-level stack
+     * trace is the right diagnostic.
      */
-    public ResolvedGraph resolveAll(List<Coord> coords) throws IOException {
+    public ResolveOutcome resolveAll(List<Coord> coords) throws IOException {
         ResolvedGraph graph = new ResolvedGraph();
+        List<ResolveFailure> failures = new ArrayList<>();
         Deque<Pending> queue = new ArrayDeque<>();
         for (Coord c : coords) queue.push(new Pending(c.source(), c.version(), null));
 
@@ -63,17 +117,14 @@ public final class Resolver {
             Fetcher.FetchResult fetched;
             try {
                 fetched = Fetcher.fetch(coord, p.version, staging, store);
-            } catch (IOException e) {
+            } catch (IOException | dev.skillmanager.store.GitFetcherException e) {
+                // Accumulate instead of bailing — the rest of the
+                // queue may succeed, and callers want to report every
+                // failure in one run rather than fail-fast on the
+                // first one (which masks the others).
                 Fs.deleteRecursive(staging);
-                throw e;
-            } catch (dev.skillmanager.store.GitFetcherException e) {
-                // GitFetcherException is RuntimeException (so the CLI's
-                // top-level handler can render a stable banner without
-                // every layer having to declare `throws IOException`),
-                // but the staging dir still needs cleanup — matches the
-                // IOException catch above.
-                Fs.deleteRecursive(staging);
-                throw e;
+                failures.add(new ResolveFailure(coord, p.requestedBy, e));
+                continue;
             }
             // Kind-aware parse: plugins land at the bundle root with a
             // .claude-plugin/plugin.json manifest; bare skills have a
@@ -123,7 +174,7 @@ public final class Resolver {
                 queue.push(new Pending(childSource, childVersion, unit.name()));
             }
         }
-        return graph;
+        return new ResolveOutcome(graph, failures);
     }
 
     public void commit(ResolvedGraph graph) throws IOException {
