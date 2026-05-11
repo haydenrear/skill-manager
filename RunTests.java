@@ -143,6 +143,7 @@ public class RunTests {
         failures += SearchShowsKindTest.run();
         failures += ShowPluginListsContainedSkillsTest.run();
         failures += dev.skillmanager.agent.AgentHomesTest.run();
+        failures += dev.skillmanager.store.FetcherGitCloneTest.run();
 
         System.out.println();
         if (failures == 0) {
