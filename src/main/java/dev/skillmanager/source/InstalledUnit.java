@@ -110,7 +110,25 @@ public record InstalledUnit(
          * #REGISTRY_UNAVAILABLE} (server reachable, credentials
          * rejected).
          */
-        AUTHENTICATION_NEEDED
+        AUTHENTICATION_NEEDED,
+        /**
+         * One of this unit's transitive {@code skill_references} (or
+         * {@code references} on a plugin) could not be resolved
+         * end-to-end — git clone refused (auth, repo not found,
+         * network), a {@code file:} target was missing, or a
+         * registry-by-name lookup failed. Recorded against the
+         * <em>parent</em> unit (the one that declared the ref) so the
+         * breadcrumb survives in {@code skill-manager list} and the
+         * closing report; the failing transitive itself never makes
+         * it into the store, so there's no record there to attach to.
+         *
+         * <p>Self-clears on the next pass where every ref resolves.
+         * Message carries the failing coord + the underlying cause,
+         * so the operator can re-run the right fix (configure git
+         * credentials, restore a deleted local dep, etc.) without
+         * digging through logs.
+         */
+        TRANSITIVE_RESOLVE_FAILED
     }
 
     @JsonIgnore

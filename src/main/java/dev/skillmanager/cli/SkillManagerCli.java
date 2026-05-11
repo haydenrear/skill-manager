@@ -140,7 +140,14 @@ public final class SkillManagerCli implements Runnable {
         } catch (Throwable ignored) {}
     }
 
-    private static int printAuthBanner(String reason) {
+    /**
+     * Print the {@code ACTION_REQUIRED: skill-manager login} banner.
+     * Public so {@link dev.skillmanager.resolve.TransitiveFailures} can
+     * call it for resolve-time failures that don't escape as
+     * exceptions — keeps a single canonical banner per failure mode
+     * regardless of which surface emitted it.
+     */
+    public static int printAuthBanner(String reason) {
         System.err.println();
         System.err.println("ACTION_REQUIRED: skill-manager login");
         System.err.println("Reason: " + (reason == null ? "registry credentials are no longer valid" : reason));
@@ -167,7 +174,7 @@ public final class SkillManagerCli implements Runnable {
      * fixes this by configuring credentials on their machine, not by
      * running {@code skill-manager login}.
      */
-    private static int printGitAuthBanner(GitCloneAuthException ex) {
+    public static int printGitAuthBanner(GitCloneAuthException ex) {
         System.err.println();
         System.err.println("ERROR: git clone refused — authentication required");
         System.err.println("URL:    " + ex.url());
@@ -198,7 +205,7 @@ public final class SkillManagerCli implements Runnable {
      * full stderr in scope (the operator usually needs it to diagnose)
      * but wraps it in a header that names the URL up front.
      */
-    private static int printGitFetcherBanner(GitFetcherException ex) {
+    public static int printGitFetcherBanner(GitFetcherException ex) {
         System.err.println();
         System.err.println("ERROR: git clone failed");
         System.err.println("URL:    " + ex.url());
@@ -220,7 +227,7 @@ public final class SkillManagerCli implements Runnable {
         return GitFetcherException.EXIT_CODE;
     }
 
-    private static int printRegistryUnreachableBanner(RegistryUnavailableException ex) {
+    public static int printRegistryUnreachableBanner(RegistryUnavailableException ex) {
         System.err.println();
         System.err.println("ERROR: registry unreachable");
         System.err.println("URL:    " + ex.baseUrl());

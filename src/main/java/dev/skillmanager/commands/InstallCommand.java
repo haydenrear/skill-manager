@@ -121,7 +121,22 @@ public final class InstallCommand implements Callable<Integer> {
 
         Log.step("resolving %s", source);
         Resolver resolver = new Resolver(store);
-        ResolvedGraph graph = resolver.resolve(source, version);
+        Resolver.ResolveOutcome resolveResult = resolver.resolveAll(
+                java.util.List.of(new Resolver.Coord(source, version)));
+        if (resolveResult.hasFailures()) {
+            // Resolve never throws now — failures flow through the
+            // outcome. Render each one (matches the
+            // ConsoleProgramRenderer shape for the in-Program
+            // TransitiveFailed fact) and exit with the right code
+            // based on the primary cause. install can't proceed
+            // when the user's target doesn't resolve, so any
+            // failure is fatal here — sync's "continue with partial
+            // graph" semantics don't apply because the user
+            // explicitly asked to install this one thing.
+            dev.skillmanager.resolve.TransitiveFailures.renderAll(resolveResult.failures());
+            return dev.skillmanager.resolve.TransitiveFailures.exitCodeFor(resolveResult.failures());
+        }
+        ResolvedGraph graph = resolveResult.graph();
 
         // Resolve gateway URL — the Program's EnsureGateway effect handles
         // the actual probe + start + persist; gateway resolution itself

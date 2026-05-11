@@ -158,7 +158,7 @@ public final class SyncUseCase {
         for (var u : liveUnits) {
             if (u instanceof dev.skillmanager.model.SkillUnit su) liveSkills.add(su.skill());
         }
-        ResolvedGraph extras = discoverNewlySurfacedRefs(store, liveSkills);
+        ResolvedGraph extras = discoverNewlySurfacedRefs(ctx, liveSkills);
         if (!extras.resolved().isEmpty()) {
             // Commit the newly-resolved units (their FetchUnit is implicit
             // in the resolver — extras.resolved() carries staged source
@@ -251,27 +251,107 @@ public final class SyncUseCase {
      * Walk every live skill's references; any that don't resolve to a
      * unit in the store gets resolved here. Returns an empty graph when
      * everything is in order — the common no-op case.
+     *
+     * <p>Per-coord failures from the resolver are recorded against the
+     * parent unit in the store via
+     * {@link EffectContext#addError(String, InstalledUnit.ErrorKind, String)},
+     * so the breadcrumb survives until the next successful sync. The
+     * partial graph (everything that DID resolve) is still returned and
+     * installed — fail-fast would mask the rest of the failures and
+     * block working transitives behind one broken sibling.
      */
-    private static ResolvedGraph discoverNewlySurfacedRefs(SkillStore store, List<Skill> live) {
+    private static ResolvedGraph discoverNewlySurfacedRefs(EffectContext ctx, List<Skill> live) {
+        SkillStore store = ctx.store();
         List<Resolver.Coord> unmet = new ArrayList<>();
-        java.util.Set<String> seen = new java.util.LinkedHashSet<>();
+        // Track which parent unit declared each unmet coord so we can
+        // attribute resolver failures back to them (and clear stale
+        // TRANSITIVE_RESOLVE_FAILED errors on parents whose refs now
+        // all resolve).
+        java.util.Map<String, java.util.Set<String>> coordToParents = new java.util.LinkedHashMap<>();
+        java.util.Set<String> seenCoords = new java.util.LinkedHashSet<>();
+        java.util.Set<String> parentsWithRefs = new java.util.LinkedHashSet<>();
         for (Skill s : live) {
             for (UnitReference ref : s.skillReferences()) {
                 String coord = referenceToCoord(ref, store, s.name());
                 String name = ref.name() != null ? ref.name() : guessName(coord);
-                if (name == null || name.isBlank() || store.contains(name)) continue;
-                if (!seen.add(name)) continue;
+                if (name == null || name.isBlank()) continue;
+                parentsWithRefs.add(s.name());
+                if (store.contains(name)) continue;
+                coordToParents
+                        .computeIfAbsent(coord, k -> new java.util.LinkedHashSet<>())
+                        .add(s.name());
+                if (!seenCoords.add(name)) continue;
                 unmet.add(new Resolver.Coord(coord, ref.version()));
             }
         }
-        if (unmet.isEmpty()) return new ResolvedGraph();
-        try {
-            return new Resolver(store).resolveAll(unmet);
-        } catch (IOException io) {
-            // Resolver failure means we can't fan-out the new refs; fall
-            // through with no extras — the next sync run picks them up.
+        if (unmet.isEmpty()) {
+            // Everything in scope is already in the store — clear any
+            // lingering TRANSITIVE_RESOLVE_FAILED on the parents whose
+            // refs are now all satisfied. Self-clearing matches the
+            // pattern used for REGISTRY_UNAVAILABLE / AGENT_SYNC_FAILED.
+            for (String parent : parentsWithRefs) {
+                try { ctx.clearError(parent, InstalledUnit.ErrorKind.TRANSITIVE_RESOLVE_FAILED); }
+                catch (IOException ignored) {}
+            }
             return new ResolvedGraph();
         }
+
+        Resolver.ResolveOutcome outcome;
+        try {
+            outcome = new Resolver(store).resolveAll(unmet);
+        } catch (IOException io) {
+            // Filesystem-level error setting up the staging temp dirs —
+            // unrelated to any single coord's resolvability. Fall
+            // through with no extras (matching the prior swallow) and
+            // log; ctx.addError isn't useful here because we can't
+            // attribute to a specific parent.
+            dev.skillmanager.util.Log.warn(
+                    "sync: skipped fan-out of new refs — staging setup failed: %s",
+                    io.getMessage());
+            return new ResolvedGraph();
+        }
+
+        // Attribute each failure back to every parent that declared the
+        // failing coord. Multiple parents may declare the same coord;
+        // each gets the breadcrumb. Skip parents not in the store (the
+        // "first-time install" / pre-Program case can't happen here
+        // because sync runs against the live in-store set, but keep the
+        // guard so future refactors don't regress to silent ENOENT).
+        java.util.Set<String> parentsWithFailures = new java.util.LinkedHashSet<>();
+        for (Resolver.ResolveFailure f : outcome.failures()) {
+            // Render at warn level — matches the renderer's shape for
+            // the TransitiveFailed fact so the user sees every failure
+            // even before any effect runs.
+            String who = f.requestedBy() == null || f.requestedBy().isBlank()
+                    ? "(top-level)"
+                    : "needed by " + f.requestedBy();
+            dev.skillmanager.util.Log.warn("transitive: %s [%s] — %s",
+                    f.source(), who, f.reason());
+
+            java.util.Set<String> parents = coordToParents.getOrDefault(
+                    f.source(), java.util.Set.of());
+            for (String parent : parents) {
+                if (!store.contains(parent)) continue;
+                try {
+                    ctx.addError(parent,
+                            InstalledUnit.ErrorKind.TRANSITIVE_RESOLVE_FAILED,
+                            "could not resolve " + f.source() + ": " + f.reason());
+                    parentsWithFailures.add(parent);
+                } catch (IOException ignored) {
+                    // addError persistence failures shouldn't crash the
+                    // sync — the warn-line above is still the user-
+                    // visible signal.
+                }
+            }
+        }
+        // For parents whose refs ALL succeeded this pass, clear the
+        // error (if any). Self-healing — matches REGISTRY_UNAVAILABLE.
+        for (String parent : parentsWithRefs) {
+            if (parentsWithFailures.contains(parent)) continue;
+            try { ctx.clearError(parent, InstalledUnit.ErrorKind.TRANSITIVE_RESOLVE_FAILED); }
+            catch (IOException ignored) {}
+        }
+        return outcome.graph();
     }
 
     private static String referenceToCoord(UnitReference ref, SkillStore store, String parentSkillName) {

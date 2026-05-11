@@ -88,6 +88,8 @@ public final class ReportUseCase {
                     + "skill-manager sync " + skillName;
             case AUTHENTICATION_NEEDED -> "run `skill-manager login`, then re-run "
                     + "`skill-manager sync " + skillName + "`";
+            case TRANSITIVE_RESOLVE_FAILED -> "fix the failing transitive (see message) "
+                    + "and re-run: skill-manager sync " + skillName;
         };
     }
 }
