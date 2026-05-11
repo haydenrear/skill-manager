@@ -66,6 +66,14 @@ public final class Resolver {
             } catch (IOException e) {
                 Fs.deleteRecursive(staging);
                 throw e;
+            } catch (dev.skillmanager.store.GitFetcherException e) {
+                // GitFetcherException is RuntimeException (so the CLI's
+                // top-level handler can render a stable banner without
+                // every layer having to declare `throws IOException`),
+                // but the staging dir still needs cleanup — matches the
+                // IOException catch above.
+                Fs.deleteRecursive(staging);
+                throw e;
             }
             // Kind-aware parse: plugins land at the bundle root with a
             // .claude-plugin/plugin.json manifest; bare skills have a
