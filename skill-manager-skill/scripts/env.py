@@ -123,7 +123,7 @@ def package_manager_paths(home: Path) -> dict:
     return out
 
 
-_SPEC_RE = re.compile(r"^(?P<backend>pip|npm|brew|tar):(?P<rest>.+)$")
+_SPEC_RE = re.compile(r"^(?P<backend>pip|npm|brew|tar|skill-script):(?P<rest>.+)$")
 
 
 def parse_spec(spec: str) -> tuple[str, str]:
