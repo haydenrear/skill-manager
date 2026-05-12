@@ -1,0 +1,12 @@
+[doc-repo]
+name = "hello-doc-repo"
+version = "0.1.0"
+description = "Example doc-repo for the doc-smoke test_graph — two bindable markdown sources."
+
+[[sources]]
+file = "claude-md/review-stance.md"
+
+[[sources]]
+file = "claude-md/build-instructions.md"
+id = "build-instructions"
+agents = ["claude"]

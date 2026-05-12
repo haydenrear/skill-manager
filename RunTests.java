@@ -147,6 +147,7 @@ public class RunTests {
         failures += dev.skillmanager.store.FetcherGitCloneTest.run();
         failures += BindingsTest.run();
         failures += dev.skillmanager.bindings.DocRepoTest.run();
+        failures += dev.skillmanager.bindings.HarnessTest.run();
 
         System.out.println();
         if (failures == 0) {

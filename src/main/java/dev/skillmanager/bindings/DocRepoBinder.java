@@ -15,6 +15,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.function.Function;
 
 /**
  * Plans doc-repo (#48) bindings from a {@link DocUnit} and a target
@@ -65,6 +66,22 @@ public final class DocRepoBinder {
     public static Plan plan(DocUnit docUnit, Path targetRoot,
                             String selectedSourceId, ConflictPolicy policy,
                             BindingSource source) throws IOException {
+        return plan(docUnit, targetRoot, selectedSourceId, policy, source,
+                s -> BindingStore.newBindingId());
+    }
+
+    /**
+     * Same as {@link #plan(DocUnit, Path, String, ConflictPolicy, BindingSource)}
+     * but with a custom binding id supplier. Used by harness
+     * instantiation (#47) to stamp stable, instance-scoped ids of
+     * the form {@code harness:<instanceId>:<repoName>:<sourceId>} so
+     * re-instantiating the same template overwrites the existing
+     * bindings rather than accumulating duplicates.
+     */
+    public static Plan plan(DocUnit docUnit, Path targetRoot,
+                            String selectedSourceId, ConflictPolicy policy,
+                            BindingSource source,
+                            Function<DocSource, String> bindingIdFn) throws IOException {
         Path repoDir = docUnit.sourcePath();
         List<DocSource> selected = new ArrayList<>();
         if (selectedSourceId == null) {
@@ -82,18 +99,18 @@ public final class DocRepoBinder {
         }
         List<Binding> bindings = new ArrayList<>(selected.size());
         for (DocSource src : selected) {
-            bindings.add(planOne(docUnit, src, repoDir, targetRoot, policy, source));
+            bindings.add(planOne(docUnit, src, repoDir, targetRoot, policy, source,
+                    bindingIdFn.apply(src)));
         }
         return new Plan(bindings);
     }
 
     private static Binding planOne(DocUnit docUnit, DocSource src, Path repoDir,
                                    Path targetRoot, ConflictPolicy policy,
-                                   BindingSource source) throws IOException {
+                                   BindingSource source, String bindingId) throws IOException {
         String basename = basename(src.file());
         Path storeSource = repoDir.resolve(src.file());
         Path copyDest = targetRoot.resolve(DOCS_SUBDIR).resolve(basename);
-        String bindingId = BindingStore.newBindingId();
         String boundHash = Sha256.hashFile(storeSource);
 
         List<Projection> rows = new ArrayList<>();

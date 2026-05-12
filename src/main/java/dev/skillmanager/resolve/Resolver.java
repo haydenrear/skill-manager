@@ -126,15 +126,21 @@ public final class Resolver {
                 failures.add(new ResolveFailure(coord, p.requestedBy, e));
                 continue;
             }
-            // Kind-aware parse: plugins land at the bundle root with a
-            // .claude-plugin/plugin.json manifest; bare skills have a
-            // SKILL.md at the root. Without the plugin probe we'd descend
-            // into skills/<contained>/SKILL.md and install the contained
-            // skill as a top-level unit (was: ticket-15 plugin-smoke
-            // failure — install hello-plugin produced INSTALLED hello-impl).
+            // Kind-aware parse, in precedence order:
+            //   1. plugin — .claude-plugin/plugin.json at root
+            //   2. harness template — harness.toml with [harness] table (#47)
+            //   3. doc-repo — skill-manager.toml with [doc-repo] table (#48)
+            //   4. bare skill — SKILL.md at root (fallback)
+            // The plugin probe must come first so plugins with contained
+            // skills under skills/<name>/ don't get descended into and
+            // installed as standalone skill units (ticket-15 fix).
             dev.skillmanager.model.AgentUnit unit;
             if (dev.skillmanager.model.PluginParser.looksLikePlugin(fetched.dir())) {
                 unit = dev.skillmanager.model.PluginParser.load(fetched.dir());
+            } else if (dev.skillmanager.model.HarnessParser.looksLikeHarness(fetched.dir())) {
+                unit = dev.skillmanager.model.HarnessParser.load(fetched.dir());
+            } else if (dev.skillmanager.model.DocRepoParser.looksLikeDocRepo(fetched.dir())) {
+                unit = dev.skillmanager.model.DocRepoParser.load(fetched.dir());
             } else {
                 unit = SkillParser.load(fetched.dir()).asUnit();
             }

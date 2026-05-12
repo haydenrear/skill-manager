@@ -231,6 +231,9 @@ public final class DryRunInterpreter implements ProgramInterpreter {
                             n, e.projection().kind(), e.projection().destPath());
             case SkillEffect.SyncDocRepo e ->
                     Log.step("[%d] doc-repo sync %s (force=%s)", n, e.unitName(), e.force());
+            case SkillEffect.SyncHarness e ->
+                    Log.step("[%d] harness sync %s instance=%s", n,
+                            e.harnessName(), e.instanceId());
         }
     }
 }

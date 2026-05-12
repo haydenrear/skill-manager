@@ -49,8 +49,9 @@ public final class UnitFixtures {
                     System.arraycopy(extraContained, 0, all, 1, extraContained.length);
                     yield scaffoldPlugin(tempRoot, name, DepSpec.empty(), all);
                 }
-                case DOC -> throw new UnsupportedOperationException(
-                        "DOC fixtures use scaffoldDocRepo — buildEquivalent's deps shape doesn't apply to doc-repos");
+                case DOC, HARNESS -> throw new UnsupportedOperationException(
+                        kind + " fixtures use scaffold* helpers — buildEquivalent's deps shape "
+                                + "doesn't apply to content-only kinds");
             };
         } catch (IOException e) {
             throw new UncheckedIOException(e);

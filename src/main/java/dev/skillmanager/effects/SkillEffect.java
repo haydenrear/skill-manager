@@ -77,7 +77,8 @@ public sealed interface SkillEffect permits
         SkillEffect.RemoveBinding,
         SkillEffect.MaterializeProjection,
         SkillEffect.UnmaterializeProjection,
-        SkillEffect.SyncDocRepo {
+        SkillEffect.SyncDocRepo,
+        SkillEffect.SyncHarness {
 
     // ------------------------------------------------------------------
     // Per-outcome continuations. Effect declares what the program should
@@ -684,4 +685,22 @@ public sealed interface SkillEffect permits
      * the per-binding errors without blocking the rest of the program.
      */
     record SyncDocRepo(String unitName, boolean force) implements SkillEffect {}
+
+    /**
+     * Reconcile a harness instance against its (potentially updated)
+     * template. Re-runs {@link dev.skillmanager.bindings.HarnessInstantiator}
+     * with the same {@code instanceId} so stable harness binding ids
+     * (e.g. {@code harness:<instanceId>:repo-intel}) get replaced in
+     * place; projections rewrite via {@link
+     * dev.skillmanager.bindings.ConflictPolicy#OVERWRITE}. Orphan
+     * harness bindings (units removed from the template since the
+     * last instantiate) are torn down by walking the existing
+     * {@code harness:<instanceId>:*} ledger entries and emitting
+     * {@link UnmaterializeProjection} / {@link RemoveBinding} for
+     * the ones not present in the new plan.
+     *
+     * <p>Idempotent: re-running against an up-to-date instance is a
+     * no-op modulo overwriting same-bytes files.
+     */
+    record SyncHarness(String harnessName, String instanceId) implements SkillEffect {}
 }

@@ -38,11 +38,13 @@ public final class PolicyGatingTest {
         // ---------------------------------------- per-flag, per-dep, per-kind sweep
 
         for (UnitKind kind : UnitKind.values()) {
-            // Policy gating is a SKILL × PLUGIN parity contract — DOC
-            // units have no CLI or MCP deps by construction, so the
-            // sweep cells don't apply. Doc-repo-specific behaviors
-            // get their own tests in BindingsTest / DocRepoTest.
-            if (kind == UnitKind.DOC) continue;
+            // Policy gating is a SKILL × PLUGIN parity contract. DOC
+            // and HARNESS units have no CLI or MCP deps of their own
+            // (harness templates *select* tools by name but don't
+            // claim them as deps), so the sweep cells don't apply.
+            // Kind-specific behaviors get their own tests in
+            // BindingsTest / DocRepoTest / HarnessTest.
+            if (kind == UnitKind.DOC || kind == UnitKind.HARNESS) continue;
             String label = kind.name().toLowerCase();
 
             // CLI dep + cli flag on → CLI_DEPS violation.
