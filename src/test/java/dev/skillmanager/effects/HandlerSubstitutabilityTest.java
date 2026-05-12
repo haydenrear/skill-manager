@@ -137,8 +137,15 @@ public final class HandlerSubstitutabilityTest {
                 TestHarness h = TestHarness.create();
                 h.scaffoldUnitDir("widget", kind);
                 EffectReceipt r = h.run(new SkillEffect.RejectIfAlreadyInstalled("widget"));
-                assertEquals(EffectStatus.HALTED, r.status(),
-                        k + ": RejectIfAlreadyInstalled HALTED when present");
+                // Cooperative halt — status stays OK (the precondition
+                // check ran cleanly), continuation becomes HALT to stop
+                // the program. Status / continuation split landed with
+                // the Continuation refactor; before it was a single
+                // overloaded HALTED status.
+                assertEquals(EffectStatus.OK, r.status(),
+                        k + ": RejectIfAlreadyInstalled OK status (cooperative halt)");
+                assertEquals(dev.skillmanager.effects.Continuation.HALT, r.continuation(),
+                        k + ": RejectIfAlreadyInstalled HALT continuation when present");
                 String expectedDir = (kind == UnitKind.SKILL
                         ? h.store().skillDir("widget")
                         : h.store().pluginsDir().resolve("widget")).toString();

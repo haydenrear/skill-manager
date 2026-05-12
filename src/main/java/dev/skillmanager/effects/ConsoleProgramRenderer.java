@@ -55,7 +55,13 @@ public final class ConsoleProgramRenderer implements ProgramRenderer {
         if (receipt.status() == EffectStatus.FAILED && receipt.errorMessage() != null) {
             Log.error("× %s: %s",
                     receipt.effect().getClass().getSimpleName(), receipt.errorMessage());
-        } else if (receipt.status() == EffectStatus.HALTED && receipt.errorMessage() != null) {
+        }
+        // Halt banner is rendered whenever the program is stopping
+        // here — regardless of whether the status is OK (cooperative)
+        // or FAILED (transient + halt). Status drives the failure
+        // diagnostic; continuation drives the "we're stopping" line.
+        if (receipt.continuation() == Continuation.HALT && receipt.errorMessage() != null
+                && receipt.status() != EffectStatus.FAILED) {
             Log.error("✋ halted: %s", receipt.errorMessage());
         }
         for (ContextFact f : receipt.facts()) render(f);
