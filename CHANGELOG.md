@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.11.1](https://github.com/haydenrear/skill-manager/compare/v0.11.0...v0.11.1) (2026-05-12)
+
+
+### Bug Fixes
+
+* **fetcher:** SSH + private-repo support via host git, with typed exceptions for the CLI banner ([890b96f](https://github.com/haydenrear/skill-manager/commit/890b96fb460843e1b395813ea8d43a1e2e949bb1))
+* **resolve:** accumulate per-coord failures, propagate via ContextFact / addError instead of exceptions ([843854d](https://github.com/haydenrear/skill-manager/commit/843854d7f8c180ca68bce9dbae9dc9f40c65ceca))
+* **test:** sandbox CLAUDE_HOME / CODEX_HOME so unit tests can't pollute real harness config ([0a02cbf](https://github.com/haydenrear/skill-manager/commit/0a02cbf18e8f97bca4ff3ce4a1d81a3769129297))
+
 ## [0.11.0](https://github.com/haydenrear/skill-manager/compare/v0.10.0...v0.11.0) (2026-05-10)
 
 
