@@ -1,5 +1,8 @@
 package dev.skillmanager.effects;
 
+import dev.skillmanager.bindings.Binding;
+import dev.skillmanager.bindings.ConflictPolicy;
+import dev.skillmanager.bindings.Projection;
 import dev.skillmanager.mcp.GatewayConfig;
 import dev.skillmanager.model.AgentUnit;
 import dev.skillmanager.model.CliDependency;
@@ -69,7 +72,11 @@ public sealed interface SkillEffect permits
         SkillEffect.RegisterMcp,
         SkillEffect.UpdateUnitsLock,
         SkillEffect.RejectIfTopLevelInstalled,
-        SkillEffect.CheckInstallPolicyGate {
+        SkillEffect.CheckInstallPolicyGate,
+        SkillEffect.CreateBinding,
+        SkillEffect.RemoveBinding,
+        SkillEffect.MaterializeProjection,
+        SkillEffect.UnmaterializeProjection {
 
     // ------------------------------------------------------------------
     // Per-outcome continuations. Effect declares what the program should
@@ -584,4 +591,74 @@ public sealed interface SkillEffect permits
      */
     record UpdateUnitsLock(dev.skillmanager.lock.UnitsLock target, java.nio.file.Path path)
             implements SkillEffect {}
+
+    // ============================================================ bindings (ticket 49)
+
+    /**
+     * Persist a {@link Binding} into the per-unit projection ledger at
+     * {@code installed/<unitName>.projections.json}. The binding's
+     * {@code projections} list is expected to be complete by the time
+     * this effect runs — typically every {@link MaterializeProjection}
+     * for the binding has already succeeded and the planner has
+     * collected the resulting Projection rows into the Binding record.
+     *
+     * <p>Compensation is captured pre-state: the entire prior ledger
+     * is snapshotted so rollback restores byte-for-byte (including
+     * any other bindings for the same unit that were already present).
+     */
+    record CreateBinding(Binding binding) implements SkillEffect {
+        @Override public Continuation continuationOnFail() { return Continuation.HALT; }
+    }
+
+    /**
+     * Drop a {@link Binding} from the per-unit projection ledger.
+     * Pre-state snapshot captures the prior ledger so rollback can
+     * restore the binding row if a later teardown effect fails.
+     */
+    record RemoveBinding(String unitName, String bindingId) implements SkillEffect {}
+
+    /**
+     * Apply one filesystem action a {@link Binding} produced. The
+     * handler dispatches on {@link Projection#kind}:
+     *
+     * <ul>
+     *   <li>{@link dev.skillmanager.bindings.ProjectionKind#SYMLINK} —
+     *       {@code Files.createSymbolicLink(destPath, sourcePath)},
+     *       falling back to a recursive copy when the filesystem
+     *       refuses symlinks. {@code conflictPolicy} decides what to
+     *       do if {@code destPath} already exists; {@link ConflictPolicy#RENAME_EXISTING}
+     *       expects a sibling {@link dev.skillmanager.bindings.ProjectionKind#RENAMED_ORIGINAL_BACKUP}
+     *       projection to have been planned alongside this one.</li>
+     *   <li>{@link dev.skillmanager.bindings.ProjectionKind#COPY} —
+     *       recursive copy from {@code sourcePath} to {@code destPath}.</li>
+     *   <li>{@link dev.skillmanager.bindings.ProjectionKind#RENAMED_ORIGINAL_BACKUP} —
+     *       move the existing file/dir at {@code projection.backupOf()}
+     *       to {@code projection.destPath()}. Lets the executor walk
+     *       backups back independently of the SYMLINK projection.</li>
+     * </ul>
+     *
+     * <p>Compensation: {@link dev.skillmanager.effects.Compensation.ReverseProjection}
+     * reverses by {@code kind}.
+     */
+    record MaterializeProjection(Projection projection, ConflictPolicy conflictPolicy) implements SkillEffect {
+        @Override public Continuation continuationOnFail() { return Continuation.HALT; }
+    }
+
+    /**
+     * Reverse one previously materialized {@link Projection}. Used by
+     * {@code unbind} and {@code uninstall} (which walks the ledger).
+     *
+     * <p>{@link dev.skillmanager.bindings.ProjectionKind#SYMLINK} →
+     * unlink {@code destPath} if it points at {@code sourcePath} (or
+     * delete the directory in the copy-fallback case).
+     * {@link dev.skillmanager.bindings.ProjectionKind#COPY} → delete
+     * {@code destPath}.
+     * {@link dev.skillmanager.bindings.ProjectionKind#RENAMED_ORIGINAL_BACKUP}
+     * → move {@code projection.destPath} (the backup) back to
+     * {@code projection.backupOf} (the original path).
+     *
+     * <p>No post-state compensation: unmaterialize is a teardown,
+     * its own failures fail forward.
+     */
+    record UnmaterializeProjection(Projection projection) implements SkillEffect {}
 }

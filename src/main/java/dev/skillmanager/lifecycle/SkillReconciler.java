@@ -31,6 +31,16 @@ public final class SkillReconciler {
             Log.warn("legacy source-record migration failed: %s", t.getMessage());
         }
 
+        // Ticket 49: backfill DEFAULT_AGENT binding rows for already-
+        // installed units. Idempotent — skips units whose binding is
+        // already recorded.
+        try {
+            int written = dev.skillmanager.bindings.BindingBackfill.run(store);
+            if (written > 0) Log.info("reconcile: backfilled %d default-agent binding(s)", written);
+        } catch (Throwable t) {
+            Log.warn("binding-ledger backfill failed: %s", t.getMessage());
+        }
+
         try {
             Program<ReconcileUseCase.Report> program = ReconcileUseCase.buildProgram(store);
             if (program.effects().isEmpty()) return;

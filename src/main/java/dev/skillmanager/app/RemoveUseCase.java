@@ -1,6 +1,10 @@
 package dev.skillmanager.app;
 
 import dev.skillmanager.agent.Agent;
+import dev.skillmanager.bindings.Binding;
+import dev.skillmanager.bindings.BindingStore;
+import dev.skillmanager.bindings.Projection;
+import dev.skillmanager.bindings.ProjectionLedger;
 import dev.skillmanager.effects.ContextFact;
 import dev.skillmanager.effects.EffectReceipt;
 import dev.skillmanager.effects.EffectStatus;
@@ -74,11 +78,32 @@ public final class RemoveUseCase {
 
         if (unregisterMcp) effects.addAll(ResolveContextUseCase.preflight(gw, null, true));
 
-        List<String> agents = agentsToUnlink == null
-                ? Agent.all().stream().map(Agent::id).toList()
-                : agentsToUnlink;
-        for (String agentId : agents) {
-            effects.add(new SkillEffect.UnlinkAgentUnit(agentId, skillName, kind));
+        // Walk the projection ledger — tear down every binding the unit
+        // owns (DEFAULT_AGENT projections AND any user-created EXPLICIT
+        // bindings to custom roots). When the ledger is empty (legacy
+        // installs that predate ticket 49, or pre-migration state), fall
+        // back to the per-agent UnlinkAgentUnit sweep so the existing
+        // contract still holds.
+        ProjectionLedger ledger = new BindingStore(store).read(skillName);
+        if (!ledger.bindings().isEmpty()) {
+            for (Binding b : ledger.bindings()) {
+                // Reverse projections in LIFO order — SYMLINK first,
+                // RENAMED_ORIGINAL_BACKUP last so the original
+                // destination contents land back where they started.
+                List<Projection> reversed = new ArrayList<>(b.projections());
+                java.util.Collections.reverse(reversed);
+                for (Projection p : reversed) {
+                    effects.add(new SkillEffect.UnmaterializeProjection(p));
+                }
+                effects.add(new SkillEffect.RemoveBinding(skillName, b.bindingId()));
+            }
+        } else {
+            List<String> agents = agentsToUnlink == null
+                    ? Agent.all().stream().map(Agent::id).toList()
+                    : agentsToUnlink;
+            for (String agentId : agents) {
+                effects.add(new SkillEffect.UnlinkAgentUnit(agentId, skillName, kind));
+            }
         }
 
         effects.add(new SkillEffect.RemoveUnitFromStore(skillName, kind));

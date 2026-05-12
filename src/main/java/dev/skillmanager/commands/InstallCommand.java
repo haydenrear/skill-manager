@@ -101,6 +101,13 @@ public final class InstallCommand implements Callable<Integer> {
                     + "confirmation for — error names the specific policy flag to flip.")
     public boolean yes;
 
+    @Option(names = "--no-bind-default", negatable = false,
+            description = "Skip the default-agent projection — install the unit into the store "
+                    + "(and write the lock) but don't symlink it into any agent's dir or record a "
+                    + "DEFAULT_AGENT binding. Useful for harness instantiation and profile sync, "
+                    + "which create their own bindings.")
+    public boolean noBindDefault;
+
     @Override
     public Integer call() throws Exception {
         SkillStore store = SkillStore.defaultStore();
@@ -132,7 +139,8 @@ public final class InstallCommand implements Callable<Integer> {
         //      on user-blocking violations / declined prompt.
         //   4. Commit + audit + provenance + summary + run + tail.
         dev.skillmanager.effects.StagedProgram<InstallUseCase.Report> program =
-                InstallUseCase.buildProgram(store, gw, registryUrl, source, version, yes, dryRun);
+                InstallUseCase.buildProgram(store, gw, registryUrl, source, version, yes, dryRun,
+                        !dryRun, !noBindDefault);
 
         InstallUseCase.Report report;
         if (dryRun) {

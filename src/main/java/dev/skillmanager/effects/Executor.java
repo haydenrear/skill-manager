@@ -317,7 +317,20 @@ public final class Executor {
             case SkillEffect.InstallTools e -> List.of();
             case SkillEffect.InstallCli e -> List.of();
             case SkillEffect.RegisterMcp e -> List.of();
+            // ---- bindings (ticket 49) ----
+            case SkillEffect.CreateBinding e -> snapshotLedger(e.binding().unitName(), ctx);
+            case SkillEffect.RemoveBinding e -> snapshotLedger(e.unitName(), ctx);
+            // MaterializeProjection's compensation is captured post-state
+            // (ReverseProjection in compensationsFor). UnmaterializeProjection
+            // is a teardown — no compensation.
+            case SkillEffect.MaterializeProjection e -> List.of();
+            case SkillEffect.UnmaterializeProjection e -> List.of();
         };
+    }
+
+    private static List<Compensation> snapshotLedger(String unitName, EffectContext ctx) {
+        dev.skillmanager.bindings.ProjectionLedger prev = ctx.bindingStore().read(unitName);
+        return List.of(new Compensation.RestoreProjectionLedger(unitName, prev));
     }
 
     private static List<Compensation> snapshotInstalled(String name, EffectContext ctx) {
@@ -490,6 +503,22 @@ public final class Executor {
             case SkillEffect.InstallTools e -> List.of();
             case SkillEffect.InstallCli e -> List.of();
             case SkillEffect.UpdateUnitsLock e -> List.of();
+            // ---- bindings (ticket 49) ----
+            // Ledger writes are reversed by RestoreProjectionLedger captured
+            // pre-state. Materialize captures its post-state compensation
+            // (ReverseProjection); Unmaterialize is teardown.
+            case SkillEffect.CreateBinding e -> List.of();
+            case SkillEffect.RemoveBinding e -> List.of();
+            case SkillEffect.MaterializeProjection e -> {
+                // Only record a compensation if the materialization actually
+                // succeeded (skipped-on-conflict emits no rollback need).
+                boolean materialized = receipt.facts().stream().anyMatch(
+                        f -> f instanceof ContextFact.ProjectionMaterialized);
+                yield materialized
+                        ? List.of(new Compensation.ReverseProjection(e.projection()))
+                        : List.of();
+            }
+            case SkillEffect.UnmaterializeProjection e -> List.of();
         };
     }
 
@@ -559,6 +588,12 @@ public final class Executor {
                 // (CodexProjector returns empty for plugins, etc.).
                 AgentUnit transient_ = unitForUnproject(u.unitName(), u.kind());
                 dev.skillmanager.project.ProjectorRegistry.defaultRegistry().removeAll(transient_, store);
+            }
+            case Compensation.RestoreProjectionLedger r -> {
+                ctx.bindingStore().write(r.previous());
+            }
+            case Compensation.ReverseProjection r -> {
+                LiveInterpreter.reverseProjection(r.projection());
             }
         }
     }

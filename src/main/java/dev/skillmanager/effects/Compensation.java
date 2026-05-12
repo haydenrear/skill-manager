@@ -1,5 +1,7 @@
 package dev.skillmanager.effects;
 
+import dev.skillmanager.bindings.Projection;
+import dev.skillmanager.bindings.ProjectionLedger;
 import dev.skillmanager.mcp.GatewayConfig;
 import dev.skillmanager.model.CliDependency;
 import dev.skillmanager.model.McpDependency;
@@ -44,7 +46,9 @@ public sealed interface Compensation permits
         Compensation.UninstallCliIfOrphan,
         Compensation.UnregisterMcpIfOrphan,
         Compensation.UnprojectIfOrphan,
-        Compensation.RestoreUnitsLock {
+        Compensation.RestoreUnitsLock,
+        Compensation.RestoreProjectionLedger,
+        Compensation.ReverseProjection {
 
     /** Reverse of one {@link SkillEffect.CommitUnitsToStore} entry. */
     record DeleteUnitDir(String unitName, UnitKind kind) implements Compensation {}
@@ -84,4 +88,26 @@ public sealed interface Compensation permits
      */
     record RestoreUnitsLock(dev.skillmanager.lock.UnitsLock previous, java.nio.file.Path path)
             implements Compensation {}
+
+    /**
+     * Restore a per-unit binding ledger to its pre-effect contents.
+     * Captured by {@code Executor.preStateCompensations} before
+     * {@link dev.skillmanager.effects.SkillEffect.CreateBinding} or
+     * {@link dev.skillmanager.effects.SkillEffect.RemoveBinding} runs,
+     * so a successful ledger write flips back byte-for-byte on
+     * downstream failure. When {@code previous.bindings()} is empty
+     * the applier deletes the ledger file outright (mirroring
+     * {@link dev.skillmanager.bindings.BindingStore#write}'s
+     * empty-ledger-drop behavior).
+     */
+    record RestoreProjectionLedger(String unitName, ProjectionLedger previous)
+            implements Compensation {}
+
+    /**
+     * Reverse one materialized {@link Projection}. Same dispatch as
+     * {@link dev.skillmanager.effects.SkillEffect.UnmaterializeProjection}
+     * — kind decides the action — but recorded as a compensation so
+     * the rollback walk reverses each projection in LIFO order.
+     */
+    record ReverseProjection(Projection projection) implements Compensation {}
 }

@@ -65,21 +65,34 @@ public record UnitReference(Coord coord, UnitKindFilter kindFilter) {
 
     /** Registry name, when the coord names one. {@code null} for git/local refs. */
     public String name() {
-        return switch (coord) {
+        return nameOf(coord);
+    }
+
+    private static String nameOf(Coord c) {
+        return switch (c) {
             case Coord.Bare b -> b.name();
             case Coord.Kinded k -> k.name();
             case Coord.DirectGit g -> null;
             case Coord.Local l -> null;
+            // Sub-element bindings address a unit; legacy callers see the
+            // unit's name. The element selector is only consumed by the
+            // bind layer.
+            case Coord.SubElement s -> nameOf(s.unitCoord());
         };
     }
 
     /** Pinned version when present in the coord; {@code null} otherwise. */
     public String version() {
-        return switch (coord) {
+        return versionOf(coord);
+    }
+
+    private static String versionOf(Coord c) {
+        return switch (c) {
             case Coord.Bare b -> b.version();
             case Coord.Kinded k -> k.version();
             case Coord.DirectGit g -> null;
             case Coord.Local l -> null;
+            case Coord.SubElement s -> versionOf(s.unitCoord());
         };
     }
 
@@ -101,7 +114,11 @@ public record UnitReference(Coord coord, UnitKindFilter kindFilter) {
     public boolean isLocal() { return coord instanceof Coord.Local; }
 
     public boolean isRegistry() {
-        return coord instanceof Coord.Bare || coord instanceof Coord.Kinded;
+        if (coord instanceof Coord.Bare || coord instanceof Coord.Kinded) return true;
+        if (coord instanceof Coord.SubElement s) {
+            return s.unitCoord() instanceof Coord.Bare || s.unitCoord() instanceof Coord.Kinded;
+        }
+        return false;
     }
 
     public boolean isDirectGit() { return coord instanceof Coord.DirectGit; }
@@ -117,6 +134,7 @@ public record UnitReference(Coord coord, UnitKindFilter kindFilter) {
             case Coord.Bare b -> UnitKindFilter.ANY;
             case Coord.DirectGit g -> UnitKindFilter.ANY;
             case Coord.Local l -> UnitKindFilter.ANY;
+            case Coord.SubElement s -> derivedFilter(s.unitCoord());
         };
     }
 }

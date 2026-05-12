@@ -130,6 +130,34 @@ public final class CoordParserTest {
                     assertEquals("hello", b.name(), "trimmed");
                     assertEquals("hello", b.raw(), "raw is trimmed too");
                 })
+                .test("skill: with sub-element → SubElement wrapping Kinded", () -> {
+                    Coord c = Coord.parse("skill:repo-intel/quick-mode");
+                    assertTrue(c instanceof Coord.SubElement, "SubElement variant");
+                    Coord.SubElement s = (Coord.SubElement) c;
+                    assertEquals("quick-mode", s.elementName(), "element name");
+                    Coord.Kinded inner = (Coord.Kinded) s.unitCoord();
+                    assertEquals(UnitKind.SKILL, inner.kind(), "inner kind");
+                    assertEquals("repo-intel", inner.name(), "inner name");
+                    assertEquals(null, inner.version(), "no inner version");
+                    assertEquals("skill:repo-intel", inner.raw(), "synthesized inner raw");
+                    assertEquals("skill:repo-intel/quick-mode", s.raw(), "outer raw preserved");
+                })
+                .test("plugin: with sub-element and version", () -> {
+                    Coord c = Coord.parse("plugin:repo-intel/quick-mode@1.2.3");
+                    Coord.SubElement s = (Coord.SubElement) c;
+                    assertEquals("quick-mode", s.elementName(), "element name");
+                    Coord.Kinded inner = (Coord.Kinded) s.unitCoord();
+                    assertEquals("repo-intel", inner.name(), "inner name");
+                    assertEquals("1.2.3", inner.version(), "version attaches to unit, not element");
+                    assertEquals("plugin:repo-intel@1.2.3", inner.raw(), "synthesized inner raw includes version");
+                })
+                .test("bare with sub-element", () -> {
+                    Coord c = Coord.parse("my-prompts/review-stance");
+                    Coord.SubElement s = (Coord.SubElement) c;
+                    assertEquals("review-stance", s.elementName(), "element name");
+                    Coord.Bare inner = (Coord.Bare) s.unitCoord();
+                    assertEquals("my-prompts", inner.name(), "inner name");
+                })
                 .test("unrecognized prefix falls through to Bare", () -> {
                     // The parser is permissive — only known prefixes route to
                     // their variants; anything else is a registry name and the

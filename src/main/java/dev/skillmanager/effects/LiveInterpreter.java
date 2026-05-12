@@ -1,6 +1,12 @@
 package dev.skillmanager.effects;
 
 import dev.skillmanager.agent.Agent;
+import dev.skillmanager.bindings.Binding;
+import dev.skillmanager.bindings.BindingStore;
+import dev.skillmanager.bindings.ConflictPolicy;
+import dev.skillmanager.bindings.Projection;
+import dev.skillmanager.bindings.ProjectionKind;
+import dev.skillmanager.bindings.ProjectionLedger;
 import dev.skillmanager.lock.CliInstallRecorder;
 import dev.skillmanager.lock.CliLock;
 import dev.skillmanager.mcp.GatewayClient;
@@ -200,6 +206,10 @@ public final class LiveInterpreter implements ProgramInterpreter {
             case SkillEffect.InstallCli e -> installCli(e);
             case SkillEffect.RegisterMcp e -> registerMcp(e, ctx);
             case SkillEffect.UpdateUnitsLock e -> updateUnitsLock(e);
+            case SkillEffect.CreateBinding e -> createBinding(e, ctx);
+            case SkillEffect.RemoveBinding e -> removeBinding(e, ctx);
+            case SkillEffect.MaterializeProjection e -> materializeProjection(e);
+            case SkillEffect.UnmaterializeProjection e -> unmaterializeProjection(e);
         };
     }
 
@@ -533,16 +543,23 @@ public final class LiveInterpreter implements ProgramInterpreter {
         for (dev.skillmanager.project.Projector proj : projectors.projectors()) {
             for (AgentUnit u : units) {
                 try {
-                    for (dev.skillmanager.project.Projection p : proj.planProjection(u, ctx.store())) {
+                    List<dev.skillmanager.project.Projection> planned = proj.planProjection(u, ctx.store());
+                    for (dev.skillmanager.project.Projection p : planned) {
                         proj.apply(p);
                     }
                     // No projection (e.g. Codex skipping a plugin) is not a
                     // failure — but we also don't emit an "AgentSkillSynced"
                     // fact for it since no work happened. Only fact when we
                     // actually projected.
-                    if (!proj.planProjection(u, ctx.store()).isEmpty()) {
+                    if (!planned.isEmpty()) {
                         facts.add(new ContextFact.AgentSkillSynced(proj.agentId(), u.name()));
                         tryClearError(ctx, u.name(), InstalledUnit.ErrorKind.AGENT_SYNC_FAILED);
+                        // Record a DEFAULT_AGENT binding in the projection
+                        // ledger so uninstall and `bindings list` see this
+                        // implicit projection. Idempotent: re-syncing
+                        // overwrites the existing default binding for the
+                        // same (agent, unit) pair.
+                        recordDefaultAgentBinding(ctx, proj, u, planned);
                     }
                 } catch (Exception ex) {
                     facts.add(new ContextFact.AgentSkillSyncFailed(proj.agentId(), u.name(), ex.getMessage()));
@@ -1291,6 +1308,232 @@ public final class LiveInterpreter implements ProgramInterpreter {
             return EffectReceipt.ok(e, facts);
         } catch (Exception ex) {
             return EffectReceipt.failed(e, facts, ex.getMessage());
+        }
+    }
+
+    // ============================================================ bindings (ticket 49)
+
+    private EffectReceipt createBinding(SkillEffect.CreateBinding e, EffectContext ctx) {
+        Binding b = e.binding();
+        try {
+            BindingStore bs = ctx.bindingStore();
+            ProjectionLedger cur = bs.read(b.unitName());
+            bs.write(cur.withBinding(b));
+            return EffectReceipt.ok(e, new ContextFact.BindingCreated(
+                    b.unitName(), b.bindingId(),
+                    b.targetRoot() == null ? null : b.targetRoot().toString(),
+                    b.subElement()));
+        } catch (IOException io) {
+            return EffectReceipt.failed(e, "could not write binding ledger for "
+                    + b.unitName() + ": " + io.getMessage());
+        }
+    }
+
+    private EffectReceipt removeBinding(SkillEffect.RemoveBinding e, EffectContext ctx) {
+        try {
+            BindingStore bs = ctx.bindingStore();
+            ProjectionLedger cur = bs.read(e.unitName());
+            if (cur.findById(e.bindingId()).isEmpty()) {
+                return EffectReceipt.skipped(e, "no binding " + e.bindingId() + " for " + e.unitName());
+            }
+            bs.write(cur.withoutBinding(e.bindingId()));
+            return EffectReceipt.ok(e, new ContextFact.BindingRemoved(e.unitName(), e.bindingId()));
+        } catch (IOException io) {
+            return EffectReceipt.failed(e, "could not update binding ledger for "
+                    + e.unitName() + ": " + io.getMessage());
+        }
+    }
+
+    private EffectReceipt materializeProjection(SkillEffect.MaterializeProjection e) {
+        Projection p = e.projection();
+        try {
+            switch (p.kind()) {
+                case SYMLINK -> {
+                    var skipped = applyConflictPolicy(p.destPath(), e.conflictPolicy());
+                    if (skipped) {
+                        return EffectReceipt.ok(e, new ContextFact.ProjectionSkippedConflict(
+                                p.bindingId(), p.destPath().toString()));
+                    }
+                    java.nio.file.Files.createDirectories(p.destPath().getParent());
+                    try {
+                        java.nio.file.Files.createSymbolicLink(p.destPath(), p.sourcePath());
+                    } catch (java.nio.file.FileAlreadyExistsException fae) {
+                        // ERROR policy + race; or RENAME_EXISTING but the rename projection
+                        // didn't run first (planner shape bug). Surface explicitly.
+                        return EffectReceipt.failed(e, "destination exists: " + p.destPath());
+                    } catch (UnsupportedOperationException | IOException sym) {
+                        // FS refuses symlinks → recursive copy fallback.
+                        dev.skillmanager.shared.util.Fs.copyRecursive(p.sourcePath(), p.destPath());
+                    }
+                }
+                case COPY -> {
+                    var skipped = applyConflictPolicy(p.destPath(), e.conflictPolicy());
+                    if (skipped) {
+                        return EffectReceipt.ok(e, new ContextFact.ProjectionSkippedConflict(
+                                p.bindingId(), p.destPath().toString()));
+                    }
+                    java.nio.file.Files.createDirectories(p.destPath().getParent());
+                    dev.skillmanager.shared.util.Fs.copyRecursive(p.sourcePath(), p.destPath());
+                }
+                case RENAMED_ORIGINAL_BACKUP -> {
+                    // Move the existing file at backupOf to destPath (the
+                    // backup location). The planner emits this BEFORE the
+                    // SYMLINK / COPY for the same binding so the SYMLINK
+                    // step sees an empty destination.
+                    java.nio.file.Path original = java.nio.file.Path.of(p.backupOf());
+                    if (!java.nio.file.Files.exists(original)) {
+                        // Nothing to back up — the planner saw something at
+                        // plan time but it's gone now. Skip the rename;
+                        // primary projection will see an empty dest.
+                        return EffectReceipt.skipped(e,
+                                "no original to back up at " + original);
+                    }
+                    java.nio.file.Files.createDirectories(p.destPath().getParent());
+                    java.nio.file.Files.move(original, p.destPath());
+                }
+            }
+            return EffectReceipt.ok(e, new ContextFact.ProjectionMaterialized(
+                    p.bindingId(), p.destPath().toString(), p.kind().name()));
+        } catch (IOException io) {
+            return EffectReceipt.failed(e, "could not materialize projection at "
+                    + p.destPath() + ": " + io.getMessage());
+        }
+    }
+
+    /**
+     * Apply the {@link ConflictPolicy} to {@code destPath}. Returns
+     * {@code true} if the projection should be skipped entirely
+     * ({@link ConflictPolicy#SKIP} when {@code destPath} is occupied).
+     */
+    private boolean applyConflictPolicy(java.nio.file.Path destPath, ConflictPolicy policy) throws IOException {
+        if (!java.nio.file.Files.exists(destPath, java.nio.file.LinkOption.NOFOLLOW_LINKS)) {
+            return false;
+        }
+        switch (policy) {
+            case ERROR -> throw new IOException("destination already exists: " + destPath);
+            case RENAME_EXISTING -> {
+                // The planner should have emitted a RENAMED_ORIGINAL_BACKUP
+                // before us, which already moved the dest aside. If we
+                // still see something here, fall through to ERROR so the
+                // ledger doesn't get out of sync.
+                throw new IOException(
+                        "destination still occupied after RENAME_EXISTING — "
+                        + "planner did not emit a backup projection: " + destPath);
+            }
+            case SKIP -> { return true; }
+            case OVERWRITE -> {
+                if (java.nio.file.Files.isDirectory(destPath, java.nio.file.LinkOption.NOFOLLOW_LINKS)) {
+                    dev.skillmanager.shared.util.Fs.deleteRecursive(destPath);
+                } else {
+                    java.nio.file.Files.delete(destPath);
+                }
+                return false;
+            }
+        }
+        return false;
+    }
+
+    private EffectReceipt unmaterializeProjection(SkillEffect.UnmaterializeProjection e) {
+        Projection p = e.projection();
+        try {
+            reverseProjection(p);
+            return EffectReceipt.ok(e, new ContextFact.ProjectionUnmaterialized(
+                    p.bindingId(), p.destPath().toString(), p.kind().name()));
+        } catch (IOException io) {
+            // Failures fail forward — log and move on so a partial rollback
+            // doesn't block the rest of the teardown.
+            Log.warn("unmaterialize %s at %s: %s", p.kind(), p.destPath(), io.getMessage());
+            return EffectReceipt.ok(e, new ContextFact.ProjectionUnmaterialized(
+                    p.bindingId(), p.destPath().toString(), p.kind().name()));
+        }
+    }
+
+    /**
+     * Default-agent binding id is deterministic — {@code default:<agentId>:<unitName>}.
+     * Re-running install / sync against the same (agent, unit) replaces
+     * the existing record instead of accumulating duplicates.
+     */
+    public static String defaultBindingId(String agentId, String unitName) {
+        return "default:" + agentId + ":" + unitName;
+    }
+
+    /**
+     * Build a {@link BindingSource#DEFAULT_AGENT} Binding from a
+     * projector's planned entries and persist it into the per-unit
+     * ledger. Called from the SyncAgents handler after the
+     * projector's {@code apply} has succeeded; one binding per
+     * (agent, unit) pair, each carrying SYMLINK projections for
+     * every entry the projector planned.
+     */
+    private void recordDefaultAgentBinding(EffectContext ctx,
+                                           dev.skillmanager.project.Projector proj,
+                                           AgentUnit unit,
+                                           List<dev.skillmanager.project.Projection> entries) {
+        if (entries.isEmpty()) return;
+        String bindingId = defaultBindingId(proj.agentId(), unit.name());
+        // Pick a reasonable targetRoot: the projector's containing dir
+        // for this unit's kind. Skills land under skillsDir(); plugins
+        // under pluginsDir(). Same projector strategy used at materialize.
+        java.nio.file.Path targetRoot = switch (unit.kind()) {
+            case SKILL -> proj.skillsDir();
+            case PLUGIN -> proj.pluginsDir();
+        };
+        List<Projection> ledgerProjections = new ArrayList<>(entries.size());
+        for (dev.skillmanager.project.Projection e : entries) {
+            ledgerProjections.add(new Projection(
+                    bindingId, e.source(), e.target(), ProjectionKind.SYMLINK, null));
+        }
+        Binding b = new Binding(
+                bindingId,
+                unit.name(),
+                unit.kind(),
+                null,                                       // subElement: whole-unit binding
+                targetRoot,
+                ConflictPolicy.ERROR,
+                BindingStore.nowIso(),
+                dev.skillmanager.bindings.BindingSource.DEFAULT_AGENT,
+                ledgerProjections);
+        try {
+            BindingStore bs = ctx.bindingStore();
+            ProjectionLedger cur = bs.read(unit.name());
+            bs.write(cur.withBinding(b));
+        } catch (IOException io) {
+            // Don't fail SyncAgents over a ledger write — the projection
+            // already succeeded. Surface as a warning so the reconciler
+            // can backfill later.
+            Log.warn("could not record default-agent binding for %s on %s: %s",
+                    unit.name(), proj.agentId(), io.getMessage());
+        }
+    }
+
+    /**
+     * Package-private so {@link Executor#applyCompensation} can drive
+     * the same dispatch.
+     */
+    static void reverseProjection(Projection p) throws IOException {
+        switch (p.kind()) {
+            case SYMLINK, COPY -> {
+                if (java.nio.file.Files.exists(p.destPath(), java.nio.file.LinkOption.NOFOLLOW_LINKS)) {
+                    if (java.nio.file.Files.isSymbolicLink(p.destPath())) {
+                        java.nio.file.Files.delete(p.destPath());
+                    } else if (java.nio.file.Files.isDirectory(p.destPath(), java.nio.file.LinkOption.NOFOLLOW_LINKS)) {
+                        dev.skillmanager.shared.util.Fs.deleteRecursive(p.destPath());
+                    } else {
+                        java.nio.file.Files.delete(p.destPath());
+                    }
+                }
+            }
+            case RENAMED_ORIGINAL_BACKUP -> {
+                // Move the backup at destPath back to its original location (backupOf).
+                java.nio.file.Path original = java.nio.file.Path.of(p.backupOf());
+                if (!java.nio.file.Files.exists(p.destPath(), java.nio.file.LinkOption.NOFOLLOW_LINKS)) {
+                    // Backup already gone — nothing to restore.
+                    return;
+                }
+                java.nio.file.Files.createDirectories(original.getParent());
+                java.nio.file.Files.move(p.destPath(), original,
+                        java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            }
         }
     }
 }

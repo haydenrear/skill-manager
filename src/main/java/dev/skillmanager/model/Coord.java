@@ -26,7 +26,7 @@ package dev.skillmanager.model;
  * exhaustive {@code switch} pattern in handlers downstream is what
  * makes adding new coord shapes a compiler-checked refactor.
  */
-public sealed interface Coord permits Coord.Bare, Coord.Kinded, Coord.DirectGit, Coord.Local {
+public sealed interface Coord permits Coord.Bare, Coord.Kinded, Coord.DirectGit, Coord.Local, Coord.SubElement {
 
     /** The raw input string, trimmed. Round-trip target for tests. */
     String raw();
@@ -43,6 +43,20 @@ public sealed interface Coord permits Coord.Bare, Coord.Kinded, Coord.DirectGit,
     record DirectGit(String raw, String url, String ref) implements Coord {}
 
     record Local(String raw, String path) implements Coord {}
+
+    /**
+     * Addresses one named entry inside a {@link AgentUnit}'s manifest —
+     * e.g. one {@code [[sources]]} row of a doc-repo. The resolver still
+     * resolves to the unit; {@link #elementName} is a binding-time
+     * selector that {@code skill-manager bind} consumes.
+     *
+     * <p>Wraps an inner {@link Coord} that itself names the unit
+     * ({@link Bare} or {@link Kinded} in practice — sub-element form on
+     * a direct-git or local-path coord isn't accepted by the parser).
+     * Versions and kind selectors live on the inner coord; the
+     * sub-element segment is always the trailing {@code /<name>}.
+     */
+    record SubElement(String raw, Coord unitCoord, String elementName) implements Coord {}
 
     // ----------------------------------------------------------------- parser
 
@@ -72,18 +86,39 @@ public sealed interface Coord permits Coord.Bare, Coord.Kinded, Coord.DirectGit,
         return parseBare(c);
     }
 
-    private static Bare parseBare(String raw) {
+    private static Coord parseBare(String raw) {
+        // body[@version] — the body may itself contain a sub-element selector.
         int at = raw.indexOf('@');
-        if (at < 0) return new Bare(raw, raw, null);
-        return new Bare(raw, raw.substring(0, at).trim(), raw.substring(at + 1).trim());
+        String body = at < 0 ? raw : raw.substring(0, at);
+        String version = at < 0 ? null : raw.substring(at + 1).trim();
+
+        int slash = body.indexOf('/');
+        if (slash < 0) {
+            return new Bare(raw, body.trim(), version);
+        }
+        String unitName = body.substring(0, slash).trim();
+        String element = body.substring(slash + 1).trim();
+        // Synthesize the inner unit coord's raw form so render() round-trips.
+        String innerRaw = at < 0 ? unitName : unitName + "@" + version;
+        Bare inner = new Bare(innerRaw, unitName, version);
+        return new SubElement(raw, inner, element);
     }
 
-    private static Kinded parseKinded(String raw, UnitKind kind, String prefix) {
+    private static Coord parseKinded(String raw, UnitKind kind, String prefix) {
         String body = raw.substring(prefix.length());
         int at = body.indexOf('@');
-        String name = at < 0 ? body : body.substring(0, at);
+        String namePart = at < 0 ? body : body.substring(0, at);
         String version = at < 0 ? null : body.substring(at + 1).trim();
-        return new Kinded(raw, kind, name.trim(), version);
+
+        int slash = namePart.indexOf('/');
+        if (slash < 0) {
+            return new Kinded(raw, kind, namePart.trim(), version);
+        }
+        String unitName = namePart.substring(0, slash).trim();
+        String element = namePart.substring(slash + 1).trim();
+        String innerRaw = prefix + unitName + (version == null ? "" : "@" + version);
+        Kinded inner = new Kinded(innerRaw, kind, unitName, version);
+        return new SubElement(raw, inner, element);
     }
 
     private static DirectGit parseGithub(String raw) {
