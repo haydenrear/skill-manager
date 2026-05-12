@@ -38,6 +38,16 @@ public final class EffectContext {
     private InstallPlan plan;
 
     /**
+     * Resolved-graph slot — written by the {@link SkillEffect.ResolveGraph}
+     * handler, read by every downstream effect that needs the graph
+     * ({@link SkillEffect.CommitUnitsToStore}, {@link SkillEffect.BuildInstallPlan},
+     * etc., when those are wired to read from ctx rather than via a
+     * constructor field). The slot is empty until {@code ResolveGraph}
+     * runs; sub-programs that don't resolve never observe it.
+     */
+    private dev.skillmanager.resolve.ResolvedGraph resolvedGraph;
+
+    /**
      * Pre-mutation snapshot of every installed skill's MCP-dep names.
      * Captured by {@link SkillEffect.SnapshotMcpDeps} before any effect
      * mutates the store; consumed by orphan-detection effects after
@@ -85,6 +95,13 @@ public final class EffectContext {
 
     public void setPlan(InstallPlan plan) { this.plan = plan; }
     public InstallPlan plan() { return plan; }
+
+    public void setResolvedGraph(dev.skillmanager.resolve.ResolvedGraph graph) {
+        this.resolvedGraph = graph;
+    }
+    public Optional<dev.skillmanager.resolve.ResolvedGraph> resolvedGraph() {
+        return Optional.ofNullable(resolvedGraph);
+    }
 
     public void setPreMcpDeps(Map<String, Set<String>> snapshot) { this.preMcpDeps = snapshot; }
     public Map<String, Set<String>> preMcpDeps() {

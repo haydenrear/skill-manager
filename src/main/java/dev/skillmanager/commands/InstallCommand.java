@@ -2,11 +2,8 @@ package dev.skillmanager.commands;
 
 import dev.skillmanager.app.InstallUseCase;
 import dev.skillmanager.effects.DryRunInterpreter;
-import dev.skillmanager.effects.Program;
 import dev.skillmanager.mcp.GatewayConfig;
 import dev.skillmanager.policy.Policy;
-import dev.skillmanager.resolve.ResolvedGraph;
-import dev.skillmanager.resolve.Resolver;
 import dev.skillmanager.store.SkillStore;
 import dev.skillmanager.util.Log;
 import picocli.CommandLine.Command;
@@ -110,127 +107,59 @@ public final class InstallCommand implements Callable<Integer> {
         store.init();
         Policy.writeDefaultIfMissing(store);
 
-        // Apply --registry BEFORE resolution so the graph is built against
-        // the same registry the program's ConfigureRegistry effect will
-        // persist. Otherwise the override only takes effect for the next
-        // command and the current install resolves against the old URL.
+        // Apply --registry BEFORE the program starts so the in-program
+        // resolve sees the override — the program's ConfigureRegistry
+        // effect also persists it, but the resolve happens later in the
+        // same program and needs the override active immediately.
         // Skipped on dry-run to avoid persisting state during a no-op.
         if (!dryRun && registryUrl != null && !registryUrl.isBlank()) {
             dev.skillmanager.registry.RegistryConfig.resolve(store, registryUrl);
         }
 
-        Log.step("resolving %s", source);
-        Resolver resolver = new Resolver(store);
-        Resolver.ResolveOutcome resolveResult = resolver.resolveAll(
-                java.util.List.of(new Resolver.Coord(source, version)));
-        if (resolveResult.hasFailures()) {
-            // Resolve never throws now — failures flow through the
-            // outcome. Render each one (matches the
-            // ConsoleProgramRenderer shape for the in-Program
-            // TransitiveFailed fact) and exit with the right code
-            // based on the primary cause. install can't proceed
-            // when the user's target doesn't resolve, so any
-            // failure is fatal here — sync's "continue with partial
-            // graph" semantics don't apply because the user
-            // explicitly asked to install this one thing.
-            dev.skillmanager.resolve.TransitiveFailures.renderAll(resolveResult.failures());
-            return dev.skillmanager.resolve.TransitiveFailures.exitCodeFor(resolveResult.failures());
-        }
-        ResolvedGraph graph = resolveResult.graph();
-
-        // Resolve gateway URL — the Program's EnsureGateway effect handles
-        // the actual probe + start + persist; gateway resolution itself
-        // doesn't side-effect.
+        // Gateway resolution doesn't side-effect — the Program's
+        // EnsureGateway effect does the actual probe + start + persist.
         GatewayConfig gw = GatewayConfig.resolve(store, null);
 
-        // Build a tentative plan + categorize so policy.install gates can
-        // decide whether --yes is acceptable BEFORE the program runs. The
-        // BuildInstallPlan effect will run the same plan-build inside the
-        // program; the cost of doing it twice (once here, once there) is
-        // a few ms of toml parsing — acceptable for the cleaner separation
-        // (no prompting from inside an effect).
-        if (!dryRun) {
-            int gateRc = checkPolicyGate(store, graph);
-            if (gateRc != 0) return gateRc;
-        }
+        // Everything else lives in the program now:
+        //   1. BuildResolveGraphFromSource(source, version) — the
+        //      resolver call. Halts with HaltWithExitCode on any failure
+        //      so transitive auth/fetch errors still surface the typed
+        //      exit code the old pre-Program code returned.
+        //   2. RejectIfTopLevelInstalled — read top-level from ctx after
+        //      the resolve. Halts if it's already installed.
+        //   3. BuildInstallPlan + CheckInstallPolicyGate(yes) — gate
+        //      against policy.install. Halts with HaltWithExitCode 5/6
+        //      on user-blocking violations / declined prompt.
+        //   4. Commit + audit + provenance + summary + run + tail.
+        dev.skillmanager.effects.StagedProgram<InstallUseCase.Report> program =
+                InstallUseCase.buildProgram(store, gw, registryUrl, source, version, yes, dryRun);
 
-        Program<InstallUseCase.Report> program = InstallUseCase.buildProgram(
-                store, gw, registryUrl, graph, dryRun);
         InstallUseCase.Report report;
         if (dryRun) {
-            report = new DryRunInterpreter().run(program);
-            return 0;
+            report = new DryRunInterpreter(store).runStaged(program);
+            return report.exitCode() != 0 ? report.exitCode() : 0;
         }
         // Live install runs through Executor: each successful effect
         // records its compensation, and a FAILED downstream effect (e.g.
         // gateway register fails after a clean commit) walks the journal
-        // back so no half-applied state survives. Outcome.rolledBack
-        // surfaces in the warn line; the report's committed list is
-        // already empty after rollback (DeleteUnitDir compensations
-        // deleted what CommitUnitsToStore put down), so the existing
-        // exit-code path naturally returns 4.
+        // back so no half-applied state survives. The Report's exitCode
+        // wins over the default — typed halts (resolve failure, policy
+        // gate) carry their own exit code via HaltWithExitCode facts.
         dev.skillmanager.effects.Executor.Outcome<InstallUseCase.Report> outcome =
-                new dev.skillmanager.effects.Executor(store, gw).run(program);
+                new dev.skillmanager.effects.Executor(store, gw).runStaged(program);
         report = outcome.result();
         if (outcome.rolledBack()) {
             Log.warn("install rolled back %d effect(s) — no partial state retained",
                     outcome.applied().size());
         }
+        if (report.exitCode() != 0) return report.exitCode();
         // Renderer printed every user-facing line; the only command-level
         // decision left is the exit code. Install succeeds when the skill
-        // committed — post-commit failures (MCP register, transitive install,
-        // agent sync) are tracked as outstanding errors on the source record
-        // for the reconciler to retry. Exit 4 is reserved for "nothing
-        // committed" (commit failed or program halted before commit).
+        // committed — post-commit failures (MCP register, transitive
+        // install, agent sync) are tracked as outstanding errors on the
+        // source record for the reconciler to retry. Exit 4 is reserved
+        // for "nothing committed" (commit failed or program halted
+        // before commit).
         return report.committed().isEmpty() ? 4 : 0;
-    }
-
-    /**
-     * Build the plan, categorize, and gate against {@link Policy#install}.
-     * Returns 0 if the run can proceed, non-zero if it should abort
-     * (either rejected --yes or user said no at the prompt).
-     */
-    private int checkPolicyGate(SkillStore store, ResolvedGraph graph) throws Exception {
-        Policy policy = Policy.load(store);
-        dev.skillmanager.plan.InstallPlan plan = InstallUseCase.buildPlan(store, graph);
-        java.util.List<String> categorization =
-                dev.skillmanager.plan.PlanBuilder.categorize(graph.units(), plan);
-        java.util.List<dev.skillmanager.policy.PolicyGate.Category> violations =
-                dev.skillmanager.policy.PolicyGate.violations(categorization, policy.install());
-        if (violations.isEmpty()) return 0;
-
-        if (yes) {
-            Log.error("%s",
-                    dev.skillmanager.policy.PolicyGate.formatViolationMessage(violations));
-            return 5;
-        }
-        // Non-interactive context (no controlling TTY — pipe / CI / test
-        // harness). A prompt would block on EOF; fail fast with the same
-        // remediation message --yes gets so automation gets a clear
-        // exit instead of a 60s timeout.
-        if (System.console() == null) {
-            Log.error("install needs interactive confirmation but no TTY is attached");
-            Log.error("%s",
-                    dev.skillmanager.policy.PolicyGate.formatViolationMessage(violations));
-            return 5;
-        }
-        // Interactive confirmation. Print the categorization (so the user
-        // sees what they're approving), then prompt once. A more granular
-        // per-category prompt is overkill for v1 — single y/n covers the
-        // common case and the policy file is the way to flip individual
-        // categories off long-term.
-        System.out.println();
-        System.out.println("install will perform actions in these gated categories:");
-        for (var c : violations) System.out.println("  ! " + c.name());
-        System.out.println();
-        System.out.print("proceed? [y/N] ");
-        java.io.BufferedReader r = new java.io.BufferedReader(
-                new java.io.InputStreamReader(System.in));
-        String line = r.readLine();
-        if (line == null || !line.trim().equalsIgnoreCase("y")) {
-            Log.warn("install aborted at policy gate");
-            return 6;
-        }
-        return 0;
     }
 }

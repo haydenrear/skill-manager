@@ -1,0 +1,1 @@
+EffectContext throws IOException - we should really just log an error when we try to add to the effect context, then throw a runtime exception that gets caught by the root exception handler and log a banner - could not write to skill store. We need to make sure that this is caught by compensation and compensations run though.

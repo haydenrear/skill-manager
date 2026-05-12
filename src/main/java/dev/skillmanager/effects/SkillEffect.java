@@ -34,6 +34,9 @@ public sealed interface SkillEffect permits
         SkillEffect.InstallPackageManager,
         SkillEffect.SnapshotMcpDeps,
         SkillEffect.RejectIfAlreadyInstalled,
+        SkillEffect.BuildResolveGraphFromSource,
+        SkillEffect.BuildResolveGraphFromBundledSkills,
+        SkillEffect.BuildResolveGraphFromUnmetReferences,
         SkillEffect.BuildInstallPlan,
         SkillEffect.RunInstallPlan,
         SkillEffect.CleanupResolvedGraph,
@@ -64,7 +67,9 @@ public sealed interface SkillEffect permits
         SkillEffect.InstallTools,
         SkillEffect.InstallCli,
         SkillEffect.RegisterMcp,
-        SkillEffect.UpdateUnitsLock {
+        SkillEffect.UpdateUnitsLock,
+        SkillEffect.RejectIfTopLevelInstalled,
+        SkillEffect.CheckInstallPolicyGate {
 
     /**
      * Persist a registry URL override and reload {@link
@@ -91,8 +96,70 @@ public sealed interface SkillEffect permits
      * best-effort removes any unit dirs it just created so a rerun starts
      * clean. The receipt lists which names committed for downstream
      * effects (provenance, post-update) to reference.
+     *
+     * <p>The {@code graph} field is optional — when {@code null}, the
+     * handler reads {@link EffectContext#resolvedGraph()} set by a prior
+     * {@code BuildResolveGraphFrom*} effect. Tests and legacy callers
+     * still pass an explicit graph; new use cases plug into the ctx
+     * pattern by passing {@code null}.
      */
-    record CommitUnitsToStore(ResolvedGraph graph) implements SkillEffect {}
+    record CommitUnitsToStore(ResolvedGraph graph) implements SkillEffect {
+        public CommitUnitsToStore() { this(null); }
+    }
+
+    // ------------------------------------------------------------------
+    // Resolve-graph effects (Stage A — input-discovery + Resolver call
+    // unified into one scenario-specific effect per command, so the
+    // discovery IO surfaces through ConsoleProgramRenderer too).
+    // ------------------------------------------------------------------
+
+    /**
+     * Install's scenario: a single CLI-supplied source string (and
+     * optional version) gets shaped into one {@link
+     * dev.skillmanager.resolve.Resolver.Coord} and passed through
+     * the resolver. The "build" half is trivial (no IO) but stays an
+     * effect for shape consistency with the other two scenarios and
+     * to keep the rendering pipeline uniform — every "produce
+     * graph" step emits its facts the same way.
+     */
+    record BuildResolveGraphFromSource(String source, String version) implements SkillEffect {}
+
+    /**
+     * Onboard's scenario: walk a candidate install root (or fall back
+     * to github coords) and resolve every bundled skill that isn't
+     * already installed. The discovery half does real IO — probe each
+     * candidate dir for {@code SKILL.md}, read its
+     * {@code skill-manager.toml} for the published name, check
+     * {@link dev.skillmanager.store.SkillStore#contains} for skip — and
+     * each decision emits a renderer-visible fact
+     * ({@link ContextFact.BundledSkillFound},
+     * {@link ContextFact.BundledSkillAlreadyInstalled},
+     * {@link ContextFact.BundledSkillMissing}).
+     */
+    record BuildResolveGraphFromBundledSkills(
+            java.nio.file.Path installRoot,
+            List<BundledSkillSpec> bundledSkills) implements SkillEffect {
+        /**
+         * One bundled-skill entry from {@code OnboardCommand}: its
+         * source-tree directory name (used to find it under
+         * {@code installRoot}), its published name (for the
+         * already-installed skip), and its github fallback coord
+         * (used when {@code installRoot} is null).
+         */
+        public record BundledSkillSpec(String dirName, String publishedName, String githubCoord) {}
+    }
+
+    /**
+     * Sync's scenario (stage 2): walk every live skill's
+     * {@code skill_references}, decide which ones aren't yet in the
+     * store, and resolve the unmet set. Failure attribution is to the
+     * parent unit that declared each failing ref —
+     * {@link EffectContext#addError(String, dev.skillmanager.source.InstalledUnit.ErrorKind, String)}
+     * records a {@code TRANSITIVE_RESOLVE_FAILED} on each parent in
+     * the store; self-clears next pass when refs resolve again.
+     */
+    record BuildResolveGraphFromUnmetReferences(
+            List<dev.skillmanager.model.Skill> liveSkills) implements SkillEffect {}
 
     /**
      * Append the install plan to the audit log under {@code verb}
@@ -101,8 +168,15 @@ public sealed interface SkillEffect permits
      */
     record RecordAuditPlan(String verb) implements SkillEffect {}
 
-    /** Walk the committed graph and write {@code sources/<name>.json} for each skill. */
-    record RecordSourceProvenance(ResolvedGraph graph) implements SkillEffect {}
+    /**
+     * Walk the committed graph and write {@code sources/<name>.json} for each skill.
+     *
+     * <p>{@code graph} is optional — when {@code null}, the handler reads
+     * the graph from {@link EffectContext#resolvedGraph()}.
+     */
+    record RecordSourceProvenance(ResolvedGraph graph) implements SkillEffect {
+        public RecordSourceProvenance() { this(null); }
+    }
 
     /**
      * Write an {@code installed/<name>.json} record for a unit that lacks
@@ -259,6 +333,43 @@ public sealed interface SkillEffect permits
     record RejectIfAlreadyInstalled(String unitName) implements SkillEffect {}
 
     /**
+     * Like {@link RejectIfAlreadyInstalled} but the unit name is the
+     * top-level resolved coord — read at exec time from
+     * {@link EffectContext#resolvedGraph()}. Used by the install
+     * program after {@link BuildResolveGraphFromSource} runs: the
+     * top-level name isn't known until the resolver matches the
+     * user-supplied source to a unit name, so the use-case-build path
+     * can't construct {@link RejectIfAlreadyInstalled} with a
+     * concrete name.
+     */
+    record RejectIfTopLevelInstalled() implements SkillEffect {}
+
+    /**
+     * Categorize the install plan and enforce the
+     * {@code policy.install.*} confirmation gates from inside the
+     * program. Must run AFTER {@link BuildInstallPlan} so it sees the
+     * same plan the rest of the program will execute.
+     *
+     * <p>When the plan triggers a category the policy still requires
+     * confirmation for:
+     * <ul>
+     *   <li>{@code yes=true} (--yes flag) → halt with exit code 5
+     *       ({@link ContextFact.HaltWithExitCode}) naming the
+     *       {@code policy.install.*} flags to flip.</li>
+     *   <li>No TTY (CI / pipe / test harness) → halt with exit code 5
+     *       — interactive prompt would block.</li>
+     *   <li>TTY + {@code yes=false} → prompt y/N; halt with exit
+     *       code 6 if the user rejects.</li>
+     * </ul>
+     *
+     * <p>Replaces {@code InstallCommand.checkPolicyGate}: the up-front
+     * pre-resolve was only needed because the plan wasn't yet visible
+     * to the command. With the resolve + plan-build inside the
+     * program, the gate is just another effect.
+     */
+    record CheckInstallPolicyGate(boolean yes) implements SkillEffect {}
+
+    /**
      * Capture every installed skill's MCP-dep names BEFORE any mutating
      * effect runs. The orphan-detection effect later compares this
      * snapshot against the post-mutation store to figure out which
@@ -270,8 +381,14 @@ public sealed interface SkillEffect permits
      * Build the {@link InstallPlan} for {@code graph}, print it, store it
      * in {@link EffectContext#plan()}, and HALT if the plan has blocked
      * items. Replaces inline {@code PlanBuilder} construction in commands.
+     *
+     * <p>{@code graph} is optional — when {@code null}, the handler reads
+     * the graph from {@link EffectContext#resolvedGraph()} set by a prior
+     * {@code BuildResolveGraphFrom*} effect.
      */
-    record BuildInstallPlan(ResolvedGraph graph) implements SkillEffect {}
+    record BuildInstallPlan(ResolvedGraph graph) implements SkillEffect {
+        public BuildInstallPlan() { this(null); }
+    }
 
     /**
      * Read the plan from {@link EffectContext#plan()}, expand it via
@@ -286,11 +403,24 @@ public sealed interface SkillEffect permits
      * Always-after cleanup: drops the resolver's staged temp dirs.
      * Belongs in {@link Program#alwaysAfter()} so it runs even after a
      * halt or failure mid-program.
+     *
+     * <p>{@code graph} is optional — when {@code null}, the handler reads
+     * from {@link EffectContext#resolvedGraph()} (or no-ops if the
+     * resolve effect never ran).
      */
-    record CleanupResolvedGraph(ResolvedGraph graph) implements SkillEffect {}
+    record CleanupResolvedGraph(ResolvedGraph graph) implements SkillEffect {
+        public CleanupResolvedGraph() { this(null); }
+    }
 
-    /** Print the {@code INSTALLED:} lines for each committed skill in the graph. */
-    record PrintInstalledSummary(ResolvedGraph graph) implements SkillEffect {}
+    /**
+     * Print the {@code INSTALLED:} lines for each committed skill in the graph.
+     *
+     * <p>{@code graph} is optional — when {@code null}, the handler reads
+     * from {@link EffectContext#resolvedGraph()}.
+     */
+    record PrintInstalledSummary(ResolvedGraph graph) implements SkillEffect {
+        public PrintInstalledSummary() { this(null); }
+    }
 
     /**
      * {@code sync --from <dir>} apply: copy / 3-way-merge content from a

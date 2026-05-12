@@ -68,6 +68,11 @@ public final class ConsoleProgramRenderer implements ProgramRenderer {
                 // dry-run output is owned by DryRunInterpreter's describe() —
                 // we just log nothing here.
             }
+            case ContextFact.HaltWithExitCode ignored -> {
+                // Halt message is rendered by the HALTED receipt itself
+                // (Log.error "✋ halted: ..."). The exit code is for the
+                // decoder; no extra user-visible line needed.
+            }
             case ContextFact.RegistryConfigured x -> Log.ok("registry: %s", x.url());
             case ContextFact.GatewayAlreadyRunning ignored -> { /* silent: not noteworthy */ }
             case ContextFact.GatewayStarted x -> Log.ok("gateway up at %s:%d", x.host(), x.port());
@@ -92,6 +97,20 @@ public final class ConsoleProgramRenderer implements ProgramRenderer {
                 String why = x.reason() == null || x.reason().isBlank() ? "resolve failed" : x.reason();
                 Log.warn("transitive: %s [%s] — %s", x.coord(), who, why);
             }
+            case ContextFact.GraphResolved x -> {
+                if (x.failures() == 0) Log.ok("resolve: %d unit(s)", x.resolved());
+                else Log.warn("resolve: %d unit(s) resolved, %d failure(s)", x.resolved(), x.failures());
+            }
+            case ContextFact.BundledSkillFound x ->
+                    Log.ok("bundled: %s — local source %s", x.publishedName(), x.sourcePath());
+            case ContextFact.BundledSkillFromGithub x ->
+                    Log.ok("bundled: %s — github %s", x.publishedName(), x.coord());
+            case ContextFact.BundledSkillAlreadyInstalled x ->
+                    Log.info("bundled: %s already installed at %s — skipping",
+                            x.publishedName(), x.storePath());
+            case ContextFact.BundledSkillMissing x ->
+                    Log.error("bundled: %s not found (expected %s)",
+                            x.publishedName(), x.expectedPath());
 
             // ---- bulk tool/CLI counters (legacy effects) ----
             case ContextFact.ToolsInstalledFor ignored -> { /* silent: per-tool facts cover it */ }

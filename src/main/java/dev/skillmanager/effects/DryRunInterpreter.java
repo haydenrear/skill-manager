@@ -85,7 +85,7 @@ public final class DryRunInterpreter implements ProgramInterpreter {
                 // to — the program is built from the graph), so without
                 // actually executing the cleanup we'd leak temp dirs on
                 // every dry-run.
-                if (effect instanceof SkillEffect.CleanupResolvedGraph c) {
+                if (effect instanceof SkillEffect.CleanupResolvedGraph c && c.graph() != null) {
                     try { c.graph().cleanup(); } catch (Exception ignored) {}
                 }
                 receipts.add(EffectReceipt.ok(effect, new ContextFact.DryRun()));
@@ -103,12 +103,13 @@ public final class DryRunInterpreter implements ProgramInterpreter {
                     Log.step("[%d] ensure gateway running at %s", n,
                             e.gateway() == null ? "<none>" : e.gateway().baseUrl());
             case SkillEffect.CommitUnitsToStore e ->
-                    Log.step("[%d] commit %d unit(s) to store", n, e.graph().resolved().size());
+                    Log.step("[%d] commit %s unit(s) to store", n,
+                            e.graph() == null ? "resolved" : Integer.toString(e.graph().resolved().size()));
             case SkillEffect.RecordAuditPlan e ->
                     Log.step("[%d] append audit entry (verb=%s)", n, e.verb());
             case SkillEffect.RecordSourceProvenance e ->
-                    Log.step("[%d] write installed/<name>.json for %d unit(s)", n,
-                            e.graph().resolved().size());
+                    Log.step("[%d] write installed/<name>.json for %s unit(s)", n,
+                            e.graph() == null ? "resolved" : Integer.toString(e.graph().resolved().size()));
             case SkillEffect.OnboardUnit e ->
                     Log.step("[%d] onboard missing installed-record for %s (%s)",
                             n, e.unit().name(), e.unit().kind());
@@ -185,21 +186,36 @@ public final class DryRunInterpreter implements ProgramInterpreter {
                     Log.step("[%d] snapshot pre-mutation MCP deps", n);
             case SkillEffect.RejectIfAlreadyInstalled e ->
                     Log.step("[%d] reject if %s already installed", n, e.unitName());
+            case SkillEffect.RejectIfTopLevelInstalled e ->
+                    Log.step("[%d] reject if top-level resolved unit already installed", n);
+            case SkillEffect.CheckInstallPolicyGate e ->
+                    Log.step("[%d] check install policy gate (yes=%s)", n, e.yes());
             case SkillEffect.BuildInstallPlan e ->
-                    Log.step("[%d] build install plan over %d skill(s)",
-                            n, e.graph().resolved().size());
+                    Log.step("[%d] build install plan over %s skill(s)", n,
+                            e.graph() == null ? "resolved" : Integer.toString(e.graph().resolved().size()));
             case SkillEffect.RunInstallPlan e ->
                     Log.step("[%d] expand + run install plan (gateway=%s)",
                             n, e.gateway() == null ? "<none>" : e.gateway().baseUrl());
             case SkillEffect.CleanupResolvedGraph e ->
-                    Log.step("[%d] cleanup staged graph (%d skill(s))",
-                            n, e.graph().resolved().size());
+                    Log.step("[%d] cleanup staged graph (%s skill(s))", n,
+                            e.graph() == null ? "resolved" : Integer.toString(e.graph().resolved().size()));
             case SkillEffect.PrintInstalledSummary e ->
-                    Log.step("[%d] print INSTALLED summary for %d skill(s)",
-                            n, e.graph().resolved().size());
+                    Log.step("[%d] print INSTALLED summary for %s skill(s)", n,
+                            e.graph() == null ? "resolved" : Integer.toString(e.graph().resolved().size()));
             case SkillEffect.SyncFromLocalDir e ->
                     Log.step("[%d] sync %s from %s (merge=%s, yes=%s)",
                             n, e.skillName(), e.fromDir(), e.merge(), e.yes());
+            case SkillEffect.BuildResolveGraphFromSource e ->
+                    Log.step("[%d] resolve graph from source %s%s", n,
+                            e.source(),
+                            e.version() == null || e.version().isBlank() ? "" : "@" + e.version());
+            case SkillEffect.BuildResolveGraphFromBundledSkills e ->
+                    Log.step("[%d] resolve graph from %d bundled skill spec(s) (installRoot=%s)",
+                            n, e.bundledSkills().size(),
+                            e.installRoot() == null ? "<github>" : e.installRoot().toString());
+            case SkillEffect.BuildResolveGraphFromUnmetReferences e ->
+                    Log.step("[%d] resolve graph from unmet references in %d live skill(s)",
+                            n, e.liveSkills().size());
         }
     }
 }

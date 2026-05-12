@@ -60,9 +60,24 @@ public final class LiveInterpreter implements ProgramInterpreter {
         ConsoleProgramRenderer renderer = new ConsoleProgramRenderer(store, gateway);
         EffectContext ctx = new EffectContext(store, gateway, renderer);
         List<EffectReceipt> all = new ArrayList<>();
-        all.addAll(runEffects(staged.stage1(), ctx));
-        Program<?> stage2 = staged.stage2().apply(ctx);
-        all.addAll(runEffects(stage2, ctx));
+        List<EffectReceipt> s1 = runEffects(staged.stage1(), ctx);
+        all.addAll(s1);
+        // Halt is meant to terminate the WHOLE multi-stage program — not
+        // just the stage that raised it. If stage 1 halted (policy gate
+        // rejected, resolve failed with typed exit, "remove first"
+        // precondition fired) running stage 2 on top of the half-built
+        // state would let the post-update tail fire on nothing — e.g.
+        // SyncAgents over an empty unit list because the resolve halted
+        // before commit. {@link Executor#runStaged} has the equivalent
+        // guard via {@link StageOutcome#halted}; LiveInterpreter only
+        // needs to check HALTED (it doesn't halt-on-FAILED — failed
+        // receipts get recorded and the loop continues, same as
+        // within-stage behavior).
+        boolean halted = s1.stream().anyMatch(r -> r.status() == EffectStatus.HALTED);
+        if (!halted) {
+            Program<?> stage2 = staged.stage2().apply(ctx);
+            all.addAll(runEffects(stage2, ctx));
+        }
         renderer.onComplete();
         return staged.decoder().decode(all);
     }
@@ -149,9 +164,14 @@ public final class LiveInterpreter implements ProgramInterpreter {
             case SkillEffect.InstallPackageManager e -> installPackageManager(e);
             case SkillEffect.SnapshotMcpDeps e -> snapshotMcpDeps(e, ctx);
             case SkillEffect.RejectIfAlreadyInstalled e -> rejectIfInstalled(e, ctx);
+            case SkillEffect.RejectIfTopLevelInstalled e -> rejectIfTopLevelInstalled(e, ctx);
+            case SkillEffect.CheckInstallPolicyGate e -> checkInstallPolicyGate(e, ctx);
+            case SkillEffect.BuildResolveGraphFromSource e -> ResolveGraphHandlers.buildFromSource(e, ctx);
+            case SkillEffect.BuildResolveGraphFromBundledSkills e -> ResolveGraphHandlers.buildFromBundledSkills(e, ctx);
+            case SkillEffect.BuildResolveGraphFromUnmetReferences e -> ResolveGraphHandlers.buildFromUnmetReferences(e, ctx);
             case SkillEffect.BuildInstallPlan e -> buildInstallPlan(e, ctx);
             case SkillEffect.RunInstallPlan e -> runInstallPlan(e, ctx);
-            case SkillEffect.CleanupResolvedGraph e -> cleanupGraph(e);
+            case SkillEffect.CleanupResolvedGraph e -> cleanupGraph(e, ctx);
             case SkillEffect.PrintInstalledSummary e -> printInstalledSummary(e, ctx);
             case SkillEffect.SyncFromLocalDir e -> syncFromLocalDir(e, ctx);
             case SkillEffect.CommitUnitsToStore e -> commitUnits(e, ctx);
@@ -241,7 +261,15 @@ public final class LiveInterpreter implements ProgramInterpreter {
     }
 
     private EffectReceipt commitUnits(SkillEffect.CommitUnitsToStore e, EffectContext ctx) {
-        var graph = e.graph();
+        var graph = e.graph() != null
+                ? e.graph()
+                : ctx.resolvedGraph().orElse(null);
+        if (graph == null) {
+            return EffectReceipt.skipped(e, "no resolved graph in context");
+        }
+        // Keep ctx in sync so downstream effects that read from ctx see
+        // the same graph the handler is operating on.
+        ctx.setResolvedGraph(graph);
         List<ContextFact> facts = new ArrayList<>();
         // Track every (name, kind) tuple we may have touched (deleted-old +
         // about-to-copy) so a mid-copy failure rolls back the partially-
@@ -293,9 +321,15 @@ public final class LiveInterpreter implements ProgramInterpreter {
     }
 
     private EffectReceipt recordProvenance(SkillEffect.RecordSourceProvenance e, EffectContext ctx) {
-        SourceProvenanceRecorder.run(e.graph(), ctx);
+        var graph = e.graph() != null
+                ? e.graph()
+                : ctx.resolvedGraph().orElse(null);
+        if (graph == null) {
+            return EffectReceipt.skipped(e, "no resolved graph in context");
+        }
+        SourceProvenanceRecorder.run(graph, ctx);
         ctx.invalidate();
-        return EffectReceipt.ok(e, new ContextFact.ProvenanceRecorded(e.graph().resolved().size()));
+        return EffectReceipt.ok(e, new ContextFact.ProvenanceRecorded(graph.resolved().size()));
     }
 
     private EffectReceipt onboardUnit(SkillEffect.OnboardUnit e, EffectContext ctx) throws IOException {
@@ -789,6 +823,69 @@ public final class LiveInterpreter implements ProgramInterpreter {
         }
     }
 
+    private EffectReceipt rejectIfTopLevelInstalled(SkillEffect.RejectIfTopLevelInstalled e, EffectContext ctx) {
+        var graph = ctx.resolvedGraph().orElse(null);
+        if (graph == null || graph.resolved().isEmpty()) {
+            return EffectReceipt.skipped(e, "no resolved graph in context");
+        }
+        // The resolver lists top-level coords first (matching the input
+        // order); the first resolved unit is the one the user asked for.
+        String name = graph.resolved().get(0).name();
+        return rejectIfInstalled(new SkillEffect.RejectIfAlreadyInstalled(name), ctx);
+    }
+
+    private EffectReceipt checkInstallPolicyGate(SkillEffect.CheckInstallPolicyGate e, EffectContext ctx) {
+        var graph = ctx.resolvedGraph().orElse(null);
+        InstallPlan plan = ctx.plan();
+        if (graph == null || plan == null) {
+            return EffectReceipt.skipped(e, "no resolved graph or plan in context");
+        }
+        try {
+            Policy policy = Policy.load(ctx.store());
+            List<String> categorization = PlanBuilder.categorize(graph.units(), plan);
+            List<dev.skillmanager.policy.PolicyGate.Category> violations =
+                    dev.skillmanager.policy.PolicyGate.violations(categorization, policy.install());
+            if (violations.isEmpty()) return EffectReceipt.ok(e);
+
+            // --yes auto-accept blocked by policy → halt with exit 5
+            // pointing at the specific policy.install.* flags to flip.
+            if (e.yes()) {
+                String msg = dev.skillmanager.policy.PolicyGate.formatViolationMessage(violations);
+                Log.error("%s", msg);
+                return EffectReceipt.halted(e, msg,
+                        new ContextFact.HaltWithExitCode(5, "policy.install gate rejected --yes"));
+            }
+            // No TTY (CI / pipe / test harness) → same exit code as --yes
+            // since a prompt would block on EOF. Surface the same
+            // remediation so automation gets a clear signal.
+            if (System.console() == null) {
+                Log.error("install needs interactive confirmation but no TTY is attached");
+                String msg = dev.skillmanager.policy.PolicyGate.formatViolationMessage(violations);
+                Log.error("%s", msg);
+                return EffectReceipt.halted(e, "no TTY for policy confirmation",
+                        new ContextFact.HaltWithExitCode(5, "policy.install gate without TTY"));
+            }
+            // Interactive confirmation — print the categorization so
+            // the user sees what they're approving, prompt once.
+            System.out.println();
+            System.out.println("install will perform actions in these gated categories:");
+            for (var c : violations) System.out.println("  ! " + c.name());
+            System.out.println();
+            System.out.print("proceed? [y/N] ");
+            java.io.BufferedReader r = new java.io.BufferedReader(
+                    new java.io.InputStreamReader(System.in));
+            String line = r.readLine();
+            if (line == null || !line.trim().equalsIgnoreCase("y")) {
+                Log.warn("install aborted at policy gate");
+                return EffectReceipt.halted(e, "user rejected at policy gate",
+                        new ContextFact.HaltWithExitCode(6, "user said no at prompt"));
+            }
+            return EffectReceipt.ok(e);
+        } catch (Exception ex) {
+            return EffectReceipt.failed(e, ex.getMessage());
+        }
+    }
+
     private EffectReceipt rejectIfInstalled(SkillEffect.RejectIfAlreadyInstalled e, EffectContext ctx) {
         if (e.unitName() == null || e.unitName().isBlank()) return EffectReceipt.skipped(e, "no name");
         if (!ctx.store().containsUnit(e.unitName())) return EffectReceipt.ok(e);
@@ -806,7 +903,17 @@ public final class LiveInterpreter implements ProgramInterpreter {
 
     private EffectReceipt buildInstallPlan(SkillEffect.BuildInstallPlan e, EffectContext ctx) {
         try {
-            InstallPlan plan = dev.skillmanager.app.InstallUseCase.buildPlan(ctx.store(), e.graph());
+            var graph = e.graph() != null
+                    ? e.graph()
+                    : ctx.resolvedGraph().orElse(null);
+            if (graph == null) {
+                // Empty plan — preserves the program shape so downstream
+                // effects see ctx.plan() != null. No blocked items
+                // because there are no actions to plan.
+                ctx.setPlan(new InstallPlan());
+                return EffectReceipt.skipped(e, "no resolved graph in context");
+            }
+            InstallPlan plan = dev.skillmanager.app.InstallUseCase.buildPlan(ctx.store(), graph);
             dev.skillmanager.plan.PlanPrinter.print(plan);
             ctx.setPlan(plan);
             if (plan.blocked()) {
@@ -847,9 +954,13 @@ public final class LiveInterpreter implements ProgramInterpreter {
                 : EffectReceipt.partial(e, failed + " plan-action effect(s) failed");
     }
 
-    private EffectReceipt cleanupGraph(SkillEffect.CleanupResolvedGraph e) {
+    private EffectReceipt cleanupGraph(SkillEffect.CleanupResolvedGraph e, EffectContext ctx) {
         try {
-            e.graph().cleanup();
+            var graph = e.graph() != null
+                    ? e.graph()
+                    : ctx.resolvedGraph().orElse(null);
+            if (graph == null) return EffectReceipt.skipped(e, "no resolved graph");
+            graph.cleanup();
             return EffectReceipt.ok(e);
         } catch (Exception ex) {
             return EffectReceipt.failed(e, ex.getMessage());
@@ -857,7 +968,11 @@ public final class LiveInterpreter implements ProgramInterpreter {
     }
 
     private EffectReceipt printInstalledSummary(SkillEffect.PrintInstalledSummary e, EffectContext ctx) {
-        for (var r : e.graph().resolved()) {
+        var graph = e.graph() != null
+                ? e.graph()
+                : ctx.resolvedGraph().orElse(null);
+        if (graph == null) return EffectReceipt.skipped(e, "no resolved graph");
+        for (var r : graph.resolved()) {
             System.out.println("INSTALLED: " + r.name()
                     + (r.version() == null ? "" : "@" + r.version())
                     + " -> " + ctx.store().skillDir(r.name()));
