@@ -71,12 +71,46 @@ public sealed interface SkillEffect permits
         SkillEffect.RejectIfTopLevelInstalled,
         SkillEffect.CheckInstallPolicyGate {
 
+    // ------------------------------------------------------------------
+    // Per-outcome continuations. Effect declares what the program should
+    // do *after this effect ran*, separately for each terminal status:
+    //
+    //   - {@link #continuationOnOk()}      — runs cleanly
+    //   - {@link #continuationOnPartial()} — succeeded for some items, failed for others
+    //   - {@link #continuationOnFail()}    — failed entirely
+    //
+    // Interpreters drive off {@link EffectReceipt#continuation()} (which
+    // is populated by the receipt factory from the matching method here)
+    // when deciding whether to skip the rest of the program. Handlers
+    // CAN still override per-receipt via {@code EffectReceipt.okAndHalt}
+    // / {@code failedAndHalt} etc. — useful for precondition checks
+    // where the halt decision is runtime-conditional (e.g.
+    // {@link RejectIfAlreadyInstalled} only halts when the unit is
+    // actually present).
+    //
+    // Defaults: everything continues. Effects that genuinely break
+    // downstream effects when they fail (commit, plan-build,
+    // resolve-on-failure, etc.) override {@link #continuationOnFail()}
+    // to {@link Continuation#HALT}. Cooperative-stop effects (policy
+    // gate, "remove first" precondition) override
+    // {@link #continuationOnOk()} or signal HALT per-receipt.
+    // ------------------------------------------------------------------
+
+    default Continuation continuationOnOk() { return Continuation.CONTINUE; }
+    default Continuation continuationOnPartial() { return Continuation.CONTINUE; }
+    default Continuation continuationOnFail() { return Continuation.CONTINUE; }
+
     /**
      * Persist a registry URL override and reload {@link
      * dev.skillmanager.registry.RegistryConfig}. Failure modes: malformed
      * URI, unwritable store root.
+     *
+     * <p>Halts on fail: a wrong registry URL would route the resolve
+     * downstream at the wrong server, so the program should stop.
      */
-    record ConfigureRegistry(String url) implements SkillEffect {}
+    record ConfigureRegistry(String url) implements SkillEffect {
+        @Override public Continuation continuationOnFail() { return Continuation.HALT; }
+    }
 
     /**
      * Probe the gateway; if local and not running, start it and wait for
@@ -87,6 +121,9 @@ public sealed interface SkillEffect permits
         public EnsureGateway(GatewayConfig gateway) {
             this(gateway, java.time.Duration.ofSeconds(20));
         }
+        // No gateway means MCP register + agent-config write downstream
+        // can't function; halt rather than fan-out errors.
+        @Override public Continuation continuationOnFail() { return Continuation.HALT; }
     }
 
     /**
@@ -105,6 +142,10 @@ public sealed interface SkillEffect permits
      */
     record CommitUnitsToStore(ResolvedGraph graph) implements SkillEffect {
         public CommitUnitsToStore() { this(null); }
+        // No bytes on disk means provenance / run-plan / agent sync /
+        // lock flip all run against an empty store. Halt so the program
+        // doesn't trash post-update state.
+        @Override public Continuation continuationOnFail() { return Continuation.HALT; }
     }
 
     // ------------------------------------------------------------------
@@ -122,7 +163,17 @@ public sealed interface SkillEffect permits
      * to keep the rendering pipeline uniform — every "produce
      * graph" step emits its facts the same way.
      */
-    record BuildResolveGraphFromSource(String source, String version) implements SkillEffect {}
+    record BuildResolveGraphFromSource(String source, String version) implements SkillEffect {
+        // Install path: any resolve failure (top-level or transitive)
+        // means the program can't proceed. Handler emits FAILED status
+        // when failures exist, and this declaration translates that
+        // into the program-halting receipt continuation.
+        @Override public Continuation continuationOnFail() { return Continuation.HALT; }
+        // Even a "partial" graph (some coords resolved, some failed)
+        // halts install — the user explicitly asked to install one
+        // thing, so a failing transitive can't be silently dropped.
+        @Override public Continuation continuationOnPartial() { return Continuation.HALT; }
+    }
 
     /**
      * Onboard's scenario: walk a candidate install root (or fall back
@@ -147,6 +198,10 @@ public sealed interface SkillEffect permits
          * (used when {@code installRoot} is null).
          */
         public record BundledSkillSpec(String dirName, String publishedName, String githubCoord) {}
+
+        // Onboard's pre-Program path halted on any failure; preserve.
+        @Override public Continuation continuationOnFail() { return Continuation.HALT; }
+        @Override public Continuation continuationOnPartial() { return Continuation.HALT; }
     }
 
     /**
@@ -176,6 +231,9 @@ public sealed interface SkillEffect permits
      */
     record RecordSourceProvenance(ResolvedGraph graph) implements SkillEffect {
         public RecordSourceProvenance() { this(null); }
+        // Lock flip reads installed-records; a failed provenance write
+        // means the lock would point at non-existent records. Halt.
+        @Override public Continuation continuationOnFail() { return Continuation.HALT; }
     }
 
     /**
@@ -329,6 +387,11 @@ public sealed interface SkillEffect permits
      * Halt the program if {@code unitName} is already in the store —
      * lets {@code install}'s "remove first" guard live in the program
      * instead of as inline command code.
+     *
+     * <p>Halt is runtime-conditional (only when the unit IS present),
+     * so the handler emits {@code okAndHalt} explicitly on the "already
+     * installed" branch and a plain {@code ok} on the absent branch.
+     * The per-status defaults here cover the rest.
      */
     record RejectIfAlreadyInstalled(String unitName) implements SkillEffect {}
 
@@ -375,7 +438,12 @@ public sealed interface SkillEffect permits
      * snapshot against the post-mutation store to figure out which
      * MCP servers no surviving skill still declares.
      */
-    record SnapshotMcpDeps() implements SkillEffect {}
+    record SnapshotMcpDeps() implements SkillEffect {
+        // No snapshot = orphan detection runs on the post-mutation
+        // store with no baseline, mis-classifying live MCP servers as
+        // orphans. Halt.
+        @Override public Continuation continuationOnFail() { return Continuation.HALT; }
+    }
 
     /**
      * Build the {@link InstallPlan} for {@code graph}, print it, store it
@@ -388,6 +456,8 @@ public sealed interface SkillEffect permits
      */
     record BuildInstallPlan(ResolvedGraph graph) implements SkillEffect {
         public BuildInstallPlan() { this(null); }
+        // No plan = nothing to expand. Halt rather than silently skip.
+        @Override public Continuation continuationOnFail() { return Continuation.HALT; }
     }
 
     /**

@@ -250,7 +250,13 @@ final class ResolveGraphHandlers {
         int code = dev.skillmanager.resolve.TransitiveFailures.exitCodeFor(outcome.failures());
         String msg = outcome.failures().size() + " coord(s) failed to resolve";
         facts.add(new ContextFact.HaltWithExitCode(code, msg));
-        return EffectReceipt.halted(effect, msg, facts.toArray(new ContextFact[0]));
+        // FAILED status + HALT continuation. The status drives the
+        // decoder's errorCount + commitFailed checks; the continuation
+        // tells the interpreter to skip the rest of the program. The
+        // effect's continuationOnFail() / continuationOnPartial() also
+        // declare HALT statically, so this is consistent with the
+        // declared default.
+        return EffectReceipt.failedAndHalt(effect, facts, msg);
     }
 
     // ----------------------------------------------------------------

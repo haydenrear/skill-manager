@@ -162,6 +162,20 @@ public final class Executor {
      */
     private record StageOutcome(List<EffectReceipt> receipts, boolean failed, boolean halted) {}
 
+    /**
+     * Drive one program's effects, recording compensations as effects
+     * complete (regardless of status). Status FAILED no longer halts —
+     * each effect's {@link Continuation} drives the halt decision. The
+     * compensation journal still walks back any FAILED-status receipts
+     * at the end of the stage (rollback is decoupled from halt).
+     *
+     * <p>Per-effect failures that should stop downstream effects opt-in
+     * via {@code continuationOnFail() = HALT} (or by emitting an
+     * explicit {@code failedAndHalt} receipt). Independent fan-out
+     * effects (per-target sync, per-server MCP register) leave the
+     * default {@code CONTINUE} so a single per-item failure doesn't
+     * sink the rest of the batch.
+     */
     private StageOutcome runStage(Program<?> program, EffectContext ctx, RollbackJournal journal) {
         List<EffectReceipt> receipts = new ArrayList<>();
         boolean halted = false;
@@ -169,8 +183,8 @@ public final class Executor {
         int idx = -1;
         for (SkillEffect effect : program.effects()) {
             idx++;
-            if (halted || failed) {
-                EffectReceipt skip = EffectReceipt.skipped(effect, failed ? "rolled back" : "halted");
+            if (halted) {
+                EffectReceipt skip = EffectReceipt.skipped(effect, "halted");
                 receipts.add(skip);
                 ctx.renderer().onReceipt(skip);
                 continue;
@@ -182,24 +196,27 @@ public final class Executor {
 
             EffectReceipt r;
             if (faultInjector != null && faultInjector.test(idx)) {
-                r = EffectReceipt.failed(effect, "fault-injected at step " + idx);
+                r = EffectReceipt.failedAndHalt(effect, "fault-injected at step " + idx);
                 ctx.renderer().onReceipt(r);
             } else {
                 r = interpreter.runOne(effect, ctx);
             }
             receipts.add(r);
 
-            if (r.status() == EffectStatus.HALTED) {
-                halted = true;
-                continue;
-            }
-            if (r.status() == EffectStatus.FAILED) {
-                failed = true;
-                continue;
-            }
-            // OK or PARTIAL — record what succeeded.
+            // Track rollback intent. Any FAILED receipt triggers the
+            // walk-back at end of stage — independent of whether the
+            // program halts here.
+            if (r.status() == EffectStatus.FAILED) failed = true;
+
+            // Record compensations for whatever the effect did before
+            // failing — handlers that emit per-item facts (e.g.
+            // CommitUnitsToStore's mid-copy failure) still surface what
+            // they touched, so rollback walks every successful item back.
             journal.recordAll(preState);
             journal.recordAll(compensationsFor(effect, r, ctx));
+
+            // Halt decision is now exclusively the receipt's continuation.
+            if (r.continuation() == Continuation.HALT) halted = true;
         }
         // alwaysAfter always runs (cleanup); never compensated.
         for (SkillEffect effect : program.alwaysAfter()) {

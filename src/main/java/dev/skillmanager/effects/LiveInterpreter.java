@@ -63,17 +63,12 @@ public final class LiveInterpreter implements ProgramInterpreter {
         List<EffectReceipt> s1 = runEffects(staged.stage1(), ctx);
         all.addAll(s1);
         // Halt is meant to terminate the WHOLE multi-stage program — not
-        // just the stage that raised it. If stage 1 halted (policy gate
-        // rejected, resolve failed with typed exit, "remove first"
-        // precondition fired) running stage 2 on top of the half-built
-        // state would let the post-update tail fire on nothing — e.g.
-        // SyncAgents over an empty unit list because the resolve halted
-        // before commit. {@link Executor#runStaged} has the equivalent
-        // guard via {@link StageOutcome#halted}; LiveInterpreter only
-        // needs to check HALTED (it doesn't halt-on-FAILED — failed
-        // receipts get recorded and the loop continues, same as
-        // within-stage behavior).
-        boolean halted = s1.stream().anyMatch(r -> r.status() == EffectStatus.HALTED);
+        // just the stage that raised it. If any stage-1 receipt signals
+        // {@link Continuation#HALT} (resolve-failed, policy gate
+        // rejected, "remove first" precondition fired) running stage 2
+        // on top of the half-built state would let the post-update tail
+        // fire on nothing.
+        boolean halted = s1.stream().anyMatch(r -> r.continuation() == Continuation.HALT);
         if (!halted) {
             Program<?> stage2 = staged.stage2().apply(ctx);
             all.addAll(runEffects(stage2, ctx));
@@ -137,7 +132,12 @@ public final class LiveInterpreter implements ProgramInterpreter {
             }
             receipts.add(r);
             renderer.onReceipt(r);
-            if (r.status() == EffectStatus.HALTED) halted = true;
+            // Halt decision is now exclusively the receipt's continuation.
+            // Status FAILED no longer implicitly halts — each effect's
+            // continuationOnFail() opts in via its receipt's HALT
+            // continuation if downstream effects can't tolerate the
+            // failure.
+            if (r.continuation() == Continuation.HALT) halted = true;
         }
         // alwaysAfter runs unconditionally — for cleanup that must happen
         // even when the main effect chain halted (e.g. CleanupResolvedGraph).
@@ -847,12 +847,14 @@ public final class LiveInterpreter implements ProgramInterpreter {
                     dev.skillmanager.policy.PolicyGate.violations(categorization, policy.install());
             if (violations.isEmpty()) return EffectReceipt.ok(e);
 
-            // --yes auto-accept blocked by policy → halt with exit 5
-            // pointing at the specific policy.install.* flags to flip.
+            // --yes auto-accept blocked by policy → cooperative halt
+            // (the effect "succeeded" at the gate's job by detecting a
+            // violation; the program just shouldn't continue) — exit
+            // code 5 is carried through HaltWithExitCode.
             if (e.yes()) {
                 String msg = dev.skillmanager.policy.PolicyGate.formatViolationMessage(violations);
                 Log.error("%s", msg);
-                return EffectReceipt.halted(e, msg,
+                return EffectReceipt.okAndHalt(e, msg,
                         new ContextFact.HaltWithExitCode(5, "policy.install gate rejected --yes"));
             }
             // No TTY (CI / pipe / test harness) → same exit code as --yes
@@ -862,7 +864,7 @@ public final class LiveInterpreter implements ProgramInterpreter {
                 Log.error("install needs interactive confirmation but no TTY is attached");
                 String msg = dev.skillmanager.policy.PolicyGate.formatViolationMessage(violations);
                 Log.error("%s", msg);
-                return EffectReceipt.halted(e, "no TTY for policy confirmation",
+                return EffectReceipt.okAndHalt(e, "no TTY for policy confirmation",
                         new ContextFact.HaltWithExitCode(5, "policy.install gate without TTY"));
             }
             // Interactive confirmation — print the categorization so
@@ -877,7 +879,7 @@ public final class LiveInterpreter implements ProgramInterpreter {
             String line = r.readLine();
             if (line == null || !line.trim().equalsIgnoreCase("y")) {
                 Log.warn("install aborted at policy gate");
-                return EffectReceipt.halted(e, "user rejected at policy gate",
+                return EffectReceipt.okAndHalt(e, "user rejected at policy gate",
                         new ContextFact.HaltWithExitCode(6, "user said no at prompt"));
             }
             return EffectReceipt.ok(e);
@@ -896,7 +898,10 @@ public final class LiveInterpreter implements ProgramInterpreter {
         Path at = ctx.store().contains(e.unitName())
                 ? ctx.store().skillDir(e.unitName())
                 : ctx.store().unitDir(e.unitName(), dev.skillmanager.model.UnitKind.PLUGIN);
-        return EffectReceipt.halted(e,
+        // Cooperative halt — the precondition check fired correctly,
+        // it just found the unit already present and wants the program
+        // to stop rather than overwrite.
+        return EffectReceipt.okAndHalt(e,
                 "unit '" + e.unitName() + "' is already installed at " + at
                         + " — remove it first (skill-manager remove " + e.unitName() + ")");
     }
@@ -917,7 +922,10 @@ public final class LiveInterpreter implements ProgramInterpreter {
             dev.skillmanager.plan.PlanPrinter.print(plan);
             ctx.setPlan(plan);
             if (plan.blocked()) {
-                return EffectReceipt.halted(e, "plan has blocked items — see policy at "
+                // Cooperative halt — the plan was built successfully but
+                // policy blocks some actions. Same shape as the policy
+                // gate: OK status + HALT continuation.
+                return EffectReceipt.okAndHalt(e, "plan has blocked items — see policy at "
                         + ctx.store().root().resolve("policy.toml"));
             }
             return EffectReceipt.ok(e);
