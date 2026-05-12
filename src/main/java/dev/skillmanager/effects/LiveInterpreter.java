@@ -210,6 +210,7 @@ public final class LiveInterpreter implements ProgramInterpreter {
             case SkillEffect.RemoveBinding e -> removeBinding(e, ctx);
             case SkillEffect.MaterializeProjection e -> materializeProjection(e);
             case SkillEffect.UnmaterializeProjection e -> unmaterializeProjection(e);
+            case SkillEffect.SyncDocRepo e -> syncDocRepo(e, ctx);
         };
     }
 
@@ -1248,6 +1249,8 @@ public final class LiveInterpreter implements ProgramInterpreter {
                     name, null, name,
                     List.of(), List.of(), List.of(), List.of(),
                     java.util.Map.of(), List.of(), null);
+            case DOC -> throw new IllegalStateException(
+                    "doc-repos do not project into agent dirs — no projector unlink path");
         };
     }
 
@@ -1391,6 +1394,35 @@ public final class LiveInterpreter implements ProgramInterpreter {
                     java.nio.file.Files.createDirectories(p.destPath().getParent());
                     java.nio.file.Files.move(original, p.destPath());
                 }
+                case MANAGED_COPY -> {
+                    var skipped = applyConflictPolicy(p.destPath(), e.conflictPolicy());
+                    if (skipped) {
+                        return EffectReceipt.ok(e, new ContextFact.ProjectionSkippedConflict(
+                                p.bindingId(), p.destPath().toString()));
+                    }
+                    java.nio.file.Files.createDirectories(p.destPath().getParent());
+                    // Bytes-only copy — no recursive walk (managed-copy is
+                    // one file). The binder set boundHash at plan time
+                    // against the source bytes; we don't recompute here
+                    // (the source hasn't moved between plan and apply).
+                    java.nio.file.Files.copy(p.sourcePath(), p.destPath(),
+                            java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                }
+                case IMPORT_DIRECTIVE -> {
+                    // For IMPORT_DIRECTIVE, sourcePath holds the relative
+                    // @-import path (stored as a Path purely for record
+                    // homogeneity); destPath is the markdown file to edit.
+                    // Conflict policy doesn't apply — the section editor
+                    // is idempotent and merges into existing content.
+                    String line = "@" + p.sourcePath().toString();
+                    java.nio.file.Path md = p.destPath();
+                    java.nio.file.Files.createDirectories(md.getParent());
+                    String current = java.nio.file.Files.exists(md)
+                            ? java.nio.file.Files.readString(md)
+                            : "";
+                    String next = dev.skillmanager.bindings.ManagedImports.upsertLine(current, line);
+                    java.nio.file.Files.writeString(md, next);
+                }
             }
             return EffectReceipt.ok(e, new ContextFact.ProjectionMaterialized(
                     p.bindingId(), p.destPath().toString(), p.kind().name()));
@@ -1477,6 +1509,8 @@ public final class LiveInterpreter implements ProgramInterpreter {
         java.nio.file.Path targetRoot = switch (unit.kind()) {
             case SKILL -> proj.skillsDir();
             case PLUGIN -> proj.pluginsDir();
+            case DOC -> throw new IllegalStateException(
+                    "doc-repos never reach SyncAgents — they don't project into agent dirs");
         };
         List<Projection> ledgerProjections = new ArrayList<>(entries.size());
         for (dev.skillmanager.project.Projection e : entries) {
@@ -1506,6 +1540,32 @@ public final class LiveInterpreter implements ProgramInterpreter {
         }
     }
 
+    private EffectReceipt syncDocRepo(SkillEffect.SyncDocRepo e, EffectContext ctx) {
+        // DocSync.run is the pure logic — walks the ledger, applies the
+        // four-state matrix, reapplies IMPORT_DIRECTIVE rows. The
+        // handler maps each Action into a typed ContextFact so the
+        // renderer treats doc-repo sync uniformly with the rest of the
+        // post-update tail.
+        dev.skillmanager.bindings.DocSync.Outcome out =
+                dev.skillmanager.bindings.DocSync.run(ctx.store(), e.unitName(), e.force());
+        List<ContextFact> facts = new ArrayList<>(out.actions().size());
+        for (var a : out.actions()) {
+            ContextFact.DocBindingSynced.Severity sev = switch (a.severity()) {
+                case INFO -> ContextFact.DocBindingSynced.Severity.INFO;
+                case WARN -> ContextFact.DocBindingSynced.Severity.WARN;
+                case ERROR -> ContextFact.DocBindingSynced.Severity.ERROR;
+            };
+            facts.add(new ContextFact.DocBindingSynced(
+                    a.unitName(), a.bindingId(), a.subElement(),
+                    a.description(), sev));
+        }
+        if (out.errors() > 0) {
+            return EffectReceipt.partial(e, facts,
+                    out.errors() + " binding(s) errored, " + out.warnings() + " warning(s)");
+        }
+        return EffectReceipt.ok(e, facts);
+    }
+
     /**
      * Package-private so {@link Executor#applyCompensation} can drive
      * the same dispatch.
@@ -1533,6 +1593,30 @@ public final class LiveInterpreter implements ProgramInterpreter {
                 java.nio.file.Files.createDirectories(original.getParent());
                 java.nio.file.Files.move(p.destPath(), original,
                         java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            }
+            case MANAGED_COPY -> {
+                // Plain delete — the tracked-copy bytes are skill-manager-
+                // owned at the moment of unmaterialize. Callers that want
+                // to preserve local edits use `unbind --keep-content`
+                // (a higher-level surface that drops the ledger row
+                // without emitting this effect).
+                if (java.nio.file.Files.exists(p.destPath(), java.nio.file.LinkOption.NOFOLLOW_LINKS)) {
+                    java.nio.file.Files.delete(p.destPath());
+                }
+            }
+            case IMPORT_DIRECTIVE -> {
+                String line = "@" + p.sourcePath().toString();
+                java.nio.file.Path md = p.destPath();
+                if (!java.nio.file.Files.exists(md)) return;
+                String current = java.nio.file.Files.readString(md);
+                String next = dev.skillmanager.bindings.ManagedImports.removeLine(current, line);
+                if (next.isEmpty()) {
+                    // Section was the only content; remove the file rather
+                    // than leave an empty stub.
+                    java.nio.file.Files.delete(md);
+                } else {
+                    java.nio.file.Files.writeString(md, next);
+                }
             }
         }
     }

@@ -276,7 +276,21 @@ public final class ConsoleProgramRenderer implements ProgramRenderer {
                     Log.info("projection: removed %s at %s", x.kind(), x.destPath());
             case ContextFact.ProjectionSkippedConflict x ->
                     Log.warn("projection: %s already exists — skipped (policy=SKIP)", x.destPath());
+            case ContextFact.DocBindingSynced x -> {
+                String sub = x.subElement() == null ? "" : "/" + x.subElement();
+                String prefix = x.unitName() + sub + " [" + shortBindingId(x.bindingId()) + "]";
+                switch (x.severity()) {
+                    case INFO -> Log.ok("doc-sync %s — %s", prefix, x.description());
+                    case WARN -> Log.warn("doc-sync %s — %s", prefix, x.description());
+                    case ERROR -> Log.error("doc-sync %s — %s", prefix, x.description());
+                }
+            }
         }
+    }
+
+    private static String shortBindingId(String id) {
+        if (id == null) return "?";
+        return id.length() <= 8 ? id : id.substring(0, 8);
     }
 
     @Override

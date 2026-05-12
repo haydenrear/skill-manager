@@ -60,6 +60,12 @@ public final class FailureInjectionSweepTest {
         Tests.Suite suite = Tests.suite("FailureInjectionSweepTest");
 
         for (UnitKind kind : UnitKind.values()) {
+            // Rollback-on-failure is a SKILL × PLUGIN parity contract.
+            // DOC fixtures don't fit buildEquivalent's deps shape; doc-
+            // repo rollback semantics are covered by BindingsTest's
+            // "executor rolls back CreateBinding on downstream failure"
+            // and the doc-repo-specific tests below.
+            if (kind == UnitKind.DOC) continue;
             String label = kind.name().toLowerCase();
 
             // Sweep failure at each non-zero step in the synthetic chain.

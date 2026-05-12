@@ -176,7 +176,10 @@ public final class RemoveUseCase {
      * on-disk manifests say, after any sync that may have changed them.
      */
     static List<McpDependency> recoverEffectiveMcpDeps(SkillStore store, String unitName, UnitKind kind) {
+        // Doc-repos don't carry MCP deps — they're content, not runtime.
+        if (kind == UnitKind.DOC) return List.of();
         return switch (kind) {
+            case DOC -> List.of();        // unreachable (guarded above) but exhaustive
             case SKILL -> {
                 try {
                     yield store.load(unitName).map(Skill::mcpDependencies).orElse(List.of());

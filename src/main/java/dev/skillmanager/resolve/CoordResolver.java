@@ -2,6 +2,8 @@ package dev.skillmanager.resolve;
 
 import dev.skillmanager.model.AgentUnit;
 import dev.skillmanager.model.Coord;
+import dev.skillmanager.model.DocRepoParser;
+import dev.skillmanager.model.DocUnit;
 import dev.skillmanager.model.PluginParser;
 import dev.skillmanager.model.PluginUnit;
 import dev.skillmanager.model.Skill;
@@ -163,6 +165,15 @@ public final class CoordResolver {
                 return new Result.Resolved(toDescriptor(
                         p, origin, discoveryKind, transport, sha));
             }
+            // Doc-repo discrimination happens before the bare-skill check
+            // — a doc-repo has a `skill-manager.toml` (same filename as
+            // skills) but with a `[doc-repo]` table instead of `[skill]`.
+            // Look at the table, not the filename.
+            if (DocRepoParser.looksLikeDocRepo(tree)) {
+                DocUnit d = DocRepoParser.load(tree);
+                return new Result.Resolved(toDescriptor(
+                        d, origin, discoveryKind, transport, sha));
+            }
             if (Files.isRegularFile(tree.resolve(SkillParser.SKILL_FILENAME))) {
                 Skill s = SkillParser.load(tree);
                 return new Result.Resolved(toDescriptor(
@@ -207,6 +218,7 @@ public final class CoordResolver {
         return switch (filter) {
             case SKILL_ONLY -> UnitKind.SKILL;
             case PLUGIN_ONLY -> UnitKind.PLUGIN;
+            case DOC_ONLY -> UnitKind.DOC;
             case ANY -> null;
         };
     }

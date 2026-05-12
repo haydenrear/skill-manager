@@ -189,4 +189,20 @@ public sealed interface ContextFact {
     record ProjectionUnmaterialized(String bindingId, String destPath, String kind) implements ContextFact {}
     /** {@link dev.skillmanager.bindings.ConflictPolicy#SKIP} fired — destination already occupied. */
     record ProjectionSkippedConflict(String bindingId, String destPath) implements ContextFact {}
+
+    /**
+     * One per-binding outcome from {@link SkillEffect.SyncDocRepo}.
+     * {@code severity} drives the renderer (INFO = silent or ok line,
+     * WARN = warning, ERROR = errored). {@code description} carries
+     * the human-readable action ("upgraded", "preserved local edits",
+     * "orphan source", etc.).
+     */
+    record DocBindingSynced(
+            String unitName,
+            String bindingId,
+            String subElement,
+            String description,
+            Severity severity) implements ContextFact {
+        public enum Severity { INFO, WARN, ERROR }
+    }
 }

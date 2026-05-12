@@ -49,6 +49,8 @@ public final class UnitFixtures {
                     System.arraycopy(extraContained, 0, all, 1, extraContained.length);
                     yield scaffoldPlugin(tempRoot, name, DepSpec.empty(), all);
                 }
+                case DOC -> throw new UnsupportedOperationException(
+                        "DOC fixtures use scaffoldDocRepo — buildEquivalent's deps shape doesn't apply to doc-repos");
             };
         } catch (IOException e) {
             throw new UncheckedIOException(e);

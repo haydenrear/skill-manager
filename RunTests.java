@@ -146,6 +146,7 @@ public class RunTests {
         failures += dev.skillmanager.agent.AgentHomesTest.run();
         failures += dev.skillmanager.store.FetcherGitCloneTest.run();
         failures += BindingsTest.run();
+        failures += dev.skillmanager.bindings.DocRepoTest.run();
 
         System.out.println();
         if (failures == 0) {

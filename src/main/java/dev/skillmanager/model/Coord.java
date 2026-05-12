@@ -75,6 +75,7 @@ public sealed interface Coord permits Coord.Bare, Coord.Kinded, Coord.DirectGit,
 
         if (c.startsWith("skill:")) return parseKinded(c, UnitKind.SKILL, "skill:");
         if (c.startsWith("plugin:")) return parseKinded(c, UnitKind.PLUGIN, "plugin:");
+        if (c.startsWith("doc:")) return parseKinded(c, UnitKind.DOC, "doc:");
         if (c.startsWith("github:")) return parseGithub(c);
         if (c.startsWith("git+")) return parseGitPlus(c);
         // Both `file://abs/path` and `file:./rel` (legacy single-slash) are

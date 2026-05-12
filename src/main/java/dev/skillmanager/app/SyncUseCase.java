@@ -47,11 +47,34 @@ public final class SyncUseCase {
             boolean withAgents,
             boolean yesForFromDir) {}
 
-    /** A single sync target — either a git fetch+merge against origin, or apply from a local dir. */
+    /**
+     * A single sync target — what {@code skill-manager sync <name>}
+     * should do for one unit. The shape depends on what kind of unit
+     * we're syncing:
+     * <ul>
+     *   <li>{@link Git} — skill/plugin sync: fetch + merge against the
+     *       unit's git origin (or registry-driven sha).</li>
+     *   <li>{@link FromDir} — skill/plugin: apply contents from a
+     *       local working directory ({@code --from <dir>}).</li>
+     *   <li>{@link DocRepo} — doc-repo: walk the projection ledger
+     *       for the unit, route each {@code MANAGED_COPY} through
+     *       the four-state drift matrix (#48), reapply
+     *       {@code IMPORT_DIRECTIVE} rows idempotently.</li>
+     * </ul>
+     *
+     * <p>Future kinds (harness templates per #47) will add their own
+     * Target variants so {@code SyncCommand} stays a single dispatch
+     * point.
+     */
     public sealed interface Target {
         String skillName();
         record Git(String skillName) implements Target {}
         record FromDir(String skillName, Path dir) implements Target {}
+        /**
+         * Doc-repo sync (#48). {@code force} clobbers locally-edited
+         * and conflict destinations; default is preserve-with-warning.
+         */
+        record DocRepo(String skillName, boolean force) implements Target {}
     }
 
     public record Report(
@@ -114,6 +137,8 @@ public final class SyncUseCase {
                 }
                 case Target.FromDir f -> effects.add(new SkillEffect.SyncFromLocalDir(
                         f.skillName(), f.dir(), options.merge(), options.yesForFromDir()));
+                case Target.DocRepo d -> effects.add(new SkillEffect.SyncDocRepo(
+                        d.skillName(), d.force()));
             }
         }
         return new Program<>("sync-stage1-" + UUID.randomUUID(), effects, receipts -> null);
