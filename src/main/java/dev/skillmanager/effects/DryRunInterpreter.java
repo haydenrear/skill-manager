@@ -216,6 +216,19 @@ public final class DryRunInterpreter implements ProgramInterpreter {
             case SkillEffect.BuildResolveGraphFromUnmetReferences e ->
                     Log.step("[%d] resolve graph from unmet references in %d live skill(s)",
                             n, e.liveSkills().size());
+            case SkillEffect.CreateBinding e ->
+                    Log.step("[%d] create binding %s for %s → %s%s",
+                            n, e.binding().bindingId(), e.binding().unitName(),
+                            e.binding().targetRoot(),
+                            e.binding().subElement() == null ? "" : " (" + e.binding().subElement() + ")");
+            case SkillEffect.RemoveBinding e ->
+                    Log.step("[%d] remove binding %s from %s", n, e.bindingId(), e.unitName());
+            case SkillEffect.MaterializeProjection e ->
+                    Log.step("[%d] materialize %s projection → %s (policy=%s)",
+                            n, e.projection().kind(), e.projection().destPath(), e.conflictPolicy());
+            case SkillEffect.UnmaterializeProjection e ->
+                    Log.step("[%d] unmaterialize %s projection at %s",
+                            n, e.projection().kind(), e.projection().destPath());
         }
     }
 }

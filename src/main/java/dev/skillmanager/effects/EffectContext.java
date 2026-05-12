@@ -1,5 +1,6 @@
 package dev.skillmanager.effects;
 
+import dev.skillmanager.bindings.BindingStore;
 import dev.skillmanager.mcp.GatewayConfig;
 import dev.skillmanager.plan.InstallPlan;
 import dev.skillmanager.source.InstalledUnit;
@@ -26,6 +27,7 @@ public final class EffectContext {
     private final SkillStore store;
     private final GatewayConfig gateway;
     private final UnitStore sourceStore;
+    private final BindingStore bindingStore;
     private Map<String, InstalledUnit> cache;
 
     /**
@@ -66,12 +68,14 @@ public final class EffectContext {
         this.store = store;
         this.gateway = gateway;
         this.sourceStore = new UnitStore(store);
+        this.bindingStore = new BindingStore(store);
         this.renderer = renderer;
     }
 
     public SkillStore store() { return store; }
     public GatewayConfig gateway() { return gateway; }
     public UnitStore sourceStore() { return sourceStore; }
+    public BindingStore bindingStore() { return bindingStore; }
     public ProgramRenderer renderer() { return renderer; }
 
     public Map<String, InstalledUnit> sources() {

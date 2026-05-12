@@ -1,6 +1,8 @@
 package dev.skillmanager.cli;
 
 import dev.skillmanager.commands.AdsCommand;
+import dev.skillmanager.commands.BindCommand;
+import dev.skillmanager.commands.BindingsCommand;
 import dev.skillmanager.commands.CliCommand;
 import dev.skillmanager.commands.CreateAccountCommand;
 import dev.skillmanager.commands.CreateCommand;
@@ -14,12 +16,14 @@ import dev.skillmanager.commands.OnboardCommand;
 import dev.skillmanager.commands.PmCommand;
 import dev.skillmanager.commands.PolicyCommand;
 import dev.skillmanager.commands.PublishCommand;
+import dev.skillmanager.commands.RebindCommand;
 import dev.skillmanager.commands.RegistryCommand;
 import dev.skillmanager.commands.RemoveCommand;
 import dev.skillmanager.commands.ResetPasswordCommand;
 import dev.skillmanager.commands.SearchCommand;
 import dev.skillmanager.commands.ShowCommand;
 import dev.skillmanager.commands.SyncCommand;
+import dev.skillmanager.commands.UnbindCommand;
 import dev.skillmanager.commands.UninstallCommand;
 import dev.skillmanager.commands.UpgradeCommand;
 import dev.skillmanager.registry.AuthenticationRequiredException;
@@ -60,7 +64,11 @@ import picocli.CommandLine.Option;
                 LoginCommand.class,
                 CreateAccountCommand.class,
                 ResetPasswordCommand.class,
-                OnboardCommand.class
+                OnboardCommand.class,
+                BindCommand.class,
+                UnbindCommand.class,
+                RebindCommand.class,
+                BindingsCommand.class
         })
 public final class SkillManagerCli implements Runnable {
 

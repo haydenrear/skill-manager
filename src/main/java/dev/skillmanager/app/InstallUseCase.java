@@ -73,7 +73,7 @@ public final class InstallUseCase {
                                                      String registryOverride,
                                                      String source, String version,
                                                      boolean yes, boolean dryRun) {
-        return buildProgram(store, gw, registryOverride, source, version, yes, dryRun, !dryRun);
+        return buildProgram(store, gw, registryOverride, source, version, yes, dryRun, !dryRun, true);
     }
 
     /**
@@ -88,6 +88,23 @@ public final class InstallUseCase {
                                                      String source, String version,
                                                      boolean yes, boolean dryRun,
                                                      boolean withGateway) {
+        return buildProgram(store, gw, registryOverride, source, version, yes, dryRun, withGateway, true);
+    }
+
+    /**
+     * Full variant with {@code bindDefault}. When {@code false}, the
+     * install is store-only — the bytes land in the store and a lock
+     * entry is written, but no agent projection or default-agent
+     * binding is created. Used by harness instantiation and profile
+     * sync, which create their own bindings instead of inheriting the
+     * implicit one.
+     */
+    public static StagedProgram<Report> buildProgram(SkillStore store, GatewayConfig gw,
+                                                     String registryOverride,
+                                                     String source, String version,
+                                                     boolean yes, boolean dryRun,
+                                                     boolean withGateway,
+                                                     boolean bindDefault) {
         String operationId = "install-" + UUID.randomUUID();
 
         // --- Stage 1: preflight + resolve + plan + policy gate + commit + run ---
@@ -135,9 +152,15 @@ public final class InstallUseCase {
             ResolvedGraph graph = ctx.resolvedGraph().orElse(new ResolvedGraph());
             List<dev.skillmanager.model.AgentUnit> tailUnits = graph.units();
             List<SkillEffect> stage2Effects = new ArrayList<>();
-            stage2Effects.add(new SkillEffect.SyncAgents(tailUnits, gw));
-            if (!dryRun) {
-                stage2Effects.add(SkillEffect.RefreshHarnessPlugins.reinstallAll(pluginNames(tailUnits)));
+            // --bind-default (the install-time default) projects every
+            // unit into the configured agent's dirs and records a
+            // DEFAULT_AGENT Binding in the ledger. --no-bind-default
+            // skips both, leaving the install store-only.
+            if (bindDefault) {
+                stage2Effects.add(new SkillEffect.SyncAgents(tailUnits, gw));
+                if (!dryRun) {
+                    stage2Effects.add(SkillEffect.RefreshHarnessPlugins.reinstallAll(pluginNames(tailUnits)));
+                }
             }
             stage2Effects.add(new SkillEffect.UnregisterMcpOrphans(gw));
             if (!dryRun) {

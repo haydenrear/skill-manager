@@ -32,6 +32,7 @@ import dev.skillmanager.plan.CycleDetectionTest;
 import dev.skillmanager.plan.MixedKindTopoOrderTest;
 import dev.skillmanager.command.CreatePluginScenarioTest;
 import dev.skillmanager.command.ListShowsKindAndShaTest;
+import dev.skillmanager.bindings.BindingsTest;
 import dev.skillmanager.command.SearchShowsKindTest;
 import dev.skillmanager.command.ShowPluginListsContainedSkillsTest;
 import dev.skillmanager.command.SyncFromLockScenarioTest;
@@ -144,6 +145,7 @@ public class RunTests {
         failures += ShowPluginListsContainedSkillsTest.run();
         failures += dev.skillmanager.agent.AgentHomesTest.run();
         failures += dev.skillmanager.store.FetcherGitCloneTest.run();
+        failures += BindingsTest.run();
 
         System.out.println();
         if (failures == 0) {

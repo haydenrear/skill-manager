@@ -66,6 +66,10 @@ public final class CoordResolver {
                     coord, k.name(), k.version(), UnitKindFilter.forKind(k.kind()));
             case Coord.DirectGit g -> resolveDirectGit(coord, g);
             case Coord.Local l -> resolveLocal(coord, l);
+            // Sub-element coords address an entry inside a unit; the
+            // resolver only cares about the unit, so delegate. The
+            // sub-element selector is consumed by the bind layer.
+            case Coord.SubElement s -> resolve(s.unitCoord());
         };
     }
 

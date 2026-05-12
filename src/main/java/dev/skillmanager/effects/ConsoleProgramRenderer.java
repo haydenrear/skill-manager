@@ -262,6 +262,20 @@ public final class ConsoleProgramRenderer implements ProgramRenderer {
             case ContextFact.HarnessCliMissing x -> Log.warn(
                     "%s: CLI %s not on PATH — install with: %s",
                     x.agentId(), x.binary(), x.installHint());
+
+            // ---- bindings (ticket 49) ----
+            case ContextFact.BindingCreated x -> {
+                String sub = x.subElement() == null ? "" : " (" + x.subElement() + ")";
+                Log.ok("bound %s%s → %s [%s]", x.unitName(), sub, x.targetRoot(), x.bindingId());
+            }
+            case ContextFact.BindingRemoved x ->
+                    Log.ok("unbound %s [%s]", x.unitName(), x.bindingId());
+            case ContextFact.ProjectionMaterialized x ->
+                    Log.info("projection: %s → %s", x.kind(), x.destPath());
+            case ContextFact.ProjectionUnmaterialized x ->
+                    Log.info("projection: removed %s at %s", x.kind(), x.destPath());
+            case ContextFact.ProjectionSkippedConflict x ->
+                    Log.warn("projection: %s already exists — skipped (policy=SKIP)", x.destPath());
         }
     }
 

@@ -176,4 +176,17 @@ public sealed interface ContextFact {
      * banner surfaces.
      */
     record HarnessCliMissing(String agentId, String binary, String installHint) implements ContextFact {}
+
+    // ---- Bindings + projection ledger (ticket 49) ----
+    /** {@code installed/<unit>.projections.json} now lists this binding. */
+    record BindingCreated(String unitName, String bindingId, String targetRoot, String subElement)
+            implements ContextFact {}
+    /** {@code installed/<unit>.projections.json} no longer lists this binding. */
+    record BindingRemoved(String unitName, String bindingId) implements ContextFact {}
+    /** One filesystem action a binding produced was applied. */
+    record ProjectionMaterialized(String bindingId, String destPath, String kind) implements ContextFact {}
+    /** One filesystem action was reversed (unbind / uninstall / rollback). */
+    record ProjectionUnmaterialized(String bindingId, String destPath, String kind) implements ContextFact {}
+    /** {@link dev.skillmanager.bindings.ConflictPolicy#SKIP} fired — destination already occupied. */
+    record ProjectionSkippedConflict(String bindingId, String destPath) implements ContextFact {}
 }

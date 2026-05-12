@@ -179,6 +179,48 @@ public final class CompensationPairingTest {
                     "empty — onboard handler skips when record already present, so no rollback shape needed");
         });
 
+        // -------- ticket 49 binding pairs --------
+
+        suite.test("MaterializeProjection → ReverseProjection (post-state, when materialized)", () -> {
+            dev.skillmanager.bindings.Projection p = new dev.skillmanager.bindings.Projection(
+                    "b1", Path.of("/tmp/src"), Path.of("/tmp/dst"),
+                    dev.skillmanager.bindings.ProjectionKind.SYMLINK, null);
+            SkillEffect.MaterializeProjection e = new SkillEffect.MaterializeProjection(
+                    p, dev.skillmanager.bindings.ConflictPolicy.ERROR);
+            EffectReceipt r = EffectReceipt.ok(e,
+                    new ContextFact.ProjectionMaterialized("b1", "/tmp/dst", "SYMLINK"));
+            List<Compensation> comps = Executor.compensationsFor(e, r);
+            assertEquals(1, comps.size(), "one ReverseProjection");
+            assertTrue(comps.get(0) instanceof Compensation.ReverseProjection, "ReverseProjection shape");
+            assertEquals(p, ((Compensation.ReverseProjection) comps.get(0)).projection(), "carries the projection");
+        });
+
+        suite.test("MaterializeProjection skipped (no fact) → no compensation", () -> {
+            dev.skillmanager.bindings.Projection p = new dev.skillmanager.bindings.Projection(
+                    "b1", Path.of("/tmp/src"), Path.of("/tmp/dst"),
+                    dev.skillmanager.bindings.ProjectionKind.SYMLINK, null);
+            SkillEffect.MaterializeProjection e = new SkillEffect.MaterializeProjection(
+                    p, dev.skillmanager.bindings.ConflictPolicy.SKIP);
+            EffectReceipt r = EffectReceipt.ok(e,
+                    new ContextFact.ProjectionSkippedConflict("b1", "/tmp/dst"));
+            List<Compensation> comps = Executor.compensationsFor(e, r);
+            assertEquals(0, comps.size(),
+                    "no rollback needed — SKIP didn't change disk state");
+        });
+
+        suite.test("CreateBinding → RestoreProjectionLedger pre-state snapshot", () -> {
+            TestHarness h = TestHarness.create();
+            dev.skillmanager.bindings.Binding b = new dev.skillmanager.bindings.Binding(
+                    "b1", "widget", UnitKind.SKILL, null,
+                    Path.of("/tmp"), dev.skillmanager.bindings.ConflictPolicy.ERROR,
+                    "now", dev.skillmanager.bindings.BindingSource.EXPLICIT, List.of());
+            SkillEffect.CreateBinding e = new SkillEffect.CreateBinding(b);
+            List<Compensation> pre = Executor.preStateCompensations(e, h.context());
+            assertEquals(1, pre.size(), "one pre-state snapshot");
+            assertTrue(pre.get(0) instanceof Compensation.RestoreProjectionLedger,
+                    "RestoreProjectionLedger shape");
+        });
+
         return suite.runAll();
     }
 
