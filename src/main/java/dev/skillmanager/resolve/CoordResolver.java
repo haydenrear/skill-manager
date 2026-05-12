@@ -4,6 +4,8 @@ import dev.skillmanager.model.AgentUnit;
 import dev.skillmanager.model.Coord;
 import dev.skillmanager.model.DocRepoParser;
 import dev.skillmanager.model.DocUnit;
+import dev.skillmanager.model.HarnessParser;
+import dev.skillmanager.model.HarnessUnit;
 import dev.skillmanager.model.PluginParser;
 import dev.skillmanager.model.PluginUnit;
 import dev.skillmanager.model.Skill;
@@ -165,6 +167,14 @@ public final class CoordResolver {
                 return new Result.Resolved(toDescriptor(
                         p, origin, discoveryKind, transport, sha));
             }
+            // Harness templates use a dedicated harness.toml so they're
+            // unambiguous; check before the skill-manager.toml-based
+            // doc-repo / skill discriminators.
+            if (HarnessParser.looksLikeHarness(tree)) {
+                HarnessUnit h = HarnessParser.load(tree);
+                return new Result.Resolved(toDescriptor(
+                        h, origin, discoveryKind, transport, sha));
+            }
             // Doc-repo discrimination happens before the bare-skill check
             // — a doc-repo has a `skill-manager.toml` (same filename as
             // skills) but with a `[doc-repo]` table instead of `[skill]`.
@@ -219,6 +229,7 @@ public final class CoordResolver {
             case SKILL_ONLY -> UnitKind.SKILL;
             case PLUGIN_ONLY -> UnitKind.PLUGIN;
             case DOC_ONLY -> UnitKind.DOC;
+            case HARNESS_ONLY -> UnitKind.HARNESS;
             case ANY -> null;
         };
     }

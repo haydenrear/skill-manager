@@ -205,4 +205,21 @@ public sealed interface ContextFact {
             Severity severity) implements ContextFact {
         public enum Severity { INFO, WARN, ERROR }
     }
+
+    /**
+     * Per-binding outcome from {@link SkillEffect.SyncHarness}.
+     * {@code action} is one of: APPLIED (new or replaced binding
+     * landed), UPGRADED (existing binding's bytes/symlink refreshed),
+     * REMOVED (binding was in the ledger but no longer in the
+     * template — torn down), FAILED (couldn't apply / remove).
+     */
+    record HarnessBindingSynced(
+            String harnessName,
+            String instanceId,
+            String bindingId,
+            String unitName,
+            Action action,
+            String description) implements ContextFact {
+        public enum Action { APPLIED, UPGRADED, REMOVED, FAILED }
+    }
 }

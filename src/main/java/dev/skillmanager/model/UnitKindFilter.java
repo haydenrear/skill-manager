@@ -15,7 +15,8 @@ public enum UnitKindFilter {
     ANY,
     SKILL_ONLY,
     PLUGIN_ONLY,
-    DOC_ONLY;
+    DOC_ONLY,
+    HARNESS_ONLY;
 
     public boolean accepts(UnitKind kind) {
         return switch (this) {
@@ -23,6 +24,7 @@ public enum UnitKindFilter {
             case SKILL_ONLY -> kind == UnitKind.SKILL;
             case PLUGIN_ONLY -> kind == UnitKind.PLUGIN;
             case DOC_ONLY -> kind == UnitKind.DOC;
+            case HARNESS_ONLY -> kind == UnitKind.HARNESS;
         };
     }
 
@@ -31,6 +33,7 @@ public enum UnitKindFilter {
             case SKILL -> SKILL_ONLY;
             case PLUGIN -> PLUGIN_ONLY;
             case DOC -> DOC_ONLY;
+            case HARNESS -> HARNESS_ONLY;
         };
     }
 }

@@ -330,6 +330,11 @@ public final class Executor {
             // snapshot — the dest bytes themselves are the only
             // rollback target and we don't capture them.
             case SkillEffect.SyncDocRepo e -> List.of();
+            // SyncHarness is similarly forward-only — it reconciles
+            // ledger rows against a fresh plan. The internal apply path
+            // is idempotent; capturing pre-state ledger snapshots for
+            // every unit it might touch is not worth the cost.
+            case SkillEffect.SyncHarness e -> List.of();
         };
     }
 
@@ -525,6 +530,7 @@ public final class Executor {
             }
             case SkillEffect.UnmaterializeProjection e -> List.of();
             case SkillEffect.SyncDocRepo e -> List.of();
+            case SkillEffect.SyncHarness e -> List.of();
         };
     }
 
@@ -620,8 +626,9 @@ public final class Executor {
                     name, null, name,
                     java.util.List.of(), java.util.List.of(), java.util.List.of(), java.util.List.of(),
                     java.util.Map.of(), java.util.List.of(), null);
-            case DOC -> throw new IllegalStateException(
-                    "doc-repos do not project into agent dirs — no UnprojectIfOrphan path");
+            case DOC, HARNESS -> throw new IllegalStateException(
+                    "doc-repos and harness templates do not project into agent dirs — "
+                            + "no UnprojectIfOrphan path");
         };
     }
 

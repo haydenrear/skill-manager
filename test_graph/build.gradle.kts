@@ -455,4 +455,20 @@ validationGraph {
                 .dependsOn("plugin.contained.skill.not.addressable",
                         "plugin.uninstalled.mixed.orphans")
     }
+
+    // -------------------------------------------------------- doc-smoke
+    //
+    // Ticket-48 (doc-repos) + ticket-49 (bindings) end-to-end. No
+    // gateway / MCP / registry needed — doc-repos go through the
+    // local-install path (file://...) and bindings live entirely on
+    // the local filesystem + the projection ledger.
+    testGraph("doc-smoke") {
+        node("sources/common/EnvPrepared.java")
+        node("sources/smoke/DocRepoInstalled.java")
+        node("sources/smoke/DocBoundToProject.java")
+        node("sources/smoke/DocSyncUpgrade.java")
+        node("sources/smoke/DocSyncLocalEditPreserved.java")
+        node("sources/smoke/DocSyncForceClobbers.java")
+        node("sources/smoke/DocUnbindCleansUp.java")
+    }
 }

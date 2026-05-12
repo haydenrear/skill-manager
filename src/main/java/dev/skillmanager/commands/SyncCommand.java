@@ -161,11 +161,11 @@ public final class SyncCommand implements Callable<Integer> {
 
     private List<SyncUseCase.Target> resolveTargets(SkillStore store) throws IOException {
         if (name != null && !name.isBlank()) {
-            // Kind-aware dispatch: doc-repos (#48) route through
-            // SyncDocRepo (the four-state matrix); skills + plugins
-            // continue through the git / from-dir flows. Future
-            // kinds (e.g. harness templates #47) add their own
-            // Target variants here.
+            // Kind-aware dispatch:
+            //   SKILL / PLUGIN  → git pull or --from dir
+            //   DOC             → SyncDocRepo (four-state matrix)
+            //   HARNESS         → fan out one SyncHarness per known
+            //                     instance of that template
             dev.skillmanager.model.UnitKind kind = kindOf(store, name);
             if (kind == dev.skillmanager.model.UnitKind.DOC) {
                 if (fromDir != null) {
@@ -173,20 +173,56 @@ public final class SyncCommand implements Callable<Integer> {
                 }
                 return List.of(new SyncUseCase.Target.DocRepo(name, force));
             }
+            if (kind == dev.skillmanager.model.UnitKind.HARNESS) {
+                if (fromDir != null) {
+                    Log.warn("--from is not supported for harness templates — ignoring");
+                }
+                return harnessInstanceTargets(store, name);
+            }
             return fromDir != null
                     ? List.of(new SyncUseCase.Target.FromDir(name, fromDir))
                     : List.of(new SyncUseCase.Target.Git(name));
         }
-        // Walk every installed unit (skills + plugins + doc-repos) so a
-        // no-arg sync re-runs the post-update tail (or doc-repo drift
-        // sweep) over the full set rather than missing kinds.
+        // Walk every installed unit so a no-arg sync re-runs the
+        // post-update tail (or doc-repo drift sweep, or harness
+        // reconcile) over the full set rather than missing kinds.
         List<SyncUseCase.Target> out = new ArrayList<>();
         for (var u : store.listInstalledUnits()) {
-            if (u.kind() == dev.skillmanager.model.UnitKind.DOC) {
-                out.add(new SyncUseCase.Target.DocRepo(u.name(), force));
-            } else {
-                out.add(new SyncUseCase.Target.Git(u.name()));
+            switch (u.kind()) {
+                case DOC -> out.add(new SyncUseCase.Target.DocRepo(u.name(), force));
+                case HARNESS -> out.addAll(harnessInstanceTargets(store, u.name()));
+                case SKILL, PLUGIN -> out.add(new SyncUseCase.Target.Git(u.name()));
             }
+        }
+        return out;
+    }
+
+    /**
+     * Discover every live instance of {@code templateName} from the
+     * binding ledger and emit one {@link SyncUseCase.Target.Harness}
+     * per instance. Instances are identified by the
+     * {@code harness:<instanceId>:} prefix on harness-source bindings.
+     */
+    private static List<SyncUseCase.Target> harnessInstanceTargets(SkillStore store, String templateName) {
+        dev.skillmanager.bindings.BindingStore bs = new dev.skillmanager.bindings.BindingStore(store);
+        java.util.Set<String> instanceIds = new java.util.LinkedHashSet<>();
+        for (var b : bs.listAll()) {
+            if (b.source() != dev.skillmanager.bindings.BindingSource.HARNESS) continue;
+            String id = b.bindingId();
+            if (!id.startsWith("harness:")) continue;
+            String rest = id.substring("harness:".length());
+            int colon = rest.indexOf(':');
+            if (colon < 0) continue;
+            instanceIds.add(rest.substring(0, colon));
+        }
+        if (instanceIds.isEmpty()) {
+            Log.warn("harness template %s has no live instances — `skill-manager harness instantiate %s`",
+                    templateName, templateName);
+            return List.of();
+        }
+        List<SyncUseCase.Target> out = new ArrayList<>(instanceIds.size());
+        for (String iid : instanceIds) {
+            out.add(new SyncUseCase.Target.Harness(templateName, iid));
         }
         return out;
     }

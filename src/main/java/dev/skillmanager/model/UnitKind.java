@@ -19,5 +19,17 @@ public enum UnitKind {
      * default skill/plugin dir — they are bound explicitly through
      * {@code skill-manager bind doc:<repo>[/<source>] --to <root>}.
      */
-    DOC
+    DOC,
+    /**
+     * A harness template (#47): a named, versioned bundle of skills +
+     * plugins + doc-repo sources + MCP tool selections. Templates
+     * install into the store like any other unit
+     * ({@code <store>/harnesses/<name>/}), then instantiation
+     * ({@code skill-manager harness instantiate}) fans out
+     * {@link dev.skillmanager.bindings.BindingSource#HARNESS}
+     * bindings per referenced unit into a sandbox root. Harness
+     * templates do not project into agent dirs themselves — they're
+     * metadata for the instantiator.
+     */
+    HARNESS
 }

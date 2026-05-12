@@ -27,7 +27,7 @@ import java.util.List;
  * {@code kind()} is a smell that the code should be widened to read
  * the field directly off the unit.
  */
-public sealed interface AgentUnit permits PluginUnit, SkillUnit, DocUnit {
+public sealed interface AgentUnit permits PluginUnit, SkillUnit, DocUnit, HarnessUnit {
 
     String name();
 

@@ -285,6 +285,17 @@ public final class ConsoleProgramRenderer implements ProgramRenderer {
                     case ERROR -> Log.error("doc-sync %s — %s", prefix, x.description());
                 }
             }
+            case ContextFact.HarnessBindingSynced x -> {
+                String prefix = x.harnessName() + ":" + x.instanceId();
+                switch (x.action()) {
+                    case APPLIED -> Log.ok("harness-sync %s — applied %s", prefix, x.unitName());
+                    case UPGRADED -> Log.info("harness-sync %s — upgraded %s", prefix, x.unitName());
+                    case REMOVED -> Log.ok("harness-sync %s — removed %s (orphan)",
+                            prefix, x.unitName());
+                    case FAILED -> Log.error("harness-sync %s — %s failed: %s",
+                            prefix, x.unitName(), x.description());
+                }
+            }
         }
     }
 

@@ -75,6 +75,19 @@ public final class SyncUseCase {
          * and conflict destinations; default is preserve-with-warning.
          */
         record DocRepo(String skillName, boolean force) implements Target {}
+        /**
+         * Harness instance reconciliation (#47): re-runs the
+         * instantiator against {@code instanceId} so changes to the
+         * template (added / removed unit references, version bumps,
+         * doc-repo source changes) propagate into the live sandbox.
+         * Idempotent: stable harness binding ids mean re-applying the
+         * same plan rewrites the existing bindings.
+         *
+         * <p>{@code skillName} carries the harness template name so the
+         * existing {@link Target#skillName} surface keeps working for
+         * legacy callers that don't know about the instance.
+         */
+        record Harness(String skillName, String instanceId) implements Target {}
     }
 
     public record Report(
@@ -139,6 +152,8 @@ public final class SyncUseCase {
                         f.skillName(), f.dir(), options.merge(), options.yesForFromDir()));
                 case Target.DocRepo d -> effects.add(new SkillEffect.SyncDocRepo(
                         d.skillName(), d.force()));
+                case Target.Harness h -> effects.add(new SkillEffect.SyncHarness(
+                        h.skillName(), h.instanceId()));
             }
         }
         return new Program<>("sync-stage1-" + UUID.randomUUID(), effects, receipts -> null);

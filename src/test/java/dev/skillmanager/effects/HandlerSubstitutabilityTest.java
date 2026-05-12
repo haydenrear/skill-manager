@@ -26,10 +26,10 @@ public final class HandlerSubstitutabilityTest {
 
         for (UnitKind kind : UnitKind.values()) {
             // Handler substitutability is a SKILL × PLUGIN parity contract.
-            // DOC fixtures use a different scaffold path (no deps) so the
-            // shared sweep doesn't apply. Doc-repo handler coverage lives
-            // in BindingsTest + the upcoming doc-repo tests.
-            if (kind == UnitKind.DOC) continue;
+            // DOC and HARNESS fixtures use different scaffold paths (no
+            // deps) so the shared sweep doesn't apply. Their handler
+            // coverage lives in BindingsTest / DocRepoTest / HarnessTest.
+            if (kind == UnitKind.DOC || kind == UnitKind.HARNESS) continue;
             String k = kind.name().toLowerCase();
 
             suite.test(k + " — AddUnitError writes ErrorAdded fact", () -> {

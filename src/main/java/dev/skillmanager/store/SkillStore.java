@@ -22,6 +22,7 @@ public final class SkillStore {
     private final Path skillsDir;
     private final Path pluginsDir;
     private final Path docsDir;
+    private final Path harnessesDir;
     private final Path binDir;
     private final Path cliBinDir;
     private final Path mcpBinDir;
@@ -39,6 +40,10 @@ public final class SkillStore {
         // via the coord `doc:<name>/<source>` and projected into
         // target roots through tracked-copy bindings.
         this.docsDir = root.resolve("docs");
+        // Harness templates (#47) land under harnesses/<name>/. Templates
+        // are metadata only (a harness.toml + an optional README); the
+        // instantiator turns them into Bindings on demand.
+        this.harnessesDir = root.resolve("harnesses");
         this.binDir = root.resolve("bin");
         this.cliBinDir = binDir.resolve("cli");
         this.mcpBinDir = binDir.resolve("mcp");
@@ -64,6 +69,7 @@ public final class SkillStore {
     public Path skillsDir() { return skillsDir; }
     public Path pluginsDir() { return pluginsDir; }
     public Path docsDir() { return docsDir; }
+    public Path harnessesDir() { return harnessesDir; }
     public Path binDir() { return binDir; }
     public Path cliBinDir() { return cliBinDir; }
     public Path mcpBinDir() { return mcpBinDir; }
@@ -86,6 +92,7 @@ public final class SkillStore {
         Fs.ensureDir(skillsDir);
         Fs.ensureDir(pluginsDir);
         Fs.ensureDir(docsDir);
+        Fs.ensureDir(harnessesDir);
         Fs.ensureDir(binDir);
         Fs.ensureDir(cliBinDir);
         Fs.ensureDir(mcpBinDir);
@@ -110,6 +117,7 @@ public final class SkillStore {
             case PLUGIN -> pluginsDir.resolve(name);
             case SKILL -> skillsDir.resolve(name);
             case DOC -> docsDir.resolve(name);
+            case HARNESS -> harnessesDir.resolve(name);
         };
     }
 
@@ -124,14 +132,28 @@ public final class SkillStore {
                 && Files.isRegularFile(pd.resolve(PluginParser.PLUGIN_JSON_PATH));
     }
 
+    /** True iff {@code docs/<name>/skill-manager.toml} exists (#48). */
+    public boolean containsDocRepo(String name) {
+        Path dd = docsDir.resolve(name);
+        return Files.isDirectory(dd)
+                && Files.isRegularFile(dd.resolve(dev.skillmanager.model.DocRepoParser.TOML_FILENAME));
+    }
+
+    /** True iff {@code harnesses/<name>/harness.toml} exists (#47). */
+    public boolean containsHarness(String name) {
+        Path hd = harnessesDir.resolve(name);
+        return Files.isDirectory(hd)
+                && Files.isRegularFile(hd.resolve(dev.skillmanager.model.HarnessParser.TOML_FILENAME));
+    }
+
     /**
      * Kind-agnostic install check: true if the unit's directory exists
-     * with the appropriate manifest under either {@code skills/} (via
-     * {@link #contains(String)}) or {@code plugins/} (via
-     * {@link #containsPlugin(String)}).
+     * with the appropriate manifest under any of {@code skills/},
+     * {@code plugins/}, {@code docs/}, or {@code harnesses/}.
      */
     public boolean containsUnit(String name) {
-        return contains(name) || containsPlugin(name);
+        return contains(name) || containsPlugin(name)
+                || containsDocRepo(name) || containsHarness(name);
     }
 
     public Optional<Skill> load(String name) throws IOException {

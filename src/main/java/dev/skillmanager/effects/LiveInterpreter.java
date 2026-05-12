@@ -211,6 +211,7 @@ public final class LiveInterpreter implements ProgramInterpreter {
             case SkillEffect.MaterializeProjection e -> materializeProjection(e);
             case SkillEffect.UnmaterializeProjection e -> unmaterializeProjection(e);
             case SkillEffect.SyncDocRepo e -> syncDocRepo(e, ctx);
+            case SkillEffect.SyncHarness e -> syncHarness(e, ctx);
         };
     }
 
@@ -1249,8 +1250,9 @@ public final class LiveInterpreter implements ProgramInterpreter {
                     name, null, name,
                     List.of(), List.of(), List.of(), List.of(),
                     java.util.Map.of(), List.of(), null);
-            case DOC -> throw new IllegalStateException(
-                    "doc-repos do not project into agent dirs — no projector unlink path");
+            case DOC, HARNESS -> throw new IllegalStateException(
+                    "doc-repos and harness templates do not project into agent dirs — "
+                            + "no projector unlink path");
         };
     }
 
@@ -1509,8 +1511,9 @@ public final class LiveInterpreter implements ProgramInterpreter {
         java.nio.file.Path targetRoot = switch (unit.kind()) {
             case SKILL -> proj.skillsDir();
             case PLUGIN -> proj.pluginsDir();
-            case DOC -> throw new IllegalStateException(
-                    "doc-repos never reach SyncAgents — they don't project into agent dirs");
+            case DOC, HARNESS -> throw new IllegalStateException(
+                    "doc-repos and harness templates never reach SyncAgents — "
+                            + "they don't project into agent dirs");
         };
         List<Projection> ledgerProjections = new ArrayList<>(entries.size());
         for (dev.skillmanager.project.Projection e : entries) {
@@ -1564,6 +1567,136 @@ public final class LiveInterpreter implements ProgramInterpreter {
                     out.errors() + " binding(s) errored, " + out.warnings() + " warning(s)");
         }
         return EffectReceipt.ok(e, facts);
+    }
+
+    private EffectReceipt syncHarness(SkillEffect.SyncHarness e, EffectContext ctx) {
+        // Reconcile a harness instance: re-run the planner, replace
+        // ledger rows in place (stable ids — withBinding overwrites),
+        // re-materialize each projection (OVERWRITE policy on the
+        // planned bindings), and tear down any ledger rows that the
+        // new plan no longer contains.
+        java.util.List<ContextFact> facts = new java.util.ArrayList<>();
+        try {
+            dev.skillmanager.model.HarnessUnit harness;
+            try {
+                harness = dev.skillmanager.model.HarnessParser.load(
+                        ctx.store().unitDir(e.harnessName(),
+                                dev.skillmanager.model.UnitKind.HARNESS));
+            } catch (IOException io) {
+                return EffectReceipt.failed(e,
+                        "could not load harness template " + e.harnessName() + ": " + io.getMessage());
+            }
+            java.nio.file.Path sandboxRoot = ctx.store().harnessesDir()
+                    .resolve(dev.skillmanager.commands.HarnessCommand.INSTANCES_DIR);
+            dev.skillmanager.bindings.HarnessInstantiator.Plan plan =
+                    dev.skillmanager.bindings.HarnessInstantiator.plan(
+                            harness, e.instanceId(), sandboxRoot, ctx.store());
+
+            java.util.Set<String> plannedIds = new java.util.LinkedHashSet<>();
+            for (var b : plan.bindings()) plannedIds.add(b.bindingId());
+
+            // 1) Apply each planned binding (idempotent: same id replaces).
+            BindingStore bs = ctx.bindingStore();
+            for (var b : plan.bindings()) {
+                ProjectionLedger cur = bs.read(b.unitName());
+                boolean isNew = cur.findById(b.bindingId()).isEmpty();
+                for (Projection p : b.projections()) {
+                    try {
+                        applyProjectionOverwrite(p);
+                    } catch (IOException io) {
+                        facts.add(new ContextFact.HarnessBindingSynced(
+                                e.harnessName(), e.instanceId(), b.bindingId(),
+                                b.unitName(), ContextFact.HarnessBindingSynced.Action.FAILED,
+                                "materialize failed at " + p.destPath() + ": " + io.getMessage()));
+                    }
+                }
+                bs.write(cur.withBinding(b));
+                facts.add(new ContextFact.HarnessBindingSynced(
+                        e.harnessName(), e.instanceId(), b.bindingId(), b.unitName(),
+                        isNew ? ContextFact.HarnessBindingSynced.Action.APPLIED
+                              : ContextFact.HarnessBindingSynced.Action.UPGRADED,
+                        b.bindingId()));
+            }
+
+            // 2) Tear down orphan harness:<instanceId>:* bindings.
+            String prefix = "harness:" + e.instanceId() + ":";
+            for (var existing : bs.listAll()) {
+                if (!existing.bindingId().startsWith(prefix)) continue;
+                if (plannedIds.contains(existing.bindingId())) continue;
+                java.util.List<Projection> projs = new java.util.ArrayList<>(existing.projections());
+                java.util.Collections.reverse(projs);
+                for (Projection p : projs) {
+                    try { reverseProjection(p); } catch (IOException ignored) {}
+                }
+                ProjectionLedger cur = bs.read(existing.unitName());
+                bs.write(cur.withoutBinding(existing.bindingId()));
+                facts.add(new ContextFact.HarnessBindingSynced(
+                        e.harnessName(), e.instanceId(), existing.bindingId(),
+                        existing.unitName(), ContextFact.HarnessBindingSynced.Action.REMOVED,
+                        "no longer referenced by template"));
+            }
+            return EffectReceipt.ok(e, facts);
+        } catch (IOException io) {
+            return EffectReceipt.failed(e, facts, "sync-harness failed: " + io.getMessage());
+        }
+    }
+
+    /**
+     * Materialize one projection with {@link
+     * dev.skillmanager.bindings.ConflictPolicy#OVERWRITE} semantics —
+     * used by SyncHarness to refresh existing instance bindings.
+     * Pulled out of {@link #materializeProjection} so the
+     * reconcile path doesn't have to construct fake effects.
+     */
+    private void applyProjectionOverwrite(Projection p) throws IOException {
+        switch (p.kind()) {
+            case SYMLINK -> {
+                if (java.nio.file.Files.exists(p.destPath(), java.nio.file.LinkOption.NOFOLLOW_LINKS)) {
+                    if (java.nio.file.Files.isDirectory(p.destPath(),
+                            java.nio.file.LinkOption.NOFOLLOW_LINKS)
+                            && !java.nio.file.Files.isSymbolicLink(p.destPath())) {
+                        dev.skillmanager.shared.util.Fs.deleteRecursive(p.destPath());
+                    } else {
+                        java.nio.file.Files.delete(p.destPath());
+                    }
+                }
+                java.nio.file.Files.createDirectories(p.destPath().getParent());
+                try {
+                    java.nio.file.Files.createSymbolicLink(p.destPath(), p.sourcePath());
+                } catch (UnsupportedOperationException | IOException sym) {
+                    dev.skillmanager.shared.util.Fs.copyRecursive(p.sourcePath(), p.destPath());
+                }
+            }
+            case COPY -> {
+                if (java.nio.file.Files.exists(p.destPath(), java.nio.file.LinkOption.NOFOLLOW_LINKS)) {
+                    dev.skillmanager.shared.util.Fs.deleteRecursive(p.destPath());
+                }
+                java.nio.file.Files.createDirectories(p.destPath().getParent());
+                dev.skillmanager.shared.util.Fs.copyRecursive(p.sourcePath(), p.destPath());
+            }
+            case MANAGED_COPY -> {
+                java.nio.file.Files.createDirectories(p.destPath().getParent());
+                java.nio.file.Files.copy(p.sourcePath(), p.destPath(),
+                        java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            }
+            case IMPORT_DIRECTIVE -> {
+                String line = "@" + p.sourcePath().toString();
+                java.nio.file.Path md = p.destPath();
+                java.nio.file.Files.createDirectories(md.getParent());
+                String current = java.nio.file.Files.exists(md)
+                        ? java.nio.file.Files.readString(md)
+                        : "";
+                String next = dev.skillmanager.bindings.ManagedImports.upsertLine(current, line);
+                java.nio.file.Files.writeString(md, next);
+            }
+            case RENAMED_ORIGINAL_BACKUP -> {
+                // Harness rebinds don't produce RENAMED_ORIGINAL_BACKUP
+                // projections (instances use OVERWRITE policy) — this
+                // arm exists for switch exhaustiveness only.
+                throw new IllegalStateException(
+                        "RENAMED_ORIGINAL_BACKUP not expected in harness sync flow");
+            }
+        }
     }
 
     /**

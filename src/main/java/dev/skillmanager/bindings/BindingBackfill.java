@@ -44,9 +44,10 @@ public final class BindingBackfill {
         int written = 0;
         try {
             for (var rec : store.listInstalledUnits()) {
-                // Doc-repos don't project into agent dirs — they're
-                // bound explicitly to project roots. Backfill is a no-op.
-                if (rec.kind() == UnitKind.DOC) continue;
+                // Doc-repos and harness templates don't project into
+                // agent dirs — they bind explicitly to project roots
+                // (doc-repos) or sandboxes (harnesses). Backfill skips.
+                if (rec.kind() == UnitKind.DOC || rec.kind() == UnitKind.HARNESS) continue;
                 ProjectionLedger ledger = bs.read(rec.name());
                 for (Projector proj : projectors.projectors()) {
                     String bindingId = LiveInterpreter.defaultBindingId(proj.agentId(), rec.name());
@@ -74,8 +75,9 @@ public final class BindingBackfill {
                     Path targetRoot = switch (rec.kind()) {
                         case SKILL -> proj.skillsDir();
                         case PLUGIN -> proj.pluginsDir();
-                        case DOC -> throw new IllegalStateException(
-                                "doc-repos are filtered earlier and never reach the projector loop");
+                        case DOC, HARNESS -> throw new IllegalStateException(
+                                "doc-repos and harness templates are filtered earlier and "
+                                        + "never reach the projector loop");
                     };
                     Binding b = new Binding(
                             bindingId, rec.name(), rec.kind(), null,
@@ -114,8 +116,8 @@ public final class BindingBackfill {
                     name, null, name,
                     java.util.List.of(), java.util.List.of(), java.util.List.of(), java.util.List.of(),
                     java.util.Map.of(), java.util.List.of(), null);
-            case DOC -> throw new IllegalStateException(
-                    "doc-repos are filtered before this call site");
+            case DOC, HARNESS -> throw new IllegalStateException(
+                    "doc-repos and harness templates are filtered before this call site");
         };
     }
 }
