@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import logging
+import os
 from contextlib import asynccontextmanager
 from typing import Annotated, Any, AsyncIterator
 
@@ -12,7 +13,7 @@ from pydantic import Field
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
-from .clients import MCPError
+from .clients import MCPError, _stable_subprocess_cwd
 from .config import GatewayConfigModel, load_config
 from .models import DEFAULT_SCOPE, InitSchemaField, VALID_SCOPES
 from .persistence import DynamicServerStore, LastInitStore
@@ -561,6 +562,15 @@ def main() -> None:
     args = parser.parse_args()
 
     logging.basicConfig(level=getattr(logging, args.log_level.upper(), logging.INFO))
+    # The Java launcher (GatewayRuntime) sets our cwd to
+    # ``<install>/virtual-mcp-gateway``. On a Homebrew install that path is
+    # versioned under the cellar and disappears on ``brew upgrade`` — the
+    # surviving daemon then spawns stdio children with an invalid cwd,
+    # crashing every Node-based MCP server (``runpod`` etc.) with
+    # ``uv_cwd ENOENT`` before the handshake. Re-anchor to a stable dir on
+    # boot so the daemon itself, and any cwd-inheriting subprocess we
+    # haven't explicitly overridden, stays alive across upgrades.
+    os.chdir(_stable_subprocess_cwd())
     app = build_app(args.config)
     uvicorn.run(app, host=args.host, port=args.port)
 

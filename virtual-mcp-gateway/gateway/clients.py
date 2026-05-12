@@ -4,6 +4,8 @@ import abc
 import asyncio
 import contextlib
 import logging
+import os
+import tempfile
 from typing import Any, Dict, List, Optional
 
 import httpx
@@ -95,6 +97,38 @@ def _is_broken_session_error(exc: BaseException | None) -> bool:
         cur = cur.__cause__ or cur.__context__
     text = str(exc).lower()
     return any(p in text for p in _BROKEN_SESSION_MESSAGE_PATTERNS)
+
+
+def _stable_subprocess_cwd() -> str:
+    """A working directory guaranteed to exist for spawned stdio children.
+
+    The gateway daemon is launched by ``GatewayRuntime`` with its cwd set
+    to ``<install>/virtual-mcp-gateway`` — on a Homebrew install that path
+    lives under the versioned cellar (e.g. ``…/Cellar/skill-manager/0.11.0/
+    libexec/share/virtual-mcp-gateway``). ``brew upgrade`` removes the old
+    cellar; if the daemon is still running, its cwd now points at a deleted
+    directory and every stdio child it spawns inherits that dead cwd.
+    Node-based servers (``npx``) call ``process.cwd()`` on startup and die
+    with ``Error: ENOENT … uv_cwd`` before the MCP handshake even begins —
+    surfacing to skill-manager as ``MCP_REGISTRATION_FAILED`` (e.g. the
+    ``runpod`` server under ``hyper-experiments``).
+
+    Picking an explicit, stable cwd here breaks that inheritance. Preference
+    order:
+      1. ``$VMG_DATA_DIR`` — set by ``GatewayRuntime`` to a stable directory
+         under ``$SKILL_MANAGER_HOME`` that is independent of any cellar.
+      2. ``$HOME`` — universally available and where ``npm``/``uv`` expect
+         to read their per-user config.
+      3. The system tmp dir — last-resort fallback.
+    """
+    home = os.path.expanduser("~")
+    for candidate in (
+        os.environ.get("VMG_DATA_DIR"),
+        home if home != "~" else None,
+    ):
+        if candidate and os.path.isdir(candidate):
+            return candidate
+    return tempfile.gettempdir()
 
 
 class MCPError(RuntimeError):
@@ -611,6 +645,7 @@ class StdioMCPClient(MCPClientLibraryClient):
             command=self.config.command[0],
             args=self.config.command[1:],
             env=getattr(self.config, "env", None),  # optional later
+            cwd=_stable_subprocess_cwd(),
         )
         async with stdio_client(params) as streams:
             yield streams
