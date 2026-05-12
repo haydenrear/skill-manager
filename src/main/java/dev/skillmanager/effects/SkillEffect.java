@@ -76,7 +76,8 @@ public sealed interface SkillEffect permits
         SkillEffect.CreateBinding,
         SkillEffect.RemoveBinding,
         SkillEffect.MaterializeProjection,
-        SkillEffect.UnmaterializeProjection {
+        SkillEffect.UnmaterializeProjection,
+        SkillEffect.SyncDocRepo {
 
     // ------------------------------------------------------------------
     // Per-outcome continuations. Effect declares what the program should
@@ -661,4 +662,26 @@ public sealed interface SkillEffect permits
      * its own failures fail forward.
      */
     record UnmaterializeProjection(Projection projection) implements SkillEffect {}
+
+    /**
+     * Reconcile every binding for a doc-repo (#48) against the upstream
+     * source bytes in the store. Handler walks the projection ledger
+     * for {@code unitName}, routes each {@code MANAGED_COPY} projection
+     * through the four-state drift matrix
+     * ({@link dev.skillmanager.bindings.SyncDecision}), and reapplies
+     * {@code IMPORT_DIRECTIVE} rows idempotently. Emits one
+     * {@link ContextFact.DocBindingSynced} per visited binding so the
+     * renderer can surface upgrade / locally-edited / conflict /
+     * orphan-* states uniformly.
+     *
+     * <p>{@code force} clobbers locally-edited and conflict destinations
+     * (lost edits are reported via a {@code Severity.WARN} fact); the
+     * default is preserve-with-warning.
+     *
+     * <p>No compensation: sync is forward-only. A partway failure on
+     * one binding stops nothing — subsequent bindings still get a
+     * chance — and the receipt's {@link EffectStatus#PARTIAL} surfaces
+     * the per-binding errors without blocking the rest of the program.
+     */
+    record SyncDocRepo(String unitName, boolean force) implements SkillEffect {}
 }

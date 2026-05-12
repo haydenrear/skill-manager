@@ -10,5 +10,14 @@ package dev.skillmanager.model;
  */
 public enum UnitKind {
     SKILL,
-    PLUGIN
+    PLUGIN,
+    /**
+     * A doc-repo (#48): a manifested collection of markdown files
+     * (each a {@code [[sources]]} row in {@code skill-manager.toml})
+     * bindable into project CLAUDE.md / AGENTS.md via tracked copies
+     * + {@code @}-imports. Doc-repos do not project into any agent's
+     * default skill/plugin dir — they are bound explicitly through
+     * {@code skill-manager bind doc:<repo>[/<source>] --to <root>}.
+     */
+    DOC
 }

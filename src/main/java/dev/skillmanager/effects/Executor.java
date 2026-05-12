@@ -325,6 +325,11 @@ public final class Executor {
             // is a teardown — no compensation.
             case SkillEffect.MaterializeProjection e -> List.of();
             case SkillEffect.UnmaterializeProjection e -> List.of();
+            // SyncDocRepo is forward-only: it rewrites tracked-copy
+            // bytes based on the four-state matrix. No pre-state
+            // snapshot — the dest bytes themselves are the only
+            // rollback target and we don't capture them.
+            case SkillEffect.SyncDocRepo e -> List.of();
         };
     }
 
@@ -519,6 +524,7 @@ public final class Executor {
                         : List.of();
             }
             case SkillEffect.UnmaterializeProjection e -> List.of();
+            case SkillEffect.SyncDocRepo e -> List.of();
         };
     }
 
@@ -614,6 +620,8 @@ public final class Executor {
                     name, null, name,
                     java.util.List.of(), java.util.List.of(), java.util.List.of(), java.util.List.of(),
                     java.util.Map.of(), java.util.List.of(), null);
+            case DOC -> throw new IllegalStateException(
+                    "doc-repos do not project into agent dirs — no UnprojectIfOrphan path");
         };
     }
 

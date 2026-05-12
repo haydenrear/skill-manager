@@ -78,6 +78,11 @@ public final class SyncCommand implements Callable<Integer> {
                     + "gateway, or registry.")
     public boolean dryRun;
 
+    @Option(names = "--force",
+            description = "Doc-repo sync only: clobber locally-edited and conflict destinations. "
+                    + "Lost edits are surfaced as warnings.")
+    public boolean force;
+
     @Option(names = "--lock",
             description = "Reconcile against a vendored units.lock.toml at <path>. "
                     + "Walks the diff against the live state and runs sync over the listed units; "
@@ -156,16 +161,41 @@ public final class SyncCommand implements Callable<Integer> {
 
     private List<SyncUseCase.Target> resolveTargets(SkillStore store) throws IOException {
         if (name != null && !name.isBlank()) {
+            // Kind-aware dispatch: doc-repos (#48) route through
+            // SyncDocRepo (the four-state matrix); skills + plugins
+            // continue through the git / from-dir flows. Future
+            // kinds (e.g. harness templates #47) add their own
+            // Target variants here.
+            dev.skillmanager.model.UnitKind kind = kindOf(store, name);
+            if (kind == dev.skillmanager.model.UnitKind.DOC) {
+                if (fromDir != null) {
+                    Log.warn("--from is not supported for doc-repos — ignoring");
+                }
+                return List.of(new SyncUseCase.Target.DocRepo(name, force));
+            }
             return fromDir != null
                     ? List.of(new SyncUseCase.Target.FromDir(name, fromDir))
                     : List.of(new SyncUseCase.Target.Git(name));
         }
-        // Walk every installed unit (skills + plugins) so a no-arg
-        // sync re-runs the post-update tail over the full set rather
-        // than missing plugin-kind units.
+        // Walk every installed unit (skills + plugins + doc-repos) so a
+        // no-arg sync re-runs the post-update tail (or doc-repo drift
+        // sweep) over the full set rather than missing kinds.
         List<SyncUseCase.Target> out = new ArrayList<>();
-        for (var u : store.listInstalledUnits()) out.add(new SyncUseCase.Target.Git(u.name()));
+        for (var u : store.listInstalledUnits()) {
+            if (u.kind() == dev.skillmanager.model.UnitKind.DOC) {
+                out.add(new SyncUseCase.Target.DocRepo(u.name(), force));
+            } else {
+                out.add(new SyncUseCase.Target.Git(u.name()));
+            }
+        }
         return out;
+    }
+
+    private static dev.skillmanager.model.UnitKind kindOf(SkillStore store, String unitName) {
+        return new dev.skillmanager.source.UnitStore(store)
+                .read(unitName)
+                .map(dev.skillmanager.source.InstalledUnit::unitKind)
+                .orElse(dev.skillmanager.model.UnitKind.SKILL);
     }
 
     /**

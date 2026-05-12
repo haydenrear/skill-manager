@@ -229,6 +229,8 @@ public final class DryRunInterpreter implements ProgramInterpreter {
             case SkillEffect.UnmaterializeProjection e ->
                     Log.step("[%d] unmaterialize %s projection at %s",
                             n, e.projection().kind(), e.projection().destPath());
+            case SkillEffect.SyncDocRepo e ->
+                    Log.step("[%d] doc-repo sync %s (force=%s)", n, e.unitName(), e.force());
         }
     }
 }

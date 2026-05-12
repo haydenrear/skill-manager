@@ -27,10 +27,16 @@ public record Projection(
         String bindingId,
         /**
          * Absolute path in the store ({@code <store>/skills/<name>},
-         * {@code <store>/plugins/<name>}, etc.). Null for
-         * {@link ProjectionKind#RENAMED_ORIGINAL_BACKUP} rows where no
-         * store-side source exists — those rows describe a move of an
-         * existing user file out of the way.
+         * {@code <store>/plugins/<name>},
+         * {@code <store>/docs/<repo>/<source-file>}, etc.). Null for
+         * rows where no store-side source exists:
+         * <ul>
+         *   <li>{@link ProjectionKind#RENAMED_ORIGINAL_BACKUP} — describes
+         *       a move of an existing user file out of the way.</li>
+         *   <li>{@link ProjectionKind#IMPORT_DIRECTIVE} — the line text
+         *       is derived from the binding's sibling {@code MANAGED_COPY}
+         *       projection, not a store source path.</li>
+         * </ul>
          */
         Path sourcePath,
         /** Absolute path on the target side — where the projection lands. */
@@ -41,5 +47,25 @@ public record Projection(
          * the original destination path the existing file was moved
          * away from. Unbind moves the backup back to this path.
          */
-        String backupOf
-) {}
+        String backupOf,
+        /**
+         * For {@link ProjectionKind#MANAGED_COPY} only — hex SHA-256
+         * of the bytes copied into {@link #destPath} at the moment of
+         * the last successful apply. {@code null} for every other
+         * kind. Sync compares this against {@code currentSource} +
+         * {@code currentDest} to route into the four-state matrix
+         * (up-to-date / upgrade / locally-edited / conflict).
+         */
+        String boundHash
+) {
+    /**
+     * Legacy 5-arg constructor for callers that don't need the
+     * doc-repo {@code boundHash} field. New code uses the canonical
+     * 6-arg constructor directly; this keeps ticket-49 callsites
+     * compiling unchanged.
+     */
+    public Projection(String bindingId, Path sourcePath, Path destPath,
+                      ProjectionKind kind, String backupOf) {
+        this(bindingId, sourcePath, destPath, kind, backupOf, null);
+    }
+}

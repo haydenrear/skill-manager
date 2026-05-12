@@ -21,6 +21,7 @@ public final class SkillStore {
     private final Path root;
     private final Path skillsDir;
     private final Path pluginsDir;
+    private final Path docsDir;
     private final Path binDir;
     private final Path cliBinDir;
     private final Path mcpBinDir;
@@ -33,6 +34,11 @@ public final class SkillStore {
         this.root = root;
         this.skillsDir = root.resolve("skills");
         this.pluginsDir = root.resolve("plugins");
+        // Doc-repos (#48) land under docs/<name>/; sub-elements
+        // (individual markdown files under claude-md/) are addressed
+        // via the coord `doc:<name>/<source>` and projected into
+        // target roots through tracked-copy bindings.
+        this.docsDir = root.resolve("docs");
         this.binDir = root.resolve("bin");
         this.cliBinDir = binDir.resolve("cli");
         this.mcpBinDir = binDir.resolve("mcp");
@@ -57,6 +63,7 @@ public final class SkillStore {
     public Path root() { return root; }
     public Path skillsDir() { return skillsDir; }
     public Path pluginsDir() { return pluginsDir; }
+    public Path docsDir() { return docsDir; }
     public Path binDir() { return binDir; }
     public Path cliBinDir() { return cliBinDir; }
     public Path mcpBinDir() { return mcpBinDir; }
@@ -78,6 +85,7 @@ public final class SkillStore {
         Fs.ensureDir(root);
         Fs.ensureDir(skillsDir);
         Fs.ensureDir(pluginsDir);
+        Fs.ensureDir(docsDir);
         Fs.ensureDir(binDir);
         Fs.ensureDir(cliBinDir);
         Fs.ensureDir(mcpBinDir);
@@ -101,6 +109,7 @@ public final class SkillStore {
         return switch (kind) {
             case PLUGIN -> pluginsDir.resolve(name);
             case SKILL -> skillsDir.resolve(name);
+            case DOC -> docsDir.resolve(name);
         };
     }
 
