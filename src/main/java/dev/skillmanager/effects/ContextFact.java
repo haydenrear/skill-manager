@@ -22,6 +22,17 @@ public sealed interface ContextFact {
     /** DryRunInterpreter emits this on every effect so decoders can detect dry-run. */
     record DryRun() implements ContextFact {}
 
+    /**
+     * Carry a specific process exit code out of a {@link EffectStatus#HALTED}
+     * effect. Decoders translate this into the command-level exit code so
+     * effects like {@link SkillEffect.CheckInstallPolicyGate} (exit 5/6),
+     * {@link SkillEffect.BuildResolveGraphFromSource} (auth → 9, generic
+     * fetch → 10), and similar can encode a typed failure mode that
+     * persists through the report rather than collapsing into the
+     * default "halted" exit.
+     */
+    record HaltWithExitCode(int code, String reason) implements ContextFact {}
+
     // ---- Pre-flight ----
     record RegistryConfigured(String url) implements ContextFact {}
     record GatewayAlreadyRunning() implements ContextFact {}
@@ -55,6 +66,22 @@ public sealed interface ContextFact {
      *                    is on the underlying exception
      */
     record TransitiveFailed(String coord, String requestedBy, String reason) implements ContextFact {}
+
+    /**
+     * Summary fact emitted by every {@code BuildResolveGraphFrom*}
+     * effect once the resolver has run, so the renderer can show
+     * "resolved N skills, M failures" without summing facts itself.
+     */
+    record GraphResolved(int resolved, int failures) implements ContextFact {}
+
+    /**
+     * Onboard's discovery facts. Emitted per bundled-skill decision
+     * so the user sees which ones the effect picked up vs skipped.
+     */
+    record BundledSkillFound(String publishedName, String sourcePath) implements ContextFact {}
+    record BundledSkillAlreadyInstalled(String publishedName, String storePath) implements ContextFact {}
+    record BundledSkillMissing(String publishedName, String expectedPath) implements ContextFact {}
+    record BundledSkillFromGithub(String publishedName, String coord) implements ContextFact {}
 
     // ---- Tools / CLI deps ----
     record ToolsInstalledFor(int skillCount) implements ContextFact {}

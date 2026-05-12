@@ -98,8 +98,16 @@ public final class Executor {
     /**
      * Run a {@link StagedProgram}: stage 1 first, then stage 2 built from
      * the post-stage-1 ctx. Both stages contribute to a single journal so
-     * a stage-2 failure walks back stage-1 mutations too. Stage 2 doesn't
-     * run if stage 1 failed.
+     * a stage-2 failure walks back stage-1 mutations too.
+     *
+     * <p>Stage 2 is skipped when stage 1 ends in either {@link
+     * EffectStatus#FAILED} (rollback fires) OR {@link EffectStatus#HALTED}
+     * (cooperative stop — e.g. a policy gate rejection, a typed-exit-code
+     * resolve halt, or a "remove first" precondition). Halt is meant to
+     * apply across the whole multi-stage program, not just the stage that
+     * raised it — running stage 2 after a halt would let the post-update
+     * tail fire on top of a half-built state (e.g. resolve halted before
+     * commit, so there's nothing for SyncAgents to project).
      */
     public <R> Outcome<R> runStaged(StagedProgram<R> staged) {
         ConsoleProgramRenderer renderer = new ConsoleProgramRenderer(store, gateway);
@@ -112,7 +120,8 @@ public final class Executor {
             all.addAll(s1.receipts);
 
             boolean failed = s1.failed;
-            if (!failed) {
+            boolean halted = s1.halted;
+            if (!failed && !halted) {
                 Program<?> stage2 = staged.stage2().apply(ctx);
                 StageOutcome s2 = runStage(stage2, ctx, journal);
                 all.addAll(s2.receipts);
@@ -151,7 +160,7 @@ public final class Executor {
      * FAILED receipt. Does not walk the journal — the caller decides
      * whether a stage 2 should still run, and only walks back at the end.
      */
-    private record StageOutcome(List<EffectReceipt> receipts, boolean failed) {}
+    private record StageOutcome(List<EffectReceipt> receipts, boolean failed, boolean halted) {}
 
     private StageOutcome runStage(Program<?> program, EffectContext ctx, RollbackJournal journal) {
         List<EffectReceipt> receipts = new ArrayList<>();
@@ -190,14 +199,14 @@ public final class Executor {
             }
             // OK or PARTIAL — record what succeeded.
             journal.recordAll(preState);
-            journal.recordAll(compensationsFor(effect, r));
+            journal.recordAll(compensationsFor(effect, r, ctx));
         }
         // alwaysAfter always runs (cleanup); never compensated.
         for (SkillEffect effect : program.alwaysAfter()) {
             EffectReceipt r = interpreter.runOne(effect, ctx);
             receipts.add(r);
         }
-        return new StageOutcome(receipts, failed);
+        return new StageOutcome(receipts, failed, halted);
     }
 
     // ============================================================ derivation
@@ -256,6 +265,14 @@ public final class Executor {
             case SkillEffect.InstallPackageManager e -> List.of();
             case SkillEffect.SnapshotMcpDeps e -> List.of();
             case SkillEffect.RejectIfAlreadyInstalled e -> List.of();
+            case SkillEffect.RejectIfTopLevelInstalled e -> List.of();
+            case SkillEffect.CheckInstallPolicyGate e -> List.of();
+            // The BuildResolveGraphFrom* family stages temp dirs (cleaned
+            // up by CleanupResolvedGraph alwaysAfter) and writes to
+            // ctx.resolvedGraph() (per-execution, no on-disk rollback).
+            case SkillEffect.BuildResolveGraphFromSource e -> List.of();
+            case SkillEffect.BuildResolveGraphFromBundledSkills e -> List.of();
+            case SkillEffect.BuildResolveGraphFromUnmetReferences e -> List.of();
             case SkillEffect.BuildInstallPlan e -> List.of();
             case SkillEffect.RunInstallPlan e -> List.of();
             case SkillEffect.CleanupResolvedGraph e -> List.of();
@@ -308,6 +325,18 @@ public final class Executor {
      * half-applied.
      */
     static List<Compensation> compensationsFor(SkillEffect effect, EffectReceipt receipt) {
+        return compensationsFor(effect, receipt, null);
+    }
+
+    /**
+     * Same as {@link #compensationsFor(SkillEffect, EffectReceipt)} but with
+     * an {@link EffectContext} for the graph fallback. When the effect's
+     * own graph field is null (the new ctx-based plumbing path), the
+     * compensation derivation reads from {@link EffectContext#resolvedGraph()}
+     * instead. Tests still use the 2-arg overload — they pass the graph
+     * via the effect record, so the ctx fallback never fires for them.
+     */
+    static List<Compensation> compensationsFor(SkillEffect effect, EffectReceipt receipt, EffectContext ctx) {
         return switch (effect) {
             // ---- effects that produce rollback shapes ----
             case SkillEffect.CommitUnitsToStore c -> {
@@ -316,8 +345,12 @@ public final class Executor {
                 // forward path's "touched" tracking: the handler already
                 // self-rolls-back on mid-copy failure, so by the time we
                 // see SkillCommitted facts the dir is fully copied.
+                dev.skillmanager.resolve.ResolvedGraph graph = c.graph() != null
+                        ? c.graph()
+                        : (ctx == null ? null : ctx.resolvedGraph().orElse(null));
+                if (graph == null) yield List.of();
                 List<Compensation> out = new ArrayList<>();
-                for (var resolved : c.graph().resolved()) {
+                for (var resolved : graph.resolved()) {
                     boolean committed = receipt.facts().stream()
                             .anyMatch(f -> f instanceof ContextFact.SkillCommitted s
                                     && s.name().equals(resolved.name()));
@@ -332,8 +365,12 @@ public final class Executor {
                 // is DeleteInstalledUnit per unit — provenance has no prior
                 // record to restore (it runs after CommitUnitsToStore on a
                 // fresh install).
+                dev.skillmanager.resolve.ResolvedGraph graph = p.graph() != null
+                        ? p.graph()
+                        : (ctx == null ? null : ctx.resolvedGraph().orElse(null));
+                if (graph == null) yield List.of();
                 List<Compensation> out = new ArrayList<>();
-                for (var resolved : p.graph().resolved()) {
+                for (var resolved : graph.resolved()) {
                     out.add(new Compensation.DeleteInstalledUnit(resolved.name()));
                 }
                 yield out;
@@ -403,6 +440,14 @@ public final class Executor {
             case SkillEffect.InstallPackageManager e -> List.of();
             case SkillEffect.SnapshotMcpDeps e -> List.of();
             case SkillEffect.RejectIfAlreadyInstalled e -> List.of();
+            case SkillEffect.RejectIfTopLevelInstalled e -> List.of();
+            case SkillEffect.CheckInstallPolicyGate e -> List.of();
+            // The BuildResolveGraphFrom* family — no post-state
+            // rollback needed (temp dirs cleaned by CleanupResolvedGraph
+            // alwaysAfter; ctx slot is per-execution).
+            case SkillEffect.BuildResolveGraphFromSource e -> List.of();
+            case SkillEffect.BuildResolveGraphFromBundledSkills e -> List.of();
+            case SkillEffect.BuildResolveGraphFromUnmetReferences e -> List.of();
             case SkillEffect.BuildInstallPlan e -> List.of();
             case SkillEffect.RunInstallPlan e -> List.of();
             case SkillEffect.CleanupResolvedGraph e -> List.of();

@@ -10,9 +10,6 @@ import dev.skillmanager.effects.StagedProgram;
 import dev.skillmanager.mcp.GatewayConfig;
 import dev.skillmanager.mcp.McpWriter;
 import dev.skillmanager.model.Skill;
-import dev.skillmanager.model.UnitReference;
-import dev.skillmanager.resolve.Resolver;
-import dev.skillmanager.resolve.ResolvedGraph;
 import dev.skillmanager.source.InstalledUnit;
 import dev.skillmanager.source.UnitStore;
 import dev.skillmanager.store.SkillStore;
@@ -158,25 +155,23 @@ public final class SyncUseCase {
         for (var u : liveUnits) {
             if (u instanceof dev.skillmanager.model.SkillUnit su) liveSkills.add(su.skill());
         }
-        ResolvedGraph extras = discoverNewlySurfacedRefs(ctx, liveSkills);
-        if (!extras.resolved().isEmpty()) {
-            // Commit the newly-resolved units (their FetchUnit is implicit
-            // in the resolver — extras.resolved() carries staged source
-            // dirs ready to copy into the store).
-            effects.add(new SkillEffect.CommitUnitsToStore(extras));
-            // Build the plan over the extras + run it (tools/CLI/MCP).
-            effects.add(new SkillEffect.BuildInstallPlan(extras));
-            effects.add(new SkillEffect.RecordSourceProvenance(extras));
-            effects.add(new SkillEffect.RunInstallPlan(gw));
-            // Cleanup the resolver's staged temp dirs no matter how the
-            // tail goes.
-            alwaysAfter.add(new SkillEffect.CleanupResolvedGraph(extras));
-            // Re-list so the post-update tail sees the newly-committed units
-            // alongside the pre-existing ones.
-            try {
-                liveUnits = new ArrayList<>(store.listInstalledUnits());
-            } catch (IOException ignored) { /* fall through with stale liveUnits */ }
-        }
+        // Stage 2 owns the unmet-reference resolve via the new effect.
+        // The handler walks each live skill's references, resolves the
+        // unmet set, and writes the resulting graph into
+        // ctx.resolvedGraph() — every downstream effect with a no-arg
+        // constructor reads from there. When the resolve finds nothing
+        // unmet (steady-state sync), the graph is empty and the commit /
+        // plan / provenance / run effects are no-ops. Same shape as the
+        // install path's BuildResolveGraphFromSource preamble.
+        effects.add(new SkillEffect.BuildResolveGraphFromUnmetReferences(liveSkills));
+        effects.add(new SkillEffect.CommitUnitsToStore());
+        effects.add(new SkillEffect.BuildInstallPlan());
+        effects.add(new SkillEffect.RecordSourceProvenance());
+        effects.add(new SkillEffect.RunInstallPlan(gw));
+        // Cleanup the resolver's staged temp dirs no matter how the
+        // tail goes — the resolve effect populates ctx with a fresh
+        // graph each pass.
+        alwaysAfter.add(new SkillEffect.CleanupResolvedGraph());
 
         effects.add(new SkillEffect.InstallTools(liveUnits));
         effects.add(new SkillEffect.InstallCli(liveUnits));
@@ -195,11 +190,13 @@ public final class SyncUseCase {
         }
         if (options.withMcp()) effects.add(new SkillEffect.UnregisterMcpOrphans(gw));
 
-        // Lock flip — last main effect. Targets the post-merge live state
-        // plus any newly-resolved extras. Sync's "bumped sha" rows are the
-        // primary thing that changes here: a unit's installed-record
-        // gitHash advances after the merge, and the lock follows.
-        effects.add(buildLockUpdate(store, liveUnits, extras));
+        // Lock flip — last main effect. Targets the post-merge live state.
+        // Sync's "bumped sha" rows are the primary thing that changes
+        // here: a unit's installed-record gitHash advances after the
+        // merge, and the lock follows. Newly-resolved extras (if any)
+        // are reflected on the NEXT sync — their installed-records will
+        // have been written by RecordSourceProvenance by then.
+        effects.add(buildLockUpdate(store, liveUnits));
 
         Program<?> p = new Program<>("sync-stage2-" + UUID.randomUUID(), effects, receipts -> null);
         for (SkillEffect cleanup : alwaysAfter) p = p.withFinally(cleanup);
@@ -208,177 +205,37 @@ public final class SyncUseCase {
 
     /**
      * Compute the post-sync lock target. Reads the current lock and
-     * upserts one row per live unit (post-merge installed-record state)
-     * plus one row per extras unit (from the resolver's staged graph).
+     * upserts one row per live unit (post-merge installed-record state).
      * Plugins flow through the same path — the only thing the lock
      * cares about is the installed-record per name.
+     *
+     * <p>Newly-resolved extras (from
+     * {@link SkillEffect.BuildResolveGraphFromUnmetReferences}) aren't
+     * reflected here: at builder time they don't exist yet, and by the
+     * time the lock effect runs, the extras' installed-records have been
+     * written by {@link SkillEffect.RecordSourceProvenance}, but {@code
+     * live} was captured pre-resolve. They flow into the lock on the
+     * next sync via the live-skill loop above — same convergence pattern
+     * as drift detection.
      */
     private static SkillEffect.UpdateUnitsLock buildLockUpdate(
-            SkillStore store, List<dev.skillmanager.model.AgentUnit> live, ResolvedGraph extras) {
+            SkillStore store, List<dev.skillmanager.model.AgentUnit> live) {
         try {
             java.nio.file.Path lockPath = dev.skillmanager.lock.UnitsLockReader.defaultPath(store);
             dev.skillmanager.lock.UnitsLock current = dev.skillmanager.lock.UnitsLockReader.read(lockPath);
             UnitStore sources = new UnitStore(store);
             dev.skillmanager.lock.UnitsLock target = current;
-            // Upsert post-merge state for every live unit — sync's primary
-            // mutation is gitHash advancing on the installed-record after
-            // a merge lands.
             for (var u : live) {
                 InstalledUnit rec = sources.read(u.name()).orElse(null);
                 if (rec == null) continue;
                 target = target.withUnit(dev.skillmanager.lock.LockedUnit.fromInstalled(rec));
             }
-            // Newly-resolved extras: derive a tentative row; the
-            // installed-record will land after RecordSourceProvenance and a
-            // future sync will refine it via the live-skill loop above.
-            for (var r : extras.resolved()) {
-                target = target.withUnit(new dev.skillmanager.lock.LockedUnit(
-                        r.name(), r.unit().kind(), r.version(),
-                        InstalledUnit.InstallSource.UNKNOWN, null, null, r.sha256()));
-            }
             return new SkillEffect.UpdateUnitsLock(target, lockPath);
         } catch (IOException io) {
-            // No graceful no-op effect type; return a "no diff" update so
-            // the program shape stays consistent. Worst case: lock isn't
-            // refreshed for this sync — next install/sync will try again.
             return new SkillEffect.UpdateUnitsLock(
                     dev.skillmanager.lock.UnitsLock.empty(),
                     dev.skillmanager.lock.UnitsLockReader.defaultPath(store));
         }
-    }
-
-    /**
-     * Walk every live skill's references; any that don't resolve to a
-     * unit in the store gets resolved here. Returns an empty graph when
-     * everything is in order — the common no-op case.
-     *
-     * <p>Per-coord failures from the resolver are recorded against the
-     * parent unit in the store via
-     * {@link EffectContext#addError(String, InstalledUnit.ErrorKind, String)},
-     * so the breadcrumb survives until the next successful sync. The
-     * partial graph (everything that DID resolve) is still returned and
-     * installed — fail-fast would mask the rest of the failures and
-     * block working transitives behind one broken sibling.
-     */
-    private static ResolvedGraph discoverNewlySurfacedRefs(EffectContext ctx, List<Skill> live) {
-        SkillStore store = ctx.store();
-        List<Resolver.Coord> unmet = new ArrayList<>();
-        // Track which parent unit declared each unmet coord so we can
-        // attribute resolver failures back to them (and clear stale
-        // TRANSITIVE_RESOLVE_FAILED errors on parents whose refs now
-        // all resolve).
-        java.util.Map<String, java.util.Set<String>> coordToParents = new java.util.LinkedHashMap<>();
-        java.util.Set<String> seenCoords = new java.util.LinkedHashSet<>();
-        java.util.Set<String> parentsWithRefs = new java.util.LinkedHashSet<>();
-        for (Skill s : live) {
-            for (UnitReference ref : s.skillReferences()) {
-                String coord = referenceToCoord(ref, store, s.name());
-                String name = ref.name() != null ? ref.name() : guessName(coord);
-                if (name == null || name.isBlank()) continue;
-                parentsWithRefs.add(s.name());
-                if (store.contains(name)) continue;
-                coordToParents
-                        .computeIfAbsent(coord, k -> new java.util.LinkedHashSet<>())
-                        .add(s.name());
-                if (!seenCoords.add(name)) continue;
-                unmet.add(new Resolver.Coord(coord, ref.version()));
-            }
-        }
-        if (unmet.isEmpty()) {
-            // Everything in scope is already in the store — clear any
-            // lingering TRANSITIVE_RESOLVE_FAILED on the parents whose
-            // refs are now all satisfied. Self-clearing matches the
-            // pattern used for REGISTRY_UNAVAILABLE / AGENT_SYNC_FAILED.
-            for (String parent : parentsWithRefs) {
-                try { ctx.clearError(parent, InstalledUnit.ErrorKind.TRANSITIVE_RESOLVE_FAILED); }
-                catch (IOException ignored) {}
-            }
-            return new ResolvedGraph();
-        }
-
-        Resolver.ResolveOutcome outcome;
-        try {
-            outcome = new Resolver(store).resolveAll(unmet);
-        } catch (IOException io) {
-            // Filesystem-level error setting up the staging temp dirs —
-            // unrelated to any single coord's resolvability. Fall
-            // through with no extras (matching the prior swallow) and
-            // log; ctx.addError isn't useful here because we can't
-            // attribute to a specific parent.
-            dev.skillmanager.util.Log.warn(
-                    "sync: skipped fan-out of new refs — staging setup failed: %s",
-                    io.getMessage());
-            return new ResolvedGraph();
-        }
-
-        // Attribute each failure back to every parent that declared the
-        // failing coord. Multiple parents may declare the same coord;
-        // each gets the breadcrumb. Skip parents not in the store (the
-        // "first-time install" / pre-Program case can't happen here
-        // because sync runs against the live in-store set, but keep the
-        // guard so future refactors don't regress to silent ENOENT).
-        java.util.Set<String> parentsWithFailures = new java.util.LinkedHashSet<>();
-        for (Resolver.ResolveFailure f : outcome.failures()) {
-            // Render at warn level — matches the renderer's shape for
-            // the TransitiveFailed fact so the user sees every failure
-            // even before any effect runs.
-            String who = f.requestedBy() == null || f.requestedBy().isBlank()
-                    ? "(top-level)"
-                    : "needed by " + f.requestedBy();
-            dev.skillmanager.util.Log.warn("transitive: %s [%s] — %s",
-                    f.source(), who, f.reason());
-
-            java.util.Set<String> parents = coordToParents.getOrDefault(
-                    f.source(), java.util.Set.of());
-            for (String parent : parents) {
-                if (!store.contains(parent)) continue;
-                try {
-                    ctx.addError(parent,
-                            InstalledUnit.ErrorKind.TRANSITIVE_RESOLVE_FAILED,
-                            "could not resolve " + f.source() + ": " + f.reason());
-                    parentsWithFailures.add(parent);
-                } catch (IOException ignored) {
-                    // addError persistence failures shouldn't crash the
-                    // sync — the warn-line above is still the user-
-                    // visible signal.
-                }
-            }
-        }
-        // For parents whose refs ALL succeeded this pass, clear the
-        // error (if any). Self-healing — matches REGISTRY_UNAVAILABLE.
-        for (String parent : parentsWithRefs) {
-            if (parentsWithFailures.contains(parent)) continue;
-            try { ctx.clearError(parent, InstalledUnit.ErrorKind.TRANSITIVE_RESOLVE_FAILED); }
-            catch (IOException ignored) {}
-        }
-        return outcome.graph();
-    }
-
-    private static String referenceToCoord(UnitReference ref, SkillStore store, String parentSkillName) {
-        if (ref.isLocal()) {
-            Path rel = Path.of(ref.path());
-            if (rel.isAbsolute()) return rel.toString();
-            return store.skillDir(parentSkillName).resolve(rel).normalize().toString();
-        }
-        return ref.version() != null && !ref.version().isBlank()
-                ? ref.name() + "@" + ref.version()
-                : ref.name();
-    }
-
-    private static String guessName(String coord) {
-        if (coord == null) return null;
-        String s = coord;
-        int at = s.indexOf('@');
-        if (at >= 0) s = s.substring(0, at);
-        if (s.startsWith("file:")) s = s.substring("file:".length());
-        if (s.startsWith("github:")) {
-            int slash = s.lastIndexOf('/');
-            return slash >= 0 ? s.substring(slash + 1) : null;
-        }
-        if (s.endsWith(".git")) s = s.substring(0, s.length() - 4);
-        int slash = s.lastIndexOf('/');
-        String tail = slash >= 0 ? s.substring(slash + 1) : s;
-        return tail.isBlank() ? null : tail;
     }
 
     private static Report decode(List<EffectReceipt> receipts) {
