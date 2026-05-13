@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.12.0](https://github.com/haydenrear/skill-manager/compare/v0.11.1...v0.12.0) (2026-05-13)
+
+
+### Features
+
+* **bindings:** split install from bind via a per-unit projection ledger ([#49](https://github.com/haydenrear/skill-manager/issues/49)) ([e59f5b1](https://github.com/haydenrear/skill-manager/commit/e59f5b10d5338bfa806892ea7926de0e9e1c3adc))
+* **doc-repos:** bind markdown files via tracked copies + @-imports ([#48](https://github.com/haydenrear/skill-manager/issues/48)) ([1207667](https://github.com/haydenrear/skill-manager/commit/1207667abe18361df4a68496593d665d7a63860b))
+* **harness:** harness templates compose skills + plugins + doc-repos ([#47](https://github.com/haydenrear/skill-manager/issues/47)) ([50c45a9](https://github.com/haydenrear/skill-manager/commit/50c45a917f734190d3fdbda7403cf8955d4a29a0))
+* **harness:** instantiate writes to CLAUDE_CONFIG_DIR / CODEX_HOME / --project-dir ([b2393dd](https://github.com/haydenrear/skill-manager/commit/b2393dd79be9bfc3acfe9c54fd33717227f5aa1e))
+
 ## [0.11.1](https://github.com/haydenrear/skill-manager/compare/v0.11.0...v0.11.1) (2026-05-12)
 
 
