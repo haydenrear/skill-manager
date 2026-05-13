@@ -97,7 +97,13 @@ public final class RemoveUseCase {
                 }
                 effects.add(new SkillEffect.RemoveBinding(skillName, b.bindingId()));
             }
-        } else {
+        } else if (kind != UnitKind.DOC && kind != UnitKind.HARNESS) {
+            // Legacy unlink path only applies to skills and plugins —
+            // doc-repos and harness templates don't project into agent
+            // dirs and have nothing for UnlinkAgentUnit to remove. A
+            // doc-repo / harness with an empty ledger is just an
+            // installed-but-unbound unit; uninstall removes the store
+            // entry below and we're done.
             List<String> agents = agentsToUnlink == null
                     ? Agent.all().stream().map(Agent::id).toList()
                     : agentsToUnlink;

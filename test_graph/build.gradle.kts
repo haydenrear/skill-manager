@@ -102,11 +102,15 @@ validationGraph {
         // CLI lifecycle commands beyond install:
         //   - sync repairs install-time invariants (drifted symlinks,
         //     missed MCP deploys after env change),
+        //   - bind / unbind drop / remove an EXPLICIT skill binding
+        //     into a custom project root alongside the DEFAULT_AGENT
+        //     bindings install wrote (ticket-49 EXPLICIT path),
         //   - uninstall is the full counterpart to install (store +
         //     symlinks + orphan MCP unregister),
         //   - upgrade rolls back to the prior version when the new one
         //     fails to install.
         node("sources/smoke/SkillSynced.java")
+        node("sources/smoke/SkillBindUnbindCycle.java")
         node("sources/smoke/SkillUninstalled.java")
 
         node("sources/smoke/AgentConfigsCorrect.java")
@@ -462,6 +466,27 @@ validationGraph {
     // gateway / MCP / registry needed — doc-repos go through the
     // local-install path (file://...) and bindings live entirely on
     // the local filesystem + the projection ledger.
+    // -------------------------------------------------------- harness-smoke
+    //
+    // Ticket-47 end-to-end. A harness template scaffolded at test-time
+    // references three transitive deps via `file://` coords:
+    //   - pip-cli-skill (transitive CLI dep — pip:pycowsay)
+    //   - hello-plugin  (transitive plugin + contained-skill union)
+    //   - hello-doc-repo (transitive doc-repo)
+    // One `install file://...` pulls every transitive unit in, then
+    // instantiate / rm / uninstall exercise the full lifecycle.
+    testGraph("harness-smoke") {
+        node("sources/common/EnvPrepared.java")
+        node("sources/common/GatewayPythonVenvReady.java")
+        node("sources/smoke/GatewayUp.java")
+        node("sources/smoke/HarnessTransitiveInstalled.java")
+        node("sources/smoke/HarnessInstanceMaterialized.java")
+        node("sources/smoke/HarnessInstanceRemoved.java")
+        node("sources/smoke/HarnessTemplateUninstalled.java")
+        node("sources/common/ServersDown.java")
+                .dependsOn("harness.template.uninstalled")
+    }
+
     testGraph("doc-smoke") {
         node("sources/common/EnvPrepared.java")
         node("sources/smoke/DocRepoInstalled.java")
@@ -470,5 +495,15 @@ validationGraph {
         node("sources/smoke/DocSyncLocalEditPreserved.java")
         node("sources/smoke/DocSyncForceClobbers.java")
         node("sources/smoke/DocUnbindCleansUp.java")
+        // Multi-source bind/unbind dance: bind both [[sources]],
+        // unbind one (verify the other survives), unbind the last
+        // (verify the managed section + docs/agents/ dir get pruned),
+        // re-bind (verify everything recreates from scratch), then
+        // uninstall the doc-repo entirely.
+        node("sources/smoke/DocBindTwoSources.java")
+        node("sources/smoke/DocUnbindOneOfTwo.java")
+        node("sources/smoke/DocUnbindLastSectionAndDirGone.java")
+        node("sources/smoke/DocRebindAfterAllRemoved.java")
+        node("sources/smoke/DocRepoUninstalled.java")
     }
 }

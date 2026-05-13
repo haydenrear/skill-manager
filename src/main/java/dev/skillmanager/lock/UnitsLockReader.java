@@ -81,6 +81,8 @@ public final class UnitsLockReader {
         return switch (kindStr.toLowerCase()) {
             case "skill" -> UnitKind.SKILL;
             case "plugin" -> UnitKind.PLUGIN;
+            case "doc" -> UnitKind.DOC;
+            case "harness" -> UnitKind.HARNESS;
             default -> throw new IOException(
                     "units.lock.toml unit '" + name + "' has unknown kind=" + kindStr + " (" + path + ")");
         };
