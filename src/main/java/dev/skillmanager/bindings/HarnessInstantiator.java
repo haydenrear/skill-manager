@@ -19,17 +19,22 @@ import java.util.Optional;
 
 /**
  * Plans the {@link BindingSource#HARNESS} bindings a harness template
- * (#47) produces when instantiated into {@code <sandboxRoot>/<instanceId>}.
+ * (#47) produces when instantiated. Projections land at agent-
+ * discoverable paths — not in a dead-letter sandbox subdir — so
+ * Claude Code / Codex can actually load the harness's tools:
  *
- * <p>The plan is exhaustive over the template's referenced units:
  * <ul>
- *   <li>Skills + plugins → one SYMLINK Binding each, targetRoot
- *       = the sandbox dir, source = HARNESS.</li>
- *   <li>Doc-repo sub-elements → one Binding per referenced source via
- *       {@link DocRepoBinder}, source = HARNESS, with stable ids
+ *   <li>Skills → one SYMLINK at {@code <claudeConfigDir>/skills/<name>}
+ *       AND one at {@code <codexHome>/skills/<name>}. Skills are
+ *       agent-agnostic, so both runtimes see them.</li>
+ *   <li>Plugins → one SYMLINK at {@code <claudeConfigDir>/plugins/<name>}.
+ *       Claude-only; Codex doesn't load plugins (matches the
+ *       {@code CodexProjector} contract).</li>
+ *   <li>Doc-repo sources → tracked-copy + import-directive
+ *       projections under {@code <projectDir>/docs/agents/} +
+ *       {@code <projectDir>/{CLAUDE,AGENTS}.md} via
+ *       {@link DocRepoBinder}, with stable ids
  *       {@code harness:<instanceId>:<repoName>:<sourceId>}.</li>
- *   <li>Whole-doc-repo references → fan out to N sub-element bindings,
- *       one per declared {@code [[sources]]} row.</li>
  * </ul>
  *
  * <p>All ids derived from the template are deterministic. Re-running
@@ -51,18 +56,30 @@ public final class HarnessInstantiator {
     }
 
     /**
-     * @param harness     the resolved HarnessUnit (sourcePath = store dir)
-     * @param instanceId  a stable identifier — defaults to {@code <name>-<short-sha>}
-     *                    in the CLI; tests pass arbitrary strings
-     * @param sandboxRoot the root under which {@code <instanceId>/} lives —
-     *                    typically {@code $SKILL_MANAGER_HOME/harnesses/instances/}
+     * @param harness          the resolved HarnessUnit (sourcePath = store dir)
+     * @param instanceId       a stable identifier — defaults to {@code <name>}
+     *                         in the CLI; tests pass arbitrary strings
+     * @param claudeConfigDir  the {@code .claude/} dir Claude Code reads
+     *                         from. Skills land at
+     *                         {@code <claudeConfigDir>/skills/<name>};
+     *                         plugins at {@code <claudeConfigDir>/plugins/<name>}.
+     * @param codexHome        the dir Codex reads {@code skills/} from.
+     *                         Skills also land at
+     *                         {@code <codexHome>/skills/<name>}.
+     * @param projectDir       where {@code CLAUDE.md} / {@code AGENTS.md} and
+     *                         the tracked-copy {@code docs/agents/<file>}
+     *                         entries live — typically a project repo root.
      */
     public static Plan plan(HarnessUnit harness, String instanceId,
-                            Path sandboxRoot, SkillStore store) throws IOException {
+                            Path claudeConfigDir, Path codexHome, Path projectDir,
+                            SkillStore store) throws IOException {
         if (instanceId == null || instanceId.isBlank()) {
             throw new IllegalArgumentException("harness instanceId must not be blank");
         }
-        Path instanceDir = sandboxRoot.resolve(instanceId);
+        if (claudeConfigDir == null || codexHome == null || projectDir == null) {
+            throw new IllegalArgumentException(
+                    "harness instantiate requires claudeConfigDir, codexHome, and projectDir");
+        }
         List<Binding> all = new ArrayList<>();
 
         // --- referenced skills + plugins ---
@@ -78,14 +95,18 @@ public final class HarnessInstantiator {
             }
             String bindingId = unitBindingId(instanceId, nk.name());
             Path source = store.unitDir(nk.name(), nk.kind());
-            Path dest = instanceDir.resolve(subdirFor(nk.kind())).resolve(nk.name());
-            Projection sym = new Projection(bindingId, source, dest,
-                    ProjectionKind.SYMLINK, null);
+            List<Projection> projections = projectionsFor(
+                    bindingId, source, nk, claudeConfigDir, codexHome);
             all.add(new Binding(
                     bindingId, nk.name(), nk.kind(), null,
-                    instanceDir, ConflictPolicy.OVERWRITE,
+                    // targetRoot is informational; the projection destPaths
+                    // carry the actual on-disk locations. We use projectDir
+                    // so `bindings list` surfaces the harness's project
+                    // root rather than an arbitrary agent dir.
+                    projectDir,
+                    ConflictPolicy.OVERWRITE,
                     BindingStore.nowIso(), BindingSource.HARNESS,
-                    List.of(sym)));
+                    projections));
         }
 
         // --- referenced doc-repo sources ---
@@ -95,7 +116,7 @@ public final class HarnessInstantiator {
                             + ref.coord().raw() + "' which is not installed"));
             DocUnit docUnit = DocRepoParser.load(store.unitDir(d.repoName(), UnitKind.DOC));
             DocRepoBinder.Plan plan = DocRepoBinder.plan(
-                    docUnit, instanceDir, d.sourceId(),
+                    docUnit, projectDir, d.sourceId(),
                     ConflictPolicy.OVERWRITE,
                     BindingSource.HARNESS,
                     src -> docBindingId(instanceId, docUnit.name(), src.id()));
@@ -103,6 +124,31 @@ public final class HarnessInstantiator {
         }
 
         return new Plan(all);
+    }
+
+    /**
+     * Per-kind projection list for skill/plugin units. Skills target
+     * both Claude and Codex; plugins target Claude only (Codex's
+     * projector returns empty for plugins, so the binding mirror is
+     * Claude-only here too).
+     */
+    private static List<Projection> projectionsFor(String bindingId, Path source,
+                                                    NameKind nk, Path claudeConfigDir, Path codexHome) {
+        return switch (nk.kind()) {
+            case SKILL -> List.of(
+                    new Projection(bindingId, source,
+                            claudeConfigDir.resolve("skills").resolve(nk.name()),
+                            ProjectionKind.SYMLINK, null),
+                    new Projection(bindingId, source,
+                            codexHome.resolve("skills").resolve(nk.name()),
+                            ProjectionKind.SYMLINK, null));
+            case PLUGIN -> List.of(
+                    new Projection(bindingId, source,
+                            claudeConfigDir.resolve("plugins").resolve(nk.name()),
+                            ProjectionKind.SYMLINK, null));
+            case DOC, HARNESS -> throw new IllegalStateException(
+                    "projectionsFor not defined for " + nk.kind());
+        };
     }
 
     /** Stable id for a skill/plugin harness binding. */
@@ -113,16 +159,6 @@ public final class HarnessInstantiator {
     /** Stable id for a doc-repo source harness binding. */
     public static String docBindingId(String instanceId, String repoName, String sourceId) {
         return "harness:" + instanceId + ":" + repoName + ":" + sourceId;
-    }
-
-    /** Storage layout inside the instance sandbox dir. */
-    private static String subdirFor(UnitKind kind) {
-        return switch (kind) {
-            case SKILL -> "skills";
-            case PLUGIN -> "plugins";
-            case DOC, HARNESS -> throw new IllegalStateException(
-                    "harness sandbox subdirs only defined for skills + plugins");
-        };
     }
 
     private record NameKind(String name, UnitKind kind) {}

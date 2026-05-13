@@ -77,7 +77,9 @@ public final class HarnessTest {
                 .test("HarnessInstantiator plans one Binding per referenced unit + doc-source", () -> {
                     var fix = newHarnessFixture("plan-only", false);
                     HarnessInstantiator.Plan plan = HarnessInstantiator.plan(
-                            fix.template, "inst-a", fix.sandboxRoot, fix.store);
+                            fix.template, "inst-a",
+                            fix.claudeConfigDir, fix.codexHome, fix.projectDir,
+                            fix.store);
                     // 2 units + 1 doc source = 3 bindings
                     assertEquals(3, plan.bindings().size(), "one Binding per ref");
                     // All harness bindings have source=HARNESS and stable ids.
@@ -86,12 +88,20 @@ public final class HarnessTest {
                         assertTrue(b.bindingId().startsWith("harness:inst-a:"),
                                 "stable id prefix: " + b.bindingId());
                     }
+                    // Skill bindings carry TWO projections (claude + codex);
+                    // doc bindings have their own count from DocRepoBinder.
+                    Binding skillBinding = plan.bindings().stream()
+                            .filter(b -> b.unitKind() == dev.skillmanager.model.UnitKind.SKILL)
+                            .findFirst().orElseThrow();
+                    assertEquals(2, skillBinding.projections().size(),
+                            "skill binding carries one projection per agent (claude + codex)");
                 })
-                .test("End-to-end instantiate: symlinks + doc copy + CLAUDE.md import + ledger", () -> {
+                .test("End-to-end instantiate: per-agent symlinks + doc into project + ledger", () -> {
                     var fix = newHarnessFixture("e2e", false);
-                    Path instanceDir = fix.sandboxRoot.resolve("e2e-instance");
                     HarnessInstantiator.Plan plan = HarnessInstantiator.plan(
-                            fix.template, "e2e-instance", fix.sandboxRoot, fix.store);
+                            fix.template, "e2e-instance",
+                            fix.claudeConfigDir, fix.codexHome, fix.projectDir,
+                            fix.store);
                     java.util.List<SkillEffect> effects = new java.util.ArrayList<>();
                     for (Binding b : plan.bindings()) {
                         for (Projection p : b.projections()) {
@@ -102,13 +112,19 @@ public final class HarnessTest {
                     Executor.Outcome<Void> o = new Executor(fix.store, null)
                             .run(new Program<>("harness-e2e", effects, r -> null));
                     assertFalse(o.rolledBack(), "no rollback");
-                    // Skill symlink landed.
-                    Path skillLink = instanceDir.resolve("skills/widget");
-                    assertTrue(Files.exists(skillLink), "skill symlink at " + skillLink);
-                    // Doc tracked copy + CLAUDE.md import landed.
-                    Path tracked = instanceDir.resolve("docs/agents/review-stance.md");
+                    // Skill landed at BOTH agent paths — not in a sandbox
+                    // dead-letter dir.
+                    Path claudeSkillLink = fix.claudeConfigDir.resolve("skills/widget");
+                    Path codexSkillLink = fix.codexHome.resolve("skills/widget");
+                    assertTrue(Files.isSymbolicLink(claudeSkillLink),
+                            "claude skill symlink at " + claudeSkillLink);
+                    assertTrue(Files.isSymbolicLink(codexSkillLink),
+                            "codex skill symlink at " + codexSkillLink);
+                    // Doc lands in projectDir (the project root), with
+                    // CLAUDE.md / AGENTS.md gaining import lines.
+                    Path tracked = fix.projectDir.resolve("docs/agents/review-stance.md");
                     assertTrue(Files.exists(tracked), "tracked doc copy");
-                    Path md = instanceDir.resolve("CLAUDE.md");
+                    Path md = fix.projectDir.resolve("CLAUDE.md");
                     assertTrue(Files.readString(md).contains("@docs/agents/review-stance.md"),
                             "@-import present in CLAUDE.md");
                     // Ledger has 3 harness:* bindings.
@@ -174,7 +190,14 @@ public final class HarnessTest {
 
     // -------------------------------------------------------- fixtures
 
-    private record HarnessFixture(SkillStore store, HarnessUnit template, Path sandboxRoot) {}
+    /**
+     * Per-test fixture. Carries the three target paths the new
+     * instantiator API requires; in the fixture defaults they all
+     * point at sandbox subdirs so test runs don't pollute the
+     * developer's real {@code ~/.claude/} or {@code ~/.codex/}.
+     */
+    private record HarnessFixture(SkillStore store, HarnessUnit template,
+                                   Path claudeConfigDir, Path codexHome, Path projectDir) {}
 
     /**
      * Scaffold a full harness fixture: a SkillStore with two skills,
@@ -217,8 +240,14 @@ public final class HarnessTest {
         us.write(installedRec("reviewer-harness", UnitKind.HARNESS));
 
         HarnessUnit harness = HarnessParser.load(tplDst);
+        // Sandbox subdirs default — keeps tests off the developer's
+        // real ~/.claude/ and ~/.codex/. End-to-end tests that exercise
+        // custom paths pass them explicitly to HarnessInstantiator.plan.
         Path sandboxRoot = Files.createTempDirectory("harness-sandbox-" + tag + "-");
-        return new HarnessFixture(store, harness, sandboxRoot);
+        Path claudeConfigDir = sandboxRoot.resolve("claude");
+        Path codexHome = sandboxRoot.resolve("codex");
+        Path projectDir = sandboxRoot.resolve("project");
+        return new HarnessFixture(store, harness, claudeConfigDir, codexHome, projectDir);
     }
 
     /** Build the standard test harness template referencing widget + helper + review-stance. */
@@ -260,7 +289,9 @@ public final class HarnessTest {
     /** Run the instantiator + executor for a fixture, producing a live sandbox + ledger. */
     private static void instantiate(HarnessFixture fix, String instanceId) throws IOException {
         HarnessInstantiator.Plan plan = HarnessInstantiator.plan(
-                fix.template, instanceId, fix.sandboxRoot, fix.store);
+                fix.template, instanceId,
+                fix.claudeConfigDir, fix.codexHome, fix.projectDir,
+                fix.store);
         java.util.List<SkillEffect> effects = new java.util.ArrayList<>();
         for (Binding b : plan.bindings()) {
             for (Projection p : b.projections()) {
@@ -269,6 +300,15 @@ public final class HarnessTest {
             effects.add(new SkillEffect.CreateBinding(b));
         }
         new LiveInterpreter(fix.store).run(new Program<>("inst-" + instanceId, effects, r -> null));
+        // Mirror the CLI's lock-file write so SyncHarness can recover
+        // the same target paths on re-plan.
+        Path sandboxRoot = fix.store.harnessesDir()
+                .resolve(dev.skillmanager.commands.HarnessCommand.INSTANCES_DIR);
+        new HarnessInstanceLock(
+                fix.template.name(), instanceId,
+                fix.claudeConfigDir, fix.codexHome, fix.projectDir,
+                BindingStore.nowIso())
+                .write(sandboxRoot);
     }
 
     /** Rewrite the harness template's toml in the store to drop / add references. */
