@@ -1,5 +1,5 @@
 ///usr/bin/env jbang "$0" "$@" ; exit $?
-//SOURCES ../../sdk/java/src/main/java/com/hayden/testgraphsdk/sdk/*.java
+//SOURCES ../../../sdk/java/src/main/java/com/hayden/testgraphsdk/sdk/*.java
 
 import com.hayden.testgraphsdk.sdk.Node;
 import com.hayden.testgraphsdk.sdk.NodeResult;

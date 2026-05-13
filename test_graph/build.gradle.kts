@@ -440,20 +440,20 @@ validationGraph {
         node("sources/smoke/HelloPluginPublished.java")
         node("sources/smoke/HelloPluginInstalled.java")
         node("sources/smoke/HelloPluginRegisteredWithHarness.java")
-        node("sources/smoke/PluginContainedSkillNotAddressable.java")
+        node("sources/smoke/plugin/PluginContainedSkillNotAddressable.java")
 
         // Plugin install with both plugin-level and contained-skill
         // CLI + MCP deps — exercises the install pipeline's walk and
         // proves feature parity with bare skills (every dep registers).
         node("sources/smoke/UmbrellaPluginInstalled.java")
         // Plugin sync — drift the marketplace, sync, assert restored.
-        node("sources/smoke/PluginSynced.java")
+        node("sources/smoke/plugin/PluginSynced.java")
         // Sibling skill that claims the umbrella plugin's plugin-level
         // MCP server. The orphan check on the upcoming plugin uninstall
         // must see this skill's claim and keep that server alive.
         node("sources/smoke/PartnerSkillInstalled.java")
         // Plugin uninstall with mixed orphan/non-orphan deps.
-        node("sources/smoke/PluginUninstalledMixedOrphans.java")
+        node("sources/smoke/plugin/PluginUninstalledMixedOrphans.java")
 
         node("sources/common/ServersDown.java")
                 .dependsOn("plugin.contained.skill.not.addressable",
@@ -479,31 +479,31 @@ validationGraph {
         node("sources/common/EnvPrepared.java")
         node("sources/common/GatewayPythonVenvReady.java")
         node("sources/smoke/GatewayUp.java")
-        node("sources/smoke/HarnessTransitiveInstalled.java")
-        node("sources/smoke/HarnessInstanceMaterialized.java")
-        node("sources/smoke/HarnessInstanceRemoved.java")
-        node("sources/smoke/HarnessTemplateUninstalled.java")
+        node("sources/smoke/harness/HarnessTransitiveInstalled.java")
+        node("sources/smoke/harness/HarnessInstanceMaterialized.java")
+        node("sources/smoke/harness/HarnessInstanceRemoved.java")
+        node("sources/smoke/harness/HarnessTemplateUninstalled.java")
         node("sources/common/ServersDown.java")
                 .dependsOn("harness.template.uninstalled")
     }
 
     testGraph("doc-smoke") {
         node("sources/common/EnvPrepared.java")
-        node("sources/smoke/DocRepoInstalled.java")
-        node("sources/smoke/DocBoundToProject.java")
-        node("sources/smoke/DocSyncUpgrade.java")
-        node("sources/smoke/DocSyncLocalEditPreserved.java")
-        node("sources/smoke/DocSyncForceClobbers.java")
-        node("sources/smoke/DocUnbindCleansUp.java")
+        node("sources/smoke/doc/DocRepoInstalled.java")
+        node("sources/smoke/doc/DocBoundToProject.java")
+        node("sources/smoke/doc/DocSyncUpgrade.java")
+        node("sources/smoke/doc/DocSyncLocalEditPreserved.java")
+        node("sources/smoke/doc/DocSyncForceClobbers.java")
+        node("sources/smoke/doc/DocUnbindCleansUp.java")
         // Multi-source bind/unbind dance: bind both [[sources]],
         // unbind one (verify the other survives), unbind the last
         // (verify the managed section + docs/agents/ dir get pruned),
         // re-bind (verify everything recreates from scratch), then
         // uninstall the doc-repo entirely.
-        node("sources/smoke/DocBindTwoSources.java")
-        node("sources/smoke/DocUnbindOneOfTwo.java")
-        node("sources/smoke/DocUnbindLastSectionAndDirGone.java")
-        node("sources/smoke/DocRebindAfterAllRemoved.java")
-        node("sources/smoke/DocRepoUninstalled.java")
+        node("sources/smoke/doc/DocBindTwoSources.java")
+        node("sources/smoke/doc/DocUnbindOneOfTwo.java")
+        node("sources/smoke/doc/DocUnbindLastSectionAndDirGone.java")
+        node("sources/smoke/doc/DocRebindAfterAllRemoved.java")
+        node("sources/smoke/doc/DocRepoUninstalled.java")
     }
 }

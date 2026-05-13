@@ -34,25 +34,25 @@ public final class Node {
 
     private Node() {}
 
-    public static void run(String[] args, NodeSpec spec, NodeBody body) {
+    public static void run(String[] args, com.hayden.testgraphsdk.sdk.NodeSpec spec, com.hayden.testgraphsdk.sdk.NodeBody body) {
         String describeOut = findArg(args, "--describe-out=");
         if (describeOut != null) {
             writeDescribe(describeOut, spec);
             return;
         }
 
-        NodeContext ctx = NodeContext.parse(args);
+        com.hayden.testgraphsdk.sdk.NodeContext ctx = com.hayden.testgraphsdk.sdk.NodeContext.parse(args);
         if (!ctx.nodeId().equals(spec.id())) {
             throw new IllegalStateException(
                     "spec/runtime id mismatch: spec=" + spec.id() + ", arg=" + ctx.nodeId());
         }
 
         Instant startedAt = Instant.now();
-        NodeResult result;
+        com.hayden.testgraphsdk.sdk.NodeResult result;
         try {
             result = body.apply(ctx).startedAt(startedAt).endedAt(Instant.now());
         } catch (Throwable t) {
-            result = NodeResult.error(ctx.nodeId(), t)
+            result = com.hayden.testgraphsdk.sdk.NodeResult.error(ctx.nodeId(), t)
                     .startedAt(startedAt)
                     .endedAt(Instant.now());
         }
@@ -73,7 +73,7 @@ public final class Node {
         return null;
     }
 
-    private static void writeDescribe(String outPath, NodeSpec spec) {
+    private static void writeDescribe(String outPath, com.hayden.testgraphsdk.sdk.NodeSpec spec) {
         try {
             Path out = Path.of(outPath);
             Path parent = out.getParent();
@@ -86,7 +86,7 @@ public final class Node {
         }
     }
 
-    private static void writeResultOut(String outPath, NodeResult result) {
+    private static void writeResultOut(String outPath, com.hayden.testgraphsdk.sdk.NodeResult result) {
         try {
             Path out = Path.of(outPath);
             Path parent = out.getParent();
