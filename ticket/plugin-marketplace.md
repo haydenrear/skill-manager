@@ -927,7 +927,7 @@ under `~/.skill-manager/plugins/` and `~/.claude/plugins/`):
 | `AgentSkillSymlinks` | `AgentPluginSymlinks` | `~/.claude/plugins/<name>` symlink lands; `~/.claude/skills/<name>` does *not* land for any contained skill. |
 | `AgentConfigsCorrect` | `AgentConfigsCorrectPlugin` | Codex receives no plugin symlink in v1 (Codex projector handles bare skills only); `~/.codex/skills/<contained-skill>` does *not* appear. |
 | `OwnershipRecorded` | `OwnershipRecordedPlugin` | `installed/<name>.json` records `kind=plugin`, the right `install_source`, sha, and the union of dep names. |
-| `SkillSynced` | `PluginSynced` | `sync` re-registers plugin's effective MCP deps after gateway loss. |
+| `SkillSynced` | `test_graph.sources.smoke.plugin.PluginSynced` | `sync` re-registers plugin's effective MCP deps after gateway loss. |
 | `SkillUninstalled` | `PluginUninstalled` | Uninstalling a plugin tears down every dep registered from its contained skills (re-walk verification). No orphan MCP / CLI rows survive. |
 | `McpToolInvoked` | `McpToolInvokedFromPlugin` | A tool registered from inside a plugin is invokable through the gateway with the same flow as a skill-registered tool. |
 | `McpToolLoadsBundled` / `McpToolLoadsInstalled` | `McpToolLoadsFromPlugin` | Bundle install works for plugin-declared MCP deps. |
@@ -941,7 +941,7 @@ under `~/.skill-manager/plugins/` and `~/.claude/plugins/`):
 
 | Node | What it proves |
 | --- | --- |
-| `PluginContainedSkillNotAddressable` | `skill-manager install <contained-skill-name>` errors with "not found" after the parent plugin is installed; the contained skill is reachable only through the plugin. |
+| `test_graph.sources.smoke.plugin.PluginContainedSkillNotAddressable` | `skill-manager install <contained-skill-name>` errors with "not found" after the parent plugin is installed; the contained skill is reachable only through the plugin. |
 | `PluginUninstallReWalkPreventsOrphan` | After installing a plugin whose contained skill declared an MCP dep, uninstalling the plugin removes that MCP server. Without the re-walk, this test would leak. |
 | `SkillReferencesPlugin` | A bare skill with `skill_references = ["plugin:..."]` triggers a transitive plugin install. |
 | `PluginReferencesSkill` | A plugin with `references = ["skill:..."]` triggers a transitive skill install. |

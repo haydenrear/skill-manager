@@ -1,0 +1,6 @@
+skill_references = []
+
+[skill]
+name = "example-plugin-skill"
+version = "0.1.0"
+description = "Contained skill for the example plugin."

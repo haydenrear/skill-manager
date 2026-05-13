@@ -1,0 +1,5 @@
+{
+  "name": "example-plugin",
+  "version": "0.1.0",
+  "description": "Minimum example skill-manager plugin."
+}

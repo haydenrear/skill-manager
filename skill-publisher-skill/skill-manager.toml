@@ -9,4 +9,4 @@ skill_references = []
 [skill]
 name = "skill-publisher"
 version = "0.1.0"
-description = "Onboard a directory to skill-manager: declare deps, publish, and validate the round-trip install."
+description = "Author installable skills, plugins, doc-repos, and harnesses for skill-manager; declare deps and validate install/bind/instantiate round-trips."

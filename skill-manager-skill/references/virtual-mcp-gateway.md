@@ -1,186 +1,187 @@
 # The virtual MCP gateway
 
-This is the architectural reference for how `skill-manager`-managed
-skills expose MCP servers to agents. Read it whenever you need to
-explain the gateway, debug a missing or undeployed server, or decide
-whether a new capability belongs in a skill.
+This is the detailed reference for MCP tools registered by
+skill-manager-managed units. Use it when you need to discover, deploy,
+describe, invoke, or troubleshoot a downstream MCP server.
 
-The CLI side is documented in [`SKILL.md`](../SKILL.md). This file
-covers the agent-visible surface — the gateway and its virtual tools.
+The top-level skill file gives only a summary. This file is the
+authoritative agent-side gateway reference.
 
-## What the gateway is, and why it's there
+## What the gateway is
 
-When you install a skill with `skill-manager install`, it doesn't add
-each MCP server to your agent's MCP config independently. Instead it:
+Agents see one MCP server named `virtual-mcp-gateway`. The gateway fronts
+the real downstream MCP servers declared by installed units:
 
-1. Starts (or reuses) the **virtual MCP gateway** — a small FastAPI/MCP
-   process living under `~/.skill-manager/`.
-2. Registers every MCP dependency declared by every installed skill
-   with the gateway, transitively across the whole skill graph.
-3. Writes a single `virtual-mcp-gateway` entry into the agent's MCP
-   config (`~/.claude.json`, `~/.codex/config.toml`, …) pointing at
-   the gateway's HTTP endpoint.
+- Skills declare MCP deps in `skill-manager.toml`.
+- Plugins declare MCP deps in `skill-manager-plugin.toml` and contained
+  skill manifests.
+- Harnesses install and compose referenced skills/plugins; those
+  referenced units provide the MCP registrations.
+- Doc-repos do not register MCP servers directly.
 
-So agents see **one** MCP server. The gateway exposes a fixed, virtual
-tool surface for discovering, deploying, and invoking the real
-downstream tools. The downstream servers themselves can be anything
-the skill manifest declares — `npm` packages, `uv`-spawned Python
-servers, docker images, binaries, shell commands, or `streamable-http`
-URLs — and they're transparent to the agent.
+On install/sync, skill-manager registers every reachable
+`[[mcp_dependencies]]` entry with the gateway. The gateway then exposes a
+fixed virtual tool surface for discovery, deployment, schema disclosure,
+and invocation. Downstream servers can be backed by npm, uv, docker,
+binary, shell, or streamable-http load types according to their
+manifests.
 
-The gateway is a proxy: it never modifies arguments or results.
-Authentication, rate-limiting, and side effects all happen at the
-downstream level.
+The CLI owns only local lifecycle and registration side effects:
 
-## Knowing which skills are skill-manager-managed
-
-Run:
-
+```bash
+skill-manager gateway up
+skill-manager gateway down
+skill-manager gateway status
+skill-manager sync
 ```
+
+The CLI does not discover or invoke downstream tools. Use the virtual MCP
+tools below for that.
+
+## First checks
+
+Start with installed state:
+
+```bash
 skill-manager list
 ```
 
-That prints every skill currently in the store at
-`$SKILL_MANAGER_HOME/skills/<name>/`. Any MCP server reachable through
-the gateway's virtual tools came from one of those skills (or a
-transitive `skill_references` of one of them).
+If a server or tool is missing, common causes are:
 
-If a tool you expect isn't visible, the most likely causes are:
+1. The owning unit is not installed.
+2. The unit is installed but sync has not re-registered the current MCP
+   manifest.
+3. The server is registered but not deployed because required
+   `init_schema` values were missing.
+4. The gateway process is not running.
 
-1. The owning skill isn't installed — `skill-manager install <name>`.
-2. The MCP dep is registered but not yet deployed (e.g. its
-   `init_schema` declares a required env var that wasn't set at
-   install time). Either supply it via `deploy_mcp_server` or
-   re-run `skill-manager sync` after exporting the var.
-3. The gateway isn't running — `skill-manager gateway up`.
+Use `skill-manager sync` after installing/updating units or after
+restarting the agent with newly exported environment variables.
 
-## Virtual tool surface
+## Virtual Tool Surface
 
-Call all of these on the `virtual-mcp-gateway` MCP server.
+Call these on the `virtual-mcp-gateway` MCP server.
 
-| Virtual tool          | Use it to …                                                                         |
-|-----------------------|-------------------------------------------------------------------------------------|
-| `browse_mcp_servers`  | List every registered MCP server, deployed or not.                                  |
-| `describe_mcp_server` | Look up `init_schema`, `default_scope`, `load_type`, current deployment for one.    |
-| `deploy_mcp_server`   | Spawn / re-spawn a server (with `initialization_params` for required init fields).  |
-| `browse_active_tools` | List the tools currently active downstream (filterable by `server_id`).             |
-| `search_tools`        | Lexical / semantic search across active tools when you don't know the exact name.   |
-| `describe_tool`       | Disclose a tool's schema. Required before `invoke_tool` (gateway gates calls).      |
-| `invoke_tool`         | Call a downstream tool by `tool_path` (`<server_id>/<tool_name>`).                  |
+### Discovery
 
-`tool_path` is always `<server_id>/<tool_name>`. The `server_id` comes
-from `browse_mcp_servers`; the `tool_name` from `browse_active_tools`
-or `search_tools`.
+- `browse_mcp_servers()` lists registered downstream servers, deployed or
+  not. Start here when the user asks what MCP servers/tools are
+  available.
+- `describe_mcp_server(server_id)` returns the full server record:
+  load type, default scope, init schema, deployment status, redacted init
+  values, and last error.
+- `browse_active_tools(server_id?)` lists callable tools from deployed
+  servers. Pass `server_id` to narrow to one server.
+- `search_tools(query)` searches active tool names and descriptions
+  when the user describes a capability rather than a specific tool.
+- `describe_tool(tool_path)` returns the tool schema and satisfies the
+  per-session disclosure gate required before invocation.
 
-## The disclosure gate
+### Deployment
 
-The gateway refuses `invoke_tool` for tools that haven't been disclosed
-in the current session. **Calling `describe_tool` once per session
-covers every subsequent invoke of the same tool** — you don't need to
-re-describe before each call.
+- `deploy_mcp_server(server_id, scope?, initialization_params?,
+  reuse_last_initialization?)` spawns or re-spawns a registered server.
+  Pass `initialization_params` as a JSON object for required fields such
+  as API keys or endpoints.
+- `refresh_registry()` forces the gateway to reload registration state.
+  This is rarely needed because install and sync already refresh the
+  registry.
 
-Concretely the per-session-and-tool flow is:
+Use `reuse_last_initialization=true` when a previously successful
+global-sticky server timed out or was killed and the same redacted
+secret set should be reused.
+
+### Invocation
+
+- `invoke_tool(tool_path, arguments)` calls a downstream tool.
+
+`tool_path` is always `<server_id>/<tool_name>`. Get it from
+`browse_active_tools` or `search_tools`, then call `describe_tool` before
+the first `invoke_tool` in the current session.
+
+## Disclosure Gate
+
+The gateway refuses `invoke_tool` until the tool has been disclosed in
+the current session:
 
 ```text
-1. browse_active_tools(server_id="X")             # confirm X is up
-2. describe_tool(tool_path="X/some-tool")         # schema + disclosure
-3. invoke_tool(tool_path="X/some-tool",           # actual call
-               arguments={...})
+1. browse_active_tools(server_id="X")
+2. describe_tool(tool_path="X/tool")
+3. invoke_tool(tool_path="X/tool", arguments={...})
 ```
 
-The session is keyed by the `x-session-id` HTTP header your MCP client
-sends. Most agents reuse one session per process, so you only pay step
-2 once per tool per launch.
+The session is keyed by the MCP client's session header. Most agents use
+one session per process, so one `describe_tool` call per tool per agent
+launch is normally enough.
 
-## Scopes and deployment
+If invocation fails with a message like "Call describe_tool first", call
+`describe_tool` again in the same session and retry.
 
-Each MCP dep declares a `default_scope` — how the gateway hosts it:
+## Scopes And Initialization
 
-- **`global-sticky`** *(default)* — one shared deployment across every
-  agent session; `init_values` persisted to disk and auto-redeployed
-  when the gateway restarts. Best for stable shared services.
-- **`global`** — one shared deployment, but `init_values` only kept in
-  memory; lost across gateway restarts.
-- **`session`** — fresh deployment per agent session; `init_values`
-  scoped to that session and discarded when it ends. Use for
-  per-tenant credentials or workspaces.
+Each MCP dependency declares a `default_scope`:
 
-At install time, skill-manager auto-deploys any server whose scope is
-not `session` and whose `init_schema` has no required fields missing
-from the install-process environment. Anything else is registered but
-not deployed; the agent picks it up later via `deploy_mcp_server`.
+- `global-sticky`: one shared deployment across sessions. Successful
+  init values are persisted by the gateway and can be reused.
+- `global`: one shared deployment, but init values are memory-only.
+- `session`: one deployment per agent session; init values are discarded
+  with that session.
 
-When the user reports that an MCP server isn't responding (idle
-timeout, killed subprocess, env-var rotation), `deploy_mcp_server`
-with `reuse_last_initialization=true` re-spawns it without making the
-user re-enter secrets, as long as the server is `global-sticky` and
-the previous init succeeded.
+At install/sync time, skill-manager may auto-deploy non-session servers
+whose required init fields are satisfied by the process environment.
+Otherwise the server remains registered but undeployed until an agent
+calls `deploy_mcp_server`.
 
-## Adding a new MCP server to the gateway
+When a required secret is missing, ask the user for it. Do not invent,
+guess, or hardcode credentials in a manifest.
 
-Don't shell out to `npx`/`uv`/`docker` from the agent to bring up an
-MCP server directly. Author a skill (or extend one the user already
-has) that declares the server under `[[mcp_dependencies]]` in its
-`skill-manager.toml`, then:
+## Adding A Server
 
-1. Install (or re-install) the skill — `skill-manager install <skill>`.
-2. The gateway picks the new server up transitively; if it has no
-   missing required init, it auto-deploys.
-3. Discover its tools via `browse_active_tools(server_id="<name>")`.
+Do not start downstream MCP servers manually from the agent with
+`npx`, `uv`, or `docker`. Add the server to a skill or plugin manifest
+as an `[[mcp_dependencies]]` entry, then install or sync that unit.
 
-Registering through skill-manager guarantees the gateway gets a clean
-spec, the right runtime (`npx`, `uv`, `docker`, …) is bundled if
-needed, and `init_schema`-declared secrets follow the env-init path
-without ever being committed to disk. See the skill-publisher skill
-for the full authoring flow.
+That keeps runtime selection, transitive ownership, init schema, gateway
+registration, and later cleanup in one place. Use the `skill-publisher`
+skill for manifest examples and supported load types.
 
-## Verifying gateway state
+## Verification
 
-The gateway's MCP virtual tools *are* the verification surface — use
-them directly rather than reaching for shell or HTTP probes.
+| Question | Use |
+| --- | --- |
+| Is the gateway running? | `skill-manager gateway status` |
+| What servers are registered? | `browse_mcp_servers()` |
+| What does server X need? | `describe_mcp_server(server_id="X")` |
+| Is server X exposing tools? | `browse_active_tools(server_id="X")` |
+| What is the argument schema? | `describe_tool(tool_path="X/tool")` |
+| Does the tool work end-to-end? | `invoke_tool(tool_path="X/tool", arguments={...})` |
 
-| Question                                              | Call                                                      |
-|-------------------------------------------------------|-----------------------------------------------------------|
-| Is the gateway running, what's its URL?               | `skill-manager gateway status` (CLI lifecycle)            |
-| What's registered?                                    | `browse_mcp_servers()`                                    |
-| Is server X deployed and what does it want?           | `describe_mcp_server(server_id="X")`                      |
-| What tools is X exposing right now?                   | `browse_active_tools(server_id="X")`                      |
-| Does invoke actually work end-to-end?                 | `describe_tool(tool_path="X/T")` then `invoke_tool(...)`  |
+If `browse_mcp_servers` shows a server but `browse_active_tools` shows
+no tools, the server is either undeployed or its downstream `tools/list`
+returned no tools. Use `describe_mcp_server` for status and last error,
+then redeploy if appropriate.
 
-The CLI never proxies tool discovery or invocation; only the MCP
-virtual tools do. If `browse_mcp_servers` shows a server but
-`browse_active_tools(server_id="X")` shows zero tools, the subprocess
-is reachable but its `tools/list` came back empty — re-deploy with
-`deploy_mcp_server` and try again.
+## Failure Modes
 
-## Failure modes worth recognizing
+- `Tool invocation denied. Call describe_tool first...`: disclosure gate.
+  Describe the tool in the same session, then retry.
+- `server_id not deployed`: the server is registered but has no live
+  deployment. Describe it, collect missing init params, then deploy.
+- `stdio downstream error` or `streamable-http downstream error`:
+  transport failure talking to the downstream server. Redeploy; if it
+  persists, inspect `~/.skill-manager/gateway.log`.
+- Server is visible but has zero tools: the downstream server may have
+  crashed after initialization or returned an empty `tools/list`.
+  Redeploy and inspect the gateway log if it persists.
+- Newly installed server is not visible: run `skill-manager sync`, then
+  `refresh_registry()` if the current gateway session still sees stale
+  state.
 
-- **`Tool invocation denied. Call describe_tool first…`** — disclosure
-  gate. Call `describe_tool(tool_path=…)` in the same session, then
-  retry. Re-deploying a server resets the gate.
-- **`server_id not deployed`** — the server is registered but no
-  subprocess is alive. Call `describe_mcp_server` to see what's
-  missing (often a required init field), then `deploy_mcp_server`
-  with `initialization_params={…}`.
-- **`stdio downstream error`** / **`streamable-http downstream
-  error`** — transport-layer failure talking to a downstream server.
-  The gateway retries once on a fresh session; persistent failures
-  indicate the subprocess crashed or the URL is unreachable. Inspect
-  the gateway log under `~/.skill-manager/gateway.log`.
-- **Tool list shows a server but no tools** — the subprocess is
-  reachable but its `tools/list` response is empty (often a buggy
-  server build, or the subprocess crashed after the initialize
-  handshake). Re-deploying with `deploy_mcp_server` is usually
-  enough.
+## Cross-References
 
-## Cross-references
-
-- [`SKILL.md`](../SKILL.md) — CLI-side install/sync/upgrade flows and
-  the per-tool quick reference.
-- `skill-publisher-skill/SKILL.md` — how to author a skill that
-  declares an MCP dep with the right `load` type and `init_schema`.
-- `virtual-mcp-gateway/gateway/` (in the skill-manager source repo)
-  — the gateway implementation, including
-  `clients.py` (downstream transports), `provisioning.py` (how
-  manifest specs become `ClientConfig`s), and `server.py` (the
-  virtual tool definitions).
+- `../SKILL.md` - when to use skill-manager and where CLI help is
+  authoritative.
+- `workflows.md` - agent decision flows that combine CLI state and
+  gateway operations.
+- `skill-publisher` skill - how to author MCP dependencies in skills and
+  plugins.

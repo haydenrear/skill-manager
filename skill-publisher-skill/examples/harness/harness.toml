@@ -1,0 +1,28 @@
+[harness]
+name = "example-harness"
+version = "0.1.0"
+description = "Minimum example harness composing a skill, plugin, and doc-repo."
+
+# Start empty so this example installs as-is. Replace with real refs
+# before distributing a production harness.
+units = []
+docs = []
+
+# Example composition refs:
+# units = [
+#   "skill:reviewer",
+#   "plugin:repo-tools",
+#   "github:owner/reviewer-skill",
+#   "git+https://github.com/owner/repo-tools-plugin.git#main",
+#   "file:///abs/path/to/local-skill",
+# ]
+#
+# docs = [
+#   "doc:team-prompts/review-stance",
+#   "github:owner/team-prompts-doc-repo",
+#   "file:///abs/path/to/local-doc-repo",
+# ]
+
+[[mcp_tools]]
+server = "example-mcp"
+tools = []

@@ -48,7 +48,7 @@ JBang `Node` under `test_graph/sources/smoke/` (or
 | `AgentSkillSymlinks` | `AgentPluginSymlinks` |
 | `AgentConfigsCorrect` | `AgentConfigsCorrectPlugin` |
 | `OwnershipRecorded` | `OwnershipRecordedPlugin` |
-| `SkillSynced` | `PluginSynced` |
+| `SkillSynced` | `test_graph.sources.smoke.plugin.PluginSynced` |
 | `SkillUninstalled` | `PluginUninstalled` |
 | `McpToolInvoked` | `McpToolInvokedFromPlugin` |
 | `McpToolLoadsBundled` / `McpToolLoadsInstalled` | `McpToolLoadsFromPlugin` |
@@ -61,7 +61,7 @@ JBang `Node` under `test_graph/sources/smoke/` (or
 
 | Node | Verifies |
 | --- | --- |
-| `PluginContainedSkillNotAddressable` | `skill-manager install <contained-skill-name>` fails after parent plugin is installed |
+| `test_graph.sources.smoke.plugin.PluginContainedSkillNotAddressable` | `skill-manager install <contained-skill-name>` fails after parent plugin is installed |
 | `PluginUninstallReWalkPreventsOrphan` | uninstall removes contained-skill MCP server (re-walk works in production) |
 | `SkillReferencesPlugin` | `skill_references = ["plugin:..."]` triggers transitive plugin install |
 | `PluginReferencesSkill` | `references = ["skill:..."]` triggers transitive skill install |

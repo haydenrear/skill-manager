@@ -13,8 +13,8 @@ covers what the parent SKILL.md only summarizes:
 - Hooks, commands, agents — the harness surface plugins unlock
 - Distribution and validation
 
-The reference example is `examples/hello-plugin/` in the skill-manager
-repo. Clone the layout when in doubt.
+The local starter is `examples/plugin/` in this skill. Clone the layout
+when in doubt.
 
 ## When a plugin (not a skill)
 

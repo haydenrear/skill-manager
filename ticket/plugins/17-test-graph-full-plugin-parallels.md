@@ -34,7 +34,7 @@ documentation.
 ### Parallel `*Plugin*` nodes (~27 remaining)
 
 The minimal subset (`HelloPluginPublished`, `HelloPluginInstalled`,
-`PluginContainedSkillNotAddressable`) shipped in ticket 15. Add the
+`test_graph.sources.smoke.plugin.PluginContainedSkillNotAddressable`) shipped in ticket 15. Add the
 rest:
 
 | Existing skill node | Plugin parallel |
@@ -47,7 +47,7 @@ rest:
 | `AgentSkillSymlinks` | `AgentPluginSymlinks` |
 | `AgentConfigsCorrect` | `AgentConfigsCorrectPlugin` |
 | `OwnershipRecorded` | `OwnershipRecordedPlugin` |
-| `SkillSynced` | `PluginSynced` |
+| `SkillSynced` | `test_graph.sources.smoke.plugin.PluginSynced` |
 | `SkillUninstalled` | `PluginUninstalled` |
 | `McpToolInvoked` | `McpToolInvokedFromPlugin` |
 | `McpToolLoadsBundled` / `McpToolLoadsInstalled` | `McpToolLoadsFromPlugin` |
@@ -60,7 +60,7 @@ rest:
 
 | Node | Verifies | Done? |
 | --- | --- | --- |
-| `PluginContainedSkillNotAddressable` | install of contained name fails | ✅ ticket 15 |
+| `test_graph.sources.smoke.plugin.PluginContainedSkillNotAddressable` | install of contained name fails | ✅ ticket 15 |
 | `PluginUninstallReWalkPreventsOrphan` | contained MCP unregistered on uninstall | |
 | `SkillReferencesPlugin` | `skill_references = ["plugin:..."]` triggers transitive plugin install | |
 | `PluginReferencesSkill` | `references = ["skill:..."]` triggers transitive skill install | |

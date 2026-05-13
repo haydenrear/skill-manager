@@ -1,0 +1,24 @@
+# Plugin-level references apply to the whole bundle. Prefer contained
+# skill manifests for deps that only one contained skill needs.
+references = [
+  # "github:owner/shared-skill",
+  # "plugin:shared-plugin",
+]
+
+# Shared CLI dependency example.
+# [[cli_dependencies]]
+# spec = "npm:typescript@5.4.5"
+# on_path = "tsc"
+
+# Shared MCP dependency example.
+# [[mcp_dependencies]]
+# name = "shared-docker-mcp"
+# display_name = "Shared Docker MCP"
+# description = "MCP server shared by contained skills."
+# default_scope = "global-sticky"
+# load = { type = "docker", image = "ghcr.io/vendor/mcp:latest", args = ["--stdio"] }
+
+[plugin]
+name = "example-plugin"
+version = "0.1.0"
+description = "Minimum example skill-manager plugin."

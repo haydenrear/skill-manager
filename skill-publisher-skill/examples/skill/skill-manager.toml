@@ -1,0 +1,56 @@
+# Transitive unit references use the same coord grammar as install:
+# github:owner/repo, git+https://..., file:./local-unit, skill:name,
+# plugin:name, doc:name, harness:name.
+skill_references = [
+  # "github:owner/base-skill",
+  # "git+ssh://git@github.com/org/private-skill.git#main",
+  # "file:./local-helper",
+]
+
+# CLI dependency examples. Uncomment what the skill actually needs.
+#
+# [[cli_dependencies]]
+# spec = "pip:ruff==0.6.9"
+# on_path = "ruff"
+#
+# [[cli_dependencies]]
+# spec = "npm:typescript@5.4.5"
+# on_path = "tsc"
+#
+# [[cli_dependencies]]
+# spec = "tar:rg"
+# name = "rg"
+# on_path = "rg"
+# [cli_dependencies.install.darwin-arm64]
+# url = "https://example.com/rg-darwin-arm64.tar.gz"
+# archive = "tar.gz"
+# binary = "rg"
+# sha256 = "TODO"
+
+# MCP dependency examples. These register with the virtual MCP gateway.
+#
+# [[mcp_dependencies]]
+# name = "example-npm-mcp"
+# display_name = "Example npm MCP"
+# description = "MCP server distributed on npm."
+# default_scope = "session"
+# load = { type = "npm", package = "@vendor/mcp-server", version = "latest" }
+#
+# [[mcp_dependencies]]
+# name = "example-uv-mcp"
+# display_name = "Example uv MCP"
+# description = "MCP server distributed on PyPI."
+# default_scope = "session"
+# load = { type = "uv", package = "example-mcp", version = "1.0.0", entry_point = "example-mcp" }
+#
+# [[mcp_dependencies]]
+# name = "example-docker-mcp"
+# display_name = "Example Docker MCP"
+# description = "MCP server distributed as a container."
+# default_scope = "global-sticky"
+# load = { type = "docker", image = "ghcr.io/vendor/mcp:latest", args = ["--stdio"] }
+
+[skill]
+name = "example-skill"
+version = "0.1.0"
+description = "Minimum example skill-manager skill."
