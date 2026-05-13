@@ -127,32 +127,79 @@ public final class HarnessInstantiator {
 
     private record NameKind(String name, UnitKind kind) {}
 
-    /** Look up the installed-unit name + kind a reference points at. */
+    /**
+     * Look up the installed-unit name + kind a reference points at.
+     *
+     * <p>For coord-named refs ({@link Coord.Bare}, {@link Coord.Kinded})
+     * the name is in the coord and we read the install record directly.
+     * For {@link Coord.Local} (file://) refs the name lives in the
+     * unit's on-disk manifest at the referenced path; parse the
+     * appropriate manifest to recover the name, then look up the
+     * install record by that name. Falls back to {@link Optional#empty}
+     * when the manifest is unreadable or the unit isn't installed.
+     */
     private static Optional<NameKind> resolveReference(UnitReference ref, SkillStore store) {
         UnitStore us = new UnitStore(store);
         Coord c = ref.coord();
         String name = unitName(c);
-        if (name == null) return Optional.empty();
+        if (name == null) {
+            // Local refs: parse the manifest at the path to find the name.
+            name = nameFromLocalManifest(c);
+            if (name == null) return Optional.empty();
+        }
         return us.read(name).map(rec -> new NameKind(rec.name(), rec.unitKind()));
     }
 
     private record DocRef(String repoName, String sourceId) {}
 
     /**
-     * Resolve a {@code doc:<repo>} or {@code doc:<repo>/<src>} coord
-     * to its repo name + optional sub-element. Whole-doc-repo refs
-     * have {@code sourceId == null} which {@link DocRepoBinder} treats
-     * as "fan out to every source."
+     * Resolve a {@code doc:<repo>} / {@code doc:<repo>/<src>} /
+     * {@code file://<path>} coord to its repo name + optional
+     * sub-element. Whole-doc-repo refs have {@code sourceId == null}
+     * which {@link DocRepoBinder} treats as "fan out to every source."
+     * Local (file://) doc-repo refs are always whole-repo binds.
      */
     private static Optional<DocRef> resolveDocReference(UnitReference ref, SkillStore store) {
         UnitStore us = new UnitStore(store);
         Coord c = ref.coord();
         String repoName = unitName(c);
+        if (repoName == null) {
+            repoName = nameFromLocalManifest(c);
+            if (repoName == null) return Optional.empty();
+        }
         String sourceId = c instanceof Coord.SubElement s ? s.elementName() : null;
-        if (repoName == null) return Optional.empty();
-        return us.read(repoName)
+        final String resolvedName = repoName;
+        return us.read(resolvedName)
                 .filter(rec -> rec.unitKind() == UnitKind.DOC)
-                .map(rec -> new DocRef(repoName, sourceId));
+                .map(rec -> new DocRef(resolvedName, sourceId));
+    }
+
+    /**
+     * For a {@link Coord.Local} ref, read the unit's manifest at the
+     * referenced path to recover its declared name. Returns {@code null}
+     * for non-local coords or when the manifest can't be parsed.
+     */
+    private static String nameFromLocalManifest(Coord c) {
+        if (!(c instanceof Coord.Local l)) return null;
+        java.nio.file.Path dir = java.nio.file.Path.of(l.path()).toAbsolutePath();
+        // Try plugin first (same precedence as the resolver), then
+        // harness, then doc-repo, then bare skill.
+        try {
+            if (dev.skillmanager.model.PluginParser.looksLikePlugin(dir)) {
+                return dev.skillmanager.model.PluginParser.load(dir).name();
+            }
+            if (dev.skillmanager.model.HarnessParser.looksLikeHarness(dir)) {
+                return dev.skillmanager.model.HarnessParser.load(dir).name();
+            }
+            if (dev.skillmanager.model.DocRepoParser.looksLikeDocRepo(dir)) {
+                return dev.skillmanager.model.DocRepoParser.load(dir).name();
+            }
+            java.nio.file.Path skillMd = dir.resolve(dev.skillmanager.model.SkillParser.SKILL_FILENAME);
+            if (java.nio.file.Files.isRegularFile(skillMd)) {
+                return dev.skillmanager.model.SkillParser.load(dir).name();
+            }
+        } catch (IOException ignored) {}
+        return null;
     }
 
     private static String unitName(Coord c) {

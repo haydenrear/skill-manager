@@ -1700,6 +1700,49 @@ public final class LiveInterpreter implements ProgramInterpreter {
     }
 
     /**
+     * After deleting a {@link ProjectionKind#MANAGED_COPY} file, walk
+     * up the {@code docs/agents/} → {@code docs/} chain and delete
+     * any segment we own that is now empty. Stops at the first
+     * non-owned dir, the first non-empty dir, or the filesystem
+     * root — never deletes arbitrary user dirs.
+     *
+     * <p>"Owned" is identified by the segment basename: {@code agents}
+     * (the conventional subdir under {@link DocRepoBinder#DOCS_SUBDIR})
+     * and {@code docs} (its parent). A project that put real content
+     * in a sibling under {@code <root>/docs/} keeps it — we only
+     * delete dirs that are empty.
+     */
+    private static void pruneOwnedEmptyDocsDirs(java.nio.file.Path dir) {
+        try {
+            if (dir == null) return;
+            // First the docs/agents/ dir itself.
+            if ("agents".equals(dir.getFileName().toString())
+                    && java.nio.file.Files.isDirectory(dir)
+                    && isEmptyDir(dir)) {
+                java.nio.file.Files.delete(dir);
+                java.nio.file.Path parent = dir.getParent();
+                if (parent != null
+                        && "docs".equals(parent.getFileName().toString())
+                        && java.nio.file.Files.isDirectory(parent)
+                        && isEmptyDir(parent)) {
+                    java.nio.file.Files.delete(parent);
+                }
+            }
+        } catch (IOException ignored) {
+            // Best-effort prune — a failed cleanup is not a failure of
+            // the unbind. The next operation in this directory will
+            // either succeed against the empty stub or surface its own
+            // error.
+        }
+    }
+
+    private static boolean isEmptyDir(java.nio.file.Path dir) throws IOException {
+        try (java.util.stream.Stream<java.nio.file.Path> s = java.nio.file.Files.list(dir)) {
+            return s.findFirst().isEmpty();
+        }
+    }
+
+    /**
      * Package-private so {@link Executor#applyCompensation} can drive
      * the same dispatch.
      */
@@ -1736,6 +1779,13 @@ public final class LiveInterpreter implements ProgramInterpreter {
                 if (java.nio.file.Files.exists(p.destPath(), java.nio.file.LinkOption.NOFOLLOW_LINKS)) {
                     java.nio.file.Files.delete(p.destPath());
                 }
+                // Prune the docs/agents/ dir (and its docs/ parent) if
+                // they're now empty — those dirs are owned by the
+                // doc-repo binder (see DocRepoBinder.DOCS_SUBDIR), so
+                // leaving an empty stub behind would litter the
+                // project tree. We only prune the segments we own —
+                // never walk past "docs" toward the project root.
+                pruneOwnedEmptyDocsDirs(p.destPath().getParent());
             }
             case IMPORT_DIRECTIVE -> {
                 String line = "@" + p.sourcePath().toString();
