@@ -12,5 +12,5 @@ package com.hayden.testgraphsdk.sdk;
  */
 @FunctionalInterface
 public interface NodeBody {
-    NodeResult apply(NodeContext ctx) throws Exception;
+    com.hayden.testgraphsdk.sdk.NodeResult apply(com.hayden.testgraphsdk.sdk.NodeContext ctx) throws Exception;
 }

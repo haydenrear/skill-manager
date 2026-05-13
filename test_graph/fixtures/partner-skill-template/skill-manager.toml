@@ -11,7 +11,7 @@
 [[mcp_dependencies]]
 name = "__SHARED_SERVER_ID__"
 display_name = "partner skill claim (shared with umbrella plugin)"
-description = "Shared HTTP echo MCP fixture — both umbrella-plugin (plugin level) and this partner skill claim it. Used by PluginUninstalledMixedOrphans to verify shared claims survive plugin uninstall."
+description = "Shared HTTP echo MCP fixture — both umbrella-plugin (plugin level) and this partner skill claim it. Used by test_graph.sources.smoke.plugin.PluginUninstalledMixedOrphans to verify shared claims survive plugin uninstall."
 default_scope = "__SCOPE__"
 load = { type = "binary", transport = "streamable-http", url = "__MCP_URL__", install = {} }
 

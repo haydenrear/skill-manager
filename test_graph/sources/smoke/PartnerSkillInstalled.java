@@ -2,6 +2,7 @@
 //SOURCES ../../sdk/java/src/main/java/com/hayden/testgraphsdk/sdk/*.java
 //SOURCES ../lib/TgFixture.java
 //SOURCES ../lib/TgMcp.java
+//SOURCES ./plugin/*.java
 
 import com.hayden.testgraphsdk.sdk.Node;
 import com.hayden.testgraphsdk.sdk.NodeResult;
