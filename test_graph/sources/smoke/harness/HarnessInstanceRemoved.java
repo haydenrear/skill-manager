@@ -43,7 +43,11 @@ public class HarnessInstanceRemoved {
         Node.run(args, SPEC, ctx -> {
             String home = ctx.get("env.prepared", "home").orElse(null);
             String instanceId = ctx.get("harness.instance.materialized", "instanceId").orElse(null);
-            if (home == null || instanceId == null) {
+            String claudeConfigDir = ctx.get("harness.instance.materialized", "claudeConfigDir").orElse(null);
+            String codexHome = ctx.get("harness.instance.materialized", "codexHome").orElse(null);
+            String projectDir = ctx.get("harness.instance.materialized", "projectDir").orElse(null);
+            if (home == null || instanceId == null || claudeConfigDir == null
+                    || codexHome == null || projectDir == null) {
                 return NodeResult.fail("harness.instance.removed", "missing upstream context");
             }
             Path repoRoot = Path.of(System.getProperty("user.dir")).resolve("..").normalize();
@@ -58,6 +62,33 @@ public class HarnessInstanceRemoved {
 
             Path sandbox = Path.of(home, "harnesses", "instances", instanceId);
             boolean sandboxGone = !Files.exists(sandbox);
+
+            // Every projection the instantiate node materialized must be
+            // unmaterialized — across all three target paths.
+            boolean claudeSkillGone = !Files.exists(
+                    Path.of(claudeConfigDir, "skills/pip-cli-skill"),
+                    java.nio.file.LinkOption.NOFOLLOW_LINKS);
+            boolean codexSkillGone = !Files.exists(
+                    Path.of(codexHome, "skills/pip-cli-skill"),
+                    java.nio.file.LinkOption.NOFOLLOW_LINKS);
+            boolean claudePluginGone = !Files.exists(
+                    Path.of(claudeConfigDir, "plugins/hello-plugin"),
+                    java.nio.file.LinkOption.NOFOLLOW_LINKS);
+            // Doc projections — the project root's CLAUDE.md / AGENTS.md
+            // managed sections + tracked copies should be gone.
+            Path projectClaudeMd = Path.of(projectDir, "CLAUDE.md");
+            Path projectAgentsMd = Path.of(projectDir, "AGENTS.md");
+            boolean projectDocsCleared;
+            if (!Files.exists(projectClaudeMd) && !Files.exists(projectAgentsMd)) {
+                projectDocsCleared = true;
+            } else {
+                String claudeMdAfter = Files.exists(projectClaudeMd)
+                        ? Files.readString(projectClaudeMd) : "";
+                String agentsMdAfter = Files.exists(projectAgentsMd)
+                        ? Files.readString(projectAgentsMd) : "";
+                projectDocsCleared = !claudeMdAfter.contains("@docs/agents/")
+                        && !agentsMdAfter.contains("@docs/agents/");
+            }
 
             // Walk every projection-ledger file under installed/; none
             // should still carry a harness:<instanceId>: id.
@@ -84,12 +115,18 @@ public class HarnessInstanceRemoved {
                     Path.of(home, "docs", "hello-doc-repo", "skill-manager.toml"));
 
             boolean pass = rc == 0 && sandboxGone && ledgersCleaned
+                    && claudeSkillGone && codexSkillGone && claudePluginGone
+                    && projectDocsCleared
                     && templateStays && skillStays && pluginStays && docStays;
             NodeResult result = pass
                     ? NodeResult.pass("harness.instance.removed")
                     : NodeResult.fail("harness.instance.removed",
                             "rc=" + rc + " sandboxGone=" + sandboxGone
                                     + " ledgersCleaned=" + ledgersCleaned
+                                    + " claudeSkillGone=" + claudeSkillGone
+                                    + " codexSkillGone=" + codexSkillGone
+                                    + " claudePluginGone=" + claudePluginGone
+                                    + " projectDocsCleared=" + projectDocsCleared
                                     + " templateStays=" + templateStays
                                     + " skillStays=" + skillStays
                                     + " pluginStays=" + pluginStays
@@ -99,6 +136,10 @@ public class HarnessInstanceRemoved {
                     .assertion("rm_ok", rc == 0)
                     .assertion("sandbox_dir_removed", sandboxGone)
                     .assertion("harness_ids_purged_from_ledger", ledgersCleaned)
+                    .assertion("claude_skill_unmaterialized", claudeSkillGone)
+                    .assertion("codex_skill_unmaterialized", codexSkillGone)
+                    .assertion("claude_plugin_unmaterialized", claudePluginGone)
+                    .assertion("project_dir_doc_imports_cleared", projectDocsCleared)
                     .assertion("template_survives_rm", templateStays)
                     .assertion("transitive_units_survive_rm",
                             skillStays && pluginStays && docStays)

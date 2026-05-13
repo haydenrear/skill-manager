@@ -1588,9 +1588,26 @@ public final class LiveInterpreter implements ProgramInterpreter {
             }
             java.nio.file.Path sandboxRoot = ctx.store().harnessesDir()
                     .resolve(dev.skillmanager.commands.HarnessCommand.INSTANCES_DIR);
+            // Read the resolved paths from the per-instance lock file
+            // the instantiator wrote. Falls back to the sandbox-subdir
+            // defaults when missing (covers instances that predate the
+            // lock file or were created with the old API).
+            var lock = dev.skillmanager.bindings.HarnessInstanceLock.read(sandboxRoot, e.instanceId());
+            java.nio.file.Path instanceDir = sandboxRoot.resolve(e.instanceId());
+            java.nio.file.Path claudeConfigDir = lock.map(
+                    dev.skillmanager.bindings.HarnessInstanceLock::claudeConfigDir)
+                    .orElse(instanceDir.resolve("claude"));
+            java.nio.file.Path codexHome = lock.map(
+                    dev.skillmanager.bindings.HarnessInstanceLock::codexHome)
+                    .orElse(instanceDir.resolve("codex"));
+            java.nio.file.Path projectDir = lock.map(
+                    dev.skillmanager.bindings.HarnessInstanceLock::projectDir)
+                    .orElse(instanceDir);
             dev.skillmanager.bindings.HarnessInstantiator.Plan plan =
                     dev.skillmanager.bindings.HarnessInstantiator.plan(
-                            harness, e.instanceId(), sandboxRoot, ctx.store());
+                            harness, e.instanceId(),
+                            claudeConfigDir, codexHome, projectDir,
+                            ctx.store());
 
             java.util.Set<String> plannedIds = new java.util.LinkedHashSet<>();
             for (var b : plan.bindings()) plannedIds.add(b.bindingId());
