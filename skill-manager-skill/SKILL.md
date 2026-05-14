@@ -66,6 +66,12 @@ flows:
 - `references/virtual-mcp-gateway.md` - the gateway architecture,
   virtual tool surface, deployment scopes, disclosure gate, and MCP
   troubleshooting.
+- `references/cli.md` - CLI dependency authoring, managed binary
+  resolution, and validation.
+- `references/mcp.md` - MCP dependency authoring and gateway-side
+  runtime usage.
+- `references/skill-imports.md` - frontmatter `skill-imports` syntax,
+  semantics, and validation.
 - `scripts/env.sh` / `scripts/env.py` - resolve absolute paths for
   installed CLI dependencies and agent-visible skill paths.
 

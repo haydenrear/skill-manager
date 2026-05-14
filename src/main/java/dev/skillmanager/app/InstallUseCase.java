@@ -137,6 +137,7 @@ public final class InstallUseCase {
 
         if (!dryRun) {
             stage1Effects.add(new SkillEffect.CommitUnitsToStore());
+            stage1Effects.add(SkillEffect.ValidateMarkdownImports.resolvedGraph());
             stage1Effects.add(new SkillEffect.RecordAuditPlan("install"));
             stage1Effects.add(new SkillEffect.RecordSourceProvenance());
             stage1Effects.add(new SkillEffect.PrintInstalledSummary());

@@ -1,6 +1,7 @@
 ---
 name: umbrella-skill
 description: Integration-test umbrella skill that transitively depends on two sub-skills via file references, each carrying a different CLI backend.
+skill-imports: []
 ---
 
 # umbrella-skill (integration fixture)

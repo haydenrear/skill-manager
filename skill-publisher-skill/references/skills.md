@@ -28,6 +28,7 @@ skill-manager only.
 ---
 name: my-skill
 description: Use when the user asks to do the specific thing this skill supports.
+skill-imports: []
 ---
 
 # my-skill
@@ -40,6 +41,9 @@ Rules:
 - `name` is a single slug-like token.
 - `description` is the activation hook. It should state when the agent
   should use the skill, not just what the repo contains.
+- `skill-imports` is optional but recommended on starter markdown so
+  imports can be filled in without changing file shape. See
+  `references/skill-imports.md`.
 - Frontmatter `name` must match `[skill].name`.
 
 Quote the YAML description when it contains `:` or other YAML-sensitive
@@ -81,7 +85,8 @@ description = "Short tooling-side description."
 Supported top-level sections:
 
 - `skill_references`: transitive unit refs. See
-  `references/coords-and-distribution.md`.
+  `references/coords-and-distribution.md`. Add one when a markdown
+  `skill-imports` entry points at another skill.
 - `[[cli_dependencies]]`: CLI tools installed into
   `$SKILL_MANAGER_HOME/bin/cli/`. See `references/dependencies.md`.
 - `[[mcp_dependencies]]`: MCP servers registered with the virtual

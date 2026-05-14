@@ -1,6 +1,11 @@
 ---
 name: skill-publisher
 description: 'Author installable skill-manager units: skills, plugins, doc-repos, and harnesses. Use when making a directory installable by skill-manager, choosing a unit kind, scaffolding a unit, writing or reviewing unit manifests/TOML, adding CLI or MCP dependencies, wiring references, validating install/bind/instantiate round-trips, or preparing optional registry metadata. Detailed schemas live in references for skills, plugins, doc-repos, harnesses, scaffolding, coordinates/distribution, dependencies, bindings/sync, and skill-script.'
+skill-imports:
+  - skill: skill-manager
+    path: references/skill-imports.md
+    reason: Defines semantic markdown imports used by authored unit scaffolds.
+    section: semantics
 ---
 
 # skill-publisher
@@ -64,6 +69,9 @@ Load only the reference needed for the current task:
   and plugin validation.
 - `references/doc-repos.md` — `[doc-repo]`, `[[sources]]`, source ids,
   `agents`, bind coords, doc binding, and doc sync behavior.
+- `references/skill-imports.md` — semantic markdown imports,
+  frontmatter syntax, and when to add manifest references for imported
+  skills.
 - `references/harnesses.md` — `harness.toml` as a full
   project-specific agent profile, transitive refs, `harness
   instantiate`, `--project-dir` doc/`CLAUDE.md`/`AGENTS.md` binding,

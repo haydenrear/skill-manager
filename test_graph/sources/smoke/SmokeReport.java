@@ -40,7 +40,8 @@ public class SmokeReport {
                     "hello.installed",
                     "ownership.recorded",
                     "semver.enforced",
-                    "immutability.enforced")
+                    "immutability.enforced",
+                    "markdown.import.violations.reported")
             .tags("report")
             .timeout("15s")
             .retries(2);

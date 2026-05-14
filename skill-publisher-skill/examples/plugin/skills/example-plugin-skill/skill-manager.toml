@@ -1,4 +1,6 @@
-skill_references = []
+skill_references = [
+  "skill:skill-manager",
+]
 
 [skill]
 name = "example-plugin-skill"

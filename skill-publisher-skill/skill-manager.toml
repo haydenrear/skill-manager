@@ -4,7 +4,9 @@
 # MCP deps. The empty arrays keep the install plan boring when this skill
 # is added.
 
-skill_references = []
+skill_references = [
+  "skill:skill-manager",
+]
 
 [skill]
 name = "skill-publisher"

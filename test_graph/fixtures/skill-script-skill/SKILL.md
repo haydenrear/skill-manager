@@ -1,6 +1,7 @@
 ---
 name: skill-script-skill
 description: Integration-test fixture that declares a skill-script CLI dependency. The bundled install script touches a sentinel file under $SKILL_MANAGER_BIN_DIR so the smoke graph can assert the backend ran end-to-end.
+skill-imports: []
 ---
 
 # skill-script-skill

@@ -2,6 +2,7 @@
 # github:owner/repo, git+https://..., file:./local-unit, skill:name,
 # plugin:name, doc:name, harness:name.
 skill_references = [
+  "skill:skill-manager",
   # "github:owner/base-skill",
   # "git+ssh://git@github.com/org/private-skill.git#main",
   # "file:./local-helper",

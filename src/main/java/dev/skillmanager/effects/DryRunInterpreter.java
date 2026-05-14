@@ -296,6 +296,9 @@ public final class DryRunInterpreter implements ProgramInterpreter {
             case SkillEffect.BuildResolveGraphFromUnmetReferences e ->
                     Log.step("[%d] resolve graph from unmet references in %d live skill(s)",
                             n, e.liveSkills().size());
+            case SkillEffect.ValidateMarkdownImports e ->
+                    Log.step("[%d] validate markdown skill-imports for %s unit(s)", n,
+                            e.unitNames() == null ? "resolved" : Integer.toString(e.unitNames().size()));
             case SkillEffect.CreateBinding e ->
                     Log.step("[%d] create binding %s for %s → %s%s",
                             n, e.binding().bindingId(), e.binding().unitName(),

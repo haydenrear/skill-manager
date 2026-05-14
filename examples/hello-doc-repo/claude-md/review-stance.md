@@ -1,3 +1,7 @@
+---
+skill-imports: []
+---
+
 # Review stance
 
 When reviewing code, prefer:

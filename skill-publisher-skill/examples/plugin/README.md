@@ -7,8 +7,7 @@ skill-imports: []
 #     reason: Explains semantic markdown imports between installed skills.
 ---
 
-# Build instructions
+# example-plugin
 
-Use the repository's documented build command first. If the command
-fails, report the exact command, exit code, and shortest useful error
-summary.
+Use this file for plugin-level author notes: hooks, commands, agents,
+and how the contained skills fit together.

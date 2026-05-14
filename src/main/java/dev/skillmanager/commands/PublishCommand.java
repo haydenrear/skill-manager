@@ -4,12 +4,17 @@ import dev.skillmanager.model.AgentUnit;
 import dev.skillmanager.model.PluginParser;
 import dev.skillmanager.model.Skill;
 import dev.skillmanager.model.SkillParser;
+import dev.skillmanager.effects.ConsoleProgramRenderer;
+import dev.skillmanager.effects.ContextFact;
+import dev.skillmanager.effects.EffectReceipt;
+import dev.skillmanager.effects.SkillEffect;
 import dev.skillmanager.registry.RegistryClient;
 import dev.skillmanager.registry.RegistryConfig;
 import dev.skillmanager.registry.SkillPackager;
 import dev.skillmanager.store.SkillStore;
 import dev.skillmanager.shared.util.Fs;
 import dev.skillmanager.util.Log;
+import dev.skillmanager.validation.MarkdownImportValidator;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.Repository;
@@ -23,6 +28,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
@@ -92,7 +98,32 @@ public final class PublishCommand implements Callable<Integer> {
         AgentUnit unit = (kind == SkillPackager.Kind.PLUGIN)
                 ? PluginParser.load(src)
                 : SkillParser.load(src).asUnit();
-        return uploadTarball ? publishViaTarball(store, src, unit) : publishViaGithub(store, src, unit);
+        List<MarkdownImportValidator.Violation> violations =
+                MarkdownImportValidator.validateSource(store, unit);
+        int rc = uploadTarball ? publishViaTarball(store, src, unit) : publishViaGithub(store, src, unit);
+        renderMarkdownImportViolations(store, unit, violations);
+        return rc;
+    }
+
+    private static void renderMarkdownImportViolations(
+            SkillStore store,
+            AgentUnit unit,
+            List<MarkdownImportValidator.Violation> violations) {
+        if (violations == null || violations.isEmpty()) return;
+        List<ContextFact> facts = new ArrayList<>();
+        for (var v : violations) {
+            facts.add(new ContextFact.MarkdownImportViolation(
+                    v.unitName(),
+                    v.kind() == null ? "" : v.kind().name().toLowerCase(),
+                    v.file().toString(),
+                    v.message()));
+        }
+        ConsoleProgramRenderer renderer = new ConsoleProgramRenderer(store, null);
+        renderer.onReceipt(EffectReceipt.partial(
+                new SkillEffect.ValidateMarkdownImports(List.of(unit.name())),
+                facts,
+                violations.size() + " markdown skill-import violation(s)"));
+        renderer.onComplete();
     }
 
     private int publishViaGithub(SkillStore store, Path src, AgentUnit unit) throws IOException {

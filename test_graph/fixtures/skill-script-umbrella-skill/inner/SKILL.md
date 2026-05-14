@@ -1,6 +1,7 @@
 ---
 name: skill-script-inner
 description: Inner sub-skill of skill-script-umbrella-skill. Declares a skill-script CLI dep so the smoke graph can assert the backend runs transitively when only the umbrella is installed.
+skill-imports: []
 ---
 
 # skill-script-inner

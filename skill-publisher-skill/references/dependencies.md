@@ -1,3 +1,15 @@
+---
+skill-imports:
+  - skill: skill-manager
+    path: references/cli.md
+    reason: Defines runtime handling for skill-manager managed CLI dependencies.
+    section: runtime
+  - skill: skill-manager
+    path: references/mcp.md
+    reason: Defines runtime handling for gateway-backed MCP dependencies.
+    section: runtime
+---
+
 # Dependencies
 
 Dependencies live in manifests and are resolved during install/sync.
