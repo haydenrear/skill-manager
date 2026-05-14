@@ -35,7 +35,7 @@ import java.nio.file.Path;
 public class HarnessInstanceRemoved {
     static final NodeSpec SPEC = NodeSpec.of("harness.instance.removed")
             .kind(NodeSpec.Kind.ASSERTION)
-            .dependsOn("harness.instance.materialized")
+            .dependsOn("harness.instance.materialized", "harness.command.coverage")
             .tags("harness", "rm", "ticket-47", "ticket-49")
             .timeout("30s");
 

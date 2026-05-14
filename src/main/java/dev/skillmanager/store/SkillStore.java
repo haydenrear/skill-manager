@@ -1,6 +1,10 @@
 package dev.skillmanager.store;
 
 import dev.skillmanager.model.AgentUnit;
+import dev.skillmanager.model.DocRepoParser;
+import dev.skillmanager.model.DocUnit;
+import dev.skillmanager.model.HarnessParser;
+import dev.skillmanager.model.HarnessUnit;
 import dev.skillmanager.model.PluginParser;
 import dev.skillmanager.model.PluginUnit;
 import dev.skillmanager.model.Skill;
@@ -182,13 +186,11 @@ public final class SkillStore {
 
     /**
      * Kind-aware install listing. Returns every {@link AgentUnit} the
-     * store knows about — skills under {@code skills/} via
-     * {@link #listInstalled} plus plugins under {@code plugins/} via
-     * {@link PluginParser#load}. Sorted alphabetically by name across
-     * both kinds.
+     * store knows about: skills, plugins, doc-repos, and harness
+     * templates. Sorted alphabetically by name across all kinds.
      *
      * <p>Used by the {@code list} / {@code search} surface from ticket 14
-     * (where plugins need their own row) and by code that wants the full
+     * (where non-skill units need their own row) and by code that wants the full
      * "what's installed" view without down-casting (orphan checks,
      * lock-vs-live drift, the reconciler in future).
      */
@@ -209,8 +211,51 @@ public final class SkillStore {
                 }
             }
         }
+        if (Files.isDirectory(docsDir)) {
+            try (Stream<Path> s = Files.list(docsDir)) {
+                for (Path p : (Iterable<Path>) s::iterator) {
+                    if (!Files.isDirectory(p)) continue;
+                    if (!Files.isRegularFile(p.resolve(DocRepoParser.TOML_FILENAME))) continue;
+                    try {
+                        DocUnit doc = DocRepoParser.load(p);
+                        out.add(doc);
+                    } catch (IOException e) {
+                        // skip unreadable doc-repos
+                    }
+                }
+            }
+        }
+        if (Files.isDirectory(harnessesDir)) {
+            try (Stream<Path> s = Files.list(harnessesDir)) {
+                for (Path p : (Iterable<Path>) s::iterator) {
+                    if (!Files.isDirectory(p)) continue;
+                    if (!Files.isRegularFile(p.resolve(HarnessParser.TOML_FILENAME))) continue;
+                    try {
+                        HarnessUnit harness = HarnessParser.load(p);
+                        out.add(harness);
+                    } catch (IOException e) {
+                        // skip unreadable harnesses
+                    }
+                }
+            }
+        }
         out.sort((a, b) -> a.name().compareToIgnoreCase(b.name()));
         return out;
+    }
+
+    /** Load one installed unit by name from whichever kind-specific store dir owns it. */
+    public Optional<AgentUnit> loadUnit(String name) throws IOException {
+        if (containsPlugin(name)) {
+            return Optional.of(PluginParser.load(unitDir(name, UnitKind.PLUGIN)));
+        }
+        if (containsHarness(name)) {
+            return Optional.of(HarnessParser.load(unitDir(name, UnitKind.HARNESS)));
+        }
+        if (containsDocRepo(name)) {
+            return Optional.of(DocRepoParser.load(unitDir(name, UnitKind.DOC)));
+        }
+        Optional<Skill> s = load(name);
+        return s.map(Skill::asUnit);
     }
 
     public void remove(String name) throws IOException {

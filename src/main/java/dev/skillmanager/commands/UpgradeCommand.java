@@ -6,7 +6,8 @@ import dev.skillmanager.effects.LiveInterpreter;
 import dev.skillmanager.effects.Program;
 import dev.skillmanager.effects.ProgramInterpreter;
 import dev.skillmanager.mcp.GatewayConfig;
-import dev.skillmanager.model.Skill;
+import dev.skillmanager.model.AgentUnit;
+import dev.skillmanager.model.UnitKind;
 import dev.skillmanager.source.GitOps;
 import dev.skillmanager.store.SkillStore;
 import dev.skillmanager.util.Log;
@@ -59,6 +60,16 @@ public final class UpgradeCommand implements Callable<Integer> {
             description = "Print the effects the program would run without executing them.")
     boolean dryRun;
 
+    private final SkillStore store;
+
+    public UpgradeCommand() {
+        this(SkillStore.defaultStore());
+    }
+
+    public UpgradeCommand(SkillStore store) {
+        this.store = store;
+    }
+
     @Override
     public Integer call() throws Exception {
         int selfRc = 0;
@@ -71,23 +82,23 @@ public final class UpgradeCommand implements Callable<Integer> {
             return 2;
         }
 
-        SkillStore store = SkillStore.defaultStore();
         store.init();
         // Registry override is persisted by the ConfigureRegistry effect that
         // SyncUseCase prepends — no inline RegistryConfig.resolve needed.
 
-        List<Skill> targets;
+        List<AgentUnit> targets;
         if (all) {
-            targets = store.listInstalled();
+            targets = store.listInstalledUnits();
         } else {
-            if (!store.contains(name)) {
+            AgentUnit unit = store.loadUnit(name).orElse(null);
+            if (unit == null) {
                 Log.error("not installed: %s", name);
                 return 1;
             }
-            targets = List.of(store.load(name).orElseThrow());
+            targets = List.of(unit);
         }
         if (targets.isEmpty()) {
-            Log.warn("no skills installed");
+            Log.warn("no units installed");
             return selfRc;
         }
 
@@ -97,23 +108,33 @@ public final class UpgradeCommand implements Callable<Integer> {
         // doesn't break upgrade --all entirely).
         List<SyncUseCase.Target> targetList = new ArrayList<>();
         List<String> skipped = new ArrayList<>();
-        for (Skill s : targets) {
-            if (!GitOps.isGitRepo(store.skillDir(s.name())) || !GitOps.isAvailable()) {
+        for (AgentUnit u : targets) {
+            if (u.kind() == UnitKind.DOC || u.kind() == UnitKind.HARNESS) {
+                String message = u.name() + ": " + u.kind().name().toLowerCase()
+                        + " units do not support `upgrade`; use `sync` instead";
                 if (all) {
-                    skipped.add(s.name());
+                    skipped.add(message);
                     continue;
                 }
-                Log.error("%s: not git-tracked — only git-tracked installs can be upgraded. "
-                        + "Reinstall from a github source or a add a git repo.", s.name());
+                Log.error(message);
                 return 5;
             }
-            targetList.add(new SyncUseCase.Target.Git(s.name()));
+            if (!GitOps.isGitRepo(store.unitDir(u.name(), u.kind())) || !GitOps.isAvailable()) {
+                if (all) {
+                    skipped.add(u.name() + ": not git-tracked");
+                    continue;
+                }
+                Log.error("%s: not git-tracked — only git-tracked skill/plugin installs can be upgraded. "
+                        + "Reinstall from a github source or add a git repo.", u.name());
+                return 5;
+            }
+            targetList.add(new SyncUseCase.Target.Git(u.name()));
         }
-        for (String n : skipped) {
-            Log.warn("%s: not git-tracked — skipping (reinstall from a github source to upgrade)", n);
+        for (String message : skipped) {
+            Log.warn("%s — skipping", message);
         }
         if (targetList.isEmpty()) {
-            Log.warn("no git-tracked skills to upgrade");
+            Log.warn("no git-tracked skill/plugin units to upgrade");
             return selfRc;
         }
 

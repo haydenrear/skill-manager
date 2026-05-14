@@ -452,6 +452,8 @@ validationGraph {
         // MCP server. The orphan check on the upcoming plugin uninstall
         // must see this skill's claim and keep that server alive.
         node("sources/smoke/PartnerSkillInstalled.java")
+        // Kind-aware commands should keep seeing plugins before teardown.
+        node("sources/smoke/plugin/PluginCommandCoverage.java")
         // Plugin uninstall with mixed orphan/non-orphan deps.
         node("sources/smoke/plugin/PluginUninstalledMixedOrphans.java")
 
@@ -481,6 +483,7 @@ validationGraph {
         node("sources/smoke/GatewayUp.java")
         node("sources/smoke/harness/HarnessTransitiveInstalled.java")
         node("sources/smoke/harness/HarnessInstanceMaterialized.java")
+        node("sources/smoke/harness/HarnessCommandCoverage.java")
         node("sources/smoke/harness/HarnessInstanceRemoved.java")
         node("sources/smoke/harness/HarnessTemplateUninstalled.java")
         node("sources/common/ServersDown.java")
@@ -504,6 +507,7 @@ validationGraph {
         node("sources/smoke/doc/DocUnbindOneOfTwo.java")
         node("sources/smoke/doc/DocUnbindLastSectionAndDirGone.java")
         node("sources/smoke/doc/DocRebindAfterAllRemoved.java")
+        node("sources/smoke/doc/DocCommandCoverage.java")
         node("sources/smoke/doc/DocRepoUninstalled.java")
     }
 }

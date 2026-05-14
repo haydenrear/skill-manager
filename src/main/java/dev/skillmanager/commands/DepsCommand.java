@@ -1,6 +1,6 @@
 package dev.skillmanager.commands;
 
-import dev.skillmanager.model.Skill;
+import dev.skillmanager.model.AgentUnit;
 import dev.skillmanager.model.UnitReference;
 import dev.skillmanager.store.SkillStore;
 import picocli.CommandLine.Command;
@@ -28,47 +28,57 @@ public final class DepsCommand implements Callable<Integer> {
     @Option(names = "--mcp", description = "Include MCP deps")
     boolean mcp;
 
+    private final SkillStore store;
+
+    public DepsCommand() {
+        this(SkillStore.defaultStore());
+    }
+
+    public DepsCommand(SkillStore store) {
+        this.store = store;
+    }
+
     @Override
     public Integer call() throws Exception {
-        SkillStore store = SkillStore.defaultStore();
         store.init();
         if (name != null) {
-            Skill s = store.load(name).orElse(null);
-            if (s == null) {
-                System.err.println("skill not found: " + name);
+            AgentUnit u = store.loadUnit(name).orElse(null);
+            if (u == null) {
+                System.err.println("unit not found: " + name);
                 return 1;
             }
-            render(store, s, "", new HashSet<>());
+            render(store, u, "", new HashSet<>());
         } else {
-            for (Skill s : store.listInstalled()) render(store, s, "", new HashSet<>());
+            for (AgentUnit u : store.listInstalledUnits()) render(store, u, "", new HashSet<>());
         }
         return 0;
     }
 
-    private void render(SkillStore store, Skill s, String indent, Set<String> seen) throws java.io.IOException {
-        System.out.println(indent + s.name() + (s.version() != null ? " @" + s.version() : ""));
-        if (!seen.add(s.name())) {
+    private void render(SkillStore store, AgentUnit u, String indent, Set<String> seen) throws java.io.IOException {
+        System.out.println(indent + u.name() + " (" + u.kind().name().toLowerCase() + ")"
+                + (u.version() != null ? " @" + u.version() : ""));
+        if (!seen.add(u.name())) {
             System.out.println(indent + "  (cycle)");
             return;
         }
-        if (cli && !s.cliDependencies().isEmpty()) {
-            for (var d : s.cliDependencies()) System.out.println(indent + "  [cli] " + d.name());
+        if (cli && !u.cliDependencies().isEmpty()) {
+            for (var d : u.cliDependencies()) System.out.println(indent + "  [cli] " + d.name());
         }
-        if (mcp && !s.mcpDependencies().isEmpty()) {
-            for (var d : s.mcpDependencies()) System.out.println(indent + "  [mcp] " + d.name());
+        if (mcp && !u.mcpDependencies().isEmpty()) {
+            for (var d : u.mcpDependencies()) System.out.println(indent + "  [mcp] " + d.name());
         }
-        for (UnitReference r : s.skillReferences()) {
+        for (UnitReference r : u.references()) {
             String childName = r.name();
             if (childName == null && r.isLocal()) {
                 Path p = Path.of(r.path());
                 childName = p.getFileName() != null ? p.getFileName().toString() : null;
             }
             if (childName == null) continue;
-            var child = store.load(childName);
+            var child = store.loadUnit(childName);
             if (child.isPresent()) {
                 render(store, child.get(), indent + "  ", seen);
             } else {
-                System.out.println(indent + "  " + childName + " (not installed)");
+                System.out.println(indent + "  " + r.coord().raw() + " (not installed)");
             }
         }
     }

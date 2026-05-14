@@ -127,6 +127,8 @@ jobs:
           - onboard
           - hyper-experiments
           - plugin-smoke
+          - doc-smoke
+          - harness-smoke
           - source-tracking
           - git-latest-source-tracking
     env:
