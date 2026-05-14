@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.12.2](https://github.com/haydenrear/skill-manager/compare/v0.12.1...v0.12.2) (2026-05-14)
+
+
+### Bug Fixes
+
+* show and manage non-skill units ([#65](https://github.com/haydenrear/skill-manager/issues/65)) ([a97cc86](https://github.com/haydenrear/skill-manager/commit/a97cc861c813d389866d50e51696b4a0325c59be))
+
 ## [0.12.1](https://github.com/haydenrear/skill-manager/compare/v0.12.0...v0.12.1) (2026-05-14)
 
 
