@@ -5,7 +5,6 @@ import dev.skillmanager.effects.EffectReceipt;
 import dev.skillmanager.effects.EffectStatus;
 import dev.skillmanager.effects.Program;
 import dev.skillmanager.effects.SkillEffect;
-import dev.skillmanager.model.Skill;
 import dev.skillmanager.source.InstalledUnit;
 import dev.skillmanager.source.UnitStore;
 import dev.skillmanager.store.SkillStore;
@@ -39,22 +38,18 @@ public final class ReconcileUseCase {
 
     public static Program<Report> buildProgram(SkillStore store) throws IOException {
         UnitStore sources = new UnitStore(store);
-        List<Skill> installed = store.listInstalled();
+        var installed = store.listInstalledUnits();
         List<SkillEffect> effects = new ArrayList<>();
-        // Reconciler still iterates skill-only listInstalled — plugin-aware
-        // listing lands in ticket 11 (Projector) along with the kind-aware
-        // unit listing it requires. Skills onboard via SkillUnit so the
-        // unit-typed handler treats them uniformly.
-        for (Skill s : installed) {
-            if (sources.read(s.name()).isEmpty()) {
-                effects.add(new SkillEffect.OnboardUnit(s.asUnit()));
+        for (var u : installed) {
+            if (sources.read(u.name()).isEmpty()) {
+                effects.add(new SkillEffect.OnboardUnit(u));
             }
         }
-        for (Skill s : installed) {
-            sources.read(s.name()).ifPresent(src -> {
+        for (var u : installed) {
+            sources.read(u.name()).ifPresent(src -> {
                 if (!src.hasErrors()) return;
                 for (InstalledUnit.UnitError err : List.copyOf(src.errors())) {
-                    effects.add(new SkillEffect.ValidateAndClearError(s.name(), err.kind()));
+                    effects.add(new SkillEffect.ValidateAndClearError(u.name(), err.kind()));
                 }
             });
         }

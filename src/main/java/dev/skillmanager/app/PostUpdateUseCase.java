@@ -7,8 +7,8 @@ import dev.skillmanager.effects.Program;
 import dev.skillmanager.effects.SkillEffect;
 import dev.skillmanager.mcp.GatewayConfig;
 import dev.skillmanager.mcp.McpWriter;
+import dev.skillmanager.model.AgentUnit;
 import dev.skillmanager.model.McpDependency;
-import dev.skillmanager.model.Skill;
 import dev.skillmanager.store.SkillStore;
 
 import java.io.IOException;
@@ -48,9 +48,7 @@ public final class PostUpdateUseCase {
                                                GatewayConfig gw,
                                                boolean withMcp,
                                                boolean withAgents) throws IOException {
-        List<Skill> live = store.listInstalled();
-        List<dev.skillmanager.model.AgentUnit> liveUnits = new ArrayList<>(live.size());
-        for (Skill s : live) liveUnits.add(s.asUnit());
+        List<AgentUnit> liveUnits = store.listInstalledUnits();
         List<SkillEffect> effects = new ArrayList<>();
 
         // ResolveTransitives is sync-only — it catches new references that
@@ -98,10 +96,10 @@ public final class PostUpdateUseCase {
     }
 
     /** Helper used by the {@link SkillEffect.UnregisterMcpOrphans} handler. */
-    public static List<String> computeOrphans(Map<String, Set<String>> preMcpDeps, List<Skill> postSkills) {
+    public static List<String> computeOrphans(Map<String, Set<String>> preMcpDeps, List<AgentUnit> postUnits) {
         Set<String> stillReferenced = new HashSet<>();
-        for (Skill s : postSkills) {
-            for (McpDependency d : s.mcpDependencies()) stillReferenced.add(d.name());
+        for (AgentUnit u : postUnits) {
+            for (McpDependency d : u.mcpDependencies()) stillReferenced.add(d.name());
         }
         Set<String> previouslyReferenced = new HashSet<>();
         for (Set<String> deps : preMcpDeps.values()) previouslyReferenced.addAll(deps);
@@ -115,7 +113,7 @@ public final class PostUpdateUseCase {
     /** Helper used by the {@link SkillEffect.SnapshotMcpDeps} handler. */
     public static Map<String, Set<String>> snapshotMcpDeps(SkillStore store) throws IOException {
         Map<String, Set<String>> snapshot = new LinkedHashMap<>();
-        for (Skill s : store.listInstalled()) {
+        for (AgentUnit s : store.listInstalledUnits()) {
             Set<String> names = new HashSet<>();
             for (McpDependency d : s.mcpDependencies()) names.add(d.name());
             snapshot.put(s.name(), names);

@@ -35,7 +35,7 @@ import java.nio.file.Path;
 public class DocRepoUninstalled {
     static final NodeSpec SPEC = NodeSpec.of("doc.repo.uninstalled")
             .kind(NodeSpec.Kind.ASSERTION)
-            .dependsOn("doc.rebind.after.all.removed")
+            .dependsOn("doc.rebind.after.all.removed", "doc.command.coverage")
             .tags("uninstall", "doc-repo", "ticket-48", "ticket-49")
             .timeout("30s");
 

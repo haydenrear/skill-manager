@@ -139,8 +139,8 @@ public final class LockCommand implements Callable<Integer> {
     public static UnitsLock readLiveState(SkillStore store) throws IOException {
         UnitStore sources = new UnitStore(store);
         List<LockedUnit> rows = new ArrayList<>();
-        for (var skill : store.listInstalled()) {
-            InstalledUnit rec = sources.read(skill.name()).orElse(null);
+        for (var unit : store.listInstalledUnits()) {
+            InstalledUnit rec = sources.read(unit.name()).orElse(null);
             if (rec == null) continue;
             rows.add(LockedUnit.fromInstalled(rec));
         }

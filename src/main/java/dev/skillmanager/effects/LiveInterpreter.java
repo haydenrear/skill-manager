@@ -16,6 +16,7 @@ import dev.skillmanager.mcp.McpWriter;
 import dev.skillmanager.model.McpDependency;
 import dev.skillmanager.model.AgentUnit;
 import dev.skillmanager.model.Skill;
+import dev.skillmanager.model.UnitKind;
 import dev.skillmanager.plan.InstallPlan;
 import dev.skillmanager.plan.PlanBuilder;
 import dev.skillmanager.pm.PackageManagerRuntime;
@@ -487,7 +488,7 @@ public final class LiveInterpreter implements ProgramInterpreter {
         if (preMcpDeps.isEmpty()) return EffectReceipt.skipped(e, "no snapshot in context");
         try {
             List<String> orphans = dev.skillmanager.app.PostUpdateUseCase.computeOrphans(
-                    preMcpDeps, ctx.store().listInstalled());
+                    preMcpDeps, ctx.store().listInstalledUnits());
             if (orphans.isEmpty()) return EffectReceipt.ok(e);
             // Inline the per-orphan calls so facts land on this single
             // receipt — running them through a sub-program would let the
@@ -777,7 +778,10 @@ public final class LiveInterpreter implements ProgramInterpreter {
     }
 
     private EffectReceipt validateAndClear(SkillEffect.ValidateAndClearError e, EffectContext ctx) throws IOException {
-        Path dir = ctx.store().skillDir(e.unitName());
+        UnitKind unitKind = ctx.source(e.unitName())
+                .map(InstalledUnit::unitKind)
+                .orElse(UnitKind.SKILL);
+        Path dir = ctx.store().unitDir(e.unitName(), unitKind);
         boolean cleared = false;
         switch (e.kind()) {
             case MERGE_CONFLICT -> {
@@ -920,9 +924,15 @@ public final class LiveInterpreter implements ProgramInterpreter {
         // a missing InstalledUnit record (e.g. plugin onboarded before
         // ticket 03's record-write landed) shouldn't make us point at the
         // wrong directory.
-        Path at = ctx.store().contains(e.unitName())
-                ? ctx.store().skillDir(e.unitName())
-                : ctx.store().unitDir(e.unitName(), dev.skillmanager.model.UnitKind.PLUGIN);
+        UnitKind existingKind = ctx.source(e.unitName())
+                .map(InstalledUnit::unitKind)
+                .orElseGet(() -> {
+                    if (ctx.store().containsPlugin(e.unitName())) return UnitKind.PLUGIN;
+                    if (ctx.store().containsDocRepo(e.unitName())) return UnitKind.DOC;
+                    if (ctx.store().containsHarness(e.unitName())) return UnitKind.HARNESS;
+                    return UnitKind.SKILL;
+                });
+        Path at = ctx.store().unitDir(e.unitName(), existingKind);
         // Cooperative halt — the precondition check fired correctly,
         // it just found the unit already present and wants the program
         // to stop rather than overwrite.
@@ -1008,7 +1018,7 @@ public final class LiveInterpreter implements ProgramInterpreter {
         for (var r : graph.resolved()) {
             System.out.println("INSTALLED: " + r.name()
                     + (r.version() == null ? "" : "@" + r.version())
-                    + " -> " + ctx.store().skillDir(r.name()));
+                    + " -> " + ctx.store().unitDir(r.name(), r.unit().kind()));
         }
         return EffectReceipt.ok(e);
     }
@@ -1308,11 +1318,11 @@ public final class LiveInterpreter implements ProgramInterpreter {
     private EffectReceipt loadOutstandingErrors(SkillEffect.LoadOutstandingErrors e, EffectContext ctx) {
         List<ContextFact> facts = new ArrayList<>();
         try {
-            for (Skill s : ctx.store().listInstalled()) {
-                ctx.source(s.name()).ifPresent(src -> {
+            for (AgentUnit u : ctx.store().listInstalledUnits()) {
+                ctx.source(u.name()).ifPresent(src -> {
                     if (!src.hasErrors()) return;
                     for (InstalledUnit.UnitError err : src.errors()) {
-                        facts.add(new ContextFact.OutstandingError(s.name(), err.kind(), err.message()));
+                        facts.add(new ContextFact.OutstandingError(u.name(), err.kind(), err.message()));
                     }
                 });
             }
