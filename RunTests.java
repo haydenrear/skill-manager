@@ -30,6 +30,7 @@ import dev.skillmanager.model.SkillUnitWrapsSkillTest;
 import dev.skillmanager.model.UnitReferenceFromTomlTest;
 import dev.skillmanager.plan.CycleDetectionTest;
 import dev.skillmanager.plan.MixedKindTopoOrderTest;
+import dev.skillmanager.command.CommandKindCoverageTest;
 import dev.skillmanager.command.CreatePluginScenarioTest;
 import dev.skillmanager.command.GatewayStatusCommandTest;
 import dev.skillmanager.command.ListShowsKindAndShaTest;
@@ -141,6 +142,7 @@ public class RunTests {
         failures += PublishDetectsPluginTest.run();
         failures += PublishDetectsSkillTest.run();
         failures += ScaffoldPluginTest.run();
+        failures += CommandKindCoverageTest.run();
         failures += CreatePluginScenarioTest.run();
         failures += GatewayStatusCommandTest.run();
         failures += ListShowsKindAndShaTest.run();

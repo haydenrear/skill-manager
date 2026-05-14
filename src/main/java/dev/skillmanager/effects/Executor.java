@@ -635,9 +635,9 @@ public final class Executor {
     /** Package-private for {@code CompensationOrphanTest}. */
     boolean isClaimedByOtherUnit(String rolledBackUnit, String depName) {
         try {
-            for (Skill s : store.listInstalled()) {
-                if (s.name().equals(rolledBackUnit)) continue;
-                for (var d : s.cliDependencies()) {
+            for (var u : store.listInstalledUnits()) {
+                if (u.name().equals(rolledBackUnit)) continue;
+                for (var d : u.cliDependencies()) {
                     if (d.name().equals(depName)) return true;
                 }
             }
@@ -648,9 +648,9 @@ public final class Executor {
     /** Package-private for {@code CompensationOrphanTest}. */
     boolean isMcpClaimedByOtherUnit(String rolledBackUnit, String serverName) {
         try {
-            for (Skill s : store.listInstalled()) {
-                if (s.name().equals(rolledBackUnit)) continue;
-                for (var d : s.mcpDependencies()) {
+            for (var u : store.listInstalledUnits()) {
+                if (u.name().equals(rolledBackUnit)) continue;
+                for (var d : u.mcpDependencies()) {
                     if (d.name().equals(serverName)) return true;
                 }
             }

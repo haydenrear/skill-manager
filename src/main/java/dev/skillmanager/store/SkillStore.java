@@ -243,6 +243,21 @@ public final class SkillStore {
         return out;
     }
 
+    /** Load one installed unit by name from whichever kind-specific store dir owns it. */
+    public Optional<AgentUnit> loadUnit(String name) throws IOException {
+        if (containsPlugin(name)) {
+            return Optional.of(PluginParser.load(unitDir(name, UnitKind.PLUGIN)));
+        }
+        if (containsHarness(name)) {
+            return Optional.of(HarnessParser.load(unitDir(name, UnitKind.HARNESS)));
+        }
+        if (containsDocRepo(name)) {
+            return Optional.of(DocRepoParser.load(unitDir(name, UnitKind.DOC)));
+        }
+        Optional<Skill> s = load(name);
+        return s.map(Skill::asUnit);
+    }
+
     public void remove(String name) throws IOException {
         Path d = skillDir(name);
         if (Files.exists(d)) Fs.deleteRecursive(d);

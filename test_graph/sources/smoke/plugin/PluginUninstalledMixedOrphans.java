@@ -40,7 +40,7 @@ import java.util.Map;
 public class PluginUninstalledMixedOrphans {
     static final NodeSpec SPEC = NodeSpec.of("plugin.uninstalled.mixed.orphans")
             .kind(NodeSpec.Kind.ASSERTION)
-            .dependsOn("partner.skill.installed", "plugin.synced")
+            .dependsOn("partner.skill.installed", "plugin.synced", "plugin.command.coverage")
             .tags("plugin", "uninstall", "orphan")
             .timeout("90s");
 

@@ -150,8 +150,8 @@ public final class EffectContext {
     private Map<String, InstalledUnit> loadAll() {
         Map<String, InstalledUnit> out = new LinkedHashMap<>();
         try {
-            for (var skill : store.listInstalled()) {
-                sourceStore.read(skill.name()).ifPresent(s -> out.put(skill.name(), s));
+            for (var unit : store.listInstalledUnits()) {
+                sourceStore.read(unit.name()).ifPresent(s -> out.put(unit.name(), s));
             }
         } catch (IOException ignored) {}
         return out;
