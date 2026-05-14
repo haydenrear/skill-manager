@@ -45,17 +45,23 @@ public final class LiveInterpreter implements ProgramInterpreter {
 
     private final SkillStore store;
     private final GatewayConfig gateway;
+    private final boolean json;
 
     public LiveInterpreter(SkillStore store) { this(store, null); }
 
     public LiveInterpreter(SkillStore store, GatewayConfig gateway) {
+        this(store, gateway, false);
+    }
+
+    public LiveInterpreter(SkillStore store, GatewayConfig gateway, boolean json) {
         this.store = store;
         this.gateway = gateway;
+        this.json = json;
     }
 
     @Override
     public <R> R run(Program<R> program) {
-        ConsoleProgramRenderer renderer = new ConsoleProgramRenderer(store, gateway);
+        ConsoleProgramRenderer renderer = new ConsoleProgramRenderer(store, gateway, json);
         EffectContext ctx = new EffectContext(store, gateway, renderer);
         R result = runWithContext(program, ctx);
         renderer.onComplete();
@@ -64,7 +70,7 @@ public final class LiveInterpreter implements ProgramInterpreter {
 
     @Override
     public <R> R runStaged(StagedProgram<R> staged) {
-        ConsoleProgramRenderer renderer = new ConsoleProgramRenderer(store, gateway);
+        ConsoleProgramRenderer renderer = new ConsoleProgramRenderer(store, gateway, json);
         EffectContext ctx = new EffectContext(store, gateway, renderer);
         List<EffectReceipt> all = new ArrayList<>();
         List<EffectReceipt> s1 = runEffects(staged.stage1(), ctx);

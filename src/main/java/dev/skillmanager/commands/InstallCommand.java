@@ -108,6 +108,9 @@ public final class InstallCommand implements Callable<Integer> {
                     + "which create their own bindings.")
     public boolean noBindDefault;
 
+    @Option(names = "--json", description = "Emit machine-readable JSON.")
+    public boolean json;
+
     @Override
     public Integer call() throws Exception {
         SkillStore store = SkillStore.defaultStore();
@@ -144,7 +147,7 @@ public final class InstallCommand implements Callable<Integer> {
 
         InstallUseCase.Report report;
         if (dryRun) {
-            report = new DryRunInterpreter(store).runStaged(program);
+            report = new DryRunInterpreter(store, json).runStaged(program);
             return report.exitCode() != 0 ? report.exitCode() : 0;
         }
         // Live install runs through Executor: each successful effect
@@ -154,7 +157,7 @@ public final class InstallCommand implements Callable<Integer> {
         // wins over the default — typed halts (resolve failure, policy
         // gate) carry their own exit code via HaltWithExitCode facts.
         dev.skillmanager.effects.Executor.Outcome<InstallUseCase.Report> outcome =
-                new dev.skillmanager.effects.Executor(store, gw).runStaged(program);
+                new dev.skillmanager.effects.Executor(store, gw, json).runStaged(program);
         report = outcome.result();
         if (outcome.rolledBack()) {
             Log.warn("install rolled back %d effect(s) — no partial state retained",

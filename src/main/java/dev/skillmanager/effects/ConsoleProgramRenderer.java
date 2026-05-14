@@ -10,6 +10,7 @@ import dev.skillmanager.store.SkillStore;
 import dev.skillmanager.util.Log;
 
 import java.nio.file.Path;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -35,6 +36,8 @@ public final class ConsoleProgramRenderer implements ProgramRenderer {
 
     private final SkillStore store;
     private GatewayConfig gateway;
+    private final boolean json;
+    private final List<Map<String, Object>> jsonReceipts = new ArrayList<>();
 
     // ---- accumulators for onComplete summaries ----
     private final List<String> refusedSkills = new ArrayList<>();
@@ -46,12 +49,22 @@ public final class ConsoleProgramRenderer implements ProgramRenderer {
             new LinkedHashMap<>();
 
     public ConsoleProgramRenderer(SkillStore store, GatewayConfig gateway) {
+        this(store, gateway, false);
+    }
+
+    public ConsoleProgramRenderer(SkillStore store, GatewayConfig gateway, boolean json) {
         this.store = store;
         this.gateway = gateway;
+        this.json = json;
     }
 
     @Override
     public void onReceipt(EffectReceipt receipt) {
+        if (json) {
+            jsonReceipts.add(receiptJson(receipt));
+            for (ContextFact f : receipt.facts()) accumulate(f);
+            return;
+        }
         if (receipt.status() == EffectStatus.FAILED && receipt.errorMessage() != null) {
             Log.error("× %s: %s",
                     receipt.effect().getClass().getSimpleName(), receipt.errorMessage());
@@ -306,10 +319,85 @@ public final class ConsoleProgramRenderer implements ProgramRenderer {
 
     @Override
     public void onComplete() {
+        if (json) {
+            printJsonDocument();
+            return;
+        }
         printMcpResultsBlock();
         printSyncSummary();
         printAgentConfigSummary();
         printOutstandingErrors();
+    }
+
+    private void accumulate(ContextFact f) {
+        switch (f) {
+            case ContextFact.OrphanUnregistered x -> orphans.add(x.serverId());
+            case ContextFact.McpServerRegistered x -> mcpResults.add(x.result());
+            case ContextFact.McpServerRegistrationFailed x -> mcpResults.add(x.result());
+            case ContextFact.AgentMcpConfigChanged x -> agentChanges
+                    .computeIfAbsent(x.change(), k -> new ArrayList<>())
+                    .add(x.agentId() + " (" + x.configPath() + ")");
+            case ContextFact.SyncGitRefused x -> refusedSkills.add(x.skillName());
+            case ContextFact.SyncGitConflicted x -> conflictedSkills.add(x.skillName());
+            case ContextFact.OutstandingError x -> {
+                if (x.kind() == InstalledUnit.ErrorKind.NEEDS_GIT_MIGRATION
+                        && dev.skillmanager.lifecycle.BundledSkills.isBundled(x.skillName())) {
+                    break;
+                }
+                outstandingErrors
+                        .computeIfAbsent(x.skillName(), k -> new java.util.LinkedHashMap<>())
+                        .putIfAbsent(x.kind(), x.message());
+            }
+            default -> {}
+        }
+    }
+
+    private Map<String, Object> receiptJson(EffectReceipt receipt) {
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("effect", receipt.effect().getClass().getSimpleName());
+        out.put("status", receipt.status().name());
+        out.put("continuation", receipt.continuation().name());
+        out.put("errorMessage", receipt.errorMessage());
+        List<Map<String, Object>> facts = new ArrayList<>();
+        for (ContextFact f : receipt.facts()) facts.add(factJson(f));
+        out.put("facts", facts);
+        return out;
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> factJson(ContextFact fact) {
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("type", fact.getClass().getSimpleName());
+        try {
+            Map<String, Object> fields = JSON.convertValue(fact, Map.class);
+            out.putAll(fields);
+        } catch (IllegalArgumentException ex) {
+            out.put("serializationError", ex.getMessage());
+        }
+        return out;
+    }
+
+    private void printJsonDocument() {
+        Map<String, Object> root = new LinkedHashMap<>();
+        root.put("receipts", jsonReceipts);
+        root.put("summary", jsonSummary());
+        try {
+            System.out.println(JSON.writeValueAsString(root));
+        } catch (IOException io) {
+            Log.warn("failed to emit program JSON: %s", io.getMessage());
+        }
+    }
+
+    private Map<String, Object> jsonSummary() {
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("mcpResults", mcpResults);
+        out.put("orphansUnregistered", orphans);
+        out.put("sync", Map.of(
+                "refused", refusedSkills,
+                "conflicted", conflictedSkills));
+        out.put("agentConfigChanges", agentChanges);
+        out.put("outstandingErrors", outstandingErrors);
+        return out;
     }
 
     // ----------------------------------------------- summaries
@@ -320,8 +408,8 @@ public final class ConsoleProgramRenderer implements ProgramRenderer {
             System.out.println(McpWriter.RESULTS_START);
             System.out.println(JSON.writeValueAsString(mcpResults));
             System.out.println(McpWriter.RESULTS_END);
-        } catch (Exception e) {
-            Log.warn("failed to emit install results JSON: %s", e.getMessage());
+        } catch (IOException io) {
+            Log.warn("failed to emit install results JSON: %s", io.getMessage());
         }
     }
 

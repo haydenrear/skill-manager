@@ -18,10 +18,15 @@ import dev.skillmanager.source.InstalledUnit;
 import dev.skillmanager.source.UnitStore;
 import dev.skillmanager.store.SkillStore;
 import picocli.CommandLine.Command;
+import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.Callable;
 
 /**
@@ -38,6 +43,9 @@ public final class ShowCommand implements Callable<Integer> {
 
     @Parameters(index = "0", description = "Unit name")
     String name;
+
+    @Option(names = "--json", description = "Emit machine-readable JSON.")
+    boolean json;
 
     private final SkillStore store;
 
@@ -60,6 +68,15 @@ public final class ShowCommand implements Callable<Integer> {
         UnitStore sources = new UnitStore(store);
         InstalledUnit rec = sources.read(name).orElse(null);
 
+        if (json) {
+            Map<String, Object> doc = showJson(store, rec);
+            if (doc == null) {
+                System.err.println("unit not found: " + name);
+                return 1;
+            }
+            return JsonOutput.print(doc) ? 0 : 2;
+        }
+
         if (rec != null) {
             Integer rc = showRecordedKind(store, rec.unitKind());
             if (rc != null) return rc;
@@ -76,6 +93,137 @@ public final class ShowCommand implements Callable<Integer> {
             return 1;
         }
         return showSkill(s);
+    }
+
+    private Map<String, Object> showJson(SkillStore store, InstalledUnit rec) throws IOException {
+        if (rec != null) {
+            Map<String, Object> row = showRecordedKindJson(store, rec.unitKind(), rec);
+            if (row != null) return row;
+        }
+        if (store.containsPlugin(name)) return pluginJson(store, rec);
+        if (store.containsHarness(name)) return harnessJson(store, rec);
+        if (store.containsDocRepo(name)) return docRepoJson(store, rec);
+        Skill s = store.load(name).orElse(null);
+        return s == null ? null : skillJson(s, rec);
+    }
+
+    private Map<String, Object> showRecordedKindJson(SkillStore store, UnitKind kind, InstalledUnit rec)
+            throws IOException {
+        if (kind == null) return null;
+        return switch (kind) {
+            case PLUGIN -> store.containsPlugin(name) ? pluginJson(store, rec) : null;
+            case HARNESS -> store.containsHarness(name) ? harnessJson(store, rec) : null;
+            case DOC -> store.containsDocRepo(name) ? docRepoJson(store, rec) : null;
+            case SKILL -> {
+                Skill s = store.load(name).orElse(null);
+                yield s == null ? null : skillJson(s, rec);
+            }
+        };
+    }
+
+    private static Map<String, Object> baseJson(String kind, String name, String version,
+                                                String description, Path path, InstalledUnit rec) {
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("name", name);
+        out.put("kind", kind);
+        out.put("version", version);
+        out.put("description", description);
+        out.put("path", path == null ? null : path.toString());
+        out.put("sha", rec == null ? null : rec.gitHash());
+        out.put("shortSha", shaOrNull(rec));
+        out.put("source", sourceOrNull(rec));
+        return out;
+    }
+
+    private static Map<String, Object> skillJson(Skill s, InstalledUnit rec) {
+        Map<String, Object> out = baseJson("skill", s.name(), s.version(), s.description(), s.sourcePath(), rec);
+        out.put("cliDependencies", s.cliDependencies().stream()
+                .map(d -> {
+                    Map<String, Object> row = new LinkedHashMap<>();
+                    row.put("name", d.name());
+                    row.put("minVersion", d.minVersion());
+                    return row;
+                })
+                .toList());
+        out.put("skillReferences", referencesJson(s.skillReferences()));
+        out.put("mcpDependencies", s.mcpDependencies().stream()
+                .map(m -> {
+                    Map<String, Object> row = new LinkedHashMap<>();
+                    row.put("name", m.name());
+                    row.put("load", describeLoad(m));
+                    return row;
+                })
+                .toList());
+        return out;
+    }
+
+    private Map<String, Object> pluginJson(SkillStore store, InstalledUnit rec) throws IOException {
+        PluginUnit p = PluginParser.load(store.unitDir(name, UnitKind.PLUGIN));
+        Map<String, Object> out = baseJson("plugin", p.name(), p.version(), p.description(), p.sourcePath(), rec);
+        out.put("containedSkills", p.containedSkills().stream().map(ContainedSkill::name).toList());
+        out.put("cliDependencies", p.cliDependencies().stream()
+                .map(d -> {
+                    Map<String, Object> row = new LinkedHashMap<>();
+                    row.put("name", d.name());
+                    row.put("declaredAt", attributionForCli(p, d));
+                    return row;
+                })
+                .toList());
+        out.put("mcpDependencies", p.mcpDependencies().stream()
+                .map(d -> {
+                    Map<String, Object> row = new LinkedHashMap<>();
+                    row.put("name", d.name());
+                    row.put("declaredAt", attributionForMcp(p, d));
+                    return row;
+                })
+                .toList());
+        out.put("references", referencesJson(p.references()));
+        return out;
+    }
+
+    private Map<String, Object> docRepoJson(SkillStore store, InstalledUnit rec) throws IOException {
+        DocUnit d = DocRepoParser.load(store.unitDir(name, UnitKind.DOC));
+        Map<String, Object> out = baseJson("doc", d.name(), d.version(), d.description(), d.sourcePath(), rec);
+        out.put("sources", d.sources().stream()
+                .map(s -> {
+                    Map<String, Object> row = new LinkedHashMap<>();
+                    row.put("id", s.id());
+                    row.put("file", s.file());
+                    row.put("agents", s.agents());
+                    return row;
+                })
+                .toList());
+        return out;
+    }
+
+    private Map<String, Object> harnessJson(SkillStore store, InstalledUnit rec) throws IOException {
+        HarnessUnit h = HarnessParser.load(store.unitDir(name, UnitKind.HARNESS));
+        Map<String, Object> out = baseJson("harness", h.name(), h.version(), h.description(), h.sourcePath(), rec);
+        out.put("units", referencesJson(h.units()));
+        out.put("docs", referencesJson(h.docs()));
+        out.put("mcpTools", h.mcpTools().stream()
+                .map(m -> {
+                    Map<String, Object> row = new LinkedHashMap<>();
+                    row.put("server", m.server());
+                    row.put("tools", m.exposesAllTools() ? List.of("*") : m.tools());
+                    return row;
+                })
+                .toList());
+        return out;
+    }
+
+    private static List<Map<String, Object>> referencesJson(List<UnitReference> refs) {
+        List<Map<String, Object>> out = new ArrayList<>();
+        for (UnitReference r : refs) {
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("coord", r.coord().raw());
+            row.put("local", r.isLocal());
+            row.put("name", r.name());
+            row.put("version", r.version());
+            row.put("path", r.path());
+            out.add(row);
+        }
+        return out;
     }
 
     private Integer showRecordedKind(SkillStore store, UnitKind kind) throws IOException {
@@ -315,9 +463,21 @@ public final class ShowCommand implements Callable<Integer> {
                 : "-";
     }
 
+    private static String shaOrNull(InstalledUnit rec) {
+        return rec != null && rec.gitHash() != null && !rec.gitHash().isBlank()
+                ? rec.gitHash().substring(0, Math.min(7, rec.gitHash().length()))
+                : null;
+    }
+
     private static String sourceOrDash(InstalledUnit rec) {
         return rec != null && rec.installSource() != null
                 ? rec.installSource().name().toLowerCase()
                 : "-";
+    }
+
+    private static String sourceOrNull(InstalledUnit rec) {
+        return rec != null && rec.installSource() != null
+                ? rec.installSource().name().toLowerCase()
+                : null;
     }
 }

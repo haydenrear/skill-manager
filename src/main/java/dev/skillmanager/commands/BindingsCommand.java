@@ -36,6 +36,9 @@ public final class BindingsCommand {
         @Option(names = "--root", description = "Filter to bindings under this target root (substring match).")
         String root;
 
+        @Option(names = "--json", description = "Emit machine-readable JSON.")
+        boolean json;
+
         @Override
         public Integer call() {
             SkillStore store = SkillStore.defaultStore();
@@ -45,6 +48,9 @@ public final class BindingsCommand {
                     .filter(b -> root == null || (b.targetRoot() != null
                             && b.targetRoot().toString().contains(root)))
                     .collect(Collectors.toList());
+            if (json) {
+                return JsonOutput.print(new ListResult(bindings.stream().map(ListCmd::row).toList())) ? 0 : 2;
+            }
             if (bindings.isEmpty()) {
                 System.out.println("(no bindings)");
                 return 0;
@@ -62,6 +68,27 @@ public final class BindingsCommand {
             }
             return 0;
         }
+
+        private static Row row(Binding b) {
+            return new Row(
+                    b.bindingId(),
+                    b.unitName(),
+                    b.unitKind().name().toLowerCase(),
+                    b.subElement(),
+                    b.targetRoot() == null ? null : b.targetRoot().toString(),
+                    b.conflictPolicy().name().toLowerCase().replace('_', '-'),
+                    b.source().name().toLowerCase().replace('_', '-'));
+        }
+
+        public record ListResult(List<Row> bindings) {}
+        public record Row(
+                String id,
+                String unit,
+                String kind,
+                String subElement,
+                String target,
+                String policy,
+                String managedBy) {}
     }
 
     @Command(name = "show", description = "Show one binding's projections in detail.")
@@ -69,6 +96,9 @@ public final class BindingsCommand {
 
         @Parameters(index = "0", description = "Binding id")
         String bindingId;
+
+        @Option(names = "--json", description = "Emit machine-readable JSON.")
+        boolean json;
 
         @Override
         public Integer call() {
@@ -80,6 +110,18 @@ public final class BindingsCommand {
                 return 1;
             }
             Binding b = located.get().binding();
+            if (json) {
+                return JsonOutput.print(new ShowResult(
+                        b.bindingId(),
+                        b.unitName(),
+                        b.unitKind().name().toLowerCase(),
+                        b.subElement(),
+                        b.targetRoot() == null ? null : b.targetRoot().toString(),
+                        b.conflictPolicy().name(),
+                        b.source().name(),
+                        b.createdAt(),
+                        b.projections().stream().map(ShowCmd::projectionRow).toList())) ? 0 : 2;
+            }
             System.out.println("binding:   " + b.bindingId());
             System.out.println("unit:      " + b.unitName() + " (" + b.unitKind() + ")");
             if (b.subElement() != null) System.out.println("sub:       " + b.subElement());
@@ -102,5 +144,32 @@ public final class BindingsCommand {
         private static String formatPath(Path p) {
             return p == null ? "(null)" : p.toString();
         }
+
+        private static ProjectionRow projectionRow(Projection p) {
+            return new ProjectionRow(
+                    p.kind().name(),
+                    p.sourcePath() == null ? null : p.sourcePath().toString(),
+                    p.destPath() == null ? null : p.destPath().toString(),
+                    p.backupOf(),
+                    p.boundHash());
+        }
+
+        public record ShowResult(
+                String id,
+                String unit,
+                String kind,
+                String subElement,
+                String target,
+                String policy,
+                String source,
+                String createdAt,
+                List<ProjectionRow> projections) {}
+
+        public record ProjectionRow(
+                String kind,
+                String source,
+                String destination,
+                String backupOf,
+                String boundHash) {}
     }
 }

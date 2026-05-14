@@ -96,6 +96,9 @@ public final class HarnessCommand {
                 description = "Print the effects without touching the filesystem or ledger.")
         boolean dryRun;
 
+        @Option(names = "--json", description = "Emit machine-readable JSON.")
+        boolean json;
+
         @Override
         public Integer call() throws Exception {
             SkillStore store = SkillStore.defaultStore();
@@ -156,20 +159,22 @@ public final class HarnessCommand {
                     effects, receipts -> null);
             GatewayConfig gw = GatewayConfig.resolve(store, null);
             if (dryRun) {
-                new DryRunInterpreter(store).run(program);
+                new DryRunInterpreter(store, json).run(program);
                 return 0;
             }
-            Executor.Outcome<Void> outcome = new Executor(store, gw).run(program);
+            Executor.Outcome<Void> outcome = new Executor(store, gw, json).run(program);
             if (outcome.rolledBack()) {
                 Log.error("harness instantiate rolled back %d effect(s) — sandbox state restored",
                         outcome.applied().size());
                 return 4;
             }
-            Log.ok("instantiated %s as %s (%d binding(s))",
-                    name, id, plan.bindings().size());
-            Log.info("  claude config dir: %s", resolvedClaude);
-            Log.info("  codex home:        %s", resolvedCodex);
-            Log.info("  project dir:       %s", resolvedProject);
+            if (!json) {
+                Log.ok("instantiated %s as %s (%d binding(s))",
+                        name, id, plan.bindings().size());
+                Log.info("  claude config dir: %s", resolvedClaude);
+                Log.info("  codex home:        %s", resolvedCodex);
+                Log.info("  project dir:       %s", resolvedProject);
+            }
             return 0;
         }
 
@@ -207,6 +212,9 @@ public final class HarnessCommand {
         @Option(names = "--dry-run",
                 description = "Print the effects without touching the filesystem or ledger.")
         boolean dryRun;
+
+        @Option(names = "--json", description = "Emit machine-readable JSON.")
+        boolean json;
 
         @Override
         public Integer call() throws Exception {
@@ -248,10 +256,10 @@ public final class HarnessCommand {
                     effects, receipts -> null);
             GatewayConfig gw = GatewayConfig.resolve(store, null);
             if (dryRun) {
-                new DryRunInterpreter(store).run(program);
+                new DryRunInterpreter(store, json).run(program);
                 return 0;
             }
-            Executor.Outcome<Void> outcome = new Executor(store, gw).run(program);
+            Executor.Outcome<Void> outcome = new Executor(store, gw, json).run(program);
             if (outcome.rolledBack()) {
                 Log.error("harness rm rolled back %d effect(s)", outcome.applied().size());
                 return 4;
@@ -259,34 +267,43 @@ public final class HarnessCommand {
             // After ledger + projections are clean, drop the sandbox dir.
             Path sandbox = store.harnessesDir().resolve(INSTANCES_DIR).resolve(instanceId);
             if (Files.isDirectory(sandbox)) Fs.deleteRecursive(sandbox);
-            Log.ok("tore down harness instance %s (%d binding(s))", instanceId, mine.size());
+            if (!json) {
+                Log.ok("tore down harness instance %s (%d binding(s))", instanceId, mine.size());
+            }
             return 0;
         }
     }
 
     @Command(name = "list", description = "List installed harness templates + live instances.")
     public static final class ListCmd implements Callable<Integer> {
+        @Option(names = "--json", description = "Emit machine-readable JSON.")
+        boolean json;
+
         @Override
         public Integer call() {
             SkillStore store = SkillStore.defaultStore();
             // Templates
+            List<TemplateRow> templates = new ArrayList<>();
             try {
-                List<dev.skillmanager.source.InstalledUnit> templates = new ArrayList<>();
                 for (var u : store.listInstalledUnits()) {
                     var rec = new UnitStore(store).read(u.name()).orElse(null);
-                    if (rec != null && rec.unitKind() == UnitKind.HARNESS) templates.add(rec);
+                    if (rec != null && rec.unitKind() == UnitKind.HARNESS) {
+                        templates.add(new TemplateRow(rec.name(), rec.version()));
+                    }
                 }
-                if (templates.isEmpty()) {
-                    System.out.println("templates: (none installed)");
-                } else {
-                    System.out.println("templates:");
-                    for (var t : templates) {
-                        System.out.printf("  %-32s %s%n", t.name(),
-                                t.version() == null ? "" : t.version());
+                if (!json) {
+                    if (templates.isEmpty()) {
+                        System.out.println("templates: (none installed)");
+                    } else {
+                        System.out.println("templates:");
+                        for (var t : templates) {
+                            System.out.printf("  %-32s %s%n", t.name(),
+                                    t.version() == null ? "" : t.version());
+                        }
                     }
                 }
             } catch (IOException io) {
-                Log.warn("could not list installed units: %s", io.getMessage());
+                if (!json) Log.warn("could not list installed units: %s", io.getMessage());
             }
             // Instances
             Path instancesDir = store.harnessesDir().resolve(INSTANCES_DIR);
@@ -304,6 +321,14 @@ public final class HarnessCommand {
                 String instanceId = colon < 0 ? rest : rest.substring(0, colon);
                 byInstance.merge(instanceId, 1, Integer::sum);
             }
+            List<InstanceRow> instances = new ArrayList<>();
+            for (var e : byInstance.entrySet()) {
+                Path dir = instancesDir.resolve(e.getKey());
+                instances.add(new InstanceRow(e.getKey(), e.getValue(), dir.toString()));
+            }
+            if (json) {
+                return JsonOutput.print(new ListResult(templates, instances)) ? 0 : 2;
+            }
             System.out.println();
             if (byInstance.isEmpty()) {
                 System.out.println("instances: (none)");
@@ -317,12 +342,19 @@ public final class HarnessCommand {
             }
             return 0;
         }
+
+        public record ListResult(List<TemplateRow> templates, List<InstanceRow> instances) {}
+        public record TemplateRow(String name, String version) {}
+        public record InstanceRow(String id, int bindings, String path) {}
     }
 
     @Command(name = "show", description = "Show one harness template's resolved manifest.")
     public static final class ShowCmd implements Callable<Integer> {
         @Parameters(index = "0", description = "Harness template name")
         String name;
+
+        @Option(names = "--json", description = "Emit machine-readable JSON.")
+        boolean json;
 
         @Override
         public Integer call() throws Exception {
@@ -334,6 +366,18 @@ public final class HarnessCommand {
                 return 1;
             }
             HarnessUnit h = HarnessParser.load(store.unitDir(name, UnitKind.HARNESS));
+            if (json) {
+                return JsonOutput.print(new ShowResult(
+                        h.name(),
+                        h.version(),
+                        h.description(),
+                        h.units().stream().map(u -> u.coord().raw()).toList(),
+                        h.docs().stream().map(d -> d.coord().raw()).toList(),
+                        h.mcpTools().stream()
+                                .map(m -> new McpToolsRow(m.server(),
+                                        m.exposesAllTools() ? List.of("*") : m.tools()))
+                                .toList())) ? 0 : 2;
+            }
             System.out.println("name:        " + h.name());
             System.out.println("version:     " + (h.version() == null ? "" : h.version()));
             System.out.println("description: " + h.description());
@@ -348,5 +392,15 @@ public final class HarnessCommand {
             }
             return 0;
         }
+
+        public record ShowResult(
+                String name,
+                String version,
+                String description,
+                List<String> units,
+                List<String> docs,
+                List<McpToolsRow> mcpTools) {}
+
+        public record McpToolsRow(String server, List<String> tools) {}
     }
 }
