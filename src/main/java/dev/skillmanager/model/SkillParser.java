@@ -428,6 +428,7 @@ public final class SkillParser {
         String backend = colon < 0 ? "" : spec.substring(0, colon);
         String body = colon < 0 ? spec : spec.substring(colon + 1);
         if ("npm".equals(backend) && body.startsWith("@")) {
+            // Scoped npm packages start with '@'; only a later '@' can be a version separator.
             int versionSep = body.lastIndexOf('@');
             return versionSep > 0 ? body.substring(0, versionSep) : body;
         }
