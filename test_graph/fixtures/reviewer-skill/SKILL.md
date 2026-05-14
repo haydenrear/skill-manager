@@ -1,6 +1,7 @@
 ---
 name: reviewer-skill
 description: Integration-test skill about code review, pull requests, and diff analysis — used as the target of a sponsored campaign keyed on "review" and "code-review".
+skill-imports: []
 ---
 
 # reviewer-skill

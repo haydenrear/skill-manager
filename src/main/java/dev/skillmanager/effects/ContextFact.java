@@ -126,6 +126,14 @@ public sealed interface ContextFact {
     record OutstandingError(String skillName, InstalledUnit.ErrorKind kind, String message)
             implements ContextFact {}
 
+    /**
+     * One markdown frontmatter {@code skill-imports} validation problem.
+     * The validation effect is advisory: it reports every violation but
+     * does not halt install/sync/publish flows.
+     */
+    record MarkdownImportViolation(String unitName, String unitKind, String file, String message)
+            implements ContextFact {}
+
     // ---- Skill-store mutations ----
     record SkillRemovedFromStore(String name) implements ContextFact {}
     record AgentSkillUnlinked(String agentId, String skillName) implements ContextFact {}

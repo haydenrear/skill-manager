@@ -40,6 +40,7 @@ public sealed interface SkillEffect permits
         SkillEffect.BuildResolveGraphFromSource,
         SkillEffect.BuildResolveGraphFromBundledSkills,
         SkillEffect.BuildResolveGraphFromUnmetReferences,
+        SkillEffect.ValidateMarkdownImports,
         SkillEffect.BuildInstallPlan,
         SkillEffect.RunInstallPlan,
         SkillEffect.CleanupResolvedGraph,
@@ -224,6 +225,26 @@ public sealed interface SkillEffect permits
      */
     record BuildResolveGraphFromUnmetReferences(
             List<dev.skillmanager.model.Skill> liveSkills) implements SkillEffect {}
+
+    /**
+     * Walk markdown files in installed units and report any frontmatter
+     * {@code skill-imports} entries that do not resolve to installed
+     * skill files. Violations are advisory facts, not hard install
+     * blockers. When {@code unitNames} is {@code null}, the handler
+     * reads the current resolved graph from context and validates just
+     * those committed units; sync passes explicit target names after its
+     * per-target mutation step.
+     */
+    record ValidateMarkdownImports(List<String> unitNames) implements SkillEffect {
+        public ValidateMarkdownImports {
+            unitNames = unitNames == null ? null : List.copyOf(unitNames);
+        }
+
+        public static ValidateMarkdownImports resolvedGraph() {
+            return new ValidateMarkdownImports(null);
+        }
+
+    }
 
     /**
      * Append the install plan to the audit log under {@code verb}
@@ -556,10 +577,10 @@ public sealed interface SkillEffect permits
     /**
      * Parallel to {@link ScaffoldSkill} but for plugin layouts. The file
      * map carries plugin-specific paths ({@code .claude-plugin/plugin.json},
-     * {@code skill-manager-plugin.toml}, {@code skills/.gitkeep}, ...) so
+     * {@code skill-manager-plugin.toml}, {@code skills/<name>/SKILL.md}, ...) so
      * the handler doesn't have to know plugin structure — it just writes
-     * what it's given. Empty subdirs are represented by a {@code .gitkeep}
-     * placeholder entry in the map (e.g. {@code "skills/.gitkeep" → ""}).
+     * what it's given. Empty subdirs may still be represented by a
+     * {@code .gitkeep} placeholder entry when callers need one.
      */
     record ScaffoldPlugin(Path dir, String pluginName, java.util.Map<String, String> files)
             implements SkillEffect {}

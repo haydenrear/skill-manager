@@ -135,7 +135,9 @@ public final class SyncUseCase {
         List<SkillEffect> effects = new ArrayList<>(
                 ResolveContextUseCase.preflight(gw, options.registryOverride(), options.withMcp()));
         if (options.withMcp()) effects.add(new SkillEffect.SnapshotMcpDeps());
+        List<String> targetNames = new ArrayList<>();
         for (Target t : targets) {
+            targetNames.add(t.skillName());
             switch (t) {
                 case Target.Git g -> {
                     InstalledUnit src = sources.read(g.skillName()).orElse(null);
@@ -156,6 +158,7 @@ public final class SyncUseCase {
                         h.skillName(), h.instanceId()));
             }
         }
+        effects.add(new SkillEffect.ValidateMarkdownImports(targetNames));
         return new Program<>("sync-stage1-" + UUID.randomUUID(), effects, receipts -> null);
     }
 
@@ -205,6 +208,7 @@ public final class SyncUseCase {
         // install path's BuildResolveGraphFromSource preamble.
         effects.add(new SkillEffect.BuildResolveGraphFromUnmetReferences(liveSkills));
         effects.add(new SkillEffect.CommitUnitsToStore());
+        effects.add(SkillEffect.ValidateMarkdownImports.resolvedGraph());
         effects.add(new SkillEffect.BuildInstallPlan());
         effects.add(new SkillEffect.RecordSourceProvenance());
         effects.add(new SkillEffect.RunInstallPlan(gw));

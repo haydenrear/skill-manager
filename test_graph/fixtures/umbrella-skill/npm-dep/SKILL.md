@@ -1,6 +1,7 @@
 ---
 name: npm-cli-skill
 description: Integration-test sub-skill that declares an npm CLI dependency.
+skill-imports: []
 ---
 
 # npm-cli-skill

@@ -296,6 +296,7 @@ public final class Executor {
             case SkillEffect.BuildResolveGraphFromSource e -> List.of();
             case SkillEffect.BuildResolveGraphFromBundledSkills e -> List.of();
             case SkillEffect.BuildResolveGraphFromUnmetReferences e -> List.of();
+            case SkillEffect.ValidateMarkdownImports e -> List.of();
             case SkillEffect.BuildInstallPlan e -> List.of();
             case SkillEffect.RunInstallPlan e -> List.of();
             case SkillEffect.CleanupResolvedGraph e -> List.of();
@@ -494,6 +495,7 @@ public final class Executor {
             case SkillEffect.BuildResolveGraphFromSource e -> List.of();
             case SkillEffect.BuildResolveGraphFromBundledSkills e -> List.of();
             case SkillEffect.BuildResolveGraphFromUnmetReferences e -> List.of();
+            case SkillEffect.ValidateMarkdownImports e -> List.of();
             case SkillEffect.BuildInstallPlan e -> List.of();
             case SkillEffect.RunInstallPlan e -> List.of();
             case SkillEffect.CleanupResolvedGraph e -> List.of();

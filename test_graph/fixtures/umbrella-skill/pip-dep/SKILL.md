@@ -1,6 +1,7 @@
 ---
 name: pip-cli-skill
 description: Integration-test sub-skill that declares a pip CLI dependency.
+skill-imports: []
 ---
 
 # pip-cli-skill

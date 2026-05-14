@@ -43,6 +43,7 @@ import dev.skillmanager.command.UninstallScenarioTest;
 import dev.skillmanager.effects.ScaffoldPluginTest;
 import dev.skillmanager.registry.PublishDetectsPluginTest;
 import dev.skillmanager.registry.PublishDetectsSkillTest;
+import dev.skillmanager.validation.MarkdownImportValidatorTest;
 import dev.skillmanager.effects.CompensationLogicTest;
 import dev.skillmanager.effects.CompensationOrphanTest;
 import dev.skillmanager.effects.CompensationPairingTest;
@@ -141,6 +142,7 @@ public class RunTests {
         failures += RefreshHarnessPluginsTest.run();
         failures += PublishDetectsPluginTest.run();
         failures += PublishDetectsSkillTest.run();
+        failures += MarkdownImportValidatorTest.run();
         failures += ScaffoldPluginTest.run();
         failures += CommandKindCoverageTest.run();
         failures += CreatePluginScenarioTest.run();

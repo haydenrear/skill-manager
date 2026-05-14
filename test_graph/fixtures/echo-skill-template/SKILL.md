@@ -2,6 +2,7 @@
 name: __SKILL_NAME__
 description: test_graph fixture — exercises an MCP dependency at scope __SCOPE__.
 version: 0.0.1
+skill-imports: []
 ---
 
 # __SKILL_NAME__

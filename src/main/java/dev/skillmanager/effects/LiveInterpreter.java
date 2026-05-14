@@ -182,6 +182,7 @@ public final class LiveInterpreter implements ProgramInterpreter {
             case SkillEffect.BuildResolveGraphFromSource e -> ResolveGraphHandlers.buildFromSource(e, ctx);
             case SkillEffect.BuildResolveGraphFromBundledSkills e -> ResolveGraphHandlers.buildFromBundledSkills(e, ctx);
             case SkillEffect.BuildResolveGraphFromUnmetReferences e -> ResolveGraphHandlers.buildFromUnmetReferences(e, ctx);
+            case SkillEffect.ValidateMarkdownImports e -> validateMarkdownImports(e, ctx);
             case SkillEffect.BuildInstallPlan e -> buildInstallPlan(e, ctx);
             case SkillEffect.RunInstallPlan e -> runInstallPlan(e, ctx);
             case SkillEffect.CleanupResolvedGraph e -> cleanupGraph(e, ctx);
@@ -966,6 +967,36 @@ public final class LiveInterpreter implements ProgramInterpreter {
             return EffectReceipt.ok(e);
         } catch (Exception ex) {
             return EffectReceipt.failed(e, ex.getMessage());
+        }
+    }
+
+    private EffectReceipt validateMarkdownImports(SkillEffect.ValidateMarkdownImports e,
+                                                  EffectContext ctx) {
+        List<String> names = e.unitNames();
+        if (names == null) {
+            var graph = ctx.resolvedGraph().orElse(null);
+            if (graph == null || graph.resolved().isEmpty()) {
+                return EffectReceipt.skipped(e, "no resolved units to validate");
+            }
+            names = new ArrayList<>();
+            for (var resolved : graph.resolved()) names.add(resolved.name());
+        }
+        if (names.isEmpty()) return EffectReceipt.skipped(e, "no units to validate");
+        try {
+            var violations = dev.skillmanager.validation.MarkdownImportValidator
+                    .validateInstalled(ctx.store(), names);
+            if (violations.isEmpty()) return EffectReceipt.ok(e);
+            List<ContextFact> facts = new ArrayList<>();
+            for (var v : violations) facts.add(new ContextFact.MarkdownImportViolation(
+                    v.unitName(),
+                    v.kind() == null ? "" : v.kind().name().toLowerCase(),
+                    v.file().toString(),
+                    v.message()));
+            return EffectReceipt.partial(e, facts,
+                    violations.size() + " markdown skill-import violation(s)");
+        } catch (IOException io) {
+            return EffectReceipt.partial(e,
+                    "could not validate markdown skill-imports: " + io.getMessage());
         }
     }
 

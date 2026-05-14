@@ -76,13 +76,24 @@ public final class CreateCommand implements Callable<Integer> {
         Map<String, String> files = new LinkedHashMap<>();
         SkillEffect scaffoldEffect;
         if (kind == Kind.plugin) {
+            String containedSkill = name + "-skill";
             files.put(".claude-plugin/plugin.json", renderPluginJson(name, version, effectiveDescription));
             files.put("skill-manager-plugin.toml", renderPluginToml(name, version, effectiveDescription));
-            files.put("skills/.gitkeep", "");
+            files.put("README.md", renderStarterMarkdown(
+                    name,
+                    "TODO: plugin-level author notes. Describe hooks, commands, agents, and contained skills."));
+            files.put("skills/" + containedSkill + "/SKILL.md",
+                    renderContainedSkillMd(containedSkill, effectiveDescription, name));
+            files.put("skills/" + containedSkill + "/skill-manager.toml",
+                    renderToml(containedSkill, version, effectiveDescription));
+            files.put("skills/" + containedSkill + "/tools/cli.md", renderCliToolMarkdown());
+            files.put("skills/" + containedSkill + "/tools/mcp.md", renderMcpToolMarkdown());
             scaffoldEffect = new SkillEffect.ScaffoldPlugin(dir, name, files);
         } else {
             files.put("SKILL.md", renderSkillMd(name, effectiveDescription));
             files.put("skill-manager.toml", renderToml(name, version, effectiveDescription));
+            files.put("tools/cli.md", renderCliToolMarkdown());
+            files.put("tools/mcp.md", renderMcpToolMarkdown());
             scaffoldEffect = new SkillEffect.ScaffoldSkill(dir, name, files);
         }
 
@@ -103,7 +114,7 @@ public final class CreateCommand implements Callable<Integer> {
         if (kind == Kind.plugin) {
             System.out.println("  1. edit " + dir.resolve(".claude-plugin/plugin.json") + " — Claude's plugin manifest");
             System.out.println("  2. edit " + dir.resolve("skill-manager-plugin.toml") + " — plugin-level deps");
-            System.out.println("  3. add contained skills under " + dir.resolve("skills") + "/");
+            System.out.println("  3. edit " + dir.resolve("skills/" + name + "-skill/SKILL.md") + " — contained skill instructions");
             System.out.println("  4. skill-manager install " + dir + "  (install locally to test)");
             System.out.println("  5. skill-manager publish " + dir + "  (upload to the registry)");
         } else {
@@ -175,6 +186,12 @@ public final class CreateCommand implements Callable<Integer> {
                 ---
                 name: %s
                 description: %s
+                skill-imports: []
+                # Example import syntax:
+                # skill-imports:
+                #   - skill: skill-manager
+                #     path: references/skill-imports.md
+                #     reason: Explains semantic markdown imports between installed skills.
                 ---
 
                 # %s
@@ -190,6 +207,86 @@ public final class CreateCommand implements Callable<Integer> {
 
                 TODO: concrete instructions for the agent. Recipes, examples, and any safety caveats.
                 """.formatted(name, escapeYaml(description), name);
+    }
+
+    private static String renderContainedSkillMd(String name, String description, String pluginName) {
+        return """
+                ---
+                name: %s
+                description: %s
+                skill-imports: []
+                # Example import syntax:
+                # skill-imports:
+                #   - skill: skill-manager
+                #     path: references/skill-imports.md
+                #     reason: Explains semantic markdown imports between installed skills.
+                ---
+
+                # %s
+
+                This contained skill ships with `%s`.
+
+                ## When to use this skill
+
+                - TODO: specific situations or user requests that should trigger this contained skill.
+
+                ## Usage
+
+                TODO: concrete instructions for the agent. Keep plugin-level behavior in the plugin README.
+                """.formatted(name, escapeYaml(description), name, pluginName);
+    }
+
+    private static String renderStarterMarkdown(String title, String body) {
+        return """
+                ---
+                skill-imports: []
+                # Example import syntax:
+                # skill-imports:
+                #   - skill: skill-manager
+                #     path: references/skill-imports.md
+                #     reason: Explains semantic markdown imports between installed skills.
+                ---
+
+                # %s
+
+                %s
+                """.formatted(title, body);
+    }
+
+    private static String renderCliToolMarkdown() {
+        return """
+                ---
+                skill-imports:
+                  - skill: skill-manager
+                    path: references/cli.md
+                    reason: Explains how skill-manager installs and exposes declared CLI tools.
+                    section: cli-dependencies
+                ---
+
+                # CLI tools
+
+                TODO: describe any CLI tools this unit expects the agent to use.
+
+                Include concrete commands, expected inputs/outputs, and any fallback behavior when the tool is unavailable.
+                """;
+    }
+
+    private static String renderMcpToolMarkdown() {
+        return """
+                ---
+                skill-imports:
+                  - skill: skill-manager
+                    path: references/mcp.md
+                    reason: Explains how MCP servers are registered and used through the virtual gateway.
+                    section: mcp-dependencies
+                ---
+
+                # MCP tools
+
+                TODO: describe any MCP tools this unit exposes or expects the agent to use.
+
+                Include server ids, important tool paths, initialization requirements, and verification steps.
+                """;
     }
 
     private static String escapeYaml(String s) {
@@ -220,7 +317,9 @@ public final class CreateCommand implements Callable<Integer> {
                 #   "skill:<name>@<version>"   → registry lookup, pinned
                 #   "file:./sub-skill"         → sub-skill directory under this skill
                 #   "./../sibling"             → local path (same as file:, no prefix)
-                skill_references = []
+                skill_references = [
+                  "skill:skill-manager",
+                ]
 
                 # Or use the table form for explicit metadata:
                 # [[skill_references]]

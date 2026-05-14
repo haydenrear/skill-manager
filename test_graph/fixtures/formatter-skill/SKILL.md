@@ -1,6 +1,7 @@
 ---
 name: formatter-skill
 description: Integration-test skill about code formatting, style, and linting — used as the target of a sponsored campaign keyed on "format" and the "style" category.
+skill-imports: []
 ---
 
 # formatter-skill

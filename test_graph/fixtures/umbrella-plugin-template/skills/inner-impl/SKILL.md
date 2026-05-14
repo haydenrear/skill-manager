@@ -2,6 +2,7 @@
 name: inner-impl
 description: Contained skill of umbrella-plugin fixture — carries its own CLI + MCP deps that the plugin's install pipeline walks and registers.
 version: 0.0.1
+skill-imports: []
 ---
 
 # inner-impl

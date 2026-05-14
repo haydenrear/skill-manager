@@ -45,6 +45,7 @@ public final class ConsoleProgramRenderer implements ProgramRenderer {
     private final Map<McpWriter.ConfigChange, List<String>> agentChanges = new LinkedHashMap<>();
     private final List<String> orphans = new ArrayList<>();
     private final List<InstallResult> mcpResults = new ArrayList<>();
+    private final List<ContextFact.MarkdownImportViolation> markdownImportViolations = new ArrayList<>();
     private final Map<String, java.util.LinkedHashMap<InstalledUnit.ErrorKind, String>> outstandingErrors =
             new LinkedHashMap<>();
 
@@ -218,6 +219,7 @@ public final class ConsoleProgramRenderer implements ProgramRenderer {
                         .computeIfAbsent(x.skillName(), k -> new java.util.LinkedHashMap<>())
                         .putIfAbsent(x.kind(), x.message());
             }
+            case ContextFact.MarkdownImportViolation x -> markdownImportViolations.add(x);
 
             // ---- skill-store mutations ----
             case ContextFact.SkillRemovedFromStore x -> Log.ok("removed %s from store", x.name());
@@ -326,6 +328,7 @@ public final class ConsoleProgramRenderer implements ProgramRenderer {
         printMcpResultsBlock();
         printSyncSummary();
         printAgentConfigSummary();
+        printMarkdownImportViolations();
         printOutstandingErrors();
     }
 
@@ -348,6 +351,7 @@ public final class ConsoleProgramRenderer implements ProgramRenderer {
                         .computeIfAbsent(x.skillName(), k -> new java.util.LinkedHashMap<>())
                         .putIfAbsent(x.kind(), x.message());
             }
+            case ContextFact.MarkdownImportViolation x -> markdownImportViolations.add(x);
             default -> {}
         }
     }
@@ -396,6 +400,7 @@ public final class ConsoleProgramRenderer implements ProgramRenderer {
                 "refused", refusedSkills,
                 "conflicted", conflictedSkills));
         out.put("agentConfigChanges", agentChanges);
+        out.put("markdownImportViolations", markdownImportViolations);
         out.put("outstandingErrors", outstandingErrors);
         return out;
     }
@@ -444,6 +449,21 @@ public final class ConsoleProgramRenderer implements ProgramRenderer {
         System.out.println("ACTION_REQUIRED: Restart Claude / Codex for the virtual-mcp-gateway entry");
         System.out.println("to take effect — without a restart the agent will not see any MCP tools.");
         System.out.println();
+    }
+
+    private void printMarkdownImportViolations() {
+        if (markdownImportViolations.isEmpty()) return;
+        System.err.println();
+        System.err.println("markdown skill-import violations (" + markdownImportViolations.size()
+                + ") — fix these references:");
+        for (ContextFact.MarkdownImportViolation v : markdownImportViolations) {
+            String kind = v.unitKind() == null || v.unitKind().isBlank()
+                    ? ""
+                    : " (" + v.unitKind() + ")";
+            System.err.println("  - " + v.unitName() + kind + ": " + v.file());
+            System.err.println("    " + v.message());
+        }
+        System.err.println();
     }
 
     private void printOutstandingErrors() {

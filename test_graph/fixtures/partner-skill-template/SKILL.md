@@ -2,6 +2,7 @@
 name: __SKILL_NAME__
 description: Partner skill claiming an MCP server name shared with the umbrella plugin. Used by test_graph.sources.smoke.plugin.PluginUninstalledMixedOrphans to verify non-orphan deps survive plugin uninstall.
 version: 0.0.1
+skill-imports: []
 ---
 
 # __SKILL_NAME__

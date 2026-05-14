@@ -1,6 +1,7 @@
 ---
 name: mcp-tool-loads-skill
 description: Test fixture exercising the npm / uv / docker MCP load types end-to-end through skill-manager's install pipeline. Not for agent use.
+skill-imports: []
 ---
 
 # mcp-tool-loads-skill (test fixture)

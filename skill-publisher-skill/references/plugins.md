@@ -55,7 +55,10 @@ my-plugin/                                # repo root
 │   ├── client-skill/
 │   │   ├── SKILL.md
 │   │   ├── skill-manager.toml
-│   │   └── …
+│   │   ├── tools/
+│   │   │   ├── cli.md
+│   │   │   └── mcp.md
+│   │   └── ...
 │   └── fixtures-skill/
 │       ├── SKILL.md
 │       └── skill-manager.toml
@@ -75,6 +78,10 @@ The required files are exactly two:
 - At least one of: a contained skill in `skills/<name>/`, or harness
   surface in `hooks/` / `commands/` / `agents/`. A plugin that
   contains nothing isn't useful.
+- Markdown anywhere in the plugin can declare frontmatter
+  `skill-imports`. Put the matching unit reference on the contained
+  skill that owns the markdown, or at plugin level when plugin-level
+  markdown shares the import. See `references/skill-imports.md`.
 
 ## `plugin.json`
 

@@ -1,3 +1,11 @@
+---
+skill-imports:
+  - skill: skill-manager
+    path: references/skill-imports.md
+    reason: Defines the frontmatter import syntax used in starter markdown.
+    section: fields
+---
+
 # Scaffolding units
 
 Start with the CLI scaffolder when it supports the unit shape, then use
@@ -19,7 +27,9 @@ and edit:
 
 - Runtime/frontmatter descriptions.
 - Version.
-- References.
+- Manifest references. The default skill/plugin starters reference
+  `skill:skill-manager` because their `tools/cli.md` and `tools/mcp.md`
+  markdown imports point at skill-manager reference files.
 - CLI/MCP dependencies.
 - Plugin contained skills and plugin runtime files.
 
@@ -89,5 +99,6 @@ Extra validation by kind:
 - Plugin schema: `references/plugins.md`.
 - Doc-repo schema: `references/doc-repos.md`.
 - Harness schema: `references/harnesses.md`.
+- Markdown skill imports: `references/skill-imports.md`.
 - Coordinates/distribution: `references/coords-and-distribution.md`.
 - CLI/MCP dependencies: `references/dependencies.md`.
