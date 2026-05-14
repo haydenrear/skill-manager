@@ -55,6 +55,7 @@ public final class SkillParser {
         List<CliDependency> cli = toml == null ? List.of() : parseCliDependencies(toml);
         List<UnitReference> refs = toml == null ? List.of() : parseSkillReferences(toml);
         List<McpDependency> mcp = toml == null ? List.of() : parseMcpDependencies(toml);
+
         return new Skill(name, description, version, cli, refs, mcp, parsed.frontmatter, parsed.body, skillDir.toAbsolutePath());
     }
 
