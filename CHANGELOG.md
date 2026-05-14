@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.12.1](https://github.com/haydenrear/skill-manager/compare/v0.12.0...v0.12.1) (2026-05-14)
+
+
+### Bug Fixes
+
+* **toml:** document scoped npm CLI ref parsing ([bcae334](https://github.com/haydenrear/skill-manager/commit/bcae334d3e48b6700f6abc36cab4d6016d408629))
+
 ## [0.12.0](https://github.com/haydenrear/skill-manager/compare/v0.11.1...v0.12.0) (2026-05-13)
 
 
