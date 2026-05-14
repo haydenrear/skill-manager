@@ -1,12 +1,17 @@
 package dev.skillmanager.effects;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
 import dev.skillmanager.model.AgentUnit;
 import dev.skillmanager.model.McpDependency;
 import dev.skillmanager.model.Skill;
 import dev.skillmanager.util.Log;
 
+import java.io.IOException;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Prints what would happen without touching the filesystem, gateway, or
@@ -20,14 +25,30 @@ import java.util.List;
  */
 public final class DryRunInterpreter implements ProgramInterpreter {
 
+    private static final ObjectMapper JSON = new ObjectMapper()
+            .enable(SerializationFeature.INDENT_OUTPUT);
+
     private final dev.skillmanager.store.SkillStore store;
+    private final boolean json;
 
     public DryRunInterpreter() { this(null); }
 
-    public DryRunInterpreter(dev.skillmanager.store.SkillStore store) { this.store = store; }
+    public DryRunInterpreter(dev.skillmanager.store.SkillStore store) {
+        this(store, false);
+    }
+
+    public DryRunInterpreter(dev.skillmanager.store.SkillStore store, boolean json) {
+        this.store = store;
+        this.json = json;
+    }
 
     @Override
     public <R> R run(Program<R> program) {
+        if (json) {
+            List<EffectReceipt> receipts = dryRunReceipts(program);
+            printJson(program.operationId(), receipts);
+            return program.decoder().decode(receipts);
+        }
         System.out.println();
         System.out.println("DRY RUN — no changes will be made");
         System.out.println("operation: " + program.operationId());
@@ -38,6 +59,14 @@ public final class DryRunInterpreter implements ProgramInterpreter {
 
     @Override
     public <R> R runStaged(StagedProgram<R> staged) {
+        if (json) {
+            List<EffectReceipt> all = new ArrayList<>();
+            all.addAll(dryRunReceipts(staged.stage1()));
+            Program<?> stage2 = dryRunStage2(staged);
+            if (stage2 != null) all.addAll(dryRunReceipts(stage2));
+            printJson(staged.operationId(), all);
+            return staged.decoder().decode(all);
+        }
         System.out.println();
         System.out.println("DRY RUN — no changes will be made");
         System.out.println("operation: " + staged.operationId());
@@ -66,6 +95,57 @@ public final class DryRunInterpreter implements ProgramInterpreter {
         }
         System.out.println();
         return staged.decoder().decode(all);
+    }
+
+    private Program<?> dryRunStage2(StagedProgram<?> staged) {
+        if (store == null) return null;
+        try {
+            return staged.stage2().apply(new EffectContext(store, null));
+        } catch (Exception ignored) {
+            return null;
+        }
+    }
+
+    private List<EffectReceipt> dryRunReceipts(Program<?> program) {
+        List<EffectReceipt> receipts = new ArrayList<>();
+        for (SkillEffect effect : program.effects()) {
+            receipts.add(EffectReceipt.ok(effect, new ContextFact.DryRun()));
+        }
+        for (SkillEffect effect : program.alwaysAfter()) {
+            if (effect instanceof SkillEffect.CleanupResolvedGraph c && c.graph() != null) {
+                try { c.graph().cleanup(); } catch (Exception ignored) {}
+            }
+            receipts.add(EffectReceipt.ok(effect, new ContextFact.DryRun()));
+        }
+        return receipts;
+    }
+
+    private void printJson(String operationId, List<EffectReceipt> receipts) {
+        Map<String, Object> root = new LinkedHashMap<>();
+        root.put("dryRun", true);
+        root.put("operation", operationId);
+        List<Map<String, Object>> rows = new ArrayList<>();
+        for (EffectReceipt receipt : receipts) {
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("effect", receipt.effect().getClass().getSimpleName());
+            row.put("status", receipt.status().name());
+            row.put("continuation", receipt.continuation().name());
+            row.put("errorMessage", receipt.errorMessage());
+            List<Map<String, Object>> facts = new ArrayList<>();
+            for (ContextFact fact : receipt.facts()) {
+                Map<String, Object> factRow = new LinkedHashMap<>();
+                factRow.put("type", fact.getClass().getSimpleName());
+                facts.add(factRow);
+            }
+            row.put("facts", facts);
+            rows.add(row);
+        }
+        root.put("receipts", rows);
+        try {
+            System.out.println(JSON.writeValueAsString(root));
+        } catch (IOException io) {
+            Log.warn("failed to emit dry-run JSON: %s", io.getMessage());
+        }
     }
 
     private List<EffectReceipt> describeProgram(Program<?> program, int startIdx) {

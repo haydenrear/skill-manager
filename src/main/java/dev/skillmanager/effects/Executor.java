@@ -59,12 +59,18 @@ public final class Executor {
     private final SkillStore store;
     private final GatewayConfig gateway;
     private final LiveInterpreter interpreter;
+    private final boolean json;
     private java.util.function.IntPredicate faultInjector;
 
     public Executor(SkillStore store, GatewayConfig gateway) {
+        this(store, gateway, false);
+    }
+
+    public Executor(SkillStore store, GatewayConfig gateway, boolean json) {
         this.store = store;
         this.gateway = gateway;
-        this.interpreter = new LiveInterpreter(store, gateway);
+        this.json = json;
+        this.interpreter = new LiveInterpreter(store, gateway, json);
     }
 
     /**
@@ -86,7 +92,7 @@ public final class Executor {
     public record Outcome<R>(R result, boolean rolledBack, List<Compensation> applied) {}
 
     public <R> Outcome<R> run(Program<R> program) {
-        ConsoleProgramRenderer renderer = new ConsoleProgramRenderer(store, gateway);
+        ConsoleProgramRenderer renderer = new ConsoleProgramRenderer(store, gateway, json);
         EffectContext ctx = new EffectContext(store, gateway, renderer);
         try {
             return runWithContext(program, ctx);
@@ -110,7 +116,7 @@ public final class Executor {
      * commit, so there's nothing for SyncAgents to project).
      */
     public <R> Outcome<R> runStaged(StagedProgram<R> staged) {
-        ConsoleProgramRenderer renderer = new ConsoleProgramRenderer(store, gateway);
+        ConsoleProgramRenderer renderer = new ConsoleProgramRenderer(store, gateway, json);
         EffectContext ctx = new EffectContext(store, gateway, renderer);
         try {
             RollbackJournal journal = new RollbackJournal();

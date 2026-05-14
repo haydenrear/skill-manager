@@ -90,6 +90,9 @@ public final class BindCommand implements Callable<Integer> {
             description = "Print the effects without touching the filesystem or ledger.")
     boolean dryRun;
 
+    @Option(names = "--json", description = "Emit machine-readable JSON.")
+    boolean json;
+
     @Override
     public Integer call() throws Exception {
         SkillStore store = SkillStore.defaultStore();
@@ -157,10 +160,10 @@ public final class BindCommand implements Callable<Integer> {
         Program<Void> program = new Program<>("bind-" + unitName, effects, receipts -> null);
         GatewayConfig gw = GatewayConfig.resolve(store, null);
         if (dryRun) {
-            new DryRunInterpreter(store).run(program);
+            new DryRunInterpreter(store, json).run(program);
             return 0;
         }
-        Executor.Outcome<Void> outcome = new Executor(store, gw).run(program);
+        Executor.Outcome<Void> outcome = new Executor(store, gw, json).run(program);
         if (outcome.rolledBack()) {
             Log.error("bind rolled back %d effect(s)", outcome.applied().size());
             return 4;

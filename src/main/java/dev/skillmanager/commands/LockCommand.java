@@ -10,6 +10,7 @@ import dev.skillmanager.store.SkillStore;
 import dev.skillmanager.util.Log;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Model.CommandSpec;
+import picocli.CommandLine.Option;
 import picocli.CommandLine.Spec;
 
 import java.io.IOException;
@@ -57,6 +58,9 @@ public final class LockCommand implements Callable<Integer> {
             description = "Show drift between units.lock.toml and the live install set.")
     public static final class Status implements Callable<Integer> {
 
+        @Option(names = "--json", description = "Emit machine-readable JSON.")
+        boolean json;
+
         @Override
         public Integer call() throws IOException {
             SkillStore store = SkillStore.defaultStore();
@@ -76,6 +80,11 @@ public final class LockCommand implements Callable<Integer> {
             // lock" surfaces as LockDiff.added(); "removed from live"
             // surfaces as LockDiff.removed(); etc.
             LockDiff drift = LockDiff.between(lockOnDisk, liveState);
+            if (json) {
+                if (!JsonOutput.print(new StatusResult(lockPath.toString(), liveState.units().size(),
+                        drift.isEmpty(), drift))) return 2;
+                return drift.isEmpty() ? 0 : 1;
+            }
             if (drift.isEmpty()) {
                 Log.ok("units.lock.toml is in sync with %s installed unit(s)",
                         liveState.units().size());
@@ -118,6 +127,12 @@ public final class LockCommand implements Callable<Integer> {
                     "@" + (u.resolvedSha().length() > 8 ? u.resolvedSha().substring(0, 8) : u.resolvedSha());
             return v + sha;
         }
+
+        public record StatusResult(
+                String lockPath,
+                int liveUnitCount,
+                boolean inSync,
+                LockDiff drift) {}
     }
 
     /** Build a {@link UnitsLock} from {@code installed/<name>.json} records. */
