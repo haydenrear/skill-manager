@@ -1,6 +1,6 @@
 [project]
 name = "virtual-mcp-gateway"
-version = "0.12.2"
+version = "0.13.0"
 description = "A virtual MCP gateway with progressive disclosure over downstream stdio, Streamable HTTP, and SSE MCP servers."
 readme = "README.md"
 requires-python = ">=3.11"
