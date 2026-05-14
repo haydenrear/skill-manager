@@ -3,6 +3,7 @@ package dev.skillmanager.lock;
 import dev.skillmanager._lib.test.Tests;
 import dev.skillmanager.model.UnitKind;
 import dev.skillmanager.source.InstalledUnit;
+import dev.skillmanager.store.SkillStore;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -98,6 +99,37 @@ public final class LockReadWriteTest {
             UnitsLock parsed = UnitsLockReader.read(file);
             assertEquals(0, parsed.units().size(), "no units round-tripped");
             assertEquals(UnitsLock.CURRENT_SCHEMA, parsed.schemaVersion(), "schema version preserved");
+        });
+
+        suite.test("CLI lock round-trips scoped npm package keys", () -> {
+            SkillStore store = new SkillStore(Files.createTempDirectory("cli-lock-scoped-"));
+            store.init();
+            CliLock lock = CliLock.load(store);
+            lock.recordInstall("npm", "@google/gemini-cli", null,
+                    "npm:@google/gemini-cli", null, "gemini-skill");
+            lock.save(store);
+
+            String rendered = Files.readString(store.root().resolve(CliLock.FILENAME));
+            assertTrue(rendered.contains("[\"npm\".\"@google/gemini-cli\"]"),
+                    "scoped npm key is quoted");
+            CliLock.Entry entry = CliLock.load(store).get("npm", "@google/gemini-cli");
+            assertEquals("npm:@google/gemini-cli", entry.spec(), "spec round-tripped");
+            assertEquals(List.of("gemini-skill"), entry.requestedBy(), "requester round-tripped");
+        });
+
+        suite.test("CLI lock reads legacy bare scoped npm table keys", () -> {
+            SkillStore store = new SkillStore(Files.createTempDirectory("cli-lock-legacy-scoped-"));
+            store.init();
+            Files.writeString(store.root().resolve(CliLock.FILENAME), """
+                    [npm.@google/gemini-cli]
+                    spec = "npm:@google/gemini-cli"
+                    requested_by = ["gemini-skill"]
+                    installed_at = "2026-05-13T00:00:00Z"
+                    """);
+
+            CliLock.Entry entry = CliLock.load(store).get("npm", "@google/gemini-cli");
+            assertEquals("npm:@google/gemini-cli", entry.spec(), "legacy spec parsed");
+            assertEquals(List.of("gemini-skill"), entry.requestedBy(), "legacy requester parsed");
         });
 
         suite.test("atomicWrite overwrites prior content cleanly (no stale rows)", () -> {

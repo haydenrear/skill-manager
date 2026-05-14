@@ -141,11 +141,7 @@ public final class SkillParser {
 
             String name = t.getString("name");
             if (name == null) {
-                // Derive from spec body if not explicit.
-                int colon = spec.indexOf(':');
-                String body = colon < 0 ? spec : spec.substring(colon + 1);
-                int versionSep = indexOfAny(body, "=@");
-                name = versionSep < 0 ? body : body.substring(0, versionSep);
+                name = deriveCliName(spec);
             }
 
             Map<String, CliDependency.InstallTarget> targets = new LinkedHashMap<>();
@@ -426,6 +422,18 @@ public final class SkillParser {
         Map<String, Object> out = new LinkedHashMap<>();
         for (String key : t.keySet()) out.put(key, t.get(key));
         return out;
+    }
+
+    private static String deriveCliName(String spec) {
+        int colon = spec.indexOf(':');
+        String backend = colon < 0 ? "" : spec.substring(0, colon);
+        String body = colon < 0 ? spec : spec.substring(colon + 1);
+        if ("npm".equals(backend) && body.startsWith("@")) {
+            int versionSep = body.lastIndexOf('@');
+            return versionSep > 0 ? body.substring(0, versionSep) : body;
+        }
+        int versionSep = indexOfAny(body, "=@");
+        return versionSep < 0 ? body : body.substring(0, versionSep);
     }
 
     private static int indexOfAny(String s, String chars) {

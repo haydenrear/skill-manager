@@ -79,6 +79,13 @@ public final class EffectiveDepUnionTest {
                     assertSize(1, unit.cliDependencies(), "single CLI from contained");
                     assertEquals("rich", unit.cliDependencies().get(0).name(), "exposed via plugin");
                 })
+                .test("scoped npm CLI dep derives the package name, not an empty name", () -> {
+                    Skill skill = UnitFixtures.scaffoldSkill(tmp, "scoped-npm",
+                            DepSpec.of().cli("npm:@google/gemini-cli").build());
+                    assertSize(1, skill.cliDependencies(), "one CLI dep");
+                    assertEquals("@google/gemini-cli", skill.cliDependencies().get(0).name(),
+                            "scoped npm package name");
+                })
                 .test("multiple contained skills: union order is plugin-level then sorted-by-dirname", () -> {
                     ContainedSkillSpec a = new ContainedSkillSpec("a-skill",
                             DepSpec.of().cli("pip:a==1.0").build());

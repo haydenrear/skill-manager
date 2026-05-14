@@ -93,16 +93,24 @@ public final class CliLock {
         Path file = store.root().resolve(FILENAME);
         Map<String, Map<String, Entry>> entries = new TreeMap<>();
         if (!Files.isRegularFile(file)) return new CliLock(entries);
-        TomlParseResult toml = Toml.parse(file);
+        String text = Files.readString(file);
+        TomlParseResult toml = Toml.parse(text);
+        if (toml.hasErrors()) {
+            String repaired = repairLegacyBareTableKeys(text);
+            if (!repaired.equals(text)) {
+                TomlParseResult retry = Toml.parse(repaired);
+                if (!retry.hasErrors()) toml = retry;
+            }
+        }
         if (toml.hasErrors()) {
             throw new IOException(FILENAME + " has errors: " + toml.errors());
         }
         for (String backendKey : toml.keySet()) {
-            TomlTable backendTable = toml.getTable(backendKey);
+            TomlTable backendTable = toml.getTable(List.of(backendKey));
             if (backendTable == null) continue;
             Map<String, Entry> perTool = new TreeMap<>();
             for (String toolKey : backendTable.keySet()) {
-                TomlTable t = backendTable.getTable(toolKey);
+                TomlTable t = backendTable.getTable(List.of(toolKey));
                 if (t == null) continue;
                 List<String> reqBy = new ArrayList<>();
                 TomlArray arr = t.getArray("requested_by");
@@ -212,6 +220,40 @@ public final class CliLock {
     private static String tomlKey(String k) { return "\"" + k.replace("\"", "\\\"") + "\""; }
 
     private static String tomlString(String s) { return "\"" + s.replace("\\", "\\\\").replace("\"", "\\\"") + "\""; }
+
+    private static String repairLegacyBareTableKeys(String text) {
+        StringBuilder out = new StringBuilder(text.length());
+        String[] lines = text.split("\\R", -1);
+        for (int i = 0; i < lines.length; i++) {
+            if (i > 0) out.append('\n');
+            out.append(repairLegacyBareTableKeyLine(lines[i]));
+        }
+        return out.toString();
+    }
+
+    private static String repairLegacyBareTableKeyLine(String line) {
+        String trimmed = line.stripLeading();
+        String indent = line.substring(0, line.length() - trimmed.length());
+        if (!trimmed.startsWith("[") || trimmed.startsWith("[[") || trimmed.startsWith("[\"")) {
+            return line;
+        }
+        int close = trimmed.indexOf(']');
+        if (close < 0) return line;
+        String key = trimmed.substring(1, close);
+        int dot = key.indexOf('.');
+        if (dot <= 0) return line;
+        String backend = key.substring(0, dot);
+        String tool = key.substring(dot + 1);
+        if (!isKnownBackend(backend) || tool.isBlank() || tool.startsWith("\"")) return line;
+        return indent + "[" + tomlKey(backend) + "." + tomlKey(tool) + "]" + trimmed.substring(close + 1);
+    }
+
+    private static boolean isKnownBackend(String backend) {
+        return switch (backend) {
+            case "pip", "npm", "brew", "tar", "skill-script" -> true;
+            default -> false;
+        };
+    }
 
     private static String tomlStringArray(List<String> list) {
         StringBuilder sb = new StringBuilder("[");
