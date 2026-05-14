@@ -158,9 +158,18 @@ public final class GatewayCommand implements Runnable {
 
     @Command(name = "status", description = "Show gateway URL, process state, reachability.")
     public static final class Status implements Callable<Integer> {
+        private final SkillStore store;
+
+        public Status() {
+            this(SkillStore.defaultStore());
+        }
+
+        public Status(SkillStore store) {
+            this.store = store;
+        }
+
         @Override
         public Integer call() throws Exception {
-            SkillStore store = SkillStore.defaultStore();
             store.init();
             GatewayConfig cfg = GatewayConfig.resolve(store, null);
             GatewayRuntime rt = new GatewayRuntime(store);
@@ -177,6 +186,10 @@ public final class GatewayCommand implements Runnable {
             System.out.println("process:      " + (running ? "running (pid=" + rt.readPid() + ")" : "not running"));
             boolean reachable = new GatewayClient(cfg).ping();
             System.out.println("health:       " + (reachable ? "reachable" : "unreachable"));
+            System.out.println("status:       " + (reachable ? "up" : "down"));
+            if (!reachable) {
+                System.out.println("next:         run `skill-manager gateway up` to initialize");
+            }
             return reachable ? 0 : 2;
         }
     }

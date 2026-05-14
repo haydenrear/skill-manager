@@ -2,6 +2,12 @@ package dev.skillmanager.commands;
 
 import dev.skillmanager.model.CliDependency;
 import dev.skillmanager.model.ContainedSkill;
+import dev.skillmanager.model.DocRepoParser;
+import dev.skillmanager.model.DocSource;
+import dev.skillmanager.model.DocUnit;
+import dev.skillmanager.model.HarnessMcpToolSelection;
+import dev.skillmanager.model.HarnessParser;
+import dev.skillmanager.model.HarnessUnit;
 import dev.skillmanager.model.McpDependency;
 import dev.skillmanager.model.PluginParser;
 import dev.skillmanager.model.PluginUnit;
@@ -22,33 +28,67 @@ import java.util.concurrent.Callable;
  * {@code skill-manager show <name>} — kind-aware detail view.
  *
  * <p>For a skill, the existing layout is preserved byte-for-byte (name /
- * version / description / path + cli/refs/mcp blocks). For a plugin,
- * the layout switches to a plugin-shaped view: header line with kind +
- * version + sha + source, contained-skill list, and effective deps
- * with per-source attribution ("declared at: plugin level" vs "declared
- * at: skills/&lt;contained&gt;").
+ * version / description / path + cli/refs/mcp blocks). Other unit kinds
+ * use kind-shaped views: plugins show contained skills and unioned deps,
+ * doc-repos show bindable sources, and harnesses show referenced units,
+ * docs, and MCP tool selections.
  */
-@Command(name = "show", description = "Show details for an installed unit (skill or plugin).")
+@Command(name = "show", description = "Show details for an installed unit.")
 public final class ShowCommand implements Callable<Integer> {
 
     @Parameters(index = "0", description = "Unit name")
     String name;
 
+    private final SkillStore store;
+
+    public ShowCommand() {
+        this(SkillStore.defaultStore());
+    }
+
+    public ShowCommand(SkillStore store) {
+        this.store = store;
+    }
+
+    public ShowCommand(SkillStore store, String name) {
+        this.store = store;
+        this.name = name;
+    }
+
     @Override
     public Integer call() throws Exception {
-        SkillStore store = SkillStore.defaultStore();
         store.init();
+        UnitStore sources = new UnitStore(store);
+        InstalledUnit rec = sources.read(name).orElse(null);
 
-        // Plugin first — pre-empts the skill path for plugin-kind units.
-        if (store.containsPlugin(name)) {
-            return showPlugin(store);
+        if (rec != null) {
+            Integer rc = showRecordedKind(store, rec.unitKind());
+            if (rc != null) return rc;
         }
+
+        // Fallback for legacy installs or manually seeded test fixtures
+        // without an installed-record.
+        if (store.containsPlugin(name)) return showPlugin(store);
+        if (store.containsHarness(name)) return showHarness(store);
+        if (store.containsDocRepo(name)) return showDocRepo(store);
         Skill s = store.load(name).orElse(null);
         if (s == null) {
             System.err.println("unit not found: " + name);
             return 1;
         }
         return showSkill(s);
+    }
+
+    private Integer showRecordedKind(SkillStore store, UnitKind kind) throws IOException {
+        if (kind == null) return null;
+        return switch (kind) {
+            case PLUGIN -> store.containsPlugin(name) ? showPlugin(store) : null;
+            case HARNESS -> store.containsHarness(name) ? showHarness(store) : null;
+            case DOC -> store.containsDocRepo(name) ? showDocRepo(store) : null;
+            case SKILL -> {
+                Skill s = store.load(name).orElse(null);
+                yield s == null ? null : showSkill(s);
+            }
+        };
     }
 
     /**
@@ -141,6 +181,73 @@ public final class ShowCommand implements Callable<Integer> {
         return 0;
     }
 
+    private int showDocRepo(SkillStore store) throws IOException {
+        Path docDir = store.unitDir(name, UnitKind.DOC);
+        DocUnit d = DocRepoParser.load(docDir);
+        UnitStore sources = new UnitStore(store);
+        InstalledUnit rec = sources.read(name).orElse(null);
+
+        System.out.printf("DOC  %s@%s  (sha %s, source %s)%n",
+                d.name(), versionOrDash(d.version()), shaOrDash(rec), sourceOrDash(rec));
+        if (d.description() != null && !d.description().isBlank()) {
+            System.out.println("description: " + d.description());
+        }
+        System.out.println("path:        " + d.sourcePath());
+        System.out.println();
+        if (d.sources().isEmpty()) {
+            System.out.println("sources: (none)");
+        } else {
+            System.out.println("sources:");
+            for (DocSource s : d.sources()) {
+                System.out.printf("  - %s  file=%s  agents=%s%n",
+                        s.id(), s.file(), String.join(",", s.agents()));
+            }
+        }
+        return 0;
+    }
+
+    private int showHarness(SkillStore store) throws IOException {
+        Path harnessDir = store.unitDir(name, UnitKind.HARNESS);
+        HarnessUnit h = HarnessParser.load(harnessDir);
+        UnitStore sources = new UnitStore(store);
+        InstalledUnit rec = sources.read(name).orElse(null);
+
+        System.out.printf("HARNESS  %s@%s  (sha %s, source %s)%n",
+                h.name(), versionOrDash(h.version()), shaOrDash(rec), sourceOrDash(rec));
+        if (h.description() != null && !h.description().isBlank()) {
+            System.out.println("description: " + h.description());
+        }
+        System.out.println("path:        " + h.sourcePath());
+        System.out.println();
+        printReferences("units", h.units());
+        printReferences("docs", h.docs());
+        printMcpTools(h.mcpTools());
+        return 0;
+    }
+
+    private static void printReferences(String label, java.util.List<UnitReference> refs) {
+        if (refs.isEmpty()) {
+            System.out.println(label + ": (none)");
+            return;
+        }
+        System.out.println(label + ":");
+        for (UnitReference r : refs) {
+            System.out.println("  - " + r.coord().raw());
+        }
+    }
+
+    private static void printMcpTools(java.util.List<HarnessMcpToolSelection> tools) {
+        if (tools.isEmpty()) {
+            System.out.println("mcp_tools: (none)");
+            return;
+        }
+        System.out.println("mcp_tools:");
+        for (HarnessMcpToolSelection m : tools) {
+            String selected = m.exposesAllTools() ? "*" : String.join(",", m.tools());
+            System.out.printf("  - %s [%s]%n", m.server(), selected);
+        }
+    }
+
     private static void printAttributedDeps(PluginUnit p) {
         java.util.List<String[]> cliRows = new java.util.ArrayList<>();   // [name, source]
         java.util.List<String[]> mcpRows = new java.util.ArrayList<>();
@@ -196,5 +303,21 @@ public final class ShowCommand implements Callable<Integer> {
             case McpDependency.ShellLoad sh -> "shell "
                     + (sh.command().isEmpty() ? "<empty>" : sh.command().get(0));
         };
+    }
+
+    private static String versionOrDash(String version) {
+        return version != null && !version.isBlank() ? version : "-";
+    }
+
+    private static String shaOrDash(InstalledUnit rec) {
+        return rec != null && rec.gitHash() != null && !rec.gitHash().isBlank()
+                ? rec.gitHash().substring(0, Math.min(7, rec.gitHash().length()))
+                : "-";
+    }
+
+    private static String sourceOrDash(InstalledUnit rec) {
+        return rec != null && rec.installSource() != null
+                ? rec.installSource().name().toLowerCase()
+                : "-";
     }
 }
