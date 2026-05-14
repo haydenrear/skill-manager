@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.13.0](https://github.com/haydenrear/skill-manager/compare/v0.12.2...v0.13.0) (2026-05-14)
+
+
+### Features
+
+* **skill-references:** added ability to add validatable references to other markdowns in your skill manager-enabled units (docs, plugins, harnesses, skills) ([#68](https://github.com/haydenrear/skill-manager/issues/68)) ([480fe02](https://github.com/haydenrear/skill-manager/commit/480fe02779155f841a422ac83f83c014c4dc9857))
+
 ## [0.12.2](https://github.com/haydenrear/skill-manager/compare/v0.12.1...v0.12.2) (2026-05-14)
 
 
