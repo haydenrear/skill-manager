@@ -5,6 +5,7 @@ import org.tomlj.TomlArray;
 import org.tomlj.TomlParseResult;
 import org.tomlj.TomlTable;
 import org.yaml.snakeyaml.Yaml;
+import org.yaml.snakeyaml.error.YAMLException;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -36,7 +37,7 @@ public final class SkillParser {
             throw new IOException("Missing " + SKILL_FILENAME + " in " + skillDir);
         }
         String content = Files.readString(md);
-        Parsed parsed = splitFrontmatter(content);
+        Parsed parsed = splitFrontmatter(content, md);
 
         String name = asString(parsed.frontmatter.get("name"), skillDir.getFileName().toString());
         String description = asString(parsed.frontmatter.get("description"), "");
@@ -63,7 +64,7 @@ public final class SkillParser {
 
     private record Parsed(Map<String, Object> frontmatter, String body) {}
 
-    private static Parsed splitFrontmatter(String content) {
+    private static Parsed splitFrontmatter(String content, Path md) throws IOException {
         if (!content.startsWith("---")) return new Parsed(Map.of(), content);
         int firstNl = content.indexOf('\n');
         if (firstNl < 0) return new Parsed(Map.of(), content);
@@ -73,7 +74,12 @@ public final class SkillParser {
         int bodyStart = end + 4;
         if (bodyStart < content.length() && content.charAt(bodyStart) == '\n') bodyStart++;
         String body = content.substring(Math.min(bodyStart, content.length()));
-        Object loaded = new Yaml().load(yaml);
+        Object loaded;
+        try {
+            loaded = new Yaml().load(yaml);
+        } catch (YAMLException ex) {
+            throw new IOException("Invalid YAML frontmatter in " + md + ": " + ex.getMessage(), ex);
+        }
         Map<String, Object> fm = loaded instanceof Map<?, ?> m ? copyMap(m) : Map.of();
         return new Parsed(fm, body);
     }
