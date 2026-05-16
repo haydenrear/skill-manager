@@ -13,6 +13,7 @@ import dev.skillmanager.model.Skill;
 import dev.skillmanager.source.InstalledUnit;
 import dev.skillmanager.source.UnitStore;
 import dev.skillmanager.store.SkillStore;
+import dev.skillmanager.store.UnitReadProblem;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -120,8 +121,9 @@ public final class SyncUseCase {
     public static StagedProgram<Report> buildProgram(SkillStore store,
                                                      GatewayConfig gw,
                                                      Options options,
-                                                     List<Target> targets) throws IOException {
-        Program<?> stage1 = buildStage1(store, gw, options, targets);
+                                                     List<Target> targets,
+                                                     List<UnitReadProblem> initialReadProblems) throws IOException {
+        Program<?> stage1 = buildStage1(store, gw, options, targets, initialReadProblems);
         java.util.function.Function<EffectContext, Program<?>> stage2 =
                 ctx -> buildStage2(ctx, gw, options);
         return new StagedProgram<>("sync-" + UUID.randomUUID(), stage1, stage2, SyncUseCase::decode);
@@ -130,10 +132,14 @@ public final class SyncUseCase {
     private static Program<?> buildStage1(SkillStore store,
                                           GatewayConfig gw,
                                           Options options,
-                                          List<Target> targets) throws IOException {
+                                          List<Target> targets,
+                                          List<UnitReadProblem> initialReadProblems) throws IOException {
         UnitStore sources = new UnitStore(store);
         List<SkillEffect> effects = new ArrayList<>(
                 ResolveContextUseCase.preflight(gw, options.registryOverride(), options.withMcp()));
+        if (initialReadProblems != null && !initialReadProblems.isEmpty()) {
+            effects.add(new SkillEffect.ReportUnitReadProblems(initialReadProblems));
+        }
         if (options.withMcp()) effects.add(new SkillEffect.SnapshotMcpDeps());
         List<String> targetNames = new ArrayList<>();
         for (Target t : targets) {
