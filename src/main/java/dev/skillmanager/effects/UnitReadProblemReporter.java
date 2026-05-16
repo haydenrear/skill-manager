@@ -11,17 +11,26 @@ import java.util.Set;
 /** Converts installed-unit read diagnostics into renderer-owned facts. */
 public final class UnitReadProblemReporter {
 
+    private static final Set<String> REPORTED = new LinkedHashSet<>();
+
     private UnitReadProblemReporter() {}
+
+    public static synchronized void reset() {
+        REPORTED.clear();
+    }
 
     public static List<ContextFact> facts(List<UnitReadProblem> problems) {
         List<ContextFact> facts = new ArrayList<>();
-        Set<String> seen = new LinkedHashSet<>();
         if (problems == null) return facts;
         for (UnitReadProblem p : problems) {
-            if (!seen.add(key(p))) continue;
+            if (!markReported(p)) continue;
             facts.add(fact(p));
         }
         return facts;
+    }
+
+    public static synchronized boolean markReported(UnitReadProblem problem) {
+        return REPORTED.add(key(problem));
     }
 
     public static void render(SkillStore store, List<UnitReadProblem> problems, boolean json) {

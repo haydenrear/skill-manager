@@ -84,6 +84,7 @@ public final class SkillManagerCli implements Runnable {
     }
 
     public static int run(String[] args) {
+        dev.skillmanager.effects.UnitReadProblemReporter.reset();
         CommandLine cmd = new CommandLine(new SkillManagerCli());
         cmd.setExecutionStrategy(pr -> {
             SkillManagerCli root = pr.commandSpec().root().userObject() instanceof SkillManagerCli c ? c : null;

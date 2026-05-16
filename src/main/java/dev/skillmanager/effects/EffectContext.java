@@ -10,8 +10,6 @@ import dev.skillmanager.store.UnitReadProblem;
 
 import java.io.IOException;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -63,7 +61,6 @@ public final class EffectContext {
 
     /** Single user-facing renderer for this program-execution tree. */
     private final ProgramRenderer renderer;
-    private final Set<String> reportedUnitReadProblems = new LinkedHashSet<>();
 
     public EffectContext(SkillStore store, GatewayConfig gateway) {
         this(store, gateway, ProgramRenderer.NOOP);
@@ -117,22 +114,8 @@ public final class EffectContext {
         return preMcpDeps == null ? Map.of() : preMcpDeps;
     }
 
-    public boolean markUnitReadProblemReported(UnitReadProblem problem) {
-        return reportedUnitReadProblems.add(unitReadProblemKey(problem));
-    }
-
     public List<ContextFact> unitReadProblemFacts(List<UnitReadProblem> problems) {
-        List<ContextFact> facts = new ArrayList<>();
-        if (problems == null) return facts;
-        for (UnitReadProblem p : problems) {
-            if (!markUnitReadProblemReported(p)) continue;
-            facts.add(new ContextFact.CantReadUnit(
-                    p.name(),
-                    p.kind() == null ? "" : p.kind().name().toLowerCase(),
-                    p.path() == null ? "" : p.path().toString(),
-                    p.message()));
-        }
-        return facts;
+        return UnitReadProblemReporter.facts(problems);
     }
 
     /**
@@ -187,9 +170,4 @@ public final class EffectContext {
         return out;
     }
 
-    private static String unitReadProblemKey(UnitReadProblem p) {
-        String kind = p.kind() == null ? "" : p.kind().name();
-        String path = p.path() == null ? "" : p.path().toAbsolutePath().normalize().toString();
-        return kind + "\u001f" + p.name() + "\u001f" + path + "\u001f" + p.message();
-    }
 }
