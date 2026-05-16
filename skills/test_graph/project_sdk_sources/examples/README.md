@@ -3,26 +3,28 @@
 The root `build.gradle.kts` wires a `smoke` test graph composed from the
 four scripts under `sources/`:
 
-- `app.running` (testbed, JBang) — HEAD-probes `baseUrl`. Publishes `baseUrl` downstream.
-  *Not* listed in the DSL — pulled in transitively because other nodes declare `dependsOn("app.running")`.
-- `user.seeded` (fixture, uv) — writes a synthetic user record, publishes `userId`.
-- `network.pingable` (evidence, JBang) — its script declares **no** `dependsOn`. The DSL adds `.dependsOn("app.running")` so it sits between the testbed and the assertion.
-- `login.smoke` (assertion, JBang) — script deps: `app.running`, `user.seeded`. DSL adds `.dependsOn("network.pingable")`. Reads `userId` across the runtime boundary via `ctx.get("user.seeded", "userId")`.
+- `app.running` (testbed, JBang): HEAD-probes `baseUrl`. Publishes `baseUrl` downstream.
+  *Not* listed in the DSL; pulled in transitively because other nodes declare `dependsOn("app.running")`.
+- `user.seeded` (fixture, uv): writes a synthetic user record, publishes `userId`.
+- `network.pingable` (evidence, JBang): its script declares **no** `dependsOn`. The DSL adds `.dependsOn("app.running")` so it sits between the testbed and the assertion.
+- `login.smoke` (assertion, JBang): script deps: `app.running`, `user.seeded`. DSL adds `.dependsOn("network.pingable")`. Reads `userId` across the runtime boundary via `ctx.get("user.seeded", "userId")`.
 
 ## Try it
 
+Prefer the upstream skill scripts:
+
 ```bash
-./gradlew validationListGraphs
-./gradlew validationPlanGraph --name=smoke
-./gradlew smoke                         # or: test-graph-skill/scripts/run.py smoke
-./gradlew validationReport
+<skill>/scripts/discover.py
+<skill>/scripts/discover.py smoke
+<skill>/scripts/run.py smoke
+<skill>/scripts/run.py --all
 ```
 
 Per-node envelopes land at `build/validation-reports/<runId>/envelope/`; the unified summary is `summary.json` in the same dir.
 
 ## Expected shape
 
-`validationListGraphs`:
+`discover.py` lists:
 
 ```
 graph: smoke
@@ -31,7 +33,7 @@ graph: smoke
   - sources/LoginSmoke.java
 ```
 
-`validationPlanGraph --name=smoke`:
+`discover.py smoke` plans:
 
 ```
 plan for test graph 'smoke' (4 steps):
@@ -48,7 +50,7 @@ dependencies:
   login.smoke       <- app.running, user.seeded, network.pingable
 ```
 
-`test-graph-skill/scripts/discover.py smoke` also writes `docs/smoke.dot` and renders `docs/smoke.png` (if graphviz is installed), so you can view the DAG visually.
+`<skill>/scripts/discover.py smoke` also writes `docs/smoke.dot` and renders `docs/smoke.png` (if graphviz is installed), so you can view the DAG visually.
 
 `summary.json` after a successful run should include:
 
@@ -57,4 +59,4 @@ dependencies:
 "login.smoke":     { "published": { "attemptedAs": "u-xxxx" } }
 ```
 
-— the same `u-xxxx` string, showing the accumulated context survived the uv → jbang boundary.
+- the same `u-xxxx` string, showing the accumulated context survived the uv to jbang boundary.

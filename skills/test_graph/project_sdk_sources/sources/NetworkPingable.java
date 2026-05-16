@@ -1,10 +1,10 @@
 ///usr/bin/env jbang "$0" "$@" ; exit $?
 //SOURCES ../sdk/java/src/main/java/com/hayden/testgraphsdk/sdk/*.java
 /*
- * IMPORTING USER CODE — uncomment directives like these above this block:
+ * IMPORTING USER CODE - uncomment directives like these above this block:
  *   //SOURCES ../../src/main/java/com/acme/net/Probe.java
  *   //DEPS org.apache.httpcomponents.client5:httpclient5:5.3.1
- * See test-graph-skill/SKILL.md → "Importing user code".
+ * See <skill>/references/workflows.md, "Import User Code".
  */
 
 import com.hayden.testgraphsdk.sdk.Node;

@@ -1,17 +1,18 @@
 # skill-manager metadata for the test-graph skill. Tooling-only; the
-# agent runtime never reads this — it reads SKILL.md.
+# agent runtime never reads this - it reads SKILL.md.
 #
 # The skill is mostly documentation plus Python 3 scaffolding scripts
-# (scripts/scaffold.py, run.py, discover.py, new-jbang-node.py,
-# new-uv-node.py, clean.py). Those scripts use only the stdlib (tomllib
-# requires Python 3.11+, which the target audience already has), so
-# there are no third-party CLI dependencies to install at skill-install
-# time.
+# (scripts/scaffold.py, github-action.py, run.py, discover.py,
+# new-jbang-node.py, new-uv-node.py, clean.py). Those scripts use only
+# the stdlib (tomllib requires Python 3.11+, which the target audience
+# already has), so there are no third-party CLI dependencies to install
+# at skill-install time.
 #
 # JBang, Gradle, and uv are runtime requirements of the *scaffolded
-# project* — i.e. the test_graph/ folder this skill stamps into the
-# user's repo — not of the skill itself. SKILL.md tells the user how
-# to install them; we don't redundantly declare them here, because
+# project* - i.e. the test_graph/ folder this skill stamps into the
+# user's repo - not of the skill itself. SKILL.md and the local
+# references/ docs describe how the scaffold resolves and invokes them;
+# we don't redundantly declare them here, because
 # skill-manager would then bundle them into $SKILL_MANAGER_HOME/bin/
 # even on machines where the project under validation already has its
 # own pinned versions on PATH.

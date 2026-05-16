@@ -28,7 +28,7 @@ def main() -> int:
         "graph",
         nargs="?",
         help="Test graph name (also the Gradle task name). "
-             "List available graphs with `./gradlew validationListGraphs`.",
+             "List available graphs with `discover.py`.",
     )
     parser.add_argument(
         "--all",

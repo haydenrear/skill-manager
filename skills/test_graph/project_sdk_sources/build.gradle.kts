@@ -5,8 +5,9 @@ plugins {
 /**
  * Example test graphs.
  *
- * Each `testGraph("name") { ... }` registers a Gradle task:
- *   ./gradlew smoke         runs the "smoke" graph
+ * Each `testGraph("name") { ... }` registers a graph task. Prefer the
+ * upstream skill wrapper for normal use:
+ *   <skill>/scripts/run.py smoke
  *
  * Inside a graph:
  *   node("path/to/script")              add a script, describe to get its spec
@@ -22,10 +23,10 @@ plugins {
  * are resolved from any registered `sourcesDir`.
  *
  * Inspect / run:
- *   ./gradlew validationListGraphs
- *   ./gradlew validationPlanGraph --name=smoke
- *   ./gradlew smoke
- *   ./gradlew validationReport
+ *   <skill>/scripts/discover.py
+ *   <skill>/scripts/discover.py smoke
+ *   <skill>/scripts/run.py smoke
+ *   <skill>/scripts/run.py --all
  */
 validationGraph {
     sourcesDir("sources")
@@ -70,7 +71,7 @@ validationGraph {
  * -------------------
  * If this scaffold lives at <user-project>/test_graph/, node scripts in
  * sources/ can reach user code via `../..`. See:
- *   - test-graph-skill/SKILL.md → "Importing user code"
+ *   - <skill>/references/workflows.md, "Import User Code"
  *   - sources/AppRunning.java   (example JBang //SOURCES / //DEPS block)
  *   - sources/user_seeded.py    (example uv [tool.uv.sources] block)
  *
