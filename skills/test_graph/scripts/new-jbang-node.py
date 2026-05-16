@@ -65,8 +65,8 @@ def main() -> int:
     print("  1. fill in the body")
     print(f'  2. add `node("{rel}")` to build.gradle.kts')
     print("     (or leave it out — it'll be pulled in transitively if something dependsOn it)")
-    print("  3. ./gradlew validationPlanGraph --name=<graph>   # dry-run the plan")
-    print(f"  4. ./gradlew <graph>                                # run the graph that includes {args.node_id}")
+    print("  3. <skill>/scripts/discover.py <graph>             # dry-run the plan")
+    print(f"  4. <skill>/scripts/run.py <graph>                  # run the graph that includes {args.node_id}")
     return 0
 
 

@@ -7,7 +7,7 @@
 # # and under [tool.uv.sources] below:
 # #   acme-domain = { path = "../..", editable = true }
 # # Then in the body:  from acme_domain import User
-# # See test-graph-skill/SKILL.md → "Importing user code".
+# # See <skill>/references/workflows.md, "Import User Code".
 #
 # [tool.uv.sources]
 # testgraphsdk = { path = "../sdk/python", editable = true }

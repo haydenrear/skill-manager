@@ -11,7 +11,7 @@
  *   //DEPS com.fasterxml.jackson.core:jackson-databind:2.17.0
  *
  * Then in the body, `import com.acme.domain.User;` etc.
- * See test-graph-skill/SKILL.md → "Importing user code".
+ * See <skill>/references/workflows.md, "Import User Code".
  */
 
 import java.net.URI;

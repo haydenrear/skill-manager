@@ -12,7 +12,7 @@
  *   //DEPS com.fasterxml.jackson.core:jackson-databind:2.17.0
  *   //DEPS org.seleniumhq.selenium:selenium-java:4.21.0
  *
- * See test-graph-skill/SKILL.md → "Importing user code" for detail.
+ * See <skill>/references/workflows.md, "Import User Code" for detail.
  */
 
 import java.net.URI;

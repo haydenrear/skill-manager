@@ -2,8 +2,8 @@
 
 Full surface for the test-graph system: NodeSpec, NodeResult, the DSL,
 the Gradle tasks, the wire format for `--describe-out` and `--context`,
-and the on-disk report layout. Pair with [`SKILL.md`](SKILL.md) for the
-workflow guidance.
+and the on-disk report layout. Pair with [`../SKILL.md`](../SKILL.md) for
+skill routing and [`workflows.md`](workflows.md) for operating workflows.
 
 ## NodeSpec (script-declared metadata)
 
@@ -15,7 +15,7 @@ emitted JSON; no YAML sidecar.
 | -------------- | --------------------------------------------------------------------------- | -------- | -------------------------------------------------------------- |
 | `id`           | string (dotted)                                                             | yes      | Stable semantic identifier. Treat as public API.               |
 | `kind`         | `testbed` \| `fixture` \| `action` \| `assertion` \| `evidence` \| `report` | yes      | Exactly one.                                                   |
-| `runtime`      | `jbang` \| `uv`                                                             | yes      | Fixed by the SDK language (Java → `jbang`, Python → `uv`).     |
+| `runtime`      | `jbang` \| `uv`                                                             | yes      | Fixed by the SDK language (Java -> `jbang`, Python -> `uv`).   |
 | `dependsOn`    | list\<string\>                                                              | no       | Upstream node ids.                                             |
 | `tags`         | list\<string\>                                                              | no       | Free-form labels.                                              |
 | `timeout`      | duration (`30s`, `2m`)                                                      | no       | Default: `60s`.                                                |
@@ -115,10 +115,10 @@ The plugin resolves both runtime binaries at task-execution time and logs the ch
 
 Resolution rules per tool:
 
-1. If `override-<tool>-version` is set AND the version on `PATH` matches it → use PATH.
-2. If override is set AND PATH differs (or tool isn't on PATH) → download the override version to `<project>/.bin/`.
-3. No override + tool on PATH → use PATH.
-4. No override + not on PATH → download the default version.
+1. If `override-<tool>-version` is set AND the version on `PATH` matches it, use PATH.
+2. If override is set AND PATH differs, or the tool is not on PATH, download the override version to `<project>/.bin/`.
+3. With no override and tool on PATH, use PATH.
+4. With no override and no tool on PATH, download the default version.
 
 Tasks invoke the tools by **absolute path**, so a resolved binary always takes precedence over `PATH` when the plugin drives it.
 
@@ -156,15 +156,21 @@ Delete `.bin/` to force redownload. Defaults are bumped by editing `Toolchain.DE
 
 ## Gradle tasks
 
+Agents should normally use the wrapper scripts from [`workflows.md`](workflows.md).
+These are the underlying Gradle tasks.
+
 | Task                                    | Purpose                                              |
 | --------------------------------------- | ---------------------------------------------------- |
 | `<graphName>`                           | Run the test graph with that name.                   |
+| `validationRunAll`                      | Run every registered graph serially in declaration order. |
 | `validationListGraphs`                  | List all registered graphs + their explicit nodes.   |
 | `validationPlanGraph --name=<graph>`    | Plan (topo table + dependency adjacency).            |
 | `validationGraphDot --name=<graph>`     | Emit graphviz DOT only (pipe-friendly).              |
 | `validationReport`                      | Re-render summary.json + report.md for every existing run dir (manual rebuild — graph tasks already write their own rollup inline). |
 
 `discover.py <graph>` wraps `validationPlanGraph` (for the human console output) and `validationGraphDot` (for `docs/<graph>.dot`), and renders `docs/<graph>.png` if `dot` is on PATH.
+
+`run.py --all` wraps `validationRunAll`.
 
 ## Unified result envelope
 
@@ -261,7 +267,7 @@ Inline script metadata supports `[tool.uv.sources]` with path-based sources:
 
 Assumes `<user-project>/pyproject.toml` declares the package. `sys.path` insertion at `Path(__file__).resolve().parents[2] / "src" / "main" / "python"` is the fallback for unpackaged user code.
 
-See [`SKILL.md`](SKILL.md) → **Importing user code** for full examples.
+See [`workflows.md`](workflows.md) -> **Import User Code** for full examples.
 
 ## Report output
 

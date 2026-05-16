@@ -9,7 +9,7 @@ build files, example node scripts, Gradle wrapper) into a new
 The ``sdk/`` and ``build-logic/`` subtrees are created as **symlinks**
 into the skill repo's ``project_sdk_sources/`` rather than copies, so
 upstream upgrades land in every consumer scaffold without rsync. Move
-or delete the skill repo and the symlinks dangle — that's the cost,
+or delete the skill repo and the symlinks dangle - that's the cost,
 and it's why the rest of the scaffold (sources/, build.gradle.kts,
 gradle wrapper, examples) stays as a copy: those are user-edited.
 
@@ -19,8 +19,8 @@ Usage:
 
 Example:
     scaffold.py ~/projects/myapp
-        → creates ~/projects/myapp/test_graph/ populated with the
-          scaffold; sdk/ and build-logic/ symlink into the skill repo.
+        creates ~/projects/myapp/test_graph/ populated with the scaffold;
+        sdk/ and build-logic/ symlink into the skill repo.
 """
 from __future__ import annotations
 
@@ -35,7 +35,7 @@ from _common import project_sdk_sources
 
 
 # Subtrees scaffolded as symlinks into the skill repo. Updating the
-# skill propagates instantly to every consumer scaffold — no manual
+# skill propagates instantly to every consumer scaffold - no manual
 # rsync, no drift between project copies. The flip side: a moved or
 # deleted skill repo dangles every consumer's symlink, so don't blow
 # away the skill checkout while a project depends on it.
@@ -57,7 +57,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument(
         "repo_root",
-        help="your project's repo root — scaffold goes into <repo_root>/test_graph/",
+        help="your project's repo root - scaffold goes into <repo_root>/test_graph/",
     )
     parser.add_argument(
         "--copy-sdk",
@@ -86,7 +86,7 @@ def main() -> int:
     src = project_sdk_sources()
     if not src.is_dir():
         sys.exit(
-            f"error: project_sdk_sources/ not found at {src} — this skill "
+            f"error: project_sdk_sources/ not found at {src} - this skill "
             "repo may be broken."
         )
 
@@ -125,11 +125,13 @@ def main() -> int:
         print(f"  symlinked into skill repo: {', '.join(sorted(symlinks_used))}")
         print(f"  (changes to {src} take effect immediately in this scaffold)")
     print()
+    scripts = Path(__file__).resolve().parent
     print("next steps:")
-    print(f"  cd {target}")
-    print("  ./gradlew validationListGraphs")
-    print("  ./gradlew validationPlanGraph --name=smoke")
-    print("  ./gradlew smoke")
+    print(f"  cd {repo_root}")
+    print(f"  {scripts / 'discover.py'}")
+    print(f"  {scripts / 'discover.py'} smoke")
+    print(f"  {scripts / 'run.py'} smoke")
+    print(f"  {scripts / 'run.py'} --all")
     return 0
 
 
