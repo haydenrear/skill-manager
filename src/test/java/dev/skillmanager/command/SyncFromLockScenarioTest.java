@@ -62,7 +62,7 @@ public final class SyncFromLockScenarioTest {
 
         suite.test("empty store + empty lock → no drift (idempotent baseline)", () -> {
             TestHarness h = TestHarness.create();
-            UnitsLock live = LockCommand.readLiveState(h.store());
+            UnitsLock live = LockCommand.readLiveState(h.store()).lock();
             UnitsLock onDisk = UnitsLockReader.read(UnitsLockReader.defaultPath(h.store()));
             assertTrue(LockDiff.between(onDisk, live).isEmpty(),
                     "empty store + empty lock are in sync");
@@ -73,7 +73,7 @@ public final class SyncFromLockScenarioTest {
             installSkill(h, "alpha", DepSpec.empty(), "1.0.0", "sha-a");
 
             // sync --refresh: write live state to lock.
-            UnitsLock live = LockCommand.readLiveState(h.store());
+            UnitsLock live = LockCommand.readLiveState(h.store()).lock();
             UnitsLockWriter.atomicWrite(live, UnitsLockReader.defaultPath(h.store()));
 
             // lock status would now show no drift.
@@ -83,7 +83,7 @@ public final class SyncFromLockScenarioTest {
 
             // Re-running refresh produces the same lock bytes.
             String first = Files.readString(UnitsLockReader.defaultPath(h.store()));
-            UnitsLock live2 = LockCommand.readLiveState(h.store());
+            UnitsLock live2 = LockCommand.readLiveState(h.store()).lock();
             UnitsLockWriter.atomicWrite(live2, UnitsLockReader.defaultPath(h.store()));
             String second = Files.readString(UnitsLockReader.defaultPath(h.store()));
             assertEquals(first, second, "refresh is idempotent — same bytes both times");
@@ -96,7 +96,7 @@ public final class SyncFromLockScenarioTest {
             installSkill(h, "alpha", DepSpec.empty(), "1.0.0", "sha-a");
 
             // Lock is empty (we didn't write it after install).
-            UnitsLock live = LockCommand.readLiveState(h.store());
+            UnitsLock live = LockCommand.readLiveState(h.store()).lock();
             UnitsLock onDisk = UnitsLockReader.read(UnitsLockReader.defaultPath(h.store()));
             LockDiff drift = LockDiff.between(onDisk, live);
 
@@ -115,7 +115,7 @@ public final class SyncFromLockScenarioTest {
                             InstalledUnit.InstallSource.GIT, "u", "main", "sha-a")));
             UnitsLockWriter.atomicWrite(seeded, UnitsLockReader.defaultPath(h.store()));
 
-            UnitsLock live = LockCommand.readLiveState(h.store());
+            UnitsLock live = LockCommand.readLiveState(h.store()).lock();
             UnitsLock onDisk = UnitsLockReader.read(UnitsLockReader.defaultPath(h.store()));
             LockDiff drift = LockDiff.between(onDisk, live);
 
@@ -133,7 +133,7 @@ public final class SyncFromLockScenarioTest {
                             InstalledUnit.InstallSource.GIT, null, null, "sha-old")));
             UnitsLockWriter.atomicWrite(seeded, UnitsLockReader.defaultPath(h.store()));
 
-            UnitsLock live = LockCommand.readLiveState(h.store());
+            UnitsLock live = LockCommand.readLiveState(h.store()).lock();
             UnitsLock onDisk = UnitsLockReader.read(UnitsLockReader.defaultPath(h.store()));
             LockDiff drift = LockDiff.between(onDisk, live);
 
@@ -159,7 +159,7 @@ public final class SyncFromLockScenarioTest {
                             InstalledUnit.InstallSource.GIT, "u", "main", "sha-g")));
             UnitsLockWriter.atomicWrite(seeded, UnitsLockReader.defaultPath(h.store()));
 
-            UnitsLock live = LockCommand.readLiveState(h.store());
+            UnitsLock live = LockCommand.readLiveState(h.store()).lock();
             UnitsLock onDisk = UnitsLockReader.read(UnitsLockReader.defaultPath(h.store()));
             LockDiff drift = LockDiff.between(onDisk, live);
 
@@ -179,7 +179,7 @@ public final class SyncFromLockScenarioTest {
             installSkill(h, "alpha", DepSpec.empty(), "1.0.0", "sha-a");
             installSkill(h, "middle", DepSpec.empty(), "1.0.0", "sha-m");
 
-            UnitsLock live = LockCommand.readLiveState(h.store());
+            UnitsLock live = LockCommand.readLiveState(h.store()).lock();
             UnitsLockWriter.atomicWrite(live, UnitsLockReader.defaultPath(h.store()));
 
             String content = Files.readString(UnitsLockReader.defaultPath(h.store()));

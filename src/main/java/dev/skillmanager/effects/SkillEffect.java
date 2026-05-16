@@ -12,6 +12,7 @@ import dev.skillmanager.plan.InstallPlan;
 import dev.skillmanager.pm.PackageManager;
 import dev.skillmanager.resolve.ResolvedGraph;
 import dev.skillmanager.source.InstalledUnit;
+import dev.skillmanager.store.UnitReadProblem;
 import dev.skillmanager.tools.ToolDependency;
 
 import java.nio.file.Path;
@@ -40,6 +41,7 @@ public sealed interface SkillEffect permits
         SkillEffect.BuildResolveGraphFromSource,
         SkillEffect.BuildResolveGraphFromBundledSkills,
         SkillEffect.BuildResolveGraphFromUnmetReferences,
+        SkillEffect.ReportUnitReadProblems,
         SkillEffect.ValidateMarkdownImports,
         SkillEffect.BuildInstallPlan,
         SkillEffect.RunInstallPlan,
@@ -225,6 +227,17 @@ public sealed interface SkillEffect permits
      */
     record BuildResolveGraphFromUnmetReferences(
             List<dev.skillmanager.model.Skill> liveSkills) implements SkillEffect {}
+
+    /**
+     * Report installed-unit directories that existed but could not be
+     * parsed/read while building a live store view. Advisory; downstream
+     * effects run over the units that were readable.
+     */
+    record ReportUnitReadProblems(List<UnitReadProblem> problems) implements SkillEffect {
+        public ReportUnitReadProblems {
+            problems = problems == null ? List.of() : List.copyOf(problems);
+        }
+    }
 
     /**
      * Walk markdown files in installed units and report any frontmatter

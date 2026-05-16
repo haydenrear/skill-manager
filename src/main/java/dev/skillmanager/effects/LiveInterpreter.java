@@ -182,6 +182,7 @@ public final class LiveInterpreter implements ProgramInterpreter {
             case SkillEffect.BuildResolveGraphFromSource e -> ResolveGraphHandlers.buildFromSource(e, ctx);
             case SkillEffect.BuildResolveGraphFromBundledSkills e -> ResolveGraphHandlers.buildFromBundledSkills(e, ctx);
             case SkillEffect.BuildResolveGraphFromUnmetReferences e -> ResolveGraphHandlers.buildFromUnmetReferences(e, ctx);
+            case SkillEffect.ReportUnitReadProblems e -> reportUnitReadProblems(e, ctx);
             case SkillEffect.ValidateMarkdownImports e -> validateMarkdownImports(e, ctx);
             case SkillEffect.BuildInstallPlan e -> buildInstallPlan(e, ctx);
             case SkillEffect.RunInstallPlan e -> runInstallPlan(e, ctx);
@@ -221,6 +222,12 @@ public final class LiveInterpreter implements ProgramInterpreter {
             case SkillEffect.SyncDocRepo e -> syncDocRepo(e, ctx);
             case SkillEffect.SyncHarness e -> syncHarness(e, ctx);
         };
+    }
+
+    private EffectReceipt reportUnitReadProblems(SkillEffect.ReportUnitReadProblems e, EffectContext ctx) {
+        List<ContextFact> facts = ctx.unitReadProblemFacts(e.problems());
+        if (facts.isEmpty()) return EffectReceipt.ok(e);
+        return EffectReceipt.ok(e, facts);
     }
 
     private EffectReceipt updateUnitsLock(SkillEffect.UpdateUnitsLock e) {
@@ -488,16 +495,17 @@ public final class LiveInterpreter implements ProgramInterpreter {
         var preMcpDeps = ctx.preMcpDeps();
         if (preMcpDeps.isEmpty()) return EffectReceipt.skipped(e, "no snapshot in context");
         try {
+            var listed = ctx.store().listInstalledUnits();
             List<String> orphans = dev.skillmanager.app.PostUpdateUseCase.computeOrphans(
-                    preMcpDeps, ctx.store().listInstalledUnits());
-            if (orphans.isEmpty()) return EffectReceipt.ok(e);
+                    preMcpDeps, listed.units());
+            List<ContextFact> facts = ctx.unitReadProblemFacts(listed.problems());
+            if (orphans.isEmpty()) return EffectReceipt.ok(e, facts);
             // Inline the per-orphan calls so facts land on this single
             // receipt — running them through a sub-program would let the
             // shared renderer print each OrphanUnregistered line, then
             // print them again when this wrapper receipt renders.
             GatewayClient client = new GatewayClient(e.gateway());
             if (!client.ping()) return EffectReceipt.skipped(e, "gateway unreachable");
-            List<ContextFact> facts = new ArrayList<>();
             int failed = 0;
             for (String id : orphans) {
                 try {
@@ -626,7 +634,9 @@ public final class LiveInterpreter implements ProgramInterpreter {
         dev.skillmanager.project.PluginMarketplace mp =
                 new dev.skillmanager.project.PluginMarketplace(ctx.store());
         try {
-            currentPlugins = mp.regenerate();
+            var regenerated = mp.regenerate();
+            currentPlugins = regenerated.pluginNames();
+            facts.addAll(ctx.unitReadProblemFacts(regenerated.problems()));
             facts.add(new ContextFact.PluginMarketplaceRegenerated(
                     mp.manifestPath().toString(), currentPlugins.size()));
         } catch (IOException io) {
@@ -846,8 +856,9 @@ public final class LiveInterpreter implements ProgramInterpreter {
 
     private EffectReceipt snapshotMcpDeps(SkillEffect.SnapshotMcpDeps e, EffectContext ctx) {
         try {
-            ctx.setPreMcpDeps(dev.skillmanager.app.PostUpdateUseCase.snapshotMcpDeps(ctx.store()));
-            return EffectReceipt.ok(e);
+            var listed = ctx.store().listInstalledUnits();
+            ctx.setPreMcpDeps(dev.skillmanager.app.PostUpdateUseCase.snapshotMcpDeps(listed.units()));
+            return EffectReceipt.ok(e, ctx.unitReadProblemFacts(listed.problems()));
         } catch (Exception ex) {
             return EffectReceipt.failed(e, ex.getMessage());
         }
@@ -1349,7 +1360,9 @@ public final class LiveInterpreter implements ProgramInterpreter {
     private EffectReceipt loadOutstandingErrors(SkillEffect.LoadOutstandingErrors e, EffectContext ctx) {
         List<ContextFact> facts = new ArrayList<>();
         try {
-            for (AgentUnit u : ctx.store().listInstalledUnits()) {
+            var listed = ctx.store().listInstalledUnits();
+            facts.addAll(ctx.unitReadProblemFacts(listed.problems()));
+            for (AgentUnit u : listed.units()) {
                 ctx.source(u.name()).ifPresent(src -> {
                     if (!src.hasErrors()) return;
                     for (InstalledUnit.UnitError err : src.errors()) {

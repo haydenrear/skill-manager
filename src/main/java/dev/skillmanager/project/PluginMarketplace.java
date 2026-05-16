@@ -6,6 +6,7 @@ import dev.skillmanager.model.AgentUnit;
 import dev.skillmanager.model.UnitKind;
 import dev.skillmanager.shared.util.Fs;
 import dev.skillmanager.store.SkillStore;
+import dev.skillmanager.store.UnitReadProblem;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -56,6 +57,13 @@ public final class PluginMarketplace {
         this.store = store;
     }
 
+    public record RegenerateResult(List<String> pluginNames, List<UnitReadProblem> problems) {
+        public RegenerateResult {
+            pluginNames = pluginNames == null ? List.of() : List.copyOf(pluginNames);
+            problems = problems == null ? List.of() : List.copyOf(problems);
+        }
+    }
+
     /** Marketplace root directory: parent of {@code .claude-plugin/} and {@code plugins/}. */
     public Path root() {
         return store.root().resolve("plugin-marketplace");
@@ -75,14 +83,15 @@ public final class PluginMarketplace {
      * Walk the installed-plugin set and rewrite the marketplace root
      * to match. Returns the list of plugin names included so callers
      * can drive harness-CLI invocations against the same set without
-     * re-walking the store.
+     * re-walking the store, plus unreadable installed-unit diagnostics.
      */
-    public List<String> regenerate() throws IOException {
+    public RegenerateResult regenerate() throws IOException {
         Fs.ensureDir(manifestPath().getParent());
         Fs.ensureDir(pluginsLinkDir());
 
         List<String> names = new ArrayList<>();
-        for (AgentUnit u : store.listInstalledUnits()) {
+        var listed = store.listInstalledUnits();
+        for (AgentUnit u : listed.units()) {
             if (u.kind() != UnitKind.PLUGIN) continue;
             names.add(u.name());
         }
@@ -138,7 +147,7 @@ public final class PluginMarketplace {
         manifest.put("plugins", plugins);
         Files.writeString(manifestPath(), json.writeValueAsString(manifest) + "\n");
 
-        return names;
+        return new RegenerateResult(names, listed.problems());
     }
 
     /**

@@ -296,6 +296,7 @@ public final class Executor {
             case SkillEffect.BuildResolveGraphFromSource e -> List.of();
             case SkillEffect.BuildResolveGraphFromBundledSkills e -> List.of();
             case SkillEffect.BuildResolveGraphFromUnmetReferences e -> List.of();
+            case SkillEffect.ReportUnitReadProblems e -> List.of();
             case SkillEffect.ValidateMarkdownImports e -> List.of();
             case SkillEffect.BuildInstallPlan e -> List.of();
             case SkillEffect.RunInstallPlan e -> List.of();
@@ -495,6 +496,7 @@ public final class Executor {
             case SkillEffect.BuildResolveGraphFromSource e -> List.of();
             case SkillEffect.BuildResolveGraphFromBundledSkills e -> List.of();
             case SkillEffect.BuildResolveGraphFromUnmetReferences e -> List.of();
+            case SkillEffect.ReportUnitReadProblems e -> List.of();
             case SkillEffect.ValidateMarkdownImports e -> List.of();
             case SkillEffect.BuildInstallPlan e -> List.of();
             case SkillEffect.RunInstallPlan e -> List.of();
@@ -643,7 +645,9 @@ public final class Executor {
     /** Package-private for {@code CompensationOrphanTest}. */
     boolean isClaimedByOtherUnit(String rolledBackUnit, String depName) {
         try {
-            for (var u : store.listInstalledUnits()) {
+            var listed = store.listInstalledUnits();
+            UnitReadProblemReporter.render(store, listed.problems(), false);
+            for (var u : listed.units()) {
                 if (u.name().equals(rolledBackUnit)) continue;
                 for (var d : u.cliDependencies()) {
                     if (d.name().equals(depName)) return true;
@@ -656,7 +660,9 @@ public final class Executor {
     /** Package-private for {@code CompensationOrphanTest}. */
     boolean isMcpClaimedByOtherUnit(String rolledBackUnit, String serverName) {
         try {
-            for (var u : store.listInstalledUnits()) {
+            var listed = store.listInstalledUnits();
+            UnitReadProblemReporter.render(store, listed.problems(), false);
+            for (var u : listed.units()) {
                 if (u.name().equals(rolledBackUnit)) continue;
                 for (var d : u.mcpDependencies()) {
                     if (d.name().equals(serverName)) return true;

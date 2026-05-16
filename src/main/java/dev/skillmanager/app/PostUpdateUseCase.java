@@ -9,6 +9,7 @@ import dev.skillmanager.mcp.GatewayConfig;
 import dev.skillmanager.mcp.McpWriter;
 import dev.skillmanager.model.AgentUnit;
 import dev.skillmanager.model.McpDependency;
+import dev.skillmanager.store.InstalledUnitsResult;
 import dev.skillmanager.store.SkillStore;
 
 import java.io.IOException;
@@ -48,8 +49,10 @@ public final class PostUpdateUseCase {
                                                GatewayConfig gw,
                                                boolean withMcp,
                                                boolean withAgents) throws IOException {
-        List<AgentUnit> liveUnits = store.listInstalledUnits();
+        InstalledUnitsResult listed = store.listInstalledUnits();
+        List<AgentUnit> liveUnits = listed.units();
         List<SkillEffect> effects = new ArrayList<>();
+        effects.add(new SkillEffect.ReportUnitReadProblems(listed.problems()));
 
         // ResolveTransitives is sync-only — it catches new references that
         // post-merge content surfaces. Post-update runs over the existing
@@ -111,9 +114,9 @@ public final class PostUpdateUseCase {
     }
 
     /** Helper used by the {@link SkillEffect.SnapshotMcpDeps} handler. */
-    public static Map<String, Set<String>> snapshotMcpDeps(SkillStore store) throws IOException {
+    public static Map<String, Set<String>> snapshotMcpDeps(List<AgentUnit> units) {
         Map<String, Set<String>> snapshot = new LinkedHashMap<>();
-        for (AgentUnit s : store.listInstalledUnits()) {
+        for (AgentUnit s : units) {
             Set<String> names = new HashSet<>();
             for (McpDependency d : s.mcpDependencies()) names.add(d.name());
             snapshot.put(s.name(), names);

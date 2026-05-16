@@ -177,8 +177,13 @@ public final class SyncUseCase {
         // plugin-kind units, which silently skipped the post-update
         // tail (RegisterMcp, SyncAgents, RefreshHarnessPlugins).
         List<dev.skillmanager.model.AgentUnit> liveUnits;
+        List<SkillEffect> effects = new ArrayList<>();
         try {
-            liveUnits = new ArrayList<>(store.listInstalledUnits());
+            var listed = store.listInstalledUnits();
+            liveUnits = new ArrayList<>(listed.units());
+            if (!listed.problems().isEmpty()) {
+                effects.add(new SkillEffect.ReportUnitReadProblems(listed.problems()));
+            }
         } catch (IOException io) {
             // Halt-via-empty-program: the surrounding command will see no
             // tail effects and the sync still reports through stage 1's
@@ -187,7 +192,6 @@ public final class SyncUseCase {
             return new Program<>("sync-stage2-" + UUID.randomUUID(), List.of(), receipts -> null);
         }
 
-        List<SkillEffect> effects = new ArrayList<>();
         List<SkillEffect> alwaysAfter = new ArrayList<>();
 
         // discoverNewlySurfacedRefs still consumes List<Skill> — pull the

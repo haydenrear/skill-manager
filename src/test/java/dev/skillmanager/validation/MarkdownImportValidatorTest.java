@@ -176,12 +176,34 @@ public final class MarkdownImportValidatorTest {
             Files.writeString(good.resolve("SKILL.md"), "---\nname: good\n---\nbody\n");
 
             var skills = store.listInstalled();
-            assertSize(1, skills, "only valid skill listed");
-            assertEquals("good", skills.get(0).name(), "good skill remains visible");
+            assertSize(1, skills.skills(), "only valid skill listed");
+            assertSize(1, skills.problems(), "bad skill reported");
+            assertEquals("good", skills.skills().get(0).name(), "good skill remains visible");
 
             var units = store.listInstalledUnits();
-            assertSize(1, units, "only valid unit listed");
-            assertEquals("good", units.get(0).name(), "good unit remains visible");
+            assertSize(1, units.units(), "only valid unit listed");
+            assertSize(1, units.problems(), "bad unit reported");
+            assertEquals("good", units.units().get(0).name(), "good unit remains visible");
+        });
+
+        suite.test("unit read diagnostics dedupe within one effect context", () -> {
+            SkillStore store = store();
+            LiveInterpreter interpreter = new LiveInterpreter(store);
+            EffectContext ctx = new EffectContext(store, null, ProgramRenderer.NOOP);
+            var problem = new dev.skillmanager.store.UnitReadProblem(
+                    "bad", UnitKind.SKILL, store.skillDir("bad"), "invalid frontmatter");
+
+            EffectReceipt first = interpreter.runOne(
+                    new SkillEffect.ReportUnitReadProblems(List.of(problem)), ctx);
+            EffectReceipt second = interpreter.runOne(
+                    new SkillEffect.ReportUnitReadProblems(List.of(problem)), ctx);
+
+            assertEquals(EffectStatus.OK, first.status(), "first receipt ok");
+            assertSize(1, first.facts(), "first emits one diagnostic");
+            assertTrue(first.facts().get(0) instanceof dev.skillmanager.effects.ContextFact.CantReadUnit,
+                    "typed cant-read fact");
+            assertEquals(EffectStatus.OK, second.status(), "second receipt ok");
+            assertSize(0, second.facts(), "second duplicate suppressed");
         });
 
         return suite.runAll();

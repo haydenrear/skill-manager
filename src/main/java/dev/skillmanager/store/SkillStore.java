@@ -166,22 +166,24 @@ public final class SkillStore {
         return Optional.of(SkillParser.load(d));
     }
 
-    public List<Skill> listInstalled() throws IOException {
+    public InstalledSkillsResult listInstalled() throws IOException {
         List<Skill> out = new ArrayList<>();
-        if (!Files.isDirectory(skillsDir)) return out;
+        List<UnitReadProblem> problems = new ArrayList<>();
+        if (!Files.isDirectory(skillsDir)) return new InstalledSkillsResult(out, problems);
         try (Stream<Path> s = Files.list(skillsDir)) {
             for (Path p : (Iterable<Path>) s::iterator) {
                 if (!Files.isDirectory(p)) continue;
                 if (!Files.isRegularFile(p.resolve(SkillParser.SKILL_FILENAME))) continue;
                 try {
                     out.add(SkillParser.load(p));
-                } catch (IOException e) {
-                    // skip unreadable skills
+                } catch (Exception e) {
+                    problems.add(readProblem(p, UnitKind.SKILL, e));
                 }
             }
         }
         out.sort((a, b) -> a.name().compareToIgnoreCase(b.name()));
-        return out;
+        problems.sort(SkillStore::compareProblem);
+        return new InstalledSkillsResult(out, problems);
     }
 
     /**
@@ -194,9 +196,12 @@ public final class SkillStore {
      * "what's installed" view without down-casting (orphan checks,
      * lock-vs-live drift, the reconciler in future).
      */
-    public List<AgentUnit> listInstalledUnits() throws IOException {
+    public InstalledUnitsResult listInstalledUnits() throws IOException {
         List<AgentUnit> out = new ArrayList<>();
-        for (Skill s : listInstalled()) out.add(s.asUnit());
+        List<UnitReadProblem> problems = new ArrayList<>();
+        InstalledSkillsResult skills = listInstalled();
+        for (Skill s : skills.skills()) out.add(s.asUnit());
+        problems.addAll(skills.problems());
         if (Files.isDirectory(pluginsDir)) {
             try (Stream<Path> s = Files.list(pluginsDir)) {
                 for (Path p : (Iterable<Path>) s::iterator) {
@@ -205,8 +210,8 @@ public final class SkillStore {
                     try {
                         PluginUnit plugin = PluginParser.load(p);
                         out.add(plugin);
-                    } catch (IOException e) {
-                        // skip unreadable plugins
+                    } catch (Exception e) {
+                        problems.add(readProblem(p, UnitKind.PLUGIN, e));
                     }
                 }
             }
@@ -219,8 +224,8 @@ public final class SkillStore {
                     try {
                         DocUnit doc = DocRepoParser.load(p);
                         out.add(doc);
-                    } catch (IOException e) {
-                        // skip unreadable doc-repos
+                    } catch (Exception e) {
+                        problems.add(readProblem(p, UnitKind.DOC, e));
                     }
                 }
             }
@@ -233,14 +238,15 @@ public final class SkillStore {
                     try {
                         HarnessUnit harness = HarnessParser.load(p);
                         out.add(harness);
-                    } catch (IOException e) {
-                        // skip unreadable harnesses
+                    } catch (Exception e) {
+                        problems.add(readProblem(p, UnitKind.HARNESS, e));
                     }
                 }
             }
         }
         out.sort((a, b) -> a.name().compareToIgnoreCase(b.name()));
-        return out;
+        problems.sort(SkillStore::compareProblem);
+        return new InstalledUnitsResult(out, problems);
     }
 
     /** Load one installed unit by name from whichever kind-specific store dir owns it. */
@@ -261,5 +267,21 @@ public final class SkillStore {
     public void remove(String name) throws IOException {
         Path d = skillDir(name);
         if (Files.exists(d)) Fs.deleteRecursive(d);
+    }
+
+    private static UnitReadProblem readProblem(Path dir, UnitKind kind, Exception e) {
+        String msg = e.getMessage();
+        if (msg == null || msg.isBlank()) msg = e.getClass().getSimpleName();
+        return new UnitReadProblem(
+                dir.getFileName().toString(),
+                kind,
+                dir.toAbsolutePath(),
+                msg);
+    }
+
+    private static int compareProblem(UnitReadProblem a, UnitReadProblem b) {
+        int byName = a.name().compareToIgnoreCase(b.name());
+        if (byName != 0) return byName;
+        return a.kind().name().compareToIgnoreCase(b.kind().name());
     }
 }

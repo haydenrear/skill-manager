@@ -138,7 +138,9 @@ public final class RemoveUseCase {
             // skill at parse time, so a single read covers all claims.
             Set<String> stillReferenced = new HashSet<>();
             try {
-                for (var u : store.listInstalledUnits()) {
+                var listed = store.listInstalledUnits();
+                effects.add(new SkillEffect.ReportUnitReadProblems(listed.problems()));
+                for (var u : listed.units()) {
                     if (u.name().equals(skillName)) continue;
                     for (McpDependency d : u.mcpDependencies()) stillReferenced.add(d.name());
                 }
@@ -147,7 +149,9 @@ public final class RemoveUseCase {
                 // miss a plugin claim and emit a wrongly-orphan unregister
                 // (which the gateway will reject if still in use) than to
                 // skip the orphan sweep entirely and leak a dead server.
-                for (Skill s : store.listInstalled()) {
+                var listed = store.listInstalled();
+                effects.add(new SkillEffect.ReportUnitReadProblems(listed.problems()));
+                for (Skill s : listed.skills()) {
                     if (s.name().equals(skillName)) continue;
                     for (McpDependency d : s.mcpDependencies()) stillReferenced.add(d.name());
                 }

@@ -1,5 +1,6 @@
 package dev.skillmanager.commands;
 
+import dev.skillmanager.effects.UnitReadProblemReporter;
 import dev.skillmanager.lock.LockDiff;
 import dev.skillmanager.lock.LockedUnit;
 import dev.skillmanager.lock.UnitsLock;
@@ -7,6 +8,7 @@ import dev.skillmanager.lock.UnitsLockReader;
 import dev.skillmanager.source.InstalledUnit;
 import dev.skillmanager.source.UnitStore;
 import dev.skillmanager.store.SkillStore;
+import dev.skillmanager.store.UnitReadProblem;
 import dev.skillmanager.util.Log;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Model.CommandSpec;
@@ -74,7 +76,9 @@ public final class LockCommand implements Callable<Integer> {
                 return 2;
             }
 
-            UnitsLock liveState = readLiveState(store);
+            LiveStateResult live = readLiveState(store);
+            UnitReadProblemReporter.render(store, live.problems(), false);
+            UnitsLock liveState = live.lock();
             // Diff "from lock to live" — the lock is the recorded promise,
             // live is what's actually on disk. "added in live but not in
             // lock" surfaces as LockDiff.added(); "removed from live"
@@ -136,14 +140,17 @@ public final class LockCommand implements Callable<Integer> {
     }
 
     /** Build a {@link UnitsLock} from {@code installed/<name>.json} records. */
-    public static UnitsLock readLiveState(SkillStore store) throws IOException {
+    public record LiveStateResult(UnitsLock lock, List<UnitReadProblem> problems) {}
+
+    public static LiveStateResult readLiveState(SkillStore store) throws IOException {
         UnitStore sources = new UnitStore(store);
         List<LockedUnit> rows = new ArrayList<>();
-        for (var unit : store.listInstalledUnits()) {
+        var listed = store.listInstalledUnits();
+        for (var unit : listed.units()) {
             InstalledUnit rec = sources.read(unit.name()).orElse(null);
             if (rec == null) continue;
             rows.add(LockedUnit.fromInstalled(rec));
         }
-        return new UnitsLock(UnitsLock.CURRENT_SCHEMA, rows);
+        return new LiveStateResult(new UnitsLock(UnitsLock.CURRENT_SCHEMA, rows), listed.problems());
     }
 }

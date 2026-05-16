@@ -1,6 +1,7 @@
 package dev.skillmanager.commands;
 
 import dev.skillmanager.bindings.BindingStore;
+import dev.skillmanager.effects.UnitReadProblemReporter;
 import dev.skillmanager.model.AgentUnit;
 import dev.skillmanager.source.InstalledUnit;
 import dev.skillmanager.source.UnitStore;
@@ -47,7 +48,9 @@ public final class ListCommand implements Callable<Integer> {
     @Override
     public Integer call() throws Exception {
         store.init();
-        List<AgentUnit> units = store.listInstalledUnits();
+        var listed = store.listInstalledUnits();
+        UnitReadProblemReporter.render(store, listed.problems(), false);
+        List<AgentUnit> units = listed.units();
         if (units.isEmpty()) {
             if (json) {
                 return JsonOutput.print(new Result(List.of())) ? 0 : 2;

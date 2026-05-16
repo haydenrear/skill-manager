@@ -134,6 +134,14 @@ public sealed interface ContextFact {
     record MarkdownImportViolation(String unitName, String unitKind, String file, String message)
             implements ContextFact {}
 
+    /**
+     * One installed unit directory existed but could not be parsed. The
+     * operation continues with the readable units, but the user should
+     * fix the broken unit so future dependency and projection scans see it.
+     */
+    record CantReadUnit(String unitName, String unitKind, String path, String message)
+            implements ContextFact {}
+
     // ---- Skill-store mutations ----
     record SkillRemovedFromStore(String name) implements ContextFact {}
     record AgentSkillUnlinked(String agentId, String skillName) implements ContextFact {}
