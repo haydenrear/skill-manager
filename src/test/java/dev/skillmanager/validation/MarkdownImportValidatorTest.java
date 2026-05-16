@@ -186,17 +186,19 @@ public final class MarkdownImportValidatorTest {
             assertEquals("good", units.units().get(0).name(), "good unit remains visible");
         });
 
-        suite.test("unit read diagnostics dedupe within one effect context", () -> {
+        suite.test("unit read diagnostics dedupe across effect contexts", () -> {
             SkillStore store = store();
             LiveInterpreter interpreter = new LiveInterpreter(store);
-            EffectContext ctx = new EffectContext(store, null, ProgramRenderer.NOOP);
+            dev.skillmanager.effects.UnitReadProblemReporter.reset();
+            EffectContext firstCtx = new EffectContext(store, null, ProgramRenderer.NOOP);
+            EffectContext secondCtx = new EffectContext(store, null, ProgramRenderer.NOOP);
             var problem = new dev.skillmanager.store.UnitReadProblem(
                     "bad", UnitKind.SKILL, store.skillDir("bad"), "invalid frontmatter");
 
             EffectReceipt first = interpreter.runOne(
-                    new SkillEffect.ReportUnitReadProblems(List.of(problem)), ctx);
+                    new SkillEffect.ReportUnitReadProblems(List.of(problem)), firstCtx);
             EffectReceipt second = interpreter.runOne(
-                    new SkillEffect.ReportUnitReadProblems(List.of(problem)), ctx);
+                    new SkillEffect.ReportUnitReadProblems(List.of(problem)), secondCtx);
 
             assertEquals(EffectStatus.OK, first.status(), "first receipt ok");
             assertSize(1, first.facts(), "first emits one diagnostic");
