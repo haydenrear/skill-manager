@@ -10,7 +10,6 @@ import dev.skillmanager.model.UnitKind;
 import dev.skillmanager.source.InstalledUnit;
 import dev.skillmanager.source.UnitStore;
 import dev.skillmanager.store.SkillStore;
-import dev.skillmanager.store.UnitReadProblem;
 import dev.skillmanager.util.Log;
 
 import java.io.IOException;
@@ -578,7 +577,7 @@ public final class Executor {
                 ctx.invalidate();
             }
             case Compensation.UninstallCliIfOrphan u -> {
-                if (!isClaimedByOtherUnit(u.unitName(), u.dep().name(), ctx)) {
+                if (!isClaimedByOtherUnit(u.unitName(), u.dep().name())) {
                     Log.info("rollback: uninstall CLI dep %s (claimed only by rolled-back %s)",
                             u.dep().name(), u.unitName());
                     // CliInstallRecorder doesn't expose a single-dep uninstall yet;
@@ -594,7 +593,7 @@ public final class Executor {
                 }
             }
             case Compensation.UnregisterMcpIfOrphan u -> {
-                if (!isMcpClaimedByOtherUnit(u.unitName(), u.dep().name(), ctx)) {
+                if (!isMcpClaimedByOtherUnit(u.unitName(), u.dep().name())) {
                     GatewayClient client = new GatewayClient(u.gateway());
                     if (client.ping()) {
                         try { client.unregister(u.dep().name()); } catch (Exception ignored) {}
@@ -645,13 +644,8 @@ public final class Executor {
 
     /** Package-private for {@code CompensationOrphanTest}. */
     boolean isClaimedByOtherUnit(String rolledBackUnit, String depName) {
-        return isClaimedByOtherUnit(rolledBackUnit, depName, null);
-    }
-
-    private boolean isClaimedByOtherUnit(String rolledBackUnit, String depName, EffectContext ctx) {
         try {
             var listed = store.listInstalledUnits();
-            reportUnitReadProblems(ctx, listed.problems());
             for (var u : listed.units()) {
                 if (u.name().equals(rolledBackUnit)) continue;
                 for (var d : u.cliDependencies()) {
@@ -664,13 +658,8 @@ public final class Executor {
 
     /** Package-private for {@code CompensationOrphanTest}. */
     boolean isMcpClaimedByOtherUnit(String rolledBackUnit, String serverName) {
-        return isMcpClaimedByOtherUnit(rolledBackUnit, serverName, null);
-    }
-
-    private boolean isMcpClaimedByOtherUnit(String rolledBackUnit, String serverName, EffectContext ctx) {
         try {
             var listed = store.listInstalledUnits();
-            reportUnitReadProblems(ctx, listed.problems());
             for (var u : listed.units()) {
                 if (u.name().equals(rolledBackUnit)) continue;
                 for (var d : u.mcpDependencies()) {
@@ -679,14 +668,5 @@ public final class Executor {
             }
         } catch (IOException ignored) {}
         return false;
-    }
-
-    private static void reportUnitReadProblems(EffectContext ctx, List<UnitReadProblem> problems) {
-        if (ctx == null) return;
-        List<ContextFact> facts = ctx.unitReadProblemFacts(problems);
-        if (facts.isEmpty()) return;
-        ctx.renderer().onReceipt(EffectReceipt.ok(
-                new SkillEffect.ReportUnitReadProblems(problems),
-                facts));
     }
 }
