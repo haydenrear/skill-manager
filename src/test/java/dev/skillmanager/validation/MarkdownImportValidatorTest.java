@@ -141,6 +141,49 @@ public final class MarkdownImportValidatorTest {
                     "typed violation fact");
         });
 
+        suite.test("invalid YAML frontmatter becomes a violation fact", () -> {
+            SkillStore store = store();
+            Path bad = store.skillDir("bad");
+            Path good = store.skillDir("good");
+            Files.createDirectories(bad);
+            Files.createDirectories(good);
+            Files.writeString(bad.resolve("SKILL.md"), invalidYamlSkillMd());
+            Files.writeString(good.resolve("SKILL.md"), "---\nname: good\nskill-imports: []\n---\nbody\n");
+
+            LiveInterpreter interpreter = new LiveInterpreter(store);
+            EffectReceipt receipt = interpreter.runOne(
+                    new SkillEffect.ValidateMarkdownImports(List.of("bad", "good")),
+                    new EffectContext(store, null, ProgramRenderer.NOOP));
+
+            assertEquals(EffectStatus.PARTIAL, receipt.status(), "receipt partial");
+            assertSize(1, receipt.facts(), "one violation fact");
+            assertTrue(receipt.facts().get(0) instanceof dev.skillmanager.effects.ContextFact.MarkdownImportViolation,
+                    "typed violation fact");
+            var fact = (dev.skillmanager.effects.ContextFact.MarkdownImportViolation) receipt.facts().get(0);
+            assertEquals("bad", fact.unitName(), "bad unit reported");
+            assertEquals("skill", fact.unitKind(), "kind from store shape");
+            assertEquals("SKILL.md", fact.file(), "relative markdown path");
+            assertContains(fact.message(), "invalid YAML frontmatter", "yaml parse failure reported");
+        });
+
+        suite.test("store listing skips invalid YAML and continues", () -> {
+            SkillStore store = store();
+            Path bad = store.skillDir("bad");
+            Path good = store.skillDir("good");
+            Files.createDirectories(bad);
+            Files.createDirectories(good);
+            Files.writeString(bad.resolve("SKILL.md"), invalidYamlSkillMd());
+            Files.writeString(good.resolve("SKILL.md"), "---\nname: good\n---\nbody\n");
+
+            var skills = store.listInstalled();
+            assertSize(1, skills, "only valid skill listed");
+            assertEquals("good", skills.get(0).name(), "good skill remains visible");
+
+            var units = store.listInstalledUnits();
+            assertSize(1, units, "only valid unit listed");
+            assertEquals("good", units.get(0).name(), "good unit remains visible");
+        });
+
         return suite.runAll();
     }
 
@@ -167,5 +210,14 @@ public final class MarkdownImportValidatorTest {
                 ---
                 body
                 """.formatted(skill, path);
+    }
+
+    private static String invalidYamlSkillMd() {
+        return """
+                ---
+                name: [unterminated
+                ---
+                body
+                """;
     }
 }

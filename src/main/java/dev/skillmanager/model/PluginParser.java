@@ -156,17 +156,17 @@ public final class PluginParser {
         List<ContainedSkill> out = new ArrayList<>();
         try (var stream = Files.list(skillsDir)) {
             // sorted iteration so the union order is deterministic
-            stream.sorted().forEach(child -> {
+            for (Path child : stream.sorted().toList()) {
+                if (!Files.isDirectory(child)) continue;
+                if (!Files.isRegularFile(child.resolve(SkillParser.SKILL_FILENAME))) continue;
                 try {
-                    if (!Files.isDirectory(child)) return;
-                    if (!Files.isRegularFile(child.resolve(SkillParser.SKILL_FILENAME))) return;
                     Skill s = SkillParser.load(child);
                     out.add(new ContainedSkill(s));
                 } catch (IOException e) {
-                    throw new RuntimeException(
-                            "Failed to parse contained skill at " + child + ": " + e.getMessage(), e);
+                    throw new IOException("Failed to parse contained skill at "
+                            + child + ": " + e.getMessage(), e);
                 }
-            });
+            }
         }
         return out;
     }

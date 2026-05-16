@@ -4,6 +4,7 @@ import dev.skillmanager.model.AgentUnit;
 import dev.skillmanager.model.UnitKind;
 import dev.skillmanager.store.SkillStore;
 import org.yaml.snakeyaml.Yaml;
+import org.yaml.snakeyaml.error.YAMLException;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -55,13 +56,12 @@ public final class MarkdownImportValidator {
         List<UnitRoot> roots = new ArrayList<>();
         for (String name : unitNames) {
             if (name == null || name.isBlank()) continue;
-            Optional<AgentUnit> loaded = store.loadUnit(name);
-            if (loaded.isEmpty()) {
+            Optional<UnitRoot> root = installedRoot(store, name);
+            if (root.isEmpty()) {
                 roots.add(new UnitRoot(name, null, null));
                 continue;
             }
-            AgentUnit unit = loaded.get();
-            roots.add(new UnitRoot(unit.name(), unit.kind(), unit.sourcePath()));
+            roots.add(root.get());
         }
         return validate(store, roots);
     }
@@ -112,7 +112,7 @@ public final class MarkdownImportValidator {
         Optional<Map<String, Object>> frontmatter;
         try {
             frontmatter = frontmatter(content);
-        } catch (RuntimeException ex) {
+        } catch (YAMLException ex) {
             violations.add(violation(root, file, "invalid YAML frontmatter: " + ex.getMessage()));
             return violations;
         }
@@ -203,6 +203,26 @@ public final class MarkdownImportValidator {
     private static boolean isMarkdown(Path path) {
         String name = path.getFileName().toString().toLowerCase();
         return name.endsWith(".md") || name.endsWith(".markdown");
+    }
+
+    private static Optional<UnitRoot> installedRoot(SkillStore store, String name) {
+        if (store.containsPlugin(name)) {
+            return Optional.of(new UnitRoot(
+                    name, UnitKind.PLUGIN, store.pluginsDir().resolve(name).toAbsolutePath()));
+        }
+        if (store.containsHarness(name)) {
+            return Optional.of(new UnitRoot(
+                    name, UnitKind.HARNESS, store.harnessesDir().resolve(name).toAbsolutePath()));
+        }
+        if (store.containsDocRepo(name)) {
+            return Optional.of(new UnitRoot(
+                    name, UnitKind.DOC, store.docsDir().resolve(name).toAbsolutePath()));
+        }
+        if (store.contains(name)) {
+            return Optional.of(new UnitRoot(
+                    name, UnitKind.SKILL, store.skillDir(name).toAbsolutePath()));
+        }
+        return Optional.empty();
     }
 
     @SuppressWarnings("unchecked")
