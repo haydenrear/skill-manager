@@ -5,12 +5,12 @@ import dev.skillmanager.effects.DryRunInterpreter;
 import dev.skillmanager.effects.LiveInterpreter;
 import dev.skillmanager.effects.Program;
 import dev.skillmanager.effects.ProgramInterpreter;
-import dev.skillmanager.effects.UnitReadProblemReporter;
 import dev.skillmanager.mcp.GatewayConfig;
 import dev.skillmanager.model.AgentUnit;
 import dev.skillmanager.model.UnitKind;
 import dev.skillmanager.source.GitOps;
 import dev.skillmanager.store.SkillStore;
+import dev.skillmanager.store.UnitReadProblem;
 import dev.skillmanager.util.Log;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
@@ -88,10 +88,11 @@ public final class UpgradeCommand implements Callable<Integer> {
         // SyncUseCase prepends — no inline RegistryConfig.resolve needed.
 
         List<AgentUnit> targets;
+        List<UnitReadProblem> initialReadProblems = List.of();
         if (all) {
             var listed = store.listInstalledUnits();
-            UnitReadProblemReporter.render(store, listed.problems(), false);
             targets = listed.units();
+            initialReadProblems = listed.problems();
         } else {
             AgentUnit unit = store.loadUnit(name).orElse(null);
             if (unit == null) {
@@ -146,7 +147,7 @@ public final class UpgradeCommand implements Callable<Integer> {
         SyncUseCase.Options opts = new SyncUseCase.Options(
                 registryUrl, /*gitLatest=*/false, merge, true, true, /*yes=*/false);
         dev.skillmanager.effects.StagedProgram<SyncUseCase.Report> program =
-                SyncUseCase.buildProgram(store, gw, opts, targetList);
+                SyncUseCase.buildProgram(store, gw, opts, targetList, initialReadProblems);
         SyncUseCase.Report report;
         if (dryRun) {
             report = new DryRunInterpreter(store).runStaged(program);

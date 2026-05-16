@@ -9,6 +9,7 @@ import dev.skillmanager.effects.UnitReadProblemReporter;
 import dev.skillmanager.mcp.GatewayConfig;
 import dev.skillmanager.model.Skill;
 import dev.skillmanager.store.SkillStore;
+import dev.skillmanager.store.UnitReadProblem;
 import dev.skillmanager.util.Log;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
@@ -129,8 +130,8 @@ public final class SyncCommand implements Callable<Integer> {
             return 3;
         }
 
-        List<SyncUseCase.Target> targets = resolveTargets(store);
-        if (targets.isEmpty()) {
+        ResolvedTargets resolved = resolveTargets(store);
+        if (resolved.targets().isEmpty()) {
             Log.warn("no units installed");
             return 0;
         }
@@ -138,7 +139,7 @@ public final class SyncCommand implements Callable<Integer> {
         SyncUseCase.Options opts = new SyncUseCase.Options(
                 registryUrl, gitLatest, merge, !skipMcp, !skipAgents, yes);
         dev.skillmanager.effects.StagedProgram<SyncUseCase.Report> program =
-                SyncUseCase.buildProgram(store, gw, opts, targets);
+                SyncUseCase.buildProgram(store, gw, opts, resolved.targets(), resolved.readProblems());
         SyncUseCase.Report report;
         if (dryRun) {
             report = new DryRunInterpreter(store).runStaged(program);
@@ -160,7 +161,9 @@ public final class SyncCommand implements Callable<Integer> {
         return report.errorCount() > 0 ? 1 : 0;
     }
 
-    private List<SyncUseCase.Target> resolveTargets(SkillStore store) throws IOException {
+    private record ResolvedTargets(List<SyncUseCase.Target> targets, List<UnitReadProblem> readProblems) {}
+
+    private ResolvedTargets resolveTargets(SkillStore store) throws IOException {
         if (name != null && !name.isBlank()) {
             // Kind-aware dispatch:
             //   SKILL / PLUGIN  → git pull or --from dir
@@ -172,24 +175,24 @@ public final class SyncCommand implements Callable<Integer> {
                 if (fromDir != null) {
                     Log.warn("--from is not supported for doc-repos — ignoring");
                 }
-                return List.of(new SyncUseCase.Target.DocRepo(name, force));
+                return new ResolvedTargets(List.of(new SyncUseCase.Target.DocRepo(name, force)), List.of());
             }
             if (kind == dev.skillmanager.model.UnitKind.HARNESS) {
                 if (fromDir != null) {
                     Log.warn("--from is not supported for harness templates — ignoring");
                 }
-                return harnessInstanceTargets(store, name);
+                return new ResolvedTargets(harnessInstanceTargets(store, name), List.of());
             }
-            return fromDir != null
+            List<SyncUseCase.Target> targets = fromDir != null
                     ? List.of(new SyncUseCase.Target.FromDir(name, fromDir))
                     : List.of(new SyncUseCase.Target.Git(name));
+            return new ResolvedTargets(targets, List.of());
         }
         // Walk every installed unit so a no-arg sync re-runs the
         // post-update tail (or doc-repo drift sweep, or harness
         // reconcile) over the full set rather than missing kinds.
         List<SyncUseCase.Target> out = new ArrayList<>();
         var listed = store.listInstalledUnits();
-        UnitReadProblemReporter.render(store, listed.problems(), false);
         for (var u : listed.units()) {
             switch (u.kind()) {
                 case DOC -> out.add(new SyncUseCase.Target.DocRepo(u.name(), force));
@@ -197,7 +200,7 @@ public final class SyncCommand implements Callable<Integer> {
                 case SKILL, PLUGIN -> out.add(new SyncUseCase.Target.Git(u.name()));
             }
         }
-        return out;
+        return new ResolvedTargets(out, listed.problems());
     }
 
     /**
@@ -292,12 +295,12 @@ public final class SyncCommand implements Callable<Integer> {
             return 2;
         }
         var liveState = LockCommand.readLiveState(store);
-        UnitReadProblemReporter.render(store, liveState.problems(), false);
         dev.skillmanager.lock.UnitsLock liveLock = liveState.lock();
         dev.skillmanager.lock.LockDiff diff =
                 dev.skillmanager.lock.LockDiff.between(liveLock, targetLock);
 
         if (diff.isEmpty()) {
+            UnitReadProblemReporter.render(store, liveState.problems(), false);
             Log.ok("disk state matches %s — no reconciliation needed", target);
             return 0;
         }
@@ -314,6 +317,7 @@ public final class SyncCommand implements Callable<Integer> {
         }
 
         if (diff.bumped().isEmpty()) {
+            UnitReadProblemReporter.render(store, liveState.problems(), false);
             // Reported drift but nothing actionable from --lock alone.
             return diff.added().isEmpty() && diff.removed().isEmpty() ? 0 : 1;
         }
@@ -327,7 +331,7 @@ public final class SyncCommand implements Callable<Integer> {
         SyncUseCase.Options opts = new SyncUseCase.Options(
                 registryUrl, /*gitLatest=*/false, merge, !skipMcp, !skipAgents, yes);
         dev.skillmanager.effects.StagedProgram<SyncUseCase.Report> program =
-                SyncUseCase.buildProgram(store, gw, opts, targets);
+                SyncUseCase.buildProgram(store, gw, opts, targets, liveState.problems());
         SyncUseCase.Report report;
         if (dryRun) {
             report = new DryRunInterpreter(store).runStaged(program);
