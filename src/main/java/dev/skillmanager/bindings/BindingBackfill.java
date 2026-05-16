@@ -1,7 +1,6 @@
 package dev.skillmanager.bindings;
 
 import dev.skillmanager.effects.LiveInterpreter;
-import dev.skillmanager.effects.UnitReadProblemReporter;
 import dev.skillmanager.model.AgentUnit;
 import dev.skillmanager.model.PluginUnit;
 import dev.skillmanager.model.Skill;
@@ -45,7 +44,6 @@ public final class BindingBackfill {
         int written = 0;
         try {
             var listed = store.listInstalledUnits();
-            UnitReadProblemReporter.render(store, listed.problems(), false);
             for (var rec : listed.units()) {
                 // Doc-repos and harness templates don't project into
                 // agent dirs — they bind explicitly to project roots
