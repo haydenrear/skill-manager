@@ -40,12 +40,13 @@ public final class ReconcileUseCase {
         UnitStore sources = new UnitStore(store);
         var installed = store.listInstalledUnits();
         List<SkillEffect> effects = new ArrayList<>();
-        for (var u : installed) {
+        effects.add(new SkillEffect.ReportUnitReadProblems(installed.problems()));
+        for (var u : installed.units()) {
             if (sources.read(u.name()).isEmpty()) {
                 effects.add(new SkillEffect.OnboardUnit(u));
             }
         }
-        for (var u : installed) {
+        for (var u : installed.units()) {
             sources.read(u.name()).ifPresent(src -> {
                 if (!src.hasErrors()) return;
                 for (InstalledUnit.UnitError err : List.copyOf(src.errors())) {

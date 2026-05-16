@@ -34,7 +34,7 @@ public final class PluginMarketplaceTest {
         suite.test("empty store → manifest has 0 plugins + dirs created", () -> {
             TestHarness h = TestHarness.create();
             PluginMarketplace mp = new PluginMarketplace(h.store());
-            List<String> names = mp.regenerate();
+            List<String> names = mp.regenerate().pluginNames();
 
             assertEquals(0, names.size(), "no plugins listed");
             assertTrue(Files.isRegularFile(mp.manifestPath()), "manifest written");
@@ -49,7 +49,7 @@ public final class PluginMarketplaceTest {
             h.scaffoldUnitDir("repo-intel", UnitKind.PLUGIN);
 
             PluginMarketplace mp = new PluginMarketplace(h.store());
-            List<String> names = mp.regenerate();
+            List<String> names = mp.regenerate().pluginNames();
 
             assertEquals(1, names.size(), "one plugin listed");
             assertEquals("repo-intel", names.get(0), "plugin name");
@@ -69,7 +69,7 @@ public final class PluginMarketplaceTest {
             h.scaffoldUnitDir("middle-plugin", UnitKind.PLUGIN);
 
             PluginMarketplace mp = new PluginMarketplace(h.store());
-            List<String> names = mp.regenerate();
+            List<String> names = mp.regenerate().pluginNames();
 
             assertEquals(3, names.size(), "three plugins");
             assertEquals("alpha-plugin", names.get(0), "alphabetically first");
@@ -82,14 +82,14 @@ public final class PluginMarketplaceTest {
             h.scaffoldUnitDir("alpha", UnitKind.PLUGIN);
             h.scaffoldUnitDir("beta", UnitKind.PLUGIN);
             PluginMarketplace mp = new PluginMarketplace(h.store());
-            mp.regenerate();
+            mp.regenerate().pluginNames();
             assertTrue(Files.exists(mp.pluginsLinkDir().resolve("alpha"), LinkOption.NOFOLLOW_LINKS),
                     "alpha symlink there pre-removal");
 
             // Simulate removal: drop alpha from the store, regenerate.
             dev.skillmanager.shared.util.Fs.deleteRecursive(
                     h.store().unitDir("alpha", UnitKind.PLUGIN));
-            List<String> names = mp.regenerate();
+            List<String> names = mp.regenerate().pluginNames();
 
             assertEquals(1, names.size(), "only beta remains");
             assertFalse(Files.exists(mp.pluginsLinkDir().resolve("alpha"), LinkOption.NOFOLLOW_LINKS),
@@ -103,7 +103,7 @@ public final class PluginMarketplaceTest {
             h.scaffoldUnitDir("plain-skill", UnitKind.SKILL);
 
             PluginMarketplace mp = new PluginMarketplace(h.store());
-            List<String> names = mp.regenerate();
+            List<String> names = mp.regenerate().pluginNames();
 
             assertEquals(0, names.size(), "skills don't show up in plugin marketplace");
             JsonNode manifest = readManifest(mp.manifestPath());
@@ -116,9 +116,9 @@ public final class PluginMarketplaceTest {
             h.scaffoldUnitDir("b", UnitKind.PLUGIN);
 
             PluginMarketplace mp = new PluginMarketplace(h.store());
-            mp.regenerate();
+            mp.regenerate().pluginNames();
             String firstManifest = Files.readString(mp.manifestPath());
-            mp.regenerate();
+            mp.regenerate().pluginNames();
             String secondManifest = Files.readString(mp.manifestPath());
 
             assertEquals(firstManifest, secondManifest, "manifest byte-identical across regenerate calls");

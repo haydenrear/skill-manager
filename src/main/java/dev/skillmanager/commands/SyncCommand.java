@@ -5,6 +5,7 @@ import dev.skillmanager.effects.DryRunInterpreter;
 import dev.skillmanager.effects.LiveInterpreter;
 import dev.skillmanager.effects.Program;
 import dev.skillmanager.effects.ProgramInterpreter;
+import dev.skillmanager.effects.UnitReadProblemReporter;
 import dev.skillmanager.mcp.GatewayConfig;
 import dev.skillmanager.model.Skill;
 import dev.skillmanager.store.SkillStore;
@@ -187,7 +188,9 @@ public final class SyncCommand implements Callable<Integer> {
         // post-update tail (or doc-repo drift sweep, or harness
         // reconcile) over the full set rather than missing kinds.
         List<SyncUseCase.Target> out = new ArrayList<>();
-        for (var u : store.listInstalledUnits()) {
+        var listed = store.listInstalledUnits();
+        UnitReadProblemReporter.render(store, listed.problems(), false);
+        for (var u : listed.units()) {
             switch (u.kind()) {
                 case DOC -> out.add(new SyncUseCase.Target.DocRepo(u.name(), force));
                 case HARNESS -> out.addAll(harnessInstanceTargets(store, u.name()));
@@ -242,7 +245,9 @@ public final class SyncCommand implements Callable<Integer> {
      * time.
      */
     private static int runRefresh(SkillStore store) throws IOException {
-        dev.skillmanager.lock.UnitsLock live = LockCommand.readLiveState(store);
+        var liveState = LockCommand.readLiveState(store);
+        UnitReadProblemReporter.render(store, liveState.problems(), false);
+        dev.skillmanager.lock.UnitsLock live = liveState.lock();
         java.nio.file.Path lockPath = dev.skillmanager.lock.UnitsLockReader.defaultPath(store);
         dev.skillmanager.lock.UnitsLockWriter.atomicWrite(live, lockPath);
         Log.ok("units.lock.toml refreshed (%d unit(s)) → %s", live.units().size(), lockPath);
@@ -286,7 +291,9 @@ public final class SyncCommand implements Callable<Integer> {
             Log.error("could not read lock at %s: %s", target, io.getMessage());
             return 2;
         }
-        dev.skillmanager.lock.UnitsLock liveLock = LockCommand.readLiveState(store);
+        var liveState = LockCommand.readLiveState(store);
+        UnitReadProblemReporter.render(store, liveState.problems(), false);
+        dev.skillmanager.lock.UnitsLock liveLock = liveState.lock();
         dev.skillmanager.lock.LockDiff diff =
                 dev.skillmanager.lock.LockDiff.between(liveLock, targetLock);
 

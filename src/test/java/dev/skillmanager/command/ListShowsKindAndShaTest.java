@@ -55,7 +55,7 @@ public final class ListShowsKindAndShaTest {
             installHarness(h, "reviewer-harness");
             installSkill(h, "zeta-skill");
 
-            List<AgentUnit> all = h.store().listInstalledUnits();
+            List<AgentUnit> all = h.store().listInstalledUnits().units();
             assertEquals(5, all.size(), "all five units listed");
             assertEquals("alpha-skill", all.get(0).name(), "alpha first");
             assertEquals("beta-plugin", all.get(1).name(), "beta second");

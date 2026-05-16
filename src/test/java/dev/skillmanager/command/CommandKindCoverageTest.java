@@ -49,7 +49,7 @@ public final class CommandKindCoverageTest {
             installDocRepo(store, "team-prompts");
             installHarness(store, "learning-app-coordinator");
 
-            UnitsLock live = LockCommand.readLiveState(store);
+            UnitsLock live = LockCommand.readLiveState(store).lock();
             assertEquals(4, live.units().size(), "four kinds in lock state");
             assertEquals(UnitKind.SKILL, live.get("alpha").orElseThrow().kind(), "skill row");
             assertEquals(UnitKind.PLUGIN, live.get("beta-plugin").orElseThrow().kind(), "plugin row");

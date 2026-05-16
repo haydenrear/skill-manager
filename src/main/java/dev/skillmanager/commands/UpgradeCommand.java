@@ -5,6 +5,7 @@ import dev.skillmanager.effects.DryRunInterpreter;
 import dev.skillmanager.effects.LiveInterpreter;
 import dev.skillmanager.effects.Program;
 import dev.skillmanager.effects.ProgramInterpreter;
+import dev.skillmanager.effects.UnitReadProblemReporter;
 import dev.skillmanager.mcp.GatewayConfig;
 import dev.skillmanager.model.AgentUnit;
 import dev.skillmanager.model.UnitKind;
@@ -88,7 +89,9 @@ public final class UpgradeCommand implements Callable<Integer> {
 
         List<AgentUnit> targets;
         if (all) {
-            targets = store.listInstalledUnits();
+            var listed = store.listInstalledUnits();
+            UnitReadProblemReporter.render(store, listed.problems(), false);
+            targets = listed.units();
         } else {
             AgentUnit unit = store.loadUnit(name).orElse(null);
             if (unit == null) {

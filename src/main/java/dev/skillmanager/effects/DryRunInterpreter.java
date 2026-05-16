@@ -296,6 +296,8 @@ public final class DryRunInterpreter implements ProgramInterpreter {
             case SkillEffect.BuildResolveGraphFromUnmetReferences e ->
                     Log.step("[%d] resolve graph from unmet references in %d live skill(s)",
                             n, e.liveSkills().size());
+            case SkillEffect.ReportUnitReadProblems e ->
+                    Log.step("[%d] report %d installed unit read problem(s)", n, e.problems().size());
             case SkillEffect.ValidateMarkdownImports e ->
                     Log.step("[%d] validate markdown skill-imports for %s unit(s)", n,
                             e.unitNames() == null ? "resolved" : Integer.toString(e.unitNames().size()));

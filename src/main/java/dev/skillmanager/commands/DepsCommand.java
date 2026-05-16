@@ -1,5 +1,6 @@
 package dev.skillmanager.commands;
 
+import dev.skillmanager.effects.UnitReadProblemReporter;
 import dev.skillmanager.model.AgentUnit;
 import dev.skillmanager.model.UnitReference;
 import dev.skillmanager.store.SkillStore;
@@ -49,7 +50,9 @@ public final class DepsCommand implements Callable<Integer> {
             }
             render(store, u, "", new HashSet<>());
         } else {
-            for (AgentUnit u : store.listInstalledUnits()) render(store, u, "", new HashSet<>());
+            var listed = store.listInstalledUnits();
+            UnitReadProblemReporter.render(store, listed.problems(), false);
+            for (AgentUnit u : listed.units()) render(store, u, "", new HashSet<>());
         }
         return 0;
     }

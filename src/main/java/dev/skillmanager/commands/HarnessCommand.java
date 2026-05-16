@@ -9,6 +9,7 @@ import dev.skillmanager.effects.DryRunInterpreter;
 import dev.skillmanager.effects.Executor;
 import dev.skillmanager.effects.Program;
 import dev.skillmanager.effects.SkillEffect;
+import dev.skillmanager.effects.UnitReadProblemReporter;
 import dev.skillmanager.mcp.GatewayConfig;
 import dev.skillmanager.model.HarnessParser;
 import dev.skillmanager.model.HarnessUnit;
@@ -285,7 +286,9 @@ public final class HarnessCommand {
             // Templates
             List<TemplateRow> templates = new ArrayList<>();
             try {
-                for (var u : store.listInstalledUnits()) {
+                var listed = store.listInstalledUnits();
+                UnitReadProblemReporter.render(store, listed.problems(), false);
+                for (var u : listed.units()) {
                     var rec = new UnitStore(store).read(u.name()).orElse(null);
                     if (rec != null && rec.unitKind() == UnitKind.HARNESS) {
                         templates.add(new TemplateRow(rec.name(), rec.version()));

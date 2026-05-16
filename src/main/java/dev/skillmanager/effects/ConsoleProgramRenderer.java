@@ -220,6 +220,9 @@ public final class ConsoleProgramRenderer implements ProgramRenderer {
                         .putIfAbsent(x.kind(), x.message());
             }
             case ContextFact.MarkdownImportViolation x -> markdownImportViolations.add(x);
+            case ContextFact.CantReadUnit x ->
+                    Log.warn("could not read installed %s %s at %s — %s",
+                            x.unitKind(), x.unitName(), x.path(), x.message());
 
             // ---- skill-store mutations ----
             case ContextFact.SkillRemovedFromStore x -> Log.ok("removed %s from store", x.name());
@@ -352,6 +355,7 @@ public final class ConsoleProgramRenderer implements ProgramRenderer {
                         .putIfAbsent(x.kind(), x.message());
             }
             case ContextFact.MarkdownImportViolation x -> markdownImportViolations.add(x);
+            case ContextFact.CantReadUnit ignored -> {}
             default -> {}
         }
     }

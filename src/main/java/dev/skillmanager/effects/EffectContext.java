@@ -6,9 +6,13 @@ import dev.skillmanager.plan.InstallPlan;
 import dev.skillmanager.source.InstalledUnit;
 import dev.skillmanager.source.UnitStore;
 import dev.skillmanager.store.SkillStore;
+import dev.skillmanager.store.UnitReadProblem;
 
 import java.io.IOException;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -59,6 +63,7 @@ public final class EffectContext {
 
     /** Single user-facing renderer for this program-execution tree. */
     private final ProgramRenderer renderer;
+    private final Set<String> reportedUnitReadProblems = new LinkedHashSet<>();
 
     public EffectContext(SkillStore store, GatewayConfig gateway) {
         this(store, gateway, ProgramRenderer.NOOP);
@@ -112,6 +117,24 @@ public final class EffectContext {
         return preMcpDeps == null ? Map.of() : preMcpDeps;
     }
 
+    public boolean markUnitReadProblemReported(UnitReadProblem problem) {
+        return reportedUnitReadProblems.add(unitReadProblemKey(problem));
+    }
+
+    public List<ContextFact> unitReadProblemFacts(List<UnitReadProblem> problems) {
+        List<ContextFact> facts = new ArrayList<>();
+        if (problems == null) return facts;
+        for (UnitReadProblem p : problems) {
+            if (!markUnitReadProblemReported(p)) continue;
+            facts.add(new ContextFact.CantReadUnit(
+                    p.name(),
+                    p.kind() == null ? "" : p.kind().name().toLowerCase(),
+                    p.path() == null ? "" : p.path().toString(),
+                    p.message()));
+        }
+        return facts;
+    }
+
     /**
      * Snapshot of the slots that sub-programs may write to. Use with
      * {@link #restore} to bracket a sub-program so its writes don't leak
@@ -150,10 +173,23 @@ public final class EffectContext {
     private Map<String, InstalledUnit> loadAll() {
         Map<String, InstalledUnit> out = new LinkedHashMap<>();
         try {
-            for (var unit : store.listInstalledUnits()) {
+            var listed = store.listInstalledUnits();
+            for (var unit : listed.units()) {
                 sourceStore.read(unit.name()).ifPresent(s -> out.put(unit.name(), s));
+            }
+            List<ContextFact> facts = unitReadProblemFacts(listed.problems());
+            if (!facts.isEmpty()) {
+                renderer.onReceipt(EffectReceipt.ok(
+                        new SkillEffect.ReportUnitReadProblems(listed.problems()),
+                        facts));
             }
         } catch (IOException ignored) {}
         return out;
+    }
+
+    private static String unitReadProblemKey(UnitReadProblem p) {
+        String kind = p.kind() == null ? "" : p.kind().name();
+        String path = p.path() == null ? "" : p.path().toAbsolutePath().normalize().toString();
+        return kind + "\u001f" + p.name() + "\u001f" + path + "\u001f" + p.message();
     }
 }
