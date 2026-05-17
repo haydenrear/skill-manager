@@ -2,7 +2,7 @@
 name: skill-publisher
 description: 'Author installable skill-manager units: skills, plugins, doc-repos, and harnesses. Use when making a directory installable by skill-manager, choosing a unit kind, scaffolding a unit, writing or reviewing unit manifests/TOML, adding CLI or MCP dependencies, wiring references, validating install/bind/instantiate round-trips, or preparing optional registry metadata. Detailed schemas live in references for skills, plugins, doc-repos, harnesses, scaffolding, coordinates/distribution, dependencies, bindings/sync, and skill-script.'
 skill-imports:
-  - skill: skill-manager
+  - unit: skill-manager
     path: references/skill-imports.md
     reason: Defines semantic markdown imports used by authored unit scaffolds.
     section: semantics

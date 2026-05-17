@@ -56,6 +56,11 @@ references.
 Prefer direct git coords (`github:` / `git+...`) for distribution unless
 you specifically need registry search.
 
+Manifest references are install-time dependencies. They are separate
+from markdown `skill-imports`, which are semantic links to a file inside
+an already installed unit. Do not add a manifest reference solely to
+mirror a markdown import.
+
 ## References in manifests
 
 Skills use `skill_references`:

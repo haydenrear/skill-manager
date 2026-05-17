@@ -22,16 +22,16 @@ import java.util.stream.Stream;
  * <pre>
  * ---
  * skill-imports:
- *   - skill: skill-manager-skill
+ *   - unit: skill-manager
  *     path: scripts/env.sh
  *     reason: Defines CLI binary conventions.
  * ---
  * </pre>
  *
- * <p>The source markdown can live under any unit kind. The target is
- * intentionally skill-only: {@code skill} resolves under
- * {@code $SKILL_MANAGER_HOME/skills/<name>} and {@code path} must stay
- * inside that installed skill directory.
+ * <p>The source markdown can live under any unit kind. The target can be
+ * any installed unit kind: skill, plugin, doc-repo, or harness. Existing
+ * frontmatter may still use the historical {@code skill} key; new
+ * frontmatter should prefer {@code unit}.
  */
 public final class MarkdownImportValidator {
 
@@ -128,7 +128,7 @@ public final class MarkdownImportValidator {
             Object item = imports.get(i);
             if (!(item instanceof Map<?, ?> map)) {
                 violations.add(violation(root, file,
-                        FRONTMATTER_KEY + "[" + i + "] must be a mapping with skill/path/reason"));
+                        FRONTMATTER_KEY + "[" + i + "] must be a mapping with unit/path/reason"));
                 continue;
             }
             validateImport(store, root, file, i, copyMap(map), violations);
@@ -139,30 +139,31 @@ public final class MarkdownImportValidator {
     private static void validateImport(SkillStore store, UnitRoot root, Path file, int index,
                                        Map<String, Object> entry, List<Violation> violations) {
         String prefix = FRONTMATTER_KEY + "[" + index + "]";
-        String skill = asString(entry.get("skill"));
+        String unit = firstNonBlank(asString(entry.get("unit")), asString(entry.get("skill")));
         String path = asString(entry.get("path"));
         String reason = asString(entry.get("reason"));
 
-        if (skill == null || skill.isBlank()) {
+        if (unit == null || unit.isBlank()) {
             violations.add(violation(root, file, prefix
-                    + " is missing required `skill`; add an installed skill name"));
+                    + " is missing required `unit`; add an installed unit name"));
         }
         if (path == null || path.isBlank()) {
             violations.add(violation(root, file, prefix
-                    + " is missing required `path`; add a file path inside the target skill"));
+                    + " is missing required `path`; add a file path inside the target unit"));
         }
         if (reason == null || reason.isBlank()) {
             violations.add(violation(root, file, prefix
                     + " is missing required `reason`; explain why the import exists"));
         }
-        if (skill == null || skill.isBlank() || path == null || path.isBlank()) return;
+        if (unit == null || unit.isBlank() || path == null || path.isBlank()) return;
 
-        Path targetSkill = store.skillDir(skill).toAbsolutePath().normalize();
-        if (!store.contains(skill)) {
-            violations.add(violation(root, file, prefix + " references missing skill `" + skill
-                    + "`; install it or fix the `skill` value"));
+        Optional<UnitRoot> targetRoot = installedRoot(store, unit);
+        if (targetRoot.isEmpty()) {
+            violations.add(violation(root, file, prefix + " references missing unit `" + unit
+                    + "`; install it or fix the `unit` value"));
             return;
         }
+        Path targetUnit = targetRoot.get().root().toAbsolutePath().normalize();
         Path rel;
         try {
             rel = Path.of(path);
@@ -172,18 +173,18 @@ public final class MarkdownImportValidator {
         }
         if (rel.isAbsolute()) {
             violations.add(violation(root, file, prefix
-                    + " path must be relative to skill `" + skill + "`"));
+                    + " path must be relative to unit `" + unit + "`"));
             return;
         }
-        Path target = targetSkill.resolve(rel).normalize();
-        if (!target.startsWith(targetSkill)) {
+        Path target = targetUnit.resolve(rel).normalize();
+        if (!target.startsWith(targetUnit)) {
             violations.add(violation(root, file, prefix
-                    + " path escapes skill `" + skill + "`; keep it inside the skill directory"));
+                    + " path escapes unit `" + unit + "`; keep it inside the unit directory"));
             return;
         }
         if (!Files.isRegularFile(target)) {
             violations.add(violation(root, file, prefix + " references missing path `" + path
-                    + "` in skill `" + skill + "`; add the file or fix the path"));
+                    + "` in unit `" + unit + "`; add the file or fix the path"));
         }
     }
 
@@ -248,5 +249,9 @@ public final class MarkdownImportValidator {
 
     private static String asString(Object value) {
         return value instanceof String s ? s : null;
+    }
+
+    private static String firstNonBlank(String a, String b) {
+        return a != null && !a.isBlank() ? a : b;
     }
 }

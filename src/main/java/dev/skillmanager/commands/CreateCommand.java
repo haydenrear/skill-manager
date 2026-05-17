@@ -189,9 +189,9 @@ public final class CreateCommand implements Callable<Integer> {
                 skill-imports: []
                 # Example import syntax:
                 # skill-imports:
-                #   - skill: skill-manager
+                #   - unit: skill-manager
                 #     path: references/skill-imports.md
-                #     reason: Explains semantic markdown imports between installed skills.
+                #     reason: Explains semantic markdown imports between installed units.
                 ---
 
                 # %s
@@ -217,9 +217,9 @@ public final class CreateCommand implements Callable<Integer> {
                 skill-imports: []
                 # Example import syntax:
                 # skill-imports:
-                #   - skill: skill-manager
+                #   - unit: skill-manager
                 #     path: references/skill-imports.md
-                #     reason: Explains semantic markdown imports between installed skills.
+                #     reason: Explains semantic markdown imports between installed units.
                 ---
 
                 # %s
@@ -242,9 +242,9 @@ public final class CreateCommand implements Callable<Integer> {
                 skill-imports: []
                 # Example import syntax:
                 # skill-imports:
-                #   - skill: skill-manager
+                #   - unit: skill-manager
                 #     path: references/skill-imports.md
-                #     reason: Explains semantic markdown imports between installed skills.
+                #     reason: Explains semantic markdown imports between installed units.
                 ---
 
                 # %s
@@ -257,7 +257,7 @@ public final class CreateCommand implements Callable<Integer> {
         return """
                 ---
                 skill-imports:
-                  - skill: skill-manager
+                  - unit: skill-manager
                     path: references/cli.md
                     reason: Explains how skill-manager installs and exposes declared CLI tools.
                     section: cli-dependencies
@@ -275,7 +275,7 @@ public final class CreateCommand implements Callable<Integer> {
         return """
                 ---
                 skill-imports:
-                  - skill: skill-manager
+                  - unit: skill-manager
                     path: references/mcp.md
                     reason: Explains how MCP servers are registered and used through the virtual gateway.
                     section: mcp-dependencies
@@ -312,13 +312,20 @@ public final class CreateCommand implements Callable<Integer> {
                 # of that table. Keep `[skill]` at the bottom of the file.
 
                 # ----------------------------------------------------------- skill refs
-                # Transitive skill dependencies. Any of:
+                # Transitive unit dependencies. Add entries only when install should
+                # resolve another unit before this one is usable. Markdown skill-imports
+                # are semantic links to installed units and do not require matching
+                # TOML references by default.
+                # Any of:
+                #   "github:owner/repo"        → direct GitHub source
                 #   "skill:<name>"             → registry lookup, latest version
-                #   "skill:<name>@<version>"   → registry lookup, pinned
-                #   "file:./sub-skill"         → sub-skill directory under this skill
+                #   "plugin:<name>"            → kind-pinned registry lookup
+                #   "doc:<name>"               → doc-repo lookup
+                #   "harness:<name>"           → harness lookup
+                #   "file:./local-unit"        → local unit directory
                 #   "./../sibling"             → local path (same as file:, no prefix)
                 skill_references = [
-                  "skill:skill-manager",
+                  # "github:owner/base-unit",
                 ]
 
                 # Or use the table form for explicit metadata:

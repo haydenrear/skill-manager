@@ -242,11 +242,12 @@ public sealed interface SkillEffect permits
     /**
      * Walk markdown files in installed units and report any frontmatter
      * {@code skill-imports} entries that do not resolve to installed
-     * skill files. Violations are advisory facts, not hard install
+     * unit files. Violations are advisory facts, not hard install
      * blockers. When {@code unitNames} is {@code null}, the handler
      * reads the current resolved graph from context and validates just
-     * those committed units; sync passes explicit target names after its
-     * per-target mutation step.
+     * those committed units. Sync validates after newly surfaced
+     * transitive refs have been committed, so imports can point at a unit
+     * that was synced in the same staged run.
      */
     record ValidateMarkdownImports(List<String> unitNames) implements SkillEffect {
         public ValidateMarkdownImports {

@@ -1,6 +1,6 @@
 ---
 skill-imports:
-  - skill: skill-manager
+  - unit: skill-manager
     path: references/cli.md
     reason: Explains how skill-manager installs and exposes declared CLI tools.
     section: cli-dependencies

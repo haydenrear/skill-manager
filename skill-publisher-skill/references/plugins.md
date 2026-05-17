@@ -79,9 +79,9 @@ The required files are exactly two:
   surface in `hooks/` / `commands/` / `agents/`. A plugin that
   contains nothing isn't useful.
 - Markdown anywhere in the plugin can declare frontmatter
-  `skill-imports`. Put the matching unit reference on the contained
-  skill that owns the markdown, or at plugin level when plugin-level
-  markdown shares the import. See `references/skill-imports.md`.
+  `skill-imports`. Add a manifest reference only when the imported
+  unit must also be installed transitively. See
+  `references/skill-imports.md`.
 
 ## `plugin.json`
 
