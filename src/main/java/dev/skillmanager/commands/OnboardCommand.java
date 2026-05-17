@@ -170,6 +170,7 @@ public final class OnboardCommand implements Callable<Integer> {
 
         if (!dryRun) {
             stage1Effects.add(new SkillEffect.CommitUnitsToStore());
+            stage1Effects.add(SkillEffect.ValidateMarkdownImports.resolvedGraph());
             stage1Effects.add(new SkillEffect.RecordAuditPlan("onboard"));
             stage1Effects.add(new SkillEffect.RecordSourceProvenance());
             stage1Effects.add(new SkillEffect.PrintInstalledSummary());

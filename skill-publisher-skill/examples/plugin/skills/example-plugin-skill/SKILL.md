@@ -4,9 +4,9 @@ description: Use when demonstrating a contained skill inside an example plugin.
 skill-imports: []
 # Example import syntax:
 # skill-imports:
-#   - skill: skill-manager
+#   - unit: skill-manager
 #     path: references/skill-imports.md
-#     reason: Explains semantic markdown imports between installed skills.
+#     reason: Explains semantic markdown imports between installed units.
 ---
 
 # example-plugin-skill

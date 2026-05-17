@@ -24,26 +24,31 @@ public final class MarkdownImportValidatorTest {
     public static int run() throws Exception {
         Tests.Suite suite = Tests.suite("MarkdownImportValidatorTest");
 
-        suite.test("validates markdown imports under any unit kind", () -> {
+        suite.test("validates markdown imports from and to any unit kind", () -> {
             SkillStore store = store();
-            installTargetSkill(store, "shared", "reference.md");
+            installTargetSkill(store, "shared-skill", "reference.md");
+            installTargetPlugin(store, "shared-plugin", "docs/reference.md");
+            installTargetDocRepo(store, "shared-docs", "claude-md/reference.md");
+            installTargetHarness(store, "shared-harness", "reference.md");
 
             Path roots = Files.createTempDirectory("md-import-roots-");
             Path skill = roots.resolve("skill-unit");
             Files.createDirectories(skill);
-            Files.writeString(skill.resolve("SKILL.md"), mdImport("shared", "reference.md"));
+            Files.writeString(skill.resolve("SKILL.md"), mdImport("shared-skill", "reference.md"));
 
             Path plugin = roots.resolve("plugin-unit");
             Files.createDirectories(plugin.resolve("docs"));
-            Files.writeString(plugin.resolve("docs/usage.md"), mdImport("shared", "reference.md"));
+            Files.writeString(plugin.resolve("docs/usage.md"),
+                    mdImport("shared-plugin", "docs/reference.md"));
 
             Path doc = roots.resolve("doc-unit");
             Files.createDirectories(doc.resolve("claude-md"));
-            Files.writeString(doc.resolve("claude-md/review.md"), mdImport("shared", "reference.md"));
+            Files.writeString(doc.resolve("claude-md/review.md"),
+                    mdUnitImport("shared-docs", "claude-md/reference.md"));
 
             Path harness = roots.resolve("harness-unit");
             Files.createDirectories(harness);
-            Files.writeString(harness.resolve("README.md"), mdImport("shared", "reference.md"));
+            Files.writeString(harness.resolve("README.md"), mdImport("shared-harness", "reference.md"));
 
             List<MarkdownImportValidator.Violation> violations = MarkdownImportValidator.validate(
                     store,
@@ -57,7 +62,7 @@ public final class MarkdownImportValidatorTest {
             assertSize(0, violations, "no violations");
         });
 
-        suite.test("reports missing target skill and missing target path", () -> {
+        suite.test("reports missing target unit and missing target path", () -> {
             SkillStore store = store();
             installTargetSkill(store, "shared", "reference.md");
             Path unit = Files.createTempDirectory("md-import-bad-");
@@ -81,7 +86,7 @@ public final class MarkdownImportValidatorTest {
             String rendered = MarkdownImportValidator.format(violations);
 
             assertSize(2, violations, "two violations");
-            assertContains(rendered, "references missing skill `missing`", "missing skill reported");
+            assertContains(rendered, "references missing unit `missing`", "missing unit reported");
             assertContains(rendered, "references missing path `absent.md`", "missing path reported");
         });
 
@@ -107,7 +112,7 @@ public final class MarkdownImportValidatorTest {
 
             assertSize(3, violations, "three violations");
             assertContains(rendered, "missing required `reason`", "reason required");
-            assertContains(rendered, "path escapes skill `shared`", "escape rejected");
+            assertContains(rendered, "path escapes unit `shared`", "escape rejected");
             assertContains(rendered, "must be a mapping", "non-map rejected");
         });
 
@@ -224,6 +229,43 @@ public final class MarkdownImportValidatorTest {
         Files.writeString(root.resolve(file), "reference\n");
     }
 
+    private static void installTargetPlugin(SkillStore store, String name, String file) throws Exception {
+        Path root = store.pluginsDir().resolve(name);
+        Files.createDirectories(root.resolve(".claude-plugin"));
+        Files.createDirectories(root.resolve(Path.of(file).getParent()));
+        Files.writeString(root.resolve(".claude-plugin/plugin.json"),
+                "{\"name\":\"" + name + "\",\"version\":\"0.1.0\",\"description\":\"test\"}\n");
+        Files.writeString(root.resolve(file), "reference\n");
+    }
+
+    private static void installTargetDocRepo(SkillStore store, String name, String file) throws Exception {
+        Path root = store.docsDir().resolve(name);
+        Files.createDirectories(root.resolve(Path.of(file).getParent()));
+        Files.writeString(root.resolve(file), "reference\n");
+        Files.writeString(root.resolve("skill-manager.toml"), """
+                [doc-repo]
+                name = "%s"
+                version = "0.1.0"
+                description = "test"
+
+                [[sources]]
+                id = "reference"
+                file = "%s"
+                """.formatted(name, file));
+    }
+
+    private static void installTargetHarness(SkillStore store, String name, String file) throws Exception {
+        Path root = store.harnessesDir().resolve(name);
+        Files.createDirectories(root);
+        Files.writeString(root.resolve("harness.toml"), """
+                [harness]
+                name = "%s"
+                version = "0.1.0"
+                description = "test"
+                """.formatted(name));
+        Files.writeString(root.resolve(file), "reference\n");
+    }
+
     private static String mdImport(String skill, String path) {
         return """
                 ---
@@ -234,6 +276,18 @@ public final class MarkdownImportValidatorTest {
                 ---
                 body
                 """.formatted(skill, path);
+    }
+
+    private static String mdUnitImport(String unit, String path) {
+        return """
+                ---
+                skill-imports:
+                  - unit: %s
+                    path: %s
+                    reason: Needed by tests.
+                ---
+                body
+                """.formatted(unit, path);
     }
 
     private static String invalidYamlSkillMd() {

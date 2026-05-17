@@ -33,7 +33,7 @@ public final class CreatePluginScenarioTest {
     public static int run() throws Exception {
         Tests.Suite suite = Tests.suite("CreatePluginScenarioTest");
 
-        suite.test("create skill templates include tool docs and skill-manager reference", () -> {
+        suite.test("create skill templates include tool docs without default install refs", () -> {
             Path dir = Files.createTempDirectory("create-skill-template-").resolve("widget");
             scaffoldSkillFromCommandTemplates(dir, "widget", "0.1.0", "Sample skill");
 
@@ -42,7 +42,9 @@ public final class CreatePluginScenarioTest {
             assertTrue(Files.isRegularFile(dir.resolve("tools/cli.md")), "tools/cli.md present");
             assertTrue(Files.isRegularFile(dir.resolve("tools/mcp.md")), "tools/mcp.md present");
             assertTrue(Files.readString(dir.resolve("skill-manager.toml"))
-                    .contains("\"skill:skill-manager\""), "skill-manager reference present");
+                    .contains("skill_references = ["), "skill references section present");
+            assertTrue(!Files.readString(dir.resolve("skill-manager.toml"))
+                    .contains("\"skill:skill-manager\""), "no default skill-manager install reference");
             assertTrue(Files.readString(dir.resolve("tools/cli.md"))
                     .contains("path: references/cli.md"), "cli import present");
             assertTrue(Files.readString(dir.resolve("tools/mcp.md"))

@@ -15,7 +15,8 @@ import java.util.List;
 /**
  * Installs one throwaway unit of each kind with a broken markdown
  * skill-import. The install must still succeed, and the final console
- * renderer must report the advisory violation for every kind.
+ * renderer must report the advisory unit-reference violation for every
+ * kind.
  */
 public class MarkdownImportViolationsReported {
     static final NodeSpec SPEC = NodeSpec.of("markdown.import.violations.reported")
@@ -24,7 +25,7 @@ public class MarkdownImportViolationsReported {
             .tags("install", "markdown-imports", "skill", "plugin", "doc-repo", "harness")
             .timeout("120s");
 
-    private static final String MISSING_SKILL = "missing-smoke-reference-skill";
+    private static final String MISSING_UNIT = "missing-smoke-reference-unit";
 
     public static void main(String[] args) {
         Node.run(args, SPEC, ctx -> {
@@ -98,8 +99,8 @@ public class MarkdownImportViolationsReported {
         String log = logBody(ctx, proc);
         boolean rendered = log.contains("markdown skill-import violations")
                 && log.contains(unitName + " (" + kind + ")")
-                && log.contains(MISSING_SKILL)
-                && log.contains("references missing skill");
+                && log.contains(MISSING_UNIT)
+                && log.contains("references missing unit");
         return new InstallCheck(kind, unitName, proc, rendered);
     }
 
@@ -196,7 +197,7 @@ public class MarkdownImportViolationsReported {
                 ---
                 title: %s
                 skill-imports:
-                  - skill: %s
+                  - unit: %s
                     path: references/missing.md
                     reason: Smoke fixture verifies advisory validation output.
                 ---
@@ -204,7 +205,7 @@ public class MarkdownImportViolationsReported {
                 # %s
 
                 %s
-                """.formatted(title, MISSING_SKILL, title, description);
+                """.formatted(title, MISSING_UNIT, title, description);
     }
 
     private record InstallCheck(

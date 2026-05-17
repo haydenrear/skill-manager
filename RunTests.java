@@ -65,6 +65,7 @@ import dev.skillmanager.plan.PlanPolicyCategorizationTest;
 import dev.skillmanager.plan.PlanShapeInvariantTest;
 import dev.skillmanager.plan.PolicyGatingTest;
 import dev.skillmanager.resolve.ResolverContainedSkillNotMatchedTest;
+import dev.skillmanager.resolve.ResolverBundledAliasTest;
 import dev.skillmanager.resolve.ResolverDeterminismTest;
 import dev.skillmanager.resolve.ResolverDirectGitDetectsKindTest;
 import dev.skillmanager.resolve.ResolverHeterogeneousRefsTest;
@@ -114,6 +115,7 @@ public class RunTests {
         failures += ResolverKindFilterTest.run();
         failures += ResolverHeterogeneousRefsTest.run();
         failures += ResolverContainedSkillNotMatchedTest.run();
+        failures += ResolverBundledAliasTest.run();
         failures += ResolverDirectGitDetectsKindTest.run();
         failures += ResolverDeterminismTest.run();
         failures += PlanShapeInvariantTest.run();

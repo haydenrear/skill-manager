@@ -85,8 +85,9 @@ description = "Short tooling-side description."
 Supported top-level sections:
 
 - `skill_references`: transitive unit refs. See
-  `references/coords-and-distribution.md`. Add one when a markdown
-  `skill-imports` entry points at another skill.
+  `references/coords-and-distribution.md`. Add one only when the
+  referenced unit must be installed transitively; markdown
+  `skill-imports` alone are semantic links to installed units.
 - `[[cli_dependencies]]`: CLI tools installed into
   `$SKILL_MANAGER_HOME/bin/cli/`. See `references/dependencies.md`.
 - `[[mcp_dependencies]]`: MCP servers registered with the virtual

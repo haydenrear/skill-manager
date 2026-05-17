@@ -70,6 +70,7 @@ final class ResolveGraphHandlers {
         SkillStore store = ctx.store();
         List<ContextFact> discoveryFacts = new ArrayList<>();
         List<Resolver.Coord> toResolve = new ArrayList<>();
+        Map<String, Resolver.Coord> bundledAliases = new LinkedHashMap<>();
         // Accumulate per-spec failures (e.g. local install-root mode but
         // the on-disk dir is missing) instead of bailing on the first
         // one — same shape as the resolver itself, so the user sees
@@ -96,6 +97,8 @@ final class ResolveGraphHandlers {
                 coord = spec.githubCoord();
                 discoveryFacts.add(new ContextFact.BundledSkillFromGithub(publishedName, coord));
             }
+            bundledAliases.put(publishedName, new Resolver.Coord(coord, null));
+            bundledAliases.put("skill:" + publishedName, new Resolver.Coord(coord, null));
             if (store.contains(publishedName)) {
                 discoveryFacts.add(new ContextFact.BundledSkillAlreadyInstalled(
                         publishedName, store.skillDir(publishedName).toString()));
@@ -106,7 +109,7 @@ final class ResolveGraphHandlers {
         // Onboard halts on any resolve failure — pre-Program OnboardCommand
         // bailed with a typed exit code from TransitiveFailures.exitCodeFor
         // on any failure. Use the halt-on-failure variant to preserve that.
-        EffectReceipt resolverReceipt = runResolverHaltOnFailure(e, ctx, toResolve, discoveryFacts);
+        EffectReceipt resolverReceipt = runResolverHaltOnFailure(e, ctx, toResolve, discoveryFacts, bundledAliases);
         // Fold missing-spec count into the receipt status. If any
         // bundled spec was missing, downgrade ok→partial; if EVERY
         // spec was missing (no coords got as far as the resolver),
@@ -225,13 +228,20 @@ final class ResolveGraphHandlers {
     private static EffectReceipt runResolverHaltOnFailure(
             SkillEffect effect, EffectContext ctx,
             List<Resolver.Coord> coords, List<ContextFact> precedingFacts) throws IOException {
+        return runResolverHaltOnFailure(effect, ctx, coords, precedingFacts, Map.of());
+    }
+
+    private static EffectReceipt runResolverHaltOnFailure(
+            SkillEffect effect, EffectContext ctx,
+            List<Resolver.Coord> coords, List<ContextFact> precedingFacts,
+            Map<String, Resolver.Coord> aliases) throws IOException {
         if (coords.isEmpty()) {
             ctx.setResolvedGraph(new ResolvedGraph());
             List<ContextFact> facts = new ArrayList<>(precedingFacts);
             facts.add(new ContextFact.GraphResolved(0, 0));
             return EffectReceipt.ok(effect, facts);
         }
-        Resolver.ResolveOutcome outcome = new Resolver(ctx.store()).resolveAll(coords);
+        Resolver.ResolveOutcome outcome = new Resolver(ctx.store()).resolveAll(coords, aliases);
         ctx.setResolvedGraph(outcome.graph());
         List<ContextFact> facts = new ArrayList<>(precedingFacts);
         facts.add(new ContextFact.GraphResolved(

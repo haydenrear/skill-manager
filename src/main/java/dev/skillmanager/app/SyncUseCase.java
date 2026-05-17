@@ -141,9 +141,7 @@ public final class SyncUseCase {
             effects.add(new SkillEffect.ReportUnitReadProblems(initialReadProblems));
         }
         if (options.withMcp()) effects.add(new SkillEffect.SnapshotMcpDeps());
-        List<String> targetNames = new ArrayList<>();
         for (Target t : targets) {
-            targetNames.add(t.skillName());
             switch (t) {
                 case Target.Git g -> {
                     InstalledUnit src = sources.read(g.skillName()).orElse(null);
@@ -164,7 +162,6 @@ public final class SyncUseCase {
                         h.skillName(), h.instanceId()));
             }
         }
-        effects.add(new SkillEffect.ValidateMarkdownImports(targetNames));
         return new Program<>("sync-stage1-" + UUID.randomUUID(), effects, receipts -> null);
     }
 
@@ -218,6 +215,7 @@ public final class SyncUseCase {
         // install path's BuildResolveGraphFromSource preamble.
         effects.add(new SkillEffect.BuildResolveGraphFromUnmetReferences(liveSkills));
         effects.add(new SkillEffect.CommitUnitsToStore());
+        effects.add(new SkillEffect.ValidateMarkdownImports(unitNames(liveUnits)));
         effects.add(SkillEffect.ValidateMarkdownImports.resolvedGraph());
         effects.add(new SkillEffect.BuildInstallPlan());
         effects.add(new SkillEffect.RecordSourceProvenance());
@@ -290,6 +288,12 @@ public final class SyncUseCase {
                     dev.skillmanager.lock.UnitsLock.empty(),
                     dev.skillmanager.lock.UnitsLockReader.defaultPath(store));
         }
+    }
+
+    private static List<String> unitNames(List<dev.skillmanager.model.AgentUnit> units) {
+        List<String> out = new ArrayList<>();
+        for (var u : units) out.add(u.name());
+        return out;
     }
 
     private static Report decode(List<EffectReceipt> receipts) {

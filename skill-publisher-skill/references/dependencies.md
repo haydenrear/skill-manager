@@ -1,10 +1,10 @@
 ---
 skill-imports:
-  - skill: skill-manager
+  - unit: skill-manager
     path: references/cli.md
     reason: Defines runtime handling for skill-manager managed CLI dependencies.
     section: runtime
-  - skill: skill-manager
+  - unit: skill-manager
     path: references/mcp.md
     reason: Defines runtime handling for gateway-backed MCP dependencies.
     section: runtime

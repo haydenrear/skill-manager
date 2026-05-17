@@ -15,6 +15,7 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Two-phase resolver:
@@ -101,10 +102,17 @@ public final class Resolver {
      * trace is the right diagnostic.
      */
     public ResolveOutcome resolveAll(List<Coord> coords) throws IOException {
+        return resolveAll(coords, Map.of());
+    }
+
+    public ResolveOutcome resolveAll(List<Coord> coords, Map<String, Coord> aliases) throws IOException {
         ResolvedGraph graph = new ResolvedGraph();
         List<ResolveFailure> failures = new ArrayList<>();
         Deque<Pending> queue = new ArrayDeque<>();
-        for (Coord c : coords) queue.push(new Pending(c.source(), c.version(), null));
+        for (Coord c : coords) {
+            Coord resolved = resolveAlias(c.source(), c.version(), aliases);
+            queue.push(new Pending(resolved.source(), resolved.version(), null));
+        }
 
         while (!queue.isEmpty()) {
             Pending p = queue.pop();
@@ -175,12 +183,40 @@ public final class Resolver {
                     Log.warn("skipping reference with no name or path in %s", unit.name());
                     continue;
                 }
+                Coord alias = resolveAlias(childSource, childVersion, aliases);
+                childSource = alias.source();
+                childVersion = alias.version();
                 String childName = ref.name() != null ? ref.name() : guessName(childSource);
                 if (childName != null && graph.contains(childName)) continue;
                 queue.push(new Pending(childSource, childVersion, unit.name()));
             }
         }
         return new ResolveOutcome(graph, failures);
+    }
+
+    private static Coord resolveAlias(String source, String version, Map<String, Coord> aliases) {
+        if (aliases == null || aliases.isEmpty()) return new Coord(source, version);
+        Coord direct = aliases.get(source);
+        if (direct != null) return direct;
+        String name = registryName(source);
+        if (name == null) return new Coord(source, version);
+        Coord byName = aliases.get(name);
+        return byName == null ? new Coord(source, version) : byName;
+    }
+
+    private static String registryName(String source) {
+        if (source == null || source.isBlank()) return null;
+        String s = source.trim();
+        if (s.startsWith("skill:")) s = s.substring("skill:".length());
+        else if (s.startsWith("plugin:") || s.startsWith("doc:") || s.startsWith("harness:")) return null;
+        else if (s.startsWith("github:") || s.startsWith("git+") || s.startsWith("file:")
+                || s.startsWith("./") || s.startsWith("../") || s.startsWith("/")
+                || s.endsWith(".git") || s.startsWith("ssh://") || s.startsWith("git@")) {
+            return null;
+        }
+        int at = s.indexOf('@');
+        if (at >= 0) s = s.substring(0, at);
+        return s.isBlank() ? null : s;
     }
 
     public void commit(ResolvedGraph graph) throws IOException {

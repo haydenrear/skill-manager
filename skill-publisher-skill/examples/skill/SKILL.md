@@ -4,9 +4,9 @@ description: Use when demonstrating the minimum shape of a skill-manager skill.
 skill-imports: []
 # Example import syntax:
 # skill-imports:
-#   - skill: skill-manager
+#   - unit: skill-manager
 #     path: references/skill-imports.md
-#     reason: Explains semantic markdown imports between installed skills.
+#     reason: Explains semantic markdown imports between installed units.
 ---
 
 # example-skill
