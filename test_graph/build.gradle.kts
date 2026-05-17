@@ -335,6 +335,8 @@ validationGraph {
      *   - sync --from --merge with a non-conflicting upstream commit
      *     succeeds, preserving the local edit and advancing the recorded
      *     gitHash
+     *   - sync --git-latest after an externally resolved merge refreshes
+     *     the stale source record without printing a no-op --merge recipe
      *   - sync --from --merge with conflicting commits exits 8 and
      *     leaves the working tree in the conflicted state with
      *     <<<< / >>>> markers
@@ -356,6 +358,7 @@ validationGraph {
         // origin (the fixture path).
         node("sources/source-tracking/SourceSyncRefusesWithoutFrom.java")
         node("sources/source-tracking/SourceSyncMergesClean.java")
+        node("sources/source-tracking/SourceSyncNoMergeWhenAlreadyMerged.java")
         node("sources/source-tracking/SourceSyncProducesConflict.java")
         // `skill-manager sync` (no name) iterates every git-tracked
         // install through the implicit-origin pull, accumulates the

@@ -1,5 +1,6 @@
 ///usr/bin/env jbang "$0" "$@" ; exit $?
 //SOURCES ../../sdk/java/src/main/java/com/hayden/testgraphsdk/sdk/*.java
+//SOURCES SourceFixturePublished.java
 
 import com.hayden.testgraphsdk.sdk.Node;
 import com.hayden.testgraphsdk.sdk.NodeResult;
@@ -7,6 +8,7 @@ import com.hayden.testgraphsdk.sdk.NodeSpec;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
+import java.nio.file.Files;
 import java.nio.file.Path;
 
 /**
@@ -17,12 +19,11 @@ import java.nio.file.Path;
  * naming each skill that needs follow-up — with the exact
  * {@code skill-manager sync <name> --merge} command per row.
  *
- * <p>By the time this node runs, the source-tracking fixture is in a
- * post-conflict-abort state: working tree clean but HEAD ahead of
- * the install-time baseline (the snapshot commit from
- * {@code source.sync.produces_conflict} stuck around after the
- * {@code git merge --abort}). That's exactly the "extra commits
- * locally" shape the implicit-origin path is supposed to refuse.
+ * <p>This node explicitly creates true local/upstream divergence before
+ * invoking sync: a local-only commit lands in the installed checkout and
+ * an upstream-only commit lands in the fixture. That is still the
+ * "needs --merge" shape, unlike the externally resolved merge covered by
+ * {@code source.sync.no_merge_when_already_merged}.
  *
  * <p>Asserts:
  * <ul>
@@ -45,9 +46,40 @@ public class SourceSyncAllAggregates {
             String home = ctx.get("env.prepared", "home").orElse(null);
             String claudeHome = ctx.get("env.prepared", "claudeHome").orElse(null);
             String codexHome = ctx.get("env.prepared", "codexHome").orElse(null);
+            String fixtureDir = ctx.get("source.fixture.published", "skillDir").orElse(null);
             String skillName = ctx.get("source.fixture.published", "skillName").orElse(null);
-            if (home == null || claudeHome == null || codexHome == null || skillName == null) {
+            String storeDir = ctx.get("source.fixture.installed", "storeDir").orElse(null);
+            if (home == null || claudeHome == null || codexHome == null || fixtureDir == null
+                    || skillName == null || storeDir == null) {
                 return NodeResult.fail("source.sync.all_aggregates", "missing upstream context");
+            }
+
+            Path storePath = Path.of(storeDir);
+            Path fixturePath = Path.of(fixtureDir);
+            try {
+                SourceFixturePublished.git(storePath, "merge", "--abort");
+            } catch (Exception ignored) {}
+            SourceFixturePublished.git(storePath, "reset", "--hard", "--quiet", "HEAD");
+
+            Files.writeString(storePath.resolve("AGGREGATE_LOCAL.md"),
+                    "Local-only aggregate divergence.\n");
+            int localAddRc = SourceFixturePublished.git(storePath, "add", "-A");
+            int localCommitRc = SourceFixturePublished.git(storePath,
+                    "-c", "user.email=fixture@skillmanager.local",
+                    "-c", "user.name=fixture",
+                    "commit", "--quiet", "-m", "aggregate-local-divergence");
+
+            Files.writeString(fixturePath.resolve("AGGREGATE_UPSTREAM.md"),
+                    "Upstream-only aggregate divergence.\n");
+            int upstreamAddRc = SourceFixturePublished.git(fixturePath, "add", "-A");
+            int upstreamCommitRc = SourceFixturePublished.git(fixturePath,
+                    "-c", "user.email=fixture@skillmanager.local",
+                    "-c", "user.name=fixture",
+                    "commit", "--quiet", "-m", "aggregate-upstream-divergence");
+            if (localAddRc != 0 || localCommitRc != 0 || upstreamAddRc != 0 || upstreamCommitRc != 0) {
+                return NodeResult.fail("source.sync.all_aggregates",
+                        "divergence setup failed (local=" + localAddRc + "/" + localCommitRc
+                                + " upstream=" + upstreamAddRc + "/" + upstreamCommitRc + ")");
             }
 
             Path repoRoot = Path.of(System.getProperty("user.dir")).resolve("..").normalize();
