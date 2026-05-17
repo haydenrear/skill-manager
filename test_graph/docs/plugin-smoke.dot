@@ -16,6 +16,8 @@ digraph "plugin-smoke" {
   "umbrella.plugin.installed" [label="umbrella.plugin.installed\n(action, jbang)"];
   "plugin.synced" [label="plugin.synced\n(assertion, jbang)"];
   "partner.skill.installed" [label="partner.skill.installed\n(action, jbang)"];
+  "plugin.command.coverage" [label="plugin.command.coverage\n(assertion, jbang)"];
+  "plugin.markdown.import.targets" [label="plugin.markdown.import.targets\n(assertion, jbang)"];
   "plugin.uninstalled.mixed.orphans" [label="plugin.uninstalled.mixed.orphans\n(assertion, jbang)"];
   "servers.down" [label="servers.down\n(evidence, jbang)"];
   "env.prepared" -> "postgres.up";
@@ -36,8 +38,13 @@ digraph "plugin-smoke" {
   "echo.http.up" -> "umbrella.plugin.installed";
   "umbrella.plugin.installed" -> "plugin.synced";
   "umbrella.plugin.installed" -> "partner.skill.installed";
+  "plugin.synced" -> "plugin.command.coverage";
+  "partner.skill.installed" -> "plugin.command.coverage";
+  "gateway.up" -> "plugin.markdown.import.targets";
   "partner.skill.installed" -> "plugin.uninstalled.mixed.orphans";
   "plugin.synced" -> "plugin.uninstalled.mixed.orphans";
+  "plugin.command.coverage" -> "plugin.uninstalled.mixed.orphans";
   "plugin.contained.skill.not.addressable" -> "servers.down";
+  "plugin.markdown.import.targets" -> "servers.down";
   "plugin.uninstalled.mixed.orphans" -> "servers.down";
 }

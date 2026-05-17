@@ -40,6 +40,7 @@ validationGraph {
         node("sources/smoke/SemverEnforced.java")
         node("sources/smoke/ImmutabilityEnforced.java")
         node("sources/smoke/MarkdownImportViolationsReported.java")
+        node("sources/smoke/CrossKindMarkdownImports.java")
 
         node("sources/smoke/UmbrellaInstalled.java")
         node("sources/smoke/TransitiveClisPresent.java")
@@ -455,11 +456,16 @@ validationGraph {
         node("sources/smoke/PartnerSkillInstalled.java")
         // Kind-aware commands should keep seeing plugins before teardown.
         node("sources/smoke/plugin/PluginCommandCoverage.java")
+        // Markdown imports from plugin-level docs can target docs,
+        // harnesses, and other plugins. Includes one missing plugin
+        // import to prove plugin markdown is parsed and reported.
+        node("sources/smoke/plugin/PluginMarkdownImportTargets.java")
         // Plugin uninstall with mixed orphan/non-orphan deps.
         node("sources/smoke/plugin/PluginUninstalledMixedOrphans.java")
 
         node("sources/common/ServersDown.java")
                 .dependsOn("plugin.contained.skill.not.addressable",
+                        "plugin.markdown.import.targets",
                         "plugin.uninstalled.mixed.orphans")
     }
 
@@ -494,6 +500,10 @@ validationGraph {
     testGraph("doc-smoke") {
         node("sources/common/EnvPrepared.java")
         node("sources/smoke/doc/DocRepoInstalled.java")
+        // Markdown imports from doc-repo source markdown can target
+        // skills, harnesses, and other doc-repos. Includes one missing
+        // doc import to prove doc source markdown is parsed and reported.
+        node("sources/smoke/doc/DocMarkdownImportTargets.java")
         node("sources/smoke/doc/DocBoundToProject.java")
         node("sources/smoke/doc/DocSyncUpgrade.java")
         node("sources/smoke/doc/DocSyncLocalEditPreserved.java")

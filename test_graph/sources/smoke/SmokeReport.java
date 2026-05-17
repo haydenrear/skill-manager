@@ -41,7 +41,8 @@ public class SmokeReport {
                     "ownership.recorded",
                     "semver.enforced",
                     "immutability.enforced",
-                    "markdown.import.violations.reported")
+                    "markdown.import.violations.reported",
+                    "markdown.imports.cross_kind.targets")
             .tags("report")
             .timeout("15s")
             .retries(2);
