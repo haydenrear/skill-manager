@@ -22,7 +22,7 @@ import java.nio.file.StandardOpenOption;
 public class SourceSyncProducesConflict {
     static final NodeSpec SPEC = NodeSpec.of("source.sync.produces_conflict")
             .kind(NodeSpec.Kind.ASSERTION)
-            .dependsOn("source.sync.merges_clean")
+            .dependsOn("source.sync.no_merge_when_already_merged")
             .tags("source-tracking", "sync", "merge", "conflict")
             .timeout("60s");
 

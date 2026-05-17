@@ -66,23 +66,28 @@ public final class SyncGitHandler {
         }
         ctx.clearError(skillName, InstalledUnit.ErrorKind.NO_GIT_REMOTE);
 
-        // Dirty check FIRST — if the working tree / HEAD diverges from the
-        // install baseline, we refuse before doing any registry lookup. The
-        // version short-circuit ("local >= server, no upgrade needed") would
-        // otherwise mask local commits the user wants to keep, silently
-        // returning success while leaving the divergence in place.
+        // Dirty means either uncommitted changes or HEAD moved past the
+        // source-record baseline. We still resolve the target before refusing:
+        // a user may have already merged the upstream commit manually, leaving
+        // only the source record stale. That case should refresh the record
+        // instead of printing a no-op `sync --merge` recipe.
         String baseline = src != null ? src.gitHash() : null;
         boolean dirty = GitOps.isDirty(storeDir, baseline);
-        if (dirty && !e.merge()) {
-            return EffectReceipt.partial(e, "extra local changes — re-run with --merge",
-                    new ContextFact.SyncGitRefused(skillName, upstream, e.gitLatest()));
-        }
 
         TargetResolution tr = resolveTarget(store, ctx, e, src, skillName, storeDir, upstream, dirty);
         if (tr.fact != null) {
             return EffectReceipt.ok(e, tr.fact);
         }
         TargetRef target = tr.ref;
+
+        if (dirty && !e.merge()) {
+            if (alreadyContainsTarget(storeDir, upstream, target)) {
+                refreshSourceRecord(ctx, skillName, storeDir);
+                return EffectReceipt.ok(e, new ContextFact.SyncGitUpToDate(skillName, target.displayLabel()));
+            }
+            return EffectReceipt.partial(e, "extra local changes — re-run with --merge",
+                    new ContextFact.SyncGitRefused(skillName, upstream, e.gitLatest()));
+        }
 
         if (!dirty && target.sha != null && target.sha.equals(baseline)) {
             return EffectReceipt.ok(e, new ContextFact.SyncGitUpToDate(skillName, target.displayLabel()));
@@ -210,6 +215,33 @@ public final class SyncGitHandler {
             return new MergeResult(8, null, conflicted);
         }
 
+        refreshSourceRecord(ctx, skillName, storeDir);
+        return new MergeResult(0, fetchedHash);
+    }
+
+    public record MergeResult(int rc, String fetchedHash, List<String> conflictedFiles) {
+        public MergeResult(int rc, String fetchedHash) { this(rc, fetchedHash, List.of()); }
+    }
+
+    private static void tryAddError(EffectContext ctx, String skillName,
+                                    InstalledUnit.ErrorKind kind, String message) {
+        try { ctx.addError(skillName, kind, message); }
+        catch (IOException e) { Log.warn("could not record error for %s: %s", skillName, e.getMessage()); }
+    }
+
+    private static boolean alreadyContainsTarget(Path storeDir, String upstream, TargetRef target) {
+        if (GitOps.hasWorktreeChanges(storeDir)) return false;
+
+        String targetHash = target.sha();
+        if (targetHash == null || !GitOps.isAncestor(storeDir, targetHash, "HEAD")) {
+            String fetchedHash = GitOps.fetchRef(storeDir, upstream, target.ref());
+            if (fetchedHash == null) return false;
+            targetHash = fetchedHash;
+        }
+        return GitOps.isAncestor(storeDir, targetHash, "HEAD");
+    }
+
+    private static void refreshSourceRecord(EffectContext ctx, String skillName, Path storeDir) {
         try {
             ctx.source(skillName).ifPresent(old -> {
                 try {
@@ -222,17 +254,6 @@ public final class SyncGitHandler {
         } catch (Exception ex) {
             Log.warn("could not refresh source record for %s: %s", skillName, ex.getMessage());
         }
-        return new MergeResult(0, fetchedHash);
-    }
-
-    public record MergeResult(int rc, String fetchedHash, List<String> conflictedFiles) {
-        public MergeResult(int rc, String fetchedHash) { this(rc, fetchedHash, List.of()); }
-    }
-
-    private static void tryAddError(EffectContext ctx, String skillName,
-                                    InstalledUnit.ErrorKind kind, String message) {
-        try { ctx.addError(skillName, kind, message); }
-        catch (IOException e) { Log.warn("could not record error for %s: %s", skillName, e.getMessage()); }
     }
 
     private record TargetRef(String ref, String sha, String label) {

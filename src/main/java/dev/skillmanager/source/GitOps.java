@@ -59,11 +59,22 @@ public final class GitOps {
         return r.exit == 0 ? r.stdout : "";
     }
 
+    public static boolean hasWorktreeChanges(Path dir) {
+        return !porcelainStatus(dir).isBlank();
+    }
+
     public static boolean isDirty(Path dir, String baselineHash) {
-        if (!porcelainStatus(dir).isBlank()) return true;
+        if (hasWorktreeChanges(dir)) return true;
         if (baselineHash == null || baselineHash.isBlank()) return false;
         String head = headHash(dir);
         return head != null && !head.equals(baselineHash);
+    }
+
+    public static boolean isAncestor(Path dir, String ancestor, String descendant) {
+        if (ancestor == null || ancestor.isBlank() || descendant == null || descendant.isBlank()) {
+            return false;
+        }
+        return run(dir, List.of("git", "merge-base", "--is-ancestor", ancestor, descendant)).exit == 0;
     }
 
     /** Files left in unmerged ({@code UU}) state after a failed merge or stash pop. */
