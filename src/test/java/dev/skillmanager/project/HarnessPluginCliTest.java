@@ -248,14 +248,40 @@ public final class HarnessPluginCliTest {
                     "different marketplace name → empty");
         });
 
-        suite.test("Codex: reinstallPlugin / uninstallPlugin no-op (CLI doesn't support them)", () -> {
+        suite.test("Codex: reinstallPlugin runs `plugin add <name>@skill-manager`", () -> {
             CapturingRunner runner = new CapturingRunner();
+            runner.script.add(new HarnessPluginCli.Result(0, "added", ""));
             HarnessPluginCli.Codex driver = new HarnessPluginCli.Codex(runner);
 
             HarnessPluginCli.Result r1 = driver.reinstallPlugin("anything");
-            HarnessPluginCli.Result r2 = driver.uninstallPlugin("anything");
 
-            assertTrue(r1.ok() && r2.ok(), "both report ok");
+            assertTrue(r1.ok(), "plugin add reports ok");
+            assertEquals(1, runner.calls.size(), "one subprocess invocation");
+            List<String> cmd = runner.calls.get(0).cmd();
+            assertEquals("codex", cmd.get(0), "codex binary");
+            assertEquals("plugin", cmd.get(1), "plugin subcommand");
+            assertEquals("add", cmd.get(2), "add verb");
+            assertEquals("anything@" + PluginMarketplace.NAME, cmd.get(3), "plugin coord");
+        });
+
+        suite.test("Codex: reinstallPlugin treats already-added output as success", () -> {
+            CapturingRunner runner = new CapturingRunner();
+            runner.script.add(new HarnessPluginCli.Result(1, "", "Plugin already added"));
+            HarnessPluginCli.Codex driver = new HarnessPluginCli.Codex(runner);
+
+            HarnessPluginCli.Result r = driver.reinstallPlugin("anything");
+
+            assertTrue(r.ok(), "already-added output is idempotent success");
+            assertEquals(1, runner.calls.size(), "still invoked codex plugin add");
+        });
+
+        suite.test("Codex: uninstallPlugin no-op (CLI doesn't support it)", () -> {
+            CapturingRunner runner = new CapturingRunner();
+            HarnessPluginCli.Codex driver = new HarnessPluginCli.Codex(runner);
+
+            HarnessPluginCli.Result r = driver.uninstallPlugin("anything");
+
+            assertTrue(r.ok(), "reports ok");
             assertEquals(0, runner.calls.size(), "no subprocess invocations");
         });
 
