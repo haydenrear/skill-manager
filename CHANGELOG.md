@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.14.1](https://github.com/haydenrear/skill-manager/compare/v0.14.0...v0.14.1) (2026-05-25)
+
+
+### Bug Fixes
+
+* **enable codex plugin:** enable codex plugin when installed ([#82](https://github.com/haydenrear/skill-manager/issues/82)) ([9fbd814](https://github.com/haydenrear/skill-manager/commit/9fbd81439c5aeec9b39c61fccaad9dca2cc786c0))
+
 ## [0.14.0](https://github.com/haydenrear/skill-manager/compare/v0.13.1...v0.14.0) (2026-05-25)
 
 
