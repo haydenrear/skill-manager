@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.13.1](https://github.com/haydenrear/skill-manager/compare/v0.13.0...v0.13.1) (2026-05-17)
+
+
+### Bug Fixes
+
+* **merge-clean:** fix(propagate fm err): feat(unit-ref): ([3aca33c](https://github.com/haydenrear/skill-manager/commit/3aca33cd08ad2a2bafab52d1bda288171cf1b2bd))
+* **merge-clean:** fix(propagate fm err): feat(unit-ref): ([7e39967](https://github.com/haydenrear/skill-manager/commit/7e39967831caee46f24c6e871957c9ef0e9b03f2))
+* **propagate fm err:** feat(unit-ref): ([9a34f11](https://github.com/haydenrear/skill-manager/commit/9a34f116b8ad95de2b69b145704d591f01c1c76f))
+
 ## [0.13.0](https://github.com/haydenrear/skill-manager/compare/v0.12.2...v0.13.0) (2026-05-14)
 
 
