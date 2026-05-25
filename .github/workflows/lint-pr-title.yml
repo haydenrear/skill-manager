@@ -36,8 +36,8 @@ jobs:
           requireScope: false
           # Keep this aligned with the action's conventional-commit parser,
           # but allow an empty subject to parse so subjectPatternError can
-          # explain the real problem for titles like `feat(scope):`.
-          headerPattern: '^(\w*)(?:\(([\w$.\-*/ ]*)\))?: ?(.*)$'
+          # explain the real problem when a title has `: ` but no subject.
+          headerPattern: '^(\w*)(?:\(([\w$.\-*/ ]*)\))?: (.*)$'
           headerPatternCorrespondence: type, scope, subject
           subjectPattern: ^[A-Za-z].+$
           subjectPatternError: |

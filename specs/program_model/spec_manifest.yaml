@@ -42,9 +42,9 @@ status:
       - server-java/src/main/java/dev/skillmanager/server/SkillStorage.java
   validation:
     tlc:
-      - /Users/hayde/.skill-manager/bin/cli/tlc2 specs/program_model/SkillManager.tla -config specs/program_model/MC.cfg
+      - bash specs/program_model/run_tlc.sh specs/program_model/SkillManager.tla specs/program_model/MC.cfg
     manifest:
-      - python /Users/hayde/.skill-manager/skills/spec-double-compiler/scripts/extract_spec_manifest.py specs/program_model/spec_manifest.yaml
+      - bash specs/program_model/extract_manifest.sh specs/program_model/spec_manifest.yaml
   next:
     - Add adapter mappings for CLI store snapshots and gateway REST/tool operations.
     - Add labels for install/remove/sync/gateway/server slices before generating cases.
