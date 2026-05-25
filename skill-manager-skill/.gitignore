@@ -72,9 +72,3 @@ test_graph/.bin
 ### docker-compose-ghcr.yml self-host data ###
 /data/
 test_graph/docs
-
-### Python ###
-.venv/
-*.py[cod]
-.pytest_cache/
-*.egg-info/

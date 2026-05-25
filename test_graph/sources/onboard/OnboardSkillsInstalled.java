@@ -9,7 +9,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 /**
- * Confirms the on-disk side of {@code skill-manager onboard}: both
+ * Confirms the on-disk side of {@code skill-manager onboard}: the
  * bundled skills should land under {@code $SKILL_MANAGER_HOME/skills/}
  * with their {@code SKILL.md} present (the canonical proof that the
  * tar.gz round-trip through the registry actually committed files).
@@ -34,22 +34,28 @@ public class OnboardSkillsInstalled {
             Path skillsDir = Path.of(home).resolve("skills");
             Path manager = skillsDir.resolve("skill-manager");
             Path publisher = skillsDir.resolve("skill-publisher");
+            Path dev = skillsDir.resolve("skill-dev-skill");
 
             boolean managerDirOk = Files.isDirectory(manager);
             boolean managerMdOk = Files.isRegularFile(manager.resolve("SKILL.md"));
             boolean publisherDirOk = Files.isDirectory(publisher);
             boolean publisherMdOk = Files.isRegularFile(publisher.resolve("SKILL.md"));
+            boolean devDirOk = Files.isDirectory(dev);
+            boolean devMdOk = Files.isRegularFile(dev.resolve("SKILL.md"));
 
-            boolean pass = managerDirOk && managerMdOk && publisherDirOk && publisherMdOk;
+            boolean pass = managerDirOk && managerMdOk && publisherDirOk && publisherMdOk && devDirOk && devMdOk;
             return (pass
                     ? NodeResult.pass("onboard.skills.installed")
                     : NodeResult.fail("onboard.skills.installed",
                             "managerDir=" + managerDirOk + " managerMd=" + managerMdOk
-                                    + " publisherDir=" + publisherDirOk + " publisherMd=" + publisherMdOk))
+                                    + " publisherDir=" + publisherDirOk + " publisherMd=" + publisherMdOk
+                                    + " devDir=" + devDirOk + " devMd=" + devMdOk))
                     .assertion("skill_manager_dir_present", managerDirOk)
                     .assertion("skill_manager_md_present", managerMdOk)
                     .assertion("skill_publisher_dir_present", publisherDirOk)
-                    .assertion("skill_publisher_md_present", publisherMdOk);
+                    .assertion("skill_publisher_md_present", publisherMdOk)
+                    .assertion("skill_dev_dir_present", devDirOk)
+                    .assertion("skill_dev_md_present", devMdOk);
         });
     }
 }

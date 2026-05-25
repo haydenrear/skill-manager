@@ -37,13 +37,22 @@ import java.util.concurrent.Callable;
                 + "Claude/Codex via their CLIs (uninstall+reinstall, so hooks reload).")
 public final class SyncCommand implements Callable<Integer> {
 
+    private final SkillStore injectedStore;
+
+    public SyncCommand() {
+        this(null);
+    }
+
+    public SyncCommand(SkillStore injectedStore) {
+        this.injectedStore = injectedStore;
+    }
+
     @Parameters(index = "0", arity = "0..1",
             description = "Unit name to sync — skill or plugin (default: all installed)")
     public String name;
 
     @Option(names = "--from",
-            description = "Local directory to pull unit content from (must contain SKILL.md "
-                    + "for a skill or .claude-plugin/plugin.json for a plugin). "
+            description = "Local directory to pull unit content from (shape must match the installed unit kind). "
                     + "Without --merge: shows diff and prompts before overwriting. "
                     + "With --merge and a git-backed source: 3-way merge against the source's HEAD. "
                     + "Requires <name>.")
@@ -98,7 +107,7 @@ public final class SyncCommand implements Callable<Integer> {
 
     @Override
     public Integer call() throws Exception {
-        SkillStore store = SkillStore.defaultStore();
+        SkillStore store = injectedStore != null ? injectedStore : SkillStore.defaultStore();
         store.init();
 
         // --refresh is a one-shot lockfile rewrite; it doesn't run the
@@ -171,22 +180,23 @@ public final class SyncCommand implements Callable<Integer> {
             //   HARNESS         → fan out one SyncHarness per known
             //                     instance of that template
             dev.skillmanager.model.UnitKind kind = kindOf(store, name);
-            if (kind == dev.skillmanager.model.UnitKind.DOC) {
-                if (fromDir != null) {
-                    Log.warn("--from is not supported for doc-repos — ignoring");
+            if (fromDir != null) {
+                List<SyncUseCase.Target> targets = new ArrayList<>();
+                targets.add(new SyncUseCase.Target.FromDir(name, fromDir));
+                if (kind == dev.skillmanager.model.UnitKind.DOC) {
+                    targets.add(new SyncUseCase.Target.DocRepo(name, force));
+                } else if (kind == dev.skillmanager.model.UnitKind.HARNESS) {
+                    targets.addAll(harnessInstanceTargets(store, name));
                 }
+                return new ResolvedTargets(targets, List.of());
+            }
+            if (kind == dev.skillmanager.model.UnitKind.DOC) {
                 return new ResolvedTargets(List.of(new SyncUseCase.Target.DocRepo(name, force)), List.of());
             }
             if (kind == dev.skillmanager.model.UnitKind.HARNESS) {
-                if (fromDir != null) {
-                    Log.warn("--from is not supported for harness templates — ignoring");
-                }
                 return new ResolvedTargets(harnessInstanceTargets(store, name), List.of());
             }
-            List<SyncUseCase.Target> targets = fromDir != null
-                    ? List.of(new SyncUseCase.Target.FromDir(name, fromDir))
-                    : List.of(new SyncUseCase.Target.Git(name));
-            return new ResolvedTargets(targets, List.of());
+            return new ResolvedTargets(List.of(new SyncUseCase.Target.Git(name)), List.of());
         }
         // Walk every installed unit so a no-arg sync re-runs the
         // post-update tail (or doc-repo drift sweep, or harness

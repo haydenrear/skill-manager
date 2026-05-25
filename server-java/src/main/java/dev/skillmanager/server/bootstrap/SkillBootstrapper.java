@@ -21,9 +21,10 @@ import java.util.stream.Stream;
 import java.util.zip.GZIPOutputStream;
 
 /**
- * Seeds the registry with the two skills the CLI's {@code onboard} command
- * pulls in: {@code skill-manager-skill} (CLI wrapper) and
- * {@code skill-publisher-skill} (authoring guide). Runs once at server
+ * Seeds the registry with the skills the CLI's {@code onboard} command
+ * pulls in: {@code skill-manager-skill} (CLI wrapper),
+ * {@code skill-publisher-skill} (authoring guide), and
+ * {@code skill-dev-skill} (development worktree CLI). Runs once at server
  * startup so a freshly-provisioned registry has them available without any
  * manual publish step.
  *
@@ -37,12 +38,12 @@ import java.util.zip.GZIPOutputStream;
  *       operators can export it).</li>
  *   <li>{@code SKILL_MANAGER_BOOTSTRAP_DIR} env var — explicit override.</li>
  *   <li>Walk up from {@code user.dir} looking for a directory that
- *       contains both bundled skill subdirs.</li>
+ *       contains all bundled skill subdirs.</li>
  * </ol>
  *
  * <p>If the skill source dirs can't be found we log a warning and skip
  * bootstrap rather than fail the server start — the registry is still
- * fully functional, just without these two pre-seeded.
+ * fully functional, just without these pre-seeded skills.
  *
  * <p>Idempotent across restarts: name-ownership is claimed by
  * {@code "system"} on the first publish; subsequent calls hit
@@ -64,7 +65,8 @@ public final class SkillBootstrapper {
      */
     private static final List<String> BUNDLED_SKILLS = List.of(
             "skill-manager-skill",
-            "skill-publisher-skill"
+            "skill-publisher-skill",
+            "skill-dev-skill"
     );
 
     private final SkillPublishService publishService;
@@ -165,7 +167,7 @@ public final class SkillBootstrapper {
             List<Path> files = new ArrayList<>();
             try (Stream<Path> s = Files.walk(skillDir)) {
                 s.filter(Files::isRegularFile)
-                        .filter(p -> !p.getFileName().toString().startsWith("."))
+                        .filter(p -> includeInBundle(skillDir, p))
                         .forEach(files::add);
             }
             for (Path p : files) {
@@ -177,6 +179,14 @@ public final class SkillBootstrapper {
             gzip.write(new byte[1024]);
         }
         return buf.toByteArray();
+    }
+
+    private static boolean includeInBundle(Path root, Path file) {
+        Path rel = root.relativize(file);
+        for (Path seg : rel) {
+            if (seg.toString().startsWith(".")) return false;
+        }
+        return true;
     }
 
     private static void writeTarEntry(OutputStream out, String name, byte[] data, boolean executable) throws IOException {

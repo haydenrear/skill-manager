@@ -1,0 +1,13 @@
+[[cli_dependencies]]
+spec = "skill-script:skill-dev"
+on_path = "skill-dev"
+
+[cli_dependencies.install.any]
+script = "install.sh"
+binary = "skill-dev"
+
+[skill]
+name = "skill-dev-skill"
+version = "0.1.0"
+description = "Installs the skill-dev CLI for editing installed skills and plugins in project-local worktrees."
+
