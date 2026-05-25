@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.14.0](https://github.com/haydenrear/skill-manager/compare/v0.13.1...v0.14.0) (2026-05-25)
+
+
+### Features
+
+* **skill-dev-skill:** add skill dev skill git worktree wrapper with context ([1a3b0a2](https://github.com/haydenrear/skill-manager/commit/1a3b0a2d685db187112e664e7f47ed31c49326b6))
+
 ## [0.13.1](https://github.com/haydenrear/skill-manager/compare/v0.13.0...v0.13.1) (2026-05-17)
 
 
