@@ -371,6 +371,7 @@ invariants:
   - CliCliLockTracksInstalledPackages
   - SkillScriptsAreKnownScripts
   - HaltImpliesHaltContinuation
+  - CompletedSuccessfulProgramsClearRollbackJournal
   - GatewayDynamicServersAreCataloged
   - GatewayDeploymentsAreCataloged
   - GatewayToolsComeFromDeployments

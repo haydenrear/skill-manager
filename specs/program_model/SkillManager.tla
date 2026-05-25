@@ -334,7 +334,7 @@ InstallUnit(u) ==
     /\ cli_skill_scripts_run' = cli_skill_scripts_run \cup ScriptsFor(install_set)
     /\ gateway_catalog' = gateway_catalog \cup McpServersFor(install_set)
     /\ gateway_dynamic_servers' = gateway_dynamic_servers \cup McpServersFor(install_set)
-    /\ rollback_journal' = rollback_journal \cup install_set
+    /\ rollback_journal' = {}
     /\ EffectOk
     /\ result' = Ok
     /\ UNCHANGED << cli_doc_repos, cli_harness_templates,
@@ -540,25 +540,37 @@ SyncHarness(template, instance) ==
 \* @result ProgramResult
 \* @port SkillManagerCli.run_effect_program_failure
 RunEffectProgramFailure ==
-  /\ cli_store_units' = cli_store_units \ rollback_journal
-  /\ cli_installed_records' = cli_installed_records \ rollback_journal
-  /\ cli_lock_units' = cli_lock_units \ rollback_journal
-  /\ cli_agent_projections' = cli_agent_projections \ rollback_journal
-  /\ cli_bindings' = cli_bindings \ rollback_journal
-  /\ cli_projection_rows' = cli_projection_rows \ rollback_journal
-  /\ rollback_journal' = {}
+  /\ LET rolled_back_units == rollback_journal
+         rolled_back_servers == McpServersFor(rolled_back_units)
+         rolled_back_packages == PackagesFor(rolled_back_units)
+         rolled_back_scripts == ScriptsFor(rolled_back_units)
+     IN
+     /\ cli_store_units' = cli_store_units \ rolled_back_units
+     /\ cli_installed_records' = cli_installed_records \ rolled_back_units
+     /\ cli_lock_units' = cli_lock_units \ rolled_back_units
+     /\ cli_agent_projections' = cli_agent_projections \ rolled_back_units
+     /\ cli_bindings' = cli_bindings \ rolled_back_units
+     /\ cli_projection_rows' = cli_projection_rows \ rolled_back_units
+     /\ cli_tool_records' = cli_tool_records \ rolled_back_packages
+     /\ cli_cli_lock' = cli_cli_lock \ rolled_back_packages
+     /\ cli_skill_scripts_run' = cli_skill_scripts_run \ rolled_back_scripts
+     /\ gateway_catalog' = gateway_catalog \ rolled_back_servers
+     /\ gateway_dynamic_servers' = gateway_dynamic_servers \ rolled_back_servers
+     /\ gateway_global_deployments' = gateway_global_deployments \ rolled_back_servers
+     /\ gateway_session_deployments' =
+         {pair \in gateway_session_deployments : pair[2] \notin rolled_back_servers}
+     /\ gateway_tools' = ToolsFor(gateway_global_deployments' \cup
+         {server \in Servers : \E session \in Sessions: <<session, server>> \in gateway_session_deployments'})
+     /\ rollback_journal' = {}
   /\ effect_status' = "FAILED"
   /\ effect_continuation' = "HALT"
   /\ program_halted' = TRUE
   /\ result' = Reject("ROLLED_BACK")
   /\ UNCHANGED << cli_doc_repos, cli_harness_templates,
                   cli_harness_instances, cli_managed_copies, cli_import_directives,
-                  cli_projection_conflicts, cli_tool_records, cli_cli_lock,
-                  cli_skill_scripts_run, cli_errors,
+                  cli_projection_conflicts, cli_errors,
                   cli_gateway_url_configured, cli_registry_url_configured,
-                  cli_gateway_mcp_snapshot, always_after_ran, gateway_catalog,
-                  gateway_dynamic_servers, gateway_global_deployments,
-                  gateway_session_deployments, gateway_tools,
+                  cli_gateway_mcp_snapshot, always_after_ran,
                   gateway_disclosures, gateway_errors, gateway_last_init,
                   server_registry_units, server_versions, server_packages,
                   server_authenticated_users >>
@@ -820,6 +832,13 @@ SkillScriptsAreKnownScripts ==
 \* @invariant HaltImpliesHaltContinuation
 HaltImpliesHaltContinuation ==
   program_halted => effect_continuation = "HALT"
+
+\* @invariant CompletedSuccessfulProgramsClearRollbackJournal
+CompletedSuccessfulProgramsClearRollbackJournal ==
+  /\ effect_status = "OK"
+  /\ effect_continuation = "CONTINUE"
+  /\ ~program_halted
+  => rollback_journal = {}
 
 \* @invariant GatewayDynamicServersAreCataloged
 GatewayDynamicServersAreCataloged ==
