@@ -34,6 +34,11 @@ jobs:
             build
             revert
           requireScope: false
+          # Keep this aligned with the action's conventional-commit parser,
+          # but allow an empty subject to parse so subjectPatternError can
+          # explain the real problem for titles like `feat(scope):`.
+          headerPattern: '^(\w*)(?:\(([\w$.\-*/ ]*)\))?: ?(.*)$'
+          headerPatternCorrespondence: type, scope, subject
           subjectPattern: ^[A-Za-z].+$
           subjectPatternError: |
             The subject (text after the type prefix) should start with a letter and not be empty.
