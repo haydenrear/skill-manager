@@ -274,10 +274,11 @@ validationGraph {
      * `skill-manager onboard`. Two halves:
      *
      *   1. The Spring `SkillBootstrapper` bean has seeded
-     *      `skill-manager` and `skill-publisher` into the registry by
+     *      `skill-manager`, `skill-publisher`, and `skill-dev-skill`
+     *      into the registry by
      *      the time `registry.up` reports healthy
      *      (`onboard.seeded.by.server`).
-     *   2. The CLI command actually installs both skills end-to-end
+     *   2. The CLI command actually installs the bundled skills end-to-end
      *      and leaves the gateway up
      *      (`onboard.completed` → `onboard.skills.installed` /
      *       `onboard.gateway.healthy`).
@@ -523,5 +524,29 @@ validationGraph {
         node("sources/smoke/doc/DocRebindAfterAllRemoved.java")
         node("sources/smoke/doc/DocCommandCoverage.java")
         node("sources/smoke/doc/DocRepoUninstalled.java")
+    }
+
+    testGraph("skill-dev-smoke") {
+        node("sources/common/EnvPrepared.java")
+        node("sources/common/GatewayPythonVenvReady.java")
+        node("sources/common/PostgresUp.java")
+        node("sources/common/RegistryUp.java")
+        node("sources/smoke/GatewayUp.java")
+
+        node("sources/skill-dev/SkillDevInstalled.java")
+        node("sources/skill-dev/SkillDevUnitsInstalled.java")
+        node("sources/skill-dev/SkillDevEditSkill.java")
+        node("sources/skill-dev/SkillDevEditPlugin.java")
+        node("sources/skill-dev/SkillDevEditDocRepo.java")
+        node("sources/skill-dev/SkillDevEditHarness.java")
+        node("sources/skill-dev/SkillDevConflictResolved.java")
+
+        node("sources/common/ServersDown.java")
+                .dependsOn("skill-dev.edit.skill",
+                        "skill-dev.edit.plugin",
+                        "skill-dev.edit.doc",
+                        "skill-dev.edit.harness",
+                        "skill-dev.conflict.resolved")
+        node("sources/common/PostgresDown.java").dependsOn("servers.down")
     }
 }

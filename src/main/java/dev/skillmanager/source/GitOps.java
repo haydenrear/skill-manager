@@ -22,7 +22,8 @@ public final class GitOps {
     }
 
     public static boolean isGitRepo(Path dir) {
-        return Files.isDirectory(dir.resolve(".git"));
+        return Files.isDirectory(dir)
+                && run(dir, List.of("git", "rev-parse", "--is-inside-work-tree")).exit == 0;
     }
 
     public static String headHash(Path dir) {

@@ -62,14 +62,16 @@ public final class OnboardCommand implements Callable<Integer> {
             new BundledSkill("skill-manager-skill", "skill-manager",
                     "github:haydenrear/skill-manager-skill"),
             new BundledSkill("skill-publisher-skill", "skill-publisher",
-                    "github:haydenrear/skill-publisher-skill")
+                    "github:haydenrear/skill-publisher-skill"),
+            new BundledSkill("skill-dev-skill", "skill-dev-skill",
+                    "github:haydenrear/skill-dev-skill")
     );
 
     @Option(names = "--install-dir",
             description = "Install the bundled skills from local directories under this "
                     + "root instead of cloning from github. Used by tests and in-tree dev "
                     + "to exercise uncommitted edits. Defaults to $SKILL_MANAGER_INSTALL_DIR "
-                    + "if it points at a tree containing both bundled skill dirs; otherwise "
+                    + "if it points at a tree containing all bundled skill dirs; otherwise "
                     + "onboard fetches from github.")
     Path installDir;
 
@@ -262,7 +264,7 @@ public final class OnboardCommand implements Callable<Integer> {
     }
 
     /**
-     * Locate a working tree containing both bundled skill directories,
+     * Locate a working tree containing all bundled skill directories,
      * if one exists. Returns null when no local source is available — in
      * that case onboard falls back to fetching the skills from github.
      */
@@ -270,7 +272,7 @@ public final class OnboardCommand implements Callable<Integer> {
         if (installDir != null) {
             Path p = installDir.toAbsolutePath();
             if (!hasBundledSkills(p)) {
-                Log.warn("--install-dir %s does not contain both bundled skill directories — "
+                Log.warn("--install-dir %s does not contain all bundled skill directories — "
                         + "falling back to github fetch", p);
                 return null;
             }

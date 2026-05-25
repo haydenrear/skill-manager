@@ -13,10 +13,11 @@ import java.time.Duration;
 
 /**
  * Asserts that the registry server's startup-time bootstrap (see
- * {@code SkillBootstrapper}) seeded both bundled skills into storage.
+ * {@code SkillBootstrapper}) seeded the bundled skills into storage.
  * Hits the public list endpoint — no auth needed for read — and looks
- * for {@code skill-manager} and {@code skill-publisher} in the response
- * body. The check is intentionally a substring match so the test is
+ * for {@code skill-manager}, {@code skill-publisher}, and
+ * {@code skill-dev-skill} in the response body. The check is intentionally
+ * a substring match so the test is
  * resilient to JSON shape tweaks.
  *
  * <p>If this fails, the bootstrap bean either didn't run, didn't find
@@ -42,13 +43,16 @@ public class OnboardSeededByServer {
             String body = fetch(http, registryUrl + "/skills");
             boolean managerSeen = body != null && body.contains("\"skill-manager\"");
             boolean publisherSeen = body != null && body.contains("\"skill-publisher\"");
-            return (managerSeen && publisherSeen
+            boolean devSeen = body != null && body.contains("\"skill-dev-skill\"");
+            return (managerSeen && publisherSeen && devSeen
                     ? NodeResult.pass("onboard.seeded.by.server")
                     : NodeResult.fail("onboard.seeded.by.server",
                             "missing seeded skills — manager=" + managerSeen
-                                    + " publisher=" + publisherSeen))
+                                    + " publisher=" + publisherSeen
+                                    + " skillDev=" + devSeen))
                     .assertion("skill_manager_seeded", managerSeen)
-                    .assertion("skill_publisher_seeded", publisherSeen);
+                    .assertion("skill_publisher_seeded", publisherSeen)
+                    .assertion("skill_dev_seeded", devSeen);
         });
     }
 

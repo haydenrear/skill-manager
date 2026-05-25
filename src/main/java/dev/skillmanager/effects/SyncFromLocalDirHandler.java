@@ -1,6 +1,10 @@
 package dev.skillmanager.effects;
 
+import dev.skillmanager.model.DocRepoParser;
+import dev.skillmanager.model.HarnessParser;
+import dev.skillmanager.model.PluginParser;
 import dev.skillmanager.model.SkillParser;
+import dev.skillmanager.model.UnitKind;
 import dev.skillmanager.shared.util.Fs;
 import dev.skillmanager.source.GitOps;
 import dev.skillmanager.source.InstalledUnit;
@@ -42,11 +46,14 @@ public final class SyncFromLocalDirHandler {
         if (!Files.isDirectory(src)) {
             return EffectReceipt.failed(e, "--from is not a directory: " + src);
         }
-        if (!Files.isRegularFile(src.resolve(SkillParser.SKILL_FILENAME))) {
-            return EffectReceipt.failed(e, "--from " + src + " is not a skill directory (missing "
-                    + SkillParser.SKILL_FILENAME + ")");
+        UnitKind kind = new UnitStore(store).read(skillName)
+                .map(InstalledUnit::unitKind)
+                .orElse(UnitKind.SKILL);
+        String shapeError = validateSourceShape(src, kind);
+        if (shapeError != null) {
+            return EffectReceipt.failed(e, shapeError);
         }
-        Path storeDir = store.skillDir(skillName);
+        Path storeDir = store.unitDir(skillName, kind);
         boolean storeIsGit = GitOps.isGitRepo(storeDir);
         boolean srcIsGit = GitOps.isGitRepo(src);
 
@@ -150,5 +157,26 @@ public final class SyncFromLocalDirHandler {
     private static String sourceHash(SkillStore store, String skillName) {
         return new UnitStore(store).read(skillName)
                 .map(InstalledUnit::gitHash).orElse(null);
+    }
+
+    private static String validateSourceShape(Path src, UnitKind kind) {
+        return switch (kind) {
+            case SKILL -> Files.isRegularFile(src.resolve(SkillParser.SKILL_FILENAME))
+                    ? null
+                    : "--from " + src + " is not a skill directory (missing "
+                    + SkillParser.SKILL_FILENAME + ")";
+            case PLUGIN -> Files.isRegularFile(src.resolve(PluginParser.PLUGIN_JSON_PATH))
+                    ? null
+                    : "--from " + src + " is not a plugin directory (missing "
+                    + PluginParser.PLUGIN_JSON_PATH + ")";
+            case DOC -> DocRepoParser.looksLikeDocRepo(src)
+                    ? null
+                    : "--from " + src + " is not a doc-repo directory (missing [doc-repo] in "
+                    + DocRepoParser.TOML_FILENAME + ")";
+            case HARNESS -> HarnessParser.looksLikeHarness(src)
+                    ? null
+                    : "--from " + src + " is not a harness directory (missing [harness] in "
+                    + HarnessParser.TOML_FILENAME + ")";
+        };
     }
 }

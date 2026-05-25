@@ -10,9 +10,11 @@ import dev.skillmanager.bindings.BindingStore;
 import dev.skillmanager.bindings.ConflictPolicy;
 import dev.skillmanager.bindings.DocRepoBinder;
 import dev.skillmanager.bindings.Projection;
+import dev.skillmanager.bindings.ProjectionLedger;
 import dev.skillmanager.commands.DepsCommand;
 import dev.skillmanager.commands.LockCommand;
 import dev.skillmanager.commands.RebindCommand;
+import dev.skillmanager.commands.SyncCommand;
 import dev.skillmanager.commands.UpgradeCommand;
 import dev.skillmanager.effects.Executor;
 import dev.skillmanager.effects.Program;
@@ -87,6 +89,41 @@ public final class CommandKindCoverageTest {
             assertContains(harness.err, "harness units do not support `upgrade`", "harness unsupported message");
         });
 
+        suite.test("sync --from doc preserves doc-repo reconciliation", () -> {
+            SkillStore store = newStore();
+            installDocRepo(store, "team-prompts");
+            Path from = scaffoldDocRepoSource("team-prompts", "review v2\n");
+
+            Result result = captureOut(() -> new CommandLine(new SyncCommand(store))
+                    .execute("team-prompts", "--from", from.toString(), "--dry-run",
+                            "--skip-mcp", "--skip-agents", "--yes"));
+
+            assertEquals(0, result.rc, "sync doc --from rc");
+            assertContains(result.out, "sync team-prompts from " + from, "from-dir effect present");
+            assertContains(result.out, "doc-repo sync team-prompts", "doc sync effect preserved");
+        });
+
+        suite.test("sync --from harness preserves live instance reconciliation", () -> {
+            SkillStore store = newStore();
+            installHarness(store, "learning-app-coordinator");
+            Path target = Files.createTempDirectory("kind-harness-target-");
+            new BindingStore(store).write(new ProjectionLedger("learning-app-coordinator", List.of(
+                    new Binding("harness:test-instance:planner",
+                            "planner", UnitKind.SKILL, null, target,
+                            ConflictPolicy.ERROR, BindingStore.nowIso(),
+                            BindingSource.HARNESS, List.of()))));
+            Path from = scaffoldHarnessSource("learning-app-coordinator");
+
+            Result result = captureOut(() -> new CommandLine(new SyncCommand(store))
+                    .execute("learning-app-coordinator", "--from", from.toString(), "--dry-run",
+                            "--skip-mcp", "--skip-agents", "--yes"));
+
+            assertEquals(0, result.rc, "sync harness --from rc");
+            assertContains(result.out, "sync learning-app-coordinator from " + from, "from-dir effect present");
+            assertContains(result.out, "harness sync learning-app-coordinator instance=test-instance",
+                    "harness sync effect preserved");
+        });
+
         suite.test("rebind supports doc source bindings", () -> {
             SkillStore store = newStore();
             installDocRepo(store, "team-prompts");
@@ -140,21 +177,32 @@ public final class CommandKindCoverageTest {
     }
 
     private static void installDocRepo(SkillStore store, String name) throws Exception {
+        Path tmp = scaffoldDocRepoSource(name, "review\n");
+        Fs.copyRecursive(tmp, store.unitDir(name, UnitKind.DOC));
+        seedRecord(store, name, UnitKind.DOC);
+    }
+
+    private static Path scaffoldDocRepoSource(String name, String content) throws Exception {
         Path tmp = Files.createTempDirectory("kind-doc-");
         Path md = tmp.resolve("claude-md");
         Files.createDirectories(md);
-        Files.writeString(md.resolve("review-stance.md"), "review\n");
+        Files.writeString(md.resolve("review-stance.md"), content);
         Files.writeString(tmp.resolve("skill-manager.toml"),
                 "[doc-repo]\n"
                         + "name = \"" + name + "\"\n"
                         + "version = \"0.1.0\"\n\n"
                         + "[[sources]]\n"
                         + "file = \"claude-md/review-stance.md\"\n");
-        Fs.copyRecursive(tmp, store.unitDir(name, UnitKind.DOC));
-        seedRecord(store, name, UnitKind.DOC);
+        return tmp;
     }
 
     private static void installHarness(SkillStore store, String name) throws Exception {
+        Path tmp = scaffoldHarnessSource(name);
+        Fs.copyRecursive(tmp, store.unitDir(name, UnitKind.HARNESS));
+        seedRecord(store, name, UnitKind.HARNESS);
+    }
+
+    private static Path scaffoldHarnessSource(String name) throws Exception {
         Path tmp = Files.createTempDirectory("kind-harness-");
         Files.writeString(tmp.resolve("harness.toml"),
                 "[harness]\n"
@@ -162,8 +210,7 @@ public final class CommandKindCoverageTest {
                         + "version = \"0.1.0\"\n\n"
                         + "units = [\"skill:planner\"]\n"
                         + "docs = [\"doc:team-prompts/review-stance\"]\n");
-        Fs.copyRecursive(tmp, store.unitDir(name, UnitKind.HARNESS));
-        seedRecord(store, name, UnitKind.HARNESS);
+        return tmp;
     }
 
     private static void seedRecord(SkillStore store, String name, UnitKind kind) throws Exception {

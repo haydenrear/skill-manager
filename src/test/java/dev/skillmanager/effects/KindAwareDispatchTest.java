@@ -3,9 +3,12 @@ package dev.skillmanager.effects;
 import dev.skillmanager._lib.harness.TestHarness;
 import dev.skillmanager._lib.test.Tests;
 import dev.skillmanager.model.UnitKind;
+import dev.skillmanager.source.InstalledUnit;
+import dev.skillmanager.source.UnitStore;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 
 import static dev.skillmanager._lib.test.Tests.assertEquals;
 import static dev.skillmanager._lib.test.Tests.assertFalse;
@@ -99,6 +102,51 @@ public final class KindAwareDispatchTest {
             assertEquals(UnitKind.PLUGIN, pluginSync.kind(), "plugin arm carries PLUGIN");
         });
 
+        suite.test("SyncGit refuses dirty registry install before returning registry failure fact", () -> {
+            TestHarness h = TestHarness.create();
+            Path dir = h.store().skillDir("registry-dirty");
+            Files.createDirectories(dir);
+            Files.writeString(dir.resolve("SKILL.md"),
+                    "---\nname: registry-dirty\ndescription: registry dirty\n---\nbody\n");
+            run(dir, "git", "init", "-b", "main", "--quiet");
+            run(dir, "git", "add", "-A");
+            run(dir, "git", "-c", "user.email=test@example.com",
+                    "-c", "user.name=test", "commit", "--quiet", "-m", "initial");
+            String head = read(dir, "git", "rev-parse", "HEAD");
+            new UnitStore(h.store()).write(new InstalledUnit(
+                    "registry-dirty", "0.1.0", InstalledUnit.Kind.GIT,
+                    InstalledUnit.InstallSource.REGISTRY,
+                    "https://example.invalid/repo.git", head, "main",
+                    UnitStore.nowIso(), List.of(), UnitKind.SKILL));
+            Files.writeString(dir.resolve("SKILL.md"), Files.readString(dir.resolve("SKILL.md")) + "\ndirty\n");
+
+            EffectReceipt r = h.run(new SkillEffect.SyncGit(
+                    "registry-dirty", UnitKind.SKILL,
+                    InstalledUnit.InstallSource.REGISTRY,
+                    false, false));
+
+            assertEquals(EffectStatus.PARTIAL, r.status(), "dirty registry sync refuses");
+            assertTrue(r.facts().stream().anyMatch(f -> f instanceof ContextFact.SyncGitRefused),
+                    "refusal fact present");
+            assertFalse(r.facts().stream().anyMatch(f -> f instanceof ContextFact.SyncGitRegistryUnavailable),
+                    "registry-unavailable fact does not mask dirty refusal");
+        });
+
         return suite.runAll();
+    }
+
+    private static void run(Path cwd, String... argv) throws Exception {
+        Process p = new ProcessBuilder(argv).directory(cwd.toFile()).redirectErrorStream(true).start();
+        p.getInputStream().transferTo(System.out);
+        int rc = p.waitFor();
+        assertEquals(0, rc, String.join(" ", argv));
+    }
+
+    private static String read(Path cwd, String... argv) throws Exception {
+        Process p = new ProcessBuilder(argv).directory(cwd.toFile()).redirectErrorStream(true).start();
+        String out = new String(p.getInputStream().readAllBytes());
+        int rc = p.waitFor();
+        assertEquals(0, rc, String.join(" ", argv));
+        return out.trim();
     }
 }

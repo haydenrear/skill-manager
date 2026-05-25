@@ -76,6 +76,10 @@ public final class SyncGitHandler {
 
         TargetResolution tr = resolveTarget(store, ctx, e, src, skillName, storeDir, upstream, dirty);
         if (tr.fact != null) {
+            if (dirty && !e.merge() && isRegistryLookupFailure(tr.fact)) {
+                return EffectReceipt.partial(e, "extra local changes — re-run with --merge",
+                        new ContextFact.SyncGitRefused(skillName, upstream, e.gitLatest()));
+            }
             return EffectReceipt.ok(e, tr.fact);
         }
         TargetRef target = tr.ref;
@@ -174,6 +178,11 @@ public final class SyncGitHandler {
                     List.of(new ContextFact.SyncGitFailed(skillName, "git fetch/merge rc=" + result.rc)),
                     "git fetch/merge failed (rc=" + result.rc + ")");
         };
+    }
+
+    private static boolean isRegistryLookupFailure(ContextFact fact) {
+        return fact instanceof ContextFact.SyncGitRegistryUnavailable
+                || fact instanceof ContextFact.SyncGitAuthRequired;
     }
 
     /**

@@ -22,7 +22,7 @@ public final class BundledSkills {
 
     private BundledSkills() {}
 
-    private static final Set<String> NAMES = Set.of("skill-manager", "skill-publisher");
+    private static final Set<String> NAMES = Set.of("skill-manager", "skill-publisher", "skill-dev-skill");
 
     public static boolean isBundled(String skillName) {
         return skillName != null && NAMES.contains(skillName);
