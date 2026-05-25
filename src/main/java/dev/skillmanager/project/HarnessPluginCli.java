@@ -33,12 +33,11 @@ import java.util.concurrent.TimeUnit;
  *       ({@link Driver#uninstallPlugin(String)}).</li>
  * </ol>
  *
- * <p>{@link Claude} fully drives the lifecycle; Codex's CLI does not
- * expose a non-interactive {@code plugin install} verb, so its driver
- * stops at marketplace add/upgrade — the user finishes the install
- * through {@code codex /plugins} once. {@link Codex#reinstallPlugin}
- * and {@link Codex#uninstallPlugin} fall through as no-ops with an
- * informational note.
+ * <p>{@link Claude} fully drives the lifecycle. Codex's CLI exposes
+ * {@code plugin add <name>@<marketplace>} for enabling plugins after
+ * marketplace registration, so {@link Codex#reinstallPlugin} drives
+ * that path. Codex uninstall still falls through as a no-op until the
+ * CLI exposes a matching non-interactive removal verb.
  *
  * <p>Subprocess invocations route through a {@link Runner}, which
  * defaults to {@link #liveRunner()} (real {@link ProcessBuilder}). Tests
@@ -140,8 +139,8 @@ public final class HarnessPluginCli {
          * Uninstall + reinstall the plugin so newly-bundled hooks /
          * commands / agents pick up. The user explicitly asked for this
          * over update-in-place — local-path sources don't always rebuild
-         * cleanly through {@code update}. Codex's driver no-ops since
-         * its CLI doesn't support non-interactive install.
+         * cleanly through {@code update}. Codex maps this to its
+         * idempotent {@code plugin add <name>@skill-manager} path.
          */
         Result reinstallPlugin(String pluginName) throws IOException;
 
@@ -349,14 +348,12 @@ public final class HarnessPluginCli {
     // ----------------------------------------------------------- Codex
 
     /**
-     * Codex's CLI exposes only {@code plugin marketplace add} +
-     * {@code upgrade} non-interactively. Final plugin install / uninstall
-     * happens through Codex's interactive {@code /plugins} UI. This
-     * driver therefore manages the marketplace registration and refresh
-     * but no-ops on {@link #reinstallPlugin} / {@link #uninstallPlugin}
-     * — the marketplace.json regeneration plus a marketplace upgrade is
-     * enough for the user's next {@code /plugins} session to pick up
-     * the new state.
+     * Codex's CLI exposes {@code plugin marketplace add} plus
+     * {@code plugin add <name>@<marketplace>} non-interactively. This
+     * driver therefore manages marketplace registration / refresh and
+     * enables each installed plugin after the regenerated marketplace is
+     * visible. Uninstall remains a no-op until Codex exposes a matching
+     * non-interactive removal verb.
      *
      * <p>{@code CODEX_HOME} is honored by both skill-manager's
      * {@code CodexAgent} and the Codex CLI itself, so no extra env
@@ -454,13 +451,23 @@ public final class HarnessPluginCli {
         }
 
         @Override
-        public Result reinstallPlugin(String pluginName) {
-            return new Result(0, "[codex: install via /plugins UI]", "");
+        public Result reinstallPlugin(String pluginName) throws IOException {
+            Result added = runner.run(
+                    List.of(binary(), "plugin", "add",
+                            pluginName + "@" + PluginMarketplace.NAME),
+                    Map.of());
+            if (added.ok() || alreadyAdded(added)) return new Result(0, added.stdout(), added.stderr());
+            return added;
         }
 
         @Override
         public Result uninstallPlugin(String pluginName) {
             return new Result(0, "[codex: uninstall via /plugins UI]", "");
+        }
+
+        private static boolean alreadyAdded(Result result) {
+            String combined = (result.stdout() + "\n" + result.stderr()).toLowerCase();
+            return combined.contains("already") && combined.contains("add");
         }
 
         /**
