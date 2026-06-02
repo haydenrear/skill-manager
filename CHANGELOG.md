@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.15.0](https://github.com/haydenrear/skill-manager/compare/v0.14.1...v0.15.0) (2026-06-02)
+
+
+### Features
+
+* add Gemini target support ([#84](https://github.com/haydenrear/skill-manager/issues/84)) ([95b7ef9](https://github.com/haydenrear/skill-manager/commit/95b7ef9355d2623d64ca8fb4f9825b331e40e7c7))
+
 ## [0.14.1](https://github.com/haydenrear/skill-manager/compare/v0.14.0...v0.14.1) (2026-05-25)
 
 
