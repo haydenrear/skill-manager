@@ -28,7 +28,8 @@ import java.util.List;
  * binding for the (agent, unit) pair is skipped — the existing
  * record wins. Re-running the reconciler finds nothing to do.
  * Units whose expected symlink is missing get a warning logged and
- * are not backfilled (the user will need to re-bind or sync).
+ * are not backfilled. The warning includes the sync command that
+ * recreates missing default-agent projections.
  */
 public final class BindingBackfill {
 
@@ -65,7 +66,9 @@ public final class BindingBackfill {
                     for (var e : entries) {
                         if (!Files.exists(e.target(), LinkOption.NOFOLLOW_LINKS)) {
                             allPresent = false;
-                            Log.warn("reconcile: expected symlink missing for %s on %s — re-bind to recover",
+                            Log.warn("reconcile: expected symlink missing for %s on %s. "
+                                            + "In order to create all symlinks missing, please run: "
+                                            + "skill-manager sync --skip-mcp",
                                     rec.name(), proj.agentId());
                             break;
                         }
