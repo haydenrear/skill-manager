@@ -6,7 +6,8 @@ import java.util.Map;
 
 /**
  * Single resolution point for the per-agent config-root env vars
- * ({@code CLAUDE_HOME}, {@code CLAUDE_CONFIG_DIR}, {@code CODEX_HOME})
+ * ({@code CLAUDE_HOME}, {@code CLAUDE_CONFIG_DIR}, {@code CODEX_HOME},
+ * {@code GEMINI_HOME})
  * that skill-manager reads when locating the harness's on-disk state.
  *
  * <p>The same lookup is needed in several places — {@link ClaudeAgent}
@@ -43,6 +44,7 @@ public final class AgentHomes {
     public static final String CLAUDE_HOME = "CLAUDE_HOME";
     public static final String CLAUDE_CONFIG_DIR = "CLAUDE_CONFIG_DIR";
     public static final String CODEX_HOME = "CODEX_HOME";
+    public static final String GEMINI_HOME = "GEMINI_HOME";
 
     private static final ThreadLocal<Map<String, Path>> OVERRIDES =
             ThreadLocal.withInitial(HashMap::new);

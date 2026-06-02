@@ -10,7 +10,7 @@ import java.util.Optional;
 
 /**
  * Per-instance metadata persisted at {@code <sandboxRoot>/<instanceId>/.harness-instance.json}
- * when {@code harness instantiate} runs. Captures the three target
+ * when {@code harness instantiate} runs. Captures the target
  * paths the instantiator resolved so {@code sync harness:<name>} can
  * re-plan with the same layout without re-deriving them from the env
  * (which may have drifted) or scraping bindings.
@@ -28,6 +28,7 @@ public record HarnessInstanceLock(
         String instanceId,
         Path claudeConfigDir,
         Path codexHome,
+        Path geminiHome,
         Path projectDir,
         String createdAt
 ) {

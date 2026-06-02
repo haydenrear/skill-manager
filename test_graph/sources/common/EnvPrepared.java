@@ -15,8 +15,8 @@ import java.nio.file.Path;
  *
  *   - A fresh {@code SKILL_MANAGER_HOME} so no pre-existing local state
  *     (skills/, bin/, gateway pid files) interferes with the run.
- *   - Sandboxed {@code CLAUDE_HOME} / {@code CODEX_HOME} so install-time
- *     symlinks (under {@code .claude/skills}, {@code .codex/skills}) and
+ *   - Sandboxed {@code CLAUDE_HOME} / {@code CODEX_HOME} / {@code GEMINI_HOME} so install-time
+ *     symlinks (under {@code .claude/skills}, {@code .codex/skills}, {@code .gemini/skills}) and
  *     MCP-config writes (under {@code .claude.json},
  *     {@code .codex/config.toml}) land inside the temp home rather than
  *     polluting the developer's real {@code ~/}.
@@ -32,6 +32,7 @@ public class EnvPrepared {
             .output("home", "string")
             .output("claudeHome", "string")
             .output("codexHome", "string")
+            .output("geminiHome", "string")
             .output("registryPort", "integer")
             .output("gatewayPort", "integer");
 
@@ -43,14 +44,18 @@ public class EnvPrepared {
             // Match OnboardCompleted's layout: ClaudeAgent treats $CLAUDE_HOME
             // as the parent of {.claude/, .claude.json}; CodexAgent treats
             // $CODEX_HOME as the dir holding {skills/, config.toml}. So
-            // claudeHome=$home/agent-home and codexHome=$home/agent-home/.codex
+            // claudeHome=$home/agent-home, codexHome=$home/agent-home/.codex,
+            // and geminiHome=$home/agent-home/.gemini
             // gives:
             //   $home/agent-home/.claude/skills/<name>
             //   $home/agent-home/.codex/skills/<name>
+            //   $home/agent-home/.gemini/skills/<name>
             Path agentHome = home.resolve("agent-home");
             Path codexHome = agentHome.resolve(".codex");
+            Path geminiHome = agentHome.resolve(".gemini");
             Files.createDirectories(agentHome);
             Files.createDirectories(codexHome);
+            Files.createDirectories(geminiHome);
 
             // Test environments are explicitly permissive: drop a
             // policy.toml that turns off every install-confirmation gate
@@ -78,12 +83,14 @@ public class EnvPrepared {
                     .assertion("home_created", Files.isDirectory(home))
                     .assertion("agent_home_created", Files.isDirectory(agentHome))
                     .assertion("codex_home_created", Files.isDirectory(codexHome))
+                    .assertion("gemini_home_created", Files.isDirectory(geminiHome))
                     .assertion("ports_allocated", registryPort > 0 && gatewayPort > 0)
                     .metric("registryPort", registryPort)
                     .metric("gatewayPort", gatewayPort)
                     .publish("home", home.toString())
                     .publish("claudeHome", agentHome.toString())
                     .publish("codexHome", codexHome.toString())
+                    .publish("geminiHome", geminiHome.toString())
                     .publish("registryPort", Integer.toString(registryPort))
                     .publish("gatewayPort", Integer.toString(gatewayPort));
         });

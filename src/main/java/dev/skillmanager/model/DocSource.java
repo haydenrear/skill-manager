@@ -12,7 +12,7 @@ import java.util.List;
  * doc-repo (typically under {@code claude-md/}). {@link #agents}
  * controls which agent files the {@link DocUnit} projects into when
  * bound — {@code "claude"} → {@code CLAUDE.md}, {@code "codex"} →
- * {@code AGENTS.md}.
+ * {@code AGENTS.md}, {@code "gemini"} → {@code GEMINI.md}.
  */
 public record DocSource(
         String id,
@@ -20,7 +20,7 @@ public record DocSource(
         List<String> agents
 ) {
     /** Default {@code agents} list when the manifest omits it. */
-    public static final List<String> DEFAULT_AGENTS = List.of("claude", "codex");
+    public static final List<String> DEFAULT_AGENTS = List.of("claude", "codex", "gemini");
 
     public DocSource {
         if (id == null || id.isBlank()) throw new IllegalArgumentException("DocSource.id must not be blank");

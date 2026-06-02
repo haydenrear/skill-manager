@@ -21,12 +21,13 @@ import java.util.Optional;
  * Plans the {@link BindingSource#HARNESS} bindings a harness template
  * (#47) produces when instantiated. Projections land at agent-
  * discoverable paths — not in a dead-letter sandbox subdir — so
- * Claude Code / Codex can actually load the harness's tools:
+ * Claude Code / Codex / Gemini can actually load the harness's tools:
  *
  * <ul>
- *   <li>Skills → one SYMLINK at {@code <claudeConfigDir>/skills/<name>}
- *       AND one at {@code <codexHome>/skills/<name>}. Skills are
- *       agent-agnostic, so both runtimes see them.</li>
+ *   <li>Skills → one SYMLINK at {@code <claudeConfigDir>/skills/<name>},
+ *       one at {@code <codexHome>/skills/<name>}, and one at
+ *       {@code <geminiHome>/skills/<name>}. Skills are agent-agnostic,
+ *       so all runtimes see them.</li>
  *   <li>Plugins → one SYMLINK at {@code <claudeConfigDir>/plugins/<name>}.
  *       Claude-only; Codex doesn't load plugins (matches the
  *       {@code CodexProjector} contract).</li>
@@ -66,6 +67,9 @@ public final class HarnessInstantiator {
      * @param codexHome        the dir Codex reads {@code skills/} from.
      *                         Skills also land at
      *                         {@code <codexHome>/skills/<name>}.
+     * @param geminiHome       the dir Gemini reads {@code skills/} from.
+     *                         Skills also land at
+     *                         {@code <geminiHome>/skills/<name>}.
      * @param projectDir       where {@code CLAUDE.md} / {@code AGENTS.md} and
      *                         the tracked-copy {@code docs/agents/<file>}
      *                         entries live — typically a project repo root.
@@ -73,12 +77,20 @@ public final class HarnessInstantiator {
     public static Plan plan(HarnessUnit harness, String instanceId,
                             Path claudeConfigDir, Path codexHome, Path projectDir,
                             SkillStore store) throws IOException {
+        return plan(harness, instanceId, claudeConfigDir, codexHome,
+                codexHome == null ? null : codexHome.resolveSibling("gemini"),
+                projectDir, store);
+    }
+
+    public static Plan plan(HarnessUnit harness, String instanceId,
+                            Path claudeConfigDir, Path codexHome, Path geminiHome,
+                            Path projectDir, SkillStore store) throws IOException {
         if (instanceId == null || instanceId.isBlank()) {
             throw new IllegalArgumentException("harness instanceId must not be blank");
         }
-        if (claudeConfigDir == null || codexHome == null || projectDir == null) {
+        if (claudeConfigDir == null || codexHome == null || geminiHome == null || projectDir == null) {
             throw new IllegalArgumentException(
-                    "harness instantiate requires claudeConfigDir, codexHome, and projectDir");
+                    "harness instantiate requires claudeConfigDir, codexHome, geminiHome, and projectDir");
         }
         List<Binding> all = new ArrayList<>();
 
@@ -96,7 +108,7 @@ public final class HarnessInstantiator {
             String bindingId = unitBindingId(instanceId, nk.name());
             Path source = store.unitDir(nk.name(), nk.kind());
             List<Projection> projections = projectionsFor(
-                    bindingId, source, nk, claudeConfigDir, codexHome);
+                    bindingId, source, nk, claudeConfigDir, codexHome, geminiHome);
             all.add(new Binding(
                     bindingId, nk.name(), nk.kind(), null,
                     // targetRoot is informational; the projection destPaths
@@ -128,12 +140,13 @@ public final class HarnessInstantiator {
 
     /**
      * Per-kind projection list for skill/plugin units. Skills target
-     * both Claude and Codex; plugins target Claude only (Codex's
-     * projector returns empty for plugins, so the binding mirror is
-     * Claude-only here too).
+     * Claude, Codex, and Gemini; plugins target Claude only (Codex and
+     * Gemini projectors return empty for plugins, so the binding mirror
+     * is Claude-only here too).
      */
     private static List<Projection> projectionsFor(String bindingId, Path source,
-                                                    NameKind nk, Path claudeConfigDir, Path codexHome) {
+                                                    NameKind nk, Path claudeConfigDir, Path codexHome,
+                                                    Path geminiHome) {
         return switch (nk.kind()) {
             case SKILL -> List.of(
                     new Projection(bindingId, source,
@@ -141,6 +154,9 @@ public final class HarnessInstantiator {
                             ProjectionKind.SYMLINK, null),
                     new Projection(bindingId, source,
                             codexHome.resolve("skills").resolve(nk.name()),
+                            ProjectionKind.SYMLINK, null),
+                    new Projection(bindingId, source,
+                            geminiHome.resolve("skills").resolve(nk.name()),
                             ProjectionKind.SYMLINK, null));
             case PLUGIN -> List.of(
                     new Projection(bindingId, source,

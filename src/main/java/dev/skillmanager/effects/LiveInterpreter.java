@@ -1660,13 +1660,16 @@ public final class LiveInterpreter implements ProgramInterpreter {
             java.nio.file.Path codexHome = lock.map(
                     dev.skillmanager.bindings.HarnessInstanceLock::codexHome)
                     .orElse(instanceDir.resolve("codex"));
+            java.nio.file.Path geminiHome = lock.map(
+                    dev.skillmanager.bindings.HarnessInstanceLock::geminiHome)
+                    .orElse(instanceDir.resolve("gemini"));
             java.nio.file.Path projectDir = lock.map(
                     dev.skillmanager.bindings.HarnessInstanceLock::projectDir)
                     .orElse(instanceDir);
             dev.skillmanager.bindings.HarnessInstantiator.Plan plan =
                     dev.skillmanager.bindings.HarnessInstantiator.plan(
                             harness, e.instanceId(),
-                            claudeConfigDir, codexHome, projectDir,
+                            claudeConfigDir, codexHome, geminiHome, projectDir,
                             ctx.store());
 
             java.util.Set<String> plannedIds = new java.util.LinkedHashSet<>();

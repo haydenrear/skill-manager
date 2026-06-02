@@ -217,6 +217,7 @@ public final class McpWriter {
         return switch (agent.mcpConfigFormat()) {
             case "claude" -> writeClaude(agent.mcpConfigPath());
             case "codex-toml" -> writeCodexToml(agent.mcpConfigPath());
+            case "gemini-json" -> writeGemini(agent.mcpConfigPath());
             default -> {
                 Log.warn("unknown MCP format for agent %s", agent.id());
                 yield ConfigChange.SKIPPED;
@@ -253,6 +254,37 @@ public final class McpWriter {
         servers.put(GATEWAY_ENTRY, entry);
         json.writeValue(file.toFile(), root);
         Log.ok("claude: pointed %s → %s", GATEWAY_ENTRY, desiredUrl);
+        return entryExisted ? ConfigChange.UPDATED : ConfigChange.ADDED;
+    }
+
+    private ConfigChange writeGemini(Path file) throws IOException {
+        Fs.ensureDir(file.getParent());
+        Map<String, Object> root;
+        boolean fileExisted = Files.isRegularFile(file);
+        if (fileExisted) {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> loaded = json.readValue(file.toFile(), Map.class);
+            root = loaded != null ? loaded : new LinkedHashMap<>();
+        } else {
+            root = new LinkedHashMap<>();
+        }
+        @SuppressWarnings("unchecked")
+        Map<String, Object> servers = (Map<String, Object>) root.computeIfAbsent("mcpServers", k -> new LinkedHashMap<>());
+
+        String desiredUrl = gateway.mcpEndpoint().toString();
+        Object existing = servers.get(GATEWAY_ENTRY);
+        boolean entryExisted = existing instanceof Map<?, ?>;
+        if (entryExisted) {
+            Map<?, ?> em = (Map<?, ?>) existing;
+            if (desiredUrl.equals(em.get("httpUrl"))) {
+                return ConfigChange.UNCHANGED;
+            }
+        }
+        Map<String, Object> entry = new LinkedHashMap<>();
+        entry.put("httpUrl", desiredUrl);
+        servers.put(GATEWAY_ENTRY, entry);
+        json.writeValue(file.toFile(), root);
+        Log.ok("gemini: pointed %s -> %s", GATEWAY_ENTRY, desiredUrl);
         return entryExisted ? ConfigChange.UPDATED : ConfigChange.ADDED;
     }
 
@@ -313,6 +345,15 @@ public final class McpWriter {
                 if (!rebuilt.equals(existing)) {
                     Files.writeString(file, rebuilt);
                     Log.ok("codex: removed %s table", GATEWAY_ENTRY);
+                }
+            }
+            case "gemini-json" -> {
+                @SuppressWarnings("unchecked")
+                Map<String, Object> root = json.readValue(file.toFile(), Map.class);
+                Object servers = root.get("mcpServers");
+                if (servers instanceof Map<?, ?> m && m.remove(GATEWAY_ENTRY) != null) {
+                    json.writeValue(file.toFile(), root);
+                    Log.ok("gemini: removed %s entry", GATEWAY_ENTRY);
                 }
             }
             default -> {}

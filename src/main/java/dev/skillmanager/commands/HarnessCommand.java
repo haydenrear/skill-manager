@@ -56,17 +56,18 @@ public final class HarnessCommand {
     @Command(name = "instantiate",
             description = """
                     Materialize a harness template by symlinking its skills + plugins
-                    into the agent-discoverable config dirs (CLAUDE_CONFIG_DIR / CODEX_HOME)
+                    into the agent-discoverable config dirs (CLAUDE_CONFIG_DIR / CODEX_HOME / GEMINI_HOME)
                     and writing its docs + CLAUDE.md / AGENTS.md into a project root.
 
                     Path resolution for each target (CLI > env var > sandbox fallback):
                       --claude-config-dir    CLAUDE_CONFIG_DIR    <sandbox>/<id>/claude
                       --codex-home           CODEX_HOME           <sandbox>/<id>/codex
+                      --gemini-home          GEMINI_HOME          <sandbox>/<id>/gemini
                       --project-dir          (no env counterpart) <sandbox>/<id>
 
                     Re-runs are idempotent: bindings are replaced-by-id and projections
-                    overwrite. Skills get two symlinks (claude+codex); plugins get one
-                    (claude only — Codex doesn't load plugins).""")
+                    overwrite. Skills get three symlinks (claude+codex+gemini); plugins get one
+                    (claude only — Codex/Gemini plugin parity is separate).""")
     public static final class InstantiateCmd implements Callable<Integer> {
 
         @Parameters(index = "0", description = "Harness template name (must be installed)")
@@ -87,6 +88,11 @@ public final class HarnessCommand {
                 description = "Path to the Codex home dir (parent of skills/). Skills land at "
                         + "<dir>/skills/<name>. Defaults to env CODEX_HOME, then <sandbox>/<id>/codex.")
         String codexHome;
+
+        @Option(names = "--gemini-home",
+                description = "Path to the Gemini home dir (parent of skills/). Skills land at "
+                        + "<dir>/skills/<name>. Defaults to env GEMINI_HOME, then <sandbox>/<id>/gemini.")
+        String geminiHome;
 
         @Option(names = "--project-dir",
                 description = "Project root that receives CLAUDE.md / AGENTS.md import lines + "
@@ -130,10 +136,12 @@ public final class HarnessCommand {
                     instanceSandbox.resolve("claude"));
             Path resolvedCodex = resolveTargetDir(codexHome, "CODEX_HOME",
                     instanceSandbox.resolve("codex"));
+            Path resolvedGemini = resolveTargetDir(geminiHome, "GEMINI_HOME",
+                    instanceSandbox.resolve("gemini"));
             Path resolvedProject = resolveTargetDir(projectDir, null, instanceSandbox);
 
             HarnessInstantiator.Plan plan = HarnessInstantiator.plan(
-                    harness, id, resolvedClaude, resolvedCodex, resolvedProject, store);
+                    harness, id, resolvedClaude, resolvedCodex, resolvedGemini, resolvedProject, store);
 
             // Persist the resolved paths in a sandbox-side lock file so
             // `sync harness:<name>` can re-plan with the same layout
@@ -143,7 +151,7 @@ public final class HarnessCommand {
             // with the rest of the sandbox dir.
             if (!dryRun) {
                 new dev.skillmanager.bindings.HarnessInstanceLock(
-                        name, id, resolvedClaude, resolvedCodex, resolvedProject,
+                        name, id, resolvedClaude, resolvedCodex, resolvedGemini, resolvedProject,
                         dev.skillmanager.bindings.BindingStore.nowIso())
                         .write(sandboxRoot);
             }
@@ -174,6 +182,7 @@ public final class HarnessCommand {
                         name, id, plan.bindings().size());
                 Log.info("  claude config dir: %s", resolvedClaude);
                 Log.info("  codex home:        %s", resolvedCodex);
+                Log.info("  gemini home:       %s", resolvedGemini);
                 Log.info("  project dir:       %s", resolvedProject);
             }
             return 0;

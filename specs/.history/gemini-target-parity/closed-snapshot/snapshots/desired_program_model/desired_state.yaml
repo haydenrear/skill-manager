@@ -1,0 +1,77 @@
+version: 1
+name: gemini-target-parity
+canonical_tla_module: SkillManager
+canonical_tla_file: SkillManager.tla
+bounded_model_config: MC.cfg
+manifest: spec_manifest.yaml
+ticket_plan: ticket_plan.yaml
+
+relationship:
+  extends_current_program_model: ../program_model/SkillManager.tla
+  purpose: desired whole-program model for adding Gemini as a first-class target
+  generation_status: planned
+
+implementation_status:
+  updated: 2026-06-02
+  policy: specs/current is the executable state of landed work; this file summarizes the desired destination.
+  active_ticket: GEMINI-TARGETS
+  active_ticket_title: "Add Gemini target parity"
+  summary:
+    desired_model_scaffolded: true
+    ticket_breakdown: complete_initial
+    current_model: converged_and_validated
+    generated_desired_cases: pending
+    adapters: pending
+    unit_and_graph_assertions: passed
+
+modeled_boundary_status:
+  gemini_agent:
+    status: desired
+    home: ~/.gemini
+    env_override: GEMINI_HOME
+  gemini_skills:
+    status: desired
+    user_skill_dir: ~/.gemini/skills
+    source: SKILL.md Agent Skills discovery
+  gemini_mcp:
+    status: desired
+    settings_file: ~/.gemini/settings.json
+    entry: mcpServers.virtual-mcp-gateway.httpUrl
+  gemini_docs:
+    status: implemented_validated
+    target_file: GEMINI.md
+  gemini_harness:
+    status: implemented_validated
+    skill_projection: ~/.gemini/skills
+    lock_field: geminiHome
+  gemini_plugins:
+    status: explicit_unsupported_non_projection
+    note: Gemini plugin extension mapping is not assumed; current policy does not materialize plugins into Gemini paths.
+
+program_domains:
+  - agent_home_resolution
+  - skill_projection
+  - mcp_config_projection
+  - harness_instance_projection
+  - doc_repo_import_projection
+  - plugin_policy
+
+implementation_sources:
+  agents:
+    - src/main/java/dev/skillmanager/agent
+  projectors:
+    - src/main/java/dev/skillmanager/project
+  mcp:
+    - src/main/java/dev/skillmanager/mcp/McpWriter.java
+  harness:
+    - src/main/java/dev/skillmanager/bindings
+  docs:
+    - src/main/java/dev/skillmanager/bindings/DocRepoBinder.java
+
+adapter_plan:
+  desired_new_ports: []
+  desired_adapter_boundaries:
+    - Gemini skill projection observation
+    - Gemini MCP settings observation
+    - Gemini harness binding observation
+    - Gemini doc import observation

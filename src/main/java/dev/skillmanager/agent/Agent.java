@@ -3,7 +3,7 @@ package dev.skillmanager.agent;
 import java.nio.file.Path;
 import java.util.List;
 
-public sealed interface Agent permits ClaudeAgent, CodexAgent {
+public sealed interface Agent permits ClaudeAgent, CodexAgent, GeminiAgent {
 
     String id();
 
@@ -24,7 +24,7 @@ public sealed interface Agent permits ClaudeAgent, CodexAgent {
     String mcpConfigFormat();
 
     static List<Agent> all() {
-        return List.of(new ClaudeAgent(), new CodexAgent());
+        return List.of(new ClaudeAgent(), new CodexAgent(), new GeminiAgent());
     }
 
     static Agent byId(String id) {

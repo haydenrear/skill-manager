@@ -119,7 +119,7 @@ public final class DocRepoTest {
                     assertEquals(2, unit.sources().size(), "two sources");
                     DocSource a = unit.sources().get(0);
                     assertEquals("review-stance", a.id(), "first id = file stem");
-                    assertEquals(List.of("claude", "codex"), a.agents(), "default agents");
+                    assertEquals(List.of("claude", "codex", "gemini"), a.agents(), "default agents");
                     DocSource b = unit.sources().get(1);
                     assertEquals("custom-id", b.id(), "second id = explicit");
                     assertEquals(List.of("claude"), b.agents(), "explicit agents");
@@ -151,13 +151,13 @@ public final class DocRepoTest {
                             BindingSource.EXPLICIT);
                     assertEquals(2, plan.bindings().size(), "one binding per source");
                     Binding b0 = plan.bindings().get(0);
-                    // First source has agents=[claude,codex] → 1 copy + 2 imports
+                    // First source has agents=[claude,codex,gemini] -> 1 copy + 3 imports
                     long copies = b0.projections().stream()
                             .filter(p -> p.kind() == ProjectionKind.MANAGED_COPY).count();
                     long imports = b0.projections().stream()
                             .filter(p -> p.kind() == ProjectionKind.IMPORT_DIRECTIVE).count();
                     assertEquals(1L, copies, "one MANAGED_COPY for review-stance");
-                    assertEquals(2L, imports, "one IMPORT_DIRECTIVE per agent (claude+codex)");
+                    assertEquals(3L, imports, "one IMPORT_DIRECTIVE per agent (claude+codex+gemini)");
                     Binding b1 = plan.bindings().get(1);
                     long copies1 = b1.projections().stream()
                             .filter(p -> p.kind() == ProjectionKind.MANAGED_COPY).count();
@@ -176,7 +176,21 @@ public final class DocRepoTest {
                     assertEquals(1, plan.bindings().size(), "one binding");
                     assertEquals("review-stance", plan.bindings().get(0).subElement(), "sub-element");
                 })
-                .test("End-to-end bind doc-repo → file copy + CLAUDE.md import + ledger", () -> {
+                .test("DocRepoBinder maps Gemini sources to GEMINI.md", () -> {
+                    Path repo = scaffoldDocRepo();
+                    DocUnit unit = DocRepoParser.load(repo);
+                    Path targetRoot = Files.createTempDirectory("target-gemini-doc-");
+                    DocRepoBinder.Plan plan = DocRepoBinder.plan(
+                            unit, targetRoot, "review-stance", ConflictPolicy.RENAME_EXISTING,
+                            BindingSource.EXPLICIT);
+                    Binding binding = plan.bindings().get(0);
+                    boolean geminiProjection = binding.projections().stream()
+                            .anyMatch(p -> p.kind() == ProjectionKind.IMPORT_DIRECTIVE
+                                    && p.destPath().equals(targetRoot.resolve("GEMINI.md"))
+                                    && p.sourcePath().equals(Path.of("docs/agents/review-stance.md")));
+                    assertTrue(geminiProjection, "review-stance imports into GEMINI.md");
+                })
+                .test("End-to-end bind doc-repo -> file copy + agent imports + ledger", () -> {
                     Path repo = scaffoldDocRepo();
                     Path targetRoot = Files.createTempDirectory("e2e-");
                     Path home = Files.createTempDirectory("e2e-home-");
@@ -206,6 +220,10 @@ public final class DocRepoTest {
                     String mdContent = Files.readString(claudeMd);
                     assertTrue(mdContent.contains("@docs/agents/review-stance.md"),
                             "import line present");
+                    Path geminiMd = targetRoot.resolve("GEMINI.md");
+                    assertTrue(Files.exists(geminiMd), "GEMINI.md created");
+                    assertTrue(Files.readString(geminiMd).contains("@docs/agents/review-stance.md"),
+                            "gemini import line present");
                     BindingStore bs = new BindingStore(store);
                     assertTrue(bs.read("team-prompts").findById(b.bindingId()).isPresent(),
                             "ledger row present");
