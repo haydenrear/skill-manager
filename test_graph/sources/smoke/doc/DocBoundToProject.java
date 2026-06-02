@@ -16,8 +16,8 @@ import java.nio.file.Path;
  * a tracked-copy at {@code <project>/docs/agents/review-stance.md}
  * AND an {@code @docs/agents/review-stance.md} import line inside
  * the managed {@code # skill-manager-imports} section of
- * {@code <project>/CLAUDE.md} (and {@code AGENTS.md} when the
- * source declares Codex — review-stance defaults to both).
+ * {@code <project>/CLAUDE.md}, {@code AGENTS.md}, and {@code GEMINI.md}
+ * when the source declares the corresponding agents.
  *
  * <p>Also: the binding ledger at
  * {@code <home>/installed/hello-doc-repo.projections.json} must
@@ -60,11 +60,13 @@ public class DocBoundToProject {
             Path tracked = project.resolve("docs/agents/review-stance.md");
             Path claudeMd = project.resolve("CLAUDE.md");
             Path agentsMd = project.resolve("AGENTS.md");
+            Path geminiMd = project.resolve("GEMINI.md");
             Path ledger = Path.of(home, "installed", "hello-doc-repo.projections.json");
 
             boolean trackedPresent = Files.isRegularFile(tracked);
             boolean claudePresent = Files.isRegularFile(claudeMd);
             boolean agentsPresent = Files.isRegularFile(agentsMd);
+            boolean geminiPresent = Files.isRegularFile(geminiMd);
             boolean ledgerPresent = Files.isRegularFile(ledger);
 
             // Content sanity: the tracked file should match the upstream
@@ -79,6 +81,8 @@ public class DocBoundToProject {
             boolean managedSection = claudeContent.contains("<!-- skill-manager:imports start -->")
                     && claudeContent.contains("<!-- skill-manager:imports end -->")
                     && claudeContent.contains("# skill-manager-imports");
+            String geminiContent = geminiPresent ? java.nio.file.Files.readString(geminiMd) : "";
+            boolean geminiImportLine = geminiContent.contains("@docs/agents/review-stance.md");
 
             // Ledger sanity: contains source=EXPLICIT + MANAGED_COPY +
             // boundHash. JSON-shallow check is enough; the round-trip
@@ -89,8 +93,8 @@ public class DocBoundToProject {
             boolean ledgerHasBoundHash = ledgerContent.contains("\"boundHash\"");
 
             boolean pass = rc == 0 && trackedPresent && trackedHasStanceContent
-                    && claudePresent && agentsPresent && ledgerPresent
-                    && importLine && managedSection
+                    && claudePresent && agentsPresent && geminiPresent && ledgerPresent
+                    && importLine && managedSection && geminiImportLine
                     && ledgerHasExplicit && ledgerHasManagedCopy && ledgerHasBoundHash;
             NodeResult result = pass
                     ? NodeResult.pass("doc.bound.to.project")
@@ -98,7 +102,9 @@ public class DocBoundToProject {
                             "rc=" + rc + " tracked=" + trackedPresent
                                     + " trackedContent=" + trackedHasStanceContent
                                     + " claude=" + claudePresent + " agents=" + agentsPresent
+                                    + " gemini=" + geminiPresent
                                     + " importLine=" + importLine + " managed=" + managedSection
+                                    + " geminiImportLine=" + geminiImportLine
                                     + " ledger=" + ledgerPresent
                                     + " ledgerExplicit=" + ledgerHasExplicit
                                     + " ledgerManagedCopy=" + ledgerHasManagedCopy
@@ -110,7 +116,9 @@ public class DocBoundToProject {
                     .assertion("tracked_copy_content_matches", trackedHasStanceContent)
                     .assertion("claude_md_created", claudePresent)
                     .assertion("agents_md_created", agentsPresent)
+                    .assertion("gemini_md_created", geminiPresent)
                     .assertion("import_line_in_claude_md", importLine)
+                    .assertion("import_line_in_gemini_md", geminiImportLine)
                     .assertion("managed_section_markers", managedSection)
                     .assertion("ledger_row_written", ledgerPresent)
                     .assertion("ledger_source_explicit", ledgerHasExplicit)

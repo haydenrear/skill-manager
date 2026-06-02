@@ -41,6 +41,7 @@ import java.util.function.Function;
  *   docs/agents/&lt;basename&gt;                 ← MANAGED_COPY destPath
  *   CLAUDE.md                              ← IMPORT_DIRECTIVE destPath (claude)
  *   AGENTS.md                              ← IMPORT_DIRECTIVE destPath (codex)
+ *   GEMINI.md                              ← IMPORT_DIRECTIVE destPath (gemini)
  * </pre>
  */
 public final class DocRepoBinder {
@@ -163,6 +164,7 @@ public final class DocRepoBinder {
         return switch (agentId) {
             case "claude" -> "CLAUDE.md";
             case "codex" -> "AGENTS.md";
+            case "gemini" -> "GEMINI.md";
             // Future agents land here as new switch arms. Unknown ids
             // get a {@code AGENTS-<id>.md} fallback so we don't silently
             // collide with a known file.

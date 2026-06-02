@@ -28,35 +28,43 @@ public final class ProjectorRegistryTest {
     public static int run() throws Exception {
         Tests.Suite suite = Tests.suite("ProjectorRegistryTest");
 
-        suite.test("SKILL unit applies through both projectors → both targets exist", () -> {
+        suite.test("SKILL unit applies through all projectors -> all targets exist", () -> {
             TestHarness h = TestHarness.create();
             Path claudeRoot = Files.createTempDirectory("registry-claude-");
             Path codexRoot = Files.createTempDirectory("registry-codex-");
+            Path geminiRoot = Files.createTempDirectory("registry-gemini-");
             ClaudeProjector claude = new ClaudeProjector(
                     claudeRoot.resolve("skills"), claudeRoot.resolve("plugins"));
             CodexProjector codex = new CodexProjector(
                     codexRoot.resolve("skills"), codexRoot.resolve("plugins"));
-            ProjectorRegistry registry = new ProjectorRegistry(List.of(claude, codex));
+            GeminiProjector gemini = new GeminiProjector(
+                    geminiRoot.resolve("skills"), geminiRoot.resolve("plugins"));
+            ProjectorRegistry registry = new ProjectorRegistry(List.of(claude, codex, gemini));
 
             AgentUnit u = installSkill(h, "widget");
             List<Projection> applied = registry.applyAll(u, h.store());
 
-            assertEquals(2, applied.size(), "both projectors fired");
+            assertEquals(3, applied.size(), "all projectors fired");
             assertTrue(Files.exists(claudeRoot.resolve("skills").resolve("widget"),
                     LinkOption.NOFOLLOW_LINKS), "Claude's target exists");
             assertTrue(Files.exists(codexRoot.resolve("skills").resolve("widget"),
                     LinkOption.NOFOLLOW_LINKS), "Codex's target exists");
+            assertTrue(Files.exists(geminiRoot.resolve("skills").resolve("widget"),
+                    LinkOption.NOFOLLOW_LINKS), "Gemini's target exists");
         });
 
         suite.test("PLUGIN unit produces no per-agent projection — handled by RefreshHarnessPlugins", () -> {
             TestHarness h = TestHarness.create();
             Path claudeRoot = Files.createTempDirectory("registry-claude-plugin-");
             Path codexRoot = Files.createTempDirectory("registry-codex-plugin-");
+            Path geminiRoot = Files.createTempDirectory("registry-gemini-plugin-");
             ClaudeProjector claude = new ClaudeProjector(
                     claudeRoot.resolve("skills"), claudeRoot.resolve("plugins"));
             CodexProjector codex = new CodexProjector(
                     codexRoot.resolve("skills"), codexRoot.resolve("plugins"));
-            ProjectorRegistry registry = new ProjectorRegistry(List.of(claude, codex));
+            GeminiProjector gemini = new GeminiProjector(
+                    geminiRoot.resolve("skills"), geminiRoot.resolve("plugins"));
+            ProjectorRegistry registry = new ProjectorRegistry(List.of(claude, codex, gemini));
 
             AgentUnit u = installPlugin(h, "widget");
             List<Projection> applied = registry.applyAll(u, h.store());
@@ -73,17 +81,24 @@ public final class ProjectorRegistryTest {
                     "Codex per-plugin namespace untouched");
             assertFalse(Files.exists(codexRoot.resolve("skills").resolve("widget")),
                     "Codex skills target also absent (plugin doesn't fall through to skills)");
+            assertFalse(Files.exists(geminiRoot.resolve("plugins").resolve("widget")),
+                    "Gemini per-plugin namespace untouched");
+            assertFalse(Files.exists(geminiRoot.resolve("skills").resolve("widget")),
+                    "Gemini skills target also absent (plugin doesn't fall through to skills)");
         });
 
         suite.test("removeAll cleans up every projection apply produced", () -> {
             TestHarness h = TestHarness.create();
             Path claudeRoot = Files.createTempDirectory("registry-remove-claude-");
             Path codexRoot = Files.createTempDirectory("registry-remove-codex-");
+            Path geminiRoot = Files.createTempDirectory("registry-remove-gemini-");
             ClaudeProjector claude = new ClaudeProjector(
                     claudeRoot.resolve("skills"), claudeRoot.resolve("plugins"));
             CodexProjector codex = new CodexProjector(
                     codexRoot.resolve("skills"), codexRoot.resolve("plugins"));
-            ProjectorRegistry registry = new ProjectorRegistry(List.of(claude, codex));
+            GeminiProjector gemini = new GeminiProjector(
+                    geminiRoot.resolve("skills"), geminiRoot.resolve("plugins"));
+            ProjectorRegistry registry = new ProjectorRegistry(List.of(claude, codex, gemini));
 
             AgentUnit u = installSkill(h, "widget");
             registry.applyAll(u, h.store());
@@ -91,22 +106,28 @@ public final class ProjectorRegistryTest {
                     LinkOption.NOFOLLOW_LINKS), "Claude target there");
             assertTrue(Files.exists(codexRoot.resolve("skills").resolve("widget"),
                     LinkOption.NOFOLLOW_LINKS), "Codex target there");
+            assertTrue(Files.exists(geminiRoot.resolve("skills").resolve("widget"),
+                    LinkOption.NOFOLLOW_LINKS), "Gemini target there");
 
             List<Projection> removed = registry.removeAll(u, h.store());
-            assertEquals(2, removed.size(), "both projector targets removed");
+            assertEquals(3, removed.size(), "all projector targets removed");
             assertFalse(Files.exists(claudeRoot.resolve("skills").resolve("widget"),
                     LinkOption.NOFOLLOW_LINKS), "Claude target gone");
             assertFalse(Files.exists(codexRoot.resolve("skills").resolve("widget"),
                     LinkOption.NOFOLLOW_LINKS), "Codex target gone");
+            assertFalse(Files.exists(geminiRoot.resolve("skills").resolve("widget"),
+                    LinkOption.NOFOLLOW_LINKS), "Gemini target gone");
         });
 
         suite.test("removeAll on never-applied unit is a no-op (idempotent)", () -> {
             TestHarness h = TestHarness.create();
             Path claudeRoot = Files.createTempDirectory("registry-noop-claude-");
             Path codexRoot = Files.createTempDirectory("registry-noop-codex-");
+            Path geminiRoot = Files.createTempDirectory("registry-noop-gemini-");
             ProjectorRegistry registry = new ProjectorRegistry(List.of(
                     new ClaudeProjector(claudeRoot.resolve("skills"), claudeRoot.resolve("plugins")),
-                    new CodexProjector(codexRoot.resolve("skills"), codexRoot.resolve("plugins"))));
+                    new CodexProjector(codexRoot.resolve("skills"), codexRoot.resolve("plugins")),
+                    new GeminiProjector(geminiRoot.resolve("skills"), geminiRoot.resolve("plugins"))));
 
             AgentUnit u = installSkill(h, "widget");
             // No prior apply.
@@ -114,11 +135,13 @@ public final class ProjectorRegistryTest {
             // The "removed" list still contains the planned projections —
             // remove() on a missing target is a no-op, but the registry
             // still records what it tried.
-            assertEquals(2, removed.size(), "registry returns planned projections regardless");
+            assertEquals(3, removed.size(), "registry returns planned projections regardless");
             assertFalse(Files.exists(claudeRoot.resolve("skills").resolve("widget"),
                     LinkOption.NOFOLLOW_LINKS), "no Claude target");
             assertFalse(Files.exists(codexRoot.resolve("skills").resolve("widget"),
                     LinkOption.NOFOLLOW_LINKS), "no Codex target");
+            assertFalse(Files.exists(geminiRoot.resolve("skills").resolve("widget"),
+                    LinkOption.NOFOLLOW_LINKS), "no Gemini target");
         });
 
         return suite.runAll();

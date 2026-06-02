@@ -5,6 +5,7 @@ description = "Example doc-repo for the doc-smoke test_graph — two bindable ma
 
 [[sources]]
 file = "claude-md/review-stance.md"
+agents = ["claude", "codex", "gemini"]
 
 [[sources]]
 file = "claude-md/build-instructions.md"

@@ -13,8 +13,8 @@ import java.util.List;
  * {@code UnprojectIfOrphan} compensation applier) iterate this list to
  * fan a unit out across every agent without coupling to the agent set.
  *
- * <p>{@link #defaultRegistry} wires {@link ClaudeProjector} and
- * {@link CodexProjector}. Tests construct registries with custom
+ * <p>{@link #defaultRegistry} wires {@link ClaudeProjector},
+ * {@link CodexProjector}, and {@link GeminiProjector}. Tests construct registries with custom
  * projector instances pointing at temp dirs.
  */
 public final class ProjectorRegistry {
@@ -28,7 +28,8 @@ public final class ProjectorRegistry {
     public static ProjectorRegistry defaultRegistry() {
         return new ProjectorRegistry(List.of(
                 ClaudeProjector.forDefaultAgent(),
-                CodexProjector.forDefaultAgent()
+                CodexProjector.forDefaultAgent(),
+                GeminiProjector.forDefaultAgent()
         ));
     }
 

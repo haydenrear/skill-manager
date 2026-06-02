@@ -54,6 +54,7 @@ import dev.skillmanager.lock.LockReadWriteTest;
 import dev.skillmanager.lock.LockSchemaVersionTest;
 import dev.skillmanager.project.ClaudeProjectorTest;
 import dev.skillmanager.project.CodexProjectorTest;
+import dev.skillmanager.project.GeminiProjectorTest;
 import dev.skillmanager.project.HarnessPluginCliTest;
 import dev.skillmanager.project.PluginMarketplaceTest;
 import dev.skillmanager.project.ProjectorRegistryTest;
@@ -138,6 +139,7 @@ public class RunTests {
         failures += SyncFromLockScenarioTest.run();
         failures += ClaudeProjectorTest.run();
         failures += CodexProjectorTest.run();
+        failures += GeminiProjectorTest.run();
         failures += ProjectorRegistryTest.run();
         failures += PluginMarketplaceTest.run();
         failures += HarnessPluginCliTest.run();
@@ -154,6 +156,7 @@ public class RunTests {
         failures += ShowNonSkillUnitsTest.run();
         failures += ShowPluginListsContainedSkillsTest.run();
         failures += dev.skillmanager.agent.AgentHomesTest.run();
+        failures += dev.skillmanager.mcp.McpWriterTest.run();
         failures += dev.skillmanager.store.FetcherGitCloneTest.run();
         failures += BindingsTest.run();
         failures += dev.skillmanager.bindings.DocRepoTest.run();

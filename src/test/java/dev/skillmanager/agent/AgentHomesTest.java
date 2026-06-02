@@ -23,7 +23,7 @@ import static dev.skillmanager._lib.test.Tests.assertNotNull;
  * with a {@code skill-manager} entry pointing at a soon-to-be-deleted
  * {@code skill-handler-test-<random>/plugin-marketplace} temp dir. The
  * fix routes every {@code CLAUDE_HOME} / {@code CLAUDE_CONFIG_DIR} /
- * {@code CODEX_HOME} lookup through {@link AgentHomes} so a
+ * {@code CODEX_HOME} / {@code GEMINI_HOME} lookup through {@link AgentHomes} so a
  * thread-local override (installed by {@link TestHarness}) redirects
  * the lookup at a sandbox dir before it can reach the real env vars.
  */
@@ -156,25 +156,33 @@ public final class AgentHomesTest {
                 Path claudeHome = AgentHomes.resolve(AgentHomes.CLAUDE_HOME);
                 Path claudeConfig = AgentHomes.resolve(AgentHomes.CLAUDE_CONFIG_DIR);
                 Path codexHome = AgentHomes.resolve(AgentHomes.CODEX_HOME);
+                Path geminiHome = AgentHomes.resolve(AgentHomes.GEMINI_HOME);
                 assertNotNull(claudeHome, "CLAUDE_HOME override installed");
                 assertNotNull(claudeConfig, "CLAUDE_CONFIG_DIR override installed");
                 assertNotNull(codexHome, "CODEX_HOME override installed");
+                assertNotNull(geminiHome, "GEMINI_HOME override installed");
                 // Sanity: they point at directories the harness created
                 // under its temp root, not at the developer's real home.
                 assertTrue(claudeHome.toString().contains("skill-handler-test-"),
                         "CLAUDE_HOME under harness temp root: " + claudeHome);
                 assertTrue(codexHome.toString().contains("skill-handler-test-"),
                         "CODEX_HOME under harness temp root: " + codexHome);
+                assertTrue(geminiHome.toString().contains("skill-handler-test-"),
+                        "GEMINI_HOME under harness temp root: " + geminiHome);
                 // The dirs actually exist on disk (harness creates them).
                 assertTrue(Files.isDirectory(claudeConfig),
                         "CLAUDE_CONFIG_DIR dir exists");
                 assertTrue(Files.isDirectory(codexHome),
                         "CODEX_HOME dir exists");
+                assertTrue(Files.isDirectory(geminiHome),
+                        "GEMINI_HOME dir exists");
             }
             // After close() the overrides are gone — next harness
             // starts clean instead of inheriting the last test's state.
             assertEquals(null, AgentHomes.resolve(AgentHomes.CLAUDE_HOME),
                     "override cleared on close()");
+            assertEquals(null, AgentHomes.resolve(AgentHomes.GEMINI_HOME),
+                    "Gemini override cleared on close()");
         });
 
         suite.test("ClaudeAgent.pluginsDir reflects the TestHarness sandbox", () -> {
@@ -186,6 +194,20 @@ public final class AgentHomesTest {
                         "ClaudeAgent.pluginsDir routed through sandbox: " + pluginsStr);
                 assertTrue(pluginsStr.endsWith("/.claude/plugins"),
                         "...with the conventional /.claude/plugins suffix");
+            } finally {
+                AgentHomes.clearOverrides();
+            }
+        });
+
+        suite.test("GeminiAgent paths reflect the TestHarness sandbox", () -> {
+            AgentHomes.clearOverrides();
+            try (TestHarness harness = TestHarness.create()) {
+                GeminiAgent agent = new GeminiAgent();
+                assertEquals(harness.geminiHome().resolve("skills"), agent.skillsDir(),
+                        "Gemini skills dir routed through sandbox");
+                assertEquals(harness.geminiHome().resolve("settings.json"), agent.mcpConfigPath(),
+                        "Gemini settings path routed through sandbox");
+                assertEquals("gemini-json", agent.mcpConfigFormat(), "Gemini MCP format");
             } finally {
                 AgentHomes.clearOverrides();
             }

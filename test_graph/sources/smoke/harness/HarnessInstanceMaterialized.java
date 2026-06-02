@@ -12,14 +12,15 @@ import java.nio.file.LinkOption;
 import java.nio.file.Path;
 
 /**
- * Instantiate the smoke harness with all three location flags passed
- * explicitly — {@code --claude-config-dir}, {@code --codex-home},
+ * Instantiate the smoke harness with all agent location flags passed
+ * explicitly — {@code --claude-config-dir}, {@code --codex-home}, {@code --gemini-home},
  * {@code --project-dir} — and verify every projection lands at the
  * agent-discoverable path (not a sandbox dead-letter dir):
  *
  * <ul>
  *   <li>{@code <claudeConfigDir>/skills/pip-cli-skill}  — claude skill symlink</li>
  *   <li>{@code <codexHome>/skills/pip-cli-skill}        — codex skill symlink</li>
+ *   <li>{@code <geminiHome>/skills/pip-cli-skill}       — gemini skill symlink</li>
  *   <li>{@code <claudeConfigDir>/plugins/hello-plugin}  — claude plugin symlink</li>
  *   <li>{@code <projectDir>/docs/agents/<file>.md}      — tracked doc copies</li>
  *   <li>{@code <projectDir>/CLAUDE.md} + {@code AGENTS.md} — managed imports</li>
@@ -39,6 +40,7 @@ public class HarnessInstanceMaterialized {
             .output("instanceId", "string")
             .output("claudeConfigDir", "string")
             .output("codexHome", "string")
+            .output("geminiHome", "string")
             .output("projectDir", "string");
 
     public static void main(String[] args) {
@@ -55,6 +57,7 @@ public class HarnessInstanceMaterialized {
             // sandbox-subdir fallbacks.
             Path claudeConfigDir = Path.of(home, "agent-harness-claude");
             Path codexHome = Path.of(home, "agent-harness-codex");
+            Path geminiHome = Path.of(home, "agent-harness-gemini");
             Path projectDir = Path.of(home, "agent-harness-project");
             String instanceId = "smoke-instance";
 
@@ -63,6 +66,7 @@ public class HarnessInstanceMaterialized {
                     "--id", instanceId,
                     "--claude-config-dir", claudeConfigDir.toString(),
                     "--codex-home", codexHome.toString(),
+                    "--gemini-home", geminiHome.toString(),
                     "--project-dir", projectDir.toString());
             pb.environment().put("SKILL_MANAGER_HOME", home);
             pb.environment().put("SKILL_MANAGER_INSTALL_DIR", repoRoot.toString());
@@ -72,19 +76,24 @@ public class HarnessInstanceMaterialized {
             // Per-agent symlinks land where the agents actually look.
             Path claudeSkill = claudeConfigDir.resolve("skills/pip-cli-skill");
             Path codexSkill = codexHome.resolve("skills/pip-cli-skill");
+            Path geminiSkill = geminiHome.resolve("skills/pip-cli-skill");
             Path claudePlugin = claudeConfigDir.resolve("plugins/hello-plugin");
 
             boolean claudeSkillSym = Files.isSymbolicLink(claudeSkill)
                     && Files.exists(claudeSkill, LinkOption.NOFOLLOW_LINKS);
             boolean codexSkillSym = Files.isSymbolicLink(codexSkill)
                     && Files.exists(codexSkill, LinkOption.NOFOLLOW_LINKS);
+            boolean geminiSkillSym = Files.isSymbolicLink(geminiSkill)
+                    && Files.exists(geminiSkill, LinkOption.NOFOLLOW_LINKS);
             boolean claudePluginSym = Files.isSymbolicLink(claudePlugin)
                     && Files.exists(claudePlugin, LinkOption.NOFOLLOW_LINKS);
 
-            // Plugin must NOT land in codex — Codex doesn't load plugins
+            // Plugin must NOT land in codex/gemini — those runtimes don't load skill-manager plugins
             // and a stray symlink there would be misleading.
             Path codexPluginGhost = codexHome.resolve("plugins/hello-plugin");
             boolean noCodexPlugin = !Files.exists(codexPluginGhost, LinkOption.NOFOLLOW_LINKS);
+            Path geminiPluginGhost = geminiHome.resolve("plugins/hello-plugin");
+            boolean noGeminiPlugin = !Files.exists(geminiPluginGhost, LinkOption.NOFOLLOW_LINKS);
 
             // Docs land in projectDir, not the sandbox or agent dirs.
             Path reviewDoc = projectDir.resolve("docs/agents/review-stance.md");
@@ -114,6 +123,7 @@ public class HarnessInstanceMaterialized {
             String lockJson = lockPresent ? Files.readString(lock) : "";
             boolean lockCarriesClaudePath = lockJson.contains(claudeConfigDir.toString());
             boolean lockCarriesCodexPath = lockJson.contains(codexHome.toString());
+            boolean lockCarriesGeminiPath = lockJson.contains(geminiHome.toString());
             boolean lockCarriesProjectPath = lockJson.contains(projectDir.toString());
 
             // Ledger sanity.
@@ -124,13 +134,13 @@ public class HarnessInstanceMaterialized {
             boolean sourceIsHarness = docLedgerJson.contains("\"HARNESS\"");
 
             boolean pass = rc == 0
-                    && claudeSkillSym && codexSkillSym && claudePluginSym
-                    && noCodexPlugin
+                    && claudeSkillSym && codexSkillSym && geminiSkillSym && claudePluginSym
+                    && noCodexPlugin && noGeminiPlugin
                     && reviewTracked && buildTracked
                     && claudeHasReview && claudeHasBuild && agentsHasReview
                     && noSandboxSkills && noSandboxPlugins
                     && lockPresent && lockCarriesClaudePath
-                    && lockCarriesCodexPath && lockCarriesProjectPath
+                    && lockCarriesCodexPath && lockCarriesGeminiPath && lockCarriesProjectPath
                     && harnessBindingIds && sourceIsHarness;
             NodeResult result = pass
                     ? NodeResult.pass("harness.instance.materialized")
@@ -138,8 +148,10 @@ public class HarnessInstanceMaterialized {
                             "rc=" + rc
                                     + " claudeSkill=" + claudeSkillSym
                                     + " codexSkill=" + codexSkillSym
+                                    + " geminiSkill=" + geminiSkillSym
                                     + " claudePlugin=" + claudePluginSym
                                     + " noCodexPlugin=" + noCodexPlugin
+                                    + " noGeminiPlugin=" + noGeminiPlugin
                                     + " reviewTracked=" + reviewTracked
                                     + " buildTracked=" + buildTracked
                                     + " claudeImports=" + (claudeHasReview && claudeHasBuild)
@@ -149,6 +161,7 @@ public class HarnessInstanceMaterialized {
                                     + " lockPresent=" + lockPresent
                                     + " lockPaths=" + (lockCarriesClaudePath
                                             && lockCarriesCodexPath
+                                            && lockCarriesGeminiPath
                                             && lockCarriesProjectPath)
                                     + " ledgerScoped=" + harnessBindingIds
                                     + " sourceHARNESS=" + sourceIsHarness);
@@ -157,8 +170,10 @@ public class HarnessInstanceMaterialized {
                     .assertion("instantiate_ok", rc == 0)
                     .assertion("claude_skill_at_claude_config_dir", claudeSkillSym)
                     .assertion("codex_skill_at_codex_home", codexSkillSym)
+                    .assertion("gemini_skill_at_gemini_home", geminiSkillSym)
                     .assertion("claude_plugin_at_claude_config_dir", claudePluginSym)
                     .assertion("plugin_not_in_codex", noCodexPlugin)
+                    .assertion("plugin_not_in_gemini", noGeminiPlugin)
                     .assertion("docs_in_project_dir", reviewTracked && buildTracked)
                     .assertion("claude_md_imports_both_docs", claudeHasReview && claudeHasBuild)
                     .assertion("agents_md_imports_codex_doc", agentsHasReview)
@@ -166,13 +181,14 @@ public class HarnessInstanceMaterialized {
                     .assertion("no_dead_letter_sandbox_plugins", noSandboxPlugins)
                     .assertion("lock_file_persisted", lockPresent)
                     .assertion("lock_carries_resolved_paths",
-                            lockCarriesClaudePath && lockCarriesCodexPath && lockCarriesProjectPath)
+                            lockCarriesClaudePath && lockCarriesCodexPath && lockCarriesGeminiPath && lockCarriesProjectPath)
                     .assertion("ledger_binding_ids_are_harness_scoped", harnessBindingIds)
                     .assertion("ledger_source_is_HARNESS", sourceIsHarness)
                     .metric("exitCode", rc)
                     .publish("instanceId", instanceId)
                     .publish("claudeConfigDir", claudeConfigDir.toString())
                     .publish("codexHome", codexHome.toString())
+                    .publish("geminiHome", geminiHome.toString())
                     .publish("projectDir", projectDir.toString());
         });
     }

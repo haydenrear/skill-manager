@@ -60,6 +60,7 @@ public class AgentConfigsCorrect {
                     .redirectErrorStream(true);
             pb.environment().put("SKILL_MANAGER_HOME", fakeSm.toString());
             pb.environment().put("SKILL_MANAGER_INSTALL_DIR", repoRoot.toString());
+            pb.environment().put("GEMINI_HOME", fakeHome.resolve(".gemini").toString());
             // Without this the install in the fake home falls back to
             // http://127.0.0.1:51717 instead of the test gateway's ephemeral port.
             pb.environment().put("SKILL_MANAGER_GATEWAY_URL", gatewayUrl);
@@ -76,13 +77,18 @@ public class AgentConfigsCorrect {
 
             Path claudeJson = fakeHome.resolve(".claude.json");
             Path codexToml = fakeHome.resolve(".codex").resolve("config.toml");
+            Path geminiSettings = fakeHome.resolve(".gemini").resolve("settings.json");
             String claudeText = Files.isRegularFile(claudeJson) ? Files.readString(claudeJson) : "";
             String codexText = Files.isRegularFile(codexToml) ? Files.readString(codexToml) : "";
+            String geminiText = Files.isRegularFile(geminiSettings) ? Files.readString(geminiSettings) : "";
 
             boolean claudeHasEntry = claudeText.contains("\"virtual-mcp-gateway\"");
             boolean claudeHasUrl = claudeText.contains(gatewayUrl);
             boolean codexHasEntry = codexText.contains("[mcp_servers.virtual_mcp_gateway]");
             boolean codexHasUrl = codexText.contains(gatewayUrl);
+            boolean geminiHasEntry = geminiText.contains("\"virtual-mcp-gateway\"");
+            boolean geminiHasUrl = geminiText.contains(gatewayUrl);
+            boolean geminiUsesHttpUrl = geminiText.contains("\"httpUrl\"");
 
             // Idempotency: a second install (of a different skill) must NOT
             // add a duplicate entry. Install a second fixture and re-check.
@@ -97,6 +103,7 @@ public class AgentConfigsCorrect {
                     .redirectErrorStream(true);
             pb2.environment().put("SKILL_MANAGER_HOME", fakeSm.toString());
             pb2.environment().put("SKILL_MANAGER_INSTALL_DIR", repoRoot.toString());
+            pb2.environment().put("GEMINI_HOME", fakeHome.resolve(".gemini").toString());
             pb2.environment().put("SKILL_MANAGER_GATEWAY_URL", gatewayUrl);
             pb2.start().waitFor();
 
@@ -105,29 +112,42 @@ public class AgentConfigsCorrect {
             int gatewayMentionsCodex = countOccurrences(
                     Files.isRegularFile(codexToml) ? Files.readString(codexToml) : "",
                     "[mcp_servers.virtual_mcp_gateway]");
+            int gatewayMentionsGemini = countOccurrences(
+                    Files.isRegularFile(geminiSettings) ? Files.readString(geminiSettings) : "",
+                    "\"virtual-mcp-gateway\"");
 
             boolean idempotentClaude = gatewayMentionsClaude == 1;
             boolean idempotentCodex = gatewayMentionsCodex == 1;
+            boolean idempotentGemini = gatewayMentionsGemini == 1;
 
             boolean ok = rc == 0 && claudeHasEntry && claudeHasUrl
                     && codexHasEntry && codexHasUrl
-                    && idempotentClaude && idempotentCodex;
+                    && geminiHasEntry && geminiHasUrl && geminiUsesHttpUrl
+                    && idempotentClaude && idempotentCodex && idempotentGemini;
             return (ok
                     ? NodeResult.pass("agent.configs.correct")
                     : NodeResult.fail("agent.configs.correct",
                             "rc=" + rc + " claudeEntry=" + claudeHasEntry + " claudeUrl=" + claudeHasUrl
                                     + " codexEntry=" + codexHasEntry + " codexUrl=" + codexHasUrl
+                                    + " geminiEntry=" + geminiHasEntry + " geminiUrl=" + geminiHasUrl
+                                    + " geminiHttpUrl=" + geminiUsesHttpUrl
                                     + " idempotentClaude=" + idempotentClaude
-                                    + " idempotentCodex=" + idempotentCodex))
+                                    + " idempotentCodex=" + idempotentCodex
+                                    + " idempotentGemini=" + idempotentGemini))
                     .assertion("install_ok", rc == 0)
                     .assertion("claude_json_has_gateway_entry", claudeHasEntry)
                     .assertion("claude_json_points_at_gateway_url", claudeHasUrl)
                     .assertion("codex_toml_has_gateway_table", codexHasEntry)
                     .assertion("codex_toml_points_at_gateway_url", codexHasUrl)
+                    .assertion("gemini_settings_has_gateway_entry", geminiHasEntry)
+                    .assertion("gemini_settings_points_at_gateway_url", geminiHasUrl)
+                    .assertion("gemini_settings_uses_httpUrl", geminiUsesHttpUrl)
                     .assertion("claude_entry_not_duplicated", idempotentClaude)
                     .assertion("codex_entry_not_duplicated", idempotentCodex)
+                    .assertion("gemini_entry_not_duplicated", idempotentGemini)
                     .metric("claudeGatewayMentions", gatewayMentionsClaude)
-                    .metric("codexGatewayMentions", gatewayMentionsCodex);
+                    .metric("codexGatewayMentions", gatewayMentionsCodex)
+                    .metric("geminiGatewayMentions", gatewayMentionsGemini);
         });
     }
 

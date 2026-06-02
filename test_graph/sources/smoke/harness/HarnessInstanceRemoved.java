@@ -45,9 +45,10 @@ public class HarnessInstanceRemoved {
             String instanceId = ctx.get("harness.instance.materialized", "instanceId").orElse(null);
             String claudeConfigDir = ctx.get("harness.instance.materialized", "claudeConfigDir").orElse(null);
             String codexHome = ctx.get("harness.instance.materialized", "codexHome").orElse(null);
+            String geminiHome = ctx.get("harness.instance.materialized", "geminiHome").orElse(null);
             String projectDir = ctx.get("harness.instance.materialized", "projectDir").orElse(null);
             if (home == null || instanceId == null || claudeConfigDir == null
-                    || codexHome == null || projectDir == null) {
+                    || codexHome == null || geminiHome == null || projectDir == null) {
                 return NodeResult.fail("harness.instance.removed", "missing upstream context");
             }
             Path repoRoot = Path.of(System.getProperty("user.dir")).resolve("..").normalize();
@@ -64,12 +65,15 @@ public class HarnessInstanceRemoved {
             boolean sandboxGone = !Files.exists(sandbox);
 
             // Every projection the instantiate node materialized must be
-            // unmaterialized — across all three target paths.
+            // unmaterialized — across all target paths.
             boolean claudeSkillGone = !Files.exists(
                     Path.of(claudeConfigDir, "skills/pip-cli-skill"),
                     java.nio.file.LinkOption.NOFOLLOW_LINKS);
             boolean codexSkillGone = !Files.exists(
                     Path.of(codexHome, "skills/pip-cli-skill"),
+                    java.nio.file.LinkOption.NOFOLLOW_LINKS);
+            boolean geminiSkillGone = !Files.exists(
+                    Path.of(geminiHome, "skills/pip-cli-skill"),
                     java.nio.file.LinkOption.NOFOLLOW_LINKS);
             boolean claudePluginGone = !Files.exists(
                     Path.of(claudeConfigDir, "plugins/hello-plugin"),
@@ -115,7 +119,7 @@ public class HarnessInstanceRemoved {
                     Path.of(home, "docs", "hello-doc-repo", "skill-manager.toml"));
 
             boolean pass = rc == 0 && sandboxGone && ledgersCleaned
-                    && claudeSkillGone && codexSkillGone && claudePluginGone
+                    && claudeSkillGone && codexSkillGone && geminiSkillGone && claudePluginGone
                     && projectDocsCleared
                     && templateStays && skillStays && pluginStays && docStays;
             NodeResult result = pass
@@ -125,6 +129,7 @@ public class HarnessInstanceRemoved {
                                     + " ledgersCleaned=" + ledgersCleaned
                                     + " claudeSkillGone=" + claudeSkillGone
                                     + " codexSkillGone=" + codexSkillGone
+                                    + " geminiSkillGone=" + geminiSkillGone
                                     + " claudePluginGone=" + claudePluginGone
                                     + " projectDocsCleared=" + projectDocsCleared
                                     + " templateStays=" + templateStays
@@ -138,6 +143,7 @@ public class HarnessInstanceRemoved {
                     .assertion("harness_ids_purged_from_ledger", ledgersCleaned)
                     .assertion("claude_skill_unmaterialized", claudeSkillGone)
                     .assertion("codex_skill_unmaterialized", codexSkillGone)
+                    .assertion("gemini_skill_unmaterialized", geminiSkillGone)
                     .assertion("claude_plugin_unmaterialized", claudePluginGone)
                     .assertion("project_dir_doc_imports_cleared", projectDocsCleared)
                     .assertion("template_survives_rm", templateStays)

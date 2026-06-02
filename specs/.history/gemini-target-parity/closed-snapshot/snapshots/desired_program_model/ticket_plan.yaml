@@ -1,0 +1,207 @@
+version: 1
+name: gemini-target-parity
+updated: 2026-06-02
+purpose: >
+  Add Gemini as a first-class skill-manager target wherever Claude and Codex
+  are currently targeted: MCP gateway config, direct SKILL.md skill projection,
+  harness materialization, docs, and explicit plugin handling.
+
+planning_rules:
+  current_model_rule: Update specs/current after each production slice lands as a whole-program working copy, not a ticket projection.
+  unit_validation_rule: Run current-model TLC and adapter/unit tests before graph execution.
+  semantic_model_rule: Do not model tests, test graph nodes, CI jobs, or validation scripts as TLA+ program state/actions.
+  desired_sync_rule: Update this file and spec_manifest.yaml whenever scope, order, acceptance checks, or status changes.
+  promotion_rule: When specs/current equals specs/desired_program_model, promote the converged model to specs/program_model.
+
+status:
+  workflow: ticket
+  active_ticket: null
+  active_ticket_title: null
+  desired_module: SkillManager
+  phase: closed
+
+service_catalog:
+  existing_boundaries:
+    - Claude skill projector to ~/.claude/skills
+    - Codex skill projector to ~/.codex/skills
+    - Claude MCP config in ~/.claude.json
+    - Codex MCP config in ~/.codex/config.toml
+    - Harness instance materialization for Claude and Codex target paths
+    - Doc-repo imports into CLAUDE.md and AGENTS.md
+  desired_boundaries:
+    - Gemini skill projector to ~/.gemini/skills
+    - Gemini MCP config in ~/.gemini/settings.json
+    - Harness instance materialization for Gemini target paths
+    - Doc-repo imports into GEMINI.md
+    - Explicit Gemini plugin policy
+  adapter_boundaries:
+    - ProjectorRegistry default fanout
+    - McpWriter agent config writer/remover
+    - HarnessInstantiator binding rows
+    - DocRepoBinder import directives
+  known_gaps:
+    - Gemini plugin parity is not the same as Claude/Codex plugins; Gemini extensions may be a later mapping target.
+
+tickets:
+  - id: GEMINI-001
+    title: "Add Gemini agent, MCP config, and skill projector"
+    status: closed
+    depends_on: []
+    objective: >
+      Make ordinary installs and syncs project SKILL units to Gemini and write
+      the virtual MCP gateway into Gemini settings.
+    desired_actions:
+      - InstallUnit
+      - SyncUnit
+      - RemoveUnit
+      - EnsureGateway
+    implementation_scope:
+      - src/main/java/dev/skillmanager/agent/Agent.java
+      - src/main/java/dev/skillmanager/agent/AgentHomes.java
+      - src/main/java/dev/skillmanager/agent/GeminiAgent.java
+      - src/main/java/dev/skillmanager/project/GeminiProjector.java
+      - src/main/java/dev/skillmanager/project/ProjectorRegistry.java
+      - src/main/java/dev/skillmanager/mcp/McpWriter.java
+      - specs/current
+    current_increment:
+      model_state:
+        - Agents includes GeminiAgent.
+        - cli_agent_projections includes <<GeminiAgent, unit>> for projected installed units.
+      model_actions:
+        - InstallUnit
+        - SyncUnit
+        - RemoveUnit
+        - EnsureGateway
+      adapters:
+        - pending
+      unit_tests:
+        - GeminiAgent path tests added in AgentHomesTest.
+        - GeminiProjector projection tests added.
+        - McpWriter gemini-json settings tests added.
+        - ProjectorRegistry fanout tests updated for Gemini.
+      graph_after_unit_pass:
+        - Smoke AgentSkillSymlinks updated for Gemini.
+        - Smoke AgentConfigsCorrect updated for Gemini settings.json.
+    acceptance:
+      commands:
+        - bash specs/current/run_tlc.sh specs/current/SkillManager.tla specs/current/MC.cfg
+        - ./gradlew test --tests '*Gemini*'
+      assertions:
+        - Gemini skill target is ~/.gemini/skills/<name>.
+        - Gemini MCP entry is stored under settings.json mcpServers.virtual-mcp-gateway.httpUrl.
+        - Existing Claude and Codex projections are unchanged.
+      evidence:
+        - jbang RunTests.java passed on 2026-06-02
+        - bash specs/current/run_tlc.sh specs/current/SkillManager.tla specs/current/MC.cfg passed on 2026-06-02
+        - test_graph smoke report: test_graph/build/validation-reports/20260602-202259/report.md
+
+  - id: GEMINI-002
+    title: "Add Gemini harness materialization"
+    status: closed
+    depends_on: [GEMINI-001]
+    objective: >
+      Carry Gemini target paths through harness instantiate, sync, remove, locks,
+      and binding backfill.
+    desired_actions:
+      - SyncHarness
+    implementation_scope:
+      - src/main/java/dev/skillmanager/bindings/HarnessInstantiator.java
+      - src/main/java/dev/skillmanager/bindings/HarnessInstanceLock.java
+      - src/main/java/dev/skillmanager/bindings/BindingBackfill.java
+      - harness CLI/app argument parsing surfaces
+      - src/main/java/dev/skillmanager/commands/HarnessCommand.java
+      - src/main/java/dev/skillmanager/effects/LiveInterpreter.java
+    current_increment:
+      model_state:
+        - Harness instances carry Gemini skill projection rows.
+        - Harness instance locks persist geminiHome for deterministic sync.
+      model_actions:
+        - SyncHarness
+      adapters:
+        - pending
+      unit_tests:
+        - Harness materialization tests extended with Gemini skill path.
+      graph_after_unit_pass:
+        - Smoke harness instance materialized/removed fixtures updated for Gemini.
+        - EnvPrepared publishes geminiHome.
+    acceptance:
+      commands: []
+      assertions:
+        - Harness skills materialize to Claude, Codex, and Gemini target paths.
+        - Harness plugin behavior remains Claude/Codex-specific until GEMINI-004.
+      evidence:
+        - jbang RunTests.java passed on 2026-06-02
+        - test_graph harness-smoke report: test_graph/build/validation-reports/20260602-202157/report.md
+        - test_graph smoke report: test_graph/build/validation-reports/20260602-202259/report.md
+
+  - id: GEMINI-003
+    title: "Add Gemini doc-repo target"
+    status: closed
+    depends_on: [GEMINI-001]
+    objective: >
+      Allow doc-repo sources to target Gemini and render managed imports into
+      GEMINI.md.
+    desired_actions:
+      - BindDocRepo
+      - SyncDocRepo
+    implementation_scope:
+      - src/main/java/dev/skillmanager/bindings/DocRepoBinder.java
+      - src/main/java/dev/skillmanager/model/DocRepoParser.java
+      - src/main/java/dev/skillmanager/validation/MarkdownImportValidator.java
+    current_increment:
+      model_state:
+        - cli_import_directives includes Gemini doc targets.
+      model_actions:
+        - BindDocRepo
+        - SyncDocRepo
+      adapters:
+        - pending
+      unit_tests:
+        - Doc binding tests for GEMINI.md added in DocRepoTest.
+      graph_after_unit_pass:
+        - Smoke doc fixtures updated for Gemini imports.
+    acceptance:
+      commands: []
+      assertions:
+        - A source with agent gemini creates/updates GEMINI.md.
+        - Existing CLAUDE.md and AGENTS.md behavior is unchanged.
+      evidence:
+        - jbang RunTests.java passed on 2026-06-02
+        - test_graph doc-smoke report: test_graph/build/validation-reports/20260602-202151/report.md
+
+  - id: GEMINI-004
+    title: "Define Gemini plugin policy"
+    status: closed
+    depends_on: [GEMINI-001]
+    objective: >
+      Decide whether skill-manager plugins map to Gemini extensions. Current
+      policy is explicit unsupported non-projection rather than assuming Gemini
+      extension compatibility.
+    desired_actions:
+      - SyncUnit
+      - RemoveUnit
+    implementation_scope:
+      - src/main/java/dev/skillmanager/project/HarnessPluginCli.java
+      - src/main/java/dev/skillmanager/project/PluginMarketplace.java
+      - src/main/java/dev/skillmanager/effects/LiveInterpreter.java
+    current_increment:
+      model_state:
+        - Gemini plugin handling is explicitly unsupported for projection.
+      model_actions:
+        - SyncUnit
+        - RemoveUnit
+      adapters:
+        - pending
+      unit_tests:
+        - GeminiProjectorTest asserts PLUGIN returns no projection.
+        - ProjectorRegistryTest asserts plugins do not land in Gemini plugin or skill paths.
+      graph_after_unit_pass:
+        - Harness smoke asserts plugins do not land in Gemini paths.
+    acceptance:
+      commands: []
+      assertions:
+        - Gemini plugin behavior is visible as explicit non-projection policy and graph absence assertions.
+        - Claude and Codex plugin flows are unchanged.
+      evidence:
+        - jbang RunTests.java passed on 2026-06-02
+        - test_graph harness-smoke report: test_graph/build/validation-reports/20260602-202157/report.md

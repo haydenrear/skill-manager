@@ -7,8 +7,9 @@ import java.util.Optional;
 /**
  * {@link AgentUnit} carrier for a doc-repo (#48). A doc-repo is a
  * manifested collection of markdown files — each declared as a
- * {@link DocSource} — that bind into project {@code CLAUDE.md} /
- * {@code AGENTS.md} via tracked-copy + {@code @}-import pairs.
+ * {@link DocSource} — that bind into project {@code CLAUDE.md},
+ * {@code AGENTS.md}, and {@code GEMINI.md} via tracked-copy +
+ * {@code @}-import pairs.
  *
  * <p>Doc-repos do not project into any agent's default skill/plugin
  * dir; they're bound explicitly through

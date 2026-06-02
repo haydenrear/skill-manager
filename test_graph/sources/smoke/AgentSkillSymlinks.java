@@ -11,8 +11,9 @@ import java.nio.file.Path;
 
 /**
  * Locks in the install-time symlink contract: every {@code install} drops
- * a symlink at {@code <CLAUDE_HOME>/.claude/skills/<name>} and
- * {@code <CODEX_HOME>/skills/<name>} pointing back at the store path
+ * a symlink at {@code <CLAUDE_HOME>/.claude/skills/<name>},
+ * {@code <CODEX_HOME>/skills/<name>}, and
+ * {@code <GEMINI_HOME>/skills/<name>} pointing back at the store path
  * {@code <SKILL_MANAGER_HOME>/skills/<name>}.
  *
  * <p>Without that, the agent runtime can't see the skill. The behavior
@@ -36,29 +37,35 @@ public class AgentSkillSymlinks {
             String home = ctx.get("env.prepared", "home").orElse(null);
             String claudeHome = ctx.get("env.prepared", "claudeHome").orElse(null);
             String codexHome = ctx.get("env.prepared", "codexHome").orElse(null);
-            if (home == null || claudeHome == null || codexHome == null) {
+            String geminiHome = ctx.get("env.prepared", "geminiHome").orElse(null);
+            if (home == null || claudeHome == null || codexHome == null || geminiHome == null) {
                 return NodeResult.fail("agent.skill.symlinks", "missing env.prepared context");
             }
 
             Path storeSkills = Path.of(home, "skills");
             Path claudeSkills = Path.of(claudeHome).resolve(".claude").resolve("skills");
             Path codexSkills = Path.of(codexHome).resolve("skills");
+            Path geminiSkills = Path.of(geminiHome).resolve("skills");
 
             String[] skills = {"hello-skill", "umbrella-skill", "pip-cli-skill", "npm-cli-skill"};
 
             StringBuilder errs = new StringBuilder();
             boolean[] claudePresent = new boolean[skills.length];
             boolean[] codexPresent = new boolean[skills.length];
+            boolean[] geminiPresent = new boolean[skills.length];
             boolean[] claudeIsLink = new boolean[skills.length];
             boolean[] codexIsLink = new boolean[skills.length];
+            boolean[] geminiIsLink = new boolean[skills.length];
             boolean[] claudePointsToStore = new boolean[skills.length];
             boolean[] codexPointsToStore = new boolean[skills.length];
+            boolean[] geminiPointsToStore = new boolean[skills.length];
 
             for (int i = 0; i < skills.length; i++) {
                 String s = skills[i];
                 Path expectedTarget = storeSkills.resolve(s);
                 Path claudeLink = claudeSkills.resolve(s);
                 Path codexLink = codexSkills.resolve(s);
+                Path geminiLink = geminiSkills.resolve(s);
 
                 claudePresent[i] = Files.exists(claudeLink, LinkOption.NOFOLLOW_LINKS);
                 claudeIsLink[i] = Files.isSymbolicLink(claudeLink);
@@ -69,6 +76,10 @@ public class AgentSkillSymlinks {
                 codexIsLink[i] = Files.isSymbolicLink(codexLink);
                 codexPointsToStore[i] = codexIsLink[i]
                         && resolvedEquals(codexLink, expectedTarget);
+                geminiPresent[i] = Files.exists(geminiLink, LinkOption.NOFOLLOW_LINKS);
+                geminiIsLink[i] = Files.isSymbolicLink(geminiLink);
+                geminiPointsToStore[i] = geminiIsLink[i]
+                        && resolvedEquals(geminiLink, expectedTarget);
 
                 if (!(claudePresent[i] && claudeIsLink[i] && claudePointsToStore[i])) {
                     errs.append("claude/").append(s).append(": present=").append(claudePresent[i])
@@ -80,6 +91,12 @@ public class AgentSkillSymlinks {
                     errs.append("codex/").append(s).append(": present=").append(codexPresent[i])
                             .append(" link=").append(codexIsLink[i])
                             .append(" -> ").append(readLinkSafe(codexLink))
+                            .append(" (want ").append(expectedTarget).append("); ");
+                }
+                if (!(geminiPresent[i] && geminiIsLink[i] && geminiPointsToStore[i])) {
+                    errs.append("gemini/").append(s).append(": present=").append(geminiPresent[i])
+                            .append(" link=").append(geminiIsLink[i])
+                            .append(" -> ").append(readLinkSafe(geminiLink))
                             .append(" (want ").append(expectedTarget).append("); ");
                 }
             }
@@ -94,7 +111,9 @@ public class AgentSkillSymlinks {
                         .assertion("claude_" + s + "_symlinked", claudePresent[i] && claudeIsLink[i])
                         .assertion("claude_" + s + "_targets_store", claudePointsToStore[i])
                         .assertion("codex_" + s + "_symlinked", codexPresent[i] && codexIsLink[i])
-                        .assertion("codex_" + s + "_targets_store", codexPointsToStore[i]);
+                        .assertion("codex_" + s + "_targets_store", codexPointsToStore[i])
+                        .assertion("gemini_" + s + "_symlinked", geminiPresent[i] && geminiIsLink[i])
+                        .assertion("gemini_" + s + "_targets_store", geminiPointsToStore[i]);
             }
             return result;
         });

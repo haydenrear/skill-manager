@@ -77,11 +77,14 @@ public final class TestHarness implements AutoCloseable {
         Path claudeHome = tmp.resolve("claude-home");
         Path claudeConfigDir = claudeHome.resolve(".claude");
         Path codexHome = tmp.resolve("codex-home");
+        Path geminiHome = tmp.resolve("gemini-home");
         Files.createDirectories(claudeConfigDir);
         Files.createDirectories(codexHome);
+        Files.createDirectories(geminiHome);
         AgentHomes.setOverride(AgentHomes.CLAUDE_HOME, claudeHome);
         AgentHomes.setOverride(AgentHomes.CLAUDE_CONFIG_DIR, claudeConfigDir);
         AgentHomes.setOverride(AgentHomes.CODEX_HOME, codexHome);
+        AgentHomes.setOverride(AgentHomes.GEMINI_HOME, geminiHome);
 
         SkillStore store = new SkillStore(tmp);
         store.init();
@@ -99,6 +102,9 @@ public final class TestHarness implements AutoCloseable {
      * marketplace registrations).
      */
     public Path codexHome() { return tmpRoot.resolve("codex-home"); }
+
+    /** Sandboxed Gemini home (contains settings.json and skills/). */
+    public Path geminiHome() { return tmpRoot.resolve("gemini-home"); }
 
     @Override
     public void close() {

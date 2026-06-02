@@ -19,10 +19,11 @@ import java.nio.file.Path;
  * <ul>
  *   <li>Two tracked copies under {@code <project>/docs/agents/}.</li>
  *   <li>{@code CLAUDE.md} carries BOTH {@code @docs/agents/<file>.md}
- *       lines (review-stance agents = [claude, codex];
+ *       lines (review-stance agents = [claude, codex, gemini];
  *       build-instructions agents = [claude]).</li>
  *   <li>{@code AGENTS.md} carries ONLY review-stance (build-
  *       instructions is claude-only).</li>
+ *   <li>{@code GEMINI.md} carries ONLY review-stance.</li>
  *   <li>Ledger holds two Binding rows for hello-doc-repo, both
  *       {@code source=EXPLICIT}.</li>
  * </ul>
@@ -66,16 +67,20 @@ public class DocBindTwoSources {
             Path buildTracked = project.resolve("docs/agents/build-instructions.md");
             Path claudeMd = project.resolve("CLAUDE.md");
             Path agentsMd = project.resolve("AGENTS.md");
+            Path geminiMd = project.resolve("GEMINI.md");
 
             boolean reviewPresent = Files.isRegularFile(reviewTracked);
             boolean buildPresent = Files.isRegularFile(buildTracked);
             String claudeContent = Files.isRegularFile(claudeMd) ? Files.readString(claudeMd) : "";
             String agentsContent = Files.isRegularFile(agentsMd) ? Files.readString(agentsMd) : "";
+            String geminiContent = Files.isRegularFile(geminiMd) ? Files.readString(geminiMd) : "";
 
             boolean claudeHasReview = claudeContent.contains("@docs/agents/review-stance.md");
             boolean claudeHasBuild = claudeContent.contains("@docs/agents/build-instructions.md");
             boolean agentsHasReview = agentsContent.contains("@docs/agents/review-stance.md");
             boolean agentsHasNoBuild = !agentsContent.contains("@docs/agents/build-instructions.md");
+            boolean geminiHasReview = geminiContent.contains("@docs/agents/review-stance.md");
+            boolean geminiHasNoBuild = !geminiContent.contains("@docs/agents/build-instructions.md");
 
             // Ledger should now have 2 Binding rows for hello-doc-repo.
             Path ledger = Path.of(home, "installed", "hello-doc-repo.projections.json");
@@ -88,6 +93,7 @@ public class DocBindTwoSources {
             boolean pass = rc == 0 && reviewPresent && buildPresent
                     && claudeHasReview && claudeHasBuild
                     && agentsHasReview && agentsHasNoBuild
+                    && geminiHasReview && geminiHasNoBuild
                     && ledgerHasReview && ledgerHasBuild;
             NodeResult result = pass
                     ? NodeResult.pass("doc.bind.two.sources")
@@ -98,6 +104,8 @@ public class DocBindTwoSources {
                                     + " claudeHasBuild=" + claudeHasBuild
                                     + " agentsHasReview=" + agentsHasReview
                                     + " agentsHasNoBuild=" + agentsHasNoBuild
+                                    + " geminiHasReview=" + geminiHasReview
+                                    + " geminiHasNoBuild=" + geminiHasNoBuild
                                     + " ledgerHasReview=" + ledgerHasReview
                                     + " ledgerHasBuild=" + ledgerHasBuild);
             return result
@@ -108,6 +116,7 @@ public class DocBindTwoSources {
                     .assertion("claude_imports_review", claudeHasReview)
                     .assertion("claude_imports_build", claudeHasBuild)
                     .assertion("agents_imports_review_only", agentsHasReview && agentsHasNoBuild)
+                    .assertion("gemini_imports_review_only", geminiHasReview && geminiHasNoBuild)
                     .assertion("ledger_two_bindings", ledgerHasReview && ledgerHasBuild)
                     .metric("exitCode", rc)
                     .publish("projectRoot", project.toString());
