@@ -66,9 +66,11 @@ modeled_boundary_status:
     source: issue 75 --resolve-libs requirement
   child_homes:
     status: desired
-    actions: [InstantiateChildHomeFromHarness]
+    actions: [InstantiateChildHomeFromHarness, ScaffoldProjectChildHome]
     state:
       - project_model.child_homes
+      - project_model.project_child_homes
+      - project_model.child_home_parents
       - project_model.child_home_harnesses
       - project_model.child_home_agent_configs
       - project_model.child_home_units
@@ -76,6 +78,18 @@ modeled_boundary_status:
       - project_model.child_home_tool_shims
     source: ticket/scaffold-skill-manager-child/skill-manager-child.md
     rule: child homes are harness-derived Skill Manager homes with child-local agent homes
+  project_as_harness:
+    status: desired
+    actions: [ScaffoldProjectChildHome]
+    state:
+      - project_model.project_child_homes
+      - project_model.child_home_parents
+      - project_model.child_home_agent_configs
+      - project_model.child_home_units
+      - project_model.child_home_mcp_servers
+      - project_model.child_home_tool_shims
+    source: follow-up design note in conversation
+    rule: a skill-manager-project.toml checkout is the harness for its project-local child Skill Manager home
 
 program_domains:
   - project manifest dependency graph
@@ -83,6 +97,8 @@ program_domains:
   - project-local uv environment realization
   - source library checkout provenance
   - harness-derived child Skill Manager home realization
+  - project manifest as project harness
+  - recursive parent-child Skill Manager home registry
   - agent-facing project and child-home documentation
 
 implementation_sources:
@@ -105,6 +121,7 @@ implementation_sources:
       - harness command surface
       - agent home/config projectors
       - child Skill Manager home bootstrapper
+      - project child-home scaffolder
 
 adapter_plan:
   desired_new_ports:
@@ -113,12 +130,14 @@ adapter_plan:
     - SkillManagerCli.materialize_project_env
     - SkillManagerCli.resolve_project_libs
     - SkillManagerCli.instantiate_child_home_from_harness
+    - SkillManagerCli.scaffold_project_child_home
   desired_adapters:
     - ProjectManifestAdapter
     - ProjectDependencyResolverAdapter
     - ProjectEnvMaterializerAdapter
     - ProjectLibResolverAdapter
     - ChildHomeHarnessAdapter
+    - ProjectChildHomeScaffolderAdapter
     - SkillManagerSkillDocsAdapter
 
 guardrails:
@@ -132,5 +151,12 @@ guardrails:
     - Plain unit removal rejects project-bound units.
     - Plain unit removal rejects child-home-bound units.
   child_homes:
-    - Child homes must be tied to a harness.
+    - Child homes must be tied to either an explicit harness or a project manifest-as-harness.
+    - Project child homes may use the project manifest itself as their harness.
+    - Every child home must have a known non-self parent Skill Manager home.
+    - Parent homes may themselves be child homes; do not rely on a distinguished global root.
     - Child-home MCP servers and tool shims derive from harness-selected units.
+  validation:
+    - TLC and current-model adapter/unit tests run before graph execution.
+    - The affected test_graph graph runs after each landed slice.
+    - python skills/test_graph/scripts/run.py --all is the promotion regression gate.

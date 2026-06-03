@@ -21,6 +21,7 @@ sources:
 planning_rules:
   current_model_rule: Update specs/current after each production slice lands as a whole-program working copy of specs/program_model, not a ticket projection.
   unit_validation_rule: Run current-model TLC and adapter/unit tests before adding graph execution.
+  graph_validation_rule: Run the narrow affected test_graph graph after unit/current-model checks pass; run all graphs before promotion or when shared install/bind/gateway behavior changes.
   semantic_model_rule: Do not add test graph nodes, pytest jobs, CI workflow steps, integration harnesses, or validation scripts as TLA+ program state/actions.
   evidence_rule: Record tests and graph runs as evidence for semantic program actions in manifests or ticket status.
   promotion_rule: When specs/current equals specs/desired_program_model, promote the converged model to specs/program_model.
@@ -35,6 +36,34 @@ status:
     command: bash specs/desired_program_model/run_tlc.sh specs/desired_program_model/SkillManager.tla specs/desired_program_model/MC.cfg
     status: passed
     result: no invariant violations
+    states_generated: 9960801
+    distinct_states: 398432
+    depth: 21
+  test_graph:
+    discovery:
+      command: python skills/test_graph/scripts/discover.py
+      status: passed
+      evidence: console output from this planning turn
+    plans:
+      smoke:
+        command: python skills/test_graph/scripts/discover.py smoke
+        status: passed
+      onboard:
+        command: python skills/test_graph/scripts/discover.py onboard
+        status: passed
+      harness-smoke:
+        command: python skills/test_graph/scripts/discover.py harness-smoke
+        status: passed
+    baseline_regression:
+      command: python skills/test_graph/scripts/run.py smoke
+      status: passed
+      evidence:
+        - test_graph/build/validation-reports/20260603-011307/report.md
+        - test_graph/build/validation-reports/20260603-011307/summary.json
+    regression_before_promotion:
+      command: python skills/test_graph/scripts/run.py --all
+      status: pending
+      evidence: []
 
 service_catalog:
   existing_boundaries:
@@ -56,6 +85,9 @@ service_catalog:
     - generated .skill-manager/env.md as documentation, not source of truth
     - libs/ source checkout resolution with locked git provenance
     - harness-derived child Skill Manager homes
+    - skill-manager-project.toml manifests as project harnesses
+    - project .skill-manager directories as parent-aware child Skill Manager homes
+    - recursive child-home awareness where any Skill Manager home may parent another home
     - child .skill-manager, .codex, .claude, .gemini roots and env variables
   adapter_boundaries:
     - project manifest parser and resolver
@@ -64,6 +96,7 @@ service_catalog:
     - uv env renderer/sync runner
     - libs git resolver
     - child-home harness instantiator
+    - project child-home scaffolder
   known_gaps:
     - Exact CLI command names are not final.
     - Env cache keying by dependency spec, project, or lock hash is still open.
@@ -92,13 +125,18 @@ tickets:
       unit_tests:
         - parse project manifest with skills/plugins/harness/doc/env/lib sections
         - reject unknown or malformed project references
-      graph_after_unit_pass: []
-    acceptance:
-      commands:
-        - bash specs/current/run_tlc.sh specs/current/SkillManager.tla specs/current/MC.cfg
-      assertions:
-        - Project manifests are registered without installing or materializing dependencies.
-        - Env and lib intent is recorded as portable project intent.
+      graph_after_unit_pass:
+        - python skills/test_graph/scripts/run.py smoke
+        - python skills/test_graph/scripts/run.py onboard
+      acceptance:
+        commands:
+          - bash specs/current/run_tlc.sh specs/current/SkillManager.tla specs/current/MC.cfg
+          - python skills/test_graph/scripts/run.py smoke
+          - python skills/test_graph/scripts/run.py onboard
+        assertions:
+          - Project manifests are registered without installing or materializing dependencies.
+          - Env and lib intent is recorded as portable project intent.
+          - Existing install, registry, gateway, and onboarding flows still pass externally.
       evidence: []
 
   - id: ISSUE-75-2
@@ -128,14 +166,23 @@ tickets:
         - binds selected doc repo sources into a project
         - registers project for future sync and upgrade
         - protects project-bound units from plain remove
-      graph_after_unit_pass: []
-    acceptance:
-      commands:
-        - bash specs/current/run_tlc.sh specs/current/SkillManager.tla specs/current/MC.cfg
-      assertions:
-        - Project locks and registrations only exist for manifests.
-        - Project resolved units are installed in SKILL_MANAGER_HOME.
-        - Project doc bindings have managed copies and import directives.
+      graph_after_unit_pass:
+        - python skills/test_graph/scripts/run.py smoke
+        - python skills/test_graph/scripts/run.py doc-smoke
+        - python skills/test_graph/scripts/run.py harness-smoke
+        - python skills/test_graph/scripts/run.py plugin-smoke
+      acceptance:
+        commands:
+          - bash specs/current/run_tlc.sh specs/current/SkillManager.tla specs/current/MC.cfg
+          - python skills/test_graph/scripts/run.py smoke
+          - python skills/test_graph/scripts/run.py doc-smoke
+          - python skills/test_graph/scripts/run.py harness-smoke
+          - python skills/test_graph/scripts/run.py plugin-smoke
+        assertions:
+          - Project locks and registrations only exist for manifests.
+          - Project resolved units are installed in SKILL_MANAGER_HOME.
+          - Project doc bindings have managed copies and import directives.
+          - External install, doc projection, harness, plugin, CLI, and MCP flows still pass.
       evidence: []
 
   - id: ISSUE-75-3
@@ -165,14 +212,19 @@ tickets:
         - generated env.md is documentation only
         - sm env sync runs uv against .skill-manager/envs/<env>
         - sm env run executes through the generated uv project
-      graph_after_unit_pass: []
-    acceptance:
-      commands:
-        - bash specs/current/run_tlc.sh specs/current/SkillManager.tla specs/current/MC.cfg
-      assertions:
-        - Env realizations always have locks.
-        - Env docs only exist for realized envs.
-        - Importable packages are vendored/project-local, not inherited from a shared home venv.
+      graph_after_unit_pass:
+        - python skills/test_graph/scripts/run.py smoke
+        - python skills/test_graph/scripts/run.py skill-dev-smoke
+      acceptance:
+        commands:
+          - bash specs/current/run_tlc.sh specs/current/SkillManager.tla specs/current/MC.cfg
+          - python skills/test_graph/scripts/run.py smoke
+          - python skills/test_graph/scripts/run.py skill-dev-smoke
+        assertions:
+          - Env realizations always have locks.
+          - Env docs only exist for realized envs.
+          - Importable packages are vendored/project-local, not inherited from a shared home venv.
+          - External CLI, MCP, and skill-dev flows still work with the project env layer present.
       evidence: []
 
   - id: ISSUE-75-4
@@ -199,13 +251,18 @@ tickets:
         - resolves generic git coord to commit sha
         - ensures libs/ is ignored
         - records resolved hashes in project lock
-      graph_after_unit_pass: []
-    acceptance:
-      commands:
-        - bash specs/current/run_tlc.sh specs/current/SkillManager.tla specs/current/MC.cfg
-      assertions:
-        - Lib locks track resolved checkouts exactly.
-        - Project lock state contains portable source identity plus resolved commit.
+      graph_after_unit_pass:
+        - python skills/test_graph/scripts/run.py source-tracking
+        - python skills/test_graph/scripts/run.py git-latest-source-tracking
+      acceptance:
+        commands:
+          - bash specs/current/run_tlc.sh specs/current/SkillManager.tla specs/current/MC.cfg
+          - python skills/test_graph/scripts/run.py source-tracking
+          - python skills/test_graph/scripts/run.py git-latest-source-tracking
+        assertions:
+          - Lib locks track resolved checkouts exactly.
+          - Project lock state contains portable source identity plus resolved commit.
+          - External source-tracking and git-latest sync behavior still pass.
       evidence: []
 
   - id: ISSUE-75-5
@@ -237,20 +294,75 @@ tickets:
         - writes agent config/env pointing at child home paths
         - exposes harness-selected CLI and MCP tools through child-local shims
         - protects child-home units from plain remove in the parent
-      graph_after_unit_pass: []
-    acceptance:
-      commands:
-        - bash specs/current/run_tlc.sh specs/current/SkillManager.tla specs/current/MC.cfg
-      assertions:
-        - Child homes are always tied to a harness.
-        - Child-home units come from parent-installed harness units.
-        - Child-home MCP servers and tool shims derive from those units.
+      graph_after_unit_pass:
+        - python skills/test_graph/scripts/run.py harness-smoke
+        - python skills/test_graph/scripts/run.py smoke
+      acceptance:
+        commands:
+          - bash specs/current/run_tlc.sh specs/current/SkillManager.tla specs/current/MC.cfg
+          - python skills/test_graph/scripts/run.py harness-smoke
+          - python skills/test_graph/scripts/run.py smoke
+        assertions:
+          - Child homes are always tied to a harness.
+          - Child-home units come from parent-installed harness units.
+          - Child-home MCP servers and tool shims derive from those units.
+          - External harness instantiation and baseline install/MCP flows still pass.
       evidence: []
 
   - id: ISSUE-75-6
+    title: Scaffold project .skill-manager as a child home
+    status: pending
+    depends_on: [ISSUE-75-2, ISSUE-75-3]
+    objective: >
+      Treat a skill-manager-project.toml checkout as the harness for that
+      project. When the project is resolved, scaffold the project-local
+      .skill-manager as a child Skill Manager home, create .codex, .claude,
+      and .gemini agent roots, point agent home variables at the child, and
+      register the parent-child relationship with the parent Skill Manager
+      home. Parent awareness must be recursive: any Skill Manager home can
+      have children; the model does not depend on a distinguished global root.
+    desired_actions:
+      - ScaffoldProjectChildHome
+    current_increment:
+      model_state:
+        - project_model.project_child_homes
+        - project_model.child_home_parents
+        - project_model.child_homes
+        - project_model.child_home_agent_configs
+        - project_model.child_home_units
+        - project_model.child_home_mcp_servers
+        - project_model.child_home_tool_shims
+      model_actions:
+        - ScaffoldProjectChildHome
+      adapters:
+        - ProjectChildHomeScaffolderAdapter
+      unit_tests:
+        - project manifest resolution creates or updates child .skill-manager
+        - child .skill-manager is registered under the parent home
+        - child .codex, .claude, and .gemini homes are scaffolded
+        - CODEX_HOME, CLAUDE_HOME, GEMINI_HOME, and SKILL_MANAGER_HOME point at child paths for launched agents
+        - parent-child records allow a child home to become a parent for another child
+      graph_after_unit_pass:
+        - python skills/test_graph/scripts/run.py onboard
+        - python skills/test_graph/scripts/run.py harness-smoke
+        - python skills/test_graph/scripts/run.py smoke
+      acceptance:
+        commands:
+          - bash specs/current/run_tlc.sh specs/current/SkillManager.tla specs/current/MC.cfg
+          - python skills/test_graph/scripts/run.py onboard
+          - python skills/test_graph/scripts/run.py harness-smoke
+          - python skills/test_graph/scripts/run.py smoke
+        assertions:
+          - Project child homes are registered projects with parent-aware child-home records.
+          - Every child home has a known non-self parent home.
+          - Project child-home units come from the project resolved unit graph.
+          - External onboarding, harness, install, agent config, CLI, and MCP flows still pass.
+      evidence: []
+
+  - id: ISSUE-75-7
     title: Teach skill-manager-skill about projects and child homes
     status: pending
-    depends_on: [ISSUE-75-1, ISSUE-75-2, ISSUE-75-3, ISSUE-75-5]
+    depends_on: [ISSUE-75-1, ISSUE-75-2, ISSUE-75-3, ISSUE-75-5, ISSUE-75-6]
     objective: >
       Update skill-manager-skill and generated agent-facing documentation so
       agents can discover project manifests, project envs, child homes,
@@ -260,26 +372,38 @@ tickets:
       - RegisterProjectManifest
       - MaterializeProjectEnv
       - InstantiateChildHomeFromHarness
+      - ScaffoldProjectChildHome
     current_increment:
       model_state:
         - project_model.agent_configs
         - project_model.env_docs
         - project_model.child_home_agent_configs
+        - project_model.project_child_homes
+        - project_model.child_home_parents
       model_actions:
         - RegisterProjectManifest
         - MaterializeProjectEnv
         - InstantiateChildHomeFromHarness
+        - ScaffoldProjectChildHome
       adapters:
         - SkillManagerSkillDocsAdapter
       unit_tests:
         - generated front matter names harnesses/plugins/doc repos/skills
         - generated instructions list project envs and canonical sm env commands
         - child-home agent docs point at child-local homes and shims
-      graph_after_unit_pass: []
-    acceptance:
-      commands:
-        - bash specs/current/run_tlc.sh specs/current/SkillManager.tla specs/current/MC.cfg
-      assertions:
-        - Agent-visible docs are projections of manifest and realized env state.
-        - Generated docs do not become the source of truth.
+        - project docs describe the project .skill-manager as a child home
+      graph_after_unit_pass:
+        - python skills/test_graph/scripts/run.py doc-smoke
+        - python skills/test_graph/scripts/run.py harness-smoke
+        - python skills/test_graph/scripts/run.py skill-dev-smoke
+      acceptance:
+        commands:
+          - bash specs/current/run_tlc.sh specs/current/SkillManager.tla specs/current/MC.cfg
+          - python skills/test_graph/scripts/run.py doc-smoke
+          - python skills/test_graph/scripts/run.py harness-smoke
+          - python skills/test_graph/scripts/run.py skill-dev-smoke
+        assertions:
+          - Agent-visible docs are projections of manifest and realized env state.
+          - Generated docs do not become the source of truth.
+          - External doc, harness, and skill-dev projections still pass.
       evidence: []

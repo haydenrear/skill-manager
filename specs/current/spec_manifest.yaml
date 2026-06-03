@@ -18,12 +18,24 @@ status:
     validation:
       unit: []
       tlc: []
-      graph: []
+      graph:
+        - command: python skills/test_graph/scripts/discover.py
+          status: passed
+          purpose: discover available external validation graphs
+        - command: python skills/test_graph/scripts/run.py smoke
+          status: passed
+          purpose: baseline external install/registry/gateway/MCP regression
+          report: test_graph/build/validation-reports/20260603-011307/report.md
+          summary: test_graph/build/validation-reports/20260603-011307/summary.json
+        - command: python skills/test_graph/scripts/run.py --all
+          status: pending
+          purpose: full external regression before promotion
       evidence: []
   next:
     - Fill in whole-program current state fields, actions, invariants, and adapters after the first production slice lands.
     - Preserve all existing specs/program_model state/actions unless production behavior changes them.
     - Run TLC and adapter/unit tests before adding graph execution coverage.
+    - Run the affected test_graph graph for each landed slice, and run all graphs before promotion.
 
 source_model:
   program_model_manifest: ../program_model/spec_manifest.yaml
