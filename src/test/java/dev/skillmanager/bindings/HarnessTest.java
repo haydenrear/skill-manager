@@ -8,6 +8,7 @@ import dev.skillmanager.effects.Executor;
 import dev.skillmanager.effects.LiveInterpreter;
 import dev.skillmanager.effects.Program;
 import dev.skillmanager.effects.SkillEffect;
+import dev.skillmanager.app.RemoveUseCase;
 import dev.skillmanager.model.DocRepoParser;
 import dev.skillmanager.model.HarnessParser;
 import dev.skillmanager.model.HarnessUnit;
@@ -137,6 +138,88 @@ public final class HarnessTest {
                             .filter(b -> b.bindingId().startsWith("harness:e2e-instance:"))
                             .count();
                     assertEquals(3L, harnessRows, "three harness ledger rows");
+                })
+                .test("Child-home instantiate creates child store, agent homes, shims, docs, and ledger", () -> {
+                    Path parentHome = Files.createTempDirectory("child-harness-parent-");
+                    SkillStore parent = new SkillStore(parentHome);
+                    parent.init();
+                    UnitStore parentUnits = new UnitStore(parent);
+
+                    var widget = UnitFixtures.scaffoldSkill(Files.createTempDirectory("child-widget-"),
+                            "widget", DepSpec.of()
+                                    .cli("pip:cowsay==6.0")
+                                    .mcp("widget-mcp")
+                                    .build());
+                    Fs.copyRecursive(widget.sourcePath(), parent.unitDir("widget", UnitKind.SKILL));
+                    parentUnits.write(installedRec("widget", UnitKind.SKILL));
+                    Files.writeString(parent.cliBinDir().resolve("cowsay"), "#!/bin/sh\n");
+                    Files.writeString(parent.mcpBinDir().resolve("widget-mcp"), "#!/bin/sh\n");
+
+                    Path docRepo = scaffoldDocRepoFixture(false);
+                    Fs.copyRecursive(docRepo, parent.unitDir("org-prompts", UnitKind.DOC));
+                    parentUnits.write(installedRec("org-prompts", UnitKind.DOC));
+
+                    Path template = scaffoldHarnessTemplate("reviewer-harness", true);
+                    Fs.copyRecursive(template, parent.unitDir("reviewer-harness", UnitKind.HARNESS));
+                    parentUnits.write(installedRec("reviewer-harness", UnitKind.HARNESS));
+
+                    Path target = Files.createTempDirectory("child-harness-target-");
+                    ChildHomeHarnessInstaller.Result result =
+                            new ChildHomeHarnessInstaller(parent)
+                                    .instantiate("reviewer-harness", "child-inst", target, null, false);
+
+                    Path childHome = target.resolve(".skill-manager");
+                    assertTrue(Files.isDirectory(childHome), "child .skill-manager created");
+                    assertTrue(Files.isDirectory(target.resolve(".codex")), "child .codex created");
+                    assertTrue(Files.isDirectory(target.resolve(".claude")), "child .claude created");
+                    assertTrue(Files.isDirectory(target.resolve(".gemini")), "child .gemini created");
+                    assertTrue(Files.exists(childHome.resolve("skills/widget")),
+                            "child store has projected skill");
+                    assertTrue(Files.exists(childHome.resolve("docs/org-prompts")),
+                            "child store has projected doc repo");
+                    assertTrue(Files.exists(childHome.resolve("harnesses/reviewer-harness")),
+                            "child store has projected harness template");
+                    assertTrue(Files.exists(childHome.resolve("bin/cli/cowsay")),
+                            "child store mirrors parent CLI shim");
+                    assertTrue(Files.exists(childHome.resolve("bin/mcp/widget-mcp")),
+                            "child store mirrors parent MCP shim");
+                    assertTrue(Files.exists(target.resolve(".codex/skills/widget")),
+                            "codex home sees harness skill");
+                    assertTrue(Files.exists(target.resolve(".claude/skills/widget")),
+                            "claude home sees harness skill");
+                    assertTrue(Files.exists(target.resolve(".gemini/skills/widget")),
+                            "gemini home sees harness skill");
+                    assertTrue(Files.readString(target.resolve("CLAUDE.md"))
+                                    .contains("@docs/agents/review-stance.md"),
+                            "harness docs bound into child project root");
+                    assertTrue(new UnitStore(new SkillStore(childHome)).read("widget").isPresent(),
+                            "child installed record written");
+                    assertTrue(Files.isRegularFile(parent.harnessesDir()
+                                    .resolve(dev.skillmanager.commands.HarnessCommand.INSTANCES_DIR)
+                                    .resolve("child-inst")
+                                    .resolve(HarnessInstanceLock.FILENAME)),
+                            "parent harness instance lock records child paths");
+                    assertTrue(Files.isRegularFile(parent.root()
+                                    .resolve(ChildHomeRegistry.DIR)
+                                    .resolve("child-inst")
+                                    .resolve(ChildHomeRegistry.FILENAME)),
+                            "parent child-home registry records child path");
+                    assertEquals(2, result.harnessPlan().bindings().size(),
+                            "child harness has skill + doc bindings");
+
+                    BindingStore bs = new BindingStore(parent);
+                    long childRows = bs.listAll().stream()
+                            .filter(b -> b.bindingId().startsWith("harness:child-inst:"))
+                            .count();
+                    assertEquals(2L, childRows, "parent ledger tracks child harness projections");
+
+                    boolean removeRejected = false;
+                    try {
+                        RemoveUseCase.buildProgram(parent, null, "widget", null, false);
+                    } catch (IOException expected) {
+                        removeRejected = expected.getMessage().contains("child skill-manager home");
+                    }
+                    assertTrue(removeRejected, "child-home units are protected from plain remove");
                 })
                 .test("SyncHarness effect: idempotent re-apply (UPGRADED facts)", () -> {
                     var fix = newHarnessFixture("idempotent", false);

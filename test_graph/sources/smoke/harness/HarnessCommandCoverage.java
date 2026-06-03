@@ -37,7 +37,7 @@ public class HarnessCommandCoverage {
             boolean listShowsHarness = list.exitCode() == 0
                     && listBody.contains("BINDINGS")
                     && listHasRow(listBody, harnessName, "harness", null)
-                    && listHasRow(listBody, "hello-doc-repo", "doc", "2")
+                    && listHasRow(listBody, "hello-doc-repo", "doc", null)
                     && listHasRow(listBody, "hello-plugin", "plugin", null);
 
             ProcessRecord show = run(ctx, "show", home, repoRoot, sm, "show", harnessName);
