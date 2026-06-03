@@ -43,7 +43,7 @@ public final class ProjectChildHomeScaffolder {
             throws IOException {
         if (project == null) throw new IllegalArgumentException("project must not be null");
         parentStore.init();
-        ChildHomeHarnessInstaller.Layout layout = ChildHomeHarnessInstaller.layout(project.projectRoot());
+        ChildHomeHarnessInstaller.Layout layout = layout(project);
         SkillStore childStore = new SkillStore(layout.childSkillManagerHome());
         childStore.init();
         Fs.ensureDir(layout.claudeHome());
@@ -68,7 +68,7 @@ public final class ProjectChildHomeScaffolder {
         pruneOldUnits(childStore, childUnits, desiredKeys);
         mirrorToolShims(childStore);
 
-        String id = "project:" + project.name();
+        String id = project.childHomeId();
         List<String> sortedClaims = claims.stream()
                 .sorted(String.CASE_INSENSITIVE_ORDER)
                 .toList();
@@ -81,6 +81,28 @@ public final class ProjectChildHomeScaffolder {
                 BindingStore.nowIso()));
         rendered.sort(String.CASE_INSENSITIVE_ORDER);
         return new Result(id, layout, childStore, List.copyOf(rendered));
+    }
+
+    private static ChildHomeHarnessInstaller.Layout layout(SkillProject project) {
+        if (project.activeProfile() == null) {
+            return ChildHomeHarnessInstaller.layout(project.projectRoot());
+        }
+        Path profileRoot = project.projectRoot()
+                .resolve(".skill-manager")
+                .resolve("profiles")
+                .resolve(safeSegment(project.activeProfile()))
+                .toAbsolutePath()
+                .normalize();
+        return new ChildHomeHarnessInstaller.Layout(
+                profileRoot,
+                profileRoot,
+                profileRoot.resolve("agents/claude"),
+                profileRoot.resolve("agents/codex"),
+                profileRoot.resolve("agents/gemini"));
+    }
+
+    private static String safeSegment(String value) {
+        return value.replaceAll("[^A-Za-z0-9._-]", "_");
     }
 
     private void projectInstalledUnit(InstalledUnit record, SkillStore childStore,

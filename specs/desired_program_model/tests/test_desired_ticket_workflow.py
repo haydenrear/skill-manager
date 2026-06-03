@@ -16,6 +16,10 @@ def test_desired_ticket_workflow_names_project_and_child_boundaries() -> None:
     assert "MaterializeProjectEnv" in desired_tla
     assert "InstantiateChildHomeFromHarness" in desired_tla
     assert "ScaffoldProjectChildHome" in desired_tla
+    assert "ResolveProjectProfile" in desired_tla
     assert "skill-manager-project.toml" in plan
     assert "child Skill Manager" in plan
+    assert "ISSUE-86-1" in plan
+    assert "depends_on: [ISSUE-75]" in plan
     assert "ProjectChildHomeScaffolderAdapter" in plan
+    assert "ProjectProfileResolverAdapter" in plan

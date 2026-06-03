@@ -568,3 +568,79 @@ tickets:
           status: passed
           date: "2026-06-03"
           report: test_graph/build/validation-reports/20260603-230759/report.md
+
+  - id: ISSUE-86-1
+    title: Skill project profiles as multiple project harnesses
+    status: implemented
+    github_issue: https://github.com/haydenrear/skill-manager/issues/86
+    depends_on: [ISSUE-75]
+    objective: >
+      Allow a skill-project.toml / skill-manager-project.toml checkout to
+      declare named profiles. Resolving a selected profile materializes a
+      profile-specific project harness and child Skill Manager home without
+      leaking selected units, envs, docs, MCP, CLI, or agent homes into other
+      profiles for the same project.
+    desired_actions:
+      - RegisterProjectManifest
+      - ResolveProjectProfile
+    current_increment:
+      model_state:
+        - project_model.profile_declarations
+        - project_model.profile_locks
+        - project_model.profile_resolved_units
+        - project_model.profile_env_specs
+        - project_model.profile_lib_specs
+        - project_model.profile_child_homes
+        - project_model.child_homes
+        - project_model.child_home_parents
+        - project_model.child_home_agent_configs
+        - project_model.child_home_units
+        - project_model.child_home_mcp_servers
+        - project_model.child_home_tool_shims
+      model_actions:
+        - ResolveProjectProfile
+      adapters:
+        - ProjectProfileResolverAdapter
+      unit_tests:
+        - parse named profiles and select top-level declarations by alias
+        - resolve two profiles for one checkout into distinct child homes
+        - record profile-specific project locks
+        - scaffold profile-local .codex, .claude, and .gemini agent homes
+      graph_after_unit_pass:
+        - python skills/test_graph/scripts/run.py project-profiles
+        - python skills/test_graph/scripts/run.py project-resolve
+        - python skills/test_graph/scripts/run.py harness-smoke
+      acceptance:
+        commands:
+          - bash specs/current/run_tlc.sh specs/current/SkillManager.tla specs/current/MC.cfg
+          - python skills/test_graph/scripts/run.py project-profiles
+          - python skills/test_graph/scripts/run.py project-resolve
+          - python skills/test_graph/scripts/run.py harness-smoke
+        assertions:
+          - Profile declarations belong to a registered project manifest.
+          - Each resolved profile has its own lock and child home.
+          - Profile-specific units and agent homes do not leak across profiles.
+          - Parent Skill Manager home records every profile child home.
+      evidence:
+        - command: jbang RunTests.java
+          status: passed
+          date: "2026-06-03"
+          notes: SkillProjectParserTest and ProjectDependencyResolverTest cover profile selection, profile locks, isolated profile child homes, and parent registry records.
+        - command: bash specs/current/run_tlc.sh specs/current/SkillManager.tla specs/current/MC.cfg
+          status: passed
+          date: "2026-06-03"
+          states_generated: 60920609
+          distinct_states: 2337504
+          depth: 23
+        - command: python skills/test_graph/scripts/run.py project-profiles
+          status: passed
+          date: "2026-06-03"
+          report: test_graph/build/validation-reports/20260603-232833/report.md
+        - command: python skills/test_graph/scripts/run.py project-resolve
+          status: passed
+          date: "2026-06-03"
+          report: test_graph/build/validation-reports/20260603-233944/report.md
+        - command: python skills/test_graph/scripts/run.py harness-smoke
+          status: passed
+          date: "2026-06-03"
+          report: test_graph/build/validation-reports/20260603-233956/report.md

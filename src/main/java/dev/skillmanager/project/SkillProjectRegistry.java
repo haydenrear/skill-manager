@@ -34,7 +34,7 @@ public final class SkillProjectRegistry {
     }
 
     public SkillProjectRegistration register(SkillProject project) throws IOException {
-        String name = project.name();
+        String name = project.registryName();
         requireSafeName(name);
         Fs.ensureDir(store.projectsDir());
         Path dir = store.projectsDir().resolve(name);
@@ -52,12 +52,14 @@ public final class SkillProjectRegistry {
                 project_root = "%s"
                 manifest_path = "%s"
                 manifest_file = "%s"
+                profile = "%s"
                 registered_at = "%s"
                 """.formatted(
                         escape(name),
                         escape(project.projectRoot().toString()),
                         escape(project.manifestPath().toString()),
                         escape(manifestFile),
+                        escape(project.activeProfile() == null ? "" : project.activeProfile()),
                         escape(registeredAt)));
         return new SkillProjectRegistration(
                 name,

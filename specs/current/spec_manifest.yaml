@@ -3,18 +3,18 @@ package: current_program_cases
 
 status:
   workflow: ticket
-  active_ticket: ISSUE-75
-  active_ticket_title: "Skill Manager Projects and Child Homes"
+  active_ticket: ISSUE-86
+  active_ticket_title: "Skill project profiles as multiple project harnesses"
   relation_to_program_model: starts_equivalent_then_advances_as_slices_land
   relation_to_desired_program_model: implemented_prefix_of_desired_ticket_plan
   current_model_rule: whole_program_working_copy_not_ticket_projection
   test_modeling_rule: do_not_model_tests_or_validation_harnesses_as_program_behavior
   updated: 2026-06-03
   current_slice:
-    name: ISSUE-75-7
+    name: ISSUE-86-1
     status: implemented
     refines:
-      - ../desired_program_model/ticket_plan.yaml#ISSUE-75-7
+      - ../desired_program_model/ticket_plan.yaml#ISSUE-86-1
     implemented_actions:
       - RegisterProjectManifest
       - ResolveProjectDependencies
@@ -22,17 +22,19 @@ status:
       - ResolveProjectLibs
       - InstantiateChildHomeFromHarness
       - ScaffoldProjectChildHome
+      - ResolveProjectProfile
     validation:
       unit:
         - command: jbang RunTests.java
           status: passed
-          purpose: skill-manager-skill project docs, project child-home scaffolder, child home harness installer, project lib resolver, project env materializer, project lock rows, and full unit regression
+          purpose: profile manifest parser, project resolve --profile, profile-specific child homes and locks, and full unit regression
       tlc:
         - command: bash specs/current/run_tlc.sh specs/current/SkillManager.tla specs/current/MC.cfg
           status: passed
-          purpose: current program model unchanged by SkillManagerSkillDocs projection slice
-          states_generated: 25396289
-          distinct_states: 1052768
+          purpose: current program model with profile declarations, profile locks, and profile child homes
+          states_generated: 60920609
+          distinct_states: 2337504
+          depth: 23
       graph:
         - command: python skills/test_graph/scripts/discover.py
           status: passed
@@ -45,8 +47,13 @@ status:
         - command: python skills/test_graph/scripts/run.py project-resolve
           status: passed
           purpose: external CLI dependency resolution, project lock, child-home scaffold, doc/harness binding, and remove-guard regression for ISSUE-75-2/ISSUE-75-6
-          report: test_graph/build/validation-reports/20260603-224727/report.md
-          summary: test_graph/build/validation-reports/20260603-224727/summary.json
+          report: test_graph/build/validation-reports/20260603-233944/report.md
+          summary: test_graph/build/validation-reports/20260603-233944/summary.json
+        - command: python skills/test_graph/scripts/run.py project-profiles
+          status: passed
+          purpose: external CLI profile resolution, profile-specific lock, profile child-home, and agent-home isolation coverage for ISSUE-86-1
+          report: test_graph/build/validation-reports/20260603-232833/report.md
+          summary: test_graph/build/validation-reports/20260603-232833/summary.json
         - command: python skills/test_graph/scripts/run.py project-env
           status: passed
           purpose: external CLI env sync/render regression after project child-home scaffold
@@ -60,8 +67,8 @@ status:
         - command: python skills/test_graph/scripts/run.py harness-smoke
           status: passed
           purpose: external CLI child-home harness instantiate and harness lifecycle regression after project child-home registry changes
-          report: test_graph/build/validation-reports/20260603-230659/report.md
-          summary: test_graph/build/validation-reports/20260603-230659/summary.json
+          report: test_graph/build/validation-reports/20260603-233956/report.md
+          summary: test_graph/build/validation-reports/20260603-233956/summary.json
         - command: python skills/test_graph/scripts/run.py doc-smoke
           status: passed
           purpose: external docs regression for skill-manager-skill project/child-home guidance and env helper project context
@@ -127,6 +134,12 @@ state_fields:
   - project_model.env_docs
   - project_model.env_specs
   - project_model.lib_specs
+  - project_model.profile_declarations
+  - project_model.profile_locks
+  - project_model.profile_resolved_units
+  - project_model.profile_env_specs
+  - project_model.profile_lib_specs
+  - project_model.profile_child_homes
   - project_model.lib_checkouts
   - project_model.lib_locks
   - project_model.child_homes
@@ -144,6 +157,7 @@ actions:
   - ResolveProjectLibs
   - InstantiateChildHomeFromHarness
   - ScaffoldProjectChildHome
+  - ResolveProjectProfile
 ports:
   SkillManagerCli.register_project_manifest:
     adapter: ProjectManifestAdapter
@@ -184,6 +198,17 @@ ports:
       - dev.skillmanager.project.ProjectDependencyResolver
       - dev.skillmanager.project.ProjectChildHomeScaffolder
       - dev.skillmanager.bindings.ChildHomeRegistry
+  SkillManagerCli.resolve_project_profile:
+    adapter: ProjectProfileResolverAdapter
+    implemented_by:
+      - dev.skillmanager.commands.ProjectCommand.ResolveCmd
+      - dev.skillmanager.commands.EnvCommand.Sync
+      - dev.skillmanager.commands.EnvCommand.Run
+      - dev.skillmanager.model.SkillProject
+      - dev.skillmanager.model.SkillProjectParser
+      - dev.skillmanager.project.ProjectDependencyResolver
+      - dev.skillmanager.project.ProjectChildHomeScaffolder
+      - dev.skillmanager.project.SkillProjectLockStore
   SkillManagerSkill.agent_docs:
     adapter: SkillManagerSkillDocsAdapter
     implemented_by:

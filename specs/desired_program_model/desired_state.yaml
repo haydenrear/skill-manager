@@ -90,6 +90,18 @@ modeled_boundary_status:
       - project_model.child_home_tool_shims
     source: follow-up design note in conversation
     rule: a skill-manager-project.toml checkout is the harness for its project-local child Skill Manager home
+  project_profiles:
+    status: desired
+    actions: [ResolveProjectProfile]
+    state:
+      - project_model.profile_declarations
+      - project_model.profile_locks
+      - project_model.profile_resolved_units
+      - project_model.profile_env_specs
+      - project_model.profile_lib_specs
+      - project_model.profile_child_homes
+    source: issue 86 profile requirement
+    rule: project + profile resolves to one isolated project harness and child Skill Manager home
 
 program_domains:
   - project manifest dependency graph
@@ -98,6 +110,7 @@ program_domains:
   - source library checkout provenance
   - harness-derived child Skill Manager home realization
   - project manifest as project harness
+  - project manifest profiles as multiple project harnesses
   - recursive parent-child Skill Manager home registry
   - agent-facing project and child-home documentation
 
@@ -139,6 +152,7 @@ adapter_plan:
     - ChildHomeHarnessAdapter
     - ProjectChildHomeScaffolderAdapter
     - SkillManagerSkillDocsAdapter
+    - ProjectProfileResolverAdapter
 
 guardrails:
   portable_intent:
@@ -156,6 +170,7 @@ guardrails:
     - Every child home must have a known non-self parent Skill Manager home.
     - Parent homes may themselves be child homes; do not rely on a distinguished global root.
     - Child-home MCP servers and tool shims derive from harness-selected units.
+    - Profile child homes must not leak selected units or agent homes across profiles.
   validation:
     - TLC and current-model adapter/unit tests run before graph execution.
     - The affected test_graph graph runs after each landed slice.

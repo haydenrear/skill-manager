@@ -5,6 +5,8 @@ status:
   workflow: ticket
   initial_ticket: ISSUE-75
   initial_ticket_title: Skill Manager Projects and Child Homes
+  followup_ticket: ISSUE-86
+  followup_ticket_title: Skill project profiles as multiple project harnesses
   ticket_plan: ticket_plan.yaml
   relation_to_program_model: desired_successor_of_accepted_program_model
   relation_to_current: target_state_for_specs_current_to_converge_to
@@ -20,6 +22,7 @@ status:
     - Integrated issue 75 and ticket/scaffold-skill-manager-child/skill-manager-child.md into one desired workflow.
     - Added project manifest, env, libs, and child-home desired actions to SkillManager.tla.
     - Added project-as-harness child home scaffolding and recursive parent-child home awareness.
+    - Added profile-aware project harness declarations, profile locks, and profile child homes.
     - Added invariants for project locks, env locks, lib locks, child-home harness/project ownership, parent awareness, and removal protection.
   pending:
     - Implement ticket slices and advance specs/current after each production slice lands.
@@ -31,9 +34,9 @@ status:
       - command: bash specs/desired_program_model/run_tlc.sh specs/desired_program_model/SkillManager.tla specs/desired_program_model/MC.cfg
         status: passed
         result: no invariant violations
-        states_generated: 9960801
-        distinct_states: 398432
-        depth: 21
+        states_generated: 60920609
+        distinct_states: 2337504
+        depth: 23
     test_graph:
       discovery:
         command: python skills/test_graph/scripts/discover.py
@@ -149,6 +152,24 @@ state:
       lib_locks:
         type: frozenset[tuple[ProjectId, LibId]]
         description: resolved git commit provenance for libs
+      profile_declarations:
+        type: frozenset[tuple[ProjectId, ProfileId]]
+        description: named profiles declared by a project manifest
+      profile_locks:
+        type: frozenset[tuple[ProjectId, ProfileId]]
+        description: profile-specific project harness locks
+      profile_resolved_units:
+        type: frozenset[tuple[ProjectId, ProfileId, UnitId]]
+        description: units resolved for one selected project profile
+      profile_env_specs:
+        type: frozenset[tuple[ProjectId, ProfileId, EnvId]]
+        description: env declarations selected by one project profile
+      profile_lib_specs:
+        type: frozenset[tuple[ProjectId, ProfileId, LibId]]
+        description: lib declarations selected by one project profile
+      profile_child_homes:
+        type: frozenset[tuple[ProjectId, ProfileId, ChildHomeId]]
+        description: profile-specific child Skill Manager homes
       child_homes:
         type: frozenset[ChildHomeId]
         description: harness-derived child Skill Manager homes
@@ -187,6 +208,9 @@ types:
   LibId:
     python: str
     source: Libs
+  ProfileId:
+    python: str
+    source: Profiles
   ChildHomeId:
     python: str
     source: ChildHomes
@@ -243,6 +267,21 @@ commands:
       parent_home_id:
         type: SkillManagerHomeId
         tla: parent_home
+  ResolveProjectProfile:
+    action: ResolveProjectProfile
+    fields:
+      project_id:
+        type: ProjectId
+        tla: project
+      profile_id:
+        type: ProfileId
+        tla: profile
+      child_home_id:
+        type: ChildHomeId
+        tla: home
+      parent_home_id:
+        type: SkillManagerHomeId
+        tla: parent_home
 
 results:
   ProjectResult:
@@ -257,6 +296,7 @@ ports:
       resolve_project_libs: {command: ResolveProjectLibs, result: ProjectResult}
       instantiate_child_home_from_harness: {command: InstantiateChildHomeFromHarness, result: ProjectResult}
       scaffold_project_child_home: {command: ScaffoldProjectChildHome, result: ProjectResult}
+      resolve_project_profile: {command: ResolveProjectProfile, result: ProjectResult}
 
 invariants:
   - CliInstalledRecordsTrackStore

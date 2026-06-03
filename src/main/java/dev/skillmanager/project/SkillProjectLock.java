@@ -13,6 +13,7 @@ import java.util.List;
  */
 public record SkillProjectLock(
         String projectName,
+        String profile,
         String manifestFile,
         String resolvedAt,
         List<ResolvedUnit> resolvedUnits,
@@ -23,6 +24,7 @@ public record SkillProjectLock(
     public static final String FILENAME = "project-lock.toml";
 
     public SkillProjectLock {
+        profile = profile == null || profile.isBlank() ? null : profile;
         resolvedUnits = resolvedUnits == null ? List.of() : List.copyOf(resolvedUnits);
         bindings = bindings == null ? List.of() : List.copyOf(bindings);
         envs = envs == null ? List.of() : List.copyOf(envs);
@@ -36,7 +38,7 @@ public record SkillProjectLock(
             List<ResolvedUnit> resolvedUnits,
             List<ProjectBinding> bindings
     ) {
-        this(projectName, manifestFile, resolvedAt, resolvedUnits, bindings, List.of(), List.of());
+        this(projectName, null, manifestFile, resolvedAt, resolvedUnits, bindings, List.of(), List.of());
     }
 
     public SkillProjectLock(
@@ -47,7 +49,7 @@ public record SkillProjectLock(
             List<ProjectBinding> bindings,
             List<EnvRealization> envs
     ) {
-        this(projectName, manifestFile, resolvedAt, resolvedUnits, bindings, envs, List.of());
+        this(projectName, null, manifestFile, resolvedAt, resolvedUnits, bindings, envs, List.of());
     }
 
     public record ResolvedUnit(

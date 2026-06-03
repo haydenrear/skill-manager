@@ -82,7 +82,9 @@ public final class SkillProjectParser {
                 SkillParser.parseCliDependencies(toml, "project"),
                 SkillParser.parseMcpDependencies(toml, "project"),
                 parseEnvs(toml),
-                parseLibs(toml, manifestPath)
+                parseLibs(toml, manifestPath),
+                parseProfiles(toml),
+                null
         );
     }
 
@@ -173,6 +175,26 @@ public final class SkillProjectParser {
                 throw new IOException("Malformed project libs[" + i + "] in "
                         + manifestPath + ": " + e.getMessage(), e);
             }
+        }
+        return out;
+    }
+
+    private static List<SkillProject.ProjectProfile> parseProfiles(TomlParseResult toml) {
+        TomlTable profiles = toml.getTable("profiles");
+        if (profiles == null) return List.of();
+        List<SkillProject.ProjectProfile> out = new ArrayList<>();
+        for (String name : profiles.keySet()) {
+            TomlTable profile = profiles.getTable(name);
+            if (profile == null) continue;
+            out.add(new SkillProject.ProjectProfile(
+                    name,
+                    strings(profile.getArray("extends")),
+                    strings(profile.getArray("skills")),
+                    strings(profile.getArray("plugins")),
+                    strings(profile.getArray("harnesses")),
+                    strings(profile.getArray("docs")),
+                    strings(profile.getArray("envs")),
+                    strings(profile.getArray("libs"))));
         }
         return out;
     }

@@ -23,7 +23,8 @@ import java.util.concurrent.Callable;
                 ProjectCommand.RegisterCmd.class,
                 ProjectCommand.ResolveCmd.class,
                 ProjectCommand.ShowCmd.class,
-                ProjectCommand.ListCmd.class
+                ProjectCommand.ListCmd.class,
+                ProjectCommand.ProfilesCmd.class
         })
 public final class ProjectCommand {
 
@@ -38,6 +39,10 @@ public final class ProjectCommand {
         @Option(names = "--manifest",
                 description = "Explicit project manifest path. Defaults to skill-project.toml, then skill-manager-project.toml.")
         String manifest;
+
+        @Option(names = "--profile",
+                description = "Named project profile to register as a concrete harness realization.")
+        String profile;
 
         @Option(names = "--json", description = "Emit machine-readable JSON.")
         boolean json;
@@ -54,17 +59,20 @@ public final class ProjectCommand {
             SkillProject project = manifest == null || manifest.isBlank()
                     ? SkillProjectParser.load(root)
                     : SkillProjectParser.loadManifest(resolveManifestPath(root, manifest), root);
+            project = project.withProfile(profile);
             SkillProjectRegistration registration = new SkillProjectRegistry(store).register(project);
             if (json) {
                 System.out.println("""
-                        {"name":"%s","projectRoot":"%s","manifestPath":"%s","registrationDir":"%s"}"""
+                        {"name":"%s","profile":"%s","projectRoot":"%s","manifestPath":"%s","registrationDir":"%s"}"""
                         .formatted(
                                 esc(registration.name()),
+                                esc(project.activeProfile() == null ? "" : project.activeProfile()),
                                 esc(registration.projectRoot().toString()),
                                 esc(registration.manifestPath().toString()),
                                 esc(registration.registrationDir().toString())));
             } else {
                 Log.ok("registered project %s", registration.name());
+                if (project.activeProfile() != null) Log.info("  profile:      %s", project.activeProfile());
                 Log.info("  project root: %s", registration.projectRoot());
                 Log.info("  manifest:     %s", registration.manifestPath());
                 Log.info("  registry:     %s", registration.registrationDir());
@@ -89,6 +97,10 @@ public final class ProjectCommand {
                 description = "Skip gateway startup/registration; useful for local fixture validation.")
         boolean skipGateway;
 
+        @Option(names = "--profile",
+                description = "Named project profile to resolve as a concrete project harness.")
+        String profile;
+
         @Option(names = "--json", description = "Emit machine-readable JSON.")
         boolean json;
 
@@ -107,6 +119,7 @@ public final class ProjectCommand {
             SkillProject project = manifest == null || manifest.isBlank()
                     ? SkillProjectParser.load(root)
                     : SkillProjectParser.loadManifest(resolveManifestPath(root, manifest), root);
+            project = project.withProfile(profile);
             GatewayConfig gw = skipGateway ? null : GatewayConfig.resolve(store, null);
             ProjectDependencyResolver.Result result = new ProjectDependencyResolver(store, gw)
                     .resolve(project, new ProjectDependencyResolver.Options(true, !skipGateway));
@@ -115,9 +128,10 @@ public final class ProjectCommand {
                     : null;
             if (json) {
                 System.out.println("""
-                        {"name":"%s","installed":%d,"resolved":%d,"bindings":%d,"libs":%d,"childHome":"%s","lock":"%s"}"""
+                        {"name":"%s","profile":"%s","installed":%d,"resolved":%d,"bindings":%d,"libs":%d,"childHome":"%s","lock":"%s"}"""
                         .formatted(
                                 esc(result.registration().name()),
+                                esc(project.activeProfile() == null ? "" : project.activeProfile()),
                                 result.installed().size(),
                                 result.lock().resolvedUnits().size(),
                                 result.bindingIds().size(),
@@ -128,6 +142,7 @@ public final class ProjectCommand {
                                         .toString())));
             } else {
                 Log.ok("resolved project %s", result.registration().name());
+                if (project.activeProfile() != null) Log.info("  profile:   %s", project.activeProfile());
                 Log.info("  installed: %d", result.installed().size());
                 Log.info("  resolved:  %d", result.lock().resolvedUnits().size());
                 Log.info("  bindings:  %d", result.bindingIds().size());
@@ -170,6 +185,7 @@ public final class ProjectCommand {
                 System.out.printf("libs:     %d%n", project.libs().size());
                 System.out.printf("cli:      %d%n", project.cliDependencies().size());
                 System.out.printf("mcp:      %d%n", project.mcpDependencies().size());
+                System.out.printf("profiles: %d%n", project.profiles().size());
             }
             var lock = new dev.skillmanager.project.SkillProjectLockStore(store).read(name).orElse(null);
             if (lock != null) {
@@ -197,6 +213,44 @@ public final class ProjectCommand {
                 System.out.printf("%s\t%s%n", p.name(), p.projectRoot());
             }
             return 0;
+        }
+    }
+
+    @Command(name = "profiles",
+            description = "Inspect named profiles declared by a skill project.",
+            subcommands = {ProfilesCmd.ListCmd.class})
+    public static final class ProfilesCmd implements Runnable {
+        @Override public void run() { new picocli.CommandLine(this).usage(System.out); }
+
+        @Command(name = "list", description = "List profiles declared in skill-project.toml.")
+        public static final class ListCmd implements Callable<Integer> {
+
+            @Option(names = "--project-dir",
+                    description = "Project root. Defaults to the current working directory.")
+            String projectDir;
+
+            @Option(names = "--manifest",
+                    description = "Explicit project manifest path. Defaults to skill-project.toml, then skill-manager-project.toml.")
+            String manifest;
+
+            @Override
+            public Integer call() throws Exception {
+                Path root = projectDir == null || projectDir.isBlank()
+                        ? Path.of(System.getProperty("user.dir"))
+                        : Path.of(projectDir);
+                root = root.toAbsolutePath().normalize();
+                SkillProject project = manifest == null || manifest.isBlank()
+                        ? SkillProjectParser.load(root)
+                        : SkillProjectParser.loadManifest(resolveManifestPath(root, manifest), root);
+                if (project.profiles().isEmpty()) {
+                    Log.info("no project profiles declared");
+                    return 0;
+                }
+                for (SkillProject.ProjectProfile profile : project.profiles()) {
+                    System.out.printf("%s%n", profile.name());
+                }
+                return 0;
+            }
         }
     }
 

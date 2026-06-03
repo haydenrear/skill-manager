@@ -36,6 +36,10 @@ public final class EnvCommand implements Runnable {
                 description = "Explicit project manifest path. Defaults to skill-project.toml, then skill-manager-project.toml.")
         String manifest;
 
+        @Option(names = "--profile",
+                description = "Named project profile whose env realization should be synced.")
+        String profile;
+
         @Option(names = "--skip-uv",
                 description = "Only render files and lock state; do not invoke uv sync.")
         boolean skipUv;
@@ -51,14 +55,15 @@ public final class EnvCommand implements Runnable {
         public Integer call() throws Exception {
             SkillStore store = SkillStore.defaultStore();
             store.init();
-            SkillProject project = loadProject(projectDir, manifest);
+            SkillProject project = loadProject(projectDir, manifest, profile);
             ProjectEnvMaterializer.Result result = new ProjectEnvMaterializer(store)
                     .materialize(project, envName, new ProjectEnvMaterializer.Options(!skipUv, uv));
             if (json) {
                 System.out.println("""
-                        {"project":"%s","env":"%s","envRoot":"%s","pyproject":"%s","docs":"%s","uvExitCode":%d}"""
+                        {"project":"%s","profile":"%s","env":"%s","envRoot":"%s","pyproject":"%s","docs":"%s","uvExitCode":%d}"""
                         .formatted(
                                 esc(project.name()),
+                                esc(project.activeProfile() == null ? "" : project.activeProfile()),
                                 esc(result.env().name()),
                                 esc(result.envRoot().toString()),
                                 esc(result.pyprojectFile().toString()),
@@ -93,6 +98,10 @@ public final class EnvCommand implements Runnable {
                 description = "Explicit project manifest path. Defaults to skill-project.toml, then skill-manager-project.toml.")
         String manifest;
 
+        @Option(names = "--profile",
+                description = "Named project profile whose env realization should run the command.")
+        String profile;
+
         @Option(names = "--uv",
                 description = "uv executable to use. Defaults to uv on PATH.")
         String uv;
@@ -101,19 +110,20 @@ public final class EnvCommand implements Runnable {
         public Integer call() throws Exception {
             SkillStore store = SkillStore.defaultStore();
             store.init();
-            SkillProject project = loadProject(projectDir, manifest);
+            SkillProject project = loadProject(projectDir, manifest, profile);
             return new ProjectEnvMaterializer(store).runEnv(project, envName, command, uv);
         }
     }
 
-    private static SkillProject loadProject(String projectDir, String manifest) throws Exception {
+    private static SkillProject loadProject(String projectDir, String manifest, String profile) throws Exception {
         Path root = projectDir == null || projectDir.isBlank()
                 ? Path.of(System.getProperty("user.dir"))
                 : Path.of(projectDir);
         root = root.toAbsolutePath().normalize();
-        return manifest == null || manifest.isBlank()
+        SkillProject project = manifest == null || manifest.isBlank()
                 ? SkillProjectParser.load(root)
                 : SkillProjectParser.loadManifest(ProjectCommand.resolveManifestPath(root, manifest), root);
+        return project.withProfile(profile);
     }
 
     private static String esc(String s) {

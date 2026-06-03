@@ -14,23 +14,25 @@ def test_current_ticket_workflow_scaffold_points_to_desired_plan() -> None:
     assert "ISSUE-75" in plan.read_text(encoding="utf-8")
 
 
-def test_current_manifest_records_project_docs_slice() -> None:
+def test_current_manifest_records_project_profile_slice() -> None:
     manifest = SPEC_ROOT / "current/spec_manifest.yaml"
     text = manifest.read_text(encoding="utf-8")
 
-    assert "ISSUE-75-7" in text
+    assert "ISSUE-86-1" in text
     assert "RegisterProjectManifest" in text
     assert "ResolveProjectDependencies" in text
     assert "MaterializeProjectEnv" in text
     assert "ResolveProjectLibs" in text
     assert "InstantiateChildHomeFromHarness" in text
     assert "ScaffoldProjectChildHome" in text
+    assert "ResolveProjectProfile" in text
     assert "ProjectManifestAdapter" in text
     assert "ProjectDependencyResolverAdapter" in text
     assert "ProjectEnvMaterializerAdapter" in text
     assert "ProjectLibResolverAdapter" in text
     assert "ChildHomeHarnessAdapter" in text
     assert "ProjectChildHomeScaffolderAdapter" in text
+    assert "ProjectProfileResolverAdapter" in text
     assert "SkillManagerSkillDocsAdapter" in text
     assert "SkillManagerEnvHelperAdapter" in text
     assert "python skills/test_graph/scripts/run.py project-manifest" in text
