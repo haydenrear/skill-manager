@@ -282,7 +282,7 @@ tickets:
 
   - id: ISSUE-75-4
     title: Resolve project libs with locked git provenance
-    status: pending
+    status: in_progress
     depends_on: [ISSUE-75-1]
     objective: >
       Add --resolve-libs behavior for project development source checkouts.
@@ -305,18 +305,44 @@ tickets:
         - ensures libs/ is ignored
         - records resolved hashes in project lock
       graph_after_unit_pass:
+        - python skills/test_graph/scripts/run.py project-libs
         - python skills/test_graph/scripts/run.py source-tracking
         - python skills/test_graph/scripts/run.py git-latest-source-tracking
       acceptance:
         commands:
           - bash specs/current/run_tlc.sh specs/current/SkillManager.tla specs/current/MC.cfg
+          - python skills/test_graph/scripts/run.py project-libs
           - python skills/test_graph/scripts/run.py source-tracking
           - python skills/test_graph/scripts/run.py git-latest-source-tracking
         assertions:
           - Lib locks track resolved checkouts exactly.
           - Project lock state contains portable source identity plus resolved commit.
           - External source-tracking and git-latest sync behavior still pass.
-      evidence: []
+      evidence:
+        - command: jbang RunTests.java
+          status: passed
+          date: "2026-06-03"
+          notes: ProjectLibResolverTest covers github and generic git coords, gitignore rendering, lock rows, sha mismatch rejection, safe lib names, and changed-ref reconciliation for existing clean checkouts.
+        - command: pytest specs/current/tests specs/desired_program_model/tests
+          status: passed
+          date: "2026-06-03"
+        - command: bash specs/current/run_tlc.sh specs/current/SkillManager.tla specs/current/MC.cfg
+          status: passed
+          date: "2026-06-03"
+          states_generated: 8276001
+          distinct_states: 390048
+        - command: python skills/test_graph/scripts/run.py project-libs
+          status: passed
+          date: "2026-06-03"
+          report: test_graph/build/validation-reports/20260603-213057/report.md
+        - command: python skills/test_graph/scripts/run.py source-tracking
+          status: passed
+          date: "2026-06-03"
+          report: test_graph/build/validation-reports/20260603-211804/report.md
+        - command: python skills/test_graph/scripts/run.py git-latest-source-tracking
+          status: passed
+          date: "2026-06-03"
+          report: test_graph/build/validation-reports/20260603-211900/report.md
 
   - id: ISSUE-75-5
     title: Instantiate child Skill Manager home from harness

@@ -109,7 +109,30 @@ public final class SkillProjectLockStore {
                         row.getString("synced_at")));
             }
         }
-        return Optional.of(new SkillProjectLock(name, manifestFile, resolvedAt, units, bindings, envs));
+        List<SkillProjectLock.LibCheckout> libs = new ArrayList<>();
+        TomlArray libRows = toml.getArray("libs");
+        if (libRows != null) {
+            for (int i = 0; i < libRows.size(); i++) {
+                TomlTable row = libRows.getTable(i);
+                if (row == null) continue;
+                String libName = row.getString("name");
+                String source = row.getString("source");
+                String resolvedSha = row.getString("resolved_sha");
+                if (libName == null || libName.isBlank()
+                        || source == null || source.isBlank()
+                        || resolvedSha == null || resolvedSha.isBlank()) continue;
+                libs.add(new SkillProjectLock.LibCheckout(
+                        libName,
+                        source,
+                        row.getString("url"),
+                        row.getString("ref"),
+                        row.getString("requested_sha"),
+                        resolvedSha,
+                        row.getString("checkout_dir"),
+                        row.getString("locked_at")));
+            }
+        }
+        return Optional.of(new SkillProjectLock(name, manifestFile, resolvedAt, units, bindings, envs, libs));
     }
 
     public List<SkillProjectLock> list() throws IOException {
@@ -192,6 +215,28 @@ public final class SkillProjectLockStore {
             appendArray(sb, "tools", env.tools());
             if (env.syncedAt() != null) {
                 sb.append("synced_at = \"").append(esc(env.syncedAt())).append("\"\n");
+            }
+            sb.append("\n");
+        }
+        for (SkillProjectLock.LibCheckout lib : lock.libs()) {
+            sb.append("[[libs]]\n");
+            sb.append("name = \"").append(esc(lib.name())).append("\"\n");
+            sb.append("source = \"").append(esc(lib.source())).append("\"\n");
+            if (lib.url() != null) {
+                sb.append("url = \"").append(esc(lib.url())).append("\"\n");
+            }
+            if (lib.ref() != null) {
+                sb.append("ref = \"").append(esc(lib.ref())).append("\"\n");
+            }
+            if (lib.requestedSha() != null) {
+                sb.append("requested_sha = \"").append(esc(lib.requestedSha())).append("\"\n");
+            }
+            sb.append("resolved_sha = \"").append(esc(lib.resolvedSha())).append("\"\n");
+            if (lib.checkoutDir() != null) {
+                sb.append("checkout_dir = \"").append(esc(lib.checkoutDir())).append("\"\n");
+            }
+            if (lib.lockedAt() != null) {
+                sb.append("locked_at = \"").append(esc(lib.lockedAt())).append("\"\n");
             }
             sb.append("\n");
         }

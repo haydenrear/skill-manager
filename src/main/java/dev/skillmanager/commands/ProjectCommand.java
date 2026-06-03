@@ -4,6 +4,7 @@ import dev.skillmanager.model.SkillProject;
 import dev.skillmanager.model.SkillProjectParser;
 import dev.skillmanager.mcp.GatewayConfig;
 import dev.skillmanager.project.ProjectDependencyResolver;
+import dev.skillmanager.project.ProjectLibResolver;
 import dev.skillmanager.project.SkillProjectRegistration;
 import dev.skillmanager.project.SkillProjectRegistry;
 import dev.skillmanager.store.SkillStore;
@@ -91,6 +92,10 @@ public final class ProjectCommand {
         @Option(names = "--json", description = "Emit machine-readable JSON.")
         boolean json;
 
+        @Option(names = "--resolve-libs",
+                description = "Also materialize project [[libs]] checkouts under project libs/ and lock their git shas.")
+        boolean resolveLibs;
+
         @Override
         public Integer call() throws Exception {
             SkillStore store = SkillStore.defaultStore();
@@ -105,14 +110,18 @@ public final class ProjectCommand {
             GatewayConfig gw = skipGateway ? null : GatewayConfig.resolve(store, null);
             ProjectDependencyResolver.Result result = new ProjectDependencyResolver(store, gw)
                     .resolve(project, new ProjectDependencyResolver.Options(true, !skipGateway));
+            ProjectLibResolver.Result libResult = resolveLibs
+                    ? new ProjectLibResolver(store).resolve(project)
+                    : null;
             if (json) {
                 System.out.println("""
-                        {"name":"%s","installed":%d,"resolved":%d,"bindings":%d,"lock":"%s"}"""
+                        {"name":"%s","installed":%d,"resolved":%d,"bindings":%d,"libs":%d,"lock":"%s"}"""
                         .formatted(
                                 esc(result.registration().name()),
                                 result.installed().size(),
                                 result.lock().resolvedUnits().size(),
                                 result.bindingIds().size(),
+                                libResult == null ? result.lock().libs().size() : libResult.libs().size(),
                                 esc(result.registration().registrationDir()
                                         .resolve(dev.skillmanager.project.SkillProjectLock.FILENAME)
                                         .toString())));
@@ -121,6 +130,7 @@ public final class ProjectCommand {
                 Log.info("  installed: %d", result.installed().size());
                 Log.info("  resolved:  %d", result.lock().resolvedUnits().size());
                 Log.info("  bindings:  %d", result.bindingIds().size());
+                Log.info("  libs:      %d", libResult == null ? result.lock().libs().size() : libResult.libs().size());
                 Log.info("  lock:      %s", result.registration().registrationDir()
                         .resolve(dev.skillmanager.project.SkillProjectLock.FILENAME));
             }
@@ -164,6 +174,7 @@ public final class ProjectCommand {
                 System.out.printf("resolved: %d%n", lock.resolvedUnits().size());
                 System.out.printf("bindings: %d%n", lock.bindings().size());
                 System.out.printf("env locks:%d%n", lock.envs().size());
+                System.out.printf("lib locks:%d%n", lock.libs().size());
             }
             return 0;
         }

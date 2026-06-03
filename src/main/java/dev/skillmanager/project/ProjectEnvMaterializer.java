@@ -154,7 +154,8 @@ public final class ProjectEnvMaterializer {
                 lock.resolvedAt(),
                 lock.resolvedUnits(),
                 lock.bindings(),
-                rows);
+                rows,
+                lock.libs());
     }
 
     private static String renderPyproject(SkillProject project, SkillProject.ProjectEnv env) {

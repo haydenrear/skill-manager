@@ -128,6 +128,7 @@ jobs:
           - project-manifest
           - project-resolve
           - project-env
+          - project-libs
           - hyper-experiments
           - plugin-smoke
           - doc-smoke

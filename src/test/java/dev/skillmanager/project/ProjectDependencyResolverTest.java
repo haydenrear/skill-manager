@@ -167,7 +167,7 @@ public final class ProjectDependencyResolverTest {
                                 name = "git-project"
 
                                 [skills.git]
-                                source = "git+file://%s"
+                                source = "git+file://%s#main"
                                 """.formatted(gitSkill));
 
                         ProjectDependencyResolver.Result result = resolver(h).resolve(
@@ -180,6 +180,38 @@ public final class ProjectDependencyResolverTest {
                         assertTrue(locked.contains("git-locked-skill"), "direct git unit is locked");
                         assertTrue(new SkillProjectLockStore(h.store()).projectsClaiming("git-locked-skill")
                                 .contains("git-project"), "direct git unit is project-claimed");
+                    }
+                })
+                .test("manifest revision overrides direct git default branch", () -> {
+                    try (TestHarness h = TestHarness.create()) {
+                        Path repoRoot = Files.createTempDirectory("project-resolve-revision-");
+                        Path gitSkill = UnitFixtures.scaffoldSkill(
+                                repoRoot.resolve("revision-skill"), "revision-skill", DepSpec.empty()).sourcePath();
+                        gitInitCommit(gitSkill);
+                        git(gitSkill, "checkout", "-b", "release");
+                        Files.writeString(gitSkill.resolve("skill-manager.toml"), """
+                                [skill]
+                                name = "revision-skill"
+                                version = "9.9.9"
+                                description = "revision fixture"
+                                """);
+                        git(gitSkill, "add", ".");
+                        git(gitSkill, "-c", "user.email=test@example.com", "-c", "user.name=Test",
+                                "commit", "-m", "release");
+                        git(gitSkill, "checkout", "main");
+                        SkillProject project = project(repoRoot, """
+                                [project]
+                                name = "revision-project"
+
+                                [skills.rev]
+                                source = "git+file://%s"
+                                revision = "release"
+                                """.formatted(gitSkill));
+
+                        resolver(h).resolve(project, new ProjectDependencyResolver.Options(true, false));
+
+                        assertEquals("9.9.9", h.store().loadUnit("revision-skill").orElseThrow().version(),
+                                "project dependency revision selects the declared git ref");
                     }
                 })
                 .runAll();

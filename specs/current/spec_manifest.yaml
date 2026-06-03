@@ -11,25 +11,26 @@ status:
   test_modeling_rule: do_not_model_tests_or_validation_harnesses_as_program_behavior
   updated: 2026-06-03
   current_slice:
-    name: ISSUE-75-3
+    name: ISSUE-75-4
     status: implemented
     refines:
-      - ../desired_program_model/ticket_plan.yaml#ISSUE-75-3
+      - ../desired_program_model/ticket_plan.yaml#ISSUE-75-4
     implemented_actions:
       - RegisterProjectManifest
       - ResolveProjectDependencies
       - MaterializeProjectEnv
+      - ResolveProjectLibs
     validation:
       unit:
         - command: jbang RunTests.java
           status: passed
-          purpose: project env materializer, project lock env rows, uv command wrapper, and full unit regression
+          purpose: project lib resolver, project env materializer, project lock rows, and full unit regression
       tlc:
         - command: bash specs/current/run_tlc.sh specs/current/SkillManager.tla specs/current/MC.cfg
           status: passed
-          purpose: current program model with MaterializeProjectEnv slice
-          states_generated: 4136833
-          distinct_states: 202592
+          purpose: current program model with ResolveProjectLibs slice
+          states_generated: 8276001
+          distinct_states: 390048
       graph:
         - command: python skills/test_graph/scripts/discover.py
           status: passed
@@ -42,13 +43,28 @@ status:
         - command: python skills/test_graph/scripts/run.py project-resolve
           status: passed
           purpose: external CLI dependency resolution, project lock, doc/harness binding, and remove-guard regression for ISSUE-75-2
-          report: test_graph/build/validation-reports/20260603-210438/report.md
-          summary: test_graph/build/validation-reports/20260603-210438/summary.json
+          report: test_graph/build/validation-reports/20260603-212223/report.md
+          summary: test_graph/build/validation-reports/20260603-212223/summary.json
         - command: python skills/test_graph/scripts/run.py project-env
           status: passed
           purpose: external CLI env sync/render regression for ISSUE-75-3
           report: test_graph/build/validation-reports/20260603-210456/report.md
           summary: test_graph/build/validation-reports/20260603-210456/summary.json
+        - command: python skills/test_graph/scripts/run.py project-libs
+          status: passed
+          purpose: external CLI lib checkout and lock regression for ISSUE-75-4
+          report: test_graph/build/validation-reports/20260603-213057/report.md
+          summary: test_graph/build/validation-reports/20260603-213057/summary.json
+        - command: python skills/test_graph/scripts/run.py source-tracking
+          status: passed
+          purpose: adjacent git source tracking regression for ISSUE-75-4
+          report: test_graph/build/validation-reports/20260603-211804/report.md
+          summary: test_graph/build/validation-reports/20260603-211804/summary.json
+        - command: python skills/test_graph/scripts/run.py git-latest-source-tracking
+          status: passed
+          purpose: adjacent git-latest sync regression for ISSUE-75-4
+          report: test_graph/build/validation-reports/20260603-211900/report.md
+          summary: test_graph/build/validation-reports/20260603-211900/summary.json
         - command: python skills/test_graph/scripts/run.py smoke
           status: blocked
           purpose: baseline external install/registry/gateway/MCP regression
@@ -94,10 +110,13 @@ state_fields:
   - project_model.env_docs
   - project_model.env_specs
   - project_model.lib_specs
+  - project_model.lib_checkouts
+  - project_model.lib_locks
 actions:
   - RegisterProjectManifest
   - ResolveProjectDependencies
   - MaterializeProjectEnv
+  - ResolveProjectLibs
 ports:
   SkillManagerCli.register_project_manifest:
     adapter: ProjectManifestAdapter
@@ -117,6 +136,12 @@ ports:
       - dev.skillmanager.commands.EnvCommand.Sync
       - dev.skillmanager.commands.EnvCommand.Run
       - dev.skillmanager.project.ProjectEnvMaterializer
+      - dev.skillmanager.project.SkillProjectLockStore
+  SkillManagerCli.resolve_project_libs:
+    adapter: ProjectLibResolverAdapter
+    implemented_by:
+      - dev.skillmanager.commands.ProjectCommand.ResolveCmd
+      - dev.skillmanager.project.ProjectLibResolver
       - dev.skillmanager.project.SkillProjectLockStore
 adapters: case_adapters.toml
 notes:
