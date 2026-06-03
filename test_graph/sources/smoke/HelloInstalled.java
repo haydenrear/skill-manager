@@ -21,7 +21,10 @@ public class HelloInstalled {
             .kind(NodeSpec.Kind.ACTION)
             .dependsOn("hello.published")
             .tags("registry", "install")
-            .timeout("60s")
+            // Cold runs may bundle uv and register a Docker-backed MCP
+            // dependency. Keep this above the one-minute executor default
+            // so external validation fails on behavior, not setup latency.
+            .timeout("180s")
             .output("skillDir", "string");
 
     public static void main(String[] args) {

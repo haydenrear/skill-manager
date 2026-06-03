@@ -9,24 +9,45 @@ status:
   relation_to_desired_program_model: implemented_prefix_of_desired_ticket_plan
   current_model_rule: whole_program_working_copy_not_ticket_projection
   test_modeling_rule: do_not_model_tests_or_validation_harnesses_as_program_behavior
-  updated: null
+  updated: 2026-06-03
   current_slice:
-    name: baseline
-    status: scaffolded
-    refines: []
-    implemented_actions: []
+    name: ISSUE-75-1
+    status: implemented
+    refines:
+      - ../desired_program_model/ticket_plan.yaml#ISSUE-75-1
+    implemented_actions:
+      - RegisterProjectManifest
     validation:
-      unit: []
-      tlc: []
+      unit:
+        - command: jbang RunTests.java
+          status: passed
+          purpose: project manifest parser/registry plus full unit regression
+      tlc:
+        - command: bash specs/current/run_tlc.sh specs/current/SkillManager.tla specs/current/MC.cfg
+          status: passed
+          purpose: current program model with RegisterProjectManifest slice
+          states_generated: 2214081
+          distinct_states: 119680
       graph:
         - command: python skills/test_graph/scripts/discover.py
           status: passed
           purpose: discover available external validation graphs
-        - command: python skills/test_graph/scripts/run.py smoke
+        - command: python skills/test_graph/scripts/run.py project-manifest
           status: passed
+          purpose: external CLI registration regression for ISSUE-75-1
+          report: test_graph/build/validation-reports/20260603-195241/report.md
+          summary: test_graph/build/validation-reports/20260603-195241/summary.json
+        - command: python skills/test_graph/scripts/run.py smoke
+          status: blocked
           purpose: baseline external install/registry/gateway/MCP regression
-          report: test_graph/build/validation-reports/20260603-011307/report.md
-          summary: test_graph/build/validation-reports/20260603-011307/summary.json
+          prior_report: test_graph/build/validation-reports/20260603-011307/report.md
+          latest_attempt: test_graph/build/validation-reports/20260603-193949
+          blocker: mcp.tool.loads.installed timed out after 300s registering intentionally nonexistent npm/uv MCP load fixtures
+        - command: python skills/test_graph/scripts/run.py onboard
+          status: passed
+          purpose: onboarding regression after project command addition
+          report: test_graph/build/validation-reports/20260603-194938/report.md
+          summary: test_graph/build/validation-reports/20260603-194938/summary.json
         - command: python skills/test_graph/scripts/run.py --all
           status: pending
           purpose: full external regression before promotion
@@ -46,9 +67,20 @@ case_codegen:
   style: explicit_transition_cases
   generation_status: planned
 
-state_fields: []
-actions: []
-ports: {}
+state_fields:
+  - project_model.manifests
+  - project_model.registrations
+  - project_model.env_specs
+  - project_model.lib_specs
+actions:
+  - RegisterProjectManifest
+ports:
+  SkillManagerCli.register_project_manifest:
+    adapter: ProjectManifestAdapter
+    implemented_by:
+      - dev.skillmanager.commands.ProjectCommand.RegisterCmd
+      - dev.skillmanager.model.SkillProjectParser
+      - dev.skillmanager.project.SkillProjectRegistry
 adapters: case_adapters.toml
 notes:
   package_from_program_model: skillmanager_program_cases
