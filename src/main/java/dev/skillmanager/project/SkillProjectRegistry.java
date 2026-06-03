@@ -62,6 +62,7 @@ public final class SkillProjectRegistry {
                 name,
                 project.projectRoot(),
                 project.manifestPath(),
+                manifestFile,
                 dir,
                 registeredAt);
     }
@@ -80,14 +81,20 @@ public final class SkillProjectRegistry {
         String projectName = toml.getString("project.name");
         String root = toml.getString("project.project_root");
         String manifest = toml.getString("project.manifest_path");
+        String manifestFile = toml.getString("project.manifest_file");
         String registeredAt = toml.getString("project.registered_at");
         if (projectName == null || root == null || manifest == null) {
             throw new IOException("Malformed project registration in " + registration);
         }
+        if (manifestFile == null || manifestFile.isBlank()) {
+            manifestFile = Path.of(manifest).getFileName().toString();
+        }
+        requireSafeManifestFile(manifestFile, registration);
         return Optional.of(new SkillProjectRegistration(
                 projectName,
                 Path.of(root),
                 Path.of(manifest),
+                manifestFile,
                 dir,
                 registeredAt));
     }
@@ -109,15 +116,22 @@ public final class SkillProjectRegistry {
     public Optional<SkillProject> loadSnapshot(String name) throws IOException {
         Optional<SkillProjectRegistration> registration = read(name);
         if (registration.isEmpty()) return Optional.empty();
-        Path dir = registration.get().registrationDir();
-        Path manifest = SkillProjectParser.findManifest(dir);
-        if (manifest == null) return Optional.empty();
-        return Optional.of(SkillProjectParser.loadManifest(manifest, registration.get().projectRoot()));
+        SkillProjectRegistration reg = registration.get();
+        Path manifest = reg.registrationDir().resolve(reg.manifestFile());
+        if (!Files.isRegularFile(manifest)) return Optional.empty();
+        return Optional.of(SkillProjectParser.loadManifest(manifest, reg.projectRoot()));
     }
 
     private static void requireSafeName(String name) throws IOException {
         if (name == null || !name.matches("[A-Za-z0-9][A-Za-z0-9._-]*")) {
             throw new IOException("Invalid project name for registry path: " + name);
+        }
+    }
+
+    private static void requireSafeManifestFile(String manifestFile, Path registration) throws IOException {
+        Path path = Path.of(manifestFile);
+        if (path.isAbsolute() || path.getNameCount() != 1 || !path.getFileName().toString().equals(manifestFile)) {
+            throw new IOException("Malformed project registration manifest_file in " + registration);
         }
     }
 

@@ -68,6 +68,34 @@ public final class SkillProjectRegistryTest {
                         assertEquals(1, registry.list().size(), "one registered project");
                     }
                 })
+                .test("loadSnapshot uses recorded custom manifest filename", () -> {
+                    try (TestHarness h = TestHarness.create()) {
+                        Path projectDir = Files.createTempDirectory("custom-manifest-project-");
+                        Path customManifest = projectDir.resolve("agent-harness.toml");
+                        Files.writeString(customManifest, """
+                                [project]
+                                name = "custom-manifest"
+
+                                [skills.current]
+                                source = "skill:current"
+                                """);
+                        SkillProjectRegistry registry = new SkillProjectRegistry(h.store());
+                        SkillProjectRegistration registration =
+                                registry.register(SkillProjectParser.loadManifest(customManifest, projectDir));
+
+                        Files.writeString(registration.registrationDir().resolve("skill-project.toml"), """
+                                [project]
+                                name = "custom-manifest"
+
+                                [skills.stale]
+                                source = "skill:stale"
+                                """);
+
+                        SkillProject snapshot = registry.loadSnapshot("custom-manifest").orElseThrow();
+                        assertEquals("agent-harness.toml", registration.manifestFile(), "recorded manifest file");
+                        assertEquals("current", snapshot.skills().get(0).alias(), "loads recorded manifest snapshot");
+                    }
+                })
                 .runAll();
     }
 }
