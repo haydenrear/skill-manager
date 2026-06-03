@@ -322,7 +322,7 @@ tickets:
         - command: jbang RunTests.java
           status: passed
           date: "2026-06-03"
-          notes: ProjectLibResolverTest covers github and generic git coords, gitignore rendering, lock rows, sha mismatch rejection, safe lib names, and changed-ref reconciliation for existing clean checkouts.
+          notes: ProjectLibResolverTest covers github and generic git coords, gitignore rendering, lock rows, sha mismatch rejection, safe lib names, changed-ref reconciliation for existing clean checkouts, and rejection of existing checkouts without a matching origin.
         - command: pytest specs/current/tests specs/desired_program_model/tests
           status: passed
           date: "2026-06-03"
@@ -334,7 +334,7 @@ tickets:
         - command: python skills/test_graph/scripts/run.py project-libs
           status: passed
           date: "2026-06-03"
-          report: test_graph/build/validation-reports/20260603-213057/report.md
+          report: test_graph/build/validation-reports/20260603-220204/report.md
         - command: python skills/test_graph/scripts/run.py source-tracking
           status: passed
           date: "2026-06-03"

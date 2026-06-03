@@ -36,6 +36,7 @@ public class ProjectLibsResolved {
             Path sm = repoRoot.resolve("skill-manager");
 
             Path projectDir;
+            Path noOriginProjectDir;
             Path libRepo;
             String libSha;
             try {
@@ -56,6 +57,24 @@ public class ProjectLibsResolved {
                         name = "fixture-lib"
                         source = "git+file://%s#main"
                         """.formatted(libRepo));
+
+                noOriginProjectDir = Files.createTempDirectory("sm-project-libs-no-origin-");
+                Path orphanCheckout = noOriginProjectDir.resolve("libs/orphan-lib");
+                Files.createDirectories(orphanCheckout);
+                Files.writeString(orphanCheckout.resolve("marker.txt"), "orphan checkout\n");
+                git(orphanCheckout, "init");
+                git(orphanCheckout, "checkout", "-b", "main");
+                git(orphanCheckout, "add", ".");
+                git(orphanCheckout, "-c", "user.email=test@example.com", "-c", "user.name=Test",
+                        "commit", "-m", "orphan");
+                Files.writeString(noOriginProjectDir.resolve("skill-project.toml"), """
+                        [project]
+                        name = "tg-libs-no-origin-project"
+
+                        [[libs]]
+                        name = "orphan-lib"
+                        source = "git+file://%s"
+                        """.formatted(libRepo));
             } catch (Exception e) {
                 return NodeResult.fail("project.libs.resolved",
                         "could not scaffold project lib fixture: " + e.getMessage());
@@ -66,11 +85,15 @@ public class ProjectLibsResolved {
                     "--project-dir", projectDir.toString());
             ProcessRecord show = run(ctx, "show", home, repoRoot, sm,
                     "project", "show", "tg-libs-project");
+            ProcessRecord noOrigin = run(ctx, "resolve-libs-no-origin", home, repoRoot, sm,
+                    "project", "resolve", "--skip-gateway", "--resolve-libs",
+                    "--project-dir", noOriginProjectDir.toString());
 
             Path checkout = projectDir.resolve("libs/fixture-lib");
             Path lock = Path.of(home, "projects", "tg-libs-project", "project-lock.toml");
             String lockText = read(lock);
             String showLog = readLog(ctx, "show");
+            String noOriginLog = readLog(ctx, "resolve-libs-no-origin");
             String checkoutSha = "";
             try {
                 checkoutSha = readCommand(checkout, "git", "rev-parse", "HEAD").trim();
@@ -88,33 +111,41 @@ public class ProjectLibsResolved {
                     && lockText.contains("resolved_sha = \"" + libSha + "\"")
                     && lockText.contains("checkout_dir = \"" + checkout);
             boolean showReportsLibLock = show.exitCode() == 0 && showLog.contains("lib locks:1");
+            boolean noOriginRejected = noOrigin.exitCode() != 0
+                    && noOriginLog.contains("has no origin");
 
             boolean pass = resolve.exitCode() == 0
                     && checkoutRendered
                     && gitignored
                     && lockRendered
-                    && showReportsLibLock;
+                    && showReportsLibLock
+                    && noOriginRejected;
 
             return (pass
                     ? NodeResult.pass("project.libs.resolved")
                     : NodeResult.fail("project.libs.resolved",
                             "resolve=" + resolve.exitCode()
                                     + " show=" + show.exitCode()
+                                    + " noOrigin=" + noOrigin.exitCode()
                                     + " checkout=" + checkoutRendered
                                     + " gitignored=" + gitignored
                                     + " lock=" + lockRendered
                                     + " showLibLock=" + showReportsLibLock
+                                    + " noOriginRejected=" + noOriginRejected
                                     + " expectedSha=" + libSha
                                     + " checkoutSha=" + checkoutSha))
                     .process(resolve)
                     .process(show)
+                    .process(noOrigin)
                     .assertion("resolve_libs_command_ok", resolve.exitCode() == 0)
                     .assertion("lib_checkout_materialized_under_project_libs", checkoutRendered)
                     .assertion("libs_directory_gitignored", gitignored)
                     .assertion("project_lock_records_lib_provenance", lockRendered)
                     .assertion("project_show_reports_lib_lock_count", showReportsLibLock)
+                    .assertion("existing_checkout_without_origin_rejected", noOriginRejected)
                     .metric("resolveExitCode", resolve.exitCode())
                     .metric("showExitCode", show.exitCode())
+                    .metric("noOriginResolveExitCode", noOrigin.exitCode())
                     .publish("projectName", "tg-libs-project")
                     .publish("projectDir", projectDir.toString())
                     .publish("libSha", libSha);

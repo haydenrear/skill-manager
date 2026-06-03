@@ -136,6 +136,10 @@ public final class ProjectLibResolver {
             throw new IOException("project lib checkout is not a git repository: " + checkout);
         }
         String origin = GitOps.originUrl(checkout);
+        if (origin == null || origin.isBlank()) {
+            throw new IOException("project lib checkout " + checkout
+                    + " has no origin; refusing to satisfy manifest source " + url);
+        }
         if (origin != null && !origin.equals(url)) {
             throw new IOException("project lib checkout " + checkout + " has origin "
                     + origin + " but manifest source resolves to " + url);
