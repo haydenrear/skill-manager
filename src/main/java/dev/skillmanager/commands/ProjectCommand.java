@@ -115,13 +115,14 @@ public final class ProjectCommand {
                     : null;
             if (json) {
                 System.out.println("""
-                        {"name":"%s","installed":%d,"resolved":%d,"bindings":%d,"libs":%d,"lock":"%s"}"""
+                        {"name":"%s","installed":%d,"resolved":%d,"bindings":%d,"libs":%d,"childHome":"%s","lock":"%s"}"""
                         .formatted(
                                 esc(result.registration().name()),
                                 result.installed().size(),
                                 result.lock().resolvedUnits().size(),
                                 result.bindingIds().size(),
                                 libResult == null ? result.lock().libs().size() : libResult.libs().size(),
+                                esc(result.childHome().layout().childSkillManagerHome().toString()),
                                 esc(result.registration().registrationDir()
                                         .resolve(dev.skillmanager.project.SkillProjectLock.FILENAME)
                                         .toString())));
@@ -131,6 +132,7 @@ public final class ProjectCommand {
                 Log.info("  resolved:  %d", result.lock().resolvedUnits().size());
                 Log.info("  bindings:  %d", result.bindingIds().size());
                 Log.info("  libs:      %d", libResult == null ? result.lock().libs().size() : libResult.libs().size());
+                Log.info("  child:     %s", result.childHome().layout().childSkillManagerHome());
                 Log.info("  lock:      %s", result.registration().registrationDir()
                         .resolve(dev.skillmanager.project.SkillProjectLock.FILENAME));
             }

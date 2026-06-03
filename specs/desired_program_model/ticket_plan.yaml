@@ -411,7 +411,7 @@ tickets:
 
   - id: ISSUE-75-6
     title: Scaffold project .skill-manager as a child home
-    status: pending
+    status: in_progress
     depends_on: [ISSUE-75-2, ISSUE-75-3]
     objective: >
       Treat a skill-manager-project.toml checkout as the harness for that
@@ -443,12 +443,16 @@ tickets:
         - CODEX_HOME, CLAUDE_HOME, GEMINI_HOME, and SKILL_MANAGER_HOME point at child paths for launched agents
         - parent-child records allow a child home to become a parent for another child
       graph_after_unit_pass:
+        - python skills/test_graph/scripts/run.py project-resolve
+        - python skills/test_graph/scripts/run.py project-env
         - python skills/test_graph/scripts/run.py onboard
         - python skills/test_graph/scripts/run.py harness-smoke
         - python skills/test_graph/scripts/run.py smoke
       acceptance:
         commands:
           - bash specs/current/run_tlc.sh specs/current/SkillManager.tla specs/current/MC.cfg
+          - python skills/test_graph/scripts/run.py project-resolve
+          - python skills/test_graph/scripts/run.py project-env
           - python skills/test_graph/scripts/run.py onboard
           - python skills/test_graph/scripts/run.py harness-smoke
           - python skills/test_graph/scripts/run.py smoke
@@ -457,7 +461,40 @@ tickets:
           - Every child home has a known non-self parent home.
           - Project child-home units come from the project resolved unit graph.
           - External onboarding, harness, install, agent config, CLI, and MCP flows still pass.
-      evidence: []
+      evidence:
+        - command: jbang RunTests.java
+          status: passed
+          date: "2026-06-03"
+          notes: ProjectDependencyResolverTest covers project child-home creation, child-store unit projection, parent registry claims, child-sourced harness projections, and re-resolve pruning/reclaiming.
+        - command: pytest specs/current/tests specs/desired_program_model/tests
+          status: passed
+          date: "2026-06-03"
+        - command: bash specs/current/run_tlc.sh specs/current/SkillManager.tla specs/current/MC.cfg
+          status: passed
+          date: "2026-06-03"
+          states_generated: 25396289
+          distinct_states: 1052768
+        - command: python skills/test_graph/scripts/run.py project-resolve
+          status: passed
+          date: "2026-06-03"
+          report: test_graph/build/validation-reports/20260603-224727/report.md
+        - command: python skills/test_graph/scripts/run.py project-env
+          status: passed
+          date: "2026-06-03"
+          report: test_graph/build/validation-reports/20260603-223920/report.md
+        - command: python skills/test_graph/scripts/run.py harness-smoke
+          status: passed
+          date: "2026-06-03"
+          report: test_graph/build/validation-reports/20260603-224750/report.md
+        - command: python skills/test_graph/scripts/run.py onboard
+          status: passed
+          date: "2026-06-03"
+          report: test_graph/build/validation-reports/20260603-224044/report.md
+        - command: python skills/test_graph/scripts/run.py smoke
+          status: blocked
+          date: "2026-06-03"
+          latest_attempt: test_graph/build/validation-reports/20260603-193949
+          blocker: mcp.tool.loads.installed timed out after 300s registering intentionally nonexistent npm/uv MCP load fixtures
 
   - id: ISSUE-75-7
     title: Teach skill-manager-skill about projects and child homes

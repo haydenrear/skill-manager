@@ -97,6 +97,35 @@ public final class HarnessTest {
                     assertEquals(3, skillBinding.projections().size(),
                             "skill binding carries one projection per agent (claude + codex + gemini)");
                 })
+                .test("HarnessInstantiator resolves local refs relative to the harness template", () -> {
+                    Path home = Files.createTempDirectory("harness-local-ref-home-");
+                    SkillStore store = new SkillStore(home);
+                    store.init();
+                    UnitStore us = new UnitStore(store);
+
+                    Path template = Files.createTempDirectory("harness-local-ref-template-");
+                    Path localSkill = UnitFixtures.scaffoldSkill(
+                            template.resolve("units"), "local-harness-skill", DepSpec.empty()).sourcePath();
+                    Files.writeString(template.resolve("harness.toml"), """
+                            [harness]
+                            name = "local-ref-harness"
+                            version = "0.1.0"
+                            units = ["./units/local-harness-skill"]
+                            """);
+                    Fs.copyRecursive(localSkill, store.unitDir("local-harness-skill", UnitKind.SKILL));
+                    us.write(installedRec("local-harness-skill", UnitKind.SKILL));
+
+                    HarnessUnit harness = HarnessParser.load(template);
+                    Path sandbox = Files.createTempDirectory("harness-local-ref-target-");
+                    HarnessInstantiator.Plan plan = HarnessInstantiator.plan(
+                            harness, "local-ref-inst",
+                            sandbox.resolve("claude"), sandbox.resolve("codex"), sandbox.resolve("gemini"),
+                            sandbox.resolve("project"), store);
+
+                    assertEquals(1, plan.bindings().size(), "local harness skill binding planned");
+                    assertEquals("local-harness-skill", plan.bindings().get(0).unitName(),
+                            "relative local ref resolves via harness source path");
+                })
                 .test("End-to-end instantiate: per-agent symlinks + doc into project + ledger", () -> {
                     var fix = newHarnessFixture("e2e", false);
                     HarnessInstantiator.Plan plan = HarnessInstantiator.plan(
