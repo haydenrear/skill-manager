@@ -29,7 +29,7 @@ import java.nio.file.Path;
 public class HarnessTemplateUninstalled {
     static final NodeSpec SPEC = NodeSpec.of("harness.template.uninstalled")
             .kind(NodeSpec.Kind.ASSERTION)
-            .dependsOn("harness.instance.removed")
+            .dependsOn("harness.instance.removed", "harness.child.home.removed")
             .tags("uninstall", "harness", "ticket-47")
             .timeout("60s");
 

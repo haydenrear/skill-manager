@@ -46,6 +46,15 @@ public final class ChildHomeRegistry {
         BindingJson.MAPPER.writerWithDefaultPrettyPrinter().writeValue(file.toFile(), record);
     }
 
+    public void delete(String id) throws IOException {
+        Path dir = file(id).getParent();
+        if (Files.exists(dir)) Fs.deleteRecursive(dir);
+    }
+
+    public boolean exists(String id) {
+        return Files.isRegularFile(file(id));
+    }
+
     public List<String> childHomesClaiming(String unitName) throws IOException {
         Path root = root();
         if (!Files.isDirectory(root)) return List.of();

@@ -497,6 +497,7 @@ validationGraph {
         node("sources/smoke/harness/HarnessChildHomeMaterialized.java")
         node("sources/smoke/harness/HarnessCommandCoverage.java")
         node("sources/smoke/harness/HarnessInstanceRemoved.java")
+        node("sources/smoke/harness/HarnessChildHomeRemoved.java")
         node("sources/smoke/harness/HarnessTemplateUninstalled.java")
         node("sources/common/ServersDown.java")
                 .dependsOn("harness.template.uninstalled")
