@@ -125,6 +125,7 @@ jobs:
         graph:
           - smoke
           - onboard
+          - project-manifest
           - hyper-experiments
           - plugin-smoke
           - doc-smoke
