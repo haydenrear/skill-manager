@@ -86,7 +86,30 @@ public final class SkillProjectLockStore {
                         row.getString("target_root")));
             }
         }
-        return Optional.of(new SkillProjectLock(name, manifestFile, resolvedAt, units, bindings));
+        List<SkillProjectLock.EnvRealization> envs = new ArrayList<>();
+        TomlArray envRows = toml.getArray("envs");
+        if (envRows != null) {
+            for (int i = 0; i < envRows.size(); i++) {
+                TomlTable row = envRows.getTable(i);
+                if (row == null) continue;
+                String envName = row.getString("name");
+                if (envName == null || envName.isBlank()) continue;
+                envs.add(new SkillProjectLock.EnvRealization(
+                        envName,
+                        row.getString("python"),
+                        row.getString("env_root"),
+                        row.getString("pyproject_file"),
+                        row.getString("lock_file"),
+                        row.getString("venv_dir"),
+                        row.getString("docs_file"),
+                        strings(row.getArray("dependencies")),
+                        strings(row.getArray("skill_packages")),
+                        strings(row.getArray("vendor_units")),
+                        strings(row.getArray("tools")),
+                        row.getString("synced_at")));
+            }
+        }
+        return Optional.of(new SkillProjectLock(name, manifestFile, resolvedAt, units, bindings, envs));
     }
 
     public List<SkillProjectLock> list() throws IOException {
@@ -142,7 +165,57 @@ public final class SkillProjectLockStore {
             }
             sb.append("\n");
         }
+        for (SkillProjectLock.EnvRealization env : lock.envs()) {
+            sb.append("[[envs]]\n");
+            sb.append("name = \"").append(esc(env.name())).append("\"\n");
+            if (env.python() != null) {
+                sb.append("python = \"").append(esc(env.python())).append("\"\n");
+            }
+            if (env.envRoot() != null) {
+                sb.append("env_root = \"").append(esc(env.envRoot())).append("\"\n");
+            }
+            if (env.pyprojectFile() != null) {
+                sb.append("pyproject_file = \"").append(esc(env.pyprojectFile())).append("\"\n");
+            }
+            if (env.lockFile() != null) {
+                sb.append("lock_file = \"").append(esc(env.lockFile())).append("\"\n");
+            }
+            if (env.venvDir() != null) {
+                sb.append("venv_dir = \"").append(esc(env.venvDir())).append("\"\n");
+            }
+            if (env.docsFile() != null) {
+                sb.append("docs_file = \"").append(esc(env.docsFile())).append("\"\n");
+            }
+            appendArray(sb, "dependencies", env.dependencies());
+            appendArray(sb, "skill_packages", env.skillPackages());
+            appendArray(sb, "vendor_units", env.vendorUnits());
+            appendArray(sb, "tools", env.tools());
+            if (env.syncedAt() != null) {
+                sb.append("synced_at = \"").append(esc(env.syncedAt())).append("\"\n");
+            }
+            sb.append("\n");
+        }
         return sb.toString();
+    }
+
+    private static List<String> strings(TomlArray arr) {
+        if (arr == null) return List.of();
+        List<String> out = new ArrayList<>();
+        for (int i = 0; i < arr.size(); i++) {
+            String s = arr.getString(i);
+            if (s != null && !s.isBlank()) out.add(s);
+        }
+        return out;
+    }
+
+    private static void appendArray(StringBuilder sb, String key, List<String> values) {
+        if (values == null || values.isEmpty()) return;
+        sb.append(key).append(" = [");
+        for (int i = 0; i < values.size(); i++) {
+            if (i > 0) sb.append(", ");
+            sb.append("\"").append(esc(values.get(i))).append("\"");
+        }
+        sb.append("]\n");
     }
 
     private static String esc(String s) {

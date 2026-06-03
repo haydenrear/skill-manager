@@ -1,0 +1,162 @@
+version: 1
+name: desired-program-model
+canonical_tla_module: SkillManager
+canonical_tla_file: SkillManager.tla
+bounded_model_config: MC.cfg
+manifest: spec_manifest.yaml
+ticket_plan: ticket_plan.yaml
+
+relationship:
+  extends_current_program_model: ../program_model/SkillManager.tla
+  purpose: >
+    Desired whole-program model for issue 75 and the child Skill Manager
+    harness scaffold workflow.
+  generation_status: planned
+
+implementation_status:
+  updated: 2026-06-02
+  policy: specs/current is the executable state of landed work; this file summarizes the desired destination.
+  active_ticket: ISSUE-75
+  active_ticket_title: Skill Manager Projects and Child Homes
+  summary:
+    desired_model_scaffolded: true
+    ticket_breakdown: complete_for_planning
+    current_model: scaffolded_from_program_model
+    desired_tlc: passed
+    generated_desired_cases: pending
+    adapters: pending
+
+modeled_boundary_status:
+  project_manifest:
+    status: desired
+    actions: [RegisterProjectManifest]
+    state:
+      - project_model.manifests
+      - project_model.env_specs
+      - project_model.lib_specs
+    source: skill-manager-project.toml
+  project_resolution:
+    status: desired
+    actions: [ResolveProjectDependencies]
+    state:
+      - project_model.locks
+      - project_model.registrations
+      - project_model.resolved_units
+      - project_model.doc_bindings
+      - project_model.harness_bindings
+      - project_model.agent_configs
+    source: issue 75 dependency-resolution requirement
+  project_envs:
+    status: desired
+    actions: [MaterializeProjectEnv]
+    state:
+      - project_model.env_realizations
+      - project_model.env_locks
+      - project_model.tool_shims
+      - project_model.skill_vendors
+      - project_model.env_docs
+    source: issue 75 uv environment requirement
+    rule: inherit recipes and skill packages, not shared venvs
+  project_libs:
+    status: desired
+    actions: [ResolveProjectLibs]
+    state:
+      - project_model.lib_checkouts
+      - project_model.lib_locks
+    source: issue 75 --resolve-libs requirement
+  child_homes:
+    status: desired
+    actions: [InstantiateChildHomeFromHarness, ScaffoldProjectChildHome]
+    state:
+      - project_model.child_homes
+      - project_model.project_child_homes
+      - project_model.child_home_parents
+      - project_model.child_home_harnesses
+      - project_model.child_home_agent_configs
+      - project_model.child_home_units
+      - project_model.child_home_mcp_servers
+      - project_model.child_home_tool_shims
+    source: ticket/scaffold-skill-manager-child/skill-manager-child.md
+    rule: child homes are harness-derived Skill Manager homes with child-local agent homes
+  project_as_harness:
+    status: desired
+    actions: [ScaffoldProjectChildHome]
+    state:
+      - project_model.project_child_homes
+      - project_model.child_home_parents
+      - project_model.child_home_agent_configs
+      - project_model.child_home_units
+      - project_model.child_home_mcp_servers
+      - project_model.child_home_tool_shims
+    source: follow-up design note in conversation
+    rule: a skill-manager-project.toml checkout is the harness for its project-local child Skill Manager home
+
+program_domains:
+  - project manifest dependency graph
+  - home-level unit/tool/MCP/doc resolution
+  - project-local uv environment realization
+  - source library checkout provenance
+  - harness-derived child Skill Manager home realization
+  - project manifest as project harness
+  - recursive parent-child Skill Manager home registry
+  - agent-facing project and child-home documentation
+
+implementation_sources:
+  project_manifest:
+    expected:
+      - src/main/java/dev/skillmanager/commands
+      - src/main/java/dev/skillmanager/store
+      - skill-manager-skill/skill-manager.toml
+  envs:
+    expected:
+      - CLI env commands
+      - uv project renderer
+      - project-local shim generator
+  libs:
+    expected:
+      - git/GitHub coord resolver
+      - project lock writer
+  child_homes:
+    expected:
+      - harness command surface
+      - agent home/config projectors
+      - child Skill Manager home bootstrapper
+      - project child-home scaffolder
+
+adapter_plan:
+  desired_new_ports:
+    - SkillManagerCli.register_project_manifest
+    - SkillManagerCli.resolve_project_dependencies
+    - SkillManagerCli.materialize_project_env
+    - SkillManagerCli.resolve_project_libs
+    - SkillManagerCli.instantiate_child_home_from_harness
+    - SkillManagerCli.scaffold_project_child_home
+  desired_adapters:
+    - ProjectManifestAdapter
+    - ProjectDependencyResolverAdapter
+    - ProjectEnvMaterializerAdapter
+    - ProjectLibResolverAdapter
+    - ChildHomeHarnessAdapter
+    - ProjectChildHomeScaffolderAdapter
+    - SkillManagerSkillDocsAdapter
+
+guardrails:
+  portable_intent:
+    - skill-manager-project.toml and skill-manager.lock are the portable source and lock state.
+    - Generated docs such as .skill-manager/env.md are not source of truth.
+  uv_envs:
+    - Never model project envs as inheriting or mutating a shared home venv.
+    - Generated uv source paths must be project-relative when locked.
+  removal:
+    - Plain unit removal rejects project-bound units.
+    - Plain unit removal rejects child-home-bound units.
+  child_homes:
+    - Child homes must be tied to either an explicit harness or a project manifest-as-harness.
+    - Project child homes may use the project manifest itself as their harness.
+    - Every child home must have a known non-self parent Skill Manager home.
+    - Parent homes may themselves be child homes; do not rely on a distinguished global root.
+    - Child-home MCP servers and tool shims derive from harness-selected units.
+  validation:
+    - TLC and current-model adapter/unit tests run before graph execution.
+    - The affected test_graph graph runs after each landed slice.
+    - python skills/test_graph/scripts/run.py --all is the promotion regression gate.

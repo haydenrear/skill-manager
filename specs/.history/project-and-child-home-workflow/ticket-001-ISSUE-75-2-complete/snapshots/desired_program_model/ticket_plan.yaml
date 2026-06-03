@@ -220,7 +220,7 @@ tickets:
         - command: python skills/test_graph/scripts/run.py project-resolve
           status: passed
           date: "2026-06-03"
-          report: test_graph/build/validation-reports/20260603-210438/report.md
+          report: test_graph/build/validation-reports/20260603-204615/report.md
 
   - id: ISSUE-75-3
     title: Materialize project-local tools and uv envs
@@ -278,7 +278,7 @@ tickets:
         - command: python skills/test_graph/scripts/run.py project-env
           status: passed
           date: "2026-06-03"
-          report: test_graph/build/validation-reports/20260603-210456/report.md
+          report: test_graph/build/validation-reports/20260603-210033/report.md
 
   - id: ISSUE-75-4
     title: Resolve project libs with locked git provenance

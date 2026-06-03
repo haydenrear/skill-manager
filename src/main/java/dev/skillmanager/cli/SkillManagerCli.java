@@ -8,6 +8,7 @@ import dev.skillmanager.commands.HarnessCommand;
 import dev.skillmanager.commands.CreateAccountCommand;
 import dev.skillmanager.commands.CreateCommand;
 import dev.skillmanager.commands.DepsCommand;
+import dev.skillmanager.commands.EnvCommand;
 import dev.skillmanager.commands.GatewayCommand;
 import dev.skillmanager.commands.InstallCommand;
 import dev.skillmanager.commands.ListCommand;
@@ -61,6 +62,7 @@ import picocli.CommandLine.Option;
                 PolicyCommand.class,
                 PmCommand.class,
                 CliCommand.class,
+                EnvCommand.class,
                 CreateCommand.class,
                 AdsCommand.class,
                 LoginCommand.class,

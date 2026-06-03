@@ -1,0 +1,133 @@
+{
+  "commit_recommendation": {
+    "git_add": "git add specs/.history/project-and-child-home-workflow/ticket-001-ISSUE-75-2-complete",
+    "git_commit": "git commit -m 'record spec history for ISSUE-75-2'",
+    "message": "It is recommended to commit this history directory now: specs/.history/project-and-child-home-workflow/ticket-001-ISSUE-75-2-complete"
+  },
+  "created_at_utc": "2026-06-03T21:02:22.822056+00:00",
+  "entry_name": "ticket-001-ISSUE-75-2-complete",
+  "git": {
+    "branch": "feature/skill-manager-projects",
+    "commit": "bb42dd0",
+    "inside_work_tree": "true"
+  },
+  "history_policy": "append-only by convention; existing entries are not overwritten and filesystem permissions remain git-friendly",
+  "kind": "ticket",
+  "results": [
+    {
+      "exists": true,
+      "role": "result",
+      "snapshot": "specs/.history/project-and-child-home-workflow/ticket-001-ISSUE-75-2-complete/results/report.md",
+      "source": "test_graph/build/validation-reports/20260603-204615/report.md"
+    }
+  ],
+  "schema_version": 1,
+  "snapshots": [
+    {
+      "exists": true,
+      "role": "program_model",
+      "snapshot": "specs/.history/project-and-child-home-workflow/ticket-001-ISSUE-75-2-complete/snapshots/program_model",
+      "source": "specs/program_model"
+    },
+    {
+      "exists": true,
+      "role": "desired_program_model",
+      "snapshot": "specs/.history/project-and-child-home-workflow/ticket-001-ISSUE-75-2-complete/snapshots/desired_program_model",
+      "source": "specs/desired_program_model"
+    },
+    {
+      "exists": true,
+      "role": "current",
+      "snapshot": "specs/.history/project-and-child-home-workflow/ticket-001-ISSUE-75-2-complete/snapshots/current",
+      "source": "specs/current"
+    }
+  ],
+  "spec_root": "specs",
+  "summary": "Implemented project dependency resolution into installed units, project locks, doc and harness bindings, and project-claimed remove protection.",
+  "ticket": {
+    "current_increment": {
+      "acceptance": {
+        "assertions": [
+          "Project locks and registrations only exist for manifests.",
+          "Project resolved units are installed in SKILL_MANAGER_HOME.",
+          "Project doc bindings have managed copies and import directives.",
+          "External install, doc projection, harness, plugin, CLI, and MCP flows still pass."
+        ],
+        "commands": [
+          "bash specs/current/run_tlc.sh specs/current/SkillManager.tla specs/current/MC.cfg",
+          "python skills/test_graph/scripts/run.py smoke",
+          "python skills/test_graph/scripts/run.py doc-smoke",
+          "python skills/test_graph/scripts/run.py harness-smoke",
+          "python skills/test_graph/scripts/run.py plugin-smoke"
+        ]
+      },
+      "adapters": [
+        "ProjectDependencyResolverAdapter"
+      ],
+      "evidence": [
+        {
+          "command": "jbang RunTests.java",
+          "date": "2026-06-03",
+          "notes": "ProjectDependencyResolverTest covers transitive installs, doc bindings, harness bindings, and remove guard.",
+          "status": "passed"
+        },
+        {
+          "command": "pytest specs/current/tests specs/desired_program_model/tests",
+          "date": "2026-06-03",
+          "status": "passed"
+        },
+        {
+          "command": "bash specs/current/run_tlc.sh specs/current/SkillManager.tla specs/current/MC.cfg",
+          "date": "2026-06-03",
+          "distinct_states": 154848,
+          "states_generated": 3014529,
+          "status": "passed"
+        },
+        {
+          "command": "python skills/test_graph/scripts/run.py project-resolve",
+          "date": "2026-06-03",
+          "report": "test_graph/build/validation-reports/20260603-204615/report.md",
+          "status": "passed"
+        }
+      ],
+      "graph_after_unit_pass": [
+        "python skills/test_graph/scripts/run.py smoke",
+        "python skills/test_graph/scripts/run.py doc-smoke",
+        "python skills/test_graph/scripts/run.py harness-smoke",
+        "python skills/test_graph/scripts/run.py plugin-smoke"
+      ],
+      "model_actions": [
+        "ResolveProjectDependencies"
+      ],
+      "model_state": [
+        "project_model.locks",
+        "project_model.registrations",
+        "project_model.resolved_units",
+        "project_model.doc_bindings",
+        "project_model.harness_bindings",
+        "project_model.agent_configs"
+      ],
+      "unit_tests": [
+        "resolves transitive skill dependencies",
+        "binds selected doc repo sources into a project",
+        "registers project for future sync and upgrade",
+        "protects project-bound units from plain remove"
+      ]
+    },
+    "depends_on": [
+      "ISSUE-75-1"
+    ],
+    "desired_actions": [
+      "ResolveProjectDependencies"
+    ],
+    "id": "ISSUE-75-2",
+    "objective": "Resolve one project manifest into installed home units, transitive dependencies, doc bindings, harness bindings, MCP registrations, CLI lock entries, project lock state, and project registration metadata.\n",
+    "status": "completed",
+    "title": "Resolve project dependency graph into home and project bindings"
+  },
+  "ticket_id": "ISSUE-75-2",
+  "ticket_index": 1,
+  "ticket_plan": "specs/desired_program_model/ticket_plan.yaml",
+  "ticket_status": "completed",
+  "workflow_name": "project-and-child-home-workflow"
+}

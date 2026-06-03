@@ -536,6 +536,11 @@ validationGraph {
         node("sources/project/ProjectDependenciesResolved.java")
     }
 
+    testGraph("project-env") {
+        node("sources/common/EnvPrepared.java")
+        node("sources/project/ProjectEnvMaterialized.java")
+    }
+
     testGraph("skill-dev-smoke") {
         node("sources/common/EnvPrepared.java")
         node("sources/common/GatewayPythonVenvReady.java")

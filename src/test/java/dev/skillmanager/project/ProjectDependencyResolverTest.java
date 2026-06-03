@@ -6,7 +6,6 @@ import dev.skillmanager._lib.harness.TestHarness;
 import dev.skillmanager._lib.test.Tests;
 import dev.skillmanager.app.RemoveUseCase;
 import dev.skillmanager.bindings.BindingStore;
-import dev.skillmanager.bindings.ProjectionKind;
 import dev.skillmanager.model.SkillProject;
 import dev.skillmanager.model.SkillProjectParser;
 import dev.skillmanager.model.UnitKind;
@@ -134,6 +133,55 @@ public final class ProjectDependencyResolverTest {
                         assertTrue(blocked, "project lock blocks plain remove");
                     }
                 })
+                .test("preinstalled unit with wrong kind is rejected before skip", () -> {
+                    try (TestHarness h = TestHarness.create()) {
+                        h.seedUnit("kind-conflict", UnitKind.SKILL);
+                        h.scaffoldUnitDir("kind-conflict", UnitKind.SKILL);
+                        Path repoRoot = Files.createTempDirectory("project-resolve-kind-conflict-");
+                        SkillProject project = project(repoRoot, """
+                                [project]
+                                name = "kind-conflict-project"
+
+                                [plugins.conflict]
+                                source = "plugin:kind-conflict"
+                                """);
+
+                        boolean rejected = false;
+                        try {
+                            resolver(h).resolve(project, new ProjectDependencyResolver.Options(true, false));
+                        } catch (java.io.IOException e) {
+                            rejected = e.getMessage().contains("expected PLUGIN")
+                                    && e.getMessage().contains("SKILL");
+                        }
+                        assertTrue(rejected, "existing wrong-kind unit is rejected");
+                    }
+                })
+                .test("direct git dependency is recorded in the project lock", () -> {
+                    try (TestHarness h = TestHarness.create()) {
+                        Path repoRoot = Files.createTempDirectory("project-resolve-direct-git-");
+                        Path gitSkill = UnitFixtures.scaffoldSkill(
+                                repoRoot.resolve("git-skill"), "git-locked-skill", DepSpec.empty()).sourcePath();
+                        gitInitCommit(gitSkill);
+                        SkillProject project = project(repoRoot, """
+                                [project]
+                                name = "git-project"
+
+                                [skills.git]
+                                source = "git+file://%s"
+                                """.formatted(gitSkill));
+
+                        ProjectDependencyResolver.Result result = resolver(h).resolve(
+                                project,
+                                new ProjectDependencyResolver.Options(true, false));
+
+                        Set<String> locked = result.lock().resolvedUnits().stream()
+                                .map(SkillProjectLock.ResolvedUnit::name)
+                                .collect(Collectors.toSet());
+                        assertTrue(locked.contains("git-locked-skill"), "direct git unit is locked");
+                        assertTrue(new SkillProjectLockStore(h.store()).projectsClaiming("git-locked-skill")
+                                .contains("git-project"), "direct git unit is project-claimed");
+                    }
+                })
                 .runAll();
     }
 
@@ -174,5 +222,27 @@ public final class ProjectDependencyResolverTest {
                 docs = ["%s"]
                 """.formatted(name, skill, doc));
         return dir;
+    }
+
+    private static void gitInitCommit(Path repo) throws Exception {
+        git(repo, "init");
+        git(repo, "checkout", "-b", "main");
+        git(repo, "add", ".");
+        git(repo, "-c", "user.email=test@example.com", "-c", "user.name=Test", "commit", "-m", "initial");
+    }
+
+    private static void git(Path repo, String... args) throws Exception {
+        String[] command = new String[args.length + 3];
+        command[0] = "git";
+        command[1] = "-C";
+        command[2] = repo.toString();
+        System.arraycopy(args, 0, command, 3, args.length);
+        Process p = new ProcessBuilder(command).redirectErrorStream(true).start();
+        String output = new String(p.getInputStream().readAllBytes());
+        int rc = p.waitFor();
+        if (rc != 0) {
+            throw new java.io.IOException("git " + String.join(" ", args)
+                    + " failed with " + rc + ": " + output);
+        }
     }
 }

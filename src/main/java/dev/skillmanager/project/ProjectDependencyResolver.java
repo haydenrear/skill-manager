@@ -65,7 +65,7 @@ public final class ProjectDependencyResolver {
         SkillProjectRegistration registration = new SkillProjectRegistry(store).register(project);
         List<String> installed = installMissing(project, opts);
         List<SkillProjectLock.ProjectBinding> projectBindings = materializeProjectBindings(project);
-        List<SkillProjectLock.ResolvedUnit> resolvedUnits = collectResolvedUnits(project);
+        List<SkillProjectLock.ResolvedUnit> resolvedUnits = collectResolvedUnits(project, installed);
         SkillProjectLock lock = new SkillProjectLock(
                 project.name(),
                 registration.manifestFile(),
@@ -84,7 +84,10 @@ public final class ProjectDependencyResolver {
         List<String> installed = new ArrayList<>();
         for (SkillProject.ProjectUnitRef ref : installableRefs(project)) {
             String expectedName = unitName(ref.reference(), project.projectRoot()).orElse(null);
-            if (expectedName != null && store.containsUnit(expectedName)) continue;
+            if (expectedName != null && store.containsUnit(expectedName)) {
+                validateExpectedKind(ref, expectedName);
+                continue;
+            }
 
             InstallSource source = installSource(ref.reference(), project.projectRoot());
             var program = InstallUseCase.buildProgram(
@@ -184,7 +187,10 @@ public final class ProjectDependencyResolver {
         }
     }
 
-    private List<SkillProjectLock.ResolvedUnit> collectResolvedUnits(SkillProject project) throws IOException {
+    private List<SkillProjectLock.ResolvedUnit> collectResolvedUnits(
+            SkillProject project,
+            List<String> newlyInstalled
+    ) throws IOException {
         Map<String, SkillProjectLock.ResolvedUnit> rows = new LinkedHashMap<>();
         Set<String> directNames = new LinkedHashSet<>();
         ArrayDeque<String> queue = new ArrayDeque<>();
@@ -193,6 +199,11 @@ public final class ProjectDependencyResolver {
             if (name.isEmpty()) continue;
             directNames.add(name.get());
             queue.add(name.get());
+        }
+        for (String name : newlyInstalled == null ? List.<String>of() : newlyInstalled) {
+            if (name == null || name.isBlank()) continue;
+            directNames.add(name);
+            queue.add(name);
         }
         UnitStore unitStore = new UnitStore(store);
         while (!queue.isEmpty()) {
