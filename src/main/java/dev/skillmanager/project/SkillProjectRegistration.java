@@ -6,6 +6,7 @@ public record SkillProjectRegistration(
         String name,
         Path projectRoot,
         Path manifestPath,
+        String manifestFile,
         Path registrationDir,
         String registeredAt
 ) {}
