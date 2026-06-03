@@ -11,26 +11,27 @@ status:
   test_modeling_rule: do_not_model_tests_or_validation_harnesses_as_program_behavior
   updated: 2026-06-03
   current_slice:
-    name: ISSUE-75-4
+    name: ISSUE-75-5
     status: implemented
     refines:
-      - ../desired_program_model/ticket_plan.yaml#ISSUE-75-4
+      - ../desired_program_model/ticket_plan.yaml#ISSUE-75-5
     implemented_actions:
       - RegisterProjectManifest
       - ResolveProjectDependencies
       - MaterializeProjectEnv
       - ResolveProjectLibs
+      - InstantiateChildHomeFromHarness
     validation:
       unit:
         - command: jbang RunTests.java
           status: passed
-          purpose: project lib resolver, project env materializer, project lock rows, and full unit regression
+          purpose: child home harness installer, project lib resolver, project env materializer, project lock rows, and full unit regression
       tlc:
         - command: bash specs/current/run_tlc.sh specs/current/SkillManager.tla specs/current/MC.cfg
           status: passed
-          purpose: current program model with ResolveProjectLibs slice
-          states_generated: 8276001
-          distinct_states: 390048
+          purpose: current program model with InstantiateChildHomeFromHarness slice
+          states_generated: 13413473
+          distinct_states: 604512
       graph:
         - command: python skills/test_graph/scripts/discover.py
           status: passed
@@ -55,6 +56,11 @@ status:
           purpose: external CLI lib checkout and lock regression for ISSUE-75-4
           report: test_graph/build/validation-reports/20260603-213057/report.md
           summary: test_graph/build/validation-reports/20260603-213057/summary.json
+        - command: python skills/test_graph/scripts/run.py harness-smoke
+          status: passed
+          purpose: external CLI child-home harness instantiate and harness lifecycle regression for ISSUE-75-5
+          report: test_graph/build/validation-reports/20260603-214626/report.md
+          summary: test_graph/build/validation-reports/20260603-214626/summary.json
         - command: python skills/test_graph/scripts/run.py source-tracking
           status: passed
           purpose: adjacent git source tracking regression for ISSUE-75-4
@@ -112,11 +118,20 @@ state_fields:
   - project_model.lib_specs
   - project_model.lib_checkouts
   - project_model.lib_locks
+  - project_model.child_homes
+  - project_model.project_child_homes
+  - project_model.child_home_parents
+  - project_model.child_home_harnesses
+  - project_model.child_home_agent_configs
+  - project_model.child_home_units
+  - project_model.child_home_mcp_servers
+  - project_model.child_home_tool_shims
 actions:
   - RegisterProjectManifest
   - ResolveProjectDependencies
   - MaterializeProjectEnv
   - ResolveProjectLibs
+  - InstantiateChildHomeFromHarness
 ports:
   SkillManagerCli.register_project_manifest:
     adapter: ProjectManifestAdapter
@@ -143,6 +158,13 @@ ports:
       - dev.skillmanager.commands.ProjectCommand.ResolveCmd
       - dev.skillmanager.project.ProjectLibResolver
       - dev.skillmanager.project.SkillProjectLockStore
+  SkillManagerCli.instantiate_child_home_from_harness:
+    adapter: ChildHomeHarnessAdapter
+    implemented_by:
+      - dev.skillmanager.commands.HarnessCommand.InstantiateCmd
+      - dev.skillmanager.bindings.ChildHomeHarnessInstaller
+      - dev.skillmanager.bindings.HarnessInstantiator
+      - dev.skillmanager.bindings.HarnessInstanceLock
 adapters: case_adapters.toml
 notes:
   package_from_program_model: skillmanager_program_cases

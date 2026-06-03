@@ -346,7 +346,7 @@ tickets:
 
   - id: ISSUE-75-5
     title: Instantiate child Skill Manager home from harness
-    status: pending
+    status: in_progress
     depends_on: [ISSUE-75-2]
     objective: >
       Add the child-home path: given a harness and target directory, scaffold a
@@ -386,7 +386,26 @@ tickets:
           - Child-home units come from parent-installed harness units.
           - Child-home MCP servers and tool shims derive from those units.
           - External harness instantiation and baseline install/MCP flows still pass.
-      evidence: []
+      evidence:
+        - command: jbang RunTests.java
+          status: passed
+          date: "2026-06-03"
+          notes: HarnessTest covers child .skill-manager/.codex/.claude/.gemini creation, child store unit records, child-local CLI/MCP shim mirroring, harness docs/projections, parent child-home registry, and remove protection for child-home units.
+        - command: pytest specs/current/tests specs/desired_program_model/tests
+          status: passed
+          date: "2026-06-03"
+        - command: bash specs/current/run_tlc.sh specs/current/SkillManager.tla specs/current/MC.cfg
+          status: passed
+          date: "2026-06-03"
+          states_generated: 13413473
+          distinct_states: 604512
+        - command: python skills/test_graph/scripts/discover.py harness-smoke
+          status: passed
+          date: "2026-06-03"
+        - command: python skills/test_graph/scripts/run.py harness-smoke
+          status: passed
+          date: "2026-06-03"
+          report: test_graph/build/validation-reports/20260603-214626/report.md
 
   - id: ISSUE-75-6
     title: Scaffold project .skill-manager as a child home

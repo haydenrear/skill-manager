@@ -11,6 +11,7 @@ CONSTANTS
   ScriptA, PackageA,
   SessionA, SessionB,
   UserA, VersionA,
+  ParentHomeA, ChildHomeA,
   NoReason
 
 VARIABLES
@@ -97,6 +98,8 @@ Versions == {VersionA}
 Projects == {ProjectA}
 Envs == {EnvA}
 Libs == {LibA}
+ChildHomes == {ChildHomeA}
+SkillManagerHomes == {ParentHomeA, ChildHomeA}
 
 ReferenceEdges == {<<UnitB, UnitA>>}
 UnitMcpEdges == {<<UnitA, ServerA>>, <<UnitB, ServerB>>}
@@ -150,6 +153,7 @@ ProjectResolvedUnitClosure(project) ==
 
 ProjectClaimedUnits ==
   {entry[2] : entry \in project_model.resolved_units}
+    \cup {entry[2] : entry \in project_model.child_home_units}
 
 ProjectLockedUnits(project) ==
   {entry[2] : entry \in {row \in project_model.resolved_units : row[1] = project}}
@@ -170,7 +174,15 @@ ProjectModelInit ==
    env_specs |-> {},
    lib_specs |-> {},
    lib_checkouts |-> {},
-   lib_locks |-> {}]
+   lib_locks |-> {},
+   child_homes |-> {},
+   project_child_homes |-> {},
+   child_home_parents |-> {},
+   child_home_harnesses |-> {},
+   child_home_agent_configs |-> {},
+   child_home_units |-> {},
+   child_home_mcp_servers |-> {},
+   child_home_tool_shims |-> {}]
 
 UnitProjections(units) ==
   Agents \X units
@@ -930,6 +942,33 @@ ResolveProjectLibs(project) ==
     /\ result' = Ok
     /\ UNCHANGED state_vars
 
+\* @command InstantiateChildHomeFromHarness
+\* @result ProjectResult
+\* @port SkillManagerCli.instantiate_child_home_from_harness
+InstantiateChildHomeFromHarness(home, template) ==
+  LET needed_units == DependencyClosure(HarnessUnitsFor(template))
+      child_servers == McpServersFor(needed_units)
+      child_tools == ToolsFor(child_servers)
+  IN
+  IF template \notin cli_harness_templates
+     \/ ~(needed_units \subseteq cli_store_units)
+  THEN
+    /\ result' = Reject("CHILD_HOME_PARENT_GAP")
+    /\ project_model' = project_model
+    /\ UNCHANGED state_vars
+  ELSE
+    /\ project_model' =
+        [project_model EXCEPT
+          !.child_homes = @ \cup {home},
+          !.child_home_parents = @ \cup {<<ParentHomeA, home>>},
+          !.child_home_harnesses = @ \cup {<<home, template>>},
+          !.child_home_agent_configs = @ \cup ({home} \X Agents),
+          !.child_home_units = @ \cup ({home} \X needed_units),
+          !.child_home_mcp_servers = @ \cup ({home} \X child_servers),
+          !.child_home_tool_shims = @ \cup ({home} \X child_tools)]
+    /\ result' = Ok
+    /\ UNCHANGED state_vars
+
 CoreNext ==
   \/ \E user \in Users: ServerAuthenticate(user)
   \/ \E user \in Users, unit \in Units, version \in Versions:
@@ -961,6 +1000,8 @@ Next ==
   \/ \E project \in Projects: ResolveProjectDependencies(project)
   \/ \E project \in Projects, env \in Envs: MaterializeProjectEnv(project, env)
   \/ \E project \in Projects: ResolveProjectLibs(project)
+  \/ \E home \in ChildHomes, template \in HarnessTemplates:
+      InstantiateChildHomeFromHarness(home, template)
 
 \* @invariant CliInstalledRecordsTrackStore
 CliInstalledRecordsTrackStore ==
@@ -1072,6 +1113,53 @@ ProjectLibLocksTrackCheckouts ==
   /\ project_model.lib_locks = project_model.lib_checkouts
   /\ \A entry \in project_model.lib_checkouts:
        entry[1] \in project_model.locks
+
+\* @invariant ChildHomesHaveHarnesses
+ChildHomesHaveHarnesses ==
+  \A home \in project_model.child_homes:
+    \E template \in HarnessTemplates:
+      <<home, template>> \in project_model.child_home_harnesses
+
+\* @invariant ChildHomesHaveParents
+ChildHomesHaveParents ==
+  \A home \in project_model.child_homes:
+    \E parent \in SkillManagerHomes:
+      <<parent, home>> \in project_model.child_home_parents
+
+\* @invariant ChildHomeParentsAreKnownAndNotSelf
+ChildHomeParentsAreKnownAndNotSelf ==
+  \A pair \in project_model.child_home_parents:
+    /\ pair[1] \in SkillManagerHomes
+    /\ pair[2] \in project_model.child_homes
+    /\ pair[1] # pair[2]
+
+\* @invariant ChildHomeUnitsComeFromParent
+ChildHomeUnitsComeFromParent ==
+  \A pair \in project_model.child_home_units:
+    /\ pair[1] \in project_model.child_homes
+    /\ pair[2] \in cli_store_units
+
+\* @invariant ChildHomeAgentConfigsAreKnown
+ChildHomeAgentConfigsAreKnown ==
+  \A pair \in project_model.child_home_agent_configs:
+    /\ pair[1] \in project_model.child_homes
+    /\ pair[2] \in Agents
+
+\* @invariant ChildHomeMcpServersComeFromUnits
+ChildHomeMcpServersComeFromUnits ==
+  \A pair \in project_model.child_home_mcp_servers:
+    /\ pair[1] \in project_model.child_homes
+    /\ \E unit_pair \in project_model.child_home_units:
+        /\ unit_pair[1] = pair[1]
+        /\ <<unit_pair[2], pair[2]>> \in UnitMcpEdges
+
+\* @invariant ChildHomeToolShimsComeFromMcpServers
+ChildHomeToolShimsComeFromMcpServers ==
+  \A pair \in project_model.child_home_tool_shims:
+    /\ pair[1] \in project_model.child_homes
+    /\ \E server_pair \in project_model.child_home_mcp_servers:
+        /\ server_pair[1] = pair[1]
+        /\ <<server_pair[2], pair[2]>> \in ServerToolEdges
 
 \* @invariant HaltImpliesHaltContinuation
 HaltImpliesHaltContinuation ==

@@ -3,6 +3,7 @@ package dev.skillmanager.commands;
 import dev.skillmanager.bindings.Binding;
 import dev.skillmanager.bindings.BindingSource;
 import dev.skillmanager.bindings.BindingStore;
+import dev.skillmanager.bindings.ChildHomeHarnessInstaller;
 import dev.skillmanager.bindings.HarnessInstantiator;
 import dev.skillmanager.bindings.Projection;
 import dev.skillmanager.effects.DryRunInterpreter;
@@ -99,6 +100,12 @@ public final class HarnessCommand {
                         + "tracked-copy docs under docs/agents/. Defaults to <sandbox>/<id>.")
         String projectDir;
 
+        @Option(names = "--child-home-dir",
+                description = "Target root for a child Skill Manager home. Creates <dir>/.skill-manager, "
+                        + "<dir>/.codex, <dir>/.claude, and <dir>/.gemini, projects harness units "
+                        + "from the parent home into the child home, and points the harness instance at them.")
+        String childHomeDir;
+
         @Option(names = "--dry-run",
                 description = "Print the effects without touching the filesystem or ledger.")
         boolean dryRun;
@@ -121,6 +128,39 @@ public final class HarnessCommand {
                 return 2;
             }
             String id = instanceId != null && !instanceId.isBlank() ? instanceId : name;
+
+            if (childHomeDir != null && !childHomeDir.isBlank()) {
+                if (claudeConfigDir != null || codexHome != null || geminiHome != null || projectDir != null) {
+                    Log.error("--child-home-dir derives .claude/.codex/.gemini/project paths; do not combine it "
+                            + "with explicit target path options");
+                    return 2;
+                }
+                Path target = Path.of(childHomeDir).toAbsolutePath().normalize();
+                ChildHomeHarnessInstaller.Layout layout = ChildHomeHarnessInstaller.layout(target);
+                if (dryRun) {
+                    Log.info("would instantiate %s as %s into child home:", name, id);
+                    Log.info("  child skill-manager home: %s", layout.childSkillManagerHome());
+                    Log.info("  claude home:              %s", layout.claudeHome());
+                    Log.info("  codex home:               %s", layout.codexHome());
+                    Log.info("  gemini home:              %s", layout.geminiHome());
+                    Log.info("  project dir:              %s", layout.targetDir());
+                    return 0;
+                }
+                GatewayConfig gw = GatewayConfig.resolve(store, null);
+                ChildHomeHarnessInstaller.Result result =
+                        new ChildHomeHarnessInstaller(store).instantiate(name, id, target, gw, json);
+                if (json) {
+                    return JsonOutput.print(result) ? 0 : 2;
+                }
+                Log.ok("instantiated %s as %s into child home (%d binding(s), %d unit(s))",
+                        name, id, result.harnessPlan().bindings().size(), result.childUnits().size());
+                Log.info("  child skill-manager home: %s", result.layout().childSkillManagerHome());
+                Log.info("  claude home:              %s", result.layout().claudeHome());
+                Log.info("  codex home:               %s", result.layout().codexHome());
+                Log.info("  gemini home:              %s", result.layout().geminiHome());
+                Log.info("  project dir:              %s", result.layout().targetDir());
+                return 0;
+            }
 
             HarnessUnit harness = HarnessParser.load(store.unitDir(name, UnitKind.HARNESS));
             Path sandboxRoot = store.harnessesDir().resolve(INSTANCES_DIR);

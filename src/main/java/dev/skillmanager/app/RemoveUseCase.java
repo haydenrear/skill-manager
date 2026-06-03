@@ -3,6 +3,7 @@ package dev.skillmanager.app;
 import dev.skillmanager.agent.Agent;
 import dev.skillmanager.bindings.Binding;
 import dev.skillmanager.bindings.BindingStore;
+import dev.skillmanager.bindings.ChildHomeRegistry;
 import dev.skillmanager.bindings.Projection;
 import dev.skillmanager.bindings.ProjectionLedger;
 import dev.skillmanager.effects.ContextFact;
@@ -61,6 +62,12 @@ public final class RemoveUseCase {
             throw new IOException("unit " + skillName + " is claimed by skill project(s): "
                     + String.join(", ", projectClaimers)
                     + " (remove the project lock/binding first)");
+        }
+        List<String> childHomeClaimers = new ChildHomeRegistry(store).childHomesClaiming(skillName);
+        if (!childHomeClaimers.isEmpty()) {
+            throw new IOException("unit " + skillName + " is claimed by child skill-manager home(s): "
+                    + String.join(", ", childHomeClaimers)
+                    + " (remove the child home first)");
         }
         List<SkillEffect> effects = new ArrayList<>();
 
