@@ -35,6 +35,7 @@ import dev.skillmanager.command.CommandKindCoverageTest;
 import dev.skillmanager.command.CreatePluginScenarioTest;
 import dev.skillmanager.command.GatewayStatusCommandTest;
 import dev.skillmanager.command.ListShowsKindAndShaTest;
+import dev.skillmanager.commands.ProjectCommandTest;
 import dev.skillmanager.bindings.BindingsTest;
 import dev.skillmanager.command.SearchShowsKindTest;
 import dev.skillmanager.command.ShowNonSkillUnitsTest;
@@ -153,6 +154,7 @@ public class RunTests {
         failures += MarkdownImportValidatorTest.run();
         failures += ScaffoldPluginTest.run();
         failures += CommandKindCoverageTest.run();
+        failures += ProjectCommandTest.run();
         failures += CreatePluginScenarioTest.run();
         failures += GatewayStatusCommandTest.run();
         failures += ListShowsKindAndShaTest.run();

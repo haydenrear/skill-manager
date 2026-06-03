@@ -149,7 +149,7 @@ tickets:
         - command: python skills/test_graph/scripts/run.py project-manifest
           status: passed
           date: 2026-06-03
-          report: test_graph/build/validation-reports/20260603-200158/report.md
+          report: test_graph/build/validation-reports/20260603-201003/report.md
         - command: python skills/test_graph/scripts/run.py onboard
           status: passed
           date: 2026-06-03
