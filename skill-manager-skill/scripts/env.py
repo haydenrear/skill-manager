@@ -15,6 +15,7 @@ Usage:
     env.py --skills hello-skill --pretty
     env.py --for claude                 # skill paths under ~/.claude/skills
     env.py --for codex                  # skill paths under ~/.codex/skills
+    env.py --project-root .             # include passive skill-project context
 """
 
 from __future__ import annotations
@@ -33,6 +34,7 @@ PACKAGE_MANAGERS = {
     "uv": ("uv", ["uv"]),
     "node": ("node", ["node", "npm", "npx"]),
 }
+PROJECT_MANIFEST_NAMES = ("skill-project.toml", "skill-manager-project.toml")
 
 
 def skill_manager_home() -> Path:
@@ -43,6 +45,10 @@ def skill_manager_home() -> Path:
     # SKILL_MANAGER_HOME would otherwise leak relative paths into the
     # JSON contract and break callers that cd before invoking.
     return base if base.is_absolute() else base.absolute()
+
+
+def absolute_path(p: Path) -> Path:
+    return p.expanduser() if p.expanduser().is_absolute() else p.expanduser().absolute()
 
 
 # Mirrors dev.skillmanager.agent.{Claude,Codex}Agent — the Java install
@@ -65,6 +71,94 @@ AGENT_SKILL_DIRS = {
     "claude": claude_skills_dir,
     "codex": codex_skills_dir,
 }
+
+
+def find_project_root(start: Path) -> tuple[Path, Path] | None:
+    current = absolute_path(start).resolve()
+    if current.is_file():
+        current = current.parent
+    while True:
+        for manifest_name in PROJECT_MANIFEST_NAMES:
+            manifest = current / manifest_name
+            if manifest.is_file():
+                return current, manifest
+        if current.parent == current:
+            return None
+        current = current.parent
+
+
+def table_keys(manifest: dict, name: str) -> list[str]:
+    value = manifest.get(name)
+    if isinstance(value, dict):
+        return sorted(str(k) for k in value.keys())
+    return []
+
+
+def project_context(home: Path, project_root_arg: str | None) -> dict:
+    start = Path(project_root_arg) if project_root_arg else Path.cwd()
+    found = find_project_root(start)
+    if not found:
+        return {
+            "detected": False,
+            "project_root": None,
+            "manifest": None,
+        }
+
+    root, manifest_path = found
+    try:
+        with manifest_path.open("rb") as f:
+            manifest = tomllib.load(f)
+    except Exception as e:
+        return {
+            "detected": True,
+            "project_root": str(root),
+            "manifest": str(manifest_path),
+            "parse_error": str(e),
+        }
+
+    project = manifest.get("project") if isinstance(manifest.get("project"), dict) else {}
+    project_name = project.get("name") if isinstance(project.get("name"), str) else None
+    child_home = root / ".skill-manager"
+    agent_homes = {
+        "claude": root / ".claude",
+        "codex": root / ".codex",
+        "gemini": root / ".gemini",
+    }
+    existing_agent_homes = {
+        name: str(path)
+        for name, path in agent_homes.items()
+        if path.exists() or path.is_symlink()
+    }
+    registered_lock = home / "projects" / project_name / "project-lock.toml" if project_name else None
+    env_docs = child_home / "env.md"
+
+    return {
+        "detected": True,
+        "project_root": str(root),
+        "manifest": str(manifest_path),
+        "project_name": project_name,
+        "declared": {
+            "skills": table_keys(manifest, "skills"),
+            "plugins": table_keys(manifest, "plugins"),
+            "docs": table_keys(manifest, "docs"),
+            "harnesses": table_keys(manifest, "harnesses"),
+            "envs": table_keys(manifest, "envs"),
+            "libs": [str(lib.get("name")) for lib in manifest.get("libs", [])
+                     if isinstance(lib, dict) and lib.get("name") is not None],
+        },
+        "registered_project_lock": str(registered_lock) if registered_lock and registered_lock.is_file() else None,
+        "child_skill_manager_home": str(child_home),
+        "child_home_initialized": child_home.is_dir(),
+        "agent_homes": {k: str(v) for k, v in agent_homes.items()},
+        "agent_homes_existing": existing_agent_homes,
+        "project_env_docs": str(env_docs) if env_docs.is_file() else None,
+        "launch_env": {
+            "SKILL_MANAGER_HOME": str(child_home),
+            "CODEX_HOME": str(agent_homes["codex"]),
+            "CLAUDE_HOME": str(agent_homes["claude"]),
+            "GEMINI_HOME": str(agent_homes["gemini"]),
+        },
+    }
 
 
 def on_path(tool: str) -> str | None:
@@ -242,7 +336,8 @@ def resolve_skill_paths(name: str, home: Path, prefer: str | None) -> dict:
     }
 
 
-def collect(home: Path, requested: list[str] | None, prefer: str | None) -> dict:
+def collect(home: Path, requested: list[str] | None, prefer: str | None,
+            project_root: str | None) -> dict:
     skills_dir = home / "skills"
     cli_bin_dir = home / "bin" / "cli"
 
@@ -282,6 +377,7 @@ def collect(home: Path, requested: list[str] | None, prefer: str | None) -> dict
         "clis": clis,
         "missing": missing_clis,
         "cli_bin_dir": str(cli_bin_dir),
+        "project": project_context(home, project_root),
     }
 
 
@@ -315,10 +411,18 @@ def main(argv: list[str]) -> int:
         action="store_true",
         help="pretty-print the JSON output",
     )
+    parser.add_argument(
+        "--project-root",
+        metavar="DIR",
+        help=(
+            "look for skill-project.toml / skill-manager-project.toml at DIR "
+            "or an ancestor instead of starting at the current directory"
+        ),
+    )
     args = parser.parse_args(argv)
 
     home = skill_manager_home()
-    result = collect(home, args.skills, args.for_agent)
+    result = collect(home, args.skills, args.for_agent, args.project_root)
 
     indent = 2 if args.pretty else None
     json.dump(result, sys.stdout, indent=indent, sort_keys=False)

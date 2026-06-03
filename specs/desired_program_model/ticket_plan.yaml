@@ -498,7 +498,7 @@ tickets:
 
   - id: ISSUE-75-7
     title: Teach skill-manager-skill about projects and child homes
-    status: pending
+    status: implemented
     depends_on: [ISSUE-75-1, ISSUE-75-2, ISSUE-75-3, ISSUE-75-5, ISSUE-75-6]
     objective: >
       Update skill-manager-skill and generated agent-facing documentation so
@@ -543,4 +543,28 @@ tickets:
           - Agent-visible docs are projections of manifest and realized env state.
           - Generated docs do not become the source of truth.
           - External doc, harness, and skill-dev projections still pass.
-      evidence: []
+      evidence:
+        - command: jbang RunTests.java
+          status: passed
+          date: "2026-06-03"
+          notes: SkillManagerSkillDocsTest covers project/child-home agent-facing docs and published skill metadata.
+        - command: uv run --with PyYAML pytest specs/current/tests specs/desired_program_model/tests
+          status: passed
+          date: "2026-06-03"
+        - command: bash specs/current/run_tlc.sh specs/current/SkillManager.tla specs/current/MC.cfg
+          status: passed
+          date: "2026-06-03"
+          states_generated: 25396289
+          distinct_states: 1052768
+        - command: python skills/test_graph/scripts/run.py doc-smoke
+          status: passed
+          date: "2026-06-03"
+          report: test_graph/build/validation-reports/20260603-230541/report.md
+        - command: python skills/test_graph/scripts/run.py harness-smoke
+          status: passed
+          date: "2026-06-03"
+          report: test_graph/build/validation-reports/20260603-230659/report.md
+        - command: python skills/test_graph/scripts/run.py skill-dev-smoke
+          status: passed
+          date: "2026-06-03"
+          report: test_graph/build/validation-reports/20260603-230759/report.md

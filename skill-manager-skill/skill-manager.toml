@@ -8,4 +8,4 @@ skill_references = []
 [skill]
 name = "skill-manager"
 version = "0.1.1"
-description = "Search, install, bind, sync, and remove skills, plugins, doc-repos, and harnesses; manage gateway-registered MCP tools."
+description = "Search, install, bind, sync, and remove skills, plugins, doc-repos, harnesses, and skill projects; manage project child homes and gateway-registered MCP tools."

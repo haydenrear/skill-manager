@@ -11,10 +11,10 @@ status:
   test_modeling_rule: do_not_model_tests_or_validation_harnesses_as_program_behavior
   updated: 2026-06-03
   current_slice:
-    name: ISSUE-75-6
+    name: ISSUE-75-7
     status: implemented
     refines:
-      - ../desired_program_model/ticket_plan.yaml#ISSUE-75-6
+      - ../desired_program_model/ticket_plan.yaml#ISSUE-75-7
     implemented_actions:
       - RegisterProjectManifest
       - ResolveProjectDependencies
@@ -26,11 +26,11 @@ status:
       unit:
         - command: jbang RunTests.java
           status: passed
-          purpose: project child-home scaffolder, child home harness installer, project lib resolver, project env materializer, project lock rows, and full unit regression
+          purpose: skill-manager-skill project docs, project child-home scaffolder, child home harness installer, project lib resolver, project env materializer, project lock rows, and full unit regression
       tlc:
         - command: bash specs/current/run_tlc.sh specs/current/SkillManager.tla specs/current/MC.cfg
           status: passed
-          purpose: current program model with ScaffoldProjectChildHome slice
+          purpose: current program model unchanged by SkillManagerSkillDocs projection slice
           states_generated: 25396289
           distinct_states: 1052768
       graph:
@@ -60,8 +60,18 @@ status:
         - command: python skills/test_graph/scripts/run.py harness-smoke
           status: passed
           purpose: external CLI child-home harness instantiate and harness lifecycle regression after project child-home registry changes
-          report: test_graph/build/validation-reports/20260603-224750/report.md
-          summary: test_graph/build/validation-reports/20260603-224750/summary.json
+          report: test_graph/build/validation-reports/20260603-230659/report.md
+          summary: test_graph/build/validation-reports/20260603-230659/summary.json
+        - command: python skills/test_graph/scripts/run.py doc-smoke
+          status: passed
+          purpose: external docs regression for skill-manager-skill project/child-home guidance and env helper project context
+          report: test_graph/build/validation-reports/20260603-230541/report.md
+          summary: test_graph/build/validation-reports/20260603-230541/summary.json
+        - command: python skills/test_graph/scripts/run.py skill-dev-smoke
+          status: passed
+          purpose: external skill-dev projection regression after skill-manager-skill docs update
+          report: test_graph/build/validation-reports/20260603-230759/report.md
+          summary: test_graph/build/validation-reports/20260603-230759/summary.json
         - command: python skills/test_graph/scripts/run.py source-tracking
           status: passed
           purpose: adjacent git source tracking regression for ISSUE-75-4
@@ -174,6 +184,19 @@ ports:
       - dev.skillmanager.project.ProjectDependencyResolver
       - dev.skillmanager.project.ProjectChildHomeScaffolder
       - dev.skillmanager.bindings.ChildHomeRegistry
+  SkillManagerSkill.agent_docs:
+    adapter: SkillManagerSkillDocsAdapter
+    implemented_by:
+      - skill-manager-skill/SKILL.md
+      - skill-manager-skill/references/projects.md
+      - skill-manager-skill/references/workflows.md
+      - skill-manager-skill/references/cli.md
+      - skill-manager-skill/skill-manager.toml
+  SkillManagerSkill.env_helper:
+    adapter: SkillManagerEnvHelperAdapter
+    implemented_by:
+      - skill-manager-skill/scripts/env.py
+      - skill-manager-skill/scripts/env.sh
 adapters: case_adapters.toml
 notes:
   package_from_program_model: skillmanager_program_cases

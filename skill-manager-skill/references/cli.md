@@ -35,6 +35,13 @@ Resolve skill-manager managed binaries with:
 Use the returned path directly in commands. If a binary is missing,
 sync or reinstall the owning unit before falling back to a system copy.
 
+When the current directory is inside a skill project, the same helper
+also reports passive project context: the manifest path, project name,
+declared envs, project child Skill Manager home, and child-local agent
+homes that already exist. Use that to choose `SKILL_MANAGER_HOME`,
+`CODEX_HOME`, `CLAUDE_HOME`, and `GEMINI_HOME` for project-local agent
+launches.
+
 ## Validation
 
 Run install with a dry run first to inspect planned CLI actions:
