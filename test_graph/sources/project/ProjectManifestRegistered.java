@@ -38,6 +38,7 @@ public class ProjectManifestRegistered {
             Path sm = repoRoot.resolve("skill-manager");
             Path projectDir;
             Path customProjectDir;
+            Path reservedProjectDir;
             try {
                 projectDir = Files.createTempDirectory("sm-project-manifest-");
                 Files.writeString(projectDir.resolve("skill-project.toml"), """
@@ -87,6 +88,14 @@ public class ProjectManifestRegistered {
                         [envs.dev]
                         dependencies = ["pytest"]
                         """);
+                reservedProjectDir = Files.createTempDirectory("sm-project-manifest-reserved-");
+                Files.writeString(reservedProjectDir.resolve("registration.toml"), """
+                        [project]
+                        name = "tg-reserved-project"
+
+                        [skills.reserved]
+                        source = "skill:reserved"
+                        """);
             } catch (Exception e) {
                 return NodeResult.fail("project.manifest.registered",
                         "could not scaffold project manifest: " + e.getMessage());
@@ -97,6 +106,9 @@ public class ProjectManifestRegistered {
             ProcessRecord registerCustom = run(ctx, "register-custom", home, repoRoot, sm,
                     "project", "register", "--project-dir", customProjectDir.toString(),
                     "--manifest", "agent-harness.toml");
+            ProcessRecord registerReserved = run(ctx, "register-reserved", home, repoRoot, sm,
+                    "project", "register", "--project-dir", reservedProjectDir.toString(),
+                    "--manifest", "registration.toml");
             ProcessRecord show = run(ctx, "show", home, repoRoot, sm,
                     "project", "show", "tg-project");
             ProcessRecord showCustom = run(ctx, "show-custom", home, repoRoot, sm,
@@ -112,6 +124,8 @@ public class ProjectManifestRegistered {
             boolean registered = Files.isRegularFile(registrationToml);
             boolean snapshotted = Files.isRegularFile(snapshot);
             boolean customSnapshotted = Files.isRegularFile(customSnapshot);
+            boolean reservedRejected = registerReserved.exitCode() != 0
+                    && !Files.exists(Path.of(home, "projects", "tg-reserved-project"));
             boolean noSkillInstalled = !Files.exists(Path.of(home, "skills", "test-graph"));
             boolean noCustomSkillInstalled = !Files.exists(Path.of(home, "skills", "custom"));
             boolean noPluginInstalled = !Files.exists(Path.of(home, "plugins", "reviewer"));
@@ -138,6 +152,7 @@ public class ProjectManifestRegistered {
 
             boolean pass = register.exitCode() == 0
                     && registerCustom.exitCode() == 0
+                    && reservedRejected
                     && registered
                     && snapshotted
                     && customSnapshotted
@@ -155,12 +170,14 @@ public class ProjectManifestRegistered {
                     : NodeResult.fail("project.manifest.registered",
                             "register=" + register.exitCode()
                                     + " registerCustom=" + registerCustom.exitCode()
+                                    + " registerReserved=" + registerReserved.exitCode()
                                     + " show=" + show.exitCode()
                                     + " showCustom=" + showCustom.exitCode()
                                     + " list=" + list.exitCode()
                                     + " registered=" + registered
                                     + " snapshotted=" + snapshotted
                                     + " customSnapshotted=" + customSnapshotted
+                                    + " reservedRejected=" + reservedRejected
                                     + " showIntent=" + showSummarizesIntent
                                     + " showCustomIntent=" + showCustomSummarizesIntent
                                     + " listIncludes=" + listIncludesProject
@@ -172,11 +189,13 @@ public class ProjectManifestRegistered {
             return result
                     .process(register)
                     .process(registerCustom)
+                    .process(registerReserved)
                     .process(show)
                     .process(showCustom)
                     .process(list)
                     .assertion("register_command_ok", register.exitCode() == 0)
                     .assertion("custom_manifest_register_command_ok", registerCustom.exitCode() == 0)
+                    .assertion("reserved_manifest_register_rejected", reservedRejected)
                     .assertion("registration_metadata_written", registered)
                     .assertion("manifest_snapshot_written", snapshotted)
                     .assertion("custom_manifest_snapshot_written", customSnapshotted)
@@ -190,6 +209,7 @@ public class ProjectManifestRegistered {
                     .assertion("docs_not_installed", noDocInstalled)
                     .metric("registerExitCode", register.exitCode())
                     .metric("registerCustomExitCode", registerCustom.exitCode())
+                    .metric("registerReservedExitCode", registerReserved.exitCode())
                     .metric("showExitCode", show.exitCode())
                     .metric("showCustomExitCode", showCustom.exitCode())
                     .metric("listExitCode", list.exitCode())
