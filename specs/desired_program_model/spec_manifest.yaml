@@ -19,7 +19,8 @@ status:
   done:
     - Integrated issue 75 and ticket/scaffold-skill-manager-child/skill-manager-child.md into one desired workflow.
     - Added project manifest, env, libs, and child-home desired actions to SkillManager.tla.
-    - Added invariants for project locks, env locks, lib locks, child-home harness ownership, and removal protection.
+    - Added project-as-harness child home scaffolding and recursive parent-child home awareness.
+    - Added invariants for project locks, env locks, lib locks, child-home harness/project ownership, parent awareness, and removal protection.
   pending:
     - Implement ticket slices and advance specs/current after each production slice lands.
     - Add production adapters for project manifest, env, libs, and child-home boundaries.
@@ -30,9 +31,54 @@ status:
       - command: bash specs/desired_program_model/run_tlc.sh specs/desired_program_model/SkillManager.tla specs/desired_program_model/MC.cfg
         status: passed
         result: no invariant violations
-        states_generated: 6771937
-        distinct_states: 294432
-        depth: 20
+        states_generated: 9960801
+        distinct_states: 398432
+        depth: 21
+    test_graph:
+      discovery:
+        command: python skills/test_graph/scripts/discover.py
+        status: passed
+        graphs:
+          - smoke
+          - onboard
+          - doc-smoke
+          - harness-smoke
+          - plugin-smoke
+          - skill-dev-smoke
+          - source-tracking
+          - git-latest-source-tracking
+      planning:
+        commands:
+          - python skills/test_graph/scripts/discover.py smoke
+          - python skills/test_graph/scripts/discover.py onboard
+          - python skills/test_graph/scripts/discover.py doc-smoke
+          - python skills/test_graph/scripts/discover.py harness-smoke
+          - python skills/test_graph/scripts/discover.py plugin-smoke
+          - python skills/test_graph/scripts/discover.py skill-dev-smoke
+          - python skills/test_graph/scripts/discover.py source-tracking
+          - python skills/test_graph/scripts/discover.py git-latest-source-tracking
+        status: partial
+        passed:
+          - smoke
+          - onboard
+          - harness-smoke
+        pending:
+          - doc-smoke
+          - plugin-smoke
+          - skill-dev-smoke
+          - source-tracking
+          - git-latest-source-tracking
+      baseline_regression:
+        command: python skills/test_graph/scripts/run.py smoke
+        status: passed
+        duration: 4m34s
+        report: test_graph/build/validation-reports/20260603-011307/report.md
+        summary: test_graph/build/validation-reports/20260603-011307/summary.json
+      regression:
+        command: python skills/test_graph/scripts/run.py --all
+        status: pending
+        rule: run before promotion and after shared install/bind/gateway/env changes
+        evidence: []
 
 source_model:
   program_model_manifest: ../program_model/spec_manifest.yaml
@@ -106,6 +152,12 @@ state:
       child_homes:
         type: frozenset[ChildHomeId]
         description: harness-derived child Skill Manager homes
+      project_child_homes:
+        type: frozenset[tuple[ProjectId, ChildHomeId]]
+        description: project .skill-manager directories registered as child Skill Manager homes
+      child_home_parents:
+        type: frozenset[tuple[SkillManagerHomeId, ChildHomeId]]
+        description: parent-aware child home registry; parents may themselves be child homes
       child_home_harnesses:
         type: frozenset[tuple[ChildHomeId, HarnessTemplateId]]
         description: harness template used to instantiate each child home
@@ -138,6 +190,9 @@ types:
   ChildHomeId:
     python: str
     source: ChildHomes
+  SkillManagerHomeId:
+    python: str
+    source: SkillManagerHomes
 
 commands:
   RegisterProjectManifest:
@@ -176,6 +231,18 @@ commands:
       harness_template_id:
         type: HarnessTemplateId
         tla: template
+  ScaffoldProjectChildHome:
+    action: ScaffoldProjectChildHome
+    fields:
+      project_id:
+        type: ProjectId
+        tla: project
+      child_home_id:
+        type: ChildHomeId
+        tla: home
+      parent_home_id:
+        type: SkillManagerHomeId
+        tla: parent_home
 
 results:
   ProjectResult:
@@ -189,6 +256,7 @@ ports:
       materialize_project_env: {command: MaterializeProjectEnv, result: ProjectResult}
       resolve_project_libs: {command: ResolveProjectLibs, result: ProjectResult}
       instantiate_child_home_from_harness: {command: InstantiateChildHomeFromHarness, result: ProjectResult}
+      scaffold_project_child_home: {command: ScaffoldProjectChildHome, result: ProjectResult}
 
 invariants:
   - CliInstalledRecordsTrackStore
@@ -221,6 +289,10 @@ invariants:
   - ProjectSkillVendorsAreInstalled
   - ProjectLibLocksTrackCheckouts
   - ChildHomesHaveHarnesses
+  - ProjectChildHomesHaveRegistrations
+  - ChildHomesHaveParents
+  - ChildHomeParentsAreKnownAndNotSelf
+  - ProjectChildHomeUnitsComeFromProject
   - ChildHomeUnitsComeFromParent
   - ChildHomeAgentConfigsAreKnown
   - ChildHomeMcpServersComeFromUnits
@@ -237,6 +309,8 @@ finite_model:
     values: [LibA]
   ChildHomes:
     values: [ChildHomeA]
+  SkillManagerHomes:
+    values: [ParentHomeA, ChildHomeA]
 
 case_codegen:
   style: explicit_transition_cases
