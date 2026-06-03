@@ -16,6 +16,7 @@ import dev.skillmanager.model.PluginParser;
 import dev.skillmanager.model.PluginUnit;
 import dev.skillmanager.model.Skill;
 import dev.skillmanager.model.UnitKind;
+import dev.skillmanager.project.SkillProjectLockStore;
 import dev.skillmanager.source.InstalledUnit;
 import dev.skillmanager.source.UnitStore;
 import dev.skillmanager.store.SkillStore;
@@ -55,6 +56,12 @@ public final class RemoveUseCase {
                                                String skillName,
                                                List<String> agentsToUnlink,
                                                boolean unregisterMcp) throws IOException {
+        List<String> projectClaimers = new SkillProjectLockStore(store).projectsClaiming(skillName);
+        if (!projectClaimers.isEmpty()) {
+            throw new IOException("unit " + skillName + " is claimed by skill project(s): "
+                    + String.join(", ", projectClaimers)
+                    + " (remove the project lock/binding first)");
+        }
         List<SkillEffect> effects = new ArrayList<>();
 
         // Recover the unit's kind from its installed-record. Defaults to

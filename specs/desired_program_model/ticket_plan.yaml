@@ -162,7 +162,7 @@ tickets:
 
   - id: ISSUE-75-2
     title: Resolve project dependency graph into home and project bindings
-    status: pending
+    status: in_progress
     depends_on: [ISSUE-75-1]
     objective: >
       Resolve one project manifest into installed home units, transitive
@@ -204,7 +204,23 @@ tickets:
           - Project resolved units are installed in SKILL_MANAGER_HOME.
           - Project doc bindings have managed copies and import directives.
           - External install, doc projection, harness, plugin, CLI, and MCP flows still pass.
-      evidence: []
+      evidence:
+        - command: jbang RunTests.java
+          status: passed
+          date: 2026-06-03
+          notes: ProjectDependencyResolverTest covers transitive installs, doc bindings, harness bindings, and remove guard.
+        - command: pytest specs/current/tests specs/desired_program_model/tests
+          status: passed
+          date: 2026-06-03
+        - command: bash specs/current/run_tlc.sh specs/current/SkillManager.tla specs/current/MC.cfg
+          status: passed
+          date: 2026-06-03
+          states_generated: 3014529
+          distinct_states: 154848
+        - command: python skills/test_graph/scripts/run.py project-resolve
+          status: passed
+          date: 2026-06-03
+          report: test_graph/build/validation-reports/20260603-204615/report.md
 
   - id: ISSUE-75-3
     title: Materialize project-local tools and uv envs

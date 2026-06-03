@@ -126,6 +126,7 @@ jobs:
           - smoke
           - onboard
           - project-manifest
+          - project-resolve
           - hyper-experiments
           - plugin-smoke
           - doc-smoke

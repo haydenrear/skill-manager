@@ -2,6 +2,8 @@ package dev.skillmanager.commands;
 
 import dev.skillmanager.model.SkillProject;
 import dev.skillmanager.model.SkillProjectParser;
+import dev.skillmanager.mcp.GatewayConfig;
+import dev.skillmanager.project.ProjectDependencyResolver;
 import dev.skillmanager.project.SkillProjectRegistration;
 import dev.skillmanager.project.SkillProjectRegistry;
 import dev.skillmanager.store.SkillStore;
@@ -18,6 +20,7 @@ import java.util.concurrent.Callable;
         description = "Register and inspect skill project manifests.",
         subcommands = {
                 ProjectCommand.RegisterCmd.class,
+                ProjectCommand.ResolveCmd.class,
                 ProjectCommand.ShowCmd.class,
                 ProjectCommand.ListCmd.class
         })
@@ -69,6 +72,62 @@ public final class ProjectCommand {
         }
     }
 
+    @Command(name = "resolve",
+            description = "Install declared project dependencies and materialize project bindings.")
+    public static final class ResolveCmd implements Callable<Integer> {
+
+        @Option(names = "--project-dir",
+                description = "Project root. Defaults to the current working directory.")
+        String projectDir;
+
+        @Option(names = "--manifest",
+                description = "Explicit project manifest path. Defaults to skill-project.toml, then skill-manager-project.toml.")
+        String manifest;
+
+        @Option(names = "--skip-gateway",
+                description = "Skip gateway startup/registration; useful for local fixture validation.")
+        boolean skipGateway;
+
+        @Option(names = "--json", description = "Emit machine-readable JSON.")
+        boolean json;
+
+        @Override
+        public Integer call() throws Exception {
+            SkillStore store = SkillStore.defaultStore();
+            store.init();
+            Path root = projectDir == null || projectDir.isBlank()
+                    ? Path.of(System.getProperty("user.dir"))
+                    : Path.of(projectDir);
+            root = root.toAbsolutePath().normalize();
+            SkillProject project = manifest == null || manifest.isBlank()
+                    ? SkillProjectParser.load(root)
+                    : SkillProjectParser.loadManifest(resolveManifestPath(root, manifest), root);
+            GatewayConfig gw = skipGateway ? null : GatewayConfig.resolve(store, null);
+            ProjectDependencyResolver.Result result = new ProjectDependencyResolver(store, gw)
+                    .resolve(project, new ProjectDependencyResolver.Options(true, !skipGateway));
+            if (json) {
+                System.out.println("""
+                        {"name":"%s","installed":%d,"resolved":%d,"bindings":%d,"lock":"%s"}"""
+                        .formatted(
+                                esc(result.registration().name()),
+                                result.installed().size(),
+                                result.lock().resolvedUnits().size(),
+                                result.bindingIds().size(),
+                                esc(result.registration().registrationDir()
+                                        .resolve(dev.skillmanager.project.SkillProjectLock.FILENAME)
+                                        .toString())));
+            } else {
+                Log.ok("resolved project %s", result.registration().name());
+                Log.info("  installed: %d", result.installed().size());
+                Log.info("  resolved:  %d", result.lock().resolvedUnits().size());
+                Log.info("  bindings:  %d", result.bindingIds().size());
+                Log.info("  lock:      %s", result.registration().registrationDir()
+                        .resolve(dev.skillmanager.project.SkillProjectLock.FILENAME));
+            }
+            return 0;
+        }
+    }
+
     @Command(name = "show", description = "Show a registered skill project.")
     public static final class ShowCmd implements Callable<Integer> {
 
@@ -99,6 +158,11 @@ public final class ProjectCommand {
                 System.out.printf("libs:     %d%n", project.libs().size());
                 System.out.printf("cli:      %d%n", project.cliDependencies().size());
                 System.out.printf("mcp:      %d%n", project.mcpDependencies().size());
+            }
+            var lock = new dev.skillmanager.project.SkillProjectLockStore(store).read(name).orElse(null);
+            if (lock != null) {
+                System.out.printf("resolved: %d%n", lock.resolvedUnits().size());
+                System.out.printf("bindings: %d%n", lock.bindings().size());
             }
             return 0;
         }
