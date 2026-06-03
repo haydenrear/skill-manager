@@ -96,6 +96,27 @@ public final class SkillProjectRegistryTest {
                         assertEquals("current", snapshot.skills().get(0).alias(), "loads recorded manifest snapshot");
                     }
                 })
+                .test("register rejects snapshot filename that collides with registry metadata", () -> {
+                    try (TestHarness h = TestHarness.create()) {
+                        Path projectDir = Files.createTempDirectory("reserved-manifest-project-");
+                        Path reservedManifest = projectDir.resolve("registration.toml");
+                        Files.writeString(reservedManifest, """
+                                [project]
+                                name = "reserved-manifest"
+
+                                [skills.current]
+                                source = "skill:current"
+                                """);
+                        SkillProject project = SkillProjectParser.loadManifest(reservedManifest, projectDir);
+                        boolean rejected = false;
+                        try {
+                            new SkillProjectRegistry(h.store()).register(project);
+                        } catch (java.io.IOException e) {
+                            rejected = e.getMessage().contains("manifest_file");
+                        }
+                        assertTrue(rejected, "registration.toml is reserved for registry metadata");
+                    }
+                })
                 .runAll();
     }
 }

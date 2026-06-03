@@ -38,8 +38,9 @@ public final class SkillProjectRegistry {
         requireSafeName(name);
         Fs.ensureDir(store.projectsDir());
         Path dir = store.projectsDir().resolve(name);
-        Fs.ensureDir(dir);
         String manifestFile = project.manifestPath().getFileName().toString();
+        requireSafeManifestFile(manifestFile, dir.resolve(REGISTRATION_FILENAME));
+        Fs.ensureDir(dir);
         Files.copy(project.manifestPath(), dir.resolve(manifestFile),
                 java.nio.file.StandardCopyOption.REPLACE_EXISTING);
 
@@ -130,7 +131,10 @@ public final class SkillProjectRegistry {
 
     private static void requireSafeManifestFile(String manifestFile, Path registration) throws IOException {
         Path path = Path.of(manifestFile);
-        if (path.isAbsolute() || path.getNameCount() != 1 || !path.getFileName().toString().equals(manifestFile)) {
+        if (path.isAbsolute()
+                || path.getNameCount() != 1
+                || !path.getFileName().toString().equals(manifestFile)
+                || REGISTRATION_FILENAME.equals(manifestFile)) {
             throw new IOException("Malformed project registration manifest_file in " + registration);
         }
     }
