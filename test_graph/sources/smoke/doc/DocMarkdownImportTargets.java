@@ -30,7 +30,8 @@ public class DocMarkdownImportTargets {
             String home = ctx.get("env.prepared", "home").orElse(null);
             String claudeHome = ctx.get("env.prepared", "claudeHome").orElse(null);
             String codexHome = ctx.get("env.prepared", "codexHome").orElse(null);
-            if (home == null || claudeHome == null || codexHome == null) {
+            String geminiHome = ctx.get("env.prepared", "geminiHome").orElse(null);
+            if (home == null || claudeHome == null || codexHome == null || geminiHome == null) {
                 return NodeResult.fail("doc.markdown.import.targets",
                         "missing env.prepared context");
             }
@@ -44,11 +45,11 @@ public class DocMarkdownImportTargets {
                 Path skill = MarkdownImportFixture.skill(root, "dm-target-skill", "skill-imports: []\n");
                 Path harness = MarkdownImportFixture.harness(root, "dm-target-harness", "reference.md");
                 Path doc = MarkdownImportFixture.doc(root, "dm-target-doc", "claude-md/reference.md");
-                procs.add(MarkdownImportFixture.install(ctx, sm, repoRoot, home, claudeHome, codexHome,
+                procs.add(MarkdownImportFixture.install(ctx, sm, repoRoot, home, claudeHome, codexHome, geminiHome,
                         skill, "install-skill"));
-                procs.add(MarkdownImportFixture.install(ctx, sm, repoRoot, home, claudeHome, codexHome,
+                procs.add(MarkdownImportFixture.install(ctx, sm, repoRoot, home, claudeHome, codexHome, geminiHome,
                         harness, "install-harness"));
-                procs.add(MarkdownImportFixture.install(ctx, sm, repoRoot, home, claudeHome, codexHome,
+                procs.add(MarkdownImportFixture.install(ctx, sm, repoRoot, home, claudeHome, codexHome, geminiHome,
                         doc, "install-target-doc"));
 
                 Path source = MarkdownImportFixture.docWithSourceImports(root, "dm-source-doc",
@@ -61,7 +62,7 @@ public class DocMarkdownImportTargets {
                                         "Doc smoke validates imports can target other doc-repos."),
                                 MarkdownImportFixture.entry("dm-missing-doc", "claude-md/reference.md",
                                         "Doc smoke keeps one missing doc import as a parsing sentinel.")));
-                procs.add(MarkdownImportFixture.install(ctx, sm, repoRoot, home, claudeHome, codexHome,
+                procs.add(MarkdownImportFixture.install(ctx, sm, repoRoot, home, claudeHome, codexHome, geminiHome,
                         source, "install-source-doc"));
             } catch (Exception e) {
                 return NodeResult.error("doc.markdown.import.targets", e);

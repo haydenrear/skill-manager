@@ -30,7 +30,8 @@ public class PluginMarkdownImportTargets {
             String home = ctx.get("env.prepared", "home").orElse(null);
             String claudeHome = ctx.get("env.prepared", "claudeHome").orElse(null);
             String codexHome = ctx.get("env.prepared", "codexHome").orElse(null);
-            if (home == null || claudeHome == null || codexHome == null) {
+            String geminiHome = ctx.get("env.prepared", "geminiHome").orElse(null);
+            if (home == null || claudeHome == null || codexHome == null || geminiHome == null) {
                 return NodeResult.fail("plugin.markdown.import.targets",
                         "missing env.prepared context");
             }
@@ -44,11 +45,11 @@ public class PluginMarkdownImportTargets {
                 Path doc = MarkdownImportFixture.doc(root, "pm-target-doc", "claude-md/reference.md");
                 Path harness = MarkdownImportFixture.harness(root, "pm-target-harness", "reference.md");
                 Path plugin = MarkdownImportFixture.plugin(root, "pm-target-plugin", "docs/reference.md");
-                procs.add(MarkdownImportFixture.install(ctx, sm, repoRoot, home, claudeHome, codexHome,
+                procs.add(MarkdownImportFixture.install(ctx, sm, repoRoot, home, claudeHome, codexHome, geminiHome,
                         doc, "install-doc"));
-                procs.add(MarkdownImportFixture.install(ctx, sm, repoRoot, home, claudeHome, codexHome,
+                procs.add(MarkdownImportFixture.install(ctx, sm, repoRoot, home, claudeHome, codexHome, geminiHome,
                         harness, "install-harness"));
-                procs.add(MarkdownImportFixture.install(ctx, sm, repoRoot, home, claudeHome, codexHome,
+                procs.add(MarkdownImportFixture.install(ctx, sm, repoRoot, home, claudeHome, codexHome, geminiHome,
                         plugin, "install-target-plugin"));
 
                 Path source = MarkdownImportFixture.pluginWithReadme(root, "pm-source-plugin",
@@ -61,7 +62,7 @@ public class PluginMarkdownImportTargets {
                                         "Plugin smoke validates imports can target other plugins."),
                                 MarkdownImportFixture.entry("pm-missing-plugin", "docs/reference.md",
                                         "Plugin smoke keeps one missing plugin import as a parsing sentinel.")));
-                procs.add(MarkdownImportFixture.install(ctx, sm, repoRoot, home, claudeHome, codexHome,
+                procs.add(MarkdownImportFixture.install(ctx, sm, repoRoot, home, claudeHome, codexHome, geminiHome,
                         source, "install-source-plugin"));
             } catch (Exception e) {
                 return NodeResult.error("plugin.markdown.import.targets", e);

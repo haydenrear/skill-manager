@@ -46,9 +46,10 @@ public class SkillUninstalled {
             String home = ctx.get("env.prepared", "home").orElse(null);
             String claudeHome = ctx.get("env.prepared", "claudeHome").orElse(null);
             String codexHome = ctx.get("env.prepared", "codexHome").orElse(null);
+            String geminiHome = ctx.get("env.prepared", "geminiHome").orElse(null);
             String mcpUrl = ctx.get("echo.http.up", "mcpUrl").orElse(null);
             String gatewayUrl = ctx.get("gateway.up", "baseUrl").orElse(null);
-            if (home == null || claudeHome == null || codexHome == null
+            if (home == null || claudeHome == null || codexHome == null || geminiHome == null
                     || mcpUrl == null || gatewayUrl == null) {
                 return NodeResult.fail("skill.uninstalled", "missing upstream context");
             }
@@ -62,7 +63,7 @@ public class SkillUninstalled {
 
             // Install.
             int installRc = run(List.of(sm.toString(), "install", "file:" + skillDir, "--yes"),
-                    home, claudeHome, codexHome, repoRoot);
+                    home, claudeHome, codexHome, geminiHome, repoRoot);
             if (installRc != 0) {
                 return NodeResult.fail("skill.uninstalled", "fixture install rc=" + installRc);
             }
@@ -87,7 +88,7 @@ public class SkillUninstalled {
 
             // Uninstall.
             int uninstallRc = run(List.of(sm.toString(), "uninstall", SKILL_NAME),
-                    home, claudeHome, codexHome, repoRoot);
+                    home, claudeHome, codexHome, geminiHome, repoRoot);
 
             boolean storeGone = !Files.exists(storeEntry, LinkOption.NOFOLLOW_LINKS);
             boolean claudeLinkGone = !Files.exists(claudeLink, LinkOption.NOFOLLOW_LINKS);
@@ -126,12 +127,13 @@ public class SkillUninstalled {
     }
 
     private static int run(List<String> argv, String home, String claudeHome,
-                           String codexHome, Path repoRoot) throws Exception {
+                           String codexHome, String geminiHome, Path repoRoot) throws Exception {
         ProcessBuilder pb = new ProcessBuilder(argv).redirectErrorStream(true);
         pb.environment().put("SKILL_MANAGER_HOME", home);
         pb.environment().put("SKILL_MANAGER_INSTALL_DIR", repoRoot.toString());
         pb.environment().put("CLAUDE_HOME", claudeHome);
         pb.environment().put("CODEX_HOME", codexHome);
+        pb.environment().put("GEMINI_HOME", geminiHome);
         Process p = pb.start();
         try (BufferedReader r = new BufferedReader(new InputStreamReader(p.getInputStream()))) {
             String line;

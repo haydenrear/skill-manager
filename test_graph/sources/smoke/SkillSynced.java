@@ -44,7 +44,8 @@ public class SkillSynced {
             String home = ctx.get("env.prepared", "home").orElse(null);
             String claudeHome = ctx.get("env.prepared", "claudeHome").orElse(null);
             String codexHome = ctx.get("env.prepared", "codexHome").orElse(null);
-            if (home == null || claudeHome == null || codexHome == null) {
+            String geminiHome = ctx.get("env.prepared", "geminiHome").orElse(null);
+            if (home == null || claudeHome == null || codexHome == null || geminiHome == null) {
                 return NodeResult.fail("skill.synced", "missing upstream context");
             }
 
@@ -69,6 +70,7 @@ public class SkillSynced {
             pb.environment().put("SKILL_MANAGER_INSTALL_DIR", repoRoot.toString());
             pb.environment().put("CLAUDE_HOME", claudeHome);
             pb.environment().put("CODEX_HOME", codexHome);
+            pb.environment().put("GEMINI_HOME", geminiHome);
             StringBuilder out = new StringBuilder();
             Process p = pb.start();
             try (BufferedReader r = new BufferedReader(new InputStreamReader(p.getInputStream()))) {

@@ -47,7 +47,9 @@ public class OnboardCompleted {
             // classes honor CLAUDE_HOME / CODEX_HOME env vars; setting
             // both here keeps everything inside <home>/agent-home/.
             Path agentHome = Path.of(home).resolve("agent-home");
+            Path geminiHome = agentHome.resolve(".gemini");
             Files.createDirectories(agentHome);
+            Files.createDirectories(geminiHome);
 
             ProcessBuilder pb = new ProcessBuilder(
                     sm.toString(), "onboard",
@@ -63,6 +65,7 @@ public class OnboardCompleted {
                     "http://127.0.0.1:" + gatewayPort);
             pb.environment().put("CLAUDE_HOME", agentHome.toString());
             pb.environment().put("CODEX_HOME", agentHome.resolve(".codex").toString());
+            pb.environment().put("GEMINI_HOME", geminiHome.toString());
 
             ProcessRecord proc = Procs.run(ctx, "onboard", pb);
             int rc = proc.exitCode();

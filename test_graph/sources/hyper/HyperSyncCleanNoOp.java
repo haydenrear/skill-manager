@@ -32,7 +32,8 @@ public class HyperSyncCleanNoOp {
             String home = ctx.get("env.prepared", "home").orElse(null);
             String claudeHome = ctx.get("env.prepared", "claudeHome").orElse(null);
             String codexHome = ctx.get("env.prepared", "codexHome").orElse(null);
-            if (home == null || claudeHome == null || codexHome == null) {
+            String geminiHome = ctx.get("env.prepared", "geminiHome").orElse(null);
+            if (home == null || claudeHome == null || codexHome == null || geminiHome == null) {
                 return NodeResult.fail("hyper.sync.clean.noop", "missing upstream context");
             }
             Path storeDir = Path.of(home).resolve("skills").resolve("hyper-experiments");
@@ -46,6 +47,7 @@ public class HyperSyncCleanNoOp {
             pb.environment().put("SKILL_MANAGER_INSTALL_DIR", repoRoot.toString());
             pb.environment().put("CLAUDE_HOME", claudeHome);
             pb.environment().put("CODEX_HOME", codexHome);
+            pb.environment().put("GEMINI_HOME", geminiHome);
 
             Process p = pb.start();
             try (BufferedReader r = new BufferedReader(new InputStreamReader(p.getInputStream()))) {

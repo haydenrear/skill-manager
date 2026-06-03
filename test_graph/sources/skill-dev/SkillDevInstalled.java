@@ -24,13 +24,16 @@ public class SkillDevInstalled {
             String home = ctx.get("env.prepared", "home").orElse(null);
             String claudeHome = ctx.get("env.prepared", "claudeHome").orElse(null);
             String codexHome = ctx.get("env.prepared", "codexHome").orElse(null);
+            String geminiHome = ctx.get("env.prepared", "geminiHome").orElse(null);
             String gatewayPort = ctx.get("env.prepared", "gatewayPort").orElse(null);
             String registryUrl = ctx.get("registry.up", "baseUrl").orElse(null);
-            if (home == null || claudeHome == null || codexHome == null || gatewayPort == null || registryUrl == null) {
+            if (home == null || claudeHome == null || codexHome == null || geminiHome == null
+                    || gatewayPort == null || registryUrl == null) {
                 return NodeResult.fail("skill-dev.installed", "missing upstream context");
             }
             Map<String, String> env = SkillDevGraphSupport.env(
-                    home, claudeHome, codexHome, "http://127.0.0.1:" + gatewayPort, registryUrl);
+                    home, claudeHome, codexHome, geminiHome,
+                    "http://127.0.0.1:" + gatewayPort, registryUrl);
             Path repoRoot = SkillDevGraphSupport.repoRoot();
             ProcessRecord proc = SkillDevGraphSupport.run(ctx, "install-skill-dev", env, repoRoot,
                     SkillDevGraphSupport.skillManager().toString(), "install",

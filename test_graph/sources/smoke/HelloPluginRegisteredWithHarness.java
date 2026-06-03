@@ -41,7 +41,8 @@ public class HelloPluginRegisteredWithHarness {
             String home = ctx.get("env.prepared", "home").orElse(null);
             String claudeHome = ctx.get("env.prepared", "claudeHome").orElse(null);
             String codexHome = ctx.get("env.prepared", "codexHome").orElse(null);
-            if (home == null || claudeHome == null || codexHome == null) {
+            String geminiHome = ctx.get("env.prepared", "geminiHome").orElse(null);
+            if (home == null || claudeHome == null || codexHome == null || geminiHome == null) {
                 return NodeResult.fail("hello.plugin.registered.with.harness", "missing upstream context");
             }
 

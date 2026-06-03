@@ -44,8 +44,9 @@ public class HyperSyncMergesAfterCommit {
             String home = ctx.get("env.prepared", "home").orElse(null);
             String claudeHome = ctx.get("env.prepared", "claudeHome").orElse(null);
             String codexHome = ctx.get("env.prepared", "codexHome").orElse(null);
+            String geminiHome = ctx.get("env.prepared", "geminiHome").orElse(null);
             String installedHash = ctx.get("hyper.source.recorded", "installedHash").orElse(null);
-            if (home == null || claudeHome == null || codexHome == null
+            if (home == null || claudeHome == null || codexHome == null || geminiHome == null
                     || installedHash == null) {
                 return NodeResult.fail("hyper.sync.merges.after.commit", "missing upstream context");
             }
@@ -60,6 +61,7 @@ public class HyperSyncMergesAfterCommit {
             pb.environment().put("SKILL_MANAGER_INSTALL_DIR", repoRoot.toString());
             pb.environment().put("CLAUDE_HOME", claudeHome);
             pb.environment().put("CODEX_HOME", codexHome);
+            pb.environment().put("GEMINI_HOME", geminiHome);
 
             Process p = pb.start();
             try (BufferedReader r = new BufferedReader(new InputStreamReader(p.getInputStream()))) {

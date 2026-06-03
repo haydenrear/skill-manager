@@ -47,10 +47,11 @@ public class PartnerSkillInstalled {
             String home = ctx.get("env.prepared", "home").orElse(null);
             String claudeHome = ctx.get("env.prepared", "claudeHome").orElse(null);
             String codexHome = ctx.get("env.prepared", "codexHome").orElse(null);
+            String geminiHome = ctx.get("env.prepared", "geminiHome").orElse(null);
             String mcpUrl = ctx.get("echo.http.up", "mcpUrl").orElse(null);
             String gatewayUrl = ctx.get("gateway.up", "baseUrl").orElse(null);
             String pluginServerId = ctx.get("umbrella.plugin.installed", "pluginServerId").orElse(null);
-            if (home == null || claudeHome == null || codexHome == null
+            if (home == null || claudeHome == null || codexHome == null || geminiHome == null
                     || mcpUrl == null || gatewayUrl == null || pluginServerId == null) {
                 return NodeResult.fail("partner.skill.installed", "missing upstream context");
             }
@@ -70,6 +71,7 @@ public class PartnerSkillInstalled {
             pb.environment().put("SKILL_MANAGER_INSTALL_DIR", repoRoot.toString());
             pb.environment().put("CLAUDE_HOME", claudeHome);
             pb.environment().put("CODEX_HOME", codexHome);
+            pb.environment().put("GEMINI_HOME", geminiHome);
             pb.environment().put("CLAUDE_CONFIG_DIR",
                     Path.of(claudeHome).resolve(".claude").toString());
 

@@ -9,7 +9,7 @@ final class MarkdownImportFixture {
     private MarkdownImportFixture() {}
 
     static ProcessRecord install(NodeContext ctx, Path sm, Path repoRoot, String home,
-                                 String claudeHome, String codexHome,
+                                 String claudeHome, String codexHome, String geminiHome,
                                  Path unitDir, String label) throws Exception {
         ProcessBuilder pb = new ProcessBuilder(
                 sm.toString(), "install", "file://" + unitDir.toAbsolutePath(), "--yes");
@@ -21,6 +21,7 @@ final class MarkdownImportFixture {
                     Path.of(claudeHome).resolve(".claude").toString());
         }
         if (codexHome != null) pb.environment().put("CODEX_HOME", codexHome);
+        if (geminiHome != null) pb.environment().put("GEMINI_HOME", geminiHome);
         return Procs.run(ctx, label, pb);
     }
 

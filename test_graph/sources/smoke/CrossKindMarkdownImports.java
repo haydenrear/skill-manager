@@ -30,7 +30,8 @@ public class CrossKindMarkdownImports {
             String home = ctx.get("env.prepared", "home").orElse(null);
             String claudeHome = ctx.get("env.prepared", "claudeHome").orElse(null);
             String codexHome = ctx.get("env.prepared", "codexHome").orElse(null);
-            if (home == null || claudeHome == null || codexHome == null) {
+            String geminiHome = ctx.get("env.prepared", "geminiHome").orElse(null);
+            if (home == null || claudeHome == null || codexHome == null || geminiHome == null) {
                 return NodeResult.fail("markdown.imports.cross_kind.targets",
                         "missing env.prepared context");
             }
@@ -44,11 +45,11 @@ public class CrossKindMarkdownImports {
                 Path plugin = MarkdownImportFixture.plugin(root, "mk-target-plugin", "docs/reference.md");
                 Path doc = MarkdownImportFixture.doc(root, "mk-target-doc", "claude-md/reference.md");
                 Path harness = MarkdownImportFixture.harness(root, "mk-target-harness", "reference.md");
-                procs.add(MarkdownImportFixture.install(ctx, sm, repoRoot, home, claudeHome, codexHome,
+                procs.add(MarkdownImportFixture.install(ctx, sm, repoRoot, home, claudeHome, codexHome, geminiHome,
                         plugin, "install-plugin"));
-                procs.add(MarkdownImportFixture.install(ctx, sm, repoRoot, home, claudeHome, codexHome,
+                procs.add(MarkdownImportFixture.install(ctx, sm, repoRoot, home, claudeHome, codexHome, geminiHome,
                         doc, "install-doc"));
-                procs.add(MarkdownImportFixture.install(ctx, sm, repoRoot, home, claudeHome, codexHome,
+                procs.add(MarkdownImportFixture.install(ctx, sm, repoRoot, home, claudeHome, codexHome, geminiHome,
                         harness, "install-harness"));
 
                 Path source = MarkdownImportFixture.skill(root, "mk-source-skill",
@@ -59,7 +60,7 @@ public class CrossKindMarkdownImports {
                                         "Smoke validates imports can target doc-repos."),
                                 MarkdownImportFixture.entry("mk-target-harness", "reference.md",
                                         "Smoke validates imports can target harnesses.")));
-                procs.add(MarkdownImportFixture.install(ctx, sm, repoRoot, home, claudeHome, codexHome,
+                procs.add(MarkdownImportFixture.install(ctx, sm, repoRoot, home, claudeHome, codexHome, geminiHome,
                         source, "install-source"));
             } catch (Exception e) {
                 return NodeResult.error("markdown.imports.cross_kind.targets", e);

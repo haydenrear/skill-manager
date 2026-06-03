@@ -48,11 +48,13 @@ public class SkillDevSmoke {
             Path home = root.resolve("skill-manager-home");
             Path agentHome = root.resolve("agent-home");
             Path codexHome = agentHome.resolve(".codex");
+            Path geminiHome = agentHome.resolve(".gemini");
             Path project = root.resolve("project");
             Path fixture = root.resolve("fixture-skill");
             Files.createDirectories(home);
             Files.createDirectories(agentHome);
             Files.createDirectories(codexHome);
+            Files.createDirectories(geminiHome);
             Files.createDirectories(project);
             Files.createDirectories(fixture);
             writePermissivePolicy(home);
@@ -62,6 +64,7 @@ public class SkillDevSmoke {
                     "SKILL_MANAGER_INSTALL_DIR", repoRoot.toString(),
                     "CLAUDE_HOME", agentHome.toString(),
                     "CODEX_HOME", codexHome.toString(),
+                    "GEMINI_HOME", geminiHome.toString(),
                     "PATH", repoRoot + System.getProperty("path.separator") + System.getenv("PATH")
             );
 

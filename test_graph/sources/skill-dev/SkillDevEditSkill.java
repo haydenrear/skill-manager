@@ -32,11 +32,13 @@ final class SkillDevEditNode {
         String home = ctx.get("env.prepared", "home").orElseThrow();
         String claudeHome = ctx.get("env.prepared", "claudeHome").orElseThrow();
         String codexHome = ctx.get("env.prepared", "codexHome").orElseThrow();
+        String geminiHome = ctx.get("env.prepared", "geminiHome").orElseThrow();
         String gatewayPort = ctx.get("env.prepared", "gatewayPort").orElseThrow();
         String registryUrl = ctx.get("registry.up", "baseUrl").orElseThrow();
         Path project = Path.of(ctx.get("skill-dev.units.installed", "projectDir").orElseThrow());
         Map<String, String> env = SkillDevGraphSupport.env(
-                home, claudeHome, codexHome, "http://127.0.0.1:" + gatewayPort, registryUrl);
+                home, claudeHome, codexHome, geminiHome,
+                "http://127.0.0.1:" + gatewayPort, registryUrl);
         java.util.List<ProcessRecord> procs = new ArrayList<>();
         boolean ok = SkillDevGraphSupport.runEditCycle(ctx, env, project, Path.of(home), unit, storeFile, marker, procs);
         NodeResult result = ok ? NodeResult.pass(nodeId) : NodeResult.fail(nodeId, "edit cycle failed for " + unit);

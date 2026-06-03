@@ -32,7 +32,8 @@ public class MarkdownImportViolationsReported {
             String home = ctx.get("env.prepared", "home").orElse(null);
             String claudeHome = ctx.get("env.prepared", "claudeHome").orElse(null);
             String codexHome = ctx.get("env.prepared", "codexHome").orElse(null);
-            if (home == null || claudeHome == null || codexHome == null) {
+            String geminiHome = ctx.get("env.prepared", "geminiHome").orElse(null);
+            if (home == null || claudeHome == null || codexHome == null || geminiHome == null) {
                 return NodeResult.fail("markdown.import.violations.reported",
                         "missing env.prepared context");
             }
@@ -44,16 +45,16 @@ public class MarkdownImportViolationsReported {
             List<InstallCheck> checks = new ArrayList<>();
             try {
                 Files.createDirectories(fixturesRoot);
-                checks.add(install(ctx, sm, repoRoot, home, claudeHome, codexHome,
+                checks.add(install(ctx, sm, repoRoot, home, claudeHome, codexHome, geminiHome,
                         skillFixture(fixturesRoot), "skill",
                         "markdown-import-broken-skill"));
-                checks.add(install(ctx, sm, repoRoot, home, claudeHome, codexHome,
+                checks.add(install(ctx, sm, repoRoot, home, claudeHome, codexHome, geminiHome,
                         pluginFixture(fixturesRoot), "plugin",
                         "markdown-import-broken-plugin"));
-                checks.add(install(ctx, sm, repoRoot, home, claudeHome, codexHome,
+                checks.add(install(ctx, sm, repoRoot, home, claudeHome, codexHome, geminiHome,
                         docFixture(fixturesRoot), "doc",
                         "markdown-import-broken-doc"));
-                checks.add(install(ctx, sm, repoRoot, home, claudeHome, codexHome,
+                checks.add(install(ctx, sm, repoRoot, home, claudeHome, codexHome, geminiHome,
                         harnessFixture(fixturesRoot), "harness",
                         "markdown-import-broken-harness"));
             } catch (Exception e) {
@@ -86,6 +87,7 @@ public class MarkdownImportViolationsReported {
             String home,
             String claudeHome,
             String codexHome,
+            String geminiHome,
             Path unitDir,
             String kind,
             String unitName) throws Exception {
@@ -95,6 +97,7 @@ public class MarkdownImportViolationsReported {
         pb.environment().put("SKILL_MANAGER_INSTALL_DIR", repoRoot.toString());
         pb.environment().put("CLAUDE_HOME", claudeHome);
         pb.environment().put("CODEX_HOME", codexHome);
+        pb.environment().put("GEMINI_HOME", geminiHome);
         ProcessRecord proc = Procs.run(ctx, "install-" + kind, pb);
         String log = logBody(ctx, proc);
         boolean rendered = log.contains("markdown skill-import violations")

@@ -49,13 +49,14 @@ public class PluginUninstalledMixedOrphans {
             String home = ctx.get("env.prepared", "home").orElse(null);
             String claudeHome = ctx.get("env.prepared", "claudeHome").orElse(null);
             String codexHome = ctx.get("env.prepared", "codexHome").orElse(null);
+            String geminiHome = ctx.get("env.prepared", "geminiHome").orElse(null);
             String gatewayUrl = ctx.get("gateway.up", "baseUrl").orElse(null);
             String pluginName = ctx.get("umbrella.plugin.installed", "pluginName").orElse(null);
             String pluginServerId = ctx.get("umbrella.plugin.installed", "pluginServerId").orElse(null);
             String skillServerId = ctx.get("umbrella.plugin.installed", "skillServerId").orElse(null);
             String pluginCli = ctx.get("umbrella.plugin.installed", "pluginCliBinary").orElse(null);
             String skillCli = ctx.get("umbrella.plugin.installed", "skillCliBinary").orElse(null);
-            if (home == null || claudeHome == null || codexHome == null
+            if (home == null || claudeHome == null || codexHome == null || geminiHome == null
                     || gatewayUrl == null || pluginName == null
                     || pluginServerId == null || skillServerId == null
                     || pluginCli == null || skillCli == null) {
@@ -79,6 +80,7 @@ public class PluginUninstalledMixedOrphans {
             pb.environment().put("SKILL_MANAGER_INSTALL_DIR", repoRoot.toString());
             pb.environment().put("CLAUDE_HOME", claudeHome);
             pb.environment().put("CODEX_HOME", codexHome);
+            pb.environment().put("GEMINI_HOME", geminiHome);
             pb.environment().put("CLAUDE_CONFIG_DIR",
                     Path.of(claudeHome).resolve(".claude").toString());
             ProcessRecord proc = Procs.run(ctx, "uninstall", pb);

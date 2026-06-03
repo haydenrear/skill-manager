@@ -63,11 +63,13 @@ public class SkillScriptRerunsOnChange {
             Path privateHome = Path.of(envHome).resolve("skill-script-rerun-home");
             Path privateClaude = privateHome.resolve("claude");
             Path privateCodex = privateHome.resolve("codex");
+            Path privateGemini = privateHome.resolve("gemini");
             Path fixtureCopy = privateHome.resolve("fixture");
             try {
                 Files.createDirectories(privateHome);
                 Files.createDirectories(privateClaude);
                 Files.createDirectories(privateCodex);
+                Files.createDirectories(privateGemini);
                 copyDir(srcFixture, fixtureCopy);
             } catch (IOException e) {
                 return NodeResult.fail("skill.script.reruns.on.change",
@@ -76,7 +78,7 @@ public class SkillScriptRerunsOnChange {
 
             // STEP 1 — initial install drops `skill-script-touched`.
             ProcessRecord proc1 = Procs.run(ctx, "install",
-                    smProc(sm, repoRoot, privateHome, privateClaude, privateCodex,
+                    smProc(sm, repoRoot, privateHome, privateClaude, privateCodex, privateGemini,
                             "install", fixtureCopy.toString(), "--yes"));
             int rc1 = proc1.exitCode();
             Path binCli = privateHome.resolve("home/bin/cli");
@@ -84,7 +86,7 @@ public class SkillScriptRerunsOnChange {
 
             // STEP 2 — sync with NO script changes; backend should skip.
             ProcessRecord proc2 = Procs.run(ctx, "sync_noop",
-                    smProc(sm, repoRoot, privateHome, privateClaude, privateCodex,
+                    smProc(sm, repoRoot, privateHome, privateClaude, privateCodex, privateGemini,
                             "sync", "--from", fixtureCopy.toString(),
                             "skill-script-skill", "--yes"));
             int rc2 = proc2.exitCode();
@@ -107,7 +109,7 @@ public class SkillScriptRerunsOnChange {
                         "edit step failed: " + e.getMessage());
             }
             ProcessRecord proc3 = Procs.run(ctx, "sync_after_edit",
-                    smProc(sm, repoRoot, privateHome, privateClaude, privateCodex,
+                    smProc(sm, repoRoot, privateHome, privateClaude, privateCodex, privateGemini,
                             "sync", "--from", fixtureCopy.toString(),
                             "skill-script-skill", "--yes"));
             int rc3 = proc3.exitCode();
@@ -138,6 +140,7 @@ public class SkillScriptRerunsOnChange {
 
     private static ProcessBuilder smProc(Path sm, Path repoRoot, Path privateHome,
                                          Path privateClaude, Path privateCodex,
+                                         Path privateGemini,
                                          String... cliArgs) {
         java.util.List<String> argv = new java.util.ArrayList<>();
         argv.add(sm.toString());
@@ -147,6 +150,7 @@ public class SkillScriptRerunsOnChange {
         pb.environment().put("SKILL_MANAGER_INSTALL_DIR", repoRoot.toString());
         pb.environment().put("CLAUDE_HOME", privateClaude.toString());
         pb.environment().put("CODEX_HOME", privateCodex.toString());
+        pb.environment().put("GEMINI_HOME", privateGemini.toString());
         return pb;
     }
 

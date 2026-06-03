@@ -45,8 +45,9 @@ public class PluginSynced {
             String home = ctx.get("env.prepared", "home").orElse(null);
             String claudeHome = ctx.get("env.prepared", "claudeHome").orElse(null);
             String codexHome = ctx.get("env.prepared", "codexHome").orElse(null);
+            String geminiHome = ctx.get("env.prepared", "geminiHome").orElse(null);
             String pluginName = ctx.get("umbrella.plugin.installed", "pluginName").orElse(null);
-            if (home == null || claudeHome == null || codexHome == null || pluginName == null) {
+            if (home == null || claudeHome == null || codexHome == null || geminiHome == null || pluginName == null) {
                 return NodeResult.fail("plugin.synced", "missing upstream context");
             }
 
@@ -73,6 +74,7 @@ public class PluginSynced {
             pb.environment().put("SKILL_MANAGER_INSTALL_DIR", repoRoot.toString());
             pb.environment().put("CLAUDE_HOME", claudeHome);
             pb.environment().put("CODEX_HOME", codexHome);
+            pb.environment().put("GEMINI_HOME", geminiHome);
             pb.environment().put("CLAUDE_CONFIG_DIR",
                     Path.of(claudeHome).resolve(".claude").toString());
 

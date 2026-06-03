@@ -27,9 +27,11 @@ public class SkillDevUnitsInstalled {
             String home = ctx.get("env.prepared", "home").orElse(null);
             String claudeHome = ctx.get("env.prepared", "claudeHome").orElse(null);
             String codexHome = ctx.get("env.prepared", "codexHome").orElse(null);
+            String geminiHome = ctx.get("env.prepared", "geminiHome").orElse(null);
             String gatewayPort = ctx.get("env.prepared", "gatewayPort").orElse(null);
             String registryUrl = ctx.get("registry.up", "baseUrl").orElse(null);
-            if (home == null || claudeHome == null || codexHome == null || gatewayPort == null || registryUrl == null) {
+            if (home == null || claudeHome == null || codexHome == null || geminiHome == null
+                    || gatewayPort == null || registryUrl == null) {
                 return NodeResult.fail("skill-dev.units.installed", "missing upstream context");
             }
             Path h = Path.of(home);
@@ -43,7 +45,8 @@ public class SkillDevUnitsInstalled {
             SkillDevGraphSupport.createHarness(root.resolve(SkillDevGraphSupport.HARNESS));
 
             Map<String, String> env = SkillDevGraphSupport.env(
-                    home, claudeHome, codexHome, "http://127.0.0.1:" + gatewayPort, registryUrl);
+                    home, claudeHome, codexHome, geminiHome,
+                    "http://127.0.0.1:" + gatewayPort, registryUrl);
             List<ProcessRecord> procs = new ArrayList<>();
             for (String name : List.of(SkillDevGraphSupport.SKILL, SkillDevGraphSupport.PLUGIN,
                     SkillDevGraphSupport.DOC, SkillDevGraphSupport.HARNESS, SkillDevGraphSupport.CONFLICT)) {
