@@ -947,6 +947,7 @@ ResolveProjectLibs(project) ==
 \* @port SkillManagerCli.instantiate_child_home_from_harness
 InstantiateChildHomeFromHarness(home, template) ==
   LET needed_units == DependencyClosure(HarnessUnitsFor(template))
+      child_units == needed_units \cup {template}
       child_servers == McpServersFor(needed_units)
       child_tools == ToolsFor(child_servers)
   IN
@@ -963,7 +964,7 @@ InstantiateChildHomeFromHarness(home, template) ==
           !.child_home_parents = @ \cup {<<ParentHomeA, home>>},
           !.child_home_harnesses = @ \cup {<<home, template>>},
           !.child_home_agent_configs = @ \cup ({home} \X Agents),
-          !.child_home_units = @ \cup ({home} \X needed_units),
+          !.child_home_units = @ \cup ({home} \X child_units),
           !.child_home_mcp_servers = @ \cup ({home} \X child_servers),
           !.child_home_tool_shims = @ \cup ({home} \X child_tools)]
     /\ result' = Ok
@@ -1137,7 +1138,7 @@ ChildHomeParentsAreKnownAndNotSelf ==
 ChildHomeUnitsComeFromParent ==
   \A pair \in project_model.child_home_units:
     /\ pair[1] \in project_model.child_homes
-    /\ pair[2] \in cli_store_units
+    /\ pair[2] \in (cli_store_units \cup cli_harness_templates)
 
 \* @invariant ChildHomeAgentConfigsAreKnown
 ChildHomeAgentConfigsAreKnown ==

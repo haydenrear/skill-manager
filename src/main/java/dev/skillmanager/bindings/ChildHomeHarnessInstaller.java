@@ -114,13 +114,17 @@ public final class ChildHomeHarnessInstaller {
                 BindingStore.nowIso())
                 .write(parentStore.harnessesDir()
                         .resolve(dev.skillmanager.commands.HarnessCommand.INSTANCES_DIR));
+        List<String> claimedUnits = new ArrayList<>();
+        claimedUnits.add(harnessName);
+        for (Binding binding : childPlan.bindings()) {
+            claimedUnits.add(binding.unitName());
+        }
         new ChildHomeRegistry(parentStore).write(new ChildHomeRegistry.ChildHomeRecord(
                 id,
                 parentStore.root().toString(),
                 layout.childSkillManagerHome().toString(),
                 harnessName,
-                childPlan.bindings().stream()
-                        .map(Binding::unitName)
+                claimedUnits.stream()
                         .distinct()
                         .sorted(String.CASE_INSENSITIVE_ORDER)
                         .toList(),

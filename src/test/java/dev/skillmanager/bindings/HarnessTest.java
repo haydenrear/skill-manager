@@ -204,6 +204,12 @@ public final class HarnessTest {
                                     .resolve("child-inst")
                                     .resolve(ChildHomeRegistry.FILENAME)),
                             "parent child-home registry records child path");
+                    String childHomeRegistry = Files.readString(parent.root()
+                            .resolve(ChildHomeRegistry.DIR)
+                            .resolve("child-inst")
+                            .resolve(ChildHomeRegistry.FILENAME));
+                    assertTrue(childHomeRegistry.contains("\"reviewer-harness\""),
+                            "parent child-home registry claims the harness template");
                     assertEquals(2, result.harnessPlan().bindings().size(),
                             "child harness has skill + doc bindings");
 
@@ -220,6 +226,15 @@ public final class HarnessTest {
                         removeRejected = expected.getMessage().contains("child skill-manager home");
                     }
                     assertTrue(removeRejected, "child-home units are protected from plain remove");
+
+                    boolean harnessRemoveRejected = false;
+                    try {
+                        RemoveUseCase.buildProgram(parent, null, "reviewer-harness", null, false);
+                    } catch (IOException expected) {
+                        harnessRemoveRejected = expected.getMessage().contains("child skill-manager home");
+                    }
+                    assertTrue(harnessRemoveRejected,
+                            "child-home harness template is protected from plain remove");
 
                     new ChildHomeRegistry(parent).delete("child-inst");
                     assertFalse(new ChildHomeRegistry(parent).exists("child-inst"),

@@ -373,6 +373,7 @@ tickets:
         - writes agent config/env pointing at child home paths
         - exposes harness-selected CLI and MCP tools through child-local shims
         - protects child-home units from plain remove in the parent
+        - protects the child home's harness template from plain remove in the parent
         - releases parent remove protection when the child-home harness instance is removed
       graph_after_unit_pass:
         - python skills/test_graph/scripts/run.py harness-smoke
@@ -391,7 +392,7 @@ tickets:
         - command: jbang RunTests.java
           status: passed
           date: "2026-06-03"
-          notes: HarnessTest covers child .skill-manager/.codex/.claude/.gemini creation, child store unit records, child-local CLI/MCP shim mirroring, harness docs/projections, parent child-home registry, remove protection for child-home units, and registry claim release.
+          notes: HarnessTest covers child .skill-manager/.codex/.claude/.gemini creation, child store unit records, child-local CLI/MCP shim mirroring, harness docs/projections, parent child-home registry, remove protection for child-home units and the harness template, and registry claim release.
         - command: pytest specs/current/tests specs/desired_program_model/tests
           status: passed
           date: "2026-06-03"
@@ -406,7 +407,7 @@ tickets:
         - command: python skills/test_graph/scripts/run.py harness-smoke
           status: passed
           date: "2026-06-03"
-          report: test_graph/build/validation-reports/20260603-215757/report.md
+          report: test_graph/build/validation-reports/20260603-221744/report.md
 
   - id: ISSUE-75-6
     title: Scaffold project .skill-manager as a child home

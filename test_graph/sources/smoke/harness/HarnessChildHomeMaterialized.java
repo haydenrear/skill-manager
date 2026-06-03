@@ -111,6 +111,7 @@ public class HarnessChildHomeMaterialized {
             boolean childHomeRecordPresent = Files.isRegularFile(childHomeRecord);
             String childHomeRecordJson = childHomeRecordPresent ? Files.readString(childHomeRecord) : "";
             boolean childHomeClaimsSkill = childHomeRecordJson.contains("\"pip-cli-skill\"")
+                    && childHomeRecordJson.contains("\"" + harnessName + "\"")
                     && childHomeRecordJson.contains(childHome.toString());
 
             Path skillLedger = Path.of(home, "installed", "pip-cli-skill.projections.json");
@@ -155,7 +156,7 @@ public class HarnessChildHomeMaterialized {
                                     + " lockPresent=" + lockPresent
                                     + " lockCarriesChildPaths=" + lockCarriesChildPaths
                                     + " childHomeRecordPresent=" + childHomeRecordPresent
-                                    + " childHomeClaimsSkill=" + childHomeClaimsSkill
+                                    + " childHomeClaimsSkillAndHarness=" + childHomeClaimsSkill
                                     + " parentLedgerTracksChild=" + parentLedgerTracksChild
                                     + " removeRejected=" + removeRejected);
             return result
@@ -172,7 +173,7 @@ public class HarnessChildHomeMaterialized {
                     .assertion("harness_instance_lock_present", lockPresent)
                     .assertion("harness_instance_lock_uses_child_paths", lockCarriesChildPaths)
                     .assertion("parent_child_home_registry_present", childHomeRecordPresent)
-                    .assertion("child_home_registry_claims_skill", childHomeClaimsSkill)
+                    .assertion("child_home_registry_claims_skill_and_harness", childHomeClaimsSkill)
                     .assertion("parent_ledger_tracks_child_projection", parentLedgerTracksChild)
                     .assertion("plain_remove_rejects_child_home_claimed_skill", removeRejected)
                     .metric("exitCode", rc)

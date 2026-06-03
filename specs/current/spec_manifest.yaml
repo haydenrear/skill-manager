@@ -59,8 +59,8 @@ status:
         - command: python skills/test_graph/scripts/run.py harness-smoke
           status: passed
           purpose: external CLI child-home harness instantiate and harness lifecycle regression for ISSUE-75-5
-          report: test_graph/build/validation-reports/20260603-215757/report.md
-          summary: test_graph/build/validation-reports/20260603-215757/summary.json
+          report: test_graph/build/validation-reports/20260603-221744/report.md
+          summary: test_graph/build/validation-reports/20260603-221744/summary.json
         - command: python skills/test_graph/scripts/run.py source-tracking
           status: passed
           purpose: adjacent git source tracking regression for ISSUE-75-4
