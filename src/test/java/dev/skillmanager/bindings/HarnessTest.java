@@ -220,6 +220,11 @@ public final class HarnessTest {
                         removeRejected = expected.getMessage().contains("child skill-manager home");
                     }
                     assertTrue(removeRejected, "child-home units are protected from plain remove");
+
+                    new ChildHomeRegistry(parent).delete("child-inst");
+                    assertFalse(new ChildHomeRegistry(parent).exists("child-inst"),
+                            "child-home registry can release parent claims");
+                    RemoveUseCase.buildProgram(parent, null, "widget", null, false);
                 })
                 .test("SyncHarness effect: idempotent re-apply (UPGRADED facts)", () -> {
                     var fix = newHarnessFixture("idempotent", false);

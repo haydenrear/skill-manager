@@ -4,6 +4,7 @@ import dev.skillmanager.bindings.Binding;
 import dev.skillmanager.bindings.BindingSource;
 import dev.skillmanager.bindings.BindingStore;
 import dev.skillmanager.bindings.ChildHomeHarnessInstaller;
+import dev.skillmanager.bindings.ChildHomeRegistry;
 import dev.skillmanager.bindings.HarnessInstantiator;
 import dev.skillmanager.bindings.Projection;
 import dev.skillmanager.effects.DryRunInterpreter;
@@ -286,6 +287,7 @@ public final class HarnessCommand {
                     if (!dryRun) Fs.deleteRecursive(stale);
                     Log.info("removed sandbox dir %s", stale);
                 }
+                if (!dryRun) new ChildHomeRegistry(store).delete(instanceId);
                 return 0;
             }
             // LIFO across bindings, LIFO across projections inside each
@@ -317,6 +319,7 @@ public final class HarnessCommand {
             // After ledger + projections are clean, drop the sandbox dir.
             Path sandbox = store.harnessesDir().resolve(INSTANCES_DIR).resolve(instanceId);
             if (Files.isDirectory(sandbox)) Fs.deleteRecursive(sandbox);
+            new ChildHomeRegistry(store).delete(instanceId);
             if (!json) {
                 Log.ok("tore down harness instance %s (%d binding(s))", instanceId, mine.size());
             }
