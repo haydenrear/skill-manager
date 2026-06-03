@@ -173,6 +173,44 @@ public final class ProjectLibResolverTest {
                                 "lock records release ref and sha");
                     }
                 })
+                .test("existing checkout without matching origin is rejected", () -> {
+                    try (TestHarness h = TestHarness.create()) {
+                        Path repoRoot = Files.createTempDirectory("project-libs-no-origin-");
+                        Path upstream = Files.createTempDirectory("project-lib-origin-upstream-");
+                        Files.writeString(upstream.resolve("marker.txt"), "upstream\n");
+                        git(upstream, "init");
+                        git(upstream, "checkout", "-b", "main");
+                        git(upstream, "add", ".");
+                        git(upstream, "-c", "user.email=test@example.com", "-c", "user.name=Test",
+                                "commit", "-m", "upstream");
+
+                        Path checkout = repoRoot.resolve("libs/orphan-lib");
+                        Files.createDirectories(checkout);
+                        Files.writeString(checkout.resolve("marker.txt"), "orphan\n");
+                        git(checkout, "init");
+                        git(checkout, "checkout", "-b", "main");
+                        git(checkout, "add", ".");
+                        git(checkout, "-c", "user.email=test@example.com", "-c", "user.name=Test",
+                                "commit", "-m", "orphan");
+
+                        Files.writeString(repoRoot.resolve("skill-project.toml"), """
+                                [project]
+                                name = "no-origin-project"
+
+                                [[libs]]
+                                name = "orphan-lib"
+                                source = "git+file://%s"
+                                """.formatted(upstream));
+
+                        boolean rejected = false;
+                        try {
+                            new ProjectLibResolver(h.store()).resolve(SkillProjectParser.load(repoRoot));
+                        } catch (java.io.IOException e) {
+                            rejected = e.getMessage().contains("has no origin");
+                        }
+                        assertTrue(rejected, "existing checkout with no origin is rejected");
+                    }
+                })
                 .runAll();
     }
 
