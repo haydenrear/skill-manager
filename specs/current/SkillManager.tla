@@ -5,6 +5,7 @@ CONSTANTS
   UnitA, UnitB,
   DocRepoA, HarnessA, InstanceA,
   ProjectA, EnvA, LibA,
+  ProfileA,
   ClaudeAgent, CodexAgent, GeminiAgent,
   ServerA, ServerB,
   ToolA, ToolB,
@@ -98,6 +99,7 @@ Versions == {VersionA}
 Projects == {ProjectA}
 Envs == {EnvA}
 Libs == {LibA}
+Profiles == {ProfileA}
 ChildHomes == {ChildHomeA}
 SkillManagerHomes == {ParentHomeA, ChildHomeA}
 
@@ -111,6 +113,13 @@ ProjectUnitEdges == {<<ProjectA, UnitA>>, <<ProjectA, DocRepoA>>, <<ProjectA, Ha
 ProjectEnvSpecEdges == {<<ProjectA, EnvA>>}
 ProjectLibSpecEdges == {<<ProjectA, LibA>>}
 ProjectChildHomeEdges == {<<ProjectA, ChildHomeA>>}
+ProjectProfileEdges == {<<ProjectA, ProfileA>>}
+ProjectProfileUnitEdges == {<<ProjectA, ProfileA, UnitA>>}
+ProjectProfileDocRepoEdges == {<<ProjectA, ProfileA, DocRepoA>>}
+ProjectProfileHarnessEdges == {<<ProjectA, ProfileA, HarnessA>>}
+ProjectProfileEnvSpecEdges == {<<ProjectA, ProfileA, EnvA>>}
+ProjectProfileLibSpecEdges == {<<ProjectA, ProfileA, LibA>>}
+ProjectProfileChildHomeEdges == {<<ProjectA, ProfileA, ChildHomeA>>}
 
 RefsFor(units) ==
   {ref \in Units : \E u \in units: <<u, ref>> \in ReferenceEdges}
@@ -156,6 +165,32 @@ ProjectChildHomePayload(project) ==
   ProjectResolvedUnitClosure(project) \cup
     ProjectDocRepos(project) \cup ProjectHarnessTemplates(project)
 
+ProjectProfiles(project) ==
+  {profile \in Profiles : <<project, profile>> \in ProjectProfileEdges}
+
+ProjectProfileEnvSpecs(project, profile) ==
+  {env \in Envs : <<project, profile, env>> \in ProjectProfileEnvSpecEdges}
+
+ProjectProfileLibSpecs(project, profile) ==
+  {lib \in Libs : <<project, profile, lib>> \in ProjectProfileLibSpecEdges}
+
+ProjectProfileDirectUnits(project, profile) ==
+  {u \in Units : <<project, profile, u>> \in ProjectProfileUnitEdges}
+
+ProjectProfileDocRepos(project, profile) ==
+  {doc \in DocRepos : <<project, profile, doc>> \in ProjectProfileDocRepoEdges}
+
+ProjectProfileHarnessTemplates(project, profile) ==
+  {template \in HarnessTemplates : <<project, profile, template>> \in ProjectProfileHarnessEdges}
+
+ProjectProfileResolvedUnitClosure(project, profile) ==
+  DependencyClosure(ProjectProfileDirectUnits(project, profile) \cup
+    UNION {HarnessUnitsFor(template) : template \in ProjectProfileHarnessTemplates(project, profile)})
+
+ProjectProfileChildHomePayload(project, profile) ==
+  ProjectProfileResolvedUnitClosure(project, profile) \cup
+    ProjectProfileDocRepos(project, profile) \cup ProjectProfileHarnessTemplates(project, profile)
+
 ProjectClaimedUnits ==
   {entry[2] : entry \in project_model.resolved_units}
     \cup {entry[2] : entry \in project_model.child_home_units}
@@ -178,6 +213,12 @@ ProjectModelInit ==
    env_docs |-> {},
    env_specs |-> {},
    lib_specs |-> {},
+   profile_declarations |-> {},
+   profile_locks |-> {},
+   profile_resolved_units |-> {},
+   profile_env_specs |-> {},
+   profile_lib_specs |-> {},
+   profile_child_homes |-> {},
    lib_checkouts |-> {},
    lib_locks |-> {},
    child_homes |-> {},
@@ -855,7 +896,16 @@ RegisterProjectManifest(project) ==
         !.manifests = @ \cup {project},
         !.registrations = @ \cup {project},
         !.env_specs = @ \cup ({project} \X ProjectEnvSpecs(project)),
-        !.lib_specs = @ \cup ({project} \X ProjectLibSpecs(project))]
+        !.lib_specs = @ \cup ({project} \X ProjectLibSpecs(project)),
+        !.profile_declarations = @ \cup ({project} \X ProjectProfiles(project)),
+        !.profile_env_specs =
+            @ \cup UNION {{<<project, profile, env>> :
+                    env \in ProjectProfileEnvSpecs(project, profile)}
+                : profile \in ProjectProfiles(project)},
+        !.profile_lib_specs =
+            @ \cup UNION {{<<project, profile, lib>> :
+                    lib \in ProjectProfileLibSpecs(project, profile)}
+                : profile \in ProjectProfiles(project)}]
   /\ result' = Ok
   /\ UNCHANGED state_vars
 
@@ -1007,6 +1057,65 @@ ScaffoldProjectChildHome(project, home, parent_home) ==
     /\ result' = Ok
     /\ UNCHANGED state_vars
 
+\* @command ResolveProjectProfile
+\* @result ProjectResult
+\* @port SkillManagerCli.resolve_project_profile
+ResolveProjectProfile(project, profile, home, parent_home) ==
+  LET resolved_units == ProjectProfileResolvedUnitClosure(project, profile)
+      docs == ProjectProfileDocRepos(project, profile)
+      harnesses == ProjectProfileHarnessTemplates(project, profile)
+      child_payload == ProjectProfileChildHomePayload(project, profile)
+      child_servers == McpServersFor(child_payload)
+      child_tools == ToolsFor(child_servers)
+  IN
+  IF project \notin project_model.registrations
+     \/ <<project, profile>> \notin project_model.profile_declarations
+     \/ <<project, profile, home>> \notin ProjectProfileChildHomeEdges
+     \/ parent_home \notin SkillManagerHomes
+     \/ parent_home = home
+  THEN
+    /\ result' = Reject("PROJECT_PROFILE_NOT_READY")
+    /\ project_model' = project_model
+    /\ UNCHANGED state_vars
+  ELSE
+    /\ cli_store_units' = cli_store_units \cup resolved_units
+    /\ cli_doc_repos' = cli_doc_repos \cup docs
+    /\ cli_harness_templates' = cli_harness_templates \cup harnesses
+    /\ cli_installed_records' = cli_installed_records \cup resolved_units
+    /\ cli_lock_units' = cli_lock_units \cup resolved_units
+    /\ cli_bindings' = cli_bindings \cup resolved_units \cup docs
+    /\ cli_projection_rows' = cli_projection_rows \cup resolved_units \cup docs
+    /\ cli_managed_copies' = cli_managed_copies \cup docs
+    /\ cli_import_directives' = cli_import_directives \cup docs
+    /\ cli_tool_records' = cli_tool_records \cup PackagesFor(resolved_units)
+    /\ cli_cli_lock' = cli_cli_lock \cup PackagesFor(resolved_units)
+    /\ cli_skill_scripts_run' = cli_skill_scripts_run \cup ScriptsFor(resolved_units)
+    /\ gateway_catalog' = gateway_catalog \cup McpServersFor(resolved_units)
+    /\ gateway_dynamic_servers' = gateway_dynamic_servers \cup McpServersFor(resolved_units)
+    /\ project_model' =
+        [project_model EXCEPT
+          !.profile_locks = @ \cup {<<project, profile>>},
+          !.profile_resolved_units =
+              @ \cup {<<project, profile, unit>> : unit \in resolved_units},
+          !.profile_child_homes = @ \cup {<<project, profile, home>>},
+          !.child_homes = @ \cup {home},
+          !.child_home_parents = @ \cup {<<parent_home, home>>},
+          !.child_home_agent_configs = @ \cup ({home} \X Agents),
+          !.child_home_units = @ \cup ({home} \X child_payload),
+          !.child_home_mcp_servers = @ \cup ({home} \X child_servers),
+          !.child_home_tool_shims = @ \cup ({home} \X child_tools)]
+    /\ result' = Ok
+    /\ UNCHANGED << cli_harness_instances, cli_agent_projections,
+                    cli_projection_conflicts, cli_errors,
+                    cli_gateway_url_configured, cli_registry_url_configured,
+                    cli_gateway_mcp_snapshot, effect_status,
+                    effect_continuation, program_halted, always_after_ran,
+                    rollback_journal, gateway_global_deployments,
+                    gateway_session_deployments, gateway_tools,
+                    gateway_disclosures, gateway_errors, gateway_last_init,
+                    server_registry_units, server_versions, server_packages,
+                    server_authenticated_users >>
+
 CoreNext ==
   \/ \E user \in Users: ServerAuthenticate(user)
   \/ \E user \in Users, unit \in Units, version \in Versions:
@@ -1042,6 +1151,9 @@ Next ==
       InstantiateChildHomeFromHarness(home, template)
   \/ \E project \in Projects, home \in ChildHomes, parent_home \in SkillManagerHomes:
       ScaffoldProjectChildHome(project, home, parent_home)
+  \/ \E project \in Projects, profile \in Profiles, home \in ChildHomes,
+        parent_home \in SkillManagerHomes:
+      ResolveProjectProfile(project, profile, home, parent_home)
 
 \* @invariant CliInstalledRecordsTrackStore
 CliInstalledRecordsTrackStore ==
@@ -1154,6 +1266,34 @@ ProjectLibLocksTrackCheckouts ==
   /\ \A entry \in project_model.lib_checkouts:
        entry[1] \in project_model.locks
 
+\* @invariant ProjectProfileDeclarationsHaveManifests
+ProjectProfileDeclarationsHaveManifests ==
+  \A entry \in project_model.profile_declarations:
+    entry[1] \in project_model.manifests
+
+\* @invariant ProjectProfileSpecsHaveDeclarations
+ProjectProfileSpecsHaveDeclarations ==
+  /\ \A entry \in project_model.profile_env_specs:
+       <<entry[1], entry[2]>> \in project_model.profile_declarations
+  /\ \A entry \in project_model.profile_lib_specs:
+       <<entry[1], entry[2]>> \in project_model.profile_declarations
+
+\* @invariant ProjectProfileLocksHaveDeclarations
+ProjectProfileLocksHaveDeclarations ==
+  project_model.profile_locks \subseteq project_model.profile_declarations
+
+\* @invariant ProjectProfileResolvedUnitsHaveLocksAndInstalledUnits
+ProjectProfileResolvedUnitsHaveLocksAndInstalledUnits ==
+  \A entry \in project_model.profile_resolved_units:
+    /\ <<entry[1], entry[2]>> \in project_model.profile_locks
+    /\ entry[3] \in cli_store_units
+
+\* @invariant ProjectProfileChildHomesHaveLocks
+ProjectProfileChildHomesHaveLocks ==
+  \A entry \in project_model.profile_child_homes:
+    /\ <<entry[1], entry[2]>> \in project_model.profile_locks
+    /\ entry[3] \in project_model.child_homes
+
 \* @invariant ChildHomesHaveHarnesses
 ChildHomesHaveHarnesses ==
   \A home \in project_model.child_homes:
@@ -1161,6 +1301,8 @@ ChildHomesHaveHarnesses ==
         <<home, template>> \in project_model.child_home_harnesses
     \/ \E project \in Projects:
         <<project, home>> \in project_model.project_child_homes
+    \/ \E project \in Projects, profile \in Profiles:
+        <<project, profile, home>> \in project_model.profile_child_homes
 
 \* @invariant ProjectChildHomesHaveRegistrations
 ProjectChildHomesHaveRegistrations ==
@@ -1193,6 +1335,13 @@ ProjectChildHomeUnitsComeFromProject ==
     \A unit_pair \in project_model.child_home_units:
       unit_pair[1] = project_home[2] =>
         unit_pair[2] \in ProjectChildHomePayload(project_home[1])
+
+\* @invariant ProjectProfileChildHomeUnitsComeFromProfile
+ProjectProfileChildHomeUnitsComeFromProfile ==
+  \A profile_home \in project_model.profile_child_homes:
+    \A unit_pair \in project_model.child_home_units:
+      unit_pair[1] = profile_home[3] =>
+        unit_pair[2] \in ProjectProfileChildHomePayload(profile_home[1], profile_home[2])
 
 \* @invariant ChildHomeAgentConfigsAreKnown
 ChildHomeAgentConfigsAreKnown ==

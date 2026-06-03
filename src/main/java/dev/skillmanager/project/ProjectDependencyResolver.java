@@ -65,15 +65,16 @@ public final class ProjectDependencyResolver {
         Options opts = options == null ? Options.defaults() : options;
         SkillProjectRegistration registration = new SkillProjectRegistry(store).register(project);
         SkillProjectLockStore lockStore = new SkillProjectLockStore(store);
-        SkillProjectLock previousLock = lockStore.read(project.name()).orElse(null);
+        SkillProjectLock previousLock = lockStore.read(project.registryName()).orElse(null);
         List<String> installed = installMissing(project, opts);
         List<SkillProjectLock.ResolvedUnit> resolvedUnits = collectResolvedUnits(project, installed);
         ProjectChildHomeScaffolder.Result childHome =
                 new ProjectChildHomeScaffolder(store).scaffold(project, resolvedUnits);
         List<SkillProjectLock.ProjectBinding> projectBindings =
-                materializeProjectBindings(project, childHome.childStore(), resolvedUnits);
+                materializeProjectBindings(project, childHome.layout(), childHome.childStore(), resolvedUnits);
         SkillProjectLock lock = new SkillProjectLock(
-                project.name(),
+                project.registryName(),
+                project.activeProfile(),
                 registration.manifestFile(),
                 Instant.now().toString(),
                 resolvedUnits,
@@ -129,21 +130,23 @@ public final class ProjectDependencyResolver {
 
     private List<SkillProjectLock.ProjectBinding> materializeProjectBindings(
             SkillProject project,
+            dev.skillmanager.bindings.ChildHomeHarnessInstaller.Layout layout,
             SkillStore bindingSourceStore,
             List<SkillProjectLock.ResolvedUnit> resolvedUnits
     ) throws IOException {
         List<Binding> bindings = new ArrayList<>();
+        Path targetRoot = project.activeProfile() == null ? project.projectRoot() : layout.targetDir();
         for (SkillProject.ProjectUnitRef ref : project.docs()) {
             String docName = resolvedUnitName(project, ref, resolvedUnits);
             DocUnit doc = DocRepoParser.load(bindingSourceStore.unitDir(docName, UnitKind.DOC));
             String selectedSourceId = selectedSubElement(ref.reference());
             DocRepoBinder.Plan plan = DocRepoBinder.plan(
                     doc,
-                    project.projectRoot(),
+                    targetRoot,
                     selectedSourceId,
                     ConflictPolicy.OVERWRITE,
                     BindingSource.PROFILE,
-                    src -> "project:" + project.name() + ":doc:" + doc.name() + ":" + src.id());
+                    src -> project.childHomeId() + ":doc:" + doc.name() + ":" + src.id());
             bindings.addAll(plan.bindings());
         }
         for (SkillProject.ProjectUnitRef ref : project.harnesses()) {
@@ -151,11 +154,11 @@ public final class ProjectDependencyResolver {
             HarnessUnit harness = HarnessParser.load(bindingSourceStore.unitDir(harnessName, UnitKind.HARNESS));
             HarnessInstantiator.Plan plan = HarnessInstantiator.plan(
                     harness,
-                    "project:" + project.name() + ":" + harness.name(),
-                    project.projectRoot().resolve(".claude"),
-                    project.projectRoot().resolve(".codex"),
-                    project.projectRoot().resolve(".gemini"),
-                    project.projectRoot(),
+                    project.childHomeId() + ":" + harness.name(),
+                    layout.claudeHome(),
+                    layout.codexHome(),
+                    layout.geminiHome(),
+                    targetRoot,
                     bindingSourceStore);
             bindings.addAll(plan.bindings());
         }

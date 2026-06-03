@@ -45,6 +45,7 @@ public final class SkillProjectLockStore {
             throw new IOException(sb.toString());
         }
         String name = toml.getString("project.name");
+        String profile = toml.getString("project.profile");
         String manifestFile = toml.getString("project.manifest_file");
         String resolvedAt = toml.getString("project.resolved_at");
         if (name == null || name.isBlank()) {
@@ -132,7 +133,7 @@ public final class SkillProjectLockStore {
                         row.getString("locked_at")));
             }
         }
-        return Optional.of(new SkillProjectLock(name, manifestFile, resolvedAt, units, bindings, envs, libs));
+        return Optional.of(new SkillProjectLock(name, profile, manifestFile, resolvedAt, units, bindings, envs, libs));
     }
 
     public List<SkillProjectLock> list() throws IOException {
@@ -163,6 +164,9 @@ public final class SkillProjectLockStore {
         sb.append("version = 1\n\n");
         sb.append("[project]\n");
         sb.append("name = \"").append(esc(lock.projectName())).append("\"\n");
+        if (lock.profile() != null) {
+            sb.append("profile = \"").append(esc(lock.profile())).append("\"\n");
+        }
         sb.append("manifest_file = \"").append(esc(lock.manifestFile())).append("\"\n");
         sb.append("resolved_at = \"").append(esc(lock.resolvedAt())).append("\"\n\n");
         for (SkillProjectLock.ResolvedUnit unit : lock.resolvedUnits()) {

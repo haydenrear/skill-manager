@@ -147,6 +147,72 @@ public final class SkillProjectParserTest {
                     assertEquals("array-skill", parsed.skills().get(0).alias(), "array skill alias");
                     assertEquals(1, parsed.docs().size(), "one array doc");
                 })
+                .test("profiles select named project harness declarations", () -> {
+                    Path project = tmp.resolve("profile-project");
+                    Files.createDirectories(project);
+                    Files.writeString(project.resolve("skill-project.toml"), """
+                            [project]
+                            name = "profile-project"
+
+                            [skills.common]
+                            source = "skill:common-skill"
+
+                            [skills.dev]
+                            source = "skill:dev-skill"
+
+                            [skills.review]
+                            source = "skill:review-skill"
+
+                            [envs.dev]
+                            python = "3.12"
+
+                            [envs.review]
+                            python = "3.11"
+
+                            [profiles.dev]
+                            skills = ["common", "dev"]
+                            envs = ["dev"]
+
+                            [profiles.review]
+                            skills = ["common", "review"]
+                            envs = ["review"]
+                            """);
+
+                    SkillProject parsed = SkillProjectParser.load(project);
+                    assertSize(2, parsed.profiles(), "profiles parsed");
+                    SkillProject dev = parsed.withProfile("dev");
+                    assertEquals("dev", dev.activeProfile(), "active profile");
+                    assertEquals("profile-project--dev", dev.registryName(), "profile registry name");
+                    assertEquals("project:profile-project:profile:dev", dev.childHomeId(), "profile child id");
+                    assertSize(2, dev.skills(), "dev selected skills");
+                    assertEquals("common", dev.skills().get(0).alias(), "common selected first");
+                    assertEquals("dev", dev.skills().get(1).alias(), "dev selected second");
+                    assertSize(1, dev.envs(), "dev selected env");
+                    assertEquals("dev", dev.envs().get(0).name(), "dev env");
+
+                    SkillProject review = parsed.withProfile("review");
+                    assertSize(2, review.skills(), "review selected skills");
+                    assertEquals("review", review.skills().get(1).alias(), "review selected");
+                    assertEquals("review", review.envs().get(0).name(), "review env");
+                })
+                .test("profile default inheritance keeps legacy manifest declarations", () -> {
+                    Path project = tmp.resolve("profile-default-project");
+                    Files.createDirectories(project);
+                    Files.writeString(project.resolve("skill-project.toml"), """
+                            [project]
+                            name = "profile-default-project"
+
+                            [skills.common]
+                            source = "skill:common-skill"
+
+                            [profiles.dev]
+                            extends = ["default"]
+                            """);
+
+                    SkillProject dev = SkillProjectParser.load(project).withProfile("dev");
+                    assertSize(1, dev.skills(), "default skill inherited");
+                    assertEquals("common", dev.skills().get(0).alias(), "common inherited");
+                })
                 .runAll();
     }
 }

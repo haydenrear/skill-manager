@@ -45,10 +45,13 @@ public final class ProjectLibResolver {
         if (project == null) throw new IllegalArgumentException("project must not be null");
         SkillProjectRegistration registration = new SkillProjectRegistry(store).register(project);
         SkillProjectLockStore locks = new SkillProjectLockStore(store);
-        SkillProjectLock previous = locks.read(project.name()).orElseGet(() -> new SkillProjectLock(
-                project.name(),
+        SkillProjectLock previous = locks.read(project.registryName()).orElseGet(() -> new SkillProjectLock(
+                project.registryName(),
+                project.activeProfile(),
                 registration.manifestFile(),
                 Instant.now().toString(),
+                List.of(),
+                List.of(),
                 List.of(),
                 List.of()));
 
@@ -64,6 +67,7 @@ public final class ProjectLibResolver {
 
         SkillProjectLock next = new SkillProjectLock(
                 previous.projectName(),
+                previous.profile(),
                 previous.manifestFile(),
                 previous.resolvedAt(),
                 previous.resolvedUnits(),

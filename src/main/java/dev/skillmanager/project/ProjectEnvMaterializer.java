@@ -46,11 +46,15 @@ public final class ProjectEnvMaterializer {
         SkillProject.ProjectEnv env = findEnv(project, envName).orElseThrow(() ->
                 new IOException("project env not declared: " + envName));
         SkillProjectLockStore locks = new SkillProjectLockStore(store);
-        SkillProjectLock previous = locks.read(project.name()).orElseThrow(() ->
-                new IOException("project dependencies are not resolved for " + project.name()
+        SkillProjectLock previous = locks.read(project.registryName()).orElseThrow(() ->
+                new IOException("project dependencies are not resolved for " + project.registryName()
                         + "; run `skill-manager project resolve` first"));
         Path projectRoot = project.projectRoot();
-        Path projectSm = projectRoot.resolve(".skill-manager");
+        Path projectSm = project.activeProfile() == null
+                ? projectRoot.resolve(".skill-manager")
+                : projectRoot.resolve(".skill-manager")
+                        .resolve("profiles")
+                        .resolve(safeSegment(project.activeProfile()));
         Path envRoot = projectSm.resolve("envs").resolve(env.name());
         Path vendorRoot = projectSm.resolve("vendor");
         Path binRoot = projectSm.resolve("bin");
@@ -106,8 +110,8 @@ public final class ProjectEnvMaterializer {
         if (command == null || command.isEmpty()) {
             throw new IOException("missing command for project env run");
         }
-        SkillProjectLock lock = new SkillProjectLockStore(store).read(project.name()).orElseThrow(() ->
-                new IOException("project dependencies are not resolved for " + project.name()));
+        SkillProjectLock lock = new SkillProjectLockStore(store).read(project.registryName()).orElseThrow(() ->
+                new IOException("project dependencies are not resolved for " + project.registryName()));
         SkillProjectLock.EnvRealization env = lock.envs().stream()
                 .filter(e -> e.name().equals(envName))
                 .findFirst()
@@ -150,6 +154,7 @@ public final class ProjectEnvMaterializer {
         rows.sort(Comparator.comparing(SkillProjectLock.EnvRealization::name, String.CASE_INSENSITIVE_ORDER));
         return new SkillProjectLock(
                 lock.projectName(),
+                lock.profile(),
                 lock.manifestFile(),
                 lock.resolvedAt(),
                 lock.resolvedUnits(),
@@ -259,5 +264,9 @@ public final class ProjectEnvMaterializer {
     private static String escKey(String key) {
         if (key.matches("[A-Za-z0-9_-]+")) return key;
         return "\"" + esc(key) + "\"";
+    }
+
+    private static String safeSegment(String value) {
+        return value.replaceAll("[^A-Za-z0-9._-]", "_");
     }
 }

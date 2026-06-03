@@ -132,6 +132,80 @@ public final class ProjectDependencyResolverTest {
                         assertFalse(result.lock().bindings().isEmpty(), "harness bindings locked");
                     }
                 })
+                .test("resolves named profiles into distinct project child homes", () -> {
+                    try (TestHarness h = TestHarness.create()) {
+                        Path repoRoot = Files.createTempDirectory("project-resolve-profiles-");
+                        Path devSkill = UnitFixtures.scaffoldSkill(
+                                repoRoot.resolve("units"), "profile-dev-skill", DepSpec.empty()).sourcePath();
+                        Path reviewSkill = UnitFixtures.scaffoldSkill(
+                                repoRoot.resolve("units"), "profile-review-skill", DepSpec.empty()).sourcePath();
+                        SkillProject base = project(repoRoot, """
+                                [project]
+                                name = "profiled-project"
+
+                                [skills.dev]
+                                source = "%s"
+
+                                [skills.review]
+                                source = "%s"
+
+                                [profiles.dev]
+                                skills = ["dev"]
+
+                                [profiles.review]
+                                skills = ["review"]
+                                """.formatted(devSkill, reviewSkill));
+
+                        ProjectDependencyResolver.Result dev = resolver(h).resolve(
+                                base.withProfile("dev"),
+                                new ProjectDependencyResolver.Options(true, false));
+                        ProjectDependencyResolver.Result review = resolver(h).resolve(
+                                base.withProfile("review"),
+                                new ProjectDependencyResolver.Options(true, false));
+
+                        Path devHome = repoRoot.resolve(".skill-manager/profiles/dev");
+                        Path reviewHome = repoRoot.resolve(".skill-manager/profiles/review");
+                        assertEquals(devHome.toAbsolutePath().normalize(),
+                                dev.childHome().layout().childSkillManagerHome(),
+                                "dev child home");
+                        assertEquals(reviewHome.toAbsolutePath().normalize(),
+                                review.childHome().layout().childSkillManagerHome(),
+                                "review child home");
+                        assertTrue(Files.isRegularFile(devHome.resolve("skills/profile-dev-skill/SKILL.md")),
+                                "dev skill projected into dev profile home");
+                        assertFalse(Files.exists(devHome.resolve("skills/profile-review-skill")),
+                                "review skill does not leak into dev profile home");
+                        assertTrue(Files.isRegularFile(reviewHome.resolve("skills/profile-review-skill/SKILL.md")),
+                                "review skill projected into review profile home");
+                        assertFalse(Files.exists(reviewHome.resolve("skills/profile-dev-skill")),
+                                "dev skill does not leak into review profile home");
+                        assertTrue(Files.isDirectory(devHome.resolve("agents/codex")),
+                                "dev profile codex home scaffolded");
+                        assertTrue(Files.isDirectory(reviewHome.resolve("agents/claude")),
+                                "review profile claude home scaffolded");
+
+                        SkillProjectLock devLock = new SkillProjectLockStore(h.store())
+                                .read("profiled-project--dev")
+                                .orElseThrow();
+                        SkillProjectLock reviewLock = new SkillProjectLockStore(h.store())
+                                .read("profiled-project--review")
+                                .orElseThrow();
+                        assertEquals("dev", devLock.profile(), "dev profile lock");
+                        assertEquals("review", reviewLock.profile(), "review profile lock");
+                        assertTrue(devLock.resolvedUnits().stream()
+                                        .anyMatch(u -> u.name().equals("profile-dev-skill")),
+                                "dev lock records dev skill");
+                        assertFalse(devLock.resolvedUnits().stream()
+                                        .anyMatch(u -> u.name().equals("profile-review-skill")),
+                                "dev lock excludes review skill");
+
+                        ChildHomeRegistry registry = new ChildHomeRegistry(h.store());
+                        assertTrue(registry.exists("project:profiled-project:profile:dev"),
+                                "parent registry records dev profile child");
+                        assertTrue(registry.exists("project:profiled-project:profile:review"),
+                                "parent registry records review profile child");
+                    }
+                })
                 .test("plain remove is blocked while a project lock claims the unit", () -> {
                     try (TestHarness h = TestHarness.create()) {
                         Path repoRoot = Files.createTempDirectory("project-resolve-remove-");
