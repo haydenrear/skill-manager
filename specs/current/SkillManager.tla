@@ -4,6 +4,7 @@ EXTENDS Naturals, FiniteSets, Sequences, TLC
 CONSTANTS
   UnitA, UnitB,
   DocRepoA, HarnessA, InstanceA,
+  ProjectA, EnvA, LibA,
   ClaudeAgent, CodexAgent, GeminiAgent,
   ServerA, ServerB,
   ToolA, ToolB,
@@ -49,6 +50,7 @@ VARIABLES
   server_versions,
   server_packages,
   server_authenticated_users,
+  project_model,
   result
 
 vars ==
@@ -63,7 +65,8 @@ vars ==
      gateway_dynamic_servers, gateway_global_deployments,
      gateway_session_deployments, gateway_tools, gateway_disclosures,
      gateway_errors, gateway_last_init, server_registry_units,
-     server_versions, server_packages, server_authenticated_users, result >>
+     server_versions, server_packages, server_authenticated_users,
+     project_model, result >>
 
 state_vars ==
   << cli_store_units, cli_doc_repos, cli_harness_templates,
@@ -91,6 +94,9 @@ Packages == {PackageA}
 Sessions == {SessionA, SessionB}
 Users == {UserA}
 Versions == {VersionA}
+Projects == {ProjectA}
+Envs == {EnvA}
+Libs == {LibA}
 
 ReferenceEdges == {<<UnitB, UnitA>>}
 UnitMcpEdges == {<<UnitA, ServerA>>, <<UnitB, ServerB>>}
@@ -98,6 +104,9 @@ ServerToolEdges == {<<ServerA, ToolA>>, <<ServerB, ToolB>>}
 UnitScriptEdges == {<<UnitA, ScriptA>>}
 UnitPackageEdges == {<<UnitA, PackageA>>, <<UnitB, PackageA>>}
 HarnessTemplateEdges == {<<HarnessA, UnitA>>}
+ProjectUnitEdges == {<<ProjectA, UnitA>>, <<ProjectA, DocRepoA>>, <<ProjectA, HarnessA>>}
+ProjectEnvSpecEdges == {<<ProjectA, EnvA>>}
+ProjectLibSpecEdges == {<<ProjectA, LibA>>}
 
 RefsFor(units) ==
   {ref \in Units : \E u \in units: <<u, ref>> \in ReferenceEdges}
@@ -119,6 +128,18 @@ PackagesFor(units) ==
 
 HarnessUnitsFor(template) ==
   {u \in Units : <<template, u>> \in HarnessTemplateEdges}
+
+ProjectEnvSpecs(project) ==
+  {env \in Envs : <<project, env>> \in ProjectEnvSpecEdges}
+
+ProjectLibSpecs(project) ==
+  {lib \in Libs : <<project, lib>> \in ProjectLibSpecEdges}
+
+ProjectModelInit ==
+  [manifests |-> {},
+   registrations |-> {},
+   env_specs |-> {},
+   lib_specs |-> {}]
 
 UnitProjections(units) ==
   Agents \X units
@@ -189,6 +210,7 @@ Init ==
   /\ server_versions = {}
   /\ server_packages = {}
   /\ server_authenticated_users = {}
+  /\ project_model = ProjectModelInit
   /\ result = Ok
 
 \* @command ServerAuthenticate
@@ -771,7 +793,21 @@ InvokeGatewayTool(session, tool) ==
                     server_registry_units, server_versions, server_packages,
                     server_authenticated_users >>
 
-Next ==
+\* @command RegisterProjectManifest
+\* @result ProjectResult
+\* @port SkillManagerCli.register_project_manifest
+RegisterProjectManifest(project) ==
+  /\ project \notin project_model.manifests
+  /\ project_model' =
+      [project_model EXCEPT
+        !.manifests = @ \cup {project},
+        !.registrations = @ \cup {project},
+        !.env_specs = @ \cup ({project} \X ProjectEnvSpecs(project)),
+        !.lib_specs = @ \cup ({project} \X ProjectLibSpecs(project))]
+  /\ result' = Ok
+  /\ UNCHANGED state_vars
+
+CoreNext ==
   \/ \E user \in Users: ServerAuthenticate(user)
   \/ \E user \in Users, unit \in Units, version \in Versions:
       ServerPublishTarball(user, unit, version)
@@ -795,6 +831,10 @@ Next ==
       DescribeGatewayTool(session, tool)
   \/ \E session \in Sessions, tool \in Tools:
       InvokeGatewayTool(session, tool)
+
+Next ==
+  \/ CoreNext /\ project_model' = project_model
+  \/ \E project \in Projects: RegisterProjectManifest(project)
 
 \* @invariant CliInstalledRecordsTrackStore
 CliInstalledRecordsTrackStore ==
@@ -835,6 +875,20 @@ CliCliLockTracksInstalledPackages ==
 \* @invariant SkillScriptsAreKnownScripts
 SkillScriptsAreKnownScripts ==
   cli_skill_scripts_run \subseteq Scripts
+
+\* @invariant ProjectRegistrationsHaveManifests
+ProjectRegistrationsHaveManifests ==
+  project_model.registrations \subseteq project_model.manifests
+
+\* @invariant ProjectEnvSpecsHaveManifest
+ProjectEnvSpecsHaveManifest ==
+  \A entry \in project_model.env_specs:
+    entry[1] \in project_model.manifests
+
+\* @invariant ProjectLibSpecsHaveManifest
+ProjectLibSpecsHaveManifest ==
+  \A entry \in project_model.lib_specs:
+    entry[1] \in project_model.manifests
 
 \* @invariant HaltImpliesHaltContinuation
 HaltImpliesHaltContinuation ==

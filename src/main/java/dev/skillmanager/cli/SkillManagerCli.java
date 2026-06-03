@@ -16,6 +16,7 @@ import dev.skillmanager.commands.LoginCommand;
 import dev.skillmanager.commands.OnboardCommand;
 import dev.skillmanager.commands.PmCommand;
 import dev.skillmanager.commands.PolicyCommand;
+import dev.skillmanager.commands.ProjectCommand;
 import dev.skillmanager.commands.PublishCommand;
 import dev.skillmanager.commands.RebindCommand;
 import dev.skillmanager.commands.RegistryCommand;
@@ -70,7 +71,8 @@ import picocli.CommandLine.Option;
                 UnbindCommand.class,
                 RebindCommand.class,
                 BindingsCommand.class,
-                HarnessCommand.class
+                HarnessCommand.class,
+                ProjectCommand.class
         })
 public final class SkillManagerCli implements Runnable {
 

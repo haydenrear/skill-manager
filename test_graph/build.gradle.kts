@@ -526,6 +526,11 @@ validationGraph {
         node("sources/smoke/doc/DocRepoUninstalled.java")
     }
 
+    testGraph("project-manifest") {
+        node("sources/common/EnvPrepared.java")
+        node("sources/project/ProjectManifestRegistered.java")
+    }
+
     testGraph("skill-dev-smoke") {
         node("sources/common/EnvPrepared.java")
         node("sources/common/GatewayPythonVenvReady.java")

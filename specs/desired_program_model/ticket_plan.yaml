@@ -137,7 +137,28 @@ tickets:
           - Project manifests are registered without installing or materializing dependencies.
           - Env and lib intent is recorded as portable project intent.
           - Existing install, registry, gateway, and onboarding flows still pass externally.
-      evidence: []
+      evidence:
+        - command: jbang RunTests.java
+          status: passed
+          date: 2026-06-03
+        - command: bash specs/current/run_tlc.sh specs/current/SkillManager.tla specs/current/MC.cfg
+          status: passed
+          date: 2026-06-03
+          states_generated: 2214081
+          distinct_states: 119680
+        - command: python skills/test_graph/scripts/run.py project-manifest
+          status: passed
+          date: 2026-06-03
+          report: test_graph/build/validation-reports/20260603-195241/report.md
+        - command: python skills/test_graph/scripts/run.py onboard
+          status: passed
+          date: 2026-06-03
+          report: test_graph/build/validation-reports/20260603-194938/report.md
+        - command: python skills/test_graph/scripts/run.py smoke
+          status: blocked
+          date: 2026-06-03
+          latest_attempt: test_graph/build/validation-reports/20260603-193949
+          blocker: mcp.tool.loads.installed timed out after 300s registering intentionally nonexistent npm/uv MCP load fixtures
 
   - id: ISSUE-75-2
     title: Resolve project dependency graph into home and project bindings

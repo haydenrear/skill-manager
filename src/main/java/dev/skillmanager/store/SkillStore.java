@@ -27,6 +27,7 @@ public final class SkillStore {
     private final Path pluginsDir;
     private final Path docsDir;
     private final Path harnessesDir;
+    private final Path projectsDir;
     private final Path binDir;
     private final Path cliBinDir;
     private final Path mcpBinDir;
@@ -48,6 +49,10 @@ public final class SkillStore {
         // are metadata only (a harness.toml + an optional README); the
         // instantiator turns them into Bindings on demand.
         this.harnessesDir = root.resolve("harnesses");
+        // Registered project manifests live under projects/<name>/ as
+        // portable intent snapshots. Resolution/materialization happens in
+        // later project-specific flows.
+        this.projectsDir = root.resolve("projects");
         this.binDir = root.resolve("bin");
         this.cliBinDir = binDir.resolve("cli");
         this.mcpBinDir = binDir.resolve("mcp");
@@ -74,6 +79,7 @@ public final class SkillStore {
     public Path pluginsDir() { return pluginsDir; }
     public Path docsDir() { return docsDir; }
     public Path harnessesDir() { return harnessesDir; }
+    public Path projectsDir() { return projectsDir; }
     public Path binDir() { return binDir; }
     public Path cliBinDir() { return cliBinDir; }
     public Path mcpBinDir() { return mcpBinDir; }
@@ -97,6 +103,7 @@ public final class SkillStore {
         Fs.ensureDir(pluginsDir);
         Fs.ensureDir(docsDir);
         Fs.ensureDir(harnessesDir);
+        Fs.ensureDir(projectsDir);
         Fs.ensureDir(binDir);
         Fs.ensureDir(cliBinDir);
         Fs.ensureDir(mcpBinDir);
