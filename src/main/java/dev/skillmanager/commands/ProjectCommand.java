@@ -163,6 +163,7 @@ public final class ProjectCommand {
             if (lock != null) {
                 System.out.printf("resolved: %d%n", lock.resolvedUnits().size());
                 System.out.printf("bindings: %d%n", lock.bindings().size());
+                System.out.printf("env locks:%d%n", lock.envs().size());
             }
             return 0;
         }

@@ -4,7 +4,6 @@ EXTENDS Naturals, FiniteSets, Sequences, TLC
 CONSTANTS
   UnitA, UnitB,
   DocRepoA, HarnessA, InstanceA,
-  ProjectA, EnvA, LibA,
   ClaudeAgent, CodexAgent, GeminiAgent,
   ServerA, ServerB,
   ToolA, ToolB,
@@ -50,7 +49,6 @@ VARIABLES
   server_versions,
   server_packages,
   server_authenticated_users,
-  project_model,
   result
 
 vars ==
@@ -65,8 +63,7 @@ vars ==
      gateway_dynamic_servers, gateway_global_deployments,
      gateway_session_deployments, gateway_tools, gateway_disclosures,
      gateway_errors, gateway_last_init, server_registry_units,
-     server_versions, server_packages, server_authenticated_users,
-     project_model, result >>
+     server_versions, server_packages, server_authenticated_users, result >>
 
 state_vars ==
   << cli_store_units, cli_doc_repos, cli_harness_templates,
@@ -94,9 +91,6 @@ Packages == {PackageA}
 Sessions == {SessionA, SessionB}
 Users == {UserA}
 Versions == {VersionA}
-Projects == {ProjectA}
-Envs == {EnvA}
-Libs == {LibA}
 
 ReferenceEdges == {<<UnitB, UnitA>>}
 UnitMcpEdges == {<<UnitA, ServerA>>, <<UnitB, ServerB>>}
@@ -104,9 +98,6 @@ ServerToolEdges == {<<ServerA, ToolA>>, <<ServerB, ToolB>>}
 UnitScriptEdges == {<<UnitA, ScriptA>>}
 UnitPackageEdges == {<<UnitA, PackageA>>, <<UnitB, PackageA>>}
 HarnessTemplateEdges == {<<HarnessA, UnitA>>}
-ProjectUnitEdges == {<<ProjectA, UnitA>>, <<ProjectA, DocRepoA>>, <<ProjectA, HarnessA>>}
-ProjectEnvSpecEdges == {<<ProjectA, EnvA>>}
-ProjectLibSpecEdges == {<<ProjectA, LibA>>}
 
 RefsFor(units) ==
   {ref \in Units : \E u \in units: <<u, ref>> \in ReferenceEdges}
@@ -128,44 +119,6 @@ PackagesFor(units) ==
 
 HarnessUnitsFor(template) ==
   {u \in Units : <<template, u>> \in HarnessTemplateEdges}
-
-ProjectEnvSpecs(project) ==
-  {env \in Envs : <<project, env>> \in ProjectEnvSpecEdges}
-
-ProjectLibSpecs(project) ==
-  {lib \in Libs : <<project, lib>> \in ProjectLibSpecEdges}
-
-ProjectDirectUnits(project) ==
-  {u \in Units : <<project, u>> \in ProjectUnitEdges}
-
-ProjectDocRepos(project) ==
-  {doc \in DocRepos : <<project, doc>> \in ProjectUnitEdges}
-
-ProjectHarnessTemplates(project) ==
-  {template \in HarnessTemplates : <<project, template>> \in ProjectUnitEdges}
-
-ProjectResolvedUnitClosure(project) ==
-  DependencyClosure(ProjectDirectUnits(project) \cup
-    UNION {HarnessUnitsFor(template) : template \in ProjectHarnessTemplates(project)})
-
-ProjectClaimedUnits ==
-  {entry[2] : entry \in project_model.resolved_units}
-
-ProjectModelInit ==
-  [manifests |-> {},
-   registrations |-> {},
-   locks |-> {},
-   resolved_units |-> {},
-   doc_bindings |-> {},
-   harness_bindings |-> {},
-   agent_configs |-> {},
-   env_realizations |-> {},
-   env_locks |-> {},
-   tool_shims |-> {},
-   skill_vendors |-> {},
-   env_docs |-> {},
-   env_specs |-> {},
-   lib_specs |-> {}]
 
 UnitProjections(units) ==
   Agents \X units
@@ -236,7 +189,6 @@ Init ==
   /\ server_versions = {}
   /\ server_packages = {}
   /\ server_authenticated_users = {}
-  /\ project_model = ProjectModelInit
   /\ result = Ok
 
 \* @command ServerAuthenticate
@@ -479,10 +431,6 @@ RemoveUnit(u) ==
   ELSE IF \E dependent \in cli_store_units \ {u}: <<dependent, u>> \in ReferenceEdges
   THEN
     /\ result' = Reject("DEPENDENT_INSTALLED")
-    /\ UNCHANGED state_vars
-  ELSE IF u \in ProjectClaimedUnits
-  THEN
-    /\ result' = Reject("PROJECT_CLAIMED")
     /\ UNCHANGED state_vars
   ELSE
     /\ LET remaining == cli_store_units \ {u}
@@ -823,91 +771,7 @@ InvokeGatewayTool(session, tool) ==
                     server_registry_units, server_versions, server_packages,
                     server_authenticated_users >>
 
-\* @command RegisterProjectManifest
-\* @result ProjectResult
-\* @port SkillManagerCli.register_project_manifest
-RegisterProjectManifest(project) ==
-  /\ project \notin project_model.manifests
-  /\ project_model' =
-      [project_model EXCEPT
-        !.manifests = @ \cup {project},
-        !.registrations = @ \cup {project},
-        !.env_specs = @ \cup ({project} \X ProjectEnvSpecs(project)),
-        !.lib_specs = @ \cup ({project} \X ProjectLibSpecs(project))]
-  /\ result' = Ok
-  /\ UNCHANGED state_vars
-
-\* @command ResolveProjectDependencies
-\* @result ProjectResult
-\* @port SkillManagerCli.resolve_project_dependencies
-ResolveProjectDependencies(project) ==
-  LET resolved_units == ProjectResolvedUnitClosure(project)
-      docs == ProjectDocRepos(project)
-      harnesses == ProjectHarnessTemplates(project)
-  IN
-  IF project \notin project_model.manifests
-  THEN
-    /\ result' = Reject("PROJECT_NOT_REGISTERED")
-    /\ project_model' = project_model
-    /\ UNCHANGED state_vars
-  ELSE
-    /\ cli_store_units' = cli_store_units \cup resolved_units
-    /\ cli_doc_repos' = cli_doc_repos \cup docs
-    /\ cli_harness_templates' = cli_harness_templates \cup harnesses
-    /\ cli_installed_records' = cli_installed_records \cup resolved_units
-    /\ cli_lock_units' = cli_lock_units \cup resolved_units
-    /\ cli_bindings' = cli_bindings \cup resolved_units \cup docs
-    /\ cli_projection_rows' = cli_projection_rows \cup resolved_units \cup docs
-    /\ cli_managed_copies' = cli_managed_copies \cup docs
-    /\ cli_import_directives' = cli_import_directives \cup docs
-    /\ cli_tool_records' = cli_tool_records \cup PackagesFor(resolved_units)
-    /\ cli_cli_lock' = cli_cli_lock \cup PackagesFor(resolved_units)
-    /\ cli_skill_scripts_run' = cli_skill_scripts_run \cup ScriptsFor(resolved_units)
-    /\ gateway_catalog' = gateway_catalog \cup McpServersFor(resolved_units)
-    /\ gateway_dynamic_servers' = gateway_dynamic_servers \cup McpServersFor(resolved_units)
-    /\ project_model' =
-        [project_model EXCEPT
-          !.registrations = @ \cup {project},
-          !.locks = @ \cup {project},
-          !.resolved_units = @ \cup ({project} \X resolved_units),
-          !.doc_bindings = @ \cup ({project} \X docs),
-          !.harness_bindings = @ \cup ({project} \X harnesses),
-          !.agent_configs = @ \cup ({project} \X Agents)]
-    /\ result' = Ok
-    /\ UNCHANGED << cli_harness_instances, cli_agent_projections,
-                    cli_projection_conflicts, cli_errors,
-                    cli_gateway_url_configured, cli_registry_url_configured,
-                    cli_gateway_mcp_snapshot, effect_status,
-                    effect_continuation, program_halted, always_after_ran,
-                    rollback_journal, gateway_global_deployments,
-                    gateway_session_deployments, gateway_tools,
-                    gateway_disclosures, gateway_errors, gateway_last_init,
-                    server_registry_units, server_versions, server_packages,
-                    server_authenticated_users >>
-
-\* @command MaterializeProjectEnv
-\* @result ProjectResult
-\* @port SkillManagerCli.materialize_project_env
-MaterializeProjectEnv(project, env) ==
-  IF project \notin project_model.registrations
-     \/ <<project, env>> \notin project_model.env_specs
-     \/ project \notin project_model.locks
-  THEN
-    /\ result' = Reject("PROJECT_ENV_NOT_READY")
-    /\ project_model' = project_model
-    /\ UNCHANGED state_vars
-  ELSE
-    /\ project_model' =
-        [project_model EXCEPT
-          !.env_realizations = @ \cup {<<project, env>>},
-          !.env_locks = @ \cup {<<project, env>>},
-          !.skill_vendors = @ \cup ({project} \X ProjectResolvedUnitClosure(project)),
-          !.tool_shims = @ \cup ({project} \X Tools),
-          !.env_docs = @ \cup {<<project, env>>}]
-    /\ result' = Ok
-    /\ UNCHANGED state_vars
-
-CoreNext ==
+Next ==
   \/ \E user \in Users: ServerAuthenticate(user)
   \/ \E user \in Users, unit \in Units, version \in Versions:
       ServerPublishTarball(user, unit, version)
@@ -931,12 +795,6 @@ CoreNext ==
       DescribeGatewayTool(session, tool)
   \/ \E session \in Sessions, tool \in Tools:
       InvokeGatewayTool(session, tool)
-
-Next ==
-  \/ CoreNext /\ project_model' = project_model
-  \/ \E project \in Projects: RegisterProjectManifest(project)
-  \/ \E project \in Projects: ResolveProjectDependencies(project)
-  \/ \E project \in Projects, env \in Envs: MaterializeProjectEnv(project, env)
 
 \* @invariant CliInstalledRecordsTrackStore
 CliInstalledRecordsTrackStore ==
@@ -977,70 +835,6 @@ CliCliLockTracksInstalledPackages ==
 \* @invariant SkillScriptsAreKnownScripts
 SkillScriptsAreKnownScripts ==
   cli_skill_scripts_run \subseteq Scripts
-
-\* @invariant ProjectRegistrationsHaveManifests
-ProjectRegistrationsHaveManifests ==
-  project_model.registrations \subseteq project_model.manifests
-
-\* @invariant ProjectEnvSpecsHaveManifest
-ProjectEnvSpecsHaveManifest ==
-  \A entry \in project_model.env_specs:
-    entry[1] \in project_model.manifests
-
-\* @invariant ProjectLibSpecsHaveManifest
-ProjectLibSpecsHaveManifest ==
-  \A entry \in project_model.lib_specs:
-    entry[1] \in project_model.manifests
-
-\* @invariant ProjectLocksHaveManifests
-ProjectLocksHaveManifests ==
-  project_model.locks \subseteq project_model.manifests
-
-\* @invariant ProjectResolvedUnitsHaveLocksAndInstalledUnits
-ProjectResolvedUnitsHaveLocksAndInstalledUnits ==
-  \A entry \in project_model.resolved_units:
-    /\ entry[1] \in project_model.locks
-    /\ entry[2] \in cli_store_units
-
-\* @invariant ProjectDocBindingsHaveLocksAndDocRepos
-ProjectDocBindingsHaveLocksAndDocRepos ==
-  \A entry \in project_model.doc_bindings:
-    /\ entry[1] \in project_model.locks
-    /\ entry[2] \in cli_doc_repos
-
-\* @invariant ProjectHarnessBindingsHaveLocksAndHarnessTemplates
-ProjectHarnessBindingsHaveLocksAndHarnessTemplates ==
-  \A entry \in project_model.harness_bindings:
-    /\ entry[1] \in project_model.locks
-    /\ entry[2] \in cli_harness_templates
-
-\* @invariant ProjectAgentConfigsHaveLocks
-ProjectAgentConfigsHaveLocks ==
-  \A entry \in project_model.agent_configs:
-    entry[1] \in project_model.locks
-
-\* @invariant ProjectEnvRealizationsHaveLocks
-ProjectEnvRealizationsHaveLocks ==
-  /\ project_model.env_realizations \subseteq project_model.env_specs
-  /\ project_model.env_locks = project_model.env_realizations
-  /\ \A entry \in project_model.env_realizations:
-       entry[1] \in project_model.locks
-
-\* @invariant ProjectEnvDocsHaveRealizedEnv
-ProjectEnvDocsHaveRealizedEnv ==
-  project_model.env_docs \subseteq project_model.env_realizations
-
-\* @invariant ProjectToolShimsAreKnownTools
-ProjectToolShimsAreKnownTools ==
-  \A entry \in project_model.tool_shims:
-    /\ entry[1] \in project_model.locks
-    /\ entry[2] \in Tools
-
-\* @invariant ProjectSkillVendorsAreInstalled
-ProjectSkillVendorsAreInstalled ==
-  \A entry \in project_model.skill_vendors:
-    /\ entry[1] \in project_model.locks
-    /\ entry[2] \in cli_store_units
 
 \* @invariant HaltImpliesHaltContinuation
 HaltImpliesHaltContinuation ==

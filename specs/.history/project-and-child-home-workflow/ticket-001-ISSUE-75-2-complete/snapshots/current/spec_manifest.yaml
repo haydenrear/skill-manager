@@ -42,13 +42,13 @@ status:
         - command: python skills/test_graph/scripts/run.py project-resolve
           status: passed
           purpose: external CLI dependency resolution, project lock, doc/harness binding, and remove-guard regression for ISSUE-75-2
-          report: test_graph/build/validation-reports/20260603-210438/report.md
-          summary: test_graph/build/validation-reports/20260603-210438/summary.json
+          report: test_graph/build/validation-reports/20260603-204615/report.md
+          summary: test_graph/build/validation-reports/20260603-204615/summary.json
         - command: python skills/test_graph/scripts/run.py project-env
           status: passed
           purpose: external CLI env sync/render regression for ISSUE-75-3
-          report: test_graph/build/validation-reports/20260603-210456/report.md
-          summary: test_graph/build/validation-reports/20260603-210456/summary.json
+          report: test_graph/build/validation-reports/20260603-210033/report.md
+          summary: test_graph/build/validation-reports/20260603-210033/summary.json
         - command: python skills/test_graph/scripts/run.py smoke
           status: blocked
           purpose: baseline external install/registry/gateway/MCP regression

@@ -1,0 +1,438 @@
+module: SkillManager
+package: skillmanager_program_cases
+
+status:
+  workflow: project_onboarding
+  model_role: accepted_program_model
+  issue: 79
+  issue_url: https://github.com/haydenrear/skill-manager/issues/79
+  relation_to_current: none_until_ticket_workflow_starts
+  relation_to_desired_program_model: none_until_ticket_workflow_starts
+  updated: 2026-05-25
+  scope:
+    components:
+      - skill-manager CLI
+      - virtual MCP gateway
+      - skill-manager registry server
+    primary_current_focus:
+      - skill-manager CLI effect programs, store, lock, bindings, and gateway registration
+      - per-agent projector outputs for installed skills across Claude and Codex
+      - virtual MCP gateway dynamic registration, deployment, tool visibility, disclosure, and invocation guard
+      - sync continuation and staged transitive dependency discovery
+      - CLI tool installs, CLI lock entries, and skill-script execution records
+      - doc-repo binding ledger, managed copies, import directives, and sync repair
+      - harness template instance reconciliation through stable binding/projection rows
+    secondary_current_focus:
+      - skill-manager server registry storage, publish/search, and auth gate
+  source_surfaces:
+    cli_effects:
+      - src/main/java/dev/skillmanager/effects/SkillEffect.java
+      - src/main/java/dev/skillmanager/effects/Executor.java
+      - src/main/java/dev/skillmanager/effects/LiveInterpreter.java
+      - src/main/java/dev/skillmanager/effects/DryRunInterpreter.java
+    cli_store:
+      - src/main/java/dev/skillmanager/store/SkillStore.java
+      - src/main/java/dev/skillmanager/app/InstallUseCase.java
+      - src/main/java/dev/skillmanager/app/RemoveUseCase.java
+      - src/main/java/dev/skillmanager/app/SyncUseCase.java
+    gateway:
+      - virtual-mcp-gateway/gateway/server.py
+      - virtual-mcp-gateway/gateway/registry.py
+      - virtual-mcp-gateway/gateway/models.py
+    server:
+      - server-java/src/main/java/dev/skillmanager/server/SkillStorage.java
+  validation:
+    tlc:
+      - bash specs/program_model/run_tlc.sh specs/program_model/SkillManager.tla specs/program_model/MC.cfg
+    manifest:
+      - bash specs/program_model/extract_manifest.sh specs/program_model/spec_manifest.yaml
+  next:
+    - Add adapter mappings for CLI store snapshots and gateway REST/tool operations.
+    - Add labels for install/remove/sync/gateway/server slices before generating cases.
+    - Refine document repository and harness-template flows into this same program model.
+
+state:
+  SkillManagerProgramState:
+    fields:
+      cli_store_units:
+        type: frozenset[UnitId]
+        tla: cli_store_units
+      cli_installed_records:
+        type: frozenset[UnitId]
+        tla: cli_installed_records
+      cli_lock_units:
+        type: frozenset[UnitId]
+        tla: cli_lock_units
+      cli_agent_projections:
+        type: frozenset[tuple[AgentId, UnitId]]
+        tla: cli_agent_projections
+      cli_bindings:
+        type: frozenset[UnitId]
+        tla: cli_bindings
+      cli_errors:
+        type: frozenset[UnitId]
+        tla: cli_errors
+      cli_doc_repos:
+        type: frozenset[DocRepoId]
+        tla: cli_doc_repos
+      cli_harness_templates:
+        type: frozenset[HarnessTemplateId]
+        tla: cli_harness_templates
+      cli_harness_instances:
+        type: frozenset[HarnessInstanceId]
+        tla: cli_harness_instances
+      cli_projection_rows:
+        type: frozenset[str]
+        tla: cli_projection_rows
+      cli_managed_copies:
+        type: frozenset[DocRepoId]
+        tla: cli_managed_copies
+      cli_import_directives:
+        type: frozenset[DocRepoId]
+        tla: cli_import_directives
+      cli_projection_conflicts:
+        type: frozenset[str]
+        tla: cli_projection_conflicts
+      cli_tool_records:
+        type: frozenset[PackageId]
+        tla: cli_tool_records
+      cli_cli_lock:
+        type: frozenset[PackageId]
+        tla: cli_cli_lock
+      cli_skill_scripts_run:
+        type: frozenset[ScriptId]
+        tla: cli_skill_scripts_run
+      cli_gateway_url_configured:
+        type: bool
+        tla: cli_gateway_url_configured
+      cli_registry_url_configured:
+        type: bool
+        tla: cli_registry_url_configured
+      cli_gateway_mcp_snapshot:
+        type: frozenset[ServerId]
+        tla: cli_gateway_mcp_snapshot
+      gateway_catalog:
+        type: frozenset[ServerId]
+        tla: gateway_catalog
+      gateway_dynamic_servers:
+        type: frozenset[ServerId]
+        tla: gateway_dynamic_servers
+      gateway_global_deployments:
+        type: frozenset[ServerId]
+        tla: gateway_global_deployments
+      gateway_session_deployments:
+        type: frozenset[tuple[SessionId, ServerId]]
+        tla: gateway_session_deployments
+      gateway_tools:
+        type: frozenset[ToolId]
+        tla: gateway_tools
+      gateway_disclosures:
+        type: frozenset[tuple[SessionId, ToolId]]
+        tla: gateway_disclosures
+      gateway_errors:
+        type: frozenset[ServerId]
+        tla: gateway_errors
+      gateway_last_init:
+        type: frozenset[ServerId]
+        tla: gateway_last_init
+      server_registry_units:
+        type: frozenset[UnitId]
+        tla: server_registry_units
+      server_versions:
+        type: frozenset[tuple[UnitId, VersionId]]
+        tla: server_versions
+      server_packages:
+        type: frozenset[tuple[UnitId, VersionId]]
+        tla: server_packages
+      server_authenticated_users:
+        type: frozenset[UserId]
+        tla: server_authenticated_users
+      effect_status:
+        type: str
+        tla: effect_status
+      effect_continuation:
+        type: str
+        tla: effect_continuation
+      program_halted:
+        type: bool
+        tla: program_halted
+      always_after_ran:
+        type: bool
+        tla: always_after_ran
+      rollback_journal:
+        type: frozenset[UnitId]
+        tla: rollback_journal
+
+types:
+  UnitId:
+    python: str
+    source: Units
+  ServerId:
+    python: str
+    source: Servers
+  ToolId:
+    python: str
+    source: Tools
+  SessionId:
+    python: str
+    source: Sessions
+  UserId:
+    python: str
+    source: Users
+  VersionId:
+    python: str
+    source: Versions
+  DocRepoId:
+    python: str
+    source: DocRepos
+  HarnessTemplateId:
+    python: str
+    source: HarnessTemplates
+  HarnessInstanceId:
+    python: str
+    source: HarnessInstances
+  AgentId:
+    python: str
+    source: Agents
+  ScriptId:
+    python: str
+    source: Scripts
+  PackageId:
+    python: str
+    source: Packages
+
+commands:
+  ConfigureRegistry:
+    action: ConfigureRegistry
+    fields: {}
+  EnsureGateway:
+    action: EnsureGateway
+    fields: {}
+  InstallUnit:
+    action: InstallUnit
+    fields:
+      unit_id:
+        type: UnitId
+        tla: u
+  RemoveUnit:
+    action: RemoveUnit
+    fields:
+      unit_id:
+        type: UnitId
+        tla: u
+  SyncUnit:
+    action: SyncUnit
+    fields:
+      unit_id:
+        type: UnitId
+        tla: u
+  RunEffectProgramFailure:
+    action: RunEffectProgramFailure
+    fields: {}
+  RunAlwaysAfterCleanup:
+    action: RunAlwaysAfterCleanup
+    fields: {}
+  BindDocRepo:
+    action: BindDocRepo
+    fields:
+      doc_repo_id:
+        type: DocRepoId
+        tla: doc
+  SyncDocRepo:
+    action: SyncDocRepo
+    fields:
+      doc_repo_id:
+        type: DocRepoId
+        tla: doc
+  SyncHarness:
+    action: SyncHarness
+    fields:
+      harness_template_id:
+        type: HarnessTemplateId
+        tla: template
+      harness_instance_id:
+        type: HarnessInstanceId
+        tla: instance
+  RegisterGatewayServer:
+    action: RegisterGatewayServer
+    fields:
+      server_id:
+        type: ServerId
+        tla: server
+  DeployGatewayGlobal:
+    action: DeployGatewayGlobal
+    fields:
+      server_id:
+        type: ServerId
+        tla: server
+  DeployGatewaySession:
+    action: DeployGatewaySession
+    fields:
+      session_id:
+        type: SessionId
+        tla: session
+      server_id:
+        type: ServerId
+        tla: server
+  DescribeGatewayTool:
+    action: DescribeGatewayTool
+    fields:
+      session_id:
+        type: SessionId
+        tla: session
+      tool_id:
+        type: ToolId
+        tla: tool
+  InvokeGatewayTool:
+    action: InvokeGatewayTool
+    fields:
+      session_id:
+        type: SessionId
+        tla: session
+      tool_id:
+        type: ToolId
+        tla: tool
+  ServerAuthenticate:
+    action: ServerAuthenticate
+    fields:
+      user_id:
+        type: UserId
+        tla: user
+  ServerPublishTarball:
+    action: ServerPublishTarball
+    fields:
+      user_id:
+        type: UserId
+        tla: user
+      unit_id:
+        type: UnitId
+        tla: unit
+      version_id:
+        type: VersionId
+        tla: version
+  ServerSearch:
+    action: ServerSearch
+    fields: {}
+
+results:
+  ConfigureResult:
+    fields: {accepted: {type: bool}, reason: {type: str | None, default: None}}
+  GatewayResult:
+    fields: {accepted: {type: bool}, reason: {type: str | None, default: None}}
+  InstallResult:
+    fields: {accepted: {type: bool}, reason: {type: str | None, default: None}}
+  RemoveResult:
+    fields: {accepted: {type: bool}, reason: {type: str | None, default: None}}
+  SyncResult:
+    fields: {accepted: {type: bool}, reason: {type: str | None, default: None}}
+  ProgramResult:
+    fields: {accepted: {type: bool}, reason: {type: str | None, default: None}}
+  BindingResult:
+    fields: {accepted: {type: bool}, reason: {type: str | None, default: None}}
+  HarnessResult:
+    fields: {accepted: {type: bool}, reason: {type: str | None, default: None}}
+  ServerResult:
+    fields: {accepted: {type: bool}, reason: {type: str | None, default: None}}
+
+ports:
+  SkillManagerCli:
+    methods:
+      configure_registry: {command: ConfigureRegistry, result: ConfigureResult}
+      ensure_gateway: {command: EnsureGateway, result: GatewayResult}
+      install_unit: {command: InstallUnit, result: InstallResult}
+      remove_unit: {command: RemoveUnit, result: RemoveResult}
+      sync_unit: {command: SyncUnit, result: SyncResult}
+      run_effect_program_failure: {command: RunEffectProgramFailure, result: ProgramResult}
+      run_always_after_cleanup: {command: RunAlwaysAfterCleanup, result: ProgramResult}
+      bind_doc_repo: {command: BindDocRepo, result: BindingResult}
+      sync_doc_repo: {command: SyncDocRepo, result: BindingResult}
+      sync_harness: {command: SyncHarness, result: HarnessResult}
+      snapshot: {result: SkillManagerProgramState}
+  VirtualMcpGateway:
+    methods:
+      register_server: {command: RegisterGatewayServer, result: GatewayResult}
+      deploy_global: {command: DeployGatewayGlobal, result: GatewayResult}
+      deploy_session: {command: DeployGatewaySession, result: GatewayResult}
+      describe_tool: {command: DescribeGatewayTool, result: GatewayResult}
+      invoke_tool: {command: InvokeGatewayTool, result: GatewayResult}
+      snapshot: {result: SkillManagerProgramState}
+  SkillManagerServer:
+    methods:
+      authenticate: {command: ServerAuthenticate, result: ServerResult}
+      publish_tarball: {command: ServerPublishTarball, result: ServerResult}
+      search: {command: ServerSearch, result: ServerResult}
+      snapshot: {result: SkillManagerProgramState}
+
+invariants:
+  - CliInstalledRecordsTrackStore
+  - CliLockTracksStore
+  - CliReferencesClosed
+  - CliProjectionsHaveInstalledUnits
+  - CliBindingsReferenceInstalledOrContentUnits
+  - ProjectionRowsHaveBindings
+  - ManagedCopiesHaveDocRepo
+  - ImportDirectivesHaveDocRepo
+  - CliCliLockTracksInstalledPackages
+  - SkillScriptsAreKnownScripts
+  - HaltImpliesHaltContinuation
+  - CompletedSuccessfulProgramsClearRollbackJournal
+  - GatewayDynamicServersAreCataloged
+  - GatewayDeploymentsAreCataloged
+  - GatewayToolsComeFromDeployments
+  - GatewayDisclosuresReferenceKnownTools
+  - ServerVersionsHaveRegistryUnit
+  - ServerPackagesHaveVersion
+
+finite_model:
+  Units:
+    values: [UnitA, UnitB]
+  Servers:
+    values: [ServerA, ServerB]
+  Tools:
+    values: [ToolA, ToolB]
+  Sessions:
+    values: [SessionA, SessionB]
+  Users:
+    values: [UserA]
+  Versions:
+    values: [VersionA]
+  DocRepos:
+    values: [DocRepoA]
+  HarnessTemplates:
+    values: [HarnessA]
+  HarnessInstances:
+    values: [InstanceA]
+  Scripts:
+    values: [ScriptA]
+  Packages:
+    values: [PackageA]
+  ReferenceEdges:
+    values:
+      - [UnitB, UnitA]
+  UnitMcpEdges:
+    values:
+      - [UnitA, ServerA]
+      - [UnitB, ServerB]
+  ServerToolEdges:
+    values:
+      - [ServerA, ToolA]
+      - [ServerB, ToolB]
+  UnitScriptEdges:
+    values:
+      - [UnitA, ScriptA]
+  UnitPackageEdges:
+    values:
+      - [UnitA, PackageA]
+      - [UnitB, PackageA]
+  HarnessTemplateEdges:
+    values:
+      - [HarnessA, UnitA]
+
+case_codegen:
+  style: explicit_transition_cases
+  generation_status: planned
+
+adapters:
+  mapping: case_adapters.toml
+  extension_points:
+    - production_adapters.py
