@@ -57,7 +57,8 @@ public final class ProjectDependencyResolver {
             SkillProjectRegistration registration,
             SkillProjectLock lock,
             List<String> installed,
-            List<String> bindingIds
+            List<String> bindingIds,
+            ProjectChildHomeScaffolder.Result childHome
     ) {}
 
     public Result resolve(SkillProject project, Options options) throws IOException {
@@ -66,8 +67,11 @@ public final class ProjectDependencyResolver {
         SkillProjectLockStore lockStore = new SkillProjectLockStore(store);
         SkillProjectLock previousLock = lockStore.read(project.name()).orElse(null);
         List<String> installed = installMissing(project, opts);
-        List<SkillProjectLock.ProjectBinding> projectBindings = materializeProjectBindings(project);
         List<SkillProjectLock.ResolvedUnit> resolvedUnits = collectResolvedUnits(project, installed);
+        ProjectChildHomeScaffolder.Result childHome =
+                new ProjectChildHomeScaffolder(store).scaffold(project, resolvedUnits);
+        List<SkillProjectLock.ProjectBinding> projectBindings =
+                materializeProjectBindings(project, childHome.childStore(), resolvedUnits);
         SkillProjectLock lock = new SkillProjectLock(
                 project.name(),
                 registration.manifestFile(),
@@ -81,7 +85,8 @@ public final class ProjectDependencyResolver {
                 registration,
                 lock,
                 installed,
-                projectBindings.stream().map(SkillProjectLock.ProjectBinding::bindingId).toList());
+                projectBindings.stream().map(SkillProjectLock.ProjectBinding::bindingId).toList(),
+                childHome);
     }
 
     private List<String> installMissing(SkillProject project, Options options) throws IOException {
@@ -122,12 +127,15 @@ public final class ProjectDependencyResolver {
         return installed;
     }
 
-    private List<SkillProjectLock.ProjectBinding> materializeProjectBindings(SkillProject project) throws IOException {
+    private List<SkillProjectLock.ProjectBinding> materializeProjectBindings(
+            SkillProject project,
+            SkillStore bindingSourceStore,
+            List<SkillProjectLock.ResolvedUnit> resolvedUnits
+    ) throws IOException {
         List<Binding> bindings = new ArrayList<>();
         for (SkillProject.ProjectUnitRef ref : project.docs()) {
-            String docName = unitName(ref.reference(), project.projectRoot()).orElseThrow(() ->
-                    new IOException("could not determine doc-repo name for " + ref.source()));
-            DocUnit doc = DocRepoParser.load(store.unitDir(docName, UnitKind.DOC));
+            String docName = resolvedUnitName(project, ref, resolvedUnits);
+            DocUnit doc = DocRepoParser.load(bindingSourceStore.unitDir(docName, UnitKind.DOC));
             String selectedSourceId = selectedSubElement(ref.reference());
             DocRepoBinder.Plan plan = DocRepoBinder.plan(
                     doc,
@@ -139,9 +147,8 @@ public final class ProjectDependencyResolver {
             bindings.addAll(plan.bindings());
         }
         for (SkillProject.ProjectUnitRef ref : project.harnesses()) {
-            String harnessName = unitName(ref.reference(), project.projectRoot()).orElseThrow(() ->
-                    new IOException("could not determine harness name for " + ref.source()));
-            HarnessUnit harness = HarnessParser.load(store.unitDir(harnessName, UnitKind.HARNESS));
+            String harnessName = resolvedUnitName(project, ref, resolvedUnits);
+            HarnessUnit harness = HarnessParser.load(bindingSourceStore.unitDir(harnessName, UnitKind.HARNESS));
             HarnessInstantiator.Plan plan = HarnessInstantiator.plan(
                     harness,
                     "project:" + project.name() + ":" + harness.name(),
@@ -149,7 +156,7 @@ public final class ProjectDependencyResolver {
                     project.projectRoot().resolve(".codex"),
                     project.projectRoot().resolve(".gemini"),
                     project.projectRoot(),
-                    store);
+                    bindingSourceStore);
             bindings.addAll(plan.bindings());
         }
         if (!bindings.isEmpty()) materialize(bindings);
@@ -163,6 +170,27 @@ public final class ProjectDependencyResolver {
                     b.targetRoot().toString()));
         }
         return rows;
+    }
+
+    private String resolvedUnitName(
+            SkillProject project,
+            SkillProject.ProjectUnitRef ref,
+            List<SkillProjectLock.ResolvedUnit> resolvedUnits
+    ) throws IOException {
+        Optional<String> fromCoord = unitName(ref.reference(), project.projectRoot());
+        if (fromCoord.isPresent()) return fromCoord.get();
+
+        String expectedOrigin = expectedOrigin(ref);
+        List<SkillProjectLock.ResolvedUnit> matches = new ArrayList<>();
+        for (SkillProjectLock.ResolvedUnit unit : resolvedUnits == null
+                ? List.<SkillProjectLock.ResolvedUnit>of()
+                : resolvedUnits) {
+            if (unit.kind() != ref.kind()) continue;
+            if (sameOrigin(expectedOrigin, unit.source())) matches.add(unit);
+        }
+        if (matches.size() == 1) return matches.get(0).name();
+        throw new IOException("could not determine " + ref.kind().name().toLowerCase()
+                + " name for " + ref.source());
     }
 
     private void materialize(List<Binding> bindings) throws IOException {
@@ -269,6 +297,34 @@ public final class ProjectDependencyResolver {
             case Coord.DirectGit g -> new InstallSource("git+" + g.url(), firstNonBlank(revision, g.ref()));
             case Coord.SubElement ignored -> throw new IllegalStateException("handled above");
         };
+    }
+
+    private static String expectedOrigin(SkillProject.ProjectUnitRef ref) {
+        Coord c = ref.reference().coord();
+        if (c instanceof Coord.SubElement s) c = s.unitCoord();
+        return switch (c) {
+            case Coord.DirectGit g -> g.url();
+            case Coord.Local l -> {
+                Path p = Path.of(l.path());
+                yield p.toAbsolutePath().normalize().toString();
+            }
+            case Coord.Bare b -> b.name();
+            case Coord.Kinded k -> k.name();
+            case Coord.SubElement ignored -> null;
+        };
+    }
+
+    private static boolean sameOrigin(String expected, String actual) {
+        if (expected == null || expected.isBlank() || actual == null || actual.isBlank()) return false;
+        return normalizeOrigin(expected).equals(normalizeOrigin(actual));
+    }
+
+    private static String normalizeOrigin(String origin) {
+        String out = origin.trim();
+        if (out.startsWith("git+")) out = out.substring("git+".length());
+        while (out.endsWith("/")) out = out.substring(0, out.length() - 1);
+        if (out.endsWith(".git")) out = out.substring(0, out.length() - ".git".length());
+        return out;
     }
 
     private static Optional<String> unitName(UnitReference ref, Path baseRoot) {

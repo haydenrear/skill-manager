@@ -110,6 +110,7 @@ HarnessTemplateEdges == {<<HarnessA, UnitA>>}
 ProjectUnitEdges == {<<ProjectA, UnitA>>, <<ProjectA, DocRepoA>>, <<ProjectA, HarnessA>>}
 ProjectEnvSpecEdges == {<<ProjectA, EnvA>>}
 ProjectLibSpecEdges == {<<ProjectA, LibA>>}
+ProjectChildHomeEdges == {<<ProjectA, ChildHomeA>>}
 
 RefsFor(units) ==
   {ref \in Units : \E u \in units: <<u, ref>> \in ReferenceEdges}
@@ -150,6 +151,10 @@ ProjectHarnessTemplates(project) ==
 ProjectResolvedUnitClosure(project) ==
   DependencyClosure(ProjectDirectUnits(project) \cup
     UNION {HarnessUnitsFor(template) : template \in ProjectHarnessTemplates(project)})
+
+ProjectChildHomePayload(project) ==
+  ProjectResolvedUnitClosure(project) \cup
+    ProjectDocRepos(project) \cup ProjectHarnessTemplates(project)
 
 ProjectClaimedUnits ==
   {entry[2] : entry \in project_model.resolved_units}
@@ -970,6 +975,38 @@ InstantiateChildHomeFromHarness(home, template) ==
     /\ result' = Ok
     /\ UNCHANGED state_vars
 
+\* @command ScaffoldProjectChildHome
+\* @result ProjectResult
+\* @port SkillManagerCli.scaffold_project_child_home
+ScaffoldProjectChildHome(project, home, parent_home) ==
+  LET needed_units == ProjectChildHomePayload(project)
+      child_servers == McpServersFor(needed_units)
+      child_tools == ToolsFor(child_servers)
+  IN
+  IF project \notin project_model.registrations
+     \/ <<project, home>> \notin ProjectChildHomeEdges
+     \/ parent_home \notin SkillManagerHomes
+     \/ parent_home = home
+     \/ ~(ProjectResolvedUnitClosure(project) \subseteq cli_store_units)
+     \/ ~(ProjectDocRepos(project) \subseteq cli_doc_repos)
+     \/ ~(ProjectHarnessTemplates(project) \subseteq cli_harness_templates)
+  THEN
+    /\ result' = Reject("PROJECT_CHILD_HOME_PARENT_GAP")
+    /\ project_model' = project_model
+    /\ UNCHANGED state_vars
+  ELSE
+    /\ project_model' =
+        [project_model EXCEPT
+          !.child_homes = @ \cup {home},
+          !.project_child_homes = @ \cup {<<project, home>>},
+          !.child_home_parents = @ \cup {<<parent_home, home>>},
+          !.child_home_agent_configs = @ \cup ({home} \X Agents),
+          !.child_home_units = @ \cup ({home} \X needed_units),
+          !.child_home_mcp_servers = @ \cup ({home} \X child_servers),
+          !.child_home_tool_shims = @ \cup ({home} \X child_tools)]
+    /\ result' = Ok
+    /\ UNCHANGED state_vars
+
 CoreNext ==
   \/ \E user \in Users: ServerAuthenticate(user)
   \/ \E user \in Users, unit \in Units, version \in Versions:
@@ -1003,6 +1040,8 @@ Next ==
   \/ \E project \in Projects: ResolveProjectLibs(project)
   \/ \E home \in ChildHomes, template \in HarnessTemplates:
       InstantiateChildHomeFromHarness(home, template)
+  \/ \E project \in Projects, home \in ChildHomes, parent_home \in SkillManagerHomes:
+      ScaffoldProjectChildHome(project, home, parent_home)
 
 \* @invariant CliInstalledRecordsTrackStore
 CliInstalledRecordsTrackStore ==
@@ -1118,8 +1157,16 @@ ProjectLibLocksTrackCheckouts ==
 \* @invariant ChildHomesHaveHarnesses
 ChildHomesHaveHarnesses ==
   \A home \in project_model.child_homes:
-    \E template \in HarnessTemplates:
-      <<home, template>> \in project_model.child_home_harnesses
+    \/ \E template \in HarnessTemplates:
+        <<home, template>> \in project_model.child_home_harnesses
+    \/ \E project \in Projects:
+        <<project, home>> \in project_model.project_child_homes
+
+\* @invariant ProjectChildHomesHaveRegistrations
+ProjectChildHomesHaveRegistrations ==
+  \A pair \in project_model.project_child_homes:
+    /\ pair[1] \in project_model.registrations
+    /\ pair[2] \in project_model.child_homes
 
 \* @invariant ChildHomesHaveParents
 ChildHomesHaveParents ==
@@ -1138,7 +1185,14 @@ ChildHomeParentsAreKnownAndNotSelf ==
 ChildHomeUnitsComeFromParent ==
   \A pair \in project_model.child_home_units:
     /\ pair[1] \in project_model.child_homes
-    /\ pair[2] \in (cli_store_units \cup cli_harness_templates)
+    /\ pair[2] \in (cli_store_units \cup cli_doc_repos \cup cli_harness_templates)
+
+\* @invariant ProjectChildHomeUnitsComeFromProject
+ProjectChildHomeUnitsComeFromProject ==
+  \A project_home \in project_model.project_child_homes:
+    \A unit_pair \in project_model.child_home_units:
+      unit_pair[1] = project_home[2] =>
+        unit_pair[2] \in ProjectChildHomePayload(project_home[1])
 
 \* @invariant ChildHomeAgentConfigsAreKnown
 ChildHomeAgentConfigsAreKnown ==

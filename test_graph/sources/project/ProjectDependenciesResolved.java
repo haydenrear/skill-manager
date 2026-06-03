@@ -85,6 +85,26 @@ public class ProjectDependenciesResolved {
             boolean docCopy = Files.isRegularFile(projectDir.resolve("docs/agents/review.md"));
             boolean claudeImport = read(projectDir.resolve("CLAUDE.md")).contains("docs/agents/review.md");
             boolean codexHarnessSkill = Files.exists(projectDir.resolve(".codex/skills/tg-child"));
+            Path childHome = projectDir.resolve(".skill-manager");
+            boolean childHomeInitialized = Files.isDirectory(childHome)
+                    && Files.isDirectory(projectDir.resolve(".codex"))
+                    && Files.isDirectory(projectDir.resolve(".claude"))
+                    && Files.isDirectory(projectDir.resolve(".gemini"));
+            boolean childUnits = Files.isRegularFile(childHome.resolve("skills/tg-child/SKILL.md"))
+                    && Files.isRegularFile(childHome.resolve("skills/tg-parent/SKILL.md"))
+                    && Files.isRegularFile(childHome.resolve("docs/tg-prompts/skill-manager.toml"))
+                    && Files.isRegularFile(childHome.resolve("harnesses/tg-harness/harness.toml"));
+            Path childRecord = Path.of(home, "child-homes", "project_tg-resolved-project", "child-home.json");
+            String childRecordText = read(childRecord);
+            boolean childRegistry = Files.isRegularFile(childRecord)
+                    && childRecordText.contains("\"id\" : \"project:tg-resolved-project\"")
+                    && childRecordText.contains(childHome.toString())
+                    && childRecordText.contains("tg-parent")
+                    && childRecordText.contains("tg-child")
+                    && childRecordText.contains("tg-prompts")
+                    && childRecordText.contains("tg-harness");
+            boolean projectionsUseChildStore = pointsTo(projectDir.resolve(".codex/skills/tg-child"),
+                    childHome.resolve("skills/tg-child"));
             boolean removeBlocked = remove.exitCode() != 0 && readLog(ctx, "remove-claimed").contains("tg-resolved-project");
             boolean showResolved = show.exitCode() == 0
                     && readLog(ctx, "show").contains("resolved:")
@@ -104,6 +124,10 @@ public class ProjectDependenciesResolved {
                     && docCopy
                     && claudeImport
                     && codexHarnessSkill
+                    && childHomeInitialized
+                    && childUnits
+                    && childRegistry
+                    && projectionsUseChildStore
                     && removeBlocked;
 
             return (pass
@@ -124,6 +148,10 @@ public class ProjectDependenciesResolved {
                                     + " docCopy=" + docCopy
                                     + " claudeImport=" + claudeImport
                                     + " codexHarnessSkill=" + codexHarnessSkill
+                                    + " childHomeInitialized=" + childHomeInitialized
+                                    + " childUnits=" + childUnits
+                                    + " childRegistry=" + childRegistry
+                                    + " projectionsUseChildStore=" + projectionsUseChildStore
                                     + " removeBlocked=" + removeBlocked))
                     .process(resolve)
                     .process(show)
@@ -137,6 +165,10 @@ public class ProjectDependenciesResolved {
                             parentInstalled && childInstalled && docInstalled && harnessInstalled)
                     .assertion("doc_binding_materialized", docCopy && claudeImport)
                     .assertion("harness_binding_materialized", codexHarnessSkill)
+                    .assertion("project_child_home_scaffolded", childHomeInitialized)
+                    .assertion("project_child_home_units_projected", childUnits)
+                    .assertion("parent_child_home_registry_claims_project_units", childRegistry)
+                    .assertion("project_agent_projections_point_at_child_store", projectionsUseChildStore)
                     .assertion("plain_remove_blocked_by_project_lock", removeBlocked)
                     .metric("resolveExitCode", resolve.exitCode())
                     .metric("showExitCode", show.exitCode())
@@ -221,6 +253,22 @@ public class ProjectDependenciesResolved {
             return Files.readString(path);
         } catch (Exception e) {
             return "";
+        }
+    }
+
+    private static boolean pointsTo(Path projection, Path expected) {
+        try {
+            if (!Files.exists(projection)) return false;
+            if (Files.isSymbolicLink(projection)) {
+                Path link = Files.readSymbolicLink(projection);
+                Path resolved = link.isAbsolute()
+                        ? link.normalize()
+                        : projection.getParent().resolve(link).normalize();
+                return resolved.equals(expected.toAbsolutePath().normalize());
+            }
+            return projection.toRealPath().equals(expected.toRealPath());
+        } catch (Exception e) {
+            return false;
         }
     }
 }

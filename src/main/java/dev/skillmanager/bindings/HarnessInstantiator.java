@@ -96,7 +96,7 @@ public final class HarnessInstantiator {
 
         // --- referenced skills + plugins ---
         for (UnitReference ref : harness.units()) {
-            NameKind nk = resolveReference(ref, store).orElseThrow(() -> new IOException(
+            NameKind nk = resolveReference(ref, store, harness.sourcePath()).orElseThrow(() -> new IOException(
                     "harness " + harness.name() + " references unit '"
                             + ref.coord().raw() + "' which is not installed"));
             if (nk.kind() == UnitKind.DOC || nk.kind() == UnitKind.HARNESS) {
@@ -123,7 +123,7 @@ public final class HarnessInstantiator {
 
         // --- referenced doc-repo sources ---
         for (UnitReference ref : harness.docs()) {
-            DocRef d = resolveDocReference(ref, store).orElseThrow(() -> new IOException(
+            DocRef d = resolveDocReference(ref, store, harness.sourcePath()).orElseThrow(() -> new IOException(
                     "harness " + harness.name() + " references doc-repo '"
                             + ref.coord().raw() + "' which is not installed"));
             DocUnit docUnit = DocRepoParser.load(store.unitDir(d.repoName(), UnitKind.DOC));
@@ -190,13 +190,13 @@ public final class HarnessInstantiator {
      * install record by that name. Falls back to {@link Optional#empty}
      * when the manifest is unreadable or the unit isn't installed.
      */
-    private static Optional<NameKind> resolveReference(UnitReference ref, SkillStore store) {
+    private static Optional<NameKind> resolveReference(UnitReference ref, SkillStore store, Path baseDir) {
         UnitStore us = new UnitStore(store);
         Coord c = ref.coord();
         String name = unitName(c);
         if (name == null) {
             // Local refs: parse the manifest at the path to find the name.
-            name = nameFromLocalManifest(c);
+            name = nameFromLocalManifest(c, baseDir);
             if (name == null) return Optional.empty();
         }
         return us.read(name).map(rec -> new NameKind(rec.name(), rec.unitKind()));
@@ -211,12 +211,12 @@ public final class HarnessInstantiator {
      * which {@link DocRepoBinder} treats as "fan out to every source."
      * Local (file://) doc-repo refs are always whole-repo binds.
      */
-    private static Optional<DocRef> resolveDocReference(UnitReference ref, SkillStore store) {
+    private static Optional<DocRef> resolveDocReference(UnitReference ref, SkillStore store, Path baseDir) {
         UnitStore us = new UnitStore(store);
         Coord c = ref.coord();
         String repoName = unitName(c);
         if (repoName == null) {
-            repoName = nameFromLocalManifest(c);
+            repoName = nameFromLocalManifest(c, baseDir);
             if (repoName == null) return Optional.empty();
         }
         String sourceId = c instanceof Coord.SubElement s ? s.elementName() : null;
@@ -231,9 +231,12 @@ public final class HarnessInstantiator {
      * referenced path to recover its declared name. Returns {@code null}
      * for non-local coords or when the manifest can't be parsed.
      */
-    private static String nameFromLocalManifest(Coord c) {
+    private static String nameFromLocalManifest(Coord c, Path baseDir) {
         if (!(c instanceof Coord.Local l)) return null;
-        java.nio.file.Path dir = java.nio.file.Path.of(l.path()).toAbsolutePath();
+        java.nio.file.Path raw = java.nio.file.Path.of(l.path());
+        java.nio.file.Path dir = raw.isAbsolute()
+                ? raw.normalize()
+                : (baseDir == null ? raw : baseDir.resolve(raw)).toAbsolutePath().normalize();
         // Try plugin first (same precedence as the resolver), then
         // harness, then doc-repo, then bare skill.
         try {
