@@ -37,6 +37,7 @@ public class ProjectManifestRegistered {
             Path repoRoot = Path.of(System.getProperty("user.dir")).resolve("..").normalize();
             Path sm = repoRoot.resolve("skill-manager");
             Path projectDir;
+            Path customProjectDir;
             try {
                 projectDir = Files.createTempDirectory("sm-project-manifest-");
                 Files.writeString(projectDir.resolve("skill-project.toml"), """
@@ -71,6 +72,21 @@ public class ProjectManifestRegistered {
                         source = "github:haydenrear/support-agent-rears"
                         ref = "main"
                         """);
+                customProjectDir = Files.createTempDirectory("sm-project-manifest-custom-");
+                Files.writeString(customProjectDir.resolve("skill-project.toml"), """
+                        [project]
+                        name = "tg-custom-project"
+                        """);
+                Files.writeString(customProjectDir.resolve("agent-harness.toml"), """
+                        [project]
+                        name = "tg-custom-project"
+
+                        [skills.custom]
+                        source = "skill:custom"
+
+                        [envs.dev]
+                        dependencies = ["pytest"]
+                        """);
             } catch (Exception e) {
                 return NodeResult.fail("project.manifest.registered",
                         "could not scaffold project manifest: " + e.getMessage());
@@ -78,38 +94,58 @@ public class ProjectManifestRegistered {
 
             ProcessRecord register = run(ctx, "register", home, repoRoot, sm,
                     "project", "register", "--project-dir", projectDir.toString());
+            ProcessRecord registerCustom = run(ctx, "register-custom", home, repoRoot, sm,
+                    "project", "register", "--project-dir", customProjectDir.toString(),
+                    "--manifest", "agent-harness.toml");
             ProcessRecord show = run(ctx, "show", home, repoRoot, sm,
                     "project", "show", "tg-project");
+            ProcessRecord showCustom = run(ctx, "show-custom", home, repoRoot, sm,
+                    "project", "show", "tg-custom-project");
             ProcessRecord list = run(ctx, "list", home, repoRoot, sm,
                     "project", "list");
 
             Path registrationDir = Path.of(home, "projects", "tg-project");
+            Path customRegistrationDir = Path.of(home, "projects", "tg-custom-project");
             Path registrationToml = registrationDir.resolve("registration.toml");
             Path snapshot = registrationDir.resolve("skill-project.toml");
+            Path customSnapshot = customRegistrationDir.resolve("agent-harness.toml");
             boolean registered = Files.isRegularFile(registrationToml);
             boolean snapshotted = Files.isRegularFile(snapshot);
+            boolean customSnapshotted = Files.isRegularFile(customSnapshot);
             boolean noSkillInstalled = !Files.exists(Path.of(home, "skills", "test-graph"));
+            boolean noCustomSkillInstalled = !Files.exists(Path.of(home, "skills", "custom"));
             boolean noPluginInstalled = !Files.exists(Path.of(home, "plugins", "reviewer"));
             boolean noHarnessInstalled = !Files.exists(Path.of(home, "harnesses", "codex-harness"));
             boolean noDocInstalled = !Files.exists(Path.of(home, "docs", "agent-prompts"));
 
             String showLog = readLog(ctx, "show");
+            String showCustomLog = readLog(ctx, "show-custom");
             String listLog = readLog(ctx, "list");
             boolean showSummarizesIntent = show.exitCode() == 0
                     && showLog.contains("PROJECT  tg-project")
                     && showLog.contains("skills:   1")
                     && showLog.contains("envs:     1")
                     && showLog.contains("libs:     1");
+            boolean showCustomSummarizesIntent = showCustom.exitCode() == 0
+                    && showCustomLog.contains("PROJECT  tg-custom-project")
+                    && showCustomLog.contains("skills:   1")
+                    && showCustomLog.contains("envs:     1");
             boolean listIncludesProject = list.exitCode() == 0
                     && listLog.contains("tg-project")
-                    && listLog.contains(projectDir.toString());
+                    && listLog.contains(projectDir.toString())
+                    && listLog.contains("tg-custom-project")
+                    && listLog.contains(customProjectDir.toString());
 
             boolean pass = register.exitCode() == 0
+                    && registerCustom.exitCode() == 0
                     && registered
                     && snapshotted
+                    && customSnapshotted
                     && showSummarizesIntent
+                    && showCustomSummarizesIntent
                     && listIncludesProject
                     && noSkillInstalled
+                    && noCustomSkillInstalled
                     && noPluginInstalled
                     && noHarnessInstalled
                     && noDocInstalled;
@@ -118,31 +154,44 @@ public class ProjectManifestRegistered {
                     ? NodeResult.pass("project.manifest.registered")
                     : NodeResult.fail("project.manifest.registered",
                             "register=" + register.exitCode()
+                                    + " registerCustom=" + registerCustom.exitCode()
                                     + " show=" + show.exitCode()
+                                    + " showCustom=" + showCustom.exitCode()
                                     + " list=" + list.exitCode()
                                     + " registered=" + registered
                                     + " snapshotted=" + snapshotted
+                                    + " customSnapshotted=" + customSnapshotted
                                     + " showIntent=" + showSummarizesIntent
+                                    + " showCustomIntent=" + showCustomSummarizesIntent
                                     + " listIncludes=" + listIncludesProject
                                     + " noSkill=" + noSkillInstalled
+                                    + " noCustomSkill=" + noCustomSkillInstalled
                                     + " noPlugin=" + noPluginInstalled
                                     + " noHarness=" + noHarnessInstalled
                                     + " noDoc=" + noDocInstalled);
             return result
                     .process(register)
+                    .process(registerCustom)
                     .process(show)
+                    .process(showCustom)
                     .process(list)
                     .assertion("register_command_ok", register.exitCode() == 0)
+                    .assertion("custom_manifest_register_command_ok", registerCustom.exitCode() == 0)
                     .assertion("registration_metadata_written", registered)
                     .assertion("manifest_snapshot_written", snapshotted)
+                    .assertion("custom_manifest_snapshot_written", customSnapshotted)
                     .assertion("show_summarizes_portable_intent", showSummarizesIntent)
+                    .assertion("custom_show_summarizes_portable_intent", showCustomSummarizesIntent)
                     .assertion("list_includes_registered_project", listIncludesProject)
                     .assertion("skills_not_installed", noSkillInstalled)
+                    .assertion("custom_skill_not_installed", noCustomSkillInstalled)
                     .assertion("plugins_not_installed", noPluginInstalled)
                     .assertion("harnesses_not_installed", noHarnessInstalled)
                     .assertion("docs_not_installed", noDocInstalled)
                     .metric("registerExitCode", register.exitCode())
+                    .metric("registerCustomExitCode", registerCustom.exitCode())
                     .metric("showExitCode", show.exitCode())
+                    .metric("showCustomExitCode", showCustom.exitCode())
                     .metric("listExitCode", list.exitCode())
                     .publish("projectName", "tg-project")
                     .publish("projectDir", projectDir.toString())

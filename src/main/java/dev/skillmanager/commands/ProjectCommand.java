@@ -46,9 +46,10 @@ public final class ProjectCommand {
             Path root = projectDir == null || projectDir.isBlank()
                     ? Path.of(System.getProperty("user.dir"))
                     : Path.of(projectDir);
+            root = root.toAbsolutePath().normalize();
             SkillProject project = manifest == null || manifest.isBlank()
                     ? SkillProjectParser.load(root)
-                    : SkillProjectParser.loadManifest(Path.of(manifest), root);
+                    : SkillProjectParser.loadManifest(resolveManifestPath(root, manifest), root);
             SkillProjectRegistration registration = new SkillProjectRegistry(store).register(project);
             if (json) {
                 System.out.println("""
@@ -123,5 +124,12 @@ public final class ProjectCommand {
 
     private static String esc(String s) {
         return s.replace("\\", "\\\\").replace("\"", "\\\"");
+    }
+
+    static Path resolveManifestPath(Path root, String manifest) {
+        Path path = Path.of(manifest);
+        return path.isAbsolute()
+                ? path.normalize()
+                : root.resolve(path).normalize();
     }
 }
