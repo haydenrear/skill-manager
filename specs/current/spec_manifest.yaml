@@ -11,23 +11,24 @@ status:
   test_modeling_rule: do_not_model_tests_or_validation_harnesses_as_program_behavior
   updated: 2026-06-03
   current_slice:
-    name: ISSUE-75-1
+    name: ISSUE-75-2
     status: implemented
     refines:
-      - ../desired_program_model/ticket_plan.yaml#ISSUE-75-1
+      - ../desired_program_model/ticket_plan.yaml#ISSUE-75-2
     implemented_actions:
       - RegisterProjectManifest
+      - ResolveProjectDependencies
     validation:
       unit:
         - command: jbang RunTests.java
           status: passed
-          purpose: project manifest parser/registry plus full unit regression
+          purpose: project dependency resolver, project locks, remove guard, and full unit regression
       tlc:
         - command: bash specs/current/run_tlc.sh specs/current/SkillManager.tla specs/current/MC.cfg
           status: passed
-          purpose: current program model with RegisterProjectManifest slice
-          states_generated: 2214081
-          distinct_states: 119680
+          purpose: current program model with ResolveProjectDependencies slice
+          states_generated: 3014529
+          distinct_states: 154848
       graph:
         - command: python skills/test_graph/scripts/discover.py
           status: passed
@@ -37,6 +38,11 @@ status:
           purpose: external CLI registration regression for ISSUE-75-1
           report: test_graph/build/validation-reports/20260603-201911/report.md
           summary: test_graph/build/validation-reports/20260603-201911/summary.json
+        - command: python skills/test_graph/scripts/run.py project-resolve
+          status: passed
+          purpose: external CLI dependency resolution, project lock, doc/harness binding, and remove-guard regression for ISSUE-75-2
+          report: test_graph/build/validation-reports/20260603-204615/report.md
+          summary: test_graph/build/validation-reports/20260603-204615/summary.json
         - command: python skills/test_graph/scripts/run.py smoke
           status: blocked
           purpose: baseline external install/registry/gateway/MCP regression
@@ -70,10 +76,16 @@ case_codegen:
 state_fields:
   - project_model.manifests
   - project_model.registrations
+  - project_model.locks
+  - project_model.resolved_units
+  - project_model.doc_bindings
+  - project_model.harness_bindings
+  - project_model.agent_configs
   - project_model.env_specs
   - project_model.lib_specs
 actions:
   - RegisterProjectManifest
+  - ResolveProjectDependencies
 ports:
   SkillManagerCli.register_project_manifest:
     adapter: ProjectManifestAdapter
@@ -81,6 +93,12 @@ ports:
       - dev.skillmanager.commands.ProjectCommand.RegisterCmd
       - dev.skillmanager.model.SkillProjectParser
       - dev.skillmanager.project.SkillProjectRegistry
+  SkillManagerCli.resolve_project_dependencies:
+    adapter: ProjectDependencyResolverAdapter
+    implemented_by:
+      - dev.skillmanager.commands.ProjectCommand.ResolveCmd
+      - dev.skillmanager.project.ProjectDependencyResolver
+      - dev.skillmanager.project.SkillProjectLockStore
 adapters: case_adapters.toml
 notes:
   package_from_program_model: skillmanager_program_cases

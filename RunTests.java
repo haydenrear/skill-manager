@@ -59,6 +59,7 @@ import dev.skillmanager.project.CodexProjectorTest;
 import dev.skillmanager.project.GeminiProjectorTest;
 import dev.skillmanager.project.HarnessPluginCliTest;
 import dev.skillmanager.project.PluginMarketplaceTest;
+import dev.skillmanager.project.ProjectDependencyResolverTest;
 import dev.skillmanager.project.ProjectorRegistryTest;
 import dev.skillmanager.project.SkillProjectRegistryTest;
 import dev.skillmanager.effects.RefreshHarnessPluginsTest;
@@ -146,6 +147,7 @@ public class RunTests {
         failures += GeminiProjectorTest.run();
         failures += ProjectorRegistryTest.run();
         failures += SkillProjectRegistryTest.run();
+        failures += ProjectDependencyResolverTest.run();
         failures += PluginMarketplaceTest.run();
         failures += HarnessPluginCliTest.run();
         failures += RefreshHarnessPluginsTest.run();
