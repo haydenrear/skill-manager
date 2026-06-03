@@ -1,0 +1,285 @@
+# This file is part of the desired program model for issue 75 plus the
+# child Skill Manager harness scaffold note.
+version: 1
+name: project-and-child-home-workflow
+updated: 2026-06-02
+purpose: >
+  Model and implement one shared dependency-realization flow for
+  skill-manager-project.toml checkouts and harness-derived child Skill Manager
+  homes. Project manifests declare portable intent. Child homes are a concrete
+  harness realization that receives its own .skill-manager plus agent homes and
+  points SKILL_MANAGER_HOME, CODEX_HOME, CLAUDE_HOME, GEMINI_HOME, and related
+  paths at the generated child checkout.
+
+sources:
+  issue:
+    id: 75
+    title: Skill Manager Projects
+    url: https://github.com/haydenrear/skill-manager/issues/75
+  child_harness_note: ticket/scaffold-skill-manager-child/skill-manager-child.md
+
+planning_rules:
+  current_model_rule: Update specs/current after each production slice lands as a whole-program working copy of specs/program_model, not a ticket projection.
+  unit_validation_rule: Run current-model TLC and adapter/unit tests before adding graph execution.
+  semantic_model_rule: Do not add test graph nodes, pytest jobs, CI workflow steps, integration harnesses, or validation scripts as TLA+ program state/actions.
+  evidence_rule: Record tests and graph runs as evidence for semantic program actions in manifests or ticket status.
+  promotion_rule: When specs/current equals specs/desired_program_model, promote the converged model to specs/program_model.
+
+status:
+  workflow: ticket
+  active_ticket: ISSUE-75
+  active_ticket_title: Skill Manager Projects and Child Homes
+  desired_module: SkillManager
+  phase: planning
+  desired_tlc:
+    command: bash specs/desired_program_model/run_tlc.sh specs/desired_program_model/SkillManager.tla specs/desired_program_model/MC.cfg
+    status: passed
+    result: no invariant violations
+
+service_catalog:
+  existing_boundaries:
+    - skill install/sync/remove into SKILL_MANAGER_HOME
+    - transitive skill references
+    - CLI tool lock and install records
+    - MCP gateway catalog and dynamic server registration
+    - doc-repo binding and managed-copy/import projection
+    - harness template sync
+    - per-agent projection rows
+  desired_boundaries:
+    - skill-manager-project.toml project manifest registration
+    - project dependency resolution into SKILL_MANAGER_HOME
+    - project lock and home registration for future sync/upgrade/rebind
+    - project-local agent config projection for CLAUDE.md and AGENTS.md
+    - generated project-local .skill-manager/bin shims
+    - generated project-local uv envs under .skill-manager/envs/<env>
+    - project-relative skill package vendor paths under .skill-manager/vendor
+    - generated .skill-manager/env.md as documentation, not source of truth
+    - libs/ source checkout resolution with locked git provenance
+    - harness-derived child Skill Manager homes
+    - child .skill-manager, .codex, .claude, .gemini roots and env variables
+  adapter_boundaries:
+    - project manifest parser and resolver
+    - project lock writer and project registry writer
+    - bind/doc projection adapter for project roots
+    - uv env renderer/sync runner
+    - libs git resolver
+    - child-home harness instantiator
+  known_gaps:
+    - Exact CLI command names are not final.
+    - Env cache keying by dependency spec, project, or lock hash is still open.
+    - Upgrade behavior for active project bindings needs adapter coverage.
+
+tickets:
+  - id: ISSUE-75-1
+    title: Project manifest schema and registration
+    status: next
+    depends_on: []
+    objective: >
+      Define skill-manager-project.toml as the project-scoped source of truth
+      for skills, plugins, harnesses, doc repos, CLI dependencies, MCP
+      dependencies, envs, libs, and agent projection metadata.
+    desired_actions:
+      - RegisterProjectManifest
+    current_increment:
+      model_state:
+        - project_model.manifests
+        - project_model.env_specs
+        - project_model.lib_specs
+      model_actions:
+        - RegisterProjectManifest
+      adapters:
+        - ProjectManifestAdapter
+      unit_tests:
+        - parse project manifest with skills/plugins/harness/doc/env/lib sections
+        - reject unknown or malformed project references
+      graph_after_unit_pass: []
+    acceptance:
+      commands:
+        - bash specs/current/run_tlc.sh specs/current/SkillManager.tla specs/current/MC.cfg
+      assertions:
+        - Project manifests are registered without installing or materializing dependencies.
+        - Env and lib intent is recorded as portable project intent.
+      evidence: []
+
+  - id: ISSUE-75-2
+    title: Resolve project dependency graph into home and project bindings
+    status: pending
+    depends_on: [ISSUE-75-1]
+    objective: >
+      Resolve one project manifest into installed home units, transitive
+      dependencies, doc bindings, harness bindings, MCP registrations, CLI
+      lock entries, project lock state, and project registration metadata.
+    desired_actions:
+      - ResolveProjectDependencies
+    current_increment:
+      model_state:
+        - project_model.locks
+        - project_model.registrations
+        - project_model.resolved_units
+        - project_model.doc_bindings
+        - project_model.harness_bindings
+        - project_model.agent_configs
+      model_actions:
+        - ResolveProjectDependencies
+      adapters:
+        - ProjectDependencyResolverAdapter
+      unit_tests:
+        - resolves transitive skill dependencies
+        - binds selected doc repo sources into a project
+        - registers project for future sync and upgrade
+        - protects project-bound units from plain remove
+      graph_after_unit_pass: []
+    acceptance:
+      commands:
+        - bash specs/current/run_tlc.sh specs/current/SkillManager.tla specs/current/MC.cfg
+      assertions:
+        - Project locks and registrations only exist for manifests.
+        - Project resolved units are installed in SKILL_MANAGER_HOME.
+        - Project doc bindings have managed copies and import directives.
+      evidence: []
+
+  - id: ISSUE-75-3
+    title: Materialize project-local tools and uv envs
+    status: pending
+    depends_on: [ISSUE-75-2]
+    objective: >
+      Make uv environments first-class project realization artifacts. Projects
+      inherit recipes and skill-provided packages, not shared venvs, and Skill
+      Manager renders .skill-manager/envs/<env>/pyproject.toml, uv.lock,
+      .venv, .skill-manager/bin shims, .skill-manager/vendor, and env.md.
+    desired_actions:
+      - MaterializeProjectEnv
+    current_increment:
+      model_state:
+        - project_model.env_realizations
+        - project_model.env_locks
+        - project_model.tool_shims
+        - project_model.skill_vendors
+        - project_model.env_docs
+      model_actions:
+        - MaterializeProjectEnv
+      adapters:
+        - ProjectEnvMaterializerAdapter
+      unit_tests:
+        - generated pyproject uses project-relative vendor paths
+        - generated env.md is documentation only
+        - sm env sync runs uv against .skill-manager/envs/<env>
+        - sm env run executes through the generated uv project
+      graph_after_unit_pass: []
+    acceptance:
+      commands:
+        - bash specs/current/run_tlc.sh specs/current/SkillManager.tla specs/current/MC.cfg
+      assertions:
+        - Env realizations always have locks.
+        - Env docs only exist for realized envs.
+        - Importable packages are vendored/project-local, not inherited from a shared home venv.
+      evidence: []
+
+  - id: ISSUE-75-4
+    title: Resolve project libs with locked git provenance
+    status: pending
+    depends_on: [ISSUE-75-1]
+    objective: >
+      Add --resolve-libs behavior for project development source checkouts.
+      GitHub and generic git coords are materialized under project libs/,
+      ignored by git, resolved to commit hashes, and recorded in project lock
+      state.
+    desired_actions:
+      - ResolveProjectLibs
+    current_increment:
+      model_state:
+        - project_model.lib_checkouts
+        - project_model.lib_locks
+      model_actions:
+        - ResolveProjectLibs
+      adapters:
+        - ProjectLibResolverAdapter
+      unit_tests:
+        - resolves GitHub coord to commit sha
+        - resolves generic git coord to commit sha
+        - ensures libs/ is ignored
+        - records resolved hashes in project lock
+      graph_after_unit_pass: []
+    acceptance:
+      commands:
+        - bash specs/current/run_tlc.sh specs/current/SkillManager.tla specs/current/MC.cfg
+      assertions:
+        - Lib locks track resolved checkouts exactly.
+        - Project lock state contains portable source identity plus resolved commit.
+      evidence: []
+
+  - id: ISSUE-75-5
+    title: Instantiate child Skill Manager home from harness
+    status: pending
+    depends_on: [ISSUE-75-2]
+    objective: >
+      Add the child-home path: given a harness and target directory, scaffold a
+      child .skill-manager plus .codex, .claude, and .gemini roots, install or
+      project the harness-selected skills/plugins/doc repos/CLI/MCP outputs
+      from the parent home, and make agent environment variables point to the
+      child.
+    desired_actions:
+      - InstantiateChildHomeFromHarness
+    current_increment:
+      model_state:
+        - project_model.child_homes
+        - project_model.child_home_harnesses
+        - project_model.child_home_agent_configs
+        - project_model.child_home_units
+        - project_model.child_home_mcp_servers
+        - project_model.child_home_tool_shims
+      model_actions:
+        - InstantiateChildHomeFromHarness
+      adapters:
+        - ChildHomeHarnessAdapter
+      unit_tests:
+        - creates .skill-manager, .codex, .claude, and .gemini
+        - writes agent config/env pointing at child home paths
+        - exposes harness-selected CLI and MCP tools through child-local shims
+        - protects child-home units from plain remove in the parent
+      graph_after_unit_pass: []
+    acceptance:
+      commands:
+        - bash specs/current/run_tlc.sh specs/current/SkillManager.tla specs/current/MC.cfg
+      assertions:
+        - Child homes are always tied to a harness.
+        - Child-home units come from parent-installed harness units.
+        - Child-home MCP servers and tool shims derive from those units.
+      evidence: []
+
+  - id: ISSUE-75-6
+    title: Teach skill-manager-skill about projects and child homes
+    status: pending
+    depends_on: [ISSUE-75-1, ISSUE-75-2, ISSUE-75-3, ISSUE-75-5]
+    objective: >
+      Update skill-manager-skill and generated agent-facing documentation so
+      agents can discover project manifests, project envs, child homes,
+      harnesses, plugins, doc repos, skills, CLI dependencies, and MCP
+      dependencies without relying on chat history.
+    desired_actions:
+      - RegisterProjectManifest
+      - MaterializeProjectEnv
+      - InstantiateChildHomeFromHarness
+    current_increment:
+      model_state:
+        - project_model.agent_configs
+        - project_model.env_docs
+        - project_model.child_home_agent_configs
+      model_actions:
+        - RegisterProjectManifest
+        - MaterializeProjectEnv
+        - InstantiateChildHomeFromHarness
+      adapters:
+        - SkillManagerSkillDocsAdapter
+      unit_tests:
+        - generated front matter names harnesses/plugins/doc repos/skills
+        - generated instructions list project envs and canonical sm env commands
+        - child-home agent docs point at child-local homes and shims
+      graph_after_unit_pass: []
+    acceptance:
+      commands:
+        - bash specs/current/run_tlc.sh specs/current/SkillManager.tla specs/current/MC.cfg
+      assertions:
+        - Agent-visible docs are projections of manifest and realized env state.
+        - Generated docs do not become the source of truth.
+      evidence: []

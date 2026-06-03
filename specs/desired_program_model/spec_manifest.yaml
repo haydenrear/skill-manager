@@ -1,0 +1,261 @@
+module: SkillManager
+package: desired_program_cases
+
+status:
+  workflow: ticket
+  initial_ticket: ISSUE-75
+  initial_ticket_title: Skill Manager Projects and Child Homes
+  ticket_plan: ticket_plan.yaml
+  relation_to_program_model: desired_successor_of_accepted_program_model
+  relation_to_current: target_state_for_specs_current_to_converge_to
+  updated: 2026-06-02
+  summary:
+    desired_model_scaffolded: true
+    ticket_plan_scaffolded: true
+    current_model_scaffolded: true
+    generated_cases: pending
+    adapters: pending
+    tlc: passed
+  done:
+    - Integrated issue 75 and ticket/scaffold-skill-manager-child/skill-manager-child.md into one desired workflow.
+    - Added project manifest, env, libs, and child-home desired actions to SkillManager.tla.
+    - Added invariants for project locks, env locks, lib locks, child-home harness ownership, and removal protection.
+  pending:
+    - Implement ticket slices and advance specs/current after each production slice lands.
+    - Add production adapters for project manifest, env, libs, and child-home boundaries.
+    - Generate explicit transition cases from the desired/current model once adapter labels are finalized.
+    - Promote converged current/desired back into specs/program_model.
+  validation:
+    tlc:
+      - command: bash specs/desired_program_model/run_tlc.sh specs/desired_program_model/SkillManager.tla specs/desired_program_model/MC.cfg
+        status: passed
+        result: no invariant violations
+        states_generated: 6771937
+        distinct_states: 294432
+        depth: 20
+
+source_model:
+  program_model_manifest: ../program_model/spec_manifest.yaml
+  program_model_module: ../program_model/SkillManager.tla
+  baseline_package: skillmanager_program_cases
+
+source_surfaces:
+  issue:
+    - https://github.com/haydenrear/skill-manager/issues/75
+  ticket_notes:
+    - ../../ticket/scaffold-skill-manager-child/skill-manager-child.md
+  likely_implementation:
+    - src/main/java/dev/skillmanager/commands
+    - src/main/java/dev/skillmanager/store
+    - src/main/java/dev/skillmanager/app
+    - skill-manager-skill/skill-manager.toml
+    - virtual-mcp-gateway/gateway/provisioning.py
+
+state:
+  ProjectModel:
+    tla: project_model
+    fields:
+      manifests:
+        type: frozenset[ProjectId]
+        description: registered skill-manager-project.toml manifests
+      locks:
+        type: frozenset[ProjectId]
+        description: projects with resolved lock state
+      registrations:
+        type: frozenset[ProjectId]
+        description: projects registered with Skill Manager Home for future sync/upgrade/rebind
+      resolved_units:
+        type: frozenset[tuple[ProjectId, UnitId]]
+        description: units resolved from project dependency intent into SKILL_MANAGER_HOME
+      doc_bindings:
+        type: frozenset[tuple[ProjectId, DocRepoId]]
+        description: doc repo sources bound into project projection state
+      harness_bindings:
+        type: frozenset[tuple[ProjectId, HarnessTemplateId]]
+        description: harness dependencies declared by project manifests
+      agent_configs:
+        type: frozenset[tuple[ProjectId, AgentId]]
+        description: CLAUDE.md, AGENTS.md, and equivalent project agent projections
+      env_specs:
+        type: frozenset[tuple[ProjectId, EnvId]]
+        description: portable env intent declared in skill-manager-project.toml
+      env_realizations:
+        type: frozenset[tuple[ProjectId, EnvId]]
+        description: generated .skill-manager/envs/<env> uv projects
+      env_locks:
+        type: frozenset[tuple[ProjectId, EnvId]]
+        description: realized env lock state
+      tool_shims:
+        type: frozenset[tuple[ProjectId, ToolId]]
+        description: generated project-local .skill-manager/bin shims
+      skill_vendors:
+        type: frozenset[tuple[ProjectId, UnitId]]
+        description: project-relative vendored skill packages for importable runtime deps
+      env_docs:
+        type: frozenset[tuple[ProjectId, EnvId]]
+        description: generated .skill-manager/env.md documentation entries
+      lib_specs:
+        type: frozenset[tuple[ProjectId, LibId]]
+        description: portable development source checkout intent
+      lib_checkouts:
+        type: frozenset[tuple[ProjectId, LibId]]
+        description: materialized project libs/ checkouts
+      lib_locks:
+        type: frozenset[tuple[ProjectId, LibId]]
+        description: resolved git commit provenance for libs
+      child_homes:
+        type: frozenset[ChildHomeId]
+        description: harness-derived child Skill Manager homes
+      child_home_harnesses:
+        type: frozenset[tuple[ChildHomeId, HarnessTemplateId]]
+        description: harness template used to instantiate each child home
+      child_home_agent_configs:
+        type: frozenset[tuple[ChildHomeId, AgentId]]
+        description: child-local .codex, .claude, .gemini agent roots and env projection
+      child_home_units:
+        type: frozenset[tuple[ChildHomeId, UnitId]]
+        description: parent-installed harness units projected into a child home
+      child_home_mcp_servers:
+        type: frozenset[tuple[ChildHomeId, ServerId]]
+        description: child-local MCP servers derived from child-home units
+      child_home_tool_shims:
+        type: frozenset[tuple[ChildHomeId, ToolId]]
+        description: child-local CLI/tool shims derived from child-home MCP/tool graph
+
+types:
+  ProjectId:
+    python: str
+    source: Projects
+  EnvId:
+    python: str
+    source: Envs
+  EnvRecipeId:
+    python: str
+    source: EnvRecipes
+  LibId:
+    python: str
+    source: Libs
+  ChildHomeId:
+    python: str
+    source: ChildHomes
+
+commands:
+  RegisterProjectManifest:
+    action: RegisterProjectManifest
+    fields:
+      project_id:
+        type: ProjectId
+        tla: project
+  ResolveProjectDependencies:
+    action: ResolveProjectDependencies
+    fields:
+      project_id:
+        type: ProjectId
+        tla: project
+  MaterializeProjectEnv:
+    action: MaterializeProjectEnv
+    fields:
+      project_id:
+        type: ProjectId
+        tla: project
+      env_id:
+        type: EnvId
+        tla: env
+  ResolveProjectLibs:
+    action: ResolveProjectLibs
+    fields:
+      project_id:
+        type: ProjectId
+        tla: project
+  InstantiateChildHomeFromHarness:
+    action: InstantiateChildHomeFromHarness
+    fields:
+      child_home_id:
+        type: ChildHomeId
+        tla: home
+      harness_template_id:
+        type: HarnessTemplateId
+        tla: template
+
+results:
+  ProjectResult:
+    fields: {accepted: {type: bool}, reason: {type: str | None, default: null}}
+
+ports:
+  SkillManagerCli:
+    added_methods:
+      register_project_manifest: {command: RegisterProjectManifest, result: ProjectResult}
+      resolve_project_dependencies: {command: ResolveProjectDependencies, result: ProjectResult}
+      materialize_project_env: {command: MaterializeProjectEnv, result: ProjectResult}
+      resolve_project_libs: {command: ResolveProjectLibs, result: ProjectResult}
+      instantiate_child_home_from_harness: {command: InstantiateChildHomeFromHarness, result: ProjectResult}
+
+invariants:
+  - CliInstalledRecordsTrackStore
+  - CliLockTracksStore
+  - CliReferencesClosed
+  - CliProjectionsHaveInstalledUnits
+  - CliBindingsReferenceInstalledOrContentUnits
+  - ProjectionRowsHaveBindings
+  - ManagedCopiesHaveDocRepo
+  - ImportDirectivesHaveDocRepo
+  - CliCliLockTracksInstalledPackages
+  - SkillScriptsAreKnownScripts
+  - HaltImpliesHaltContinuation
+  - CompletedSuccessfulProgramsClearRollbackJournal
+  - GatewayDynamicServersAreCataloged
+  - GatewayDeploymentsAreCataloged
+  - GatewayToolsComeFromDeployments
+  - GatewayDisclosuresReferenceKnownTools
+  - ServerVersionsHaveRegistryUnit
+  - ServerPackagesHaveVersion
+  - ProjectLocksHaveManifests
+  - ProjectRegistrationsHaveManifests
+  - ProjectResolvedUnitsInstalled
+  - ProjectDocsAreBoundAndManaged
+  - ProjectHarnessesAreSynced
+  - ProjectAgentConfigsAreRegistered
+  - ProjectEnvRealizationsHaveLocks
+  - ProjectEnvDocsHaveRealizedEnv
+  - ProjectToolShimsAreKnownTools
+  - ProjectSkillVendorsAreInstalled
+  - ProjectLibLocksTrackCheckouts
+  - ChildHomesHaveHarnesses
+  - ChildHomeUnitsComeFromParent
+  - ChildHomeAgentConfigsAreKnown
+  - ChildHomeMcpServersComeFromUnits
+  - ChildHomeToolShimsComeFromMcpServers
+
+finite_model:
+  Projects:
+    values: [ProjectA]
+  Envs:
+    values: [EnvA]
+  EnvRecipes:
+    values: [RecipeA]
+  Libs:
+    values: [LibA]
+  ChildHomes:
+    values: [ChildHomeA]
+
+case_codegen:
+  style: explicit_transition_cases
+  generation_status: planned
+
+adapters:
+  mapping: case_adapters.toml
+  desired_extension_points:
+    - ProjectManifestAdapter
+    - ProjectDependencyResolverAdapter
+    - ProjectEnvMaterializerAdapter
+    - ProjectLibResolverAdapter
+    - ChildHomeHarnessAdapter
+    - SkillManagerSkillDocsAdapter
+
+notes:
+  direction: >
+    The desired model intentionally ties child Skill Manager homes and project
+    manifests to the same resolution vocabulary: portable intent, resolved home
+    units, project-local or child-local realization, and generated agent-facing
+    docs/configs. Keep specs/current as the implemented whole-program state as
+    each ticket lands.
