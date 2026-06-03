@@ -19,6 +19,9 @@ option" banner. Treat the usage text as authoritative.
   This is required for doc-repo markdown to affect a project.
 - Instantiate a harness when the user wants a complete project/agent
   profile with skills, plugins, docs, and selected MCP tools.
+- Use a skill project when the repository itself declares its required
+  skills, plugins, doc-repos, harnesses, envs, libs, CLI deps, and MCP
+  deps in `skill-project.toml` or `skill-manager-project.toml`.
 - Sync when an installed git-backed unit should pull the latest commit,
   re-run side effects, or reconcile bindings.
 - Upgrade when the user wants the newest registry-published version.
@@ -74,6 +77,25 @@ reviewer, coder, migration planner, release operator, and similar.
    bindings and removes the instance sandbox.
 
 Exact subcommands are in `skill-manager harness --help`.
+
+## Resolve a skill project
+
+Use this when the current checkout has a `skill-project.toml` or
+`skill-manager-project.toml`.
+
+1. Inspect the manifest and use `skill-manager project show <name>` or
+   `skill-manager project list` when the project is already registered.
+2. Register the project when the parent home should remember manifest
+   intent.
+3. Resolve the project to install declared units, write the project lock,
+   scaffold `<project>/.skill-manager` as a child Skill Manager home,
+   and create child-local `.claude`, `.codex`, and `.gemini` homes.
+4. Launch agents with `SKILL_MANAGER_HOME=<project>/.skill-manager` and
+   the matching `CODEX_HOME`, `CLAUDE_HOME`, or `GEMINI_HOME`.
+5. Use `skill-manager env sync` / `skill-manager env run` for declared
+   project envs.
+
+Details live in `references/projects.md`.
 
 ## Use an installed CLI dependency
 
@@ -147,5 +169,8 @@ flags.
   the Claude/Codex CLI is on `PATH`.
 - If a bind looks wrong, use `bindings list` / `bindings show` before
   editing files manually.
+- If a project launch cannot see expected skills or tools, verify the
+  agent process is pointed at the project child home, not the parent
+  home.
 - If the plan reports `BLOCKED` or `CONFLICT`, surface the policy or
   lock issue to the user instead of forcing the command.

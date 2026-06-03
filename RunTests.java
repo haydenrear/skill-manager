@@ -40,6 +40,7 @@ import dev.skillmanager.bindings.BindingsTest;
 import dev.skillmanager.command.SearchShowsKindTest;
 import dev.skillmanager.command.ShowNonSkillUnitsTest;
 import dev.skillmanager.command.ShowPluginListsContainedSkillsTest;
+import dev.skillmanager.command.SkillManagerSkillDocsTest;
 import dev.skillmanager.command.SyncFromLockScenarioTest;
 import dev.skillmanager.command.UninstallScenarioTest;
 import dev.skillmanager.effects.ScaffoldPluginTest;
@@ -167,6 +168,7 @@ public class RunTests {
         failures += SearchShowsKindTest.run();
         failures += ShowNonSkillUnitsTest.run();
         failures += ShowPluginListsContainedSkillsTest.run();
+        failures += SkillManagerSkillDocsTest.run();
         failures += dev.skillmanager.agent.AgentHomesTest.run();
         failures += dev.skillmanager.mcp.McpWriterTest.run();
         failures += dev.skillmanager.store.FetcherGitCloneTest.run();

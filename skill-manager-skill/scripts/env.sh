@@ -3,7 +3,7 @@
 # system PATH) and invokes the script via `uv run` so the right Python and
 # tomllib are guaranteed without polluting the agent's environment.
 #
-# Usage: env.sh [--skills NAME ...] [--pretty]
+# Usage: env.sh [--skills NAME ...] [--for claude|codex] [--project-root DIR] [--pretty]
 # Output: same JSON as env.py — see scripts/env.py for the contract.
 
 set -euo pipefail

@@ -1,12 +1,13 @@
 ---
 name: skill-manager
-description: 'Search, install, bind, sync, and remove skill-manager-managed units: skills, plugins, doc-repos, and harnesses. Use when the user asks to find, add, remove, inspect, bind, unbind, instantiate, sync, or upgrade one of those units, or to manage, deploy, or invoke an MCP tool that came from an installed unit. CLI syntax is authoritative in `skill-manager --help`; gateway operations are authoritative in `references/virtual-mcp-gateway.md`; agent workflow routing lives in `references/workflows.md`.'
+description: 'Search, install, bind, sync, and remove skill-manager-managed units: skills, plugins, doc-repos, and harnesses; manage skill projects, project child homes, CLI tools, and MCP tools. Use when the user asks to find, add, remove, inspect, bind, unbind, instantiate, sync, upgrade, or resolve one of those surfaces. CLI syntax is authoritative in `skill-manager --help`; project workflows live in `references/projects.md`; gateway operations are authoritative in `references/virtual-mcp-gateway.md`; agent workflow routing lives in `references/workflows.md`.'
 ---
 
 # skill-manager
 
 Use `skill-manager` as the package manager for agent capability units:
-skills, plugins, doc-repos, harnesses, CLI tools, and MCP servers.
+skills, plugins, doc-repos, harnesses, skill projects, project child
+homes, CLI tools, and MCP servers.
 
 This skill should not mirror the whole CLI manual. For exact flags and
 current command syntax, run:
@@ -23,8 +24,12 @@ option" banner; the usage text is still the source of truth.
 
 - The user asks what skills, plugins, doc-repos, or harnesses are
   available.
+- The user asks to register, resolve, inspect, or operate a
+  `skill-project.toml` / `skill-manager-project.toml`.
 - The user asks to install, remove, publish, upgrade, sync, inspect, or
   scaffold a unit.
+- The user is inside a project whose `.skill-manager` directory should
+  be treated as a child Skill Manager home for agent launches.
 - The user asks to bind or unbind a unit into a project, especially
   doc-repo markdown into `CLAUDE.md` / `AGENTS.md`.
 - The user asks to instantiate, list, sync, or tear down a harness
@@ -53,6 +58,36 @@ Use `skill-manager list` to see installed units, their kind, source, and
 resolved git SHA. Use `skill-manager show <name>` for kind-specific
 metadata and dependency attribution.
 
+## Skill Projects
+
+A skill project is a project checkout with a `skill-project.toml` or
+`skill-manager-project.toml`. The manifest is portable intent: declared
+skills, plugins, doc-repos, harnesses, project envs, libs, CLI deps, and
+MCP deps. The generated files are projections of that manifest plus the
+resolved lock state; do not edit generated `.skill-manager/` state as
+the source of truth.
+
+Use `skill-manager project register` to snapshot manifest intent under
+the parent `$SKILL_MANAGER_HOME/projects/<name>/`. Use
+`skill-manager project resolve` to install declared units, write the
+project lock, scaffold the project `.skill-manager` as a child Skill
+Manager home, and create `.claude`, `.codex`, and `.gemini` agent homes.
+Launch agents from that checkout with:
+
+```bash
+SKILL_MANAGER_HOME=<project>/.skill-manager
+CODEX_HOME=<project>/.codex
+CLAUDE_HOME=<project>/.claude
+GEMINI_HOME=<project>/.gemini
+```
+
+Use `skill-manager env sync <name>` to materialize project-local uv envs
+under `.skill-manager/envs/<name>/` and `skill-manager env run <name>`
+to execute through the generated env.
+
+See `references/projects.md` for the project workflow, child-home
+relationship, env docs, and cleanup rules.
+
 For authoring unit manifests, scaffolding, TOML anatomy, and examples,
 use the `skill-publisher` skill rather than this one.
 
@@ -63,6 +98,8 @@ flows:
 
 - `references/workflows.md` - agent decision flows for install, bind,
   harness, sync, publish, CLI tools, and gateway-backed MCP tools.
+- `references/projects.md` - skill project manifests, project envs,
+  project `.skill-manager` child homes, and agent launch homes.
 - `references/virtual-mcp-gateway.md` - the gateway architecture,
   virtual tool surface, deployment scopes, disclosure gate, and MCP
   troubleshooting.
@@ -78,8 +115,9 @@ flows:
 ## CLI Boundaries
 
 Use the CLI for install state, local projections, registry operations,
-gateway process lifecycle, and lock maintenance. Prefer checking help
-before relying on remembered flags:
+project manifests, child-home projections, gateway process lifecycle,
+and lock maintenance. Prefer checking help before relying on remembered
+flags:
 
 ```bash
 skill-manager --help
@@ -87,6 +125,8 @@ skill-manager install --help
 skill-manager sync --help
 skill-manager bind --help
 skill-manager harness --help
+skill-manager project --help
+skill-manager env --help
 skill-manager publish --help
 ```
 
@@ -96,8 +136,8 @@ Do not duplicate long command tables here. The CLI help already covers:
   `harness:`, `github:owner/repo`, `git+https://...`, and local paths.
 - Install planning, policy gates, and store/projection side effects.
 - `sync`, `upgrade`, `lock`, `bind`, `unbind`, `rebind`, `bindings`,
-  `harness`, `publish`, `registry`, `gateway`, `policy`, `pm`, and
-  `cli` subcommands.
+  `harness`, `project`, `env`, `publish`, `registry`, `gateway`,
+  `policy`, `pm`, and `cli` subcommands.
 
 Keep skill-specific guidance to the things the CLI cannot decide for
 the agent: which workflow to choose, what to inspect before mutating
@@ -123,8 +163,9 @@ for absolute paths:
 ```
 
 The helper reports installed skill paths, agent symlinks, bundled
-package-manager paths, installed CLI binaries, and missing declared
-tools. It never mutates shell state.
+package-manager paths, installed CLI binaries, missing declared tools,
+and passive project context when run inside a skill project. It never
+mutates shell state.
 
 For MCP dependencies, there is no CLI equivalent for discovering,
 deploying, describing, or invoking downstream tools. Use the
@@ -151,6 +192,9 @@ root and records a reversible ledger under
   managed imports into `CLAUDE.md` and/or `AGENTS.md`.
 - Harness instantiation creates a named profile instance with its own
   bindings for skills, plugins, docs, and selected MCP exposure.
+- Project resolution treats the project checkout as its harness and
+  scaffolds `<project>/.skill-manager` as a child home containing the
+  resolved project units and child-local tool shims.
 
 Use CLI help for exact flags:
 
