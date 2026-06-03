@@ -17,7 +17,8 @@ public record SkillProjectLock(
         String resolvedAt,
         List<ResolvedUnit> resolvedUnits,
         List<ProjectBinding> bindings,
-        List<EnvRealization> envs
+        List<EnvRealization> envs,
+        List<LibCheckout> libs
 ) {
     public static final String FILENAME = "project-lock.toml";
 
@@ -25,6 +26,7 @@ public record SkillProjectLock(
         resolvedUnits = resolvedUnits == null ? List.of() : List.copyOf(resolvedUnits);
         bindings = bindings == null ? List.of() : List.copyOf(bindings);
         envs = envs == null ? List.of() : List.copyOf(envs);
+        libs = libs == null ? List.of() : List.copyOf(libs);
     }
 
     public SkillProjectLock(
@@ -34,7 +36,18 @@ public record SkillProjectLock(
             List<ResolvedUnit> resolvedUnits,
             List<ProjectBinding> bindings
     ) {
-        this(projectName, manifestFile, resolvedAt, resolvedUnits, bindings, List.of());
+        this(projectName, manifestFile, resolvedAt, resolvedUnits, bindings, List.of(), List.of());
+    }
+
+    public SkillProjectLock(
+            String projectName,
+            String manifestFile,
+            String resolvedAt,
+            List<ResolvedUnit> resolvedUnits,
+            List<ProjectBinding> bindings,
+            List<EnvRealization> envs
+    ) {
+        this(projectName, manifestFile, resolvedAt, resolvedUnits, bindings, envs, List.of());
     }
 
     public record ResolvedUnit(
@@ -75,6 +88,29 @@ public record SkillProjectLock(
             skillPackages = skillPackages == null ? List.of() : List.copyOf(skillPackages);
             vendorUnits = vendorUnits == null ? List.of() : List.copyOf(vendorUnits);
             tools = tools == null ? List.of() : List.copyOf(tools);
+        }
+    }
+
+    public record LibCheckout(
+            String name,
+            String source,
+            String url,
+            String ref,
+            String requestedSha,
+            String resolvedSha,
+            String checkoutDir,
+            String lockedAt
+    ) {
+        public LibCheckout {
+            if (name == null || name.isBlank()) {
+                throw new IllegalArgumentException("project lib lock name must not be blank");
+            }
+            if (source == null || source.isBlank()) {
+                throw new IllegalArgumentException("project lib lock source must not be blank");
+            }
+            if (resolvedSha == null || resolvedSha.isBlank()) {
+                throw new IllegalArgumentException("project lib resolved sha must not be blank");
+            }
         }
     }
 }

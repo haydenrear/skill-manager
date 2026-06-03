@@ -151,6 +151,9 @@ ProjectResolvedUnitClosure(project) ==
 ProjectClaimedUnits ==
   {entry[2] : entry \in project_model.resolved_units}
 
+ProjectLockedUnits(project) ==
+  {entry[2] : entry \in {row \in project_model.resolved_units : row[1] = project}}
+
 ProjectModelInit ==
   [manifests |-> {},
    registrations |-> {},
@@ -165,7 +168,9 @@ ProjectModelInit ==
    skill_vendors |-> {},
    env_docs |-> {},
    env_specs |-> {},
-   lib_specs |-> {}]
+   lib_specs |-> {},
+   lib_checkouts |-> {},
+   lib_locks |-> {}]
 
 UnitProjections(units) ==
   Agents \X units
@@ -901,9 +906,27 @@ MaterializeProjectEnv(project, env) ==
         [project_model EXCEPT
           !.env_realizations = @ \cup {<<project, env>>},
           !.env_locks = @ \cup {<<project, env>>},
-          !.skill_vendors = @ \cup ({project} \X ProjectResolvedUnitClosure(project)),
+          !.skill_vendors = @ \cup ({project} \X ProjectLockedUnits(project)),
           !.tool_shims = @ \cup ({project} \X Tools),
           !.env_docs = @ \cup {<<project, env>>}]
+    /\ result' = Ok
+    /\ UNCHANGED state_vars
+
+\* @command ResolveProjectLibs
+\* @result ProjectResult
+\* @port SkillManagerCli.resolve_project_libs
+ResolveProjectLibs(project) ==
+  IF project \notin project_model.registrations
+  THEN
+    /\ result' = Reject("PROJECT_NOT_REGISTERED")
+    /\ project_model' = project_model
+    /\ UNCHANGED state_vars
+  ELSE
+    /\ project_model' =
+        [project_model EXCEPT
+          !.locks = @ \cup {project},
+          !.lib_checkouts = @ \cup ({project} \X ProjectLibSpecs(project)),
+          !.lib_locks = @ \cup ({project} \X ProjectLibSpecs(project))]
     /\ result' = Ok
     /\ UNCHANGED state_vars
 
@@ -937,6 +960,7 @@ Next ==
   \/ \E project \in Projects: RegisterProjectManifest(project)
   \/ \E project \in Projects: ResolveProjectDependencies(project)
   \/ \E project \in Projects, env \in Envs: MaterializeProjectEnv(project, env)
+  \/ \E project \in Projects: ResolveProjectLibs(project)
 
 \* @invariant CliInstalledRecordsTrackStore
 CliInstalledRecordsTrackStore ==
@@ -1041,6 +1065,13 @@ ProjectSkillVendorsAreInstalled ==
   \A entry \in project_model.skill_vendors:
     /\ entry[1] \in project_model.locks
     /\ entry[2] \in cli_store_units
+
+\* @invariant ProjectLibLocksTrackCheckouts
+ProjectLibLocksTrackCheckouts ==
+  /\ project_model.lib_checkouts \subseteq project_model.lib_specs
+  /\ project_model.lib_locks = project_model.lib_checkouts
+  /\ \A entry \in project_model.lib_checkouts:
+       entry[1] \in project_model.locks
 
 \* @invariant HaltImpliesHaltContinuation
 HaltImpliesHaltContinuation ==

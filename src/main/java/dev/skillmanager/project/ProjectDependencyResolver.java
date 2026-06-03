@@ -63,6 +63,8 @@ public final class ProjectDependencyResolver {
     public Result resolve(SkillProject project, Options options) throws IOException {
         Options opts = options == null ? Options.defaults() : options;
         SkillProjectRegistration registration = new SkillProjectRegistry(store).register(project);
+        SkillProjectLockStore lockStore = new SkillProjectLockStore(store);
+        SkillProjectLock previousLock = lockStore.read(project.name()).orElse(null);
         List<String> installed = installMissing(project, opts);
         List<SkillProjectLock.ProjectBinding> projectBindings = materializeProjectBindings(project);
         List<SkillProjectLock.ResolvedUnit> resolvedUnits = collectResolvedUnits(project, installed);
@@ -71,8 +73,10 @@ public final class ProjectDependencyResolver {
                 registration.manifestFile(),
                 Instant.now().toString(),
                 resolvedUnits,
-                projectBindings);
-        new SkillProjectLockStore(store).write(lock);
+                projectBindings,
+                previousLock == null ? List.of() : previousLock.envs(),
+                previousLock == null ? List.of() : previousLock.libs());
+        lockStore.write(lock);
         return new Result(
                 registration,
                 lock,
@@ -89,7 +93,7 @@ public final class ProjectDependencyResolver {
                 continue;
             }
 
-            InstallSource source = installSource(ref.reference(), project.projectRoot());
+            InstallSource source = installSource(ref, project.projectRoot());
             var program = InstallUseCase.buildProgram(
                     store,
                     gateway,
@@ -250,18 +254,19 @@ public final class ProjectDependencyResolver {
 
     private record InstallSource(String source, String version) {}
 
-    private static InstallSource installSource(UnitReference ref, Path baseRoot) {
-        Coord c = ref.coord();
+    private static InstallSource installSource(SkillProject.ProjectUnitRef ref, Path baseRoot) {
+        Coord c = ref.reference().coord();
         if (c instanceof Coord.SubElement s) c = s.unitCoord();
+        String revision = blankToNull(ref.revision());
         return switch (c) {
             case Coord.Local l -> {
                 Path p = Path.of(l.path());
                 Path resolved = p.isAbsolute() ? p : baseRoot.resolve(p).normalize();
                 yield new InstallSource(resolved.toString(), null);
             }
-            case Coord.Kinded k -> new InstallSource(k.name(), k.version());
-            case Coord.Bare b -> new InstallSource(b.name(), b.version());
-            case Coord.DirectGit g -> new InstallSource(g.raw(), g.ref());
+            case Coord.Kinded k -> new InstallSource(k.name(), firstNonBlank(revision, k.version()));
+            case Coord.Bare b -> new InstallSource(b.name(), firstNonBlank(revision, b.version()));
+            case Coord.DirectGit g -> new InstallSource("git+" + g.url(), firstNonBlank(revision, g.ref()));
             case Coord.SubElement ignored -> throw new IllegalStateException("handled above");
         };
     }
@@ -305,5 +310,9 @@ public final class ProjectDependencyResolver {
 
     private static String blankToNull(String s) {
         return s == null || s.isBlank() ? null : s;
+    }
+
+    private static String firstNonBlank(String first, String second) {
+        return first != null && !first.isBlank() ? first : second;
     }
 }
