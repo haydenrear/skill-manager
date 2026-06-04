@@ -78,8 +78,9 @@ public final class ReportUseCase {
             case MCP_REGISTRATION_FAILED -> "retry: skill-manager sync " + skillName;
             case MERGE_CONFLICT -> "resolve in " + storeDir + ", then `git add` + `git commit`";
             case NO_GIT_REMOTE -> "set origin: cd " + storeDir + " && git remote add origin <url>";
-            case NEEDS_GIT_MIGRATION -> "reinstall from a git source: skill-manager uninstall "
-                    + skillName + " && skill-manager install github:<owner>/<repo>";
+            case NEEDS_GIT_MIGRATION -> "file/local installs do not sync; reinstall from a git source: "
+                    + "skill-manager uninstall " + skillName
+                    + " && skill-manager install github:<owner>/<repo>";
             case REGISTRY_UNAVAILABLE -> "ensure the registry is reachable, then re-run sync/upgrade "
                     + "(or use --git-latest to bypass the registry for git-tracked skills)";
             case AGENT_SYNC_FAILED -> "retry: skill-manager sync " + skillName

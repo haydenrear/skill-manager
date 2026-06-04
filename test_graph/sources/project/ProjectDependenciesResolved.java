@@ -64,6 +64,8 @@ public class ProjectDependenciesResolved {
 
             ProcessRecord resolve = run(ctx, "resolve", home, repoRoot, sm,
                     "project", "resolve", "--skip-gateway", "--project-dir", projectDir.toString());
+            ProcessRecord resolveAgain = run(ctx, "resolve-again", home, repoRoot, sm,
+                    "project", "resolve", "--skip-gateway", "--project-dir", projectDir.toString());
             ProcessRecord sync = run(ctx, "sync", home, repoRoot, sm,
                     "project", "sync", "--skip-gateway", "--project-dir", projectDir.toString());
             ProcessRecord show = run(ctx, "show", home, repoRoot, sm,
@@ -114,8 +116,29 @@ public class ProjectDependenciesResolved {
             boolean syncPlaceholder = sync.exitCode() == 0
                     && readLog(ctx, "sync").contains("project sync is a placeholder")
                     && readLog(ctx, "sync").contains("uninstall/reinstall placeholder");
+            boolean secondResolveOk = resolveAgain.exitCode() == 0
+                    && readLog(ctx, "resolve-again").contains("resolved project tg-resolved-project");
+
+            ProcessRecord projectRemove = run(ctx, "project-remove", home, repoRoot, sm,
+                    "project", "remove", "--skip-gateway", "tg-resolved-project");
+            boolean projectRemoveOk = projectRemove.exitCode() == 0
+                    && readLog(ctx, "project-remove").contains("removed project tg-resolved-project");
+            boolean registrationRemoved = !Files.exists(projectHome);
+            boolean childRegistryRemoved = !Files.exists(childRecord);
+            boolean childHomeCleared = !Files.exists(childHome.resolve("skills/tg-child"))
+                    && !Files.exists(childHome.resolve("skills/tg-parent"))
+                    && !Files.exists(childHome.resolve("docs/tg-prompts"))
+                    && !Files.exists(childHome.resolve("harnesses/tg-harness"));
+            boolean projectBindingsRemoved = !Files.exists(projectDir.resolve("docs/agents/review.md"))
+                    && !Files.exists(projectDir.resolve(".codex/skills/tg-child"));
+            boolean parentUnitsRemainAfterProjectRemove =
+                    Files.isRegularFile(Path.of(home, "skills", "tg-parent", "SKILL.md"))
+                            && Files.isRegularFile(Path.of(home, "skills", "tg-child", "SKILL.md"))
+                            && Files.isRegularFile(Path.of(home, "docs", "tg-prompts", "skill-manager.toml"))
+                            && Files.isRegularFile(Path.of(home, "harnesses", "tg-harness", "harness.toml"));
 
             boolean pass = resolve.exitCode() == 0
+                    && secondResolveOk
                     && syncPlaceholder
                     && showResolved
                     && lockWritten
@@ -134,15 +157,24 @@ public class ProjectDependenciesResolved {
                     && childUnits
                     && childRegistry
                     && projectionsUseChildStore
-                    && removeBlocked;
+                    && removeBlocked
+                    && projectRemoveOk
+                    && registrationRemoved
+                    && childRegistryRemoved
+                    && childHomeCleared
+                    && projectBindingsRemoved
+                    && parentUnitsRemainAfterProjectRemove;
 
             return (pass
                     ? NodeResult.pass("project.dependencies.resolved")
                     : NodeResult.fail("project.dependencies.resolved",
                             "resolve=" + resolve.exitCode()
+                                    + " resolveAgain=" + resolveAgain.exitCode()
                                     + " sync=" + sync.exitCode()
                                     + " show=" + show.exitCode()
                                     + " remove=" + remove.exitCode()
+                                    + " projectRemove=" + projectRemove.exitCode()
+                                    + " secondResolveOk=" + secondResolveOk
                                     + " syncPlaceholder=" + syncPlaceholder
                                     + " lockWritten=" + lockWritten
                                     + " lockParent=" + lockHasParent
@@ -160,12 +192,21 @@ public class ProjectDependenciesResolved {
                                     + " childUnits=" + childUnits
                                     + " childRegistry=" + childRegistry
                                     + " projectionsUseChildStore=" + projectionsUseChildStore
-                                    + " removeBlocked=" + removeBlocked))
+                                    + " removeBlocked=" + removeBlocked
+                                    + " projectRemoveOk=" + projectRemoveOk
+                                    + " registrationRemoved=" + registrationRemoved
+                                    + " childRegistryRemoved=" + childRegistryRemoved
+                                    + " childHomeCleared=" + childHomeCleared
+                                    + " projectBindingsRemoved=" + projectBindingsRemoved
+                                    + " parentUnitsRemainAfterProjectRemove=" + parentUnitsRemainAfterProjectRemove))
                     .process(resolve)
+                    .process(resolveAgain)
                     .process(sync)
                     .process(show)
                     .process(remove)
+                    .process(projectRemove)
                     .assertion("resolve_command_ok", resolve.exitCode() == 0)
+                    .assertion("resolve_existing_project_is_idempotent", secondResolveOk)
                     .assertion("project_sync_placeholder_ok", syncPlaceholder)
                     .assertion("show_reports_lock_counts", showResolved)
                     .assertion("project_lock_written", lockWritten)
@@ -180,10 +221,18 @@ public class ProjectDependenciesResolved {
                     .assertion("parent_child_home_registry_claims_project_units", childRegistry)
                     .assertion("project_agent_projections_point_at_child_store", projectionsUseChildStore)
                     .assertion("plain_remove_blocked_by_project_lock", removeBlocked)
+                    .assertion("project_remove_command_ok", projectRemoveOk)
+                    .assertion("project_remove_clears_registration", registrationRemoved)
+                    .assertion("project_remove_clears_child_home_registry", childRegistryRemoved)
+                    .assertion("project_remove_clears_child_home_generated_units", childHomeCleared)
+                    .assertion("project_remove_clears_project_bindings", projectBindingsRemoved)
+                    .assertion("project_remove_keeps_parent_home_units", parentUnitsRemainAfterProjectRemove)
                     .metric("resolveExitCode", resolve.exitCode())
+                    .metric("resolveAgainExitCode", resolveAgain.exitCode())
                     .metric("syncExitCode", sync.exitCode())
                     .metric("showExitCode", show.exitCode())
                     .metric("removeExitCode", remove.exitCode())
+                    .metric("projectRemoveExitCode", projectRemove.exitCode())
                     .publish("projectName", "tg-resolved-project")
                     .publish("projectDir", projectDir.toString())
                     .publish("lockFile", lock.toString());

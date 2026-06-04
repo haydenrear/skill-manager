@@ -188,7 +188,8 @@ public final class ConsoleProgramRenderer implements ProgramRenderer {
             case ContextFact.SyncGitFailed x ->
                     Log.error("%s: git sync failed — %s", x.skillName(), x.reason());
             case ContextFact.SyncGitNotGitTracked x ->
-                    Log.warn("%s: not git-tracked — sync/upgrade unavailable", x.skillName());
+                    Log.warn("%s: not git-tracked — file/local installs do not sync; use github: or git+",
+                            x.skillName());
             case ContextFact.SyncGitNoOrigin x ->
                     Log.warn("%s: git-tracked but no origin remote configured", x.skillName());
             case ContextFact.SyncGitRegistryUnavailable x ->
@@ -206,15 +207,6 @@ public final class ConsoleProgramRenderer implements ProgramRenderer {
                 if (x.cleared()) Log.ok("reconcile: %s cleared %s", x.skillName(), x.kind());
             }
             case ContextFact.OutstandingError x -> {
-                // Bundled skills (skill-manager / skill-publisher) ship
-                // in-tree with no .git/ — suppress NEEDS_GIT_MIGRATION
-                // for them so the closing banner doesn't keep nagging.
-                // Tracked in #44; once they move to their own repos this
-                // suppression goes away.
-                if (x.kind() == InstalledUnit.ErrorKind.NEEDS_GIT_MIGRATION
-                        && dev.skillmanager.lifecycle.BundledSkills.isBundled(x.skillName())) {
-                    break;
-                }
                 outstandingErrors
                         .computeIfAbsent(x.skillName(), k -> new java.util.LinkedHashMap<>())
                         .putIfAbsent(x.kind(), x.message());
@@ -346,10 +338,6 @@ public final class ConsoleProgramRenderer implements ProgramRenderer {
             case ContextFact.SyncGitRefused x -> refusedSkills.add(x.skillName());
             case ContextFact.SyncGitConflicted x -> conflictedSkills.add(x.skillName());
             case ContextFact.OutstandingError x -> {
-                if (x.kind() == InstalledUnit.ErrorKind.NEEDS_GIT_MIGRATION
-                        && dev.skillmanager.lifecycle.BundledSkills.isBundled(x.skillName())) {
-                    break;
-                }
                 outstandingErrors
                         .computeIfAbsent(x.skillName(), k -> new java.util.LinkedHashMap<>())
                         .putIfAbsent(x.kind(), x.message());
@@ -496,8 +484,9 @@ public final class ConsoleProgramRenderer implements ProgramRenderer {
             case MCP_REGISTRATION_FAILED -> "retry: skill-manager sync " + skillName;
             case MERGE_CONFLICT -> "resolve in " + storeDir + ", then `git add` + `git commit`";
             case NO_GIT_REMOTE -> "set origin: cd " + storeDir + " && git remote add origin <url>";
-            case NEEDS_GIT_MIGRATION -> "reinstall from a git source: skill-manager uninstall "
-                    + skillName + " && skill-manager install github:<owner>/<repo>";
+            case NEEDS_GIT_MIGRATION -> "file/local installs do not sync; reinstall from a git source: "
+                    + "skill-manager uninstall " + skillName
+                    + " && skill-manager install github:<owner>/<repo>";
             case REGISTRY_UNAVAILABLE -> "ensure the registry is reachable, then re-run sync/upgrade "
                     + "(or use --git-latest to bypass the registry for git-tracked skills)";
             case AGENT_SYNC_FAILED -> "retry: skill-manager sync " + skillName

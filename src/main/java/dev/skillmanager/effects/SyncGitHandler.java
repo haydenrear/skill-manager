@@ -1,5 +1,6 @@
 package dev.skillmanager.effects;
 
+import dev.skillmanager.lifecycle.BundledSkills;
 import dev.skillmanager.registry.AuthenticationRequiredException;
 import dev.skillmanager.registry.RegistryClient;
 import dev.skillmanager.registry.RegistryConfig;
@@ -43,13 +44,9 @@ public final class SyncGitHandler {
         InstalledUnit src = ctx.source(skillName).orElse(null);
 
         if (!GitOps.isAvailable() || !GitOps.isGitRepo(storeDir)) {
-            // Bundled skills (skill-manager / skill-publisher) ship in-tree
-            // with the CLI and have no .git/ on purpose — see issue #44.
-            // Suppress the persistent NEEDS_GIT_MIGRATION error for them.
-            if (!dev.skillmanager.lifecycle.BundledSkills.isBundled(skillName)) {
-                ctx.addError(skillName, InstalledUnit.ErrorKind.NEEDS_GIT_MIGRATION,
-                        "not git-tracked — reinstall from a git source to enable sync/upgrade");
-            }
+            ctx.addError(skillName, InstalledUnit.ErrorKind.NEEDS_GIT_MIGRATION,
+                    "not git-tracked; file/local installs do not sync — reinstall from github: "
+                            + "or git+ source, or add a git remote");
             return EffectReceipt.partial(e, "not git-tracked",
                     new ContextFact.SyncGitNotGitTracked(skillName));
         }
@@ -65,6 +62,12 @@ public final class SyncGitHandler {
                     new ContextFact.SyncGitNoOrigin(skillName));
         }
         ctx.clearError(skillName, InstalledUnit.ErrorKind.NO_GIT_REMOTE);
+        if (src != null
+                && src.installSource() == InstalledUnit.InstallSource.LOCAL_FILE
+                && !looksLikeRemoteUrl(upstream)) {
+            Log.warn("%s: installed from file/local path — do not expect shared upstream sync; "
+                    + "reinstall with github: or git+ to track a GitHub remote", skillName);
+        }
 
         // Dirty means either uncommitted changes or HEAD moved past the
         // source-record baseline. We still resolve the target before refusing:
@@ -96,7 +99,8 @@ public final class SyncGitHandler {
         if (!dirty && target.sha != null && target.sha.equals(baseline)) {
             return EffectReceipt.ok(e, new ContextFact.SyncGitUpToDate(skillName, target.displayLabel()));
         }
-        return runGitMerge(ctx, storeDir, upstream, target.ref, skillName, e);
+        return runGitMerge(ctx, storeDir, upstream, target.ref, skillName, e,
+                allowUnrelatedHistories(src, skillName));
     }
 
     private static TargetResolution resolveTarget(SkillStore store, EffectContext ctx,
@@ -167,8 +171,9 @@ public final class SyncGitHandler {
 
     private static EffectReceipt runGitMerge(EffectContext ctx, Path storeDir,
                                              String upstream, String ref, String skillName,
-                                             SkillEffect.SyncGit effect) {
-        MergeResult result = runMerge(ctx, storeDir, upstream, ref, skillName);
+                                             SkillEffect.SyncGit effect,
+                                             boolean allowUnrelatedHistories) {
+        MergeResult result = runMerge(ctx, storeDir, upstream, ref, skillName, allowUnrelatedHistories);
         return switch (result.rc) {
             case 0 -> EffectReceipt.ok(effect,
                     new ContextFact.SyncGitMerged(skillName, result.fetchedHash));
@@ -185,6 +190,21 @@ public final class SyncGitHandler {
                 || fact instanceof ContextFact.SyncGitAuthRequired;
     }
 
+    private static boolean looksLikeRemoteUrl(String upstream) {
+        if (upstream == null || upstream.isBlank()) return false;
+        String s = upstream.trim();
+        return s.startsWith("http://")
+                || s.startsWith("https://")
+                || s.startsWith("ssh://")
+                || s.startsWith("git@");
+    }
+
+    private static boolean allowUnrelatedHistories(InstalledUnit src, String skillName) {
+        return src != null
+                && src.installSource() == InstalledUnit.InstallSource.LOCAL_FILE
+                && BundledSkills.isBundled(skillName);
+    }
+
     /**
      * Stash → fetch → merge → pop. Public helper so the {@code --from} path in
      * {@code SyncCommand} can run the same merge against a local-dir upstream
@@ -194,6 +214,12 @@ public final class SyncGitHandler {
      */
     public static MergeResult runMerge(EffectContext ctx, Path storeDir, String upstream,
                                        String ref, String skillName) {
+        return runMerge(ctx, storeDir, upstream, ref, skillName, false);
+    }
+
+    public static MergeResult runMerge(EffectContext ctx, Path storeDir, String upstream,
+                                       String ref, String skillName,
+                                       boolean allowUnrelatedHistories) {
         String preHead = GitOps.headHash(storeDir);
         boolean stashed = GitOps.stashAll(storeDir, "skill-manager-sync");
 
@@ -203,7 +229,7 @@ public final class SyncGitHandler {
             return new MergeResult(1, null);
         }
 
-        GitOps.MergeOutcome outcome = GitOps.mergeFetchHead(storeDir);
+        GitOps.MergeOutcome outcome = GitOps.mergeFetchHead(storeDir, allowUnrelatedHistories);
         if (!outcome.ok()) {
             if (!outcome.conflictedFiles().isEmpty()) {
                 tryAddError(ctx, skillName, InstalledUnit.ErrorKind.MERGE_CONFLICT,

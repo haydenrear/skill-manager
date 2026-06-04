@@ -379,11 +379,11 @@ public final class LiveInterpreter implements ProgramInterpreter {
                 unit.name(), unit.version(), transport, InstalledUnit.InstallSource.UNKNOWN,
                 origin, hash, gitRef, UnitStore.nowIso(), null,
                 unit.kind());
-        if (transport == InstalledUnit.Kind.LOCAL_DIR
-                && !dev.skillmanager.lifecycle.BundledSkills.isBundled(unit.name())) {
+        if (transport == InstalledUnit.Kind.LOCAL_DIR) {
             source = source.withErrorAdded(new InstalledUnit.UnitError(
                     InstalledUnit.ErrorKind.NEEDS_GIT_MIGRATION,
-                    "unit is not git-tracked — sync/upgrade unavailable until reinstalled from a git source",
+                    "not git-tracked; file/local installs do not sync — reinstall from github: "
+                            + "or git+ source, or add a git remote",
                     UnitStore.nowIso()));
         } else if (transport == InstalledUnit.Kind.GIT && (origin == null || origin.isBlank())) {
             source = source.withErrorAdded(new InstalledUnit.UnitError(
