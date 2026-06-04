@@ -1,10 +1,10 @@
-name: Lint PR title
+name: Lint PR release metadata
 
-# Enforce Conventional Commit format on PR titles. With squash-merge +
-# "Default to PR title" enabled in repo settings, the PR title becomes the
-# commit message on main, which is what release-please reads to compute the
-# next version. A non-conventional title would be silently dropped from the
-# release calculation, so we hard-fail on PRs that don't conform.
+# Enforce Conventional Commit format on PR titles and make rebase-merge
+# release behavior explicit. release-please reads commit messages on main;
+# with rebase-merge, that means the branch commit subjects, not the PR title.
+# If a PR title asks for a release but every branch commit is non-releasable,
+# release-please will silently skip the release PR.
 
 on:
   pull_request:
@@ -14,7 +14,8 @@ permissions:
   pull-requests: read
 
 jobs:
-  lint:
+  lint-title:
+    name: Lint PR title
     runs-on: ubuntu-latest
     steps:
       - uses: amannn/action-semantic-pull-request@v5
@@ -37,8 +38,8 @@ jobs:
           # Keep this aligned with the action's conventional-commit parser,
           # but allow an empty subject to parse so subjectPatternError can
           # explain the real problem when a title has `: ` but no subject.
-          headerPattern: '^(\w*)(?:\(([\w$.\-*/ ]*)\))?: (.*)$'
-          headerPatternCorrespondence: type, scope, subject
+          headerPattern: '^(\w*)(?:\(([\w$.\-*/ ]*)\))?(!)?: (.*)$'
+          headerPatternCorrespondence: type, scope, breaking, subject
           subjectPattern: ^[A-Za-z].+$
           subjectPatternError: |
             The subject (text after the type prefix) should start with a letter and not be empty.
@@ -46,3 +47,56 @@ jobs:
               feat: add brew tap publishing
               fix(gateway): handle missing uv binary
               chore!: drop Java 17 support
+
+  lint-rebase-release-signal:
+    name: Lint release signal for rebase merge
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            const title = pr.title;
+
+            const headerRe = /^(\w+)(?:\(([\w$.\-*/ ]*)\))?(!)?: .+/;
+            const titleMatch = title.match(headerRe);
+            const releaseTypes = new Set(['feat', 'fix']);
+            const titleRequestsRelease =
+              Boolean(titleMatch) &&
+              (releaseTypes.has(titleMatch[1]) || titleMatch[3] === '!');
+
+            if (!titleRequestsRelease) {
+              core.info('PR title is conventional but does not request a release.');
+              return;
+            }
+
+            const commits = await github.paginate(github.rest.pulls.listCommits, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pr.number,
+              per_page: 100,
+            });
+
+            const releaseCommitRe = /^(feat|fix)(?:\([\w$.\-*/ ]*\))?!?: .+/;
+            const breakingCommitRe = /^\w+(?:\([\w$.\-*/ ]*\))?!: .+/;
+            const subjects = commits.map((commit) => commit.commit.message.split('\n')[0]);
+            const releasableSubjects = subjects.filter((subject) =>
+              releaseCommitRe.test(subject) || breakingCommitRe.test(subject)
+            );
+
+            if (releasableSubjects.length === 0) {
+              const listedSubjects = subjects.map((subject) => `  - ${subject}`).join('\n');
+              core.setFailed(
+                [
+                  'This PR title asks for a release, but none of the branch commit subjects are releasable Conventional Commits.',
+                  'Rebase-merge preserves branch commit subjects, so release-please will ignore the PR title after merge.',
+                  'Amend at least one branch commit subject to `feat: ...`, `feat(scope): ...`, `fix: ...`, or `fix(scope): ...` before rebase-merge.',
+                  '',
+                  'Branch commit subjects:',
+                  listedSubjects,
+                ].join('\n')
+              );
+              return;
+            }
+
+            core.info(`Found releasable commit subject: ${releasableSubjects[0]}`);
