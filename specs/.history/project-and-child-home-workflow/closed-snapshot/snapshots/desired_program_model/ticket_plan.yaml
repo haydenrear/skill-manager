@@ -105,7 +105,7 @@ service_catalog:
 tickets:
   - id: ISSUE-75-1
     title: Project manifest schema and registration
-    status: next
+    status: completed
     depends_on: []
     objective: >
       Define skill-manager-project.toml as the project-scoped source of truth
@@ -224,7 +224,7 @@ tickets:
 
   - id: ISSUE-75-3
     title: Materialize project-local tools and uv envs
-    status: in_progress
+    status: completed
     depends_on: [ISSUE-75-2]
     objective: >
       Make uv environments first-class project realization artifacts. Projects
@@ -282,7 +282,7 @@ tickets:
 
   - id: ISSUE-75-4
     title: Resolve project libs with locked git provenance
-    status: in_progress
+    status: completed
     depends_on: [ISSUE-75-1]
     objective: >
       Add --resolve-libs behavior for project development source checkouts.
@@ -346,7 +346,7 @@ tickets:
 
   - id: ISSUE-75-5
     title: Instantiate child Skill Manager home from harness
-    status: in_progress
+    status: completed
     depends_on: [ISSUE-75-2]
     objective: >
       Add the child-home path: given a harness and target directory, scaffold a
@@ -411,7 +411,7 @@ tickets:
 
   - id: ISSUE-75-6
     title: Scaffold project .skill-manager as a child home
-    status: in_progress
+    status: completed
     depends_on: [ISSUE-75-2, ISSUE-75-3]
     objective: >
       Treat a skill-manager-project.toml checkout as the harness for that
@@ -498,7 +498,7 @@ tickets:
 
   - id: ISSUE-75-7
     title: Teach skill-manager-skill about projects and child homes
-    status: implemented
+    status: completed
     depends_on: [ISSUE-75-1, ISSUE-75-2, ISSUE-75-3, ISSUE-75-5, ISSUE-75-6]
     objective: >
       Update skill-manager-skill and generated agent-facing documentation so
@@ -571,7 +571,7 @@ tickets:
 
   - id: ISSUE-86-1
     title: Skill project profiles as multiple project harnesses
-    status: implemented
+    status: completed
     github_issue: https://github.com/haydenrear/skill-manager/issues/86
     depends_on: [ISSUE-75]
     objective: >
