@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.16.0](https://github.com/haydenrear/skill-manager/compare/v0.15.0...v0.16.0) (2026-06-04)
+
+
+### Features
+
+* **release:** validate rebase-merge release signals ([21286d8](https://github.com/haydenrear/skill-manager/commit/21286d85f915d7085c8aea0fd05d493fb05296a8))
+
 ## [0.15.0](https://github.com/haydenrear/skill-manager/compare/v0.14.1...v0.15.0) (2026-06-02)
 
 
