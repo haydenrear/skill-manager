@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.17.0](https://github.com/haydenrear/skill-manager/compare/v0.16.0...v0.17.0) (2026-06-04)
+
+
+### Features
+
+* support project removal and dependency reuse ([04f2d6a](https://github.com/haydenrear/skill-manager/commit/04f2d6a9ccdba301c6e79cb3f701002044bdddea))
+
 ## [0.16.0](https://github.com/haydenrear/skill-manager/compare/v0.15.0...v0.16.0) (2026-06-04)
 
 
