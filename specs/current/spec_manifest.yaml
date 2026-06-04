@@ -9,7 +9,7 @@ status:
   relation_to_desired_program_model: implemented_prefix_of_desired_ticket_plan
   current_model_rule: whole_program_working_copy_not_ticket_projection
   test_modeling_rule: do_not_model_tests_or_validation_harnesses_as_program_behavior
-  updated: 2026-06-03
+  updated: 2026-06-04
   current_slice:
     name: ISSUE-86-1
     status: implemented
@@ -23,6 +23,7 @@ status:
       - InstantiateChildHomeFromHarness
       - ScaffoldProjectChildHome
       - ResolveProjectProfile
+      - SyncProjectRealization
     validation:
       unit:
         - command: jbang RunTests.java
@@ -46,9 +47,9 @@ status:
           summary: test_graph/build/validation-reports/20260603-201911/summary.json
         - command: python skills/test_graph/scripts/run.py project-resolve
           status: passed
-          purpose: external CLI dependency resolution, project lock, child-home scaffold, doc/harness binding, and remove-guard regression for ISSUE-75-2/ISSUE-75-6
-          report: test_graph/build/validation-reports/20260603-233944/report.md
-          summary: test_graph/build/validation-reports/20260603-233944/summary.json
+          purpose: external CLI dependency resolution, placeholder project sync, project lock, child-home scaffold, doc/harness binding, and remove-guard regression for ISSUE-75-2/ISSUE-75-6
+          report: test_graph/build/validation-reports/20260604-012352/report.md
+          summary: test_graph/build/validation-reports/20260604-012352/summary.json
         - command: python skills/test_graph/scripts/run.py project-profiles
           status: passed
           purpose: external CLI profile resolution, profile-specific lock, profile child-home, and agent-home isolation coverage for ISSUE-86-1
@@ -158,6 +159,7 @@ actions:
   - InstantiateChildHomeFromHarness
   - ScaffoldProjectChildHome
   - ResolveProjectProfile
+  - SyncProjectRealization
 ports:
   SkillManagerCli.register_project_manifest:
     adapter: ProjectManifestAdapter
@@ -206,6 +208,14 @@ ports:
       - dev.skillmanager.commands.EnvCommand.Run
       - dev.skillmanager.model.SkillProject
       - dev.skillmanager.model.SkillProjectParser
+      - dev.skillmanager.project.ProjectDependencyResolver
+      - dev.skillmanager.project.ProjectChildHomeScaffolder
+      - dev.skillmanager.project.SkillProjectLockStore
+  SkillManagerCli.sync_project_realization:
+    adapter: ProjectSyncAdapter
+    implemented_by:
+      - dev.skillmanager.commands.ProjectCommand.SyncCmd
+      - dev.skillmanager.project.ProjectSyncUseCase
       - dev.skillmanager.project.ProjectDependencyResolver
       - dev.skillmanager.project.ProjectChildHomeScaffolder
       - dev.skillmanager.project.SkillProjectLockStore

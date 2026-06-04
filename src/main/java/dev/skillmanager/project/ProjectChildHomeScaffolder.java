@@ -43,7 +43,7 @@ public final class ProjectChildHomeScaffolder {
             throws IOException {
         if (project == null) throw new IllegalArgumentException("project must not be null");
         parentStore.init();
-        ChildHomeHarnessInstaller.Layout layout = layout(project);
+        ChildHomeHarnessInstaller.Layout layout = layoutFor(project);
         SkillStore childStore = new SkillStore(layout.childSkillManagerHome());
         childStore.init();
         Fs.ensureDir(layout.claudeHome());
@@ -83,7 +83,7 @@ public final class ProjectChildHomeScaffolder {
         return new Result(id, layout, childStore, List.copyOf(rendered));
     }
 
-    private static ChildHomeHarnessInstaller.Layout layout(SkillProject project) {
+    public static ChildHomeHarnessInstaller.Layout layoutFor(SkillProject project) {
         if (project.activeProfile() == null) {
             return ChildHomeHarnessInstaller.layout(project.projectRoot());
         }

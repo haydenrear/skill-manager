@@ -265,6 +265,39 @@ public final class ProjectDependencyResolverTest {
                                 "new unit is claimed by project child home");
                     }
                 })
+                .test("placeholder project sync clears generated child store and resolves again", () -> {
+                    try (TestHarness h = TestHarness.create()) {
+                        Path repoRoot = Files.createTempDirectory("project-sync-placeholder-");
+                        Path doc = scaffoldDocRepo(repoRoot.resolve("units"), "sync-prompts");
+                        SkillProject project = project(repoRoot, """
+                                [project]
+                                name = "sync-project"
+
+                                [docs.prompts]
+                                source = "%s"
+                                """.formatted(doc));
+                        resolver(h).resolve(project, new ProjectDependencyResolver.Options(true, false));
+                        Path staleShim = repoRoot.resolve(".skill-manager/bin/cli/stale-tool");
+                        Files.createDirectories(staleShim.getParent());
+                        Files.writeString(staleShim, "stale\n");
+
+                        ProjectSyncUseCase.Result result = new ProjectSyncUseCase(h.store(), null)
+                                .sync(project, new ProjectDependencyResolver.Options(true, false));
+
+                        assertEquals(1, result.bindingsRemoved(), "placeholder sync removes old project binding");
+                        assertFalse(Files.exists(staleShim), "generated child-store bin directory is cleared");
+                        assertTrue(Files.isRegularFile(repoRoot.resolve(".skill-manager/docs/sync-prompts/skill-manager.toml")),
+                                "project child doc is reinstalled");
+                        assertTrue(Files.isRegularFile(repoRoot.resolve("docs/agents/review.md")),
+                                "project doc binding is re-materialized");
+                        assertTrue(h.store().containsDocRepo("sync-prompts"),
+                                "parent store dependency remains installed");
+                        assertTrue(new ChildHomeRegistry(h.store()).exists("project:sync-project"),
+                                "parent child-home registry is recreated");
+                        assertEquals("sync-project", result.resolved().lock().projectName(),
+                                "project lock is rewritten");
+                    }
+                })
                 .test("preinstalled unit with wrong kind is rejected before skip", () -> {
                     try (TestHarness h = TestHarness.create()) {
                         h.seedUnit("kind-conflict", UnitKind.SKILL);

@@ -282,6 +282,15 @@ commands:
       parent_home_id:
         type: SkillManagerHomeId
         tla: parent_home
+  SyncProjectRealization:
+    action: SyncProjectRealization
+    fields:
+      project_id:
+        type: ProjectId
+        tla: project
+      child_home_id:
+        type: ChildHomeId
+        tla: home
 
 results:
   ProjectResult:
@@ -297,6 +306,7 @@ ports:
       instantiate_child_home_from_harness: {command: InstantiateChildHomeFromHarness, result: ProjectResult}
       scaffold_project_child_home: {command: ScaffoldProjectChildHome, result: ProjectResult}
       resolve_project_profile: {command: ResolveProjectProfile, result: ProjectResult}
+      sync_project_realization: {command: SyncProjectRealization, result: ProjectResult}
 
 invariants:
   - CliInstalledRecordsTrackStore
