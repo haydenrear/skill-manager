@@ -144,6 +144,7 @@ adapter_plan:
     - SkillManagerCli.resolve_project_libs
     - SkillManagerCli.instantiate_child_home_from_harness
     - SkillManagerCli.scaffold_project_child_home
+    - SkillManagerCli.sync_project_realization
   desired_adapters:
     - ProjectManifestAdapter
     - ProjectDependencyResolverAdapter
@@ -151,6 +152,7 @@ adapter_plan:
     - ProjectLibResolverAdapter
     - ChildHomeHarnessAdapter
     - ProjectChildHomeScaffolderAdapter
+    - ProjectSyncAdapter
     - SkillManagerSkillDocsAdapter
     - ProjectProfileResolverAdapter
 

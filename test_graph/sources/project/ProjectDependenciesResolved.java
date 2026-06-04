@@ -64,6 +64,8 @@ public class ProjectDependenciesResolved {
 
             ProcessRecord resolve = run(ctx, "resolve", home, repoRoot, sm,
                     "project", "resolve", "--skip-gateway", "--project-dir", projectDir.toString());
+            ProcessRecord sync = run(ctx, "sync", home, repoRoot, sm,
+                    "project", "sync", "--skip-gateway", "--project-dir", projectDir.toString());
             ProcessRecord show = run(ctx, "show", home, repoRoot, sm,
                     "project", "show", "tg-resolved-project");
             ProcessRecord remove = run(ctx, "remove-claimed", home, repoRoot, sm,
@@ -109,8 +111,12 @@ public class ProjectDependenciesResolved {
             boolean showResolved = show.exitCode() == 0
                     && readLog(ctx, "show").contains("resolved:")
                     && readLog(ctx, "show").contains("bindings:");
+            boolean syncPlaceholder = sync.exitCode() == 0
+                    && readLog(ctx, "sync").contains("project sync is a placeholder")
+                    && readLog(ctx, "sync").contains("uninstall/reinstall placeholder");
 
             boolean pass = resolve.exitCode() == 0
+                    && syncPlaceholder
                     && showResolved
                     && lockWritten
                     && lockHasParent
@@ -134,8 +140,10 @@ public class ProjectDependenciesResolved {
                     ? NodeResult.pass("project.dependencies.resolved")
                     : NodeResult.fail("project.dependencies.resolved",
                             "resolve=" + resolve.exitCode()
+                                    + " sync=" + sync.exitCode()
                                     + " show=" + show.exitCode()
                                     + " remove=" + remove.exitCode()
+                                    + " syncPlaceholder=" + syncPlaceholder
                                     + " lockWritten=" + lockWritten
                                     + " lockParent=" + lockHasParent
                                     + " lockChild=" + lockHasChild
@@ -154,9 +162,11 @@ public class ProjectDependenciesResolved {
                                     + " projectionsUseChildStore=" + projectionsUseChildStore
                                     + " removeBlocked=" + removeBlocked))
                     .process(resolve)
+                    .process(sync)
                     .process(show)
                     .process(remove)
                     .assertion("resolve_command_ok", resolve.exitCode() == 0)
+                    .assertion("project_sync_placeholder_ok", syncPlaceholder)
                     .assertion("show_reports_lock_counts", showResolved)
                     .assertion("project_lock_written", lockWritten)
                     .assertion("lock_records_direct_and_transitive_units",
@@ -171,6 +181,7 @@ public class ProjectDependenciesResolved {
                     .assertion("project_agent_projections_point_at_child_store", projectionsUseChildStore)
                     .assertion("plain_remove_blocked_by_project_lock", removeBlocked)
                     .metric("resolveExitCode", resolve.exitCode())
+                    .metric("syncExitCode", sync.exitCode())
                     .metric("showExitCode", show.exitCode())
                     .metric("removeExitCode", remove.exitCode())
                     .publish("projectName", "tg-resolved-project")

@@ -5,6 +5,7 @@ import dev.skillmanager.model.SkillProjectParser;
 import dev.skillmanager.mcp.GatewayConfig;
 import dev.skillmanager.project.ProjectDependencyResolver;
 import dev.skillmanager.project.ProjectLibResolver;
+import dev.skillmanager.project.ProjectSyncUseCase;
 import dev.skillmanager.project.SkillProjectRegistration;
 import dev.skillmanager.project.SkillProjectRegistry;
 import dev.skillmanager.store.SkillStore;
@@ -22,6 +23,7 @@ import java.util.concurrent.Callable;
         subcommands = {
                 ProjectCommand.RegisterCmd.class,
                 ProjectCommand.ResolveCmd.class,
+                ProjectCommand.SyncCmd.class,
                 ProjectCommand.ShowCmd.class,
                 ProjectCommand.ListCmd.class,
                 ProjectCommand.ProfilesCmd.class
@@ -150,6 +152,71 @@ public final class ProjectCommand {
                 Log.info("  child:     %s", result.childHome().layout().childSkillManagerHome());
                 Log.info("  lock:      %s", result.registration().registrationDir()
                         .resolve(dev.skillmanager.project.SkillProjectLock.FILENAME));
+            }
+            return 0;
+        }
+    }
+
+    @Command(name = "sync",
+            description = "Placeholder project sync: uninstall and reinstall the project realization.")
+    public static final class SyncCmd implements Callable<Integer> {
+
+        @Option(names = "--project-dir",
+                description = "Project root. Defaults to the current working directory.")
+        String projectDir;
+
+        @Option(names = "--manifest",
+                description = "Explicit project manifest path. Defaults to skill-project.toml, then skill-manager-project.toml.")
+        String manifest;
+
+        @Option(names = "--skip-gateway",
+                description = "Skip gateway startup/registration; useful for local fixture validation.")
+        boolean skipGateway;
+
+        @Option(names = "--profile",
+                description = "Named project profile to sync as a concrete project harness.")
+        String profile;
+
+        @Option(names = "--json", description = "Emit machine-readable JSON.")
+        boolean json;
+
+        @Override
+        public Integer call() throws Exception {
+            SkillStore store = SkillStore.defaultStore();
+            store.init();
+            Path root = projectDir == null || projectDir.isBlank()
+                    ? Path.of(System.getProperty("user.dir"))
+                    : Path.of(projectDir);
+            root = root.toAbsolutePath().normalize();
+            SkillProject project = manifest == null || manifest.isBlank()
+                    ? SkillProjectParser.load(root)
+                    : SkillProjectParser.loadManifest(resolveManifestPath(root, manifest), root);
+            project = project.withProfile(profile);
+            GatewayConfig gw = skipGateway ? null : GatewayConfig.resolve(store, null);
+            ProjectSyncUseCase.Result result = new ProjectSyncUseCase(store, gw)
+                    .sync(project, new ProjectDependencyResolver.Options(true, !skipGateway));
+            if (json) {
+                System.out.println("""
+                        {"name":"%s","profile":"%s","mode":"placeholder-uninstall-reinstall","bindingsRemoved":%d,"clearedPaths":%d,"installed":%d,"resolved":%d,"childHome":"%s"}"""
+                        .formatted(
+                                esc(result.resolved().registration().name()),
+                                esc(project.activeProfile() == null ? "" : project.activeProfile()),
+                                result.bindingsRemoved(),
+                                result.clearedPaths().size(),
+                                result.resolved().installed().size(),
+                                result.resolved().lock().resolvedUnits().size(),
+                                esc(result.resolved().childHome().layout().childSkillManagerHome().toString())));
+            } else {
+                Log.warn("project sync is a placeholder: uninstalling and reinstalling the project realization; "
+                        + "further work is needed for incremental project sync");
+                Log.ok("synced project %s", result.resolved().registration().name());
+                if (project.activeProfile() != null) Log.info("  profile:          %s", project.activeProfile());
+                Log.info("  mode:             uninstall/reinstall placeholder");
+                Log.info("  bindings removed: %d", result.bindingsRemoved());
+                Log.info("  cleared paths:    %d", result.clearedPaths().size());
+                Log.info("  installed:        %d", result.resolved().installed().size());
+                Log.info("  resolved:         %d", result.resolved().lock().resolvedUnits().size());
+                Log.info("  child:            %s", result.resolved().childHome().layout().childSkillManagerHome());
             }
             return 0;
         }
