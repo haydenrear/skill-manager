@@ -1,18 +1,16 @@
 package dev.skillmanager.lifecycle;
 
+import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 /**
  * Skills that ship in-tree with the skill-manager CLI itself — installed
- * by {@code OnboardCommand} from {@code SKILL_MANAGER_INSTALL_DIR/<dir>/}
- * rather than fetched from a git remote, so they have no {@code .git/}
- * in the store and would otherwise carry permanent
- * {@link dev.skillmanager.source.InstalledUnit.ErrorKind#NEEDS_GIT_MIGRATION}.
- *
- * <p>Suppression is a workaround. The real fix tracked in
- * <a href="https://github.com/haydenrear/skill-manager/issues/44">#44</a>
- * is to publish each one to its own repo so they go through the normal
- * github-source install path. Once that ships, this allowlist goes away.
+ * by {@code OnboardCommand} either from their GitHub repos or from local
+ * checkout directories under {@code SKILL_MANAGER_INSTALL_DIR}. Local
+ * onboard still records the GitHub remote for these units so later
+ * {@code skill-manager sync} can fetch from the real upstream instead
+ * of treating the install path as the source of truth.
  *
  * <p>Names match {@code [skill].name} from the manifest (the directory
  * is {@code skill-manager-skill/}, but the published name is
@@ -22,9 +20,27 @@ public final class BundledSkills {
 
     private BundledSkills() {}
 
-    private static final Set<String> NAMES = Set.of("skill-manager", "skill-publisher", "skill-dev-skill");
+    private static final Map<String, String> GITHUB_COORDS = Map.of(
+            "skill-manager", "github:haydenrear/skill-manager-skill",
+            "skill-publisher", "github:haydenrear/skill-publisher-skill",
+            "skill-dev-skill", "github:haydenrear/skill-dev-skill"
+    );
+
+    private static final Set<String> NAMES = GITHUB_COORDS.keySet();
 
     public static boolean isBundled(String skillName) {
         return skillName != null && NAMES.contains(skillName);
+    }
+
+    public static Optional<String> githubCoord(String skillName) {
+        return Optional.ofNullable(GITHUB_COORDS.get(skillName));
+    }
+
+    public static Optional<String> githubUrl(String skillName) {
+        return githubCoord(skillName).map(coord -> {
+            String body = coord.substring("github:".length());
+            String url = "https://github.com/" + body;
+            return url.endsWith(".git") ? url : url + ".git";
+        });
     }
 }

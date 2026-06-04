@@ -1,5 +1,6 @@
 package dev.skillmanager.effects;
 
+import dev.skillmanager.lifecycle.BundledSkills;
 import dev.skillmanager.resolve.ResolvedGraph;
 import dev.skillmanager.source.GitOps;
 import dev.skillmanager.source.InstalledUnit;
@@ -7,6 +8,7 @@ import dev.skillmanager.source.UnitStore;
 import dev.skillmanager.util.Log;
 
 import java.nio.file.Path;
+import java.util.Optional;
 
 /**
  * Walks a freshly-committed {@link ResolvedGraph} and writes
@@ -39,9 +41,13 @@ public final class SourceProvenanceRecorder {
                 String origin;
                 String hash = null;
                 String gitRef = null;
+                Optional<String> bundledUrl = bundledGithubUrl(r);
+                if (!GitOps.isGitRepo(unitDir) && bundledUrl.isPresent()) {
+                    GitOps.initLocalSnapshot(unitDir, bundledUrl.get());
+                }
                 if (GitOps.isGitRepo(unitDir)) {
                     kind = InstalledUnit.Kind.GIT;
-                    String resolvedUrl = gitUrlFromSource(r.source());
+                    String resolvedUrl = bundledUrl.orElse(gitUrlFromSource(r.source()));
                     if (resolvedUrl != null) {
                         GitOps.setOrigin(unitDir, resolvedUrl);
                         origin = resolvedUrl;
@@ -69,6 +75,13 @@ public final class SourceProvenanceRecorder {
                 Log.warn("could not record source provenance for %s: %s", r.name(), ex.getMessage());
             }
         }
+    }
+
+    private static Optional<String> bundledGithubUrl(ResolvedGraph.Resolved r) {
+        if (r.sourceKind() != ResolvedGraph.SourceKind.LOCAL) {
+            return Optional.empty();
+        }
+        return BundledSkills.githubUrl(r.name());
     }
 
     private static InstalledUnit.InstallSource mapInstallSource(ResolvedGraph.SourceKind sk) {

@@ -55,6 +55,23 @@ public final class GitOps {
         return run(dir, List.of("git", "remote", "add", "origin", url)).exit == 0;
     }
 
+    public static boolean initLocalSnapshot(Path dir, String originUrl) {
+        if (!Files.isDirectory(dir) || originUrl == null || originUrl.isBlank()) return false;
+        Result init = run(dir, List.of("git", "init", "-b", "main", "--quiet"));
+        if (init.exit != 0) {
+            init = run(dir, List.of("git", "init", "--quiet"));
+            if (init.exit != 0) return false;
+            run(dir, List.of("git", "symbolic-ref", "HEAD", "refs/heads/main"));
+        }
+        if (!setOrigin(dir, originUrl)) return false;
+        if (run(dir, List.of("git", "add", "-A")).exit != 0) return false;
+        Result commit = run(dir, List.of("git",
+                "-c", "user.email=skill-manager@localhost",
+                "-c", "user.name=skill-manager",
+                "commit", "--quiet", "-m", "skill-manager local onboard snapshot"));
+        return commit.exit == 0 || headHash(dir) != null;
+    }
+
     public static String porcelainStatus(Path dir) {
         Result r = run(dir, List.of("git", "status", "--porcelain"));
         return r.exit == 0 ? r.stdout : "";
@@ -167,16 +184,23 @@ public final class GitOps {
     }
 
     public static MergeOutcome mergeFetchHead(Path dir) {
+        return mergeFetchHead(dir, false);
+    }
+
+    public static MergeOutcome mergeFetchHead(Path dir, boolean allowUnrelatedHistories) {
         // Identity must be supplied via `-c` overrides — fresh clones under
         // SKILL_MANAGER_HOME inherit no global git identity, and on
         // ephemeral runners (CI, containers) `user.email`/`user.name` are
         // unset globally. Without them a non-fast-forward merge fails to
         // create the merge commit with `fatal: empty ident name not allowed`
         // and rc=1, even though there are no conflicts. Mirrors `stashAll`.
-        Result merge = run(dir, List.of("git",
+        java.util.ArrayList<String> argv = new java.util.ArrayList<>(List.of("git",
                 "-c", "user.email=skill-manager@localhost",
                 "-c", "user.name=skill-manager",
-                "merge", "--no-edit", "FETCH_HEAD"));
+                "merge", "--no-edit"));
+        if (allowUnrelatedHistories) argv.add("--allow-unrelated-histories");
+        argv.add("FETCH_HEAD");
+        Result merge = run(dir, argv);
         if (merge.exit == 0) return new MergeOutcome(true, List.of(), merge.stdout);
         List<String> conflicted = unmergedFiles(dir);
         if (conflicted.isEmpty()) mergeAbort(dir);
