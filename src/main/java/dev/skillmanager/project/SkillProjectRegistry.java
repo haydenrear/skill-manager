@@ -125,6 +125,12 @@ public final class SkillProjectRegistry {
         return Optional.of(SkillProjectParser.loadManifest(manifest, reg.projectRoot()));
     }
 
+    public void delete(String name) throws IOException {
+        requireSafeName(name);
+        Path dir = store.projectsDir().resolve(name);
+        if (Files.exists(dir)) Fs.deleteRecursive(dir);
+    }
+
     private static void requireSafeName(String name) throws IOException {
         if (name == null || !name.matches("[A-Za-z0-9][A-Za-z0-9._-]*")) {
             throw new IOException("Invalid project name for registry path: " + name);

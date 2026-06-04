@@ -5,6 +5,7 @@ import dev.skillmanager.model.SkillProjectParser;
 import dev.skillmanager.mcp.GatewayConfig;
 import dev.skillmanager.project.ProjectDependencyResolver;
 import dev.skillmanager.project.ProjectLibResolver;
+import dev.skillmanager.project.ProjectRemoveUseCase;
 import dev.skillmanager.project.ProjectSyncUseCase;
 import dev.skillmanager.project.SkillProjectRegistration;
 import dev.skillmanager.project.SkillProjectRegistry;
@@ -24,6 +25,7 @@ import java.util.concurrent.Callable;
                 ProjectCommand.RegisterCmd.class,
                 ProjectCommand.ResolveCmd.class,
                 ProjectCommand.SyncCmd.class,
+                ProjectCommand.RemoveCmd.class,
                 ProjectCommand.ShowCmd.class,
                 ProjectCommand.ListCmd.class,
                 ProjectCommand.ProfilesCmd.class
@@ -217,6 +219,75 @@ public final class ProjectCommand {
                 Log.info("  installed:        %d", result.resolved().installed().size());
                 Log.info("  resolved:         %d", result.resolved().lock().resolvedUnits().size());
                 Log.info("  child:            %s", result.resolved().childHome().layout().childSkillManagerHome());
+            }
+            return 0;
+        }
+    }
+
+    @Command(name = "remove",
+            description = "Remove a project registration and generated project realization without uninstalling shared units.")
+    public static final class RemoveCmd implements Callable<Integer> {
+
+        @Parameters(index = "0", arity = "0..1", description = "Registered project name. Defaults to --project-dir/current project.")
+        String name;
+
+        @Option(names = "--project-dir",
+                description = "Project root. Defaults to the current working directory when name is omitted.")
+        String projectDir;
+
+        @Option(names = "--manifest",
+                description = "Explicit project manifest path. Defaults to skill-project.toml, then skill-manager-project.toml.")
+        String manifest;
+
+        @Option(names = "--profile",
+                description = "Named project profile to remove.")
+        String profile;
+
+        @Option(names = "--skip-gateway",
+                description = "Skip gateway access while removing project bindings.")
+        boolean skipGateway;
+
+        @Option(names = "--json", description = "Emit machine-readable JSON.")
+        boolean json;
+
+        @Override
+        public Integer call() throws Exception {
+            SkillStore store = SkillStore.defaultStore();
+            store.init();
+            GatewayConfig gw = skipGateway ? null : GatewayConfig.resolve(store, null);
+            ProjectRemoveUseCase remover = new ProjectRemoveUseCase(store, gw);
+            ProjectRemoveUseCase.Result result;
+            if (name != null && !name.isBlank()) {
+                result = remover.remove(name);
+            } else {
+                Path root = projectDir == null || projectDir.isBlank()
+                        ? Path.of(System.getProperty("user.dir"))
+                        : Path.of(projectDir);
+                root = root.toAbsolutePath().normalize();
+                SkillProject project = manifest == null || manifest.isBlank()
+                        ? SkillProjectParser.load(root)
+                        : SkillProjectParser.loadManifest(resolveManifestPath(root, manifest), root);
+                project = project.withProfile(profile);
+                result = remover.remove(project);
+            }
+
+            if (json) {
+                System.out.println("""
+                        {"name":"%s","profile":"%s","childHomeId":"%s","bindingsRemoved":%d,"clearedPaths":%d,"registrationRemoved":%s}"""
+                        .formatted(
+                                esc(result.projectName()),
+                                esc(result.profile() == null ? "" : result.profile()),
+                                esc(result.childHomeId()),
+                                result.bindingsRemoved(),
+                                result.clearedPaths().size(),
+                                result.registrationRemoved()));
+            } else {
+                Log.ok("removed project %s", result.projectName());
+                if (result.profile() != null) Log.info("  profile:              %s", result.profile());
+                Log.info("  child-home id:        %s", result.childHomeId());
+                Log.info("  bindings removed:     %d", result.bindingsRemoved());
+                Log.info("  generated paths gone: %d", result.clearedPaths().size());
+                Log.info("  registration removed: %s", result.registrationRemoved());
             }
             return 0;
         }

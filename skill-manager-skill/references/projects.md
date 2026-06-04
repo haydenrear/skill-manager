@@ -89,6 +89,10 @@ by hand.
 
 Use the owning CLI flow to remove generated state:
 
+- `skill-manager project remove <name>` or
+  `skill-manager project remove --project-dir <project>` for project
+  registrations, child-home claims, generated child-store state, and
+  project-managed bindings.
 - `skill-manager harness rm <id>` for harness child homes.
 - Re-run `skill-manager project resolve` after removing project
   dependencies from the manifest so stale child units and claims are

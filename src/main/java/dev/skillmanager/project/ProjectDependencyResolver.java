@@ -19,6 +19,8 @@ import dev.skillmanager.model.HarnessUnit;
 import dev.skillmanager.model.SkillProject;
 import dev.skillmanager.model.UnitKind;
 import dev.skillmanager.model.UnitReference;
+import dev.skillmanager.resolve.Resolver;
+import dev.skillmanager.resolve.TransitiveFailures;
 import dev.skillmanager.source.UnitStore;
 import dev.skillmanager.store.SkillStore;
 
@@ -66,8 +68,9 @@ public final class ProjectDependencyResolver {
         SkillProjectRegistration registration = new SkillProjectRegistry(store).register(project);
         SkillProjectLockStore lockStore = new SkillProjectLockStore(store);
         SkillProjectLock previousLock = lockStore.read(project.registryName()).orElse(null);
-        List<String> installed = installMissing(project, opts);
-        List<SkillProjectLock.ResolvedUnit> resolvedUnits = collectResolvedUnits(project, installed);
+        InstalledProjectUnits installed = installMissing(project, opts);
+        List<SkillProjectLock.ResolvedUnit> resolvedUnits =
+                collectResolvedUnits(project, installed.directNames());
         ProjectChildHomeScaffolder.Result childHome =
                 new ProjectChildHomeScaffolder(store).scaffold(project, resolvedUnits);
         List<SkillProjectLock.ProjectBinding> projectBindings =
@@ -85,15 +88,27 @@ public final class ProjectDependencyResolver {
         return new Result(
                 registration,
                 lock,
-                installed,
+                installed.installed(),
                 projectBindings.stream().map(SkillProjectLock.ProjectBinding::bindingId).toList(),
                 childHome);
     }
 
-    private List<String> installMissing(SkillProject project, Options options) throws IOException {
+    private record InstalledProjectUnits(List<String> installed, List<String> directNames) {}
+
+    private InstalledProjectUnits installMissing(SkillProject project, Options options) throws IOException {
         List<String> installed = new ArrayList<>();
+        List<String> directNames = new ArrayList<>();
         for (SkillProject.ProjectUnitRef ref : installableRefs(project)) {
             String expectedName = unitName(ref.reference(), project.projectRoot()).orElse(null);
+            if (expectedName == null) {
+                expectedName = installedNameFromOrigin(ref).orElse(null);
+            }
+            if (expectedName == null) {
+                expectedName = discoverTopLevelName(ref, project.projectRoot());
+            }
+            if (expectedName != null) {
+                directNames.add(expectedName);
+            }
             if (expectedName != null && store.containsUnit(expectedName)) {
                 validateExpectedKind(ref, expectedName);
                 continue;
@@ -118,14 +133,13 @@ public final class ProjectDependencyResolver {
                         + ", errors=" + report.errorCount());
             }
             installed.addAll(report.committed());
-            expectedName = expectedName == null ? unitName(ref.reference(), project.projectRoot()).orElse(null) : expectedName;
             if (expectedName != null && !store.containsUnit(expectedName)) {
                 throw new IOException("project dependency " + ref.alias()
                         + " did not install expected unit " + expectedName);
             }
             validateExpectedKind(ref, expectedName);
         }
-        return installed;
+        return new InstalledProjectUnits(List.copyOf(installed), List.copyOf(directNames));
     }
 
     private List<SkillProjectLock.ProjectBinding> materializeProjectBindings(
@@ -224,7 +238,7 @@ public final class ProjectDependencyResolver {
 
     private List<SkillProjectLock.ResolvedUnit> collectResolvedUnits(
             SkillProject project,
-            List<String> newlyInstalled
+            List<String> directResolvedNames
     ) throws IOException {
         Map<String, SkillProjectLock.ResolvedUnit> rows = new LinkedHashMap<>();
         Set<String> directNames = new LinkedHashSet<>();
@@ -235,7 +249,7 @@ public final class ProjectDependencyResolver {
             directNames.add(name.get());
             queue.add(name.get());
         }
-        for (String name : newlyInstalled == null ? List.<String>of() : newlyInstalled) {
+        for (String name : directResolvedNames == null ? List.<String>of() : directResolvedNames) {
             if (name == null || name.isBlank()) continue;
             directNames.add(name);
             queue.add(name);
@@ -280,6 +294,47 @@ public final class ProjectDependencyResolver {
         if (installed.get().kind() != ref.kind()) {
             throw new IOException("project dependency " + ref.alias()
                     + " expected " + ref.kind() + " but installed " + installed.get().kind());
+        }
+    }
+
+    private Optional<String> installedNameFromOrigin(SkillProject.ProjectUnitRef ref) throws IOException {
+        Coord c = ref.reference().coord();
+        if (c instanceof Coord.SubElement s) c = s.unitCoord();
+        if (!(c instanceof Coord.DirectGit)) return Optional.empty();
+
+        String expected = expectedOrigin(ref);
+        if (expected == null || expected.isBlank()) return Optional.empty();
+        UnitStore unitStore = new UnitStore(store);
+        for (AgentUnit unit : store.listInstalledUnits().units()) {
+            Optional<dev.skillmanager.source.InstalledUnit> record = unitStore.read(unit.name());
+            if (record.isEmpty()) continue;
+            if (sameOrigin(expected, record.get().origin())) return Optional.of(unit.name());
+        }
+        return Optional.empty();
+    }
+
+    private String discoverTopLevelName(SkillProject.ProjectUnitRef ref, Path baseRoot) throws IOException {
+        InstallSource source = installSource(ref, baseRoot);
+        var outcome = new Resolver(store).resolveAll(
+                List.of(new Resolver.Coord(source.source(), source.version())));
+        try {
+            if (!outcome.failures().isEmpty()) {
+                int code = TransitiveFailures.exitCodeFor(outcome.failures());
+                String reason = outcome.failures().get(0).reason();
+                throw new IOException("project dependency resolve failed for "
+                        + ref.alias() + " (" + ref.source() + "), exit=" + code
+                        + ", errors=" + outcome.failures().size()
+                        + ": " + reason);
+            }
+            if (outcome.graph().resolved().isEmpty()) return null;
+            var topLevel = outcome.graph().resolved().get(0);
+            if (topLevel.unit().kind() != ref.kind()) {
+                throw new IOException("project dependency " + ref.alias()
+                        + " expected " + ref.kind() + " but resolved " + topLevel.unit().kind());
+            }
+            return topLevel.name();
+        } finally {
+            outcome.graph().cleanup();
         }
     }
 

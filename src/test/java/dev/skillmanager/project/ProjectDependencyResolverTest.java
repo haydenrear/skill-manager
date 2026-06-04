@@ -347,6 +347,51 @@ public final class ProjectDependencyResolverTest {
                                 .contains("git-project"), "direct git unit is project-claimed");
                     }
                 })
+                .test("preinstalled direct git dependency is projected into project child home", () -> {
+                    try (TestHarness h = TestHarness.create()) {
+                        Path repoRoot = Files.createTempDirectory("project-resolve-preinstalled-git-");
+                        Path gitSkill = UnitFixtures.scaffoldSkill(
+                                repoRoot.resolve("git-skill"), "preinstalled-git-skill", DepSpec.empty()).sourcePath();
+                        gitInitCommit(gitSkill);
+
+                        Path firstRoot = repoRoot.resolve("first-project");
+                        Path secondRoot = repoRoot.resolve("second-project");
+                        Files.createDirectories(firstRoot);
+                        Files.createDirectories(secondRoot);
+                        SkillProject first = project(firstRoot, """
+                                [project]
+                                name = "first-git-project"
+
+                                [skills.git]
+                                source = "git+file://%s"
+                                """.formatted(gitSkill));
+                        resolver(h).resolve(first, new ProjectDependencyResolver.Options(true, false));
+                        assertTrue(h.store().containsUnit("preinstalled-git-skill"), "parent unit installed");
+
+                        SkillProject second = project(secondRoot, """
+                                [project]
+                                name = "second-git-project"
+
+                                [skills.git]
+                                source = "git+file://%s"
+                                """.formatted(gitSkill));
+                        ProjectDependencyResolver.Result result = resolver(h).resolve(
+                                second,
+                                new ProjectDependencyResolver.Options(true, false));
+
+                        assertEquals(0, result.installed().size(), "second project reuses parent install");
+                        assertTrue(result.lock().resolvedUnits().stream()
+                                        .anyMatch(u -> u.name().equals("preinstalled-git-skill")
+                                                && u.direct()),
+                                "second project lock records direct git skill");
+                        assertTrue(Files.isRegularFile(secondRoot
+                                        .resolve(".skill-manager/skills/preinstalled-git-skill/SKILL.md")),
+                                "preinstalled git skill projected into child home");
+                        assertTrue(new ChildHomeRegistry(h.store()).childHomesClaiming("preinstalled-git-skill")
+                                        .contains("project:second-git-project"),
+                                "parent child-home registry claims reused git skill");
+                    }
+                })
                 .test("direct git doc and harness dependencies materialize project bindings", () -> {
                     try (TestHarness h = TestHarness.create()) {
                         Path repoRoot = Files.createTempDirectory("project-resolve-direct-git-bindings-");
@@ -418,6 +463,39 @@ public final class ProjectDependencyResolverTest {
 
                         assertEquals("9.9.9", h.store().loadUnit("revision-skill").orElseThrow().version(),
                                 "project dependency revision selects the declared git ref");
+                    }
+                })
+                .test("project remove clears registration child home and bindings but keeps parent unit", () -> {
+                    try (TestHarness h = TestHarness.create()) {
+                        Path repoRoot = Files.createTempDirectory("project-remove-");
+                        Path doc = scaffoldDocRepo(repoRoot.resolve("units"), "remove-prompts");
+                        SkillProject project = project(repoRoot, """
+                                [project]
+                                name = "remove-project"
+
+                                [docs.prompts]
+                                source = "%s"
+                                """.formatted(doc));
+                        resolver(h).resolve(project, new ProjectDependencyResolver.Options(true, false));
+                        assertTrue(Files.isRegularFile(repoRoot.resolve("docs/agents/review.md")),
+                                "doc binding exists before remove");
+                        assertTrue(Files.isRegularFile(repoRoot.resolve(".skill-manager/docs/remove-prompts/skill-manager.toml")),
+                                "child doc exists before remove");
+
+                        ProjectRemoveUseCase.Result removed = new ProjectRemoveUseCase(h.store(), null)
+                                .remove(project);
+
+                        assertEquals(1, removed.bindingsRemoved(), "one project binding removed");
+                        assertFalse(Files.isDirectory(h.store().projectsDir().resolve("remove-project")),
+                                "project registration removed");
+                        assertFalse(new ChildHomeRegistry(h.store()).exists("project:remove-project"),
+                                "child-home registry removed");
+                        assertFalse(Files.exists(repoRoot.resolve(".skill-manager/docs/remove-prompts")),
+                                "child store doc projection removed");
+                        assertFalse(Files.exists(repoRoot.resolve("docs/agents/review.md")),
+                                "managed doc copy removed");
+                        assertTrue(h.store().containsDocRepo("remove-prompts"),
+                                "parent doc repo remains installed");
                     }
                 })
                 .runAll();

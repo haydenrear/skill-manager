@@ -136,6 +136,11 @@ public final class SkillProjectLockStore {
         return Optional.of(new SkillProjectLock(name, profile, manifestFile, resolvedAt, units, bindings, envs, libs));
     }
 
+    public void delete(String projectName) throws IOException {
+        Path lockPath = path(projectName);
+        if (Files.exists(lockPath)) Files.delete(lockPath);
+    }
+
     public List<SkillProjectLock> list() throws IOException {
         if (!Files.isDirectory(store.projectsDir())) return List.of();
         List<SkillProjectLock> out = new ArrayList<>();
