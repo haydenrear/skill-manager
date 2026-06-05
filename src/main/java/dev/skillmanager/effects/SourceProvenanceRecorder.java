@@ -41,7 +41,7 @@ public final class SourceProvenanceRecorder {
                 String origin;
                 String hash = null;
                 String gitRef = null;
-                Optional<String> bundledUrl = bundledGithubUrl(r);
+                Optional<String> bundledUrl = bundledGithubUrl(r, ctx);
                 if (!GitOps.isGitRepo(unitDir) && bundledUrl.isPresent()) {
                     GitOps.initLocalSnapshot(unitDir, bundledUrl.get());
                 }
@@ -77,8 +77,13 @@ public final class SourceProvenanceRecorder {
         }
     }
 
-    private static Optional<String> bundledGithubUrl(ResolvedGraph.Resolved r) {
+    private static Optional<String> bundledGithubUrl(ResolvedGraph.Resolved r, EffectContext ctx) {
         if (r.sourceKind() != ResolvedGraph.SourceKind.LOCAL) {
+            return Optional.empty();
+        }
+        String sourcePath = filePathFromSource(r.source());
+        if (sourcePath == null
+                || !ctx.isRegisteredBundledLocalSource(r.name(), Path.of(sourcePath))) {
             return Optional.empty();
         }
         return BundledSkills.githubUrl(r.name());

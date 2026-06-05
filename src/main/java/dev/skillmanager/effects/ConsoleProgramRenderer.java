@@ -164,6 +164,15 @@ public final class ConsoleProgramRenderer implements ProgramRenderer {
             }
             case ContextFact.AgentMcpConfigFailed x ->
                     Log.warn("%s: mcp config update failed — %s", x.agentId(), x.message());
+            case ContextFact.ProjectSynced x -> {
+                String profile = x.profile() == null || x.profile().isBlank()
+                        ? ""
+                        : " (profile=" + x.profile() + ")";
+                Log.ok("project-sync %s%s — %d resolved unit(s), %d binding(s) refreshed",
+                        x.projectName(), profile, x.resolvedUnits(), x.bindingsRemoved());
+            }
+            case ContextFact.ProjectSyncFailed x ->
+                    Log.warn("project-sync %s failed — %s", x.projectName(), x.message());
 
             // ---- sync git ----
             case ContextFact.SyncGitUpToDate x -> Log.ok("%s: already at %s", x.skillName(), x.label());
@@ -497,6 +506,8 @@ public final class ConsoleProgramRenderer implements ProgramRenderer {
                     + "`skill-manager sync " + skillName + "`";
             case TRANSITIVE_RESOLVE_FAILED -> "fix the failing transitive (see the listed reason) "
                     + "and re-run: skill-manager sync " + skillName;
+            case PROJECT_SYNC_FAILED -> "fix the listed project sync failure, then re-run: "
+                    + "skill-manager sync " + skillName;
         };
     }
 

@@ -42,6 +42,7 @@ public class ProjectDependenciesResolved {
                 Path child = scaffoldSkill(units, "tg-child", "");
                 Path parent = scaffoldSkill(units, "tg-parent",
                         "skill_references = [\"" + child + "\"]\n");
+                Path plugin = scaffoldPlugin(units, "tg-plugin");
                 Path prompts = scaffoldDocRepo(units, "tg-prompts");
                 Path harness = scaffoldHarness(units, "tg-harness", child, prompts);
                 Files.writeString(projectDir.resolve("skill-project.toml"), """
@@ -51,12 +52,15 @@ public class ProjectDependenciesResolved {
                         [skills.parent]
                         source = "%s"
 
+                        [plugins.helper]
+                        source = "%s"
+
                         [docs.prompts]
                         source = "%s"
 
                         [harnesses.default]
                         source = "%s"
-                        """.formatted(parent, prompts, harness));
+                        """.formatted(parent, plugin, prompts, harness));
             } catch (Exception e) {
                 return NodeResult.fail("project.dependencies.resolved",
                         "could not scaffold project resolve fixture: " + e.getMessage());
@@ -79,16 +83,21 @@ public class ProjectDependenciesResolved {
             String lockText = read(lock);
             boolean lockHasParent = lockText.contains("name = \"tg-parent\"");
             boolean lockHasChild = lockText.contains("name = \"tg-child\"");
+            boolean lockHasPlugin = lockText.contains("name = \"tg-plugin\"");
             boolean lockHasDoc = lockText.contains("name = \"tg-prompts\"");
             boolean lockHasHarness = lockText.contains("name = \"tg-harness\"");
 
             boolean parentInstalled = Files.isRegularFile(Path.of(home, "skills", "tg-parent", "SKILL.md"));
             boolean childInstalled = Files.isRegularFile(Path.of(home, "skills", "tg-child", "SKILL.md"));
+            boolean pluginInstalled = Files.isRegularFile(Path.of(home, "plugins", "tg-plugin", ".claude-plugin/plugin.json"));
             boolean docInstalled = Files.isRegularFile(Path.of(home, "docs", "tg-prompts", "skill-manager.toml"));
             boolean harnessInstalled = Files.isRegularFile(Path.of(home, "harnesses", "tg-harness", "harness.toml"));
             boolean docCopy = Files.isRegularFile(projectDir.resolve("docs/agents/review.md"));
             boolean claudeImport = read(projectDir.resolve("CLAUDE.md")).contains("docs/agents/review.md");
+            boolean claudeHarnessSkill = Files.exists(projectDir.resolve(".claude/skills/tg-child"));
             boolean codexHarnessSkill = Files.exists(projectDir.resolve(".codex/skills/tg-child"));
+            boolean geminiHarnessSkill = Files.exists(projectDir.resolve(".gemini/skills/tg-child"));
+            boolean claudePlugin = Files.exists(projectDir.resolve(".claude/plugins/tg-plugin"));
             Path childHome = projectDir.resolve(".skill-manager");
             boolean childHomeInitialized = Files.isDirectory(childHome)
                     && Files.isDirectory(projectDir.resolve(".codex"))
@@ -96,6 +105,7 @@ public class ProjectDependenciesResolved {
                     && Files.isDirectory(projectDir.resolve(".gemini"));
             boolean childUnits = Files.isRegularFile(childHome.resolve("skills/tg-child/SKILL.md"))
                     && Files.isRegularFile(childHome.resolve("skills/tg-parent/SKILL.md"))
+                    && Files.isRegularFile(childHome.resolve("plugins/tg-plugin/.claude-plugin/plugin.json"))
                     && Files.isRegularFile(childHome.resolve("docs/tg-prompts/skill-manager.toml"))
                     && Files.isRegularFile(childHome.resolve("harnesses/tg-harness/harness.toml"));
             Path childRecord = Path.of(home, "child-homes", "project_tg-resolved-project", "child-home.json");
@@ -105,10 +115,17 @@ public class ProjectDependenciesResolved {
                     && childRecordText.contains(childHome.toString())
                     && childRecordText.contains("tg-parent")
                     && childRecordText.contains("tg-child")
+                    && childRecordText.contains("tg-plugin")
                     && childRecordText.contains("tg-prompts")
                     && childRecordText.contains("tg-harness");
             boolean projectionsUseChildStore = pointsTo(projectDir.resolve(".codex/skills/tg-child"),
-                    childHome.resolve("skills/tg-child"));
+                    childHome.resolve("skills/tg-child"))
+                    && pointsTo(projectDir.resolve(".claude/skills/tg-child"),
+                            childHome.resolve("skills/tg-child"))
+                    && pointsTo(projectDir.resolve(".gemini/skills/tg-child"),
+                            childHome.resolve("skills/tg-child"))
+                    && pointsTo(projectDir.resolve(".claude/plugins/tg-plugin"),
+                            childHome.resolve("plugins/tg-plugin"));
             boolean removeBlocked = remove.exitCode() != 0 && readLog(ctx, "remove-claimed").contains("tg-resolved-project");
             boolean showResolved = show.exitCode() == 0
                     && readLog(ctx, "show").contains("resolved:")
@@ -127,13 +144,18 @@ public class ProjectDependenciesResolved {
             boolean childRegistryRemoved = !Files.exists(childRecord);
             boolean childHomeCleared = !Files.exists(childHome.resolve("skills/tg-child"))
                     && !Files.exists(childHome.resolve("skills/tg-parent"))
+                    && !Files.exists(childHome.resolve("plugins/tg-plugin"))
                     && !Files.exists(childHome.resolve("docs/tg-prompts"))
                     && !Files.exists(childHome.resolve("harnesses/tg-harness"));
             boolean projectBindingsRemoved = !Files.exists(projectDir.resolve("docs/agents/review.md"))
-                    && !Files.exists(projectDir.resolve(".codex/skills/tg-child"));
+                    && !Files.exists(projectDir.resolve(".claude/skills/tg-child"))
+                    && !Files.exists(projectDir.resolve(".codex/skills/tg-child"))
+                    && !Files.exists(projectDir.resolve(".gemini/skills/tg-child"))
+                    && !Files.exists(projectDir.resolve(".claude/plugins/tg-plugin"));
             boolean parentUnitsRemainAfterProjectRemove =
                     Files.isRegularFile(Path.of(home, "skills", "tg-parent", "SKILL.md"))
                             && Files.isRegularFile(Path.of(home, "skills", "tg-child", "SKILL.md"))
+                            && Files.isRegularFile(Path.of(home, "plugins", "tg-plugin", ".claude-plugin/plugin.json"))
                             && Files.isRegularFile(Path.of(home, "docs", "tg-prompts", "skill-manager.toml"))
                             && Files.isRegularFile(Path.of(home, "harnesses", "tg-harness", "harness.toml"));
 
@@ -144,15 +166,20 @@ public class ProjectDependenciesResolved {
                     && lockWritten
                     && lockHasParent
                     && lockHasChild
+                    && lockHasPlugin
                     && lockHasDoc
                     && lockHasHarness
                     && parentInstalled
                     && childInstalled
+                    && pluginInstalled
                     && docInstalled
                     && harnessInstalled
                     && docCopy
                     && claudeImport
+                    && claudeHarnessSkill
                     && codexHarnessSkill
+                    && geminiHarnessSkill
+                    && claudePlugin
                     && childHomeInitialized
                     && childUnits
                     && childRegistry
@@ -179,15 +206,20 @@ public class ProjectDependenciesResolved {
                                     + " lockWritten=" + lockWritten
                                     + " lockParent=" + lockHasParent
                                     + " lockChild=" + lockHasChild
+                                    + " lockPlugin=" + lockHasPlugin
                                     + " lockDoc=" + lockHasDoc
                                     + " lockHarness=" + lockHasHarness
                                     + " parentInstalled=" + parentInstalled
                                     + " childInstalled=" + childInstalled
+                                    + " pluginInstalled=" + pluginInstalled
                                     + " docInstalled=" + docInstalled
                                     + " harnessInstalled=" + harnessInstalled
                                     + " docCopy=" + docCopy
                                     + " claudeImport=" + claudeImport
+                                    + " claudeHarnessSkill=" + claudeHarnessSkill
                                     + " codexHarnessSkill=" + codexHarnessSkill
+                                    + " geminiHarnessSkill=" + geminiHarnessSkill
+                                    + " claudePlugin=" + claudePlugin
                                     + " childHomeInitialized=" + childHomeInitialized
                                     + " childUnits=" + childUnits
                                     + " childRegistry=" + childRegistry
@@ -211,11 +243,13 @@ public class ProjectDependenciesResolved {
                     .assertion("show_reports_lock_counts", showResolved)
                     .assertion("project_lock_written", lockWritten)
                     .assertion("lock_records_direct_and_transitive_units",
-                            lockHasParent && lockHasChild && lockHasDoc && lockHasHarness)
+                            lockHasParent && lockHasChild && lockHasPlugin && lockHasDoc && lockHasHarness)
                     .assertion("units_installed_in_home",
-                            parentInstalled && childInstalled && docInstalled && harnessInstalled)
+                            parentInstalled && childInstalled && pluginInstalled && docInstalled && harnessInstalled)
                     .assertion("doc_binding_materialized", docCopy && claudeImport)
-                    .assertion("harness_binding_materialized", codexHarnessSkill)
+                    .assertion("project_agent_skill_bindings_materialized",
+                            claudeHarnessSkill && codexHarnessSkill && geminiHarnessSkill)
+                    .assertion("project_agent_plugin_binding_materialized", claudePlugin)
                     .assertion("project_child_home_scaffolded", childHomeInitialized)
                     .assertion("project_child_home_units_projected", childUnits)
                     .assertion("parent_child_home_registry_claims_project_units", childRegistry)
@@ -256,6 +290,25 @@ public class ProjectDependenciesResolved {
                 description = "graph fixture"
                 %s
                 """.formatted(name, extraToml));
+        return dir;
+    }
+
+    private static Path scaffoldPlugin(Path root, String name) throws Exception {
+        Path dir = root.resolve(name);
+        Files.createDirectories(dir.resolve(".claude-plugin"));
+        Files.writeString(dir.resolve(".claude-plugin/plugin.json"), """
+                {
+                  "name": "%s",
+                  "version": "0.1.0",
+                  "description": "graph fixture plugin"
+                }
+                """.formatted(name));
+        Files.writeString(dir.resolve("skill-manager-plugin.toml"), """
+                [plugin]
+                name = "%s"
+                version = "0.1.0"
+                description = "graph fixture plugin"
+                """.formatted(name));
         return dir;
     }
 

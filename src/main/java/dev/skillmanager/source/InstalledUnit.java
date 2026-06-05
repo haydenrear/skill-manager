@@ -128,7 +128,14 @@ public record InstalledUnit(
          * credentials, restore a deleted local dep, etc.) without
          * digging through logs.
          */
-        TRANSITIVE_RESOLVE_FAILED
+        TRANSITIVE_RESOLVE_FAILED,
+        /**
+         * One or more registered skill projects that claim this unit could
+         * not be refreshed after a parent-home sync. Sync records this on
+         * the parent unit and keeps going so other project realizations still
+         * get a chance to rebuild.
+         */
+        PROJECT_SYNC_FAILED
     }
 
     @JsonIgnore

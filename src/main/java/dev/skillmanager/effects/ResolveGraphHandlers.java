@@ -91,6 +91,7 @@ final class ResolveGraphHandlers {
                 }
                 publishedName = readSkillName(skillDir, spec.publishedName());
                 coord = skillDir.toString();
+                ctx.registerBundledLocalSource(publishedName, skillDir);
                 discoveryFacts.add(new ContextFact.BundledSkillFound(publishedName, coord));
             } else {
                 publishedName = spec.publishedName();

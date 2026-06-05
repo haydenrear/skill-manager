@@ -325,6 +325,7 @@ public final class Executor {
             case SkillEffect.InstallTools e -> List.of();
             case SkillEffect.InstallCli e -> List.of();
             case SkillEffect.RegisterMcp e -> List.of();
+            case SkillEffect.SyncClaimingProjects e -> List.of();
             // ---- bindings (ticket 49) ----
             case SkillEffect.CreateBinding e -> snapshotLedger(e.binding().unitName(), ctx);
             case SkillEffect.RemoveBinding e -> snapshotLedger(e.unitName(), ctx);
@@ -523,6 +524,7 @@ public final class Executor {
             case SkillEffect.InstallTools e -> List.of();
             case SkillEffect.InstallCli e -> List.of();
             case SkillEffect.UpdateUnitsLock e -> List.of();
+            case SkillEffect.SyncClaimingProjects e -> List.of();
             // ---- bindings (ticket 49) ----
             // Ledger writes are reversed by RestoreProjectionLedger captured
             // pre-state. Materialize captures its post-state compensation

@@ -9,6 +9,7 @@ import dev.skillmanager.store.SkillStore;
 import dev.skillmanager.store.UnitReadProblem;
 
 import java.io.IOException;
+import java.nio.file.Path;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -58,6 +59,13 @@ public final class EffectContext {
      * mutations are done.
      */
     private Map<String, Set<String>> preMcpDeps;
+
+    /**
+     * Exact local bundled-skill sources discovered by onboard. Provenance uses
+     * this allowlist to distinguish real onboard local sources from ordinary
+     * local units that happen to share bundled published names.
+     */
+    private final Map<String, Path> bundledLocalSources = new LinkedHashMap<>();
 
     /** Single user-facing renderer for this program-execution tree. */
     private final ProgramRenderer renderer;
@@ -114,6 +122,18 @@ public final class EffectContext {
         return preMcpDeps == null ? Map.of() : preMcpDeps;
     }
 
+    public void registerBundledLocalSource(String unitName, Path sourcePath) {
+        if (unitName == null || sourcePath == null) return;
+        bundledLocalSources.put(unitName, sourcePath.toAbsolutePath().normalize());
+    }
+
+    public boolean isRegisteredBundledLocalSource(String unitName, Path sourcePath) {
+        if (unitName == null || sourcePath == null) return false;
+        Path registered = bundledLocalSources.get(unitName);
+        if (registered == null) return false;
+        return registered.equals(sourcePath.toAbsolutePath().normalize());
+    }
+
     public List<ContextFact> unitReadProblemFacts(List<UnitReadProblem> problems) {
         return UnitReadProblemReporter.facts(problems);
     }
@@ -128,15 +148,20 @@ public final class EffectContext {
      * {@link SkillEffect.RunInstallPlan} reads it.
      */
     public Snapshot snapshot() {
-        return new Snapshot(plan, preMcpDeps);
+        return new Snapshot(plan, preMcpDeps, new LinkedHashMap<>(bundledLocalSources));
     }
 
     public void restore(Snapshot s) {
         this.plan = s.plan;
         this.preMcpDeps = s.preMcpDeps;
+        this.bundledLocalSources.clear();
+        this.bundledLocalSources.putAll(s.bundledLocalSources);
     }
 
-    public record Snapshot(InstallPlan plan, Map<String, Set<String>> preMcpDeps) {}
+    public record Snapshot(
+            InstallPlan plan,
+            Map<String, Set<String>> preMcpDeps,
+            Map<String, Path> bundledLocalSources) {}
 
     public void addError(String skill, InstalledUnit.ErrorKind kind, String message) throws IOException {
         sourceStore.addError(skill, kind, message);

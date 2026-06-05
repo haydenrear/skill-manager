@@ -2,10 +2,12 @@ package dev.skillmanager.project;
 
 import dev.skillmanager.app.InstallUseCase;
 import dev.skillmanager.bindings.Binding;
+import dev.skillmanager.bindings.BindingStore;
 import dev.skillmanager.bindings.BindingSource;
 import dev.skillmanager.bindings.ConflictPolicy;
 import dev.skillmanager.bindings.DocRepoBinder;
 import dev.skillmanager.bindings.HarnessInstantiator;
+import dev.skillmanager.bindings.ProjectionKind;
 import dev.skillmanager.effects.Executor;
 import dev.skillmanager.effects.Program;
 import dev.skillmanager.effects.SkillEffect;
@@ -29,6 +31,7 @@ import java.nio.file.Path;
 import java.time.Instant;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -74,7 +77,8 @@ public final class ProjectDependencyResolver {
         ProjectChildHomeScaffolder.Result childHome =
                 new ProjectChildHomeScaffolder(store).scaffold(project, resolvedUnits);
         List<SkillProjectLock.ProjectBinding> projectBindings =
-                materializeProjectBindings(project, childHome.layout(), childHome.childStore(), resolvedUnits);
+                materializeProjectBindings(project, childHome.layout(), childHome.childStore(),
+                        resolvedUnits, previousLock);
         SkillProjectLock lock = new SkillProjectLock(
                 project.registryName(),
                 project.activeProfile(),
@@ -146,10 +150,12 @@ public final class ProjectDependencyResolver {
             SkillProject project,
             dev.skillmanager.bindings.ChildHomeHarnessInstaller.Layout layout,
             SkillStore bindingSourceStore,
-            List<SkillProjectLock.ResolvedUnit> resolvedUnits
+            List<SkillProjectLock.ResolvedUnit> resolvedUnits,
+            SkillProjectLock previousLock
     ) throws IOException {
         List<Binding> bindings = new ArrayList<>();
         Path targetRoot = project.activeProfile() == null ? project.projectRoot() : layout.targetDir();
+        bindings.addAll(planProjectAgentBindings(project, layout, bindingSourceStore, targetRoot, resolvedUnits));
         for (SkillProject.ProjectUnitRef ref : project.docs()) {
             String docName = resolvedUnitName(project, ref, resolvedUnits);
             DocUnit doc = DocRepoParser.load(bindingSourceStore.unitDir(docName, UnitKind.DOC));
@@ -176,7 +182,7 @@ public final class ProjectDependencyResolver {
                     bindingSourceStore);
             bindings.addAll(plan.bindings());
         }
-        if (!bindings.isEmpty()) materialize(bindings);
+        reconcileMaterializedBindings(bindings, previousLock, layout, bindingSourceStore);
         List<SkillProjectLock.ProjectBinding> rows = new ArrayList<>();
         for (Binding b : bindings) {
             rows.add(new SkillProjectLock.ProjectBinding(
@@ -187,6 +193,105 @@ public final class ProjectDependencyResolver {
                     b.targetRoot().toString()));
         }
         return rows;
+    }
+
+    private List<Binding> planProjectAgentBindings(
+            SkillProject project,
+            dev.skillmanager.bindings.ChildHomeHarnessInstaller.Layout layout,
+            SkillStore bindingSourceStore,
+            Path targetRoot,
+            List<SkillProjectLock.ResolvedUnit> resolvedUnits
+    ) throws IOException {
+        List<Binding> bindings = new ArrayList<>();
+        for (SkillProjectLock.ResolvedUnit unit : projectAgentResolvedUnits(
+                bindingSourceStore, resolvedUnits)) {
+            String bindingId = project.childHomeId() + ":unit:" + unit.name();
+            Path source = bindingSourceStore.unitDir(unit.name(), unit.kind()).toAbsolutePath().normalize();
+            List<dev.skillmanager.bindings.Projection> projections =
+                    projectAgentProjections(bindingId, source, layout, unit);
+            if (projections.isEmpty()) continue;
+            bindings.add(new Binding(
+                    bindingId,
+                    unit.name(),
+                    unit.kind(),
+                    null,
+                    targetRoot,
+                    ConflictPolicy.OVERWRITE,
+                    BindingStore.nowIso(),
+                    BindingSource.PROFILE,
+                    projections));
+        }
+        return bindings;
+    }
+
+    private List<SkillProjectLock.ResolvedUnit> projectAgentResolvedUnits(
+            SkillStore bindingSourceStore,
+            List<SkillProjectLock.ResolvedUnit> resolvedUnits
+    ) throws IOException {
+        Map<String, SkillProjectLock.ResolvedUnit> byName = new LinkedHashMap<>();
+        for (SkillProjectLock.ResolvedUnit unit : resolvedUnits == null
+                ? List.<SkillProjectLock.ResolvedUnit>of()
+                : resolvedUnits) {
+            byName.put(unit.name(), unit);
+        }
+
+        ArrayDeque<String> queue = new ArrayDeque<>();
+        for (SkillProjectLock.ResolvedUnit unit : byName.values()) {
+            if (unit.direct() && (unit.kind() == UnitKind.SKILL || unit.kind() == UnitKind.PLUGIN)) {
+                queue.add(unit.name());
+            }
+        }
+
+        Map<String, SkillProjectLock.ResolvedUnit> selected = new LinkedHashMap<>();
+        Set<String> visited = new LinkedHashSet<>();
+        while (!queue.isEmpty()) {
+            String name = queue.removeFirst();
+            if (!visited.add(name)) continue;
+            SkillProjectLock.ResolvedUnit row = byName.get(name);
+            if (row == null) continue;
+            if (row.kind() == UnitKind.SKILL || row.kind() == UnitKind.PLUGIN) {
+                selected.put(row.name(), row);
+            }
+            AgentUnit unit = bindingSourceStore.loadUnit(row.name()).orElseThrow(() ->
+                    new IOException("project resolved unit is not installed in child store: " + row.name()));
+            for (UnitReference child : unit.references()) {
+                unitName(child, unit.sourcePath()).ifPresent(childName -> {
+                    if (byName.containsKey(childName) && !visited.contains(childName)) {
+                        queue.add(childName);
+                    }
+                });
+            }
+        }
+        return new ArrayList<>(selected.values());
+    }
+
+    private static List<dev.skillmanager.bindings.Projection> projectAgentProjections(
+            String bindingId,
+            Path source,
+            dev.skillmanager.bindings.ChildHomeHarnessInstaller.Layout layout,
+            SkillProjectLock.ResolvedUnit unit
+    ) {
+        return switch (unit.kind()) {
+            case SKILL -> List.of(
+                    new dev.skillmanager.bindings.Projection(
+                            bindingId, source,
+                            layout.claudeHome().resolve("skills").resolve(unit.name()),
+                            ProjectionKind.SYMLINK, null),
+                    new dev.skillmanager.bindings.Projection(
+                            bindingId, source,
+                            layout.codexHome().resolve("skills").resolve(unit.name()),
+                            ProjectionKind.SYMLINK, null),
+                    new dev.skillmanager.bindings.Projection(
+                            bindingId, source,
+                            layout.geminiHome().resolve("skills").resolve(unit.name()),
+                            ProjectionKind.SYMLINK, null));
+            case PLUGIN -> List.of(
+                    new dev.skillmanager.bindings.Projection(
+                            bindingId, source,
+                            layout.claudeHome().resolve("plugins").resolve(unit.name()),
+                            ProjectionKind.SYMLINK, null));
+            case DOC, HARNESS -> List.of();
+        };
     }
 
     private String resolvedUnitName(
@@ -210,14 +315,43 @@ public final class ProjectDependencyResolver {
                 + " name for " + ref.source());
     }
 
-    private void materialize(List<Binding> bindings) throws IOException {
+    private void reconcileMaterializedBindings(
+            List<Binding> desiredBindings,
+            SkillProjectLock previousLock,
+            dev.skillmanager.bindings.ChildHomeHarnessInstaller.Layout layout,
+            SkillStore bindingSourceStore
+    ) throws IOException {
         List<SkillEffect> effects = new ArrayList<>();
-        for (Binding b : bindings) {
+        Set<String> desiredIds = new LinkedHashSet<>();
+        for (Binding b : desiredBindings) desiredIds.add(b.bindingId());
+
+        if (previousLock != null && !previousLock.bindings().isEmpty()) {
+            BindingStore bindingStore = new BindingStore(store);
+            for (SkillProjectLock.ProjectBinding row : previousLock.bindings()) {
+                if (desiredIds.contains(row.bindingId())) continue;
+                BindingStore.LocatedBinding located =
+                        bindingStore.findById(row.bindingId()).orElse(null);
+                if (located != null) {
+                    List<dev.skillmanager.bindings.Projection> projections =
+                            new ArrayList<>(located.binding().projections());
+                    Collections.reverse(projections);
+                    for (var p : projections) {
+                        effects.add(new SkillEffect.UnmaterializeProjection(p));
+                    }
+                    effects.add(new SkillEffect.RemoveBinding(located.unitName(), located.binding().bindingId()));
+                    continue;
+                }
+                addMissingLedgerProjectAgentRemoval(effects, row, layout, bindingSourceStore);
+            }
+        }
+
+        for (Binding b : desiredBindings) {
             for (var p : b.projections()) {
                 effects.add(new SkillEffect.MaterializeProjection(p, b.conflictPolicy()));
             }
             effects.add(new SkillEffect.CreateBinding(b));
         }
+        if (effects.isEmpty()) return;
         Program<Integer> program = new Program<>(
                 "project-bind-" + UUID.randomUUID(),
                 effects,
@@ -234,6 +368,32 @@ public final class ProjectDependencyResolver {
             throw new IOException("project binding materialization failed with "
                     + outcome.result() + " failed effect(s)");
         }
+    }
+
+    private void addMissingLedgerProjectAgentRemoval(
+            List<SkillEffect> effects,
+            SkillProjectLock.ProjectBinding row,
+            dev.skillmanager.bindings.ChildHomeHarnessInstaller.Layout layout,
+            SkillStore bindingSourceStore
+    ) throws IOException {
+        if (!row.bindingId().contains(":unit:")) return;
+        if (row.unitKind() != UnitKind.SKILL && row.unitKind() != UnitKind.PLUGIN) return;
+
+        Path source = bindingSourceStore.unitDir(row.unitName(), row.unitKind()).toAbsolutePath().normalize();
+        List<dev.skillmanager.bindings.Projection> ownedProjections = new ArrayList<>();
+        for (dev.skillmanager.bindings.Projection projection : ProjectRemoveUseCase.projectAgentProjections(
+                row.bindingId(), source, layout, row.unitName(), row.unitKind())) {
+            if (ProjectRemoveUseCase.isProjectOwnedSymlink(projection.destPath(), source)) {
+                ownedProjections.add(projection);
+            }
+        }
+        if (ownedProjections.isEmpty()) return;
+
+        Collections.reverse(ownedProjections);
+        for (var projection : ownedProjections) {
+            effects.add(new SkillEffect.UnmaterializeProjection(projection));
+        }
+        effects.add(new SkillEffect.RemoveBinding(row.unitName(), row.bindingId()));
     }
 
     private List<SkillProjectLock.ResolvedUnit> collectResolvedUnits(

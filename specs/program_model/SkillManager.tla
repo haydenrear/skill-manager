@@ -139,6 +139,9 @@ ScriptsFor(units) ==
 PackagesFor(units) ==
   {pkg \in Packages : \E u \in units: <<u, pkg>> \in UnitPackageEdges}
 
+ChildHomeShimsFor(payload) ==
+  ToolsFor(McpServersFor(payload)) \cup PackagesFor(payload) \cup ScriptsFor(payload)
+
 HarnessUnitsFor(template) ==
   {u \in Units : <<template, u>> \in HarnessTemplateEdges}
 
@@ -1004,7 +1007,7 @@ InstantiateChildHomeFromHarness(home, template) ==
   LET needed_units == DependencyClosure(HarnessUnitsFor(template))
       child_units == needed_units \cup {template}
       child_servers == McpServersFor(needed_units)
-      child_tools == ToolsFor(child_servers)
+      child_tools == ChildHomeShimsFor(needed_units)
   IN
   IF template \notin cli_harness_templates
      \/ ~(needed_units \subseteq cli_store_units)
@@ -1031,7 +1034,7 @@ InstantiateChildHomeFromHarness(home, template) ==
 ScaffoldProjectChildHome(project, home, parent_home) ==
   LET needed_units == ProjectChildHomePayload(project)
       child_servers == McpServersFor(needed_units)
-      child_tools == ToolsFor(child_servers)
+      child_tools == ChildHomeShimsFor(needed_units)
   IN
   IF project \notin project_model.registrations
      \/ <<project, home>> \notin ProjectChildHomeEdges
@@ -1066,7 +1069,7 @@ ResolveProjectProfile(project, profile, home, parent_home) ==
       harnesses == ProjectProfileHarnessTemplates(project, profile)
       child_payload == ProjectProfileChildHomePayload(project, profile)
       child_servers == McpServersFor(child_payload)
-      child_tools == ToolsFor(child_servers)
+      child_tools == ChildHomeShimsFor(child_payload)
   IN
   IF project \notin project_model.registrations
      \/ <<project, profile>> \notin project_model.profile_declarations
@@ -1116,6 +1119,45 @@ ResolveProjectProfile(project, profile, home, parent_home) ==
                     server_registry_units, server_versions, server_packages,
                     server_authenticated_users >>
 
+\* @command SyncClaimingProjectChildHomes
+\* @result ProjectResult
+\* @port SkillManagerCli.sync_claiming_project_child_homes
+SyncClaimingProjectChildHomes(u) ==
+  LET claiming_pairs ==
+        {pair \in project_model.project_child_homes :
+          u \in ProjectChildHomePayload(pair[1])}
+      homes == {pair[2] : pair \in claiming_pairs}
+      payload ==
+        UNION {ProjectChildHomePayload(pair[1]) : pair \in claiming_pairs}
+      child_servers == McpServersFor(payload)
+      child_tools == ChildHomeShimsFor(payload)
+  IN
+  IF u \notin cli_store_units
+  THEN
+    /\ result' = Reject("NOT_INSTALLED")
+    /\ project_model' = project_model
+    /\ UNCHANGED state_vars
+  ELSE IF claiming_pairs = {}
+  THEN
+    /\ result' = Ok
+    /\ project_model' = project_model
+    /\ UNCHANGED state_vars
+  ELSE IF ~(payload \subseteq (cli_store_units \cup cli_doc_repos \cup cli_harness_templates))
+  THEN
+    \* Automatic parent sync refresh is non-destructive on project refresh failure.
+    /\ result' = Reject("PROJECT_CHILD_HOME_PARENT_GAP")
+    /\ project_model' = project_model
+    /\ UNCHANGED state_vars
+  ELSE
+    /\ project_model' =
+        [project_model EXCEPT
+          !.child_home_agent_configs = @ \cup (homes \X Agents),
+          !.child_home_units = @ \cup (homes \X payload),
+          !.child_home_mcp_servers = @ \cup (homes \X child_servers),
+          !.child_home_tool_shims = @ \cup (homes \X child_tools)]
+    /\ result' = Ok
+    /\ UNCHANGED state_vars
+
 CoreNext ==
   \/ \E user \in Users: ServerAuthenticate(user)
   \/ \E user \in Users, unit \in Units, version \in Versions:
@@ -1154,6 +1196,7 @@ Next ==
   \/ \E project \in Projects, profile \in Profiles, home \in ChildHomes,
         parent_home \in SkillManagerHomes:
       ResolveProjectProfile(project, profile, home, parent_home)
+  \/ \E u \in Units: SyncClaimingProjectChildHomes(u)
 
 \* @invariant CliInstalledRecordsTrackStore
 CliInstalledRecordsTrackStore ==
@@ -1361,9 +1404,15 @@ ChildHomeMcpServersComeFromUnits ==
 ChildHomeToolShimsComeFromMcpServers ==
   \A pair \in project_model.child_home_tool_shims:
     /\ pair[1] \in project_model.child_homes
-    /\ \E server_pair \in project_model.child_home_mcp_servers:
-        /\ server_pair[1] = pair[1]
-        /\ <<server_pair[2], pair[2]>> \in ServerToolEdges
+    /\ \/ \E server_pair \in project_model.child_home_mcp_servers:
+            /\ server_pair[1] = pair[1]
+            /\ <<server_pair[2], pair[2]>> \in ServerToolEdges
+       \/ \E unit_pair \in project_model.child_home_units:
+            /\ unit_pair[1] = pair[1]
+            /\ <<unit_pair[2], pair[2]>> \in UnitPackageEdges
+       \/ \E unit_pair \in project_model.child_home_units:
+            /\ unit_pair[1] = pair[1]
+            /\ <<unit_pair[2], pair[2]>> \in UnitScriptEdges
 
 \* @invariant HaltImpliesHaltContinuation
 HaltImpliesHaltContinuation ==

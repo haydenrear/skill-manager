@@ -98,6 +98,9 @@ public sealed interface ContextFact {
     record AgentMcpConfigChanged(String agentId, McpWriter.ConfigChange change, String configPath)
             implements ContextFact {}
     record AgentMcpConfigFailed(String agentId, String message) implements ContextFact {}
+    record ProjectSynced(String projectName, String profile, int bindingsRemoved, int resolvedUnits)
+            implements ContextFact {}
+    record ProjectSyncFailed(String projectName, String message) implements ContextFact {}
 
     // ---- Sync git ----
     record SyncGitUpToDate(String skillName, String label) implements ContextFact {}

@@ -74,6 +74,7 @@ public sealed interface SkillEffect permits
         SkillEffect.InstallCli,
         SkillEffect.RegisterMcp,
         SkillEffect.UpdateUnitsLock,
+        SkillEffect.SyncClaimingProjects,
         SkillEffect.RejectIfTopLevelInstalled,
         SkillEffect.CheckInstallPolicyGate,
         SkillEffect.CreateBinding,
@@ -628,6 +629,27 @@ public sealed interface SkillEffect permits
      */
     record UpdateUnitsLock(dev.skillmanager.lock.UnitsLock target, java.nio.file.Path path)
             implements SkillEffect {}
+
+    /**
+     * Best-effort project child-home refresh after a parent-home sync. The
+     * effect finds registered project locks that claim any synced unit and
+     * re-runs project sync for each unique project so child `.skill-manager`
+     * homes mirror newly installed CLI/MCP shims and updated projected units.
+     *
+     * <p>Failures are advisory: the handler records
+     * {@link dev.skillmanager.source.InstalledUnit.ErrorKind#PROJECT_SYNC_FAILED}
+     * on the synced parent unit(s), emits one {@link ContextFact.ProjectSyncFailed}
+     * per failed project, and returns PARTIAL without halting the parent sync.
+     */
+    record SyncClaimingProjects(
+            List<String> unitNames,
+            GatewayConfig gateway,
+            boolean withGateway
+    ) implements SkillEffect {
+        public SyncClaimingProjects {
+            unitNames = unitNames == null ? List.of() : List.copyOf(unitNames);
+        }
+    }
 
     // ============================================================ bindings (ticket 49)
 
