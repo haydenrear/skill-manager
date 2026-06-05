@@ -1,6 +1,7 @@
 package dev.skillmanager.commands;
 
 import dev.skillmanager.bindings.Binding;
+import dev.skillmanager.bindings.BindingIdAllocator;
 import dev.skillmanager.bindings.BindingSource;
 import dev.skillmanager.bindings.BindingStore;
 import dev.skillmanager.bindings.ConflictPolicy;
@@ -115,13 +116,17 @@ public final class BindCommand implements Callable<Integer> {
 
         Path tr = Path.of(expandHome(targetRoot)).toAbsolutePath().normalize();
         ConflictPolicy cp = resolvePolicy(policy, unitKind == UnitKind.DOC);
+        BindingIdAllocator ids = BindingIdAllocator.fromStore(new BindingStore(store));
 
         List<SkillEffect> effects = new ArrayList<>();
         if (unitKind == UnitKind.DOC) {
             // Doc-repo: defer to DocRepoBinder for the fan-out.
             DocUnit du = DocRepoParser.load(store.unitDir(unitName, UnitKind.DOC));
             DocRepoBinder.Plan plan = DocRepoBinder.plan(
-                    du, tr, subElement, cp, BindingSource.EXPLICIT);
+                    du, tr, subElement, cp, BindingSource.EXPLICIT,
+                    docSource -> bindingId != null && !bindingId.isBlank() && subElement != null
+                            ? bindingId
+                            : ids.reserveForExplicitDoc(tr, docSource.id()));
             for (Binding b : plan.bindings()) {
                 for (Projection p : b.projections()) {
                     effects.add(new SkillEffect.MaterializeProjection(p, cp));
@@ -132,7 +137,7 @@ public final class BindCommand implements Callable<Integer> {
             // Whole-unit SKILL / PLUGIN binding.
             String id = bindingId != null && !bindingId.isBlank()
                     ? bindingId
-                    : BindingStore.newBindingId();
+                    : ids.reserveForExplicitUnit(tr, unitName);
             Path source = store.unitDir(unitName, unitKind);
             Path dest = tr.resolve(unitName);
             Projection sym = new Projection(id, source, dest, ProjectionKind.SYMLINK, null);

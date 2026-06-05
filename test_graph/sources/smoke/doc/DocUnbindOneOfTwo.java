@@ -53,8 +53,7 @@ public class DocUnbindOneOfTwo {
 
             // Find the binding for sub-element "review-stance" in the
             // ledger; capture its id. The JSON shape is
-            // bindings[N].subElement = "review-stance" with
-            // bindings[N].bindingId = "<ULID>".
+            // bindings[N].subElement = "review-stance".
             Path ledger = Path.of(home, "installed", "hello-doc-repo.projections.json");
             String ledgerJson;
             try {
@@ -140,7 +139,7 @@ public class DocUnbindOneOfTwo {
         int idx = json.indexOf("\"subElement\" : \"" + subElementId + "\"");
         if (idx < 0) idx = json.indexOf("\"subElement\":\"" + subElementId + "\"");
         if (idx < 0) return null;
-        Pattern p = Pattern.compile("\"bindingId\"\\s*:\\s*\"([0-9A-HJKMNP-TV-Z]{26})\"");
+        Pattern p = Pattern.compile("\"bindingId\"\\s*:\\s*\"([^\"]+)\"");
         Matcher m = p.matcher(json.substring(0, idx));
         String last = null;
         while (m.find()) last = m.group(1);

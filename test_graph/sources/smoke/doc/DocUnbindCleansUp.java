@@ -9,7 +9,6 @@ import com.hayden.testgraphsdk.sdk.ProcessRecord;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
@@ -23,9 +22,8 @@ import java.util.regex.Pattern;
  *       {@code <home>/installed/hello-doc-repo.projections.json}.</li>
  * </ul>
  *
- * <p>Pulls the binding id out of {@code bindings list} via a regex on
- * the {@code 01HA...}/{@code 01KR...}-shaped ULID strings the
- * {@link dev.skillmanager.bindings.BindingStore} mints.
+ * <p>Pulls the binding id out of the projection ledger row for the
+ * {@code review-stance} source.
  */
 public class DocUnbindCleansUp {
     static final NodeSpec SPEC = NodeSpec.of("doc.unbind.cleans.up")
@@ -57,15 +55,11 @@ public class DocUnbindCleansUp {
                 return NodeResult.fail("doc.unbind.cleans.up",
                         "could not read ledger " + ledgerPath + ": " + e.getMessage());
             }
-            // ULID shape from BindingStore.newBindingId: 26 chars,
-            // Crockford-base32 (0-9, A-Z minus I L O U). First match wins.
-            Matcher m = Pattern.compile("\"bindingId\"\\s*:\\s*\"([0-9A-HJKMNP-TV-Z]{26})\"")
-                    .matcher(ledgerJson);
-            if (!m.find()) {
+            String bindingId = findBindingIdBySubElement(ledgerJson, "review-stance");
+            if (bindingId == null) {
                 return NodeResult.fail("doc.unbind.cleans.up",
                         "could not find bindingId in ledger JSON");
             }
-            String bindingId = m.group(1);
 
             ProcessBuilder pb = new ProcessBuilder(sm.toString(), "unbind", bindingId);
             pb.environment().put("SKILL_MANAGER_HOME", home);
@@ -110,5 +104,16 @@ public class DocUnbindCleansUp {
                     .assertion("ledger_row_removed", ledgerRowGone)
                     .metric("exitCode", rc);
         });
+    }
+
+    private static String findBindingIdBySubElement(String json, String subElementId) {
+        int idx = json.indexOf("\"subElement\" : \"" + subElementId + "\"");
+        if (idx < 0) idx = json.indexOf("\"subElement\":\"" + subElementId + "\"");
+        if (idx < 0) return null;
+        var m = Pattern.compile("\"bindingId\"\\s*:\\s*\"([^\"]+)\"")
+                .matcher(json.substring(0, idx));
+        String last = null;
+        while (m.find()) last = m.group(1);
+        return last;
     }
 }

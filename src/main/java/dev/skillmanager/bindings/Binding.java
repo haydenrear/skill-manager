@@ -20,7 +20,7 @@ import java.util.List;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record Binding(
-        /** ULID; stable across operations. */
+        /** Stable id used by unbind/rebind and projection back-pointers. */
         String bindingId,
         String unitName,
         UnitKind unitKind,
