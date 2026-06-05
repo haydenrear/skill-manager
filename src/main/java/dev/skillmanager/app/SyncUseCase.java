@@ -19,6 +19,7 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -125,7 +126,7 @@ public final class SyncUseCase {
                                                      List<UnitReadProblem> initialReadProblems) throws IOException {
         Program<?> stage1 = buildStage1(store, gw, options, targets, initialReadProblems);
         java.util.function.Function<EffectContext, Program<?>> stage2 =
-                ctx -> buildStage2(ctx, gw, options);
+                ctx -> buildStage2(ctx, gw, options, targets);
         return new StagedProgram<>("sync-" + UUID.randomUUID(), stage1, stage2, SyncUseCase::decode);
     }
 
@@ -173,7 +174,12 @@ public final class SyncUseCase {
      * reload manifests from disk per name so updated dep declarations on
      * existing skills are picked up.
      */
-    private static Program<?> buildStage2(EffectContext ctx, GatewayConfig gw, Options options) {
+    private static Program<?> buildStage2(
+            EffectContext ctx,
+            GatewayConfig gw,
+            Options options,
+            List<Target> targets
+    ) {
         SkillStore store = ctx.store();
         // Kind-aware listing — covers skills under skills/ and plugins
         // under plugins/. Skill-only listInstalled() (legacy) misses
@@ -249,10 +255,26 @@ public final class SyncUseCase {
         // are reflected on the NEXT sync — their installed-records will
         // have been written by RecordSourceProvenance by then.
         effects.add(buildLockUpdate(store, liveUnits));
+        List<String> projectSyncUnits = projectSyncUnitNames(targets);
+        if (!projectSyncUnits.isEmpty()) {
+            effects.add(new SkillEffect.SyncClaimingProjects(
+                    projectSyncUnits,
+                    options.withMcp() ? gw : null,
+                    options.withMcp()));
+        }
 
         Program<?> p = new Program<>("sync-stage2-" + UUID.randomUUID(), effects, receipts -> null);
         for (SkillEffect cleanup : alwaysAfter) p = p.withFinally(cleanup);
         return p;
+    }
+
+    private static List<String> projectSyncUnitNames(List<Target> targets) {
+        LinkedHashSet<String> out = new LinkedHashSet<>();
+        for (Target t : targets == null ? List.<Target>of() : targets) {
+            String name = t.skillName();
+            if (name != null && !name.isBlank()) out.add(name);
+        }
+        return List.copyOf(out);
     }
 
     /**
@@ -313,10 +335,11 @@ public final class SyncUseCase {
                     || r.effect() instanceof SkillEffect.SyncFromLocalDir;
             boolean isMcpRegister = r.effect() instanceof SkillEffect.RegisterMcp;
             boolean isAgentSync = r.effect() instanceof SkillEffect.SyncAgents;
+            boolean isProjectSync = r.effect() instanceof SkillEffect.SyncClaimingProjects;
             if (r.status() == EffectStatus.FAILED) {
                 errorCount++;
             } else if (r.status() == EffectStatus.PARTIAL
-                    && (isSyncTarget || isMcpRegister || isAgentSync)) {
+                    && (isSyncTarget || isMcpRegister || isAgentSync || isProjectSync)) {
                 errorCount++;
             }
             for (ContextFact f : r.facts()) {

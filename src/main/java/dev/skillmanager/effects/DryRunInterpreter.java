@@ -319,6 +319,9 @@ public final class DryRunInterpreter implements ProgramInterpreter {
             case SkillEffect.SyncHarness e ->
                     Log.step("[%d] harness sync %s instance=%s", n,
                             e.harnessName(), e.instanceId());
+            case SkillEffect.SyncClaimingProjects e ->
+                    Log.step("[%d] sync %d unit(s)' claiming project(s)",
+                            n, e.unitNames().size());
         }
     }
 }

@@ -21,6 +21,6 @@ public enum BindingSource {
     DEFAULT_AGENT,
     /** Created as part of a harness-template instantiation. */
     HARNESS,
-    /** Created as part of a profile sync. */
+    /** Created as part of a profile or project sync. */
     PROFILE
 }

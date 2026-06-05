@@ -5,13 +5,19 @@ import dev.skillmanager._lib.fixtures.UnitFixtures;
 import dev.skillmanager._lib.harness.TestHarness;
 import dev.skillmanager._lib.test.Tests;
 import dev.skillmanager.app.RemoveUseCase;
+import dev.skillmanager.app.SyncUseCase;
 import dev.skillmanager.bindings.BindingStore;
 import dev.skillmanager.bindings.ChildHomeRegistry;
+import dev.skillmanager.commands.SyncCommand;
+import dev.skillmanager.effects.Executor;
+import dev.skillmanager.effects.SkillEffect;
 import dev.skillmanager.model.SkillProject;
 import dev.skillmanager.model.SkillProjectParser;
 import dev.skillmanager.model.UnitKind;
+import dev.skillmanager.source.InstalledUnit;
 
 import java.nio.file.Files;
+import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -54,6 +60,100 @@ public final class ProjectDependencyResolverTest {
                                 .collect(Collectors.toSet());
                         assertTrue(locked.contains("project-parent"), "lock records direct skill");
                         assertTrue(locked.contains("project-child"), "lock records transitive skill");
+                        assertTrue(Files.exists(repoRoot.resolve(".codex/skills/project-parent")),
+                                "direct project skill projected into Codex home");
+                        assertTrue(Files.exists(repoRoot.resolve(".gemini/skills/project-child")),
+                                "transitive project skill projected into Gemini home");
+                    }
+                })
+                .test("materializes direct skills and plugins into project agent homes", () -> {
+                    try (TestHarness h = TestHarness.create()) {
+                        Path repoRoot = Files.createTempDirectory("project-resolve-agent-homes-");
+                        Path skill = UnitFixtures.scaffoldSkill(
+                                repoRoot.resolve("units"), "plain-project-skill", DepSpec.empty()).sourcePath();
+                        Path plugin = UnitFixtures.scaffoldPlugin(
+                                repoRoot.resolve("units"), "plain-project-plugin", DepSpec.empty()).sourcePath();
+                        SkillProject project = project(repoRoot, """
+                                [project]
+                                name = "agent-home-project"
+
+                                [skills.plain]
+                                source = "%s"
+
+                                [plugins.plain]
+                                source = "%s"
+                                """.formatted(skill, plugin));
+
+                        ProjectDependencyResolver.Result result = resolver(h).resolve(
+                                project,
+                                new ProjectDependencyResolver.Options(true, false));
+
+                        assertTrue(Files.exists(repoRoot.resolve(".claude/skills/plain-project-skill")),
+                                "Claude project skill projection exists");
+                        assertTrue(Files.exists(repoRoot.resolve(".codex/skills/plain-project-skill")),
+                                "Codex project skill projection exists");
+                        assertTrue(Files.exists(repoRoot.resolve(".gemini/skills/plain-project-skill")),
+                                "Gemini project skill projection exists");
+                        assertTrue(Files.exists(repoRoot.resolve(".claude/plugins/plain-project-plugin")),
+                                "Claude project plugin projection exists");
+                        assertTrue(Files.isRegularFile(repoRoot
+                                        .resolve(".skill-manager/plugins/plain-project-plugin/.claude-plugin/plugin.json")),
+                                "plugin projected into project child store");
+                        assertTrue(pointsTo(
+                                        repoRoot.resolve(".codex/skills/plain-project-skill"),
+                                        repoRoot.resolve(".skill-manager/skills/plain-project-skill")),
+                                "skill projection points at project child store");
+                        assertTrue(pointsTo(
+                                        repoRoot.resolve(".claude/plugins/plain-project-plugin"),
+                                        repoRoot.resolve(".skill-manager/plugins/plain-project-plugin")),
+                                "plugin projection points at project child store");
+                        assertTrue(result.bindingIds().contains("project:agent-home-project:unit:plain-project-skill"),
+                                "direct skill binding is locked");
+                        assertTrue(result.bindingIds().contains("project:agent-home-project:unit:plain-project-plugin"),
+                                "direct plugin binding is locked");
+                        assertTrue(new BindingStore(h.store()).read("plain-project-skill")
+                                        .findById("project:agent-home-project:unit:plain-project-skill")
+                                        .isPresent(),
+                                "direct skill binding ledger recorded");
+                    }
+                })
+                .test("project remove prunes agent links even when projection ledger is missing", () -> {
+                    try (TestHarness h = TestHarness.create()) {
+                        Path repoRoot = Files.createTempDirectory("project-remove-missing-ledger-");
+                        Path skill = UnitFixtures.scaffoldSkill(
+                                repoRoot.resolve("units"), "missing-ledger-skill", DepSpec.empty()).sourcePath();
+                        SkillProject project = project(repoRoot, """
+                                [project]
+                                name = "missing-ledger-project"
+
+                                [skills.demo]
+                                source = "%s"
+                                """.formatted(skill));
+                        resolver(h).resolve(project, new ProjectDependencyResolver.Options(true, false));
+
+                        assertTrue(Files.exists(repoRoot.resolve(".claude/skills/missing-ledger-skill")),
+                                "Claude projection exists before remove");
+                        assertTrue(Files.exists(repoRoot.resolve(".codex/skills/missing-ledger-skill")),
+                                "Codex projection exists before remove");
+                        assertTrue(Files.exists(repoRoot.resolve(".gemini/skills/missing-ledger-skill")),
+                                "Gemini projection exists before remove");
+
+                        new BindingStore(h.store()).delete("missing-ledger-skill");
+                        Path replacedProjection = repoRoot.resolve(".codex/skills/missing-ledger-skill");
+                        Files.delete(replacedProjection);
+                        Files.createDirectories(replacedProjection);
+                        Files.writeString(replacedProjection.resolve("user.txt"), "user content\n");
+                        ProjectRemoveUseCase.Result removed = new ProjectRemoveUseCase(h.store(), null)
+                                .remove(project);
+
+                        assertEquals(1, removed.bindingsRemoved(),
+                                "lock-backed fallback counts the project unit binding");
+                        assertFalse(Files.exists(repoRoot.resolve(".claude/skills/missing-ledger-skill")),
+                                "Claude projection removed without ledger");
+                        assertTrue(Files.isRegularFile(replacedProjection.resolve("user.txt")),
+                                "ledger fallback does not delete user-owned replacement");
+                        assertFalse(Files.exists(repoRoot.resolve(".gemini/skills/missing-ledger-skill")),
+                                "Gemini projection removed without ledger");
                     }
                 })
                 .test("binds selected doc repo source into project root", () -> {
@@ -244,6 +344,8 @@ public final class ProjectDependencyResolverTest {
                                 source = "%s"
                                 """.formatted(first));
                         resolver(h).resolve(project, new ProjectDependencyResolver.Options(true, false));
+                        assertTrue(Files.exists(repoRoot.resolve(".codex/skills/first-child-skill")),
+                                "first skill projected into project agent home");
 
                         project = project(repoRoot, """
                                 [project]
@@ -258,11 +360,58 @@ public final class ProjectDependencyResolverTest {
                                 "removed project dependency pruned from child store");
                         assertTrue(Files.isRegularFile(repoRoot.resolve(".skill-manager/skills/second-child-skill/SKILL.md")),
                                 "new project dependency present in child store");
+                        assertFalse(Files.exists(repoRoot.resolve(".codex/skills/first-child-skill")),
+                                "removed project dependency pruned from Codex home");
+                        assertTrue(Files.exists(repoRoot.resolve(".codex/skills/second-child-skill")),
+                                "new project dependency projected into Codex home");
                         ChildHomeRegistry registry = new ChildHomeRegistry(h.store());
                         assertFalse(registry.childHomesClaiming("first-child-skill").contains("project:update-project"),
                                 "old unit is no longer claimed by project child home");
                         assertTrue(registry.childHomesClaiming("second-child-skill").contains("project:update-project"),
                                 "new unit is claimed by project child home");
+                    }
+                })
+                .test("re-resolve prunes old project agent links when ledger is missing", () -> {
+                    try (TestHarness h = TestHarness.create()) {
+                        Path repoRoot = Files.createTempDirectory("project-reresolve-missing-ledger-");
+                        Path first = UnitFixtures.scaffoldSkill(
+                                repoRoot.resolve("units"), "missing-ledger-reresolve-first", DepSpec.empty())
+                                .sourcePath();
+                        Path second = UnitFixtures.scaffoldSkill(
+                                repoRoot.resolve("units"), "missing-ledger-reresolve-second", DepSpec.empty())
+                                .sourcePath();
+                        SkillProject project = project(repoRoot, """
+                                [project]
+                                name = "reresolve-missing-ledger-project"
+
+                                [skills.first]
+                                source = "%s"
+                                """.formatted(first));
+                        resolver(h).resolve(project, new ProjectDependencyResolver.Options(true, false));
+
+                        new BindingStore(h.store()).delete("missing-ledger-reresolve-first");
+                        Path replacedProjection = repoRoot.resolve(".codex/skills/missing-ledger-reresolve-first");
+                        Files.delete(replacedProjection);
+                        Files.createDirectories(replacedProjection);
+                        Files.writeString(replacedProjection.resolve("user.txt"), "user content\n");
+
+                        project = project(repoRoot, """
+                                [project]
+                                name = "reresolve-missing-ledger-project"
+
+                                [skills.second]
+                                source = "%s"
+                                """.formatted(second));
+                        resolver(h).resolve(project, new ProjectDependencyResolver.Options(true, false));
+
+                        assertFalse(Files.exists(repoRoot.resolve(".claude/skills/missing-ledger-reresolve-first")),
+                                "removed dependency is pruned from Claude home without ledger");
+                        assertTrue(Files.isRegularFile(replacedProjection.resolve("user.txt")),
+                                "missing-ledger fallback does not delete user-owned replacement");
+                        assertFalse(Files.exists(repoRoot.resolve(".gemini/skills/missing-ledger-reresolve-first")),
+                                "removed dependency is pruned from Gemini home without ledger");
+                        assertTrue(Files.exists(repoRoot.resolve(".codex/skills/missing-ledger-reresolve-second")),
+                                "new dependency is projected into Codex home");
                     }
                 })
                 .test("placeholder project sync clears generated child store and resolves again", () -> {
@@ -296,6 +445,255 @@ public final class ProjectDependencyResolverTest {
                                 "parent child-home registry is recreated");
                         assertEquals("sync-project", result.resolved().lock().projectName(),
                                 "project lock is rewritten");
+                    }
+                })
+                .test("local sync --from refreshes claiming project child homes when CLI deps change", () -> {
+                    try (TestHarness h = TestHarness.create()) {
+                        Path repoRoot = Files.createTempDirectory("project-sync-claiming-cli-");
+                        Path skill = UnitFixtures.scaffoldSkill(
+                                repoRoot.resolve("units"), "project-cli-skill", DepSpec.empty()).sourcePath();
+                        SkillProject project = project(repoRoot, """
+                                [project]
+                                name = "project-cli-refresh"
+
+                                [skills.demo]
+                                source = "%s"
+                                """.formatted(skill));
+                        resolver(h).resolve(project, new ProjectDependencyResolver.Options(true, false));
+                        assertFalse(Files.exists(repoRoot.resolve(".skill-manager/bin/cli/project-auto-cli")),
+                                "project child home starts without the new CLI shim");
+
+                        addSkillScriptCli(skill, "project-auto-cli");
+                        var program = SyncUseCase.buildProgram(
+                                h.store(),
+                                null,
+                                new SyncUseCase.Options(null, false, false, false, false, true),
+                                java.util.List.of(new SyncUseCase.Target.FromDir("project-cli-skill", skill)),
+                                java.util.List.of());
+                        Executor.Outcome<SyncUseCase.Report> outcome =
+                                new Executor(h.store(), null).runStaged(program);
+
+                        assertFalse(outcome.rolledBack(), "parent sync does not roll back");
+                        assertEquals(0, outcome.result().errorCount(), "project refresh has no errors");
+                        assertTrue(Files.isExecutable(h.store().cliBinDir().resolve("project-auto-cli")),
+                                "parent CLI shim installed");
+                        assertTrue(Files.isExecutable(repoRoot.resolve(".skill-manager/bin/cli/project-auto-cli")),
+                                "claiming project child home mirrors new CLI shim");
+                    }
+                })
+                .test("global sync refreshes claiming project child homes when CLI deps change", () -> {
+                    try (TestHarness h = TestHarness.create()) {
+                        Path repoRoot = Files.createTempDirectory("project-global-sync-claiming-cli-");
+                        Path skill = UnitFixtures.scaffoldSkill(
+                                repoRoot.resolve("git-skill"), "global-project-cli-skill", DepSpec.empty()).sourcePath();
+                        gitInitCommit(skill);
+                        SkillProject project = project(repoRoot, """
+                                [project]
+                                name = "project-global-cli-refresh"
+
+                                [skills.demo]
+                                source = "git+file://%s#main"
+                                """.formatted(skill));
+                        resolver(h).resolve(project, new ProjectDependencyResolver.Options(true, false));
+                        assertFalse(Files.exists(repoRoot.resolve(".skill-manager/bin/cli/project-global-auto-cli")),
+                                "project child home starts without the new CLI shim");
+
+                        addSkillScriptCli(skill, "project-global-auto-cli");
+                        git(skill, "add", ".");
+                        git(skill, "-c", "user.email=test@example.com", "-c", "user.name=Test",
+                                "commit", "-m", "add cli");
+
+                        SyncCommand cmd = new SyncCommand(h.store());
+                        cmd.skipMcp = true;
+                        cmd.skipAgents = true;
+                        int rc = cmd.call();
+
+                        assertEquals(0, rc, "global sync exits cleanly");
+                        assertTrue(Files.isExecutable(h.store().cliBinDir().resolve("project-global-auto-cli")),
+                                "parent CLI shim installed by global sync");
+                        assertTrue(Files.isExecutable(repoRoot.resolve(".skill-manager/bin/cli/project-global-auto-cli")),
+                                "claiming project child home mirrors new CLI shim after global sync");
+                    }
+                })
+                .test("project sync failures are recorded only on units claiming the failed project", () -> {
+                    try (TestHarness h = TestHarness.create()) {
+                        Path repoRoot = Files.createTempDirectory("project-sync-error-scope-");
+                        Path claimed = UnitFixtures.scaffoldSkill(
+                                repoRoot.resolve("units"), "failing-claimed-skill", DepSpec.empty()).sourcePath();
+                        SkillProject project = project(repoRoot, """
+                                [project]
+                                name = "failing-claimed-project"
+
+                                [skills.demo]
+                                source = "%s"
+                                """.formatted(claimed));
+                        resolver(h).resolve(project, new ProjectDependencyResolver.Options(true, false));
+                        h.seedUnit("unrelated-sync-skill", UnitKind.SKILL);
+                        h.context().addError("unrelated-sync-skill",
+                                InstalledUnit.ErrorKind.PROJECT_SYNC_FAILED, "stale");
+                        Files.delete(h.store().projectsDir()
+                                .resolve("failing-claimed-project")
+                                .resolve(SkillProjectRegistry.REGISTRATION_FILENAME));
+
+                        var receipt = h.run(new SkillEffect.SyncClaimingProjects(
+                                java.util.List.of("failing-claimed-skill", "unrelated-sync-skill"),
+                                null,
+                                false));
+
+                        assertEquals(dev.skillmanager.effects.EffectStatus.PARTIAL, receipt.status(),
+                                "missing project snapshot is reported as partial");
+                        assertTrue(h.sourceOf("failing-claimed-skill").orElseThrow()
+                                        .hasError(InstalledUnit.ErrorKind.PROJECT_SYNC_FAILED),
+                                "claiming unit records project sync failure");
+                        assertFalse(h.sourceOf("unrelated-sync-skill").orElseThrow()
+                                        .hasError(InstalledUnit.ErrorKind.PROJECT_SYNC_FAILED),
+                                "unrelated sync target has stale project sync failure cleared");
+                    }
+                })
+                .test("successful project sync clears stale project errors for all project claimants", () -> {
+                    try (TestHarness h = TestHarness.create()) {
+                        Path repoRoot = Files.createTempDirectory("project-sync-error-clear-claimants-");
+                        Path first = UnitFixtures.scaffoldSkill(
+                                repoRoot.resolve("units"), "project-clear-first", DepSpec.empty()).sourcePath();
+                        Path second = UnitFixtures.scaffoldSkill(
+                                repoRoot.resolve("units"), "project-clear-second", DepSpec.empty()).sourcePath();
+                        SkillProject project = project(repoRoot, """
+                                [project]
+                                name = "clear-claimants-project"
+
+                                [skills.first]
+                                source = "%s"
+
+                                [skills.second]
+                                source = "%s"
+                                """.formatted(first, second));
+                        resolver(h).resolve(project, new ProjectDependencyResolver.Options(true, false));
+                        h.context().addError("project-clear-first",
+                                InstalledUnit.ErrorKind.PROJECT_SYNC_FAILED, "stale first");
+                        h.context().addError("project-clear-second",
+                                InstalledUnit.ErrorKind.PROJECT_SYNC_FAILED, "stale second");
+
+                        var receipt = h.run(new SkillEffect.SyncClaimingProjects(
+                                java.util.List.of("project-clear-first"),
+                                null,
+                                false));
+
+                        assertEquals(dev.skillmanager.effects.EffectStatus.OK, receipt.status(),
+                                "project refresh succeeds");
+                        assertFalse(h.sourceOf("project-clear-first").orElseThrow()
+                                        .hasError(InstalledUnit.ErrorKind.PROJECT_SYNC_FAILED),
+                                "synced claimant has stale project sync failure cleared");
+                        assertFalse(h.sourceOf("project-clear-second").orElseThrow()
+                                        .hasError(InstalledUnit.ErrorKind.PROJECT_SYNC_FAILED),
+                                "other project claimant has stale project sync failure cleared");
+                    }
+                })
+                .test("automatic project sync rollback preserves existing realization on refresh failure", () -> {
+                    try (TestHarness h = TestHarness.create()) {
+                        Path repoRoot = Files.createTempDirectory("project-sync-rollback-");
+                        Path stable = UnitFixtures.scaffoldSkill(
+                                repoRoot.resolve("units"), "project-rollback-stable", DepSpec.empty()).sourcePath();
+                        SkillProject project = project(repoRoot, """
+                                [project]
+                                name = "rollback-refresh-project"
+
+                                [skills.stable]
+                                source = "%s"
+                                """.formatted(stable));
+                        resolver(h).resolve(project, new ProjectDependencyResolver.Options(true, false));
+
+                        Path codexProjection = repoRoot.resolve(".codex/skills/project-rollback-stable");
+                        Path childSkill = repoRoot.resolve(".skill-manager/skills/project-rollback-stable");
+                        Path ledger = h.store().installedDir()
+                                .resolve("project-rollback-stable.projections.json");
+                        assertTrue(Files.exists(codexProjection, LinkOption.NOFOLLOW_LINKS),
+                                "project Codex projection exists before sync");
+                        assertTrue(Files.exists(childSkill, LinkOption.NOFOLLOW_LINKS),
+                                "project child skill exists before sync");
+                        assertTrue(Files.isRegularFile(ledger), "project binding ledger exists before sync");
+
+                        Files.writeString(h.store().projectsDir()
+                                .resolve("rollback-refresh-project")
+                                .resolve("skill-project.toml"), """
+                                [project]
+                                name = "rollback-refresh-project"
+
+                                [skills.stable]
+                                source = "%s"
+
+                                [skills.missing]
+                                source = "%s"
+                                """.formatted(stable, repoRoot.resolve("missing-skill")));
+
+                        var receipt = h.run(new SkillEffect.SyncClaimingProjects(
+                                java.util.List.of("project-rollback-stable"),
+                                null,
+                                false));
+
+                        assertEquals(dev.skillmanager.effects.EffectStatus.PARTIAL, receipt.status(),
+                                "invalid project snapshot reports partial project sync failure");
+                        assertTrue(Files.exists(codexProjection, LinkOption.NOFOLLOW_LINKS),
+                                "failed automatic refresh keeps previous Codex projection");
+                        assertTrue(Files.exists(childSkill, LinkOption.NOFOLLOW_LINKS),
+                                "failed automatic refresh keeps previous child-home skill");
+                        assertTrue(pointsTo(codexProjection, childSkill),
+                                "restored Codex projection still points at the child home");
+                        assertTrue(Files.isRegularFile(ledger),
+                                "failed automatic refresh keeps previous binding ledger");
+                        assertTrue(new BindingStore(h.store()).read("project-rollback-stable")
+                                        .findById("project:rollback-refresh-project:unit:project-rollback-stable")
+                                        .isPresent(),
+                                "failed automatic refresh keeps previous binding row");
+                        assertTrue(new ChildHomeRegistry(h.store()).exists("project:rollback-refresh-project"),
+                                "failed automatic refresh keeps child-home registry");
+                    }
+                })
+                .test("project sync rollback restores prior registration snapshot on refresh failure", () -> {
+                    try (TestHarness h = TestHarness.create()) {
+                        Path repoRoot = Files.createTempDirectory("project-sync-registration-rollback-");
+                        Path stable = UnitFixtures.scaffoldSkill(
+                                repoRoot.resolve("units"), "project-registration-stable", DepSpec.empty()).sourcePath();
+                        SkillProject project = project(repoRoot, """
+                                [project]
+                                name = "registration-rollback-project"
+
+                                [skills.stable]
+                                source = "%s"
+                                """.formatted(stable));
+                        resolver(h).resolve(project, new ProjectDependencyResolver.Options(true, false));
+                        Path registeredManifest = h.store().projectsDir()
+                                .resolve("registration-rollback-project")
+                                .resolve("skill-project.toml");
+                        String previousRegistration = Files.readString(registeredManifest);
+
+                        Files.writeString(repoRoot.resolve("skill-project.toml"), """
+                                [project]
+                                name = "registration-rollback-project"
+
+                                [skills.stable]
+                                source = "%s"
+
+                                [skills.missing]
+                                source = "%s"
+                                """.formatted(stable, repoRoot.resolve("missing-skill")));
+                        SkillProject broken = SkillProjectParser.load(repoRoot);
+
+                        boolean failed = false;
+                        try {
+                            new ProjectSyncUseCase(h.store(), null)
+                                    .sync(broken, new ProjectDependencyResolver.Options(true, false));
+                        } catch (java.io.IOException io) {
+                            failed = true;
+                        }
+
+                        assertTrue(failed, "broken project sync fails");
+                        assertEquals(previousRegistration, Files.readString(registeredManifest),
+                                "failed project sync restores previous registered manifest");
+                        assertFalse(Files.readString(registeredManifest).contains("missing-skill"),
+                                "failed project sync does not leave broken registration snapshot");
+                        assertTrue(Files.exists(repoRoot.resolve(".codex/skills/project-registration-stable"),
+                                        LinkOption.NOFOLLOW_LINKS),
+                                "failed project sync keeps previous project projection");
                     }
                 })
                 .test("preinstalled unit with wrong kind is rejected before skip", () -> {
@@ -345,6 +743,8 @@ public final class ProjectDependencyResolverTest {
                         assertTrue(locked.contains("git-locked-skill"), "direct git unit is locked");
                         assertTrue(new SkillProjectLockStore(h.store()).projectsClaiming("git-locked-skill")
                                 .contains("git-project"), "direct git unit is project-claimed");
+                        assertTrue(Files.exists(repoRoot.resolve(".codex/skills/git-locked-skill")),
+                                "direct git skill projected into project agent home");
                     }
                 })
                 .test("preinstalled direct git dependency is projected into project child home", () -> {
@@ -387,6 +787,8 @@ public final class ProjectDependencyResolverTest {
                         assertTrue(Files.isRegularFile(secondRoot
                                         .resolve(".skill-manager/skills/preinstalled-git-skill/SKILL.md")),
                                 "preinstalled git skill projected into child home");
+                        assertTrue(Files.exists(secondRoot.resolve(".codex/skills/preinstalled-git-skill")),
+                                "preinstalled git skill projected into project agent home");
                         assertTrue(new ChildHomeRegistry(h.store()).childHomesClaiming("preinstalled-git-skill")
                                         .contains("project:second-git-project"),
                                 "parent child-home registry claims reused git skill");
@@ -469,33 +871,65 @@ public final class ProjectDependencyResolverTest {
                     try (TestHarness h = TestHarness.create()) {
                         Path repoRoot = Files.createTempDirectory("project-remove-");
                         Path doc = scaffoldDocRepo(repoRoot.resolve("units"), "remove-prompts");
+                        Path skill = UnitFixtures.scaffoldSkill(
+                                repoRoot.resolve("units"), "remove-skill", DepSpec.empty()).sourcePath();
+                        Path plugin = UnitFixtures.scaffoldPlugin(
+                                repoRoot.resolve("units"), "remove-plugin", DepSpec.empty()).sourcePath();
                         SkillProject project = project(repoRoot, """
                                 [project]
                                 name = "remove-project"
 
+                                [skills.remove]
+                                source = "%s"
+
+                                [plugins.remove]
+                                source = "%s"
+
                                 [docs.prompts]
                                 source = "%s"
-                                """.formatted(doc));
+                                """.formatted(skill, plugin, doc));
                         resolver(h).resolve(project, new ProjectDependencyResolver.Options(true, false));
                         assertTrue(Files.isRegularFile(repoRoot.resolve("docs/agents/review.md")),
                                 "doc binding exists before remove");
+                        assertTrue(Files.exists(repoRoot.resolve(".claude/skills/remove-skill")),
+                                "Claude agent skill binding exists before remove");
+                        assertTrue(Files.exists(repoRoot.resolve(".codex/skills/remove-skill")),
+                                "Codex agent skill binding exists before remove");
+                        assertTrue(Files.exists(repoRoot.resolve(".gemini/skills/remove-skill")),
+                                "Gemini agent skill binding exists before remove");
+                        assertTrue(Files.exists(repoRoot.resolve(".claude/plugins/remove-plugin")),
+                                "Claude plugin binding exists before remove");
                         assertTrue(Files.isRegularFile(repoRoot.resolve(".skill-manager/docs/remove-prompts/skill-manager.toml")),
                                 "child doc exists before remove");
 
                         ProjectRemoveUseCase.Result removed = new ProjectRemoveUseCase(h.store(), null)
                                 .remove(project);
 
-                        assertEquals(1, removed.bindingsRemoved(), "one project binding removed");
+                        assertEquals(3, removed.bindingsRemoved(), "project bindings removed");
                         assertFalse(Files.isDirectory(h.store().projectsDir().resolve("remove-project")),
                                 "project registration removed");
                         assertFalse(new ChildHomeRegistry(h.store()).exists("project:remove-project"),
                                 "child-home registry removed");
                         assertFalse(Files.exists(repoRoot.resolve(".skill-manager/docs/remove-prompts")),
                                 "child store doc projection removed");
+                        assertFalse(Files.exists(repoRoot.resolve(".skill-manager/plugins/remove-plugin")),
+                                "child store plugin projection removed");
                         assertFalse(Files.exists(repoRoot.resolve("docs/agents/review.md")),
                                 "managed doc copy removed");
+                        assertFalse(Files.exists(repoRoot.resolve(".claude/skills/remove-skill")),
+                                "Claude agent skill projection removed");
+                        assertFalse(Files.exists(repoRoot.resolve(".codex/skills/remove-skill")),
+                                "Codex agent skill projection removed");
+                        assertFalse(Files.exists(repoRoot.resolve(".gemini/skills/remove-skill")),
+                                "Gemini agent skill projection removed");
+                        assertFalse(Files.exists(repoRoot.resolve(".claude/plugins/remove-plugin")),
+                                "Claude plugin projection removed");
+                        assertFalse(Files.exists(repoRoot.resolve(".codex")),
+                                "empty Codex project home removed");
                         assertTrue(h.store().containsDocRepo("remove-prompts"),
                                 "parent doc repo remains installed");
+                        assertTrue(h.store().containsPlugin("remove-plugin"),
+                                "parent plugin remains installed");
                     }
                 })
                 .runAll();
@@ -550,6 +984,32 @@ public final class ProjectDependencyResolverTest {
             return resolved.equals(expected.toAbsolutePath().normalize());
         }
         return projection.toRealPath().equals(expected.toRealPath());
+    }
+
+    private static void addSkillScriptCli(Path skillDir, String toolName) throws Exception {
+        Files.writeString(skillDir.resolve("skill-manager.toml"), Files.readString(skillDir.resolve("skill-manager.toml"))
+                + """
+
+                [[cli_dependencies]]
+                name = "%1$s"
+                spec = "skill-script:%1$s"
+
+                [cli_dependencies.install.any]
+                script = "install-%1$s.sh"
+                binary = "%1$s"
+                """.formatted(toolName));
+        Path scripts = skillDir.resolve("skill-scripts");
+        Files.createDirectories(scripts);
+        Files.writeString(scripts.resolve("install-" + toolName + ".sh"), """
+                #!/usr/bin/env sh
+                set -eu
+                mkdir -p "$SKILL_MANAGER_BIN_DIR"
+                cat > "$SKILL_MANAGER_BIN_DIR/%1$s" <<'EOF'
+                #!/usr/bin/env sh
+                echo %1$s
+                EOF
+                chmod +x "$SKILL_MANAGER_BIN_DIR/%1$s"
+                """.formatted(toolName));
     }
 
     private static void gitInitCommit(Path repo) throws Exception {

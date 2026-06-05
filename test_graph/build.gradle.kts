@@ -540,6 +540,13 @@ validationGraph {
         node("sources/project/ProjectDependenciesResolved.java")
     }
 
+    testGraph("project-smoke") {
+        node("sources/common/EnvPrepared.java")
+        node("sources/project/ProjectDependenciesResolved.java")
+        node("sources/project/ProjectGlobalSyncCliRefresh.java")
+        node("sources/project/ProjectLocalSyncCliRefresh.java")
+    }
+
     testGraph("project-env") {
         node("sources/common/EnvPrepared.java")
         node("sources/project/ProjectEnvMaterialized.java")

@@ -6,11 +6,9 @@ import java.util.Set;
 
 /**
  * Skills that ship in-tree with the skill-manager CLI itself — installed
- * by {@code OnboardCommand} either from their GitHub repos or from local
- * checkout directories under {@code SKILL_MANAGER_INSTALL_DIR}. Local
- * onboard still records the GitHub remote for these units so later
- * {@code skill-manager sync} can fetch from the real upstream instead
- * of treating the install path as the source of truth.
+ * by {@code OnboardCommand}. Local onboard still records the GitHub remote
+ * for these units so later {@code skill-manager sync} can fetch from the
+ * real upstream instead of treating the install path as the source of truth.
  *
  * <p>Names match {@code [skill].name} from the manifest (the directory
  * is {@code skill-manager-skill/}, but the published name is

@@ -69,6 +69,7 @@ import dev.skillmanager.effects.RefreshHarnessPluginsTest;
 import dev.skillmanager.effects.HandlerSubstitutabilityTest;
 import dev.skillmanager.effects.KindAwareDispatchTest;
 import dev.skillmanager.effects.ListTypedHandlerSubstitutabilityTest;
+import dev.skillmanager.effects.SourceProvenanceRecorderTest;
 import dev.skillmanager.plan.PlanPolicyCategorizationTest;
 import dev.skillmanager.plan.PlanShapeInvariantTest;
 import dev.skillmanager.plan.PolicyGatingTest;
@@ -134,6 +135,7 @@ public class RunTests {
         failures += PolicyGatingTest.run();
         failures += HandlerSubstitutabilityTest.run();
         failures += ListTypedHandlerSubstitutabilityTest.run();
+        failures += SourceProvenanceRecorderTest.run();
         failures += KindAwareDispatchTest.run();
         failures += CompensationLogicTest.run();
         failures += CompensationPairingTest.run();

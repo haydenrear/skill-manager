@@ -91,6 +91,8 @@ public final class ReportUseCase {
                     + "`skill-manager sync " + skillName + "`";
             case TRANSITIVE_RESOLVE_FAILED -> "fix the failing transitive (see message) "
                     + "and re-run: skill-manager sync " + skillName;
+            case PROJECT_SYNC_FAILED -> "fix the listed project sync failure, then re-run: "
+                    + "skill-manager sync " + skillName;
         };
     }
 }

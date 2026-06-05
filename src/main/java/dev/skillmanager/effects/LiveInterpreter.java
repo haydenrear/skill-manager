@@ -33,7 +33,11 @@ import dev.skillmanager.util.Log;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Routes effects to real services. Each handler emits a typed
@@ -215,6 +219,7 @@ public final class LiveInterpreter implements ProgramInterpreter {
             case SkillEffect.InstallCli e -> installCli(e);
             case SkillEffect.RegisterMcp e -> registerMcp(e, ctx);
             case SkillEffect.UpdateUnitsLock e -> updateUnitsLock(e);
+            case SkillEffect.SyncClaimingProjects e -> syncClaimingProjects(e, ctx);
             case SkillEffect.CreateBinding e -> createBinding(e, ctx);
             case SkillEffect.RemoveBinding e -> removeBinding(e, ctx);
             case SkillEffect.MaterializeProjection e -> materializeProjection(e);
@@ -237,6 +242,139 @@ public final class LiveInterpreter implements ProgramInterpreter {
                     e.path().toString(), e.target().units().size()));
         } catch (IOException io) {
             return EffectReceipt.failed(e, "could not write " + e.path() + ": " + io.getMessage());
+        }
+    }
+
+    private EffectReceipt syncClaimingProjects(SkillEffect.SyncClaimingProjects e, EffectContext ctx) {
+        List<String> unitNames = e.unitNames();
+        if (unitNames.isEmpty()) return EffectReceipt.skipped(e, "no synced units");
+
+        dev.skillmanager.project.SkillProjectLockStore locks =
+                new dev.skillmanager.project.SkillProjectLockStore(ctx.store());
+        Map<String, LinkedHashSet<String>> projectClaimers = new LinkedHashMap<>();
+        Map<String, List<String>> unitFailures = new LinkedHashMap<>();
+        LinkedHashSet<String> unitsToClear = new LinkedHashSet<>(unitNames);
+        List<ContextFact> facts = new ArrayList<>();
+        for (String unitName : unitNames) {
+            try {
+                for (String projectName : locks.projectsClaiming(unitName)) {
+                    projectClaimers.computeIfAbsent(projectName, ignored -> new LinkedHashSet<>()).add(unitName);
+                }
+            } catch (IOException io) {
+                String message = "could not discover claiming projects: " + io.getMessage();
+                addUnitProjectSyncFailure(unitFailures, unitName, message);
+                facts.add(new ContextFact.ProjectSyncFailed("<lookup>", message));
+            }
+        }
+        if (projectClaimers.isEmpty() && unitFailures.isEmpty()) {
+            clearProjectSyncErrors(ctx, unitNames);
+            return EffectReceipt.skipped(e, "no claiming projects");
+        }
+
+        dev.skillmanager.project.SkillProjectRegistry registry =
+                new dev.skillmanager.project.SkillProjectRegistry(ctx.store());
+        List<String> failures = new ArrayList<>();
+        for (String projectName : projectClaimers.keySet()) {
+            try {
+                dev.skillmanager.project.SkillProjectLock lock =
+                        locks.read(projectName).orElse(null);
+                LinkedHashSet<String> refreshedClaimers = projectLockUnitNames(lock);
+                dev.skillmanager.model.SkillProject project = registry.loadSnapshot(projectName)
+                        .orElseThrow(() -> new IOException(
+                                "project registration snapshot is missing"));
+                if (lock != null && lock.profile() != null && !lock.profile().isBlank()) {
+                    project = project.withProfile(lock.profile());
+                }
+                dev.skillmanager.project.ProjectSyncUseCase.Result result =
+                        new dev.skillmanager.project.ProjectSyncUseCase(ctx.store(), e.gateway())
+                                .sync(project, new dev.skillmanager.project.ProjectDependencyResolver.Options(
+                                        true, e.withGateway()));
+                refreshedClaimers.addAll(projectLockUnitNames(result.resolved().lock()));
+                unitsToClear.addAll(refreshedClaimers);
+                facts.add(new ContextFact.ProjectSynced(
+                        result.resolved().registration().name(),
+                        project.activeProfile(),
+                        result.bindingsRemoved(),
+                        result.resolved().lock().resolvedUnits().size()));
+            } catch (Exception ex) {
+                String message = projectName + ": " + ex.getMessage();
+                failures.add(message);
+                for (String unitName : projectClaimers.getOrDefault(projectName, new LinkedHashSet<>())) {
+                    addUnitProjectSyncFailure(unitFailures, unitName, message);
+                }
+                facts.add(new ContextFact.ProjectSyncFailed(projectName, ex.getMessage()));
+            }
+        }
+
+        unitsToClear.addAll(unitFailures.keySet());
+        applyProjectSyncErrorState(ctx, unitsToClear, unitFailures);
+        if (unitFailures.isEmpty()) {
+            return EffectReceipt.ok(e, facts);
+        }
+        String summary = failures.isEmpty()
+                ? unitFailures.values().stream()
+                        .flatMap(List::stream)
+                        .findFirst()
+                        .orElse("project sync failed")
+                : failures.size() + " project sync(s) failed";
+        return EffectReceipt.partial(e, facts, summary);
+    }
+
+    private static void addUnitProjectSyncFailure(
+            Map<String, List<String>> failures,
+            String unitName,
+            String message
+    ) {
+        failures.computeIfAbsent(unitName, ignored -> new ArrayList<>()).add(message);
+    }
+
+    private static LinkedHashSet<String> projectLockUnitNames(dev.skillmanager.project.SkillProjectLock lock) {
+        LinkedHashSet<String> unitNames = new LinkedHashSet<>();
+        if (lock == null) return unitNames;
+        for (dev.skillmanager.project.SkillProjectLock.ResolvedUnit unit : lock.resolvedUnits()) {
+            unitNames.add(unit.name());
+        }
+        return unitNames;
+    }
+
+    private static void applyProjectSyncErrorState(
+            EffectContext ctx,
+            Collection<String> unitNames,
+            Map<String, List<String>> unitFailures
+    ) {
+        for (String unitName : unitNames) {
+            List<String> messages = unitFailures.get(unitName);
+            if (messages == null || messages.isEmpty()) {
+                clearProjectSyncError(ctx, unitName);
+            } else {
+                recordProjectSyncError(ctx, unitName, String.join("; ", messages));
+            }
+        }
+    }
+
+    private static void recordProjectSyncError(
+            EffectContext ctx,
+            String unitName,
+            String message
+    ) {
+        try {
+            ctx.addError(unitName, InstalledUnit.ErrorKind.PROJECT_SYNC_FAILED, message);
+        } catch (IOException io) {
+            Log.warn("could not record project sync error for %s: %s", unitName, io.getMessage());
+        }
+    }
+
+    private static void clearProjectSyncErrors(EffectContext ctx, List<String> unitNames) {
+        for (String unitName : unitNames) {
+            clearProjectSyncError(ctx, unitName);
+        }
+    }
+
+    private static void clearProjectSyncError(EffectContext ctx, String unitName) {
+        try {
+            ctx.clearError(unitName, InstalledUnit.ErrorKind.PROJECT_SYNC_FAILED);
+        } catch (IOException io) {
+            Log.warn("could not clear project sync error for %s: %s", unitName, io.getMessage());
         }
     }
 

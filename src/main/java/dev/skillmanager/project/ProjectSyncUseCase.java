@@ -39,11 +39,42 @@ public final class ProjectSyncUseCase {
         SkillProjectLock previousLock = new SkillProjectLockStore(store)
                 .read(project.registryName())
                 .orElse(null);
-        ProjectRemoveUseCase.Result removed = new ProjectRemoveUseCase(store, gateway)
-                .removeRealization(project, previousLock, true);
+        ProjectRealizationSnapshot snapshot =
+                ProjectRealizationSnapshot.capture(store, project, previousLock);
+        try {
+            ProjectRemoveUseCase.Result removed = new ProjectRemoveUseCase(store, gateway)
+                    .removeRealization(project, previousLock, true);
+            ProjectDependencyResolver.Result resolved = new ProjectDependencyResolver(store, gateway)
+                    .resolve(project, opts);
+            return new Result(resolved, removed.bindingsRemoved(), removed.clearedPaths());
+        } catch (IOException | RuntimeException ex) {
+            restoreAndRethrow(snapshot, ex);
+            throw ex;
+        } finally {
+            closeQuietly(snapshot);
+        }
+    }
 
-        ProjectDependencyResolver.Result resolved = new ProjectDependencyResolver(store, gateway)
-                .resolve(project, opts);
-        return new Result(resolved, removed.bindingsRemoved(), removed.clearedPaths());
+    private void restoreAndRethrow(
+            ProjectRealizationSnapshot snapshot,
+            Exception failure
+    ) throws IOException {
+        try {
+            snapshot.restore();
+        } catch (IOException restoreFailure) {
+            failure.addSuppressed(restoreFailure);
+        }
+        if (failure instanceof IOException io) throw io;
+        if (failure instanceof RuntimeException runtime) throw runtime;
+        throw new IOException(failure);
+    }
+
+    private static void closeQuietly(ProjectRealizationSnapshot snapshot) {
+        try {
+            snapshot.close();
+        } catch (IOException ignored) {
+            // Rollback snapshots live in a temp directory; cleanup must not
+            // hide the project sync failure or success that preceded it.
+        }
     }
 }
