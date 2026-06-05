@@ -68,7 +68,7 @@ public final class DocRepoBinder {
                             String selectedSourceId, ConflictPolicy policy,
                             BindingSource source) throws IOException {
         return plan(docUnit, targetRoot, selectedSourceId, policy, source,
-                s -> BindingStore.newBindingId());
+                s -> BindingIdAllocator.explicitDocBindingIdBase(targetRoot, s.id()));
     }
 
     /**

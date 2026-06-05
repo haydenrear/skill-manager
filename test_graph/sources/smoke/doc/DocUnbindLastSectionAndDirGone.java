@@ -9,7 +9,6 @@ import com.hayden.testgraphsdk.sdk.ProcessRecord;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
@@ -54,13 +53,11 @@ public class DocUnbindLastSectionAndDirGone {
                 return NodeResult.fail("doc.unbind.last.section.and.dir.gone",
                         "cannot read ledger: " + e.getMessage());
             }
-            Matcher m = Pattern.compile("\"bindingId\"\\s*:\\s*\"([0-9A-HJKMNP-TV-Z]{26})\"")
-                    .matcher(ledgerJson);
-            if (!m.find()) {
+            String bindingId = findBindingIdBySubElement(ledgerJson, "build-instructions");
+            if (bindingId == null) {
                 return NodeResult.fail("doc.unbind.last.section.and.dir.gone",
                         "could not find binding id");
             }
-            String bindingId = m.group(1);
 
             ProcessBuilder pb = new ProcessBuilder(sm.toString(), "unbind", bindingId);
             pb.environment().put("SKILL_MANAGER_HOME", home);
@@ -114,5 +111,16 @@ public class DocUnbindLastSectionAndDirGone {
                     .assertion("ledger_file_dropped", ledgerFileGone)
                     .metric("exitCode", rc);
         });
+    }
+
+    private static String findBindingIdBySubElement(String json, String subElementId) {
+        int idx = json.indexOf("\"subElement\" : \"" + subElementId + "\"");
+        if (idx < 0) idx = json.indexOf("\"subElement\":\"" + subElementId + "\"");
+        if (idx < 0) return null;
+        var m = Pattern.compile("\"bindingId\"\\s*:\\s*\"([^\"]+)\"")
+                .matcher(json.substring(0, idx));
+        String last = null;
+        while (m.find()) last = m.group(1);
+        return last;
     }
 }

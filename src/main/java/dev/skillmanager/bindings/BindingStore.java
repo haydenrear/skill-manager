@@ -7,7 +7,6 @@ import java.io.IOException;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.security.SecureRandom;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
@@ -82,7 +81,7 @@ public final class BindingStore {
         return out;
     }
 
-    /** Find a binding across all units by its id; first match wins (ids are ULIDs, unique). */
+    /** Find a binding across all units by its id; first match wins. */
     public Optional<LocatedBinding> findById(String bindingId) {
         Path dir = store.installedDir();
         if (!Files.isDirectory(dir)) return Optional.empty();
@@ -102,28 +101,6 @@ public final class BindingStore {
     }
 
     // -------------------------------------------------------- helpers
-
-    private static final SecureRandom RNG = new SecureRandom();
-    private static final char[] B32 =
-            "0123456789ABCDEFGHJKMNPQRSTVWXYZ".toCharArray();
-
-    /**
-     * Generate a 26-character ULID-shaped binding id: 10 chars of
-     * Crockford-base32 timestamp + 16 chars of randomness. Stable,
-     * sortable by creation time, no dashes.
-     */
-    public static String newBindingId() {
-        long ts = System.currentTimeMillis();
-        char[] out = new char[26];
-        for (int i = 9; i >= 0; i--) {
-            out[i] = B32[(int) (ts & 0x1F)];
-            ts >>>= 5;
-        }
-        for (int i = 10; i < 26; i++) {
-            out[i] = B32[RNG.nextInt(32)];
-        }
-        return new String(out);
-    }
 
     public static String nowIso() {
         return OffsetDateTime.now(ZoneOffset.UTC).toString();

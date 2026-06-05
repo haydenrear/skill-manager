@@ -7,6 +7,8 @@ import dev.skillmanager.effects.Program;
 import dev.skillmanager.effects.Executor;
 import dev.skillmanager.model.UnitKind;
 import dev.skillmanager.store.SkillStore;
+import org.eclipse.jgit.api.Git;
+import org.eclipse.jgit.transport.URIish;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -108,6 +110,56 @@ public final class BindingsTest {
                     assertEquals("beta", loc.get().unitName(), "via beta ledger");
                     assertEquals(BindingSource.DEFAULT_AGENT, loc.get().binding().source(), "source preserved");
                     assertEquals(2, bs.listAll().size(), "listAll across both files");
+                })
+                .test("explicit binding ids prefer GitHub slug, then target directory", () -> {
+                    assertEquals("octo:hello",
+                            BindingIdAllocator.githubSlugFromRemote("git@github.com:octo/hello.git")
+                                    .orElseThrow(),
+                            "ssh GitHub slug");
+
+                    Path tmp = Files.createTempDirectory("friendly-target-");
+                    Path repo = Files.createDirectories(tmp.resolve("repo"));
+                    try (Git git = Git.init().setDirectory(repo.toFile()).call()) {
+                        git.remoteAdd()
+                                .setName("origin")
+                                .setUri(new URIish("git+https://github.com/octo/hello.git"))
+                                .call();
+                    }
+                    Path nestedTarget = Files.createDirectories(repo.resolve("subdir"));
+                    assertEquals("octo:hello:review-stance:bind",
+                            BindingIdAllocator.explicitDocBindingIdBase(nestedTarget, "review-stance"),
+                            "git target uses GitHub origin slug");
+
+                    Path target = tmp.resolve("My Project!");
+                    Files.createDirectories(target);
+                    assertEquals("My-Project:review-stance:bind",
+                            BindingIdAllocator.explicitDocBindingIdBase(target, "review-stance"),
+                            "non-git target uses sanitized final directory name");
+                })
+                .test("explicit binding id allocator suffixes collisions", () -> {
+                    Path tmp = Files.createTempDirectory("friendly-collision-");
+                    Path target = Files.createDirectories(tmp.resolve("project"));
+                    SkillStore store = newStore(tmp);
+                    BindingStore bs = new BindingStore(store);
+                    Binding existing = new Binding(
+                            "project:review-stance:bind",
+                            "docs",
+                            UnitKind.DOC,
+                            "review-stance",
+                            target,
+                            ConflictPolicy.ERROR,
+                            "t",
+                            BindingSource.EXPLICIT,
+                            List.of());
+                    bs.write(new ProjectionLedger("docs", List.of(existing)));
+
+                    BindingIdAllocator ids = BindingIdAllocator.fromStore(bs);
+                    assertEquals("project:review-stance:bind:0",
+                            ids.reserveForExplicitDoc(target, "review-stance"),
+                            "first collision gets :0");
+                    assertEquals("project:review-stance:bind:1",
+                            ids.reserveForExplicitDoc(target, "review-stance"),
+                            "reserved candidates are kept in memory");
                 })
                 .test("MaterializeProjection SYMLINK creates the link", () -> {
                     Path tmp = Files.createTempDirectory("mat-symlink-");
@@ -230,15 +282,6 @@ public final class BindingsTest {
                     assertEquals(a, b, "same inputs → same id");
                     String c = LiveInterpreter.defaultBindingId("codex", "hello");
                     assertFalse(a.equals(c), "different agent → different id");
-                })
-                .test("newBindingId produces 26-char ULID-shaped strings", () -> {
-                    String id = BindingStore.newBindingId();
-                    assertEquals(26, id.length(), "26 chars");
-                    for (char ch : id.toCharArray()) {
-                        boolean valid = (ch >= '0' && ch <= '9')
-                                || (ch >= 'A' && ch <= 'Z');
-                        assertTrue(valid, "Crockford-base32 only: " + ch);
-                    }
                 })
                 .runAll();
     }

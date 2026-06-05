@@ -151,6 +151,8 @@ public final class DocRepoTest {
                             BindingSource.EXPLICIT);
                     assertEquals(2, plan.bindings().size(), "one binding per source");
                     Binding b0 = plan.bindings().get(0);
+                    assertEquals(targetRoot.getFileName() + ":review-stance:bind",
+                            b0.bindingId(), "friendly source binding id");
                     // First source has agents=[claude,codex,gemini] -> 1 copy + 3 imports
                     long copies = b0.projections().stream()
                             .filter(p -> p.kind() == ProjectionKind.MANAGED_COPY).count();

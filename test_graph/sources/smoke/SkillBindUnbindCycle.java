@@ -10,7 +10,6 @@ import com.hayden.testgraphsdk.sdk.ProcessRecord;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
@@ -66,9 +65,6 @@ public class SkillBindUnbindCycle {
             boolean linkPresent = Files.isSymbolicLink(link)
                     && Files.exists(link, LinkOption.NOFOLLOW_LINKS);
 
-            // The new EXPLICIT binding's id is the only ULID-shaped
-            // bindingId in the ledger (DEFAULT_AGENT bindings use
-            // deterministic non-ULID ids like default:claude:hello-skill).
             Path ledger = Path.of(home, "installed", "hello-skill.projections.json");
             String ledgerJson;
             try {
@@ -79,9 +75,7 @@ public class SkillBindUnbindCycle {
             }
             boolean ledgerHasExplicit = ledgerJson.contains("\"EXPLICIT\"");
             boolean ledgerHasDefault = ledgerJson.contains("\"DEFAULT_AGENT\"");
-            Matcher m = Pattern.compile("\"bindingId\"\\s*:\\s*\"([0-9A-HJKMNP-TV-Z]{26})\"")
-                    .matcher(ledgerJson);
-            String explicitId = m.find() ? m.group(1) : null;
+            String explicitId = findBindingIdBySource(ledgerJson, "EXPLICIT");
 
             // unbind <id>
             int unbindRc = -1;
@@ -126,5 +120,16 @@ public class SkillBindUnbindCycle {
                     .metric("bindExitCode", bindRc)
                     .metric("unbindExitCode", unbindRc);
         });
+    }
+
+    private static String findBindingIdBySource(String json, String source) {
+        int idx = json.indexOf("\"source\" : \"" + source + "\"");
+        if (idx < 0) idx = json.indexOf("\"source\":\"" + source + "\"");
+        if (idx < 0) return null;
+        var m = Pattern.compile("\"bindingId\"\\s*:\\s*\"([^\"]+)\"")
+                .matcher(json.substring(0, idx));
+        String last = null;
+        while (m.find()) last = m.group(1);
+        return last;
     }
 }
