@@ -19,6 +19,7 @@ digraph "plugin-smoke" {
   "plugin.command.coverage" [label="plugin.command.coverage\n(assertion, jbang)"];
   "plugin.markdown.import.targets" [label="plugin.markdown.import.targets\n(assertion, jbang)"];
   "plugin.uninstalled.mixed.orphans" [label="plugin.uninstalled.mixed.orphans\n(assertion, jbang)"];
+  "plugin.skill_script.force.sync" [label="plugin.skill_script.force.sync\n(assertion, jbang)"];
   "servers.down" [label="servers.down\n(evidence, jbang)"];
   "env.prepared" -> "postgres.up";
   "env.prepared" -> "registry.up";
@@ -44,7 +45,11 @@ digraph "plugin-smoke" {
   "partner.skill.installed" -> "plugin.uninstalled.mixed.orphans";
   "plugin.synced" -> "plugin.uninstalled.mixed.orphans";
   "plugin.command.coverage" -> "plugin.uninstalled.mixed.orphans";
+  "plugin.uninstalled.mixed.orphans" -> "plugin.skill_script.force.sync";
+  "gateway.up" -> "plugin.skill_script.force.sync";
+  "echo.http.up" -> "plugin.skill_script.force.sync";
   "plugin.contained.skill.not.addressable" -> "servers.down";
   "plugin.markdown.import.targets" -> "servers.down";
   "plugin.uninstalled.mixed.orphans" -> "servers.down";
+  "plugin.skill_script.force.sync" -> "servers.down";
 }
