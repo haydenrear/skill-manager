@@ -35,15 +35,6 @@ import static dev.skillmanager._lib.test.Tests.assertTrue;
  *       lock entry intact when a sibling claims the dep; drops it
  *       when the rolled-back unit was alone.</li>
  * </ul>
- *
- * <p><b>Plugin-survivor caveat</b>: {@code SkillStore.listInstalled} only
- * walks {@code skills/} pre-ticket-11. A plugin's contained-skill dep
- * claims live nested under {@code plugins/&lt;name&gt;/skills/&lt;contained&gt;/}
- * and aren't surfaced. Cross-kind orphan semantics ("plugin still claims
- * cowsay; don't drop it on rollback") therefore can't be exercised end-
- * to-end here — they need the kind-aware listing that lands in 11. The
- * orphan helper itself is kind-agnostic by design; ticket 11 will simply
- * feed it more data.
  */
 public final class CompensationOrphanTest {
 
@@ -108,6 +99,7 @@ public final class CompensationOrphanTest {
             installSkill(h, "rolled-back", DepSpec.of().cli("pip:cowsay==6.0").build());
 
             // Pre-state: lock declares cowsay claimed by both.
+            Path binary = touchCliBin(h, "cowsay");
             CliLock lock = CliLock.load(h.store());
             lock.recordInstall("pip", "cowsay", "6.0", "pip:cowsay==6.0", null, "survivor");
             lock.recordInstall("pip", "cowsay", "6.0", "pip:cowsay==6.0", null, "rolled-back");
@@ -119,8 +111,11 @@ public final class CompensationOrphanTest {
                     new Compensation.UninstallCliIfOrphan("rolled-back", dep), h.context());
 
             CliLock after = CliLock.load(h.store());
-            assertNotNull(after.get("pip", "cowsay"),
-                    "lock entry survives — survivor still claims cowsay");
+            CliLock.Entry entry = after.get("pip", "cowsay");
+            assertNotNull(entry, "lock entry survives — survivor still claims cowsay");
+            assertEquals(java.util.List.of("survivor"), entry.requestedBy(),
+                    "rolled-back requester removed from shared lock entry");
+            assertTrue(Files.exists(binary), "shared binary remains");
         });
 
         suite.test("applyCompensation(UninstallCliIfOrphan) drops lock when no survivor claims dep", () -> {
@@ -136,6 +131,7 @@ public final class CompensationOrphanTest {
             CliLock lock = CliLock.load(h.store());
             lock.recordInstall("pip", "cowsay", "6.0", "pip:cowsay==6.0", null, "rolled-back");
             lock.save(h.store());
+            Path binary = touchCliBin(h, "cowsay");
 
             CliDependency dep = pip("cowsay", "6.0");
             Executor exec = new Executor(h.store(), null);
@@ -145,6 +141,7 @@ public final class CompensationOrphanTest {
             CliLock after = CliLock.load(h.store());
             assertEquals(null, after.get("pip", "cowsay"),
                     "lock entry dropped — no surviving claimant");
+            assertFalse(Files.exists(binary), "orphaned CLI binary removed");
         });
 
         return suite.runAll();
@@ -169,5 +166,13 @@ public final class CompensationOrphanTest {
     private static CliDependency pip(String name, String version) {
         return new CliDependency(name, "pip:" + name + "==" + version,
                 null, null, null, true, java.util.Map.of());
+    }
+
+    private static Path touchCliBin(TestHarness h, String name) throws Exception {
+        Fs.ensureDir(h.store().cliBinDir());
+        Path binary = h.store().cliBinDir().resolve(name);
+        Files.writeString(binary, "#!/usr/bin/env sh\n");
+        binary.toFile().setExecutable(true, false);
+        return binary;
     }
 }

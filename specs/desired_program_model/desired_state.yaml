@@ -19,16 +19,16 @@ implementation_status:
   summary:
     desired_model_scaffolded: true
     ticket_breakdown: filled
-    current_model: issue_91a_closed
+    current_model: issue_91b_closed
     generated_desired_cases: pending
-    adapters: issue_91a_unit_and_graph_validated
+    adapters: issue_91b_unit_spec_and_graph_validated
     tlc: passed
 
 modeled_boundary_status:
   ticket_plan:
-    status: issue_91a_closed
+    status: issue_91b_closed
     artifact: ticket_plan.yaml
-    next_ticket: ISSUE-91B
+    next_ticket: ISSUE-91C
   baseline_comparison:
     program_model_has:
       - cli_skill_scripts_run

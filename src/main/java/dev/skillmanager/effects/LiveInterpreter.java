@@ -7,6 +7,7 @@ import dev.skillmanager.bindings.ConflictPolicy;
 import dev.skillmanager.bindings.Projection;
 import dev.skillmanager.bindings.ProjectionKind;
 import dev.skillmanager.bindings.ProjectionLedger;
+import dev.skillmanager.lock.CliDependencyCleaner;
 import dev.skillmanager.lock.CliInstallRecorder;
 import dev.skillmanager.lock.CliLock;
 import dev.skillmanager.mcp.GatewayClient;
@@ -206,6 +207,7 @@ public final class LiveInterpreter implements ProgramInterpreter {
             case SkillEffect.RefreshHarnessPlugins e -> refreshHarnessPlugins(e, ctx);
             case SkillEffect.SyncGit e -> SyncGitHandler.run(e, ctx);
             case SkillEffect.RemoveUnitFromStore e -> removeFromStore(e, ctx);
+            case SkillEffect.PruneCliIfOrphan e -> pruneCliIfOrphan(e, ctx);
             case SkillEffect.UnlinkAgentUnit e -> unlinkAgentUnit(e);
             case SkillEffect.UnlinkAgentMcpEntry e -> unlinkAgentMcpEntry(e);
             case SkillEffect.ScaffoldSkill e -> scaffoldSkill(e);
@@ -1390,6 +1392,15 @@ public final class LiveInterpreter implements ProgramInterpreter {
             try { ctx.sourceStore().delete(e.unitName()); } catch (Exception ignored) {}
             ctx.invalidate();
             return EffectReceipt.ok(e, new ContextFact.SkillRemovedFromStore(e.unitName()));
+        } catch (Exception ex) {
+            return EffectReceipt.failed(e, ex.getMessage());
+        }
+    }
+
+    private EffectReceipt pruneCliIfOrphan(SkillEffect.PruneCliIfOrphan e, EffectContext ctx) {
+        try {
+            CliDependencyCleaner.pruneIfOrphan(ctx.store(), e.unitName(), e.dep());
+            return EffectReceipt.ok(e);
         } catch (Exception ex) {
             return EffectReceipt.failed(e, ex.getMessage());
         }

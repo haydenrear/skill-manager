@@ -12,6 +12,7 @@ import dev.skillmanager.effects.EffectStatus;
 import dev.skillmanager.effects.Program;
 import dev.skillmanager.effects.SkillEffect;
 import dev.skillmanager.mcp.GatewayConfig;
+import dev.skillmanager.model.CliDependency;
 import dev.skillmanager.model.McpDependency;
 import dev.skillmanager.model.PluginParser;
 import dev.skillmanager.model.PluginUnit;
@@ -57,6 +58,19 @@ public final class RemoveUseCase {
                                                String skillName,
                                                List<String> agentsToUnlink,
                                                boolean unregisterMcp) throws IOException {
+        return buildProgram(store, gw, skillName, agentsToUnlink, unregisterMcp, false);
+    }
+
+    /**
+     * @param agentsToUnlink  agent ids to unlink from. Empty = none. {@code null} = all known agents.
+     * @param unregisterMcp   {@code true} to compute orphans and emit unregister effects.
+     * @param pruneCliOrphans {@code true} to prune orphaned managed CLI deps after the unit is removed.
+     */
+    public static Program<Report> buildProgram(SkillStore store, GatewayConfig gw,
+                                               String skillName,
+                                               List<String> agentsToUnlink,
+                                               boolean unregisterMcp,
+                                               boolean pruneCliOrphans) throws IOException {
         List<String> projectClaimers = new SkillProjectLockStore(store).projectsClaiming(skillName);
         if (!projectClaimers.isEmpty()) {
             throw new IOException("unit " + skillName + " is claimed by skill project(s): "
@@ -89,6 +103,9 @@ public final class RemoveUseCase {
         // contents). PluginUnit#mcpDependencies is already unioned at parse
         // time, so once we reload via PluginParser the dep set is complete.
         List<McpDependency> removedDeps = recoverEffectiveMcpDeps(store, skillName, kind);
+        List<CliDependency> removedCliDeps = pruneCliOrphans
+                ? recoverEffectiveCliDeps(store, skillName, kind)
+                : List.of();
 
         if (unregisterMcp) effects.addAll(ResolveContextUseCase.preflight(gw, null, true));
 
@@ -127,6 +144,10 @@ public final class RemoveUseCase {
         }
 
         effects.add(new SkillEffect.RemoveUnitFromStore(skillName, kind));
+
+        for (CliDependency dep : removedCliDeps) {
+            effects.add(new SkillEffect.PruneCliIfOrphan(skillName, dep));
+        }
 
         // Plugin marketplace + harness CLI cleanup. Skip for skills —
         // the marketplace only catalogs plugins. For plugins, regenerate
@@ -222,6 +243,35 @@ public final class RemoveUseCase {
                     yield p.mcpDependencies();
                 } catch (IOException io) {
                     Log.warn("uninstall: could not parse plugin %s — %s", unitName, io.getMessage());
+                    yield List.of();
+                }
+            }
+        };
+    }
+
+    /**
+     * Re-walk the unit on disk to recover its effective CLI dep set before
+     * deleting the unit directory. Mirrors {@link #recoverEffectiveMcpDeps}
+     * so plugin-level deps and contained-skill deps are both considered.
+     */
+    static List<CliDependency> recoverEffectiveCliDeps(SkillStore store, String unitName, UnitKind kind) {
+        if (kind == UnitKind.DOC || kind == UnitKind.HARNESS) return List.of();
+        return switch (kind) {
+            case DOC, HARNESS -> List.of();
+            case SKILL -> {
+                try {
+                    yield store.load(unitName).map(Skill::cliDependencies).orElse(List.of());
+                } catch (IOException io) {
+                    Log.warn("uninstall: could not parse skill %s CLI deps — %s", unitName, io.getMessage());
+                    yield List.of();
+                }
+            }
+            case PLUGIN -> {
+                try {
+                    PluginUnit p = PluginParser.load(store.unitDir(unitName, UnitKind.PLUGIN));
+                    yield p.cliDependencies();
+                } catch (IOException io) {
+                    Log.warn("uninstall: could not parse plugin %s CLI deps — %s", unitName, io.getMessage());
                     yield List.of();
                 }
             }
