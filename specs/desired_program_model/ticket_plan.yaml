@@ -94,7 +94,7 @@ tickets:
 
   - id: ISSUE-91B
     title: Prune orphaned CLI deps on uninstall
-    status: next
+    status: closed
     depends_on:
       - ISSUE-91A
     objective: >
@@ -128,11 +128,15 @@ tickets:
       commands:
         - bash specs/current/run_tlc.sh specs/current/SkillManager.tla specs/current/MC.cfg
         - java RunTests.java
+        - python3 /Users/hayde/.skill-manager/skills/test-graph/scripts/run.py --all
       assertions:
         - uninstall <skill> removes orphaned managed CLI artifacts and stale cli-lock rows.
         - uninstall does not remove managed CLI artifacts or cli-lock rows still claimed by another installed unit.
         - remove remains a lower-level store removal path unless intentionally widened later.
-      evidence: []
+      evidence:
+        - specs/current/results/ISSUE-91B-validation.md
+        - test_graph/build/validation-reports/20260610-194034/report.md
+        - test_graph/build/validation-reports/20260610-195224/report.md
 
   - id: ISSUE-91C
     title: Close docs and spec evidence

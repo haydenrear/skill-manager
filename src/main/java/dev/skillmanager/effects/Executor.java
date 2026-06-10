@@ -1,6 +1,7 @@
 package dev.skillmanager.effects;
 
 import dev.skillmanager.agent.Agent;
+import dev.skillmanager.lock.CliDependencyCleaner;
 import dev.skillmanager.mcp.GatewayConfig;
 import dev.skillmanager.mcp.GatewayClient;
 import dev.skillmanager.model.AgentUnit;
@@ -315,6 +316,7 @@ public final class Executor {
             case SkillEffect.RefreshHarnessPlugins e -> List.of();
             case SkillEffect.SyncGit e -> List.of();
             case SkillEffect.RemoveUnitFromStore e -> List.of();
+            case SkillEffect.PruneCliIfOrphan e -> List.of();
             case SkillEffect.UnlinkAgentUnit e -> List.of();
             case SkillEffect.UnlinkAgentMcpEntry e -> List.of();
             case SkillEffect.ScaffoldSkill e -> List.of();
@@ -512,6 +514,7 @@ public final class Executor {
             case SkillEffect.RefreshHarnessPlugins e -> List.of();
             case SkillEffect.SyncGit e -> List.of();
             case SkillEffect.RemoveUnitFromStore e -> List.of();
+            case SkillEffect.PruneCliIfOrphan e -> List.of();
             case SkillEffect.UnlinkAgentUnit e -> List.of();
             case SkillEffect.UnlinkAgentMcpEntry e -> List.of();
             case SkillEffect.ScaffoldSkill e -> List.of();
@@ -579,20 +582,14 @@ public final class Executor {
                 ctx.invalidate();
             }
             case Compensation.UninstallCliIfOrphan u -> {
-                if (!isClaimedByOtherUnit(u.unitName(), u.dep().name())) {
-                    Log.info("rollback: uninstall CLI dep %s (claimed only by rolled-back %s)",
-                            u.dep().name(), u.unitName());
-                    // CliInstallRecorder doesn't expose a single-dep uninstall yet;
-                    // just drop the lock entry. Bytes on disk linger until the next
-                    // install/sync pass — acceptable for 09a (compensation infra
-                    // skeleton). 09b's command wiring + tests pin the contract.
-                    try {
-                        var lock = dev.skillmanager.lock.CliLock.load(ctx.store());
-                        lock.remove(u.dep().backend(),
-                                dev.skillmanager.lock.RequestedVersion.of(u.dep()).tool());
-                        lock.save(ctx.store());
-                    } catch (Exception ignored) {}
-                }
+                try {
+                    CliDependencyCleaner.Result result =
+                            CliDependencyCleaner.pruneIfOrphan(ctx.store(), u.unitName(), u.dep());
+                    if (!result.claimedByOtherUnit()) {
+                        Log.info("rollback: uninstall CLI dep %s (claimed only by rolled-back %s)",
+                                u.dep().name(), u.unitName());
+                    }
+                } catch (Exception ignored) {}
             }
             case Compensation.UnregisterMcpIfOrphan u -> {
                 if (!isMcpClaimedByOtherUnit(u.unitName(), u.dep().name())) {

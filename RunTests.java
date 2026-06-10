@@ -43,6 +43,7 @@ import dev.skillmanager.command.ShowNonSkillUnitsTest;
 import dev.skillmanager.command.ShowPluginListsContainedSkillsTest;
 import dev.skillmanager.command.SkillManagerSkillDocsTest;
 import dev.skillmanager.command.SyncFromLockScenarioTest;
+import dev.skillmanager.command.UninstallCliCleanupTest;
 import dev.skillmanager.command.UninstallScenarioTest;
 import dev.skillmanager.effects.ScaffoldPluginTest;
 import dev.skillmanager.registry.PublishDetectsPluginTest;
@@ -143,6 +144,7 @@ public class RunTests {
         failures += CompensationPairingTest.run();
         failures += CompensationOrphanTest.run();
         failures += UninstallScenarioTest.run();
+        failures += UninstallCliCleanupTest.run();
         failures += FailureInjectionSweepTest.run();
         failures += LockReadWriteTest.run();
         failures += LockDiffTest.run();

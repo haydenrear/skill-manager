@@ -247,6 +247,9 @@ public final class DryRunInterpreter implements ProgramInterpreter {
                             n, e.dep().name(), e.unitName());
             case SkillEffect.RemoveUnitFromStore e ->
                     Log.step("[%d] remove %s (%s) from store", n, e.unitName(), e.kind());
+            case SkillEffect.PruneCliIfOrphan e ->
+                    Log.step("[%d] prune CLI dep for %s if orphan [%s] %s", n,
+                            e.unitName(), e.dep().backend(), e.dep().name());
             case SkillEffect.UnlinkAgentUnit e ->
                     Log.step("[%d] unlink %s (%s) from agent %s", n, e.unitName(), e.kind(), e.agentId());
             case SkillEffect.UnlinkAgentMcpEntry e ->

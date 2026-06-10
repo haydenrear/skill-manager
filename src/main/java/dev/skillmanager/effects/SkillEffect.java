@@ -61,6 +61,7 @@ public sealed interface SkillEffect permits
         SkillEffect.RefreshHarnessPlugins,
         SkillEffect.SyncGit,
         SkillEffect.RemoveUnitFromStore,
+        SkillEffect.PruneCliIfOrphan,
         SkillEffect.UnlinkAgentUnit,
         SkillEffect.UnlinkAgentMcpEntry,
         SkillEffect.ScaffoldSkill,
@@ -574,6 +575,13 @@ public sealed interface SkillEffect permits
      * record.
      */
     record RemoveUnitFromStore(String unitName, UnitKind kind) implements SkillEffect {}
+
+    /**
+     * Remove {@code unitName}'s CLI lock claim for {@code dep}. If no
+     * surviving installed unit still declares the same backend/requested-tool
+     * identity, prune skill-manager-owned CLI artifacts too.
+     */
+    record PruneCliIfOrphan(String unitName, CliDependency dep) implements SkillEffect {}
 
     /**
      * Remove an agent's symlink (or copied dir) of {@code unitName}.

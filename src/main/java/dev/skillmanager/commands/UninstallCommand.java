@@ -26,6 +26,7 @@ import java.util.concurrent.Callable;
                   - the store entry under `skills/<name>/` or `plugins/<name>/`,
                   - every agent symlink (skills) or marketplace entry (plugins) +
                     `claude plugin uninstall` (when claude is on PATH),
+                  - orphan managed CLI artifacts and stale cli-lock rows,
                   - orphan MCP servers — i.e. servers no surviving installed
                     unit (skill or plugin) still claims. Servers still claimed
                     by another unit stay registered with the gateway.
@@ -58,7 +59,8 @@ public final class UninstallCommand implements Callable<Integer> {
         }
         GatewayConfig gw = GatewayConfig.resolve(store, null);
         Program<RemoveUseCase.Report> program = RemoveUseCase.buildProgram(
-                store, gw, name, /*agentsToUnlink=*/null, /*unregisterMcp=*/!keepMcp);
+                store, gw, name, /*agentsToUnlink=*/null, /*unregisterMcp=*/!keepMcp,
+                /*pruneCliOrphans=*/true);
         RemoveUseCase.Report report;
         if (dryRun) {
             report = new DryRunInterpreter().run(program);

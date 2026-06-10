@@ -61,6 +61,9 @@ validationGraph {
         // Force path: install/sync rerun the script even when the
         // fingerprint and declared binary already match.
         node("sources/smoke/SkillScriptForceRerun.java")
+        // Uninstall path: a skill-script dep's orphaned bin/cli artifact
+        // and cli-lock row are pruned after the owning skill is removed.
+        node("sources/smoke/SkillScriptUninstallPrunesCli.java")
         node("sources/smoke/EnvScriptReports.java")
 
         // Validate the unified ToolDependency / EnsureTool path on the

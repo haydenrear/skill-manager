@@ -22,11 +22,10 @@ status:
     - Added desired force-script command labels for install and sync.
     - Added desired CLI-dependency ownership pruning for uninstall and rollback.
     - Implemented and validated ISSUE-91A in specs/current.
+    - Implemented and validated ISSUE-91B in specs/current.
   pending:
-    - Add CLI dependency pruning to uninstall only for artifacts no surviving unit claims.
-    - Extend tests around uninstall cleanup.
-    - Update uninstall cleanup documentation after ISSUE-91B lands.
     - Advance specs/current after production slices land, then promote the converged model back into specs/program_model.
+    - Update uninstall cleanup documentation and close ISSUE-91C.
   validation:
     tlc:
       - command: bash specs/desired_program_model/run_tlc.sh specs/desired_program_model/SkillManager.tla specs/desired_program_model/MC.cfg
@@ -129,8 +128,8 @@ adapter_expectations:
     evidence: specs/current/results/ISSUE-91A-validation.md
   - label: RemoveUnit
     adapter: specs.current.production_adapters:RemoveUnitAdapter
-    status: pending
-    evidence: uninstall prunes orphaned cli-lock rows and bin/cli artifacts while preserving shared claims.
+    status: implemented
+    evidence: specs/current/results/ISSUE-91B-validation.md
 
 notes:
   baseline_comparison: >

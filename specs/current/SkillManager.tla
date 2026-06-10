@@ -692,6 +692,8 @@ RemoveUnit(u) ==
   ELSE
     /\ LET remaining == cli_store_units \ {u}
            orphan_servers == McpServersFor({u}) \ McpServersFor(remaining)
+           orphan_cli_deps == CliDepsFor({u}) \ CliDepsFor(remaining)
+           orphan_scripts == ScriptsFor({u}) \ ScriptsFor(remaining)
        IN
        /\ cli_store_units' = remaining
        /\ cli_installed_records' = cli_installed_records \ {u}
@@ -700,6 +702,9 @@ RemoveUnit(u) ==
            {projection \in cli_agent_projections : projection[2] # u}
        /\ cli_bindings' = cli_bindings \ {u}
        /\ cli_projection_rows' = cli_projection_rows \ {u}
+       /\ cli_tool_records' = cli_tool_records \ orphan_cli_deps
+       /\ cli_cli_lock' = cli_cli_lock \ orphan_cli_deps
+       /\ cli_skill_scripts_run' = cli_skill_scripts_run \ orphan_scripts
        /\ gateway_catalog' = gateway_catalog \ orphan_servers
        /\ gateway_dynamic_servers' = gateway_dynamic_servers \ orphan_servers
        /\ gateway_global_deployments' = gateway_global_deployments \ orphan_servers
@@ -710,8 +715,7 @@ RemoveUnit(u) ==
     /\ result' = Ok
     /\ UNCHANGED << cli_doc_repos, cli_harness_templates,
                     cli_harness_instances, cli_managed_copies, cli_import_directives,
-                    cli_projection_conflicts, cli_tool_records, cli_cli_lock,
-                    cli_skill_scripts_run, cli_errors,
+                    cli_projection_conflicts, cli_errors,
                     cli_gateway_url_configured, cli_registry_url_configured,
                     cli_gateway_mcp_snapshot, effect_status,
                     effect_continuation, program_halted, always_after_ran,
@@ -805,7 +809,7 @@ SyncHarness(template, instance) ==
 RunEffectProgramFailure ==
   /\ LET rolled_back_units == rollback_journal
          rolled_back_servers == McpServersFor(rolled_back_units)
-         rolled_back_packages == PackagesFor(rolled_back_units)
+         rolled_back_cli_deps == CliDepsFor(rolled_back_units)
          rolled_back_scripts == ScriptsFor(rolled_back_units)
      IN
      /\ cli_store_units' = cli_store_units \ rolled_back_units
@@ -815,8 +819,8 @@ RunEffectProgramFailure ==
          {projection \in cli_agent_projections : projection[2] \notin rolled_back_units}
      /\ cli_bindings' = cli_bindings \ rolled_back_units
      /\ cli_projection_rows' = cli_projection_rows \ rolled_back_units
-     /\ cli_tool_records' = cli_tool_records \ rolled_back_packages
-     /\ cli_cli_lock' = cli_cli_lock \ rolled_back_packages
+     /\ cli_tool_records' = cli_tool_records \ rolled_back_cli_deps
+     /\ cli_cli_lock' = cli_cli_lock \ rolled_back_cli_deps
      /\ cli_skill_scripts_run' = cli_skill_scripts_run \ rolled_back_scripts
      /\ gateway_catalog' = gateway_catalog \ rolled_back_servers
      /\ gateway_dynamic_servers' = gateway_dynamic_servers \ rolled_back_servers
@@ -1375,9 +1379,21 @@ ImportDirectivesHaveDocRepo ==
 CliCliLockTracksInstalledPackages ==
   cli_cli_lock = cli_tool_records
 
+\* @invariant CliCliArtifactsAreClaimed
+CliCliArtifactsAreClaimed ==
+  cli_tool_records \subseteq CliDepsFor(cli_store_units)
+
+\* @invariant CliCliLockRowsAreClaimed
+CliCliLockRowsAreClaimed ==
+  cli_cli_lock \subseteq CliDepsFor(cli_store_units)
+
 \* @invariant SkillScriptsAreKnownScripts
 SkillScriptsAreKnownScripts ==
   cli_skill_scripts_run \subseteq Scripts
+
+\* @invariant SkillScriptRunsAreClaimed
+SkillScriptRunsAreClaimed ==
+  cli_skill_scripts_run \subseteq ScriptsFor(cli_store_units)
 
 \* @invariant ProjectRegistrationsHaveManifests
 ProjectRegistrationsHaveManifests ==
