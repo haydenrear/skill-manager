@@ -1,0 +1,178 @@
+version: 1
+name: issue-91-force-scripts-cli-dep-cleanup
+updated: 2026-06-10
+purpose: >
+  Model and implement explicit skill-script rerun controls plus uninstall
+  cleanup for orphaned managed CLI artifacts and cli-lock rows.
+
+planning_rules:
+  current_model_rule: Update specs/current after each production slice lands as a whole-program working copy of specs/program_model, not a ticket projection.
+  unit_validation_rule: Run current-model TLC and adapter/unit tests before adding graph execution.
+  graph_rule: Add graph or integration nodes only after current-model validation passes.
+  semantic_model_rule: Do not add test graph nodes, pytest jobs, CI workflow steps, integration harnesses, or validation scripts as TLA+ program state/actions.
+  evidence_rule: Record tests and graph runs as evidence for semantic program actions in manifests or ticket status.
+  desired_sync_rule: Update this file and spec_manifest.yaml whenever scope, order, acceptance checks, or status changes.
+  promotion_rule: When specs/current equals specs/desired_program_model, promote the converged model to specs/program_model.
+
+status:
+  workflow: ticket
+  active_ticket: ISSUE-91
+  active_ticket_title: "Add force skill-script reruns and prune CLI deps on uninstall"
+  desired_module: SkillManager
+  phase: issue_91a_closed
+  validation:
+    tlc:
+      command: bash specs/desired_program_model/run_tlc.sh specs/desired_program_model/SkillManager.tla specs/desired_program_model/MC.cfg
+      status: passed
+      states_generated: 67930849
+      distinct_states: 2337728
+      depth: 23
+
+service_catalog:
+  existing_boundaries:
+    - skill-script deps are represented by UnitScriptEdges and cli_skill_scripts_run.
+    - package-style CLI deps are represented by UnitPackageEdges, cli_tool_records, and cli_cli_lock.
+    - RemoveUnit already computes MCP orphans against surviving installed units.
+  desired_boundaries:
+    - skill-script deps participate in the same managed CLI artifact and cli-lock ownership model as package CLI deps.
+    - install --force-scripts and sync --force-scripts are explicit command paths that rerun declared scripts despite matching fingerprints.
+    - uninstall removes only orphaned managed CLI artifacts and cli-lock rows.
+  adapter_boundaries:
+    - SkillScriptBackend fingerprint skip and forced rerun path.
+    - CliLock requested_by rows and install_fingerprint persistence.
+    - RemoveUseCase effective CLI dependency recovery for skills and plugins.
+  known_gaps:
+    - specs/program_model/SkillManager.tla currently leaves cli_tool_records and cli_cli_lock unchanged in RemoveUnit.
+    - The baseline model does not expose force-script commands.
+    - The baseline model treats skill-script runs separately from cli-lock ownership.
+
+tickets:
+  - id: ISSUE-91A
+    title: Add force-scripts command plumbing
+    status: closed
+    depends_on: []
+    objective: >
+      Add install/sync force flags that rerun skill-script deps even when the
+      stored fingerprint matches and the declared binary still exists.
+    desired_actions:
+      - InstallUnitForceScripts
+      - SyncUnitForceScripts
+    implementation_scope:
+      - src/main/java/dev/skillmanager/commands/InstallCommand.java
+      - src/main/java/dev/skillmanager/commands/SyncCommand.java
+      - src/main/java/dev/skillmanager/app/InstallUseCase.java
+      - src/main/java/dev/skillmanager/app/SyncUseCase.java
+      - src/main/java/dev/skillmanager/plan/PlanBuilder.java
+      - src/main/java/dev/skillmanager/lock/CliInstallRecorder.java
+      - src/main/java/dev/skillmanager/cli/installer/SkillScriptBackend.java
+    current_increment:
+      model_state:
+        - Normal install/sync skip unchanged skill-script reruns when current lock/artifact state already covers the script.
+        - Force install/sync records the explicit forced script-rerun command result.
+      model_actions:
+        - InstallUnitForceScripts
+        - SyncUnitForceScripts
+      adapters:
+        - InstallUnitAdapter covers force_scripts=true.
+        - SyncUnitAdapter covers force_scripts=true.
+      unit_tests:
+        - Regression coverage near the existing skill-script fingerprint rerun fixture.
+        - CLI parse/help coverage for install --force-scripts and sync --force-scripts.
+      graph_after_unit_pass:
+        - Add smoke coverage only if the existing test graph already exercises real skill-script CLI deps.
+    acceptance:
+      commands:
+        - bash specs/current/run_tlc.sh specs/current/SkillManager.tla specs/current/MC.cfg
+        - java RunTests.java
+      assertions:
+        - install --force-scripts reruns a skill-script dep with a matching fingerprint and existing binary.
+        - sync --force-scripts reruns a skill-script dep with a matching fingerprint and existing binary.
+        - force-scripts does not skip or weaken the existing install policy gate for skill-script execution.
+      evidence:
+        - specs/current/results/ISSUE-91A-validation.md
+        - test_graph/build/validation-reports/20260610-184858/report.md
+
+  - id: ISSUE-91B
+    title: Prune orphaned CLI deps on uninstall
+    status: closed
+    depends_on:
+      - ISSUE-91A
+    objective: >
+      Make uninstall remove managed CLI binaries/artifacts and cli-lock rows
+      only when no surviving installed unit still claims them.
+    desired_actions:
+      - RemoveUnit
+      - RunEffectProgramFailure
+    implementation_scope:
+      - src/main/java/dev/skillmanager/app/RemoveUseCase.java
+      - src/main/java/dev/skillmanager/commands/UninstallCommand.java
+      - src/main/java/dev/skillmanager/lock/CliLock.java
+      - src/main/java/dev/skillmanager/model/PluginParser.java
+      - src/main/java/dev/skillmanager/model/SkillParser.java
+    current_increment:
+      model_state:
+        - CliDepsFor(units) derives effective CLI ownership from package deps plus skill-script deps.
+        - cli_tool_records and cli_cli_lock contain no rows outside CliDepsFor(cli_store_units).
+      model_actions:
+        - RemoveUnit prunes CliDepsFor({u}) minus CliDepsFor(remaining).
+        - RunEffectProgramFailure rolls back package and skill-script CLI deps together.
+      adapters:
+        - RemoveUnitAdapter covers orphan cleanup, shared claims, and plugin contained-skill claims.
+      unit_tests:
+        - uninstall removes orphaned bin/cli skill-script binary and cli-lock row.
+        - uninstall keeps a CLI binary and cli-lock row still requested_by another installed unit.
+        - plugin uninstall re-walks plugin-level metadata plus contained skills for CLI deps.
+      graph_after_unit_pass:
+        - Add a command smoke only if the fixture can assert bin/cli and cli-lock state directly.
+    acceptance:
+      commands:
+        - bash specs/current/run_tlc.sh specs/current/SkillManager.tla specs/current/MC.cfg
+        - java RunTests.java
+        - python3 /Users/hayde/.skill-manager/skills/test-graph/scripts/run.py --all
+      assertions:
+        - uninstall <skill> removes orphaned managed CLI artifacts and stale cli-lock rows.
+        - uninstall does not remove managed CLI artifacts or cli-lock rows still claimed by another installed unit.
+        - remove remains a lower-level store removal path unless intentionally widened later.
+      evidence:
+        - specs/current/results/ISSUE-91B-validation.md
+        - test_graph/build/validation-reports/20260610-194034/report.md
+        - test_graph/build/validation-reports/20260610-195224/report.md
+
+  - id: ISSUE-91C
+    title: Close docs and spec evidence
+    status: next
+    depends_on:
+      - ISSUE-91A
+      - ISSUE-91B
+    objective: >
+      Update user documentation and promote the converged current model back
+      into the accepted program model after implementation.
+    desired_actions:
+      - InstallUnitForceScripts
+      - SyncUnitForceScripts
+      - RemoveUnit
+    implementation_scope:
+      - README.md
+      - skill-manager-skill/skill-manager.toml
+      - specs/current
+      - specs/program_model
+    current_increment:
+      model_state:
+        - specs/current semantically equals specs/desired_program_model.
+      model_actions:
+        - Promote force-script and CLI cleanup actions into specs/program_model.
+      adapters:
+        - Adapter coverage status recorded in spec_manifest.yaml.
+      unit_tests:
+        - Documentation assertions or command help snapshot tests where available.
+      graph_after_unit_pass:
+        - Run broad smoke only after TLC and unit tests pass.
+    acceptance:
+      commands:
+        - bash specs/current/run_tlc.sh specs/current/SkillManager.tla specs/current/MC.cfg
+        - java RunTests.java
+      assertions:
+        - CLI help documents both force flags.
+        - skill-script docs remove the uninstall+install limitation footnote or replace it with the new behavior.
+        - specs/current and specs/desired_program_model are ready for promotion into specs/program_model.
+      evidence: []
