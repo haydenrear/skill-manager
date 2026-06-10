@@ -1,0 +1,113 @@
+{
+  "commit_recommendation": {
+    "git_add": "git add specs/.history/issue-91-force-scripts-cli-dep-cleanup/ticket-002-ISSUE-91C",
+    "git_commit": "git commit -m 'record spec history for ISSUE-91C'",
+    "message": "It is recommended to commit this history directory now: specs/.history/issue-91-force-scripts-cli-dep-cleanup/ticket-002-ISSUE-91C"
+  },
+  "created_at_utc": "2026-06-10T20:57:57.091655+00:00",
+  "entry_name": "ticket-002-ISSUE-91C",
+  "git": {
+    "branch": "fix/doc-bind-uuid",
+    "commit": "80bd3ff",
+    "inside_work_tree": "true"
+  },
+  "history_policy": "append-only by convention; existing entries are not overwritten and filesystem permissions remain git-friendly",
+  "kind": "ticket",
+  "results": [
+    {
+      "exists": true,
+      "role": "result",
+      "snapshot": "specs/.history/issue-91-force-scripts-cli-dep-cleanup/ticket-002-ISSUE-91C/results/ISSUE-91C-validation.md",
+      "source": "specs/current/results/ISSUE-91C-validation.md"
+    }
+  ],
+  "schema_version": 1,
+  "snapshots": [
+    {
+      "exists": true,
+      "role": "program_model",
+      "snapshot": "specs/.history/issue-91-force-scripts-cli-dep-cleanup/ticket-002-ISSUE-91C/snapshots/program_model",
+      "source": "specs/program_model"
+    },
+    {
+      "exists": true,
+      "role": "desired_program_model",
+      "snapshot": "specs/.history/issue-91-force-scripts-cli-dep-cleanup/ticket-002-ISSUE-91C/snapshots/desired_program_model",
+      "source": "specs/desired_program_model"
+    },
+    {
+      "exists": true,
+      "role": "current",
+      "snapshot": "specs/.history/issue-91-force-scripts-cli-dep-cleanup/ticket-002-ISSUE-91C/snapshots/current",
+      "source": "specs/current"
+    }
+  ],
+  "spec_root": "specs",
+  "summary": "Closed ISSUE-91C after adding E2E force-sync graph coverage for skill-script plus MCP and plugin CLI/MCP/script dependency sets.",
+  "ticket": {
+    "acceptance": {
+      "assertions": [
+        "skill.script.force.sync.with.mcp proves sync --force-scripts reruns a skill-script dep while MCP sync still runs.",
+        "plugin.skill_script.force.sync proves plugin sync --force-scripts reruns a plugin-level skill-script dep while plugin CLI and MCP deps remain valid.",
+        "Test graph nodes are recorded as evidence for SyncUnitForceScripts, not as new TLA+ actions."
+      ],
+      "commands": [
+        "bash specs/current/run_tlc.sh specs/current/SkillManager.tla specs/current/MC.cfg",
+        "java RunTests.java",
+        "uvx pytest specs/current/tests specs/desired_program_model/tests",
+        "python3 /Users/hayde/.skill-manager/skills/test-graph/scripts/run.py --all"
+      ],
+      "evidence": [
+        "specs/current/results/ISSUE-91C-validation.md",
+        "test_graph/build/validation-reports/20260610-203346/report.md",
+        "test_graph/build/validation-reports/20260610-203854/report.md",
+        "test_graph/build/validation-reports/20260610-204218/report.md",
+        "test_graph/build/validation-reports/20260610-204958/report.md",
+        "test_graph/build/validation-reports/20260610-205350/report.md"
+      ]
+    },
+    "current_increment": {
+      "adapters": [
+        "Graph evidence covers a skill with skill-script plus MCP deps.",
+        "Graph evidence covers a plugin with pip CLI, MCP, and skill-script deps."
+      ],
+      "graph_after_unit_pass": [
+        "Add smoke coverage where a skill has both skill-script CLI and MCP deps, noop sync skips, and sync --force-scripts reruns the script.",
+        "Add plugin-smoke coverage where a plugin has pip CLI, MCP, and skill-script deps, noop sync skips, and sync --force-scripts reruns the script.",
+        "Run broad graph coverage after TLC and unit tests pass."
+      ],
+      "model_actions": [
+        "SyncUnitForceScripts evidence expanded across richer dependency sets."
+      ],
+      "model_state": [
+        "No TLA+ semantic changes; graph nodes are evidence for SyncUnitForceScripts."
+      ],
+      "unit_tests": [
+        "Spec workflow tests assert graph evidence is recorded outside the TLA+ model."
+      ]
+    },
+    "depends_on": [
+      "ISSUE-91A",
+      "ISSUE-91B"
+    ],
+    "desired_actions": [
+      "SyncUnitForceScripts"
+    ],
+    "id": "ISSUE-91C",
+    "implementation_scope": [
+      "specs/current",
+      "specs/desired_program_model",
+      "test_graph/sources/smoke/SkillScriptForceSyncWithMcp.java",
+      "test_graph/sources/smoke/plugin/PluginSkillScriptForceSync.java",
+      "test_graph/build.gradle.kts"
+    ],
+    "objective": "Add end-to-end force-sync coverage for richer skill/plugin dependency sets so the command path proves noop sync skips and sync --force-scripts reruns skill-script deps while MCP and package CLI side effects remain valid.\n",
+    "status": "closed",
+    "title": "Add E2E force-sync graph coverage"
+  },
+  "ticket_id": "ISSUE-91C",
+  "ticket_index": 2,
+  "ticket_plan": "specs/desired_program_model/ticket_plan.yaml",
+  "ticket_status": "closed",
+  "workflow_name": "issue-91-force-scripts-cli-dep-cleanup"
+}

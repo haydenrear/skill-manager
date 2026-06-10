@@ -61,6 +61,10 @@ validationGraph {
         // Force path: install/sync rerun the script even when the
         // fingerprint and declared binary already match.
         node("sources/smoke/SkillScriptForceRerun.java")
+        // Composite force-sync path: a skill with both skill-script CLI
+        // and MCP deps must skip on noop sync, rerun the script under
+        // --force-scripts, and still re-register MCP.
+        node("sources/smoke/SkillScriptForceSyncWithMcp.java")
         // Uninstall path: a skill-script dep's orphaned bin/cli artifact
         // and cli-lock row are pruned after the owning skill is removed.
         node("sources/smoke/SkillScriptUninstallPrunesCli.java")
@@ -472,11 +476,16 @@ validationGraph {
         node("sources/smoke/plugin/PluginMarkdownImportTargets.java")
         // Plugin uninstall with mixed orphan/non-orphan deps.
         node("sources/smoke/plugin/PluginUninstalledMixedOrphans.java")
+        // Composite plugin force-sync path: plugin-level pip CLI, MCP,
+        // and skill-script deps together; --force-scripts must rerun
+        // only the skill-script dep while sync still refreshes MCP.
+        node("sources/smoke/plugin/PluginSkillScriptForceSync.java")
 
         node("sources/common/ServersDown.java")
                 .dependsOn("plugin.contained.skill.not.addressable",
                         "plugin.markdown.import.targets",
-                        "plugin.uninstalled.mixed.orphans")
+                        "plugin.uninstalled.mixed.orphans",
+                        "plugin.skill_script.force.sync")
     }
 
     // -------------------------------------------------------- doc-smoke

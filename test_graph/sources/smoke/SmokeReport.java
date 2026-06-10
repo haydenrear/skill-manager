@@ -41,6 +41,9 @@ public class SmokeReport {
                     "ownership.recorded",
                     "semver.enforced",
                     "immutability.enforced",
+                    "skill.script.force.rerun",
+                    "skill.script.force.sync.with.mcp",
+                    "skill.script.uninstall.prunes.cli",
                     "markdown.import.violations.reported",
                     "markdown.imports.cross_kind.targets")
             .tags("report")

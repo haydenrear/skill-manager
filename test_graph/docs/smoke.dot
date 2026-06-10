@@ -23,6 +23,7 @@ digraph "smoke" {
   "skill.script.transitive.installed" [label="skill.script.transitive.installed\n(action, jbang)"];
   "skill.script.reruns.on.change" [label="skill.script.reruns.on.change\n(assertion, jbang)"];
   "skill.script.force.rerun" [label="skill.script.force.rerun\n(assertion, jbang)"];
+  "skill.script.force.sync.with.mcp" [label="skill.script.force.sync.with.mcp\n(assertion, jbang)"];
   "skill.script.uninstall.prunes.cli" [label="skill.script.uninstall.prunes.cli\n(assertion, jbang)"];
   "env.script.reports" [label="env.script.reports\n(assertion, jbang)"];
   "mcp.tool.loads.installed" [label="mcp.tool.loads.installed\n(action, jbang)"];
@@ -75,6 +76,9 @@ digraph "smoke" {
   "skill.script.installed" -> "skill.script.transitive.installed";
   "env.prepared" -> "skill.script.reruns.on.change";
   "env.prepared" -> "skill.script.force.rerun";
+  "env.prepared" -> "skill.script.force.sync.with.mcp";
+  "gateway.up" -> "skill.script.force.sync.with.mcp";
+  "echo.http.up" -> "skill.script.force.sync.with.mcp";
   "env.prepared" -> "skill.script.uninstall.prunes.cli";
   "umbrella.installed" -> "env.script.reports";
   "env.prepared" -> "mcp.tool.loads.installed";
@@ -123,6 +127,9 @@ digraph "smoke" {
   "ownership.recorded" -> "smoke.report";
   "semver.enforced" -> "smoke.report";
   "immutability.enforced" -> "smoke.report";
+  "skill.script.force.rerun" -> "smoke.report";
+  "skill.script.force.sync.with.mcp" -> "smoke.report";
+  "skill.script.uninstall.prunes.cli" -> "smoke.report";
   "markdown.import.violations.reported" -> "smoke.report";
   "markdown.imports.cross_kind.targets" -> "smoke.report";
   "smoke.report" -> "servers.down";
