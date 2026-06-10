@@ -22,6 +22,7 @@ digraph "smoke" {
   "skill.script.installed" [label="skill.script.installed\n(action, jbang)"];
   "skill.script.transitive.installed" [label="skill.script.transitive.installed\n(action, jbang)"];
   "skill.script.reruns.on.change" [label="skill.script.reruns.on.change\n(assertion, jbang)"];
+  "skill.script.force.rerun" [label="skill.script.force.rerun\n(assertion, jbang)"];
   "env.script.reports" [label="env.script.reports\n(assertion, jbang)"];
   "mcp.tool.loads.installed" [label="mcp.tool.loads.installed\n(action, jbang)"];
   "mcp.tool.loads.bundled" [label="mcp.tool.loads.bundled\n(assertion, jbang)"];
@@ -72,6 +73,7 @@ digraph "smoke" {
   "env.prepared" -> "skill.script.transitive.installed";
   "skill.script.installed" -> "skill.script.transitive.installed";
   "env.prepared" -> "skill.script.reruns.on.change";
+  "env.prepared" -> "skill.script.force.rerun";
   "umbrella.installed" -> "env.script.reports";
   "env.prepared" -> "mcp.tool.loads.installed";
   "gateway.up" -> "mcp.tool.loads.installed";

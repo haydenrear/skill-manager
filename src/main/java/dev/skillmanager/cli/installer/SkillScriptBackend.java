@@ -80,15 +80,10 @@ import java.util.Map;
  *   <li><b>Manual {@code rm} of the binary</b> — declared binary missing
  *       → script reruns even if the fingerprint matches (recovery
  *       path).</li>
- *   <li><b>{@code uninstall} + {@code install}</b> — note: today
- *       {@link dev.skillmanager.app.RemoveUseCase} doesn't prune
- *       {@code bin/cli/} (Executor.java compensation comment on
- *       {@code UninstallCliIfOrphan} flags it as deferred), so the
- *       binary lingers and the post-reinstall fingerprint check skips.
- *       That matches the new "only on script change" rule but differs
- *       from the historical "uninstall+install always reruns"
- *       intuition. To force a rerun, edit the script (or any file
- *       under {@code skill-scripts/}) or remove the binary.</li>
+ *   <li><b>Explicit replay</b> - {@code install --force-scripts} and
+ *       {@code sync --force-scripts} bypass the fingerprint/binary-present
+ *       skip for {@code skill-script:} deps. Policy gates still run before
+ *       the script executes.</li>
  * </ul>
  */
 public final class SkillScriptBackend implements InstallerBackend {
@@ -113,6 +108,12 @@ public final class SkillScriptBackend implements InstallerBackend {
 
     @Override
     public void install(CliDependency dep, SkillStore store, String skillName) throws IOException {
+        install(dep, store, skillName, false);
+    }
+
+    @Override
+    public void install(CliDependency dep, SkillStore store, String skillName,
+                        boolean force) throws IOException {
         Fs.ensureDir(store.cliBinDir());
 
         CliDependency.InstallTarget target = pickTarget(dep);
@@ -142,13 +143,17 @@ public final class SkillScriptBackend implements InstallerBackend {
         CliLock lock = CliLock.load(store);
         String requestedTool = dev.skillmanager.lock.RequestedVersion.of(dep).tool();
         CliLock.Entry prev = lock.get(id(), requestedTool);
-        if (prev != null
+        if (!force
+                && prev != null
                 && prev.installFingerprint() != null
                 && prev.installFingerprint().equals(currentFingerprint)
                 && declaredBinaryStillPresent(target, store)) {
             Log.ok("cli: skill-script %s — scripts unchanged since last install (skipping)",
                     dep.name());
             return;
+        }
+        if (force) {
+            Log.step("cli: skill-script %s - force rerun requested", dep.name());
         }
 
         Fs.makeExecutable(script);

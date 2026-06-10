@@ -239,8 +239,9 @@ public final class DryRunInterpreter implements ProgramInterpreter {
                     Log.step("[%d] ensure tool %s (missingOnPath=%s)", n,
                             e.tool().id(), e.missingOnPath());
             case SkillEffect.RunCliInstall e ->
-                    Log.step("[%d] cli-install %s [%s] %s", n,
-                            e.unitName(), e.dep().backend(), e.dep().name());
+                    Log.step("[%d] cli-install %s [%s] %s%s", n,
+                            e.unitName(), e.dep().backend(), e.dep().name(),
+                            e.forceScripts() ? " (force-scripts)" : "");
             case SkillEffect.RegisterMcpServer e ->
                     Log.step("[%d] register mcp server %s for %s",
                             n, e.dep().name(), e.unitName());
@@ -271,8 +272,9 @@ public final class DryRunInterpreter implements ProgramInterpreter {
             case SkillEffect.CheckInstallPolicyGate e ->
                     Log.step("[%d] check install policy gate (yes=%s)", n, e.yes());
             case SkillEffect.BuildInstallPlan e ->
-                    Log.step("[%d] build install plan over %s skill(s)", n,
-                            e.graph() == null ? "resolved" : Integer.toString(e.graph().resolved().size()));
+                    Log.step("[%d] build install plan over %s skill(s)%s", n,
+                            e.graph() == null ? "resolved" : Integer.toString(e.graph().resolved().size()),
+                            e.forceScripts() ? " (force-scripts)" : "");
             case SkillEffect.RunInstallPlan e ->
                     Log.step("[%d] expand + run install plan (gateway=%s)",
                             n, e.gateway() == null ? "<none>" : e.gateway().baseUrl());

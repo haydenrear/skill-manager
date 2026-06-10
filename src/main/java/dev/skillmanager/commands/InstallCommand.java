@@ -57,6 +57,9 @@ import java.util.concurrent.Callable;
                      walks the plugin's `skill-manager-plugin.toml` AND
                      every contained skill's `skill-manager.toml` and
                      unions the deps — no need to declare twice.
+                     `--force-scripts` reruns `skill-script:` CLI deps
+                     even when their fingerprint and binary already match;
+                     policy.install gates still apply before execution.
                   5. Project units into each agent's tree:
                      - Skills → symlinks at `<agentHome>/skills/<name>/`.
                      - Plugins → entries in the skill-manager-owned
@@ -108,6 +111,11 @@ public final class InstallCommand implements Callable<Integer> {
                     + "which create their own bindings.")
     public boolean noBindDefault;
 
+    @Option(names = "--force-scripts",
+            description = "Rerun skill-script CLI deps even when the previous fingerprint matches "
+                    + "and the declared binary already exists. Does not bypass policy.install gates.")
+    public boolean forceScripts;
+
     @Option(names = "--json", description = "Emit machine-readable JSON.")
     public boolean json;
 
@@ -143,7 +151,7 @@ public final class InstallCommand implements Callable<Integer> {
         //   4. Commit + audit + provenance + summary + run + tail.
         dev.skillmanager.effects.StagedProgram<InstallUseCase.Report> program =
                 InstallUseCase.buildProgram(store, gw, registryUrl, source, version, yes, dryRun,
-                        !dryRun, !noBindDefault);
+                        !dryRun, !noBindDefault, forceScripts);
 
         InstallUseCase.Report report;
         if (dryRun) {

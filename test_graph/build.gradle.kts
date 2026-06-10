@@ -58,6 +58,9 @@ validationGraph {
         // SKILL_MANAGER_HOME under env.prepared so the rest of the
         // smoke graph's lock state isn't disturbed.
         node("sources/smoke/SkillScriptRerunsOnChange.java")
+        // Force path: install/sync rerun the script even when the
+        // fingerprint and declared binary already match.
+        node("sources/smoke/SkillScriptForceRerun.java")
         node("sources/smoke/EnvScriptReports.java")
 
         // Validate the unified ToolDependency / EnsureTool path on the

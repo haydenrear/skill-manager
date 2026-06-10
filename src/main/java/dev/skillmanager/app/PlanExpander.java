@@ -48,7 +48,7 @@ public final class PlanExpander {
         }
         for (PlanAction a : plan.actions()) {
             if (a instanceof PlanAction.RunCliInstall c) {
-                out.add(new SkillEffect.RunCliInstall(c.unitName(), c.dep()));
+                out.add(new SkillEffect.RunCliInstall(c.unitName(), c.dep(), c.forceScripts()));
             }
         }
         for (PlanAction a : plan.actions()) {

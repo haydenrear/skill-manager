@@ -12,6 +12,7 @@ import dev.skillmanager.bindings.DocRepoBinder;
 import dev.skillmanager.bindings.Projection;
 import dev.skillmanager.bindings.ProjectionLedger;
 import dev.skillmanager.commands.DepsCommand;
+import dev.skillmanager.commands.InstallCommand;
 import dev.skillmanager.commands.LockCommand;
 import dev.skillmanager.commands.RebindCommand;
 import dev.skillmanager.commands.SyncCommand;
@@ -101,6 +102,22 @@ public final class CommandKindCoverageTest {
             assertEquals(0, result.rc, "sync doc --from rc");
             assertContains(result.out, "sync team-prompts from " + from, "from-dir effect present");
             assertContains(result.out, "doc-repo sync team-prompts", "doc sync effect preserved");
+        });
+
+        suite.test("install and sync parse --force-scripts", () -> {
+            InstallCommand install = new InstallCommand();
+            int installRc = new CommandLine(install)
+                    .parseArgs("--force-scripts", "--dry-run", "--yes", "file:/tmp/unit")
+                    .errors().size();
+            assertEquals(0, installRc, "install parse errors");
+            assertTrue(install.forceScripts, "install forceScripts flag");
+
+            SyncCommand sync = new SyncCommand(newStore());
+            int syncRc = new CommandLine(sync)
+                    .parseArgs("--force-scripts", "--dry-run", "--skip-mcp", "--skip-agents")
+                    .errors().size();
+            assertEquals(0, syncRc, "sync parse errors");
+            assertTrue(sync.forceScripts, "sync forceScripts flag");
         });
 
         suite.test("sync --from harness preserves live instance reconciliation", () -> {

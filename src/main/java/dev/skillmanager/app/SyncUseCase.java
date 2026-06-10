@@ -47,7 +47,17 @@ public final class SyncUseCase {
             boolean merge,
             boolean withMcp,
             boolean withAgents,
-            boolean yesForFromDir) {}
+            boolean yesForFromDir,
+            boolean forceScripts) {
+        public Options(String registryOverride,
+                       boolean gitLatest,
+                       boolean merge,
+                       boolean withMcp,
+                       boolean withAgents,
+                       boolean yesForFromDir) {
+            this(registryOverride, gitLatest, merge, withMcp, withAgents, yesForFromDir, false);
+        }
+    }
 
     /**
      * A single sync target — what {@code skill-manager sync <name>}
@@ -223,7 +233,7 @@ public final class SyncUseCase {
         effects.add(new SkillEffect.CommitUnitsToStore());
         effects.add(new SkillEffect.ValidateMarkdownImports(unitNames(liveUnits)));
         effects.add(SkillEffect.ValidateMarkdownImports.resolvedGraph());
-        effects.add(new SkillEffect.BuildInstallPlan());
+        effects.add(new SkillEffect.BuildInstallPlan(options.forceScripts()));
         effects.add(new SkillEffect.RecordSourceProvenance());
         effects.add(new SkillEffect.RunInstallPlan(gw));
         // Cleanup the resolver's staged temp dirs no matter how the
@@ -232,7 +242,7 @@ public final class SyncUseCase {
         alwaysAfter.add(new SkillEffect.CleanupResolvedGraph());
 
         effects.add(new SkillEffect.InstallTools(liveUnits));
-        effects.add(new SkillEffect.InstallCli(liveUnits));
+        effects.add(new SkillEffect.InstallCli(liveUnits, options.forceScripts()));
         if (options.withMcp()) effects.add(new SkillEffect.RegisterMcp(liveUnits, gw));
         if (options.withAgents()) effects.add(new SkillEffect.SyncAgents(liveUnits, gw));
         // Plugin marketplace + harness CLI lifecycle. Sync is the

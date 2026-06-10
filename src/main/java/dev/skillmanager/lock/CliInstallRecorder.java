@@ -22,7 +22,7 @@ public final class CliInstallRecorder {
         for (PlanAction a : plan.actions()) {
             if (!(a instanceof PlanAction.RunCliInstall rc)) continue;
             try {
-                registry.installOne(rc.dep(), store, rc.unitName());
+                registry.installOne(rc.dep(), store, rc.unitName(), rc.forceScripts());
                 var req = RequestedVersion.of(rc.dep());
                 String sha = findHash(rc.dep());
                 // Stamp the post-install scripts-tree fingerprint into
