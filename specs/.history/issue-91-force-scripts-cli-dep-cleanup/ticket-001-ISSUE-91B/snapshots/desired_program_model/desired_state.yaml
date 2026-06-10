@@ -1,0 +1,88 @@
+version: 1
+name: desired-program-model
+canonical_tla_module: SkillManager
+canonical_tla_file: SkillManager.tla
+bounded_model_config: MC.cfg
+manifest: spec_manifest.yaml
+ticket_plan: ticket_plan.yaml
+
+relationship:
+  extends_current_program_model: ../program_model/SkillManager.tla
+  purpose: desired whole-program model for ISSUE-91
+  generation_status: planned
+
+implementation_status:
+  updated: 2026-06-10
+  policy: specs/current is the executable state of landed work; this file summarizes the desired destination.
+  active_ticket: ISSUE-91
+  active_ticket_title: "Add force skill-script reruns and prune CLI deps on uninstall"
+  summary:
+    desired_model_scaffolded: true
+    ticket_breakdown: filled
+    current_model: issue_91b_closed
+    generated_desired_cases: pending
+    adapters: issue_91b_unit_spec_and_graph_validated
+    tlc: passed
+
+modeled_boundary_status:
+  ticket_plan:
+    status: issue_91b_closed
+    artifact: ticket_plan.yaml
+    next_ticket: ISSUE-91C
+  baseline_comparison:
+    program_model_has:
+      - cli_skill_scripts_run
+      - cli_tool_records
+      - cli_cli_lock
+      - RemoveUnit MCP orphan cleanup
+    program_model_missing:
+      - force-script install/sync command labels
+      - skill-script CLI deps as cli-lock/artifact ownership rows
+      - RemoveUnit pruning for orphan CLI deps
+  desired_tla_changes:
+    derived_sets:
+      - CliDepsFor(units) = PackagesFor(units) union ScriptsFor(units)
+    new_actions:
+      - InstallUnitForceScripts
+      - SyncUnitForceScripts
+    refined_actions:
+      - InstallUnit
+      - SyncUnit
+      - RemoveUnit
+      - RunEffectProgramFailure
+      - ResolveProjectDependencies
+      - ResolveProjectProfile
+    new_invariants:
+      - CliCliArtifactsAreClaimed
+      - CliCliLockRowsAreClaimed
+      - SkillScriptRunsAreClaimed
+
+program_domains:
+  - cli_dependency_lifecycle
+  - skill_script_execution
+  - uninstall_side_effect_cleanup
+
+implementation_sources:
+  command_flags:
+    - src/main/java/dev/skillmanager/commands/InstallCommand.java
+    - src/main/java/dev/skillmanager/commands/SyncCommand.java
+  use_cases:
+    - src/main/java/dev/skillmanager/app/InstallUseCase.java
+    - src/main/java/dev/skillmanager/app/SyncUseCase.java
+    - src/main/java/dev/skillmanager/app/RemoveUseCase.java
+  cli_dependency_runtime:
+    - src/main/java/dev/skillmanager/cli/installer/SkillScriptBackend.java
+    - src/main/java/dev/skillmanager/lock/CliInstallRecorder.java
+    - src/main/java/dev/skillmanager/lock/CliLock.java
+
+adapter_plan:
+  desired_new_ports:
+    - SkillManagerCli.install_unit_force_scripts
+    - SkillManagerCli.sync_unit_force_scripts
+  desired_refined_ports:
+    - SkillManagerCli.remove_unit
+
+guardrails:
+  force_scripts_scope: Force reruns skill-script deps only; it does not bypass install policy or safety review.
+  ownership_scope: Uninstall cleanup is based on surviving effective claims, including plugin-level metadata and contained skills.
+  remove_scope: remove can stay the lower-level store removal path unless intentionally widened in a later ticket.

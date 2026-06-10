@@ -1,0 +1,93 @@
+module: SkillManager
+package: current_program_cases
+
+status:
+  workflow: ticket
+  active_ticket: ISSUE-91
+  active_ticket_title: "Add force skill-script reruns and prune CLI deps on uninstall"
+  relation_to_program_model: starts_equivalent_then_advances_as_slices_land
+  relation_to_desired_program_model: implemented_prefix_of_desired_ticket_plan
+  current_model_rule: whole_program_working_copy_not_ticket_projection
+  test_modeling_rule: do_not_model_tests_or_validation_harnesses_as_program_behavior
+  updated: 2026-06-10
+  current_slice:
+    name: ISSUE-91B
+    status: closed
+    refines:
+      - InstallUnitForceScripts
+      - SyncUnitForceScripts
+      - RemoveUnit
+      - RunEffectProgramFailure
+    implemented_actions:
+      - InstallUnitForceScripts
+      - SyncUnitForceScripts
+      - RemoveUnit
+      - RunEffectProgramFailure
+    implemented_invariants:
+      - CliCliArtifactsAreClaimed
+      - CliCliLockRowsAreClaimed
+      - SkillScriptRunsAreClaimed
+    validation:
+      unit:
+        - SkillScriptBackendTest
+        - CommandKindCoverageTest
+        - UninstallCliCleanupTest
+        - CompensationOrphanTest
+      tlc:
+        - command: bash specs/current/run_tlc.sh specs/current/SkillManager.tla specs/current/MC.cfg
+          status: passed
+          result: no invariant violations
+          states_generated: 67930849
+          distinct_states: 2337728
+          depth: 23
+      graph:
+        - skill.script.force.rerun
+        - skill.script.uninstall.prunes.cli
+      evidence:
+        - specs/current/results/ISSUE-91A-validation.md
+        - specs/current/results/ISSUE-91B-validation.md
+        - test_graph/build/validation-reports/20260610-184858/report.md
+        - test_graph/build/validation-reports/20260610-194034/report.md
+        - test_graph/build/validation-reports/20260610-195224/report.md
+  next:
+    - Preserve all existing specs/program_model state/actions unless production behavior changes them.
+    - Promote current to program_model when all ISSUE-91 desired slices converge.
+
+source_model:
+  program_model_manifest: ../program_model/spec_manifest.yaml
+  program_model_module: ../program_model/SkillManager.tla
+  desired_ticket_plan: ../desired_program_model/ticket_plan.yaml
+
+case_codegen:
+  style: explicit_transition_cases
+  generation_status: planned
+
+state_fields: []
+actions:
+  - InstallUnitForceScripts
+  - SyncUnitForceScripts
+  - RemoveUnit
+  - RunEffectProgramFailure
+ports:
+  SkillManagerCli:
+    added_methods:
+      install_unit_force_scripts: {command: InstallUnitForceScripts, result: InstallResult}
+      sync_unit_force_scripts: {command: SyncUnitForceScripts, result: SyncResult}
+    refined_methods:
+      remove_unit: {command: RemoveUnit, result: RemoveResult}
+      run_effect_program_failure: {command: RunEffectProgramFailure, result: ProgramResult}
+adapters: case_adapters.toml
+notes:
+  package_from_program_model: desired_program_cases
+  issue_91_gap: >
+    Baseline program_model has cli_tool_records, cli_cli_lock, and
+    cli_skill_scripts_run, but RemoveUnit leaves CLI deps unchanged and no
+    force-script install/sync command labels exist yet.
+  issue_91a_status: >
+    Current now models and implements install/sync force-script rerun command
+    labels.
+  issue_91b_status: >
+    Current now models and implements uninstall CLI dependency orphan pruning:
+    RemoveUnit removes only CliDepsFor({u}) minus CliDepsFor(remaining), and
+    RunEffectProgramFailure rolls back package and skill-script CLI deps through
+    the shared CliDepsFor ownership set.
