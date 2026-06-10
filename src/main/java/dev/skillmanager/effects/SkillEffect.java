@@ -293,7 +293,9 @@ public sealed interface SkillEffect permits
     record InstallTools(List<AgentUnit> units) implements SkillEffect {}
 
     /** Build the install plan from {@code units} and run CLI dep installers. */
-    record InstallCli(List<AgentUnit> units) implements SkillEffect {}
+    record InstallCli(List<AgentUnit> units, boolean forceScripts) implements SkillEffect {
+        public InstallCli(List<AgentUnit> units) { this(units, false); }
+    }
 
     /** Register every unit's MCP deps with the gateway, capturing per-server outcomes. */
     record RegisterMcp(List<AgentUnit> units, GatewayConfig gateway) implements SkillEffect {}
@@ -499,8 +501,10 @@ public sealed interface SkillEffect permits
      * the graph from {@link EffectContext#resolvedGraph()} set by a prior
      * {@code BuildResolveGraphFrom*} effect.
      */
-    record BuildInstallPlan(ResolvedGraph graph) implements SkillEffect {
-        public BuildInstallPlan() { this(null); }
+    record BuildInstallPlan(ResolvedGraph graph, boolean forceScripts) implements SkillEffect {
+        public BuildInstallPlan() { this(null, false); }
+        public BuildInstallPlan(boolean forceScripts) { this(null, forceScripts); }
+        public BuildInstallPlan(ResolvedGraph graph) { this(graph, false); }
         // No plan = nothing to expand. Halt rather than silently skip.
         @Override public Continuation continuationOnFail() { return Continuation.HALT; }
     }
@@ -553,7 +557,11 @@ public sealed interface SkillEffect permits
     record EnsureTool(ToolDependency tool, boolean missingOnPath) implements SkillEffect {}
 
     /** One per CLI dep: run the backend installer and append the lock entry. */
-    record RunCliInstall(String unitName, CliDependency dep) implements SkillEffect {}
+    record RunCliInstall(String unitName, CliDependency dep, boolean forceScripts) implements SkillEffect {
+        public RunCliInstall(String unitName, CliDependency dep) {
+            this(unitName, dep, false);
+        }
+    }
 
     /** One per MCP dep: register the server with the gateway. */
     record RegisterMcpServer(String unitName, McpDependency dep, GatewayConfig gateway) implements SkillEffect {}

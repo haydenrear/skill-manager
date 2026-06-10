@@ -33,15 +33,22 @@ public final class PlanBuilder {
      *  signal. {@code null} skips the check (equivalent to "assume on
      *  PATH"). */
     private final PackageManagerRuntime pmRuntime;
+    private final boolean forceScripts;
 
     public PlanBuilder(Policy policy) { this(policy, null, null); }
 
     public PlanBuilder(Policy policy, CliLock lock) { this(policy, lock, null); }
 
     public PlanBuilder(Policy policy, CliLock lock, PackageManagerRuntime pmRuntime) {
+        this(policy, lock, pmRuntime, false);
+    }
+
+    public PlanBuilder(Policy policy, CliLock lock, PackageManagerRuntime pmRuntime,
+                       boolean forceScripts) {
         this.policy = policy;
         this.lock = lock;
         this.pmRuntime = pmRuntime;
+        this.forceScripts = forceScripts;
     }
 
     /** Plan for a fresh {@code add} that already resolved a full transitive graph. */
@@ -288,7 +295,8 @@ public final class PlanBuilder {
                     continue;
                 }
             }
-            plan.add(new PlanAction.RunCliInstall(u.name(), dep));
+            boolean forceThisDep = forceScripts && "skill-script".equals(dep.backend());
+            plan.add(new PlanAction.RunCliInstall(u.name(), dep, forceThisDep));
         }
     }
 

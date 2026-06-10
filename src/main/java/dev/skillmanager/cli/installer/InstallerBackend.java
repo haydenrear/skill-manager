@@ -18,6 +18,16 @@ public interface InstallerBackend {
      */
     void install(CliDependency dep, SkillStore store, String skillName) throws IOException;
 
+    /**
+     * Variant for callers that need to force a backend-specific replay.
+     * Most backends do not have a replay gate, so the default preserves the
+     * existing install behavior.
+     */
+    default void install(CliDependency dep, SkillStore store, String skillName,
+                         boolean force) throws IOException {
+        install(dep, store, skillName);
+    }
+
     default boolean isOnPath(String executable) {
         if (executable == null) return false;
         String path = System.getenv("PATH");

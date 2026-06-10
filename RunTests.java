@@ -36,6 +36,7 @@ import dev.skillmanager.command.CreatePluginScenarioTest;
 import dev.skillmanager.command.GatewayStatusCommandTest;
 import dev.skillmanager.command.ListShowsKindAndShaTest;
 import dev.skillmanager.commands.ProjectCommandTest;
+import dev.skillmanager.cli.installer.SkillScriptBackendTest;
 import dev.skillmanager.bindings.BindingsTest;
 import dev.skillmanager.command.SearchShowsKindTest;
 import dev.skillmanager.command.ShowNonSkillUnitsTest;
@@ -129,6 +130,7 @@ public class RunTests {
         failures += ResolverDirectGitDetectsKindTest.run();
         failures += ResolverDeterminismTest.run();
         failures += PlanShapeInvariantTest.run();
+        failures += SkillScriptBackendTest.run();
         failures += CycleDetectionTest.run();
         failures += MixedKindTopoOrderTest.run();
         failures += PlanPolicyCategorizationTest.run();

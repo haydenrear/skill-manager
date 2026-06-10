@@ -42,6 +42,11 @@ public final class InstallerRegistry {
     }
 
     public void installOne(CliDependency dep, SkillStore store, String skillName) throws IOException {
+        installOne(dep, store, skillName, false);
+    }
+
+    public void installOne(CliDependency dep, SkillStore store, String skillName,
+                           boolean force) throws IOException {
         String id = dep.backend();
         InstallerBackend backend = backends.get(id);
         if (backend == null) {
@@ -52,6 +57,6 @@ public final class InstallerRegistry {
             Log.warn("cli: backend %s not available on this host; skipping %s", id, dep.name());
             return;
         }
-        backend.install(dep, store, skillName);
+        backend.install(dep, store, skillName, force);
     }
 }

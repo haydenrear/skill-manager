@@ -34,6 +34,10 @@ Resolve skill-manager managed binaries with:
 
 Use the returned path directly in commands. If a binary is missing,
 sync or reinstall the owning unit before falling back to a system copy.
+For `skill-script:` deps, `install --force-scripts` and
+`sync --force-scripts` rerun the bundled script even when the saved
+fingerprint matches and the declared binary already exists. These flags
+do not bypass policy approval for CLI installers.
 
 When the current directory is inside a skill project, the same helper
 also reports passive project context: the manifest path, project name,
@@ -49,6 +53,8 @@ Run install with a dry run first to inspect planned CLI actions:
 ```bash
 skill-manager install file:///abs/path/to/unit --dry-run
 skill-manager install file:///abs/path/to/unit --yes
+skill-manager install --force-scripts file:///abs/path/to/unit --yes
+skill-manager sync --force-scripts <unit-name> --yes
 ```
 
 Policy may require explicit approval for CLI installers. Do not bypass a

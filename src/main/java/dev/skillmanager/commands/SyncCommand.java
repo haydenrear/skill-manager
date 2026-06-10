@@ -94,6 +94,11 @@ public final class SyncCommand implements Callable<Integer> {
                     + "Lost edits are surfaced as warnings.")
     public boolean force;
 
+    @Option(names = "--force-scripts",
+            description = "Rerun skill-script CLI deps even when the previous fingerprint matches "
+                    + "and the declared binary already exists. Does not bypass policy.install gates.")
+    public boolean forceScripts;
+
     @Option(names = "--lock",
             description = "Reconcile against a vendored units.lock.toml at <path>. "
                     + "Walks the diff against the live state and runs sync over the listed units; "
@@ -146,7 +151,7 @@ public final class SyncCommand implements Callable<Integer> {
         }
 
         SyncUseCase.Options opts = new SyncUseCase.Options(
-                registryUrl, gitLatest, merge, !skipMcp, !skipAgents, yes);
+                registryUrl, gitLatest, merge, !skipMcp, !skipAgents, yes, forceScripts);
         dev.skillmanager.effects.StagedProgram<SyncUseCase.Report> program =
                 SyncUseCase.buildProgram(store, gw, opts, resolved.targets(), resolved.readProblems());
         SyncUseCase.Report report;
@@ -339,7 +344,7 @@ public final class SyncCommand implements Callable<Integer> {
         List<SyncUseCase.Target> targets = new ArrayList<>();
         for (var b : diff.bumped()) targets.add(new SyncUseCase.Target.Git(b.before().name()));
         SyncUseCase.Options opts = new SyncUseCase.Options(
-                registryUrl, /*gitLatest=*/false, merge, !skipMcp, !skipAgents, yes);
+                registryUrl, /*gitLatest=*/false, merge, !skipMcp, !skipAgents, yes, forceScripts);
         dev.skillmanager.effects.StagedProgram<SyncUseCase.Report> program =
                 SyncUseCase.buildProgram(store, gw, opts, targets, liveState.problems());
         SyncUseCase.Report report;

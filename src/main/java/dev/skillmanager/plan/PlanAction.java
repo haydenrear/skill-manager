@@ -90,7 +90,11 @@ public sealed interface PlanAction {
         }
     }
 
-    record RunCliInstall(String unitName, CliDependency dep) implements PlanAction {
+    record RunCliInstall(String unitName, CliDependency dep, boolean forceScripts) implements PlanAction {
+        public RunCliInstall(String unitName, CliDependency dep) {
+            this(unitName, dep, false);
+        }
+
         @Override public Severity severity() {
             String b = dep.backend();
             if ("pip".equals(b) || "npm".equals(b) || "brew".equals(b)) return Severity.WARN;
@@ -128,6 +132,9 @@ public sealed interface PlanAction {
                     out.add("runs skill-scripts/" + scriptPath + " from inside the skill — arbitrary shell");
                 } else {
                     out.add("declares skill-script backend but no install.<platform>.script field");
+                }
+                if (forceScripts) {
+                    out.add("force-scripts requested - reruns even when fingerprint and binary match");
                 }
             }
             return out;

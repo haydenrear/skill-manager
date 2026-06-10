@@ -1,0 +1,108 @@
+{
+  "commit_recommendation": {
+    "git_add": "git add specs/.history/issue-91-force-scripts-cli-dep-cleanup/ticket-000-ISSUE-91A",
+    "git_commit": "git commit -m 'record spec history for ISSUE-91A'",
+    "message": "It is recommended to commit this history directory now: specs/.history/issue-91-force-scripts-cli-dep-cleanup/ticket-000-ISSUE-91A"
+  },
+  "created_at_utc": "2026-06-10T19:03:40.570580+00:00",
+  "entry_name": "ticket-000-ISSUE-91A",
+  "git": {
+    "branch": "fix/doc-bind-uuid",
+    "commit": "60d421b",
+    "inside_work_tree": "true"
+  },
+  "history_policy": "append-only by convention; existing entries are not overwritten and filesystem permissions remain git-friendly",
+  "kind": "ticket",
+  "results": [
+    {
+      "exists": true,
+      "role": "result",
+      "snapshot": "specs/.history/issue-91-force-scripts-cli-dep-cleanup/ticket-000-ISSUE-91A/results/ISSUE-91A-validation.md",
+      "source": "specs/current/results/ISSUE-91A-validation.md"
+    }
+  ],
+  "schema_version": 1,
+  "snapshots": [
+    {
+      "exists": true,
+      "role": "program_model",
+      "snapshot": "specs/.history/issue-91-force-scripts-cli-dep-cleanup/ticket-000-ISSUE-91A/snapshots/program_model",
+      "source": "specs/program_model"
+    },
+    {
+      "exists": true,
+      "role": "desired_program_model",
+      "snapshot": "specs/.history/issue-91-force-scripts-cli-dep-cleanup/ticket-000-ISSUE-91A/snapshots/desired_program_model",
+      "source": "specs/desired_program_model"
+    },
+    {
+      "exists": true,
+      "role": "current",
+      "snapshot": "specs/.history/issue-91-force-scripts-cli-dep-cleanup/ticket-000-ISSUE-91A/snapshots/current",
+      "source": "specs/current"
+    }
+  ],
+  "spec_root": "specs",
+  "summary": "Closed ISSUE-91A after implementing and validating install/sync --force-scripts.",
+  "ticket": {
+    "acceptance": {
+      "assertions": [
+        "install --force-scripts reruns a skill-script dep with a matching fingerprint and existing binary.",
+        "sync --force-scripts reruns a skill-script dep with a matching fingerprint and existing binary.",
+        "force-scripts does not skip or weaken the existing install policy gate for skill-script execution."
+      ],
+      "commands": [
+        "bash specs/current/run_tlc.sh specs/current/SkillManager.tla specs/current/MC.cfg",
+        "java RunTests.java"
+      ],
+      "evidence": [
+        "specs/current/results/ISSUE-91A-validation.md",
+        "test_graph/build/validation-reports/20260610-184858/report.md"
+      ]
+    },
+    "current_increment": {
+      "adapters": [
+        "InstallUnitAdapter covers force_scripts=true.",
+        "SyncUnitAdapter covers force_scripts=true."
+      ],
+      "graph_after_unit_pass": [
+        "Add smoke coverage only if the existing test graph already exercises real skill-script CLI deps."
+      ],
+      "model_actions": [
+        "InstallUnitForceScripts",
+        "SyncUnitForceScripts"
+      ],
+      "model_state": [
+        "Normal install/sync skip unchanged skill-script reruns when current lock/artifact state already covers the script.",
+        "Force install/sync records the explicit forced script-rerun command result."
+      ],
+      "unit_tests": [
+        "Regression coverage near the existing skill-script fingerprint rerun fixture.",
+        "CLI parse/help coverage for install --force-scripts and sync --force-scripts."
+      ]
+    },
+    "depends_on": [],
+    "desired_actions": [
+      "InstallUnitForceScripts",
+      "SyncUnitForceScripts"
+    ],
+    "id": "ISSUE-91A",
+    "implementation_scope": [
+      "src/main/java/dev/skillmanager/commands/InstallCommand.java",
+      "src/main/java/dev/skillmanager/commands/SyncCommand.java",
+      "src/main/java/dev/skillmanager/app/InstallUseCase.java",
+      "src/main/java/dev/skillmanager/app/SyncUseCase.java",
+      "src/main/java/dev/skillmanager/plan/PlanBuilder.java",
+      "src/main/java/dev/skillmanager/lock/CliInstallRecorder.java",
+      "src/main/java/dev/skillmanager/cli/installer/SkillScriptBackend.java"
+    ],
+    "objective": "Add install/sync force flags that rerun skill-script deps even when the stored fingerprint matches and the declared binary still exists.\n",
+    "status": "closed",
+    "title": "Add force-scripts command plumbing"
+  },
+  "ticket_id": "ISSUE-91A",
+  "ticket_index": 0,
+  "ticket_plan": "specs/desired_program_model/ticket_plan.yaml",
+  "ticket_status": "closed",
+  "workflow_name": "issue-91-force-scripts-cli-dep-cleanup"
+}

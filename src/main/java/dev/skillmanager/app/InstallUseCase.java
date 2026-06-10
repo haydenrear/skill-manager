@@ -62,10 +62,15 @@ public final class InstallUseCase {
      * PackageManagerRuntime} wiring.
      */
     public static InstallPlan buildPlan(SkillStore store, ResolvedGraph graph) throws IOException {
+        return buildPlan(store, graph, false);
+    }
+
+    public static InstallPlan buildPlan(SkillStore store, ResolvedGraph graph,
+                                        boolean forceScripts) throws IOException {
         Policy policy = Policy.load(store);
         CliLock lock = CliLock.load(store);
         PackageManagerRuntime pmRuntime = new PackageManagerRuntime(store);
-        return new PlanBuilder(policy, lock, pmRuntime)
+        return new PlanBuilder(policy, lock, pmRuntime, forceScripts)
                 .plan(graph, true, true, store.cliBinDir());
     }
 
@@ -105,6 +110,17 @@ public final class InstallUseCase {
                                                      boolean yes, boolean dryRun,
                                                      boolean withGateway,
                                                      boolean bindDefault) {
+        return buildProgram(store, gw, registryOverride, source, version, yes, dryRun,
+                withGateway, bindDefault, false);
+    }
+
+    public static StagedProgram<Report> buildProgram(SkillStore store, GatewayConfig gw,
+                                                     String registryOverride,
+                                                     String source, String version,
+                                                     boolean yes, boolean dryRun,
+                                                     boolean withGateway,
+                                                     boolean bindDefault,
+                                                     boolean forceScripts) {
         String operationId = "install-" + UUID.randomUUID();
 
         // --- Stage 1: preflight + resolve + plan + policy gate + commit + run ---
@@ -125,7 +141,7 @@ public final class InstallUseCase {
         stage1Effects.add(new SkillEffect.RejectIfTopLevelInstalled());
 
         // Plan-build at exec time so handlers see fresh state.
-        stage1Effects.add(new SkillEffect.BuildInstallPlan());
+        stage1Effects.add(new SkillEffect.BuildInstallPlan(forceScripts));
 
         // Policy gate runs INSIDE the program now — replaces
         // InstallCommand.checkPolicyGate. Halts with HaltWithExitCode

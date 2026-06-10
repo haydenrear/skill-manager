@@ -542,7 +542,7 @@ public final class LiveInterpreter implements ProgramInterpreter {
 
     private EffectReceipt installCli(SkillEffect.InstallCli e) throws IOException {
         List<AgentUnit> units = freshen(e.units());
-        InstallPlan plan = buildPlan(units);
+        InstallPlan plan = buildPlan(units, e.forceScripts());
         CliInstallRecorder.run(plan, store);
         return EffectReceipt.ok(e, new ContextFact.CliInstalledFor(units.size()));
     }
@@ -572,10 +572,14 @@ public final class LiveInterpreter implements ProgramInterpreter {
     }
 
     private InstallPlan buildPlan(List<AgentUnit> units) throws IOException {
+        return buildPlan(units, false);
+    }
+
+    private InstallPlan buildPlan(List<AgentUnit> units, boolean forceScripts) throws IOException {
         Policy policy = Policy.load(store);
         CliLock lock = CliLock.load(store);
         PackageManagerRuntime pmRuntime = new PackageManagerRuntime(store);
-        return new PlanBuilder(policy, lock, pmRuntime)
+        return new PlanBuilder(policy, lock, pmRuntime, forceScripts)
                 .plan(units, true, true, store.cliBinDir());
     }
 
@@ -1103,7 +1107,8 @@ public final class LiveInterpreter implements ProgramInterpreter {
                 ctx.setPlan(new InstallPlan());
                 return EffectReceipt.skipped(e, "no resolved graph in context");
             }
-            InstallPlan plan = dev.skillmanager.app.InstallUseCase.buildPlan(ctx.store(), graph);
+            InstallPlan plan = dev.skillmanager.app.InstallUseCase.buildPlan(
+                    ctx.store(), graph, e.forceScripts());
             dev.skillmanager.plan.PlanPrinter.print(plan);
             ctx.setPlan(plan);
             if (plan.blocked()) {
@@ -1296,7 +1301,7 @@ public final class LiveInterpreter implements ProgramInterpreter {
         try {
             dev.skillmanager.cli.installer.InstallerRegistry registry =
                     new dev.skillmanager.cli.installer.InstallerRegistry();
-            registry.installOne(e.dep(), store, e.unitName());
+            registry.installOne(e.dep(), store, e.unitName(), e.forceScripts());
             try {
                 CliLock lock = CliLock.load(store);
                 var req = dev.skillmanager.lock.RequestedVersion.of(e.dep());
