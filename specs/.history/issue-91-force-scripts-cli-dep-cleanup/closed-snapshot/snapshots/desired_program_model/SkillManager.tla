@@ -594,17 +594,17 @@ SyncUnit(u) ==
     /\ gateway_dynamic_servers' = gateway_dynamic_servers \cup McpServersFor(surfaced)
     /\ EffectOk
     /\ result' = Ok
-	    /\ UNCHANGED << cli_doc_repos, cli_harness_templates,
-	                    cli_harness_instances, cli_projection_rows,
-	                    cli_managed_copies, cli_import_directives,
-	                    cli_projection_conflicts, cli_errors,
-	                    cli_gateway_url_configured, cli_registry_url_configured,
-	                    cli_gateway_mcp_snapshot, always_after_ran,
-	                    rollback_journal, gateway_global_deployments,
-	                    gateway_session_deployments, gateway_tools,
-	                    gateway_disclosures, gateway_errors, gateway_last_init,
-	                    server_registry_units, server_versions, server_packages,
-	                    server_authenticated_users >>
+    /\ UNCHANGED << cli_doc_repos, cli_harness_templates,
+                    cli_harness_instances, cli_projection_rows,
+                    cli_managed_copies, cli_import_directives,
+                    cli_projection_conflicts, cli_errors,
+                    cli_gateway_url_configured, cli_registry_url_configured,
+                    cli_gateway_mcp_snapshot, always_after_ran,
+                    rollback_journal, gateway_global_deployments,
+                    gateway_session_deployments, gateway_tools,
+                    gateway_disclosures, gateway_errors, gateway_last_init,
+                    server_registry_units, server_versions, server_packages,
+                    server_authenticated_users >>
 
 \* @command SyncUnitForceScripts
 \* @result SyncResult
@@ -1078,8 +1078,8 @@ ResolveProjectDependencies(project) ==
     /\ cli_projection_rows' = cli_projection_rows \cup resolved_units \cup docs
     /\ cli_managed_copies' = cli_managed_copies \cup docs
     /\ cli_import_directives' = cli_import_directives \cup docs
-    /\ cli_tool_records' = cli_tool_records \cup PackagesFor(resolved_units)
-    /\ cli_cli_lock' = cli_cli_lock \cup PackagesFor(resolved_units)
+    /\ cli_tool_records' = cli_tool_records \cup CliDepsFor(resolved_units)
+    /\ cli_cli_lock' = cli_cli_lock \cup CliDepsFor(resolved_units)
     /\ cli_skill_scripts_run' = cli_skill_scripts_run \cup ScriptsFor(resolved_units)
     /\ gateway_catalog' = gateway_catalog \cup McpServersFor(resolved_units)
     /\ gateway_dynamic_servers' = gateway_dynamic_servers \cup McpServersFor(resolved_units)
@@ -1233,8 +1233,8 @@ ResolveProjectProfile(project, profile, home, parent_home) ==
     /\ cli_projection_rows' = cli_projection_rows \cup resolved_units \cup docs
     /\ cli_managed_copies' = cli_managed_copies \cup docs
     /\ cli_import_directives' = cli_import_directives \cup docs
-    /\ cli_tool_records' = cli_tool_records \cup PackagesFor(resolved_units)
-    /\ cli_cli_lock' = cli_cli_lock \cup PackagesFor(resolved_units)
+    /\ cli_tool_records' = cli_tool_records \cup CliDepsFor(resolved_units)
+    /\ cli_cli_lock' = cli_cli_lock \cup CliDepsFor(resolved_units)
     /\ cli_skill_scripts_run' = cli_skill_scripts_run \cup ScriptsFor(resolved_units)
     /\ gateway_catalog' = gateway_catalog \cup McpServersFor(resolved_units)
     /\ gateway_dynamic_servers' = gateway_dynamic_servers \cup McpServersFor(resolved_units)

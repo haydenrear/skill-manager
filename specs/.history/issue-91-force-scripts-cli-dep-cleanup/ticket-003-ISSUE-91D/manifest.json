@@ -1,0 +1,123 @@
+{
+  "commit_recommendation": {
+    "git_add": "git add specs/.history/issue-91-force-scripts-cli-dep-cleanup/ticket-003-ISSUE-91D",
+    "git_commit": "git commit -m 'record spec history for ISSUE-91D'",
+    "message": "It is recommended to commit this history directory now: specs/.history/issue-91-force-scripts-cli-dep-cleanup/ticket-003-ISSUE-91D"
+  },
+  "created_at_utc": "2026-06-12T18:46:49.162750+00:00",
+  "entry_name": "ticket-003-ISSUE-91D",
+  "git": {
+    "branch": "fix/doc-bind-uuid",
+    "commit": "67d9c5b",
+    "inside_work_tree": "true"
+  },
+  "history_policy": "append-only by convention; existing entries are not overwritten and filesystem permissions remain git-friendly",
+  "kind": "ticket",
+  "results": [
+    {
+      "exists": true,
+      "role": "result",
+      "snapshot": "specs/.history/issue-91-force-scripts-cli-dep-cleanup/ticket-003-ISSUE-91D/results/ISSUE-91D-validation.md",
+      "source": "specs/current/results/ISSUE-91D-validation.md"
+    }
+  ],
+  "schema_version": 1,
+  "snapshots": [
+    {
+      "exists": true,
+      "role": "program_model",
+      "snapshot": "specs/.history/issue-91-force-scripts-cli-dep-cleanup/ticket-003-ISSUE-91D/snapshots/program_model",
+      "source": "specs/program_model"
+    },
+    {
+      "exists": true,
+      "role": "desired_program_model",
+      "snapshot": "specs/.history/issue-91-force-scripts-cli-dep-cleanup/ticket-003-ISSUE-91D/snapshots/desired_program_model",
+      "source": "specs/desired_program_model"
+    },
+    {
+      "exists": true,
+      "role": "current",
+      "snapshot": "specs/.history/issue-91-force-scripts-cli-dep-cleanup/ticket-003-ISSUE-91D/snapshots/current",
+      "source": "specs/current"
+    }
+  ],
+  "spec_root": "specs",
+  "summary": "Closed ISSUE-91D after documentation updates, local file dry-runs, validation, and promotion into program_model.",
+  "ticket": {
+    "acceptance": {
+      "assertions": [
+        "CLI help documents both force flags.",
+        "skill-script docs remove the uninstall+install limitation footnote or replace it with the new behavior.",
+        "specs/current and specs/desired_program_model are ready for promotion into specs/program_model."
+      ],
+      "commands": [
+        "bash specs/current/run_tlc.sh specs/current/SkillManager.tla specs/current/MC.cfg",
+        "java RunTests.java",
+        "uvx pytest specs/current/tests specs/desired_program_model/tests",
+        "python3 /Users/hayde/.skill-manager/skills/test-graph/scripts/run.py --all"
+      ],
+      "evidence": [
+        "specs/current/results/ISSUE-91D-validation.md",
+        "test_graph/build/validation-reports/20260612-182831/report.md",
+        "test_graph/build/validation-reports/20260612-183652/report.md",
+        "test_graph/build/validation-reports/20260612-183912/report.md",
+        "test_graph/build/validation-reports/20260612-184111/report.md"
+      ]
+    },
+    "current_increment": {
+      "adapters": [
+        "Adapter and graph coverage status recorded in spec_manifest.yaml."
+      ],
+      "graph_after_unit_pass": [
+        "Run broad smoke only after TLC and unit tests pass."
+      ],
+      "model_actions": [
+        "Promote force-script and CLI cleanup actions into specs/program_model."
+      ],
+      "model_state": [
+        "specs/current semantically equals specs/desired_program_model."
+      ],
+      "unit_tests": [
+        "Documentation assertions or command help snapshot tests where available."
+      ]
+    },
+    "depends_on": [
+      "ISSUE-91A",
+      "ISSUE-91B",
+      "ISSUE-91C"
+    ],
+    "desired_actions": [
+      "InstallUnitForceScripts",
+      "SyncUnitForceScripts",
+      "RemoveUnit"
+    ],
+    "id": "ISSUE-91D",
+    "implementation_scope": [
+      "README.md",
+      "skill-manager-skill/SKILL.md",
+      "skill-manager-skill/skill-manager.toml",
+      "skill-manager-skill/references/cli.md",
+      "skill-publisher-skill/SKILL.md",
+      "skill-publisher-skill/skill-manager.toml",
+      "skill-publisher-skill/references/dependencies.md",
+      "skill-publisher-skill/references/plugins.md",
+      "skill-publisher-skill/references/skill-scripts.md",
+      "skill-dev-skill/SKILL.md",
+      "skill-dev-skill/README.md",
+      "skill-dev-skill/skill-manager.toml",
+      "src/test/java/dev/skillmanager/command/CommandKindCoverageTest.java",
+      "src/test/java/dev/skillmanager/command/SkillManagerSkillDocsTest.java",
+      "specs/current",
+      "specs/program_model"
+    ],
+    "objective": "Update user documentation and promote the converged current model back into the accepted program model after implementation.\n",
+    "status": "closed",
+    "title": "Close docs and promote spec evidence"
+  },
+  "ticket_id": "ISSUE-91D",
+  "ticket_index": 3,
+  "ticket_plan": "specs/desired_program_model/ticket_plan.yaml",
+  "ticket_status": "closed",
+  "workflow_name": "issue-91-force-scripts-cli-dep-cleanup"
+}

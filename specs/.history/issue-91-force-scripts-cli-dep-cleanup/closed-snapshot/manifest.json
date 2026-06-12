@@ -1,0 +1,297 @@
+{
+  "commit_recommendation": {
+    "git_add": "git add specs/.history/issue-91-force-scripts-cli-dep-cleanup/closed-snapshot",
+    "git_commit": "git commit -m 'close spec ticket workflow'",
+    "message": "It is recommended to commit this history directory now: specs/.history/issue-91-force-scripts-cli-dep-cleanup/closed-snapshot"
+  },
+  "created_at_utc": "2026-06-12T18:46:56.615963+00:00",
+  "entry_name": "closed-snapshot",
+  "git": {
+    "branch": "fix/doc-bind-uuid",
+    "commit": "67d9c5b",
+    "inside_work_tree": "true"
+  },
+  "history_policy": "append-only by convention; existing entries are not overwritten and filesystem permissions remain git-friendly",
+  "kind": "workflow-close",
+  "results": [
+    {
+      "exists": true,
+      "role": "result",
+      "snapshot": "specs/.history/issue-91-force-scripts-cli-dep-cleanup/closed-snapshot/results/ISSUE-91D-validation.md",
+      "source": "specs/current/results/ISSUE-91D-validation.md"
+    }
+  ],
+  "schema_version": 1,
+  "snapshots": [
+    {
+      "exists": true,
+      "role": "program_model",
+      "snapshot": "specs/.history/issue-91-force-scripts-cli-dep-cleanup/closed-snapshot/snapshots/program_model",
+      "source": "specs/program_model"
+    },
+    {
+      "exists": true,
+      "role": "desired_program_model",
+      "snapshot": "specs/.history/issue-91-force-scripts-cli-dep-cleanup/closed-snapshot/snapshots/desired_program_model",
+      "source": "specs/desired_program_model"
+    },
+    {
+      "exists": true,
+      "role": "current",
+      "snapshot": "specs/.history/issue-91-force-scripts-cli-dep-cleanup/closed-snapshot/snapshots/current",
+      "source": "specs/current"
+    }
+  ],
+  "spec_root": "specs",
+  "summary": "Promoted ISSUE-91 force script and CLI cleanup workflow into the accepted program model.",
+  "ticket_plan": "specs/desired_program_model/ticket_plan.yaml",
+  "tickets": [
+    {
+      "acceptance": {
+        "assertions": [
+          "install --force-scripts reruns a skill-script dep with a matching fingerprint and existing binary.",
+          "sync --force-scripts reruns a skill-script dep with a matching fingerprint and existing binary.",
+          "force-scripts does not skip or weaken the existing install policy gate for skill-script execution."
+        ],
+        "commands": [
+          "bash specs/current/run_tlc.sh specs/current/SkillManager.tla specs/current/MC.cfg",
+          "java RunTests.java"
+        ],
+        "evidence": [
+          "specs/current/results/ISSUE-91A-validation.md",
+          "test_graph/build/validation-reports/20260610-184858/report.md"
+        ]
+      },
+      "current_increment": {
+        "adapters": [
+          "InstallUnitAdapter covers force_scripts=true.",
+          "SyncUnitAdapter covers force_scripts=true."
+        ],
+        "graph_after_unit_pass": [
+          "Add smoke coverage only if the existing test graph already exercises real skill-script CLI deps."
+        ],
+        "model_actions": [
+          "InstallUnitForceScripts",
+          "SyncUnitForceScripts"
+        ],
+        "model_state": [
+          "Normal install/sync skip unchanged skill-script reruns when current lock/artifact state already covers the script.",
+          "Force install/sync records the explicit forced script-rerun command result."
+        ],
+        "unit_tests": [
+          "Regression coverage near the existing skill-script fingerprint rerun fixture.",
+          "CLI parse/help coverage for install --force-scripts and sync --force-scripts."
+        ]
+      },
+      "depends_on": [],
+      "desired_actions": [
+        "InstallUnitForceScripts",
+        "SyncUnitForceScripts"
+      ],
+      "id": "ISSUE-91A",
+      "implementation_scope": [
+        "src/main/java/dev/skillmanager/commands/InstallCommand.java",
+        "src/main/java/dev/skillmanager/commands/SyncCommand.java",
+        "src/main/java/dev/skillmanager/app/InstallUseCase.java",
+        "src/main/java/dev/skillmanager/app/SyncUseCase.java",
+        "src/main/java/dev/skillmanager/plan/PlanBuilder.java",
+        "src/main/java/dev/skillmanager/lock/CliInstallRecorder.java",
+        "src/main/java/dev/skillmanager/cli/installer/SkillScriptBackend.java"
+      ],
+      "objective": "Add install/sync force flags that rerun skill-script deps even when the stored fingerprint matches and the declared binary still exists.\n",
+      "status": "closed",
+      "title": "Add force-scripts command plumbing"
+    },
+    {
+      "acceptance": {
+        "assertions": [
+          "uninstall <skill> removes orphaned managed CLI artifacts and stale cli-lock rows.",
+          "uninstall does not remove managed CLI artifacts or cli-lock rows still claimed by another installed unit.",
+          "remove remains a lower-level store removal path unless intentionally widened later."
+        ],
+        "commands": [
+          "bash specs/current/run_tlc.sh specs/current/SkillManager.tla specs/current/MC.cfg",
+          "java RunTests.java",
+          "python3 /Users/hayde/.skill-manager/skills/test-graph/scripts/run.py --all"
+        ],
+        "evidence": [
+          "specs/current/results/ISSUE-91B-validation.md",
+          "test_graph/build/validation-reports/20260610-194034/report.md",
+          "test_graph/build/validation-reports/20260610-195224/report.md"
+        ]
+      },
+      "current_increment": {
+        "adapters": [
+          "RemoveUnitAdapter covers orphan cleanup, shared claims, and plugin contained-skill claims."
+        ],
+        "graph_after_unit_pass": [
+          "Add a command smoke only if the fixture can assert bin/cli and cli-lock state directly."
+        ],
+        "model_actions": [
+          "RemoveUnit prunes CliDepsFor({u}) minus CliDepsFor(remaining).",
+          "RunEffectProgramFailure rolls back package and skill-script CLI deps together."
+        ],
+        "model_state": [
+          "CliDepsFor(units) derives effective CLI ownership from package deps plus skill-script deps.",
+          "cli_tool_records and cli_cli_lock contain no rows outside CliDepsFor(cli_store_units)."
+        ],
+        "unit_tests": [
+          "uninstall removes orphaned bin/cli skill-script binary and cli-lock row.",
+          "uninstall keeps a CLI binary and cli-lock row still requested_by another installed unit.",
+          "plugin uninstall re-walks plugin-level metadata plus contained skills for CLI deps."
+        ]
+      },
+      "depends_on": [
+        "ISSUE-91A"
+      ],
+      "desired_actions": [
+        "RemoveUnit",
+        "RunEffectProgramFailure"
+      ],
+      "id": "ISSUE-91B",
+      "implementation_scope": [
+        "src/main/java/dev/skillmanager/app/RemoveUseCase.java",
+        "src/main/java/dev/skillmanager/commands/UninstallCommand.java",
+        "src/main/java/dev/skillmanager/lock/CliLock.java",
+        "src/main/java/dev/skillmanager/model/PluginParser.java",
+        "src/main/java/dev/skillmanager/model/SkillParser.java"
+      ],
+      "objective": "Make uninstall remove managed CLI binaries/artifacts and cli-lock rows only when no surviving installed unit still claims them.\n",
+      "status": "closed",
+      "title": "Prune orphaned CLI deps on uninstall"
+    },
+    {
+      "acceptance": {
+        "assertions": [
+          "skill.script.force.sync.with.mcp proves sync --force-scripts reruns a skill-script dep while MCP sync still runs.",
+          "plugin.skill_script.force.sync proves plugin sync --force-scripts reruns a plugin-level skill-script dep while plugin CLI and MCP deps remain valid.",
+          "Test graph nodes are recorded as evidence for SyncUnitForceScripts, not as new TLA+ actions."
+        ],
+        "commands": [
+          "bash specs/current/run_tlc.sh specs/current/SkillManager.tla specs/current/MC.cfg",
+          "java RunTests.java",
+          "uvx pytest specs/current/tests specs/desired_program_model/tests",
+          "python3 /Users/hayde/.skill-manager/skills/test-graph/scripts/run.py --all"
+        ],
+        "evidence": [
+          "specs/current/results/ISSUE-91C-validation.md",
+          "test_graph/build/validation-reports/20260610-203346/report.md",
+          "test_graph/build/validation-reports/20260610-203854/report.md",
+          "test_graph/build/validation-reports/20260610-204218/report.md",
+          "test_graph/build/validation-reports/20260610-204958/report.md",
+          "test_graph/build/validation-reports/20260610-205350/report.md"
+        ]
+      },
+      "current_increment": {
+        "adapters": [
+          "Graph evidence covers a skill with skill-script plus MCP deps.",
+          "Graph evidence covers a plugin with pip CLI, MCP, and skill-script deps."
+        ],
+        "graph_after_unit_pass": [
+          "Add smoke coverage where a skill has both skill-script CLI and MCP deps, noop sync skips, and sync --force-scripts reruns the script.",
+          "Add plugin-smoke coverage where a plugin has pip CLI, MCP, and skill-script deps, noop sync skips, and sync --force-scripts reruns the script.",
+          "Run broad graph coverage after TLC and unit tests pass."
+        ],
+        "model_actions": [
+          "SyncUnitForceScripts evidence expanded across richer dependency sets."
+        ],
+        "model_state": [
+          "No TLA+ semantic changes; graph nodes are evidence for SyncUnitForceScripts."
+        ],
+        "unit_tests": [
+          "Spec workflow tests assert graph evidence is recorded outside the TLA+ model."
+        ]
+      },
+      "depends_on": [
+        "ISSUE-91A",
+        "ISSUE-91B"
+      ],
+      "desired_actions": [
+        "SyncUnitForceScripts"
+      ],
+      "id": "ISSUE-91C",
+      "implementation_scope": [
+        "specs/current",
+        "specs/desired_program_model",
+        "test_graph/sources/smoke/SkillScriptForceSyncWithMcp.java",
+        "test_graph/sources/smoke/plugin/PluginSkillScriptForceSync.java",
+        "test_graph/build.gradle.kts"
+      ],
+      "objective": "Add end-to-end force-sync coverage for richer skill/plugin dependency sets so the command path proves noop sync skips and sync --force-scripts reruns skill-script deps while MCP and package CLI side effects remain valid.\n",
+      "status": "closed",
+      "title": "Add E2E force-sync graph coverage"
+    },
+    {
+      "acceptance": {
+        "assertions": [
+          "CLI help documents both force flags.",
+          "skill-script docs remove the uninstall+install limitation footnote or replace it with the new behavior.",
+          "specs/current and specs/desired_program_model are ready for promotion into specs/program_model."
+        ],
+        "commands": [
+          "bash specs/current/run_tlc.sh specs/current/SkillManager.tla specs/current/MC.cfg",
+          "java RunTests.java",
+          "uvx pytest specs/current/tests specs/desired_program_model/tests",
+          "python3 /Users/hayde/.skill-manager/skills/test-graph/scripts/run.py --all"
+        ],
+        "evidence": [
+          "specs/current/results/ISSUE-91D-validation.md",
+          "test_graph/build/validation-reports/20260612-182831/report.md",
+          "test_graph/build/validation-reports/20260612-183652/report.md",
+          "test_graph/build/validation-reports/20260612-183912/report.md",
+          "test_graph/build/validation-reports/20260612-184111/report.md"
+        ]
+      },
+      "current_increment": {
+        "adapters": [
+          "Adapter and graph coverage status recorded in spec_manifest.yaml."
+        ],
+        "graph_after_unit_pass": [
+          "Run broad smoke only after TLC and unit tests pass."
+        ],
+        "model_actions": [
+          "Promote force-script and CLI cleanup actions into specs/program_model."
+        ],
+        "model_state": [
+          "specs/current semantically equals specs/desired_program_model."
+        ],
+        "unit_tests": [
+          "Documentation assertions or command help snapshot tests where available."
+        ]
+      },
+      "depends_on": [
+        "ISSUE-91A",
+        "ISSUE-91B",
+        "ISSUE-91C"
+      ],
+      "desired_actions": [
+        "InstallUnitForceScripts",
+        "SyncUnitForceScripts",
+        "RemoveUnit"
+      ],
+      "id": "ISSUE-91D",
+      "implementation_scope": [
+        "README.md",
+        "skill-manager-skill/SKILL.md",
+        "skill-manager-skill/skill-manager.toml",
+        "skill-manager-skill/references/cli.md",
+        "skill-publisher-skill/SKILL.md",
+        "skill-publisher-skill/skill-manager.toml",
+        "skill-publisher-skill/references/dependencies.md",
+        "skill-publisher-skill/references/plugins.md",
+        "skill-publisher-skill/references/skill-scripts.md",
+        "skill-dev-skill/SKILL.md",
+        "skill-dev-skill/README.md",
+        "skill-dev-skill/skill-manager.toml",
+        "src/test/java/dev/skillmanager/command/CommandKindCoverageTest.java",
+        "src/test/java/dev/skillmanager/command/SkillManagerSkillDocsTest.java",
+        "specs/current",
+        "specs/program_model"
+      ],
+      "objective": "Update user documentation and promote the converged current model back into the accepted program model after implementation.\n",
+      "status": "closed",
+      "title": "Close docs and promote spec evidence"
+    }
+  ],
+  "workflow_name": "issue-91-force-scripts-cli-dep-cleanup"
+}

@@ -411,11 +411,13 @@ persisted registry for one invocation (typically
 | `skill-manager install <./path>` | Install from a local directory (no registry call) |
 | `skill-manager install github:user/repo` | Install from a git repo |
 | `skill-manager install file:<path>` | Install from an absolute local path (no registry call) |
+| `skill-manager install <source> --force-scripts` | Install and explicitly rerun `skill-script:` CLI deps instead of using the fingerprint skip |
 | `skill-manager sync [<name>]` | Re-run install side effects (MCP register, agent symlinks) without re-fetching |
 | `skill-manager sync <name> --from <dir>` | Diff the store against `<dir>`, prompt, apply, then re-run side effects |
+| `skill-manager sync <name> --force-scripts` | Sync while explicitly rerunning `skill-script:` CLI deps |
 | `skill-manager upgrade <name> \| --all` | Upgrade installed skills; rolls back on install failure |
 | `skill-manager upgrade --self` | Upgrade the CLI itself via `brew upgrade haydenrear/skill-manager/skill-manager` |
-| `skill-manager uninstall <name>` | Full uninstall — store entry, all agent symlinks, orphan MCP servers |
+| `skill-manager uninstall <name>` | Full uninstall — store entry, all agent symlinks, orphan MCP servers, orphan managed CLI deps |
 | `skill-manager remove <name>` | Lower-level: remove the store entry only |
 | `skill-manager show <name>` | Metadata + deps |
 | `skill-manager deps [name]` | Transitive dep tree |

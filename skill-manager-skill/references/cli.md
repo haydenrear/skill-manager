@@ -39,6 +39,11 @@ For `skill-script:` deps, `install --force-scripts` and
 fingerprint matches and the declared binary already exists. These flags
 do not bypass policy approval for CLI installers.
 
+`skill-manager uninstall <unit>` removes managed CLI binaries and
+`cli-lock.toml` rows only when they are orphaned. If another installed
+skill or plugin still claims the same backend/tool, uninstall preserves
+the artifact and rewrites ownership for the surviving claim.
+
 When the current directory is inside a skill project, the same helper
 also reports passive project context: the manifest path, project name,
 declared envs, project child Skill Manager home, and child-local agent
@@ -54,6 +59,7 @@ Run install with a dry run first to inspect planned CLI actions:
 skill-manager install file:///abs/path/to/unit --dry-run
 skill-manager install file:///abs/path/to/unit --yes
 skill-manager install --force-scripts file:///abs/path/to/unit --yes
+skill-manager sync <unit-name> --from /abs/path/to/unit --dry-run
 skill-manager sync --force-scripts <unit-name> --yes
 ```
 

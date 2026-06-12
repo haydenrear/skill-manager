@@ -153,6 +153,12 @@ When a unit is installed, declared tools are resolved transitively:
   contained skill manifests.
 - Harnesses install the referenced skills/plugins/doc-repos before
   materializing an instance.
+- `skill-script:` CLI deps are fingerprinted. Normal install/sync skips
+  an unchanged script when the declared binary still exists;
+  `install --force-scripts` and `sync --force-scripts` explicitly
+  rerun those scripts after the normal policy gates pass.
+- `uninstall` prunes managed CLI artifacts and `cli-lock.toml` rows only
+  when no surviving installed unit still claims the same dependency.
 
 For CLI dependencies, do not rely on the user's `PATH`. Ask the helper
 for absolute paths:

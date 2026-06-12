@@ -9,5 +9,4 @@ binary = "skill-dev"
 [skill]
 name = "skill-dev-skill"
 version = "0.1.0"
-description = "Installs the skill-dev CLI for editing installed skills and plugins in project-local worktrees."
-
+description = "Installs the skill-dev CLI for editing installed skills and plugins in project-local worktrees, then syncing those edits back through skill-manager."
