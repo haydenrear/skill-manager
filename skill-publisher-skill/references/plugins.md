@@ -152,6 +152,12 @@ Most plugins keep deps **on the contained skills**, because that keeps
 each skill self-describing. Plugin-level deps are useful but uncommon
 — they exist for the "two skills share one MCP server" case.
 
+For private `skill-script:` CLIs owned by a plugin, declare the dep in
+`skill-manager-plugin.toml` and put the installer under the plugin
+root's `skill-scripts/` directory. Normal sync skips unchanged scripts;
+`sync --force-scripts <plugin>` explicitly replays them after policy
+approval.
+
 ## Install pipeline for a plugin
 
 When the resolver sees `.claude-plugin/plugin.json` at the source
@@ -203,8 +209,9 @@ addressable** through skill-manager.
   **not** under `skills/<contained>/`. They are not symlinked into
   agent homes as standalone skills — the harness's plugin runtime
   exposes them via the plugin instead.
-- Uninstall of the parent plugin removes every contained skill (and
-  re-runs orphan-MCP-server checks against the unioned dep set).
+- Uninstall of the parent plugin removes every contained skill and
+  re-runs orphan MCP and managed CLI dependency cleanup against the
+  unioned dep set.
 
 This means: **don't try to publish a contained skill as a top-level
 skill in a registry.** Its identity is the plugin's. If you want a
@@ -309,5 +316,4 @@ deps, `browse_mcp_servers` against the local gateway for MCP deps.
   harness runs hooks in whatever environment Claude Code provides;
   don't assume `$SKILL_MANAGER_HOME` is exported. Plugin-level
   install-time setup (PATH adjustments, env-file generation) should
-  happen via a `skill-script:` CLI dep on a contained skill, not via
-  a hook.
+  happen via a plugin-level `skill-script:` CLI dep, not via a hook.

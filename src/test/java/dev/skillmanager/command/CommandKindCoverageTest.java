@@ -111,6 +111,8 @@ public final class CommandKindCoverageTest {
                     .errors().size();
             assertEquals(0, installRc, "install parse errors");
             assertTrue(install.forceScripts, "install forceScripts flag");
+            assertContains(new CommandLine(install).getUsageMessage(),
+                    "--force-scripts", "install help lists force scripts");
 
             SyncCommand sync = new SyncCommand(newStore());
             int syncRc = new CommandLine(sync)
@@ -118,6 +120,8 @@ public final class CommandKindCoverageTest {
                     .errors().size();
             assertEquals(0, syncRc, "sync parse errors");
             assertTrue(sync.forceScripts, "sync forceScripts flag");
+            assertContains(new CommandLine(sync).getUsageMessage(),
+                    "--force-scripts", "sync help lists force scripts");
         });
 
         suite.test("sync --from harness preserves live instance reconciliation", () -> {

@@ -13,8 +13,8 @@ This document covers what the parent SKILL.md only summarizes:
 - Env vars the script receives, in detail
 - The fingerprint-based re-run gate (why a script edit re-fires the
   install, but a `SKILL.md` edit does not)
-- Idempotency rules across the four flows
-  (`install` / `sync` / `upgrade` / `uninstall + install`)
+- Idempotency rules across install, sync, upgrade, force replay, and
+  uninstall/reinstall
 - Security model and policy gating
 - Worked recipes
 
@@ -125,14 +125,21 @@ This means:
 | `sync` after local edit to the script | **Yes** (fingerprint flips) |
 | `upgrade` | Same as `sync` — only on `skill-scripts/` change |
 | Manual `rm $SKILL_MANAGER_BIN_DIR/<binary>` then `sync` | **Yes** (recovery) |
-| `uninstall <skill>` then `install <skill>` | **No** (today) — see footnote |
+| `install --force-scripts <source>` | **Yes** for `skill-script:` deps (policy still applies) |
+| `sync --force-scripts <skill>` | **Yes** for `skill-script:` deps (policy still applies) |
+| `uninstall <skill>` then `install <skill>` | **Yes** when uninstall orphaned the dependency; **No** when another installed unit still claims it |
 
-> **Footnote on uninstall + install**: `skill-manager uninstall` does
-> not currently prune `bin/cli/` (a known limitation flagged in the
-> codebase as deferred). So after `uninstall` the binary lingers; after
-> the subsequent `install`, the fingerprint matches and the binary
-> exists, so the script skips. To force a rebuild, edit the script or
-> manually `rm` the binary.
+On uninstall, skill-manager re-walks the effective CLI deps for the
+unit being removed. It deletes the managed `bin/cli/<binary>` artifact
+and the matching `cli-lock.toml` row only when no surviving installed
+unit still claims that backend/tool. If another skill or plugin still
+claims it, uninstall keeps the artifact and rewrites ownership to the
+surviving claim.
+
+Use `--force-scripts` when you need an explicit replay without changing
+the script bytes or deleting the binary. The flag changes rerun
+eligibility only; it does not loosen the policy gate for running
+author-supplied shell.
 
 ## Plan-output severity and policy
 

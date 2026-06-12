@@ -1,6 +1,6 @@
 version: 1
 name: issue-91-force-scripts-cli-dep-cleanup
-updated: 2026-06-10
+updated: 2026-06-12
 purpose: >
   Model and implement explicit skill-script rerun controls plus uninstall
   cleanup for orphaned managed CLI artifacts and cli-lock rows.
@@ -19,7 +19,7 @@ status:
   active_ticket: ISSUE-91
   active_ticket_title: "Add force skill-script reruns and prune CLI deps on uninstall"
   desired_module: SkillManager
-  phase: issue_91c_closed
+  phase: issue_91d_closed
   validation:
     tlc:
       command: bash specs/desired_program_model/run_tlc.sh specs/desired_program_model/SkillManager.tla specs/desired_program_model/MC.cfg
@@ -191,7 +191,7 @@ tickets:
 
   - id: ISSUE-91D
     title: Close docs and promote spec evidence
-    status: next
+    status: closed
     depends_on:
       - ISSUE-91A
       - ISSUE-91B
@@ -205,7 +205,19 @@ tickets:
       - RemoveUnit
     implementation_scope:
       - README.md
+      - skill-manager-skill/SKILL.md
       - skill-manager-skill/skill-manager.toml
+      - skill-manager-skill/references/cli.md
+      - skill-publisher-skill/SKILL.md
+      - skill-publisher-skill/skill-manager.toml
+      - skill-publisher-skill/references/dependencies.md
+      - skill-publisher-skill/references/plugins.md
+      - skill-publisher-skill/references/skill-scripts.md
+      - skill-dev-skill/SKILL.md
+      - skill-dev-skill/README.md
+      - skill-dev-skill/skill-manager.toml
+      - src/test/java/dev/skillmanager/command/CommandKindCoverageTest.java
+      - src/test/java/dev/skillmanager/command/SkillManagerSkillDocsTest.java
       - specs/current
       - specs/program_model
     current_increment:
@@ -229,4 +241,9 @@ tickets:
         - CLI help documents both force flags.
         - skill-script docs remove the uninstall+install limitation footnote or replace it with the new behavior.
         - specs/current and specs/desired_program_model are ready for promotion into specs/program_model.
-      evidence: []
+      evidence:
+        - specs/current/results/ISSUE-91D-validation.md
+        - test_graph/build/validation-reports/20260612-182831/report.md
+        - test_graph/build/validation-reports/20260612-183652/report.md
+        - test_graph/build/validation-reports/20260612-183912/report.md
+        - test_graph/build/validation-reports/20260612-184111/report.md

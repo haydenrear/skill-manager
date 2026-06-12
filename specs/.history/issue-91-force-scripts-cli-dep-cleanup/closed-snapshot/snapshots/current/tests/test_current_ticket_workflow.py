@@ -23,6 +23,8 @@ def test_current_model_has_issue_91b_uninstall_cli_pruning() -> None:
     assert "OkForceScripts" in current_tla
     assert "orphan_cli_deps == CliDepsFor({u}) \\ CliDepsFor(remaining)" in current_tla
     assert "rolled_back_cli_deps == CliDepsFor(rolled_back_units)" in current_tla
+    assert "cli_tool_records' = cli_tool_records \\cup CliDepsFor(resolved_units)" in current_tla
+    assert "cli_cli_lock' = cli_cli_lock \\cup CliDepsFor(resolved_units)" in current_tla
     assert "CliCliArtifactsAreClaimed" in current_tla
     assert "CliCliLockRowsAreClaimed" in current_tla
     assert "SkillScriptRunsAreClaimed" in current_tla
