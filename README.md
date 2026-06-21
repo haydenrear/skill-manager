@@ -422,6 +422,10 @@ persisted registry for one invocation (typically
 | `skill-manager show <name>` | Metadata + deps |
 | `skill-manager deps [name]` | Transitive dep tree |
 
+`--force-scripts` still respects installer policy gates. Uninstall only
+removes managed CLI artifacts when no remaining installed unit claims the
+same dependency.
+
 ### Registry (publish / search / server config)
 
 | Command | Purpose |
