@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.17.2](https://github.com/haydenrear/skill-manager/compare/v0.17.1...v0.17.2) (2026-06-21)
+
+
+### Bug Fixes
+
+* release ISSUE-91 force script cleanup ([3d43002](https://github.com/haydenrear/skill-manager/commit/3d430027bf338e23fdcf96c73688382b0e4824e0))
+
 ## [0.17.1](https://github.com/haydenrear/skill-manager/compare/v0.17.0...v0.17.1) (2026-06-05)
 
 
