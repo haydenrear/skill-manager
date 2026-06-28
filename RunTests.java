@@ -31,6 +31,7 @@ import dev.skillmanager.model.SkillUnitWrapsSkillTest;
 import dev.skillmanager.model.UnitReferenceFromTomlTest;
 import dev.skillmanager.plan.CycleDetectionTest;
 import dev.skillmanager.plan.MixedKindTopoOrderTest;
+import dev.skillmanager.command.CliHelpProgressiveDisclosureTest;
 import dev.skillmanager.command.CliMetadataTest;
 import dev.skillmanager.command.CommandKindCoverageTest;
 import dev.skillmanager.command.CreatePluginScenarioTest;
@@ -167,6 +168,7 @@ public class RunTests {
         failures += PublishDetectsSkillTest.run();
         failures += MarkdownImportValidatorTest.run();
         failures += ScaffoldPluginTest.run();
+        failures += CliHelpProgressiveDisclosureTest.run();
         failures += CliMetadataTest.run();
         failures += CommandKindCoverageTest.run();
         failures += ProjectCommandTest.run();

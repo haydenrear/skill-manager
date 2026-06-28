@@ -217,6 +217,7 @@ tickets:
         - project_model.cli_command_help_topics
       model_actions:
         - RenderProgressiveRootHelp
+        - RenderProgressiveRootHelp
         - RenderInstallCommandHelp
         - RenderSyncCommandHelp
         - RenderProjectProfilesListHelp

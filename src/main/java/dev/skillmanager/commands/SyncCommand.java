@@ -31,10 +31,20 @@ import java.util.concurrent.Callable;
  * program — the command just resolves targets and hands off.
  */
 @Command(name = "sync",
-        description = "Pull upstream + re-run install side effects for git-tracked units (skills "
-                + "and plugins). For plugins this also regenerates the plugin marketplace at "
-                + "`$SKILL_MANAGER_HOME/plugin-marketplace/` and re-registers each plugin with "
-                + "Claude/Codex via their CLIs (uninstall+reinstall, so hooks reload).")
+        description = "Refresh installed units and re-run install side effects.",
+        footer = """
+
+                Sync modes:
+                  - skill-manager sync <name> - refresh one installed unit.
+                  - skill-manager sync - refresh every installed unit.
+                  - skill-manager sync <name> --from <dir> --yes - refresh from a local working tree.
+                  - skill-manager sync --lock <units.lock.toml> - reconcile a vendored lock file.
+                  - skill-manager sync --refresh - rewrite units.lock.toml from live installs.
+
+                For plugins, sync regenerates the plugin marketplace under
+                $SKILL_MANAGER_HOME/plugin-marketplace/ and re-registers each
+                plugin with Claude/Codex via their CLIs so hooks reload.
+                """)
 public final class SyncCommand implements Callable<Integer> {
 
     private final SkillStore injectedStore;

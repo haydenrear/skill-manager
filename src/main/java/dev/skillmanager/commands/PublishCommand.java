@@ -44,10 +44,21 @@ import java.util.concurrent.Callable;
  * {@code skill-registry.publish.allow-file-upload=true}.
  */
 @Command(name = "publish",
-        description = "Register a unit (skill or plugin) with the registry (github-pointer by "
-                + "default). Kind is detected from the source directory: `.claude-plugin/"
-                + "plugin.json` at the root publishes as a plugin; `SKILL.md` at the root "
-                + "publishes as a skill.")
+        description = "Register a unit with the registry.",
+        footer = """
+
+                Default mode publishes a GitHub pointer: skill-manager detects
+                remote.origin.url, finds a tag matching v<version> unless
+                --ref is supplied, and registers the resolved ref with the
+                registry.
+
+                Kind is detected from the source directory:
+                  - .claude-plugin/plugin.json at the root publishes as a plugin.
+                  - SKILL.md at the root publishes as a skill.
+
+                Pass --upload-tarball for the legacy multipart backend when the
+                server allows file uploads.
+                """)
 public final class PublishCommand implements Callable<Integer> {
 
     @Parameters(index = "0", arity = "0..1",

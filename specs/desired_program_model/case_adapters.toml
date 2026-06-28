@@ -1,13 +1,16 @@
 # Map generated program-model action labels to production adapters.
 
+[adapters.RenderProgressiveRootHelp]
+adapter = "specs.current.production_adapters:CliHelpAdapter"
+
 [adapters.RenderInstallCommandHelp]
-adapter = "specs.current.production_adapters:CliMetadataAdapter"
+adapter = "specs.current.production_adapters:CliHelpAdapter"
 
 [adapters.RenderSyncCommandHelp]
-adapter = "specs.current.production_adapters:CliMetadataAdapter"
+adapter = "specs.current.production_adapters:CliHelpAdapter"
 
 [adapters.RenderProjectProfilesListHelp]
-adapter = "specs.current.production_adapters:CliMetadataAdapter"
+adapter = "specs.current.production_adapters:CliHelpAdapter"
 
 [adapters.ExposeInstallLocalUnitWorkflowDocs]
 adapter = "specs.current.production_adapters:CliMetadataAdapter"
