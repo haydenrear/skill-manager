@@ -1,0 +1,67 @@
+module: SkillManager
+package: current_program_cases
+
+status:
+  workflow: ticket
+  active_ticket: CLI-PROGDISC-001
+  active_ticket_title: "Progressive disclosure CLI documentation contract"
+  relation_to_program_model: starts_equivalent_then_advances_as_slices_land
+  relation_to_desired_program_model: implemented_prefix_of_desired_ticket_plan
+  current_model_rule: whole_program_working_copy_not_ticket_projection
+  test_modeling_rule: do_not_model_tests_or_validation_harnesses_as_program_behavior
+  updated: 2026-06-28
+  current_slice:
+    name: baseline
+    status: scaffolded_from_program_model
+    refines:
+      - ../program_model/SkillManager.tla
+    implemented_actions: []
+    validation:
+      unit: []
+      tlc: []
+      graph: []
+      evidence: []
+  next:
+    - Add CLI disclosure state/actions/invariants after the first production slice lands.
+    - Preserve all existing specs/program_model state/actions unless production behavior changes them.
+    - Run TLC and adapter/unit tests before adding graph execution coverage.
+
+source_model:
+  program_model_manifest: ../program_model/spec_manifest.yaml
+  program_model_module: ../program_model/SkillManager.tla
+  desired_ticket_plan: ../desired_program_model/ticket_plan.yaml
+
+case_codegen:
+  style: explicit_transition_cases
+  generation_status: planned
+
+state_fields:
+  pending:
+    - project_model.cli_command_catalog
+    - project_model.cli_command_aliases
+    - project_model.cli_workflow_catalog
+    - project_model.cli_workflow_command_links
+    - project_model.cli_root_help_topics
+    - project_model.cli_command_help_topics
+    - project_model.cli_skill_doc_topics
+    - project_model.cli_agent_context_topics
+actions:
+  pending:
+    - RenderProgressiveRootHelp
+    - RenderInstallCommandHelp
+    - RenderSyncCommandHelp
+    - RenderProjectProfilesListHelp
+    - ExposeInstallLocalUnitWorkflowDocs
+    - ExposeSkillScriptsWorkflowDocs
+    - ExposeProjectEnvWorkflowDocs
+    - EmitSyncOneUnitAgentContext
+    - EmitProjectEnvAgentContext
+ports:
+  pending:
+    - SkillManagerCli.render_progressive_root_help
+    - SkillManagerCli.render_command_help
+    - SkillManagerCli.expose_skill_workflow_docs
+    - SkillManagerCli.emit_agent_workflow_context
+adapters: case_adapters.toml
+notes:
+  package_from_program_model: desired_program_cases
