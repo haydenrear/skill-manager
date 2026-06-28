@@ -25,6 +25,7 @@ class CliMetadataSnapshot:
     aliases: dict[str, frozenset[str]]
     workflow_links: dict[str, str]
     workflow_docs: dict[str, frozenset[str]]
+    workflow_examples: dict[str, frozenset[str]]
 
     @property
     def workflow_ids(self) -> frozenset[str]:
@@ -55,19 +56,22 @@ def load_cli_metadata_source(repo_root: str | Path) -> CliMetadataSnapshot:
 
     workflow_links: dict[str, str] = {}
     workflow_docs: dict[str, frozenset[str]] = {}
+    workflow_examples: dict[str, frozenset[str]] = {}
     for match in re.finditer(
-        r'workflow\("([^"]+)",\s*"([^"]+)",\s*docs\((.*?)\),',
+        r'workflow\("([^"]+)",\s*"([^"]+)",\s*docs\((.*?)\),\s*(.*?)\)',
         text,
         re.S,
     ):
         workflow_links[match.group(1)] = match.group(2)
         workflow_docs[match.group(1)] = frozenset(re.findall(r'"([^"]+)"', match.group(3)))
+        workflow_examples[match.group(1)] = frozenset(re.findall(r'"([^"]+)"', match.group(4)))
 
     return CliMetadataSnapshot(
         command_paths=frozenset(command_paths),
         aliases=aliases,
         workflow_links=workflow_links,
         workflow_docs=workflow_docs,
+        workflow_examples=workflow_examples,
     )
 
 
