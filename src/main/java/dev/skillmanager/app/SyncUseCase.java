@@ -233,7 +233,8 @@ public final class SyncUseCase {
         effects.add(new SkillEffect.CommitUnitsToStore());
         effects.add(new SkillEffect.ValidateMarkdownImports(unitNames(liveUnits)));
         effects.add(SkillEffect.ValidateMarkdownImports.resolvedGraph());
-        effects.add(new SkillEffect.BuildInstallPlan(options.forceScripts()));
+        List<String> forceScriptUnits = forceScriptUnitNames(targets);
+        effects.add(new SkillEffect.BuildInstallPlan(null, options.forceScripts(), forceScriptUnits));
         effects.add(new SkillEffect.RecordSourceProvenance());
         effects.add(new SkillEffect.RunInstallPlan(gw));
         // Cleanup the resolver's staged temp dirs no matter how the
@@ -242,7 +243,7 @@ public final class SyncUseCase {
         alwaysAfter.add(new SkillEffect.CleanupResolvedGraph());
 
         effects.add(new SkillEffect.InstallTools(liveUnits));
-        effects.add(new SkillEffect.InstallCli(liveUnits, options.forceScripts()));
+        effects.add(new SkillEffect.InstallCli(liveUnits, options.forceScripts(), forceScriptUnits));
         if (options.withMcp()) effects.add(new SkillEffect.RegisterMcp(liveUnits, gw));
         if (options.withAgents()) effects.add(new SkillEffect.SyncAgents(liveUnits, gw));
         // Plugin marketplace + harness CLI lifecycle. Sync is the
@@ -285,6 +286,10 @@ public final class SyncUseCase {
             if (name != null && !name.isBlank()) out.add(name);
         }
         return List.copyOf(out);
+    }
+
+    private static List<String> forceScriptUnitNames(List<Target> targets) {
+        return projectSyncUnitNames(targets);
     }
 
     /**

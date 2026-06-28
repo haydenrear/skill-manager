@@ -36,8 +36,13 @@ Use the returned path directly in commands. If a binary is missing,
 sync or reinstall the owning unit before falling back to a system copy.
 For `skill-script:` deps, `install --force-scripts` and
 `sync --force-scripts` rerun the bundled script even when the saved
-fingerprint matches and the declared binary already exists. These flags
-do not bypass policy approval for CLI installers.
+fingerprint matches and the declared binary already exists. Named sync
+scopes replay to the named unit: `sync <unit> --force-scripts` does not
+force scripts owned only by unrelated installed units. No-name
+`sync --force-scripts` applies to all installed units. These flags do
+not bypass policy approval for CLI installers. Script stdout/stderr is
+written under `$SKILL_MANAGER_HOME/logs/skill-scripts/`; the CLI prints
+the log path and includes a recent output tail when a script fails.
 
 `skill-manager uninstall <unit>` removes managed CLI binaries and
 `cli-lock.toml` rows only when they are orphaned. If another installed
@@ -60,7 +65,7 @@ skill-manager install file:///abs/path/to/unit --dry-run
 skill-manager install file:///abs/path/to/unit --yes
 skill-manager install --force-scripts file:///abs/path/to/unit --yes
 skill-manager sync <unit-name> --from /abs/path/to/unit --dry-run
-skill-manager sync --force-scripts <unit-name> --yes
+skill-manager sync <unit-name> --force-scripts --yes
 ```
 
 Policy may require explicit approval for CLI installers. Do not bypass a

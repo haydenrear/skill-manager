@@ -57,7 +57,9 @@ public class SkillScriptForceRerun {
             ProcessRecord install1 = Procs.run(ctx, "install_initial",
                     smProc(sm, repoRoot, privateHome, privateClaude, privateCodex, privateGemini,
                             "install", fixtureCopy.toString(), "--yes"));
-            String install1Log = readLog(ctx.reportDir(), install1);
+            Path storeHome = privateHome.resolve("home");
+            int scriptRunsAfterInstall = countOccurrences(
+                    readSkillScriptLogs(storeHome), "skill-script-skill: touched");
 
             ProcessRecord uninstall = Procs.run(ctx, "uninstall_keep_mcp",
                     smProc(sm, repoRoot, privateHome, privateClaude, privateCodex, privateGemini,
@@ -67,26 +69,32 @@ public class SkillScriptForceRerun {
                     smProc(sm, repoRoot, privateHome, privateClaude, privateCodex, privateGemini,
                             "install", fixtureCopy.toString(), "--yes", "--force-scripts"));
             String installForceLog = readLog(ctx.reportDir(), installForce);
+            int scriptRunsAfterForceInstall = countOccurrences(
+                    readSkillScriptLogs(storeHome), "skill-script-skill: touched");
 
             ProcessRecord syncNoop = Procs.run(ctx, "sync_noop",
                     smProc(sm, repoRoot, privateHome, privateClaude, privateCodex, privateGemini,
                             "sync", "--from", fixtureCopy.toString(),
                             "skill-script-skill", "--yes"));
             String syncNoopLog = readLog(ctx.reportDir(), syncNoop);
+            int scriptRunsAfterNoopSync = countOccurrences(
+                    readSkillScriptLogs(storeHome), "skill-script-skill: touched");
 
             ProcessRecord syncForce = Procs.run(ctx, "sync_force",
                     smProc(sm, repoRoot, privateHome, privateClaude, privateCodex, privateGemini,
                             "sync", "--from", fixtureCopy.toString(),
                             "skill-script-skill", "--yes", "--force-scripts"));
             String syncForceLog = readLog(ctx.reportDir(), syncForce);
+            int scriptRunsAfterForceSync = countOccurrences(
+                    readSkillScriptLogs(storeHome), "skill-script-skill: touched");
 
-            boolean initialRan = install1Log.contains("skill-script-skill: touched");
+            boolean initialRan = scriptRunsAfterInstall >= 1;
             boolean forceInstallRan = installForceLog.contains("force rerun requested")
-                    && installForceLog.contains("skill-script-skill: touched");
+                    && scriptRunsAfterForceInstall >= scriptRunsAfterInstall + 1;
             boolean noopSkipped = syncNoopLog.contains("scripts unchanged since last install")
-                    && !syncNoopLog.contains("skill-script-skill: touched");
+                    && scriptRunsAfterNoopSync == scriptRunsAfterForceInstall;
             boolean forceSyncRan = syncForceLog.contains("force rerun requested")
-                    && syncForceLog.contains("skill-script-skill: touched");
+                    && scriptRunsAfterForceSync == scriptRunsAfterNoopSync + 1;
 
             boolean pass = install1.exitCode() == 0
                     && uninstall.exitCode() == 0
@@ -109,14 +117,22 @@ public class SkillScriptForceRerun {
                                     + " initialRan=" + initialRan
                                     + " forceInstallRan=" + forceInstallRan
                                     + " noopSkipped=" + noopSkipped
-                                    + " forceSyncRan=" + forceSyncRan);
+                                    + " forceSyncRan=" + forceSyncRan
+                                    + " scriptRunsAfterInstall=" + scriptRunsAfterInstall
+                                    + " scriptRunsAfterForceInstall=" + scriptRunsAfterForceInstall
+                                    + " scriptRunsAfterNoopSync=" + scriptRunsAfterNoopSync
+                                    + " scriptRunsAfterForceSync=" + scriptRunsAfterForceSync);
             return result
                     .process(install1).process(uninstall).process(installForce)
                     .process(syncNoop).process(syncForce)
                     .assertion("initial_install_ran_script", initialRan)
                     .assertion("force_install_ran_script", forceInstallRan)
                     .assertion("noop_sync_skipped_script", noopSkipped)
-                    .assertion("force_sync_ran_script", forceSyncRan);
+                    .assertion("force_sync_ran_script", forceSyncRan)
+                    .metric("scriptRunsAfterInstall", scriptRunsAfterInstall)
+                    .metric("scriptRunsAfterForceInstall", scriptRunsAfterForceInstall)
+                    .metric("scriptRunsAfterNoopSync", scriptRunsAfterNoopSync)
+                    .metric("scriptRunsAfterForceSync", scriptRunsAfterForceSync);
         });
     }
 
@@ -146,6 +162,32 @@ public class SkillScriptForceRerun {
             return Files.readString(p);
         } catch (IOException e) {
             return "";
+        }
+    }
+
+    private static String readSkillScriptLogs(Path storeHome) {
+        Path dir = storeHome.resolve("logs").resolve("skill-scripts");
+        if (!Files.isDirectory(dir)) return "";
+        StringBuilder out = new StringBuilder();
+        try (var stream = Files.list(dir)) {
+            for (Path p : stream.sorted().toList()) {
+                if (Files.isRegularFile(p)) out.append(Files.readString(p)).append('\n');
+            }
+        } catch (IOException ignored) {
+            return "";
+        }
+        return out.toString();
+    }
+
+    private static int countOccurrences(String haystack, String needle) {
+        if (haystack == null || needle == null || needle.isEmpty()) return 0;
+        int count = 0;
+        int from = 0;
+        while (true) {
+            int at = haystack.indexOf(needle, from);
+            if (at < 0) return count;
+            count++;
+            from = at + needle.length();
         }
     }
 

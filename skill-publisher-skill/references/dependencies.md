@@ -91,9 +91,10 @@ binary = "private-tool"
 
 Load `references/skill-scripts.md` before using `skill-script:`.
 Those deps are fingerprinted, can be explicitly replayed with
-`install --force-scripts` or `sync --force-scripts`, and are pruned on
-uninstall only when no surviving installed unit still claims the same
-backend/tool.
+`install --force-scripts` or named `sync <unit> --force-scripts`, and
+are pruned on uninstall only when no surviving installed unit still
+claims the same backend/tool. No-name `sync --force-scripts` replays
+scripts for all installed units.
 
 ## MCP dependencies
 

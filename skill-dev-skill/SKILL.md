@@ -29,6 +29,12 @@ Prefer `skill-dev sync <unit>` to apply edits while leaving the worktree
 open. Prefer `skill-dev close <unit> --merge` when finishing a development
 session.
 
+If a worktree has a `skill-script:` CLI installer and you need to replay
+it without changing script bytes, run the delegated command directly
+with `skill-manager sync <unit> --from skill-dev/<unit> --merge --yes
+--force-scripts`. Named sync forces scripts for that unit only; script
+stdout/stderr is written under `$SKILL_MANAGER_HOME/logs/skill-scripts/`.
+
 `skill-dev sync <unit>` delegates to:
 
 ```bash

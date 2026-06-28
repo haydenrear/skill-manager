@@ -414,7 +414,8 @@ persisted registry for one invocation (typically
 | `skill-manager install <source> --force-scripts` | Install and explicitly rerun `skill-script:` CLI deps instead of using the fingerprint skip |
 | `skill-manager sync [<name>]` | Re-run install side effects (MCP register, agent symlinks) without re-fetching |
 | `skill-manager sync <name> --from <dir>` | Diff the store against `<dir>`, prompt, apply, then re-run side effects |
-| `skill-manager sync <name> --force-scripts` | Sync while explicitly rerunning `skill-script:` CLI deps |
+| `skill-manager sync <name> --force-scripts` | Sync while explicitly rerunning `skill-script:` CLI deps for `<name>` |
+| `skill-manager sync --force-scripts` | Sync all installed units and explicitly rerun all installed `skill-script:` CLI deps |
 | `skill-manager upgrade <name> \| --all` | Upgrade installed skills; rolls back on install failure |
 | `skill-manager upgrade --self` | Upgrade the CLI itself via `brew upgrade haydenrear/skill-manager/skill-manager` |
 | `skill-manager uninstall <name>` | Full uninstall — store entry, all agent symlinks, orphan MCP servers, orphan managed CLI deps |
@@ -422,9 +423,14 @@ persisted registry for one invocation (typically
 | `skill-manager show <name>` | Metadata + deps |
 | `skill-manager deps [name]` | Transitive dep tree |
 
-`--force-scripts` still respects installer policy gates. Uninstall only
-removes managed CLI artifacts when no remaining installed unit claims the
-same dependency.
+`sync <name> --force-scripts` scopes forced script replay to the named
+sync target, so unrelated installed skills are not forced. A no-name
+`sync --force-scripts` treats every installed unit as the target set.
+`--force-scripts` still respects installer policy gates. Skill-script
+stdout/stderr is written under
+`$SKILL_MANAGER_HOME/logs/skill-scripts/`; failures include the log path
+and a tail of recent output. Uninstall only removes managed CLI artifacts
+when no remaining installed unit claims the same dependency.
 
 ### Registry (publish / search / server config)
 

@@ -197,7 +197,10 @@ public final class DryRunInterpreter implements ProgramInterpreter {
                     Log.step("[%d] install runtime tools (uv/npm/docker/brew) for %d unit(s)",
                             n, e.units().size());
             case SkillEffect.InstallCli e ->
-                    Log.step("[%d] install CLI deps for %d unit(s)", n, e.units().size());
+                    Log.step("[%d] install CLI deps for %d unit(s)%s", n, e.units().size(),
+                            e.forceScripts()
+                                    ? " (force-scripts: " + forceScope(e.forceScriptUnitNames()) + ")"
+                                    : "");
             case SkillEffect.RegisterMcp e -> {
                 Log.step("[%d] register MCP deps with %s", n,
                         e.gateway() == null ? "<none>" : e.gateway().baseUrl());
@@ -277,7 +280,9 @@ public final class DryRunInterpreter implements ProgramInterpreter {
             case SkillEffect.BuildInstallPlan e ->
                     Log.step("[%d] build install plan over %s skill(s)%s", n,
                             e.graph() == null ? "resolved" : Integer.toString(e.graph().resolved().size()),
-                            e.forceScripts() ? " (force-scripts)" : "");
+                            e.forceScripts()
+                                    ? " (force-scripts: " + forceScope(e.forceScriptUnitNames()) + ")"
+                                    : "");
             case SkillEffect.RunInstallPlan e ->
                     Log.step("[%d] expand + run install plan (gateway=%s)",
                             n, e.gateway() == null ? "<none>" : e.gateway().baseUrl());
@@ -328,5 +333,10 @@ public final class DryRunInterpreter implements ProgramInterpreter {
                     Log.step("[%d] sync %d unit(s)' claiming project(s)",
                             n, e.unitNames().size());
         }
+    }
+
+    private static String forceScope(java.util.List<String> unitNames) {
+        if (unitNames == null || unitNames.isEmpty()) return "all";
+        return String.join(", ", unitNames);
     }
 }

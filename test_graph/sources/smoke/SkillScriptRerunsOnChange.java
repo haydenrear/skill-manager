@@ -24,9 +24,8 @@ import java.nio.file.attribute.BasicFileAttributes;
  *       install it under a private SKILL_MANAGER_HOME, assert the
  *       initial sentinel was dropped.</li>
  *   <li>Run {@code skill-manager sync --from <copy>} with no changes,
- *       capture stdout, assert the script DID NOT run again (we look
- *       for the diagnostic "skipping" line and confirm the install.sh
- *       diagnostic line is absent).</li>
+ *       assert the script DID NOT run again (we look for the diagnostic
+ *       "skipping" line and confirm the script log count did not grow).</li>
  *   <li>Edit the install.sh in the temp copy to touch a distinct
  *       sentinel, sync again, assert the new sentinel landed under
  *       bin/cli/. Proves a script edit re-fires the install even
@@ -81,8 +80,11 @@ public class SkillScriptRerunsOnChange {
                     smProc(sm, repoRoot, privateHome, privateClaude, privateCodex, privateGemini,
                             "install", fixtureCopy.toString(), "--yes"));
             int rc1 = proc1.exitCode();
-            Path binCli = privateHome.resolve("home/bin/cli");
+            Path storeHome = privateHome.resolve("home");
+            Path binCli = storeHome.resolve("bin/cli");
             boolean initialTouchOk = Files.isRegularFile(binCli.resolve("skill-script-touched"));
+            int scriptRunsAfterInstall = countOccurrences(
+                    readSkillScriptLogs(storeHome), "skill-script-skill: touched");
 
             // STEP 2 — sync with NO script changes; backend should skip.
             ProcessRecord proc2 = Procs.run(ctx, "sync_noop",
@@ -92,10 +94,9 @@ public class SkillScriptRerunsOnChange {
             int rc2 = proc2.exitCode();
             String stdout2 = readLogTail(ctx.reportDir(), proc2);
             boolean noopSkipped = stdout2.contains("scripts unchanged since last install");
-            // Belt-and-suspenders — the install.sh diagnostic line
-            // ("skill-script-skill: touched ...") would only appear if
-            // the script actually ran, so its absence confirms skip.
-            boolean noopDidNotRun = !stdout2.contains("skill-script-skill: touched");
+            int scriptRunsAfterNoop = countOccurrences(
+                    readSkillScriptLogs(storeHome), "skill-script-skill: touched");
+            boolean noopDidNotRun = scriptRunsAfterNoop == scriptRunsAfterInstall;
 
             // STEP 3 — edit the script, sync again; backend should rerun.
             Path script = fixtureCopy.resolve("skill-scripts/install.sh");
@@ -114,10 +115,13 @@ public class SkillScriptRerunsOnChange {
                             "skill-script-skill", "--yes"));
             int rc3 = proc3.exitCode();
             boolean rerunSentinelOk = Files.isRegularFile(binCli.resolve("skill-script-rerun-marker"));
+            int scriptRunsAfterEdit = countOccurrences(
+                    readSkillScriptLogs(storeHome), "skill-script-skill: touched");
+            boolean postEditRan = scriptRunsAfterEdit == scriptRunsAfterNoop + 1;
 
             boolean pass = rc1 == 0 && initialTouchOk
                     && rc2 == 0 && noopSkipped && noopDidNotRun
-                    && rc3 == 0 && rerunSentinelOk;
+                    && rc3 == 0 && rerunSentinelOk && postEditRan;
 
             NodeResult result = pass
                     ? NodeResult.pass("skill.script.reruns.on.change")
@@ -125,16 +129,25 @@ public class SkillScriptRerunsOnChange {
                             "rc1=" + rc1 + " initialTouch=" + initialTouchOk
                                     + " rc2=" + rc2 + " noopSkipped=" + noopSkipped
                                     + " noopDidNotRun=" + noopDidNotRun
-                                    + " rc3=" + rc3 + " rerunSentinel=" + rerunSentinelOk);
+                                    + " rc3=" + rc3 + " rerunSentinel=" + rerunSentinelOk
+                                    + " postEditRan=" + postEditRan
+                                    + " scriptRunsAfterInstall=" + scriptRunsAfterInstall
+                                    + " scriptRunsAfterNoop=" + scriptRunsAfterNoop
+                                    + " scriptRunsAfterEdit=" + scriptRunsAfterEdit);
             return result
                     .process(proc1).process(proc2).process(proc3)
                     .assertion("install_ok", rc1 == 0)
                     .assertion("initial_sentinel_dropped", initialTouchOk)
+                    .assertion("initial_install_logged_script_run", scriptRunsAfterInstall >= 1)
                     .assertion("noop_sync_ok", rc2 == 0)
                     .assertion("noop_sync_skipped_script", noopSkipped)
                     .assertion("noop_sync_did_not_rerun_script", noopDidNotRun)
                     .assertion("post_edit_sync_ok", rc3 == 0)
-                    .assertion("post_edit_sentinel_dropped", rerunSentinelOk);
+                    .assertion("post_edit_sentinel_dropped", rerunSentinelOk)
+                    .assertion("post_edit_logged_script_run", postEditRan)
+                    .metric("scriptRunsAfterInstall", scriptRunsAfterInstall)
+                    .metric("scriptRunsAfterNoop", scriptRunsAfterNoop)
+                    .metric("scriptRunsAfterEdit", scriptRunsAfterEdit);
         });
     }
 
@@ -169,6 +182,32 @@ public class SkillScriptRerunsOnChange {
             return Files.readString(p);
         } catch (IOException e) {
             return "";
+        }
+    }
+
+    private static String readSkillScriptLogs(Path storeHome) {
+        Path dir = storeHome.resolve("logs").resolve("skill-scripts");
+        if (!Files.isDirectory(dir)) return "";
+        StringBuilder out = new StringBuilder();
+        try (var stream = Files.list(dir)) {
+            for (Path p : stream.sorted().toList()) {
+                if (Files.isRegularFile(p)) out.append(Files.readString(p)).append('\n');
+            }
+        } catch (IOException e) {
+            return "";
+        }
+        return out.toString();
+    }
+
+    private static int countOccurrences(String haystack, String needle) {
+        if (haystack == null || needle == null || needle.isEmpty()) return 0;
+        int count = 0;
+        int from = 0;
+        while (true) {
+            int at = haystack.indexOf(needle, from);
+            if (at < 0) return count;
+            count++;
+            from = at + needle.length();
         }
     }
 

@@ -155,8 +155,12 @@ When a unit is installed, declared tools are resolved transitively:
   materializing an instance.
 - `skill-script:` CLI deps are fingerprinted. Normal install/sync skips
   an unchanged script when the declared binary still exists;
-  `install --force-scripts` and `sync --force-scripts` explicitly
-  rerun those scripts after the normal policy gates pass.
+  `install --force-scripts` explicitly reruns script deps in the install
+  graph. `sync <unit> --force-scripts` reruns script deps only for the
+  named sync target; no-name `sync --force-scripts` applies to all
+  installed units. Script stdout/stderr is written under
+  `$SKILL_MANAGER_HOME/logs/skill-scripts/`, with the log path shown in
+  CLI output and a recent tail included on failure.
 - `uninstall` prunes managed CLI artifacts and `cli-lock.toml` rows only
   when no surviving installed unit still claims the same dependency.
 

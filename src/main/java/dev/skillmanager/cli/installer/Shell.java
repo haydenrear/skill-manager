@@ -5,6 +5,10 @@ import dev.skillmanager.util.Log;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.util.List;
 import java.util.Map;
 
@@ -19,6 +23,29 @@ final class Shell {
     static int run(List<String> cmd, Map<String, String> env) throws IOException {
         Log.step("exec: %s", String.join(" ", cmd));
         ProcessBuilder pb = new ProcessBuilder(cmd).inheritIO();
+        pb.environment().putAll(env);
+        Process p = pb.start();
+        try {
+            return p.waitFor();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            p.destroy();
+            throw new IOException("interrupted running " + cmd.get(0), e);
+        }
+    }
+
+    static int runToLog(List<String> cmd, Map<String, String> env, Path logPath) throws IOException {
+        if (logPath.getParent() != null) Files.createDirectories(logPath.getParent());
+        Files.writeString(logPath,
+                "$ " + String.join(" ", cmd) + System.lineSeparator(),
+                StandardCharsets.UTF_8,
+                StandardOpenOption.CREATE,
+                StandardOpenOption.TRUNCATE_EXISTING,
+                StandardOpenOption.WRITE);
+        ProcessBuilder pb = new ProcessBuilder(cmd)
+                .redirectInput(ProcessBuilder.Redirect.INHERIT)
+                .redirectErrorStream(true)
+                .redirectOutput(ProcessBuilder.Redirect.appendTo(logPath.toFile()));
         pb.environment().putAll(env);
         Process p = pb.start();
         try {

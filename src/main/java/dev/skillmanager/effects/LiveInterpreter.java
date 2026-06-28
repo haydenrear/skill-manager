@@ -544,7 +544,7 @@ public final class LiveInterpreter implements ProgramInterpreter {
 
     private EffectReceipt installCli(SkillEffect.InstallCli e) throws IOException {
         List<AgentUnit> units = freshen(e.units());
-        InstallPlan plan = buildPlan(units, e.forceScripts());
+        InstallPlan plan = buildPlan(units, e.forceScripts(), e.forceScriptUnitNames());
         CliInstallRecorder.run(plan, store);
         return EffectReceipt.ok(e, new ContextFact.CliInstalledFor(units.size()));
     }
@@ -578,10 +578,22 @@ public final class LiveInterpreter implements ProgramInterpreter {
     }
 
     private InstallPlan buildPlan(List<AgentUnit> units, boolean forceScripts) throws IOException {
+        return buildPlan(units, forceScripts, List.of());
+    }
+
+    private InstallPlan buildPlan(List<AgentUnit> units, boolean forceScripts,
+                                  List<String> forceScriptUnitNames) throws IOException {
         Policy policy = Policy.load(store);
         CliLock lock = CliLock.load(store);
         PackageManagerRuntime pmRuntime = new PackageManagerRuntime(store);
-        return new PlanBuilder(policy, lock, pmRuntime, forceScripts)
+        return new PlanBuilder(
+                        policy,
+                        lock,
+                        pmRuntime,
+                        forceScripts,
+                        forceScriptUnitNames == null
+                                ? java.util.Set.of()
+                                : new java.util.LinkedHashSet<>(forceScriptUnitNames))
                 .plan(units, true, true, store.cliBinDir());
     }
 
@@ -1110,7 +1122,7 @@ public final class LiveInterpreter implements ProgramInterpreter {
                 return EffectReceipt.skipped(e, "no resolved graph in context");
             }
             InstallPlan plan = dev.skillmanager.app.InstallUseCase.buildPlan(
-                    ctx.store(), graph, e.forceScripts());
+                    ctx.store(), graph, e.forceScripts(), e.forceScriptUnitNames());
             dev.skillmanager.plan.PlanPrinter.print(plan);
             ctx.setPlan(plan);
             if (plan.blocked()) {
