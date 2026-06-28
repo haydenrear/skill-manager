@@ -9,12 +9,11 @@ def test_ticket_workflow_scaffold_exists_for_active_ticket() -> None:
     assert (ROOT / "specs/program_model/spec_manifest.yaml").exists()
     assert (ROOT / "specs/current/SkillManager.tla").exists()
     assert (ROOT / "specs/desired_program_model/SkillManager.tla").exists()
-    assert "CLI-PROGDISC-005" in (ROOT / "specs/current/spec_manifest.yaml").read_text()
+    assert "CLI-PROGDISC-004" in (ROOT / "specs/current/spec_manifest.yaml").read_text()
     desired_manifest = (ROOT / "specs/desired_program_model/spec_manifest.yaml").read_text()
     assert "CLI-PROGDISC-001" in desired_manifest
     assert "CLI-PROGDISC-002" in desired_manifest
     assert "CLI-PROGDISC-003" in desired_manifest
-    assert "CLI-PROGDISC-004" in desired_manifest
 
 
 def test_program_model_tracks_parent_sync_refreshing_project_child_homes() -> None:

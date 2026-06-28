@@ -183,7 +183,7 @@ CliWorkflowCommandLinks ==
    <<"onboard-default-skills", "onboard">>,
    <<"package-manager-bootstrap", "pm">>,
    <<"policy-inspect", "policy">>,
-   <<"project-env", "env">>,
+   <<"project-env", "env sync">>,
    <<"project-profile-resolve", "project profiles">>,
    <<"project-register", "project register">>,
    <<"project-resolve", "project resolve">>,

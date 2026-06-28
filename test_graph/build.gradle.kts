@@ -522,6 +522,7 @@ validationGraph {
         node("sources/common/EnvPrepared.java")
         node("sources/smoke/doc/CliMetadataCatalogCovered.java")
         node("sources/smoke/doc/CliHelpProgressiveDisclosure.java")
+        node("sources/smoke/doc/CliAgentContextOutput.java")
         node("sources/smoke/doc/SkillManagerSkillDocsProjected.java")
         node("sources/smoke/doc/SkillManagerEnvReportsProjectContext.java")
         node("sources/smoke/doc/DocRepoInstalled.java")

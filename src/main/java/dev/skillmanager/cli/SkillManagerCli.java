@@ -90,6 +90,11 @@ public final class SkillManagerCli implements Runnable {
     @Option(names = {"-v", "--verbose"}, description = "Verbose output", scope = CommandLine.ScopeType.INHERIT)
     public boolean verbose;
 
+    @Option(names = "--agent-context",
+            description = "Emit a bounded agent-facing context block to stderr after the command.",
+            scope = CommandLine.ScopeType.INHERIT)
+    public boolean agentContext;
+
     @Override
     public void run() {
         Log.setVerbose(verbose);
@@ -105,6 +110,9 @@ public final class SkillManagerCli implements Runnable {
             tryReconcile();
             int rc = new CommandLine.RunLast().execute(pr);
             tryPrintOutstandingErrors();
+            if (isAgentContextRequested(root)) {
+                CliAgentContext.emit(System.err, CliAgentContext.commandPath(pr), rc);
+            }
             return rc;
         });
         // Surface auth-expiry + registry-unreachable as stable,
@@ -147,6 +155,13 @@ public final class SkillManagerCli implements Runnable {
             dev.skillmanager.mcp.GatewayConfig gw = dev.skillmanager.mcp.GatewayConfig.resolve(store, null);
             dev.skillmanager.lifecycle.SkillReconciler.reconcile(store, gw);
         } catch (Throwable ignored) {}
+    }
+
+    private static boolean isAgentContextRequested(SkillManagerCli root) {
+        if (root != null && root.agentContext) return true;
+        String env = System.getenv("SKILL_MANAGER_AGENT_CONTEXT");
+        return env != null && (env.equals("1") || env.equalsIgnoreCase("true")
+                || env.equalsIgnoreCase("yes"));
     }
 
     private static void tryPrintOutstandingErrors() {

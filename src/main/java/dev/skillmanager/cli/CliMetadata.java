@@ -144,7 +144,7 @@ public final class CliMetadata {
                     "skill-manager pm setup"),
             workflow("policy-inspect", "policy", docs("skill-manager-skill"),
                     "skill-manager policy show"),
-            workflow("project-env", "env", docs("skill-manager-skill", "skill-dev-skill"),
+            workflow("project-env", "env sync", docs("skill-manager-skill", "skill-dev-skill"),
                     "skill-manager env sync --project-dir ."),
             workflow("project-profile-resolve", "project profiles", docs("skill-manager-skill"),
                     "skill-manager project profiles list"),

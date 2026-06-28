@@ -22,7 +22,7 @@ adapter = "specs.current.production_adapters:CliMetadataAdapter"
 adapter = "specs.current.production_adapters:CliMetadataAdapter"
 
 [adapters.EmitSyncOneUnitAgentContext]
-adapter = "specs.current.production_adapters:CliMetadataAdapter"
+adapter = "specs.current.production_adapters:CliAgentContextAdapter"
 
 [adapters.EmitProjectEnvAgentContext]
-adapter = "specs.current.production_adapters:CliMetadataAdapter"
+adapter = "specs.current.production_adapters:CliAgentContextAdapter"
