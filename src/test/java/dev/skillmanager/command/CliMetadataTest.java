@@ -43,6 +43,18 @@ public final class CliMetadataTest {
             }
         });
 
+        suite.test("workflow examples parse against picocli command tree", () -> {
+            for (CliMetadata.WorkflowMetadata workflow : CliMetadata.workflows()) {
+                for (String example : workflow.examples()) {
+                    String[] parts = example.split("\\s+");
+                    assertTrue(parts.length > 1, "example has command args: " + example);
+                    assertEquals("skill-manager", parts[0], "example root: " + example);
+                    new CommandLine(new SkillManagerCli())
+                            .parseArgs(Arrays.copyOfRange(parts, 1, parts.length));
+                }
+            }
+        });
+
         suite.test("representative modeled workflows are present", () -> {
             assertTrue(CliMetadata.commandPaths().contains("bindings show"),
                     "bindings show in metadata");
