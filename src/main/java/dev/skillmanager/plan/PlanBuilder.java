@@ -34,6 +34,7 @@ public final class PlanBuilder {
      *  PATH"). */
     private final PackageManagerRuntime pmRuntime;
     private final boolean forceScripts;
+    private final Set<String> forceScriptUnits;
 
     public PlanBuilder(Policy policy) { this(policy, null, null); }
 
@@ -45,10 +46,18 @@ public final class PlanBuilder {
 
     public PlanBuilder(Policy policy, CliLock lock, PackageManagerRuntime pmRuntime,
                        boolean forceScripts) {
+        this(policy, lock, pmRuntime, forceScripts, Set.of());
+    }
+
+    public PlanBuilder(Policy policy, CliLock lock, PackageManagerRuntime pmRuntime,
+                       boolean forceScripts, Set<String> forceScriptUnits) {
         this.policy = policy;
         this.lock = lock;
         this.pmRuntime = pmRuntime;
         this.forceScripts = forceScripts;
+        this.forceScriptUnits = forceScriptUnits == null
+                ? Set.of()
+                : Set.copyOf(forceScriptUnits);
     }
 
     /** Plan for a fresh {@code add} that already resolved a full transitive graph. */
@@ -295,7 +304,9 @@ public final class PlanBuilder {
                     continue;
                 }
             }
-            boolean forceThisDep = forceScripts && "skill-script".equals(dep.backend());
+            boolean forceThisDep = forceScripts
+                    && "skill-script".equals(dep.backend())
+                    && (forceScriptUnits.isEmpty() || forceScriptUnits.contains(u.name()));
             plan.add(new PlanAction.RunCliInstall(u.name(), dep, forceThisDep));
         }
     }

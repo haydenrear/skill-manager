@@ -294,8 +294,19 @@ public sealed interface SkillEffect permits
     record InstallTools(List<AgentUnit> units) implements SkillEffect {}
 
     /** Build the install plan from {@code units} and run CLI dep installers. */
-    record InstallCli(List<AgentUnit> units, boolean forceScripts) implements SkillEffect {
-        public InstallCli(List<AgentUnit> units) { this(units, false); }
+    record InstallCli(
+            List<AgentUnit> units,
+            boolean forceScripts,
+            List<String> forceScriptUnitNames) implements SkillEffect {
+        public InstallCli(List<AgentUnit> units) { this(units, false, List.of()); }
+        public InstallCli(List<AgentUnit> units, boolean forceScripts) {
+            this(units, forceScripts, List.of());
+        }
+        public InstallCli {
+            forceScriptUnitNames = forceScriptUnitNames == null
+                    ? List.of()
+                    : List.copyOf(forceScriptUnitNames);
+        }
     }
 
     /** Register every unit's MCP deps with the gateway, capturing per-server outcomes. */
@@ -502,10 +513,21 @@ public sealed interface SkillEffect permits
      * the graph from {@link EffectContext#resolvedGraph()} set by a prior
      * {@code BuildResolveGraphFrom*} effect.
      */
-    record BuildInstallPlan(ResolvedGraph graph, boolean forceScripts) implements SkillEffect {
-        public BuildInstallPlan() { this(null, false); }
-        public BuildInstallPlan(boolean forceScripts) { this(null, forceScripts); }
-        public BuildInstallPlan(ResolvedGraph graph) { this(graph, false); }
+    record BuildInstallPlan(
+            ResolvedGraph graph,
+            boolean forceScripts,
+            List<String> forceScriptUnitNames) implements SkillEffect {
+        public BuildInstallPlan() { this(null, false, List.of()); }
+        public BuildInstallPlan(boolean forceScripts) { this(null, forceScripts, List.of()); }
+        public BuildInstallPlan(ResolvedGraph graph) { this(graph, false, List.of()); }
+        public BuildInstallPlan(ResolvedGraph graph, boolean forceScripts) {
+            this(graph, forceScripts, List.of());
+        }
+        public BuildInstallPlan {
+            forceScriptUnitNames = forceScriptUnitNames == null
+                    ? List.of()
+                    : List.copyOf(forceScriptUnitNames);
+        }
         // No plan = nothing to expand. Halt rather than silently skip.
         @Override public Continuation continuationOnFail() { return Continuation.HALT; }
     }

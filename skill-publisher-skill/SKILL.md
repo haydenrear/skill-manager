@@ -132,7 +132,10 @@ Extra validation:
   registry package path.
 - Skill/plugin with `skill-script:` deps: run a dry-run install from
   `file:///abs/path/to/unit`; use `install --force-scripts` or
-  `sync --force-scripts` only when validating explicit replay behavior.
+  `sync <unit> --force-scripts` only when validating explicit replay
+  behavior. Named sync replays scripts for that unit only, while
+  no-name `sync --force-scripts` replays scripts for all installed
+  units.
 - Doc-repo: bind into a disposable project and inspect `docs/agents/`,
   `CLAUDE.md`, and `AGENTS.md`.
 - Harness: instantiate with explicit `--claude-config-dir`,

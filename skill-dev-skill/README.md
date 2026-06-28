@@ -22,7 +22,10 @@ skill-dev close reviewer-skill --merge
 `skill-dev sync <unit>` delegates to `skill-manager sync <unit> --from
 skill-dev/<unit> --merge --yes`. If you need to replay an unchanged
 `skill-script:` installer from the worktree, run the underlying
-skill-manager command directly with `--force-scripts`.
+skill-manager command directly with `--force-scripts`. Named sync forces
+scripts for that unit only. Script stdout/stderr is written under
+`$SKILL_MANAGER_HOME/logs/skill-scripts/`, and failures include the log
+path plus recent output.
 
 The `skill-dev` CLI itself is installed by a `skill-script:` dependency;
 uninstall removes its managed binary and lock row only if no other unit

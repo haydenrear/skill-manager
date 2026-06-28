@@ -7,12 +7,19 @@ import dev.skillmanager.store.SkillStore;
 import dev.skillmanager.util.Log;
 import dev.skillmanager.util.Platform;
 
+import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.MessageDigest;
+import java.time.Instant;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Deque;
 import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -171,10 +178,13 @@ public final class SkillScriptBackend implements InstallerBackend {
         env.put("SKILL_NAME", skillName);
         env.put("SKILL_PLATFORM", Platform.currentKey());
 
+        Path logPath = skillScriptLogPath(store, skillName, dep.name());
         Log.step("cli: skill-script %s — running %s", dep.name(), script);
-        int rc = Shell.run(cmd, env);
+        Log.step("cli: skill-script %s — writing output to %s", dep.name(), logPath);
+        int rc = Shell.runToLog(cmd, env, logPath);
         if (rc != 0) {
-            throw new IOException("skill-script " + dep.name() + " exited " + rc);
+            throw new IOException("skill-script " + dep.name() + " exited " + rc
+                    + " (log: " + logPath + ")" + failureTail(logPath, 40));
         }
 
         // Optional verification: if the user told us which binary the
@@ -312,6 +322,38 @@ public final class SkillScriptBackend implements InstallerBackend {
             }
         }
         throw firstError;
+    }
+
+    private static Path skillScriptLogPath(SkillStore store, String skillName, String depName) {
+        String stamp = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss-SSS")
+                .withZone(ZoneOffset.UTC)
+                .format(Instant.now());
+        String fileName = stamp + "-" + safeFilePart(skillName)
+                + "-" + safeFilePart(depName) + ".log";
+        return store.root().resolve("logs").resolve("skill-scripts").resolve(fileName);
+    }
+
+    private static String safeFilePart(String value) {
+        if (value == null || value.isBlank()) return "unknown";
+        return value.replaceAll("[^A-Za-z0-9._-]+", "_");
+    }
+
+    private static String failureTail(Path logPath, int maxLines) {
+        Deque<String> tail = new ArrayDeque<>();
+        try (BufferedReader reader = Files.newBufferedReader(logPath, StandardCharsets.UTF_8)) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                tail.addLast(line);
+                while (tail.size() > maxLines) tail.removeFirst();
+            }
+        } catch (IOException ignored) {
+            return "";
+        }
+        if (tail.isEmpty()) return "";
+        return System.lineSeparator()
+                + "last " + tail.size() + " line(s) of skill-script output:"
+                + System.lineSeparator()
+                + String.join(System.lineSeparator(), tail);
     }
 
     private static CliDependency.InstallTarget pickTarget(CliDependency dep) {

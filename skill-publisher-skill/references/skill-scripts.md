@@ -125,8 +125,9 @@ This means:
 | `sync` after local edit to the script | **Yes** (fingerprint flips) |
 | `upgrade` | Same as `sync` — only on `skill-scripts/` change |
 | Manual `rm $SKILL_MANAGER_BIN_DIR/<binary>` then `sync` | **Yes** (recovery) |
-| `install --force-scripts <source>` | **Yes** for `skill-script:` deps (policy still applies) |
-| `sync --force-scripts <skill>` | **Yes** for `skill-script:` deps (policy still applies) |
+| `install --force-scripts <source>` | **Yes** for `skill-script:` deps in the install graph (policy still applies) |
+| `sync <skill> --force-scripts` | **Yes** for `skill-script:` deps owned by the named target (policy still applies) |
+| `sync --force-scripts` | **Yes** for all installed `skill-script:` deps because every installed unit is a target |
 | `uninstall <skill>` then `install <skill>` | **Yes** when uninstall orphaned the dependency; **No** when another installed unit still claims it |
 
 On uninstall, skill-manager re-walks the effective CLI deps for the
@@ -137,9 +138,16 @@ claims it, uninstall keeps the artifact and rewrites ownership to the
 surviving claim.
 
 Use `--force-scripts` when you need an explicit replay without changing
-the script bytes or deleting the binary. The flag changes rerun
-eligibility only; it does not loosen the policy gate for running
-author-supplied shell.
+the script bytes or deleting the binary. On named sync, the replay scope
+is the named unit or units; unrelated installed units are not forced.
+The flag changes rerun eligibility only; it does not loosen the policy
+gate for running author-supplied shell.
+
+Script stdout and stderr are written to timestamped logs under
+`$SKILL_MANAGER_HOME/logs/skill-scripts/`. The CLI prints the log path
+when the script starts. If the script fails, the error includes the log
+path and a tail of recent output so agent transcripts do not get flooded
+by successful installer output.
 
 ## Plan-output severity and policy
 

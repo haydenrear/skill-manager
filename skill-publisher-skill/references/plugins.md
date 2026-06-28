@@ -155,8 +155,9 @@ each skill self-describing. Plugin-level deps are useful but uncommon
 For private `skill-script:` CLIs owned by a plugin, declare the dep in
 `skill-manager-plugin.toml` and put the installer under the plugin
 root's `skill-scripts/` directory. Normal sync skips unchanged scripts;
-`sync --force-scripts <plugin>` explicitly replays them after policy
-approval.
+`sync <plugin> --force-scripts` explicitly replays that plugin's scripts
+after policy approval without forcing scripts owned only by other
+installed units.
 
 ## Install pipeline for a plugin
 

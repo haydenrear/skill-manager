@@ -67,10 +67,23 @@ public final class InstallUseCase {
 
     public static InstallPlan buildPlan(SkillStore store, ResolvedGraph graph,
                                         boolean forceScripts) throws IOException {
+        return buildPlan(store, graph, forceScripts, List.of());
+    }
+
+    public static InstallPlan buildPlan(SkillStore store, ResolvedGraph graph,
+                                        boolean forceScripts,
+                                        List<String> forceScriptUnitNames) throws IOException {
         Policy policy = Policy.load(store);
         CliLock lock = CliLock.load(store);
         PackageManagerRuntime pmRuntime = new PackageManagerRuntime(store);
-        return new PlanBuilder(policy, lock, pmRuntime, forceScripts)
+        return new PlanBuilder(
+                        policy,
+                        lock,
+                        pmRuntime,
+                        forceScripts,
+                        forceScriptUnitNames == null
+                                ? java.util.Set.of()
+                                : new java.util.LinkedHashSet<>(forceScriptUnitNames))
                 .plan(graph, true, true, store.cliBinDir());
     }
 

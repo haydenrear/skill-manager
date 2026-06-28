@@ -11,6 +11,8 @@ import dev.skillmanager.bindings.ConflictPolicy;
 import dev.skillmanager.bindings.DocRepoBinder;
 import dev.skillmanager.bindings.Projection;
 import dev.skillmanager.bindings.ProjectionLedger;
+import dev.skillmanager.cli.installer.InstallerRegistry;
+import dev.skillmanager.cli.installer.SkillScriptBackend;
 import dev.skillmanager.commands.DepsCommand;
 import dev.skillmanager.commands.InstallCommand;
 import dev.skillmanager.commands.LockCommand;
@@ -20,9 +22,14 @@ import dev.skillmanager.commands.UpgradeCommand;
 import dev.skillmanager.effects.Executor;
 import dev.skillmanager.effects.Program;
 import dev.skillmanager.effects.SkillEffect;
+import dev.skillmanager.lock.CliLock;
+import dev.skillmanager.lock.RequestedVersion;
+import dev.skillmanager.model.CliDependency;
 import dev.skillmanager.lock.UnitsLock;
 import dev.skillmanager.model.DocRepoParser;
 import dev.skillmanager.model.DocUnit;
+import dev.skillmanager.model.Skill;
+import dev.skillmanager.model.SkillParser;
 import dev.skillmanager.model.UnitKind;
 import dev.skillmanager.shared.util.Fs;
 import dev.skillmanager.source.InstalledUnit;
@@ -122,6 +129,27 @@ public final class CommandKindCoverageTest {
             assertTrue(sync.forceScripts, "sync forceScripts flag");
             assertContains(new CommandLine(sync).getUsageMessage(),
                     "--force-scripts", "sync help lists force scripts");
+        });
+
+        suite.test("sync named --force-scripts does not force unrelated installed scripts", () -> {
+            SkillStore store = newStore();
+            Path targetSource = installSkillScriptFixture(store, "target-script-skill", "target-script-bin");
+            installSkillScriptFixture(store, "other-script-skill", "other-script-bin");
+
+            assertEquals(1, readRunCount(store, "target-script-bin"), "target initial run count");
+            assertEquals(1, readRunCount(store, "other-script-bin"), "other initial run count");
+
+            int rc = new CommandLine(new SyncCommand(store))
+                    .execute("target-script-skill",
+                            "--from", targetSource.toString(),
+                            "--yes",
+                            "--force-scripts",
+                            "--skip-mcp",
+                            "--skip-agents");
+
+            assertEquals(0, rc, "sync target force rc");
+            assertEquals(2, readRunCount(store, "target-script-bin"), "target reran");
+            assertEquals(1, readRunCount(store, "other-script-bin"), "other did not rerun");
         });
 
         suite.test("sync --from harness preserves live instance reconciliation", () -> {
@@ -242,6 +270,71 @@ public final class CommandKindCoverageTest {
                 "fixture", null, null,
                 UnitStore.nowIso(),
                 List.of(), kind));
+    }
+
+    private static Path installSkillScriptFixture(SkillStore store, String name, String binary)
+            throws Exception {
+        Path source = scaffoldSkillScriptSource(name, binary);
+        Fs.copyRecursive(source, store.unitDir(name, UnitKind.SKILL));
+        seedRecord(store, name, UnitKind.SKILL);
+
+        Skill skill = SkillParser.load(store.skillDir(name));
+        CliDependency dep = skill.cliDependencies().get(0);
+        new InstallerRegistry().installOne(dep, store, name);
+
+        CliLock lock = CliLock.load(store);
+        RequestedVersion.Requested req = RequestedVersion.of(dep);
+        lock.recordInstall(dep.backend(), req.tool(), req.version(),
+                dep.spec(), null, name,
+                SkillScriptBackend.fingerprintFor(store, name, dep));
+        lock.save(store);
+        return source;
+    }
+
+    private static Path scaffoldSkillScriptSource(String name, String binary) throws Exception {
+        Path dir = Files.createTempDirectory("kind-script-skill-").resolve(name);
+        Files.createDirectories(dir.resolve("skill-scripts"));
+        Files.writeString(dir.resolve("SKILL.md"), """
+                ---
+                name: %s
+                description: script fixture
+                ---
+                """.formatted(name));
+        Files.writeString(dir.resolve("skill-manager.toml"), """
+                [skill]
+                name = "%s"
+                version = "0.1.0"
+
+                [[cli_dependencies]]
+                spec = "skill-script:%s"
+                on_path = "__zzz_nope_%s"
+
+                [cli_dependencies.install.any]
+                script = "install.sh"
+                binary = "%s"
+                """.formatted(name, binary, binary, binary));
+        Files.writeString(dir.resolve("skill-scripts/install.sh"), """
+                #!/usr/bin/env bash
+                set -euo pipefail
+                mkdir -p "$SKILL_MANAGER_BIN_DIR"
+                count="$SKILL_MANAGER_BIN_DIR/%s.count"
+                n=0
+                if [[ -f "$count" ]]; then
+                  n="$(cat "$count")"
+                fi
+                n=$((n + 1))
+                printf '%%s\\n' "$n" > "$count"
+                touch "$SKILL_MANAGER_BIN_DIR/%s"
+                chmod +x "$SKILL_MANAGER_BIN_DIR/%s"
+                echo "%s run $n"
+                """.formatted(binary, binary, binary, binary));
+        return dir;
+    }
+
+    private static int readRunCount(SkillStore store, String binary) throws Exception {
+        Path count = store.cliBinDir().resolve(binary + ".count");
+        if (!Files.isRegularFile(count)) return 0;
+        return Integer.parseInt(Files.readString(count).trim());
     }
 
     private static Result captureOut(ThrowingInt op) throws Exception {
