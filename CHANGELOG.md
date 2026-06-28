@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.17.3](https://github.com/haydenrear/skill-manager/compare/v0.17.2...v0.17.3) (2026-06-28)
+
+
+### Bug Fixes
+
+* scope sync force-scripts and script logs ([9c8480f](https://github.com/haydenrear/skill-manager/commit/9c8480fb79aab5ee60422055ddc75e270b7f7b05))
+
 ## [0.17.2](https://github.com/haydenrear/skill-manager/compare/v0.17.1...v0.17.2) (2026-06-21)
 
 
