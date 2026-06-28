@@ -236,6 +236,7 @@ class CliAgentContextSnapshot:
     inherited_option: bool
     env_enabled: bool
     renderer_delimited: bool
+    handled_exception_context: bool
     sync_context: bool
     project_env_context: bool
 
@@ -250,6 +251,8 @@ def load_cli_agent_context_source(repo_root: str | Path) -> CliAgentContextSnaps
         env_enabled="SKILL_MANAGER_AGENT_CONTEXT" in cli,
         renderer_delimited="SKILL_MANAGER_AGENT_CONTEXT_BEGIN" in context
         and "SKILL_MANAGER_AGENT_CONTEXT_END" in context,
+        handled_exception_context="setExecutionExceptionHandler(SkillManagerCli::handleExecutionException)" in cli
+        and "completeExecution(rootCommand(pr), pr" in cli,
         sync_context='"sync-one-unit", "sync"' in metadata
         and "skill-manager sync acme-skill" in metadata,
         project_env_context='"project-env", "env sync"' in metadata
@@ -276,6 +279,8 @@ class CliAgentContextAdapter:
             raise AssertionError("agent-context environment trigger is missing")
         if not self.snapshot.renderer_delimited:
             raise AssertionError("agent-context renderer is not delimited")
+        if not self.snapshot.handled_exception_context:
+            raise AssertionError("handled execution exceptions do not emit agent context")
         labels = case_labels(case)
         if "EmitSyncOneUnitAgentContext" in labels and not self.snapshot.sync_context:
             raise AssertionError("sync-one-unit context is not backed by metadata")

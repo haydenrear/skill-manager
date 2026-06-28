@@ -18,6 +18,8 @@ def test_current_agent_context_model_has_production_context_hooks() -> None:
     assert "CliAgentContextCoversWorkflowCatalog" in tla
     assert "--agent-context" in cli
     assert "SKILL_MANAGER_AGENT_CONTEXT" in cli
+    assert "setExecutionExceptionHandler(SkillManagerCli::handleExecutionException)" in cli
+    assert "completeExecution(rootCommand(pr), pr" in cli
     assert "CliAgentContext.emit" in cli
     assert "SKILL_MANAGER_AGENT_CONTEXT_BEGIN" in context
     assert "SKILL_MANAGER_AGENT_CONTEXT_END" in context
@@ -37,5 +39,6 @@ def test_current_agent_context_model_has_production_context_hooks() -> None:
     assert snapshot.inherited_option
     assert snapshot.env_enabled
     assert snapshot.renderer_delimited
+    assert snapshot.handled_exception_context
     assert snapshot.sync_context
     assert snapshot.project_env_context
