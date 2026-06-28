@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.18.0](https://github.com/haydenrear/skill-manager/compare/v0.17.3...v0.18.0) (2026-06-28)
+
+
+### Features
+
+* add CLI metadata catalog ([f7d1f2b](https://github.com/haydenrear/skill-manager/commit/f7d1f2b08f30e8fbb85c3949352774bd667fb477))
+* add progressive CLI help ([fcf0272](https://github.com/haydenrear/skill-manager/commit/fcf02721f87649b88095475997cf74f4321d48c0))
+* emit CLI agent context ([254a04a](https://github.com/haydenrear/skill-manager/commit/254a04ad9763afc639b58c430c68385c9041c7cf))
+
+
+### Bug Fixes
+
+* emit agent context for handled failures ([9c6f89b](https://github.com/haydenrear/skill-manager/commit/9c6f89b857fcb115eabbffa3b308fff78ed15732))
+* point lockfile workflow at sync lock ([6e470b9](https://github.com/haydenrear/skill-manager/commit/6e470b9a087e21ad554d5422af30325ab0807a90))
+* validate CLI metadata examples ([bd7e279](https://github.com/haydenrear/skill-manager/commit/bd7e279279538ac6c0a531463872a4dbfbf20635))
+
 ## [0.17.3](https://github.com/haydenrear/skill-manager/compare/v0.17.2...v0.17.3) (2026-06-28)
 
 
