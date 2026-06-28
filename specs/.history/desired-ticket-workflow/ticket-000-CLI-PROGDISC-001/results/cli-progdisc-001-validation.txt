@@ -1,0 +1,20 @@
+CLI-PROGDISC-001 validation
+===========================
+
+TLC:
+  command: bash specs/desired_program_model/run_tlc.sh specs/desired_program_model/SkillManager.tla specs/desired_program_model/MC.cfg
+  status: passed
+  result: no invariant violations; 10 states generated, 1 distinct, depth 1
+  duration: 0.87s
+
+Case generation:
+  command: python3 /Users/hayde/.skill-manager/skills/spec-double-compiler/scripts/generate_cases_from_tlc_dump.py specs/desired_program_model/SkillManager.tla specs/desired_program_model/MC.cfg --out /tmp/sm-cli-disclosure-cases --package cli_disclosure_cases --tlc2 /Users/hayde/.skill-manager/bin/cli/tlc2
+  status: passed
+  result: generated 9 transition cases from 1 state
+  duration: 0.98s
+
+Spec tests:
+  command: pytest specs/current/tests specs/desired_program_model/tests
+  status: passed
+  result: 8 passed
+  duration: 0.02s

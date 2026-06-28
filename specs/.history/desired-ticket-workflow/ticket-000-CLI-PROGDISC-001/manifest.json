@@ -1,0 +1,121 @@
+{
+  "commit_recommendation": {
+    "git_add": "git add specs/.history/desired-ticket-workflow/ticket-000-CLI-PROGDISC-001",
+    "git_commit": "git commit -m 'record spec history for CLI-PROGDISC-001'",
+    "message": "It is recommended to commit this history directory now: specs/.history/desired-ticket-workflow/ticket-000-CLI-PROGDISC-001"
+  },
+  "created_at_utc": "2026-06-28T19:09:48.709600+00:00",
+  "entry_name": "ticket-000-CLI-PROGDISC-001",
+  "git": {
+    "branch": "codex/progressive-disclosure-cli-spec",
+    "commit": "7f20705",
+    "inside_work_tree": "true"
+  },
+  "history_policy": "append-only by convention; existing entries are not overwritten and filesystem permissions remain git-friendly",
+  "kind": "ticket",
+  "results": [
+    {
+      "exists": true,
+      "role": "result",
+      "snapshot": "specs/.history/desired-ticket-workflow/ticket-000-CLI-PROGDISC-001/results/cli-progdisc-001-validation.txt",
+      "source": "specs/results/cli-progdisc-001-validation.txt"
+    }
+  ],
+  "schema_version": 1,
+  "snapshots": [
+    {
+      "exists": true,
+      "role": "program_model",
+      "snapshot": "specs/.history/desired-ticket-workflow/ticket-000-CLI-PROGDISC-001/snapshots/program_model",
+      "source": "specs/program_model"
+    },
+    {
+      "exists": true,
+      "role": "desired_program_model",
+      "snapshot": "specs/.history/desired-ticket-workflow/ticket-000-CLI-PROGDISC-001/snapshots/desired_program_model",
+      "source": "specs/desired_program_model"
+    },
+    {
+      "exists": true,
+      "role": "current",
+      "snapshot": "specs/.history/desired-ticket-workflow/ticket-000-CLI-PROGDISC-001/snapshots/current",
+      "source": "specs/current"
+    }
+  ],
+  "spec_root": "specs",
+  "summary": "Closed the progressive-disclosure CLI spec contract with bounded TLC and case generation.",
+  "ticket": {
+    "acceptance": {
+      "assertions": [
+        "Desired TLA includes the CLI disclosure state, actions, and invariants.",
+        "specs/current remains an executable baseline for landed behavior.",
+        "Ticket-loop TLC completes within the two-minute validation budget."
+      ],
+      "commands": [
+        "bash specs/desired_program_model/run_tlc.sh specs/desired_program_model/SkillManager.tla specs/desired_program_model/MC.cfg",
+        "pytest specs/current/tests specs/desired_program_model/tests"
+      ],
+      "evidence": [
+        {
+          "command": "bash specs/desired_program_model/run_tlc.sh specs/desired_program_model/SkillManager.tla specs/desired_program_model/MC.cfg",
+          "duration": "0.87s",
+          "result": "no invariant violations; 10 states generated, 1 distinct, depth 1.",
+          "status": "passed"
+        },
+        {
+          "command": "python3 /Users/hayde/.skill-manager/skills/spec-double-compiler/scripts/generate_cases_from_tlc_dump.py specs/desired_program_model/SkillManager.tla specs/desired_program_model/MC.cfg --out /tmp/sm-cli-disclosure-cases --package cli_disclosure_cases --tlc2 /Users/hayde/.skill-manager/bin/cli/tlc2",
+          "duration": "0.98s",
+          "result": "generated 9 transition cases from 1 state.",
+          "status": "passed"
+        }
+      ]
+    },
+    "current_increment": {
+      "adapters": [
+        "planned after the command metadata slice."
+      ],
+      "graph_after_unit_pass": [
+        "not applicable for the spec-only slice."
+      ],
+      "model_actions": [
+        "none until the CLI metadata production slice lands."
+      ],
+      "model_state": [
+        "no production current-model change yet; specs/current remains the accepted baseline."
+      ],
+      "unit_tests": [
+        "pytest specs/current/tests specs/desired_program_model/tests"
+      ]
+    },
+    "depends_on": [],
+    "desired_actions": [
+      "RenderProgressiveRootHelp",
+      "RenderInstallCommandHelp",
+      "RenderSyncCommandHelp",
+      "RenderProjectProfilesListHelp",
+      "ExposeInstallLocalUnitWorkflowDocs",
+      "ExposeSkillScriptsWorkflowDocs",
+      "ExposeProjectEnvWorkflowDocs",
+      "EmitSyncOneUnitAgentContext",
+      "EmitProjectEnvAgentContext"
+    ],
+    "id": "CLI-PROGDISC-001",
+    "implementation_scope": [
+      "specs/desired_program_model/SkillManager.tla",
+      "specs/desired_program_model/MC.cfg",
+      "specs/desired_program_model/MC_program_promotion.cfg",
+      "specs/desired_program_model/spec_manifest.yaml",
+      "specs/desired_program_model/ticket_plan.yaml",
+      "specs/desired_program_model/desired_state.yaml",
+      "specs/current"
+    ],
+    "objective": "Establish the desired whole-program contract for CLI progressive disclosure before production changes: every command/workflow is modeled, root help is shallow, command help is complete, skill docs cover workflows, and agent context is a first-class workflow surface.\n",
+    "status": "closed",
+    "title": "Progressive disclosure CLI documentation contract"
+  },
+  "ticket_id": "CLI-PROGDISC-001",
+  "ticket_index": 0,
+  "ticket_plan": "specs/desired_program_model/ticket_plan.yaml",
+  "ticket_status": "closed",
+  "workflow_name": "desired-ticket-workflow"
+}
