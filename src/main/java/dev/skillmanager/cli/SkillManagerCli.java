@@ -40,7 +40,6 @@ import picocli.CommandLine.Option;
 
 @Command(
         name = "skill-manager",
-        mixinStandardHelpOptions = true,
         // x-release-please-start-version
         version = "skill-manager 0.17.3",
         // x-release-please-end
@@ -77,6 +76,16 @@ import picocli.CommandLine.Option;
                 ProjectCommand.class
         })
 public final class SkillManagerCli implements Runnable {
+
+    @Option(names = {"-h", "--help"}, usageHelp = true,
+            description = "Show this help message and exit.",
+            scope = CommandLine.ScopeType.INHERIT)
+    public boolean help;
+
+    @Option(names = {"-V", "--version"}, versionHelp = true,
+            description = "Print version information and exit.",
+            scope = CommandLine.ScopeType.LOCAL)
+    public boolean versionHelp;
 
     @Option(names = {"-v", "--verbose"}, description = "Verbose output", scope = CommandLine.ScopeType.INHERIT)
     public boolean verbose;

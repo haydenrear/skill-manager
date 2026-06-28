@@ -4,16 +4,11 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[3]
 
 
-def test_ticket_workflow_scaffold_exists_for_active_ticket() -> None:
+def test_program_model_onboarding_scaffold_has_no_ticket_workflow_dirs() -> None:
     assert (ROOT / "specs/program_model/SkillManager.tla").exists()
     assert (ROOT / "specs/program_model/spec_manifest.yaml").exists()
-    assert (ROOT / "specs/current/SkillManager.tla").exists()
-    assert (ROOT / "specs/desired_program_model/SkillManager.tla").exists()
-    assert "CLI-PROGDISC-004" in (ROOT / "specs/current/spec_manifest.yaml").read_text()
-    desired_manifest = (ROOT / "specs/desired_program_model/spec_manifest.yaml").read_text()
-    assert "CLI-PROGDISC-001" in desired_manifest
-    assert "CLI-PROGDISC-002" in desired_manifest
-    assert "CLI-PROGDISC-003" in desired_manifest
+    assert not (ROOT / "specs/current").exists()
+    assert not (ROOT / "specs/desired_program_model").exists()
 
 
 def test_program_model_tracks_parent_sync_refreshing_project_child_homes() -> None:

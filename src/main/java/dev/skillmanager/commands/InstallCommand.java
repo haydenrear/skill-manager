@@ -22,15 +22,16 @@ import java.util.concurrent.Callable;
  */
 @Command(
         name = "install",
-        description = """
-                Install a unit (skill or plugin) and everything it depends on.
+        description = "Install a unit and its declared dependencies.",
+        footer = """
 
                 Sources:
-                  - `name[@version]` — registry lookup
-                  - `skill:<name>` / `plugin:<name>` — kind-pinned registry lookup
-                  - `github:user/repo[@ref]` — direct git
-                  - `git+https://...` — direct git URL
-                  - `./path`, `/abs/path`, `file:<path>` — local directory
+                  - name[@version] - registry lookup
+                  - skill:<name> / plugin:<name> - kind-pinned registry lookup
+                  - github:user/repo[@ref] - direct git
+                  - git+https://... - direct git URL
+                  - ./path, /abs/path, file:<path> - local directory
+
                 Local-directory installs do not contact the registry — useful
                 for iterating from a working tree without publishing first.
 
@@ -44,7 +45,7 @@ import java.util.concurrent.Callable;
                     nested in a plugin).
                 Resolver errors out if the source matches neither shape.
 
-                What an install does:
+                What install does:
                   1. Fetch + stage the unit (and every transitive reference).
                   2. Plan + show CLI / MCP / hooks the install will register
                      (gated by `policy.install.*`; `--yes` is blocked when a

@@ -1,0 +1,32 @@
+CLI-PROGDISC-003 progressive help renderer validation
+Date: 2026-06-28
+
+Spec checks
+- bash specs/current/run_tlc.sh specs/current/SkillManager.tla specs/current/MC.cfg
+  Passed in 1.07s. TLC generated 10 states, 1 distinct state, depth 1.
+- bash specs/desired_program_model/run_tlc.sh specs/desired_program_model/SkillManager.tla specs/desired_program_model/MC.cfg
+  Passed in 1.07s. TLC generated 10 states, 1 distinct state, depth 1.
+- python3 /Users/hayde/.skill-manager/skills/spec-double-compiler/scripts/generate_cases_from_tlc_dump.py specs/current/SkillManager.tla specs/current/MC.cfg --out /tmp/sm-cli-help-current-cases --package current_cli_help_cases --tlc2 /Users/hayde/.skill-manager/bin/cli/tlc2
+  Passed. Generated 9 transition cases in /private/tmp/sm-cli-help-current-cases/current_cli_help_cases.
+- python3 /Users/hayde/.skill-manager/skills/spec-double-compiler/scripts/generate_cases_from_tlc_dump.py specs/desired_program_model/SkillManager.tla specs/desired_program_model/MC.cfg --out /tmp/sm-cli-help-desired-cases --package desired_cli_help_cases --tlc2 /Users/hayde/.skill-manager/bin/cli/tlc2
+  Passed. Generated 9 transition cases in /private/tmp/sm-cli-help-desired-cases/desired_cli_help_cases.
+
+Unit checks
+- pytest specs/current/tests specs/desired_program_model/tests
+  Passed in 0.05s: 10 passed.
+- jbang RunTests.java
+  Passed in 17.46s: ALL PASSED.
+
+Test graph checks
+- python3 /Users/hayde/.skill-manager/skills/test-graph/scripts/discover.py doc-smoke
+  Passed. Planned 18 steps and rendered docs/doc-smoke.dot plus docs/doc-smoke.png.
+- python3 /Users/hayde/.skill-manager/skills/test-graph/scripts/run.py doc-smoke
+  Passed in 1m08s. Report: test_graph/build/validation-reports/20260628-194722.
+- python3 /Users/hayde/.skill-manager/skills/test-graph/scripts/run.py --all
+  Passed in 14m40s. Final report: test_graph/build/validation-reports/20260628-200156.
+
+Behavior covered
+- Root help remains shallow and omits deep install/sync workflow prose.
+- Command-specific help exposes detailed install and sync guidance through command footers.
+- Nested help is directly available for project profiles list.
+- End-to-end doc-smoke now includes cli.help.progressive.

@@ -53,11 +53,12 @@ import java.util.concurrent.Callable;
  * {@code uninstall} (ledger walk).
  */
 @Command(name = "bind",
-        description = """
-                Bind an installed unit (or one of its sub-elements) to a
-                target root. Creates a persisted Binding record in
-                installed/<name>.projections.json, then materializes the
-                filesystem actions:
+        description = "Bind an installed unit or doc source to a target root.",
+        footer = """
+
+                Binding creates a persisted Binding record in
+                installed/<name>.projections.json, then materializes filesystem
+                actions:
                   - skills/plugins: a symlink at <root>/<name>
                   - doc-repos: tracked file copies under <root>/docs/agents/
                                plus @-import lines in CLAUDE.md / AGENTS.md

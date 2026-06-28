@@ -20,8 +20,9 @@ import java.util.concurrent.Callable;
  * orphan-MCP unregistration on.
  */
 @Command(name = "uninstall", aliases = "un",
-        description = """
-                Uninstall a unit (skill or plugin) and its side effects.
+        description = "Uninstall a unit and clean up its side effects.",
+        footer = """
+
                 Clears:
                   - the store entry under `skills/<name>/` or `plugins/<name>/`,
                   - every agent symlink (skills) or marketplace entry (plugins) +
