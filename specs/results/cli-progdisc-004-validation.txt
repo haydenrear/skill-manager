@@ -1,0 +1,41 @@
+CLI-PROGDISC-004 agent workflow context validation
+Date: 2026-06-28
+
+Spec checks
+- bash specs/current/run_tlc.sh specs/current/SkillManager.tla specs/current/MC.cfg
+  Passed in 0.94s. TLC generated 10 states, 1 distinct state, depth 1.
+- bash specs/desired_program_model/run_tlc.sh specs/desired_program_model/SkillManager.tla specs/desired_program_model/MC.cfg
+  Passed in 0.94s. TLC generated 10 states, 1 distinct state, depth 1.
+- python3 /Users/hayde/.skill-manager/skills/spec-double-compiler/scripts/generate_cases_from_tlc_dump.py specs/current/SkillManager.tla specs/current/MC.cfg --out /tmp/sm-cli-agent-current-cases --package current_cli_agent_cases --tlc2 /Users/hayde/.skill-manager/bin/cli/tlc2
+  Passed in 1.01s. Generated 9 transition cases in /private/tmp/sm-cli-agent-current-cases/current_cli_agent_cases.
+- python3 /Users/hayde/.skill-manager/skills/spec-double-compiler/scripts/generate_cases_from_tlc_dump.py specs/desired_program_model/SkillManager.tla specs/desired_program_model/MC.cfg --out /tmp/sm-cli-agent-desired-cases --package desired_cli_agent_cases --tlc2 /Users/hayde/.skill-manager/bin/cli/tlc2
+  Passed in 0.95s. Generated 9 transition cases in /private/tmp/sm-cli-agent-desired-cases/desired_cli_agent_cases.
+- python3 /Users/hayde/.skill-manager/skills/spec-double-compiler/scripts/run_generated_case_adapters.py /private/tmp/sm-cli-agent-current-cases/current_cli_agent_cases --mapping specs/current/case_adapters.toml --spec-dir specs/current --import-root . --work-dir /tmp/sm-cli-agent-current-adapters --validate-capabilities --batch
+  Passed. Validated 9 adapter mappings for 9 labels and executed 9 cases in batch.
+- python3 /Users/hayde/.skill-manager/skills/spec-double-compiler/scripts/run_generated_case_adapters.py /private/tmp/sm-cli-agent-desired-cases/desired_cli_agent_cases --mapping specs/desired_program_model/case_adapters.toml --spec-dir specs/desired_program_model --import-root . --work-dir /tmp/sm-cli-agent-desired-adapters --validate-capabilities --batch
+  Passed. Validated 9 adapter mappings for 9 labels and executed 9 cases in batch.
+
+Unit checks
+- pytest specs/current/tests specs/desired_program_model/tests
+  Passed in 0.03s: 11 passed.
+- jbang RunTests.java
+  Passed in 13.54s: ALL PASSED.
+
+CLI probes
+- SKILL_MANAGER_HOME=$(mktemp -d) ./skill-manager --agent-context install --help
+  Passed. Context rendered to stderr and help stayed on stdout.
+- SKILL_MANAGER_HOME=$(mktemp -d) ./skill-manager --agent-context env sync --help
+  Passed. Context rendered command_path: env sync with workflow project-env.
+
+Test graph checks
+- python3 /Users/hayde/.skill-manager/skills/test-graph/scripts/discover.py doc-smoke
+  Passed. Planned 19 steps and rendered docs/doc-smoke.dot plus docs/doc-smoke.png.
+- python3 /Users/hayde/.skill-manager/skills/test-graph/scripts/run.py doc-smoke
+  Passed in 1m14s. Report: test_graph/build/validation-reports/20260628-202058.
+- python3 /Users/hayde/.skill-manager/skills/test-graph/scripts/run.py --all
+  Passed in 14m39s. Final graph report: test_graph/build/validation-reports/20260628-203539.
+
+Behavior covered
+- --agent-context is inherited by subcommands and can also be enabled with SKILL_MANAGER_AGENT_CONTEXT.
+- Context output is delimited on stderr with workflow ids, related skill docs, examples, next commands, workflow state, exit status, and SKILL_MANAGER_HOME log location.
+- End-to-end doc-smoke validates representative install, sync, bind, env sync, harness instantiate, and publish context surfaces.

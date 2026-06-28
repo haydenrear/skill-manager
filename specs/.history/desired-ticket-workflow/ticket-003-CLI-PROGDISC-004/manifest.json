@@ -1,0 +1,173 @@
+{
+  "commit_recommendation": {
+    "git_add": "git add specs/.history/desired-ticket-workflow/ticket-003-CLI-PROGDISC-004",
+    "git_commit": "git commit -m 'record spec history for CLI-PROGDISC-004'",
+    "message": "It is recommended to commit this history directory now: specs/.history/desired-ticket-workflow/ticket-003-CLI-PROGDISC-004"
+  },
+  "created_at_utc": "2026-06-28T20:39:25.179503+00:00",
+  "entry_name": "ticket-003-CLI-PROGDISC-004",
+  "git": {
+    "branch": "codex/progressive-disclosure-cli-spec",
+    "commit": "070035d",
+    "inside_work_tree": "true"
+  },
+  "history_policy": "append-only by convention; existing entries are not overwritten and filesystem permissions remain git-friendly",
+  "kind": "ticket",
+  "results": [
+    {
+      "exists": true,
+      "role": "result",
+      "snapshot": "specs/.history/desired-ticket-workflow/ticket-003-CLI-PROGDISC-004/results/cli-progdisc-004-validation.txt",
+      "source": "specs/results/cli-progdisc-004-validation.txt"
+    }
+  ],
+  "schema_version": 1,
+  "snapshots": [
+    {
+      "exists": true,
+      "role": "program_model",
+      "snapshot": "specs/.history/desired-ticket-workflow/ticket-003-CLI-PROGDISC-004/snapshots/program_model",
+      "source": "specs/program_model"
+    },
+    {
+      "exists": true,
+      "role": "desired_program_model",
+      "snapshot": "specs/.history/desired-ticket-workflow/ticket-003-CLI-PROGDISC-004/snapshots/desired_program_model",
+      "source": "specs/desired_program_model"
+    },
+    {
+      "exists": true,
+      "role": "current",
+      "snapshot": "specs/.history/desired-ticket-workflow/ticket-003-CLI-PROGDISC-004/snapshots/current",
+      "source": "specs/current"
+    }
+  ],
+  "spec_root": "specs",
+  "summary": "Closed the agent workflow context slice with opt-in stderr context, source adapters, spec/unit checks, and test graph validation.",
+  "ticket": {
+    "acceptance": {
+      "assertions": [
+        "Workflow context is concise, agent-readable, and does not bury failures."
+      ],
+      "commands": [
+        "bash specs/current/run_tlc.sh specs/current/SkillManager.tla specs/current/MC.cfg",
+        "bash specs/desired_program_model/run_tlc.sh specs/desired_program_model/SkillManager.tla specs/desired_program_model/MC.cfg",
+        "python3 /Users/hayde/.skill-manager/skills/spec-double-compiler/scripts/generate_cases_from_tlc_dump.py specs/current/SkillManager.tla specs/current/MC.cfg --out /tmp/sm-cli-agent-current-cases --package current_cli_agent_cases --tlc2 /Users/hayde/.skill-manager/bin/cli/tlc2",
+        "python3 /Users/hayde/.skill-manager/skills/spec-double-compiler/scripts/generate_cases_from_tlc_dump.py specs/desired_program_model/SkillManager.tla specs/desired_program_model/MC.cfg --out /tmp/sm-cli-agent-desired-cases --package desired_cli_agent_cases --tlc2 /Users/hayde/.skill-manager/bin/cli/tlc2",
+        "python3 /Users/hayde/.skill-manager/skills/spec-double-compiler/scripts/run_generated_case_adapters.py /private/tmp/sm-cli-agent-current-cases/current_cli_agent_cases --mapping specs/current/case_adapters.toml --spec-dir specs/current --import-root . --work-dir /tmp/sm-cli-agent-current-adapters --validate-capabilities --batch",
+        "python3 /Users/hayde/.skill-manager/skills/spec-double-compiler/scripts/run_generated_case_adapters.py /private/tmp/sm-cli-agent-desired-cases/desired_cli_agent_cases --mapping specs/desired_program_model/case_adapters.toml --spec-dir specs/desired_program_model --import-root . --work-dir /tmp/sm-cli-agent-desired-adapters --validate-capabilities --batch",
+        "pytest specs/current/tests specs/desired_program_model/tests",
+        "jbang RunTests.java",
+        "python3 /Users/hayde/.skill-manager/skills/test-graph/scripts/discover.py doc-smoke",
+        "python3 /Users/hayde/.skill-manager/skills/test-graph/scripts/run.py doc-smoke",
+        "python3 /Users/hayde/.skill-manager/skills/test-graph/scripts/run.py --all"
+      ],
+      "evidence": [
+        {
+          "command": "bash specs/current/run_tlc.sh specs/current/SkillManager.tla specs/current/MC.cfg",
+          "duration": "0.94s",
+          "result": "no invariant violations; 10 states generated, 1 distinct, depth 1.",
+          "status": "passed"
+        },
+        {
+          "command": "bash specs/desired_program_model/run_tlc.sh specs/desired_program_model/SkillManager.tla specs/desired_program_model/MC.cfg",
+          "duration": "0.94s",
+          "result": "no invariant violations; 10 states generated, 1 distinct, depth 1.",
+          "status": "passed"
+        },
+        {
+          "command": "python3 /Users/hayde/.skill-manager/skills/spec-double-compiler/scripts/generate_cases_from_tlc_dump.py specs/current/SkillManager.tla specs/current/MC.cfg --out /tmp/sm-cli-agent-current-cases --package current_cli_agent_cases --tlc2 /Users/hayde/.skill-manager/bin/cli/tlc2",
+          "duration": "1.01s",
+          "result": "generated 9 transition cases into /private/tmp/sm-cli-agent-current-cases/current_cli_agent_cases.",
+          "status": "passed"
+        },
+        {
+          "command": "python3 /Users/hayde/.skill-manager/skills/spec-double-compiler/scripts/generate_cases_from_tlc_dump.py specs/desired_program_model/SkillManager.tla specs/desired_program_model/MC.cfg --out /tmp/sm-cli-agent-desired-cases --package desired_cli_agent_cases --tlc2 /Users/hayde/.skill-manager/bin/cli/tlc2",
+          "duration": "0.95s",
+          "result": "generated 9 transition cases into /private/tmp/sm-cli-agent-desired-cases/desired_cli_agent_cases.",
+          "status": "passed"
+        },
+        {
+          "command": "python3 /Users/hayde/.skill-manager/skills/spec-double-compiler/scripts/run_generated_case_adapters.py /private/tmp/sm-cli-agent-current-cases/current_cli_agent_cases --mapping specs/current/case_adapters.toml --spec-dir specs/current --import-root . --work-dir /tmp/sm-cli-agent-current-adapters --validate-capabilities --batch",
+          "result": "validated 9 adapter mappings for 9 labels; executed 9 cases in batch.",
+          "status": "passed"
+        },
+        {
+          "command": "python3 /Users/hayde/.skill-manager/skills/spec-double-compiler/scripts/run_generated_case_adapters.py /private/tmp/sm-cli-agent-desired-cases/desired_cli_agent_cases --mapping specs/desired_program_model/case_adapters.toml --spec-dir specs/desired_program_model --import-root . --work-dir /tmp/sm-cli-agent-desired-adapters --validate-capabilities --batch",
+          "result": "validated 9 adapter mappings for 9 labels; executed 9 cases in batch.",
+          "status": "passed"
+        },
+        {
+          "command": "pytest specs/current/tests specs/desired_program_model/tests",
+          "duration": "0.03s",
+          "result": "11 passed.",
+          "status": "passed"
+        },
+        {
+          "command": "jbang RunTests.java",
+          "duration": "13.54s",
+          "result": "ALL PASSED.",
+          "status": "passed"
+        },
+        {
+          "command": "python3 /Users/hayde/.skill-manager/skills/test-graph/scripts/discover.py doc-smoke",
+          "result": "planned 19 steps and rendered docs/doc-smoke.dot plus docs/doc-smoke.png.",
+          "status": "passed"
+        },
+        {
+          "command": "python3 /Users/hayde/.skill-manager/skills/test-graph/scripts/run.py doc-smoke",
+          "duration": "1m14s",
+          "result": "BUILD SUCCESSFUL; report test_graph/build/validation-reports/20260628-202058.",
+          "status": "passed"
+        },
+        {
+          "command": "python3 /Users/hayde/.skill-manager/skills/test-graph/scripts/run.py --all",
+          "duration": "14m39s",
+          "result": "BUILD SUCCESSFUL; final graph report test_graph/build/validation-reports/20260628-203539.",
+          "status": "passed"
+        }
+      ]
+    },
+    "current_increment": {
+      "adapters": [
+        "Agent-context adapter validates workflow context exists for modeled workflows."
+      ],
+      "graph_after_unit_pass": [
+        "smoke",
+        "plugin-smoke",
+        "project-smoke"
+      ],
+      "model_actions": [
+        "EmitSyncOneUnitAgentContext",
+        "EmitProjectEnvAgentContext"
+      ],
+      "model_state": [
+        "project_model.cli_agent_context_topics"
+      ],
+      "unit_tests": [
+        "context output appears for representative install, sync, bind, project, harness, and publish flows."
+      ]
+    },
+    "depends_on": [
+      "CLI-PROGDISC-002"
+    ],
+    "desired_actions": [
+      "EmitSyncOneUnitAgentContext",
+      "EmitProjectEnvAgentContext"
+    ],
+    "id": "CLI-PROGDISC-004",
+    "implementation_scope": [
+      "src/main/java/dev/skillmanager/cli",
+      "src/main/java/dev/skillmanager/effects",
+      "specs/current"
+    ],
+    "objective": "Provide structured or clearly delimited context for agents when commands are used, including next useful commands, related docs, logs, and workflow state.\n",
+    "status": "closed",
+    "title": "Agent workflow context output"
+  },
+  "ticket_id": "CLI-PROGDISC-004",
+  "ticket_index": 3,
+  "ticket_plan": "specs/desired_program_model/ticket_plan.yaml",
+  "ticket_status": "closed",
+  "workflow_name": "desired-ticket-workflow"
+}
