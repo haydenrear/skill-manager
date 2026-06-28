@@ -41,7 +41,7 @@ import picocli.CommandLine.Option;
 @Command(
         name = "skill-manager",
         // x-release-please-start-version
-        version = "skill-manager 0.17.3",
+        version = "skill-manager 0.18.0",
         // x-release-please-end
         description = "Build tool for agent skills: CLI deps, skill references, MCP servers.",
         subcommands = {
