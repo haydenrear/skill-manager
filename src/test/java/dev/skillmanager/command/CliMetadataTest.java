@@ -55,6 +55,20 @@ public final class CliMetadataTest {
             }
         });
 
+        suite.test("lockfile workflow examples point at distinct sync modes", () -> {
+            Map<String, CliMetadata.WorkflowMetadata> byId = new LinkedHashMap<>();
+            for (CliMetadata.WorkflowMetadata workflow : CliMetadata.workflows()) {
+                byId.put(workflow.id(), workflow);
+            }
+
+            assertEquals(Set.of("skill-manager sync --refresh"),
+                    Set.copyOf(byId.get("refresh-lockfile").examples()),
+                    "refresh lockfile example");
+            assertEquals(Set.of("skill-manager sync --lock units.lock.toml"),
+                    Set.copyOf(byId.get("sync-lockfile").examples()),
+                    "sync from lockfile example");
+        });
+
         suite.test("representative modeled workflows are present", () -> {
             assertTrue(CliMetadata.commandPaths().contains("bindings show"),
                     "bindings show in metadata");

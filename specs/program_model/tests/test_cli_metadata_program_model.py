@@ -57,3 +57,5 @@ def test_program_model_tla_cli_catalog_is_backed_by_production_metadata() -> Non
     assert modeled_workflows == metadata.workflow_ids
     assert modeled_links == set(metadata.workflow_links.items())
     assert set(metadata.workflow_links.values()) <= metadata.command_paths
+    assert metadata.workflow_examples["refresh-lockfile"] == frozenset({"skill-manager sync --refresh"})
+    assert metadata.workflow_examples["sync-lockfile"] == frozenset({"skill-manager sync --lock units.lock.toml"})

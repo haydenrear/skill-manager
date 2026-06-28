@@ -169,7 +169,7 @@ public final class CliMetadata {
             workflow("sync-from-local-source", "sync", docs("skill-manager-skill", "skill-dev-skill"),
                     "skill-manager sync acme-skill --from ./source --yes"),
             workflow("sync-lockfile", "sync", docs("skill-manager-skill"),
-                    "skill-manager sync --refresh"),
+                    "skill-manager sync --lock units.lock.toml"),
             workflow("sync-one-unit", "sync", docs("skill-manager-skill"),
                     "skill-manager sync acme-skill"),
             workflow("unbind-projection", "unbind", docs("skill-manager-skill"),
