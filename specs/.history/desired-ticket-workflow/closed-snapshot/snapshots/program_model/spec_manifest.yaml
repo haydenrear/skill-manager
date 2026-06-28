@@ -1,32 +1,30 @@
 module: SkillManager
-package: desired_program_cases
+package: skillmanager_program_cases
 
 status:
-  workflow: ticket
-  initial_ticket: CLI-PROGDISC-001
-  initial_ticket_title: "Progressive disclosure CLI documentation contract"
-  ticket_plan: ticket_plan.yaml
-  relation_to_program_model: desired_successor_of_accepted_program_model
-  relation_to_current: target_state_for_specs_current_to_converge_to
+  workflow: accepted
+  promoted_from_workflow: desired-ticket-workflow
+  closed_tickets:
+    - CLI-PROGDISC-001
+    - CLI-PROGDISC-002
+    - CLI-PROGDISC-003
+    - CLI-PROGDISC-004
+    - CLI-PROGDISC-005
+  relation_to_program_model: accepted_whole_program_model
   updated: 2026-06-28
   summary:
-    desired_model_scaffolded: true
-    ticket_plan_scaffolded: true
-    current_model_scaffolded: true
+    progressive_disclosure_cli_model_promoted: true
     generated_cases: passed
     adapters: cli_metadata_help_docs_and_agent_context
     tlc: passed
   done:
-    - Scaffolded specs/current and specs/desired_program_model from the accepted whole-program baseline.
-    - Added desired CLI disclosure catalog state for every top-level command, modeled subcommand, alias, and workflow.
-    - Added desired root-help, command-help, skill-doc, workflow-command, and agent-context invariants.
-    - Added desired semantic actions for rendering progressive root help, rendering command help, exposing skill workflow docs, and emitting agent workflow context.
+    - Added CLI disclosure catalog state for every top-level command, modeled subcommand, alias, and workflow.
+    - Added root-help, command-help, skill-doc, workflow-command, and agent-context invariants.
+    - Added semantic actions for rendering progressive root help, rendering command help, exposing skill workflow docs, and emitting agent workflow context.
     - Landed CLI-PROGDISC-002 production metadata source and current-model adapter coverage for command paths, aliases, workflows, docs, examples, and agent context affordances.
     - Landed CLI-PROGDISC-003 progressive help renderer, inherited help behavior, command-specific footers, current-model help adapter coverage, and doc-smoke graph validation.
     - Landed CLI-PROGDISC-004 opt-in agent context output, context adapter coverage, and doc-smoke end-to-end validation for representative workflows.
     - Landed CLI-PROGDISC-005 bundled skill documentation consistency, current-model docs adapter coverage, and doc-smoke/skill-dev-smoke validation.
-  pending:
-    - Complete PR review and promote converged desired/current model back into specs/program_model.
 
 source_model:
   program_model_manifest: ../program_model/spec_manifest.yaml
@@ -141,7 +139,7 @@ ports:
     adapter_status: implemented
 validation:
   tlc:
-    - command: bash specs/desired_program_model/run_tlc.sh specs/desired_program_model/SkillManager.tla specs/desired_program_model/MC.cfg
+    - command: bash specs/program_model/run_tlc.sh specs/program_model/SkillManager.tla specs/program_model/MC.cfg
       status: passed
       budget: <=2m
       scope: CLI disclosure catalog, help, skill docs, and agent context invariants.
@@ -151,40 +149,40 @@ validation:
       depth: 1
       duration: 0.87s
   case_generation:
-    - command: python3 /Users/hayde/.skill-manager/skills/spec-double-compiler/scripts/generate_cases_from_tlc_dump.py specs/desired_program_model/SkillManager.tla specs/desired_program_model/MC.cfg --out /tmp/sm-cli-disclosure-cases --package cli_disclosure_cases --tlc2 /Users/hayde/.skill-manager/bin/cli/tlc2
+    - command: python3 /Users/hayde/.skill-manager/skills/spec-double-compiler/scripts/generate_cases_from_tlc_dump.py specs/program_model/SkillManager.tla specs/program_model/MC.cfg --out /tmp/sm-cli-disclosure-cases --package cli_disclosure_cases --tlc2 /Users/hayde/.skill-manager/bin/cli/tlc2
       status: passed
       budget: <=2m
       result: generated 9 transition cases from 1 state
       duration: 0.98s
-    - command: bash specs/desired_program_model/run_tlc.sh specs/desired_program_model/SkillManager.tla specs/desired_program_model/MC_program_promotion.cfg
+    - command: bash specs/program_model/run_tlc.sh specs/program_model/SkillManager.tla specs/program_model/MC_program_promotion.cfg
       status: promotion_only
       note: Full whole-program TLC is intentionally not part of the ticket loop.
-    - command: python3 /Users/hayde/.skill-manager/skills/spec-double-compiler/scripts/generate_cases_from_tlc_dump.py specs/desired_program_model/SkillManager.tla specs/desired_program_model/MC.cfg --out /tmp/sm-cli-metadata-desired-cases --package desired_cli_metadata_cases --tlc2 /Users/hayde/.skill-manager/bin/cli/tlc2
+    - command: python3 /Users/hayde/.skill-manager/skills/spec-double-compiler/scripts/generate_cases_from_tlc_dump.py specs/program_model/SkillManager.tla specs/program_model/MC.cfg --out /tmp/sm-cli-metadata-desired-cases --package desired_cli_metadata_cases --tlc2 /Users/hayde/.skill-manager/bin/cli/tlc2
       status: passed
       budget: <=2m
       result: generated 9 transition cases from 1 state
       duration: 1.07s
-    - command: python3 /Users/hayde/.skill-manager/skills/spec-double-compiler/scripts/generate_cases_from_tlc_dump.py specs/desired_program_model/SkillManager.tla specs/desired_program_model/MC.cfg --out /tmp/sm-cli-help-desired-cases --package desired_cli_help_cases --tlc2 /Users/hayde/.skill-manager/bin/cli/tlc2
+    - command: python3 /Users/hayde/.skill-manager/skills/spec-double-compiler/scripts/generate_cases_from_tlc_dump.py specs/program_model/SkillManager.tla specs/program_model/MC.cfg --out /tmp/sm-cli-help-desired-cases --package desired_cli_help_cases --tlc2 /Users/hayde/.skill-manager/bin/cli/tlc2
       status: passed
       budget: <=2m
       result: generated 9 transition cases into /private/tmp/sm-cli-help-desired-cases/desired_cli_help_cases
-    - command: python3 /Users/hayde/.skill-manager/skills/spec-double-compiler/scripts/generate_cases_from_tlc_dump.py specs/desired_program_model/SkillManager.tla specs/desired_program_model/MC.cfg --out /tmp/sm-cli-agent-desired-cases --package desired_cli_agent_cases --tlc2 /Users/hayde/.skill-manager/bin/cli/tlc2
+    - command: python3 /Users/hayde/.skill-manager/skills/spec-double-compiler/scripts/generate_cases_from_tlc_dump.py specs/program_model/SkillManager.tla specs/program_model/MC.cfg --out /tmp/sm-cli-agent-desired-cases --package desired_cli_agent_cases --tlc2 /Users/hayde/.skill-manager/bin/cli/tlc2
       status: passed
       budget: <=2m
       result: generated 9 transition cases into /private/tmp/sm-cli-agent-desired-cases/desired_cli_agent_cases
       duration: 0.95s
-    - command: python3 /Users/hayde/.skill-manager/skills/spec-double-compiler/scripts/run_generated_case_adapters.py /private/tmp/sm-cli-agent-desired-cases/desired_cli_agent_cases --mapping specs/desired_program_model/case_adapters.toml --spec-dir specs/desired_program_model --import-root . --work-dir /tmp/sm-cli-agent-desired-adapters --validate-capabilities --batch
+    - command: python3 /Users/hayde/.skill-manager/skills/spec-double-compiler/scripts/run_generated_case_adapters.py /private/tmp/sm-cli-agent-desired-cases/desired_cli_agent_cases --mapping specs/program_model/case_adapters.toml --spec-dir specs/program_model --import-root . --work-dir /tmp/sm-cli-agent-desired-adapters --validate-capabilities --batch
       status: passed
       result: validated 9 adapter mappings for 9 labels; executed 9 cases in batch
-    - command: python3 /Users/hayde/.skill-manager/skills/spec-double-compiler/scripts/generate_cases_from_tlc_dump.py specs/desired_program_model/SkillManager.tla specs/desired_program_model/MC.cfg --out /tmp/sm-cli-docs-desired-cases --package desired_cli_docs_cases --tlc2 /Users/hayde/.skill-manager/bin/cli/tlc2
+    - command: python3 /Users/hayde/.skill-manager/skills/spec-double-compiler/scripts/generate_cases_from_tlc_dump.py specs/program_model/SkillManager.tla specs/program_model/MC.cfg --out /tmp/sm-cli-docs-desired-cases --package desired_cli_docs_cases --tlc2 /Users/hayde/.skill-manager/bin/cli/tlc2
       status: passed
       budget: <=2m
       result: generated 9 transition cases into /private/tmp/sm-cli-docs-desired-cases/desired_cli_docs_cases
-    - command: python3 /Users/hayde/.skill-manager/skills/spec-double-compiler/scripts/run_generated_case_adapters.py /private/tmp/sm-cli-docs-desired-cases/desired_cli_docs_cases --mapping specs/desired_program_model/case_adapters.toml --spec-dir specs/desired_program_model --import-root . --work-dir /tmp/sm-cli-docs-desired-adapters --validate-capabilities --batch
+    - command: python3 /Users/hayde/.skill-manager/skills/spec-double-compiler/scripts/run_generated_case_adapters.py /private/tmp/sm-cli-docs-desired-cases/desired_cli_docs_cases --mapping specs/program_model/case_adapters.toml --spec-dir specs/program_model --import-root . --work-dir /tmp/sm-cli-docs-desired-adapters --validate-capabilities --batch
       status: passed
       result: validated 9 adapter mappings for 9 labels; executed 9 cases in batch
   unit:
-    - command: pytest specs/current/tests specs/desired_program_model/tests
+    - command: pytest specs/program_model/tests
       status: passed
       result: 12 passed
       duration: 0.07s
