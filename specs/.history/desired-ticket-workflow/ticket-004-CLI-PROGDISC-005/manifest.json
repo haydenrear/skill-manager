@@ -1,0 +1,183 @@
+{
+  "commit_recommendation": {
+    "git_add": "git add specs/.history/desired-ticket-workflow/ticket-004-CLI-PROGDISC-005",
+    "git_commit": "git commit -m 'record spec history for CLI-PROGDISC-005'",
+    "message": "It is recommended to commit this history directory now: specs/.history/desired-ticket-workflow/ticket-004-CLI-PROGDISC-005"
+  },
+  "created_at_utc": "2026-06-28T21:11:13.484198+00:00",
+  "entry_name": "ticket-004-CLI-PROGDISC-005",
+  "git": {
+    "branch": "codex/progressive-disclosure-cli-spec",
+    "commit": "6442ad1",
+    "inside_work_tree": "true"
+  },
+  "history_policy": "append-only by convention; existing entries are not overwritten and filesystem permissions remain git-friendly",
+  "kind": "ticket",
+  "results": [
+    {
+      "exists": true,
+      "role": "result",
+      "snapshot": "specs/.history/desired-ticket-workflow/ticket-004-CLI-PROGDISC-005/results/cli-progdisc-005-validation.txt",
+      "source": "specs/results/cli-progdisc-005-validation.txt"
+    }
+  ],
+  "schema_version": 1,
+  "snapshots": [
+    {
+      "exists": true,
+      "role": "program_model",
+      "snapshot": "specs/.history/desired-ticket-workflow/ticket-004-CLI-PROGDISC-005/snapshots/program_model",
+      "source": "specs/program_model"
+    },
+    {
+      "exists": true,
+      "role": "desired_program_model",
+      "snapshot": "specs/.history/desired-ticket-workflow/ticket-004-CLI-PROGDISC-005/snapshots/desired_program_model",
+      "source": "specs/desired_program_model"
+    },
+    {
+      "exists": true,
+      "role": "current",
+      "snapshot": "specs/.history/desired-ticket-workflow/ticket-004-CLI-PROGDISC-005/snapshots/current",
+      "source": "specs/current"
+    }
+  ],
+  "spec_root": "specs",
+  "summary": "Closed bundled skill documentation consistency with catalog-backed docs coverage and graph validation.",
+  "ticket": {
+    "acceptance": {
+      "assertions": [
+        "Every modeled workflow is covered by at least one bundled skill surface.",
+        "Skill docs point agents to command-specific help rather than duplicating stale option tables."
+      ],
+      "commands": [
+        "bash specs/current/run_tlc.sh specs/current/SkillManager.tla specs/current/MC.cfg",
+        "bash specs/desired_program_model/run_tlc.sh specs/desired_program_model/SkillManager.tla specs/desired_program_model/MC.cfg",
+        "python3 /Users/hayde/.skill-manager/skills/spec-double-compiler/scripts/generate_cases_from_tlc_dump.py specs/current/SkillManager.tla specs/current/MC.cfg --out /tmp/sm-cli-docs-current-cases --package current_cli_docs_cases --tlc2 /Users/hayde/.skill-manager/bin/cli/tlc2",
+        "python3 /Users/hayde/.skill-manager/skills/spec-double-compiler/scripts/generate_cases_from_tlc_dump.py specs/desired_program_model/SkillManager.tla specs/desired_program_model/MC.cfg --out /tmp/sm-cli-docs-desired-cases --package desired_cli_docs_cases --tlc2 /Users/hayde/.skill-manager/bin/cli/tlc2",
+        "python3 /Users/hayde/.skill-manager/skills/spec-double-compiler/scripts/run_generated_case_adapters.py /private/tmp/sm-cli-docs-current-cases/current_cli_docs_cases --mapping specs/current/case_adapters.toml --spec-dir specs/current --import-root . --work-dir /tmp/sm-cli-docs-current-adapters --validate-capabilities --batch",
+        "python3 /Users/hayde/.skill-manager/skills/spec-double-compiler/scripts/run_generated_case_adapters.py /private/tmp/sm-cli-docs-desired-cases/desired_cli_docs_cases --mapping specs/desired_program_model/case_adapters.toml --spec-dir specs/desired_program_model --import-root . --work-dir /tmp/sm-cli-docs-desired-adapters --validate-capabilities --batch",
+        "pytest specs/current/tests",
+        "pytest specs/current/tests specs/desired_program_model/tests",
+        "jbang RunTests.java",
+        "python3 /Users/hayde/.skill-manager/skills/test-graph/scripts/discover.py doc-smoke",
+        "python3 /Users/hayde/.skill-manager/skills/test-graph/scripts/run.py doc-smoke",
+        "python3 /Users/hayde/.skill-manager/skills/test-graph/scripts/run.py skill-dev-smoke",
+        "python3 /Users/hayde/.skill-manager/skills/test-graph/scripts/run.py --all"
+      ],
+      "evidence": [
+        {
+          "command": "bash specs/current/run_tlc.sh specs/current/SkillManager.tla specs/current/MC.cfg",
+          "duration": "0.89s",
+          "result": "no invariant violations; 10 states generated, 1 distinct, depth 1.",
+          "status": "passed"
+        },
+        {
+          "command": "bash specs/desired_program_model/run_tlc.sh specs/desired_program_model/SkillManager.tla specs/desired_program_model/MC.cfg",
+          "duration": "0.89s",
+          "result": "no invariant violations; 10 states generated, 1 distinct, depth 1.",
+          "status": "passed"
+        },
+        {
+          "command": "python3 /Users/hayde/.skill-manager/skills/spec-double-compiler/scripts/generate_cases_from_tlc_dump.py specs/current/SkillManager.tla specs/current/MC.cfg --out /tmp/sm-cli-docs-current-cases --package current_cli_docs_cases --tlc2 /Users/hayde/.skill-manager/bin/cli/tlc2",
+          "result": "generated 9 transition cases into /private/tmp/sm-cli-docs-current-cases/current_cli_docs_cases.",
+          "status": "passed"
+        },
+        {
+          "command": "python3 /Users/hayde/.skill-manager/skills/spec-double-compiler/scripts/generate_cases_from_tlc_dump.py specs/desired_program_model/SkillManager.tla specs/desired_program_model/MC.cfg --out /tmp/sm-cli-docs-desired-cases --package desired_cli_docs_cases --tlc2 /Users/hayde/.skill-manager/bin/cli/tlc2",
+          "result": "generated 9 transition cases into /private/tmp/sm-cli-docs-desired-cases/desired_cli_docs_cases.",
+          "status": "passed"
+        },
+        {
+          "command": "python3 /Users/hayde/.skill-manager/skills/spec-double-compiler/scripts/run_generated_case_adapters.py /private/tmp/sm-cli-docs-current-cases/current_cli_docs_cases --mapping specs/current/case_adapters.toml --spec-dir specs/current --import-root . --work-dir /tmp/sm-cli-docs-current-adapters --validate-capabilities --batch",
+          "result": "validated 9 adapter mappings for 9 labels; executed 9 cases in batch.",
+          "status": "passed"
+        },
+        {
+          "command": "python3 /Users/hayde/.skill-manager/skills/spec-double-compiler/scripts/run_generated_case_adapters.py /private/tmp/sm-cli-docs-desired-cases/desired_cli_docs_cases --mapping specs/desired_program_model/case_adapters.toml --spec-dir specs/desired_program_model --import-root . --work-dir /tmp/sm-cli-docs-desired-adapters --validate-capabilities --batch",
+          "result": "validated 9 adapter mappings for 9 labels; executed 9 cases in batch.",
+          "status": "passed"
+        },
+        {
+          "command": "pytest specs/current/tests specs/desired_program_model/tests",
+          "duration": "0.07s",
+          "result": "12 passed.",
+          "status": "passed"
+        },
+        {
+          "command": "jbang RunTests.java",
+          "duration": "12.92s",
+          "result": "ALL PASSED.",
+          "status": "passed"
+        },
+        {
+          "command": "python3 /Users/hayde/.skill-manager/skills/test-graph/scripts/discover.py doc-smoke",
+          "result": "planned 20 steps and rendered docs/doc-smoke.dot plus docs/doc-smoke.png.",
+          "status": "passed"
+        },
+        {
+          "command": "python3 /Users/hayde/.skill-manager/skills/test-graph/scripts/run.py doc-smoke",
+          "duration": "1m13s",
+          "result": "BUILD SUCCESSFUL; report test_graph/build/validation-reports/20260628-205039.",
+          "status": "passed"
+        },
+        {
+          "command": "python3 /Users/hayde/.skill-manager/skills/test-graph/scripts/run.py skill-dev-smoke",
+          "duration": "1m19s",
+          "result": "BUILD SUCCESSFUL; report test_graph/build/validation-reports/20260628-205155.",
+          "status": "passed"
+        },
+        {
+          "command": "python3 /Users/hayde/.skill-manager/skills/test-graph/scripts/run.py --all",
+          "duration": "14m23s",
+          "result": "BUILD SUCCESSFUL; final report test_graph/build/validation-reports/20260628-210626.",
+          "status": "passed"
+        }
+      ]
+    },
+    "current_increment": {
+      "adapters": [
+        "Skill-doc adapter validates modeled workflow coverage in bundled skill docs."
+      ],
+      "graph_after_unit_pass": [
+        "doc-smoke",
+        "skill-dev-smoke"
+      ],
+      "model_actions": [
+        "ExposeInstallLocalUnitWorkflowDocs",
+        "ExposeSkillScriptsWorkflowDocs",
+        "ExposeProjectEnvWorkflowDocs"
+      ],
+      "model_state": [
+        "project_model.cli_skill_doc_topics"
+      ],
+      "unit_tests": [
+        "docs coverage test compares modeled workflows against bundled skill references."
+      ]
+    },
+    "depends_on": [
+      "CLI-PROGDISC-002",
+      "CLI-PROGDISC-003"
+    ],
+    "desired_actions": [
+      "ExposeInstallLocalUnitWorkflowDocs",
+      "ExposeSkillScriptsWorkflowDocs",
+      "ExposeProjectEnvWorkflowDocs"
+    ],
+    "id": "CLI-PROGDISC-005",
+    "implementation_scope": [
+      "skill-manager-skill",
+      "skill-publisher-skill",
+      "skill-dev-skill",
+      "specs/current"
+    ],
+    "objective": "Update skill-manager-skill, skill-publisher-skill, and skill-dev-skill so their progressive-disclosure instructions and workflow docs match the CLI catalog.\n",
+    "status": "closed",
+    "title": "Bundled skill documentation consistency"
+  },
+  "ticket_id": "CLI-PROGDISC-005",
+  "ticket_index": 4,
+  "ticket_plan": "specs/desired_program_model/ticket_plan.yaml",
+  "ticket_status": "closed",
+  "workflow_name": "desired-ticket-workflow"
+}

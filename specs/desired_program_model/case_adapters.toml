@@ -13,13 +13,13 @@ adapter = "specs.current.production_adapters:CliHelpAdapter"
 adapter = "specs.current.production_adapters:CliHelpAdapter"
 
 [adapters.ExposeInstallLocalUnitWorkflowDocs]
-adapter = "specs.current.production_adapters:CliMetadataAdapter"
+adapter = "specs.current.production_adapters:CliSkillDocsAdapter"
 
 [adapters.ExposeSkillScriptsWorkflowDocs]
-adapter = "specs.current.production_adapters:CliMetadataAdapter"
+adapter = "specs.current.production_adapters:CliSkillDocsAdapter"
 
 [adapters.ExposeProjectEnvWorkflowDocs]
-adapter = "specs.current.production_adapters:CliMetadataAdapter"
+adapter = "specs.current.production_adapters:CliSkillDocsAdapter"
 
 [adapters.EmitSyncOneUnitAgentContext]
 adapter = "specs.current.production_adapters:CliAgentContextAdapter"

@@ -54,3 +54,16 @@ This skill installs the `skill-dev` binary through a `skill-script:`
 dependency. Uninstalling `skill-dev-skill` removes that managed binary
 and `cli-lock.toml` row only when no other installed unit claims the
 same backend/tool.
+
+## Modeled CLI Workflow Coverage
+
+These workflow ids are shared with the CLI metadata catalog and the
+TLA+ program model. Use this table as routing guidance, then run the
+help command for exact syntax.
+
+| Workflow id | Use when | Help |
+| --- | --- | --- |
+| `force-skill-scripts` | replaying an unchanged worktree installer for one unit | `skill-manager sync --help` |
+| `install-local-unit` | installing the local worktree as a managed unit | `skill-manager install --help` |
+| `project-env` | syncing project-local envs while developing skills | `skill-manager env sync --help` |
+| `sync-from-local-source` | applying a worktree back to the installed unit | `skill-manager sync --help` |

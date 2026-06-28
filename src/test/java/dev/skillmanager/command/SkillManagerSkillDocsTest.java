@@ -1,11 +1,17 @@
 package dev.skillmanager.command;
 
 import dev.skillmanager._lib.test.Tests;
+import dev.skillmanager.cli.CliMetadata;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static dev.skillmanager._lib.test.Tests.assertContains;
+import static dev.skillmanager._lib.test.Tests.assertTrue;
 
 public final class SkillManagerSkillDocsTest {
 
@@ -63,6 +69,47 @@ public final class SkillManagerSkillDocsTest {
                     assertContains(skillDev, "--force-scripts", "skill-dev docs document manual force sync");
                     assertContains(skillDev, "skill-imports:", "skill-dev imports runtime CLI reference");
                 })
+                .test("bundled skill docs cover modeled CLI workflows", () -> {
+                    Map<String, String> docsBySurface = new LinkedHashMap<>();
+                    docsBySurface.put("skill-manager-skill", markdownUnder(Path.of("skill-manager-skill")));
+                    docsBySurface.put("skill-publisher-skill", markdownUnder(Path.of("skill-publisher-skill")));
+                    docsBySurface.put("skill-dev-skill", markdownUnder(Path.of("skill-dev-skill")));
+
+                    for (CliMetadata.WorkflowMetadata workflow : CliMetadata.workflows()) {
+                        String helpCommand = helpCommand(workflow.commandPath());
+                        for (String surface : workflow.relatedSkillDocs()) {
+                            String docs = docsBySurface.get(surface);
+                            assertTrue(docs != null, "known skill doc surface: " + surface);
+                            assertContains(docs, workflow.id(),
+                                    surface + " documents workflow id " + workflow.id());
+                            assertContains(docs, helpCommand,
+                                    surface + " routes " + workflow.id() + " to command help");
+                        }
+                    }
+                })
                 .runAll();
+    }
+
+    private static String markdownUnder(Path root) throws Exception {
+        try (Stream<Path> paths = Files.walk(root)) {
+            return paths
+                    .filter(path -> path.getFileName().toString().endsWith(".md"))
+                    .sorted()
+                    .map(path -> {
+                        try {
+                            return Files.readString(path);
+                        } catch (Exception e) {
+                            throw new RuntimeException(e);
+                        }
+                    })
+                    .collect(Collectors.joining("\n"));
+        }
+    }
+
+    private static String helpCommand(String commandPath) {
+        if ("skill-manager".equals(commandPath)) {
+            return "skill-manager --help";
+        }
+        return "skill-manager " + commandPath + " --help";
     }
 }
