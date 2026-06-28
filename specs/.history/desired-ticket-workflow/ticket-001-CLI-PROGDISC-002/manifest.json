@@ -1,0 +1,170 @@
+{
+  "commit_recommendation": {
+    "git_add": "git add specs/.history/desired-ticket-workflow/ticket-001-CLI-PROGDISC-002",
+    "git_commit": "git commit -m 'record spec history for CLI-PROGDISC-002'",
+    "message": "It is recommended to commit this history directory now: specs/.history/desired-ticket-workflow/ticket-001-CLI-PROGDISC-002"
+  },
+  "created_at_utc": "2026-06-28T19:38:15.308425+00:00",
+  "entry_name": "ticket-001-CLI-PROGDISC-002",
+  "git": {
+    "branch": "codex/progressive-disclosure-cli-spec",
+    "commit": "aa1e96f",
+    "inside_work_tree": "true"
+  },
+  "history_policy": "append-only by convention; existing entries are not overwritten and filesystem permissions remain git-friendly",
+  "kind": "ticket",
+  "results": [
+    {
+      "exists": true,
+      "role": "result",
+      "snapshot": "specs/.history/desired-ticket-workflow/ticket-001-CLI-PROGDISC-002/results/cli-progdisc-002-validation.txt",
+      "source": "specs/results/cli-progdisc-002-validation.txt"
+    }
+  ],
+  "schema_version": 1,
+  "snapshots": [
+    {
+      "exists": true,
+      "role": "program_model",
+      "snapshot": "specs/.history/desired-ticket-workflow/ticket-001-CLI-PROGDISC-002/snapshots/program_model",
+      "source": "specs/program_model"
+    },
+    {
+      "exists": true,
+      "role": "desired_program_model",
+      "snapshot": "specs/.history/desired-ticket-workflow/ticket-001-CLI-PROGDISC-002/snapshots/desired_program_model",
+      "source": "specs/desired_program_model"
+    },
+    {
+      "exists": true,
+      "role": "current",
+      "snapshot": "specs/.history/desired-ticket-workflow/ticket-001-CLI-PROGDISC-002/snapshots/current",
+      "source": "specs/current"
+    }
+  ],
+  "spec_root": "specs",
+  "summary": "Closed the canonical CLI metadata slice with production catalog, model adapter coverage, unit tests, and test graph validation.",
+  "ticket": {
+    "acceptance": {
+      "assertions": [
+        "Every modeled command path exists in production metadata.",
+        "Every modeled workflow links to a production command path."
+      ],
+      "commands": [
+        "bash specs/current/run_tlc.sh specs/current/SkillManager.tla specs/current/MC.cfg",
+        "bash specs/desired_program_model/run_tlc.sh specs/desired_program_model/SkillManager.tla specs/desired_program_model/MC.cfg",
+        "python3 /Users/hayde/.skill-manager/skills/spec-double-compiler/scripts/generate_cases_from_tlc_dump.py specs/current/SkillManager.tla specs/current/MC.cfg --out /tmp/sm-cli-metadata-current-cases --package current_cli_metadata_cases --tlc2 /Users/hayde/.skill-manager/bin/cli/tlc2",
+        "pytest specs/current/tests",
+        "jbang RunTests.java",
+        "python3 /Users/hayde/.skill-manager/skills/test-graph/scripts/run.py doc-smoke",
+        "python3 /Users/hayde/.skill-manager/skills/test-graph/scripts/run.py --all"
+      ],
+      "evidence": [
+        {
+          "command": "bash specs/current/run_tlc.sh specs/current/SkillManager.tla specs/current/MC.cfg",
+          "duration": "1.32s",
+          "result": "no invariant violations; 10 states generated, 1 distinct, depth 1.",
+          "status": "passed"
+        },
+        {
+          "command": "bash specs/desired_program_model/run_tlc.sh specs/desired_program_model/SkillManager.tla specs/desired_program_model/MC.cfg",
+          "duration": "1.30s",
+          "result": "no invariant violations; 10 states generated, 1 distinct, depth 1.",
+          "status": "passed"
+        },
+        {
+          "command": "python3 /Users/hayde/.skill-manager/skills/spec-double-compiler/scripts/generate_cases_from_tlc_dump.py specs/current/SkillManager.tla specs/current/MC.cfg --out /tmp/sm-cli-metadata-current-cases --package current_cli_metadata_cases --tlc2 /Users/hayde/.skill-manager/bin/cli/tlc2",
+          "duration": "1.12s",
+          "result": "generated 9 transition cases from 1 state.",
+          "status": "passed"
+        },
+        {
+          "command": "python3 /Users/hayde/.skill-manager/skills/spec-double-compiler/scripts/generate_cases_from_tlc_dump.py specs/desired_program_model/SkillManager.tla specs/desired_program_model/MC.cfg --out /tmp/sm-cli-metadata-desired-cases --package desired_cli_metadata_cases --tlc2 /Users/hayde/.skill-manager/bin/cli/tlc2",
+          "duration": "1.07s",
+          "result": "generated 9 transition cases from 1 state.",
+          "status": "passed"
+        },
+        {
+          "command": "pytest specs/current/tests specs/desired_program_model/tests",
+          "duration": "0.05s",
+          "result": "9 passed.",
+          "status": "passed"
+        },
+        {
+          "command": "jbang RunTests.java",
+          "duration": "14.04s",
+          "result": "ALL PASSED.",
+          "status": "passed"
+        },
+        {
+          "command": "python3 /Users/hayde/.skill-manager/skills/test-graph/scripts/discover.py doc-smoke",
+          "result": "planned 17 steps and rendered docs/doc-smoke.dot plus docs/doc-smoke.png.",
+          "status": "passed"
+        },
+        {
+          "command": "python3 /Users/hayde/.skill-manager/skills/test-graph/scripts/run.py doc-smoke",
+          "duration": "1m12s",
+          "result": "BUILD SUCCESSFUL; report test_graph/build/validation-reports/20260628-192008.",
+          "status": "passed"
+        },
+        {
+          "command": "python3 /Users/hayde/.skill-manager/skills/test-graph/scripts/run.py --all",
+          "duration": "15m07s",
+          "result": "BUILD SUCCESSFUL; final report test_graph/build/validation-reports/20260628-193507.",
+          "status": "passed"
+        }
+      ]
+    },
+    "current_increment": {
+      "adapters": [
+        "CLI metadata adapter extracts command/workflow catalog from production CLI."
+      ],
+      "graph_after_unit_pass": [
+        "doc-smoke, after help output becomes stable."
+      ],
+      "model_actions": [
+        "RenderInstallCommandHelp",
+        "RenderSyncCommandHelp",
+        "RenderProjectProfilesListHelp"
+      ],
+      "model_state": [
+        "project_model.cli_command_catalog",
+        "project_model.cli_command_aliases",
+        "project_model.cli_workflow_catalog",
+        "project_model.cli_workflow_command_links"
+      ],
+      "unit_tests": [
+        "command catalog coverage test over picocli command tree."
+      ]
+    },
+    "depends_on": [
+      "CLI-PROGDISC-001"
+    ],
+    "desired_actions": [
+      "RenderInstallCommandHelp",
+      "RenderSyncCommandHelp",
+      "RenderProjectProfilesListHelp",
+      "ExposeInstallLocalUnitWorkflowDocs",
+      "ExposeSkillScriptsWorkflowDocs",
+      "ExposeProjectEnvWorkflowDocs",
+      "EmitSyncOneUnitAgentContext",
+      "EmitProjectEnvAgentContext"
+    ],
+    "id": "CLI-PROGDISC-002",
+    "implementation_scope": [
+      "src/main/java/dev/skillmanager/cli",
+      "src/main/java/dev/skillmanager/commands",
+      "specs/current",
+      "specs/current/case_adapters.toml",
+      "specs/current/production_adapters.py"
+    ],
+    "objective": "Add a production metadata source that enumerates command paths, aliases, workflow ids, examples, related skill docs, and agent-context affordances.\n",
+    "status": "closed",
+    "title": "Canonical CLI command and workflow metadata"
+  },
+  "ticket_id": "CLI-PROGDISC-002",
+  "ticket_index": 1,
+  "ticket_plan": "specs/desired_program_model/ticket_plan.yaml",
+  "ticket_status": "closed",
+  "workflow_name": "desired-ticket-workflow"
+}

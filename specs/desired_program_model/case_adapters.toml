@@ -1,4 +1,25 @@
 # Map generated program-model action labels to production adapters.
-# Example:
-# [adapters.InstallUnit]
-# adapter = "specs.program_model.production_adapters:InstallUnitAdapter"
+
+[adapters.RenderInstallCommandHelp]
+adapter = "specs.current.production_adapters:CliMetadataAdapter"
+
+[adapters.RenderSyncCommandHelp]
+adapter = "specs.current.production_adapters:CliMetadataAdapter"
+
+[adapters.RenderProjectProfilesListHelp]
+adapter = "specs.current.production_adapters:CliMetadataAdapter"
+
+[adapters.ExposeInstallLocalUnitWorkflowDocs]
+adapter = "specs.current.production_adapters:CliMetadataAdapter"
+
+[adapters.ExposeSkillScriptsWorkflowDocs]
+adapter = "specs.current.production_adapters:CliMetadataAdapter"
+
+[adapters.ExposeProjectEnvWorkflowDocs]
+adapter = "specs.current.production_adapters:CliMetadataAdapter"
+
+[adapters.EmitSyncOneUnitAgentContext]
+adapter = "specs.current.production_adapters:CliMetadataAdapter"
+
+[adapters.EmitProjectEnvAgentContext]
+adapter = "specs.current.production_adapters:CliMetadataAdapter"

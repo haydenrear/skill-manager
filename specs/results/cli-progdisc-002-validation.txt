@@ -1,0 +1,35 @@
+CLI-PROGDISC-002 validation evidence
+====================================
+
+Ticket:
+  Canonical CLI command and workflow metadata
+
+Spec/model:
+  - bash specs/current/run_tlc.sh specs/current/SkillManager.tla specs/current/MC.cfg
+    PASSED in 1.32s: no invariant violations; 10 states generated, 1 distinct, depth 1.
+  - bash specs/desired_program_model/run_tlc.sh specs/desired_program_model/SkillManager.tla specs/desired_program_model/MC.cfg
+    PASSED in 1.30s: no invariant violations; 10 states generated, 1 distinct, depth 1.
+  - python3 /Users/hayde/.skill-manager/skills/spec-double-compiler/scripts/generate_cases_from_tlc_dump.py specs/current/SkillManager.tla specs/current/MC.cfg --out /tmp/sm-cli-metadata-current-cases --package current_cli_metadata_cases --tlc2 /Users/hayde/.skill-manager/bin/cli/tlc2
+    PASSED in 1.12s: generated 9 transition cases from 1 state.
+  - python3 /Users/hayde/.skill-manager/skills/spec-double-compiler/scripts/generate_cases_from_tlc_dump.py specs/desired_program_model/SkillManager.tla specs/desired_program_model/MC.cfg --out /tmp/sm-cli-metadata-desired-cases --package desired_cli_metadata_cases --tlc2 /Users/hayde/.skill-manager/bin/cli/tlc2
+    PASSED in 1.07s: generated 9 transition cases from 1 state.
+
+Unit/spec tests:
+  - pytest specs/current/tests specs/desired_program_model/tests
+    PASSED in 0.05s: 9 passed.
+  - jbang RunTests.java
+    PASSED in 14.04s: ALL PASSED.
+
+Test graph:
+  - python3 /Users/hayde/.skill-manager/skills/test-graph/scripts/discover.py doc-smoke
+    PASSED: planned 17 steps, including cli.metadata.catalog.covered, and rendered docs/doc-smoke.dot plus docs/doc-smoke.png.
+  - python3 /Users/hayde/.skill-manager/skills/test-graph/scripts/run.py doc-smoke
+    PASSED in 1m12s: BUILD SUCCESSFUL; report test_graph/build/validation-reports/20260628-192008.
+  - python3 /Users/hayde/.skill-manager/skills/test-graph/scripts/run.py --all
+    PASSED in 15m07s: BUILD SUCCESSFUL; final report test_graph/build/validation-reports/20260628-193507.
+
+Implemented acceptance:
+  - Production source src/main/java/dev/skillmanager/cli/CliMetadata.java enumerates command paths, aliases, workflows, examples, related skill docs, and agent-context affordances.
+  - src/test/java/dev/skillmanager/command/CliMetadataTest.java compiles production metadata against the picocli command tree.
+  - specs/current/tests/test_cli_metadata_current.py verifies modeled commands, aliases, workflow ids, and workflow-command links are backed by production metadata.
+  - test_graph/sources/smoke/doc/CliMetadataCatalogCovered.java validates the production metadata catalog in the doc-smoke graph.

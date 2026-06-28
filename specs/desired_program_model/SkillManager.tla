@@ -132,7 +132,7 @@ CliTopLevelCommands ==
 
 CliSubcommands ==
   {"ads list", "ads create", "ads delete",
-   "bindings list",
+   "bindings list", "bindings show",
    "cli list", "cli show", "cli path",
    "env sync", "env run",
    "gateway up", "gateway down", "gateway status", "gateway set",
@@ -146,7 +146,7 @@ CliSubcommands ==
    "registry set", "registry status"}
 
 CliCommandAliases ==
-  {<<"rm", "remove">>, <<"un", "uninstall">>}
+  {<<"ls", "list">>, <<"rm", "remove">>, <<"un", "uninstall">>}
 
 CliCommandCatalog ==
   {CliRootCommand} \cup CliTopLevelCommands \cup CliSubcommands
