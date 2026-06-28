@@ -1,0 +1,36 @@
+CLI-PROGDISC-005 validation
+
+Scope:
+- Bundled skill documentation consistency for skill-manager-skill,
+  skill-publisher-skill, and skill-dev-skill.
+- Spec adapter coverage for modeled CLI workflow documentation.
+- End-to-end doc-smoke and skill-dev-smoke graph coverage.
+
+Spec and adapter validation:
+- bash specs/current/run_tlc.sh specs/current/SkillManager.tla specs/current/MC.cfg
+  passed; no invariant violations; 10 states generated, 1 distinct, depth 1.
+- bash specs/desired_program_model/run_tlc.sh specs/desired_program_model/SkillManager.tla specs/desired_program_model/MC.cfg
+  passed; no invariant violations; 10 states generated, 1 distinct, depth 1.
+- Generated current cases to /private/tmp/sm-cli-docs-current-cases/current_cli_docs_cases:
+  9 transition cases.
+- Generated desired cases to /private/tmp/sm-cli-docs-desired-cases/desired_cli_docs_cases:
+  9 transition cases.
+- Current adapter run passed:
+  validated 9 adapter mappings for 9 labels; executed 9 cases in batch.
+- Desired adapter run passed:
+  validated 9 adapter mappings for 9 labels; executed 9 cases in batch.
+
+Unit validation:
+- pytest specs/current/tests specs/desired_program_model/tests: 12 passed.
+- jbang RunTests.java: ALL PASSED.
+
+Test graph validation:
+- discover.py doc-smoke: planned 20 steps and rendered docs/doc-smoke.dot plus docs/doc-smoke.png.
+- run.py doc-smoke: BUILD SUCCESSFUL; report test_graph/build/validation-reports/20260628-205039.
+- run.py skill-dev-smoke: BUILD SUCCESSFUL; report test_graph/build/validation-reports/20260628-205155.
+- run.py --all: BUILD SUCCESSFUL in 14m23s; final graph report test_graph/build/validation-reports/20260628-210626.
+
+Notes:
+- The CLI workflow documentation actions now use CliSkillDocsAdapter.
+- The adapter checks each CliMetadata workflow's related skill-doc surface for
+  the workflow id and the command-specific `skill-manager ... --help` route.

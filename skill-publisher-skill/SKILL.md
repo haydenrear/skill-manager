@@ -142,6 +142,25 @@ Extra validation:
   `--codex-home`, and `--project-dir`, then run `skill-manager harness
   list` and `skill-manager harness rm <id>`.
 
+## Modeled CLI Workflow Coverage
+
+These workflow ids are shared with the CLI metadata catalog and the
+TLA+ program model. Use them to choose the right authoring path, then
+run the help command for exact syntax instead of copying option tables
+into this skill.
+
+| Workflow id | Use when | Help |
+| --- | --- | --- |
+| `author-dependencies` | adding CLI, MCP, or reference dependencies to a unit | `skill-manager create --help` |
+| `author-unit` | scaffolding a skill or plugin starter | `skill-manager create --help` |
+| `install-local-unit` | validating an authored unit from disk | `skill-manager install --help` |
+| `publish-unit` | checking registry package metadata | `skill-manager publish --help` |
+| `skill-scripts` | authoring a private CLI installer under `skill-scripts/` | `skill-manager install --help` |
+
+For `skill-scripts`, also check `skill-manager sync --help` before
+using `--force-scripts`; named sync replays only the named target's
+scripts.
+
 ## Boundaries
 
 - This skill does not publish anything itself. It explains how; the

@@ -1,0 +1,89 @@
+version: 1
+name: desired-program-model
+canonical_tla_module: SkillManager
+canonical_tla_file: SkillManager.tla
+bounded_model_config: MC.cfg
+promotion_model_config: MC_program_promotion.cfg
+manifest: spec_manifest.yaml
+ticket_plan: ticket_plan.yaml
+
+relationship:
+  extends_current_program_model: ../program_model/SkillManager.tla
+  purpose: desired whole-program model for ticket workflow
+  generation_status: planned
+
+implementation_status:
+  updated: 2026-06-28
+  policy: specs/current is the executable state of landed work; this file summarizes the desired destination.
+  active_ticket: CLI-PROGDISC-005
+  active_ticket_title: "Bundled skill documentation consistency"
+  summary:
+    desired_model_scaffolded: true
+    ticket_breakdown: defined
+    current_model: agent_workflow_context_landed
+    generated_desired_cases: passed
+    adapters: cli_metadata_source_help_renderer_and_agent_context
+
+modeled_boundary_status:
+  ticket_plan:
+    status: defined
+    artifact: ticket_plan.yaml
+    next_ticket: CLI-PROGDISC-005
+
+program_domains:
+  cli_disclosure:
+    state_fields:
+      - project_model.cli_command_catalog
+      - project_model.cli_command_aliases
+      - project_model.cli_workflow_catalog
+      - project_model.cli_workflow_command_links
+      - project_model.cli_root_help_topics
+      - project_model.cli_command_help_topics
+      - project_model.cli_skill_doc_topics
+      - project_model.cli_agent_context_topics
+    actions:
+      - RenderProgressiveRootHelp
+      - RenderInstallCommandHelp
+      - RenderSyncCommandHelp
+      - RenderProjectProfilesListHelp
+      - ExposeInstallLocalUnitWorkflowDocs
+      - ExposeSkillScriptsWorkflowDocs
+      - ExposeProjectEnvWorkflowDocs
+      - EmitSyncOneUnitAgentContext
+      - EmitProjectEnvAgentContext
+    invariants:
+      - CliCommandCatalogCoversAllCommands
+      - CliRootHelpStaysProgressive
+      - CliCommandHelpCoversCatalog
+      - CliWorkflowCatalogCoversDesiredWorkflows
+      - CliWorkflowsReferenceCatalogCommands
+      - CliSkillDocsCoverWorkflowCatalog
+      - CliAgentContextCoversWorkflowCatalog
+implementation_sources:
+  cli:
+    - src/main/java/dev/skillmanager/cli/SkillManagerCli.java
+    - src/main/java/dev/skillmanager/commands
+  docs:
+    - skill-manager-skill
+    - skill-publisher-skill
+    - skill-dev-skill
+  specs:
+    - specs/current
+    - specs/desired_program_model
+adapter_plan:
+  desired_new_ports:
+    - SkillManagerCli.render_progressive_root_help
+    - SkillManagerCli.render_command_help
+    - SkillManagerCli.expose_skill_workflow_docs
+    - SkillManagerCli.emit_agent_workflow_context
+  planned_adapters:
+    - CLI metadata adapter for command/workflow catalog extraction. (landed)
+    - Help adapter for root-depth and command-help coverage. (landed)
+    - Agent-context adapter for workflow context output. (landed)
+    - Skill-doc adapter for bundled skill workflow coverage.
+guardrails:
+  test_modeling_rule: Validation jobs, test graph nodes, and CI workflows are evidence only, not TLA+ state/actions.
+  tlc_budget_rule: Ticket-loop TLC and case generation must complete in two minutes or less; use MC.cfg for this workflow and reserve MC_program_promotion.cfg for promotion-level checks.
+  root_help_rule: Root help should list top-level commands and discovery/context routes, not deep install/sync/publish procedure text.
+  command_help_rule: Every modeled command path should expose direct help intentionally, not only through an unknown-option error.
+  skill_docs_rule: Bundled skill docs should route agents through progressive disclosure and stay consistent with the CLI catalog.

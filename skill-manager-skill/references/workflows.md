@@ -28,6 +28,51 @@ option" banner. Treat the usage text as authoritative.
 - Publish only when the user wants registry/search discoverability;
   direct git/local installs do not require publish.
 
+## Modeled CLI Workflow Coverage
+
+This table is keyed by the workflow ids in the CLI metadata catalog and
+the TLA+ program model. It is a routing map, not an option reference:
+run the listed help command for exact syntax before mutating state.
+
+| Workflow id | Start with | Help |
+| --- | --- | --- |
+| `account-auth` | `login` | `skill-manager login --help` |
+| `ads-manage` | `ads` | `skill-manager ads --help` |
+| `bind-projection` | `bind` | `skill-manager bind --help` |
+| `cli-lock-inspect` | `cli` | `skill-manager cli --help` |
+| `discover-installed-units` | `list` | `skill-manager list --help` |
+| `force-skill-scripts` | `sync` | `skill-manager sync --help` |
+| `gateway-lifecycle` | `gateway` | `skill-manager gateway --help` |
+| `harness-instantiate` | `harness instantiate` | `skill-manager harness instantiate --help` |
+| `harness-remove` | `harness rm` | `skill-manager harness rm --help` |
+| `inspect-unit` | `show` | `skill-manager show --help` |
+| `install-git-unit` | `install` | `skill-manager install --help` |
+| `install-local-unit` | `install` | `skill-manager install --help` |
+| `install-registry-unit` | `install` | `skill-manager install --help` |
+| `onboard-default-skills` | `onboard` | `skill-manager onboard --help` |
+| `package-manager-bootstrap` | `pm` | `skill-manager pm --help` |
+| `policy-inspect` | `policy` | `skill-manager policy --help` |
+| `project-env` | `env sync` | `skill-manager env sync --help` |
+| `project-profile-resolve` | `project profiles` | `skill-manager project profiles --help` |
+| `project-register` | `project register` | `skill-manager project register --help` |
+| `project-resolve` | `project resolve` | `skill-manager project resolve --help` |
+| `publish-unit` | `publish` | `skill-manager publish --help` |
+| `rebind-projection` | `rebind` | `skill-manager rebind --help` |
+| `refresh-lockfile` | `sync` | `skill-manager sync --help` |
+| `registry-lifecycle` | `registry` | `skill-manager registry --help` |
+| `remove-installed-unit` | `remove` | `skill-manager remove --help` |
+| `sync-all-units` | `sync` | `skill-manager sync --help` |
+| `sync-from-local-source` | `sync` | `skill-manager sync --help` |
+| `sync-lockfile` | `sync` | `skill-manager sync --help` |
+| `sync-one-unit` | `sync` | `skill-manager sync --help` |
+| `unbind-projection` | `unbind` | `skill-manager unbind --help` |
+| `upgrade-units` | `upgrade` | `skill-manager upgrade --help` |
+
+For agent-facing context while a workflow is running, add
+`--agent-context` to a command or set `SKILL_MANAGER_AGENT_CONTEXT=1`.
+The context block is written to stderr and includes the matched workflow
+id, related skill docs, next commands, and log locations.
+
 ## Find and install a unit
 
 1. Search or inspect:

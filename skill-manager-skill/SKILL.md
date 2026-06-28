@@ -97,7 +97,8 @@ Load the focused reference instead of searching this file for detailed
 flows:
 
 - `references/workflows.md` - agent decision flows for install, bind,
-  harness, sync, publish, CLI tools, and gateway-backed MCP tools.
+  harness, sync, publish, CLI tools, gateway-backed MCP tools, and the
+  modeled CLI workflow coverage table.
 - `references/projects.md` - skill project manifests, project envs,
   project `.skill-manager` child homes, and agent launch homes.
 - `references/virtual-mcp-gateway.md` - the gateway architecture,

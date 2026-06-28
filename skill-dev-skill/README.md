@@ -30,3 +30,14 @@ path plus recent output.
 The `skill-dev` CLI itself is installed by a `skill-script:` dependency;
 uninstall removes its managed binary and lock row only if no other unit
 still claims the same tool.
+
+## CLI workflow coverage
+
+The bundled skill docs intentionally route to command-specific help:
+
+| Workflow id | Help |
+| --- | --- |
+| `force-skill-scripts` | `skill-manager sync --help` |
+| `install-local-unit` | `skill-manager install --help` |
+| `project-env` | `skill-manager env sync --help` |
+| `sync-from-local-source` | `skill-manager sync --help` |
