@@ -1,37 +1,26 @@
-# Program Model
+# Accepted Program Model
 
-This directory is the accepted whole-program TLA+ model for this repository.
-It is the semantic baseline for future ticket workflows.
+This directory is the durable whole-program semantic model for Skill Manager.
+Feature-ticket workflows should start from this baseline, create temporary
+`specs/current` and `specs/desired_program_model` directories, then promote the
+converged model back here when the workflow closes.
 
-Files:
+## CLI Progressive Disclosure
 
-- `SkillManager.tla`: canonical whole-program state machine.
-- `MC.cfg`: bounded TLC model for the accepted baseline.
-- `spec_manifest.yaml`: manifest for generated cases, ports, invariants,
-  adapter expectations, and onboarding status.
-- `case_adapters.toml`: production adapter mapping for generated cases.
-- `production_adapters.py`: repository-local adapter extension points.
+The accepted model includes the progressive-disclosure CLI workflow promoted on
+2026-06-28:
 
-Current modeled components:
+- `MC.cfg` is the bounded TLC and case-generation config for the CLI disclosure
+  contract. It is intentionally small enough for the ticket/spec unit loop.
+- `MC_program_promotion.cfg` preserves the broader whole-program TLC config for
+  promotion-level checks.
+- `SkillManager.tla` models the CLI command catalog, aliases, workflow links,
+  root-help scope, command-help coverage, bundled skill documentation coverage,
+  and opt-in agent-context coverage.
+- `production_adapters.py`, `case_adapters.toml`, and `tests/` validate the
+  accepted model against production CLI metadata, help hooks, bundled skill
+  docs, and agent-context hooks.
 
-- skill-manager CLI: effect-program execution, rollback, local unit store,
-  installed records, lockfile, bindings, default projections, gateway config,
-  registry config, recursive transitive installs, staged sync continuations,
-  CLI package records, skill-script execution records, force script rerun
-  actions, and orphan CLI dependency cleanup on uninstall.
-- bindings and projections: doc-repo managed copies, import directives,
-  projection rows, doc-repo sync repair, harness template instances, and
-  harness-created projection rows.
-- virtual MCP gateway: dynamic server catalog, global/session deployments,
-  active tools, session disclosures, deployment errors, sticky initialization.
-- skill-manager server: authenticated publishing, registry unit/version/package
-  storage, and search/read behavior.
-
-`MC.cfg` is intentionally a small smoke model: it aliases the second abstract
-unit/server/tool/session atom to the first so TLC can check onboarding
-invariants quickly. Broader configs should be added as the adapter cases become
-useful.
-
-Use `specs/current` and `specs/desired_program_model` only after this baseline
-exists and a later ticket needs a planned destination. First onboarding should
-not create those directories.
+Workflow history is append-only under `../.history/desired-ticket-workflow/`.
+The closed progressive-disclosure workflow snapshot is recorded at
+`../.history/desired-ticket-workflow/closed-snapshot/`.

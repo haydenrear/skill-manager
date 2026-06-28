@@ -1,30 +1,32 @@
 module: SkillManager
-package: skillmanager_program_cases
+package: current_program_cases
 
 status:
-  workflow: accepted
-  promoted_from_workflow: desired-ticket-workflow
-  closed_tickets:
-    - CLI-PROGDISC-001
-    - CLI-PROGDISC-002
-    - CLI-PROGDISC-003
-    - CLI-PROGDISC-004
-    - CLI-PROGDISC-005
-  relation_to_program_model: accepted_whole_program_model
+  workflow: ticket
+  initial_ticket: CLI-PROGDISC-001
+  initial_ticket_title: "Progressive disclosure CLI documentation contract"
+  ticket_plan: ticket_plan.yaml
+  relation_to_program_model: desired_successor_of_accepted_program_model
+  relation_to_current: target_state_for_specs_current_to_converge_to
   updated: 2026-06-28
   summary:
-    progressive_disclosure_cli_model_promoted: true
+    desired_model_scaffolded: true
+    ticket_plan_scaffolded: true
+    current_model_scaffolded: true
     generated_cases: passed
     adapters: cli_metadata_help_docs_and_agent_context
     tlc: passed
   done:
-    - Added CLI disclosure catalog state for every top-level command, modeled subcommand, alias, and workflow.
-    - Added root-help, command-help, skill-doc, workflow-command, and agent-context invariants.
-    - Added semantic actions for rendering progressive root help, rendering command help, exposing skill workflow docs, and emitting agent workflow context.
+    - Scaffolded specs/current and specs/desired_program_model from the accepted whole-program baseline.
+    - Added desired CLI disclosure catalog state for every top-level command, modeled subcommand, alias, and workflow.
+    - Added desired root-help, command-help, skill-doc, workflow-command, and agent-context invariants.
+    - Added desired semantic actions for rendering progressive root help, rendering command help, exposing skill workflow docs, and emitting agent workflow context.
     - Landed CLI-PROGDISC-002 production metadata source and current-model adapter coverage for command paths, aliases, workflows, docs, examples, and agent context affordances.
     - Landed CLI-PROGDISC-003 progressive help renderer, inherited help behavior, command-specific footers, current-model help adapter coverage, and doc-smoke graph validation.
     - Landed CLI-PROGDISC-004 opt-in agent context output, context adapter coverage, and doc-smoke end-to-end validation for representative workflows.
     - Landed CLI-PROGDISC-005 bundled skill documentation consistency, current-model docs adapter coverage, and doc-smoke/skill-dev-smoke validation.
+  pending:
+    - Complete PR review and promote converged desired/current model back into specs/program_model.
 
 source_model:
   program_model_manifest: ../program_model/spec_manifest.yaml

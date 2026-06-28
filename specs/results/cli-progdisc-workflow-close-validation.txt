@@ -1,0 +1,35 @@
+CLI progressive-disclosure spec workflow closeout validation
+Date: 2026-06-28
+
+Tickets closed in specs/desired_program_model/ticket_plan.yaml:
+- CLI-PROGDISC-001
+- CLI-PROGDISC-002
+- CLI-PROGDISC-003
+- CLI-PROGDISC-004
+- CLI-PROGDISC-005
+
+Validation before workflow close:
+- python3 /Users/hayde/.skill-manager/skills/spec-double-compiler/scripts/close_tickets.py --repo-root . --dry-run
+  Result: passed; current and desired_program_model are removable.
+- bash specs/program_model/run_tlc.sh specs/program_model/SkillManager.tla specs/program_model/MC.cfg
+  Result: passed; no invariant violations; 10 states generated; 1 distinct state; depth 1.
+- python3 /Users/hayde/.skill-manager/skills/spec-double-compiler/scripts/generate_cases_from_tlc_dump.py specs/program_model/SkillManager.tla specs/program_model/MC.cfg --out /tmp/sm-cli-program-cases --package program_cli_disclosure_cases --tlc2 /Users/hayde/.skill-manager/bin/cli/tlc2
+  Result: passed; generated 9 transition cases.
+- python3 /Users/hayde/.skill-manager/skills/spec-double-compiler/scripts/run_generated_case_adapters.py /tmp/sm-cli-program-cases/program_cli_disclosure_cases --mapping specs/program_model/case_adapters.toml --spec-dir specs/program_model --import-root . --work-dir /tmp/sm-cli-program-adapters --validate-capabilities --batch
+  Result: passed; validated 9 adapter mappings for 9 labels and executed 9 cases in batch.
+- pytest specs/program_model/tests
+  Result: passed; 7 passed.
+- jbang RunTests.java
+  Result: passed; ALL PASSED.
+- git diff --check
+  Result: passed.
+
+Validation after workflow close:
+- pytest specs/program_model/tests
+  Result: passed; 7 passed.
+- bash specs/program_model/run_tlc.sh specs/program_model/SkillManager.tla specs/program_model/MC.cfg
+  Result: passed; no invariant violations; 10 states generated; 1 distinct state; depth 1.
+- python3 /Users/hayde/.skill-manager/skills/spec-double-compiler/scripts/generate_cases_from_tlc_dump.py specs/program_model/SkillManager.tla specs/program_model/MC.cfg --out /tmp/sm-cli-program-cases --package program_cli_disclosure_cases --tlc2 /Users/hayde/.skill-manager/bin/cli/tlc2
+  Result: passed; generated 9 transition cases.
+- python3 /Users/hayde/.skill-manager/skills/spec-double-compiler/scripts/run_generated_case_adapters.py /tmp/sm-cli-program-cases/program_cli_disclosure_cases --mapping specs/program_model/case_adapters.toml --spec-dir specs/program_model --import-root . --work-dir /tmp/sm-cli-program-adapters --validate-capabilities --batch
+  Result: passed; validated 9 adapter mappings for 9 labels and executed 9 cases in batch.
