@@ -105,39 +105,60 @@ public final class SkillManagerCli implements Runnable {
         dev.skillmanager.effects.UnitReadProblemReporter.reset();
         CommandLine cmd = new CommandLine(new SkillManagerCli());
         cmd.setExecutionStrategy(pr -> {
-            SkillManagerCli root = pr.commandSpec().root().userObject() instanceof SkillManagerCli c ? c : null;
+            SkillManagerCli root = rootCommand(pr);
             if (root != null) Log.setVerbose(root.verbose);
             tryReconcile();
             int rc = new CommandLine.RunLast().execute(pr);
-            tryPrintOutstandingErrors();
-            if (isAgentContextRequested(root)) {
-                CliAgentContext.emit(System.err, CliAgentContext.commandPath(pr), rc);
-            }
-            return rc;
+            return completeExecution(root, pr, rc);
         });
         // Surface auth-expiry + registry-unreachable as stable,
         // agent-parseable banners so the skill-manager-skill wrapper can
         // relay them verbatim to the user. Anything else falls through
         // to picocli's default handler (full stack trace), which is the
         // right diagnostic for unexpected failures.
-        cmd.setExecutionExceptionHandler((ex, c, pr) -> {
-            AuthenticationRequiredException auth = unwrapCause(ex, AuthenticationRequiredException.class);
-            if (auth != null) return printAuthBanner(auth.getMessage());
-            RegistryUnavailableException unreachable =
-                    unwrapCause(ex, RegistryUnavailableException.class);
-            if (unreachable != null) return printRegistryUnreachableBanner(unreachable);
-            // Match the auth subclass FIRST so its specific banner
-            // wins; the generic GitFetcherException catch below is
-            // the fall-through for every other git-clone failure
-            // (subprocess non-zero, missing git on PATH for SSH,
-            // checkout failure, JGit transport not in the auth set).
-            GitCloneAuthException gitAuth = unwrapCause(ex, GitCloneAuthException.class);
-            if (gitAuth != null) return printGitAuthBanner(gitAuth);
-            GitFetcherException gitErr = unwrapCause(ex, GitFetcherException.class);
-            if (gitErr != null) return printGitFetcherBanner(gitErr);
-            throw ex;
-        });
+        cmd.setExecutionExceptionHandler(SkillManagerCli::handleExecutionException);
         return cmd.execute(args);
+    }
+
+    static int handleExecutionException(Exception ex, CommandLine c, CommandLine.ParseResult pr)
+            throws Exception {
+        AuthenticationRequiredException auth = unwrapCause(ex, AuthenticationRequiredException.class);
+        if (auth != null) {
+            return completeExecution(rootCommand(pr), pr, printAuthBanner(auth.getMessage()));
+        }
+        RegistryUnavailableException unreachable =
+                unwrapCause(ex, RegistryUnavailableException.class);
+        if (unreachable != null) {
+            return completeExecution(rootCommand(pr), pr, printRegistryUnreachableBanner(unreachable));
+        }
+        // Match the auth subclass FIRST so its specific banner
+        // wins; the generic GitFetcherException catch below is
+        // the fall-through for every other git-clone failure
+        // (subprocess non-zero, missing git on PATH for SSH,
+        // checkout failure, JGit transport not in the auth set).
+        GitCloneAuthException gitAuth = unwrapCause(ex, GitCloneAuthException.class);
+        if (gitAuth != null) {
+            return completeExecution(rootCommand(pr), pr, printGitAuthBanner(gitAuth));
+        }
+        GitFetcherException gitErr = unwrapCause(ex, GitFetcherException.class);
+        if (gitErr != null) {
+            return completeExecution(rootCommand(pr), pr, printGitFetcherBanner(gitErr));
+        }
+        throw ex;
+    }
+
+    private static int completeExecution(SkillManagerCli root, CommandLine.ParseResult pr, int rc) {
+        tryPrintOutstandingErrors();
+        if (isAgentContextRequested(root)) {
+            CliAgentContext.emit(System.err, CliAgentContext.commandPath(pr), rc);
+        }
+        return rc;
+    }
+
+    private static SkillManagerCli rootCommand(CommandLine.ParseResult pr) {
+        if (pr == null) return null;
+        Object userObject = pr.commandSpec().root().userObject();
+        return userObject instanceof SkillManagerCli c ? c : null;
     }
 
     @SuppressWarnings("unchecked")
