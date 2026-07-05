@@ -62,7 +62,6 @@ Keep `[skill]` at the bottom. TOML scoping means arrays placed after
 skill_references = [
   "github:owner/base-skill",
   "file:./local-helper",
-  "skill:published-helper@1.2.0",
 ]
 
 [[cli_dependencies]]
@@ -88,6 +87,32 @@ Supported top-level sections:
   `references/coords-and-distribution.md`. Add one only when the
   referenced unit must be installed transitively; markdown
   `skill-imports` alone are semantic links to installed units.
+
+  **Always use a git coord — `github:owner/repo` (or `git+https://…`,
+  `file:…`). Never use `skill:name`.** There is **no registry configured**
+  in this environment, so `skill:name` (a registry/name lookup) has no way
+  to resolve — it will fail and abort the whole install. A transitive
+  reference is fetched and installed before the top-level install commits,
+  so it must point at bytes the resolver can clone. Git coords always
+  resolve; registry-name coords are simply not an option here.
+
+  **Find the coord with `gh repo list`, don't guess it.** The coord is the
+  **repo**, not the installed `[skill].name` — the resolver clones the repo
+  root and reads the name from there, and the two often differ. List the
+  owner's repos to get the exact repo name, then comment the mapping so the
+  next author isn't misled:
+
+  ```bash
+  gh repo list <owner> --limit 400   # find the repo that hosts the skill
+  ```
+
+  ```toml
+  skill_references = [
+    "github:owner/test_graph_skill",  # installs skill "test-graph"
+    "github:owner/tla-spec-dev",      # installs skill "spec-double-compiler"
+    "github:owner/deploy-cdc",        # installs skill "deploy-helm"
+  ]
+  ```
 - `[[cli_dependencies]]`: CLI tools installed into
   `$SKILL_MANAGER_HOME/bin/cli/`. See `references/dependencies.md`.
 - `[[mcp_dependencies]]`: MCP servers registered with the virtual

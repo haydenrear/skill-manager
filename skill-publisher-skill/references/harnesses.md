@@ -41,14 +41,20 @@ name = "code-reviewer"
 version = "0.1.0"
 description = "Review profile for repo work."
 
+# units/docs use git coords (github:owner/repo, git+…, file:…). Never use
+# skill:/plugin:/doc:/harness: name coords — no registry is configured here,
+# so they cannot resolve. Find repos with `gh repo list <owner>`; the repo
+# name is usually not the installed skill/plugin name.
 units = [
-  "skill:reviewer",
-  "plugin:repo-tools",
+  "github:owner/reviewer-skill",
+  "github:owner/repo-tools-plugin",
 ]
 
 docs = [
-  "doc:team-prompts/review-stance",
+  "github:owner/team-prompts",
 ]
+# To select one source of an already-installed doc-repo, `doc:<repo>/<id>`
+# is fine — it targets the installed unit, not a registry lookup.
 
 [[mcp_tools]]
 server = "repo-mcp"

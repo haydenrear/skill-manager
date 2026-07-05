@@ -45,6 +45,11 @@ an already-installed or separately bundled unit. For plugins, put real
 install-time references on the contained skill that needs the dependency
 or at plugin level when the whole plugin owns that dependency.
 
+The units installed during onboarding — `skill-manager`,
+`skill-publisher`, and `skill-dev` — are always present, so imports that
+point at them never need a `skill_references` entry. See skill-manager
+`references/skill-imports.md` for the canonical rule.
+
 For doc-repos, imports are valid in any declared source markdown, but
 doc-repo manifests do not currently carry transitive references. Make
 sure imported units are already installed or composed by the harness

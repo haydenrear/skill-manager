@@ -117,11 +117,13 @@ name = "my-plugin"                   # MUST match plugin.json
 version = "0.1.0"                    # MUST match plugin.json
 description = "Short blurb."
 
-# Plugin-level references — apply to the whole bundle.
+# Plugin-level references — apply to the whole bundle. Use git coords
+# (github:owner/repo, git+…, file:…). Never use skill:/plugin: name coords:
+# no registry is configured here, so they cannot resolve. Find the repo with
+# `gh repo list <owner>` — the repo name is usually not the installed name.
 references = [
-    "skill:some-published-skill@1.2.0",
-    "file:./shared-helper-skill",
     "github:owner/utility-skill",
+    "file:./shared-helper-skill",
 ]
 
 # Plugin-level CLI deps — installed once, regardless of which contained

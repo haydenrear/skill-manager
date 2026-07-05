@@ -21,8 +21,11 @@ The main job:
 3. Author the unit-specific manifest.
 4. Validate install and any projection behavior (`bind` or
    `harness instantiate`).
-5. Push the unit as a git repo. Registry publish is optional metadata
-   for supported shapes, not the primary distribution path.
+5. Distribute it: create a GitHub repo with a `LICENSE`, push, and
+   install the durable copy from that git source — not from a local
+   `file://` path. Favor this unless the user asks otherwise. Registry
+   publish is optional metadata for supported shapes, not the primary
+   distribution path. See `references/coords-and-distribution.md`.
 
 The virtual MCP gateway is in scope: declaring `[[mcp_dependencies]]` in
 a skill/plugin manifest is how an MCP server becomes registered. Running
@@ -117,7 +120,8 @@ cp -r <skill-publisher-skill>/examples/harness <my-harness>
 4. Use `references/coords-and-distribution.md` when adding references or
    deciding between `github:`, `git+`, `file:`, and registry/name coords.
 5. Use `references/dependencies.md` when adding CLI or MCP deps.
-6. Validate locally from outside the source directory:
+6. Validate locally from outside the source directory. A `file://`
+   install here is for dry-run/validation only, not the durable copy:
 
 ```bash
 skill-manager install file:///abs/path/to/unit --dry-run
@@ -125,6 +129,12 @@ skill-manager install file:///abs/path/to/unit --yes
 skill-manager show <name>
 skill-manager list
 ```
+
+7. For the durable install, create a GitHub repo with a `LICENSE`,
+   push, and install from `github:owner/repo`. Favor this over leaving a
+   `file://` install unless the user asks for a local-only install. The
+   default publishing model lives in
+   `references/coords-and-distribution.md`.
 
 Extra validation:
 

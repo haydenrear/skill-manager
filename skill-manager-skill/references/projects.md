@@ -1,3 +1,11 @@
+---
+skill-imports:
+  - unit: skill-publisher
+    path: references/coords-and-distribution.md
+    reason: Project-manifest unit refs use the same coord grammar as skill_references; the git-coord-only rule (no registry configured) is stated once there.
+    section: coord-forms
+---
+
 # Skill Projects
 
 Use this reference when a repository contains `skill-project.toml` or
@@ -10,6 +18,16 @@ A skill project manifest is portable intent for one repository. It can
 declare skills, plugins, doc-repos, harnesses, envs, libs, CLI deps, and
 MCP deps. The generated files under the checkout are realized state, not
 the source of truth.
+
+Unit references in the manifest (skills, plugins, doc-repos, harnesses)
+are resolved transitively at `project resolve` time, exactly like
+`skill_references`. Use **git coords only** (`github:owner/repo`,
+`git+…`, `file:…`); registry-name coords such as `skill:name` cannot
+resolve because no registry is configured, and the coord names the repo,
+not the installed unit — find it with `gh repo list <owner>`. The rule
+and rationale live once in skill-publisher's
+`references/coords-and-distribution.md` (imported above); do not restate
+it here.
 
 Project resolution also treats the checkout as a harness descriptor:
 

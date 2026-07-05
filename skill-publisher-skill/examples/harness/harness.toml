@@ -8,19 +8,21 @@ description = "Minimum example harness composing a skill, plugin, and doc-repo."
 units = []
 docs = []
 
-# Example composition refs:
+# Example composition refs. Use git coords (github:owner/repo, git+…, file:…).
+# Never skill:/plugin:/harness: name coords — no registry is configured here,
+# so they cannot resolve. Find repos with `gh repo list <owner>`; the repo
+# name is usually not the installed skill/plugin name.
 # units = [
-#   "skill:reviewer",
-#   "plugin:repo-tools",
 #   "github:owner/reviewer-skill",
 #   "git+https://github.com/owner/repo-tools-plugin.git#main",
 #   "file:///abs/path/to/local-skill",
 # ]
 #
 # docs = [
-#   "doc:team-prompts/review-stance",
 #   "github:owner/team-prompts-doc-repo",
 #   "file:///abs/path/to/local-doc-repo",
+#   # doc:<repo>/<id> is fine to select a source of an ALREADY-INSTALLED doc-repo:
+#   "doc:team-prompts/review-stance",
 # ]
 
 [[mcp_tools]]

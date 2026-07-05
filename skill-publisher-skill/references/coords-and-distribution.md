@@ -1,21 +1,30 @@
 # Coordinates and distribution
 
-Skill-manager units are usually distributed as git repositories. The
-registry is metadata/search, not the source of bytes for the normal
-flow.
-
 ## Source of truth
 
-Recommended publishing model:
+Units are distributed as git repositories. The registry is
+metadata/search, not the source of bytes for the normal flow.
+
+Default publishing model — favor this unless the user asks for
+something different:
 
 1. Put exactly one installable unit at the git repo root.
-2. Commit the unit files.
-3. Push to GitHub or another git host.
-4. Install with `skill-manager install github:owner/repo`,
-   `skill-manager install git+https://...`, `skill-manager install
-   git+ssh://...`, or a local path during development.
-5. Optionally publish metadata to a registry for search/discovery when
+2. Add a `LICENSE` file so the unit can be shared and reused.
+3. Commit the unit files.
+4. Create a GitHub repository (or another git host) and push.
+5. Install the durable copy from the pushed git source:
+   `skill-manager install github:owner/repo`,
+   `skill-manager install git+https://...`, or
+   `skill-manager install git+ssh://...`.
+6. Optionally publish metadata to a registry for search/discovery when
    that unit kind is supported.
+
+Do not leave a `file://` install as the published result. A
+`file:///abs/path` install is for local dry-run and validation only
+(see "Minimal validation" in `references/scaffolding.md`); the copy a
+user actually keeps should resolve to a pushed git source so `sync`,
+provenance, and sharing all work. Only fall back to a file-only or
+local install when the user explicitly asks for one.
 
 The root of the repo must contain the marker for the unit kind:
 
@@ -46,15 +55,28 @@ references.
 | `file:///abs/path/to/unit` | Local absolute path. |
 | `file:./relative/path` | Local path relative to the referencing unit's root when used transitively. |
 | `./relative/path` / `../relative/path` | Local path shorthand. |
-| `skill:name` | Kind-pinned registry/name lookup for a skill. |
-| `plugin:name` | Kind-pinned registry/name lookup for a plugin. |
+| `skill:name` | Kind-pinned registry/name lookup for a skill. **Registry-only — unavailable here.** |
+| `plugin:name` | Kind-pinned registry/name lookup for a plugin. **Registry-only — unavailable here.** |
 | `doc:name` | Installed/registry doc-repo coord; bindable after install. |
-| `doc:name/source-id` | One doc-repo source sub-element. |
-| `harness:name` | Harness template coord. |
-| `name` / `name@version` | Bare registry/name lookup; kind inferred by registry metadata. |
+| `doc:name/source-id` | One doc-repo source sub-element of an already-installed doc-repo. |
+| `harness:name` | Harness template coord. **Registry-only — unavailable here.** |
+| `name` / `name@version` | Bare registry/name lookup; kind inferred by registry metadata. **Registry-only — unavailable here.** |
 
-Prefer direct git coords (`github:` / `git+...`) for distribution unless
-you specifically need registry search.
+**No registry is configured in this environment.** Any coord that
+resolves through a registry — `skill:name`, `plugin:name`, `harness:name`,
+bare `name`/`name@version` — has nothing to resolve against and will fail
+the install. **Always use git coords (`github:owner/repo`, `git+...`,
+`file:...`)** for both distribution and transitive references. The only
+name-coord that is safe is `doc:<repo>/<id>` selecting a source of a
+doc-repo that is *already installed* — that targets the installed unit,
+not the registry.
+
+Find the right `github:` coord with the GitHub CLI rather than guessing —
+the repo name is usually not the installed unit name:
+
+```bash
+gh repo list <owner> --limit 400
+```
 
 Manifest references are install-time dependencies. They are separate
 from markdown `skill-imports`, which are semantic links to a file inside
@@ -63,23 +85,39 @@ mirror a markdown import.
 
 ## References in manifests
 
-Skills use `skill_references`:
+Skills use `skill_references`. Always use git coords (`github:owner/repo`,
+`git+…`, `file:…`) for transitive deps. **Never `skill:name`** — there is
+no registry configured, so it cannot resolve (see the caution below):
 
 ```toml
 skill_references = [
   "github:owner/base-skill",
   "git+ssh://git@github.com/org/private-skill.git#main",
   "file:./local-helper",
-  "skill:published-helper@1.2.0",
 ]
 ```
+
+> **Transitive resolution caution.** A `skill_reference` is cloned and
+> installed *before* the top-level install commits, so it must point at
+> fetchable bytes. Two things bite authors:
+>
+> 1. **`skill:name` needs a registry, and none is configured here.** It is
+>    a registry/name lookup, not an "already installed locally" lookup, so
+>    it has nothing to resolve against and the install aborts. Never use it.
+>    Git coords (`github:owner/repo`) always resolve — use them.
+> 2. **The coord is the repo, not the `[skill].name`.** The resolver
+>    reads the unit kind and name from the *repo root*, and the repo is
+>    frequently named differently from the skill it installs (e.g.
+>    `github:owner/tla-spec-dev` installs skill `spec-double-compiler`).
+>    Verify the repo with `gh repo list <owner>` and comment the mapping
+>    next to each coord.
 
 Plugins use `references` in `skill-manager-plugin.toml`:
 
 ```toml
 references = [
   "github:owner/shared-skill",
-  "plugin:shared-plugin",
+  "github:owner/shared-plugin-repo",
 ]
 ```
 

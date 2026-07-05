@@ -1,8 +1,11 @@
 # Plugin-level references apply to the whole bundle. Prefer contained
 # skill manifests for deps that only one contained skill needs.
+# Use git coords (github:owner/repo). Never skill:/plugin: name coords —
+# no registry is configured, so they cannot resolve. Find the repo with
+# `gh repo list <owner>` (repo name is usually not the installed name).
 references = [
   # "github:owner/shared-skill",
-  # "plugin:shared-plugin",
+  # "github:owner/shared-plugin-repo",
 ]
 
 # Shared CLI dependency example.

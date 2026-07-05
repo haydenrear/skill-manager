@@ -54,6 +54,15 @@ that owns the dependency. Doc-repos and harnesses may import markdown
 from any installed unit; their install-time composition is handled by
 the unit or harness manifest.
 
+## Onboarding-bundled units
+
+The units installed during onboarding — `skill-manager`,
+`skill-publisher`, and `skill-dev` — are always present in the store
+once a user has onboarded. A markdown `skill-imports` edge that points at
+one of them never needs a matching `skill_references` entry in the
+importing unit's TOML; the target is guaranteed installed. Reserve
+`skill_references` for units that must be fetched transitively.
+
 ## Validation
 
 Install, publish, and sync validate every markdown file under the unit
