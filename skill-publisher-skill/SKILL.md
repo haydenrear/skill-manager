@@ -216,9 +216,12 @@ Notes that trip agents up:
   registry caution in `references/coords-and-distribution.md`.
 - **Never edit the store copy in place.** The next sync overwrites it,
   and its provenance no longer matches `origin`.
-- **Frontmatter changes need a fresh agent session.** Harnesses read
-  `name`/`description` when a session starts; a mid-session sync does
-  not retrigger discovery for the current session.
+- **Sync re-projects the agent symlinks.** A successful sync reports
+  `✓ claude: synced <unit>` per configured agent, which is how the new
+  frontmatter reaches each agent's skill directory. Claude Code re-reads
+  a changed `description` in the running session; other agents may cache
+  the skill list until restart. If a description change does not seem to
+  take, restart the session before suspecting the manifest.
 
 To iterate without pushing on every keystroke, use a working-tree sync
 (`skill-manager sync <unit> --from <dir> --merge --yes`) or the
