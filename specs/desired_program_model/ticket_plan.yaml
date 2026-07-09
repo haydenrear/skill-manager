@@ -1,0 +1,176 @@
+# Desired program model ticket plan for the skill-manager venv workflow.
+# Keep synchronized with spec_manifest.yaml status.
+version: 1
+name: skill-manager-venv
+updated: '2026-07-03'
+purpose: "Make skill versions first-class and project-scoped: a content-addressed skill store (skills/<name>/<sha>/), per-project version pins with an ancestry-or-fail collision rule, a pip-venv-style recursive env overlay activated from skill-project.toml / skill-manager.toml, agent-CLI shims (claude / codex / gemini rerouted with SKILL_MANAGER_HOME / CLAUDE_CONFIG_DIR / CODEX_HOME), and tool-call hook materialization so intercepted actions stay visible to the agent (ticket/env-overlay.md, ticket/versioning.md)."
+
+planning_rules:
+  current_model_rule: Update specs/current after each production slice lands as a whole-program working copy of specs/program_model, not a ticket projection.
+  unit_validation_rule: Run current-model TLC and adapter/unit tests before adding graph execution.
+  graph_rule: Add graph or integration nodes only after current-model validation passes.
+  semantic_model_rule: Do not add test graph nodes, pytest jobs, CI workflow steps, integration harnesses, or validation scripts as TLA+ program state/actions.
+  evidence_rule: Record tests and graph runs as evidence for semantic program actions in manifests or ticket status.
+  desired_sync_rule: Update this file and spec_manifest.yaml whenever scope, order, acceptance checks, or status changes.
+  promotion_rule: When specs/current equals specs/desired_program_model, promote the converged model to specs/program_model.
+
+status:
+  workflow: ticket
+  active_ticket: SMVENV-001
+  active_ticket_title: "Content-addressed skill store: skills/<name>/<sha>/ plus a moving latest pointer"
+  desired_module: Internal
+  phase: planning
+  desired_model_validation:
+    - "run_tlc.sh Internal.tla InternalVenvCases.cfg (52,369 distinct states, no violations, 2026-07-03)"
+    - "run_tlc.sh External.tla External.cfg over the extended model, incl. the strengthened RunProjectLibsResolve guard (no violations, 2026-07-03)"
+    - "all five pre-existing internal slice configs still pass over the extended model (2026-07-03)"
+    - "pytest specs/desired_program_model/tests (16 passed, 2026-07-03)"
+
+service_catalog:
+  existing_boundaries:
+    - skill-manager CLI store (install / sync / remove; one mutable copy per unit under SKILL_MANAGER_HOME/skills/<name>)
+    - registry server (authenticate / publish / search)
+    - virtual MCP gateway (catalog, deployments, progressive disclosure)
+    - project model (skill-project.toml registration, resolution, env/lib materialization, child homes, profiles)
+    - agent homes (claude / codex / gemini projections)
+  desired_boundaries:
+    - content-addressed store skills/<name>/<sha>/ recorded per installed unit; the global SKILL_MANAGER_HOME surfaces only the moving latest pointer
+    - per-project version pins (skill-project.toml "#<sha>" / "$<tag>" coordinates) with the ancestry-or-fail collision rule across projects
+    - venv activation as a recursive parent-child env overlay (project .skill-manager overrides the parent home, previous bin retained, deactivate restores)
+    - agent-CLI shims that reroute claude / codex / gemini through the venv with SKILL_MANAGER_HOME / CLAUDE_CONFIG_DIR / CODEX_HOME exports
+    - "tool-call hook materialization: units pinned by the activating project contribute hooks that run on intercepted CLI calls and stay visible to the agent"
+  adapter_boundaries:
+    - "spec-unit: extend spec_case_adapters.StoreModelCaseAdapter (executable double) with the five venv transitions"
+    - "testgraph: extend adapters.SkillManagerCliCommandAdapter dispatch plus the filesystem state projector with store/pin/venv observations"
+  known_gaps:
+    - symbolic-link read / copy-on-write worktree semantics for shared skill repos (env-overlay.md) are deliberately deferred; not modeled until the venv primitive lands
+    - generic filesystem interception for agent sharing is out of scope for this workflow
+
+tickets:
+  - id: SMVENV-001
+    title: "Content-addressed skill store: skills/<name>/<sha>/ plus a moving latest pointer"
+    status: next
+    depends_on: []
+    objective: "Every install/sync records the unit's content under skills/<name>/<sha>/ (git hash or tag-resolved hash). The store is an immutable cache: removing a unit never deletes stored shas, and the global SKILL_MANAGER_HOME continues to surface exactly one 'latest' per unit, now as a pointer into the store."
+    desired_actions:
+      - StoreUnitVersion
+      - RunStoreUnitVersion
+    implementation_scope:
+      - SkillManager.java store/fetch/installed-record paths (content-addressed layout + latest pointer)
+      - lockfile / installed.json records gain the resolved sha
+    current_increment:
+      model_state:
+        - project_model.store_versions
+        - project_model.store_latest
+      model_actions:
+        - "StoreUnitVersion (guard: unit installed; effects: store entry union, latest pointer replacement)"
+      adapters:
+        - StoreModelCaseAdapter._do_store_unit_version
+        - external adapter dispatch + projector coverage for the store layout
+      unit_tests:
+        - uv run --with pytest,pyyaml python3 -m pytest specs/current/tests -q
+      graph_after_unit_pass:
+        - specExternalPhase (regenerated external cases include RunStoreUnitVersion)
+    acceptance:
+      assertions:
+        - VenvStoreVersionsAreContentAddressed, VenvStoreLatestIsStored, VenvStoreLatestUniquePerUnit hold in TLC over the current model.
+        - Installing the same unit at two shas leaves both store entries and exactly one latest pointer.
+        - RemoveUnit leaves store entries intact (cache semantics).
+      evidence: []
+
+  - id: SMVENV-002
+    title: "Per-project version pins with the ancestry-or-fail collision rule"
+    status: planned
+    depends_on: [SMVENV-001]
+    objective: "skill-project.toml supports one pinned sha per unit. A pin loads that sha into the project's resolution. Cross-project pins of the same unit must be ancestry-related (one sha an ancestor of the other, tags resolved to hashes); otherwise the pin fails with PIN_ANCESTRY_CONFLICT and the conflict is recorded. Re-pinning within one project replaces that project's pin."
+    desired_actions:
+      - PinProjectUnitVersion
+      - RunPinUnitVersion
+      - RunPinConflictingUnitVersion
+    implementation_scope:
+      - skill-project.toml parsing ("#<sha>" / "$<tag>" suffixes on unit coordinates)
+      - project resolve/lock paths (pin-aware resolution; conflict reporting)
+    current_increment:
+      model_state:
+        - project_model.version_pins
+        - project_model.pin_conflicts
+      model_actions:
+        - "PinProjectUnitVersion (guards: registered project, stored version, ancestry-or-fail; effects: pin replacement, conflict record/clear)"
+      adapters:
+        - StoreModelCaseAdapter._do_pin_project_unit_version
+        - external adapter dispatch for pin + conflicting-pin command paths
+      unit_tests:
+        - uv run --with pytest,pyyaml python3 -m pytest specs/current/tests -q
+      graph_after_unit_pass:
+        - specExternalPhase
+    acceptance:
+      assertions:
+        - VenvPinsAreStoredAndRegistered, VenvPinsUniquePerProjectUnit, VenvPinsAncestryCoherent hold in TLC.
+        - Pinning ShaC against an existing ShaA/ShaB pin of the same unit rejects with PIN_ANCESTRY_CONFLICT and records the conflict.
+        - A rejected pin leaves the previous pin intact (no partial state).
+      evidence: []
+
+  - id: SMVENV-003
+    title: "Venv activation: recursive parent-child env overlay with agent-CLI shims"
+    status: planned
+    depends_on: [SMVENV-002]
+    objective: "A project with a skill-manager venv activates a project-local .skill-manager home that overlays the parent home pip-venv style: the skill-manager bin and agent CLIs are overridden while the previous PATH entries are retained, and deactivation restores the parent. Shims for claude / codex / gemini reroute the agent with SKILL_MANAGER_HOME, CLAUDE_CONFIG_DIR, and CODEX_HOME pointed at the venv home so pinned versions win over global config. Overlays nest: a child venv's parent may itself be a venv."
+    desired_actions:
+      - ActivateProjectVenv
+      - MaterializeVenvAgentShims
+      - RunActivateProjectVenv
+      - RunMaterializeVenvAgentShims
+    implementation_scope:
+      - venv activate/deactivate CLI surface + project-local .skill-manager layout
+      - shim generation for claude / codex / gemini (env exports, previous bin retained)
+    current_increment:
+      model_state:
+        - project_model.venv_activations
+        - project_model.venv_overlay_parents
+        - project_model.venv_agent_shims
+      model_actions:
+        - "ActivateProjectVenv (guards: registered project, declared child-home edge, known non-self parent)"
+        - "MaterializeVenvAgentShims (guard: activated venv; effects: one shim per agent)"
+      adapters:
+        - StoreModelCaseAdapter transitions for activation + shims
+        - external adapter dispatch + projector coverage for shim files/exports
+      unit_tests:
+        - uv run --with pytest,pyyaml python3 -m pytest specs/current/tests -q
+      graph_after_unit_pass:
+        - specExternalPhase
+    acceptance:
+      assertions:
+        - VenvActivationsAreDeclaredAndRegistered, VenvOverlayParentsAreKnownAndNotSelf, VenvAgentShimsComeFromActivations hold in TLC.
+        - Invoking a shimmed agent CLI inside the venv resolves the pinned skill versions; outside it resolves the global latest.
+        - Deactivation restores the parent home resolution (previous bin retained).
+      evidence: []
+
+  - id: SMVENV-004
+    title: "Tool-call hook materialization in activated venvs"
+    status: planned
+    depends_on: [SMVENV-003]
+    objective: "Units pinned by an activating project contribute tool-call hooks. Activation materializes those hooks into the venv so intercepted CLI/file-system/MCP interactions can run declared actions, and those actions stay visible to the agent (push model). Hooks never materialize into a home without an active venv."
+    desired_actions:
+      - MaterializeVenvHooks
+      - RunMaterializeVenvHooks
+    implementation_scope:
+      - hook declaration surface in unit manifests (skill-manager.toml)
+      - hook materialization into the venv home + agent-visible hook records
+    current_increment:
+      model_state:
+        - project_model.venv_hook_materializations
+      model_actions:
+        - "MaterializeVenvHooks (guard: activated venv; effects: hooks from pinned units of activating projects)"
+      adapters:
+        - StoreModelCaseAdapter._do_materialize_venv_hooks
+        - external adapter dispatch + projector coverage for materialized hooks
+      unit_tests:
+        - uv run --with pytest,pyyaml python3 -m pytest specs/current/tests -q
+      graph_after_unit_pass:
+        - specExternalPhase
+    acceptance:
+      assertions:
+        - VenvHooksComeFromPinnedUnits holds in TLC.
+        - A hook declared by a pinned unit is materialized on activation; a unit without pins contributes none.
+        - Hook execution records are visible to the agent context surface.
+      evidence: []

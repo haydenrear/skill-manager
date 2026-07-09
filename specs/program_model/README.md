@@ -10,13 +10,23 @@ converged model back here when the workflow closes.
 The accepted model includes the progressive-disclosure CLI workflow promoted on
 2026-06-28:
 
-- `MC.cfg` is the bounded TLC and case-generation config for the CLI disclosure
-  contract. It is intentionally small enough for the ticket/spec unit loop.
+The model now uses the Core/Internal/External view layout:
+
+- `Core.tla` holds the shared constants and constant-level helpers (domain
+  sets, dependency edges, CLI catalogs, closure/selector functions).
+- `Internal.tla` is the accepted whole-program state machine (CLI store,
+  gateway, registry server, project model, and CLI disclosure), including the
+  CLI command catalog, aliases, workflow links, root-help scope, command-help
+  coverage, bundled skill documentation coverage, and opt-in agent-context
+  coverage. `External.tla` (public harness-drivable view) arrives in a later
+  phase.
+- `Internal.cfg` is the whole-program long-running TLC config; `MC.cfg` is a
+  compatibility alias that mirrors it.
+- `Internal*Cases.cfg` are bounded feature-slice case configs (CLI store,
+  gateway, server registry, project, CLI disclosure), each constrained by a
+  matching `*CaseEnvelope` in `Internal.tla`.
 - `MC_program_promotion.cfg` preserves the broader whole-program TLC config for
   promotion-level checks.
-- `SkillManager.tla` models the CLI command catalog, aliases, workflow links,
-  root-help scope, command-help coverage, bundled skill documentation coverage,
-  and opt-in agent-context coverage.
 - `production_adapters.py`, `case_adapters.toml`, and `tests/` validate the
   accepted model against production CLI metadata, help hooks, bundled skill
   docs, and agent-context hooks.

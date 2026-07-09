@@ -1,0 +1,338 @@
+# Action metadata for TLC state-graph case generation.
+# layer: internal actions generate spec-unit cases; external actions (added by
+# the External view) generate Test Graph cases.
+actions:
+  ServerAuthenticate:
+    layer: internal
+    controllability: unit_direct
+    generates:
+      - spec_unit
+  ServerPublishTarball:
+    layer: internal
+    controllability: unit_direct
+    generates:
+      - spec_unit
+  ServerSearch:
+    layer: internal
+    controllability: unit_direct
+    generates:
+      - spec_unit
+  ConfigureRegistry:
+    layer: internal
+    controllability: unit_direct
+    generates:
+      - spec_unit
+  EnsureGateway:
+    layer: internal
+    controllability: unit_direct
+    generates:
+      - spec_unit
+  InstallUnit:
+    layer: internal
+    controllability: unit_direct
+    generates:
+      - spec_unit
+  InstallUnitForceScripts:
+    layer: internal
+    controllability: unit_direct
+    generates:
+      - spec_unit
+  SyncUnit:
+    layer: internal
+    controllability: unit_direct
+    generates:
+      - spec_unit
+  SyncUnitForceScripts:
+    layer: internal
+    controllability: unit_direct
+    generates:
+      - spec_unit
+  RemoveUnit:
+    layer: internal
+    controllability: unit_direct
+    generates:
+      - spec_unit
+  BindDocRepo:
+    layer: internal
+    controllability: unit_direct
+    generates:
+      - spec_unit
+  SyncDocRepo:
+    layer: internal
+    controllability: unit_direct
+    generates:
+      - spec_unit
+  SyncHarness:
+    layer: internal
+    controllability: unit_direct
+    generates:
+      - spec_unit
+  RunEffectProgramFailure:
+    layer: internal
+    controllability: unit_direct
+    generates:
+      - spec_unit
+  RunAlwaysAfterCleanup:
+    layer: internal
+    controllability: unit_direct
+    generates:
+      - spec_unit
+  RegisterGatewayServer:
+    layer: internal
+    controllability: unit_direct
+    generates:
+      - spec_unit
+  DeployGatewayGlobal:
+    layer: internal
+    controllability: unit_direct
+    generates:
+      - spec_unit
+  DeployGatewaySession:
+    layer: internal
+    controllability: unit_direct
+    generates:
+      - spec_unit
+  DescribeGatewayTool:
+    layer: internal
+    controllability: unit_direct
+    generates:
+      - spec_unit
+  InvokeGatewayTool:
+    layer: internal
+    controllability: unit_direct
+    generates:
+      - spec_unit
+  RegisterProjectManifest:
+    layer: internal
+    controllability: unit_direct
+    generates:
+      - spec_unit
+  ResolveProjectDependencies:
+    layer: internal
+    controllability: unit_direct
+    generates:
+      - spec_unit
+  MaterializeProjectEnv:
+    layer: internal
+    controllability: unit_direct
+    generates:
+      - spec_unit
+  ResolveProjectLibs:
+    layer: internal
+    controllability: unit_direct
+    generates:
+      - spec_unit
+  InstantiateChildHomeFromHarness:
+    layer: internal
+    controllability: unit_direct
+    generates:
+      - spec_unit
+  ScaffoldProjectChildHome:
+    layer: internal
+    controllability: unit_direct
+    generates:
+      - spec_unit
+  ResolveProjectProfile:
+    layer: internal
+    controllability: unit_direct
+    generates:
+      - spec_unit
+  SyncClaimingProjectChildHomes:
+    layer: internal
+    controllability: unit_direct
+    generates:
+      - spec_unit
+  RenderProgressiveRootHelp:
+    layer: internal
+    controllability: unit_direct
+    generates:
+      - spec_unit
+  RenderInstallCommandHelp:
+    layer: internal
+    controllability: unit_direct
+    generates:
+      - spec_unit
+  RenderSyncCommandHelp:
+    layer: internal
+    controllability: unit_direct
+    generates:
+      - spec_unit
+  RenderProjectProfilesListHelp:
+    layer: internal
+    controllability: unit_direct
+    generates:
+      - spec_unit
+  ExposeInstallLocalUnitWorkflowDocs:
+    layer: internal
+    controllability: unit_direct
+    generates:
+      - spec_unit
+  ExposeSkillScriptsWorkflowDocs:
+    layer: internal
+    controllability: unit_direct
+    generates:
+      - spec_unit
+  ExposeProjectEnvWorkflowDocs:
+    layer: internal
+    controllability: unit_direct
+    generates:
+      - spec_unit
+  EmitSyncOneUnitAgentContext:
+    layer: internal
+    controllability: unit_direct
+    generates:
+      - spec_unit
+  EmitProjectEnvAgentContext:
+    layer: internal
+    controllability: unit_direct
+    generates:
+      - spec_unit
+  StoreUnitVersion:
+    layer: internal
+    controllability: unit_direct
+    generates:
+      - spec_unit
+  SubmitInstallUnit:
+    layer: external
+    controllability: e2e_direct
+    generates:
+      - testgraph
+  SubmitInstallUnitForceScripts:
+    layer: external
+    controllability: e2e_direct
+    generates:
+      - testgraph
+  SubmitSyncUnit:
+    layer: external
+    controllability: e2e_direct
+    generates:
+      - testgraph
+  SubmitSyncUnitForceScripts:
+    layer: external
+    controllability: e2e_direct
+    generates:
+      - testgraph
+  SubmitSyncUninstalledUnit:
+    layer: external
+    controllability: e2e_direct
+    generates:
+      - testgraph
+  SubmitRemoveUnit:
+    layer: external
+    controllability: e2e_direct
+    generates:
+      - testgraph
+  SubmitRemoveUnknownUnit:
+    layer: external
+    controllability: e2e_direct
+    generates:
+      - testgraph
+  SubmitBindDocRepo:
+    layer: external
+    controllability: e2e_direct
+    generates:
+      - testgraph
+  SubmitSyncDocRepo:
+    layer: external
+    controllability: e2e_direct
+    generates:
+      - testgraph
+  SubmitSyncUnknownDocRepo:
+    layer: external
+    controllability: e2e_direct
+    generates:
+      - testgraph
+  SubmitSyncHarness:
+    layer: external
+    controllability: e2e_direct
+    generates:
+      - testgraph
+  SubmitPublishTarball:
+    layer: external
+    controllability: e2e_direct
+    generates:
+      - testgraph
+  SubmitPublishUnauthenticated:
+    layer: external
+    controllability: e2e_direct
+    generates:
+      - testgraph
+  SubmitSearchRegistry:
+    layer: external
+    controllability: e2e_direct
+    generates:
+      - testgraph
+  SubmitConfigureRegistry:
+    layer: external
+    controllability: e2e_direct
+    generates:
+      - testgraph
+  SubmitEnsureGateway:
+    layer: external
+    controllability: e2e_direct
+    generates:
+      - testgraph
+  SubmitDeployGatewayGlobal:
+    layer: external
+    controllability: e2e_direct
+    generates:
+      - testgraph
+  SubmitDeployGatewaySession:
+    layer: external
+    controllability: e2e_direct
+    generates:
+      - testgraph
+  SubmitDescribeGatewayTool:
+    layer: external
+    controllability: e2e_direct
+    generates:
+      - testgraph
+  SubmitInvokeGatewayTool:
+    layer: external
+    controllability: e2e_direct
+    generates:
+      - testgraph
+  SubmitInvokeUndisclosedTool:
+    layer: external
+    controllability: e2e_direct
+    generates:
+      - testgraph
+  RunProjectRegister:
+    layer: external
+    controllability: e2e_direct
+    generates:
+      - testgraph
+  RunProjectResolve:
+    layer: external
+    controllability: e2e_direct
+    generates:
+      - testgraph
+  RunProjectEnvMaterialize:
+    layer: external
+    controllability: e2e_direct
+    generates:
+      - testgraph
+  RunProjectLibsResolve:
+    layer: external
+    controllability: e2e_direct
+    generates:
+      - testgraph
+  RunScaffoldProjectChildHome:
+    layer: external
+    controllability: e2e_direct
+    generates:
+      - testgraph
+  RunProjectProfileResolve:
+    layer: external
+    controllability: e2e_direct
+    generates:
+      - testgraph
+  RunStoreUnitVersion:
+    layer: external
+    controllability: e2e_direct
+    generates:
+      - testgraph
+  HiddenInternalProgress:
+    layer: internal
+    controllability: hidden
+    generates: []

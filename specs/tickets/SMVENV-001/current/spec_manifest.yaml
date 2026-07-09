@@ -1,0 +1,122 @@
+module: Core
+package: current_program_cases
+
+status:
+  workflow: ticket
+  active_ticket: SMVENV-001
+  active_ticket_title: "skill-manager venv: pinned skill versions, env overlays, agent shims"
+  relation_to_program_model: starts_equivalent_then_advances_as_slices_land
+  relation_to_desired_program_model: implemented_prefix_of_desired_ticket_plan
+  current_model_rule: whole_program_working_copy_not_ticket_projection
+  test_modeling_rule: do_not_model_tests_or_validation_harnesses_as_program_behavior
+  updated: null
+  current_slice:
+    name: baseline
+    status: scaffolded
+    refines: []
+    implemented_actions: []
+    validation:
+      unit: []
+      tlc: []
+      graph: []
+      evidence: []
+  next:
+    - Fill in whole-program current state fields, actions, invariants, and adapters after the first production slice lands.
+    - Preserve all existing specs/program_model state/actions unless production behavior changes them.
+    - Run TLC and adapter/unit tests before adding graph execution coverage.
+
+source_model:
+  program_model_manifest: ../program_model/spec_manifest.yaml
+  program_model_module: ../program_model/Core.tla
+  desired_ticket_plan: ../desired_program_model/ticket_plan.yaml
+
+case_codegen:
+  style: explicit_transition_cases
+  generation_status: planned
+
+state_fields:
+  project_model.cli_command_catalog:
+    type: set[CommandPath]
+    description: canonical CLI command and subcommand path catalog, including the root command.
+  project_model.cli_command_aliases:
+    type: set[tuple[Alias, CommandPath]]
+    description: user-facing aliases that resolve to canonical command paths.
+  project_model.cli_workflow_catalog:
+    type: set[WorkflowId]
+    description: canonical workflow ids covered by CLI help, agent context, and bundled skills.
+  project_model.cli_workflow_command_links:
+    type: set[tuple[WorkflowId, CommandPath]]
+    description: link from each workflow to at least one CLI command path that starts or inspects it.
+  project_model.cli_root_help_topics:
+    type: set[CommandPath]
+    description: root help topics; deliberately limited to top-level commands for progressive disclosure.
+  project_model.cli_command_help_topics:
+    type: set[CommandPath]
+    description: command paths with dedicated contextual help.
+  project_model.cli_skill_doc_topics:
+    type: set[tuple[SkillDocSurface, WorkflowId]]
+    description: bundled skill documentation coverage by workflow.
+  project_model.cli_agent_context_topics:
+    type: set[WorkflowId]
+    description: workflows that can emit agent-facing context while the CLI is being used.
+actions:
+  RenderProgressiveRootHelp:
+    port: SkillManagerCli.render_progressive_root_help
+    result: CliDisclosureResult
+    description: root CLI help renders the top-level command catalog only.
+  RenderInstallCommandHelp:
+    port: SkillManagerCli.render_command_help
+    result: CliDisclosureResult
+    description: representative install command help transition.
+  RenderSyncCommandHelp:
+    port: SkillManagerCli.render_command_help
+    result: CliDisclosureResult
+    description: representative sync command help transition.
+  RenderProjectProfilesListHelp:
+    port: SkillManagerCli.render_command_help
+    result: CliDisclosureResult
+    description: representative nested command help transition.
+  ExposeInstallLocalUnitWorkflowDocs:
+    port: SkillManagerCli.expose_skill_workflow_docs
+    result: CliDisclosureResult
+    description: representative install workflow documentation transition.
+  ExposeSkillScriptsWorkflowDocs:
+    port: SkillManagerCli.expose_skill_workflow_docs
+    result: CliDisclosureResult
+    description: representative skill-script workflow documentation transition.
+  ExposeProjectEnvWorkflowDocs:
+    port: SkillManagerCli.expose_skill_workflow_docs
+    result: CliDisclosureResult
+    description: representative project-env workflow documentation transition.
+  EmitSyncOneUnitAgentContext:
+    port: SkillManagerCli.emit_agent_workflow_context
+    result: CliDisclosureResult
+    description: representative sync workflow agent-context transition.
+  EmitProjectEnvAgentContext:
+    port: SkillManagerCli.emit_agent_workflow_context
+    result: CliDisclosureResult
+    description: representative project-env workflow agent-context transition.
+invariants:
+  - CliCommandCatalogCoversAllCommands
+  - CliRootHelpStaysProgressive
+  - CliCommandHelpCoversCatalog
+  - CliWorkflowCatalogCoversDesiredWorkflows
+  - CliWorkflowsReferenceCatalogCommands
+  - CliSkillDocsCoverWorkflowCatalog
+  - CliAgentContextCoversWorkflowCatalog
+ports:
+  SkillManagerCli.render_progressive_root_help:
+    kind: cli_help
+    adapter_status: implemented
+  SkillManagerCli.render_command_help:
+    kind: cli_help
+    adapter_status: implemented
+  SkillManagerCli.expose_skill_workflow_docs:
+    kind: docs
+    adapter_status: implemented
+  SkillManagerCli.emit_agent_workflow_context:
+    kind: cli_context
+    adapter_status: implemented
+adapters: case_adapters.toml
+notes:
+  package_from_program_model: skillmanager_program_cases

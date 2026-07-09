@@ -1,0 +1,129 @@
+# Map generated program-model action labels to production adapters.
+
+[adapters.RenderProgressiveRootHelp]
+adapter = "production_adapters:CliHelpAdapter"
+
+[adapters.RenderInstallCommandHelp]
+adapter = "production_adapters:CliHelpAdapter"
+
+[adapters.RenderSyncCommandHelp]
+adapter = "production_adapters:CliHelpAdapter"
+
+[adapters.RenderProjectProfilesListHelp]
+adapter = "production_adapters:CliHelpAdapter"
+
+[adapters.ExposeInstallLocalUnitWorkflowDocs]
+adapter = "production_adapters:CliSkillDocsAdapter"
+
+[adapters.ExposeSkillScriptsWorkflowDocs]
+adapter = "production_adapters:CliSkillDocsAdapter"
+
+[adapters.ExposeProjectEnvWorkflowDocs]
+adapter = "production_adapters:CliSkillDocsAdapter"
+
+[adapters.EmitSyncOneUnitAgentContext]
+adapter = "production_adapters:CliAgentContextAdapter"
+
+[adapters.EmitProjectEnvAgentContext]
+adapter = "production_adapters:CliAgentContextAdapter"
+
+# Non-disclosure internal actions replay against the in-memory store double.
+
+[adapters.ServerAuthenticate]
+adapter = "spec_case_adapters:StoreModelCaseAdapter"
+
+[adapters.ServerPublishTarball]
+adapter = "spec_case_adapters:StoreModelCaseAdapter"
+
+[adapters.ServerSearch]
+adapter = "spec_case_adapters:StoreModelCaseAdapter"
+
+[adapters.ConfigureRegistry]
+adapter = "spec_case_adapters:StoreModelCaseAdapter"
+
+[adapters.EnsureGateway]
+adapter = "spec_case_adapters:StoreModelCaseAdapter"
+
+[adapters.InstallUnit]
+adapter = "spec_case_adapters:StoreModelCaseAdapter"
+
+[adapters.InstallUnitForceScripts]
+adapter = "spec_case_adapters:StoreModelCaseAdapter"
+
+[adapters.SyncUnit]
+adapter = "spec_case_adapters:StoreModelCaseAdapter"
+
+[adapters.SyncUnitForceScripts]
+adapter = "spec_case_adapters:StoreModelCaseAdapter"
+
+[adapters.RemoveUnit]
+adapter = "spec_case_adapters:StoreModelCaseAdapter"
+
+[adapters.BindDocRepo]
+adapter = "spec_case_adapters:StoreModelCaseAdapter"
+
+[adapters.SyncDocRepo]
+adapter = "spec_case_adapters:StoreModelCaseAdapter"
+
+[adapters.SyncHarness]
+adapter = "spec_case_adapters:StoreModelCaseAdapter"
+
+[adapters.RunEffectProgramFailure]
+adapter = "spec_case_adapters:StoreModelCaseAdapter"
+
+[adapters.RunAlwaysAfterCleanup]
+adapter = "spec_case_adapters:StoreModelCaseAdapter"
+
+[adapters.RegisterGatewayServer]
+adapter = "spec_case_adapters:StoreModelCaseAdapter"
+
+[adapters.DeployGatewayGlobal]
+adapter = "spec_case_adapters:StoreModelCaseAdapter"
+
+[adapters.DeployGatewaySession]
+adapter = "spec_case_adapters:StoreModelCaseAdapter"
+
+[adapters.DescribeGatewayTool]
+adapter = "spec_case_adapters:StoreModelCaseAdapter"
+
+[adapters.InvokeGatewayTool]
+adapter = "spec_case_adapters:StoreModelCaseAdapter"
+
+[adapters.RegisterProjectManifest]
+adapter = "spec_case_adapters:StoreModelCaseAdapter"
+
+[adapters.ResolveProjectDependencies]
+adapter = "spec_case_adapters:StoreModelCaseAdapter"
+
+[adapters.MaterializeProjectEnv]
+adapter = "spec_case_adapters:StoreModelCaseAdapter"
+
+[adapters.ResolveProjectLibs]
+adapter = "spec_case_adapters:StoreModelCaseAdapter"
+
+[adapters.InstantiateChildHomeFromHarness]
+adapter = "spec_case_adapters:StoreModelCaseAdapter"
+
+[adapters.ScaffoldProjectChildHome]
+adapter = "spec_case_adapters:StoreModelCaseAdapter"
+
+[adapters.ResolveProjectProfile]
+adapter = "spec_case_adapters:StoreModelCaseAdapter"
+
+[adapters.SyncClaimingProjectChildHomes]
+adapter = "spec_case_adapters:StoreModelCaseAdapter"
+
+[adapters.StoreUnitVersion]
+adapter = "spec_case_adapters:StoreModelCaseAdapter"
+
+[adapters.PinProjectUnitVersion]
+adapter = "spec_case_adapters:StoreModelCaseAdapter"
+
+[adapters.ActivateProjectVenv]
+adapter = "spec_case_adapters:StoreModelCaseAdapter"
+
+[adapters.MaterializeVenvAgentShims]
+adapter = "spec_case_adapters:StoreModelCaseAdapter"
+
+[adapters.MaterializeVenvHooks]
+adapter = "spec_case_adapters:StoreModelCaseAdapter"

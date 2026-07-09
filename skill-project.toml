@@ -1,0 +1,13 @@
+[project]
+name = "skill-manager"
+version = "0.1.0"
+description = "Skill Manager CLI, registry server, and gateway with spec-driven validation."
+
+[skills.spec-double-compiler]
+source = "github:haydenrear/tla-spec-dev"
+
+[skills.test_graph_skill]
+source = "github:haydenrear/test_graph_skill"
+
+[skills.deploy_helm]
+source = "github:haydenrear/deploy-cdc"

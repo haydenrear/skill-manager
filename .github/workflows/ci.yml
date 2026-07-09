@@ -93,6 +93,84 @@ jobs:
       - name: Run pytest
         run: uv run --all-extras pytest -v
 
+  spec-validation:
+    name: spec validation (TLC + spec-unit + pytest)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Install JBang
+        uses: jbangdev/setup-jbang@main
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+
+      # The spec toolchain is the spec-double-compiler skill (public
+      # haydenrear/tla-spec-dev repo; stdlib-only Python) plus tla2tools.jar
+      # from the TLA+ GitHub releases. Local dev installs both through
+      # skill-manager; CI shims them straight onto PATH so this job doesn't
+      # bootstrap a full skill-manager home.
+      - name: Cache tla2tools.jar
+        uses: actions/cache@v4
+        with:
+          path: ~/.tla-spec-dev/tla2tools.jar
+          key: tla2tools-${{ runner.os }}-latest
+
+      - name: Install spec tooling (tlc2 + tla-spec-dev on PATH)
+        run: |
+          set -euo pipefail
+          TOOL_HOME="$HOME/.tla-spec-dev"
+          mkdir -p "$TOOL_HOME/bin"
+          rm -rf "$TOOL_HOME/skill"
+          git clone --depth 1 https://github.com/haydenrear/tla-spec-dev "$TOOL_HOME/skill"
+          if [ ! -f "$TOOL_HOME/tla2tools.jar" ]; then
+            curl -fsSL -o "$TOOL_HOME/tla2tools.jar" \
+              https://github.com/tlaplus/tlaplus/releases/latest/download/tla2tools.jar
+          fi
+          printf '#!/usr/bin/env bash\nexec java -XX:+UseParallelGC -cp "%s" tlc2.TLC "$@"\n' \
+            "$TOOL_HOME/tla2tools.jar" > "$TOOL_HOME/bin/tlc2"
+          printf '#!/usr/bin/env bash\nexec python3 "%s" "$@"\n' \
+            "$TOOL_HOME/skill/scripts/tla_spec_dev.py" > "$TOOL_HOME/bin/tla-spec-dev"
+          chmod +x "$TOOL_HOME/bin/tlc2" "$TOOL_HOME/bin/tla-spec-dev"
+          echo "$TOOL_HOME/bin" >> "$GITHUB_PATH"
+          echo "SPEC_DOUBLE_COMPILER_HOME=$TOOL_HOME/skill" >> "$GITHUB_ENV"
+          "$TOOL_HOME/bin/tlc2" -h >/dev/null 2>&1 || true
+          "$TOOL_HOME/bin/tla-spec-dev" --help >/dev/null
+
+      - name: TLC model check (External + Internal slices)
+        working-directory: specs/program_model
+        run: |
+          set -euo pipefail
+          bash run_tlc.sh External.tla External.cfg
+          for cfg in InternalCliStoreCases InternalGatewayCases \
+                     InternalServerRegistryCases InternalProjectCases \
+                     InternalCliDisclosureCases; do
+            bash run_tlc.sh Internal.tla "$cfg.cfg"
+          done
+
+      - name: Regenerate spec case packages
+        run: |
+          python3 scripts/regenerate_spec_cases.py \
+            --spec-dir specs/program_model --out specs/generated --views both
+
+      - name: Spec-unit tests (tla-spec-dev)
+        run: tla-spec-dev --spec-root specs run spec-unit-tests --target specs/program_model
+
+      - name: Program-model pytest
+        run: uv run --with pytest,pyyaml python3 -m pytest specs/program_model/tests -q
+
   test-graph:
     name: "test-graph: ${{ matrix.graph }}"
     runs-on: ubuntu-latest
@@ -119,13 +197,16 @@ jobs:
           - smoke
           - onboard
           - project-manifest
+          - project-resolve
           - project-smoke
           - project-env
           - project-libs
+          - project-profiles
           - hyper-experiments
           - plugin-smoke
           - doc-smoke
           - harness-smoke
+          - skill-dev-smoke
           - source-tracking
           - git-latest-source-tracking
     env:
@@ -314,6 +395,133 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: diagnostics-${{ matrix.graph }}
+          path: ci-diagnostics/
+          if-no-files-found: ignore
+
+  # Spec-double external phase: replays every External.tla TLC case against
+  # the real CLI inside a branch-scoped k3d cluster provisioned through the
+  # deploy-cdc environment repository (environments/skill-manager,
+  # templates/branch-preview). Runs entirely on the runner — k3d + OpenTofu,
+  # no cloud credentials. Gated like deploy-cdc gates its own
+  # computeqSpecExternalPhase: the graph is skipped (with a warning) when the
+  # environment repository isn't reachable or doesn't carry the template yet —
+  # deploy-cdc is private, so fork PRs (no token) skip here instead of failing,
+  # and the job stays green until deploy-cdc PR #7 lands the template on main.
+  # No destroy step: the runner (and its k3d cluster) is ephemeral.
+  test-graph-spec-external:
+    name: "test-graph: specExternalPhase (k3d)"
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      # Overridable so CI can point at a fork/branch of the environment
+      # repository before deploy-cdc PR #7 merges; defaults to GitHub main.
+      TEST_GRAPH_SM_ENV_SOURCE: ${{ vars.TEST_GRAPH_SM_ENV_SOURCE || 'https://github.com/haydenrear/deploy-cdc' }}
+      SKILL_MANAGER_GITHUB_TOKEN: ${{ secrets.SKILL_MANAGER_GITHUB_TOKEN || secrets.GH_PAT || secrets.PERSONAL_ACCESS_TOKEN || '' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Install JBang
+        uses: jbangdev/setup-jbang@main
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+            test_graph/.gradle
+          key: gradle-${{ runner.os }}-${{ hashFiles('test_graph/**/*.gradle*', 'test_graph/gradle/wrapper/gradle-wrapper.properties') }}
+          restore-keys: gradle-${{ runner.os }}-
+
+      - name: Cache JBang
+        uses: actions/cache@v4
+        with:
+          path: ~/.jbang
+          key: jbang-${{ runner.os }}-${{ hashFiles('**/*.java') }}
+          restore-keys: jbang-${{ runner.os }}-
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v4
+
+      - name: Set up OpenTofu
+        uses: opentofu/setup-opentofu@v1
+
+      - name: Install k3d
+        run: curl -fsSL https://raw.githubusercontent.com/k3d-io/k3d/main/install.sh | bash
+
+      - name: Configure git auth for the environment repository
+        if: env.SKILL_MANAGER_GITHUB_TOKEN != ''
+        run: |
+          git config --global url."https://x-access-token:${SKILL_MANAGER_GITHUB_TOKEN}@github.com/".insteadOf "https://github.com/"
+
+      # The graph needs environments/skill-manager/templates/branch-preview
+      # from the environment repository. Probe instead of failing: fork PRs
+      # have no token for the private repo, and the template only exists on
+      # main after deploy-cdc PR #7 merges.
+      - name: Check environment repository availability
+        id: env-repo
+        run: |
+          set +e
+          probe_dir="$(mktemp -d)"
+          git clone --depth 1 "$TEST_GRAPH_SM_ENV_SOURCE" "$probe_dir/env-repo" 2>&1 | tail -3
+          if [ -d "$probe_dir/env-repo/environments/skill-manager/templates/branch-preview" ]; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::Skipping specExternalPhase: environment repository $TEST_GRAPH_SM_ENV_SOURCE is unreachable or does not carry environments/skill-manager/templates/branch-preview (private repo without token, or deploy-cdc PR #7 not merged)."
+          fi
+          rm -rf "$probe_dir"
+
+      - name: Install gateway Python deps
+        if: steps.env-repo.outputs.available == 'true'
+        run: uv sync --all-extras
+        working-directory: virtual-mcp-gateway
+
+      - name: Plan graph
+        if: steps.env-repo.outputs.available == 'true'
+        run: |
+          mkdir -p ci-logs
+          set -o pipefail
+          python skills/test_graph/scripts/discover.py specExternalPhase --test-graph-root test_graph \
+            2>&1 | tee ci-logs/plan.log
+
+      - name: Run graph
+        if: steps.env-repo.outputs.available == 'true'
+        run: |
+          mkdir -p ci-logs
+          set -o pipefail
+          python skills/test_graph/scripts/run.py specExternalPhase --test-graph-root test_graph \
+            2>&1 | tee ci-logs/run.log
+
+      - name: Collect diagnostics
+        if: always()
+        run: bash .github/scripts/collect-test-graph-diagnostics.sh
+
+      - name: Upload diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: diagnostics-specExternalPhase
           path: ci-diagnostics/
           if-no-files-found: ignore
 

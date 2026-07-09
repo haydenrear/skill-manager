@@ -1,0 +1,62 @@
+{
+  "current_dir": "current",
+  "desired_dir": "desired",
+  "promotion": {
+    "close_command": "tla-spec-dev --spec-root specs close ticket SMVENV-001",
+    "on_close": "replace project current with ticket desired/ and merge Test Graph artifacts into project specs/",
+    "worktree": "deferred"
+  },
+  "results_dir": "results",
+  "schema_version": "tla-spec-dev.ticket-workflow.v1",
+  "source_current": "/Users/hayde/IdeaProjects/skill-manager/specs/current",
+  "source_project_desired": "/Users/hayde/IdeaProjects/skill-manager/specs/desired_program_model",
+  "status": "active",
+  "testgraph_dir": "testgraph",
+  "ticket": {
+    "acceptance": {
+      "assertions": [
+        "VenvStoreVersionsAreContentAddressed, VenvStoreLatestIsStored, VenvStoreLatestUniquePerUnit hold in TLC over the current model.",
+        "Installing the same unit at two shas leaves both store entries and exactly one latest pointer.",
+        "RemoveUnit leaves store entries intact (cache semantics)."
+      ],
+      "evidence": []
+    },
+    "current_increment": {
+      "adapters": [
+        "StoreModelCaseAdapter._do_store_unit_version",
+        "external adapter dispatch + projector coverage for the store layout"
+      ],
+      "graph_after_unit_pass": [
+        "specExternalPhase (regenerated external cases include RunStoreUnitVersion)"
+      ],
+      "model_actions": [
+        "StoreUnitVersion (guard: unit installed; effects: store entry union, latest pointer replacement)"
+      ],
+      "model_state": [
+        "project_model.store_versions",
+        "project_model.store_latest"
+      ],
+      "unit_tests": [
+        "uv run --with pytest,pyyaml python3 -m pytest specs/current/tests -q"
+      ]
+    },
+    "depends_on": [],
+    "desired_actions": [
+      "StoreUnitVersion",
+      "RunStoreUnitVersion"
+    ],
+    "id": "SMVENV-001",
+    "implementation_scope": [
+      "SkillManager.java store/fetch/installed-record paths (content-addressed layout + latest pointer)",
+      "lockfile / installed.json records gain the resolved sha"
+    ],
+    "objective": "Every install/sync records the unit's content under skills/<name>/<sha>/ (git hash or tag-resolved hash). The store is an immutable cache: removing a unit never deletes stored shas, and the global SKILL_MANAGER_HOME continues to surface exactly one 'latest' per unit, now as a pointer into the store.",
+    "status": "next",
+    "title": "Content-addressed skill store: skills/<name>/<sha>/ plus a moving latest pointer"
+  },
+  "ticket_dir": "/Users/hayde/IdeaProjects/skill-manager/specs/tickets/SMVENV-001",
+  "ticket_id": "SMVENV-001",
+  "ticket_index": 0,
+  "ticket_plan": "/Users/hayde/IdeaProjects/skill-manager/specs/desired_program_model/ticket_plan.yaml",
+  "ticket_root": "/Users/hayde/IdeaProjects/skill-manager/specs/tickets"
+}
