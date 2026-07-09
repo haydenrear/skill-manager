@@ -77,7 +77,7 @@ CliTopLevelCommands ==
   {"ads", "bind", "bindings", "cli", "create", "create-account", "deps",
    "env", "gateway", "harness", "install", "list", "lock", "login",
    "onboard", "pm", "policy", "project", "publish", "registry", "rebind",
-   "remove", "reset-password", "search", "show", "sync", "unbind",
+   "remove", "reset-password", "search", "show", "store", "sync", "unbind",
    "uninstall", "upgrade"}
 
 CliSubcommands ==
@@ -93,7 +93,8 @@ CliSubcommands ==
    "policy show", "policy init", "policy path",
    "project register", "project resolve", "project sync", "project remove",
    "project show", "project list", "project profiles", "project profiles list",
-   "registry set", "registry status"}
+   "registry set", "registry status",
+   "store add"}
 
 CliCommandAliases ==
   {<<"ls", "list">>, <<"rm", "remove">>, <<"un", "uninstall">>}

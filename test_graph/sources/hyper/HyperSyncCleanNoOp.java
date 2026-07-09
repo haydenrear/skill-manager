@@ -36,7 +36,7 @@ public class HyperSyncCleanNoOp {
             if (home == null || claudeHome == null || codexHome == null || geminiHome == null) {
                 return NodeResult.fail("hyper.sync.clean.noop", "missing upstream context");
             }
-            Path storeDir = Path.of(home).resolve("skills").resolve("hyper-experiments");
+            Path storeDir = Path.of(home).resolve("skills").resolve("hyper-experiments").resolve("latest");
 
             Path repoRoot = Path.of(System.getProperty("user.dir")).resolve("..").normalize();
             Path sm = repoRoot.resolve("skill-manager");

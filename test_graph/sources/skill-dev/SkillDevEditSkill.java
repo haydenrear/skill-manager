@@ -21,7 +21,7 @@ public class SkillDevEditSkill {
     public static void main(String[] args) {
         Node.run(args, SPEC, ctx -> SkillDevEditNode.run(ctx, "skill-dev.edit.skill",
                 SkillDevGraphSupport.SKILL,
-                Path.of(ctx.get("env.prepared", "home").orElseThrow(), "skills", SkillDevGraphSupport.SKILL, "SKILL.md"),
+                Path.of(ctx.get("env.prepared", "home").orElseThrow(), "skills", SkillDevGraphSupport.SKILL, "latest", "SKILL.md"),
                 "SKILL_EDIT_APPLIED"));
     }
 }

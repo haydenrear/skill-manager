@@ -19,12 +19,20 @@ import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-SKILL_ROOT = Path(
-    os.environ.get(
-        "SPEC_DOUBLE_COMPILER_HOME",
-        Path.home() / ".skill-manager" / "skills" / "spec-double-compiler",
-    )
-)
+
+
+def _spec_double_compiler_root() -> Path:
+    override = os.environ.get("SPEC_DOUBLE_COMPILER_HOME")
+    if override:
+        return Path(override)
+    slot = Path.home() / ".skill-manager" / "skills" / "spec-double-compiler"
+    # Content-addressed store: the working copy is under latest/. Fall back to
+    # the slot itself for a home that predates the migration.
+    working_copy = slot / "latest"
+    return working_copy if working_copy.is_dir() else slot
+
+
+SKILL_ROOT = _spec_double_compiler_root()
 
 INTERNAL_SLICES = [
     ("InternalCliStoreCases.cfg", "skillmanager_cli_store_internal_cases"),

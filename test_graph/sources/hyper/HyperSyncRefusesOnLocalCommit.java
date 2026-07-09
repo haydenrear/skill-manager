@@ -48,7 +48,7 @@ public class HyperSyncRefusesOnLocalCommit {
             if (home == null || claudeHome == null || codexHome == null || geminiHome == null) {
                 return NodeResult.fail("hyper.sync.refuses.on.local.commit", "missing upstream context");
             }
-            Path storeDir = Path.of(home).resolve("skills").resolve("hyper-experiments");
+            Path storeDir = Path.of(home).resolve("skills").resolve("hyper-experiments").resolve("latest");
 
             // Reset backwards one commit, then add a unique local commit
             // on top so the install has a real divergence from origin.

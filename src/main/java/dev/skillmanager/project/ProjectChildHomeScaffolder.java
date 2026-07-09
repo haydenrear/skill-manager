@@ -135,7 +135,7 @@ public final class ProjectChildHomeScaffolder {
         for (AgentUnit existing : childStore.listInstalledUnits().units()) {
             String key = existing.kind() + ":" + existing.name();
             if (desiredKeys.contains(key)) continue;
-            Fs.deleteRecursive(childStore.unitDir(existing.name(), existing.kind()));
+            childStore.removeUnit(existing.name(), existing.kind());
             childUnits.delete(existing.name());
         }
     }

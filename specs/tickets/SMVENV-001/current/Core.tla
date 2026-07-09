@@ -19,6 +19,7 @@ CONSTANTS
   SessionA, SessionB,
   UserA, VersionA,
   ParentHomeA, ChildHomeA,
+  ShaA, ShaB, ShaC,
   NoReason
 
 NoParams == <<>>
@@ -41,6 +42,11 @@ Libs == {LibA}
 Profiles == {ProfileA}
 ChildHomes == {ChildHomeA}
 SkillManagerHomes == {ParentHomeA, ChildHomeA}
+
+\* Content-addressed skill versions (git hashes) for the skill-manager venv
+\* workflow. Ticket SMVENV-001 lands the store itself; ancestry edges and
+\* hooks arrive with the later pin/hook tickets.
+Shas == {ShaA, ShaB, ShaC}
 
 ReferenceEdges == {<<UnitB, UnitA>>}
 UnitMcpEdges == {<<UnitA, ServerA>>, <<UnitB, ServerB>>}
@@ -66,7 +72,7 @@ CliTopLevelCommands ==
   {"ads", "bind", "bindings", "cli", "create", "create-account", "deps",
    "env", "gateway", "harness", "install", "list", "lock", "login",
    "onboard", "pm", "policy", "project", "publish", "registry", "rebind",
-   "remove", "reset-password", "search", "show", "sync", "unbind",
+   "remove", "reset-password", "search", "show", "store", "sync", "unbind",
    "uninstall", "upgrade"}
 
 CliSubcommands ==
@@ -82,7 +88,8 @@ CliSubcommands ==
    "policy show", "policy init", "policy path",
    "project register", "project resolve", "project sync", "project remove",
    "project show", "project list", "project profiles", "project profiles list",
-   "registry set", "registry status"}
+   "registry set", "registry status",
+   "store add"}
 
 CliCommandAliases ==
   {<<"ls", "list">>, <<"rm", "remove">>, <<"un", "uninstall">>}
@@ -274,6 +281,8 @@ ProjectModelInit ==
    child_home_units |-> {},
    child_home_mcp_servers |-> {},
    child_home_tool_shims |-> {},
+   store_versions |-> {},
+   store_latest |-> {},
    cli_command_catalog |-> CliCommandCatalog,
    cli_command_aliases |-> CliCommandAliases,
    cli_workflow_catalog |-> CliWorkflowCatalog,

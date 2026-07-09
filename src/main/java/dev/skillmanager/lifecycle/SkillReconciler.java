@@ -31,6 +31,15 @@ public final class SkillReconciler {
             Log.warn("legacy source-record migration failed: %s", t.getMessage());
         }
 
+        // SMVENV-001: skills/<name>/ → skills/<name>/latest/, so sha
+        // snapshots can sit alongside the working copy. Idempotent.
+        try {
+            int moved = SkillStore.migrateToContentAddressed(store);
+            if (moved > 0) Log.info("reconcile: moved %d skill(s) into the content-addressed store", moved);
+        } catch (Throwable t) {
+            Log.warn("content-addressed store migration failed: %s", t.getMessage());
+        }
+
         // Ticket 49: backfill DEFAULT_AGENT binding rows for already-
         // installed units. Idempotent — skips units whose binding is
         // already recorded.

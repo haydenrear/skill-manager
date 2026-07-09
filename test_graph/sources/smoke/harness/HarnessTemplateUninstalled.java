@@ -60,7 +60,7 @@ public class HarnessTemplateUninstalled {
             // Transitive units stay installed — uninstall scopes to the
             // named template only.
             boolean skillStays = Files.isRegularFile(
-                    Path.of(home, "skills", "pip-cli-skill", "SKILL.md"));
+                    Path.of(home, "skills", "pip-cli-skill", "latest", "SKILL.md"));
             boolean pluginStays = Files.isRegularFile(
                     Path.of(home, "plugins", "hello-plugin", ".claude-plugin/plugin.json"));
             boolean docStays = Files.isRegularFile(

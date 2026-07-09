@@ -245,3 +245,12 @@ actions:
     projector: adapters:SkillManagerStateProjector
     expected_projection: adapters:ExpectedSkillManagerProjection
     assertion: adapters:ProjectedStateAssertion
+  RunStoreUnitVersion:
+    view: external
+    layer: external
+    controllability: e2e_direct
+    kind: skill-manager-cli
+    adapter: adapters:SkillManagerCliCommandAdapter
+    projector: adapters:SkillManagerStateProjector
+    expected_projection: adapters:ExpectedSkillManagerProjection
+    assertion: adapters:ProjectedStateAssertion

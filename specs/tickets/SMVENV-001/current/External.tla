@@ -38,6 +38,7 @@ ProjectRegisterRoute == <<"skill-manager-cli", "store-filesystem">>
 ProjectResolveRoute == <<"skill-manager-cli", "store-filesystem", "agent-homes">>
 ProjectEnvRoute == <<"skill-manager-cli", "store-filesystem">>
 ProjectChildHomeRoute == <<"skill-manager-cli", "store-filesystem", "agent-homes">>
+VenvRoute == <<"skill-manager-cli", "store-filesystem", "agent-homes">>
 
 SeqToSet(seq) == {seq[i] : i \in 1..Len(seq)}
 
@@ -305,6 +306,17 @@ RunProjectProfileResolve(project, profile, home, parent_home) ==
        ProjectChildHomeRoute)
 
 \* ---------------------------------------------------------------------------
+\* skill-manager venv surface, ticket SMVENV-001: content-addressed store.
+\* ---------------------------------------------------------------------------
+
+RunStoreUnitVersion(u, sha) ==
+  /\ ServicesAvailable(VenvRoute)
+  /\ u \in cli_store_units
+  /\ StoreUnitVersion(u, sha)
+  /\ MarkExternal("RunStoreUnitVersion",
+       [unit |-> u, sha |-> sha, route |-> VenvRoute], VenvRoute)
+
+\* ---------------------------------------------------------------------------
 \* Hidden internal progress: registry authentication and publication, gateway
 \* catalog registration, effect-program rollback/cleanup, claiming child-home
 \* sync, harness child homes, and CLI disclosure rendering. The harness never
@@ -355,6 +367,7 @@ ExternalNext ==
   \/ \E project \in Projects, profile \in Profiles, home \in ChildHomes,
         parent_home \in SkillManagerHomes:
       RunProjectProfileResolve(project, profile, home, parent_home)
+  \/ \E u \in Units, sha \in Shas: RunStoreUnitVersion(u, sha)
   \/ HiddenInternalProgress
 
 ExternalInvariant ==
@@ -371,6 +384,7 @@ ExternalCaseEnvelope ==
   \/ ServerRegistryCaseEnvelope
   \/ ProjectCaseEnvelope
   \/ CliDisclosureCaseEnvelope
+  \/ VenvCaseEnvelope
 
 ExternalSpec == ExternalInit /\ [][ExternalNext]_ExternalVars
 Invariant == ExternalInvariant

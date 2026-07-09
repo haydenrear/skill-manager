@@ -50,7 +50,7 @@ public class HyperSyncMergesAfterCommit {
                     || installedHash == null) {
                 return NodeResult.fail("hyper.sync.merges.after.commit", "missing upstream context");
             }
-            Path storeDir = Path.of(home).resolve("skills").resolve("hyper-experiments");
+            Path storeDir = Path.of(home).resolve("skills").resolve("hyper-experiments").resolve("latest");
 
             Path repoRoot = Path.of(System.getProperty("user.dir")).resolve("..").normalize();
             Path sm = repoRoot.resolve("skill-manager");

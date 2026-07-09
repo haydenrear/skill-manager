@@ -347,6 +347,20 @@ class SkillManagerStoreModel:
             raise ValueError(f"store model does not implement action {action}")
         return handler(params)
 
+    # -- venv content-addressed store (ticket SMVENV-001) -------------------
+
+    def _do_store_unit_version(self, p: dict[str, Any]) -> dict[str, Any]:
+        unit, sha = str(p["unit"]), str(p["sha"])
+        if unit not in self.cli_store_units:
+            return reject("UNIT_NOT_INSTALLED")
+        self.project_model["store_versions"] = (
+            self.project_model["store_versions"] | {(unit, sha)}
+        )
+        self.project_model["store_latest"] = frozenset(
+            entry for entry in self.project_model["store_latest"] if entry[0] != unit
+        ) | {(unit, sha)}
+        return ok()
+
     # -- registry server ---------------------------------------------------
 
     def _do_server_authenticate(self, p: dict[str, Any]) -> dict[str, Any]:

@@ -29,10 +29,16 @@ public final class UnitStoreDirChoiceTest {
         Path tmp = Files.createTempDirectory("unit-store-dir-choice-test-");
 
         return Tests.suite("UnitStoreDirChoiceTest")
-                .test("unitDir(SKILL) routes to skills/<name>", () -> {
+                .test("unitDir(SKILL) routes to the skills/<name>/latest working copy", () -> {
                     SkillStore store = new SkillStore(tmp.resolve("home-1"));
                     Path d = store.unitDir("hello", UnitKind.SKILL);
-                    assertEquals(store.skillsDir().resolve("hello"), d, "skill dir under skills/");
+                    assertEquals(store.skillsDir().resolve("hello").resolve("latest"), d,
+                            "skill working copy under skills/<name>/latest");
+                    assertEquals(store.skillsDir().resolve("hello"), store.storeUnitDir("hello"),
+                            "store slot is skills/<name>");
+                    assertEquals(store.skillsDir().resolve("hello").resolve("abc123"),
+                            store.storeVersionDir("hello", "abc123"),
+                            "snapshot is skills/<name>/<sha>");
                 })
                 .test("unitDir(PLUGIN) routes to plugins/<name>", () -> {
                     SkillStore store = new SkillStore(tmp.resolve("home-2"));

@@ -87,8 +87,8 @@ public class ProjectDependenciesResolved {
             boolean lockHasDoc = lockText.contains("name = \"tg-prompts\"");
             boolean lockHasHarness = lockText.contains("name = \"tg-harness\"");
 
-            boolean parentInstalled = Files.isRegularFile(Path.of(home, "skills", "tg-parent", "SKILL.md"));
-            boolean childInstalled = Files.isRegularFile(Path.of(home, "skills", "tg-child", "SKILL.md"));
+            boolean parentInstalled = Files.isRegularFile(Path.of(home, "skills", "tg-parent", "latest", "SKILL.md"));
+            boolean childInstalled = Files.isRegularFile(Path.of(home, "skills", "tg-child", "latest", "SKILL.md"));
             boolean pluginInstalled = Files.isRegularFile(Path.of(home, "plugins", "tg-plugin", ".claude-plugin/plugin.json"));
             boolean docInstalled = Files.isRegularFile(Path.of(home, "docs", "tg-prompts", "skill-manager.toml"));
             boolean harnessInstalled = Files.isRegularFile(Path.of(home, "harnesses", "tg-harness", "harness.toml"));
@@ -103,8 +103,8 @@ public class ProjectDependenciesResolved {
                     && Files.isDirectory(projectDir.resolve(".codex"))
                     && Files.isDirectory(projectDir.resolve(".claude"))
                     && Files.isDirectory(projectDir.resolve(".gemini"));
-            boolean childUnits = Files.isRegularFile(childHome.resolve("skills/tg-child/SKILL.md"))
-                    && Files.isRegularFile(childHome.resolve("skills/tg-parent/SKILL.md"))
+            boolean childUnits = Files.isRegularFile(childHome.resolve("skills/tg-child/latest/SKILL.md"))
+                    && Files.isRegularFile(childHome.resolve("skills/tg-parent/latest/SKILL.md"))
                     && Files.isRegularFile(childHome.resolve("plugins/tg-plugin/.claude-plugin/plugin.json"))
                     && Files.isRegularFile(childHome.resolve("docs/tg-prompts/skill-manager.toml"))
                     && Files.isRegularFile(childHome.resolve("harnesses/tg-harness/harness.toml"));
@@ -119,11 +119,11 @@ public class ProjectDependenciesResolved {
                     && childRecordText.contains("tg-prompts")
                     && childRecordText.contains("tg-harness");
             boolean projectionsUseChildStore = pointsTo(projectDir.resolve(".codex/skills/tg-child"),
-                    childHome.resolve("skills/tg-child"))
+                    childHome.resolve("skills/tg-child/latest"))
                     && pointsTo(projectDir.resolve(".claude/skills/tg-child"),
-                            childHome.resolve("skills/tg-child"))
+                            childHome.resolve("skills/tg-child/latest"))
                     && pointsTo(projectDir.resolve(".gemini/skills/tg-child"),
-                            childHome.resolve("skills/tg-child"))
+                            childHome.resolve("skills/tg-child/latest"))
                     && pointsTo(projectDir.resolve(".claude/plugins/tg-plugin"),
                             childHome.resolve("plugins/tg-plugin"));
             boolean removeBlocked = remove.exitCode() != 0 && readLog(ctx, "remove-claimed").contains("tg-resolved-project");
@@ -153,8 +153,8 @@ public class ProjectDependenciesResolved {
                     && !Files.exists(projectDir.resolve(".gemini/skills/tg-child"))
                     && !Files.exists(projectDir.resolve(".claude/plugins/tg-plugin"));
             boolean parentUnitsRemainAfterProjectRemove =
-                    Files.isRegularFile(Path.of(home, "skills", "tg-parent", "SKILL.md"))
-                            && Files.isRegularFile(Path.of(home, "skills", "tg-child", "SKILL.md"))
+                    Files.isRegularFile(Path.of(home, "skills", "tg-parent", "latest", "SKILL.md"))
+                            && Files.isRegularFile(Path.of(home, "skills", "tg-child", "latest", "SKILL.md"))
                             && Files.isRegularFile(Path.of(home, "plugins", "tg-plugin", ".claude-plugin/plugin.json"))
                             && Files.isRegularFile(Path.of(home, "docs", "tg-prompts", "skill-manager.toml"))
                             && Files.isRegularFile(Path.of(home, "harnesses", "tg-harness", "harness.toml"));

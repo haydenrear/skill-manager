@@ -522,6 +522,12 @@ def _project_profile(record, shared, params):
                      "--skip-gateway", "--project-dir", record["project_dir"]], None)]
 
 
+
+# skill-manager venv store surface (planned CLI; lands with SMVENV-001).
+def _venv_store(record, shared, params):
+    return [("run", ["store", "add", str(params["unit"]), "--sha", str(params["sha"]), "--yes"], None)]
+
+
 _EXTERNAL_DISPATCH = {
     # CLI store surface.
     "SubmitInstallUnit": _install,
@@ -554,6 +560,8 @@ _EXTERNAL_DISPATCH = {
     "RunProjectLibsResolve": lambda r, s, p: _project_resolve(r, s, p, "--resolve-libs"),
     "RunScaffoldProjectChildHome": _project_resolve,
     "RunProjectProfileResolve": _project_profile,
+    # skill-manager venv store (planned surface, SMVENV-001).
+    "RunStoreUnitVersion": _venv_store,
 }
 
 

@@ -59,8 +59,8 @@ public class SkillScriptTransitive {
             int rc = proc.exitCode();
 
             Path storeDir = Path.of(home, "skills");
-            boolean umbrellaOk = Files.isDirectory(storeDir.resolve("skill-script-umbrella-skill"));
-            boolean innerOk = Files.isDirectory(storeDir.resolve("skill-script-inner"));
+            boolean umbrellaOk = Files.isDirectory(storeDir.resolve("skill-script-umbrella-skill").resolve("latest"));
+            boolean innerOk = Files.isDirectory(storeDir.resolve("skill-script-inner").resolve("latest"));
             Path touch = Path.of(home, "bin", "cli", "skill-script-transitive-touched");
             boolean touchOk = Files.isRegularFile(touch);
             boolean execOk = touchOk && Files.isExecutable(touch);

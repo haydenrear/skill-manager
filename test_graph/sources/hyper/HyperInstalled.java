@@ -89,7 +89,7 @@ public class HyperInstalled {
             ProcessRecord proc = Procs.run(ctx, "install", pb);
             int rc = proc.exitCode();
 
-            Path skillDir = Path.of(home).resolve("skills/hyper-experiments");
+            Path skillDir = Path.of(home).resolve("skills/hyper-experiments/latest");
             boolean mdOk = Files.isRegularFile(skillDir.resolve("SKILL.md"));
             boolean tomlOk = Files.isRegularFile(skillDir.resolve("skill-manager.toml"));
 

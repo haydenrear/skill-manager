@@ -25,6 +25,7 @@ import dev.skillmanager.commands.RemoveCommand;
 import dev.skillmanager.commands.ResetPasswordCommand;
 import dev.skillmanager.commands.SearchCommand;
 import dev.skillmanager.commands.ShowCommand;
+import dev.skillmanager.commands.StoreCommand;
 import dev.skillmanager.commands.SyncCommand;
 import dev.skillmanager.commands.UnbindCommand;
 import dev.skillmanager.commands.UninstallCommand;
@@ -73,7 +74,8 @@ import picocli.CommandLine.Option;
                 RebindCommand.class,
                 BindingsCommand.class,
                 HarnessCommand.class,
-                ProjectCommand.class
+                ProjectCommand.class,
+                StoreCommand.class
         })
 public final class SkillManagerCli implements Runnable {
 

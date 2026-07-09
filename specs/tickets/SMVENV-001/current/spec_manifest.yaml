@@ -4,20 +4,26 @@ package: current_program_cases
 status:
   workflow: ticket
   active_ticket: SMVENV-001
-  active_ticket_title: "skill-manager venv: pinned skill versions, env overlays, agent shims"
+  active_ticket_title: "Content-addressed skill store: skills/<name>/<sha>/ plus a moving latest pointer"
   relation_to_program_model: starts_equivalent_then_advances_as_slices_land
   relation_to_desired_program_model: implemented_prefix_of_desired_ticket_plan
   current_model_rule: whole_program_working_copy_not_ticket_projection
   test_modeling_rule: do_not_model_tests_or_validation_harnesses_as_program_behavior
-  updated: null
+  updated: '2026-07-03'
   current_slice:
-    name: baseline
-    status: scaffolded
-    refines: []
+    name: content-addressed-store
+    status: desired_authored
+    refines:
+      - specs/desired_program_model (SMVENV-001 slice of the venv ticket plan)
     implemented_actions: []
+    desired_actions:
+      - StoreUnitVersion
+      - RunStoreUnitVersion
     validation:
       unit: []
-      tlc: []
+      tlc:
+        - "desired/: run_tlc.sh Internal.tla InternalVenvCases.cfg (2,610 distinct states, no violations, 2026-07-03)"
+        - "desired/: run_tlc.sh External.tla External.cfg incl. the strengthened RunProjectLibsResolve guard (no violations, 2026-07-03)"
       graph: []
       evidence: []
   next:
@@ -35,67 +41,17 @@ case_codegen:
   generation_status: planned
 
 state_fields:
-  project_model.cli_command_catalog:
-    type: set[CommandPath]
-    description: canonical CLI command and subcommand path catalog, including the root command.
-  project_model.cli_command_aliases:
-    type: set[tuple[Alias, CommandPath]]
-    description: user-facing aliases that resolve to canonical command paths.
-  project_model.cli_workflow_catalog:
-    type: set[WorkflowId]
-    description: canonical workflow ids covered by CLI help, agent context, and bundled skills.
-  project_model.cli_workflow_command_links:
-    type: set[tuple[WorkflowId, CommandPath]]
-    description: link from each workflow to at least one CLI command path that starts or inspects it.
-  project_model.cli_root_help_topics:
-    type: set[CommandPath]
-    description: root help topics; deliberately limited to top-level commands for progressive disclosure.
-  project_model.cli_command_help_topics:
-    type: set[CommandPath]
-    description: command paths with dedicated contextual help.
-  project_model.cli_skill_doc_topics:
-    type: set[tuple[SkillDocSurface, WorkflowId]]
-    description: bundled skill documentation coverage by workflow.
-  project_model.cli_agent_context_topics:
-    type: set[WorkflowId]
-    description: workflows that can emit agent-facing context while the CLI is being used.
+  project_model.store_versions:
+    type: set[tuple[UnitId, Sha]]
+    description: content-addressed store entries skills/<name>/<sha>/ (immutable cache; survives RemoveUnit).
+  project_model.store_latest:
+    type: set[tuple[UnitId, Sha]]
+    description: the single moving "global latest" pointer per unit surfaced in SKILL_MANAGER_HOME.
 actions:
-  RenderProgressiveRootHelp:
-    port: SkillManagerCli.render_progressive_root_help
-    result: CliDisclosureResult
-    description: root CLI help renders the top-level command catalog only.
-  RenderInstallCommandHelp:
-    port: SkillManagerCli.render_command_help
-    result: CliDisclosureResult
-    description: representative install command help transition.
-  RenderSyncCommandHelp:
-    port: SkillManagerCli.render_command_help
-    result: CliDisclosureResult
-    description: representative sync command help transition.
-  RenderProjectProfilesListHelp:
-    port: SkillManagerCli.render_command_help
-    result: CliDisclosureResult
-    description: representative nested command help transition.
-  ExposeInstallLocalUnitWorkflowDocs:
-    port: SkillManagerCli.expose_skill_workflow_docs
-    result: CliDisclosureResult
-    description: representative install workflow documentation transition.
-  ExposeSkillScriptsWorkflowDocs:
-    port: SkillManagerCli.expose_skill_workflow_docs
-    result: CliDisclosureResult
-    description: representative skill-script workflow documentation transition.
-  ExposeProjectEnvWorkflowDocs:
-    port: SkillManagerCli.expose_skill_workflow_docs
-    result: CliDisclosureResult
-    description: representative project-env workflow documentation transition.
-  EmitSyncOneUnitAgentContext:
-    port: SkillManagerCli.emit_agent_workflow_context
-    result: CliDisclosureResult
-    description: representative sync workflow agent-context transition.
-  EmitProjectEnvAgentContext:
-    port: SkillManagerCli.emit_agent_workflow_context
-    result: CliDisclosureResult
-    description: representative project-env workflow agent-context transition.
+  StoreUnitVersion:
+    port: SkillManagerCli.store_unit_version
+    result: VenvResult
+    description: install-time write into the content-addressed store plus latest-pointer move.
 invariants:
   - CliCommandCatalogCoversAllCommands
   - CliRootHelpStaysProgressive
@@ -104,19 +60,13 @@ invariants:
   - CliWorkflowsReferenceCatalogCommands
   - CliSkillDocsCoverWorkflowCatalog
   - CliAgentContextCoversWorkflowCatalog
+  - VenvStoreVersionsAreContentAddressed
+  - VenvStoreLatestIsStored
+  - VenvStoreLatestUniquePerUnit
 ports:
-  SkillManagerCli.render_progressive_root_help:
-    kind: cli_help
-    adapter_status: implemented
-  SkillManagerCli.render_command_help:
-    kind: cli_help
-    adapter_status: implemented
-  SkillManagerCli.expose_skill_workflow_docs:
-    kind: docs
-    adapter_status: implemented
-  SkillManagerCli.emit_agent_workflow_context:
-    kind: cli_context
-    adapter_status: implemented
+  SkillManagerCli.store_unit_version:
+    kind: cli_store
+    adapter_status: planned
 adapters: case_adapters.toml
 notes:
   package_from_program_model: skillmanager_program_cases

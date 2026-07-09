@@ -65,7 +65,7 @@ public class McpToolLoadsInstalled {
             ProcessRecord proc = Procs.run(ctx, "install", pb);
             int rc = proc.exitCode();
 
-            Path skillDir = Path.of(home).resolve("skills/mcp-tool-loads-skill");
+            Path skillDir = Path.of(home).resolve("skills/mcp-tool-loads-skill/latest");
             boolean mdOk = Files.isRegularFile(skillDir.resolve("SKILL.md"));
             boolean tomlOk = Files.isRegularFile(skillDir.resolve("skill-manager.toml"));
 

@@ -57,7 +57,9 @@ def test_program_model_tla_cli_catalog_is_backed_by_production_metadata() -> Non
     assert root_command == {"skill-manager"}
     assert "bindings show" in modeled_commands
     assert ("ls", "list") in modeled_aliases
-    assert modeled_commands <= metadata.command_paths
+    # Equality, not containment: a command that exists in production but not in
+    # the model means the model no longer describes the CLI it claims to.
+    assert modeled_commands == metadata.command_paths
     assert modeled_workflows == metadata.workflow_ids
     assert modeled_links == set(metadata.workflow_links.items())
     assert set(metadata.workflow_links.values()) <= metadata.command_paths

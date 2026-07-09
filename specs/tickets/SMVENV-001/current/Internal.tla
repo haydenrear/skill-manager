@@ -1280,6 +1280,36 @@ SyncClaimingProjectChildHomes(u) ==
   /\ SyncClaimingProjectChildHomesImpl(u)
   /\ MarkInternal("SyncClaimingProjectChildHomes", [unit |-> u])
 
+\* ---------------------------------------------------------------------------
+\* skill-manager venv, ticket SMVENV-001: content-addressed skill store.
+\* Install-time write into skills/<name>/<sha>/. Store entries are an
+\* immutable cache: they are never removed by RemoveUnit, and the
+\* store_latest pointer (the "global latest" surfaced in SKILL_MANAGER_HOME)
+\* always moves to the most recently stored sha.
+\* ---------------------------------------------------------------------------
+
+StoreUnitVersionImpl(u, sha) ==
+  IF u \notin cli_store_units
+  THEN
+    /\ result' = Reject("UNIT_NOT_INSTALLED")
+    /\ project_model' = project_model
+    /\ UNCHANGED state_vars
+  ELSE
+    /\ project_model' =
+        [project_model EXCEPT
+          !.store_versions = @ \cup {<<u, sha>>},
+          !.store_latest =
+              {entry \in @ : entry[1] # u} \cup {<<u, sha>>}]
+    /\ result' = Ok
+    /\ UNCHANGED state_vars
+
+\* @command StoreUnitVersion
+\* @result VenvResult
+\* @port SkillManagerCli.store_unit_version
+StoreUnitVersion(u, sha) ==
+  /\ StoreUnitVersionImpl(u, sha)
+  /\ MarkInternal("StoreUnitVersion", [unit |-> u, sha |-> sha])
+
 RenderProgressiveRootHelpImpl ==
   /\ project_model.cli_root_help_topics = CliTopLevelCommands
   /\ result' = Ok
@@ -1457,6 +1487,7 @@ Next ==
         parent_home \in SkillManagerHomes:
       ResolveProjectProfile(project, profile, home, parent_home)
   \/ \E u \in Units: SyncClaimingProjectChildHomes(u)
+  \/ \E u \in Units, sha \in Shas: StoreUnitVersion(u, sha)
   \/ CliDisclosureNext
 
 \* @invariant CliInstalledRecordsTrackStore
@@ -1723,6 +1754,20 @@ ChildHomeToolShimsComeFromMcpServers ==
             /\ unit_pair[1] = pair[1]
             /\ <<unit_pair[2], pair[2]>> \in UnitScriptEdges
 
+\* @invariant VenvStoreVersionsAreContentAddressed
+VenvStoreVersionsAreContentAddressed ==
+  project_model.store_versions \subseteq (Units \X Shas)
+
+\* @invariant VenvStoreLatestIsStored
+VenvStoreLatestIsStored ==
+  project_model.store_latest \subseteq project_model.store_versions
+
+\* @invariant VenvStoreLatestUniquePerUnit
+VenvStoreLatestUniquePerUnit ==
+  \A e1 \in project_model.store_latest:
+    \A e2 \in project_model.store_latest:
+      e1[1] = e2[1] => e1 = e2
+
 \* @invariant HaltImpliesHaltContinuation
 HaltImpliesHaltContinuation ==
   program_halted => effect_continuation = "HALT"
@@ -1817,6 +1862,7 @@ InternalImplNext ==
         parent_home \in SkillManagerHomes:
       ResolveProjectProfileImpl(project, profile, home, parent_home)
   \/ \E u \in Units: SyncClaimingProjectChildHomesImpl(u)
+  \/ \E u \in Units, sha \in Shas: StoreUnitVersionImpl(u, sha)
   \/ CliDisclosureImplNext
 
 InternalVars == vars
@@ -1874,6 +1920,9 @@ InternalInvariant ==
   /\ ChildHomeAgentConfigsAreKnown
   /\ ChildHomeMcpServersComeFromUnits
   /\ ChildHomeToolShimsComeFromMcpServers
+  /\ VenvStoreVersionsAreContentAddressed
+  /\ VenvStoreLatestIsStored
+  /\ VenvStoreLatestUniquePerUnit
   /\ HaltImpliesHaltContinuation
   /\ CompletedSuccessfulProgramsClearRollbackJournal
   /\ GatewayDynamicServersAreCataloged
@@ -2015,6 +2064,8 @@ ProjectCaseEnvelope ==
   /\ ~always_after_ran
   /\ rollback_journal = {}
   /\ cli_errors = {}
+  /\ project_model.store_versions = {}
+  /\ project_model.store_latest = {}
 
 \* CLI progressive-disclosure boundary: the nine help / workflow-doc /
 \* agent-context actions. Freezes every variable except result and the
@@ -2087,5 +2138,34 @@ CliDisclosureCaseEnvelope ==
   /\ project_model.child_home_units = {}
   /\ project_model.child_home_mcp_servers = {}
   /\ project_model.child_home_tool_shims = {}
+  /\ project_model.store_versions = {}
+  /\ project_model.store_latest = {}
+
+\* Venv boundary, ticket SMVENV-001 slice: content-addressed store writes.
+\* The registry server and CLI store stay free because StoreUnitVersion
+\* requires an installed unit; the gateway deployment surface,
+\* effect-failure program, harness instances, and project model beyond the
+\* store fields are frozen at Init.
+VenvCaseEnvelope ==
+  /\ gateway_global_deployments = {}
+  /\ gateway_session_deployments = {}
+  /\ gateway_tools = {}
+  /\ gateway_disclosures = {}
+  /\ gateway_errors = {}
+  /\ gateway_last_init = {}
+  /\ ~cli_gateway_url_configured
+  /\ ~cli_registry_url_configured
+  /\ effect_status = "OK"
+  /\ effect_continuation = "CONTINUE"
+  /\ ~program_halted
+  /\ ~always_after_ran
+  /\ rollback_journal = {}
+  /\ cli_errors = {}
+  /\ cli_harness_instances = {}
+  /\ project_model.manifests = {}
+  /\ project_model.registrations = {}
+  /\ project_model.locks = {}
+  /\ project_model.resolved_units = {}
+  /\ project_model.child_homes = {}
 
 =============================================================================

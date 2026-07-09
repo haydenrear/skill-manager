@@ -112,3 +112,6 @@ adapter = "spec_case_adapters:StoreModelCaseAdapter"
 
 [adapters.SyncClaimingProjectChildHomes]
 adapter = "spec_case_adapters:StoreModelCaseAdapter"
+
+[adapters.StoreUnitVersion]
+adapter = "spec_case_adapters:StoreModelCaseAdapter"

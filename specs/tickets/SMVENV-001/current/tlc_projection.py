@@ -107,6 +107,8 @@ PROJECT_MODEL_FIELDS = [
     "child_home_units",
     "child_home_mcp_servers",
     "child_home_tool_shims",
+    "store_versions",
+    "store_latest",
 ]
 
 # Constant-valued CLI disclosure catalogs (pinned to the Core.tla constants by

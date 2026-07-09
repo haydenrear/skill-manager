@@ -54,7 +54,7 @@ public class HelloInstalled {
             ProcessRecord proc = Procs.run(ctx, "install", pb);
             int rc = proc.exitCode();
 
-            Path skillDir = Path.of(home).resolve("skills/hello-skill");
+            Path skillDir = Path.of(home).resolve("skills/hello-skill/latest");
             boolean mdOk = Files.isRegularFile(skillDir.resolve("SKILL.md"));
             boolean tomlOk = Files.isRegularFile(skillDir.resolve("skill-manager.toml"));
 

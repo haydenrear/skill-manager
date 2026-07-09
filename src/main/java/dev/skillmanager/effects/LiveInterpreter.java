@@ -1400,7 +1400,8 @@ public final class LiveInterpreter implements ProgramInterpreter {
         try {
             Path dir = ctx.store().unitDir(e.unitName(), e.kind());
             if (!java.nio.file.Files.exists(dir)) return EffectReceipt.skipped(e, "not in store");
-            dev.skillmanager.shared.util.Fs.deleteRecursive(dir);
+            // Skills keep their stored sha snapshots — the store is a cache.
+            ctx.store().removeUnit(e.unitName(), e.kind());
             try { ctx.sourceStore().delete(e.unitName()); } catch (Exception ignored) {}
             ctx.invalidate();
             return EffectReceipt.ok(e, new ContextFact.SkillRemovedFromStore(e.unitName()));

@@ -187,6 +187,11 @@ actions:
     controllability: unit_direct
     generates:
       - spec_unit
+  StoreUnitVersion:
+    layer: internal
+    controllability: unit_direct
+    generates:
+      - spec_unit
   SubmitInstallUnit:
     layer: external
     controllability: e2e_direct
@@ -318,6 +323,11 @@ actions:
     generates:
       - testgraph
   RunProjectProfileResolve:
+    layer: external
+    controllability: e2e_direct
+    generates:
+      - testgraph
+  RunStoreUnitVersion:
     layer: external
     controllability: e2e_direct
     generates:
