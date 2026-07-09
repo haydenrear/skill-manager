@@ -159,6 +159,40 @@ Implications for authors:
   CLI/MCP/plugin marketplace/agent projection side effects.
 - Keep one unit per repo root so sync can update the unit deterministically.
 
+### The edit → store loop
+
+Sync pulls from the **remote**, never from your working tree. Editing a
+unit repo — even committing — changes nothing that agents load until the
+commit is pushed and synced:
+
+```bash
+git -C <unit-repo> add -A && git commit -m "..."
+git -C <unit-repo> push origin main
+skill-manager sync <unit-name> --git-latest
+```
+
+Read `origin`, `gitRef`, and `gitHash` from
+`$SKILL_MANAGER_HOME/installed/<unit>.json` to see exactly what sync
+will fetch. Two failure modes to know:
+
+1. **Sync over an unpushed commit is a silent no-op.** It exits 0 and
+   prints a full success report — CLI installs, MCP registration, agent
+   projection all re-run — while the store stays on the old `gitHash`.
+   Verify the SHA, don't trust the exit code.
+2. **`sync <unit-name>` takes the unit name, not the repo name.** They
+   frequently differ (`github:haydenrear/skill-publisher-skill` installs
+   the unit `skill-publisher`). Use `skill-manager list` for unit names
+   and `gh repo list <owner>` for repo names.
+
+Because no registry is configured here (see the caution above), prefer
+`--git-latest` so sync fetches the install-time `gitRef` directly
+instead of asking an unreachable registry for a published `git_sha`.
+
+To iterate before you are ready to push, sync straight from the working
+tree with `skill-manager sync <unit> --from <dir> --merge --yes`, or use
+the `skill-dev` worktree flow. Both leave the store's provenance pointing
+at a local tree, so finish with a real push + `sync --git-latest`.
+
 ## Registry role
 
 The registry is optional and metadata-oriented:

@@ -10,4 +10,4 @@ skill_references = [
 [skill]
 name = "skill-publisher"
 version = "0.1.0"
-description = "Author installable skills, plugins, doc-repos, and harnesses for skill-manager; declare deps, skill-script installers, and validate install/bind/sync/instantiate round-trips."
+description = "Author and maintain installable skills, plugins, doc-repos, and harnesses for skill-manager; edit unit files, declare deps, write skill-script installers, validate install/bind/sync/instantiate round-trips, and ship edits into the store via commit, push, and sync."

@@ -1,6 +1,6 @@
 ---
 name: skill-publisher
-description: 'Author installable skill-manager units: skills, plugins, doc-repos, and harnesses. Use when making a directory installable by skill-manager, choosing a unit kind, scaffolding a unit, writing or reviewing unit manifests/TOML, adding CLI or MCP dependencies, wiring references, validating install/bind/instantiate round-trips, or preparing optional registry metadata. Detailed schemas live in references for skills, plugins, doc-repos, harnesses, scaffolding, coordinates/distribution, dependencies, bindings/sync, and skill-script.'
+description: 'Author and maintain installable skill-manager units: skills, plugins, doc-repos, and harnesses. Read this before editing any file inside a unit — SKILL.md, its frontmatter or description, skill-manager.toml, plugin.json, harness.toml, or a references/ page — not only when creating one from scratch. Use when making a directory installable by skill-manager, choosing a unit kind, scaffolding a unit, writing or reviewing unit manifests/TOML, adding CLI or MCP dependencies, wiring references, validating install/bind/instantiate round-trips, preparing optional registry metadata, or shipping an edit to an already-installed unit so it reaches $SKILL_MANAGER_HOME (commit, push, then `skill-manager sync`). Detailed schemas live in references for skills, plugins, doc-repos, harnesses, scaffolding, coordinates/distribution, dependencies, bindings/sync, and skill-script.'
 skill-imports:
   - unit: skill-manager
     path: references/skill-imports.md
@@ -12,7 +12,8 @@ skill-imports:
 
 Use this skill when the user wants to turn a directory of agent docs,
 tooling, or project profiles into something **skill-manager can
-install**.
+install**, and whenever the user edits a unit that is already
+installable.
 
 The main job:
 
@@ -26,6 +27,9 @@ The main job:
    `file://` path. Favor this unless the user asks otherwise. Registry
    publish is optional metadata for supported shapes, not the primary
    distribution path. See `references/coords-and-distribution.md`.
+6. Ship later edits into the store: commit, push, then
+   `skill-manager sync <unit>`. An edit that is not pushed and synced is
+   invisible to agents. See "Shipping edits to an installed unit" below.
 
 The virtual MCP gateway is in scope: declaring `[[mcp_dependencies]]` in
 a skill/plugin manifest is how an MCP server becomes registered. Running
@@ -38,10 +42,17 @@ the optional publish step.
   it.
 - The user wants to create or review a skill, plugin, doc-repo, or
   harness.
+- **The user wants to edit an existing one.** Any change to `SKILL.md`,
+  a frontmatter `description`, `skill-manager.toml`,
+  `.claude-plugin/plugin.json`, `harness.toml`, or a `references/` page
+  is unit authoring, and it is not done until the edit is pushed and
+  synced.
 - The user wants to scaffold a new unit.
 - The user wants to add references, CLI deps, or MCP deps.
 - The user wants to validate install, bind, sync, or harness
   instantiation.
+- The user asks why an edit to a skill is not showing up for agents, or
+  how a change reaches `$SKILL_MANAGER_HOME`.
 - Something is wrong with publish/install/sync and you need to map the
   failure back to a manifest field.
 
@@ -81,7 +92,8 @@ Load only the reference needed for the current task:
   instance locks, sync, and rm.
 - `references/coords-and-distribution.md` — coord grammar,
   `github:`/`git+`/`file:` sources, one unit per git repo root,
-  references, git sync behavior, and registry metadata.
+  references, git sync behavior, the edit → push → sync store loop, and
+  registry metadata.
 - `references/dependencies.md` — CLI and MCP dependency TOML examples
   and resolution behavior for pip/npm/brew/tar/skill-script and
   npm/uv/docker/binary/shell MCP load types.
@@ -152,6 +164,69 @@ Extra validation:
   `--codex-home`, and `--project-dir`, then run `skill-manager harness
   list` and `skill-manager harness rm <id>`.
 
+## Shipping Edits to an Installed Unit
+
+Agents read units from the **store**
+(`$SKILL_MANAGER_HOME/skills/<name>/`, `plugins/<name>/`,
+`docs/<name>/`, `harnesses/<name>/`), not from the source repo you just
+edited. Editing the source repo changes nothing an agent can see until
+the bytes reach the store. A finished edit means synced, not saved.
+
+The store copy for a git-backed unit is a checkout of a **remote** ref.
+`skill-manager show <unit>` prints its store path, and
+`$SKILL_MANAGER_HOME/installed/<unit>.json` records the `origin`,
+`gitRef`, and `gitHash` that sync pulls from. So the loop is:
+
+```bash
+cd <unit-repo>
+# ...edit SKILL.md / manifest / references...
+git add -A && git commit -m "docs: ..."
+git push origin main                    # sync pulls from the REMOTE
+skill-manager sync <unit> --git-latest  # fetch gitRef, re-run side effects
+```
+
+Then confirm the store actually moved — do not assume sync succeeded:
+
+```bash
+skill-manager list          # SHA column should match the pushed commit
+git rev-parse --short HEAD  # ...this one
+```
+
+Notes that trip agents up:
+
+- **Push before sync — and check, because sync will not tell you.**
+  Sync fetches the remembered `origin` at `gitRef`. A local commit that
+  was never pushed is not upstream, so sync leaves the store on the old
+  bytes. It still **exits 0 and prints a normal success report**,
+  including MCP/CLI side effects, so a green sync is *not* evidence the
+  bytes moved. The only proof is `gitHash` in
+  `$SKILL_MANAGER_HOME/installed/<unit>.json` (or the SHA column of
+  `skill-manager list`) matching your pushed `HEAD`.
+- **The unit name is not the repo name.** Sync takes the installed unit
+  name (`skill-manager sync skill-publisher`), while the remote is
+  `github:owner/<repo>` — often spelled differently. `skill-manager
+  list` gives the unit names.
+- **Nested repos need two pushes.** When a unit repo lives inside a
+  parent repo's tree, push the unit repo first; the parent commit only
+  records the unit's files, and sync never reads the parent.
+- **`--git-latest` when no registry is configured.** Plain
+  `sync <unit>` may consult the registry for a published `git_sha`.
+  `--git-latest` skips it and fetches the install-time `gitRef`
+  directly, which is what you want for an unpublished edit. See the
+  registry caution in `references/coords-and-distribution.md`.
+- **Never edit the store copy in place.** The next sync overwrites it,
+  and its provenance no longer matches `origin`.
+- **Frontmatter changes need a fresh agent session.** Harnesses read
+  `name`/`description` when a session starts; a mid-session sync does
+  not retrigger discovery for the current session.
+
+To iterate without pushing on every keystroke, use a working-tree sync
+(`skill-manager sync <unit> --from <dir> --merge --yes`) or the
+`skill-dev` worktree flow, then finish with a real commit + push + sync
+so the store's provenance points at the remote again. Full semantics are
+in `references/bindings-and-sync.md` and the "Git versioning and sync"
+section of `references/coords-and-distribution.md`.
+
 ## Modeled CLI Workflow Coverage
 
 These workflow ids are shared with the CLI metadata catalog and the
@@ -174,7 +249,9 @@ scripts.
 ## Boundaries
 
 - This skill does not publish anything itself. It explains how; the
-  agent runs `skill-manager publish` or `git push` when ready.
+  agent runs `skill-manager publish`, `git push`, or `skill-manager
+  sync` when ready. Pushing and syncing are outward-facing — confirm
+  with the user before running them unless they already asked.
 - This skill does not modify `~/.skill-manager/cli-lock.toml`,
   `policy.toml`, or `registry.properties`. Surface conflicts and let the
   user decide.
