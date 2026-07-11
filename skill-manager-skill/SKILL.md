@@ -49,7 +49,7 @@ skill-manager installs four unit kinds:
 
 | Kind | Use when | Store path |
 | --- | --- | --- |
-| Skill | One focused agent capability. | `$SKILL_MANAGER_HOME/skills/<name>/` |
+| Skill | One focused agent capability. | `$SKILL_MANAGER_HOME/skills/<name>/latest/` |
 | Plugin | A bundle of skills plus plugin runtime surface such as hooks, commands, or agents. | `$SKILL_MANAGER_HOME/plugins/<name>/` |
 | Doc-repo | Versioned markdown sources that bind into project `CLAUDE.md` / `AGENTS.md`. | `$SKILL_MANAGER_HOME/docs/<name>/` |
 | Harness | A reusable project/agent profile composing skills, plugins, docs, and MCP tool selections. | `$SKILL_MANAGER_HOME/harnesses/<name>/` |

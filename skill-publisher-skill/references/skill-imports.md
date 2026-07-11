@@ -29,7 +29,7 @@ skill-imports: []
 
 The historical `skill` field is still accepted for compatibility, but
 new files should prefer `unit`. The target name is resolved against all
-installed unit roots, not just `$SKILL_MANAGER_HOME/skills`.
+installed unit roots, not just `$SKILL_MANAGER_HOME/skills/<name>/latest`.
 
 Only add a manifest reference when the target must be installed
 transitively. Use an explicit coord for that install-time dependency:

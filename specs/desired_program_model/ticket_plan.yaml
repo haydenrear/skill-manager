@@ -49,7 +49,7 @@ service_catalog:
 tickets:
   - id: SMVENV-001
     title: "Content-addressed skill store: skills/<name>/<sha>/ plus a moving latest pointer"
-    status: next
+    status: closed
     depends_on: []
     objective: "Every install/sync records the unit's content under skills/<name>/<sha>/ (git hash or tag-resolved hash). The store is an immutable cache: removing a unit never deletes stored shas, and the global SKILL_MANAGER_HOME continues to surface exactly one 'latest' per unit, now as a pointer into the store."
     desired_actions:
@@ -76,7 +76,16 @@ tickets:
         - VenvStoreVersionsAreContentAddressed, VenvStoreLatestIsStored, VenvStoreLatestUniquePerUnit hold in TLC over the current model.
         - Installing the same unit at two shas leaves both store entries and exactly one latest pointer.
         - RemoveUnit leaves store entries intact (cache semantics).
-      evidence: []
+      evidence:
+        - "TLC over ticket current/: all 7 configs clean; InternalVenvCases 109,621 states / 2,610 distinct / depth 11; the three Venv store invariants hold."
+        - "spec-unit: 2 targets pass (17 + 21 cases), incl. tests/test_store_projection.py pinning observe_home against the store layout."
+        - "repo unit tests: jbang RunTests.java ALL PASSED; new ContentAddressedStoreTest (9 cases)."
+        - "test graph: 19 graphs green. specExternalPhase could not run (pre-existing testgraphsdk ImportError) — the ticket's named graph_after_unit_pass is unproven; see the specExternalPhase issue."
+        - "manual end-to-end CLI: install -> store add x2 -> remove; both snapshots and the latest marker survive removal; store add on a removed-but-snapshotted unit still rejects UNIT_NOT_INSTALLED."
+      deviations:
+        - "The objective says 'every install/sync records the unit's content'. The TLA+ models StoreUnitVersion as a separate action on an already-installed unit (InstallUnitImpl and RemoveUnitImpl both leave project_model unchanged), so the implementation follows the model, not the prose: a distinct `store add` CLI surface. Install/sync are untouched. Two hazards this sidesteps — the sha is unknown at install time for file:/registry sources (InstalledUnit.gitHash is only set for Kind.GIT), and SyncGitHandler merges into the working copy in place, which an immutable snapshot cannot absorb."
+        - "latest/ is a real directory, not a symlink into a snapshot, for the same in-place-merge reason."
+        - "The store covers skills only. Plugins, doc-repos, and harness templates keep the flat layout; the model has no kind dimension, so this is under-specification rather than a spec violation. Tracked separately — it blocks a coherent SMVENV-002, which pins 'units'."
 
   - id: SMVENV-002
     title: "Per-project version pins with the ancestry-or-fail collision rule"

@@ -395,11 +395,16 @@ public final class SkillStore {
      * <p>Idempotent: a slot whose {@code SKILL.md} already sits under
      * {@code latest/} is skipped, so subsequent runs migrate nothing.
      *
-     * @return number of slots migrated this call (0 on subsequent runs).
+     * <p>Migrating a slot invalidates every agent-home symlink that pointed at
+     * it — the link still resolves, but to a slot that no longer holds a
+     * {@code SKILL.md}. Callers must hand the returned names to
+     * {@link dev.skillmanager.lifecycle.MigratedLinkRepair} to repoint them.
+     *
+     * @return names of the slots migrated this call (empty on subsequent runs).
      */
-    public static int migrateToContentAddressed(SkillStore store) throws IOException {
+    public static List<String> migrateToContentAddressed(SkillStore store) throws IOException {
         Path skills = store.skillsDir();
-        if (!Files.isDirectory(skills)) return 0;
+        if (!Files.isDirectory(skills)) return List.of();
         List<Path> legacy = new ArrayList<>();
         try (Stream<Path> s = Files.list(skills)) {
             for (Path slot : (Iterable<Path>) s::iterator) {
@@ -407,14 +412,16 @@ public final class SkillStore {
                 if (Files.isRegularFile(slot.resolve(SkillParser.SKILL_FILENAME))) legacy.add(slot);
             }
         }
+        List<String> migrated = new ArrayList<>(legacy.size());
         for (Path slot : legacy) {
             Path staging = skills.resolve(slot.getFileName() + ".migrating");
             if (Files.exists(staging)) Fs.deleteRecursive(staging);
             Files.move(slot, staging);
             Fs.ensureDir(slot);
             Files.move(staging, slot.resolve(LATEST_DIR));
+            migrated.add(slot.getFileName().toString());
         }
-        return legacy.size();
+        return migrated;
     }
 
     private static UnitReadProblem readProblem(Path dir, UnitKind kind, Exception e) {

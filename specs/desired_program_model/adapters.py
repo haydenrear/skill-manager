@@ -48,12 +48,18 @@ from typing import Any
 _SPEC_DIR = Path(__file__).resolve().parent
 _REPO_ROOT = _SPEC_DIR.parents[1]
 
-_SKILL_ROOT = Path(
-    os.environ.get(
-        "SPEC_DOUBLE_COMPILER_HOME",
-        Path.home() / ".skill-manager" / "skills" / "spec-double-compiler",
-    )
-)
+def _spec_double_compiler_root() -> Path:
+    override = os.environ.get("SPEC_DOUBLE_COMPILER_HOME")
+    if override:
+        return Path(override)
+    slot = Path.home() / ".skill-manager" / "skills" / "spec-double-compiler"
+    # Content-addressed store: the working copy lives under latest/. Fall back
+    # to the bare slot for a home installed before that migration.
+    working_copy = slot / "latest"
+    return working_copy if working_copy.is_dir() else slot
+
+
+_SKILL_ROOT = _spec_double_compiler_root()
 for _candidate in (_SKILL_ROOT, _SPEC_DIR):
     if _candidate.is_dir() and str(_candidate) not in sys.path:
         sys.path.insert(0, str(_candidate))
@@ -69,6 +75,13 @@ MODEL_HARNESS_TEMPLATES = frozenset({"HarnessA"})
 HARNESS_TEMPLATE_UNITS = frozenset({"UnitA"})
 MODEL_HARNESS_INSTANCES = frozenset({"InstanceA"})
 MODEL_PROJECTS = frozenset({"ProjectA"})
+MODEL_SHAS = frozenset({"ShaA", "ShaB", "ShaC"})
+
+# Content-addressed store layout (SMVENV-001), mirroring SkillStore: a unit's
+# slot is skills/<name>/, its working copy sits under latest/, and each stored
+# sha is a sibling snapshot named by that sha.
+LATEST_DIR = "latest"
+LATEST_MARKER = ".store-latest"
 
 # Fields the filesystem projector actually observes (the external view the
 # TLC cases are generated and deduped under). Every other modeled field is
@@ -603,7 +616,7 @@ class SkillManagerStateProjector:
 
 
 def observe_home(home: Path) -> dict[str, Any]:
-    skills = _dir_names(home / "skills") | _dir_names(home / "plugins")
+    skills = _installed_skill_names(home / "skills") | _dir_names(home / "plugins")
     docs = _dir_names(home / "docs")
     harness_templates = _dir_names(home / "harnesses") - {"instances"}
     harness_instances = _dir_names(home / "harnesses" / "instances")
@@ -636,6 +649,7 @@ def observe_home(home: Path) -> dict[str, Any]:
         )
     projects = _dir_names(home / "projects")
     observed_projects = sorted(projects & MODEL_PROJECTS)
+    store_versions, store_latest = _observe_store(home / "skills")
     return {
         "cli_store_units": sorted(store_units),
         "cli_doc_repos": sorted(docs & MODEL_DOC_REPOS),
@@ -646,6 +660,8 @@ def observe_home(home: Path) -> dict[str, Any]:
         "project_model": {
             "manifests": observed_projects,
             "registrations": observed_projects,
+            "store_versions": sorted(store_versions),
+            "store_latest": sorted(store_latest),
         },
     }
 
@@ -654,6 +670,37 @@ def _dir_names(path: Path) -> set[str]:
     if not path.is_dir():
         return set()
     return {entry.name for entry in path.iterdir() if entry.is_dir()}
+
+def _installed_skill_names(skills_dir: Path) -> set[str]:
+    """Skill slots that hold a working copy.
+
+    A slot outlives its working copy: ``remove`` deletes ``latest/`` but keeps
+    the sha snapshots beside it, because the store is a cache and not part of
+    the install lifecycle. Counting bare slots would report a removed-but-
+    snapshotted unit as installed and trip the divergence check below.
+    """
+    return {slot for slot in _dir_names(skills_dir) if (skills_dir / slot / LATEST_DIR).is_dir()}
+
+
+def _observe_store(skills_dir: Path) -> tuple[set[tuple[str, str]], set[tuple[str, str]]]:
+    """The content-addressed store as ``(unit, sha)`` pairs.
+
+    Mirrors ``project_model.store_versions`` / ``store_latest``: every
+    ``skills/<unit>/<sha>/`` snapshot, and the sha named by the slot's
+    ``.store-latest`` marker.
+    """
+    versions: set[tuple[str, str]] = set()
+    latest: set[tuple[str, str]] = set()
+    for slot in _dir_names(skills_dir) & MODEL_UNITS:
+        for sha in _dir_names(skills_dir / slot) - {LATEST_DIR}:
+            if sha in MODEL_SHAS:
+                versions.add((slot, sha))
+        marker = skills_dir / slot / LATEST_MARKER
+        if marker.is_file():
+            sha = marker.read_text(encoding="utf-8").strip()
+            if sha in MODEL_SHAS:
+                latest.add((slot, sha))
+    return versions, latest
 
 
 class ExpectedSkillManagerProjection:

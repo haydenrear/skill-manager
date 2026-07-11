@@ -171,6 +171,11 @@ EXTERNAL_BOOL_FIELDS = [
 EXTERNAL_PROJECT_MODEL_FIELDS = [
     "manifests",
     "registrations",
+    # SMVENV-001: the content-addressed store is externally visible — every
+    # snapshot is a skills/<unit>/<sha>/ directory and the latest pointer is
+    # the .store-latest marker, so the filesystem projector reads both back.
+    "store_versions",
+    "store_latest",
 ]
 
 

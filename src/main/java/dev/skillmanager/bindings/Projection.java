@@ -26,7 +26,8 @@ public record Projection(
         /** Back-pointer to the {@link Binding} this row belongs to. */
         String bindingId,
         /**
-         * Absolute path in the store ({@code <store>/skills/<name>},
+         * Absolute path in the store ({@code <store>/skills/<name>/latest} —
+         * the working copy, never a {@code <sha>/} snapshot —
          * {@code <store>/plugins/<name>},
          * {@code <store>/docs/<repo>/<source-file>}, etc.). Null for
          * rows where no store-side source exists:

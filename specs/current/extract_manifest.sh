@@ -30,10 +30,15 @@ if [ -n "${SPEC_DOUBLE_COMPILER_HOME:-}" ]; then
 fi
 
 skill_home="${SKILL_MANAGER_HOME:-$HOME/.skill-manager}"
-script="$skill_home/skills/spec-double-compiler/scripts/extract_spec_manifest.py"
-if [ -f "$script" ]; then
-  exec "$python_bin" "$script" "$manifest_path"
-fi
+# Content-addressed store: the working copy lives under latest/. Fall back to
+# the bare slot for a home installed before that migration.
+slot="$skill_home/skills/spec-double-compiler"
+for root in "$slot/latest" "$slot"; do
+  script="$root/scripts/extract_spec_manifest.py"
+  if [ -f "$script" ]; then
+    exec "$python_bin" "$script" "$manifest_path"
+  fi
+done
 
 echo "spec-double-compiler manifest extractor was not found. Install the skill with skill-manager or set SPEC_DOUBLE_COMPILER_HOME." >&2
 exit 1

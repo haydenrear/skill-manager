@@ -48,12 +48,18 @@ from typing import Any
 _SPEC_DIR = Path(__file__).resolve().parent
 _REPO_ROOT = _SPEC_DIR.parents[1]
 
-_SKILL_ROOT = Path(
-    os.environ.get(
-        "SPEC_DOUBLE_COMPILER_HOME",
-        Path.home() / ".skill-manager" / "skills" / "spec-double-compiler",
-    )
-)
+def _spec_double_compiler_root() -> Path:
+    override = os.environ.get("SPEC_DOUBLE_COMPILER_HOME")
+    if override:
+        return Path(override)
+    slot = Path.home() / ".skill-manager" / "skills" / "spec-double-compiler"
+    # Content-addressed store: the working copy lives under latest/. Fall back
+    # to the bare slot for a home installed before that migration.
+    working_copy = slot / "latest"
+    return working_copy if working_copy.is_dir() else slot
+
+
+_SKILL_ROOT = _spec_double_compiler_root()
 for _candidate in (_SKILL_ROOT, _SPEC_DIR):
     if _candidate.is_dir() and str(_candidate) not in sys.path:
         sys.path.insert(0, str(_candidate))

@@ -139,7 +139,7 @@ After install:
 2. `skill-manager show hyper-experiments` — the full manifest is
    resolved and printed; `cli_dependencies` shows tb-query as
    installed; `mcp_dependencies` shows runpod as registered.
-3. `$SKILL_MANAGER_HOME/skills/hyper-experiments/SKILL.md` — the
+3. `$SKILL_MANAGER_HOME/skills/hyper-experiments/latest/SKILL.md` — the
    agent-facing copy.
 4. `$SKILL_MANAGER_HOME/bin/cli/tb-query` — the CLI binary.
 5. `browse_mcp_servers` over MCP (against the local virtual gateway) —

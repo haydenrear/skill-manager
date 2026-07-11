@@ -143,13 +143,15 @@ public final class ContentAddressedStoreTest {
                     Files.writeString(legacy.resolve(SkillParser.SKILL_FILENAME),
                             "---\nname: widget\ndescription: legacy\n---\n\nlegacy\n");
 
-                    assertEquals(1, SkillStore.migrateToContentAddressed(store), "one slot migrated");
+                    assertEquals(List.of("widget"), SkillStore.migrateToContentAddressed(store),
+                            "the migrated slot is named back to the caller, so its links can be repaired");
                     assertTrue(Files.isRegularFile(store.skillDir("widget").resolve(SkillParser.SKILL_FILENAME)),
                             "content moved under latest/");
                     assertTrue(Files.isDirectory(store.skillDir("widget").resolve(".git")),
                             "the in-place git clone moved with it");
                     assertTrue(store.contains("widget"), "unit still resolves after migration");
-                    assertEquals(0, SkillStore.migrateToContentAddressed(store), "second run is a no-op");
+                    assertEquals(List.of(), SkillStore.migrateToContentAddressed(store),
+                            "second run is a no-op");
                 })
                 .runAll();
     }
