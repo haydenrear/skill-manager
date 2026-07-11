@@ -1,0 +1,301 @@
+# External (Test Graph) action bindings for the skill-manager program model.
+# TLA+ External.tla is the source of truth; every public action binds the
+# real-CLI command adapter plus the projected-state assertion trio.
+actions:
+  SubmitInstallUnit:
+    view: external
+    layer: external
+    controllability: e2e_direct
+    kind: skill-manager-cli
+    adapter: adapters:SkillManagerCliCommandAdapter
+    projector: adapters:SkillManagerStateProjector
+    expected_projection: adapters:ExpectedSkillManagerProjection
+    assertion: adapters:ProjectedStateAssertion
+  SubmitInstallUnitForceScripts:
+    view: external
+    layer: external
+    controllability: e2e_direct
+    kind: skill-manager-cli
+    adapter: adapters:SkillManagerCliCommandAdapter
+    projector: adapters:SkillManagerStateProjector
+    expected_projection: adapters:ExpectedSkillManagerProjection
+    assertion: adapters:ProjectedStateAssertion
+  SubmitSyncUnit:
+    view: external
+    layer: external
+    controllability: e2e_direct
+    kind: skill-manager-cli
+    adapter: adapters:SkillManagerCliCommandAdapter
+    projector: adapters:SkillManagerStateProjector
+    expected_projection: adapters:ExpectedSkillManagerProjection
+    assertion: adapters:ProjectedStateAssertion
+  SubmitSyncUnitForceScripts:
+    view: external
+    layer: external
+    controllability: e2e_direct
+    kind: skill-manager-cli
+    adapter: adapters:SkillManagerCliCommandAdapter
+    projector: adapters:SkillManagerStateProjector
+    expected_projection: adapters:ExpectedSkillManagerProjection
+    assertion: adapters:ProjectedStateAssertion
+  SubmitSyncUninstalledUnit:
+    view: external
+    layer: external
+    controllability: e2e_direct
+    kind: skill-manager-cli
+    adapter: adapters:SkillManagerCliCommandAdapter
+    projector: adapters:SkillManagerStateProjector
+    expected_projection: adapters:ExpectedSkillManagerProjection
+    assertion: adapters:ProjectedStateAssertion
+  SubmitRemoveUnit:
+    view: external
+    layer: external
+    controllability: e2e_direct
+    kind: skill-manager-cli
+    adapter: adapters:SkillManagerCliCommandAdapter
+    projector: adapters:SkillManagerStateProjector
+    expected_projection: adapters:ExpectedSkillManagerProjection
+    assertion: adapters:ProjectedStateAssertion
+  SubmitRemoveUnknownUnit:
+    view: external
+    layer: external
+    controllability: e2e_direct
+    kind: skill-manager-cli
+    adapter: adapters:SkillManagerCliCommandAdapter
+    projector: adapters:SkillManagerStateProjector
+    expected_projection: adapters:ExpectedSkillManagerProjection
+    assertion: adapters:ProjectedStateAssertion
+  SubmitBindDocRepo:
+    view: external
+    layer: external
+    controllability: e2e_direct
+    kind: skill-manager-cli
+    adapter: adapters:SkillManagerCliCommandAdapter
+    projector: adapters:SkillManagerStateProjector
+    expected_projection: adapters:ExpectedSkillManagerProjection
+    assertion: adapters:ProjectedStateAssertion
+  SubmitSyncDocRepo:
+    view: external
+    layer: external
+    controllability: e2e_direct
+    kind: skill-manager-cli
+    adapter: adapters:SkillManagerCliCommandAdapter
+    projector: adapters:SkillManagerStateProjector
+    expected_projection: adapters:ExpectedSkillManagerProjection
+    assertion: adapters:ProjectedStateAssertion
+  SubmitSyncUnknownDocRepo:
+    view: external
+    layer: external
+    controllability: e2e_direct
+    kind: skill-manager-cli
+    adapter: adapters:SkillManagerCliCommandAdapter
+    projector: adapters:SkillManagerStateProjector
+    expected_projection: adapters:ExpectedSkillManagerProjection
+    assertion: adapters:ProjectedStateAssertion
+  SubmitSyncHarness:
+    view: external
+    layer: external
+    controllability: e2e_direct
+    kind: skill-manager-cli
+    adapter: adapters:SkillManagerCliCommandAdapter
+    projector: adapters:SkillManagerStateProjector
+    expected_projection: adapters:ExpectedSkillManagerProjection
+    assertion: adapters:ProjectedStateAssertion
+  SubmitPublishTarball:
+    view: external
+    layer: external
+    controllability: e2e_direct
+    kind: skill-manager-cli
+    adapter: adapters:SkillManagerCliCommandAdapter
+    projector: adapters:SkillManagerStateProjector
+    expected_projection: adapters:ExpectedSkillManagerProjection
+    assertion: adapters:ProjectedStateAssertion
+  SubmitPublishUnauthenticated:
+    view: external
+    layer: external
+    controllability: e2e_direct
+    kind: skill-manager-cli
+    adapter: adapters:SkillManagerCliCommandAdapter
+    projector: adapters:SkillManagerStateProjector
+    expected_projection: adapters:ExpectedSkillManagerProjection
+    assertion: adapters:ProjectedStateAssertion
+  SubmitSearchRegistry:
+    view: external
+    layer: external
+    controllability: e2e_direct
+    kind: skill-manager-cli
+    adapter: adapters:SkillManagerCliCommandAdapter
+    projector: adapters:SkillManagerStateProjector
+    expected_projection: adapters:ExpectedSkillManagerProjection
+    assertion: adapters:ProjectedStateAssertion
+  SubmitConfigureRegistry:
+    view: external
+    layer: external
+    controllability: e2e_direct
+    kind: skill-manager-cli
+    adapter: adapters:SkillManagerCliCommandAdapter
+    projector: adapters:SkillManagerStateProjector
+    expected_projection: adapters:ExpectedSkillManagerProjection
+    assertion: adapters:ProjectedStateAssertion
+  SubmitEnsureGateway:
+    view: external
+    layer: external
+    controllability: e2e_direct
+    kind: skill-manager-cli
+    adapter: adapters:SkillManagerCliCommandAdapter
+    projector: adapters:SkillManagerStateProjector
+    expected_projection: adapters:ExpectedSkillManagerProjection
+    assertion: adapters:ProjectedStateAssertion
+  SubmitDeployGatewayGlobal:
+    view: external
+    layer: external
+    controllability: e2e_direct
+    kind: skill-manager-cli
+    adapter: adapters:SkillManagerCliCommandAdapter
+    projector: adapters:SkillManagerStateProjector
+    expected_projection: adapters:ExpectedSkillManagerProjection
+    assertion: adapters:ProjectedStateAssertion
+  SubmitDeployGatewaySession:
+    view: external
+    layer: external
+    controllability: e2e_direct
+    kind: skill-manager-cli
+    adapter: adapters:SkillManagerCliCommandAdapter
+    projector: adapters:SkillManagerStateProjector
+    expected_projection: adapters:ExpectedSkillManagerProjection
+    assertion: adapters:ProjectedStateAssertion
+  SubmitDescribeGatewayTool:
+    view: external
+    layer: external
+    controllability: e2e_direct
+    kind: skill-manager-cli
+    adapter: adapters:SkillManagerCliCommandAdapter
+    projector: adapters:SkillManagerStateProjector
+    expected_projection: adapters:ExpectedSkillManagerProjection
+    assertion: adapters:ProjectedStateAssertion
+  SubmitInvokeGatewayTool:
+    view: external
+    layer: external
+    controllability: e2e_direct
+    kind: skill-manager-cli
+    adapter: adapters:SkillManagerCliCommandAdapter
+    projector: adapters:SkillManagerStateProjector
+    expected_projection: adapters:ExpectedSkillManagerProjection
+    assertion: adapters:ProjectedStateAssertion
+  SubmitInvokeUndisclosedTool:
+    view: external
+    layer: external
+    controllability: e2e_direct
+    kind: skill-manager-cli
+    adapter: adapters:SkillManagerCliCommandAdapter
+    projector: adapters:SkillManagerStateProjector
+    expected_projection: adapters:ExpectedSkillManagerProjection
+    assertion: adapters:ProjectedStateAssertion
+  RunProjectRegister:
+    view: external
+    layer: external
+    controllability: e2e_direct
+    kind: skill-manager-cli
+    adapter: adapters:SkillManagerCliCommandAdapter
+    projector: adapters:SkillManagerStateProjector
+    expected_projection: adapters:ExpectedSkillManagerProjection
+    assertion: adapters:ProjectedStateAssertion
+  RunProjectResolve:
+    view: external
+    layer: external
+    controllability: e2e_direct
+    kind: skill-manager-cli
+    adapter: adapters:SkillManagerCliCommandAdapter
+    projector: adapters:SkillManagerStateProjector
+    expected_projection: adapters:ExpectedSkillManagerProjection
+    assertion: adapters:ProjectedStateAssertion
+  RunProjectEnvMaterialize:
+    view: external
+    layer: external
+    controllability: e2e_direct
+    kind: skill-manager-cli
+    adapter: adapters:SkillManagerCliCommandAdapter
+    projector: adapters:SkillManagerStateProjector
+    expected_projection: adapters:ExpectedSkillManagerProjection
+    assertion: adapters:ProjectedStateAssertion
+  RunProjectLibsResolve:
+    view: external
+    layer: external
+    controllability: e2e_direct
+    kind: skill-manager-cli
+    adapter: adapters:SkillManagerCliCommandAdapter
+    projector: adapters:SkillManagerStateProjector
+    expected_projection: adapters:ExpectedSkillManagerProjection
+    assertion: adapters:ProjectedStateAssertion
+  RunScaffoldProjectChildHome:
+    view: external
+    layer: external
+    controllability: e2e_direct
+    kind: skill-manager-cli
+    adapter: adapters:SkillManagerCliCommandAdapter
+    projector: adapters:SkillManagerStateProjector
+    expected_projection: adapters:ExpectedSkillManagerProjection
+    assertion: adapters:ProjectedStateAssertion
+  RunProjectProfileResolve:
+    view: external
+    layer: external
+    controllability: e2e_direct
+    kind: skill-manager-cli
+    adapter: adapters:SkillManagerCliCommandAdapter
+    projector: adapters:SkillManagerStateProjector
+    expected_projection: adapters:ExpectedSkillManagerProjection
+    assertion: adapters:ProjectedStateAssertion
+  RunStoreUnitVersion:
+    view: external
+    layer: external
+    controllability: e2e_direct
+    kind: skill-manager-cli
+    adapter: adapters:SkillManagerCliCommandAdapter
+    projector: adapters:SkillManagerStateProjector
+    expected_projection: adapters:ExpectedSkillManagerProjection
+    assertion: adapters:ProjectedStateAssertion
+  RunPinUnitVersion:
+    view: external
+    layer: external
+    controllability: e2e_direct
+    kind: skill-manager-cli
+    adapter: adapters:SkillManagerCliCommandAdapter
+    projector: adapters:SkillManagerStateProjector
+    expected_projection: adapters:ExpectedSkillManagerProjection
+    assertion: adapters:ProjectedStateAssertion
+  RunPinConflictingUnitVersion:
+    view: external
+    layer: external
+    controllability: e2e_direct
+    kind: skill-manager-cli
+    adapter: adapters:SkillManagerCliCommandAdapter
+    projector: adapters:SkillManagerStateProjector
+    expected_projection: adapters:ExpectedSkillManagerProjection
+    assertion: adapters:ProjectedStateAssertion
+  RunActivateProjectVenv:
+    view: external
+    layer: external
+    controllability: e2e_direct
+    kind: skill-manager-cli
+    adapter: adapters:SkillManagerCliCommandAdapter
+    projector: adapters:SkillManagerStateProjector
+    expected_projection: adapters:ExpectedSkillManagerProjection
+    assertion: adapters:ProjectedStateAssertion
+  RunMaterializeVenvAgentShims:
+    view: external
+    layer: external
+    controllability: e2e_direct
+    kind: skill-manager-cli
+    adapter: adapters:SkillManagerCliCommandAdapter
+    projector: adapters:SkillManagerStateProjector
+    expected_projection: adapters:ExpectedSkillManagerProjection
+    assertion: adapters:ProjectedStateAssertion
+  RunMaterializeVenvHooks:
+    view: external
+    layer: external
+    controllability: e2e_direct
+    kind: skill-manager-cli
+    adapter: adapters:SkillManagerCliCommandAdapter
+    projector: adapters:SkillManagerStateProjector
+    expected_projection: adapters:ExpectedSkillManagerProjection
+    assertion: adapters:ProjectedStateAssertion

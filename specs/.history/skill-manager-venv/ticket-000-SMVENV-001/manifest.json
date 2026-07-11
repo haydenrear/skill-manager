@@ -1,0 +1,283 @@
+{
+  "active_ticket_dir": "specs/tickets/SMVENV-001",
+  "commit_recommendation": {
+    "git_add": "git add specs/.history/skill-manager-venv/ticket-000-SMVENV-001 specs/current",
+    "git_commit": "git commit -m 'record spec history for SMVENV-001'",
+    "message": "It is recommended to commit this history directory now: specs/.history/skill-manager-venv/ticket-000-SMVENV-001"
+  },
+  "created_at_utc": "2026-07-11T16:57:24.045987+00:00",
+  "entry_name": "ticket-000-SMVENV-001",
+  "git": {
+    "branch": "feature/SMVENV-001",
+    "commit": "311eaeb",
+    "inside_work_tree": "true"
+  },
+  "history_policy": "append-only by convention; existing entries are not overwritten and filesystem permissions remain git-friendly",
+  "kind": "ticket",
+  "promotion": {
+    "destination": "specs",
+    "merged": [
+      {
+        "destination": "specs/current",
+        "files": [
+          {
+            "destination": "specs/current/Core.tla",
+            "relative": "Core.tla",
+            "source": "specs/tickets/SMVENV-001/desired/Core.tla"
+          },
+          {
+            "destination": "specs/current/External.cfg",
+            "relative": "External.cfg",
+            "source": "specs/tickets/SMVENV-001/desired/External.cfg"
+          },
+          {
+            "destination": "specs/current/External.tla",
+            "relative": "External.tla",
+            "source": "specs/tickets/SMVENV-001/desired/External.tla"
+          },
+          {
+            "destination": "specs/current/Internal.cfg",
+            "relative": "Internal.cfg",
+            "source": "specs/tickets/SMVENV-001/desired/Internal.cfg"
+          },
+          {
+            "destination": "specs/current/Internal.tla",
+            "relative": "Internal.tla",
+            "source": "specs/tickets/SMVENV-001/desired/Internal.tla"
+          },
+          {
+            "destination": "specs/current/InternalCliDisclosureCases.cfg",
+            "relative": "InternalCliDisclosureCases.cfg",
+            "source": "specs/tickets/SMVENV-001/desired/InternalCliDisclosureCases.cfg"
+          },
+          {
+            "destination": "specs/current/InternalCliStoreCases.cfg",
+            "relative": "InternalCliStoreCases.cfg",
+            "source": "specs/tickets/SMVENV-001/desired/InternalCliStoreCases.cfg"
+          },
+          {
+            "destination": "specs/current/InternalGatewayCases.cfg",
+            "relative": "InternalGatewayCases.cfg",
+            "source": "specs/tickets/SMVENV-001/desired/InternalGatewayCases.cfg"
+          },
+          {
+            "destination": "specs/current/InternalProjectCases.cfg",
+            "relative": "InternalProjectCases.cfg",
+            "source": "specs/tickets/SMVENV-001/desired/InternalProjectCases.cfg"
+          },
+          {
+            "destination": "specs/current/InternalServerRegistryCases.cfg",
+            "relative": "InternalServerRegistryCases.cfg",
+            "source": "specs/tickets/SMVENV-001/desired/InternalServerRegistryCases.cfg"
+          },
+          {
+            "destination": "specs/current/InternalVenvCases.cfg",
+            "relative": "InternalVenvCases.cfg",
+            "source": "specs/tickets/SMVENV-001/desired/InternalVenvCases.cfg"
+          },
+          {
+            "destination": "specs/current/MC.cfg",
+            "relative": "MC.cfg",
+            "source": "specs/tickets/SMVENV-001/desired/MC.cfg"
+          },
+          {
+            "destination": "specs/current/MC_program_promotion.cfg",
+            "relative": "MC_program_promotion.cfg",
+            "source": "specs/tickets/SMVENV-001/desired/MC_program_promotion.cfg"
+          },
+          {
+            "destination": "specs/current/README.md",
+            "relative": "README.md",
+            "source": "specs/tickets/SMVENV-001/desired/README.md"
+          },
+          {
+            "destination": "specs/current/actions.yml",
+            "relative": "actions.yml",
+            "source": "specs/tickets/SMVENV-001/desired/actions.yml"
+          },
+          {
+            "destination": "specs/current/adapters.py",
+            "relative": "adapters.py",
+            "source": "specs/tickets/SMVENV-001/desired/adapters.py"
+          },
+          {
+            "destination": "specs/current/case_adapters.toml",
+            "relative": "case_adapters.toml",
+            "source": "specs/tickets/SMVENV-001/desired/case_adapters.toml"
+          },
+          {
+            "destination": "specs/current/extract_manifest.sh",
+            "relative": "extract_manifest.sh",
+            "source": "specs/tickets/SMVENV-001/desired/extract_manifest.sh"
+          },
+          {
+            "destination": "specs/current/production_adapters.py",
+            "relative": "production_adapters.py",
+            "source": "specs/tickets/SMVENV-001/desired/production_adapters.py"
+          },
+          {
+            "destination": "specs/current/run_tlc.sh",
+            "relative": "run_tlc.sh",
+            "source": "specs/tickets/SMVENV-001/desired/run_tlc.sh"
+          },
+          {
+            "destination": "specs/current/spec_case_adapters.py",
+            "relative": "spec_case_adapters.py",
+            "source": "specs/tickets/SMVENV-001/desired/spec_case_adapters.py"
+          },
+          {
+            "destination": "specs/current/spec_manifest.yaml",
+            "relative": "spec_manifest.yaml",
+            "source": "specs/tickets/SMVENV-001/desired/spec_manifest.yaml"
+          },
+          {
+            "destination": "specs/current/testgraph_bindings.yml",
+            "relative": "testgraph_bindings.yml",
+            "source": "specs/tickets/SMVENV-001/desired/testgraph_bindings.yml"
+          },
+          {
+            "destination": "specs/current/tests/test_cli_agent_context_program_model.py",
+            "relative": "tests/test_cli_agent_context_program_model.py",
+            "source": "specs/tickets/SMVENV-001/desired/tests/test_cli_agent_context_program_model.py"
+          },
+          {
+            "destination": "specs/current/tests/test_cli_help_program_model.py",
+            "relative": "tests/test_cli_help_program_model.py",
+            "source": "specs/tickets/SMVENV-001/desired/tests/test_cli_help_program_model.py"
+          },
+          {
+            "destination": "specs/current/tests/test_cli_metadata_program_model.py",
+            "relative": "tests/test_cli_metadata_program_model.py",
+            "source": "specs/tickets/SMVENV-001/desired/tests/test_cli_metadata_program_model.py"
+          },
+          {
+            "destination": "specs/current/tests/test_cli_skill_docs_program_model.py",
+            "relative": "tests/test_cli_skill_docs_program_model.py",
+            "source": "specs/tickets/SMVENV-001/desired/tests/test_cli_skill_docs_program_model.py"
+          },
+          {
+            "destination": "specs/current/tests/test_program_model_contract.py",
+            "relative": "tests/test_program_model_contract.py",
+            "source": "specs/tickets/SMVENV-001/desired/tests/test_program_model_contract.py"
+          },
+          {
+            "destination": "specs/current/tests/test_spec_views.py",
+            "relative": "tests/test_spec_views.py",
+            "source": "specs/tickets/SMVENV-001/desired/tests/test_spec_views.py"
+          },
+          {
+            "destination": "specs/current/tests/test_store_projection.py",
+            "relative": "tests/test_store_projection.py",
+            "source": "specs/tickets/SMVENV-001/desired/tests/test_store_projection.py"
+          },
+          {
+            "destination": "specs/current/tlc_projection.py",
+            "relative": "tlc_projection.py",
+            "source": "specs/tickets/SMVENV-001/desired/tlc_projection.py"
+          }
+        ],
+        "operation": "replace",
+        "role": "current",
+        "source": "specs/tickets/SMVENV-001/desired"
+      }
+    ],
+    "operation": "replace project current with ticket desired and merge ticket artifacts into project specs",
+    "source": "specs/tickets/SMVENV-001"
+  },
+  "results": [],
+  "schema_version": 1,
+  "snapshots": [
+    {
+      "exists": true,
+      "role": "program_model",
+      "snapshot": "specs/.history/skill-manager-venv/ticket-000-SMVENV-001/snapshots/program_model",
+      "source": "specs/program_model"
+    },
+    {
+      "exists": true,
+      "role": "desired_program_model",
+      "snapshot": "specs/.history/skill-manager-venv/ticket-000-SMVENV-001/snapshots/desired_program_model",
+      "source": "specs/desired_program_model"
+    },
+    {
+      "exists": true,
+      "role": "current",
+      "snapshot": "specs/.history/skill-manager-venv/ticket-000-SMVENV-001/snapshots/current",
+      "source": "specs/current"
+    },
+    {
+      "exists": true,
+      "moved": true,
+      "role": "ticket_workdir",
+      "snapshot": "specs/.history/skill-manager-venv/ticket-000-SMVENV-001/ticket",
+      "source": "specs/tickets/SMVENV-001"
+    }
+  ],
+  "spec_root": "specs",
+  "summary": "",
+  "ticket": {
+    "acceptance": {
+      "assertions": [
+        "VenvStoreVersionsAreContentAddressed, VenvStoreLatestIsStored, VenvStoreLatestUniquePerUnit hold in TLC over the current model.",
+        "Installing the same unit at two shas leaves both store entries and exactly one latest pointer.",
+        "RemoveUnit leaves store entries intact (cache semantics)."
+      ],
+      "deviations": [
+        "The objective says 'every install/sync records the unit's content'. The TLA+ models StoreUnitVersion as a separate action on an already-installed unit (InstallUnitImpl and RemoveUnitImpl both leave project_model unchanged), so the implementation follows the model, not the prose: a distinct `store add` CLI surface. Install/sync are untouched. Two hazards this sidesteps \u2014 the sha is unknown at install time for file:/registry sources (InstalledUnit.gitHash is only set for Kind.GIT), and SyncGitHandler merges into the working copy in place, which an immutable snapshot cannot absorb.",
+        "latest/ is a real directory, not a symlink into a snapshot, for the same in-place-merge reason.",
+        "The store covers skills only. Plugins, doc-repos, and harness templates keep the flat layout; the model has no kind dimension, so this is under-specification rather than a spec violation. Tracked separately \u2014 it blocks a coherent SMVENV-002, which pins 'units'."
+      ],
+      "evidence": [
+        "TLC over ticket current/: all 7 configs clean; InternalVenvCases 109,621 states / 2,610 distinct / depth 11; the three Venv store invariants hold.",
+        "spec-unit: 2 targets pass (17 + 21 cases), incl. tests/test_store_projection.py pinning observe_home against the store layout.",
+        "repo unit tests: jbang RunTests.java ALL PASSED; new ContentAddressedStoreTest (9 cases).",
+        "test graph: 19 graphs green. specExternalPhase could not run (pre-existing testgraphsdk ImportError) \u2014 the ticket's named graph_after_unit_pass is unproven; see the specExternalPhase issue.",
+        "manual end-to-end CLI: install -> store add x2 -> remove; both snapshots and the latest marker survive removal; store add on a removed-but-snapshotted unit still rejects UNIT_NOT_INSTALLED."
+      ]
+    },
+    "current_increment": {
+      "adapters": [
+        "StoreModelCaseAdapter._do_store_unit_version",
+        "external adapter dispatch + projector coverage for the store layout"
+      ],
+      "graph_after_unit_pass": [
+        "specExternalPhase (regenerated external cases include RunStoreUnitVersion)"
+      ],
+      "model_actions": [
+        "StoreUnitVersion (guard: unit installed; effects: store entry union, latest pointer replacement)"
+      ],
+      "model_state": [
+        "project_model.store_versions",
+        "project_model.store_latest"
+      ],
+      "unit_tests": [
+        "uv run --with pytest,pyyaml python3 -m pytest specs/current/tests -q"
+      ]
+    },
+    "depends_on": [],
+    "desired_actions": [
+      "StoreUnitVersion",
+      "RunStoreUnitVersion"
+    ],
+    "id": "SMVENV-001",
+    "implementation_scope": [
+      "SkillManager.java store/fetch/installed-record paths (content-addressed layout + latest pointer)",
+      "lockfile / installed.json records gain the resolved sha"
+    ],
+    "objective": "Every install/sync records the unit's content under skills/<name>/<sha>/ (git hash or tag-resolved hash). The store is an immutable cache: removing a unit never deletes stored shas, and the global SKILL_MANAGER_HOME continues to surface exactly one 'latest' per unit, now as a pointer into the store.",
+    "status": "closed",
+    "title": "Content-addressed skill store: skills/<name>/<sha>/ plus a moving latest pointer"
+  },
+  "ticket_id": "SMVENV-001",
+  "ticket_index": 0,
+  "ticket_plan": "specs/desired_program_model/ticket_plan.yaml",
+  "ticket_status": "closed",
+  "ticket_workdir": {
+    "exists": true,
+    "moved": true,
+    "role": "ticket_workdir",
+    "snapshot": "specs/.history/skill-manager-venv/ticket-000-SMVENV-001/ticket",
+    "source": "specs/tickets/SMVENV-001"
+  },
+  "workflow_name": "skill-manager-venv"
+}

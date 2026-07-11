@@ -1,0 +1,94 @@
+version: 1
+name: desired-program-model
+canonical_tla_module: Core
+canonical_tla_file: Core.tla
+bounded_model_config: MC.cfg
+manifest: spec_manifest.yaml
+ticket_plan: ticket_plan.yaml
+
+relationship:
+  extends_current_program_model: ../program_model/Core.tla
+  purpose: desired whole-program model for the skill-manager venv ticket workflow
+  generation_status: planned
+
+implementation_status:
+  updated: '2026-07-03'
+  policy: specs/current is the executable state of landed work; this file summarizes the desired destination.
+  active_ticket: SMVENV-001
+  active_ticket_title: "Content-addressed skill store: skills/<name>/<sha>/ plus a moving latest pointer"
+  summary:
+    desired_model_scaffolded: true
+    desired_model_authored: true
+    desired_model_tlc_checked: true
+    ticket_breakdown: authored (SMVENV-001..004 in ticket_plan.yaml)
+    current_model: baseline copy of specs/program_model (no venv behavior landed yet)
+    generated_desired_cases: pending
+    adapters: pending (spec_case_adapters + adapters venv transitions land per ticket)
+
+modeled_boundary_status:
+  ticket_plan:
+    status: authored
+    artifact: ticket_plan.yaml
+    next_ticket: SMVENV-001
+  venv_model:
+    status: modeled_and_tlc_checked
+    state_fields:
+      - project_model.store_versions
+      - project_model.store_latest
+      - project_model.version_pins
+      - project_model.pin_conflicts
+      - project_model.venv_activations
+      - project_model.venv_overlay_parents
+      - project_model.venv_agent_shims
+      - project_model.venv_hook_materializations
+    internal_actions:
+      - StoreUnitVersion
+      - PinProjectUnitVersion
+      - ActivateProjectVenv
+      - MaterializeVenvAgentShims
+      - MaterializeVenvHooks
+    external_actions:
+      - RunStoreUnitVersion
+      - RunPinUnitVersion
+      - RunPinConflictingUnitVersion
+      - RunActivateProjectVenv
+      - RunMaterializeVenvAgentShims
+      - RunMaterializeVenvHooks
+    invariants:
+      - VenvStoreVersionsAreContentAddressed
+      - VenvStoreLatestIsStored
+      - VenvStoreLatestUniquePerUnit
+      - VenvPinsAreStoredAndRegistered
+      - VenvPinsUniquePerProjectUnit
+      - VenvPinsAncestryCoherent
+      - VenvPinConflictsAreDeclaredProjects
+      - VenvActivationsAreDeclaredAndRegistered
+      - VenvOverlayParentsAreKnownAndNotSelf
+      - VenvAgentShimsComeFromActivations
+      - VenvHooksComeFromPinnedUnits
+    slice_config: InternalVenvCases.cfg
+
+program_domains:
+  - content-addressed skill store (immutable cache under skills/<name>/<sha>/ with a moving latest pointer)
+  - per-project version pins with the ancestry-or-fail collision rule
+  - venv activation as a recursive parent-child env overlay
+  - agent-CLI shims (claude / codex / gemini rerouted with SKILL_MANAGER_HOME / CLAUDE_CONFIG_DIR / CODEX_HOME)
+  - tool-call hook materialization from pinned units
+
+implementation_sources:
+  tickets:
+    - ticket/env-overlay.md
+    - ticket/versioning.md
+
+adapter_plan:
+  desired_new_ports:
+    - SkillManagerCli.store_unit_version
+    - SkillManagerCli.pin_project_unit_version
+    - SkillManagerCli.activate_project_venv
+    - SkillManagerCli.materialize_venv_agent_shims
+    - SkillManagerCli.materialize_venv_hooks
+
+guardrails:
+  semantic_model_rule: test graph nodes, CI jobs, and validation scripts are evidence, never TLA+ state/actions
+  removal_rule: RemoveUnit never deletes content-addressed store entries (cache semantics)
+  collision_rule: cross-project pins of one unit must stay ancestry-related or fail with PIN_ANCESTRY_CONFLICT

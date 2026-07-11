@@ -1,0 +1,213 @@
+module: SkillManager
+package: skillmanager_program_cases
+
+status:
+  workflow: accepted
+  promoted_from_workflow: desired-ticket-workflow
+  closed_tickets:
+    - CLI-PROGDISC-001
+    - CLI-PROGDISC-002
+    - CLI-PROGDISC-003
+    - CLI-PROGDISC-004
+    - CLI-PROGDISC-005
+  relation_to_program_model: accepted_whole_program_model
+  updated: 2026-06-28
+  summary:
+    progressive_disclosure_cli_model_promoted: true
+    generated_cases: passed
+    adapters: cli_metadata_help_docs_and_agent_context
+    tlc: passed
+  done:
+    - Added CLI disclosure catalog state for every top-level command, modeled subcommand, alias, and workflow.
+    - Added root-help, command-help, skill-doc, workflow-command, and agent-context invariants.
+    - Added semantic actions for rendering progressive root help, rendering command help, exposing skill workflow docs, and emitting agent workflow context.
+    - Landed CLI-PROGDISC-002 production metadata source and current-model adapter coverage for command paths, aliases, workflows, docs, examples, and agent context affordances.
+    - Landed CLI-PROGDISC-003 progressive help renderer, inherited help behavior, command-specific footers, current-model help adapter coverage, and doc-smoke graph validation.
+    - Landed CLI-PROGDISC-004 opt-in agent context output, context adapter coverage, and doc-smoke end-to-end validation for representative workflows.
+    - Landed CLI-PROGDISC-005 bundled skill documentation consistency, current-model docs adapter coverage, and doc-smoke/skill-dev-smoke validation.
+
+source_model:
+  program_model_manifest: ../program_model/spec_manifest.yaml
+  program_model_module: ../program_model/SkillManager.tla
+  baseline_package: desired_program_cases
+  ticket_tlc_config: MC.cfg
+  promotion_tlc_config: MC_program_promotion.cfg
+
+source_surfaces:
+  user_request:
+    - Progressive disclosure CLI rework requested on 2026-06-28.
+  specification:
+    - ../program_model/SkillManager.tla
+    - ../program_model/spec_manifest.yaml
+  cli_sources:
+    - src/main/java/dev/skillmanager/cli/SkillManagerCli.java
+    - src/main/java/dev/skillmanager/commands
+  skill_docs:
+    - skill-manager-skill/SKILL.md
+    - skill-manager-skill/references
+    - skill-publisher-skill/SKILL.md
+    - skill-publisher-skill/references
+    - skill-dev-skill/SKILL.md
+    - skill-dev-skill/README.md
+
+case_codegen:
+  style: explicit_transition_cases
+  generation_status: passed
+
+state_fields:
+  project_model.cli_command_catalog:
+    type: set[CommandPath]
+    description: canonical CLI command and subcommand path catalog, including the root command.
+  project_model.cli_command_aliases:
+    type: set[tuple[Alias, CommandPath]]
+    description: user-facing aliases that resolve to canonical command paths.
+  project_model.cli_workflow_catalog:
+    type: set[WorkflowId]
+    description: canonical workflow ids covered by CLI help, agent context, and bundled skills.
+  project_model.cli_workflow_command_links:
+    type: set[tuple[WorkflowId, CommandPath]]
+    description: link from each workflow to at least one CLI command path that starts or inspects it.
+  project_model.cli_root_help_topics:
+    type: set[CommandPath]
+    description: root help topics; deliberately limited to top-level commands for progressive disclosure.
+  project_model.cli_command_help_topics:
+    type: set[CommandPath]
+    description: command paths with dedicated contextual help.
+  project_model.cli_skill_doc_topics:
+    type: set[tuple[SkillDocSurface, WorkflowId]]
+    description: bundled skill documentation coverage by workflow.
+  project_model.cli_agent_context_topics:
+    type: set[WorkflowId]
+    description: workflows that can emit agent-facing context while the CLI is being used.
+actions:
+  RenderProgressiveRootHelp:
+    port: SkillManagerCli.render_progressive_root_help
+    result: CliDisclosureResult
+    description: root CLI help renders the top-level command catalog only.
+  RenderInstallCommandHelp:
+    port: SkillManagerCli.render_command_help
+    result: CliDisclosureResult
+    description: representative install command help transition.
+  RenderSyncCommandHelp:
+    port: SkillManagerCli.render_command_help
+    result: CliDisclosureResult
+    description: representative sync command help transition.
+  RenderProjectProfilesListHelp:
+    port: SkillManagerCli.render_command_help
+    result: CliDisclosureResult
+    description: representative nested command help transition.
+  ExposeInstallLocalUnitWorkflowDocs:
+    port: SkillManagerCli.expose_skill_workflow_docs
+    result: CliDisclosureResult
+    description: representative install workflow documentation transition.
+  ExposeSkillScriptsWorkflowDocs:
+    port: SkillManagerCli.expose_skill_workflow_docs
+    result: CliDisclosureResult
+    description: representative skill-script workflow documentation transition.
+  ExposeProjectEnvWorkflowDocs:
+    port: SkillManagerCli.expose_skill_workflow_docs
+    result: CliDisclosureResult
+    description: representative project-env workflow documentation transition.
+  EmitSyncOneUnitAgentContext:
+    port: SkillManagerCli.emit_agent_workflow_context
+    result: CliDisclosureResult
+    description: representative sync workflow agent-context transition.
+  EmitProjectEnvAgentContext:
+    port: SkillManagerCli.emit_agent_workflow_context
+    result: CliDisclosureResult
+    description: representative project-env workflow agent-context transition.
+invariants:
+  - CliCommandCatalogCoversAllCommands
+  - CliRootHelpStaysProgressive
+  - CliCommandHelpCoversCatalog
+  - CliWorkflowCatalogCoversDesiredWorkflows
+  - CliWorkflowsReferenceCatalogCommands
+  - CliSkillDocsCoverWorkflowCatalog
+  - CliAgentContextCoversWorkflowCatalog
+ports:
+  SkillManagerCli.render_progressive_root_help:
+    kind: cli_help
+    adapter_status: implemented
+  SkillManagerCli.render_command_help:
+    kind: cli_help
+    adapter_status: implemented
+  SkillManagerCli.expose_skill_workflow_docs:
+    kind: docs
+    adapter_status: implemented
+  SkillManagerCli.emit_agent_workflow_context:
+    kind: cli_context
+    adapter_status: implemented
+validation:
+  tlc:
+    - command: bash specs/program_model/run_tlc.sh specs/program_model/SkillManager.tla specs/program_model/MC.cfg
+      status: passed
+      budget: <=2m
+      scope: CLI disclosure catalog, help, skill docs, and agent context invariants.
+      result: no invariant violations
+      states_generated: 10
+      distinct_states: 1
+      depth: 1
+      duration: 0.87s
+  case_generation:
+    - command: python3 /Users/hayde/.skill-manager/skills/spec-double-compiler/scripts/generate_cases_from_tlc_dump.py specs/program_model/SkillManager.tla specs/program_model/MC.cfg --out /tmp/sm-cli-disclosure-cases --package cli_disclosure_cases --tlc2 /Users/hayde/.skill-manager/bin/cli/tlc2
+      status: passed
+      budget: <=2m
+      result: generated 9 transition cases from 1 state
+      duration: 0.98s
+    - command: bash specs/program_model/run_tlc.sh specs/program_model/SkillManager.tla specs/program_model/MC_program_promotion.cfg
+      status: promotion_only
+      note: Full whole-program TLC is intentionally not part of the ticket loop.
+    - command: python3 /Users/hayde/.skill-manager/skills/spec-double-compiler/scripts/generate_cases_from_tlc_dump.py specs/program_model/SkillManager.tla specs/program_model/MC.cfg --out /tmp/sm-cli-metadata-desired-cases --package desired_cli_metadata_cases --tlc2 /Users/hayde/.skill-manager/bin/cli/tlc2
+      status: passed
+      budget: <=2m
+      result: generated 9 transition cases from 1 state
+      duration: 1.07s
+    - command: python3 /Users/hayde/.skill-manager/skills/spec-double-compiler/scripts/generate_cases_from_tlc_dump.py specs/program_model/SkillManager.tla specs/program_model/MC.cfg --out /tmp/sm-cli-help-desired-cases --package desired_cli_help_cases --tlc2 /Users/hayde/.skill-manager/bin/cli/tlc2
+      status: passed
+      budget: <=2m
+      result: generated 9 transition cases into /private/tmp/sm-cli-help-desired-cases/desired_cli_help_cases
+    - command: python3 /Users/hayde/.skill-manager/skills/spec-double-compiler/scripts/generate_cases_from_tlc_dump.py specs/program_model/SkillManager.tla specs/program_model/MC.cfg --out /tmp/sm-cli-agent-desired-cases --package desired_cli_agent_cases --tlc2 /Users/hayde/.skill-manager/bin/cli/tlc2
+      status: passed
+      budget: <=2m
+      result: generated 9 transition cases into /private/tmp/sm-cli-agent-desired-cases/desired_cli_agent_cases
+      duration: 0.95s
+    - command: python3 /Users/hayde/.skill-manager/skills/spec-double-compiler/scripts/run_generated_case_adapters.py /private/tmp/sm-cli-agent-desired-cases/desired_cli_agent_cases --mapping specs/program_model/case_adapters.toml --spec-dir specs/program_model --import-root . --work-dir /tmp/sm-cli-agent-desired-adapters --validate-capabilities --batch
+      status: passed
+      result: validated 9 adapter mappings for 9 labels; executed 9 cases in batch
+    - command: python3 /Users/hayde/.skill-manager/skills/spec-double-compiler/scripts/generate_cases_from_tlc_dump.py specs/program_model/SkillManager.tla specs/program_model/MC.cfg --out /tmp/sm-cli-docs-desired-cases --package desired_cli_docs_cases --tlc2 /Users/hayde/.skill-manager/bin/cli/tlc2
+      status: passed
+      budget: <=2m
+      result: generated 9 transition cases into /private/tmp/sm-cli-docs-desired-cases/desired_cli_docs_cases
+    - command: python3 /Users/hayde/.skill-manager/skills/spec-double-compiler/scripts/run_generated_case_adapters.py /private/tmp/sm-cli-docs-desired-cases/desired_cli_docs_cases --mapping specs/program_model/case_adapters.toml --spec-dir specs/program_model --import-root . --work-dir /tmp/sm-cli-docs-desired-adapters --validate-capabilities --batch
+      status: passed
+      result: validated 9 adapter mappings for 9 labels; executed 9 cases in batch
+  unit:
+    - command: pytest specs/program_model/tests
+      status: passed
+      result: 12 passed
+      duration: 0.07s
+    - command: jbang RunTests.java
+      status: passed
+      result: ALL PASSED
+      duration: 12.92s
+  graph:
+    - command: python3 /Users/hayde/.skill-manager/skills/test-graph/scripts/run.py doc-smoke
+      status: passed
+      result: BUILD SUCCESSFUL
+      duration: 1m13s
+      report: test_graph/build/validation-reports/20260628-205039
+    - command: python3 /Users/hayde/.skill-manager/skills/test-graph/scripts/run.py skill-dev-smoke
+      status: passed
+      result: BUILD SUCCESSFUL
+      duration: 1m19s
+      report: test_graph/build/validation-reports/20260628-205155
+    - command: python3 /Users/hayde/.skill-manager/skills/test-graph/scripts/run.py --all
+      status: passed
+      result: BUILD SUCCESSFUL
+      duration: 14m23s
+      final_report: test_graph/build/validation-reports/20260628-210626
+notes:
+  direction: >
+    This manifest records the target whole-program model and the ticket workflow
+    status. Keep ticket_plan.yaml synchronized whenever scope, order, validation,
+    or acceptance criteria change.
