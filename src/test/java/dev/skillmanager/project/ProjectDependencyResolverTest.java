@@ -101,8 +101,8 @@ public final class ProjectDependencyResolverTest {
                                 "plugin projected into project child store");
                         assertTrue(pointsTo(
                                         repoRoot.resolve(".codex/skills/plain-project-skill"),
-                                        repoRoot.resolve(".skill-manager/skills/plain-project-skill")),
-                                "skill projection points at project child store");
+                                        repoRoot.resolve(".skill-manager/skills/plain-project-skill/latest")),
+                                "skill projection points at the child store working copy");
                         assertTrue(pointsTo(
                                         repoRoot.resolve(".claude/plugins/plain-project-plugin"),
                                         repoRoot.resolve(".skill-manager/plugins/plain-project-plugin")),
@@ -210,7 +210,7 @@ public final class ProjectDependencyResolverTest {
                                 "Codex project skill projection exists");
                         assertTrue(Files.exists(repoRoot.resolve(".claude/skills/harness-skill")),
                                 "Claude project skill projection exists");
-                        assertTrue(Files.isRegularFile(repoRoot.resolve(".skill-manager/skills/harness-skill/SKILL.md")),
+                        assertTrue(Files.isRegularFile(repoRoot.resolve(".skill-manager/skills/harness-skill/latest/SKILL.md")),
                                 "skill projected into project child store");
                         assertTrue(Files.isRegularFile(repoRoot.resolve(".skill-manager/harnesses/project-harness/harness.toml")),
                                 "harness projected into project child store");
@@ -225,7 +225,7 @@ public final class ProjectDependencyResolverTest {
                                 .contains("project:harness-project"), "parent registry claims child skill");
                         assertTrue(pointsTo(
                                         repoRoot.resolve(".codex/skills/harness-skill"),
-                                        repoRoot.resolve(".skill-manager/skills/harness-skill")),
+                                        repoRoot.resolve(".skill-manager/skills/harness-skill/latest")),
                                 "harness projection points at child store skill");
                         assertTrue(Files.isRegularFile(repoRoot.resolve("docs/agents/review.md")),
                                 "harness doc copy exists");
@@ -271,11 +271,11 @@ public final class ProjectDependencyResolverTest {
                         assertEquals(reviewHome.toAbsolutePath().normalize(),
                                 review.childHome().layout().childSkillManagerHome(),
                                 "review child home");
-                        assertTrue(Files.isRegularFile(devHome.resolve("skills/profile-dev-skill/SKILL.md")),
+                        assertTrue(Files.isRegularFile(devHome.resolve("skills/profile-dev-skill/latest/SKILL.md")),
                                 "dev skill projected into dev profile home");
                         assertFalse(Files.exists(devHome.resolve("skills/profile-review-skill")),
                                 "review skill does not leak into dev profile home");
-                        assertTrue(Files.isRegularFile(reviewHome.resolve("skills/profile-review-skill/SKILL.md")),
+                        assertTrue(Files.isRegularFile(reviewHome.resolve("skills/profile-review-skill/latest/SKILL.md")),
                                 "review skill projected into review profile home");
                         assertFalse(Files.exists(reviewHome.resolve("skills/profile-dev-skill")),
                                 "dev skill does not leak into review profile home");
@@ -358,7 +358,7 @@ public final class ProjectDependencyResolverTest {
 
                         assertFalse(Files.exists(repoRoot.resolve(".skill-manager/skills/first-child-skill")),
                                 "removed project dependency pruned from child store");
-                        assertTrue(Files.isRegularFile(repoRoot.resolve(".skill-manager/skills/second-child-skill/SKILL.md")),
+                        assertTrue(Files.isRegularFile(repoRoot.resolve(".skill-manager/skills/second-child-skill/latest/SKILL.md")),
                                 "new project dependency present in child store");
                         assertFalse(Files.exists(repoRoot.resolve(".codex/skills/first-child-skill")),
                                 "removed project dependency pruned from Codex home");
@@ -603,7 +603,7 @@ public final class ProjectDependencyResolverTest {
                         resolver(h).resolve(project, new ProjectDependencyResolver.Options(true, false));
 
                         Path codexProjection = repoRoot.resolve(".codex/skills/project-rollback-stable");
-                        Path childSkill = repoRoot.resolve(".skill-manager/skills/project-rollback-stable");
+                        Path childSkill = repoRoot.resolve(".skill-manager/skills/project-rollback-stable/latest");
                         Path ledger = h.store().installedDir()
                                 .resolve("project-rollback-stable.projections.json");
                         assertTrue(Files.exists(codexProjection, LinkOption.NOFOLLOW_LINKS),
@@ -785,7 +785,7 @@ public final class ProjectDependencyResolverTest {
                                                 && u.direct()),
                                 "second project lock records direct git skill");
                         assertTrue(Files.isRegularFile(secondRoot
-                                        .resolve(".skill-manager/skills/preinstalled-git-skill/SKILL.md")),
+                                        .resolve(".skill-manager/skills/preinstalled-git-skill/latest/SKILL.md")),
                                 "preinstalled git skill projected into child home");
                         assertTrue(Files.exists(secondRoot.resolve(".codex/skills/preinstalled-git-skill")),
                                 "preinstalled git skill projected into project agent home");

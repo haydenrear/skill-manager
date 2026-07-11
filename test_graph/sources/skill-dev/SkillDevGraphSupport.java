@@ -185,7 +185,7 @@ final class SkillDevGraphSupport {
         ProcessRecord open = run(ctx, name + "-open", env, project, skillDev.toString(), "open", name);
         procs.add(open);
         Path worktree = project.resolve("skill-dev").resolve(name);
-        Path worktreeFile = worktree.resolve(home.relativize(storeFile).subpath(2, home.relativize(storeFile).getNameCount()));
+        Path worktreeFile = worktree.resolve(unitRelativePath(home, storeFile));
         Files.writeString(worktreeFile, Files.readString(worktreeFile) + "\n" + marker + "\n");
         ProcessRecord commit = run(ctx, name + "-commit", env, worktree,
                 "git", "-c", "user.email=skill-dev@skillmanager.local",
@@ -201,5 +201,21 @@ final class SkillDevGraphSupport {
                 && close.exitCode() == 0
                 && !Files.exists(worktree)
                 && Files.readString(storeFile).contains(marker);
+    }
+
+    /**
+     * Path of {@code storeFile} relative to its unit root, for locating the
+     * same file inside a skill-dev worktree. Drops the two leading store
+     * components ({@code skills/<name>} or {@code plugins/<name>}), then the
+     * {@code latest/} working-copy segment that skills carry in the
+     * content-addressed store.
+     */
+    static Path unitRelativePath(Path home, Path storeFile) {
+        Path rel = home.relativize(storeFile);
+        Path inUnit = rel.subpath(2, rel.getNameCount());
+        if (inUnit.getName(0).toString().equals("latest")) {
+            inUnit = inUnit.subpath(1, inUnit.getNameCount());
+        }
+        return inUnit;
     }
 }

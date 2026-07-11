@@ -89,6 +89,7 @@ import dev.skillmanager.registry.RegistryUnavailableExceptionTest;
 import dev.skillmanager.store.FetcherLocalSourceTest;
 import dev.skillmanager.store.InstalledUnitRoundTripTest;
 import dev.skillmanager.store.MigrationFromSkillSourceTest;
+import dev.skillmanager.store.ContentAddressedStoreTest;
 import dev.skillmanager.store.UnitStoreDirChoiceTest;
 
 /**
@@ -124,6 +125,7 @@ public class RunTests {
         failures += UnitReferenceFromTomlTest.run();
         failures += SkillProjectParserTest.run();
         failures += UnitStoreDirChoiceTest.run();
+        failures += ContentAddressedStoreTest.run();
         failures += InstalledUnitRoundTripTest.run();
         failures += MigrationFromSkillSourceTest.run();
         failures += FetcherLocalSourceTest.run();

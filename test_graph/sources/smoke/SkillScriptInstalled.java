@@ -53,7 +53,7 @@ public class SkillScriptInstalled {
             int rc = proc.exitCode();
 
             Path storeDir = Path.of(home, "skills");
-            boolean storeOk = Files.isDirectory(storeDir.resolve("skill-script-skill"));
+            boolean storeOk = Files.isDirectory(storeDir.resolve("skill-script-skill").resolve("latest"));
             Path touch = Path.of(home, "bin", "cli", "skill-script-touched");
             boolean touchOk = Files.isRegularFile(touch);
             boolean execOk = touchOk && Files.isExecutable(touch);

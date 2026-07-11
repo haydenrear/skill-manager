@@ -314,7 +314,7 @@ need the registry server, an account, or a publish step. Two flows:
 ```
 
 `install` resolves local paths directly — it copies the directory into
-`$SKILL_MANAGER_HOME/skills/<name>/`, runs CLI-dep installation, and
+`$SKILL_MANAGER_HOME/skills/<name>/latest/`, runs CLI-dep installation, and
 registers any MCP servers the skill declares with the gateway. The
 registry is never contacted.
 
@@ -470,7 +470,9 @@ the gateway process lifecycle.
 
 ```
 ~/.skill-manager/
-  skills/<name>/          # canonical skill source
+  skills/<name>/latest/   # canonical skill source — the working copy
+  skills/<name>/<sha>/    # immutable snapshots, written by `store add`
+  skills/<name>/.store-latest  # the sha the working copy was last stored as
   bin/                    # CLI binaries installed via tar backend
   cache/                  # downloads + publish staging
   gateway.pid|log|config  # gateway process state

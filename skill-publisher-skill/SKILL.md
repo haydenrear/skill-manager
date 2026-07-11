@@ -167,7 +167,7 @@ Extra validation:
 ## Shipping Edits to an Installed Unit
 
 Agents read units from the **store**
-(`$SKILL_MANAGER_HOME/skills/<name>/`, `plugins/<name>/`,
+(`$SKILL_MANAGER_HOME/skills/<name>/latest/`, `plugins/<name>/`,
 `docs/<name>/`, `harnesses/<name>/`), not from the source repo you just
 edited. Editing the source repo changes nothing an agent can see until
 the bytes reach the store. A finished edit means synced, not saved.

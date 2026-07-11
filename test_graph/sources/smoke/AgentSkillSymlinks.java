@@ -62,7 +62,8 @@ public class AgentSkillSymlinks {
 
             for (int i = 0; i < skills.length; i++) {
                 String s = skills[i];
-                Path expectedTarget = storeSkills.resolve(s);
+                // Agent homes link at the store's working copy, not the slot.
+                Path expectedTarget = storeSkills.resolve(s).resolve("latest");
                 Path claudeLink = claudeSkills.resolve(s);
                 Path codexLink = codexSkills.resolve(s);
                 Path geminiLink = geminiSkills.resolve(s);

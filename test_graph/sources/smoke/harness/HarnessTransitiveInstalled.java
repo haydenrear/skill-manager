@@ -98,7 +98,7 @@ public class HarnessTransitiveInstalled {
 
             // Verify the harness template + every transitive ref landed.
             Path harnessStore = Path.of(home, "harnesses", "smoke-harness");
-            Path skillStore = Path.of(home, "skills", "pip-cli-skill");
+            Path skillStore = Path.of(home, "skills", "pip-cli-skill", "latest");
             Path pluginStore = Path.of(home, "plugins", "hello-plugin");
             Path docStore = Path.of(home, "docs", "hello-doc-repo");
             boolean harnessLanded = Files.isRegularFile(harnessStore.resolve("harness.toml"));

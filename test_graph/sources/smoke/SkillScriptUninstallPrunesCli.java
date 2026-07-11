@@ -55,7 +55,7 @@ public class SkillScriptUninstallPrunesCli {
                     smProc(sm, repoRoot, privateHome, privateClaude, privateCodex, privateGemini,
                             "install", fixture.toString(), "--yes"));
 
-            Path skillDir = privateHome.resolve("skills").resolve(SKILL);
+            Path skillDir = privateHome.resolve("skills").resolve(SKILL).resolve("latest");
             Path bin = privateHome.resolve("bin").resolve("cli").resolve(TOOL);
             Path lockPath = privateHome.resolve("cli-lock.toml");
             String lockAfterInstall = read(lockPath);

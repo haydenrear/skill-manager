@@ -100,6 +100,8 @@ public final class CliMetadata {
             command("reset-password"),
             command("search"),
             command("show"),
+            command("store"),
+            command("store add"),
             command("sync"),
             command("unbind"),
             command("uninstall", "un"),

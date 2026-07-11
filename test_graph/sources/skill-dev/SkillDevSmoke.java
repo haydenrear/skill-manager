@@ -83,7 +83,7 @@ public class SkillDevSmoke {
                     ? new ObjectMapper().readTree(installedJson.toFile())
                     : null;
             boolean fixtureInstalled = installFixture.exitCode() == 0
-                    && Files.isDirectory(home.resolve("skills").resolve(FIXTURE_NAME).resolve(".git"))
+                    && Files.isDirectory(home.resolve("skills").resolve(FIXTURE_NAME).resolve("latest").resolve(".git"))
                     && sourceRecord != null
                     && "GIT".equals(textOrNull(sourceRecord, "kind"))
                     && fixtureHead.equals(textOrNull(sourceRecord, "gitHash"));
@@ -109,7 +109,7 @@ public class SkillDevSmoke {
 
             ProcessRecord sync = run(ctx, procs, "skill-dev-sync", env, project,
                     skillDev.toString(), "sync", FIXTURE_NAME);
-            Path installedSkillMd = home.resolve("skills").resolve(FIXTURE_NAME).resolve("SKILL.md");
+            Path installedSkillMd = home.resolve("skills").resolve(FIXTURE_NAME).resolve("latest").resolve("SKILL.md");
             boolean syncOk = sync.exitCode() == 0
                     && Files.readString(installedSkillMd).contains("Worktree edit applied by skill-dev smoke.");
 

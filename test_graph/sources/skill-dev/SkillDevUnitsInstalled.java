@@ -56,7 +56,7 @@ public class SkillDevUnitsInstalled {
                 procs.add(p);
             }
 
-            boolean skillOk = Files.isRegularFile(h.resolve("skills/" + SkillDevGraphSupport.SKILL + "/SKILL.md"))
+            boolean skillOk = Files.isRegularFile(h.resolve("skills/" + SkillDevGraphSupport.SKILL + "/latest/SKILL.md"))
                     && SkillDevGraphSupport.kindIs(h, SkillDevGraphSupport.SKILL, "SKILL");
             boolean pluginOk = Files.isRegularFile(h.resolve("plugins/" + SkillDevGraphSupport.PLUGIN + "/.claude-plugin/plugin.json"))
                     && SkillDevGraphSupport.kindIs(h, SkillDevGraphSupport.PLUGIN, "PLUGIN");
@@ -64,7 +64,7 @@ public class SkillDevUnitsInstalled {
                     && SkillDevGraphSupport.kindIs(h, SkillDevGraphSupport.DOC, "DOC");
             boolean harnessOk = Files.isRegularFile(h.resolve("harnesses/" + SkillDevGraphSupport.HARNESS + "/harness.toml"))
                     && SkillDevGraphSupport.kindIs(h, SkillDevGraphSupport.HARNESS, "HARNESS");
-            boolean conflictOk = Files.isRegularFile(h.resolve("skills/" + SkillDevGraphSupport.CONFLICT + "/SKILL.md"))
+            boolean conflictOk = Files.isRegularFile(h.resolve("skills/" + SkillDevGraphSupport.CONFLICT + "/latest/SKILL.md"))
                     && SkillDevGraphSupport.kindIs(h, SkillDevGraphSupport.CONFLICT, "SKILL");
             boolean procsOk = procs.stream().allMatch(p -> p.exitCode() == 0);
             NodeResult result = procsOk && skillOk && pluginOk && docOk && harnessOk && conflictOk

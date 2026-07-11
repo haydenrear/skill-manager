@@ -9,6 +9,8 @@ import dev.skillmanager.source.UnitStore;
 import dev.skillmanager.store.SkillStore;
 import dev.skillmanager.util.Log;
 
+import java.util.List;
+
 /**
  * Thin façade over {@link ReconcileUseCase}: builds the reconcile Program
  * and runs it through {@link LiveInterpreter}, plus the post-command
@@ -29,6 +31,22 @@ public final class SkillReconciler {
             if (migrated > 0) Log.info("reconcile: migrated %d legacy source records", migrated);
         } catch (Throwable t) {
             Log.warn("legacy source-record migration failed: %s", t.getMessage());
+        }
+
+        // SMVENV-001: skills/<name>/ → skills/<name>/latest/, so sha
+        // snapshots can sit alongside the working copy. Idempotent.
+        // The move leaves every agent-home symlink pointing at the slot
+        // instead of the working copy, so repair them in the same breath —
+        // a half-migrated home hides the skill from the agent.
+        try {
+            List<String> moved = SkillStore.migrateToContentAddressed(store);
+            if (!moved.isEmpty()) {
+                int repointed = MigratedLinkRepair.run(store, moved);
+                Log.info("reconcile: moved %d skill(s) into the content-addressed store, "
+                        + "repointed %d agent link(s)", moved.size(), repointed);
+            }
+        } catch (Throwable t) {
+            Log.warn("content-addressed store migration failed: %s", t.getMessage());
         }
 
         // Ticket 49: backfill DEFAULT_AGENT binding rows for already-

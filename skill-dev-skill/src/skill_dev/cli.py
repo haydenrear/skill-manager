@@ -225,6 +225,11 @@ def resolve(args: argparse.Namespace) -> tuple[InstalledUnit, UnitPaths]:
     if kind_dir is None:
         raise SkillDevError(f"unsupported unit kind in metadata: {unit.unit_kind}")
     installed_dir = home / kind_dir / unit.name
+    if unit.unit_kind == "SKILL":
+        # The skill store is content-addressed: skills/<name>/ holds one
+        # immutable <sha>/ snapshot per stored version next to the mutable
+        # latest/ working copy, which is where the git clone lives.
+        installed_dir = installed_dir / "latest"
     project_root = project_root_for(args.project)
     worktree_root = project_root / "skill-dev"
     return unit, UnitPaths(

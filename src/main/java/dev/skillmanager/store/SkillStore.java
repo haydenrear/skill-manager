@@ -113,23 +113,106 @@ public final class SkillStore {
         Fs.ensureDir(installedDir);
     }
 
-    public Path skillDir(String name) {
+    /**
+     * Name of the working-copy directory under {@code skills/<name>/}.
+     * Sibling directories are content-addressed snapshots keyed by sha.
+     */
+    public static final String LATEST_DIR = "latest";
+
+    /** File under {@code skills/<name>/} naming the sha the working copy was last stored as. */
+    public static final String LATEST_MARKER = ".store-latest";
+
+    /**
+     * The content-addressed store slot for one skill: {@code skills/<name>/}.
+     * It holds the mutable working copy under {@link #LATEST_DIR} plus one
+     * immutable snapshot directory per stored sha. Nothing reads unit
+     * content from here directly — use {@link #skillDir(String)}.
+     */
+    public Path storeUnitDir(String name) {
         return skillsDir.resolve(name);
+    }
+
+    /** One immutable snapshot: {@code skills/<name>/<sha>/}. */
+    public Path storeVersionDir(String name, String sha) {
+        return storeUnitDir(name).resolve(sha);
+    }
+
+    /**
+     * The mutable working copy: {@code skills/<name>/latest/}. Install and
+     * sync write here in place (the git clone lives here), so this — not a
+     * snapshot dir — is what every reader and projector resolves to.
+     */
+    public Path skillDir(String name) {
+        return storeUnitDir(name).resolve(LATEST_DIR);
     }
 
     /**
      * Per-unit on-disk directory keyed on {@link UnitKind}. Plugins land
-     * under {@code plugins/<name>}; skills under {@code skills/<name>}.
+     * under {@code plugins/<name>}; skills under {@code skills/<name>/latest}.
      * Effects that do not yet know the kind continue to call
      * {@link #skillDir(String)}.
      */
     public Path unitDir(String name, UnitKind kind) {
         return switch (kind) {
             case PLUGIN -> pluginsDir.resolve(name);
-            case SKILL -> skillsDir.resolve(name);
+            case SKILL -> skillDir(name);
             case DOC -> docsDir.resolve(name);
             case HARNESS -> harnessesDir.resolve(name);
         };
+    }
+
+    /**
+     * Shas snapshotted for {@code name}, sorted. Excludes the working copy
+     * and the latest marker. Empty when the unit was never stored.
+     */
+    public List<String> storedVersions(String name) throws IOException {
+        Path slot = storeUnitDir(name);
+        if (!Files.isDirectory(slot)) return List.of();
+        List<String> out = new ArrayList<>();
+        try (Stream<Path> s = Files.list(slot)) {
+            for (Path p : (Iterable<Path>) s::iterator) {
+                if (!Files.isDirectory(p)) continue;
+                String dir = p.getFileName().toString();
+                if (LATEST_DIR.equals(dir)) continue;
+                out.add(dir);
+            }
+        }
+        out.sort(String::compareTo);
+        return out;
+    }
+
+    /** The sha the working copy was last stored as, if any. */
+    public Optional<String> storeLatest(String name) throws IOException {
+        Path marker = storeUnitDir(name).resolve(LATEST_MARKER);
+        if (!Files.isRegularFile(marker)) return Optional.empty();
+        String sha = Files.readString(marker).trim();
+        return sha.isBlank() ? Optional.empty() : Optional.of(sha);
+    }
+
+    /**
+     * Snapshot the working copy as {@code sha} and move the latest pointer
+     * onto it. Storing a sha that is already present refreshes the snapshot
+     * rather than failing, so a re-store after a sync is not an error.
+     * Snapshots are never removed here — the store is an immutable cache.
+     *
+     * <p>A snapshot records the unit's <em>content</em>, so the working copy's
+     * {@code .git} is not copied: the sha already names the commit, and
+     * duplicating the history once per stored version would grow the store
+     * without bound. The clone stays in {@link #skillDir(String)}.
+     */
+    public void storeUnitVersion(String name, String sha) throws IOException {
+        Path workingCopy = skillDir(name);
+        Path snapshot = storeVersionDir(name, sha);
+        if (Files.exists(snapshot)) Fs.deleteRecursive(snapshot);
+        Fs.ensureDir(snapshot);
+        Path git = workingCopy.resolve(".git");
+        try (Stream<Path> entries = Files.list(workingCopy)) {
+            for (Path entry : (Iterable<Path>) entries::iterator) {
+                if (entry.equals(git)) continue;
+                Fs.copyRecursive(entry, snapshot.resolve(entry.getFileName().toString()));
+            }
+        }
+        Files.writeString(storeUnitDir(name).resolve(LATEST_MARKER), sha + "\n");
     }
 
     public boolean contains(String name) {
@@ -180,11 +263,14 @@ public final class SkillStore {
         try (Stream<Path> s = Files.list(skillsDir)) {
             for (Path p : (Iterable<Path>) s::iterator) {
                 if (!Files.isDirectory(p)) continue;
-                if (!Files.isRegularFile(p.resolve(SkillParser.SKILL_FILENAME))) continue;
+                // p is the store slot skills/<name>; the unit content is the
+                // working copy under it. Sibling sha snapshots are not units.
+                Path workingCopy = p.resolve(LATEST_DIR);
+                if (!Files.isRegularFile(workingCopy.resolve(SkillParser.SKILL_FILENAME))) continue;
                 try {
-                    out.add(SkillParser.load(p));
+                    out.add(SkillParser.load(workingCopy));
                 } catch (Exception e) {
-                    problems.add(readProblem(p, UnitKind.SKILL, e));
+                    problems.add(readProblem(p.getFileName().toString(), workingCopy, UnitKind.SKILL, e));
                 }
             }
         }
@@ -271,16 +357,82 @@ public final class SkillStore {
         return s.map(Skill::asUnit);
     }
 
+    /**
+     * Uninstall the working copy. Stored snapshots and the latest marker
+     * survive: the store is an immutable cache, so a later reinstall of a
+     * sha already present is served from disk. The slot itself is pruned
+     * only when nothing was ever stored under it.
+     */
     public void remove(String name) throws IOException {
         Path d = skillDir(name);
         if (Files.exists(d)) Fs.deleteRecursive(d);
+        if (storedVersions(name).isEmpty()) {
+            Path slot = storeUnitDir(name);
+            if (Files.isDirectory(slot)) Fs.deleteRecursive(slot);
+        }
+    }
+
+    /**
+     * Kind-aware uninstall. Skills go through {@link #remove(String)} so
+     * their snapshots survive and an empty slot is pruned; every other kind
+     * still owns its directory outright.
+     */
+    public void removeUnit(String name, UnitKind kind) throws IOException {
+        if (kind == UnitKind.SKILL) {
+            remove(name);
+            return;
+        }
+        Path d = unitDir(name, kind);
+        if (Files.exists(d)) Fs.deleteRecursive(d);
+    }
+
+    /**
+     * One-time migration to the content-addressed layout: a legacy
+     * {@code skills/<name>/SKILL.md} becomes {@code skills/<name>/latest/SKILL.md},
+     * leaving room for sibling {@code <sha>/} snapshots. The move is a rename,
+     * so an in-place git clone under the unit survives intact.
+     *
+     * <p>Idempotent: a slot whose {@code SKILL.md} already sits under
+     * {@code latest/} is skipped, so subsequent runs migrate nothing.
+     *
+     * <p>Migrating a slot invalidates every agent-home symlink that pointed at
+     * it — the link still resolves, but to a slot that no longer holds a
+     * {@code SKILL.md}. Callers must hand the returned names to
+     * {@link dev.skillmanager.lifecycle.MigratedLinkRepair} to repoint them.
+     *
+     * @return names of the slots migrated this call (empty on subsequent runs).
+     */
+    public static List<String> migrateToContentAddressed(SkillStore store) throws IOException {
+        Path skills = store.skillsDir();
+        if (!Files.isDirectory(skills)) return List.of();
+        List<Path> legacy = new ArrayList<>();
+        try (Stream<Path> s = Files.list(skills)) {
+            for (Path slot : (Iterable<Path>) s::iterator) {
+                if (!Files.isDirectory(slot)) continue;
+                if (Files.isRegularFile(slot.resolve(SkillParser.SKILL_FILENAME))) legacy.add(slot);
+            }
+        }
+        List<String> migrated = new ArrayList<>(legacy.size());
+        for (Path slot : legacy) {
+            Path staging = skills.resolve(slot.getFileName() + ".migrating");
+            if (Files.exists(staging)) Fs.deleteRecursive(staging);
+            Files.move(slot, staging);
+            Fs.ensureDir(slot);
+            Files.move(staging, slot.resolve(LATEST_DIR));
+            migrated.add(slot.getFileName().toString());
+        }
+        return migrated;
     }
 
     private static UnitReadProblem readProblem(Path dir, UnitKind kind, Exception e) {
+        return readProblem(dir.getFileName().toString(), dir, kind, e);
+    }
+
+    private static UnitReadProblem readProblem(String name, Path dir, UnitKind kind, Exception e) {
         String msg = e.getMessage();
         if (msg == null || msg.isBlank()) msg = e.getClass().getSimpleName();
         return new UnitReadProblem(
-                dir.getFileName().toString(),
+                name,
                 kind,
                 dir.toAbsolutePath(),
                 msg);

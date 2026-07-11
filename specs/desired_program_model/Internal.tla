@@ -1,19 +1,21 @@
------------------------------ MODULE SkillManager -----------------------------
-EXTENDS Naturals, FiniteSets, Sequences, TLC
+----------------------------- MODULE Internal -----------------------------
+EXTENDS Core
 
-CONSTANTS
-  UnitA, UnitB,
-  DocRepoA, HarnessA, InstanceA,
-  ProjectA, EnvA, LibA,
-  ProfileA,
-  ClaudeAgent, CodexAgent, GeminiAgent,
-  ServerA, ServerB,
-  ToolA, ToolB,
-  ScriptA, PackageA,
-  SessionA, SessionB,
-  UserA, VersionA,
-  ParentHomeA, ChildHomeA,
-  NoReason
+\* Accepted whole-program state machine for skill-manager, migrated from
+\* the single-module SkillManager.tla program model. Domains covered:
+\* - CLI store: install / sync / remove / bind / harness lifecycle plus
+\*   effect-program semantics (halt, rollback journal, always-after).
+\* - Virtual MCP gateway: catalog, global/session deployments, progressive
+\*   tool disclosure and invocation.
+\* - Registry server: authentication, publish, search.
+\* - Project model: registration, dependency resolution, env/lib
+\*   materialization, child homes, profiles, claiming-project sync.
+\* - CLI progressive disclosure: help, workflow docs, agent context.
+\*
+\* Every command action X is split into XImpl (pure transition, semantics
+\* identical to the pre-split accepted model) plus a wrapper X that also
+\* records lastInternalAction for the External harness view.
+
 
 VARIABLES
   cli_store_units,
@@ -53,7 +55,8 @@ VARIABLES
   server_packages,
   server_authenticated_users,
   project_model,
-  result
+  result,
+  lastInternalAction
 
 vars ==
   << cli_store_units, cli_doc_repos, cli_harness_templates,
@@ -68,7 +71,7 @@ vars ==
      gateway_session_deployments, gateway_tools, gateway_disclosures,
      gateway_errors, gateway_last_init, server_registry_units,
      server_versions, server_packages, server_authenticated_users,
-     project_model, result >>
+     project_model, result, lastInternalAction >>
 
 state_vars ==
   << cli_store_units, cli_doc_repos, cli_harness_templates,
@@ -84,278 +87,12 @@ state_vars ==
      gateway_errors, gateway_last_init, server_registry_units,
      server_versions, server_packages, server_authenticated_users >>
 
-Units == {UnitA, UnitB}
-DocRepos == {DocRepoA}
-HarnessTemplates == {HarnessA}
-HarnessInstances == {InstanceA}
-Agents == {ClaudeAgent, CodexAgent, GeminiAgent}
-Servers == {ServerA, ServerB}
-Tools == {ToolA, ToolB}
-Scripts == {ScriptA}
-Packages == {PackageA}
-Sessions == {SessionA, SessionB}
-Users == {UserA}
-Versions == {VersionA}
-Projects == {ProjectA}
-Envs == {EnvA}
-Libs == {LibA}
-Profiles == {ProfileA}
-ChildHomes == {ChildHomeA}
-SkillManagerHomes == {ParentHomeA, ChildHomeA}
-
-ReferenceEdges == {<<UnitB, UnitA>>}
-UnitMcpEdges == {<<UnitA, ServerA>>, <<UnitB, ServerB>>}
-ServerToolEdges == {<<ServerA, ToolA>>, <<ServerB, ToolB>>}
-UnitScriptEdges == {<<UnitA, ScriptA>>}
-UnitPackageEdges == {<<UnitA, PackageA>>, <<UnitB, PackageA>>}
-HarnessTemplateEdges == {<<HarnessA, UnitA>>}
-ProjectUnitEdges == {<<ProjectA, UnitA>>, <<ProjectA, DocRepoA>>, <<ProjectA, HarnessA>>}
-ProjectEnvSpecEdges == {<<ProjectA, EnvA>>}
-ProjectLibSpecEdges == {<<ProjectA, LibA>>}
-ProjectChildHomeEdges == {<<ProjectA, ChildHomeA>>}
-ProjectProfileEdges == {<<ProjectA, ProfileA>>}
-ProjectProfileUnitEdges == {<<ProjectA, ProfileA, UnitA>>}
-ProjectProfileDocRepoEdges == {<<ProjectA, ProfileA, DocRepoA>>}
-ProjectProfileHarnessEdges == {<<ProjectA, ProfileA, HarnessA>>}
-ProjectProfileEnvSpecEdges == {<<ProjectA, ProfileA, EnvA>>}
-ProjectProfileLibSpecEdges == {<<ProjectA, ProfileA, LibA>>}
-ProjectProfileChildHomeEdges == {<<ProjectA, ProfileA, ChildHomeA>>}
-
-CliRootCommand == "skill-manager"
-
-CliTopLevelCommands ==
-  {"ads", "bind", "bindings", "cli", "create", "create-account", "deps",
-   "env", "gateway", "harness", "install", "list", "lock", "login",
-   "onboard", "pm", "policy", "project", "publish", "registry", "rebind",
-   "remove", "reset-password", "search", "show", "sync", "unbind",
-   "uninstall", "upgrade"}
-
-CliSubcommands ==
-  {"ads list", "ads create", "ads delete",
-   "bindings list", "bindings show",
-   "cli list", "cli show", "cli path",
-   "env sync", "env run",
-   "gateway up", "gateway down", "gateway status", "gateway set",
-   "harness instantiate", "harness rm", "harness list", "harness show",
-   "lock status",
-   "login logout", "login show",
-   "pm install", "pm list", "pm which", "pm setup",
-   "policy show", "policy init", "policy path",
-   "project register", "project resolve", "project sync", "project remove",
-   "project show", "project list", "project profiles", "project profiles list",
-   "registry set", "registry status"}
-
-CliCommandAliases ==
-  {<<"ls", "list">>, <<"rm", "remove">>, <<"un", "uninstall">>}
-
-CliCommandCatalog ==
-  {CliRootCommand} \cup CliTopLevelCommands \cup CliSubcommands
-
-CliWorkflowCatalog ==
-  {"account-auth", "ads-manage", "author-dependencies", "author-unit",
-   "bind-projection", "cli-lock-inspect", "discover-installed-units",
-   "force-skill-scripts", "gateway-lifecycle", "harness-instantiate",
-   "harness-remove", "inspect-unit", "install-git-unit",
-   "install-local-unit", "install-registry-unit", "onboard-default-skills",
-   "package-manager-bootstrap", "policy-inspect", "project-env",
-   "project-profile-resolve", "project-register", "project-resolve",
-   "publish-unit", "rebind-projection", "refresh-lockfile",
-   "registry-lifecycle", "remove-installed-unit", "skill-scripts",
-   "sync-all-units", "sync-from-local-source", "sync-lockfile",
-   "sync-one-unit", "unbind-projection", "upgrade-units"}
-
-CliWorkflowCommandLinks ==
-  {<<"account-auth", "login">>,
-   <<"ads-manage", "ads">>,
-   <<"author-dependencies", "create">>,
-   <<"author-unit", "create">>,
-   <<"bind-projection", "bind">>,
-   <<"cli-lock-inspect", "cli">>,
-   <<"discover-installed-units", "list">>,
-   <<"force-skill-scripts", "sync">>,
-   <<"gateway-lifecycle", "gateway">>,
-   <<"harness-instantiate", "harness instantiate">>,
-   <<"harness-remove", "harness rm">>,
-   <<"inspect-unit", "show">>,
-   <<"install-git-unit", "install">>,
-   <<"install-local-unit", "install">>,
-   <<"install-registry-unit", "install">>,
-   <<"onboard-default-skills", "onboard">>,
-   <<"package-manager-bootstrap", "pm">>,
-   <<"policy-inspect", "policy">>,
-   <<"project-env", "env sync">>,
-   <<"project-profile-resolve", "project profiles">>,
-   <<"project-register", "project register">>,
-   <<"project-resolve", "project resolve">>,
-   <<"publish-unit", "publish">>,
-   <<"rebind-projection", "rebind">>,
-   <<"refresh-lockfile", "sync">>,
-   <<"registry-lifecycle", "registry">>,
-   <<"remove-installed-unit", "remove">>,
-   <<"skill-scripts", "install">>,
-   <<"sync-all-units", "sync">>,
-   <<"sync-from-local-source", "sync">>,
-   <<"sync-lockfile", "sync">>,
-   <<"sync-one-unit", "sync">>,
-   <<"unbind-projection", "unbind">>,
-   <<"upgrade-units", "upgrade">>}
-
-SkillDocSurfaces ==
-  {"skill-manager-skill", "skill-publisher-skill", "skill-dev-skill"}
-
-SkillManagerSkillWorkflows ==
-  {"account-auth", "ads-manage", "bind-projection", "cli-lock-inspect",
-   "discover-installed-units", "force-skill-scripts", "gateway-lifecycle",
-   "harness-instantiate", "harness-remove", "inspect-unit",
-   "install-git-unit", "install-local-unit", "install-registry-unit",
-   "onboard-default-skills", "package-manager-bootstrap", "policy-inspect",
-   "project-env", "project-profile-resolve", "project-register",
-   "project-resolve", "publish-unit", "rebind-projection",
-   "refresh-lockfile", "registry-lifecycle", "remove-installed-unit",
-   "sync-all-units", "sync-from-local-source", "sync-lockfile",
-   "sync-one-unit", "unbind-projection", "upgrade-units"}
-
-SkillPublisherSkillWorkflows ==
-  {"author-dependencies", "author-unit", "install-local-unit",
-   "publish-unit", "skill-scripts"}
-
-SkillDevSkillWorkflows ==
-  {"force-skill-scripts", "install-local-unit", "project-env",
-   "sync-from-local-source"}
-
-ExpectedSkillDocCoverage ==
-  ({"skill-manager-skill"} \X SkillManagerSkillWorkflows)
-    \cup ({"skill-publisher-skill"} \X SkillPublisherSkillWorkflows)
-    \cup ({"skill-dev-skill"} \X SkillDevSkillWorkflows)
-
-RefsFor(units) ==
-  {ref \in Units : \E u \in units: <<u, ref>> \in ReferenceEdges}
-
-DependencyClosure(units) ==
-  units \cup RefsFor(units) \cup RefsFor(RefsFor(units))
-
-McpServersFor(units) ==
-  {server \in Servers : \E u \in units: <<u, server>> \in UnitMcpEdges}
-
-ToolsFor(servers) ==
-  {tool \in Tools : \E server \in servers: <<server, tool>> \in ServerToolEdges}
-
-ScriptsFor(units) ==
-  {script \in Scripts : \E u \in units: <<u, script>> \in UnitScriptEdges}
-
-PackagesFor(units) ==
-  {pkg \in Packages : \E u \in units: <<u, pkg>> \in UnitPackageEdges}
-
-CliDepsFor(units) ==
-  PackagesFor(units) \cup ScriptsFor(units)
-
-ChildHomeShimsFor(payload) ==
-  ToolsFor(McpServersFor(payload)) \cup PackagesFor(payload) \cup ScriptsFor(payload)
-
-HarnessUnitsFor(template) ==
-  {u \in Units : <<template, u>> \in HarnessTemplateEdges}
-
-ProjectEnvSpecs(project) ==
-  {env \in Envs : <<project, env>> \in ProjectEnvSpecEdges}
-
-ProjectLibSpecs(project) ==
-  {lib \in Libs : <<project, lib>> \in ProjectLibSpecEdges}
-
-ProjectDirectUnits(project) ==
-  {u \in Units : <<project, u>> \in ProjectUnitEdges}
-
-ProjectDocRepos(project) ==
-  {doc \in DocRepos : <<project, doc>> \in ProjectUnitEdges}
-
-ProjectHarnessTemplates(project) ==
-  {template \in HarnessTemplates : <<project, template>> \in ProjectUnitEdges}
-
-ProjectResolvedUnitClosure(project) ==
-  DependencyClosure(ProjectDirectUnits(project) \cup
-    UNION {HarnessUnitsFor(template) : template \in ProjectHarnessTemplates(project)})
-
-ProjectChildHomePayload(project) ==
-  ProjectResolvedUnitClosure(project) \cup
-    ProjectDocRepos(project) \cup ProjectHarnessTemplates(project)
-
-ProjectProfiles(project) ==
-  {profile \in Profiles : <<project, profile>> \in ProjectProfileEdges}
-
-ProjectProfileEnvSpecs(project, profile) ==
-  {env \in Envs : <<project, profile, env>> \in ProjectProfileEnvSpecEdges}
-
-ProjectProfileLibSpecs(project, profile) ==
-  {lib \in Libs : <<project, profile, lib>> \in ProjectProfileLibSpecEdges}
-
-ProjectProfileDirectUnits(project, profile) ==
-  {u \in Units : <<project, profile, u>> \in ProjectProfileUnitEdges}
-
-ProjectProfileDocRepos(project, profile) ==
-  {doc \in DocRepos : <<project, profile, doc>> \in ProjectProfileDocRepoEdges}
-
-ProjectProfileHarnessTemplates(project, profile) ==
-  {template \in HarnessTemplates : <<project, profile, template>> \in ProjectProfileHarnessEdges}
-
-ProjectProfileResolvedUnitClosure(project, profile) ==
-  DependencyClosure(ProjectProfileDirectUnits(project, profile) \cup
-    UNION {HarnessUnitsFor(template) : template \in ProjectProfileHarnessTemplates(project, profile)})
-
-ProjectProfileChildHomePayload(project, profile) ==
-  ProjectProfileResolvedUnitClosure(project, profile) \cup
-    ProjectProfileDocRepos(project, profile) \cup ProjectProfileHarnessTemplates(project, profile)
-
 ProjectClaimedUnits ==
   {entry[2] : entry \in project_model.resolved_units}
     \cup {entry[2] : entry \in project_model.child_home_units}
 
 ProjectLockedUnits(project) ==
   {entry[2] : entry \in {row \in project_model.resolved_units : row[1] = project}}
-
-ProjectModelInit ==
-  [manifests |-> {},
-   registrations |-> {},
-   locks |-> {},
-   resolved_units |-> {},
-   doc_bindings |-> {},
-   harness_bindings |-> {},
-   agent_configs |-> {},
-   env_realizations |-> {},
-   env_locks |-> {},
-   tool_shims |-> {},
-   skill_vendors |-> {},
-   env_docs |-> {},
-   env_specs |-> {},
-   lib_specs |-> {},
-   profile_declarations |-> {},
-   profile_locks |-> {},
-   profile_resolved_units |-> {},
-   profile_env_specs |-> {},
-   profile_lib_specs |-> {},
-   profile_child_homes |-> {},
-   lib_checkouts |-> {},
-   lib_locks |-> {},
-   child_homes |-> {},
-   project_child_homes |-> {},
-   child_home_parents |-> {},
-   child_home_harnesses |-> {},
-   child_home_agent_configs |-> {},
-   child_home_units |-> {},
-   child_home_mcp_servers |-> {},
-   child_home_tool_shims |-> {},
-   cli_command_catalog |-> CliCommandCatalog,
-   cli_command_aliases |-> CliCommandAliases,
-   cli_workflow_catalog |-> CliWorkflowCatalog,
-   cli_workflow_command_links |-> CliWorkflowCommandLinks,
-   cli_root_help_topics |-> CliTopLevelCommands,
-   cli_command_help_topics |-> CliCommandCatalog,
-   cli_skill_doc_topics |-> ExpectedSkillDocCoverage,
-   cli_agent_context_topics |-> CliWorkflowCatalog]
-
-UnitProjections(units) ==
-  Agents \X units
-
-Closed(units) ==
-  RefsFor(units) \subseteq units
 
 SessionServers ==
   {server \in Servers : \E session \in Sessions: <<session, server>> \in gateway_session_deployments}
@@ -365,15 +102,6 @@ DeployedServers ==
 
 VisibleTools ==
   ToolsFor(DeployedServers)
-
-Ok ==
-  [accepted |-> TRUE, reason |-> NoReason]
-
-OkForceScripts ==
-  [accepted |-> TRUE, reason |-> "FORCE_SCRIPTS_RERUN"]
-
-Reject(reason) ==
-  [accepted |-> FALSE, reason |-> reason]
 
 EffectOk ==
   /\ effect_status' = "OK"
@@ -425,11 +153,12 @@ Init ==
   /\ server_authenticated_users = {}
   /\ project_model = ProjectModelInit
   /\ result = Ok
+  /\ lastInternalAction = [name |-> "Init", params |-> NoParams]
 
-\* @command ServerAuthenticate
-\* @result ServerResult
-\* @port SkillManagerServer.authenticate
-ServerAuthenticate(user) ==
+MarkInternal(name, params) ==
+  lastInternalAction' = [name |-> name, params |-> params]
+
+ServerAuthenticateImpl(user) ==
   /\ server_authenticated_users' = server_authenticated_users \cup {user}
   /\ result' = Ok
   /\ UNCHANGED << cli_store_units, cli_doc_repos, cli_harness_templates,
@@ -447,10 +176,15 @@ ServerAuthenticate(user) ==
                   gateway_last_init, server_registry_units, server_versions,
                   server_packages >>
 
-\* @command ServerPublishTarball
+\* @command ServerAuthenticate
 \* @result ServerResult
-\* @port SkillManagerServer.publish_tarball
-ServerPublishTarball(user, unit, version) ==
+\* @port SkillManagerServer.authenticate
+ServerAuthenticate(user) ==
+  /\ ServerAuthenticateImpl(user)
+  /\ project_model' = project_model
+  /\ MarkInternal("ServerAuthenticate", [user |-> user])
+
+ServerPublishTarballImpl(user, unit, version) ==
   IF user \notin server_authenticated_users
   THEN
     /\ result' = Reject("AUTHENTICATION_REQUIRED")
@@ -475,17 +209,27 @@ ServerPublishTarball(user, unit, version) ==
                     gateway_disclosures, gateway_errors, gateway_last_init,
                     server_authenticated_users >>
 
+\* @command ServerPublishTarball
+\* @result ServerResult
+\* @port SkillManagerServer.publish_tarball
+ServerPublishTarball(user, unit, version) ==
+  /\ ServerPublishTarballImpl(user, unit, version)
+  /\ project_model' = project_model
+  /\ MarkInternal("ServerPublishTarball", [user |-> user, unit |-> unit, version |-> version])
+
+ServerSearchImpl ==
+  /\ result' = Ok
+  /\ UNCHANGED state_vars
+
 \* @command ServerSearch
 \* @result ServerResult
 \* @port SkillManagerServer.search
 ServerSearch ==
-  /\ result' = Ok
-  /\ UNCHANGED state_vars
+  /\ ServerSearchImpl
+  /\ project_model' = project_model
+  /\ MarkInternal("ServerSearch", NoParams)
 
-\* @command ConfigureRegistry
-\* @result ConfigureResult
-\* @port SkillManagerCli.configure_registry
-ConfigureRegistry ==
+ConfigureRegistryImpl ==
   /\ cli_registry_url_configured' = TRUE
   /\ result' = Ok
   /\ UNCHANGED << cli_store_units, cli_doc_repos, cli_harness_templates,
@@ -503,10 +247,15 @@ ConfigureRegistry ==
                   server_registry_units, server_versions, server_packages,
                   server_authenticated_users >>
 
-\* @command EnsureGateway
-\* @result GatewayResult
-\* @port SkillManagerCli.ensure_gateway
-EnsureGateway ==
+\* @command ConfigureRegistry
+\* @result ConfigureResult
+\* @port SkillManagerCli.configure_registry
+ConfigureRegistry ==
+  /\ ConfigureRegistryImpl
+  /\ project_model' = project_model
+  /\ MarkInternal("ConfigureRegistry", NoParams)
+
+EnsureGatewayImpl ==
   /\ cli_gateway_url_configured' = TRUE
   /\ result' = Ok
   /\ UNCHANGED << cli_store_units, cli_doc_repos, cli_harness_templates,
@@ -524,10 +273,15 @@ EnsureGateway ==
                   server_registry_units, server_versions, server_packages,
                   server_authenticated_users >>
 
-\* @command InstallUnit
-\* @result InstallResult
-\* @port SkillManagerCli.install_unit
-InstallUnit(u) ==
+\* @command EnsureGateway
+\* @result GatewayResult
+\* @port SkillManagerCli.ensure_gateway
+EnsureGateway ==
+  /\ EnsureGatewayImpl
+  /\ project_model' = project_model
+  /\ MarkInternal("EnsureGateway", NoParams)
+
+InstallUnitImpl(u) ==
   LET install_set == DependencyClosure({u}) IN
   IF u \in cli_store_units
   THEN
@@ -589,10 +343,15 @@ InstallUnit(u) ==
 	                    gateway_last_init, server_registry_units, server_versions,
 	                    server_packages, server_authenticated_users >>
 
-\* @command InstallUnitForceScripts
+\* @command InstallUnit
 \* @result InstallResult
-\* @port SkillManagerCli.install_unit_force_scripts
-InstallUnitForceScripts(u) ==
+\* @port SkillManagerCli.install_unit
+InstallUnit(u) ==
+  /\ InstallUnitImpl(u)
+  /\ project_model' = project_model
+  /\ MarkInternal("InstallUnit", [unit |-> u])
+
+InstallUnitForceScriptsImpl(u) ==
   LET install_set == DependencyClosure({u}) IN
   IF u \in cli_store_units
   THEN
@@ -653,10 +412,15 @@ InstallUnitForceScripts(u) ==
                     gateway_last_init, server_registry_units, server_versions,
                     server_packages, server_authenticated_users >>
 
-\* @command SyncUnit
-\* @result SyncResult
-\* @port SkillManagerCli.sync_unit
-SyncUnit(u) ==
+\* @command InstallUnitForceScripts
+\* @result InstallResult
+\* @port SkillManagerCli.install_unit_force_scripts
+InstallUnitForceScripts(u) ==
+  /\ InstallUnitForceScriptsImpl(u)
+  /\ project_model' = project_model
+  /\ MarkInternal("InstallUnitForceScripts", [unit |-> u])
+
+SyncUnitImpl(u) ==
   LET surfaced == DependencyClosure({u}) IN
   IF u \notin cli_store_units
   THEN
@@ -721,10 +485,15 @@ SyncUnit(u) ==
                     server_registry_units, server_versions, server_packages,
                     server_authenticated_users >>
 
-\* @command SyncUnitForceScripts
+\* @command SyncUnit
 \* @result SyncResult
-\* @port SkillManagerCli.sync_unit_force_scripts
-SyncUnitForceScripts(u) ==
+\* @port SkillManagerCli.sync_unit
+SyncUnit(u) ==
+  /\ SyncUnitImpl(u)
+  /\ project_model' = project_model
+  /\ MarkInternal("SyncUnit", [unit |-> u])
+
+SyncUnitForceScriptsImpl(u) ==
   LET surfaced == DependencyClosure({u}) IN
   IF u \notin cli_store_units
   THEN
@@ -788,10 +557,15 @@ SyncUnitForceScripts(u) ==
                     server_registry_units, server_versions, server_packages,
                     server_authenticated_users >>
 
-\* @command RemoveUnit
-\* @result RemoveResult
-\* @port SkillManagerCli.remove_unit
-RemoveUnit(u) ==
+\* @command SyncUnitForceScripts
+\* @result SyncResult
+\* @port SkillManagerCli.sync_unit_force_scripts
+SyncUnitForceScripts(u) ==
+  /\ SyncUnitForceScriptsImpl(u)
+  /\ project_model' = project_model
+  /\ MarkInternal("SyncUnitForceScripts", [unit |-> u])
+
+RemoveUnitImpl(u) ==
   IF u \notin cli_store_units
   THEN
     /\ result' = Reject("NOT_INSTALLED")
@@ -838,10 +612,15 @@ RemoveUnit(u) ==
                     gateway_last_init, server_registry_units, server_versions,
                     server_packages, server_authenticated_users >>
 
-\* @command BindDocRepo
-\* @result BindingResult
-\* @port SkillManagerCli.bind_doc_repo
-BindDocRepo(doc) ==
+\* @command RemoveUnit
+\* @result RemoveResult
+\* @port SkillManagerCli.remove_unit
+RemoveUnit(u) ==
+  /\ RemoveUnitImpl(u)
+  /\ project_model' = project_model
+  /\ MarkInternal("RemoveUnit", [unit |-> u])
+
+BindDocRepoImpl(doc) ==
   /\ cli_doc_repos' = cli_doc_repos \cup {doc}
   /\ cli_bindings' = cli_bindings \cup {doc}
   /\ cli_projection_rows' = cli_projection_rows \cup {doc}
@@ -862,10 +641,15 @@ BindDocRepo(doc) ==
                   server_registry_units, server_versions, server_packages,
                   server_authenticated_users >>
 
-\* @command SyncDocRepo
+\* @command BindDocRepo
 \* @result BindingResult
-\* @port SkillManagerCli.sync_doc_repo
-SyncDocRepo(doc) ==
+\* @port SkillManagerCli.bind_doc_repo
+BindDocRepo(doc) ==
+  /\ BindDocRepoImpl(doc)
+  /\ project_model' = project_model
+  /\ MarkInternal("BindDocRepo", [doc |-> doc])
+
+SyncDocRepoImpl(doc) ==
   IF doc \notin cli_doc_repos
   THEN
     /\ result' = Reject("DOC_REPO_NOT_INSTALLED")
@@ -889,10 +673,15 @@ SyncDocRepo(doc) ==
                     gateway_last_init, server_registry_units, server_versions,
                     server_packages, server_authenticated_users >>
 
-\* @command SyncHarness
-\* @result HarnessResult
-\* @port SkillManagerCli.sync_harness
-SyncHarness(template, instance) ==
+\* @command SyncDocRepo
+\* @result BindingResult
+\* @port SkillManagerCli.sync_doc_repo
+SyncDocRepo(doc) ==
+  /\ SyncDocRepoImpl(doc)
+  /\ project_model' = project_model
+  /\ MarkInternal("SyncDocRepo", [doc |-> doc])
+
+SyncHarnessImpl(template, instance) ==
   LET needed == HarnessUnitsFor(template) IN
   IF ~(needed \subseteq cli_store_units)
   THEN
@@ -918,10 +707,15 @@ SyncHarness(template, instance) ==
                     server_registry_units, server_versions, server_packages,
                     server_authenticated_users >>
 
-\* @command RunEffectProgramFailure
-\* @result ProgramResult
-\* @port SkillManagerCli.run_effect_program_failure
-RunEffectProgramFailure ==
+\* @command SyncHarness
+\* @result HarnessResult
+\* @port SkillManagerCli.sync_harness
+SyncHarness(template, instance) ==
+  /\ SyncHarnessImpl(template, instance)
+  /\ project_model' = project_model
+  /\ MarkInternal("SyncHarness", [template |-> template, instance |-> instance])
+
+RunEffectProgramFailureImpl ==
   /\ LET rolled_back_units == rollback_journal
          rolled_back_servers == McpServersFor(rolled_back_units)
          rolled_back_cli_deps == CliDepsFor(rolled_back_units)
@@ -958,10 +752,15 @@ RunEffectProgramFailure ==
                   server_registry_units, server_versions, server_packages,
                   server_authenticated_users >>
 
-\* @command RunAlwaysAfterCleanup
+\* @command RunEffectProgramFailure
 \* @result ProgramResult
-\* @port SkillManagerCli.run_always_after_cleanup
-RunAlwaysAfterCleanup ==
+\* @port SkillManagerCli.run_effect_program_failure
+RunEffectProgramFailure ==
+  /\ RunEffectProgramFailureImpl
+  /\ project_model' = project_model
+  /\ MarkInternal("RunEffectProgramFailure", NoParams)
+
+RunAlwaysAfterCleanupImpl ==
   /\ always_after_ran' = TRUE
   /\ result' = Ok
   /\ UNCHANGED << cli_store_units, cli_doc_repos, cli_harness_templates,
@@ -979,10 +778,15 @@ RunAlwaysAfterCleanup ==
                   gateway_last_init, server_registry_units, server_versions,
                   server_packages, server_authenticated_users >>
 
-\* @command RegisterGatewayServer
-\* @result GatewayResult
-\* @port VirtualMcpGateway.register_server
-RegisterGatewayServer(server) ==
+\* @command RunAlwaysAfterCleanup
+\* @result ProgramResult
+\* @port SkillManagerCli.run_always_after_cleanup
+RunAlwaysAfterCleanup ==
+  /\ RunAlwaysAfterCleanupImpl
+  /\ project_model' = project_model
+  /\ MarkInternal("RunAlwaysAfterCleanup", NoParams)
+
+RegisterGatewayServerImpl(server) ==
   /\ gateway_catalog' = gateway_catalog \cup {server}
   /\ gateway_dynamic_servers' = gateway_dynamic_servers \cup {server}
   /\ gateway_global_deployments' = gateway_global_deployments \ {server}
@@ -1003,10 +807,15 @@ RegisterGatewayServer(server) ==
                   server_registry_units, server_versions, server_packages,
                   server_authenticated_users >>
 
-\* @command DeployGatewayGlobal
+\* @command RegisterGatewayServer
 \* @result GatewayResult
-\* @port VirtualMcpGateway.deploy_global
-DeployGatewayGlobal(server) ==
+\* @port VirtualMcpGateway.register_server
+RegisterGatewayServer(server) ==
+  /\ RegisterGatewayServerImpl(server)
+  /\ project_model' = project_model
+  /\ MarkInternal("RegisterGatewayServer", [server |-> server])
+
+DeployGatewayGlobalImpl(server) ==
   IF server \notin gateway_catalog
   THEN
     /\ gateway_errors' = gateway_errors \cup {server}
@@ -1047,10 +856,15 @@ DeployGatewayGlobal(server) ==
                     server_versions, server_packages,
                     server_authenticated_users >>
 
-\* @command DeployGatewaySession
+\* @command DeployGatewayGlobal
 \* @result GatewayResult
-\* @port VirtualMcpGateway.deploy_session
-DeployGatewaySession(session, server) ==
+\* @port VirtualMcpGateway.deploy_global
+DeployGatewayGlobal(server) ==
+  /\ DeployGatewayGlobalImpl(server)
+  /\ project_model' = project_model
+  /\ MarkInternal("DeployGatewayGlobal", [server |-> server])
+
+DeployGatewaySessionImpl(session, server) ==
   IF server \notin gateway_catalog
   THEN
     /\ gateway_errors' = gateway_errors \cup {server}
@@ -1090,10 +904,15 @@ DeployGatewaySession(session, server) ==
                     server_registry_units, server_versions, server_packages,
                     server_authenticated_users >>
 
-\* @command DescribeGatewayTool
+\* @command DeployGatewaySession
 \* @result GatewayResult
-\* @port VirtualMcpGateway.describe_tool
-DescribeGatewayTool(session, tool) ==
+\* @port VirtualMcpGateway.deploy_session
+DeployGatewaySession(session, server) ==
+  /\ DeployGatewaySessionImpl(session, server)
+  /\ project_model' = project_model
+  /\ MarkInternal("DeployGatewaySession", [session |-> session, server |-> server])
+
+DescribeGatewayToolImpl(session, tool) ==
   IF tool \notin VisibleTools
   THEN
     /\ result' = Reject("TOOL_NOT_FOUND")
@@ -1117,10 +936,15 @@ DescribeGatewayTool(session, tool) ==
                     server_versions, server_packages,
                     server_authenticated_users >>
 
-\* @command InvokeGatewayTool
+\* @command DescribeGatewayTool
 \* @result GatewayResult
-\* @port VirtualMcpGateway.invoke_tool
-InvokeGatewayTool(session, tool) ==
+\* @port VirtualMcpGateway.describe_tool
+DescribeGatewayTool(session, tool) ==
+  /\ DescribeGatewayToolImpl(session, tool)
+  /\ project_model' = project_model
+  /\ MarkInternal("DescribeGatewayTool", [session |-> session, tool |-> tool])
+
+InvokeGatewayToolImpl(session, tool) ==
   IF <<session, tool>> \notin gateway_disclosures
   THEN
     /\ result' = Reject("TOOL_NOT_DISCLOSED")
@@ -1147,10 +971,15 @@ InvokeGatewayTool(session, tool) ==
                     server_registry_units, server_versions, server_packages,
                     server_authenticated_users >>
 
-\* @command RegisterProjectManifest
-\* @result ProjectResult
-\* @port SkillManagerCli.register_project_manifest
-RegisterProjectManifest(project) ==
+\* @command InvokeGatewayTool
+\* @result GatewayResult
+\* @port VirtualMcpGateway.invoke_tool
+InvokeGatewayTool(session, tool) ==
+  /\ InvokeGatewayToolImpl(session, tool)
+  /\ project_model' = project_model
+  /\ MarkInternal("InvokeGatewayTool", [session |-> session, tool |-> tool])
+
+RegisterProjectManifestImpl(project) ==
   /\ project \notin project_model.manifests
   /\ project_model' =
       [project_model EXCEPT
@@ -1170,10 +999,14 @@ RegisterProjectManifest(project) ==
   /\ result' = Ok
   /\ UNCHANGED state_vars
 
-\* @command ResolveProjectDependencies
+\* @command RegisterProjectManifest
 \* @result ProjectResult
-\* @port SkillManagerCli.resolve_project_dependencies
-ResolveProjectDependencies(project) ==
+\* @port SkillManagerCli.register_project_manifest
+RegisterProjectManifest(project) ==
+  /\ RegisterProjectManifestImpl(project)
+  /\ MarkInternal("RegisterProjectManifest", [project |-> project])
+
+ResolveProjectDependenciesImpl(project) ==
   LET resolved_units == ProjectResolvedUnitClosure(project)
       docs == ProjectDocRepos(project)
       harnesses == ProjectHarnessTemplates(project)
@@ -1218,10 +1051,14 @@ ResolveProjectDependencies(project) ==
                     server_registry_units, server_versions, server_packages,
                     server_authenticated_users >>
 
-\* @command MaterializeProjectEnv
+\* @command ResolveProjectDependencies
 \* @result ProjectResult
-\* @port SkillManagerCli.materialize_project_env
-MaterializeProjectEnv(project, env) ==
+\* @port SkillManagerCli.resolve_project_dependencies
+ResolveProjectDependencies(project) ==
+  /\ ResolveProjectDependenciesImpl(project)
+  /\ MarkInternal("ResolveProjectDependencies", [project |-> project])
+
+MaterializeProjectEnvImpl(project, env) ==
   IF project \notin project_model.registrations
      \/ <<project, env>> \notin project_model.env_specs
      \/ project \notin project_model.locks
@@ -1240,10 +1077,14 @@ MaterializeProjectEnv(project, env) ==
     /\ result' = Ok
     /\ UNCHANGED state_vars
 
-\* @command ResolveProjectLibs
+\* @command MaterializeProjectEnv
 \* @result ProjectResult
-\* @port SkillManagerCli.resolve_project_libs
-ResolveProjectLibs(project) ==
+\* @port SkillManagerCli.materialize_project_env
+MaterializeProjectEnv(project, env) ==
+  /\ MaterializeProjectEnvImpl(project, env)
+  /\ MarkInternal("MaterializeProjectEnv", [project |-> project, env |-> env])
+
+ResolveProjectLibsImpl(project) ==
   IF project \notin project_model.registrations
   THEN
     /\ result' = Reject("PROJECT_NOT_REGISTERED")
@@ -1258,10 +1099,14 @@ ResolveProjectLibs(project) ==
     /\ result' = Ok
     /\ UNCHANGED state_vars
 
-\* @command InstantiateChildHomeFromHarness
+\* @command ResolveProjectLibs
 \* @result ProjectResult
-\* @port SkillManagerCli.instantiate_child_home_from_harness
-InstantiateChildHomeFromHarness(home, template) ==
+\* @port SkillManagerCli.resolve_project_libs
+ResolveProjectLibs(project) ==
+  /\ ResolveProjectLibsImpl(project)
+  /\ MarkInternal("ResolveProjectLibs", [project |-> project])
+
+InstantiateChildHomeFromHarnessImpl(home, template) ==
   LET needed_units == DependencyClosure(HarnessUnitsFor(template))
       child_units == needed_units \cup {template}
       child_servers == McpServersFor(needed_units)
@@ -1286,10 +1131,14 @@ InstantiateChildHomeFromHarness(home, template) ==
     /\ result' = Ok
     /\ UNCHANGED state_vars
 
-\* @command ScaffoldProjectChildHome
+\* @command InstantiateChildHomeFromHarness
 \* @result ProjectResult
-\* @port SkillManagerCli.scaffold_project_child_home
-ScaffoldProjectChildHome(project, home, parent_home) ==
+\* @port SkillManagerCli.instantiate_child_home_from_harness
+InstantiateChildHomeFromHarness(home, template) ==
+  /\ InstantiateChildHomeFromHarnessImpl(home, template)
+  /\ MarkInternal("InstantiateChildHomeFromHarness", [home |-> home, template |-> template])
+
+ScaffoldProjectChildHomeImpl(project, home, parent_home) ==
   LET needed_units == ProjectChildHomePayload(project)
       child_servers == McpServersFor(needed_units)
       child_tools == ChildHomeShimsFor(needed_units)
@@ -1318,10 +1167,14 @@ ScaffoldProjectChildHome(project, home, parent_home) ==
     /\ result' = Ok
     /\ UNCHANGED state_vars
 
-\* @command ResolveProjectProfile
+\* @command ScaffoldProjectChildHome
 \* @result ProjectResult
-\* @port SkillManagerCli.resolve_project_profile
-ResolveProjectProfile(project, profile, home, parent_home) ==
+\* @port SkillManagerCli.scaffold_project_child_home
+ScaffoldProjectChildHome(project, home, parent_home) ==
+  /\ ScaffoldProjectChildHomeImpl(project, home, parent_home)
+  /\ MarkInternal("ScaffoldProjectChildHome", [project |-> project, home |-> home, parent_home |-> parent_home])
+
+ResolveProjectProfileImpl(project, profile, home, parent_home) ==
   LET resolved_units == ProjectProfileResolvedUnitClosure(project, profile)
       docs == ProjectProfileDocRepos(project, profile)
       harnesses == ProjectProfileHarnessTemplates(project, profile)
@@ -1377,10 +1230,14 @@ ResolveProjectProfile(project, profile, home, parent_home) ==
                     server_registry_units, server_versions, server_packages,
                     server_authenticated_users >>
 
-\* @command SyncClaimingProjectChildHomes
+\* @command ResolveProjectProfile
 \* @result ProjectResult
-\* @port SkillManagerCli.sync_claiming_project_child_homes
-SyncClaimingProjectChildHomes(u) ==
+\* @port SkillManagerCli.resolve_project_profile
+ResolveProjectProfile(project, profile, home, parent_home) ==
+  /\ ResolveProjectProfileImpl(project, profile, home, parent_home)
+  /\ MarkInternal("ResolveProjectProfile", [project |-> project, profile |-> profile, home |-> home, parent_home |-> parent_home])
+
+SyncClaimingProjectChildHomesImpl(u) ==
   LET claiming_pairs ==
         {pair \in project_model.project_child_homes :
           u \in ProjectChildHomePayload(pair[1])}
@@ -1416,11 +1273,186 @@ SyncClaimingProjectChildHomes(u) ==
     /\ result' = Ok
     /\ UNCHANGED state_vars
 
+\* @command SyncClaimingProjectChildHomes
+\* @result ProjectResult
+\* @port SkillManagerCli.sync_claiming_project_child_homes
+SyncClaimingProjectChildHomes(u) ==
+  /\ SyncClaimingProjectChildHomesImpl(u)
+  /\ MarkInternal("SyncClaimingProjectChildHomes", [unit |-> u])
+
+\* ---------------------------------------------------------------------------
+\* skill-manager venv: content-addressed skill store, per-project version
+\* pins with the ancestry-or-fail collision rule, venv activation as a
+\* recursive parent-child env overlay, agent-CLI shims, and tool-call hook
+\* materialization (ticket/env-overlay.md + ticket/versioning.md).
+\* ---------------------------------------------------------------------------
+
+\* Install-time write into the content-addressed store skills/<name>/<sha>/.
+\* Store entries are an immutable cache: they are never removed by RemoveUnit,
+\* and the store_latest pointer (the "global latest" surfaced in
+\* SKILL_MANAGER_HOME) always moves to the most recently stored sha.
+StoreUnitVersionImpl(u, sha) ==
+  IF u \notin cli_store_units
+  THEN
+    /\ result' = Reject("UNIT_NOT_INSTALLED")
+    /\ project_model' = project_model
+    /\ UNCHANGED state_vars
+  ELSE
+    /\ project_model' =
+        [project_model EXCEPT
+          !.store_versions = @ \cup {<<u, sha>>},
+          !.store_latest =
+              {entry \in @ : entry[1] # u} \cup {<<u, sha>>}]
+    /\ result' = Ok
+    /\ UNCHANGED state_vars
+
+\* @command StoreUnitVersion
+\* @result VenvResult
+\* @port SkillManagerCli.store_unit_version
+StoreUnitVersion(u, sha) ==
+  /\ StoreUnitVersionImpl(u, sha)
+  /\ MarkInternal("StoreUnitVersion", [unit |-> u, sha |-> sha])
+
+\* Per-project pin (skill-project.toml). Ancestry-or-fail: a pin is rejected
+\* and recorded as a conflict when any other project pins the same unit to a
+\* sha that is not ancestry-related. Re-pinning within one project replaces
+\* the project's own pin.
+PinProjectUnitVersionImpl(project, u, sha) ==
+  IF project \notin project_model.registrations
+  THEN
+    /\ result' = Reject("PROJECT_NOT_REGISTERED")
+    /\ project_model' = project_model
+    /\ UNCHANGED state_vars
+  ELSE IF <<u, sha>> \notin project_model.store_versions
+  THEN
+    /\ result' = Reject("VERSION_NOT_STORED")
+    /\ project_model' = project_model
+    /\ UNCHANGED state_vars
+  ELSE IF \E pin \in project_model.version_pins:
+            /\ pin[2] = u
+            /\ pin[1] # project
+            /\ ~AncestryRelated(pin[3], sha)
+  THEN
+    /\ project_model' =
+        [project_model EXCEPT
+          !.pin_conflicts = @ \cup {<<project, u>>}]
+    /\ result' = Reject("PIN_ANCESTRY_CONFLICT")
+    /\ UNCHANGED state_vars
+  ELSE
+    /\ project_model' =
+        [project_model EXCEPT
+          !.version_pins =
+              {pin \in @ : ~(pin[1] = project /\ pin[2] = u)}
+                \cup {<<project, u, sha>>},
+          !.pin_conflicts = @ \ {<<project, u>>}]
+    /\ result' = Ok
+    /\ UNCHANGED state_vars
+
+\* @command PinProjectUnitVersion
+\* @result VenvResult
+\* @port SkillManagerCli.pin_project_unit_version
+PinProjectUnitVersion(project, u, sha) ==
+  /\ PinProjectUnitVersionImpl(project, u, sha)
+  /\ MarkInternal("PinProjectUnitVersion",
+       [project |-> project, unit |-> u, sha |-> sha])
+
+\* Activate the project-local venv overlay: the project's .skill-manager home
+\* overrides the parent home pip-venv style (previous bin retained through
+\* the recorded overlay parent). Distinct from harness/profile child homes:
+\* a venv activation never copies units; it reroutes resolution.
+ActivateProjectVenvImpl(project, home, parent_home) ==
+  IF \/ project \notin project_model.registrations
+     \/ <<project, home>> \notin ProjectChildHomeEdges
+     \/ parent_home \notin SkillManagerHomes
+     \/ parent_home = home
+  THEN
+    /\ result' = Reject("VENV_PROJECT_NOT_READY")
+    /\ project_model' = project_model
+    /\ UNCHANGED state_vars
+  ELSE
+    /\ project_model' =
+        [project_model EXCEPT
+          !.venv_activations = @ \cup {<<project, home>>},
+          !.venv_overlay_parents = @ \cup {<<parent_home, home>>}]
+    /\ result' = Ok
+    /\ UNCHANGED state_vars
+
+\* @command ActivateProjectVenv
+\* @result VenvResult
+\* @port SkillManagerCli.activate_project_venv
+ActivateProjectVenv(project, home, parent_home) ==
+  /\ ActivateProjectVenvImpl(project, home, parent_home)
+  /\ MarkInternal("ActivateProjectVenv",
+       [project |-> project, home |-> home, parent_home |-> parent_home])
+
+\* Materialize the agent-CLI shims (claude / codex / gemini) into an
+\* activated venv. Each shim reroutes the agent CLI with
+\* SKILL_MANAGER_HOME / CLAUDE_CONFIG_DIR / CODEX_HOME pointed at the venv
+\* home so the pinned skill versions win over the global config.
+MaterializeVenvAgentShimsImpl(home) ==
+  IF ~(\E project \in Projects: <<project, home>> \in project_model.venv_activations)
+  THEN
+    /\ result' = Reject("VENV_NOT_ACTIVATED")
+    /\ project_model' = project_model
+    /\ UNCHANGED state_vars
+  ELSE
+    /\ project_model' =
+        [project_model EXCEPT
+          !.venv_agent_shims = @ \cup ({home} \X Agents)]
+    /\ result' = Ok
+    /\ UNCHANGED state_vars
+
+\* @command MaterializeVenvAgentShims
+\* @result VenvResult
+\* @port SkillManagerCli.materialize_venv_agent_shims
+MaterializeVenvAgentShims(home) ==
+  /\ MaterializeVenvAgentShimsImpl(home)
+  /\ MarkInternal("MaterializeVenvAgentShims", [home |-> home])
+
+\* Materialize tool-call hooks into an activated venv from the units pinned
+\* by the activating projects. Hook actions run on intercepted CLI calls and
+\* stay visible to the agent (push model over pull).
+MaterializeVenvHooksImpl(home) ==
+  LET activating == {project \in Projects :
+                       <<project, home>> \in project_model.venv_activations}
+      pinned == {pin[2] : pin \in {p \in project_model.version_pins :
+                                     p[1] \in activating}}
+  IN
+  IF activating = {}
+  THEN
+    /\ result' = Reject("VENV_NOT_ACTIVATED")
+    /\ project_model' = project_model
+    /\ UNCHANGED state_vars
+  ELSE
+    /\ project_model' =
+        [project_model EXCEPT
+          !.venv_hook_materializations = @ \cup ({home} \X HooksFor(pinned))]
+    /\ result' = Ok
+    /\ UNCHANGED state_vars
+
+\* @command MaterializeVenvHooks
+\* @result VenvResult
+\* @port SkillManagerCli.materialize_venv_hooks
+MaterializeVenvHooks(home) ==
+  /\ MaterializeVenvHooksImpl(home)
+  /\ MarkInternal("MaterializeVenvHooks", [home |-> home])
+
+RenderProgressiveRootHelpImpl ==
+  /\ project_model.cli_root_help_topics = CliTopLevelCommands
+  /\ result' = Ok
+  /\ project_model' = project_model
+  /\ UNCHANGED state_vars
+
 \* @command RenderProgressiveRootHelp
 \* @result CliDisclosureResult
 \* @port SkillManagerCli.render_progressive_root_help
 RenderProgressiveRootHelp ==
-  /\ project_model.cli_root_help_topics = CliTopLevelCommands
+  /\ RenderProgressiveRootHelpImpl
+  /\ MarkInternal("RenderProgressiveRootHelp", NoParams)
+
+RenderInstallCommandHelpImpl ==
+  /\ "install" \in project_model.cli_command_catalog
+  /\ "install" \in project_model.cli_command_help_topics
   /\ result' = Ok
   /\ project_model' = project_model
   /\ UNCHANGED state_vars
@@ -1429,8 +1461,12 @@ RenderProgressiveRootHelp ==
 \* @result CliDisclosureResult
 \* @port SkillManagerCli.render_command_help
 RenderInstallCommandHelp ==
-  /\ "install" \in project_model.cli_command_catalog
-  /\ "install" \in project_model.cli_command_help_topics
+  /\ RenderInstallCommandHelpImpl
+  /\ MarkInternal("RenderInstallCommandHelp", NoParams)
+
+RenderSyncCommandHelpImpl ==
+  /\ "sync" \in project_model.cli_command_catalog
+  /\ "sync" \in project_model.cli_command_help_topics
   /\ result' = Ok
   /\ project_model' = project_model
   /\ UNCHANGED state_vars
@@ -1439,8 +1475,12 @@ RenderInstallCommandHelp ==
 \* @result CliDisclosureResult
 \* @port SkillManagerCli.render_command_help
 RenderSyncCommandHelp ==
-  /\ "sync" \in project_model.cli_command_catalog
-  /\ "sync" \in project_model.cli_command_help_topics
+  /\ RenderSyncCommandHelpImpl
+  /\ MarkInternal("RenderSyncCommandHelp", NoParams)
+
+RenderProjectProfilesListHelpImpl ==
+  /\ "project profiles list" \in project_model.cli_command_catalog
+  /\ "project profiles list" \in project_model.cli_command_help_topics
   /\ result' = Ok
   /\ project_model' = project_model
   /\ UNCHANGED state_vars
@@ -1449,8 +1489,12 @@ RenderSyncCommandHelp ==
 \* @result CliDisclosureResult
 \* @port SkillManagerCli.render_command_help
 RenderProjectProfilesListHelp ==
-  /\ "project profiles list" \in project_model.cli_command_catalog
-  /\ "project profiles list" \in project_model.cli_command_help_topics
+  /\ RenderProjectProfilesListHelpImpl
+  /\ MarkInternal("RenderProjectProfilesListHelp", NoParams)
+
+ExposeInstallLocalUnitWorkflowDocsImpl ==
+  /\ "install-local-unit" \in project_model.cli_workflow_catalog
+  /\ <<"skill-manager-skill", "install-local-unit">> \in project_model.cli_skill_doc_topics
   /\ result' = Ok
   /\ project_model' = project_model
   /\ UNCHANGED state_vars
@@ -1459,8 +1503,12 @@ RenderProjectProfilesListHelp ==
 \* @result CliDisclosureResult
 \* @port SkillManagerCli.expose_skill_workflow_docs
 ExposeInstallLocalUnitWorkflowDocs ==
-  /\ "install-local-unit" \in project_model.cli_workflow_catalog
-  /\ <<"skill-manager-skill", "install-local-unit">> \in project_model.cli_skill_doc_topics
+  /\ ExposeInstallLocalUnitWorkflowDocsImpl
+  /\ MarkInternal("ExposeInstallLocalUnitWorkflowDocs", NoParams)
+
+ExposeSkillScriptsWorkflowDocsImpl ==
+  /\ "skill-scripts" \in project_model.cli_workflow_catalog
+  /\ <<"skill-publisher-skill", "skill-scripts">> \in project_model.cli_skill_doc_topics
   /\ result' = Ok
   /\ project_model' = project_model
   /\ UNCHANGED state_vars
@@ -1469,8 +1517,12 @@ ExposeInstallLocalUnitWorkflowDocs ==
 \* @result CliDisclosureResult
 \* @port SkillManagerCli.expose_skill_workflow_docs
 ExposeSkillScriptsWorkflowDocs ==
-  /\ "skill-scripts" \in project_model.cli_workflow_catalog
-  /\ <<"skill-publisher-skill", "skill-scripts">> \in project_model.cli_skill_doc_topics
+  /\ ExposeSkillScriptsWorkflowDocsImpl
+  /\ MarkInternal("ExposeSkillScriptsWorkflowDocs", NoParams)
+
+ExposeProjectEnvWorkflowDocsImpl ==
+  /\ "project-env" \in project_model.cli_workflow_catalog
+  /\ <<"skill-manager-skill", "project-env">> \in project_model.cli_skill_doc_topics
   /\ result' = Ok
   /\ project_model' = project_model
   /\ UNCHANGED state_vars
@@ -1479,8 +1531,12 @@ ExposeSkillScriptsWorkflowDocs ==
 \* @result CliDisclosureResult
 \* @port SkillManagerCli.expose_skill_workflow_docs
 ExposeProjectEnvWorkflowDocs ==
-  /\ "project-env" \in project_model.cli_workflow_catalog
-  /\ <<"skill-manager-skill", "project-env">> \in project_model.cli_skill_doc_topics
+  /\ ExposeProjectEnvWorkflowDocsImpl
+  /\ MarkInternal("ExposeProjectEnvWorkflowDocs", NoParams)
+
+EmitSyncOneUnitAgentContextImpl ==
+  /\ "sync-one-unit" \in project_model.cli_workflow_catalog
+  /\ "sync-one-unit" \in project_model.cli_agent_context_topics
   /\ result' = Ok
   /\ project_model' = project_model
   /\ UNCHANGED state_vars
@@ -1489,8 +1545,12 @@ ExposeProjectEnvWorkflowDocs ==
 \* @result CliDisclosureResult
 \* @port SkillManagerCli.emit_agent_workflow_context
 EmitSyncOneUnitAgentContext ==
-  /\ "sync-one-unit" \in project_model.cli_workflow_catalog
-  /\ "sync-one-unit" \in project_model.cli_agent_context_topics
+  /\ EmitSyncOneUnitAgentContextImpl
+  /\ MarkInternal("EmitSyncOneUnitAgentContext", NoParams)
+
+EmitProjectEnvAgentContextImpl ==
+  /\ "project-env" \in project_model.cli_workflow_catalog
+  /\ "project-env" \in project_model.cli_agent_context_topics
   /\ result' = Ok
   /\ project_model' = project_model
   /\ UNCHANGED state_vars
@@ -1499,11 +1559,8 @@ EmitSyncOneUnitAgentContext ==
 \* @result CliDisclosureResult
 \* @port SkillManagerCli.emit_agent_workflow_context
 EmitProjectEnvAgentContext ==
-  /\ "project-env" \in project_model.cli_workflow_catalog
-  /\ "project-env" \in project_model.cli_agent_context_topics
-  /\ result' = Ok
-  /\ project_model' = project_model
-  /\ UNCHANGED state_vars
+  /\ EmitProjectEnvAgentContextImpl
+  /\ MarkInternal("EmitProjectEnvAgentContext", NoParams)
 
 CoreNext ==
   \/ \E user \in Users: ServerAuthenticate(user)
@@ -1532,8 +1589,19 @@ CoreNext ==
   \/ \E session \in Sessions, tool \in Tools:
       InvokeGatewayTool(session, tool)
 
+CliDisclosureNext ==
+  \/ RenderProgressiveRootHelp
+  \/ RenderInstallCommandHelp
+  \/ RenderSyncCommandHelp
+  \/ RenderProjectProfilesListHelp
+  \/ ExposeInstallLocalUnitWorkflowDocs
+  \/ ExposeSkillScriptsWorkflowDocs
+  \/ ExposeProjectEnvWorkflowDocs
+  \/ EmitSyncOneUnitAgentContext
+  \/ EmitProjectEnvAgentContext
+
 Next ==
-  \/ CoreNext /\ project_model' = project_model
+  \/ CoreNext
   \/ \E project \in Projects: RegisterProjectManifest(project)
   \/ \E project \in Projects: ResolveProjectDependencies(project)
   \/ \E project \in Projects, env \in Envs: MaterializeProjectEnv(project, env)
@@ -1546,20 +1614,14 @@ Next ==
         parent_home \in SkillManagerHomes:
       ResolveProjectProfile(project, profile, home, parent_home)
   \/ \E u \in Units: SyncClaimingProjectChildHomes(u)
-
-CliDisclosureNext ==
-  \/ RenderProgressiveRootHelp
-  \/ RenderInstallCommandHelp
-  \/ RenderSyncCommandHelp
-  \/ RenderProjectProfilesListHelp
-  \/ ExposeInstallLocalUnitWorkflowDocs
-  \/ ExposeSkillScriptsWorkflowDocs
-  \/ ExposeProjectEnvWorkflowDocs
-  \/ EmitSyncOneUnitAgentContext
-  \/ EmitProjectEnvAgentContext
-
-CliDisclosureSpec ==
-  Init /\ [][CliDisclosureNext]_vars
+  \/ \E u \in Units, sha \in Shas: StoreUnitVersion(u, sha)
+  \/ \E project \in Projects, u \in Units, sha \in Shas:
+      PinProjectUnitVersion(project, u, sha)
+  \/ \E project \in Projects, home \in ChildHomes, parent_home \in SkillManagerHomes:
+      ActivateProjectVenv(project, home, parent_home)
+  \/ \E home \in ChildHomes: MaterializeVenvAgentShims(home)
+  \/ \E home \in ChildHomes: MaterializeVenvHooks(home)
+  \/ CliDisclosureNext
 
 \* @invariant CliInstalledRecordsTrackStore
 CliInstalledRecordsTrackStore ==
@@ -1825,6 +1887,70 @@ ChildHomeToolShimsComeFromMcpServers ==
             /\ unit_pair[1] = pair[1]
             /\ <<unit_pair[2], pair[2]>> \in UnitScriptEdges
 
+\* @invariant VenvStoreVersionsAreContentAddressed
+VenvStoreVersionsAreContentAddressed ==
+  project_model.store_versions \subseteq (Units \X Shas)
+
+\* @invariant VenvStoreLatestIsStored
+VenvStoreLatestIsStored ==
+  project_model.store_latest \subseteq project_model.store_versions
+
+\* @invariant VenvStoreLatestUniquePerUnit
+VenvStoreLatestUniquePerUnit ==
+  \A e1 \in project_model.store_latest:
+    \A e2 \in project_model.store_latest:
+      e1[1] = e2[1] => e1 = e2
+
+\* @invariant VenvPinsAreStoredAndRegistered
+VenvPinsAreStoredAndRegistered ==
+  \A pin \in project_model.version_pins:
+    /\ pin[1] \in project_model.registrations
+    /\ <<pin[2], pin[3]>> \in project_model.store_versions
+
+\* @invariant VenvPinsUniquePerProjectUnit
+VenvPinsUniquePerProjectUnit ==
+  \A p1 \in project_model.version_pins:
+    \A p2 \in project_model.version_pins:
+      (p1[1] = p2[1] /\ p1[2] = p2[2]) => p1 = p2
+
+\* Ancestry-or-fail: cross-project pins of one unit stay ancestry-related.
+\* @invariant VenvPinsAncestryCoherent
+VenvPinsAncestryCoherent ==
+  \A p1 \in project_model.version_pins:
+    \A p2 \in project_model.version_pins:
+      p1[2] = p2[2] => AncestryRelated(p1[3], p2[3])
+
+\* @invariant VenvPinConflictsAreDeclaredProjects
+VenvPinConflictsAreDeclaredProjects ==
+  project_model.pin_conflicts \subseteq (Projects \X Units)
+
+\* @invariant VenvActivationsAreDeclaredAndRegistered
+VenvActivationsAreDeclaredAndRegistered ==
+  \A activation \in project_model.venv_activations:
+    /\ activation \in ProjectChildHomeEdges
+    /\ activation[1] \in project_model.registrations
+
+\* @invariant VenvOverlayParentsAreKnownAndNotSelf
+VenvOverlayParentsAreKnownAndNotSelf ==
+  \A pair \in project_model.venv_overlay_parents:
+    /\ pair[1] \in SkillManagerHomes
+    /\ pair[2] \in ChildHomes
+    /\ pair[1] # pair[2]
+
+\* @invariant VenvAgentShimsComeFromActivations
+VenvAgentShimsComeFromActivations ==
+  \A shim \in project_model.venv_agent_shims:
+    /\ shim[2] \in Agents
+    /\ \E project \in Projects:
+        <<project, shim[1]>> \in project_model.venv_activations
+
+\* @invariant VenvHooksComeFromPinnedUnits
+VenvHooksComeFromPinnedUnits ==
+  \A entry \in project_model.venv_hook_materializations:
+    \E pin \in project_model.version_pins:
+      /\ <<pin[1], entry[1]>> \in project_model.venv_activations
+      /\ <<pin[2], entry[2]>> \in UnitHookEdges
+
 \* @invariant HaltImpliesHaltContinuation
 HaltImpliesHaltContinuation ==
   program_halted => effect_continuation = "HALT"
@@ -1862,7 +1988,406 @@ ServerVersionsHaveRegistryUnit ==
 ServerPackagesHaveVersion ==
   server_packages \subseteq server_versions
 
-Spec ==
-  Init /\ [][Next]_vars
+\* The accepted pre-split transition relation over the unmarked Impl
+\* actions. External.tla uses this for hidden internal progress so
+\* hidden steps do not multiply command-marker variety during case
+\* generation. Mirrors Next exactly, including the project_model frame
+\* on the CoreNext-family disjunct.
+CoreImplNext ==
+  \/ \E user \in Users: ServerAuthenticateImpl(user)
+  \/ \E user \in Users, unit \in Units, version \in Versions:
+      ServerPublishTarballImpl(user, unit, version)
+  \/ ServerSearchImpl
+  \/ ConfigureRegistryImpl
+  \/ EnsureGatewayImpl
+  \/ \E u \in Units: InstallUnitImpl(u)
+  \/ \E u \in Units: InstallUnitForceScriptsImpl(u)
+  \/ \E u \in Units: SyncUnitImpl(u)
+  \/ \E u \in Units: SyncUnitForceScriptsImpl(u)
+  \/ \E u \in Units: RemoveUnitImpl(u)
+  \/ \E doc \in DocRepos: BindDocRepoImpl(doc)
+  \/ \E doc \in DocRepos: SyncDocRepoImpl(doc)
+  \/ \E template \in HarnessTemplates, instance \in HarnessInstances:
+      SyncHarnessImpl(template, instance)
+  \/ RunEffectProgramFailureImpl
+  \/ RunAlwaysAfterCleanupImpl
+  \/ \E server \in Servers: RegisterGatewayServerImpl(server)
+  \/ \E server \in Servers: DeployGatewayGlobalImpl(server)
+  \/ \E session \in Sessions, server \in Servers:
+      DeployGatewaySessionImpl(session, server)
+  \/ \E session \in Sessions, tool \in Tools:
+      DescribeGatewayToolImpl(session, tool)
+  \/ \E session \in Sessions, tool \in Tools:
+      InvokeGatewayToolImpl(session, tool)
+
+CliDisclosureImplNext ==
+  \/ RenderProgressiveRootHelpImpl
+  \/ RenderInstallCommandHelpImpl
+  \/ RenderSyncCommandHelpImpl
+  \/ RenderProjectProfilesListHelpImpl
+  \/ ExposeInstallLocalUnitWorkflowDocsImpl
+  \/ ExposeSkillScriptsWorkflowDocsImpl
+  \/ ExposeProjectEnvWorkflowDocsImpl
+  \/ EmitSyncOneUnitAgentContextImpl
+  \/ EmitProjectEnvAgentContextImpl
+
+InternalImplNext ==
+  \/ CoreImplNext /\ project_model' = project_model
+  \/ \E project \in Projects: RegisterProjectManifestImpl(project)
+  \/ \E project \in Projects: ResolveProjectDependenciesImpl(project)
+  \/ \E project \in Projects, env \in Envs: MaterializeProjectEnvImpl(project, env)
+  \/ \E project \in Projects: ResolveProjectLibsImpl(project)
+  \/ \E home \in ChildHomes, template \in HarnessTemplates:
+      InstantiateChildHomeFromHarnessImpl(home, template)
+  \/ \E project \in Projects, home \in ChildHomes, parent_home \in SkillManagerHomes:
+      ScaffoldProjectChildHomeImpl(project, home, parent_home)
+  \/ \E project \in Projects, profile \in Profiles, home \in ChildHomes,
+        parent_home \in SkillManagerHomes:
+      ResolveProjectProfileImpl(project, profile, home, parent_home)
+  \/ \E u \in Units: SyncClaimingProjectChildHomesImpl(u)
+  \/ \E u \in Units, sha \in Shas: StoreUnitVersionImpl(u, sha)
+  \/ \E project \in Projects, u \in Units, sha \in Shas:
+      PinProjectUnitVersionImpl(project, u, sha)
+  \/ \E project \in Projects, home \in ChildHomes, parent_home \in SkillManagerHomes:
+      ActivateProjectVenvImpl(project, home, parent_home)
+  \/ \E home \in ChildHomes: MaterializeVenvAgentShimsImpl(home)
+  \/ \E home \in ChildHomes: MaterializeVenvHooksImpl(home)
+  \/ CliDisclosureImplNext
+
+InternalVars == vars
+
+InternalInit == Init
+
+InternalNext == Next
+
+InternalInvariant ==
+  /\ CliInstalledRecordsTrackStore
+  /\ CliLockTracksStore
+  /\ CliReferencesClosed
+  /\ CliProjectionsHaveInstalledUnits
+  /\ CliBindingsReferenceInstalledOrContentUnits
+  /\ ProjectionRowsHaveBindings
+  /\ ManagedCopiesHaveDocRepo
+  /\ ImportDirectivesHaveDocRepo
+  /\ CliCliLockTracksInstalledPackages
+  /\ CliCliArtifactsAreClaimed
+  /\ CliCliLockRowsAreClaimed
+  /\ SkillScriptsAreKnownScripts
+  /\ SkillScriptRunsAreClaimed
+  /\ CliCommandCatalogCoversAllCommands
+  /\ CliRootHelpStaysProgressive
+  /\ CliCommandHelpCoversCatalog
+  /\ CliWorkflowCatalogCoversDesiredWorkflows
+  /\ CliWorkflowsReferenceCatalogCommands
+  /\ CliSkillDocsCoverWorkflowCatalog
+  /\ CliAgentContextCoversWorkflowCatalog
+  /\ ProjectRegistrationsHaveManifests
+  /\ ProjectEnvSpecsHaveManifest
+  /\ ProjectLibSpecsHaveManifest
+  /\ ProjectLocksHaveManifests
+  /\ ProjectResolvedUnitsHaveLocksAndInstalledUnits
+  /\ ProjectDocBindingsHaveLocksAndDocRepos
+  /\ ProjectHarnessBindingsHaveLocksAndHarnessTemplates
+  /\ ProjectAgentConfigsHaveLocks
+  /\ ProjectEnvRealizationsHaveLocks
+  /\ ProjectEnvDocsHaveRealizedEnv
+  /\ ProjectToolShimsAreKnownTools
+  /\ ProjectSkillVendorsAreInstalled
+  /\ ProjectLibLocksTrackCheckouts
+  /\ ProjectProfileDeclarationsHaveManifests
+  /\ ProjectProfileSpecsHaveDeclarations
+  /\ ProjectProfileLocksHaveDeclarations
+  /\ ProjectProfileResolvedUnitsHaveLocksAndInstalledUnits
+  /\ ProjectProfileChildHomesHaveLocks
+  /\ ChildHomesHaveHarnesses
+  /\ ProjectChildHomesHaveRegistrations
+  /\ ChildHomesHaveParents
+  /\ ChildHomeParentsAreKnownAndNotSelf
+  /\ ChildHomeUnitsComeFromParent
+  /\ ProjectChildHomeUnitsComeFromProject
+  /\ ProjectProfileChildHomeUnitsComeFromProfile
+  /\ ChildHomeAgentConfigsAreKnown
+  /\ ChildHomeMcpServersComeFromUnits
+  /\ ChildHomeToolShimsComeFromMcpServers
+  /\ VenvStoreVersionsAreContentAddressed
+  /\ VenvStoreLatestIsStored
+  /\ VenvStoreLatestUniquePerUnit
+  /\ VenvPinsAreStoredAndRegistered
+  /\ VenvPinsUniquePerProjectUnit
+  /\ VenvPinsAncestryCoherent
+  /\ VenvPinConflictsAreDeclaredProjects
+  /\ VenvActivationsAreDeclaredAndRegistered
+  /\ VenvOverlayParentsAreKnownAndNotSelf
+  /\ VenvAgentShimsComeFromActivations
+  /\ VenvHooksComeFromPinnedUnits
+  /\ HaltImpliesHaltContinuation
+  /\ CompletedSuccessfulProgramsClearRollbackJournal
+  /\ GatewayDynamicServersAreCataloged
+  /\ GatewayDeploymentsAreCataloged
+  /\ GatewayToolsComeFromDeployments
+  /\ GatewayDisclosuresReferenceKnownTools
+  /\ ServerVersionsHaveRegistryUnit
+  /\ ServerPackagesHaveVersion
+
+InternalSpec ==
+  InternalInit /\ [][InternalNext]_InternalVars
+
+\* Compatibility spec for the existing bounded CLI-disclosure loop.
+CliDisclosureSpec ==
+  InternalInit /\ [][CliDisclosureNext]_InternalVars
+
+\* Fingerprint view that quotients out the result payload and the command
+\* marker so full-model checking keeps the pre-split accepted state count.
+MarkerlessView ==
+  << cli_store_units, cli_doc_repos, cli_harness_templates,
+     cli_harness_instances, cli_installed_records, cli_lock_units,
+     cli_agent_projections, cli_bindings, cli_projection_rows,
+     cli_managed_copies, cli_import_directives, cli_projection_conflicts,
+     cli_tool_records, cli_cli_lock, cli_skill_scripts_run, cli_errors,
+     cli_gateway_url_configured, cli_registry_url_configured,
+     cli_gateway_mcp_snapshot, effect_status, effect_continuation,
+     program_halted, always_after_ran, rollback_journal, gateway_catalog,
+     gateway_dynamic_servers, gateway_global_deployments,
+     gateway_session_deployments, gateway_tools, gateway_disclosures,
+     gateway_errors, gateway_last_init, server_registry_units,
+     server_versions, server_packages, server_authenticated_users,
+     project_model >>
+
+\* Bounded case-generation envelopes. The whole-program model is too large
+\* for quick exhaustive TLC sweeps, so TLC state-graph cases are generated
+\* from feature-slice envelopes of the one program spec. Each slice keeps
+\* every action of its boundary reachable while freezing the orthogonal
+\* subsystems at their Init values.
+
+\* Install / sync / remove / bind-doc / harness boundary. The registry
+\* server stays free because install resolution depends on published
+\* units; the gateway deployment surface and the project model are frozen
+\* at Init (gateway_catalog / gateway_dynamic_servers stay free because
+\* install and remove write them).
+CliStoreCaseEnvelope ==
+  /\ gateway_global_deployments = {}
+  /\ gateway_session_deployments = {}
+  /\ gateway_tools = {}
+  /\ gateway_disclosures = {}
+  /\ gateway_errors = {}
+  /\ gateway_last_init = {}
+  /\ ~cli_gateway_url_configured
+  /\ ~cli_registry_url_configured
+  /\ project_model = ProjectModelInit
+
+\* Gateway boundary: register / deploy (global + session) / disclose /
+\* invoke plus EnsureGateway. RegisterGatewayServer seeds the catalog
+\* directly, so the CLI store, effect program, registry server, and
+\* project model are frozen at Init.
+GatewayCaseEnvelope ==
+  /\ cli_store_units = {}
+  /\ cli_doc_repos = {}
+  /\ cli_harness_templates = {}
+  /\ cli_harness_instances = {}
+  /\ cli_installed_records = {}
+  /\ cli_lock_units = {}
+  /\ cli_agent_projections = {}
+  /\ cli_bindings = {}
+  /\ cli_projection_rows = {}
+  /\ cli_managed_copies = {}
+  /\ cli_import_directives = {}
+  /\ cli_tool_records = {}
+  /\ cli_cli_lock = {}
+  /\ cli_skill_scripts_run = {}
+  /\ cli_errors = {}
+  /\ ~cli_registry_url_configured
+  /\ effect_status = "OK"
+  /\ effect_continuation = "CONTINUE"
+  /\ ~program_halted
+  /\ ~always_after_ran
+  /\ rollback_journal = {}
+  /\ server_registry_units = {}
+  /\ server_versions = {}
+  /\ server_packages = {}
+  /\ server_authenticated_users = {}
+  /\ project_model = ProjectModelInit
+
+\* Registry-server boundary: authenticate / publish / search plus
+\* ConfigureRegistry. Everything downstream of the registry (CLI store,
+\* gateway, project model) is frozen at Init.
+ServerRegistryCaseEnvelope ==
+  /\ cli_store_units = {}
+  /\ cli_doc_repos = {}
+  /\ cli_harness_templates = {}
+  /\ cli_harness_instances = {}
+  /\ cli_installed_records = {}
+  /\ cli_lock_units = {}
+  /\ cli_agent_projections = {}
+  /\ cli_bindings = {}
+  /\ cli_projection_rows = {}
+  /\ cli_managed_copies = {}
+  /\ cli_import_directives = {}
+  /\ cli_tool_records = {}
+  /\ cli_cli_lock = {}
+  /\ cli_skill_scripts_run = {}
+  /\ cli_errors = {}
+  /\ ~cli_gateway_url_configured
+  /\ effect_status = "OK"
+  /\ effect_continuation = "CONTINUE"
+  /\ ~program_halted
+  /\ ~always_after_ran
+  /\ rollback_journal = {}
+  /\ gateway_catalog = {}
+  /\ gateway_dynamic_servers = {}
+  /\ gateway_global_deployments = {}
+  /\ gateway_session_deployments = {}
+  /\ gateway_tools = {}
+  /\ gateway_disclosures = {}
+  /\ gateway_errors = {}
+  /\ gateway_last_init = {}
+  /\ project_model = ProjectModelInit
+
+\* Project / child-home / profile / env / lib boundary. The registry
+\* server and CLI store stay free because project resolution installs
+\* units, docs, and harnesses; the gateway deployment surface, error
+\* paths, and the effect-failure program are frozen at Init.
+ProjectCaseEnvelope ==
+  /\ gateway_global_deployments = {}
+  /\ gateway_session_deployments = {}
+  /\ gateway_tools = {}
+  /\ gateway_disclosures = {}
+  /\ gateway_errors = {}
+  /\ gateway_last_init = {}
+  /\ ~cli_gateway_url_configured
+  /\ ~cli_registry_url_configured
+  /\ effect_status = "OK"
+  /\ effect_continuation = "CONTINUE"
+  /\ ~program_halted
+  /\ ~always_after_ran
+  /\ rollback_journal = {}
+  /\ cli_errors = {}
+  /\ project_model.store_versions = {}
+  /\ project_model.store_latest = {}
+  /\ project_model.version_pins = {}
+  /\ project_model.pin_conflicts = {}
+  /\ project_model.venv_activations = {}
+  /\ project_model.venv_overlay_parents = {}
+  /\ project_model.venv_agent_shims = {}
+  /\ project_model.venv_hook_materializations = {}
+
+\* CLI progressive-disclosure boundary: the nine help / workflow-doc /
+\* agent-context actions. Freezes every variable except result and the
+\* marker, and every project_model field except the constant-valued
+\* cli_* catalog fields the disclosure actions read.
+CliDisclosureCaseEnvelope ==
+  /\ cli_store_units = {}
+  /\ cli_doc_repos = {}
+  /\ cli_harness_templates = {}
+  /\ cli_harness_instances = {}
+  /\ cli_installed_records = {}
+  /\ cli_lock_units = {}
+  /\ cli_agent_projections = {}
+  /\ cli_bindings = {}
+  /\ cli_projection_rows = {}
+  /\ cli_managed_copies = {}
+  /\ cli_import_directives = {}
+  /\ cli_projection_conflicts = {}
+  /\ cli_tool_records = {}
+  /\ cli_cli_lock = {}
+  /\ cli_skill_scripts_run = {}
+  /\ cli_errors = {}
+  /\ ~cli_gateway_url_configured
+  /\ ~cli_registry_url_configured
+  /\ cli_gateway_mcp_snapshot = {}
+  /\ effect_status = "OK"
+  /\ effect_continuation = "CONTINUE"
+  /\ ~program_halted
+  /\ ~always_after_ran
+  /\ rollback_journal = {}
+  /\ gateway_catalog = {}
+  /\ gateway_dynamic_servers = {}
+  /\ gateway_global_deployments = {}
+  /\ gateway_session_deployments = {}
+  /\ gateway_tools = {}
+  /\ gateway_disclosures = {}
+  /\ gateway_errors = {}
+  /\ gateway_last_init = {}
+  /\ server_registry_units = {}
+  /\ server_versions = {}
+  /\ server_packages = {}
+  /\ server_authenticated_users = {}
+  /\ project_model.manifests = {}
+  /\ project_model.registrations = {}
+  /\ project_model.locks = {}
+  /\ project_model.resolved_units = {}
+  /\ project_model.doc_bindings = {}
+  /\ project_model.harness_bindings = {}
+  /\ project_model.agent_configs = {}
+  /\ project_model.env_realizations = {}
+  /\ project_model.env_locks = {}
+  /\ project_model.tool_shims = {}
+  /\ project_model.skill_vendors = {}
+  /\ project_model.env_docs = {}
+  /\ project_model.env_specs = {}
+  /\ project_model.lib_specs = {}
+  /\ project_model.profile_declarations = {}
+  /\ project_model.profile_locks = {}
+  /\ project_model.profile_resolved_units = {}
+  /\ project_model.profile_env_specs = {}
+  /\ project_model.profile_lib_specs = {}
+  /\ project_model.profile_child_homes = {}
+  /\ project_model.lib_checkouts = {}
+  /\ project_model.lib_locks = {}
+  /\ project_model.child_homes = {}
+  /\ project_model.project_child_homes = {}
+  /\ project_model.child_home_parents = {}
+  /\ project_model.child_home_harnesses = {}
+  /\ project_model.child_home_agent_configs = {}
+  /\ project_model.child_home_units = {}
+  /\ project_model.child_home_mcp_servers = {}
+  /\ project_model.child_home_tool_shims = {}
+  /\ project_model.store_versions = {}
+  /\ project_model.store_latest = {}
+  /\ project_model.version_pins = {}
+  /\ project_model.pin_conflicts = {}
+  /\ project_model.venv_activations = {}
+  /\ project_model.venv_overlay_parents = {}
+  /\ project_model.venv_agent_shims = {}
+  /\ project_model.venv_hook_materializations = {}
+
+\* Venv boundary: content-addressed store writes, per-project version pins
+\* (ancestry-or-fail), venv activation, agent shims, and hook
+\* materialization. The registry server and CLI store stay free because
+\* StoreUnitVersion requires an installed unit and pinning requires a
+\* registered project; the gateway deployment surface, effect-failure
+\* program, harness instances, profile resolution, and copied child homes
+\* are frozen at Init.
+VenvCaseEnvelope ==
+  /\ gateway_global_deployments = {}
+  /\ gateway_session_deployments = {}
+  /\ gateway_tools = {}
+  /\ gateway_disclosures = {}
+  /\ gateway_errors = {}
+  /\ gateway_last_init = {}
+  /\ ~cli_gateway_url_configured
+  /\ ~cli_registry_url_configured
+  /\ effect_status = "OK"
+  /\ effect_continuation = "CONTINUE"
+  /\ ~program_halted
+  /\ ~always_after_ran
+  /\ rollback_journal = {}
+  /\ cli_errors = {}
+  /\ cli_harness_instances = {}
+  /\ project_model.profile_locks = {}
+  /\ project_model.profile_resolved_units = {}
+  /\ project_model.profile_child_homes = {}
+  /\ project_model.env_realizations = {}
+  /\ project_model.env_locks = {}
+  /\ project_model.env_docs = {}
+  /\ project_model.lib_checkouts = {}
+  /\ project_model.lib_locks = {}
+  /\ project_model.child_homes = {}
+  /\ project_model.project_child_homes = {}
+  /\ project_model.child_home_parents = {}
+  /\ project_model.child_home_harnesses = {}
+  /\ project_model.child_home_agent_configs = {}
+  /\ project_model.child_home_units = {}
+  /\ project_model.child_home_mcp_servers = {}
+  /\ project_model.child_home_tool_shims = {}
 
 =============================================================================

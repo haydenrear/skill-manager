@@ -604,4 +604,31 @@ validationGraph {
                         "skill-dev.conflict.resolved")
         node("sources/common/PostgresDown.java").dependsOn("servers.down")
     }
+
+    // Spec-double external phase: provision (or reuse) the branch-scoped
+    // k3d environment from the deploy-cdc environment repository, then
+    // regenerate the External.tla TLC case package and execute every
+    // exported case against the real skill-manager CLI in isolated homes
+    // with projected-state assertions. Destroy is gated behind
+    // TEST_GRAPH_DESTROY_BRANCH_ENVIRONMENT in a separate lifecycle graph,
+    // so the branch cluster stays alive for reuse.
+    testGraph("specExternalPhase") {
+        node("sources/spec/sm_environment_provisioned.py")
+            .timeout("15m")
+
+        node("sources/spec/sm_cluster_ready.py")
+            .dependsOn("sm.environment.provisioned")
+            .timeout("10m")
+            .sideEffects("net:local")
+
+        node("sources/spec/sm_spec_external_cases.py")
+            .dependsOn("sm.cluster.ready")
+            .timeout("90m")
+            .sideEffects("net:local", "fs:tmp")
+
+        node("sources/spec/sm_spec_projected_evidence.py")
+            .dependsOn("sm.spec.external.cases")
+            .timeout("5m")
+            .sideEffects("fs:tmp")
+    }
 }

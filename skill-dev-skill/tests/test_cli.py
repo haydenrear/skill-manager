@@ -30,7 +30,7 @@ class SkillDevCliTest(unittest.TestCase):
         self.root = Path(self.tmp.name)
         self.home = self.root / "sm-home"
         self.project = self.root / "project"
-        self.installed = self.home / "skills" / "reviewer-skill"
+        self.installed = self.home / "skills" / "reviewer-skill" / "latest"
         (self.home / "installed").mkdir(parents=True)
         self.installed.mkdir(parents=True)
         self.project.mkdir()

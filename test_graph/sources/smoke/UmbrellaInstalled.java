@@ -50,9 +50,9 @@ public class UmbrellaInstalled {
             int rc = proc.exitCode();
 
             Path storeDir = Path.of(home, "skills");
-            boolean umbrellaIn = Files.isDirectory(storeDir.resolve("umbrella-skill"));
-            boolean pipIn = Files.isDirectory(storeDir.resolve("pip-cli-skill"));
-            boolean npmIn = Files.isDirectory(storeDir.resolve("npm-cli-skill"));
+            boolean umbrellaIn = Files.isDirectory(storeDir.resolve("umbrella-skill").resolve("latest"));
+            boolean pipIn = Files.isDirectory(storeDir.resolve("pip-cli-skill").resolve("latest"));
+            boolean npmIn = Files.isDirectory(storeDir.resolve("npm-cli-skill").resolve("latest"));
 
             boolean pass = rc == 0 && umbrellaIn && pipIn && npmIn;
             NodeResult result = pass

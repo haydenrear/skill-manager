@@ -72,7 +72,7 @@ public class SourceFixtureInstalled {
                         "install rc=" + rc);
             }
 
-            Path storeDir = Path.of(home).resolve("skills").resolve(skillName);
+            Path storeDir = Path.of(home).resolve("skills").resolve(skillName).resolve("latest");
             Path sourceJson = Path.of(home).resolve("installed").resolve(skillName + ".json");
 
             boolean storeHasGit = Files.isDirectory(storeDir.resolve(".git"));

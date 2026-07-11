@@ -36,7 +36,7 @@ public class SkillDevConflictResolved {
             List<ProcessRecord> procs = new ArrayList<>();
             String unit = SkillDevGraphSupport.CONFLICT;
             Path skillDev = SkillDevGraphSupport.skillDev(h);
-            Path store = h.resolve("skills").resolve(unit);
+            Path store = h.resolve("skills").resolve(unit).resolve("latest");
             Path storeFile = store.resolve("SKILL.md");
 
             ProcessRecord open = SkillDevGraphSupport.run(ctx, "conflict-open", env, project,

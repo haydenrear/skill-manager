@@ -1,0 +1,72 @@
+module: Core
+package: current_program_cases
+
+status:
+  workflow: ticket
+  active_ticket: SMVENV-001
+  active_ticket_title: "Content-addressed skill store: skills/<name>/<sha>/ plus a moving latest pointer"
+  relation_to_program_model: starts_equivalent_then_advances_as_slices_land
+  relation_to_desired_program_model: implemented_prefix_of_desired_ticket_plan
+  current_model_rule: whole_program_working_copy_not_ticket_projection
+  test_modeling_rule: do_not_model_tests_or_validation_harnesses_as_program_behavior
+  updated: '2026-07-03'
+  current_slice:
+    name: content-addressed-store
+    status: desired_authored
+    refines:
+      - specs/desired_program_model (SMVENV-001 slice of the venv ticket plan)
+    implemented_actions: []
+    desired_actions:
+      - StoreUnitVersion
+      - RunStoreUnitVersion
+    validation:
+      unit: []
+      tlc:
+        - "desired/: run_tlc.sh Internal.tla InternalVenvCases.cfg (2,610 distinct states, no violations, 2026-07-03)"
+        - "desired/: run_tlc.sh External.tla External.cfg incl. the strengthened RunProjectLibsResolve guard (no violations, 2026-07-03)"
+      graph: []
+      evidence: []
+  next:
+    - Fill in whole-program current state fields, actions, invariants, and adapters after the first production slice lands.
+    - Preserve all existing specs/program_model state/actions unless production behavior changes them.
+    - Run TLC and adapter/unit tests before adding graph execution coverage.
+
+source_model:
+  program_model_manifest: ../program_model/spec_manifest.yaml
+  program_model_module: ../program_model/Core.tla
+  desired_ticket_plan: ../desired_program_model/ticket_plan.yaml
+
+case_codegen:
+  style: explicit_transition_cases
+  generation_status: planned
+
+state_fields:
+  project_model.store_versions:
+    type: set[tuple[UnitId, Sha]]
+    description: content-addressed store entries skills/<name>/<sha>/ (immutable cache; survives RemoveUnit).
+  project_model.store_latest:
+    type: set[tuple[UnitId, Sha]]
+    description: the single moving "global latest" pointer per unit surfaced in SKILL_MANAGER_HOME.
+actions:
+  StoreUnitVersion:
+    port: SkillManagerCli.store_unit_version
+    result: VenvResult
+    description: install-time write into the content-addressed store plus latest-pointer move.
+invariants:
+  - CliCommandCatalogCoversAllCommands
+  - CliRootHelpStaysProgressive
+  - CliCommandHelpCoversCatalog
+  - CliWorkflowCatalogCoversDesiredWorkflows
+  - CliWorkflowsReferenceCatalogCommands
+  - CliSkillDocsCoverWorkflowCatalog
+  - CliAgentContextCoversWorkflowCatalog
+  - VenvStoreVersionsAreContentAddressed
+  - VenvStoreLatestIsStored
+  - VenvStoreLatestUniquePerUnit
+ports:
+  SkillManagerCli.store_unit_version:
+    kind: cli_store
+    adapter_status: planned
+adapters: case_adapters.toml
+notes:
+  package_from_program_model: skillmanager_program_cases

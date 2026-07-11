@@ -32,9 +32,9 @@ public class OnboardSkillsInstalled {
                 return NodeResult.fail("onboard.skills.installed", "missing env.prepared context");
             }
             Path skillsDir = Path.of(home).resolve("skills");
-            Path manager = skillsDir.resolve("skill-manager");
-            Path publisher = skillsDir.resolve("skill-publisher");
-            Path dev = skillsDir.resolve("skill-dev-skill");
+            Path manager = skillsDir.resolve("skill-manager").resolve("latest");
+            Path publisher = skillsDir.resolve("skill-publisher").resolve("latest");
+            Path dev = skillsDir.resolve("skill-dev-skill").resolve("latest");
             Path installedDir = Path.of(home).resolve("installed");
 
             boolean managerDirOk = Files.isDirectory(manager);

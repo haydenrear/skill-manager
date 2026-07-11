@@ -107,14 +107,14 @@ public class ProjectProfilesResolved {
                     && reviewLockText.contains("name = \"tg-profile-common\"")
                     && reviewLockText.contains("name = \"tg-profile-review\"")
                     && !reviewLockText.contains("name = \"tg-profile-dev\"");
-            boolean devHomeOk = Files.isRegularFile(devHome.resolve("skills/tg-profile-common/SKILL.md"))
-                    && Files.isRegularFile(devHome.resolve("skills/tg-profile-dev/SKILL.md"))
+            boolean devHomeOk = Files.isRegularFile(devHome.resolve("skills/tg-profile-common/latest/SKILL.md"))
+                    && Files.isRegularFile(devHome.resolve("skills/tg-profile-dev/latest/SKILL.md"))
                     && !Files.exists(devHome.resolve("skills/tg-profile-review"))
                     && Files.isDirectory(devHome.resolve("agents/codex"))
                     && Files.isDirectory(devHome.resolve("agents/claude"))
                     && Files.isDirectory(devHome.resolve("agents/gemini"));
-            boolean reviewHomeOk = Files.isRegularFile(reviewHome.resolve("skills/tg-profile-common/SKILL.md"))
-                    && Files.isRegularFile(reviewHome.resolve("skills/tg-profile-review/SKILL.md"))
+            boolean reviewHomeOk = Files.isRegularFile(reviewHome.resolve("skills/tg-profile-common/latest/SKILL.md"))
+                    && Files.isRegularFile(reviewHome.resolve("skills/tg-profile-review/latest/SKILL.md"))
                     && !Files.exists(reviewHome.resolve("skills/tg-profile-dev"))
                     && Files.isDirectory(reviewHome.resolve("agents/codex"))
                     && Files.isDirectory(reviewHome.resolve("agents/claude"))

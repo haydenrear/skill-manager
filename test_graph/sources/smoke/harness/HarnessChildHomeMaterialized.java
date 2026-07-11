@@ -53,7 +53,7 @@ public class HarnessChildHomeMaterialized {
             int rc = proc.exitCode();
 
             Path childHome = target.resolve(".skill-manager");
-            Path childSkill = childHome.resolve("skills/pip-cli-skill");
+            Path childSkill = childHome.resolve("skills/pip-cli-skill/latest");
             Path childPlugin = childHome.resolve("plugins/hello-plugin");
             Path childDoc = childHome.resolve("docs/hello-doc-repo");
             Path childHarness = childHome.resolve("harnesses/" + harnessName);

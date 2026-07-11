@@ -79,7 +79,7 @@ public class PartnerSkillInstalled {
             int rc = proc.exitCode();
 
             // Skill in store.
-            Path partnerStoreDir = Path.of(home).resolve("skills").resolve(PARTNER_SKILL_NAME);
+            Path partnerStoreDir = Path.of(home).resolve("skills").resolve(PARTNER_SKILL_NAME).resolve("latest");
             boolean partnerInStore = Files.isDirectory(partnerStoreDir);
 
             // Shared server still registered with the gateway after the

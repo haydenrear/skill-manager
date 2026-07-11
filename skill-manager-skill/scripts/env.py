@@ -52,7 +52,7 @@ def absolute_path(p: Path) -> Path:
 
 
 # Mirrors dev.skillmanager.agent.{Claude,Codex}Agent — the Java install
-# code drops symlinks at <agent_skills_dir>/<name> -> <home>/skills/<name>
+# code drops symlinks at <agent_skills_dir>/<name> -> <home>/skills/<name>/latest
 # for each installed skill, so env.py can hand callers either the original
 # store path or the agent-visible symlink path.
 def claude_skills_dir() -> Path:
@@ -295,13 +295,23 @@ def load_skill_manifest(skill_dir: Path) -> dict | None:
         return None
 
 
+def store_skill_dir(home: Path, name: str) -> Path:
+    """Working copy of one installed skill.
+
+    The store is content-addressed: ``skills/<name>/`` holds one immutable
+    ``<sha>/`` snapshot per stored version alongside the mutable ``latest/``
+    working copy. Everything outside the store reads ``latest/``.
+    """
+    return home / "skills" / name / "latest"
+
+
 def list_installed_skills(home: Path) -> list[str]:
     skills_dir = home / "skills"
     if not skills_dir.is_dir():
         return []
     return sorted(
         p.name for p in skills_dir.iterdir()
-        if p.is_dir() and (p / "skill-manager.toml").is_file()
+        if p.is_dir() and (p / "latest" / "skill-manager.toml").is_file()
     )
 
 
@@ -316,7 +326,7 @@ def resolve_skill_paths(name: str, home: Path, prefer: str | None) -> dict:
     - ``"claude"`` / ``"codex"`` → that agent's symlink path if present,
       otherwise fall back to the original so callers always get a usable path.
     """
-    original = (home / "skills" / name).absolute()
+    original = store_skill_dir(home, name).absolute()
     agents: dict[str, str] = {}
     for agent_id, dir_fn in AGENT_SKILL_DIRS.items():
         candidate = dir_fn() / name
@@ -338,7 +348,6 @@ def resolve_skill_paths(name: str, home: Path, prefer: str | None) -> dict:
 
 def collect(home: Path, requested: list[str] | None, prefer: str | None,
             project_root: str | None) -> dict:
-    skills_dir = home / "skills"
     cli_bin_dir = home / "bin" / "cli"
 
     available = list_installed_skills(home)
@@ -355,7 +364,7 @@ def collect(home: Path, requested: list[str] | None, prefer: str | None,
 
     for skill in targets:
         skills[skill] = resolve_skill_paths(skill, home, prefer)
-        manifest = load_skill_manifest(skills_dir / skill)
+        manifest = load_skill_manifest(store_skill_dir(home, skill))
         if not manifest:
             continue
         for dep in manifest.get("cli_dependencies", []) or []:

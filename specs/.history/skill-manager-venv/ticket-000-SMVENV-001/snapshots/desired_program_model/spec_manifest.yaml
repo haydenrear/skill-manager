@@ -1,0 +1,117 @@
+module: Core
+package: desired_program_cases
+
+status:
+  workflow: ticket
+  initial_ticket: SMVENV-001
+  initial_ticket_title: "Content-addressed skill store: skills/<name>/<sha>/ plus a moving latest pointer"
+  ticket_plan: ticket_plan.yaml
+  relation_to_program_model: desired_successor_of_accepted_program_model
+  relation_to_current: target_state_for_specs_current_to_converge_to
+  updated: '2026-07-03'
+  summary:
+    desired_model_scaffolded: true
+    ticket_plan_scaffolded: true
+    current_model_scaffolded: true
+    generated_cases: pending
+    adapters: pending
+  done:
+    - Fill in desired state/actions/invariants (venv domain modeled in Core/Internal/External + InternalVenvCases.cfg, TLC-checked 2026-07-03).
+    - Break the work into tickets in ticket_plan.yaml (SMVENV-001..004).
+  pending:
+    - Update specs/current as each ticket lands.
+    - Regenerate desired-model case packages and extend adapters per ticket.
+    - Promote converged desired/current model back into specs/program_model.
+
+source_model:
+  program_model_manifest: ../program_model/spec_manifest.yaml
+  program_model_module: ../program_model/Core.tla
+  baseline_package: skillmanager_program_cases
+
+case_codegen:
+  style: explicit_transition_cases
+  generation_status: planned
+
+state_fields:
+  project_model.store_versions:
+    type: set[tuple[UnitId, Sha]]
+    description: content-addressed store entries skills/<name>/<sha>/ (immutable cache; survives RemoveUnit).
+  project_model.store_latest:
+    type: set[tuple[UnitId, Sha]]
+    description: the single moving "global latest" pointer per unit surfaced in SKILL_MANAGER_HOME.
+  project_model.version_pins:
+    type: set[tuple[ProjectId, UnitId, Sha]]
+    description: per-project version pins from skill-project.toml; one sha per (project, unit).
+  project_model.pin_conflicts:
+    type: set[tuple[ProjectId, UnitId]]
+    description: recorded ancestry-or-fail pin collisions.
+  project_model.venv_activations:
+    type: set[tuple[ProjectId, HomeId]]
+    description: activated project-local venv overlays.
+  project_model.venv_overlay_parents:
+    type: set[tuple[HomeId, HomeId]]
+    description: recursive parent-child overlay chain (previous home retained).
+  project_model.venv_agent_shims:
+    type: set[tuple[HomeId, AgentId]]
+    description: materialized claude/codex/gemini shims exporting SKILL_MANAGER_HOME / CLAUDE_CONFIG_DIR / CODEX_HOME.
+  project_model.venv_hook_materializations:
+    type: set[tuple[HomeId, HookId]]
+    description: tool-call hooks materialized from units pinned by the activating project.
+actions:
+  StoreUnitVersion:
+    port: SkillManagerCli.store_unit_version
+    result: VenvResult
+    description: install-time write into the content-addressed store plus latest-pointer move.
+  PinProjectUnitVersion:
+    port: SkillManagerCli.pin_project_unit_version
+    result: VenvResult
+    description: per-project pin with the ancestry-or-fail collision rule.
+  ActivateProjectVenv:
+    port: SkillManagerCli.activate_project_venv
+    result: VenvResult
+    description: activate the project-local venv overlay over a parent home.
+  MaterializeVenvAgentShims:
+    port: SkillManagerCli.materialize_venv_agent_shims
+    result: VenvResult
+    description: materialize agent-CLI shims into an activated venv.
+  MaterializeVenvHooks:
+    port: SkillManagerCli.materialize_venv_hooks
+    result: VenvResult
+    description: materialize tool-call hooks from pinned units into an activated venv.
+invariants:
+  - CliCommandCatalogCoversAllCommands
+  - CliRootHelpStaysProgressive
+  - CliCommandHelpCoversCatalog
+  - CliWorkflowCatalogCoversDesiredWorkflows
+  - CliWorkflowsReferenceCatalogCommands
+  - CliSkillDocsCoverWorkflowCatalog
+  - CliAgentContextCoversWorkflowCatalog
+  - VenvStoreVersionsAreContentAddressed
+  - VenvStoreLatestIsStored
+  - VenvStoreLatestUniquePerUnit
+  - VenvPinsAreStoredAndRegistered
+  - VenvPinsUniquePerProjectUnit
+  - VenvPinsAncestryCoherent
+  - VenvPinConflictsAreDeclaredProjects
+  - VenvActivationsAreDeclaredAndRegistered
+  - VenvOverlayParentsAreKnownAndNotSelf
+  - VenvAgentShimsComeFromActivations
+  - VenvHooksComeFromPinnedUnits
+ports:
+  SkillManagerCli.store_unit_version:
+    kind: cli_store
+    adapter_status: planned
+  SkillManagerCli.pin_project_unit_version:
+    kind: cli_store
+    adapter_status: planned
+  SkillManagerCli.activate_project_venv:
+    kind: cli_env
+    adapter_status: planned
+  SkillManagerCli.materialize_venv_agent_shims:
+    kind: cli_env
+    adapter_status: planned
+  SkillManagerCli.materialize_venv_hooks:
+    kind: cli_env
+    adapter_status: planned
+notes:
+  direction: "This manifest records the target whole-program model and the ticket workflow status. Keep ticket_plan.yaml synchronized whenever scope, order, validation, or acceptance criteria change."

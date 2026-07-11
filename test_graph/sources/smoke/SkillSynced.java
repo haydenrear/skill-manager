@@ -53,7 +53,7 @@ public class SkillSynced {
             Path sm = repoRoot.resolve("skill-manager");
 
             String skill = "echo-http-skill";
-            Path storeEntry = Path.of(home).resolve("skills").resolve(skill);
+            Path storeEntry = Path.of(home).resolve("skills").resolve(skill).resolve("latest");
             Path claudeLink = Path.of(claudeHome).resolve(".claude").resolve("skills").resolve(skill);
 
             // Pre: drift the claude symlink. Use NOFOLLOW so we delete the

@@ -112,7 +112,7 @@ public class HarnessInstanceRemoved {
             boolean templateStays = Files.isRegularFile(
                     Path.of(home, "harnesses", "smoke-harness", "harness.toml"));
             boolean skillStays = Files.isRegularFile(
-                    Path.of(home, "skills", "pip-cli-skill", "SKILL.md"));
+                    Path.of(home, "skills", "pip-cli-skill", "latest", "SKILL.md"));
             boolean pluginStays = Files.isRegularFile(
                     Path.of(home, "plugins", "hello-plugin", ".claude-plugin/plugin.json"));
             boolean docStays = Files.isRegularFile(
