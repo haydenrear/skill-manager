@@ -73,3 +73,9 @@ test_graph/.bin
 /data/
 test_graph/docs
 states
+
+specs/generated
+.codex
+.gemini
+.claude
+.skill-manager
