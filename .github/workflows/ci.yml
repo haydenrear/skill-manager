@@ -94,6 +94,9 @@ jobs:
         run: uv run --all-extras pytest -v
 
   test-graph:
+    # Temporarily disabled: the graph matrix consumes too many hosted-runner
+    # resources. Keep the job definition intact so it can be re-enabled later.
+    if: ${{ vars.ENABLE_TEST_GRAPH == 'true' }}
     name: "test-graph: ${{ matrix.graph }}"
     runs-on: ubuntu-latest
     strategy:
@@ -319,8 +322,8 @@ jobs:
 
   test-graph-browser:
     # Heavier graphs that boot Selenium + chromedriver. SKILL.md flags these
-    # as run-on-demand rather than every commit, so gate on workflow_dispatch.
-    if: github.event_name == 'workflow_dispatch'
+    # as run-on-demand. Temporarily disabled with the rest of test-graph CI.
+    if: ${{ vars.ENABLE_TEST_GRAPH == 'true' }}
     name: "test-graph (selenium): ${{ matrix.graph }}"
     runs-on: ubuntu-latest
     strategy:

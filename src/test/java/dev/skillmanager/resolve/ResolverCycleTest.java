@@ -70,6 +70,15 @@ public final class ResolverCycleTest {
                     outcome.graph().cleanup();
                     assertEquals(0L, stageDirCount(store.cacheDir()), "retained staging cleaned");
                 })
+                .test("equivalent Git spellings share a key while different revisions do not", () -> {
+                    assertEquals(
+                            Resolver.coordKey("github:Owner/Repo#v1", null),
+                            Resolver.coordKey("git+https://github.com/owner/repo.git#v1", null),
+                            "GitHub shorthand and URL normalize uniformly");
+                    assertTrue(!Resolver.coordKey("github:owner/repo#v1", null).equals(
+                                    Resolver.coordKey("git+https://github.com/owner/repo.git#v2", null)),
+                            "different revisions remain distinct");
+                })
                 .runAll();
     }
 

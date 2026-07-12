@@ -310,7 +310,7 @@ public final class Resolver {
         return -1;
     }
 
-    private static CoordKey coordKey(String source, String version) {
+    static CoordKey coordKey(String source, String version) {
         String normalizedSource = source == null ? "" : source.trim();
         String normalizedVersion = version == null || version.isBlank() ? null : version.trim();
 
@@ -322,6 +322,13 @@ public final class Resolver {
             }
             normalizedSource = registryName;
         } else {
+            int fragment = normalizedSource.lastIndexOf('#');
+            if (fragment >= 0) {
+                if (normalizedVersion == null) {
+                    normalizedVersion = normalizedSource.substring(fragment + 1).trim();
+                }
+                normalizedSource = normalizedSource.substring(0, fragment);
+            }
             normalizedSource = canonicalDirectSource(normalizedSource);
         }
         return new CoordKey(normalizedSource, normalizedVersion);
@@ -364,7 +371,7 @@ public final class Resolver {
         return normalized;
     }
 
-    private record CoordKey(String source, String version) {}
+    record CoordKey(String source, String version) {}
     private record Ancestor(CoordKey key, String unitName) {}
     private record Pending(
             String source,
