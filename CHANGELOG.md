@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.18.1](https://github.com/haydenrear/skill-manager/compare/v0.18.0...v0.18.1) (2026-07-12)
+
+
+### Bug Fixes
+
+* preserve Git revisions in resolver cycle keys ([2047262](https://github.com/haydenrear/skill-manager/commit/2047262740c7d550128bc8d00d2e35ed14733a03))
+
 ## [0.18.0](https://github.com/haydenrear/skill-manager/compare/v0.17.3...v0.18.0) (2026-06-28)
 
 
