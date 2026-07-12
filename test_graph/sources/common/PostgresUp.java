@@ -35,7 +35,7 @@ public class PostgresUp {
             .kind(NodeSpec.Kind.TESTBED)
             .dependsOn("env.prepared")
             .tags("postgres", "infra")
-            .sideEffects("docker", "db:truncate")
+            .sideEffects("db:writes")
             .timeout("90s")
             .output("dbUrl", "string")
             .output("dbUser", "string")

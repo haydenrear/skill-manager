@@ -1,0 +1,104 @@
+{"runId":"20260712-181149","nodes":[{
+  "nodeId" : "env.prepared",
+  "status" : "passed",
+  "startedAt" : "2026-07-12T18:11:50.155548Z",
+  "endedAt" : "2026-07-12T18:11:50.184310Z",
+  "assertions" : [ {
+    "name" : "home_created",
+    "status" : "passed"
+  }, {
+    "name" : "agent_home_created",
+    "status" : "passed"
+  }, {
+    "name" : "codex_home_created",
+    "status" : "passed"
+  }, {
+    "name" : "gemini_home_created",
+    "status" : "passed"
+  }, {
+    "name" : "ports_allocated",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ ],
+  "metrics" : {
+    "registryPort" : 65422,
+    "gatewayPort" : 65423,
+    "durationMs" : 29
+  },
+  "logs" : [ ],
+  "published" : {
+    "home" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-4009002439593784890",
+    "claudeHome" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-4009002439593784890/agent-home",
+    "codexHome" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-4009002439593784890/agent-home/.codex",
+    "geminiHome" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-4009002439593784890/agent-home/.gemini",
+    "registryPort" : "65422",
+    "gatewayPort" : "65423"
+  }
+,"executorStartedAt":"2026-07-12T18:11:49.691460Z","executorEndedAt":"2026-07-12T18:11:50.290815Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/env.prepared.stdout.log","inputContextFile":"context/env.prepared.input.json"},{
+  "nodeId" : "project.profiles.resolved",
+  "status" : "passed",
+  "startedAt" : "2026-07-12T18:11:50.744899Z",
+  "endedAt" : "2026-07-12T18:11:54.862157Z",
+  "assertions" : [ {
+    "name" : "profiles_list_reports_declared_profiles",
+    "status" : "passed"
+  }, {
+    "name" : "dev_profile_resolve_ok",
+    "status" : "passed"
+  }, {
+    "name" : "review_profile_resolve_ok",
+    "status" : "passed"
+  }, {
+    "name" : "profile_locks_are_distinct_and_selected",
+    "status" : "passed"
+  }, {
+    "name" : "dev_profile_child_home_is_isolated",
+    "status" : "passed"
+  }, {
+    "name" : "review_profile_child_home_is_isolated",
+    "status" : "passed"
+  }, {
+    "name" : "parent_registry_records_profile_child_homes",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "profiles-list",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-109-resolver-cycle/skill-manager", "project", "profiles", "list", "--project-dir", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-project-profiles-17674982112786364690" ],
+    "startedAt" : "2026-07-12T18:11:50.778684Z",
+    "endedAt" : "2026-07-12T18:11:51.659607Z",
+    "exitCode" : 0,
+    "pid" : 89044,
+    "log" : "node-logs/project.profiles.resolved.profiles-list.log",
+    "error" : null
+  }, {
+    "label" : "resolve-dev",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-109-resolver-cycle/skill-manager", "project", "resolve", "--skip-gateway", "--profile", "dev", "--project-dir", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-project-profiles-17674982112786364690" ],
+    "startedAt" : "2026-07-12T18:11:51.659826Z",
+    "endedAt" : "2026-07-12T18:11:53.276843Z",
+    "exitCode" : 0,
+    "pid" : 89053,
+    "log" : "node-logs/project.profiles.resolved.resolve-dev.log",
+    "error" : null
+  }, {
+    "label" : "resolve-review",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-109-resolver-cycle/skill-manager", "project", "resolve", "--skip-gateway", "--profile", "review", "--project-dir", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-project-profiles-17674982112786364690" ],
+    "startedAt" : "2026-07-12T18:11:53.277087Z",
+    "endedAt" : "2026-07-12T18:11:54.860425Z",
+    "exitCode" : 0,
+    "pid" : 89066,
+    "log" : "node-logs/project.profiles.resolved.resolve-review.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "durationMs" : 4118
+  },
+  "logs" : [ ],
+  "published" : {
+    "projectName" : "tg-profiled-project",
+    "projectDir" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-project-profiles-17674982112786364690",
+    "devChildHome" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-project-profiles-17674982112786364690/.skill-manager/profiles/dev",
+    "reviewChildHome" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-project-profiles-17674982112786364690/.skill-manager/profiles/review"
+  }
+,"executorStartedAt":"2026-07-12T18:11:50.291577Z","executorEndedAt":"2026-07-12T18:11:54.985619Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/project.profiles.resolved.stdout.log","inputContextFile":"context/project.profiles.resolved.input.json"}]}

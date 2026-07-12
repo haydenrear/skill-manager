@@ -1,0 +1,157 @@
+{"runId":"20260712-181048","nodes":[{
+  "nodeId" : "env.prepared",
+  "status" : "passed",
+  "startedAt" : "2026-07-12T18:10:49.454236Z",
+  "endedAt" : "2026-07-12T18:10:49.483634Z",
+  "assertions" : [ {
+    "name" : "home_created",
+    "status" : "passed"
+  }, {
+    "name" : "agent_home_created",
+    "status" : "passed"
+  }, {
+    "name" : "codex_home_created",
+    "status" : "passed"
+  }, {
+    "name" : "gemini_home_created",
+    "status" : "passed"
+  }, {
+    "name" : "ports_allocated",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ ],
+  "metrics" : {
+    "registryPort" : 65390,
+    "gatewayPort" : 65391,
+    "durationMs" : 29
+  },
+  "logs" : [ ],
+  "published" : {
+    "home" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-10482522127525919074",
+    "claudeHome" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-10482522127525919074/agent-home",
+    "codexHome" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-10482522127525919074/agent-home/.codex",
+    "geminiHome" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-10482522127525919074/agent-home/.gemini",
+    "registryPort" : "65390",
+    "gatewayPort" : "65391"
+  }
+,"executorStartedAt":"2026-07-12T18:10:48.991271Z","executorEndedAt":"2026-07-12T18:10:49.587403Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/env.prepared.stdout.log","inputContextFile":"context/env.prepared.input.json"},{
+  "nodeId" : "project.manifest.registered",
+  "status" : "passed",
+  "startedAt" : "2026-07-12T18:10:50.037172Z",
+  "endedAt" : "2026-07-12T18:10:55.499359Z",
+  "assertions" : [ {
+    "name" : "register_command_ok",
+    "status" : "passed"
+  }, {
+    "name" : "custom_manifest_register_command_ok",
+    "status" : "passed"
+  }, {
+    "name" : "reserved_manifest_register_rejected",
+    "status" : "passed"
+  }, {
+    "name" : "registration_metadata_written",
+    "status" : "passed"
+  }, {
+    "name" : "manifest_snapshot_written",
+    "status" : "passed"
+  }, {
+    "name" : "custom_manifest_snapshot_written",
+    "status" : "passed"
+  }, {
+    "name" : "show_summarizes_portable_intent",
+    "status" : "passed"
+  }, {
+    "name" : "custom_show_summarizes_portable_intent",
+    "status" : "passed"
+  }, {
+    "name" : "list_includes_registered_project",
+    "status" : "passed"
+  }, {
+    "name" : "skills_not_installed",
+    "status" : "passed"
+  }, {
+    "name" : "custom_skill_not_installed",
+    "status" : "passed"
+  }, {
+    "name" : "plugins_not_installed",
+    "status" : "passed"
+  }, {
+    "name" : "harnesses_not_installed",
+    "status" : "passed"
+  }, {
+    "name" : "docs_not_installed",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "register",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-109-resolver-cycle/skill-manager", "project", "register", "--project-dir", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-project-manifest-17323010490689173685" ],
+    "startedAt" : "2026-07-12T18:10:50.069599Z",
+    "endedAt" : "2026-07-12T18:10:50.969095Z",
+    "exitCode" : 0,
+    "pid" : 88337,
+    "log" : "node-logs/project.manifest.registered.register.log",
+    "error" : null
+  }, {
+    "label" : "register-custom",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-109-resolver-cycle/skill-manager", "project", "register", "--project-dir", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-project-manifest-custom-9339734034402209942", "--manifest", "agent-harness.toml" ],
+    "startedAt" : "2026-07-12T18:10:50.969317Z",
+    "endedAt" : "2026-07-12T18:10:51.892799Z",
+    "exitCode" : 0,
+    "pid" : 88346,
+    "log" : "node-logs/project.manifest.registered.register-custom.log",
+    "error" : null
+  }, {
+    "label" : "register-reserved",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-109-resolver-cycle/skill-manager", "project", "register", "--project-dir", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-project-manifest-reserved-6669647066211071056", "--manifest", "registration.toml" ],
+    "startedAt" : "2026-07-12T18:10:51.893031Z",
+    "endedAt" : "2026-07-12T18:10:52.806895Z",
+    "exitCode" : 1,
+    "pid" : 88363,
+    "log" : "node-logs/project.manifest.registered.register-reserved.log",
+    "error" : null
+  }, {
+    "label" : "show",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-109-resolver-cycle/skill-manager", "project", "show", "tg-project" ],
+    "startedAt" : "2026-07-12T18:10:52.807140Z",
+    "endedAt" : "2026-07-12T18:10:53.727765Z",
+    "exitCode" : 0,
+    "pid" : 88374,
+    "log" : "node-logs/project.manifest.registered.show.log",
+    "error" : null
+  }, {
+    "label" : "show-custom",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-109-resolver-cycle/skill-manager", "project", "show", "tg-custom-project" ],
+    "startedAt" : "2026-07-12T18:10:53.727963Z",
+    "endedAt" : "2026-07-12T18:10:54.614602Z",
+    "exitCode" : 0,
+    "pid" : 88385,
+    "log" : "node-logs/project.manifest.registered.show-custom.log",
+    "error" : null
+  }, {
+    "label" : "list",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-109-resolver-cycle/skill-manager", "project", "list" ],
+    "startedAt" : "2026-07-12T18:10:54.614824Z",
+    "endedAt" : "2026-07-12T18:10:55.497636Z",
+    "exitCode" : 0,
+    "pid" : 88413,
+    "log" : "node-logs/project.manifest.registered.list.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "registerExitCode" : 0,
+    "registerCustomExitCode" : 0,
+    "registerReservedExitCode" : 1,
+    "showExitCode" : 0,
+    "showCustomExitCode" : 0,
+    "listExitCode" : 0,
+    "durationMs" : 5462
+  },
+  "logs" : [ ],
+  "published" : {
+    "projectName" : "tg-project",
+    "projectDir" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-project-manifest-17323010490689173685",
+    "registrationDir" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-10482522127525919074/projects/tg-project"
+  }
+,"executorStartedAt":"2026-07-12T18:10:49.588089Z","executorEndedAt":"2026-07-12T18:10:55.622264Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/project.manifest.registered.stdout.log","inputContextFile":"context/project.manifest.registered.input.json"}]}

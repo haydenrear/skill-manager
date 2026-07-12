@@ -1,0 +1,178 @@
+{"runId":"20260712-181057","nodes":[{
+  "nodeId" : "env.prepared",
+  "status" : "passed",
+  "startedAt" : "2026-07-12T18:10:57.536123Z",
+  "endedAt" : "2026-07-12T18:10:57.567111Z",
+  "assertions" : [ {
+    "name" : "home_created",
+    "status" : "passed"
+  }, {
+    "name" : "agent_home_created",
+    "status" : "passed"
+  }, {
+    "name" : "codex_home_created",
+    "status" : "passed"
+  }, {
+    "name" : "gemini_home_created",
+    "status" : "passed"
+  }, {
+    "name" : "ports_allocated",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ ],
+  "metrics" : {
+    "registryPort" : 65397,
+    "gatewayPort" : 65398,
+    "durationMs" : 31
+  },
+  "logs" : [ ],
+  "published" : {
+    "home" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-9602157786913985994",
+    "claudeHome" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-9602157786913985994/agent-home",
+    "codexHome" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-9602157786913985994/agent-home/.codex",
+    "geminiHome" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-9602157786913985994/agent-home/.gemini",
+    "registryPort" : "65397",
+    "gatewayPort" : "65398"
+  }
+,"executorStartedAt":"2026-07-12T18:10:57.072154Z","executorEndedAt":"2026-07-12T18:10:57.673643Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/env.prepared.stdout.log","inputContextFile":"context/env.prepared.input.json"},{
+  "nodeId" : "project.dependencies.resolved",
+  "status" : "passed",
+  "startedAt" : "2026-07-12T18:10:58.156617Z",
+  "endedAt" : "2026-07-12T18:11:05.248510Z",
+  "assertions" : [ {
+    "name" : "resolve_command_ok",
+    "status" : "passed"
+  }, {
+    "name" : "resolve_existing_project_is_idempotent",
+    "status" : "passed"
+  }, {
+    "name" : "project_sync_placeholder_ok",
+    "status" : "passed"
+  }, {
+    "name" : "show_reports_lock_counts",
+    "status" : "passed"
+  }, {
+    "name" : "project_lock_written",
+    "status" : "passed"
+  }, {
+    "name" : "lock_records_direct_and_transitive_units",
+    "status" : "passed"
+  }, {
+    "name" : "units_installed_in_home",
+    "status" : "passed"
+  }, {
+    "name" : "doc_binding_materialized",
+    "status" : "passed"
+  }, {
+    "name" : "project_agent_skill_bindings_materialized",
+    "status" : "passed"
+  }, {
+    "name" : "project_agent_plugin_binding_materialized",
+    "status" : "passed"
+  }, {
+    "name" : "project_child_home_scaffolded",
+    "status" : "passed"
+  }, {
+    "name" : "project_child_home_units_projected",
+    "status" : "passed"
+  }, {
+    "name" : "parent_child_home_registry_claims_project_units",
+    "status" : "passed"
+  }, {
+    "name" : "project_agent_projections_point_at_child_store",
+    "status" : "passed"
+  }, {
+    "name" : "plain_remove_blocked_by_project_lock",
+    "status" : "passed"
+  }, {
+    "name" : "project_remove_command_ok",
+    "status" : "passed"
+  }, {
+    "name" : "project_remove_clears_registration",
+    "status" : "passed"
+  }, {
+    "name" : "project_remove_clears_child_home_registry",
+    "status" : "passed"
+  }, {
+    "name" : "project_remove_clears_child_home_generated_units",
+    "status" : "passed"
+  }, {
+    "name" : "project_remove_clears_project_bindings",
+    "status" : "passed"
+  }, {
+    "name" : "project_remove_keeps_parent_home_units",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "resolve",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-109-resolver-cycle/skill-manager", "project", "resolve", "--skip-gateway", "--project-dir", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-project-resolve-5097023173654128665" ],
+    "startedAt" : "2026-07-12T18:10:58.191872Z",
+    "endedAt" : "2026-07-12T18:11:00.035427Z",
+    "exitCode" : 0,
+    "pid" : 88456,
+    "log" : "node-logs/project.dependencies.resolved.resolve.log",
+    "error" : null
+  }, {
+    "label" : "resolve-again",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-109-resolver-cycle/skill-manager", "project", "resolve", "--skip-gateway", "--project-dir", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-project-resolve-5097023173654128665" ],
+    "startedAt" : "2026-07-12T18:11:00.035643Z",
+    "endedAt" : "2026-07-12T18:11:01.124616Z",
+    "exitCode" : 0,
+    "pid" : 88479,
+    "log" : "node-logs/project.dependencies.resolved.resolve-again.log",
+    "error" : null
+  }, {
+    "label" : "sync",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-109-resolver-cycle/skill-manager", "project", "sync", "--skip-gateway", "--project-dir", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-project-resolve-5097023173654128665" ],
+    "startedAt" : "2026-07-12T18:11:01.124854Z",
+    "endedAt" : "2026-07-12T18:11:02.236752Z",
+    "exitCode" : 0,
+    "pid" : 88488,
+    "log" : "node-logs/project.dependencies.resolved.sync.log",
+    "error" : null
+  }, {
+    "label" : "show",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-109-resolver-cycle/skill-manager", "project", "show", "tg-resolved-project" ],
+    "startedAt" : "2026-07-12T18:11:02.236971Z",
+    "endedAt" : "2026-07-12T18:11:03.238448Z",
+    "exitCode" : 0,
+    "pid" : 88497,
+    "log" : "node-logs/project.dependencies.resolved.show.log",
+    "error" : null
+  }, {
+    "label" : "remove-claimed",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-109-resolver-cycle/skill-manager", "remove", "tg-parent" ],
+    "startedAt" : "2026-07-12T18:11:03.238679Z",
+    "endedAt" : "2026-07-12T18:11:04.213698Z",
+    "exitCode" : 1,
+    "pid" : 88511,
+    "log" : "node-logs/project.dependencies.resolved.remove-claimed.log",
+    "error" : null
+  }, {
+    "label" : "project-remove",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-109-resolver-cycle/skill-manager", "project", "remove", "--skip-gateway", "tg-resolved-project" ],
+    "startedAt" : "2026-07-12T18:11:04.216759Z",
+    "endedAt" : "2026-07-12T18:11:05.247189Z",
+    "exitCode" : 0,
+    "pid" : 88520,
+    "log" : "node-logs/project.dependencies.resolved.project-remove.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "resolveExitCode" : 0,
+    "resolveAgainExitCode" : 0,
+    "syncExitCode" : 0,
+    "showExitCode" : 0,
+    "removeExitCode" : 1,
+    "projectRemoveExitCode" : 0,
+    "durationMs" : 7092
+  },
+  "logs" : [ ],
+  "published" : {
+    "projectName" : "tg-resolved-project",
+    "projectDir" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-project-resolve-5097023173654128665",
+    "lockFile" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-9602157786913985994/projects/tg-resolved-project/project-lock.toml"
+  }
+,"executorStartedAt":"2026-07-12T18:10:57.674447Z","executorEndedAt":"2026-07-12T18:11:05.372904Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/project.dependencies.resolved.stdout.log","inputContextFile":"context/project.dependencies.resolved.input.json"}]}

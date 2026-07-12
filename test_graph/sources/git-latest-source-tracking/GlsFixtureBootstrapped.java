@@ -28,7 +28,7 @@ public class GlsFixtureBootstrapped {
             .kind(NodeSpec.Kind.FIXTURE)
             .dependsOn("env.prepared")
             .tags("git-latest-source-tracking", "fixture", "git")
-            .sideEffects("fs:write", "proc:spawn")
+            .sideEffects("fs:tmp")
             .timeout("30s")
             .output("skillName", "string")
             .output("skillDir", "string")

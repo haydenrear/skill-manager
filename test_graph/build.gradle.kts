@@ -22,6 +22,7 @@ validationGraph {
 
     testGraph("smoke") {
         node("sources/common/EnvPrepared.java")
+        node("sources/resolve/ResolverCyclesVerified.java")
         node("sources/common/PostgresUp.java")
         node("sources/common/RegistryUp.java")
         node("sources/common/CiLoggedIn.java")
@@ -441,6 +442,7 @@ validationGraph {
      */
     testGraph("plugin-smoke") {
         node("sources/common/EnvPrepared.java")
+        node("sources/resolve/ResolverCyclesVerified.java")
         node("sources/common/PostgresUp.java")
         node("sources/common/RegistryUp.java")
         node("sources/common/CiLoggedIn.java")
@@ -505,6 +507,7 @@ validationGraph {
     // instantiate / rm / uninstall exercise the full lifecycle.
     testGraph("harness-smoke") {
         node("sources/common/EnvPrepared.java")
+        node("sources/resolve/ResolverCyclesVerified.java")
         node("sources/common/GatewayPythonVenvReady.java")
         node("sources/smoke/GatewayUp.java")
         node("sources/smoke/harness/HarnessTransitiveInstalled.java")
@@ -520,6 +523,7 @@ validationGraph {
 
     testGraph("doc-smoke") {
         node("sources/common/EnvPrepared.java")
+        node("sources/resolve/ResolverCyclesVerified.java")
         node("sources/smoke/doc/CliMetadataCatalogCovered.java")
         node("sources/smoke/doc/CliSkillDocsCatalogCovered.java")
         node("sources/smoke/doc/CliHelpProgressiveDisclosure.java")
@@ -561,6 +565,7 @@ validationGraph {
 
     testGraph("project-smoke") {
         node("sources/common/EnvPrepared.java")
+        node("sources/resolve/ResolverCyclesVerified.java")
         node("sources/project/ProjectDependenciesResolved.java")
         node("sources/project/ProjectGlobalSyncCliRefresh.java")
         node("sources/project/ProjectLocalSyncCliRefresh.java")
@@ -583,6 +588,7 @@ validationGraph {
 
     testGraph("skill-dev-smoke") {
         node("sources/common/EnvPrepared.java")
+        node("sources/resolve/ResolverCyclesVerified.java")
         node("sources/common/GatewayPythonVenvReady.java")
         node("sources/common/PostgresUp.java")
         node("sources/common/RegistryUp.java")

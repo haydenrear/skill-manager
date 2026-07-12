@@ -1,0 +1,395 @@
+{"runId":"20260712-180421","nodes":[{
+  "nodeId" : "campaigns.created",
+  "status" : "passed",
+  "startedAt" : "2026-07-12T18:04:36.578194Z",
+  "endedAt" : "2026-07-12T18:04:40.692606Z",
+  "assertions" : [ {
+    "name" : "reviewer_campaign_created",
+    "status" : "passed"
+  }, {
+    "name" : "formatter_campaign_created",
+    "status" : "passed"
+  }, {
+    "name" : "high_bid_campaign_created",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "ads-reviewer",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-109-resolver-cycle/skill-manager", "ads", "create", "--sponsor", "Acme Reviews Inc.", "--skill", "reviewer-skill", "--keyword", "code-review,review", "--category", "review", "--bid-cents", "500", "--registry", "http://127.0.0.1:64653" ],
+    "startedAt" : "2026-07-12T18:04:36.584849Z",
+    "endedAt" : "2026-07-12T18:04:37.986132Z",
+    "exitCode" : 0,
+    "pid" : 84498,
+    "log" : "node-logs/campaigns.created.ads-reviewer.log",
+    "error" : null
+  }, {
+    "label" : "ads-formatter",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-109-resolver-cycle/skill-manager", "ads", "create", "--sponsor", "Acme Style Co.", "--skill", "formatter-skill", "--keyword", "format,style", "--category", "style", "--bid-cents", "300", "--registry", "http://127.0.0.1:64653" ],
+    "startedAt" : "2026-07-12T18:04:37.986351Z",
+    "endedAt" : "2026-07-12T18:04:39.342063Z",
+    "exitCode" : 0,
+    "pid" : 84510,
+    "log" : "node-logs/campaigns.created.ads-formatter.log",
+    "error" : null
+  }, {
+    "label" : "ads-highbid",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-109-resolver-cycle/skill-manager", "ads", "create", "--sponsor", "Acme Style Co.", "--skill", "formatter-skill", "--keyword", "review", "--bid-cents", "1000", "--notes", "bid-competition test", "--registry", "http://127.0.0.1:64653" ],
+    "startedAt" : "2026-07-12T18:04:39.342320Z",
+    "endedAt" : "2026-07-12T18:04:40.691991Z",
+    "exitCode" : 0,
+    "pid" : 84521,
+    "log" : "node-logs/campaigns.created.ads-highbid.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "durationMs" : 4114
+  },
+  "logs" : [ ],
+  "published" : { }
+,"executorStartedAt":"2026-07-12T18:04:36.100138Z","executorEndedAt":"2026-07-12T18:04:40.805190Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/campaigns.created.stdout.log","inputContextFile":"context/campaigns.created.input.json"},{
+  "nodeId" : "ci.logged.in",
+  "status" : "passed",
+  "startedAt" : "2026-07-12T18:04:29.293933Z",
+  "endedAt" : "2026-07-12T18:04:30.779764Z",
+  "assertions" : [ {
+    "name" : "token_cached",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "login",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-109-resolver-cycle/skill-manager", "login", "--client-id", "skill-manager-ci", "--client-secret", "dev-ci-secret-change-me", "--scope", "skill:publish ad:manage", "--registry", "http://127.0.0.1:64653" ],
+    "startedAt" : "2026-07-12T18:04:29.301752Z",
+    "endedAt" : "2026-07-12T18:04:30.779177Z",
+    "exitCode" : 0,
+    "pid" : 84447,
+    "log" : "node-logs/ci.logged.in.login.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "durationMs" : 1486
+  },
+  "logs" : [ ],
+  "published" : {
+    "clientId" : "skill-manager-ci"
+  }
+,"executorStartedAt":"2026-07-12T18:04:28.819608Z","executorEndedAt":"2026-07-12T18:04:30.891687Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/ci.logged.in.stdout.log","inputContextFile":"context/ci.logged.in.input.json"},{
+  "nodeId" : "env.prepared",
+  "status" : "passed",
+  "startedAt" : "2026-07-12T18:04:23.007586Z",
+  "endedAt" : "2026-07-12T18:04:23.036739Z",
+  "assertions" : [ {
+    "name" : "home_created",
+    "status" : "passed"
+  }, {
+    "name" : "agent_home_created",
+    "status" : "passed"
+  }, {
+    "name" : "codex_home_created",
+    "status" : "passed"
+  }, {
+    "name" : "gemini_home_created",
+    "status" : "passed"
+  }, {
+    "name" : "ports_allocated",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ ],
+  "metrics" : {
+    "registryPort" : 64653,
+    "gatewayPort" : 64654,
+    "durationMs" : 29
+  },
+  "logs" : [ ],
+  "published" : {
+    "home" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-17435396376216599686",
+    "claudeHome" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-17435396376216599686/agent-home",
+    "codexHome" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-17435396376216599686/agent-home/.codex",
+    "geminiHome" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-17435396376216599686/agent-home/.gemini",
+    "registryPort" : "64653",
+    "gatewayPort" : "64654"
+  }
+,"executorStartedAt":"2026-07-12T18:04:22.548479Z","executorEndedAt":"2026-07-12T18:04:23.143357Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/env.prepared.stdout.log","inputContextFile":"context/env.prepared.input.json"},{
+  "nodeId" : "formatter.published",
+  "status" : "passed",
+  "startedAt" : "2026-07-12T18:04:34.536239Z",
+  "endedAt" : "2026-07-12T18:04:35.988416Z",
+  "assertions" : [ {
+    "name" : "published_ok",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "publish",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-109-resolver-cycle/skill-manager", "publish", "/Users/hayde/IdeaProjects/wt-109-resolver-cycle/test_graph/fixtures/formatter-skill", "--upload-tarball", "--registry", "http://127.0.0.1:64653" ],
+    "startedAt" : "2026-07-12T18:04:34.542695Z",
+    "endedAt" : "2026-07-12T18:04:35.987957Z",
+    "exitCode" : 0,
+    "pid" : 84483,
+    "log" : "node-logs/formatter.published.publish.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "exitCode" : 0,
+    "durationMs" : 1452
+  },
+  "logs" : [ ],
+  "published" : { }
+,"executorStartedAt":"2026-07-12T18:04:34.078401Z","executorEndedAt":"2026-07-12T18:04:36.099384Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/formatter.published.stdout.log","inputContextFile":"context/formatter.published.input.json"},{
+  "nodeId" : "gateway.python.venv.ready",
+  "status" : "passed",
+  "startedAt" : "2026-07-12T18:04:22.400265Z",
+  "endedAt" : "2026-07-12T18:04:22.434565Z",
+  "assertions" : [ {
+    "name" : "uv_sync_ok",
+    "status" : "passed"
+  }, {
+    "name" : "venv_python_present",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "uv-sync",
+    "command" : [ "uv", "sync", "--all-extras" ],
+    "startedAt" : "2026-07-12T18:04:22.406187Z",
+    "endedAt" : "2026-07-12T18:04:22.433923Z",
+    "exitCode" : 0,
+    "pid" : 84407,
+    "log" : "node-logs/gateway.python.venv.ready.uv-sync.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "durationMs" : 34
+  },
+  "logs" : [ ],
+  "published" : {
+    "venvPython" : "/Users/hayde/IdeaProjects/wt-109-resolver-cycle/virtual-mcp-gateway/.venv/bin/python"
+  }
+,"executorStartedAt":"2026-07-12T18:04:21.955488Z","executorEndedAt":"2026-07-12T18:04:22.547754Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/gateway.python.venv.ready.stdout.log","inputContextFile":"context/gateway.python.venv.ready.input.json"},{
+  "nodeId" : "jwt.valid",
+  "status" : "passed",
+  "startedAt" : "2026-07-12T18:04:31.364499Z",
+  "endedAt" : "2026-07-12T18:04:31.557464Z",
+  "assertions" : [ {
+    "name" : "authed_me_is_200",
+    "status" : "passed"
+  }, {
+    "name" : "identity_matches_expected_user",
+    "status" : "passed"
+  }, {
+    "name" : "unauthed_publish_is_401",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ ],
+  "metrics" : {
+    "me_status" : 200,
+    "unauth_publish_status" : 401,
+    "durationMs" : 193
+  },
+  "logs" : [ ],
+  "published" : { }
+,"executorStartedAt":"2026-07-12T18:04:30.892617Z","executorEndedAt":"2026-07-12T18:04:32.028406Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/jwt.valid.stdout.log","inputContextFile":"context/jwt.valid.input.json"},{
+  "nodeId" : "postgres.down",
+  "status" : "passed",
+  "startedAt" : "2026-07-12T18:04:48.178022Z",
+  "endedAt" : "2026-07-12T18:04:48.409676Z",
+  "assertions" : [ {
+    "name" : "stopped",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "compose-stop",
+    "command" : [ "docker", "compose", "-f", "/Users/hayde/IdeaProjects/wt-109-resolver-cycle/docker-compose.yml", "stop", "postgres" ],
+    "startedAt" : "2026-07-12T18:04:48.185142Z",
+    "endedAt" : "2026-07-12T18:04:48.409211Z",
+    "exitCode" : 0,
+    "pid" : 84572,
+    "log" : "node-logs/postgres.down.compose-stop.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "durationMs" : 231
+  },
+  "logs" : [ ],
+  "published" : { }
+,"executorStartedAt":"2026-07-12T18:04:47.723566Z","executorEndedAt":"2026-07-12T18:04:48.544722Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/postgres.down.stdout.log","inputContextFile":"context/postgres.down.input.json"},{
+  "nodeId" : "postgres.up",
+  "status" : "passed",
+  "startedAt" : "2026-07-12T18:04:23.611341Z",
+  "endedAt" : "2026-07-12T18:04:24.122538Z",
+  "assertions" : [ {
+    "name" : "reachable",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "compose-up",
+    "command" : [ "docker", "compose", "-f", "/Users/hayde/IdeaProjects/wt-109-resolver-cycle/docker-compose.yml", "up", "-d", "postgres" ],
+    "startedAt" : "2026-07-12T18:04:23.691781Z",
+    "endedAt" : "2026-07-12T18:04:23.905276Z",
+    "exitCode" : 0,
+    "pid" : 84423,
+    "log" : "node-logs/postgres.up.compose-up.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "durationMs" : 511
+  },
+  "logs" : [ ],
+  "published" : {
+    "dbUrl" : "jdbc:postgresql://localhost:5432/skill_registry_test",
+    "dbUser" : "postgres",
+    "dbPassword" : "postgres"
+  }
+,"executorStartedAt":"2026-07-12T18:04:23.144157Z","executorEndedAt":"2026-07-12T18:04:24.218248Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/postgres.up.stdout.log","inputContextFile":"context/postgres.up.input.json"},{
+  "nodeId" : "registry.up",
+  "status" : "passed",
+  "startedAt" : "2026-07-12T18:04:24.693215Z",
+  "endedAt" : "2026-07-12T18:04:28.331111Z",
+  "assertions" : [ {
+    "name" : "health_ok",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ ],
+  "metrics" : {
+    "pid" : 84432,
+    "port" : 64653,
+    "durationMs" : 3638
+  },
+  "logs" : [ ],
+  "published" : {
+    "baseUrl" : "http://127.0.0.1:64653"
+  }
+,"executorStartedAt":"2026-07-12T18:04:24.219015Z","executorEndedAt":"2026-07-12T18:04:28.818376Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/registry.up.stdout.log","inputContextFile":"context/registry.up.input.json"},{
+  "nodeId" : "reviewer.published",
+  "status" : "passed",
+  "startedAt" : "2026-07-12T18:04:32.486489Z",
+  "endedAt" : "2026-07-12T18:04:33.966594Z",
+  "assertions" : [ {
+    "name" : "published_ok",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "publish",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-109-resolver-cycle/skill-manager", "publish", "/Users/hayde/IdeaProjects/wt-109-resolver-cycle/test_graph/fixtures/reviewer-skill", "--upload-tarball", "--registry", "http://127.0.0.1:64653" ],
+    "startedAt" : "2026-07-12T18:04:32.492994Z",
+    "endedAt" : "2026-07-12T18:04:33.966044Z",
+    "exitCode" : 0,
+    "pid" : 84468,
+    "log" : "node-logs/reviewer.published.publish.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "exitCode" : 0,
+    "durationMs" : 1480
+  },
+  "logs" : [ ],
+  "published" : { }
+,"executorStartedAt":"2026-07-12T18:04:32.029290Z","executorEndedAt":"2026-07-12T18:04:34.077672Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/reviewer.published.stdout.log","inputContextFile":"context/reviewer.published.input.json"},{
+  "nodeId" : "sponsored.higher.bid.wins",
+  "status" : "passed",
+  "startedAt" : "2026-07-12T18:04:44.672051Z",
+  "endedAt" : "2026-07-12T18:04:44.937201Z",
+  "assertions" : [ {
+    "name" : "slots_ordered_by_bid_desc",
+    "status" : "passed"
+  }, {
+    "name" : "highest_bidder_in_first_slot",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ ],
+  "metrics" : {
+    "first_bid_cents" : 1000,
+    "second_bid_cents" : 500,
+    "durationMs" : 265
+  },
+  "logs" : [ ],
+  "published" : { }
+,"executorStartedAt":"2026-07-12T18:04:44.209188Z","executorEndedAt":"2026-07-12T18:04:45.327484Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/sponsored.higher.bid.wins.stdout.log","inputContextFile":"context/sponsored.higher.bid.wins.input.json"},{
+  "nodeId" : "sponsored.no.ads.suppresses",
+  "status" : "passed",
+  "startedAt" : "2026-07-12T18:04:42.426729Z",
+  "endedAt" : "2026-07-12T18:04:42.695151Z",
+  "assertions" : [ {
+    "name" : "default_has_sponsored",
+    "status" : "passed"
+  }, {
+    "name" : "no_ads_flag_empties_sponsored",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ ],
+  "metrics" : {
+    "durationMs" : 269
+  },
+  "logs" : [ ],
+  "published" : { }
+,"executorStartedAt":"2026-07-12T18:04:41.961257Z","executorEndedAt":"2026-07-12T18:04:43.078743Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/sponsored.no.ads.suppresses.stdout.log","inputContextFile":"context/sponsored.no.ads.suppresses.input.json"},{
+  "nodeId" : "sponsored.organic.unchanged",
+  "status" : "passed",
+  "startedAt" : "2026-07-12T18:04:43.549416Z",
+  "endedAt" : "2026-07-12T18:04:43.814381Z",
+  "assertions" : [ {
+    "name" : "organic_count_identical",
+    "status" : "passed"
+  }, {
+    "name" : "organic_order_identical",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ ],
+  "metrics" : {
+    "organic_items" : 1,
+    "durationMs" : 265
+  },
+  "logs" : [ ],
+  "published" : { }
+,"executorStartedAt":"2026-07-12T18:04:43.079537Z","executorEndedAt":"2026-07-12T18:04:44.208366Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/sponsored.organic.unchanged.stdout.log","inputContextFile":"context/sponsored.organic.unchanged.input.json"},{
+  "nodeId" : "sponsored.search.matches.keyword",
+  "status" : "passed",
+  "startedAt" : "2026-07-12T18:04:41.255667Z",
+  "endedAt" : "2026-07-12T18:04:41.561278Z",
+  "assertions" : [ {
+    "name" : "review_keyword_surfaces_reviewer",
+    "status" : "passed"
+  }, {
+    "name" : "format_keyword_surfaces_formatter",
+    "status" : "passed"
+  }, {
+    "name" : "format_does_not_leak_reviewer_campaign",
+    "status" : "passed"
+  }, {
+    "name" : "unrelated_query_has_no_ads",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ ],
+  "metrics" : {
+    "durationMs" : 306
+  },
+  "logs" : [ ],
+  "published" : { }
+,"executorStartedAt":"2026-07-12T18:04:40.806105Z","executorEndedAt":"2026-07-12T18:04:41.960385Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/sponsored.search.matches.keyword.stdout.log","inputContextFile":"context/sponsored.search.matches.keyword.input.json"},{
+  "nodeId" : "sponsored.teardown",
+  "status" : "passed",
+  "startedAt" : "2026-07-12T18:04:45.784079Z",
+  "endedAt" : "2026-07-12T18:04:47.606598Z",
+  "assertions" : [ {
+    "name" : "registry_stopped",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ ],
+  "metrics" : {
+    "durationMs" : 1822
+  },
+  "logs" : [ ],
+  "published" : { }
+,"executorStartedAt":"2026-07-12T18:04:45.328677Z","executorEndedAt":"2026-07-12T18:04:47.722743Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/sponsored.teardown.stdout.log","inputContextFile":"context/sponsored.teardown.input.json"}]}

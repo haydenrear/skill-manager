@@ -26,7 +26,7 @@ public class EchoHttpUp {
             .kind(NodeSpec.Kind.TESTBED)
             .dependsOn("env.prepared")
             .tags("mcp", "fixture")
-            .sideEffects("net:local", "proc:spawn")
+            .sideEffects("net:local")
             .timeout("60s")
             .output("mcpUrl", "string");
 

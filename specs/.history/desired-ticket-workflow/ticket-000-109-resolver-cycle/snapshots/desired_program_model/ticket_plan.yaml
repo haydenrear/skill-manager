@@ -1,0 +1,94 @@
+# This file is part of the desired program model.
+# It is intentionally general: use it for any model-backed ticket workflow,
+# not only migrations. Keep it synchronized with spec_manifest.yaml status.
+version: 1
+name: desired-ticket-workflow
+updated: 2026-07-12
+purpose: "Break the desired whole-program change into tickets that can be implemented, modeled in specs/current, unit-tested, and then validated with broader graph or integration checks."
+
+planning_rules:
+  current_model_rule: Update specs/current after each production slice lands as a whole-program working copy of specs/program_model, not a ticket projection.
+  unit_validation_rule: Run current-model TLC and adapter/unit tests before adding graph execution.
+  graph_rule: Add graph or integration nodes only after current-model validation passes.
+  semantic_model_rule: Do not add test graph nodes, pytest jobs, CI workflow steps, integration harnesses, or validation scripts as TLA+ program state/actions.
+  evidence_rule: Record tests and graph runs as evidence for semantic program actions in manifests or ticket status.
+  desired_sync_rule: Update this file and spec_manifest.yaml whenever scope, order, acceptance checks, or status changes.
+  promotion_rule: When specs/current equals specs/desired_program_model, promote the converged model to specs/program_model.
+
+status:
+  workflow: ticket
+  active_ticket: 109-resolver-cycle
+  active_ticket_title: "resolver: Resolver.resolveAll BFS cycle detection and staging cleanup"
+  desired_module: SkillManager
+  phase: complete
+
+# Replace or extend these sections with project-specific domains. Service,
+# process, queue, database, file, API, model, permission, or UI boundaries can
+# all be listed here when they matter to correctness.
+service_catalog:
+  existing_boundaries: []
+  desired_boundaries: []
+  adapter_boundaries: []
+  known_gaps: []
+
+tickets:
+  - id: 109-resolver-cycle
+    title: "resolver: Resolver.resolveAll BFS cycle detection and staging cleanup"
+    status: done
+    depends_on: []
+    objective: "Resolve finite cyclic reference graphs by fetching each normalized source/version coordinate once, installing each unit once, and reporting recoverable cycles without leaking staging directories."
+    desired_actions:
+      # Add TLA+ action names that will exist in specs/desired_program_model.
+      - InstallUnit
+      - ResolveProjectDependencies
+    implementation_scope:
+      # Add production files, scripts, descriptors, infrastructure, or adapters
+      # this ticket is allowed to touch.
+      - src/main/java/dev/skillmanager/resolve/Resolver.java
+      - src/main/java/dev/skillmanager/resolve/ResolvedGraph.java
+      - src/test/java/dev/skillmanager/resolve/ResolverCycleTest.java
+    current_increment:
+      model_state:
+        # Add state fields that the whole-program specs/current model will gain after implementation.
+        # Preserve all existing specs/program_model fields unless the program behavior changes.
+        - ResolveVisitedCoords
+        - ResolveCycleEdges
+      model_actions:
+        # Add semantic program actions that specs/current will gain after implementation.
+        # Do not add tests, graph nodes, CI jobs, or validation harness steps here.
+        - InstallUnit
+        - ResolveProjectDependencies
+      adapters:
+        # Add adapter classes or commands that prove production conforms.
+        - Resolver.resolveAll
+      unit_tests:
+        # Add current-model tests that must pass before graph coverage.
+        - tla-spec-dev --spec-root specs run spec-unit-tests --ticket 109-resolver-cycle
+        - jbang RunTests.java ResolverCycleTest
+      graph_after_unit_pass:
+        # Add graph/test nodes only after current-model tests pass.
+        - resolver.cycles.verified in smoke, plugin-smoke, harness-smoke, doc-smoke, project-smoke, and skill-dev-smoke
+        - source-tracking
+        - git-latest-source-tracking
+        - smoke
+        - plugin-smoke
+        - harness-smoke
+        - doc-smoke
+        - project-resolve
+        - project-smoke
+        - skill-dev-smoke
+    acceptance:
+      commands:
+        - bash specs/tickets/109-resolver-cycle/desired/run_tlc.sh
+        - jbang RunTests.java ResolverCycleTest
+        - python skills/test_graph/scripts/run.py --all
+      assertions:
+        - A source/version coordinate is fetched at most once per resolve.
+        - A hard-reference cycle terminates and is reported as a recoverable cycle warning.
+        - Distinct pins of the same source remain distinct coordinates.
+        - Duplicate unit names merge requester attribution without replacing staged content.
+        - No stage-* directory is leaked by a cycle or duplicate-name path.
+      evidence:
+        - specs/tickets/109-resolver-cycle/results/validation-summary.md
+        - specs/tickets/109-resolver-cycle/results/test-graph/20260712-175619/report.md
+        - specs/tickets/109-resolver-cycle/results/test-graph/20260712-181209/report.md

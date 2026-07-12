@@ -26,7 +26,7 @@ public class GatewayUp {
             // "ModuleNotFoundError: uvicorn" on first run.
             .dependsOn("gateway.python.venv.ready")
             .tags("gateway", "mcp")
-            .sideEffects("net:local", "proc:spawn")
+            .sideEffects("net:local")
             .timeout("60s")
             .output("baseUrl", "string");
 

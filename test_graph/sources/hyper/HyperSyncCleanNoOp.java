@@ -24,7 +24,7 @@ public class HyperSyncCleanNoOp {
             .kind(NodeSpec.Kind.ASSERTION)
             .dependsOn("hyper.source.recorded")
             .tags("hyper", "source-tracking", "sync", "clean")
-            .sideEffects("net:remote")
+            .sideEffects("net:external")
             .timeout("90s");
 
     public static void main(String[] args) {

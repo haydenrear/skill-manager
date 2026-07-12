@@ -29,7 +29,7 @@ public class SkillDevSmoke {
     static final NodeSpec SPEC = NodeSpec.of("skill-dev.smoke")
             .kind(NodeSpec.Kind.ACTION)
             .tags("skill-dev", "skill-script", "worktree")
-            .sideEffects("fs:write", "proc:spawn")
+            .sideEffects("fs:tmp")
             .timeout("180s")
             .output("home", "string")
             .output("projectDir", "string")

@@ -28,7 +28,7 @@ public class RegistryUp {
             .dependsOn("env.prepared")
             .dependsOn("postgres.up")
             .tags("registry", "server")
-            .sideEffects("net:local", "proc:spawn")
+            .sideEffects("net:local")
             .timeout("120s")
             .output("baseUrl", "string")
             .retries(2);

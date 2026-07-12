@@ -29,7 +29,7 @@ public class RefreshHonored {
             .kind(NodeSpec.Kind.ASSERTION)
             .dependsOn("final.login")
             .tags("auth", "refresh")
-            .sideEffects("proc:spawn", "net:local")
+            .sideEffects("browser", "net:local")
             .timeout("30s");
 
     public static void main(String[] args) {
