@@ -5,6 +5,9 @@ import com.hayden.testgraphsdk.sdk.Node;
 import com.hayden.testgraphsdk.sdk.NodeResult;
 import com.hayden.testgraphsdk.sdk.NodeSpec;
 
+import com.sun.net.httpserver.HttpServer;
+
+import java.net.InetSocketAddress;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
@@ -23,6 +26,7 @@ public class ResolverCyclesVerified {
             .timeout("180s");
 
     static final Duration CASE_TIMEOUT = Duration.ofSeconds(25);
+    static String gatewayUrl;
 
     public static void main(String[] args) {
         Node.run(args, SPEC, ctx -> {
@@ -31,10 +35,19 @@ public class ResolverCyclesVerified {
                 return NodeResult.fail(SPEC.id(), "missing env.prepared.home");
             }
 
-            Path repoRoot = Path.of(System.getProperty("user.dir")).resolve("..").normalize();
-            Path cli = repoRoot.resolve("skill-manager");
+            HttpServer gateway = null;
             List<CaseResult> results = new ArrayList<>();
             try {
+                gateway = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+                gateway.createContext("/health", exchange -> {
+                    exchange.sendResponseHeaders(200, -1);
+                    exchange.close();
+                });
+                gateway.start();
+                gatewayUrl = "http://127.0.0.1:" + gateway.getAddress().getPort();
+
+                Path repoRoot = Path.of(System.getProperty("user.dir")).resolve("..").normalize();
+                Path cli = repoRoot.resolve("skill-manager");
                 results.add(runSelfCycle(cli, Path.of(parentHome)));
                 results.add(runTwoSkillCycle(cli, Path.of(parentHome)));
                 results.add(runThreeSkillCycle(cli, Path.of(parentHome)));
@@ -42,6 +55,8 @@ public class ResolverCyclesVerified {
                 results.add(runPluginPluginCycle(cli, Path.of(parentHome)));
             } catch (Exception e) {
                 return NodeResult.error(SPEC.id(), e);
+            } finally {
+                if (gateway != null) gateway.stop(0);
             }
 
             boolean pass = results.stream().allMatch(CaseResult::passed);
@@ -59,6 +74,7 @@ public class ResolverCyclesVerified {
                         .assertion(id + ".cycle_path_reported", result.cycleReported())
                         .assertion(id + ".each_unit_installed_once", result.installedOnce())
                         .assertion(id + ".no_stage_dirs_leaked", result.noStageDirs())
+                        .assertion(id + ".gateway_stopped", result.gatewayStopped())
                         .log(result.summary());
             }
             return out.metric("cases", results.size());
@@ -188,6 +204,7 @@ public class ResolverCyclesVerified {
                 .redirectOutput(fixture.output().toFile());
         builder.environment().put("SKILL_MANAGER_HOME", fixture.home().toString());
         builder.environment().put("SKILL_MANAGER_INSTALL_DIR", cli.getParent().toString());
+        builder.environment().put("SKILL_MANAGER_GATEWAY_URL", gatewayUrl);
         builder.environment().put("CLAUDE_HOME", agentHome.toString());
         builder.environment().put("CODEX_HOME", agentHome.resolve(".codex").toString());
         builder.environment().put("GEMINI_HOME", agentHome.resolve(".gemini").toString());
@@ -203,10 +220,33 @@ public class ResolverCyclesVerified {
                 Files.isDirectory(fixture.home().resolve(unit.kindDir()).resolve(unit.name())))
                 && lockContainsEachOnce(fixture.home().resolve("units.lock.toml"), expected);
         boolean noStageDirs = stageDirCount(fixture.home().resolve("cache")) == 0;
+        boolean gatewayStopped = stopGateway(fixture.home());
         return new CaseResult(
                 fixture.id(), terminated, exitCode, cycleReported, installedOnce, noStageDirs,
+                gatewayStopped,
                 output.lines().filter(line -> line.contains("cycle") || line.contains("failed"))
                         .reduce((left, right) -> left + " | " + right).orElse(""));
+    }
+
+    private static boolean stopGateway(Path home) {
+        Path pidFile = home.resolve("gateway.pid");
+        try {
+            if (!Files.isRegularFile(pidFile)) return true;
+            long pid = Long.parseLong(Files.readString(pidFile).trim());
+            ProcessHandle handle = ProcessHandle.of(pid).orElse(null);
+            if (handle != null && handle.isAlive()) {
+                handle.destroy();
+                long deadline = System.nanoTime() + Duration.ofSeconds(3).toNanos();
+                while (handle.isAlive() && System.nanoTime() < deadline) {
+                    Thread.sleep(50);
+                }
+                if (handle.isAlive()) handle.destroyForcibly();
+            }
+            Files.deleteIfExists(pidFile);
+            return handle == null || !handle.isAlive();
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     private static boolean lockContainsEachOnce(Path lock, List<ExpectedUnit> expected) {
@@ -247,16 +287,19 @@ public class ResolverCyclesVerified {
             boolean cycleReported,
             boolean installedOnce,
             boolean noStageDirs,
+            boolean gatewayStopped,
             String detail
     ) {
         boolean passed() {
-            return terminated && exitCode == 0 && cycleReported && installedOnce && noStageDirs;
+            return terminated && exitCode == 0 && cycleReported && installedOnce
+                    && noStageDirs && gatewayStopped;
         }
 
         String summary() {
             return id + " terminated=" + terminated + " exit=" + exitCode
                     + " cycle=" + cycleReported + " installedOnce=" + installedOnce
-                    + " noStages=" + noStageDirs + (detail.isBlank() ? "" : " output=" + detail);
+                    + " noStages=" + noStageDirs + " gatewayStopped=" + gatewayStopped
+                    + (detail.isBlank() ? "" : " output=" + detail);
         }
     }
 }
