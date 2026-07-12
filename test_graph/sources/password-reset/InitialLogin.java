@@ -22,7 +22,7 @@ public class InitialLogin {
             .kind(NodeSpec.Kind.ASSERTION)
             .dependsOn("account.created", "selenium.ready")
             .tags("auth", "browser")
-            .sideEffects("proc:spawn", "net:local")
+            .sideEffects("browser", "net:local")
             .timeout("120s");
 
     public static void main(String[] args) {

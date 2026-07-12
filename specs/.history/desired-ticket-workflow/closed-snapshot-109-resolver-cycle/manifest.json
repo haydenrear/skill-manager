@@ -1,0 +1,115 @@
+{
+  "commit_recommendation": {
+    "git_add": "git add specs/.history/desired-ticket-workflow/closed-snapshot-109-resolver-cycle",
+    "git_commit": "git commit -m 'close spec ticket workflow'",
+    "message": "It is recommended to commit this history directory now: specs/.history/desired-ticket-workflow/closed-snapshot-109-resolver-cycle"
+  },
+  "created_at_utc": "2026-07-12T18:15:02.262988+00:00",
+  "entry_name": "closed-snapshot-109-resolver-cycle",
+  "git": {
+    "branch": "feature/109-resolver-cycle",
+    "commit": "a0571e4",
+    "inside_work_tree": "true"
+  },
+  "history_policy": "append-only by convention; existing entries are not overwritten and filesystem permissions remain git-friendly",
+  "kind": "workflow-close",
+  "results": [
+    {
+      "exists": true,
+      "role": "result",
+      "snapshot": "specs/.history/desired-ticket-workflow/closed-snapshot-109-resolver-cycle/results/validation-summary.md",
+      "source": "specs/.history/desired-ticket-workflow/ticket-000-109-resolver-cycle/results/validation-summary.md"
+    }
+  ],
+  "schema_version": 1,
+  "snapshots": [
+    {
+      "exists": true,
+      "role": "program_model",
+      "snapshot": "specs/.history/desired-ticket-workflow/closed-snapshot-109-resolver-cycle/snapshots/program_model",
+      "source": "specs/program_model"
+    },
+    {
+      "exists": true,
+      "role": "desired_program_model",
+      "snapshot": "specs/.history/desired-ticket-workflow/closed-snapshot-109-resolver-cycle/snapshots/desired_program_model",
+      "source": "specs/desired_program_model"
+    },
+    {
+      "exists": true,
+      "role": "current",
+      "snapshot": "specs/.history/desired-ticket-workflow/closed-snapshot-109-resolver-cycle/snapshots/current",
+      "source": "specs/current"
+    }
+  ],
+  "spec_root": "specs",
+  "summary": "Promoted resolver cycle termination model into program_model",
+  "ticket_plan": "specs/desired_program_model/ticket_plan.yaml",
+  "tickets": [
+    {
+      "acceptance": {
+        "assertions": [
+          "A source/version coordinate is fetched at most once per resolve.",
+          "A hard-reference cycle terminates and is reported as a recoverable cycle warning.",
+          "Distinct pins of the same source remain distinct coordinates.",
+          "Duplicate unit names merge requester attribution without replacing staged content.",
+          "No stage-* directory is leaked by a cycle or duplicate-name path."
+        ],
+        "commands": [
+          "bash specs/tickets/109-resolver-cycle/desired/run_tlc.sh",
+          "jbang RunTests.java ResolverCycleTest",
+          "python skills/test_graph/scripts/run.py --all"
+        ],
+        "evidence": [
+          "specs/tickets/109-resolver-cycle/results/validation-summary.md",
+          "specs/tickets/109-resolver-cycle/results/test-graph/20260712-175619/report.md",
+          "specs/tickets/109-resolver-cycle/results/test-graph/20260712-181209/report.md"
+        ]
+      },
+      "current_increment": {
+        "adapters": [
+          "Resolver.resolveAll"
+        ],
+        "graph_after_unit_pass": [
+          "resolver.cycles.verified in smoke, plugin-smoke, harness-smoke, doc-smoke, project-smoke, and skill-dev-smoke",
+          "source-tracking",
+          "git-latest-source-tracking",
+          "smoke",
+          "plugin-smoke",
+          "harness-smoke",
+          "doc-smoke",
+          "project-resolve",
+          "project-smoke",
+          "skill-dev-smoke"
+        ],
+        "model_actions": [
+          "InstallUnit",
+          "ResolveProjectDependencies"
+        ],
+        "model_state": [
+          "ResolveVisitedCoords",
+          "ResolveCycleEdges"
+        ],
+        "unit_tests": [
+          "tla-spec-dev --spec-root specs run spec-unit-tests --ticket 109-resolver-cycle",
+          "jbang RunTests.java ResolverCycleTest"
+        ]
+      },
+      "depends_on": [],
+      "desired_actions": [
+        "InstallUnit",
+        "ResolveProjectDependencies"
+      ],
+      "id": "109-resolver-cycle",
+      "implementation_scope": [
+        "src/main/java/dev/skillmanager/resolve/Resolver.java",
+        "src/main/java/dev/skillmanager/resolve/ResolvedGraph.java",
+        "src/test/java/dev/skillmanager/resolve/ResolverCycleTest.java"
+      ],
+      "objective": "Resolve finite cyclic reference graphs by fetching each normalized source/version coordinate once, installing each unit once, and reporting recoverable cycles without leaking staging directories.",
+      "status": "done",
+      "title": "resolver: Resolver.resolveAll BFS cycle detection and staging cleanup"
+    }
+  ],
+  "workflow_name": "desired-ticket-workflow"
+}

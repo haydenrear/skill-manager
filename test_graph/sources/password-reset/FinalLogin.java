@@ -23,7 +23,7 @@ public class FinalLogin {
             .kind(NodeSpec.Kind.ASSERTION)
             .dependsOn("password.changed")
             .tags("auth", "browser", "password-reset")
-            .sideEffects("proc:spawn", "net:local")
+            .sideEffects("browser", "net:local")
             .timeout("120s");
 
     public static void main(String[] args) {

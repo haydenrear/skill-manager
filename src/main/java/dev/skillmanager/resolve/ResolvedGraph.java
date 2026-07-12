@@ -52,6 +52,18 @@ public final class ResolvedGraph {
         byName.put(r.name(), r);
     }
 
+    public void addRequester(String name, String requestedBy) {
+        if (requestedBy == null || requestedBy.isBlank()) return;
+        Resolved existing = byName.get(name);
+        if (existing == null || existing.requestedBy().contains(requestedBy)) return;
+        List<String> requesters = new ArrayList<>(existing.requestedBy());
+        requesters.add(requestedBy);
+        byName.put(name, new Resolved(
+                existing.name(), existing.version(), existing.source(), existing.sourceKind(),
+                existing.stagedDir(), existing.bytesDownloaded(), existing.sha256(),
+                existing.unit(), existing.reusedFromStore(), List.copyOf(requesters)));
+    }
+
     public boolean contains(String name) {
         return byName.containsKey(name);
     }

@@ -11,12 +11,13 @@ status:
     - CLI-PROGDISC-004
     - CLI-PROGDISC-005
   relation_to_program_model: accepted_whole_program_model
-  updated: 2026-06-28
+  updated: 2026-07-12
   summary:
     progressive_disclosure_cli_model_promoted: true
     generated_cases: passed
     adapters: cli_metadata_help_docs_and_agent_context
     tlc: passed
+    resolver_cycle_termination: passed
   done:
     - Added CLI disclosure catalog state for every top-level command, modeled subcommand, alias, and workflow.
     - Added root-help, command-help, skill-doc, workflow-command, and agent-context invariants.
@@ -124,6 +125,7 @@ invariants:
   - CliWorkflowsReferenceCatalogCommands
   - CliSkillDocsCoverWorkflowCatalog
   - CliAgentContextCoversWorkflowCatalog
+  - ResolverVisitsEachCoordAtMostOnce
 ports:
   SkillManagerCli.render_progressive_root_help:
     kind: cli_help
@@ -139,6 +141,13 @@ ports:
     adapter_status: implemented
 validation:
   tlc:
+    - command: bash specs/program_model/run_tlc.sh specs/program_model/SkillManager.tla specs/program_model/MC.cfg
+      status: passed
+      scope: Resolver cycle visit bound and existing CLI disclosure invariants.
+      result: no invariant violations
+      states_generated: 10
+      distinct_states: 1
+      depth: 1
     - command: bash specs/program_model/run_tlc.sh specs/program_model/SkillManager.tla specs/program_model/MC.cfg
       status: passed
       budget: <=2m
@@ -182,6 +191,12 @@ validation:
       status: passed
       result: validated 9 adapter mappings for 9 labels; executed 9 cases in batch
   unit:
+    - command: jbang RunTests.java
+      status: passed
+      result: ResolverCycleTest and full Java suite passed
+    - command: uv run --with pytest -m pytest specs/program_model/tests -q
+      status: passed
+      result: 7 passed
     - command: pytest specs/program_model/tests
       status: passed
       result: 12 passed
@@ -191,6 +206,11 @@ validation:
       result: ALL PASSED
       duration: 12.92s
   graph:
+    - command: COMPOSE_PROJECT_NAME=skill-manager GRADLE_OPTS=-Dorg.gradle.daemon=false python skills/test_graph/scripts/run.py --all
+      status: passed
+      result: BUILD SUCCESSFUL; all 19 registered graphs passed
+      duration: 17m45s
+      reports: specs/.history/desired-ticket-workflow/ticket-000-109-resolver-cycle/ticket/results/test-graph
     - command: python3 /Users/hayde/.skill-manager/skills/test-graph/scripts/run.py doc-smoke
       status: passed
       result: BUILD SUCCESSFUL

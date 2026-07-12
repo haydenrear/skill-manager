@@ -1,0 +1,298 @@
+{"runId":"20260712-180542","nodes":[{
+  "nodeId" : "env.prepared",
+  "status" : "passed",
+  "startedAt" : "2026-07-12T18:05:42.942854Z",
+  "endedAt" : "2026-07-12T18:05:42.973048Z",
+  "assertions" : [ {
+    "name" : "home_created",
+    "status" : "passed"
+  }, {
+    "name" : "agent_home_created",
+    "status" : "passed"
+  }, {
+    "name" : "codex_home_created",
+    "status" : "passed"
+  }, {
+    "name" : "gemini_home_created",
+    "status" : "passed"
+  }, {
+    "name" : "ports_allocated",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ ],
+  "metrics" : {
+    "registryPort" : 64790,
+    "gatewayPort" : 64791,
+    "durationMs" : 31
+  },
+  "logs" : [ ],
+  "published" : {
+    "home" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-4287391369915476779",
+    "claudeHome" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-4287391369915476779/agent-home",
+    "codexHome" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-4287391369915476779/agent-home/.codex",
+    "geminiHome" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-4287391369915476779/agent-home/.gemini",
+    "registryPort" : "64790",
+    "gatewayPort" : "64791"
+  }
+,"executorStartedAt":"2026-07-12T18:05:42.490853Z","executorEndedAt":"2026-07-12T18:05:43.080753Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/env.prepared.stdout.log","inputContextFile":"context/env.prepared.input.json"},{
+  "nodeId" : "gateway.python.venv.ready",
+  "status" : "passed",
+  "startedAt" : "2026-07-12T18:05:43.544574Z",
+  "endedAt" : "2026-07-12T18:05:43.582220Z",
+  "assertions" : [ {
+    "name" : "uv_sync_ok",
+    "status" : "passed"
+  }, {
+    "name" : "venv_python_present",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "uv-sync",
+    "command" : [ "uv", "sync", "--all-extras" ],
+    "startedAt" : "2026-07-12T18:05:43.551092Z",
+    "endedAt" : "2026-07-12T18:05:43.581405Z",
+    "exitCode" : 0,
+    "pid" : 85188,
+    "log" : "node-logs/gateway.python.venv.ready.uv-sync.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "durationMs" : 38
+  },
+  "logs" : [ ],
+  "published" : {
+    "venvPython" : "/Users/hayde/IdeaProjects/wt-109-resolver-cycle/virtual-mcp-gateway/.venv/bin/python"
+  }
+,"executorStartedAt":"2026-07-12T18:05:43.081557Z","executorEndedAt":"2026-07-12T18:05:43.695525Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/gateway.python.venv.ready.stdout.log","inputContextFile":"context/gateway.python.venv.ready.input.json"},{
+  "nodeId" : "gateway.up",
+  "status" : "passed",
+  "startedAt" : "2026-07-12T18:05:44.169783Z",
+  "endedAt" : "2026-07-12T18:05:46.414475Z",
+  "assertions" : [ {
+    "name" : "gateway_healthy",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "gateway-up",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-109-resolver-cycle/skill-manager", "gateway", "up", "--port", "64791", "--wait-seconds", "45" ],
+    "startedAt" : "2026-07-12T18:05:44.208624Z",
+    "endedAt" : "2026-07-12T18:05:46.412182Z",
+    "exitCode" : 0,
+    "pid" : 85195,
+    "log" : "node-logs/gateway.up.gateway-up.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "port" : 64791,
+    "durationMs" : 2245
+  },
+  "logs" : [ ],
+  "published" : {
+    "baseUrl" : "http://127.0.0.1:64791"
+  }
+,"executorStartedAt":"2026-07-12T18:05:43.696239Z","executorEndedAt":"2026-07-12T18:05:46.524961Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/gateway.up.stdout.log","inputContextFile":"context/gateway.up.input.json"},{
+  "nodeId" : "gls.conflict",
+  "status" : "passed",
+  "startedAt" : "2026-07-12T18:06:01.087704Z",
+  "endedAt" : "2026-07-12T18:06:03.827430Z",
+  "assertions" : [ {
+    "name" : "exited_with_rc_8",
+    "status" : "passed"
+  }, {
+    "name" : "conflict_logged_with_filename",
+    "status" : "passed"
+  }, {
+    "name" : "conflict_markers_in_skill_md",
+    "status" : "passed"
+  }, {
+    "name" : "working_tree_shows_unmerged",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ ],
+  "metrics" : {
+    "durationMs" : 2740
+  },
+  "logs" : [ ],
+  "published" : { }
+,"executorStartedAt":"2026-07-12T18:06:00.617220Z","executorEndedAt":"2026-07-12T18:06:03.930694Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/gls.conflict.stdout.log","inputContextFile":"context/gls.conflict.input.json"},{
+  "nodeId" : "gls.fast_forwards",
+  "status" : "passed",
+  "startedAt" : "2026-07-12T18:05:51.351984Z",
+  "endedAt" : "2026-07-12T18:05:54.079796Z",
+  "assertions" : [ {
+    "name" : "sync_exit_zero",
+    "status" : "passed"
+  }, {
+    "name" : "upstream_file_landed_in_store",
+    "status" : "passed"
+  }, {
+    "name" : "install_head_at_upstream",
+    "status" : "passed"
+  }, {
+    "name" : "source_record_hash_refreshed",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ ],
+  "metrics" : {
+    "durationMs" : 2728
+  },
+  "logs" : [ ],
+  "published" : { }
+,"executorStartedAt":"2026-07-12T18:05:50.878539Z","executorEndedAt":"2026-07-12T18:05:54.092977Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/gls.fast_forwards.stdout.log","inputContextFile":"context/gls.fast_forwards.input.json"},{
+  "nodeId" : "gls.fixture.bootstrapped",
+  "status" : "passed",
+  "startedAt" : "2026-07-12T18:05:46.986578Z",
+  "endedAt" : "2026-07-12T18:05:47.075809Z",
+  "assertions" : [ {
+    "name" : "git_init_ok",
+    "status" : "passed"
+  }, {
+    "name" : "commit_ok",
+    "status" : "passed"
+  }, {
+    "name" : "head_readable",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ ],
+  "metrics" : {
+    "durationMs" : 89
+  },
+  "logs" : [ ],
+  "published" : {
+    "skillName" : "git-latest-fixture",
+    "skillDir" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-4287391369915476779/gls-fixture",
+    "initialHash" : "6e5ac7d057c61229216b03445daa455799128da6"
+  }
+,"executorStartedAt":"2026-07-12T18:05:46.525712Z","executorEndedAt":"2026-07-12T18:05:47.179427Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/gls.fixture.bootstrapped.stdout.log","inputContextFile":"context/gls.fixture.bootstrapped.input.json"},{
+  "nodeId" : "gls.fixture.installed",
+  "status" : "passed",
+  "startedAt" : "2026-07-12T18:05:47.648660Z",
+  "endedAt" : "2026-07-12T18:05:50.861778Z",
+  "assertions" : [ {
+    "name" : "install_exit_zero",
+    "status" : "passed"
+  }, {
+    "name" : "store_has_git_dir",
+    "status" : "passed"
+  }, {
+    "name" : "source_json_written",
+    "status" : "passed"
+  }, {
+    "name" : "source_kind_is_git",
+    "status" : "passed"
+  }, {
+    "name" : "source_hash_matches_fixture_head",
+    "status" : "passed"
+  }, {
+    "name" : "source_origin_pins_fixture_path",
+    "status" : "passed"
+  }, {
+    "name" : "source_git_ref_is_main",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ ],
+  "metrics" : {
+    "durationMs" : 3213
+  },
+  "logs" : [ ],
+  "published" : {
+    "storeDir" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-4287391369915476779/skills/git-latest-fixture"
+  }
+,"executorStartedAt":"2026-07-12T18:05:47.180196Z","executorEndedAt":"2026-07-12T18:05:50.877790Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/gls.fixture.installed.stdout.log","inputContextFile":"context/gls.fixture.installed.input.json"},{
+  "nodeId" : "gls.merges_after_local_commit",
+  "status" : "passed",
+  "startedAt" : "2026-07-12T18:05:57.793452Z",
+  "endedAt" : "2026-07-12T18:06:00.602204Z",
+  "assertions" : [ {
+    "name" : "merge_exit_zero",
+    "status" : "passed"
+  }, {
+    "name" : "local_commit_survived_merge",
+    "status" : "passed"
+  }, {
+    "name" : "upstream_commit_applied",
+    "status" : "passed"
+  }, {
+    "name" : "working_tree_clean_after_merge",
+    "status" : "passed"
+  }, {
+    "name" : "install_head_advanced",
+    "status" : "passed"
+  }, {
+    "name" : "source_record_hash_refreshed",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ ],
+  "metrics" : {
+    "durationMs" : 2809
+  },
+  "logs" : [ ],
+  "published" : { }
+,"executorStartedAt":"2026-07-12T18:05:57.314161Z","executorEndedAt":"2026-07-12T18:06:00.616426Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/gls.merges_after_local_commit.stdout.log","inputContextFile":"context/gls.merges_after_local_commit.input.json"},{
+  "nodeId" : "gls.refuses_on_local_commit",
+  "status" : "passed",
+  "startedAt" : "2026-07-12T18:05:54.560577Z",
+  "endedAt" : "2026-07-12T18:05:57.209214Z",
+  "assertions" : [ {
+    "name" : "exited_with_rc_7",
+    "status" : "passed"
+  }, {
+    "name" : "banner_mentions_extra_local_changes",
+    "status" : "passed"
+  }, {
+    "name" : "upstream_commit_not_contained_before_sync",
+    "status" : "passed"
+  }, {
+    "name" : "recipe_preserves_git_latest_flag",
+    "status" : "passed"
+  }, {
+    "name" : "local_commit_preserved",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ ],
+  "metrics" : {
+    "durationMs" : 2649
+  },
+  "logs" : [ ],
+  "published" : { }
+,"executorStartedAt":"2026-07-12T18:05:54.093721Z","executorEndedAt":"2026-07-12T18:05:57.313448Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/gls.refuses_on_local_commit.stdout.log","inputContextFile":"context/gls.refuses_on_local_commit.input.json"},{
+  "nodeId" : "servers.down",
+  "status" : "passed",
+  "startedAt" : "2026-07-12T18:06:04.403701Z",
+  "endedAt" : "2026-07-12T18:06:05.707340Z",
+  "assertions" : [ {
+    "name" : "gateway_down",
+    "status" : "passed"
+  }, {
+    "name" : "registry_down",
+    "status" : "passed"
+  }, {
+    "name" : "echo_fixture_down",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "gateway-down",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-109-resolver-cycle/skill-manager", "gateway", "down" ],
+    "startedAt" : "2026-07-12T18:06:04.411831Z",
+    "endedAt" : "2026-07-12T18:06:05.706654Z",
+    "exitCode" : 0,
+    "pid" : 85516,
+    "log" : "node-logs/servers.down.gateway-down.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "durationMs" : 1304
+  },
+  "logs" : [ ],
+  "published" : { }
+,"executorStartedAt":"2026-07-12T18:06:03.931393Z","executorEndedAt":"2026-07-12T18:06:05.823332Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/servers.down.stdout.log","inputContextFile":"context/servers.down.input.json"}]}

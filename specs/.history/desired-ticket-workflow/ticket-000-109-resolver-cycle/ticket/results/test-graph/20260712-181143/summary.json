@@ -1,0 +1,103 @@
+{"runId":"20260712-181143","nodes":[{
+  "nodeId" : "env.prepared",
+  "status" : "passed",
+  "startedAt" : "2026-07-12T18:11:44.416503Z",
+  "endedAt" : "2026-07-12T18:11:44.446919Z",
+  "assertions" : [ {
+    "name" : "home_created",
+    "status" : "passed"
+  }, {
+    "name" : "agent_home_created",
+    "status" : "passed"
+  }, {
+    "name" : "codex_home_created",
+    "status" : "passed"
+  }, {
+    "name" : "gemini_home_created",
+    "status" : "passed"
+  }, {
+    "name" : "ports_allocated",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ ],
+  "metrics" : {
+    "registryPort" : 65420,
+    "gatewayPort" : 65421,
+    "durationMs" : 30
+  },
+  "logs" : [ ],
+  "published" : {
+    "home" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2693819824008767440",
+    "claudeHome" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2693819824008767440/agent-home",
+    "codexHome" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2693819824008767440/agent-home/.codex",
+    "geminiHome" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2693819824008767440/agent-home/.gemini",
+    "registryPort" : "65420",
+    "gatewayPort" : "65421"
+  }
+,"executorStartedAt":"2026-07-12T18:11:43.947634Z","executorEndedAt":"2026-07-12T18:11:44.552281Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/env.prepared.stdout.log","inputContextFile":"context/env.prepared.input.json"},{
+  "nodeId" : "project.libs.resolved",
+  "status" : "passed",
+  "startedAt" : "2026-07-12T18:11:45.011869Z",
+  "endedAt" : "2026-07-12T18:11:48.112450Z",
+  "assertions" : [ {
+    "name" : "resolve_libs_command_ok",
+    "status" : "passed"
+  }, {
+    "name" : "lib_checkout_materialized_under_project_libs",
+    "status" : "passed"
+  }, {
+    "name" : "libs_directory_gitignored",
+    "status" : "passed"
+  }, {
+    "name" : "project_lock_records_lib_provenance",
+    "status" : "passed"
+  }, {
+    "name" : "project_show_reports_lib_lock_count",
+    "status" : "passed"
+  }, {
+    "name" : "existing_checkout_without_origin_rejected",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "resolve-libs",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-109-resolver-cycle/skill-manager", "project", "resolve", "--skip-gateway", "--resolve-libs", "--project-dir", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-project-libs-7576553022536579029" ],
+    "startedAt" : "2026-07-12T18:11:45.216108Z",
+    "endedAt" : "2026-07-12T18:11:46.214021Z",
+    "exitCode" : 0,
+    "pid" : 88973,
+    "log" : "node-logs/project.libs.resolved.resolve-libs.log",
+    "error" : null
+  }, {
+    "label" : "show",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-109-resolver-cycle/skill-manager", "project", "show", "tg-libs-project" ],
+    "startedAt" : "2026-07-12T18:11:46.214256Z",
+    "endedAt" : "2026-07-12T18:11:47.129988Z",
+    "exitCode" : 0,
+    "pid" : 88989,
+    "log" : "node-logs/project.libs.resolved.show.log",
+    "error" : null
+  }, {
+    "label" : "resolve-libs-no-origin",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-109-resolver-cycle/skill-manager", "project", "resolve", "--skip-gateway", "--resolve-libs", "--project-dir", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-project-libs-no-origin-6285005264642398092" ],
+    "startedAt" : "2026-07-12T18:11:47.130219Z",
+    "endedAt" : "2026-07-12T18:11:48.095056Z",
+    "exitCode" : 1,
+    "pid" : 89001,
+    "log" : "node-logs/project.libs.resolved.resolve-libs-no-origin.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "resolveExitCode" : 0,
+    "showExitCode" : 0,
+    "noOriginResolveExitCode" : 1,
+    "durationMs" : 3101
+  },
+  "logs" : [ ],
+  "published" : {
+    "projectName" : "tg-libs-project",
+    "projectDir" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-project-libs-7576553022536579029",
+    "libSha" : "c37281069040489408684735e1297e144a87fb60"
+  }
+,"executorStartedAt":"2026-07-12T18:11:44.554025Z","executorEndedAt":"2026-07-12T18:11:48.234147Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/project.libs.resolved.stdout.log","inputContextFile":"context/project.libs.resolved.input.json"}]}

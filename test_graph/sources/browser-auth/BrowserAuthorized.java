@@ -23,7 +23,7 @@ public class BrowserAuthorized {
             .kind(NodeSpec.Kind.ASSERTION)
             .dependsOn("account.created", "selenium.ready")
             .tags("auth", "oauth2", "browser")
-            .sideEffects("proc:spawn", "net:local")
+            .sideEffects("browser", "net:local")
             .timeout("120s");
 
     public static void main(String[] args) {

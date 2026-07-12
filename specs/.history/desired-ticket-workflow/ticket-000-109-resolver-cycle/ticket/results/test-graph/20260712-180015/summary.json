@@ -1,0 +1,243 @@
+{"runId":"20260712-180015","nodes":[{
+  "nodeId" : "account.created",
+  "status" : "passed",
+  "startedAt" : "2026-07-12T18:00:36.617836Z",
+  "endedAt" : "2026-07-12T18:00:38.301131Z",
+  "assertions" : [ {
+    "name" : "row_exists",
+    "status" : "passed"
+  }, {
+    "name" : "email_persisted",
+    "status" : "passed"
+  }, {
+    "name" : "password_hash_is_bcrypt",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "create-account",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-109-resolver-cycle/skill-manager", "create-account", "--username", "graph-user", "--email", "graph-user@skill-manager.test", "--password", "graph-user-password-2026", "--display-name", "Graph Test User", "--registry", "http://127.0.0.1:64161" ],
+    "startedAt" : "2026-07-12T18:00:36.624921Z",
+    "endedAt" : "2026-07-12T18:00:38.116262Z",
+    "exitCode" : 0,
+    "pid" : 81894,
+    "log" : "node-logs/account.created.create-account.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "durationMs" : 1684
+  },
+  "logs" : [ ],
+  "published" : {
+    "username" : "graph-user",
+    "password" : "graph-user-password-2026",
+    "email" : "graph-user@skill-manager.test"
+  }
+,"executorStartedAt":"2026-07-12T18:00:36.133294Z","executorEndedAt":"2026-07-12T18:00:38.381702Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/account.created.stdout.log","inputContextFile":"context/account.created.input.json"},{
+  "nodeId" : "env.prepared",
+  "status" : "passed",
+  "startedAt" : "2026-07-12T18:00:17.770119Z",
+  "endedAt" : "2026-07-12T18:00:17.817585Z",
+  "assertions" : [ {
+    "name" : "home_created",
+    "status" : "passed"
+  }, {
+    "name" : "agent_home_created",
+    "status" : "passed"
+  }, {
+    "name" : "codex_home_created",
+    "status" : "passed"
+  }, {
+    "name" : "gemini_home_created",
+    "status" : "passed"
+  }, {
+    "name" : "ports_allocated",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ ],
+  "metrics" : {
+    "registryPort" : 64161,
+    "gatewayPort" : 64162,
+    "durationMs" : 47
+  },
+  "logs" : [ ],
+  "published" : {
+    "home" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-18368182684762549071",
+    "claudeHome" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-18368182684762549071/agent-home",
+    "codexHome" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-18368182684762549071/agent-home/.codex",
+    "geminiHome" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-18368182684762549071/agent-home/.gemini",
+    "registryPort" : "64161",
+    "gatewayPort" : "64162"
+  }
+,"executorStartedAt":"2026-07-12T18:00:16.672269Z","executorEndedAt":"2026-07-12T18:00:18.019904Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/env.prepared.stdout.log","inputContextFile":"context/env.prepared.input.json"},{
+  "nodeId" : "gateway.python.venv.ready",
+  "status" : "passed",
+  "startedAt" : "2026-07-12T18:00:16.277434Z",
+  "endedAt" : "2026-07-12T18:00:16.354527Z",
+  "assertions" : [ {
+    "name" : "uv_sync_ok",
+    "status" : "passed"
+  }, {
+    "name" : "venv_python_present",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "uv-sync",
+    "command" : [ "uv", "sync", "--all-extras" ],
+    "startedAt" : "2026-07-12T18:00:16.286943Z",
+    "endedAt" : "2026-07-12T18:00:16.353806Z",
+    "exitCode" : 0,
+    "pid" : 81489,
+    "log" : "node-logs/gateway.python.venv.ready.uv-sync.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "durationMs" : 77
+  },
+  "logs" : [ ],
+  "published" : {
+    "venvPython" : "/Users/hayde/IdeaProjects/wt-109-resolver-cycle/virtual-mcp-gateway/.venv/bin/python"
+  }
+,"executorStartedAt":"2026-07-12T18:00:15.183525Z","executorEndedAt":"2026-07-12T18:00:16.671358Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/gateway.python.venv.ready.stdout.log","inputContextFile":"context/gateway.python.venv.ready.input.json"},{
+  "nodeId" : "postgres.down",
+  "status" : "passed",
+  "startedAt" : "2026-07-12T18:00:50.093453Z",
+  "endedAt" : "2026-07-12T18:00:50.292349Z",
+  "assertions" : [ {
+    "name" : "stopped",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "compose-stop",
+    "command" : [ "docker", "compose", "-f", "/Users/hayde/IdeaProjects/wt-109-resolver-cycle/docker-compose.yml", "stop", "postgres" ],
+    "startedAt" : "2026-07-12T18:00:50.099620Z",
+    "endedAt" : "2026-07-12T18:00:50.291749Z",
+    "exitCode" : 0,
+    "pid" : 82099,
+    "log" : "node-logs/postgres.down.compose-stop.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "durationMs" : 199
+  },
+  "logs" : [ ],
+  "published" : { }
+,"executorStartedAt":"2026-07-12T18:00:49.620244Z","executorEndedAt":"2026-07-12T18:00:50.410330Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/postgres.down.stdout.log","inputContextFile":"context/postgres.down.input.json"},{
+  "nodeId" : "postgres.up",
+  "status" : "passed",
+  "startedAt" : "2026-07-12T18:00:19.041835Z",
+  "endedAt" : "2026-07-12T18:00:19.980149Z",
+  "assertions" : [ {
+    "name" : "reachable",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "compose-up",
+    "command" : [ "docker", "compose", "-f", "/Users/hayde/IdeaProjects/wt-109-resolver-cycle/docker-compose.yml", "up", "-d", "postgres" ],
+    "startedAt" : "2026-07-12T18:00:19.190114Z",
+    "endedAt" : "2026-07-12T18:00:19.606498Z",
+    "exitCode" : 0,
+    "pid" : 81508,
+    "log" : "node-logs/postgres.up.compose-up.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "durationMs" : 939
+  },
+  "logs" : [ ],
+  "published" : {
+    "dbUrl" : "jdbc:postgresql://localhost:5432/skill_registry_test",
+    "dbUser" : "postgres",
+    "dbPassword" : "postgres"
+  }
+,"executorStartedAt":"2026-07-12T18:00:18.021696Z","executorEndedAt":"2026-07-12T18:00:20.155410Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/postgres.up.stdout.log","inputContextFile":"context/postgres.up.input.json"},{
+  "nodeId" : "refresh.on.expiry",
+  "status" : "passed",
+  "startedAt" : "2026-07-12T18:00:38.869730Z",
+  "endedAt" : "2026-07-12T18:00:49.608233Z",
+  "assertions" : [ {
+    "name" : "original_token_is_valid_jwt",
+    "status" : "passed"
+  }, {
+    "name" : "authed_command_succeeded",
+    "status" : "passed"
+  }, {
+    "name" : "access_token_rotated",
+    "status" : "passed"
+  }, {
+    "name" : "refresh_token_rotated",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ ],
+  "metrics" : {
+    "durationMs" : 10739
+  },
+  "logs" : [ ],
+  "published" : { }
+,"executorStartedAt":"2026-07-12T18:00:38.382617Z","executorEndedAt":"2026-07-12T18:00:49.619407Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/refresh.on.expiry.stdout.log","inputContextFile":"context/refresh.on.expiry.input.json"},{
+  "nodeId" : "registry.up",
+  "status" : "passed",
+  "startedAt" : "2026-07-12T18:00:22.442227Z",
+  "endedAt" : "2026-07-12T18:00:33.120060Z",
+  "assertions" : [ {
+    "name" : "health_ok",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ ],
+  "metrics" : {
+    "pid" : 81540,
+    "port" : 64161,
+    "durationMs" : 10678
+  },
+  "logs" : [ ],
+  "published" : {
+    "baseUrl" : "http://127.0.0.1:64161"
+  }
+,"executorStartedAt":"2026-07-12T18:00:21.415822Z","executorEndedAt":"2026-07-12T18:00:33.610257Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/registry.up.stdout.log","inputContextFile":"context/registry.up.input.json"},{
+  "nodeId" : "selenium.ready",
+  "status" : "passed",
+  "startedAt" : "2026-07-12T18:00:34.148165Z",
+  "endedAt" : "2026-07-12T18:00:36.048005Z",
+  "assertions" : [ {
+    "name" : "chromedriver_resolved",
+    "status" : "passed"
+  }, {
+    "name" : "chrome_browser_resolved",
+    "status" : "passed"
+  }, {
+    "name" : "chromedriver_started",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ ],
+  "metrics" : {
+    "durationMs" : 1900
+  },
+  "logs" : [ ],
+  "published" : { }
+,"executorStartedAt":"2026-07-12T18:00:33.611193Z","executorEndedAt":"2026-07-12T18:00:36.132495Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/selenium.ready.stdout.log","inputContextFile":"context/selenium.ready.input.json"},{
+  "nodeId" : "short.access.token.ttl",
+  "status" : "passed",
+  "startedAt" : "2026-07-12T18:00:21.222353Z",
+  "endedAt" : "2026-07-12T18:00:21.223332Z",
+  "assertions" : [ {
+    "name" : "ttl_published",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ ],
+  "metrics" : {
+    "durationMs" : 1
+  },
+  "logs" : [ ],
+  "published" : {
+    "seconds" : "3",
+    "clockSkewSeconds" : "0"
+  }
+,"executorStartedAt":"2026-07-12T18:00:20.156282Z","executorEndedAt":"2026-07-12T18:00:21.414907Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/short.access.token.ttl.stdout.log","inputContextFile":"context/short.access.token.ttl.input.json"}]}

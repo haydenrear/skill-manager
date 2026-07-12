@@ -1,0 +1,109 @@
+{"runId":"20260712-181136","nodes":[{
+  "nodeId" : "env.prepared",
+  "status" : "passed",
+  "startedAt" : "2026-07-12T18:11:37.392827Z",
+  "endedAt" : "2026-07-12T18:11:37.423279Z",
+  "assertions" : [ {
+    "name" : "home_created",
+    "status" : "passed"
+  }, {
+    "name" : "agent_home_created",
+    "status" : "passed"
+  }, {
+    "name" : "codex_home_created",
+    "status" : "passed"
+  }, {
+    "name" : "gemini_home_created",
+    "status" : "passed"
+  }, {
+    "name" : "ports_allocated",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ ],
+  "metrics" : {
+    "registryPort" : 65418,
+    "gatewayPort" : 65419,
+    "durationMs" : 31
+  },
+  "logs" : [ ],
+  "published" : {
+    "home" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13507527503226642334",
+    "claudeHome" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13507527503226642334/agent-home",
+    "codexHome" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13507527503226642334/agent-home/.codex",
+    "geminiHome" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13507527503226642334/agent-home/.gemini",
+    "registryPort" : "65418",
+    "gatewayPort" : "65419"
+  }
+,"executorStartedAt":"2026-07-12T18:11:36.941275Z","executorEndedAt":"2026-07-12T18:11:37.527025Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/env.prepared.stdout.log","inputContextFile":"context/env.prepared.input.json"},{
+  "nodeId" : "project.env.materialized",
+  "status" : "passed",
+  "startedAt" : "2026-07-12T18:11:37.989634Z",
+  "endedAt" : "2026-07-12T18:11:41.513115Z",
+  "assertions" : [ {
+    "name" : "resolve_command_ok",
+    "status" : "passed"
+  }, {
+    "name" : "env_sync_command_ok",
+    "status" : "passed"
+  }, {
+    "name" : "pyproject_uses_project_relative_vendor_path",
+    "status" : "passed"
+  }, {
+    "name" : "skill_unit_vendored_project_locally",
+    "status" : "passed"
+  }, {
+    "name" : "tool_shim_executable",
+    "status" : "passed"
+  }, {
+    "name" : "env_docs_rendered_as_documentation",
+    "status" : "passed"
+  }, {
+    "name" : "project_lock_records_env_realization",
+    "status" : "passed"
+  }, {
+    "name" : "project_show_reports_env_lock_count",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "resolve",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-109-resolver-cycle/skill-manager", "project", "resolve", "--skip-gateway", "--project-dir", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-project-env-13093221144074978045" ],
+    "startedAt" : "2026-07-12T18:11:38.023412Z",
+    "endedAt" : "2026-07-12T18:11:39.586280Z",
+    "exitCode" : 0,
+    "pid" : 88879,
+    "log" : "node-logs/project.env.materialized.resolve.log",
+    "error" : null
+  }, {
+    "label" : "env-sync",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-109-resolver-cycle/skill-manager", "env", "sync", "dev", "--skip-uv", "--project-dir", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-project-env-13093221144074978045" ],
+    "startedAt" : "2026-07-12T18:11:39.586494Z",
+    "endedAt" : "2026-07-12T18:11:40.554491Z",
+    "exitCode" : 0,
+    "pid" : 88890,
+    "log" : "node-logs/project.env.materialized.env-sync.log",
+    "error" : null
+  }, {
+    "label" : "show",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-109-resolver-cycle/skill-manager", "project", "show", "tg-env-project" ],
+    "startedAt" : "2026-07-12T18:11:40.554747Z",
+    "endedAt" : "2026-07-12T18:11:41.511598Z",
+    "exitCode" : 0,
+    "pid" : 88901,
+    "log" : "node-logs/project.env.materialized.show.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "resolveExitCode" : 0,
+    "syncExitCode" : 0,
+    "showExitCode" : 0,
+    "durationMs" : 3524
+  },
+  "logs" : [ ],
+  "published" : {
+    "projectName" : "tg-env-project",
+    "projectDir" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-project-env-13093221144074978045",
+    "envRoot" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-project-env-13093221144074978045/.skill-manager/envs/dev"
+  }
+,"executorStartedAt":"2026-07-12T18:11:37.527755Z","executorEndedAt":"2026-07-12T18:11:41.634024Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/project.env.materialized.stdout.log","inputContextFile":"context/project.env.materialized.input.json"}]}

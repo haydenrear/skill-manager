@@ -1,0 +1,639 @@
+{"runId":"20260712-180201","nodes":[{
+  "nodeId" : "ci.logged.in",
+  "status" : "passed",
+  "startedAt" : "2026-07-12T18:02:10.982049Z",
+  "endedAt" : "2026-07-12T18:02:12.537105Z",
+  "assertions" : [ {
+    "name" : "token_cached",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "login",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-109-resolver-cycle/skill-manager", "login", "--client-id", "skill-manager-ci", "--client-secret", "dev-ci-secret-change-me", "--scope", "skill:publish ad:manage", "--registry", "http://127.0.0.1:64407" ],
+    "startedAt" : "2026-07-12T18:02:10.990309Z",
+    "endedAt" : "2026-07-12T18:02:12.536532Z",
+    "exitCode" : 0,
+    "pid" : 83223,
+    "log" : "node-logs/ci.logged.in.login.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "durationMs" : 1555
+  },
+  "logs" : [ ],
+  "published" : {
+    "clientId" : "skill-manager-ci"
+  }
+,"executorStartedAt":"2026-07-12T18:02:10.478363Z","executorEndedAt":"2026-07-12T18:02:12.654277Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/ci.logged.in.stdout.log","inputContextFile":"context/ci.logged.in.input.json"},{
+  "nodeId" : "env.hyper.prepared",
+  "status" : "passed",
+  "startedAt" : "2026-07-12T18:02:03.612208Z",
+  "endedAt" : "2026-07-12T18:02:03.612508Z",
+  "assertions" : [ ],
+  "artifacts" : [ ],
+  "processes" : [ ],
+  "metrics" : {
+    "durationMs" : 0
+  },
+  "logs" : [ ],
+  "published" : {
+    "allowFileUpload" : "false"
+  }
+,"executorStartedAt":"2026-07-12T18:02:03.126794Z","executorEndedAt":"2026-07-12T18:02:03.724322Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/env.hyper.prepared.stdout.log","inputContextFile":"context/env.hyper.prepared.input.json"},{
+  "nodeId" : "env.prepared",
+  "status" : "passed",
+  "startedAt" : "2026-07-12T18:02:01.879781Z",
+  "endedAt" : "2026-07-12T18:02:01.909732Z",
+  "assertions" : [ {
+    "name" : "home_created",
+    "status" : "passed"
+  }, {
+    "name" : "agent_home_created",
+    "status" : "passed"
+  }, {
+    "name" : "codex_home_created",
+    "status" : "passed"
+  }, {
+    "name" : "gemini_home_created",
+    "status" : "passed"
+  }, {
+    "name" : "ports_allocated",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ ],
+  "metrics" : {
+    "registryPort" : 64407,
+    "gatewayPort" : 64408,
+    "durationMs" : 30
+  },
+  "logs" : [ ],
+  "published" : {
+    "home" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-173799915506936706",
+    "claudeHome" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-173799915506936706/agent-home",
+    "codexHome" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-173799915506936706/agent-home/.codex",
+    "geminiHome" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-173799915506936706/agent-home/.gemini",
+    "registryPort" : "64407",
+    "gatewayPort" : "64408"
+  }
+,"executorStartedAt":"2026-07-12T18:02:01.410085Z","executorEndedAt":"2026-07-12T18:02:02.019803Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/env.prepared.stdout.log","inputContextFile":"context/env.prepared.input.json"},{
+  "nodeId" : "gateway.python.venv.ready",
+  "status" : "passed",
+  "startedAt" : "2026-07-12T18:02:14.290379Z",
+  "endedAt" : "2026-07-12T18:02:14.331055Z",
+  "assertions" : [ {
+    "name" : "uv_sync_ok",
+    "status" : "passed"
+  }, {
+    "name" : "venv_python_present",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "uv-sync",
+    "command" : [ "uv", "sync", "--all-extras" ],
+    "startedAt" : "2026-07-12T18:02:14.296369Z",
+    "endedAt" : "2026-07-12T18:02:14.330268Z",
+    "exitCode" : 0,
+    "pid" : 83244,
+    "log" : "node-logs/gateway.python.venv.ready.uv-sync.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "durationMs" : 41
+  },
+  "logs" : [ ],
+  "published" : {
+    "venvPython" : "/Users/hayde/IdeaProjects/wt-109-resolver-cycle/virtual-mcp-gateway/.venv/bin/python"
+  }
+,"executorStartedAt":"2026-07-12T18:02:13.813107Z","executorEndedAt":"2026-07-12T18:02:14.446282Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/gateway.python.venv.ready.stdout.log","inputContextFile":"context/gateway.python.venv.ready.input.json"},{
+  "nodeId" : "gateway.up",
+  "status" : "passed",
+  "startedAt" : "2026-07-12T18:02:14.977230Z",
+  "endedAt" : "2026-07-12T18:02:17.787829Z",
+  "assertions" : [ {
+    "name" : "gateway_healthy",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "gateway-up",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-109-resolver-cycle/skill-manager", "gateway", "up", "--port", "64408", "--wait-seconds", "45" ],
+    "startedAt" : "2026-07-12T18:02:15.328573Z",
+    "endedAt" : "2026-07-12T18:02:17.785189Z",
+    "exitCode" : 0,
+    "pid" : 83251,
+    "log" : "node-logs/gateway.up.gateway-up.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "port" : 64408,
+    "durationMs" : 2810
+  },
+  "logs" : [ ],
+  "published" : {
+    "baseUrl" : "http://127.0.0.1:64408"
+  }
+,"executorStartedAt":"2026-07-12T18:02:14.447105Z","executorEndedAt":"2026-07-12T18:02:17.901118Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/gateway.up.stdout.log","inputContextFile":"context/gateway.up.input.json"},{
+  "nodeId" : "hyper.checkout",
+  "status" : "passed",
+  "startedAt" : "2026-07-12T18:02:18.384971Z",
+  "endedAt" : "2026-07-12T18:02:20.393321Z",
+  "assertions" : [ {
+    "name" : "clone_ok",
+    "status" : "passed"
+  }, {
+    "name" : "skill_md_present",
+    "status" : "passed"
+  }, {
+    "name" : "manifest_present",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "git-clone",
+    "command" : [ "git", "clone", "--depth", "1", "--branch", "main", "https://github.com/haydenrear/hyper-experiments-skill.git", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-173799915506936706/hyper-checkout" ],
+    "startedAt" : "2026-07-12T18:02:18.392452Z",
+    "endedAt" : "2026-07-12T18:02:20.392572Z",
+    "exitCode" : 0,
+    "pid" : 83270,
+    "log" : "node-logs/hyper.checkout.git-clone.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "ref" : 0,
+    "durationMs" : 2009
+  },
+  "logs" : [ ],
+  "published" : {
+    "skillDir" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-173799915506936706/hyper-checkout",
+    "source" : "github:https://github.com/haydenrear/hyper-experiments-skill.git@main"
+  }
+,"executorStartedAt":"2026-07-12T18:02:17.902056Z","executorEndedAt":"2026-07-12T18:02:20.509534Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/hyper.checkout.stdout.log","inputContextFile":"context/hyper.checkout.input.json"},{
+  "nodeId" : "hyper.cli.tbquery",
+  "status" : "passed",
+  "startedAt" : "2026-07-12T18:02:56.000596Z",
+  "endedAt" : "2026-07-12T18:02:57.776389Z",
+  "assertions" : [ {
+    "name" : "tb_query_bundled_under_home",
+    "status" : "passed"
+  }, {
+    "name" : "tb_query_runs_help",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "tb-query-help",
+    "command" : [ "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-173799915506936706/bin/cli/tb-query", "--help" ],
+    "startedAt" : "2026-07-12T18:02:56.006973Z",
+    "endedAt" : "2026-07-12T18:02:57.775953Z",
+    "exitCode" : 0,
+    "pid" : 83426,
+    "log" : "node-logs/hyper.cli.tbquery.tb-query-help.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "helpExitCode" : 0,
+    "durationMs" : 1776
+  },
+  "logs" : [ ],
+  "published" : { }
+,"executorStartedAt":"2026-07-12T18:02:55.534416Z","executorEndedAt":"2026-07-12T18:02:57.888469Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/hyper.cli.tbquery.stdout.log","inputContextFile":"context/hyper.cli.tbquery.input.json"},{
+  "nodeId" : "hyper.installed",
+  "status" : "passed",
+  "startedAt" : "2026-07-12T18:02:29.840983Z",
+  "endedAt" : "2026-07-12T18:02:55.421352Z",
+  "assertions" : [ {
+    "name" : "install_ok",
+    "status" : "passed"
+  }, {
+    "name" : "skill_md_present",
+    "status" : "passed"
+  }, {
+    "name" : "skill_manager_toml_present",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "install",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-109-resolver-cycle/skill-manager", "install", "hyper-experiments", "--registry", "http://127.0.0.1:64407", "--yes" ],
+    "startedAt" : "2026-07-12T18:02:29.851271Z",
+    "endedAt" : "2026-07-12T18:02:55.420837Z",
+    "exitCode" : 0,
+    "pid" : 83323,
+    "log" : "node-logs/hyper.installed.install.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "exitCode" : 0,
+    "durationMs" : 25581
+  },
+  "logs" : [ ],
+  "published" : {
+    "skillDir" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-173799915506936706/skills/hyper-experiments"
+  }
+,"executorStartedAt":"2026-07-12T18:02:29.355170Z","executorEndedAt":"2026-07-12T18:02:55.533682Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/hyper.installed.stdout.log","inputContextFile":"context/hyper.installed.input.json"},{
+  "nodeId" : "hyper.published",
+  "status" : "passed",
+  "startedAt" : "2026-07-12T18:02:20.990499Z",
+  "endedAt" : "2026-07-12T18:02:28.460471Z",
+  "assertions" : [ {
+    "name" : "upload_tarball_rejected",
+    "status" : "passed"
+  }, {
+    "name" : "github_register_ok",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "publish-tarball-rejected",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-109-resolver-cycle/skill-manager", "publish", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-173799915506936706/hyper-checkout", "--upload-tarball", "--registry", "http://127.0.0.1:64407" ],
+    "startedAt" : "2026-07-12T18:02:20.998715Z",
+    "endedAt" : "2026-07-12T18:02:22.573406Z",
+    "exitCode" : 1,
+    "pid" : 83281,
+    "log" : "node-logs/hyper.published.publish-tarball-rejected.log",
+    "error" : null
+  }, {
+    "label" : "publish",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-109-resolver-cycle/skill-manager", "publish", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-173799915506936706/hyper-checkout", "--github-url", "https://github.com/haydenrear/hyper-experiments-skill", "--ref", "main", "--registry", "http://127.0.0.1:64407" ],
+    "startedAt" : "2026-07-12T18:02:22.573620Z",
+    "endedAt" : "2026-07-12T18:02:28.459798Z",
+    "exitCode" : 0,
+    "pid" : 83291,
+    "log" : "node-logs/hyper.published.publish.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "rejectExitCode" : 1,
+    "registerExitCode" : 0,
+    "durationMs" : 7470
+  },
+  "logs" : [ ],
+  "published" : {
+    "skillName" : "hyper-experiments"
+  }
+,"executorStartedAt":"2026-07-12T18:02:20.510485Z","executorEndedAt":"2026-07-12T18:02:28.580018Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/hyper.published.stdout.log","inputContextFile":"context/hyper.published.input.json"},{
+  "nodeId" : "hyper.registry.no.tarball",
+  "status" : "passed",
+  "startedAt" : "2026-07-12T18:02:29.065862Z",
+  "endedAt" : "2026-07-12T18:02:29.274436Z",
+  "assertions" : [ {
+    "name" : "no_tarball_on_disk",
+    "status" : "passed"
+  }, {
+    "name" : "all_rows_github_pointer",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ ],
+  "metrics" : {
+    "tarballsOnDisk" : 0,
+    "hyperRows" : 1,
+    "nullSha" : 1,
+    "nullSize" : 1,
+    "withGithubUrl" : 1,
+    "withGitSha" : 1,
+    "durationMs" : 209
+  },
+  "logs" : [ ],
+  "published" : { }
+,"executorStartedAt":"2026-07-12T18:02:28.582029Z","executorEndedAt":"2026-07-12T18:02:29.350873Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/hyper.registry.no.tarball.stdout.log","inputContextFile":"context/hyper.registry.no.tarball.input.json"},{
+  "nodeId" : "hyper.runpod.deployed",
+  "status" : "passed",
+  "startedAt" : "2026-07-12T18:02:59.764171Z",
+  "endedAt" : "2026-07-12T18:03:00.311566Z",
+  "assertions" : [ {
+    "name" : "runpod_deployed_via_env_init",
+    "status" : "passed"
+  }, {
+    "name" : "scope_global_sticky",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ ],
+  "metrics" : {
+    "durationMs" : 547
+  },
+  "logs" : [ ],
+  "published" : { }
+,"executorStartedAt":"2026-07-12T18:02:59.304801Z","executorEndedAt":"2026-07-12T18:03:00.708688Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/hyper.runpod.deployed.stdout.log","inputContextFile":"context/hyper.runpod.deployed.input.json"},{
+  "nodeId" : "hyper.runpod.registered",
+  "status" : "passed",
+  "startedAt" : "2026-07-12T18:02:58.360702Z",
+  "endedAt" : "2026-07-12T18:02:58.918392Z",
+  "assertions" : [ {
+    "name" : "runpod_listed_via_mcp",
+    "status" : "passed"
+  }, {
+    "name" : "default_scope_global_sticky",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ ],
+  "metrics" : {
+    "durationMs" : 558
+  },
+  "logs" : [ ],
+  "published" : { }
+,"executorStartedAt":"2026-07-12T18:02:57.889211Z","executorEndedAt":"2026-07-12T18:02:59.303977Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/hyper.runpod.registered.stdout.log","inputContextFile":"context/hyper.runpod.registered.input.json"},{
+  "nodeId" : "hyper.runpod.tool.invoked",
+  "status" : "passed",
+  "startedAt" : "2026-07-12T18:03:02.575237Z",
+  "endedAt" : "2026-07-12T18:03:04.366574Z",
+  "assertions" : [ {
+    "name" : "describe_returned_list_endpoints",
+    "status" : "passed"
+  }, {
+    "name" : "invoke_no_error",
+    "status" : "passed"
+  }, {
+    "name" : "invoke_has_content",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ ],
+  "metrics" : {
+    "contentItems" : 1,
+    "durationMs" : 1791
+  },
+  "logs" : [ ],
+  "published" : { }
+,"executorStartedAt":"2026-07-12T18:03:02.114557Z","executorEndedAt":"2026-07-12T18:03:04.755685Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/hyper.runpod.tool.invoked.stdout.log","inputContextFile":"context/hyper.runpod.tool.invoked.input.json"},{
+  "nodeId" : "hyper.runpod.tools",
+  "status" : "passed",
+  "startedAt" : "2026-07-12T18:03:01.173226Z",
+  "endedAt" : "2026-07-12T18:03:01.727946Z",
+  "assertions" : [ {
+    "name" : "runpod_returned_tools",
+    "status" : "passed"
+  }, {
+    "name" : "canary_tool_present",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ ],
+  "metrics" : {
+    "toolCount" : 50,
+    "durationMs" : 554
+  },
+  "logs" : [ ],
+  "published" : {
+    "toolPath" : "runpod/list-endpoints",
+    "toolCount" : "50"
+  }
+,"executorStartedAt":"2026-07-12T18:03:00.709604Z","executorEndedAt":"2026-07-12T18:03:02.113720Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/hyper.runpod.tools.stdout.log","inputContextFile":"context/hyper.runpod.tools.input.json"},{
+  "nodeId" : "hyper.server.hash.matches.install",
+  "status" : "passed",
+  "startedAt" : "2026-07-12T18:03:05.820104Z",
+  "endedAt" : "2026-07-12T18:03:06.097573Z",
+  "assertions" : [ {
+    "name" : "source_record_hash_matches_install_head",
+    "status" : "passed"
+  }, {
+    "name" : "postgres_row_for_published_version_exists",
+    "status" : "passed"
+  }, {
+    "name" : "postgres_git_sha_matches_source_record",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ ],
+  "metrics" : {
+    "durationMs" : 277
+  },
+  "logs" : [ ],
+  "published" : { }
+,"executorStartedAt":"2026-07-12T18:03:05.360639Z","executorEndedAt":"2026-07-12T18:03:06.124184Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/hyper.server.hash.matches.install.stdout.log","inputContextFile":"context/hyper.server.hash.matches.install.input.json"},{
+  "nodeId" : "hyper.source.recorded",
+  "status" : "passed",
+  "startedAt" : "2026-07-12T18:03:05.225807Z",
+  "endedAt" : "2026-07-12T18:03:05.343266Z",
+  "assertions" : [ {
+    "name" : "install_has_git_dir",
+    "status" : "passed"
+  }, {
+    "name" : "source_json_written",
+    "status" : "passed"
+  }, {
+    "name" : "source_kind_is_git",
+    "status" : "passed"
+  }, {
+    "name" : "source_hash_matches_head",
+    "status" : "passed"
+  }, {
+    "name" : "source_origin_is_github_hyper",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ ],
+  "metrics" : {
+    "durationMs" : 118
+  },
+  "logs" : [ ],
+  "published" : {
+    "installedHash" : "5d5d509f3f74711ed72f9f7b65298e7c8c9cb677"
+  }
+,"executorStartedAt":"2026-07-12T18:03:04.756455Z","executorEndedAt":"2026-07-12T18:03:05.359878Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/hyper.source.recorded.stdout.log","inputContextFile":"context/hyper.source.recorded.input.json"},{
+  "nodeId" : "hyper.sync.clean.noop",
+  "status" : "passed",
+  "startedAt" : "2026-07-12T18:03:06.595628Z",
+  "endedAt" : "2026-07-12T18:03:11.081796Z",
+  "assertions" : [ {
+    "name" : "sync_exit_zero",
+    "status" : "passed"
+  }, {
+    "name" : "working_tree_clean_after_sync",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ ],
+  "metrics" : {
+    "durationMs" : 4486
+  },
+  "logs" : [ ],
+  "published" : { }
+,"executorStartedAt":"2026-07-12T18:03:06.125006Z","executorEndedAt":"2026-07-12T18:03:11.184763Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/hyper.sync.clean.noop.stdout.log","inputContextFile":"context/hyper.sync.clean.noop.input.json"},{
+  "nodeId" : "hyper.sync.merges.after.commit",
+  "status" : "passed",
+  "startedAt" : "2026-07-12T18:03:15.529797Z",
+  "endedAt" : "2026-07-12T18:03:19.285716Z",
+  "assertions" : [ {
+    "name" : "merge_exit_zero",
+    "status" : "passed"
+  }, {
+    "name" : "working_tree_clean_after_merge",
+    "status" : "passed"
+  }, {
+    "name" : "local_file_survived_merge",
+    "status" : "passed"
+  }, {
+    "name" : "source_record_hash_refreshed",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ ],
+  "metrics" : {
+    "durationMs" : 3756
+  },
+  "logs" : [ ],
+  "published" : { }
+,"executorStartedAt":"2026-07-12T18:03:15.066974Z","executorEndedAt":"2026-07-12T18:03:19.301473Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/hyper.sync.merges.after.commit.stdout.log","inputContextFile":"context/hyper.sync.merges.after.commit.input.json"},{
+  "nodeId" : "hyper.sync.refuses.on.local.commit",
+  "status" : "passed",
+  "startedAt" : "2026-07-12T18:03:11.641902Z",
+  "endedAt" : "2026-07-12T18:03:14.962639Z",
+  "assertions" : [ {
+    "name" : "exited_with_rc_7",
+    "status" : "passed"
+  }, {
+    "name" : "banner_mentions_extra_local_changes",
+    "status" : "passed"
+  }, {
+    "name" : "banner_includes_merge_flag",
+    "status" : "passed"
+  }, {
+    "name" : "banner_names_github_upstream",
+    "status" : "passed"
+  }, {
+    "name" : "local_commit_preserved",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ ],
+  "metrics" : {
+    "durationMs" : 3321
+  },
+  "logs" : [ ],
+  "published" : { }
+,"executorStartedAt":"2026-07-12T18:03:11.185495Z","executorEndedAt":"2026-07-12T18:03:15.066140Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/hyper.sync.refuses.on.local.commit.stdout.log","inputContextFile":"context/hyper.sync.refuses.on.local.commit.input.json"},{
+  "nodeId" : "jwt.valid",
+  "status" : "passed",
+  "startedAt" : "2026-07-12T18:02:13.137193Z",
+  "endedAt" : "2026-07-12T18:02:13.339622Z",
+  "assertions" : [ {
+    "name" : "authed_me_is_200",
+    "status" : "passed"
+  }, {
+    "name" : "identity_matches_expected_user",
+    "status" : "passed"
+  }, {
+    "name" : "unauthed_publish_is_401",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ ],
+  "metrics" : {
+    "me_status" : 200,
+    "unauth_publish_status" : 401,
+    "durationMs" : 202
+  },
+  "logs" : [ ],
+  "published" : { }
+,"executorStartedAt":"2026-07-12T18:02:12.655083Z","executorEndedAt":"2026-07-12T18:02:13.812136Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/jwt.valid.stdout.log","inputContextFile":"context/jwt.valid.input.json"},{
+  "nodeId" : "postgres.down",
+  "status" : "passed",
+  "startedAt" : "2026-07-12T18:03:23.939633Z",
+  "endedAt" : "2026-07-12T18:03:24.147272Z",
+  "assertions" : [ {
+    "name" : "stopped",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "compose-stop",
+    "command" : [ "docker", "compose", "-f", "/Users/hayde/IdeaProjects/wt-109-resolver-cycle/docker-compose.yml", "stop", "postgres" ],
+    "startedAt" : "2026-07-12T18:03:23.945577Z",
+    "endedAt" : "2026-07-12T18:03:24.146742Z",
+    "exitCode" : 0,
+    "pid" : 83793,
+    "log" : "node-logs/postgres.down.compose-stop.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "durationMs" : 208
+  },
+  "logs" : [ ],
+  "published" : { }
+,"executorStartedAt":"2026-07-12T18:03:23.483674Z","executorEndedAt":"2026-07-12T18:03:24.289607Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/postgres.down.stdout.log","inputContextFile":"context/postgres.down.input.json"},{
+  "nodeId" : "postgres.up",
+  "status" : "passed",
+  "startedAt" : "2026-07-12T18:02:02.502719Z",
+  "endedAt" : "2026-07-12T18:02:03.030548Z",
+  "assertions" : [ {
+    "name" : "reachable",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "compose-up",
+    "command" : [ "docker", "compose", "-f", "/Users/hayde/IdeaProjects/wt-109-resolver-cycle/docker-compose.yml", "up", "-d", "postgres" ],
+    "startedAt" : "2026-07-12T18:02:02.587386Z",
+    "endedAt" : "2026-07-12T18:02:02.819930Z",
+    "exitCode" : 0,
+    "pid" : 83193,
+    "log" : "node-logs/postgres.up.compose-up.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "durationMs" : 528
+  },
+  "logs" : [ ],
+  "published" : {
+    "dbUrl" : "jdbc:postgresql://localhost:5432/skill_registry_test",
+    "dbUser" : "postgres",
+    "dbPassword" : "postgres"
+  }
+,"executorStartedAt":"2026-07-12T18:02:02.020824Z","executorEndedAt":"2026-07-12T18:02:03.126009Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/postgres.up.stdout.log","inputContextFile":"context/postgres.up.input.json"},{
+  "nodeId" : "registry.up",
+  "status" : "passed",
+  "startedAt" : "2026-07-12T18:02:04.217648Z",
+  "endedAt" : "2026-07-12T18:02:09.990541Z",
+  "assertions" : [ {
+    "name" : "health_ok",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ ],
+  "metrics" : {
+    "pid" : 83208,
+    "port" : 64407,
+    "durationMs" : 5773
+  },
+  "logs" : [ ],
+  "published" : {
+    "baseUrl" : "http://127.0.0.1:64407"
+  }
+,"executorStartedAt":"2026-07-12T18:02:03.725118Z","executorEndedAt":"2026-07-12T18:02:10.477489Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/registry.up.stdout.log","inputContextFile":"context/registry.up.input.json"},{
+  "nodeId" : "servers.down",
+  "status" : "passed",
+  "startedAt" : "2026-07-12T18:03:19.772638Z",
+  "endedAt" : "2026-07-12T18:03:23.368873Z",
+  "assertions" : [ {
+    "name" : "gateway_down",
+    "status" : "passed"
+  }, {
+    "name" : "registry_down",
+    "status" : "passed"
+  }, {
+    "name" : "echo_fixture_down",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "gateway-down",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-109-resolver-cycle/skill-manager", "gateway", "down" ],
+    "startedAt" : "2026-07-12T18:03:19.780635Z",
+    "endedAt" : "2026-07-12T18:03:21.097058Z",
+    "exitCode" : 0,
+    "pid" : 83762,
+    "log" : "node-logs/servers.down.gateway-down.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "durationMs" : 3596
+  },
+  "logs" : [ ],
+  "published" : { }
+,"executorStartedAt":"2026-07-12T18:03:19.302362Z","executorEndedAt":"2026-07-12T18:03:23.482824Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/servers.down.stdout.log","inputContextFile":"context/servers.down.input.json"}]}

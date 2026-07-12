@@ -1,0 +1,218 @@
+{
+  "accept_new": false,
+  "accept_new_promotion": null,
+  "active_ticket_dir": "specs/tickets/109-resolver-cycle",
+  "commit_recommendation": {
+    "git_add": "git add specs/.history/desired-ticket-workflow/ticket-000-109-resolver-cycle specs/current",
+    "git_commit": "git commit -m 'record spec history for 109-resolver-cycle'",
+    "message": "It is recommended to commit this history directory now: specs/.history/desired-ticket-workflow/ticket-000-109-resolver-cycle"
+  },
+  "created_at_utc": "2026-07-12T18:14:14.089087+00:00",
+  "entry_name": "ticket-000-109-resolver-cycle",
+  "git": {
+    "branch": "feature/109-resolver-cycle",
+    "commit": "a0571e4",
+    "inside_work_tree": "true"
+  },
+  "history_policy": "append-only by convention; existing entries are not overwritten and filesystem permissions remain git-friendly",
+  "kind": "ticket",
+  "promotion": {
+    "destination": "specs",
+    "merged": [
+      {
+        "destination": "specs/current",
+        "files": [
+          {
+            "destination": "specs/current/MC.cfg",
+            "relative": "MC.cfg",
+            "source": "specs/tickets/109-resolver-cycle/desired/MC.cfg"
+          },
+          {
+            "destination": "specs/current/MC_program_promotion.cfg",
+            "relative": "MC_program_promotion.cfg",
+            "source": "specs/tickets/109-resolver-cycle/desired/MC_program_promotion.cfg"
+          },
+          {
+            "destination": "specs/current/README.md",
+            "relative": "README.md",
+            "source": "specs/tickets/109-resolver-cycle/desired/README.md"
+          },
+          {
+            "destination": "specs/current/SkillManager.tla",
+            "relative": "SkillManager.tla",
+            "source": "specs/tickets/109-resolver-cycle/desired/SkillManager.tla"
+          },
+          {
+            "destination": "specs/current/case_adapters.toml",
+            "relative": "case_adapters.toml",
+            "source": "specs/tickets/109-resolver-cycle/desired/case_adapters.toml"
+          },
+          {
+            "destination": "specs/current/extract_manifest.sh",
+            "relative": "extract_manifest.sh",
+            "source": "specs/tickets/109-resolver-cycle/desired/extract_manifest.sh"
+          },
+          {
+            "destination": "specs/current/production_adapters.py",
+            "relative": "production_adapters.py",
+            "source": "specs/tickets/109-resolver-cycle/desired/production_adapters.py"
+          },
+          {
+            "destination": "specs/current/run_tlc.sh",
+            "relative": "run_tlc.sh",
+            "source": "specs/tickets/109-resolver-cycle/desired/run_tlc.sh"
+          },
+          {
+            "destination": "specs/current/spec_manifest.yaml",
+            "relative": "spec_manifest.yaml",
+            "source": "specs/tickets/109-resolver-cycle/desired/spec_manifest.yaml"
+          },
+          {
+            "destination": "specs/current/tests/test_cli_agent_context_program_model.py",
+            "relative": "tests/test_cli_agent_context_program_model.py",
+            "source": "specs/tickets/109-resolver-cycle/desired/tests/test_cli_agent_context_program_model.py"
+          },
+          {
+            "destination": "specs/current/tests/test_cli_help_program_model.py",
+            "relative": "tests/test_cli_help_program_model.py",
+            "source": "specs/tickets/109-resolver-cycle/desired/tests/test_cli_help_program_model.py"
+          },
+          {
+            "destination": "specs/current/tests/test_cli_metadata_program_model.py",
+            "relative": "tests/test_cli_metadata_program_model.py",
+            "source": "specs/tickets/109-resolver-cycle/desired/tests/test_cli_metadata_program_model.py"
+          },
+          {
+            "destination": "specs/current/tests/test_cli_skill_docs_program_model.py",
+            "relative": "tests/test_cli_skill_docs_program_model.py",
+            "source": "specs/tickets/109-resolver-cycle/desired/tests/test_cli_skill_docs_program_model.py"
+          },
+          {
+            "destination": "specs/current/tests/test_program_model_contract.py",
+            "relative": "tests/test_program_model_contract.py",
+            "source": "specs/tickets/109-resolver-cycle/desired/tests/test_program_model_contract.py"
+          }
+        ],
+        "operation": "replace",
+        "role": "current",
+        "source": "specs/tickets/109-resolver-cycle/desired"
+      }
+    ],
+    "operation": "replace project current with ticket desired and merge ticket artifacts into project specs",
+    "source": "specs/tickets/109-resolver-cycle"
+  },
+  "results": [
+    {
+      "exists": true,
+      "role": "result",
+      "snapshot": "specs/.history/desired-ticket-workflow/ticket-000-109-resolver-cycle/results/validation-summary.md",
+      "source": "specs/tickets/109-resolver-cycle/results/validation-summary.md"
+    }
+  ],
+  "schema_version": 1,
+  "snapshots": [
+    {
+      "exists": true,
+      "role": "program_model",
+      "snapshot": "specs/.history/desired-ticket-workflow/ticket-000-109-resolver-cycle/snapshots/program_model",
+      "source": "specs/program_model"
+    },
+    {
+      "exists": true,
+      "role": "desired_program_model",
+      "snapshot": "specs/.history/desired-ticket-workflow/ticket-000-109-resolver-cycle/snapshots/desired_program_model",
+      "source": "specs/desired_program_model"
+    },
+    {
+      "exists": true,
+      "role": "current",
+      "snapshot": "specs/.history/desired-ticket-workflow/ticket-000-109-resolver-cycle/snapshots/current",
+      "source": "specs/current"
+    },
+    {
+      "exists": true,
+      "moved": true,
+      "role": "ticket_workdir",
+      "snapshot": "specs/.history/desired-ticket-workflow/ticket-000-109-resolver-cycle/ticket",
+      "source": "specs/tickets/109-resolver-cycle"
+    }
+  ],
+  "spec_root": "specs",
+  "summary": "Normalized coord visits terminate cyclic reference walks, report cycles, install each reachable unit once, and clean staging",
+  "ticket": {
+    "acceptance": {
+      "assertions": [
+        "A source/version coordinate is fetched at most once per resolve.",
+        "A hard-reference cycle terminates and is reported as a recoverable cycle warning.",
+        "Distinct pins of the same source remain distinct coordinates.",
+        "Duplicate unit names merge requester attribution without replacing staged content.",
+        "No stage-* directory is leaked by a cycle or duplicate-name path."
+      ],
+      "commands": [
+        "bash specs/tickets/109-resolver-cycle/desired/run_tlc.sh",
+        "jbang RunTests.java ResolverCycleTest",
+        "python skills/test_graph/scripts/run.py --all"
+      ],
+      "evidence": [
+        "specs/tickets/109-resolver-cycle/results/validation-summary.md",
+        "specs/tickets/109-resolver-cycle/results/test-graph/20260712-175619/report.md",
+        "specs/tickets/109-resolver-cycle/results/test-graph/20260712-181209/report.md"
+      ]
+    },
+    "current_increment": {
+      "adapters": [
+        "Resolver.resolveAll"
+      ],
+      "graph_after_unit_pass": [
+        "resolver.cycles.verified in smoke, plugin-smoke, harness-smoke, doc-smoke, project-smoke, and skill-dev-smoke",
+        "source-tracking",
+        "git-latest-source-tracking",
+        "smoke",
+        "plugin-smoke",
+        "harness-smoke",
+        "doc-smoke",
+        "project-resolve",
+        "project-smoke",
+        "skill-dev-smoke"
+      ],
+      "model_actions": [
+        "InstallUnit",
+        "ResolveProjectDependencies"
+      ],
+      "model_state": [
+        "ResolveVisitedCoords",
+        "ResolveCycleEdges"
+      ],
+      "unit_tests": [
+        "tla-spec-dev --spec-root specs run spec-unit-tests --ticket 109-resolver-cycle",
+        "jbang RunTests.java ResolverCycleTest"
+      ]
+    },
+    "depends_on": [],
+    "desired_actions": [
+      "InstallUnit",
+      "ResolveProjectDependencies"
+    ],
+    "id": "109-resolver-cycle",
+    "implementation_scope": [
+      "src/main/java/dev/skillmanager/resolve/Resolver.java",
+      "src/main/java/dev/skillmanager/resolve/ResolvedGraph.java",
+      "src/test/java/dev/skillmanager/resolve/ResolverCycleTest.java"
+    ],
+    "objective": "Resolve finite cyclic reference graphs by fetching each normalized source/version coordinate once, installing each unit once, and reporting recoverable cycles without leaking staging directories.",
+    "status": "done",
+    "title": "resolver: Resolver.resolveAll BFS cycle detection and staging cleanup"
+  },
+  "ticket_id": "109-resolver-cycle",
+  "ticket_index": 0,
+  "ticket_plan": "specs/desired_program_model/ticket_plan.yaml",
+  "ticket_status": "done",
+  "ticket_workdir": {
+    "exists": true,
+    "moved": true,
+    "role": "ticket_workdir",
+    "snapshot": "specs/.history/desired-ticket-workflow/ticket-000-109-resolver-cycle/ticket",
+    "source": "specs/tickets/109-resolver-cycle"
+  },
+  "workflow_name": "desired-ticket-workflow"
+}

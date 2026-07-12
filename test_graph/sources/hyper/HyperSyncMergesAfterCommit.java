@@ -34,7 +34,7 @@ public class HyperSyncMergesAfterCommit {
             .kind(NodeSpec.Kind.ASSERTION)
             .dependsOn("hyper.sync.refuses.on.local.commit")
             .tags("hyper", "source-tracking", "sync", "merge")
-            .sideEffects("net:remote")
+            .sideEffects("net:external")
             .timeout("120s");
 
     private static final String LOCAL_FILE = "SOURCE_TRACKING_TEST.md";

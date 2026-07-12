@@ -33,7 +33,7 @@ public class SeleniumReady {
     static final NodeSpec SPEC = NodeSpec.of("selenium.ready")
             .kind(NodeSpec.Kind.FIXTURE)
             .tags("selenium", "browser")
-            .sideEffects("proc:spawn", "net:download")
+            .sideEffects("browser", "net:external", "fs:tmp")
             .timeout("240s");
 
     public static void main(String[] args) {

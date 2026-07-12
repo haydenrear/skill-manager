@@ -36,7 +36,7 @@ public class HyperCheckout {
             .kind(NodeSpec.Kind.FIXTURE)
             .dependsOn("env.prepared")
             .tags("hyper", "git", "checkout")
-            .sideEffects("net:remote", "fs:write")
+            .sideEffects("net:external", "fs:tmp")
             .timeout("90s")
             .output("skillDir", "string")
             .output("source", "string");

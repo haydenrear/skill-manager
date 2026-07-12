@@ -9,13 +9,18 @@ import dev.skillmanager.shared.util.Fs;
 import dev.skillmanager.util.Log;
 
 import java.io.IOException;
+import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Two-phase resolver:
@@ -67,11 +72,26 @@ public final class Resolver {
      * first IOException) so a batch can report N failures in one run
      * AND install whatever pieces succeeded.
      */
-    public record ResolveOutcome(ResolvedGraph graph, List<ResolveFailure> failures) {
+    /** A recoverable hard-reference cycle, reported in traversal order. */
+    public record ResolveCycle(List<String> path) {
+        public ResolveCycle {
+            path = path == null ? List.of() : List.copyOf(path);
+        }
+
+        public String description() { return String.join(" -> ", path); }
+    }
+
+    public record ResolveOutcome(
+            ResolvedGraph graph,
+            List<ResolveFailure> failures,
+            List<ResolveCycle> cycles
+    ) {
         public ResolveOutcome {
             failures = failures == null ? List.of() : List.copyOf(failures);
+            cycles = cycles == null ? List.of() : List.copyOf(cycles);
         }
         public boolean hasFailures() { return !failures.isEmpty(); }
+        public boolean hasCycles() { return !cycles.isEmpty(); }
     }
 
     /**
@@ -108,18 +128,42 @@ public final class Resolver {
     public ResolveOutcome resolveAll(List<Coord> coords, Map<String, Coord> aliases) throws IOException {
         ResolvedGraph graph = new ResolvedGraph();
         List<ResolveFailure> failures = new ArrayList<>();
+        List<ResolveCycle> cycles = new ArrayList<>();
+        Set<String> reportedCycles = new LinkedHashSet<>();
+        Set<CoordKey> visited = new HashSet<>();
+        Map<CoordKey, String> resolvedNames = new HashMap<>();
         Deque<Pending> queue = new ArrayDeque<>();
         for (Coord c : coords) {
             Coord resolved = resolveAlias(c.source(), c.version(), aliases);
-            queue.push(new Pending(resolved.source(), resolved.version(), null));
+            queue.push(new Pending(resolved.source(), resolved.version(), null, List.of()));
         }
 
         while (!queue.isEmpty()) {
             Pending p = queue.pop();
             String coord = p.source;
+            CoordKey key = coordKey(coord, p.version);
 
-            String guessName = guessName(coord);
-            if (guessName != null && graph.contains(guessName)) continue;
+            int cycleStart = ancestorIndex(p.ancestors, key);
+            if (cycleStart >= 0) {
+                List<String> path = new ArrayList<>();
+                for (int i = cycleStart; i < p.ancestors.size(); i++) {
+                    path.add(p.ancestors.get(i).unitName());
+                }
+                path.add(resolvedNames.getOrDefault(key, guessName(coord)));
+                String signature = String.join("\u0000", path);
+                if (reportedCycles.add(signature)) {
+                    ResolveCycle cycle = new ResolveCycle(path);
+                    cycles.add(cycle);
+                    Log.warn("reference cycle: %s", cycle.description());
+                }
+                mergeRequester(graph, resolvedNames.get(key), p.requestedBy);
+                continue;
+            }
+
+            if (!visited.add(key)) {
+                mergeRequester(graph, resolvedNames.get(key), p.requestedBy);
+                continue;
+            }
 
             Path staging = Files.createTempDirectory(store.cacheDir(), "stage-");
             Fetcher.FetchResult fetched;
@@ -154,6 +198,12 @@ public final class Resolver {
             }
 
             boolean reused = store.contains(unit.name());
+            resolvedNames.put(key, unit.name());
+            if (graph.contains(unit.name())) {
+                graph.addRequester(unit.name(), p.requestedBy);
+                Fs.deleteRecursive(staging);
+                continue;
+            }
             graph.add(new ResolvedGraph.Resolved(
                     unit.name(),
                     unit.version(),
@@ -168,6 +218,8 @@ public final class Resolver {
             ));
 
             Path originDir = fetched.dir();
+            List<Ancestor> childAncestors = new ArrayList<>(p.ancestors);
+            childAncestors.add(new Ancestor(key, unit.name()));
             for (UnitReference ref : unit.references()) {
                 String childSource;
                 String childVersion;
@@ -186,12 +238,11 @@ public final class Resolver {
                 Coord alias = resolveAlias(childSource, childVersion, aliases);
                 childSource = alias.source();
                 childVersion = alias.version();
-                String childName = ref.name() != null ? ref.name() : guessName(childSource);
-                if (childName != null && graph.contains(childName)) continue;
-                queue.push(new Pending(childSource, childVersion, unit.name()));
+                queue.push(new Pending(
+                        childSource, childVersion, unit.name(), List.copyOf(childAncestors)));
             }
         }
-        return new ResolveOutcome(graph, failures);
+        return new ResolveOutcome(graph, failures, cycles);
     }
 
     private static Coord resolveAlias(String source, String version, Map<String, Coord> aliases) {
@@ -248,5 +299,77 @@ public final class Resolver {
         return tail.isBlank() ? null : tail;
     }
 
-    private record Pending(String source, String version, String requestedBy) {}
+    private static void mergeRequester(ResolvedGraph graph, String name, String requestedBy) {
+        if (name != null) graph.addRequester(name, requestedBy);
+    }
+
+    private static int ancestorIndex(List<Ancestor> ancestors, CoordKey key) {
+        for (int i = 0; i < ancestors.size(); i++) {
+            if (ancestors.get(i).key().equals(key)) return i;
+        }
+        return -1;
+    }
+
+    private static CoordKey coordKey(String source, String version) {
+        String normalizedSource = source == null ? "" : source.trim();
+        String normalizedVersion = version == null || version.isBlank() ? null : version.trim();
+
+        String registryName = registryName(normalizedSource);
+        if (registryName != null) {
+            int at = normalizedSource.indexOf('@');
+            if (at >= 0 && normalizedVersion == null) {
+                normalizedVersion = normalizedSource.substring(at + 1).trim();
+            }
+            normalizedSource = registryName;
+        } else {
+            normalizedSource = canonicalDirectSource(normalizedSource);
+        }
+        return new CoordKey(normalizedSource, normalizedVersion);
+    }
+
+    private static String canonicalDirectSource(String source) {
+        String value = source;
+        if (value.startsWith("file:")) value = value.substring("file:".length());
+        if (value.startsWith("./") || value.startsWith("../") || value.startsWith("/")) {
+            return Path.of(value).toAbsolutePath().normalize().toString();
+        }
+
+        if (value.startsWith("github:")) {
+            return canonicalGithubPath(value.substring("github:".length()));
+        }
+        if (value.startsWith("git+")) value = value.substring("git+".length());
+
+        try {
+            URI uri = URI.create(value);
+            if (uri.getHost() != null && uri.getHost().equalsIgnoreCase("github.com")) {
+                return canonicalGithubPath(uri.getPath());
+            }
+        } catch (IllegalArgumentException ignored) {
+            // Non-URI direct sources retain their trimmed spelling.
+        }
+        return stripGitSuffix(value);
+    }
+
+    private static String canonicalGithubPath(String path) {
+        String normalized = path;
+        while (normalized.startsWith("/")) normalized = normalized.substring(1);
+        normalized = stripGitSuffix(normalized);
+        return "https://github.com/" + normalized.toLowerCase(java.util.Locale.ROOT);
+    }
+
+    private static String stripGitSuffix(String value) {
+        String normalized = value;
+        while (normalized.endsWith("/")) normalized = normalized.substring(0, normalized.length() - 1);
+        if (normalized.endsWith(".git")) normalized = normalized.substring(0, normalized.length() - 4);
+        return normalized;
+    }
+
+    private record CoordKey(String source, String version) {}
+    private record Ancestor(CoordKey key, String unitName) {}
+    private record Pending(
+            String source,
+            String version,
+            String requestedBy,
+            List<Ancestor> ancestors
+    ) {}
 }

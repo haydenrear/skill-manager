@@ -85,6 +85,7 @@ import dev.skillmanager.resolve.ResolverDeterminismTest;
 import dev.skillmanager.resolve.ResolverDirectGitDetectsKindTest;
 import dev.skillmanager.resolve.ResolverHeterogeneousRefsTest;
 import dev.skillmanager.resolve.ResolverKindFilterTest;
+import dev.skillmanager.resolve.ResolverCycleTest;
 import dev.skillmanager.registry.RegistryUnavailableExceptionTest;
 import dev.skillmanager.store.FetcherLocalSourceTest;
 import dev.skillmanager.store.InstalledUnitRoundTripTest;
@@ -134,6 +135,7 @@ public class RunTests {
         failures += ResolverBundledAliasTest.run();
         failures += ResolverDirectGitDetectsKindTest.run();
         failures += ResolverDeterminismTest.run();
+        failures += ResolverCycleTest.run();
         failures += PlanShapeInvariantTest.run();
         failures += SkillScriptBackendTest.run();
         failures += CycleDetectionTest.run();

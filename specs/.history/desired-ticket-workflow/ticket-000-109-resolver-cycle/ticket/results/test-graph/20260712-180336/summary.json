@@ -1,0 +1,374 @@
+{"runId":"20260712-180336","nodes":[{
+  "nodeId" : "ci.logged.in",
+  "status" : "passed",
+  "startedAt" : "2026-07-12T18:03:43.632506Z",
+  "endedAt" : "2026-07-12T18:03:45.144402Z",
+  "assertions" : [ {
+    "name" : "token_cached",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "login",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-109-resolver-cycle/skill-manager", "login", "--client-id", "skill-manager-ci", "--client-secret", "dev-ci-secret-change-me", "--scope", "skill:publish ad:manage", "--registry", "http://127.0.0.1:64577" ],
+    "startedAt" : "2026-07-12T18:03:43.640209Z",
+    "endedAt" : "2026-07-12T18:03:45.143954Z",
+    "exitCode" : 0,
+    "pid" : 84081,
+    "log" : "node-logs/ci.logged.in.login.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "durationMs" : 1512
+  },
+  "logs" : [ ],
+  "published" : {
+    "clientId" : "skill-manager-ci"
+  }
+,"executorStartedAt":"2026-07-12T18:03:43.128457Z","executorEndedAt":"2026-07-12T18:03:45.258349Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/ci.logged.in.stdout.log","inputContextFile":"context/ci.logged.in.input.json"},{
+  "nodeId" : "env.prepared",
+  "status" : "passed",
+  "startedAt" : "2026-07-12T18:03:36.593422Z",
+  "endedAt" : "2026-07-12T18:03:36.624148Z",
+  "assertions" : [ {
+    "name" : "home_created",
+    "status" : "passed"
+  }, {
+    "name" : "agent_home_created",
+    "status" : "passed"
+  }, {
+    "name" : "codex_home_created",
+    "status" : "passed"
+  }, {
+    "name" : "gemini_home_created",
+    "status" : "passed"
+  }, {
+    "name" : "ports_allocated",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ ],
+  "metrics" : {
+    "registryPort" : 64577,
+    "gatewayPort" : 64578,
+    "durationMs" : 31
+  },
+  "logs" : [ ],
+  "published" : {
+    "home" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-1383845597903256912",
+    "claudeHome" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-1383845597903256912/agent-home",
+    "codexHome" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-1383845597903256912/agent-home/.codex",
+    "geminiHome" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-1383845597903256912/agent-home/.gemini",
+    "registryPort" : "64577",
+    "gatewayPort" : "64578"
+  }
+,"executorStartedAt":"2026-07-12T18:03:36.133584Z","executorEndedAt":"2026-07-12T18:03:36.740773Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/env.prepared.stdout.log","inputContextFile":"context/env.prepared.input.json"},{
+  "nodeId" : "gateway.python.venv.ready",
+  "status" : "passed",
+  "startedAt" : "2026-07-12T18:03:37.226670Z",
+  "endedAt" : "2026-07-12T18:03:37.262228Z",
+  "assertions" : [ {
+    "name" : "uv_sync_ok",
+    "status" : "passed"
+  }, {
+    "name" : "venv_python_present",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "uv-sync",
+    "command" : [ "uv", "sync", "--all-extras" ],
+    "startedAt" : "2026-07-12T18:03:37.232869Z",
+    "endedAt" : "2026-07-12T18:03:37.261604Z",
+    "exitCode" : 0,
+    "pid" : 83940,
+    "log" : "node-logs/gateway.python.venv.ready.uv-sync.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "durationMs" : 36
+  },
+  "logs" : [ ],
+  "published" : {
+    "venvPython" : "/Users/hayde/IdeaProjects/wt-109-resolver-cycle/virtual-mcp-gateway/.venv/bin/python"
+  }
+,"executorStartedAt":"2026-07-12T18:03:36.741744Z","executorEndedAt":"2026-07-12T18:03:37.374707Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/gateway.python.venv.ready.stdout.log","inputContextFile":"context/gateway.python.venv.ready.input.json"},{
+  "nodeId" : "jwt.valid",
+  "status" : "passed",
+  "startedAt" : "2026-07-12T18:03:45.739730Z",
+  "endedAt" : "2026-07-12T18:03:45.929455Z",
+  "assertions" : [ {
+    "name" : "authed_me_is_200",
+    "status" : "passed"
+  }, {
+    "name" : "identity_matches_expected_user",
+    "status" : "passed"
+  }, {
+    "name" : "unauthed_publish_is_401",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ ],
+  "metrics" : {
+    "me_status" : 200,
+    "unauth_publish_status" : 401,
+    "durationMs" : 190
+  },
+  "logs" : [ ],
+  "published" : { }
+,"executorStartedAt":"2026-07-12T18:03:45.259154Z","executorEndedAt":"2026-07-12T18:03:46.391098Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/jwt.valid.stdout.log","inputContextFile":"context/jwt.valid.input.json"},{
+  "nodeId" : "onboard.agent.configs.written",
+  "status" : "passed",
+  "startedAt" : "2026-07-12T18:04:02.181608Z",
+  "endedAt" : "2026-07-12T18:04:02.211275Z",
+  "assertions" : [ {
+    "name" : "claude_config_exists",
+    "status" : "passed"
+  }, {
+    "name" : "claude_gateway_entry_present",
+    "status" : "passed"
+  }, {
+    "name" : "claude_gateway_url_matches",
+    "status" : "passed"
+  }, {
+    "name" : "codex_config_exists",
+    "status" : "passed"
+  }, {
+    "name" : "codex_gateway_entry_present",
+    "status" : "passed"
+  }, {
+    "name" : "codex_gateway_url_matches",
+    "status" : "passed"
+  }, {
+    "name" : "real_home_untouched",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ ],
+  "metrics" : {
+    "durationMs" : 30
+  },
+  "logs" : [ ],
+  "published" : { }
+,"executorStartedAt":"2026-07-12T18:04:01.625753Z","executorEndedAt":"2026-07-12T18:04:02.223908Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/onboard.agent.configs.written.stdout.log","inputContextFile":"context/onboard.agent.configs.written.input.json"},{
+  "nodeId" : "onboard.completed",
+  "status" : "passed",
+  "startedAt" : "2026-07-12T18:03:48.049867Z",
+  "endedAt" : "2026-07-12T18:03:59.774882Z",
+  "assertions" : [ {
+    "name" : "onboard_exit_zero",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "onboard",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-109-resolver-cycle/skill-manager", "onboard", "--install-dir", "/Users/hayde/IdeaProjects/wt-109-resolver-cycle", "--registry", "http://127.0.0.1:64577" ],
+    "startedAt" : "2026-07-12T18:03:48.058057Z",
+    "endedAt" : "2026-07-12T18:03:59.774377Z",
+    "exitCode" : 0,
+    "pid" : 84112,
+    "log" : "node-logs/onboard.completed.onboard.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "exitCode" : 0,
+    "durationMs" : 11725
+  },
+  "logs" : [ ],
+  "published" : {
+    "home" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-1383845597903256912",
+    "agentHome" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-1383845597903256912/agent-home"
+  }
+,"executorStartedAt":"2026-07-12T18:03:47.577359Z","executorEndedAt":"2026-07-12T18:03:59.885128Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/onboard.completed.stdout.log","inputContextFile":"context/onboard.completed.input.json"},{
+  "nodeId" : "onboard.gateway.healthy",
+  "status" : "passed",
+  "startedAt" : "2026-07-12T18:04:00.975788Z",
+  "endedAt" : "2026-07-12T18:04:01.147359Z",
+  "assertions" : [ {
+    "name" : "gateway_health_reachable",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ ],
+  "metrics" : {
+    "durationMs" : 172
+  },
+  "logs" : [ ],
+  "published" : { }
+,"executorStartedAt":"2026-07-12T18:04:00.506532Z","executorEndedAt":"2026-07-12T18:04:01.625027Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/onboard.gateway.healthy.stdout.log","inputContextFile":"context/onboard.gateway.healthy.input.json"},{
+  "nodeId" : "onboard.seeded.by.server",
+  "status" : "passed",
+  "startedAt" : "2026-07-12T18:03:46.895179Z",
+  "endedAt" : "2026-07-12T18:03:47.095527Z",
+  "assertions" : [ {
+    "name" : "skill_manager_seeded",
+    "status" : "passed"
+  }, {
+    "name" : "skill_publisher_seeded",
+    "status" : "passed"
+  }, {
+    "name" : "skill_dev_seeded",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ ],
+  "metrics" : {
+    "durationMs" : 200
+  },
+  "logs" : [ ],
+  "published" : { }
+,"executorStartedAt":"2026-07-12T18:03:46.391908Z","executorEndedAt":"2026-07-12T18:03:47.576580Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/onboard.seeded.by.server.stdout.log","inputContextFile":"context/onboard.seeded.by.server.input.json"},{
+  "nodeId" : "onboard.skills.installed",
+  "status" : "passed",
+  "startedAt" : "2026-07-12T18:04:00.355562Z",
+  "endedAt" : "2026-07-12T18:04:00.403871Z",
+  "assertions" : [ {
+    "name" : "skill_manager_dir_present",
+    "status" : "passed"
+  }, {
+    "name" : "skill_manager_md_present",
+    "status" : "passed"
+  }, {
+    "name" : "skill_publisher_dir_present",
+    "status" : "passed"
+  }, {
+    "name" : "skill_publisher_md_present",
+    "status" : "passed"
+  }, {
+    "name" : "skill_dev_dir_present",
+    "status" : "passed"
+  }, {
+    "name" : "skill_dev_md_present",
+    "status" : "passed"
+  }, {
+    "name" : "skill_manager_git_metadata_present",
+    "status" : "passed"
+  }, {
+    "name" : "skill_publisher_git_metadata_present",
+    "status" : "passed"
+  }, {
+    "name" : "skill_dev_git_metadata_present",
+    "status" : "passed"
+  }, {
+    "name" : "skill_manager_origin_points_to_github",
+    "status" : "passed"
+  }, {
+    "name" : "skill_publisher_origin_points_to_github",
+    "status" : "passed"
+  }, {
+    "name" : "skill_dev_origin_points_to_github",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ ],
+  "metrics" : {
+    "durationMs" : 48
+  },
+  "logs" : [ ],
+  "published" : { }
+,"executorStartedAt":"2026-07-12T18:03:59.885842Z","executorEndedAt":"2026-07-12T18:04:00.505795Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/onboard.skills.installed.stdout.log","inputContextFile":"context/onboard.skills.installed.input.json"},{
+  "nodeId" : "postgres.down",
+  "status" : "passed",
+  "startedAt" : "2026-07-12T18:04:06.434413Z",
+  "endedAt" : "2026-07-12T18:04:06.632923Z",
+  "assertions" : [ {
+    "name" : "stopped",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "compose-stop",
+    "command" : [ "docker", "compose", "-f", "/Users/hayde/IdeaProjects/wt-109-resolver-cycle/docker-compose.yml", "stop", "postgres" ],
+    "startedAt" : "2026-07-12T18:04:06.440431Z",
+    "endedAt" : "2026-07-12T18:04:06.632461Z",
+    "exitCode" : 0,
+    "pid" : 84268,
+    "log" : "node-logs/postgres.down.compose-stop.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "durationMs" : 198
+  },
+  "logs" : [ ],
+  "published" : { }
+,"executorStartedAt":"2026-07-12T18:04:05.966823Z","executorEndedAt":"2026-07-12T18:04:06.763823Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/postgres.down.stdout.log","inputContextFile":"context/postgres.down.input.json"},{
+  "nodeId" : "postgres.up",
+  "status" : "passed",
+  "startedAt" : "2026-07-12T18:03:37.864013Z",
+  "endedAt" : "2026-07-12T18:03:38.389466Z",
+  "assertions" : [ {
+    "name" : "reachable",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "compose-up",
+    "command" : [ "docker", "compose", "-f", "/Users/hayde/IdeaProjects/wt-109-resolver-cycle/docker-compose.yml", "up", "-d", "postgres" ],
+    "startedAt" : "2026-07-12T18:03:37.952179Z",
+    "endedAt" : "2026-07-12T18:03:38.172878Z",
+    "exitCode" : 0,
+    "pid" : 83950,
+    "log" : "node-logs/postgres.up.compose-up.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "durationMs" : 525
+  },
+  "logs" : [ ],
+  "published" : {
+    "dbUrl" : "jdbc:postgresql://localhost:5432/skill_registry_test",
+    "dbUser" : "postgres",
+    "dbPassword" : "postgres"
+  }
+,"executorStartedAt":"2026-07-12T18:03:37.375455Z","executorEndedAt":"2026-07-12T18:03:38.489244Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/postgres.up.stdout.log","inputContextFile":"context/postgres.up.input.json"},{
+  "nodeId" : "registry.up",
+  "status" : "passed",
+  "startedAt" : "2026-07-12T18:03:38.988376Z",
+  "endedAt" : "2026-07-12T18:03:42.629062Z",
+  "assertions" : [ {
+    "name" : "health_ok",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ ],
+  "metrics" : {
+    "pid" : 83978,
+    "port" : 64577,
+    "durationMs" : 3641
+  },
+  "logs" : [ ],
+  "published" : {
+    "baseUrl" : "http://127.0.0.1:64577"
+  }
+,"executorStartedAt":"2026-07-12T18:03:38.490150Z","executorEndedAt":"2026-07-12T18:03:43.127486Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/registry.up.stdout.log","inputContextFile":"context/registry.up.input.json"},{
+  "nodeId" : "servers.down",
+  "status" : "passed",
+  "startedAt" : "2026-07-12T18:04:02.678570Z",
+  "endedAt" : "2026-07-12T18:04:05.853139Z",
+  "assertions" : [ {
+    "name" : "gateway_down",
+    "status" : "passed"
+  }, {
+    "name" : "registry_down",
+    "status" : "passed"
+  }, {
+    "name" : "echo_fixture_down",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "gateway-down",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-109-resolver-cycle/skill-manager", "gateway", "down" ],
+    "startedAt" : "2026-07-12T18:04:02.686782Z",
+    "endedAt" : "2026-07-12T18:04:04.022783Z",
+    "exitCode" : 0,
+    "pid" : 84250,
+    "log" : "node-logs/servers.down.gateway-down.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "durationMs" : 3175
+  },
+  "logs" : [ ],
+  "published" : { }
+,"executorStartedAt":"2026-07-12T18:04:02.224656Z","executorEndedAt":"2026-07-12T18:04:05.965373Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/servers.down.stdout.log","inputContextFile":"context/servers.down.input.json"}]}

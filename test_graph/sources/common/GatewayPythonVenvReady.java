@@ -31,7 +31,7 @@ public class GatewayPythonVenvReady {
     static final NodeSpec SPEC = NodeSpec.of("gateway.python.venv.ready")
             .kind(NodeSpec.Kind.FIXTURE)
             .tags("gateway", "python", "venv")
-            .sideEffects("net:remote", "fs:write")
+            .sideEffects("net:external", "fs:tmp")
             .timeout("180s")
             .retries(2)
             .output("venvPython", "string");

@@ -19,7 +19,6 @@ public class PostgresDown {
     static final NodeSpec SPEC = NodeSpec.of("postgres.down")
             .kind(NodeSpec.Kind.EVIDENCE)
             .tags("postgres", "teardown")
-            .sideEffects("docker")
             .timeout("30s")
             .retries(2);
 

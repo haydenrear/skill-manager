@@ -41,7 +41,7 @@ public class RefreshOnExpiry {
             .kind(NodeSpec.Kind.ASSERTION)
             .dependsOn("account.created", "selenium.ready", "short.access.token.ttl")
             .tags("auth", "refresh")
-            .sideEffects("proc:spawn", "net:local")
+            .sideEffects("browser", "net:local")
             .timeout("180s");
 
     public static void main(String[] args) {
