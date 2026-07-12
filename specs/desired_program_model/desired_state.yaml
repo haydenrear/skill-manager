@@ -1,0 +1,54 @@
+version: 1
+name: desired-program-model
+canonical_tla_module: SkillManager
+views:
+  internal:
+    module: Internal.tla
+    config: Internal.cfg
+    generates: spec_unit
+    adapter_mapping: case_adapters.toml
+  external:
+    module: External.tla
+    config: External.cfg
+    generates: testgraph
+    adapter_mapping: testgraph_bindings.yml
+manifest: spec_manifest.yaml
+ticket_plan: ticket_plan.yaml
+
+relationship:
+  extends_current_program_model: ../program_model/Internal.tla
+  extends_current_external_model: ../program_model/External.tla
+  purpose: desired whole-program model for ticket workflow
+  generation_status: planned
+
+implementation_status:
+  updated: 2026-07-12
+  policy: specs/current is the executable state of landed work; this file summarizes the desired destination.
+  active_ticket: 109-resolver-cycle
+  active_ticket_title: "resolver: Resolver.resolveAll BFS cycle detection and staging cleanup"
+  summary:
+    desired_model_scaffolded: true
+    ticket_breakdown: defined
+    current_model: scaffolded
+    generated_desired_cases: pending
+    adapters: pending
+
+modeled_boundary_status:
+  ticket_plan:
+    status: scaffolded
+    artifact: ticket_plan.yaml
+    next_ticket: 109-resolver-cycle
+
+program_domains:
+  - dependency_resolution
+implementation_sources:
+  dependency_resolution:
+    - src/main/java/dev/skillmanager/resolve/Resolver.java
+    - src/main/java/dev/skillmanager/resolve/ResolvedGraph.java
+adapter_plan:
+  desired_new_ports: []
+guardrails:
+  resolve_each_normalized_coord_at_most_once: true
+  preserve_distinct_source_versions: true
+  report_ancestor_cycles: true
+  cleanup_redundant_staging: true
