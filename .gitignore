@@ -79,3 +79,16 @@ specs/generated
 .gemini
 .claude
 .skill-manager
+
+# TLA+/TLC model-checker runtime state.
+specs/**/states/
+states/
+*.st
+*.fp
+*.chkpt
+*.chkpt.*
+
+# Local infrastructure state.
+**/.terraform/
+*.tfstate
+*.tfstate.*
