@@ -1,0 +1,222 @@
+{
+  "accept_new": false,
+  "accept_new_promotion": null,
+  "active_ticket_dir": "specs/tickets/115-direct-git-references",
+  "commit_recommendation": {
+    "git_add": "git add specs/.history/desired-ticket-workflow/ticket-000-115-direct-git-references specs/current",
+    "git_commit": "git commit -m 'record spec history for 115-direct-git-references'",
+    "message": "It is recommended to commit this history directory now: specs/.history/desired-ticket-workflow/ticket-000-115-direct-git-references"
+  },
+  "created_at_utc": "2026-07-14T23:57:56.561857+00:00",
+  "entry_name": "ticket-000-115-direct-git-references",
+  "git": {
+    "branch": "feature/115-direct-git-reference-resolution",
+    "commit": "4ccf8f8",
+    "inside_work_tree": "true"
+  },
+  "history_policy": "append-only by convention; existing entries are not overwritten and filesystem permissions remain git-friendly",
+  "kind": "ticket",
+  "promotion": {
+    "destination": "specs",
+    "merged": [
+      {
+        "destination": "specs/current",
+        "files": [
+          {
+            "destination": "specs/current/MC.cfg",
+            "relative": "MC.cfg",
+            "source": "specs/tickets/115-direct-git-references/desired/MC.cfg"
+          },
+          {
+            "destination": "specs/current/MC_program_promotion.cfg",
+            "relative": "MC_program_promotion.cfg",
+            "source": "specs/tickets/115-direct-git-references/desired/MC_program_promotion.cfg"
+          },
+          {
+            "destination": "specs/current/README.md",
+            "relative": "README.md",
+            "source": "specs/tickets/115-direct-git-references/desired/README.md"
+          },
+          {
+            "destination": "specs/current/SkillManager.tla",
+            "relative": "SkillManager.tla",
+            "source": "specs/tickets/115-direct-git-references/desired/SkillManager.tla"
+          },
+          {
+            "destination": "specs/current/case_adapters.toml",
+            "relative": "case_adapters.toml",
+            "source": "specs/tickets/115-direct-git-references/desired/case_adapters.toml"
+          },
+          {
+            "destination": "specs/current/extract_manifest.sh",
+            "relative": "extract_manifest.sh",
+            "source": "specs/tickets/115-direct-git-references/desired/extract_manifest.sh"
+          },
+          {
+            "destination": "specs/current/production_adapters.py",
+            "relative": "production_adapters.py",
+            "source": "specs/tickets/115-direct-git-references/desired/production_adapters.py"
+          },
+          {
+            "destination": "specs/current/run_tlc.sh",
+            "relative": "run_tlc.sh",
+            "source": "specs/tickets/115-direct-git-references/desired/run_tlc.sh"
+          },
+          {
+            "destination": "specs/current/spec_manifest.yaml",
+            "relative": "spec_manifest.yaml",
+            "source": "specs/tickets/115-direct-git-references/desired/spec_manifest.yaml"
+          },
+          {
+            "destination": "specs/current/tests/test_cli_agent_context_program_model.py",
+            "relative": "tests/test_cli_agent_context_program_model.py",
+            "source": "specs/tickets/115-direct-git-references/desired/tests/test_cli_agent_context_program_model.py"
+          },
+          {
+            "destination": "specs/current/tests/test_cli_help_program_model.py",
+            "relative": "tests/test_cli_help_program_model.py",
+            "source": "specs/tickets/115-direct-git-references/desired/tests/test_cli_help_program_model.py"
+          },
+          {
+            "destination": "specs/current/tests/test_cli_metadata_program_model.py",
+            "relative": "tests/test_cli_metadata_program_model.py",
+            "source": "specs/tickets/115-direct-git-references/desired/tests/test_cli_metadata_program_model.py"
+          },
+          {
+            "destination": "specs/current/tests/test_cli_skill_docs_program_model.py",
+            "relative": "tests/test_cli_skill_docs_program_model.py",
+            "source": "specs/tickets/115-direct-git-references/desired/tests/test_cli_skill_docs_program_model.py"
+          },
+          {
+            "destination": "specs/current/tests/test_program_model_contract.py",
+            "relative": "tests/test_program_model_contract.py",
+            "source": "specs/tickets/115-direct-git-references/desired/tests/test_program_model_contract.py"
+          }
+        ],
+        "operation": "replace",
+        "role": "current",
+        "source": "specs/tickets/115-direct-git-references/desired"
+      }
+    ],
+    "operation": "replace project current with ticket desired and merge ticket artifacts into project specs",
+    "source": "specs/tickets/115-direct-git-references"
+  },
+  "results": [
+    {
+      "exists": true,
+      "role": "result",
+      "snapshot": "specs/.history/desired-ticket-workflow/ticket-000-115-direct-git-references/results/validation-summary.md",
+      "source": "specs/tickets/115-direct-git-references/results/validation-summary.md"
+    }
+  ],
+  "schema_version": 1,
+  "snapshots": [
+    {
+      "exists": true,
+      "role": "program_model",
+      "snapshot": "specs/.history/desired-ticket-workflow/ticket-000-115-direct-git-references/snapshots/program_model",
+      "source": "specs/program_model"
+    },
+    {
+      "exists": true,
+      "role": "desired_program_model",
+      "snapshot": "specs/.history/desired-ticket-workflow/ticket-000-115-direct-git-references/snapshots/desired_program_model",
+      "source": "specs/desired_program_model"
+    },
+    {
+      "exists": true,
+      "role": "current",
+      "snapshot": "specs/.history/desired-ticket-workflow/ticket-000-115-direct-git-references/snapshots/current",
+      "source": "specs/current"
+    },
+    {
+      "exists": true,
+      "moved": true,
+      "role": "ticket_workdir",
+      "snapshot": "specs/.history/desired-ticket-workflow/ticket-000-115-direct-git-references/ticket",
+      "source": "specs/tickets/115-direct-git-references"
+    }
+  ],
+  "spec_root": "specs",
+  "summary": "Resolver traverses direct-git reference edges via CoordSource; four resolution guards admit ResolvableUnits (registry + git-resolvable); closure ignores coordinate kind",
+  "ticket": {
+    "acceptance": {
+      "assertions": [
+        "Dependency closure traverses a reference edge whatever its coordinate kind.",
+        "A unit reached only by a direct-git edge installs without registry publication.",
+        "A mutual direct-git reference terminates and is reported as a recoverable cycle.",
+        "A direct-git coordinate and its reference edge share one node and stay revision-aware.",
+        "A git-coordinate transitive dependency reaches the project lock and the project child home."
+      ],
+      "commands": [
+        "bash specs/tickets/115-direct-git-references/desired/run_tlc.sh SkillManager.tla MC.cfg",
+        "jbang RunTests.java",
+        "python skills/test_graph/scripts/run.py project-resolve",
+        "python skills/test_graph/scripts/run.py project-smoke"
+      ],
+      "evidence": [
+        "specs/tickets/115-direct-git-references/results/validation-summary.md"
+      ]
+    },
+    "current_increment": {
+      "adapters": [
+        "Resolver.resolveAll",
+        "CoordSource.of",
+        "ProjectDependencyResolver.resolve"
+      ],
+      "graph_after_unit_pass": [
+        "project-resolve",
+        "project-smoke"
+      ],
+      "model_actions": [
+        "InstallUnit",
+        "InstallUnitForceScripts",
+        "SyncUnit",
+        "SyncUnitForceScripts"
+      ],
+      "model_state": [
+        "DirectGitReferenceEdges",
+        "RegistryReferenceEdges",
+        "GitResolvableUnits",
+        "ResolvableUnits"
+      ],
+      "unit_tests": [
+        "bash specs/current/run_tlc.sh SkillManager.tla MC.cfg",
+        "jbang RunTests.java"
+      ]
+    },
+    "depends_on": [],
+    "desired_actions": [
+      "InstallUnit",
+      "InstallUnitForceScripts",
+      "SyncUnit",
+      "SyncUnitForceScripts",
+      "ResolveProjectDependencies"
+    ],
+    "id": "115-direct-git-references",
+    "implementation_scope": [
+      "src/main/java/dev/skillmanager/model/CoordSource.java",
+      "src/main/java/dev/skillmanager/resolve/Resolver.java",
+      "src/main/java/dev/skillmanager/effects/ResolveGraphHandlers.java",
+      "src/main/java/dev/skillmanager/project/ProjectDependencyResolver.java",
+      "src/test/java/dev/skillmanager/resolve/ResolverCycleTest.java",
+      "test_graph/sources/resolve/ResolverCyclesVerified.java",
+      "test_graph/sources/project/ProjectDependenciesResolved.java"
+    ],
+    "objective": "Dependency closure must traverse every reference edge regardless of coordinate kind. A unit named by a direct-git coordinate (github:owner/repo) in skill_references is resolved by cloning, installed once, and reported as a recoverable cycle when it references back \u2014 instead of being warned about and dropped because it carries neither a registry name nor a filesystem path.",
+    "status": "done",
+    "title": "Traverse direct-git skill references in resolver graphs"
+  },
+  "ticket_id": "115-direct-git-references",
+  "ticket_index": 0,
+  "ticket_plan": "specs/desired_program_model/ticket_plan.yaml",
+  "ticket_status": "done",
+  "ticket_workdir": {
+    "exists": true,
+    "moved": true,
+    "role": "ticket_workdir",
+    "snapshot": "specs/.history/desired-ticket-workflow/ticket-000-115-direct-git-references/ticket",
+    "source": "specs/tickets/115-direct-git-references"
+  },
+  "workflow_name": "desired-ticket-workflow"
+}

@@ -14,6 +14,7 @@ import dev.skillmanager.effects.SkillEffect;
 import dev.skillmanager.mcp.GatewayConfig;
 import dev.skillmanager.model.AgentUnit;
 import dev.skillmanager.model.Coord;
+import dev.skillmanager.model.CoordSource;
 import dev.skillmanager.model.DocRepoParser;
 import dev.skillmanager.model.DocUnit;
 import dev.skillmanager.model.HarnessParser;
@@ -255,11 +256,11 @@ public final class ProjectDependencyResolver {
             AgentUnit unit = bindingSourceStore.loadUnit(row.name()).orElseThrow(() ->
                     new IOException("project resolved unit is not installed in child store: " + row.name()));
             for (UnitReference child : unit.references()) {
-                unitName(child, unit.sourcePath()).ifPresent(childName -> {
-                    if (byName.containsKey(childName) && !visited.contains(childName)) {
-                        queue.add(childName);
-                    }
-                });
+                Optional<String> childName = unitNameInStore(child, unit.sourcePath(), bindingSourceStore);
+                if (childName.isEmpty()) continue;
+                if (byName.containsKey(childName.get()) && !visited.contains(childName.get())) {
+                    queue.add(childName.get());
+                }
             }
         }
         return new ArrayList<>(selected.values());
@@ -430,9 +431,10 @@ public final class ProjectDependencyResolver {
                     source,
                     directNames.contains(name)));
             for (UnitReference child : unit.references()) {
-                unitName(child, unit.sourcePath()).ifPresent(childName -> {
-                    if (!rows.containsKey(childName)) queue.add(childName);
-                });
+                Optional<String> childName = unitNameInStore(child, unit.sourcePath(), store);
+                if (childName.isPresent() && !rows.containsKey(childName.get())) {
+                    queue.add(childName.get());
+                }
             }
         }
         return new ArrayList<>(rows.values());
@@ -461,8 +463,11 @@ public final class ProjectDependencyResolver {
         Coord c = ref.reference().coord();
         if (c instanceof Coord.SubElement s) c = s.unitCoord();
         if (!(c instanceof Coord.DirectGit)) return Optional.empty();
+        return installedNameForOrigin(store, expectedOrigin(ref));
+    }
 
-        String expected = expectedOrigin(ref);
+    /** Installed unit whose recorded origin is {@code expected}, ignoring {@code git+} / {@code .git} spelling. */
+    private static Optional<String> installedNameForOrigin(SkillStore store, String expected) throws IOException {
         if (expected == null || expected.isBlank()) return Optional.empty();
         UnitStore unitStore = new UnitStore(store);
         for (AgentUnit unit : store.listInstalledUnits().units()) {
@@ -471,6 +476,26 @@ public final class ProjectDependencyResolver {
             if (sameOrigin(expected, record.get().origin())) return Optional.of(unit.name());
         }
         return Optional.empty();
+    }
+
+    /**
+     * Name of the unit a reference points at, for closure walks over units that
+     * are already installed in {@code store}.
+     *
+     * <p>A {@link Coord.DirectGit} reference carries no registry name and no
+     * path, so {@link #unitName} alone cannot name it — which used to drop
+     * git-referenced transitive deps out of the lock and the project child home
+     * even once the resolver had installed them. The unit is on disk by the time
+     * these walks run, so match it back by its recorded git origin (ticket 115).
+     */
+    private static Optional<String> unitNameInStore(UnitReference ref, Path baseRoot, SkillStore store)
+            throws IOException {
+        Optional<String> byCoord = unitName(ref, baseRoot);
+        if (byCoord.isPresent()) return byCoord;
+        Coord c = ref.coord();
+        if (c instanceof Coord.SubElement s) c = s.unitCoord();
+        if (!(c instanceof Coord.DirectGit g)) return Optional.empty();
+        return installedNameForOrigin(store, g.url());
     }
 
     private String discoverTopLevelName(SkillProject.ProjectUnitRef ref, Path baseRoot) throws IOException {
@@ -503,18 +528,13 @@ public final class ProjectDependencyResolver {
     private static InstallSource installSource(SkillProject.ProjectUnitRef ref, Path baseRoot) {
         Coord c = ref.reference().coord();
         if (c instanceof Coord.SubElement s) c = s.unitCoord();
-        String revision = blankToNull(ref.revision());
-        return switch (c) {
-            case Coord.Local l -> {
-                Path p = Path.of(l.path());
-                Path resolved = p.isAbsolute() ? p : baseRoot.resolve(p).normalize();
-                yield new InstallSource(resolved.toString(), null);
-            }
-            case Coord.Kinded k -> new InstallSource(k.name(), firstNonBlank(revision, k.version()));
-            case Coord.Bare b -> new InstallSource(b.name(), firstNonBlank(revision, b.version()));
-            case Coord.DirectGit g -> new InstallSource("git+" + g.url(), firstNonBlank(revision, g.ref()));
-            case Coord.SubElement ignored -> throw new IllegalStateException("handled above");
-        };
+        CoordSource projected = CoordSource.of(c, baseRoot);
+        // A local path carries no revision; for every other coord an explicit
+        // `revision = "…"` in skill-project.toml overrides the coord's own pin.
+        String version = c instanceof Coord.Local
+                ? null
+                : firstNonBlank(blankToNull(ref.revision()), projected.version());
+        return new InstallSource(projected.source(), version);
     }
 
     private static String expectedOrigin(SkillProject.ProjectUnitRef ref) {

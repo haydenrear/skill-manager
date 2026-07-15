@@ -20,8 +20,8 @@ public class ProjectDependenciesResolved {
     static final NodeSpec SPEC = NodeSpec.of("project.dependencies.resolved")
             .kind(NodeSpec.Kind.ACTION)
             .dependsOn("env.prepared")
-            .tags("project", "resolve", "issue-75")
-            .timeout("120s")
+            .tags("project", "resolve", "git", "issue-75", "issue-115")
+            .timeout("180s")
             .output("projectName", "string")
             .output("projectDir", "string")
             .output("lockFile", "string");
@@ -40,8 +40,15 @@ public class ProjectDependenciesResolved {
                 projectDir = Files.createTempDirectory("sm-project-resolve-");
                 Path units = projectDir.resolve("units");
                 Path child = scaffoldSkill(units, "tg-child", "");
+                // A transitive dependency named by direct-git coordinate, the
+                // form `github:owner/repo` takes in a real manifest (served over
+                // git+file:// so the clone stays offline). Before ticket 115 the
+                // resolver dropped this edge, so tg-git-child never installed
+                // and never reached the lock or the project child home.
+                Path gitChild = scaffoldSkill(units, "tg-git-child", "");
+                gitInitCommit(gitChild);
                 Path parent = scaffoldSkill(units, "tg-parent",
-                        "skill_references = [\"" + child + "\"]\n");
+                        "skill_references = [\"" + child + "\", \"git+file://" + gitChild + "\"]\n");
                 Path plugin = scaffoldPlugin(units, "tg-plugin");
                 Path prompts = scaffoldDocRepo(units, "tg-prompts");
                 Path harness = scaffoldHarness(units, "tg-harness", child, prompts);
@@ -83,12 +90,14 @@ public class ProjectDependenciesResolved {
             String lockText = read(lock);
             boolean lockHasParent = lockText.contains("name = \"tg-parent\"");
             boolean lockHasChild = lockText.contains("name = \"tg-child\"");
+            boolean lockHasGitChild = lockText.contains("name = \"tg-git-child\"");
             boolean lockHasPlugin = lockText.contains("name = \"tg-plugin\"");
             boolean lockHasDoc = lockText.contains("name = \"tg-prompts\"");
             boolean lockHasHarness = lockText.contains("name = \"tg-harness\"");
 
             boolean parentInstalled = Files.isRegularFile(Path.of(home, "skills", "tg-parent", "SKILL.md"));
             boolean childInstalled = Files.isRegularFile(Path.of(home, "skills", "tg-child", "SKILL.md"));
+            boolean gitChildInstalled = Files.isRegularFile(Path.of(home, "skills", "tg-git-child", "SKILL.md"));
             boolean pluginInstalled = Files.isRegularFile(Path.of(home, "plugins", "tg-plugin", ".claude-plugin/plugin.json"));
             boolean docInstalled = Files.isRegularFile(Path.of(home, "docs", "tg-prompts", "skill-manager.toml"));
             boolean harnessInstalled = Files.isRegularFile(Path.of(home, "harnesses", "tg-harness", "harness.toml"));
@@ -103,6 +112,7 @@ public class ProjectDependenciesResolved {
                     && Files.isDirectory(projectDir.resolve(".codex"))
                     && Files.isDirectory(projectDir.resolve(".claude"))
                     && Files.isDirectory(projectDir.resolve(".gemini"));
+            boolean gitChildProjected = Files.isRegularFile(childHome.resolve("skills/tg-git-child/SKILL.md"));
             boolean childUnits = Files.isRegularFile(childHome.resolve("skills/tg-child/SKILL.md"))
                     && Files.isRegularFile(childHome.resolve("skills/tg-parent/SKILL.md"))
                     && Files.isRegularFile(childHome.resolve("plugins/tg-plugin/.claude-plugin/plugin.json"))
@@ -166,11 +176,14 @@ public class ProjectDependenciesResolved {
                     && lockWritten
                     && lockHasParent
                     && lockHasChild
+                    && lockHasGitChild
                     && lockHasPlugin
                     && lockHasDoc
                     && lockHasHarness
                     && parentInstalled
                     && childInstalled
+                    && gitChildInstalled
+                    && gitChildProjected
                     && pluginInstalled
                     && docInstalled
                     && harnessInstalled
@@ -206,6 +219,9 @@ public class ProjectDependenciesResolved {
                                     + " lockWritten=" + lockWritten
                                     + " lockParent=" + lockHasParent
                                     + " lockChild=" + lockHasChild
+                                    + " lockGitChild=" + lockHasGitChild
+                                    + " gitChildInstalled=" + gitChildInstalled
+                                    + " gitChildProjected=" + gitChildProjected
                                     + " lockPlugin=" + lockHasPlugin
                                     + " lockDoc=" + lockHasDoc
                                     + " lockHarness=" + lockHasHarness
@@ -244,6 +260,10 @@ public class ProjectDependenciesResolved {
                     .assertion("project_lock_written", lockWritten)
                     .assertion("lock_records_direct_and_transitive_units",
                             lockHasParent && lockHasChild && lockHasPlugin && lockHasDoc && lockHasHarness)
+                    .assertion("lock_records_git_coordinate_transitive_unit", lockHasGitChild)
+                    .assertion("git_coordinate_transitive_unit_installed", gitChildInstalled)
+                    .assertion("git_coordinate_transitive_unit_projected_into_child_home",
+                            gitChildProjected)
                     .assertion("units_installed_in_home",
                             parentInstalled && childInstalled && pluginInstalled && docInstalled && harnessInstalled)
                     .assertion("doc_binding_materialized", docCopy && claudeImport)
@@ -271,6 +291,32 @@ public class ProjectDependenciesResolved {
                     .publish("projectDir", projectDir.toString())
                     .publish("lockFile", lock.toString());
         });
+    }
+
+    /** Make {@code dir} a git repo on {@code main} so it can be cloned over {@code git+file://}. */
+    private static void gitInitCommit(Path dir) throws Exception {
+        git(dir, "init", "-b", "main", "--quiet");
+        git(dir, "add", "-A");
+        git(dir, "-c", "user.email=fixture@skillmanager.local", "-c", "user.name=fixture",
+                "commit", "--quiet", "-m", "project resolve fixture");
+    }
+
+    private static void git(Path dir, String... args) throws Exception {
+        java.util.List<String> command = new java.util.ArrayList<>(
+                java.util.List.of("git", "-C", dir.toString()));
+        command.addAll(java.util.List.of(args));
+        Process process = new ProcessBuilder(command)
+                .redirectErrorStream(true)
+                .redirectOutput(ProcessBuilder.Redirect.DISCARD)
+                .start();
+        if (!process.waitFor(30, java.util.concurrent.TimeUnit.SECONDS)) {
+            process.destroyForcibly();
+            throw new IllegalStateException("git " + String.join(" ", args) + " timed out");
+        }
+        if (process.exitValue() != 0) {
+            throw new IllegalStateException(
+                    "git " + String.join(" ", args) + " failed: " + process.exitValue());
+        }
     }
 
     private static Path scaffoldSkill(Path root, String name, String extraToml) throws Exception {

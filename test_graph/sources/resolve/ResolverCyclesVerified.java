@@ -21,9 +21,9 @@ public class ResolverCyclesVerified {
     static final NodeSpec SPEC = NodeSpec.of("resolver.cycles.verified")
             .kind(NodeSpec.Kind.ASSERTION)
             .dependsOn("env.prepared")
-            .tags("resolver", "cycle", "termination", "issue-109")
+            .tags("resolver", "cycle", "termination", "git", "issue-109", "issue-115")
             .sideEffects("fs:tmp", "net:local")
-            .timeout("180s");
+            .timeout("240s");
 
     static final Duration CASE_TIMEOUT = Duration.ofSeconds(25);
     static String gatewayUrl;
@@ -53,6 +53,7 @@ public class ResolverCyclesVerified {
                 results.add(runThreeSkillCycle(cli, Path.of(parentHome)));
                 results.add(runSkillPluginCycle(cli, Path.of(parentHome)));
                 results.add(runPluginPluginCycle(cli, Path.of(parentHome)));
+                results.add(runGitCoordCycle(cli, Path.of(parentHome)));
             } catch (Exception e) {
                 return NodeResult.error(SPEC.id(), e);
             } finally {
@@ -122,6 +123,29 @@ public class ResolverCyclesVerified {
         return execute(cli, fixture, skill, List.of(
                 new ExpectedUnit("skills", "semantic-skill-unit"),
                 new ExpectedUnit("plugins", "semantic-plugin-unit")));
+    }
+
+    /**
+     * The ticket-115 shape: two units that name each other by direct-git
+     * coordinate. The resolver used to warn and skip every reference that was
+     * neither a registry name nor a path, so a git back-edge was invisible —
+     * the cycle went unreported and the referenced unit was never installed.
+     *
+     * <p>References are left unpinned, exactly as {@code github:owner/repo}
+     * arrives in a real manifest, and served over {@code git+file://} so the
+     * clone stays offline.
+     */
+    private static CaseResult runGitCoordCycle(Path cli, Path parentHome) throws Exception {
+        CaseFixture fixture = fixture(parentHome, "git-coord-cycle");
+        Path alpha = fixture.repos().resolve("coord-git-alpha-repository");
+        Path beta = fixture.repos().resolve("coord-git-beta-repository");
+        scaffoldSkill(alpha, "semantic-git-alpha-unit", "git+file://" + beta);
+        scaffoldSkill(beta, "semantic-git-beta-unit", "git+file://" + alpha);
+        gitInitCommit(alpha);
+        gitInitCommit(beta);
+        return execute(cli, fixture, "git+file://" + alpha, List.of(
+                new ExpectedUnit("skills", "semantic-git-alpha-unit"),
+                new ExpectedUnit("skills", "semantic-git-beta-unit")));
     }
 
     private static CaseResult runPluginPluginCycle(Path cli, Path parentHome) throws Exception {
@@ -195,11 +219,45 @@ public class ResolverCyclesVerified {
             Path entry,
             List<ExpectedUnit> expected
     ) throws Exception {
+        return execute(cli, fixture, "file:" + entry, expected);
+    }
+
+    /** Make {@code dir} a git repo on {@code main} so it can be cloned over {@code git+file://}. */
+    private static void gitInitCommit(Path dir) throws Exception {
+        git(dir, "init", "-b", "main", "--quiet");
+        git(dir, "add", "-A");
+        git(dir, "-c", "user.email=fixture@skillmanager.local", "-c", "user.name=fixture",
+                "commit", "--quiet", "-m", "resolver cycle fixture");
+    }
+
+    private static void git(Path dir, String... args) throws Exception {
+        List<String> command = new ArrayList<>(List.of("git", "-C", dir.toString()));
+        command.addAll(List.of(args));
+        Process process = new ProcessBuilder(command)
+                .redirectErrorStream(true)
+                .redirectOutput(ProcessBuilder.Redirect.DISCARD)
+                .start();
+        if (!process.waitFor(30, TimeUnit.SECONDS)) {
+            process.destroyForcibly();
+            throw new IllegalStateException("git " + String.join(" ", args) + " timed out");
+        }
+        if (process.exitValue() != 0) {
+            throw new IllegalStateException(
+                    "git " + String.join(" ", args) + " failed: " + process.exitValue());
+        }
+    }
+
+    private static CaseResult execute(
+            Path cli,
+            CaseFixture fixture,
+            String coord,
+            List<ExpectedUnit> expected
+    ) throws Exception {
         Path agentHome = fixture.home().resolve("agent-home");
         Files.createDirectories(agentHome.resolve(".codex"));
         Files.createDirectories(agentHome.resolve(".gemini"));
         ProcessBuilder builder = new ProcessBuilder(
-                cli.toString(), "install", "file:" + entry, "--yes", "--no-bind-default")
+                cli.toString(), "install", coord, "--yes", "--no-bind-default")
                 .redirectErrorStream(true)
                 .redirectOutput(fixture.output().toFile());
         builder.environment().put("SKILL_MANAGER_HOME", fixture.home().toString());

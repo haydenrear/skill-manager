@@ -1,5 +1,6 @@
 package dev.skillmanager.resolve;
 
+import dev.skillmanager.model.CoordSource;
 import dev.skillmanager.model.Skill;
 import dev.skillmanager.model.SkillParser;
 import dev.skillmanager.model.UnitReference;
@@ -221,25 +222,24 @@ public final class Resolver {
             List<Ancestor> childAncestors = new ArrayList<>(p.ancestors);
             childAncestors.add(new Ancestor(key, unit.name()));
             for (UnitReference ref : unit.references()) {
-                String childSource;
-                String childVersion;
-                if (ref.isLocal()) {
-                    Path rel = Path.of(ref.path());
-                    Path resolvedPath = rel.isAbsolute() ? rel : originDir.resolve(rel).normalize();
-                    childSource = resolvedPath.toString();
-                    childVersion = null;
-                } else if (ref.isRegistry()) {
-                    childSource = ref.name();
-                    childVersion = ref.version();
-                } else {
-                    Log.warn("skipping reference with no name or path in %s", unit.name());
+                // Exhaustive over the Coord sum — local paths resolve against
+                // the referring unit's root, registry coords keep their name +
+                // version, and direct-git coords become a git+<url> clone
+                // pinned to their ref. Dispatching on the coord (rather than
+                // the legacy isLocal()/isRegistry() projections) is what lets a
+                // `github:owner/repo` reference be traversed at all: it is
+                // neither local nor registry, so it used to be warned about and
+                // dropped, cutting every transitive git edge and hiding
+                // git-coordinate cycles (ticket 115).
+                CoordSource child = CoordSource.of(ref.coord(), originDir);
+                if (!child.isUsable()) {
+                    Log.warn("skipping unresolvable reference %s in %s",
+                            ref.coord().raw(), unit.name());
                     continue;
                 }
-                Coord alias = resolveAlias(childSource, childVersion, aliases);
-                childSource = alias.source();
-                childVersion = alias.version();
+                Coord alias = resolveAlias(child.source(), child.version(), aliases);
                 queue.push(new Pending(
-                        childSource, childVersion, unit.name(), List.copyOf(childAncestors)));
+                        alias.source(), alias.version(), unit.name(), List.copyOf(childAncestors)));
             }
         }
         return new ResolveOutcome(graph, failures, cycles);

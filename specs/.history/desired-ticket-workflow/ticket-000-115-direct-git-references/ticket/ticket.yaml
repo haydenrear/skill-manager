@@ -1,0 +1,88 @@
+{
+  "current_dir": "current",
+  "desired_dir": "desired",
+  "promotion": {
+    "close_command": "tla-spec-dev --spec-root specs close ticket 115-direct-git-references",
+    "on_close": "replace project current with ticket desired/ and merge Test Graph artifacts into project specs/",
+    "worktree": "deferred"
+  },
+  "results_dir": "results",
+  "schema_version": "tla-spec-dev.ticket-workflow.v1",
+  "source_current": "/Users/hayde/IdeaProjects/wt-115-direct-git-reference-resolution/specs/current",
+  "source_project_desired": "/Users/hayde/IdeaProjects/wt-115-direct-git-reference-resolution/specs/desired_program_model",
+  "status": "active",
+  "testgraph_dir": "testgraph",
+  "ticket": {
+    "acceptance": {
+      "assertions": [
+        "Dependency closure traverses a reference edge whatever its coordinate kind.",
+        "A unit reached only by a direct-git edge installs without registry publication.",
+        "A mutual direct-git reference terminates and is reported as a recoverable cycle.",
+        "A direct-git coordinate and its reference edge share one node and stay revision-aware.",
+        "A git-coordinate transitive dependency reaches the project lock and the project child home."
+      ],
+      "commands": [
+        "bash specs/tickets/115-direct-git-references/desired/run_tlc.sh SkillManager.tla MC.cfg",
+        "jbang RunTests.java",
+        "python skills/test_graph/scripts/run.py project-resolve",
+        "python skills/test_graph/scripts/run.py project-smoke"
+      ],
+      "evidence": [
+        "specs/tickets/115-direct-git-references/results/validation-summary.md"
+      ]
+    },
+    "current_increment": {
+      "adapters": [
+        "Resolver.resolveAll",
+        "CoordSource.of",
+        "ProjectDependencyResolver.resolve"
+      ],
+      "graph_after_unit_pass": [
+        "project-resolve",
+        "project-smoke"
+      ],
+      "model_actions": [
+        "InstallUnit",
+        "InstallUnitForceScripts",
+        "SyncUnit",
+        "SyncUnitForceScripts"
+      ],
+      "model_state": [
+        "DirectGitReferenceEdges",
+        "RegistryReferenceEdges",
+        "GitResolvableUnits",
+        "ResolvableUnits"
+      ],
+      "unit_tests": [
+        "bash specs/current/run_tlc.sh SkillManager.tla MC.cfg",
+        "jbang RunTests.java"
+      ]
+    },
+    "depends_on": [],
+    "desired_actions": [
+      "InstallUnit",
+      "InstallUnitForceScripts",
+      "SyncUnit",
+      "SyncUnitForceScripts",
+      "ResolveProjectDependencies"
+    ],
+    "id": "115-direct-git-references",
+    "implementation_scope": [
+      "src/main/java/dev/skillmanager/model/CoordSource.java",
+      "src/main/java/dev/skillmanager/resolve/Resolver.java",
+      "src/main/java/dev/skillmanager/effects/ResolveGraphHandlers.java",
+      "src/main/java/dev/skillmanager/project/ProjectDependencyResolver.java",
+      "src/test/java/dev/skillmanager/resolve/ResolverCycleTest.java",
+      "test_graph/sources/resolve/ResolverCyclesVerified.java",
+      "test_graph/sources/project/ProjectDependenciesResolved.java"
+    ],
+    "objective": "Dependency closure must traverse every reference edge regardless of coordinate kind. A unit named by a direct-git coordinate (github:owner/repo) in skill_references is resolved by cloning, installed once, and reported as a recoverable cycle when it references back \u2014 instead of being warned about and dropped because it carries neither a registry name nor a filesystem path.",
+    "status": "in_progress",
+    "title": "Traverse direct-git skill references in resolver graphs"
+  },
+  "ticket_dir": "/Users/hayde/IdeaProjects/wt-115-direct-git-reference-resolution/specs/tickets/115-direct-git-references",
+  "ticket_id": "115-direct-git-references",
+  "ticket_index": 0,
+  "ticket_plan": "/Users/hayde/IdeaProjects/wt-115-direct-git-reference-resolution/specs/desired_program_model/ticket_plan.yaml",
+  "ticket_root": "/Users/hayde/IdeaProjects/wt-115-direct-git-reference-resolution/specs/tickets"
+}

@@ -1,0 +1,88 @@
+# This file is part of the desired program model.
+# It is intentionally general: use it for any model-backed ticket workflow,
+# not only migrations. Keep it synchronized with spec_manifest.yaml status.
+version: 1
+name: desired-ticket-workflow
+updated: null
+purpose: "Break the desired whole-program change into tickets that can be implemented, modeled in specs/current, unit-tested, and then validated with broader graph or integration checks."
+
+planning_rules:
+  current_model_rule: Update specs/current after each production slice lands as a whole-program working copy of specs/program_model, not a ticket projection.
+  unit_validation_rule: Run current-model TLC and adapter/unit tests before adding graph execution.
+  graph_rule: Add graph or integration nodes only after current-model validation passes.
+  semantic_model_rule: Do not add test graph nodes, pytest jobs, CI workflow steps, integration harnesses, or validation scripts as TLA+ program state/actions.
+  evidence_rule: Record tests and graph runs as evidence for semantic program actions in manifests or ticket status.
+  desired_sync_rule: Update this file and spec_manifest.yaml whenever scope, order, acceptance checks, or status changes.
+  promotion_rule: When specs/current equals specs/desired_program_model, promote the converged model to specs/program_model.
+
+status:
+  workflow: ticket
+  active_ticket: 115-direct-git-references
+  active_ticket_title: "Traverse direct-git skill references in resolver graphs"
+  desired_module: SkillManager
+  phase: done
+
+# Replace or extend these sections with project-specific domains. Service,
+# process, queue, database, file, API, model, permission, or UI boundaries can
+# all be listed here when they matter to correctness.
+service_catalog:
+  existing_boundaries: []
+  desired_boundaries: []
+  adapter_boundaries: []
+  known_gaps: []
+
+tickets:
+  - id: 115-direct-git-references
+    title: "Traverse direct-git skill references in resolver graphs"
+    status: done
+    depends_on: []
+    objective: "Dependency closure must traverse every reference edge regardless of coordinate kind. A unit named by a direct-git coordinate (github:owner/repo) in skill_references is resolved by cloning, installed once, and reported as a recoverable cycle when it references back — instead of being warned about and dropped because it carries neither a registry name nor a filesystem path."
+    desired_actions:
+      - InstallUnit
+      - InstallUnitForceScripts
+      - SyncUnit
+      - SyncUnitForceScripts
+      - ResolveProjectDependencies
+    implementation_scope:
+      - src/main/java/dev/skillmanager/model/CoordSource.java
+      - src/main/java/dev/skillmanager/resolve/Resolver.java
+      - src/main/java/dev/skillmanager/effects/ResolveGraphHandlers.java
+      - src/main/java/dev/skillmanager/project/ProjectDependencyResolver.java
+      - src/test/java/dev/skillmanager/resolve/ResolverCycleTest.java
+      - test_graph/sources/resolve/ResolverCyclesVerified.java
+      - test_graph/sources/project/ProjectDependenciesResolved.java
+    current_increment:
+      model_state:
+        - DirectGitReferenceEdges
+        - RegistryReferenceEdges
+        - GitResolvableUnits
+        - ResolvableUnits
+      model_actions:
+        - InstallUnit
+        - InstallUnitForceScripts
+        - SyncUnit
+        - SyncUnitForceScripts
+      adapters:
+        - Resolver.resolveAll
+        - CoordSource.of
+        - ProjectDependencyResolver.resolve
+      unit_tests:
+        - bash specs/current/run_tlc.sh SkillManager.tla MC.cfg
+        - jbang RunTests.java
+      graph_after_unit_pass:
+        - project-resolve
+        - project-smoke
+    acceptance:
+      commands:
+        - bash specs/tickets/115-direct-git-references/desired/run_tlc.sh SkillManager.tla MC.cfg
+        - jbang RunTests.java
+        - python skills/test_graph/scripts/run.py project-resolve
+        - python skills/test_graph/scripts/run.py project-smoke
+      assertions:
+        - Dependency closure traverses a reference edge whatever its coordinate kind.
+        - A unit reached only by a direct-git edge installs without registry publication.
+        - A mutual direct-git reference terminates and is reported as a recoverable cycle.
+        - A direct-git coordinate and its reference edge share one node and stay revision-aware.
+        - A git-coordinate transitive dependency reaches the project lock and the project child home.
+      evidence:
+        - specs/tickets/115-direct-git-references/results/validation-summary.md

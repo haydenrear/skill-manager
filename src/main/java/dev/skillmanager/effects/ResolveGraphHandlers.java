@@ -1,5 +1,6 @@
 package dev.skillmanager.effects;
 
+import dev.skillmanager.model.CoordSource;
 import dev.skillmanager.model.Skill;
 import dev.skillmanager.model.UnitReference;
 import dev.skillmanager.resolve.ResolvedGraph;
@@ -148,7 +149,9 @@ final class ResolveGraphHandlers {
         List<Resolver.Coord> unmet = new ArrayList<>();
         for (Skill s : e.liveSkills()) {
             for (UnitReference ref : s.skillReferences()) {
-                String coord = referenceToCoord(ref, store, s.name());
+                CoordSource projected = referenceToSource(ref, store, s.name());
+                if (!projected.isUsable()) continue;
+                String coord = projected.source();
                 String refName = ref.name() != null ? ref.name() : guessName(coord);
                 if (refName == null || refName.isBlank()) continue;
                 parentsWithRefs.add(s.name());
@@ -157,7 +160,10 @@ final class ResolveGraphHandlers {
                         .computeIfAbsent(coord, k -> new LinkedHashSet<>())
                         .add(s.name());
                 if (!seenCoords.add(refName)) continue;
-                unmet.add(new Resolver.Coord(coord, ref.version()));
+                // Carry the projected version, not ref.version(): a direct-git
+                // coord pins its revision in the coord's git ref, which the
+                // legacy version() projection reports as null.
+                unmet.add(new Resolver.Coord(coord, projected.version()));
             }
         }
         if (unmet.isEmpty()) {
@@ -302,15 +308,14 @@ final class ResolveGraphHandlers {
         return fallback;
     }
 
-    private static String referenceToCoord(UnitReference ref, SkillStore store, String parentSkillName) {
-        if (ref.isLocal()) {
-            Path rel = Path.of(ref.path());
-            if (rel.isAbsolute()) return rel.toString();
-            return store.skillDir(parentSkillName).resolve(rel).normalize().toString();
-        }
-        return ref.version() != null && !ref.version().isBlank()
-                ? ref.name() + "@" + ref.version()
-                : ref.name();
+    /**
+     * Project a reference onto the (source, version) the resolver fetches.
+     * Relative local paths resolve against the parent's installed dir; git
+     * coords keep their url + ref instead of being dropped for having no
+     * registry name (ticket 115).
+     */
+    private static CoordSource referenceToSource(UnitReference ref, SkillStore store, String parentSkillName) {
+        return CoordSource.of(ref.coord(), store.skillDir(parentSkillName));
     }
 
     private static String guessName(String coord) {
