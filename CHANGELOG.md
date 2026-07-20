@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.19.2](https://github.com/haydenrear/skill-manager/compare/v0.19.1...v0.19.2) (2026-07-20)
+
+
+### Bug Fixes
+
+* keep gateway telemetry version release-managed ([340558f](https://github.com/haydenrear/skill-manager/commit/340558f1790593d02a869c591ddc7d12b70267cf))
+* keep gateway telemetry version release-managed ([9dd2d8c](https://github.com/haydenrear/skill-manager/commit/9dd2d8c8796ebe6e73447ea8e1a05237935efeb9))
+
 ## [0.19.1](https://github.com/haydenrear/skill-manager/compare/v0.19.0...v0.19.1) (2026-07-20)
 
 
