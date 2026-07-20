@@ -37,6 +37,23 @@ public final class CliAgentContextTest {
             assertContext("publish", "publish-unit", "skill-manager search <unit>");
         });
 
+        suite.test("renderer exposes only a valid lowercase trace handle", () -> {
+            String traceId = "4bf92f3577b34da6a3ce929d0e0e4736";
+            String rendered = CliAgentContext.render("install", 0, traceId);
+            assertContains(rendered, "trace_id: " + traceId,
+                    "valid trace id is agent-visible");
+
+            String invalid = CliAgentContext.render(
+                    "install", 0, "00000000000000000000000000000000");
+            assertTrue(!invalid.contains("trace_id:"),
+                    "all-zero trace id is omitted");
+
+            String uppercase = CliAgentContext.render(
+                    "install", 0, traceId.toUpperCase());
+            assertTrue(!uppercase.contains("trace_id:"),
+                    "uppercase trace id is omitted");
+        });
+
         return suite.runAll();
     }
 

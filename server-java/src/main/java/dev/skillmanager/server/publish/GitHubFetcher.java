@@ -2,6 +2,7 @@ package dev.skillmanager.server.publish;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import dev.skillmanager.server.observability.ServerObservability;
 import dev.skillmanager.shared.util.BundleMetadata;
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
@@ -235,6 +236,7 @@ public final class GitHubFetcher {
         }
         b.header("X-GitHub-Api-Version", "2022-11-28");
         b.header("User-Agent", "skill-manager-server");
+        ServerObservability.injectCurrentW3c(b);
         return b;
     }
 

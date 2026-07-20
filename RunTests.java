@@ -2,6 +2,9 @@
 //JAVA 21+
 //SOURCES src/main/java/**/*.java
 //SOURCES src/test/java/**/*.java
+//SOURCES ServerObservabilityContractTest.java
+//SOURCES server-java/src/main/java/dev/skillmanager/server/observability/ServerObservability.java
+//SOURCES server-java/src/main/java/dev/skillmanager/server/observability/ServerObservabilityFilter.java
 //JAVA_OPTIONS -Dorg.slf4j.simpleLogger.defaultLogLevel=warn
 //JAVA_OPTIONS -Dorg.slf4j.simpleLogger.showThreadName=false
 //JAVA_OPTIONS -Dorg.slf4j.simpleLogger.showDateTime=false
@@ -20,6 +23,13 @@
 //DEPS org.eclipse.jgit:org.eclipse.jgit:6.10.0.202406032230-r
 //DEPS io.modelcontextprotocol.sdk:mcp:1.1.1
 //DEPS org.slf4j:slf4j-simple:2.0.16
+//DEPS io.opentelemetry:opentelemetry-sdk-extension-autoconfigure:1.62.0
+//DEPS io.opentelemetry:opentelemetry-exporter-otlp:1.62.0
+// Server-observability contract test dependencies; these are not part of the
+// SkillManager.java CLI classpath mirrored above.
+//DEPS org.springframework:spring-webmvc:6.1.13
+//DEPS org.springframework:spring-test:6.1.13
+//DEPS jakarta.servlet:jakarta.servlet-api:6.0.0
 
 import dev.skillmanager.model.CoordParserTest;
 import dev.skillmanager.model.CoordRoundTripTest;
@@ -29,6 +39,7 @@ import dev.skillmanager.model.PluginParserTest;
 import dev.skillmanager.model.SkillProjectParserTest;
 import dev.skillmanager.model.SkillUnitWrapsSkillTest;
 import dev.skillmanager.model.UnitReferenceFromTomlTest;
+import dev.skillmanager.observability.CliObservabilityTest;
 import dev.skillmanager.plan.CycleDetectionTest;
 import dev.skillmanager.plan.MixedKindTopoOrderTest;
 import dev.skillmanager.cli.CliAgentContextExecutionTest;
@@ -87,6 +98,7 @@ import dev.skillmanager.resolve.ResolverHeterogeneousRefsTest;
 import dev.skillmanager.resolve.ResolverKindFilterTest;
 import dev.skillmanager.resolve.ResolverCycleTest;
 import dev.skillmanager.registry.RegistryUnavailableExceptionTest;
+import dev.skillmanager.server.observability.ServerObservabilityContractTest;
 import dev.skillmanager.store.FetcherLocalSourceTest;
 import dev.skillmanager.store.InstalledUnitRoundTripTest;
 import dev.skillmanager.store.MigrationFromSkillSourceTest;
@@ -172,6 +184,8 @@ public class RunTests {
         failures += PublishDetectsSkillTest.run();
         failures += MarkdownImportValidatorTest.run();
         failures += ScaffoldPluginTest.run();
+        failures += CliObservabilityTest.run();
+        failures += ServerObservabilityContractTest.run();
         failures += CliAgentContextExecutionTest.run();
         failures += CliAgentContextTest.run();
         failures += CliHelpProgressiveDisclosureTest.run();
