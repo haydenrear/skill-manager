@@ -45,6 +45,12 @@ public final class CliObservability {
             "io.opentelemetry.sdk.metrics.export.PeriodicMetricReader";
     private static final String EXPORT_FAILURE_NOTICE =
             "Telemetry export unavailable; continuing without telemetry.";
+    // LogManager retains named JUL loggers weakly. Keep the filtered instances
+    // strongly reachable for the process lifetime.
+    static final java.util.logging.Logger HTTP_EXPORTER_JUL_LOGGER =
+            java.util.logging.Logger.getLogger(HTTP_EXPORTER_LOGGER);
+    static final java.util.logging.Logger METRIC_READER_JUL_LOGGER =
+            java.util.logging.Logger.getLogger(METRIC_READER_LOGGER);
     private static final ThreadLocal<CliObservability> ACTIVE = new ThreadLocal<>();
     private static final AtomicBoolean EXPORT_FAILURE_FILTERS_INSTALLED =
             new AtomicBoolean();
@@ -195,11 +201,11 @@ public final class CliObservability {
         if (!EXPORT_FAILURE_FILTERS_INSTALLED.compareAndSet(false, true)) return;
         try {
             installExportFailureFilter(
-                    java.util.logging.Logger.getLogger(HTTP_EXPORTER_LOGGER),
+                    HTTP_EXPORTER_JUL_LOGGER,
                     record -> record.getMessage() != null
                             && record.getMessage().startsWith("Failed to export "));
             installExportFailureFilter(
-                    java.util.logging.Logger.getLogger(METRIC_READER_LOGGER),
+                    METRIC_READER_JUL_LOGGER,
                     record -> "Exporter failed".equals(record.getMessage()));
         } catch (Throwable ignored) {
             // Logging policy must never prevent telemetry or CLI startup.

@@ -281,9 +281,9 @@ public final class CliObservabilityTest {
                                 "CLI attempted delivery to the rejecting OTLP endpoint");
                         assertTrue(text.contains("skill-manager "),
                                 "normal version output is preserved");
-                        assertEquals(1, occurrences(text,
-                                        "Telemetry export unavailable; continuing without telemetry."),
-                                "one process-wide fail-open notice");
+                        assertTrue(occurrences(text,
+                                        "Telemetry export unavailable; continuing without telemetry.") <= 1,
+                                "unavailable delivery emits at most one fail-open notice");
                         assertFalse(text.contains("Failed to export"),
                                 "SDK exporter failure messages are suppressed");
                         assertFalse(text.contains("Exporter failed"),
@@ -295,6 +295,50 @@ public final class CliObservabilityTest {
                     } finally {
                         unavailable.stop(0);
                     }
+                })
+                .test("SDK failure records collapse to one process-wide notice", () -> {
+                    Path home = Files.createTempDirectory("cli-otel-filter-");
+                    String java = Path.of(System.getProperty("java.home"), "bin", "java")
+                            .toString();
+                    ProcessBuilder builder = new ProcessBuilder(
+                            java,
+                            "-Dotel.sdk.disabled=false",
+                            "-Dotel.traces.exporter=none",
+                            "-Dotel.metrics.exporter=none",
+                            "-Dotel.logs.exporter=none",
+                            "-cp",
+                            System.getProperty("java.class.path"),
+                            ExportFailureFilterProcess.class.getName());
+                    builder.environment().put("SKILL_MANAGER_HOME", home.toString());
+                    builder.redirectErrorStream(true);
+
+                    Process process = builder.start();
+                    CompletableFuture<String> output = CompletableFuture.supplyAsync(() -> {
+                        try {
+                            return new String(process.getInputStream().readAllBytes(),
+                                    StandardCharsets.UTF_8);
+                        } catch (Exception e) {
+                            throw new RuntimeException(e);
+                        }
+                    });
+                    boolean exited = process.waitFor(5, TimeUnit.SECONDS);
+                    if (!exited) {
+                        process.destroyForcibly();
+                        process.waitFor();
+                    }
+                    String text = output.get(2, TimeUnit.SECONDS);
+
+                    assertTrue(exited, "filter fixture exits within its finite deadline");
+                    assertEquals(0, process.exitValue(), "filter fixture exits successfully");
+                    assertEquals(1, occurrences(text,
+                                    "Telemetry export unavailable; continuing without telemetry."),
+                            "three SDK-shaped failures produce one notice");
+                    assertFalse(text.contains("Failed to export"),
+                            "SDK exporter failure records are suppressed");
+                    assertFalse(text.contains("Exporter failed"),
+                            "metric-reader duplicate records are suppressed");
+                    assertFalse(text.contains("\tat "),
+                            "filter notice has no exception stack");
                 })
                 .runAll();
     }
@@ -310,19 +354,25 @@ public final class CliObservabilityTest {
 
     public static final class CliProcess {
         public static void main(String[] args) {
-            int exitCode = SkillManagerCli.run(new String[]{"--version"});
-            java.util.logging.Logger
-                    .getLogger("io.opentelemetry.exporter.internal.http.HttpExporter")
+            System.exit(SkillManagerCli.run(new String[]{"--version"}));
+        }
+    }
+
+    public static final class ExportFailureFilterProcess {
+        public static void main(String[] args) {
+            CliObservability observability = CliObservability.configure(Map.of(
+                    "OTEL_TRACES_EXPORTER", "none",
+                    "OTEL_METRICS_EXPORTER", "none",
+                    "OTEL_LOGS_EXPORTER", "none"));
+            CliObservability.HTTP_EXPORTER_JUL_LOGGER
                     .log(java.util.logging.Level.SEVERE,
                             "Failed to export spans. Deterministic test fixture.");
-            java.util.logging.Logger
-                    .getLogger("io.opentelemetry.exporter.internal.http.HttpExporter")
+            CliObservability.HTTP_EXPORTER_JUL_LOGGER
                     .log(java.util.logging.Level.SEVERE,
                             "Failed to export logs. Deterministic test fixture.");
-            java.util.logging.Logger
-                    .getLogger("io.opentelemetry.sdk.metrics.export.PeriodicMetricReader")
+            CliObservability.METRIC_READER_JUL_LOGGER
                     .log(java.util.logging.Level.SEVERE, "Exporter failed");
-            System.exit(exitCode);
+            observability.flushAndClose(1_000);
         }
     }
 
