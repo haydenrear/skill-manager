@@ -4,11 +4,13 @@ import dev.skillmanager._lib.fixtures.DepSpec;
 import dev.skillmanager._lib.fixtures.UnitFixtures;
 import dev.skillmanager._lib.harness.TestHarness;
 import dev.skillmanager._lib.test.Tests;
+import dev.skillmanager.app.InstallUseCase;
 import dev.skillmanager.app.RemoveUseCase;
 import dev.skillmanager.app.SyncUseCase;
 import dev.skillmanager.bindings.BindingStore;
 import dev.skillmanager.bindings.ChildHomeRegistry;
 import dev.skillmanager.commands.SyncCommand;
+import dev.skillmanager.effects.EffectContext;
 import dev.skillmanager.effects.Executor;
 import dev.skillmanager.effects.SkillEffect;
 import dev.skillmanager.model.SkillProject;
@@ -64,6 +66,69 @@ public final class ProjectDependencyResolverTest {
                                 "direct project skill projected into Codex home");
                         assertTrue(Files.exists(repoRoot.resolve(".gemini/skills/project-child")),
                                 "transitive project skill projected into Gemini home");
+                    }
+                })
+                .test("skip-gateway resolves a skill with MCP dependencies without registering them", () -> {
+                    try (TestHarness h = TestHarness.create()) {
+                        Path repoRoot = Files.createTempDirectory("project-resolve-skip-gateway-");
+                        Path skill = UnitFixtures.scaffoldSkill(
+                                repoRoot.resolve("units"),
+                                "project-mcp-skill",
+                                DepSpec.of().mcp("project-mcp-server").build()).sourcePath();
+                        SkillProject project = project(repoRoot, """
+                                [project]
+                                name = "skip-gateway-project"
+
+                                [skills.mcp]
+                                source = "%s"
+                                """.formatted(skill));
+
+                        var noGatewayInstall = InstallUseCase.buildProgram(
+                                h.store(), null, null, skill.toString(), null,
+                                true, false, false, true);
+                        SkillEffect.BuildInstallPlan planEffect =
+                                (SkillEffect.BuildInstallPlan) noGatewayInstall.stage1().effects().stream()
+                                        .filter(SkillEffect.BuildInstallPlan.class::isInstance)
+                                        .findFirst()
+                                        .orElseThrow();
+                        assertFalse(planEffect.withMcp(),
+                                "no-gateway install plan omits MCP registration");
+                        var noGatewayTail =
+                                noGatewayInstall.stage2().apply(new EffectContext(h.store(), null));
+                        assertFalse(noGatewayTail.effects().stream().anyMatch(
+                                        effect -> effect instanceof SkillEffect.SyncAgents
+                                                || effect instanceof SkillEffect.UnregisterMcpOrphans),
+                                "no-gateway install tail omits gateway-dependent effects");
+                        assertTrue(noGatewayTail.effects().stream().anyMatch(
+                                        SkillEffect.UpdateUnitsLock.class::isInstance),
+                                "no-gateway install tail still persists the unit lock");
+
+                        var dryRunInstall = InstallUseCase.buildProgram(
+                                h.store(), null, null, skill.toString(), null,
+                                false, true);
+                        SkillEffect.BuildInstallPlan dryRunPlan =
+                                (SkillEffect.BuildInstallPlan) dryRunInstall.stage1().effects().stream()
+                                        .filter(SkillEffect.BuildInstallPlan.class::isInstance)
+                                        .findFirst()
+                                        .orElseThrow();
+                        assertTrue(dryRunPlan.withMcp(),
+                                "dry-run still describes MCP registration without starting a gateway");
+
+                        ProjectDependencyResolver.Result result = resolver(h).resolve(
+                                project,
+                                new ProjectDependencyResolver.Options(true, false));
+
+                        assertTrue(h.store().containsUnit("project-mcp-skill"),
+                                "MCP-bearing skill installed without a gateway");
+                        assertTrue(result.installed().contains("project-mcp-skill"),
+                                "resolver reports the installed unit");
+                        assertTrue(result.bindingIds().contains(
+                                        "project:skip-gateway-project:unit:project-mcp-skill"),
+                                "project binding is still materialized");
+                        assertTrue(h.sourceOf("project-mcp-skill")
+                                        .map(unit -> unit.errors().isEmpty())
+                                        .orElse(false),
+                                "gateway skip leaves no registration error");
                     }
                 })
                 .test("materializes direct skills and plugins into project agent homes", () -> {

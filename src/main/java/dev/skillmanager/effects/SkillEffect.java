@@ -516,12 +516,22 @@ public sealed interface SkillEffect permits
     record BuildInstallPlan(
             ResolvedGraph graph,
             boolean forceScripts,
-            List<String> forceScriptUnitNames) implements SkillEffect {
-        public BuildInstallPlan() { this(null, false, List.of()); }
-        public BuildInstallPlan(boolean forceScripts) { this(null, forceScripts, List.of()); }
-        public BuildInstallPlan(ResolvedGraph graph) { this(graph, false, List.of()); }
+            List<String> forceScriptUnitNames,
+            boolean withMcp) implements SkillEffect {
+        public BuildInstallPlan() { this(null, false, List.of(), true); }
+        public BuildInstallPlan(boolean forceScripts) { this(null, forceScripts, List.of(), true); }
+        public BuildInstallPlan(boolean forceScripts, boolean withMcp) {
+            this(null, forceScripts, List.of(), withMcp);
+        }
+        public BuildInstallPlan(ResolvedGraph graph) { this(graph, false, List.of(), true); }
         public BuildInstallPlan(ResolvedGraph graph, boolean forceScripts) {
-            this(graph, forceScripts, List.of());
+            this(graph, forceScripts, List.of(), true);
+        }
+        public BuildInstallPlan(
+                ResolvedGraph graph,
+                boolean forceScripts,
+                List<String> forceScriptUnitNames) {
+            this(graph, forceScripts, forceScriptUnitNames, true);
         }
         public BuildInstallPlan {
             forceScriptUnitNames = forceScriptUnitNames == null

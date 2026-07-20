@@ -73,6 +73,13 @@ public final class InstallUseCase {
     public static InstallPlan buildPlan(SkillStore store, ResolvedGraph graph,
                                         boolean forceScripts,
                                         List<String> forceScriptUnitNames) throws IOException {
+        return buildPlan(store, graph, forceScripts, forceScriptUnitNames, true);
+    }
+
+    public static InstallPlan buildPlan(SkillStore store, ResolvedGraph graph,
+                                        boolean forceScripts,
+                                        List<String> forceScriptUnitNames,
+                                        boolean withMcp) throws IOException {
         Policy policy = Policy.load(store);
         CliLock lock = CliLock.load(store);
         PackageManagerRuntime pmRuntime = new PackageManagerRuntime(store);
@@ -84,7 +91,7 @@ public final class InstallUseCase {
                         forceScriptUnitNames == null
                                 ? java.util.Set.of()
                                 : new java.util.LinkedHashSet<>(forceScriptUnitNames))
-                .plan(graph, true, true, store.cliBinDir());
+                .plan(graph, true, withMcp, store.cliBinDir());
     }
 
     public static StagedProgram<Report> buildProgram(SkillStore store, GatewayConfig gw,
@@ -154,7 +161,8 @@ public final class InstallUseCase {
         stage1Effects.add(new SkillEffect.RejectIfTopLevelInstalled());
 
         // Plan-build at exec time so handlers see fresh state.
-        stage1Effects.add(new SkillEffect.BuildInstallPlan(forceScripts));
+        boolean planGatewayEffects = withGateway || dryRun;
+        stage1Effects.add(new SkillEffect.BuildInstallPlan(forceScripts, planGatewayEffects));
 
         // Policy gate runs INSIDE the program now — replaces
         // InstallCommand.checkPolicyGate. Halts with HaltWithExitCode
@@ -186,13 +194,17 @@ public final class InstallUseCase {
             // unit into the configured agent's dirs and records a
             // DEFAULT_AGENT Binding in the ledger. --no-bind-default
             // skips both, leaving the install store-only.
-            if (bindDefault) {
+            if (bindDefault && planGatewayEffects) {
                 stage2Effects.add(new SkillEffect.SyncAgents(tailUnits, gw));
+            }
+            if (bindDefault) {
                 if (!dryRun) {
                     stage2Effects.add(SkillEffect.RefreshHarnessPlugins.reinstallAll(pluginNames(tailUnits)));
                 }
             }
-            stage2Effects.add(new SkillEffect.UnregisterMcpOrphans(gw));
+            if (planGatewayEffects) {
+                stage2Effects.add(new SkillEffect.UnregisterMcpOrphans(gw));
+            }
             if (!dryRun) {
                 stage2Effects.add(buildLockUpdate(store, graph));
             }

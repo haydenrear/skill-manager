@@ -234,7 +234,8 @@ public final class SyncUseCase {
         effects.add(new SkillEffect.ValidateMarkdownImports(unitNames(liveUnits)));
         effects.add(SkillEffect.ValidateMarkdownImports.resolvedGraph());
         List<String> forceScriptUnits = forceScriptUnitNames(targets);
-        effects.add(new SkillEffect.BuildInstallPlan(null, options.forceScripts(), forceScriptUnits));
+        effects.add(new SkillEffect.BuildInstallPlan(
+                null, options.forceScripts(), forceScriptUnits, options.withMcp()));
         effects.add(new SkillEffect.RecordSourceProvenance());
         effects.add(new SkillEffect.RunInstallPlan(gw));
         // Cleanup the resolver's staged temp dirs no matter how the
