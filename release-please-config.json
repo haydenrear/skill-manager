@@ -26,6 +26,10 @@
           "type": "toml",
           "path": "virtual-mcp-gateway/uv.lock",
           "jsonpath": "$.package[?(@.name.value == 'virtual-mcp-gateway')].version"
+        },
+        {
+          "type": "generic",
+          "path": "virtual-mcp-gateway/gateway/observability.py"
         }
       ]
     }

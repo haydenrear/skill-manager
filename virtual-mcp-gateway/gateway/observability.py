@@ -28,7 +28,9 @@ from tracing_skill_observability import (
 )
 
 SERVICE_NAME = "virtual-mcp-gateway"
-SERVICE_VERSION = "0.18.1"
+# x-release-please-start-version
+SERVICE_VERSION = "0.19.1"
+# x-release-please-end
 DEFAULT_FLUSH_TIMEOUT_MILLIS = 5_000
 
 _W3C_PROPAGATOR = TraceContextTextMapPropagator()
