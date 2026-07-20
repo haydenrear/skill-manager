@@ -228,7 +228,13 @@ public sealed interface SkillEffect permits
      * the store; self-clears next pass when refs resolve again.
      */
     record BuildResolveGraphFromUnmetReferences(
-            List<dev.skillmanager.model.Skill> liveSkills) implements SkillEffect {}
+            List<dev.skillmanager.model.Skill> liveSkills) implements SkillEffect {
+        // A total resolve failure leaves no new graph work to apply. Halt
+        // before the global/project reconciliation tail rewrites existing
+        // projections and metadata only to have the transaction roll back.
+        // PARTIAL remains CONTINUE so successfully resolved refs still land.
+        @Override public Continuation continuationOnFail() { return Continuation.HALT; }
+    }
 
     /**
      * Report installed-unit directories that existed but could not be
