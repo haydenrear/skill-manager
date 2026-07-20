@@ -12,7 +12,8 @@ import java.nio.file.Path;
 
 /**
  * Materialize the gateway's Python venv at
- * {@code virtual-mcp-gateway/.venv/} via {@code uv sync --all-extras}.
+ * {@code virtual-mcp-gateway/.venv/} via
+ * {@code uv sync --locked --all-extras}.
  *
  * <p>Why a node: when {@code skill-manager gateway up} spawns the
  * gateway, it picks the bundled venv interpreter
@@ -20,8 +21,9 @@ import java.nio.file.Path;
  * back to bare {@code python3}. On a fresh checkout the venv doesn't
  * exist, so the bare-Python fallback fires and the gateway dies on
  * {@code import uvicorn}. Running this once before {@code gateway.up}
- * guarantees the venv is populated; uv sync is idempotent so re-runs
- * cost almost nothing.
+ * guarantees the venv is populated. The locked sync also fails if a
+ * release version bump leaves {@code uv.lock} stale; re-runs cost
+ * almost nothing.
  *
  * <p>Wired into the graph as a transitive dep of {@code gateway.up} so
  * any future graph that brings the gateway up automatically picks this
@@ -45,7 +47,7 @@ public class GatewayPythonVenvReady {
                         "virtual-mcp-gateway dir missing: " + gatewayDir);
             }
 
-            ProcessBuilder pb = new ProcessBuilder("uv", "sync", "--all-extras")
+            ProcessBuilder pb = new ProcessBuilder("uv", "sync", "--locked", "--all-extras")
                     .directory(gatewayDir.toFile());
             ProcessRecord proc = Procs.run(ctx, "uv-sync", pb);
             int rc = proc.exitCode();
