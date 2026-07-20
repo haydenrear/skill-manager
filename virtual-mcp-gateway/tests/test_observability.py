@@ -4,6 +4,7 @@ import asyncio
 import logging
 import os
 import time
+import tomllib
 from contextlib import asynccontextmanager, contextmanager
 from pathlib import Path
 from typing import Any, Iterator, Mapping
@@ -45,6 +46,13 @@ PROCESS_TRACE_ID = "abcdefabcdefabcdefabcdefabcdefab"
 PROCESS_TRACEPARENT = (
     f"00-{PROCESS_TRACE_ID}-3333333333333333-01"
 )
+
+
+def test_service_version_matches_gateway_package() -> None:
+    pyproject = Path(__file__).parents[1] / "pyproject.toml"
+    project = tomllib.loads(pyproject.read_text(encoding="utf-8"))["project"]
+
+    assert observability_module.SERVICE_VERSION == project["version"]
 
 
 @pytest.fixture(autouse=True)
@@ -214,7 +222,7 @@ def test_configures_shared_provider_with_all_signals_by_default(
     assert calls == [
         {
             "service_name": "virtual-mcp-gateway",
-            "service_version": "0.18.1",
+            "service_version": observability_module.SERVICE_VERSION,
             "log_level": "debug",
             "log_mode": "otlp",
             "metrics_enabled": True,
