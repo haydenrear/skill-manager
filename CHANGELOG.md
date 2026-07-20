@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.19.0](https://github.com/haydenrear/skill-manager/compare/v0.18.1...v0.19.0) (2026-07-20)
+
+
+### Features
+
+* **observability:** enable default-on telemetry ([9cd229a](https://github.com/haydenrear/skill-manager/commit/9cd229afc79c66dc9373c39ccd732a28994bda6c))
+
+
+### Bug Fixes
+
+* **project:** honor skip-gateway for MCP dependencies ([7759a35](https://github.com/haydenrear/skill-manager/commit/7759a354b625dd67b8f1b393e7924c1d1203586a))
+
 ## [0.18.1](https://github.com/haydenrear/skill-manager/compare/v0.18.0...v0.18.1) (2026-07-12)
 
 
