@@ -255,11 +255,19 @@ public final class ProjectDependencyResolver {
             AgentUnit unit = bindingSourceStore.loadUnit(row.name()).orElseThrow(() ->
                     new IOException("project resolved unit is not installed in child store: " + row.name()));
             for (UnitReference child : unit.references()) {
-                unitName(child, unit.sourcePath()).ifPresent(childName -> {
-                    if (byName.containsKey(childName) && !visited.contains(childName)) {
-                        queue.add(childName);
-                    }
-                });
+                Optional<String> childName =
+                        installedUnitName(child, unit.sourcePath(), bindingSourceStore);
+                if (childName.isEmpty()) {
+                    throw new IOException("project child-store closure is missing "
+                            + child.coord().render() + " declared by " + unit.name());
+                }
+                if (!byName.containsKey(childName.get())) {
+                    throw new IOException("project lock closure is missing "
+                            + childName.get() + " declared by " + unit.name());
+                }
+                if (!visited.contains(childName.get())) {
+                    queue.add(childName.get());
+                }
             }
         }
         return new ArrayList<>(selected.values());
@@ -308,7 +316,7 @@ public final class ProjectDependencyResolver {
                 ? List.<SkillProjectLock.ResolvedUnit>of()
                 : resolvedUnits) {
             if (unit.kind() != ref.kind()) continue;
-            if (sameOrigin(expectedOrigin, unit.source())) matches.add(unit);
+            if (UnitStore.sameOrigin(expectedOrigin, unit.source())) matches.add(unit);
         }
         if (matches.size() == 1) return matches.get(0).name();
         throw new IOException("could not determine " + ref.kind().name().toLowerCase()
@@ -404,7 +412,8 @@ public final class ProjectDependencyResolver {
         Set<String> directNames = new LinkedHashSet<>();
         ArrayDeque<String> queue = new ArrayDeque<>();
         for (SkillProject.ProjectUnitRef ref : installableRefs(project)) {
-            Optional<String> name = unitName(ref.reference(), project.projectRoot());
+            Optional<String> name =
+                    installedUnitName(ref.reference(), project.projectRoot(), store);
             if (name.isEmpty()) continue;
             directNames.add(name.get());
             queue.add(name.get());
@@ -430,9 +439,16 @@ public final class ProjectDependencyResolver {
                     source,
                     directNames.contains(name)));
             for (UnitReference child : unit.references()) {
-                unitName(child, unit.sourcePath()).ifPresent(childName -> {
-                    if (!rows.containsKey(childName)) queue.add(childName);
-                });
+                Optional<String> childName = installedUnitName(child, unit.sourcePath(), store);
+                if (childName.isEmpty()) {
+                    throw new IOException("project dependency closure is missing "
+                            + child.coord().render() + " declared by " + unit.name()
+                            + "; run skill-manager sync " + unit.name()
+                            + " or reinstall the declaring unit");
+                }
+                if (!rows.containsKey(childName.get())) {
+                    queue.add(childName.get());
+                }
             }
         }
         return new ArrayList<>(rows.values());
@@ -460,17 +476,21 @@ public final class ProjectDependencyResolver {
     private Optional<String> installedNameFromOrigin(SkillProject.ProjectUnitRef ref) throws IOException {
         Coord c = ref.reference().coord();
         if (c instanceof Coord.SubElement s) c = s.unitCoord();
-        if (!(c instanceof Coord.DirectGit)) return Optional.empty();
+        if (!(c instanceof Coord.DirectGit g)) return Optional.empty();
+        return new UnitStore(store).findInstalledNameByOrigin(g.url());
+    }
 
-        String expected = expectedOrigin(ref);
-        if (expected == null || expected.isBlank()) return Optional.empty();
-        UnitStore unitStore = new UnitStore(store);
-        for (AgentUnit unit : store.listInstalledUnits().units()) {
-            Optional<dev.skillmanager.source.InstalledUnit> record = unitStore.read(unit.name());
-            if (record.isEmpty()) continue;
-            if (sameOrigin(expected, record.get().origin())) return Optional.of(unit.name());
-        }
-        return Optional.empty();
+    private static Optional<String> installedUnitName(
+            UnitReference ref,
+            Path baseRoot,
+            SkillStore lookupStore
+    ) throws IOException {
+        Optional<String> named = unitName(ref, baseRoot);
+        if (named.isPresent()) return named;
+        Coord c = ref.coord();
+        if (c instanceof Coord.SubElement s) c = s.unitCoord();
+        if (!(c instanceof Coord.DirectGit g)) return Optional.empty();
+        return new UnitStore(lookupStore).findInstalledNameByOrigin(g.url());
     }
 
     private String discoverTopLevelName(SkillProject.ProjectUnitRef ref, Path baseRoot) throws IOException {
@@ -530,19 +550,6 @@ public final class ProjectDependencyResolver {
             case Coord.Kinded k -> k.name();
             case Coord.SubElement ignored -> null;
         };
-    }
-
-    private static boolean sameOrigin(String expected, String actual) {
-        if (expected == null || expected.isBlank() || actual == null || actual.isBlank()) return false;
-        return normalizeOrigin(expected).equals(normalizeOrigin(actual));
-    }
-
-    private static String normalizeOrigin(String origin) {
-        String out = origin.trim();
-        if (out.startsWith("git+")) out = out.substring("git+".length());
-        while (out.endsWith("/")) out = out.substring(0, out.length() - 1);
-        if (out.endsWith(".git")) out = out.substring(0, out.length() - ".git".length());
-        return out;
     }
 
     private static Optional<String> unitName(UnitReference ref, Path baseRoot) {
