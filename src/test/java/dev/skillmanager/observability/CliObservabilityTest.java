@@ -24,6 +24,7 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static dev.skillmanager._lib.test.Tests.assertEquals;
 import static dev.skillmanager._lib.test.Tests.assertFalse;
@@ -216,9 +217,11 @@ public final class CliObservabilityTest {
                             "operator can explicitly restore SDK retry behavior");
                 })
                 .test("unavailable OTLP is concise, fail-open, and bounded", () -> {
+                    AtomicInteger rejectedRequests = new AtomicInteger();
                     HttpServer unavailable = HttpServer.create(
                             new InetSocketAddress("127.0.0.1", 0), 0);
                     unavailable.createContext("/", exchange -> {
+                        rejectedRequests.incrementAndGet();
                         exchange.sendResponseHeaders(503, -1);
                         exchange.close();
                     });
@@ -274,6 +277,8 @@ public final class CliObservabilityTest {
 
                         assertTrue(exited, "CLI exited before its telemetry deadline");
                         assertEquals(0, process.exitValue(), "CLI exit status remains successful");
+                        assertTrue(rejectedRequests.get() > 0,
+                                "CLI attempted delivery to the rejecting OTLP endpoint");
                         assertTrue(text.contains("skill-manager "),
                                 "normal version output is preserved");
                         assertEquals(1, occurrences(text,
@@ -305,7 +310,19 @@ public final class CliObservabilityTest {
 
     public static final class CliProcess {
         public static void main(String[] args) {
-            System.exit(SkillManagerCli.run(new String[]{"--version"}));
+            int exitCode = SkillManagerCli.run(new String[]{"--version"});
+            java.util.logging.Logger
+                    .getLogger("io.opentelemetry.exporter.internal.http.HttpExporter")
+                    .log(java.util.logging.Level.SEVERE,
+                            "Failed to export spans. Deterministic test fixture.");
+            java.util.logging.Logger
+                    .getLogger("io.opentelemetry.exporter.internal.http.HttpExporter")
+                    .log(java.util.logging.Level.SEVERE,
+                            "Failed to export logs. Deterministic test fixture.");
+            java.util.logging.Logger
+                    .getLogger("io.opentelemetry.sdk.metrics.export.PeriodicMetricReader")
+                    .log(java.util.logging.Level.SEVERE, "Exporter failed");
+            System.exit(exitCode);
         }
     }
 
