@@ -1,6 +1,7 @@
 package dev.skillmanager.observability;
 
 import dev.skillmanager.cli.CliAgentContext;
+import dev.skillmanager.util.Log;
 import io.opentelemetry.api.common.Attributes;
 import io.opentelemetry.api.logs.Logger;
 import io.opentelemetry.api.metrics.DoubleHistogram;
@@ -25,6 +26,7 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Supplier;
+import java.util.logging.Filter;
 
 /**
  * Process-owned observability lifecycle for the native skill-manager CLI.
@@ -37,7 +39,16 @@ public final class CliObservability {
     public static final long DEFAULT_FLUSH_TIMEOUT_MILLIS = 5_000;
 
     private static final String INSTRUMENTATION_SCOPE = "dev.skillmanager.cli";
+    private static final String HTTP_EXPORTER_LOGGER =
+            "io.opentelemetry.exporter.internal.http.HttpExporter";
+    private static final String METRIC_READER_LOGGER =
+            "io.opentelemetry.sdk.metrics.export.PeriodicMetricReader";
+    private static final String EXPORT_FAILURE_NOTICE =
+            "Telemetry export unavailable; continuing without telemetry.";
     private static final ThreadLocal<CliObservability> ACTIVE = new ThreadLocal<>();
+    private static final AtomicBoolean EXPORT_FAILURE_FILTERS_INSTALLED =
+            new AtomicBoolean();
+    private static final AtomicBoolean EXPORT_FAILURE_REPORTED = new AtomicBoolean();
     private static final TextMapPropagator W3C =
             W3CTraceContextPropagator.getInstance();
     private static final TextMapGetter<Map<String, String>> ENV_GETTER =
@@ -133,6 +144,7 @@ public final class CliObservability {
         Context parent = extractW3c(env);
         OpenTelemetrySdk sdk = null;
         try {
+            installExportFailureFilters();
             Map<String, String> defaults = defaultProperties(env);
             sdk = AutoConfiguredOpenTelemetrySdk.builder()
                     .addPropertiesSupplier(() -> defaults)
@@ -154,7 +166,7 @@ public final class CliObservability {
         }
     }
 
-    private static Map<String, String> defaultProperties(Map<String, String> env) {
+    static Map<String, String> defaultProperties(Map<String, String> env) {
         Map<String, String> defaults = new HashMap<>();
         defaults.put("otel.service.name",
                 env.getOrDefault("OTEL_SERVICE_NAME", "skill-manager-cli"));
@@ -168,6 +180,8 @@ public final class CliObservability {
                 env.getOrDefault("OTEL_EXPORTER_OTLP_PROTOCOL", "http/protobuf"));
         defaults.put("otel.propagators",
                 env.getOrDefault("OTEL_PROPAGATORS", "tracecontext,baggage"));
+        defaults.put("otel.java.exporter.otlp.retry.disabled",
+                env.getOrDefault("OTEL_JAVA_EXPORTER_OTLP_RETRY_DISABLED", "true"));
         if (!env.containsKey("OTEL_EXPORTER_OTLP_ENDPOINT")
                 && !env.containsKey("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT")
                 && !env.containsKey("OTEL_EXPORTER_OTLP_METRICS_ENDPOINT")
@@ -175,6 +189,42 @@ public final class CliObservability {
             defaults.put("otel.exporter.otlp.endpoint", "http://localhost:4318");
         }
         return defaults;
+    }
+
+    private static void installExportFailureFilters() {
+        if (!EXPORT_FAILURE_FILTERS_INSTALLED.compareAndSet(false, true)) return;
+        try {
+            installExportFailureFilter(
+                    java.util.logging.Logger.getLogger(HTTP_EXPORTER_LOGGER),
+                    record -> record.getMessage() != null
+                            && record.getMessage().startsWith("Failed to export "));
+            installExportFailureFilter(
+                    java.util.logging.Logger.getLogger(METRIC_READER_LOGGER),
+                    record -> "Exporter failed".equals(record.getMessage()));
+        } catch (Throwable ignored) {
+            // Logging policy must never prevent telemetry or CLI startup.
+        }
+    }
+
+    private static void installExportFailureFilter(
+            java.util.logging.Logger julLogger,
+            Filter target) {
+        Filter previous = julLogger.getFilter();
+        julLogger.setFilter(record -> {
+            if (previous != null && !previous.isLoggable(record)) return false;
+            if (!target.isLoggable(record)) return true;
+            reportExportFailureOnce();
+            return false;
+        });
+    }
+
+    private static void reportExportFailureOnce() {
+        if (!EXPORT_FAILURE_REPORTED.compareAndSet(false, true)) return;
+        try {
+            Log.warn(EXPORT_FAILURE_NOTICE);
+        } catch (Throwable ignored) {
+            // A diagnostic write must not alter exporter or CLI behavior.
+        }
     }
 
     private void markStarted() {
