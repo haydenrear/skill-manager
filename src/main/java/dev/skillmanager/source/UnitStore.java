@@ -55,6 +55,44 @@ public final class UnitStore {
         }
     }
 
+    /**
+     * Find the live installed unit whose persisted source provenance matches
+     * {@code expectedOrigin}. Direct-git coordinates name repositories rather
+     * than units, so their repository basename cannot be used as the installed
+     * unit name.
+     *
+     * <p>An ambiguous origin is rejected instead of selecting whichever unit
+     * happens to sort first. A repository-root coordinate is expected to
+     * resolve to one installable root unit.
+     */
+    public Optional<String> findInstalledNameByOrigin(String expectedOrigin) throws IOException {
+        if (expectedOrigin == null || expectedOrigin.isBlank()) return Optional.empty();
+        String match = null;
+        for (var unit : store.listInstalledUnits().units()) {
+            Optional<InstalledUnit> record = read(unit.name());
+            if (record.isEmpty() || !sameOrigin(expectedOrigin, record.get().origin())) continue;
+            if (match != null && !match.equals(unit.name())) {
+                throw new IOException("multiple installed units share origin "
+                        + expectedOrigin + ": " + match + ", " + unit.name());
+            }
+            match = unit.name();
+        }
+        return Optional.ofNullable(match);
+    }
+
+    public static boolean sameOrigin(String expected, String actual) {
+        if (expected == null || expected.isBlank() || actual == null || actual.isBlank()) return false;
+        return normalizeOrigin(expected).equals(normalizeOrigin(actual));
+    }
+
+    private static String normalizeOrigin(String origin) {
+        String out = origin.trim();
+        if (out.startsWith("git+")) out = out.substring("git+".length());
+        while (out.endsWith("/")) out = out.substring(0, out.length() - 1);
+        if (out.endsWith(".git")) out = out.substring(0, out.length() - ".git".length());
+        return out;
+    }
+
     public void delete(String unitName) throws IOException {
         Path f = file(unitName);
         if (Files.exists(f)) Files.delete(f);

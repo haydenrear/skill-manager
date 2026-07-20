@@ -812,6 +812,100 @@ public final class ProjectDependencyResolverTest {
                                 "direct git skill projected into project agent home");
                     }
                 })
+                .test("direct git transitive uses manifest identity in project lock and child homes", () -> {
+                    try (TestHarness h = TestHarness.create()) {
+                        Path repoRoot = Files.createTempDirectory("project-resolve-transitive-git-");
+                        Path stagedChild = UnitFixtures.scaffoldSkill(
+                                repoRoot.resolve("staging"), "acp-cdc-ai-python", DepSpec.empty()).sourcePath();
+                        Path gitChild = repoRoot.resolve("acp-cdc-ai-python-skill");
+                        Files.move(stagedChild, gitChild);
+                        gitInitCommit(gitChild);
+
+                        Path parent = UnitFixtures.scaffoldSkill(
+                                repoRoot.resolve("units"), "hyper-experiments",
+                                DepSpec.of()
+                                        .ref("git+" + gitChild.toUri() + "#main")
+                                        .build()).sourcePath();
+                        SkillProject project = project(repoRoot, """
+                                [project]
+                                name = "transitive-git-project"
+
+                                [skills.hyper]
+                                source = "%s"
+                                """.formatted(parent));
+
+                        ProjectDependencyResolver.Result first = resolver(h).resolve(
+                                project,
+                                new ProjectDependencyResolver.Options(true, false));
+                        ProjectDependencyResolver.Result second = resolver(h).resolve(
+                                project,
+                                new ProjectDependencyResolver.Options(true, false));
+
+                        assertTrue(h.store().containsUnit("acp-cdc-ai-python"),
+                                "transitive unit installed by manifest name");
+                        assertFalse(h.store().containsUnit("acp-cdc-ai-python-skill"),
+                                "repository basename is not treated as the unit name");
+                        SkillProjectLock.ResolvedUnit child = second.lock().resolvedUnits().stream()
+                                .filter(u -> u.name().equals("acp-cdc-ai-python"))
+                                .findFirst()
+                                .orElseThrow();
+                        assertFalse(child.direct(), "transitive direct-git child is not marked direct");
+                        assertTrue(first.lock().resolvedUnits().stream()
+                                        .anyMatch(u -> u.name().equals("acp-cdc-ai-python")),
+                                "first resolve locks transitive direct-git child");
+                        assertTrue(Files.isRegularFile(repoRoot
+                                        .resolve(".skill-manager/skills/acp-cdc-ai-python/SKILL.md")),
+                                "transitive child copied into project child store");
+                        assertTrue(pointsTo(
+                                        repoRoot.resolve(".codex/skills/acp-cdc-ai-python"),
+                                        repoRoot.resolve(".skill-manager/skills/acp-cdc-ai-python")),
+                                "Codex projection uses manifest identity");
+                        assertTrue(pointsTo(
+                                        repoRoot.resolve(".gemini/skills/acp-cdc-ai-python"),
+                                        repoRoot.resolve(".skill-manager/skills/acp-cdc-ai-python")),
+                                "Gemini projection uses manifest identity");
+                        assertTrue(new ChildHomeRegistry(h.store())
+                                        .childHomesClaiming("acp-cdc-ai-python")
+                                        .contains("project:transitive-git-project"),
+                                "project child-home registry claims transitive unit");
+                        assertEquals(0, second.installed().size(),
+                                "second resolve reuses the complete installed closure");
+                    }
+                })
+                .test("preinstalled parent cannot silently omit a missing direct git child", () -> {
+                    try (TestHarness h = TestHarness.create()) {
+                        Path repoRoot = Files.createTempDirectory("project-missing-transitive-git-");
+                        Path missingChild = repoRoot.resolve("missing-child-repository");
+                        Path parent = UnitFixtures.scaffoldSkill(
+                                h.store().skillsDir(), "preinstalled-parent",
+                                DepSpec.of()
+                                        .ref("git+" + missingChild.toUri() + "#main")
+                                        .build()).sourcePath();
+                        h.seedUnit("preinstalled-parent", UnitKind.SKILL);
+                        SkillProject project = project(repoRoot, """
+                                [project]
+                                name = "missing-transitive-git-project"
+
+                                [skills.parent]
+                                source = "%s"
+                                """.formatted(parent));
+
+                        boolean rejected = false;
+                        try {
+                            resolver(h).resolve(
+                                    project,
+                                    new ProjectDependencyResolver.Options(true, false));
+                        } catch (java.io.IOException io) {
+                            rejected = io.getMessage().contains("project dependency closure is missing")
+                                    && io.getMessage().contains("preinstalled-parent")
+                                    && io.getMessage().contains("missing-child-repository")
+                                    && io.getMessage().contains(
+                                            "skill-manager sync preinstalled-parent");
+                        }
+                        assertTrue(rejected,
+                                "incomplete reused-parent closure fails with an actionable error");
+                    }
+                })
                 .test("preinstalled direct git dependency is projected into project child home", () -> {
                     try (TestHarness h = TestHarness.create()) {
                         Path repoRoot = Files.createTempDirectory("project-resolve-preinstalled-git-");

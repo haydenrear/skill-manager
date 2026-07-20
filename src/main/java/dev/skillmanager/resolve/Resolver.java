@@ -49,12 +49,26 @@ public final class Resolver {
      * so the renderer reports every problem in one batch.
      *
      * @param source      the coord we tried to resolve
+     * @param version     registry version or direct-git ref attempted
      * @param requestedBy unit that declared this ref via skill_references —
      *                    null for top-level coords the caller passed directly
      * @param cause       underlying exception (a GitFetcherException, an
      *                    IOException from a file:/ probe, a RegistryUnavailableException, etc.)
      */
-    public record ResolveFailure(String source, String requestedBy, Throwable cause) {
+    public record ResolveFailure(String source, String version, String requestedBy, Throwable cause) {
+        /** User-facing coordinate including the attempted version or git ref. */
+        public String coordinate() {
+            if (version == null || version.isBlank()) return source;
+            String s = source == null ? "" : source;
+            boolean direct = s.startsWith("git+")
+                    || s.startsWith("github:")
+                    || s.startsWith("ssh://")
+                    || s.startsWith("git@")
+                    || s.endsWith(".git");
+            if (direct) return s.contains("#") ? s : s + "#" + version;
+            return s.contains("@") ? s : s + "@" + version;
+        }
+
         /** One-line summary for renderer / banner — first line of the cause's message, trimmed. */
         public String reason() {
             String m = cause == null ? null : cause.getMessage();
@@ -175,7 +189,7 @@ public final class Resolver {
                 // failure in one run rather than fail-fast on the
                 // first one (which masks the others).
                 Fs.deleteRecursive(staging);
-                failures.add(new ResolveFailure(coord, p.requestedBy, e));
+                failures.add(new ResolveFailure(coord, p.version, p.requestedBy, e));
                 continue;
             }
             // Kind-aware parse, in precedence order:
@@ -228,6 +242,9 @@ public final class Resolver {
                     Path resolvedPath = rel.isAbsolute() ? rel : originDir.resolve(rel).normalize();
                     childSource = resolvedPath.toString();
                     childVersion = null;
+                } else if (ref.isDirectGit()) {
+                    childSource = "git+" + ref.gitUrl();
+                    childVersion = ref.gitRef();
                 } else if (ref.isRegistry()) {
                     childSource = ref.name();
                     childVersion = ref.version();
