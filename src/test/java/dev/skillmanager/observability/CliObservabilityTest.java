@@ -216,61 +216,80 @@ public final class CliObservabilityTest {
                             "operator can explicitly restore SDK retry behavior");
                 })
                 .test("unavailable OTLP is concise, fail-open, and bounded", () -> {
-                    Path home = Files.createTempDirectory("cli-otel-unavailable-");
-                    String java = Path.of(System.getProperty("java.home"), "bin", "java")
-                            .toString();
-                    ProcessBuilder builder = new ProcessBuilder(
-                            java,
-                            "-cp",
-                            System.getProperty("java.class.path"),
-                            CliProcess.class.getName());
-                    Map<String, String> environment = builder.environment();
-                    environment.put("SKILL_MANAGER_HOME", home.toString());
-                    environment.put("OTEL_EXPORTER_OTLP_ENDPOINT",
-                            "http://127.0.0.1:1");
-                    environment.put("OTEL_EXPORTER_OTLP_PROTOCOL", "http/protobuf");
-                    environment.put("OTEL_TRACES_EXPORTER", "otlp");
-                    environment.put("OTEL_METRICS_EXPORTER", "otlp");
-                    environment.put("OTEL_LOGS_EXPORTER", "otlp");
-                    environment.remove("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT");
-                    environment.remove("OTEL_EXPORTER_OTLP_METRICS_ENDPOINT");
-                    environment.remove("OTEL_EXPORTER_OTLP_LOGS_ENDPOINT");
-                    environment.remove("OTEL_JAVA_EXPORTER_OTLP_RETRY_DISABLED");
-                    builder.redirectErrorStream(true);
-
-                    long started = System.nanoTime();
-                    Process process = builder.start();
-                    CompletableFuture<String> output = CompletableFuture.supplyAsync(() -> {
-                        try {
-                            return new String(process.getInputStream().readAllBytes(),
-                                    StandardCharsets.UTF_8);
-                        } catch (Exception e) {
-                            throw new RuntimeException(e);
-                        }
+                    HttpServer unavailable = HttpServer.create(
+                            new InetSocketAddress("127.0.0.1", 0), 0);
+                    unavailable.createContext("/", exchange -> {
+                        exchange.sendResponseHeaders(503, -1);
+                        exchange.close();
                     });
-                    boolean exited = process.waitFor(8, TimeUnit.SECONDS);
-                    if (!exited) {
-                        process.destroyForcibly();
-                        process.waitFor();
-                    }
-                    long elapsedMillis = (System.nanoTime() - started) / 1_000_000;
-                    String text = output.get(2, TimeUnit.SECONDS);
+                    unavailable.start();
+                    try {
+                        String endpoint = "http://127.0.0.1:"
+                                + unavailable.getAddress().getPort();
+                        Path home = Files.createTempDirectory("cli-otel-unavailable-");
+                        String java = Path.of(System.getProperty("java.home"), "bin", "java")
+                                .toString();
+                        ProcessBuilder builder = new ProcessBuilder(
+                                java,
+                                "-Dotel.sdk.disabled=false",
+                                "-Dotel.exporter.otlp.endpoint=" + endpoint,
+                                "-Dotel.exporter.otlp.protocol=http/protobuf",
+                                "-Dotel.traces.exporter=otlp",
+                                "-Dotel.metrics.exporter=otlp",
+                                "-Dotel.logs.exporter=otlp",
+                                "-Dotel.java.exporter.otlp.retry.disabled=true",
+                                "-cp",
+                                System.getProperty("java.class.path"),
+                                CliProcess.class.getName());
+                        Map<String, String> environment = builder.environment();
+                        environment.put("SKILL_MANAGER_HOME", home.toString());
+                        environment.put("OTEL_EXPORTER_OTLP_ENDPOINT", endpoint);
+                        environment.put("OTEL_EXPORTER_OTLP_PROTOCOL", "http/protobuf");
+                        environment.put("OTEL_TRACES_EXPORTER", "otlp");
+                        environment.put("OTEL_METRICS_EXPORTER", "otlp");
+                        environment.put("OTEL_LOGS_EXPORTER", "otlp");
+                        environment.remove("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT");
+                        environment.remove("OTEL_EXPORTER_OTLP_METRICS_ENDPOINT");
+                        environment.remove("OTEL_EXPORTER_OTLP_LOGS_ENDPOINT");
+                        environment.remove("OTEL_JAVA_EXPORTER_OTLP_RETRY_DISABLED");
+                        builder.redirectErrorStream(true);
 
-                    assertTrue(exited, "CLI exited before its telemetry deadline");
-                    assertEquals(0, process.exitValue(), "CLI exit status remains successful");
-                    assertTrue(text.contains("skill-manager "),
-                            "normal version output is preserved");
-                    assertEquals(1, occurrences(text,
-                                    "Telemetry export unavailable; continuing without telemetry."),
-                            "one process-wide fail-open notice");
-                    assertFalse(text.contains("Failed to export"),
-                            "SDK exporter failure messages are suppressed");
-                    assertFalse(text.contains("Exporter failed"),
-                            "metric-reader duplicate messages are suppressed");
-                    assertFalse(text.contains("\tat "),
-                            "SDK exception stack frames are suppressed");
-                    assertTrue(elapsedMillis < 8_000,
-                            "unavailable exporter does not consume retry backoff");
+                        long started = System.nanoTime();
+                        Process process = builder.start();
+                        CompletableFuture<String> output = CompletableFuture.supplyAsync(() -> {
+                            try {
+                                return new String(process.getInputStream().readAllBytes(),
+                                        StandardCharsets.UTF_8);
+                            } catch (Exception e) {
+                                throw new RuntimeException(e);
+                            }
+                        });
+                        boolean exited = process.waitFor(8, TimeUnit.SECONDS);
+                        if (!exited) {
+                            process.destroyForcibly();
+                            process.waitFor();
+                        }
+                        long elapsedMillis = (System.nanoTime() - started) / 1_000_000;
+                        String text = output.get(2, TimeUnit.SECONDS);
+
+                        assertTrue(exited, "CLI exited before its telemetry deadline");
+                        assertEquals(0, process.exitValue(), "CLI exit status remains successful");
+                        assertTrue(text.contains("skill-manager "),
+                                "normal version output is preserved");
+                        assertEquals(1, occurrences(text,
+                                        "Telemetry export unavailable; continuing without telemetry."),
+                                "one process-wide fail-open notice");
+                        assertFalse(text.contains("Failed to export"),
+                                "SDK exporter failure messages are suppressed");
+                        assertFalse(text.contains("Exporter failed"),
+                                "metric-reader duplicate messages are suppressed");
+                        assertFalse(text.contains("\tat "),
+                                "SDK exception stack frames are suppressed");
+                        assertTrue(elapsedMillis < 8_000,
+                                "unavailable exporter does not consume retry backoff");
+                    } finally {
+                        unavailable.stop(0);
+                    }
                 })
                 .runAll();
     }
