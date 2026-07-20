@@ -29,7 +29,7 @@ from tracing_skill_observability import (
 
 SERVICE_NAME = "virtual-mcp-gateway"
 # x-release-please-start-version
-SERVICE_VERSION = "0.19.1"
+SERVICE_VERSION = "0.19.2"
 # x-release-please-end
 DEFAULT_FLUSH_TIMEOUT_MILLIS = 5_000
 
