@@ -91,9 +91,15 @@ public class PluginSynced {
             // Sync must have re-walked MCP deps too (parity with SkillSynced).
             boolean mcpReRegistered = body.contains("---MCP-INSTALL-RESULTS-BEGIN---")
                     && body.contains("---MCP-INSTALL-RESULTS-END---");
+            boolean expectedMigrationExit = rc == 1;
+            boolean expectedMigrationErrors = body.contains("skills with outstanding errors (2)")
+                    && body.contains("hello-plugin:")
+                    && body.contains("umbrella-plugin:")
+                    && occurrences(body, "NEEDS_GIT_MIGRATION:") == 2;
 
             boolean pass = preSymlinkGone && preManifestStubbed
-                    && symlinkRestored && manifestRestored && mcpReRegistered;
+                    && symlinkRestored && manifestRestored && mcpReRegistered
+                    && expectedMigrationExit && expectedMigrationErrors;
             return (pass
                     ? NodeResult.pass("plugin.synced")
                     : NodeResult.fail("plugin.synced",
@@ -101,15 +107,27 @@ public class PluginSynced {
                                     + " preManifestStubbed=" + preManifestStubbed
                                     + " symlinkRestored=" + symlinkRestored
                                     + " manifestRestored=" + manifestRestored
-                                    + " mcpReRegistered=" + mcpReRegistered))
+                                    + " mcpReRegistered=" + mcpReRegistered
+                                    + " expectedMigrationExit=" + expectedMigrationExit
+                                    + " expectedMigrationErrors=" + expectedMigrationErrors))
                     .process(proc)
                     .assertion("marketplace_symlink_was_drifted", preSymlinkGone)
                     .assertion("marketplace_manifest_was_drifted", preManifestStubbed)
                     .assertion("marketplace_symlink_restored", symlinkRestored)
                     .assertion("marketplace_manifest_restored", manifestRestored)
                     .assertion("mcp_register_results_emitted", mcpReRegistered)
+                    .assertion("sync_exit_one_for_expected_migration", expectedMigrationExit)
+                    .assertion("sync_errors_are_two_expected_migrations", expectedMigrationErrors)
                     .metric("exitCode", rc);
         });
+    }
+
+    private static int occurrences(String body, String needle) {
+        int count = 0;
+        for (int at = 0; (at = body.indexOf(needle, at)) >= 0; at += needle.length()) {
+            count++;
+        }
+        return count;
     }
 
     private static String readLog(com.hayden.testgraphsdk.sdk.NodeContext ctx, String label) {
