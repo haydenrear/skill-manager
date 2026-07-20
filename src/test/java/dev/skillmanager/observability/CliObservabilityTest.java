@@ -2,6 +2,7 @@ package dev.skillmanager.observability;
 
 import com.sun.net.httpserver.HttpServer;
 import dev.skillmanager._lib.test.Tests;
+import dev.skillmanager.cli.SkillManagerCli;
 import dev.skillmanager.mcp.GatewayClient;
 import dev.skillmanager.mcp.GatewayConfig;
 import dev.skillmanager.mcp.GatewayRuntime;
@@ -13,12 +14,17 @@ import io.opentelemetry.context.Scope;
 
 import java.net.InetSocketAddress;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static dev.skillmanager._lib.test.Tests.assertEquals;
 import static dev.skillmanager._lib.test.Tests.assertFalse;
@@ -198,7 +204,176 @@ public final class CliObservabilityTest {
                     assertTrue(elapsedMillis < 1_000,
                             "flush completed within a bounded wall-clock interval");
                 })
+                .test("short-lived retry default preserves an explicit operator override", () -> {
+                    assertEquals("true",
+                            CliObservability.defaultProperties(Map.of())
+                                    .get("otel.java.exporter.otlp.retry.disabled"),
+                            "CLI disables exporter retry by default");
+                    Map<String, String> env = new HashMap<>();
+                    env.put("OTEL_JAVA_EXPORTER_OTLP_RETRY_DISABLED", "false");
+                    assertEquals("false",
+                            CliObservability.defaultProperties(env)
+                                    .get("otel.java.exporter.otlp.retry.disabled"),
+                            "operator can explicitly restore SDK retry behavior");
+                })
+                .test("unavailable OTLP is concise, fail-open, and bounded", () -> {
+                    AtomicInteger rejectedRequests = new AtomicInteger();
+                    HttpServer unavailable = HttpServer.create(
+                            new InetSocketAddress("127.0.0.1", 0), 0);
+                    unavailable.createContext("/", exchange -> {
+                        rejectedRequests.incrementAndGet();
+                        exchange.sendResponseHeaders(503, -1);
+                        exchange.close();
+                    });
+                    unavailable.start();
+                    try {
+                        String endpoint = "http://127.0.0.1:"
+                                + unavailable.getAddress().getPort();
+                        Path home = Files.createTempDirectory("cli-otel-unavailable-");
+                        String java = Path.of(System.getProperty("java.home"), "bin", "java")
+                                .toString();
+                        ProcessBuilder builder = new ProcessBuilder(
+                                java,
+                                "-Dotel.sdk.disabled=false",
+                                "-Dotel.exporter.otlp.endpoint=" + endpoint,
+                                "-Dotel.exporter.otlp.protocol=http/protobuf",
+                                "-Dotel.traces.exporter=otlp",
+                                "-Dotel.metrics.exporter=otlp",
+                                "-Dotel.logs.exporter=otlp",
+                                "-Dotel.java.exporter.otlp.retry.disabled=true",
+                                "-cp",
+                                System.getProperty("java.class.path"),
+                                CliProcess.class.getName());
+                        Map<String, String> environment = builder.environment();
+                        environment.put("SKILL_MANAGER_HOME", home.toString());
+                        environment.put("OTEL_EXPORTER_OTLP_ENDPOINT", endpoint);
+                        environment.put("OTEL_EXPORTER_OTLP_PROTOCOL", "http/protobuf");
+                        environment.put("OTEL_TRACES_EXPORTER", "otlp");
+                        environment.put("OTEL_METRICS_EXPORTER", "otlp");
+                        environment.put("OTEL_LOGS_EXPORTER", "otlp");
+                        environment.remove("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT");
+                        environment.remove("OTEL_EXPORTER_OTLP_METRICS_ENDPOINT");
+                        environment.remove("OTEL_EXPORTER_OTLP_LOGS_ENDPOINT");
+                        environment.remove("OTEL_JAVA_EXPORTER_OTLP_RETRY_DISABLED");
+                        builder.redirectErrorStream(true);
+
+                        long started = System.nanoTime();
+                        Process process = builder.start();
+                        CompletableFuture<String> output = CompletableFuture.supplyAsync(() -> {
+                            try {
+                                return new String(process.getInputStream().readAllBytes(),
+                                        StandardCharsets.UTF_8);
+                            } catch (Exception e) {
+                                throw new RuntimeException(e);
+                            }
+                        });
+                        boolean exited = process.waitFor(8, TimeUnit.SECONDS);
+                        if (!exited) {
+                            process.destroyForcibly();
+                            process.waitFor();
+                        }
+                        long elapsedMillis = (System.nanoTime() - started) / 1_000_000;
+                        String text = output.get(2, TimeUnit.SECONDS);
+
+                        assertTrue(exited, "CLI exited before its telemetry deadline");
+                        assertEquals(0, process.exitValue(), "CLI exit status remains successful");
+                        assertTrue(rejectedRequests.get() > 0,
+                                "CLI attempted delivery to the rejecting OTLP endpoint");
+                        assertTrue(text.contains("skill-manager "),
+                                "normal version output is preserved");
+                        assertTrue(occurrences(text,
+                                        "Telemetry export unavailable; continuing without telemetry.") <= 1,
+                                "unavailable delivery emits at most one fail-open notice");
+                        assertFalse(text.contains("Failed to export"),
+                                "SDK exporter failure messages are suppressed");
+                        assertFalse(text.contains("Exporter failed"),
+                                "metric-reader duplicate messages are suppressed");
+                        assertFalse(text.contains("\tat "),
+                                "SDK exception stack frames are suppressed");
+                        assertTrue(elapsedMillis < 8_000,
+                                "unavailable exporter does not consume retry backoff");
+                    } finally {
+                        unavailable.stop(0);
+                    }
+                })
+                .test("SDK failure records collapse to one process-wide notice", () -> {
+                    Path home = Files.createTempDirectory("cli-otel-filter-");
+                    String java = Path.of(System.getProperty("java.home"), "bin", "java")
+                            .toString();
+                    ProcessBuilder builder = new ProcessBuilder(
+                            java,
+                            "-Dotel.sdk.disabled=false",
+                            "-Dotel.traces.exporter=none",
+                            "-Dotel.metrics.exporter=none",
+                            "-Dotel.logs.exporter=none",
+                            "-cp",
+                            System.getProperty("java.class.path"),
+                            ExportFailureFilterProcess.class.getName());
+                    builder.environment().put("SKILL_MANAGER_HOME", home.toString());
+                    builder.redirectErrorStream(true);
+
+                    Process process = builder.start();
+                    CompletableFuture<String> output = CompletableFuture.supplyAsync(() -> {
+                        try {
+                            return new String(process.getInputStream().readAllBytes(),
+                                    StandardCharsets.UTF_8);
+                        } catch (Exception e) {
+                            throw new RuntimeException(e);
+                        }
+                    });
+                    boolean exited = process.waitFor(5, TimeUnit.SECONDS);
+                    if (!exited) {
+                        process.destroyForcibly();
+                        process.waitFor();
+                    }
+                    String text = output.get(2, TimeUnit.SECONDS);
+
+                    assertTrue(exited, "filter fixture exits within its finite deadline");
+                    assertEquals(0, process.exitValue(), "filter fixture exits successfully");
+                    assertEquals(1, occurrences(text,
+                                    "Telemetry export unavailable; continuing without telemetry."),
+                            "three SDK-shaped failures produce one notice");
+                    assertFalse(text.contains("Failed to export"),
+                            "SDK exporter failure records are suppressed");
+                    assertFalse(text.contains("Exporter failed"),
+                            "metric-reader duplicate records are suppressed");
+                    assertFalse(text.contains("\tat "),
+                            "filter notice has no exception stack");
+                })
                 .runAll();
+    }
+
+    private static int occurrences(String text, String needle) {
+        int count = 0;
+        for (int from = 0; (from = text.indexOf(needle, from)) >= 0;
+                from += needle.length()) {
+            count++;
+        }
+        return count;
+    }
+
+    public static final class CliProcess {
+        public static void main(String[] args) {
+            System.exit(SkillManagerCli.run(new String[]{"--version"}));
+        }
+    }
+
+    public static final class ExportFailureFilterProcess {
+        public static void main(String[] args) {
+            CliObservability observability = CliObservability.configure(Map.of(
+                    "OTEL_TRACES_EXPORTER", "none",
+                    "OTEL_METRICS_EXPORTER", "none",
+                    "OTEL_LOGS_EXPORTER", "none"));
+            CliObservability.HTTP_EXPORTER_JUL_LOGGER
+                    .log(java.util.logging.Level.SEVERE,
+                            "Failed to export spans. Deterministic test fixture.");
+            CliObservability.HTTP_EXPORTER_JUL_LOGGER
+                    .log(java.util.logging.Level.SEVERE,
+                            "Failed to export logs. Deterministic test fixture.");
+            CliObservability.METRIC_READER_JUL_LOGGER
+                    .log(java.util.logging.Level.SEVERE, "Exporter failed");
+            observability.flushAndClose(1_000);
+        }
     }
 
     private static Map<String, String> disabledExporters() {
