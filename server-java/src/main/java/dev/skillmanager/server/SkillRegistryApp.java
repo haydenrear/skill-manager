@@ -1,5 +1,6 @@
 package dev.skillmanager.server;
 
+import dev.skillmanager.server.observability.ServerObservability;
 import dev.skillmanager.server.persistence.ImpressionRepository;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -10,6 +11,11 @@ import java.nio.file.Path;
 
 @SpringBootApplication
 public class SkillRegistryApp {
+
+    @Bean(destroyMethod = "close")
+    public ServerObservability serverObservability() {
+        return ServerObservability.configure();
+    }
 
     @Bean
     public Path registryRoot() {

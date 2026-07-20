@@ -1,6 +1,7 @@
 package dev.skillmanager.registry;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import dev.skillmanager.observability.CliObservability;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -80,7 +81,7 @@ public final class RegistryClient {
         URI url = URI.create(strip(config.baseUrl().toString()) + "/auth/password-reset/request");
         Map<String, Object> body = new java.util.LinkedHashMap<>();
         body.put("email", email);
-        HttpRequest req = HttpRequest.newBuilder(url)
+        HttpRequest req = tracedRequest(url)
                 .header("Content-Type", "application/json")
                 .timeout(Duration.ofSeconds(15))
                 .POST(HttpRequest.BodyPublishers.ofString(json.writeValueAsString(body)))
@@ -105,7 +106,7 @@ public final class RegistryClient {
         body.put("password", password);
         if (displayName != null) body.put("display_name", displayName);
         String payload = json.writeValueAsString(body);
-        HttpRequest req = HttpRequest.newBuilder(url)
+        HttpRequest req = tracedRequest(url)
                 .header("Content-Type", "application/json")
                 .timeout(Duration.ofSeconds(15))
                 .POST(HttpRequest.BodyPublishers.ofString(payload))
@@ -193,7 +194,7 @@ public final class RegistryClient {
                     + "&client_id=" + CLI_CLIENT_ID
                     + "&client_secret=" + encode(cliPublicSecret())
                     + "&code_verifier=" + encode(verifier);
-            HttpRequest req = HttpRequest.newBuilder(URI.create(strip(config.baseUrl().toString()) + "/oauth2/token"))
+            HttpRequest req = tracedRequest(URI.create(strip(config.baseUrl().toString()) + "/oauth2/token"))
                     .header("Content-Type", "application/x-www-form-urlencoded")
                     .timeout(Duration.ofSeconds(15))
                     .POST(HttpRequest.BodyPublishers.ofString(form))
@@ -223,7 +224,7 @@ public final class RegistryClient {
         }
         String basic = java.util.Base64.getEncoder().encodeToString(
                 (clientId + ":" + clientSecret).getBytes(StandardCharsets.UTF_8));
-        HttpRequest req = HttpRequest.newBuilder(url)
+        HttpRequest req = tracedRequest(url)
                 .header("Content-Type", "application/x-www-form-urlencoded")
                 .header("Authorization", "Basic " + basic)
                 .timeout(Duration.ofSeconds(15))
@@ -251,7 +252,7 @@ public final class RegistryClient {
     public boolean ping() {
         try {
             URI url = URI.create(strip(config.baseUrl().toString()) + "/health");
-            var resp = http.send(HttpRequest.newBuilder(url).timeout(Duration.ofSeconds(3)).GET().build(),
+            var resp = http.send(tracedRequest(url).timeout(Duration.ofSeconds(3)).GET().build(),
                     HttpResponse.BodyHandlers.discarding());
             return resp.statusCode() / 100 == 2;
         } catch (Exception e) {
@@ -289,7 +290,7 @@ public final class RegistryClient {
         URI url = URI.create(strip(config.baseUrl().toString()) + "/ads/campaigns");
         String payload = json.writeValueAsString(body);
         HttpResponse<String> resp = sendAuthed(
-                bearer -> addAuth(HttpRequest.newBuilder(url)
+                bearer -> addAuth(tracedRequest(url)
                         .header("Content-Type", "application/json")
                         .timeout(Duration.ofSeconds(15))
                         .POST(HttpRequest.BodyPublishers.ofString(payload)), bearer).build(),
@@ -305,7 +306,7 @@ public final class RegistryClient {
     public boolean deleteCampaign(String id) throws IOException {
         URI url = URI.create(strip(config.baseUrl().toString()) + "/ads/campaigns/" + encode(id));
         HttpResponse<String> resp = sendAuthed(
-                bearer -> addAuth(HttpRequest.newBuilder(url).timeout(Duration.ofSeconds(10)).DELETE(), bearer).build(),
+                bearer -> addAuth(tracedRequest(url).timeout(Duration.ofSeconds(10)).DELETE(), bearer).build(),
                 HttpResponse.BodyHandlers.ofString());
         if (resp.statusCode() == 404) return false;
         if (resp.statusCode() / 100 != 2) {
@@ -340,7 +341,7 @@ public final class RegistryClient {
         URI url = URI.create(strip(config.baseUrl().toString())
                 + "/skills/" + encode(name) + "/" + encode(v) + "/download" + q);
         HttpResponse<java.io.InputStream> resp = sendAuthed(
-                bearer -> addAuth(HttpRequest.newBuilder(url).timeout(Duration.ofSeconds(120)).GET(), bearer).build(),
+                bearer -> addAuth(tracedRequest(url).timeout(Duration.ofSeconds(120)).GET(), bearer).build(),
                 HttpResponse.BodyHandlers.ofInputStream());
         if (resp.statusCode() == 404) throw new IOException("not found: " + name + "@" + v);
         if (resp.statusCode() / 100 != 2) throw new IOException("HTTP " + resp.statusCode() + " from " + url);
@@ -362,7 +363,7 @@ public final class RegistryClient {
         if (gitRef != null && !gitRef.isBlank()) body.put("git_ref", gitRef);
         String payload = json.writeValueAsString(body);
         HttpResponse<String> resp = sendAuthed(
-                bearer -> addAuth(HttpRequest.newBuilder(url)
+                bearer -> addAuth(tracedRequest(url)
                         .header("Content-Type", "application/json")
                         .timeout(Duration.ofSeconds(60))
                         .POST(HttpRequest.BodyPublishers.ofString(payload)), bearer).build(),
@@ -380,7 +381,7 @@ public final class RegistryClient {
         String boundary = "skill-manager-" + System.nanoTime();
         byte[] body = buildMultipart(boundary, tarball);
         HttpResponse<String> resp = sendAuthed(
-                bearer -> addAuth(HttpRequest.newBuilder(url)
+                bearer -> addAuth(tracedRequest(url)
                         .timeout(Duration.ofSeconds(120))
                         .header("Content-Type", "multipart/form-data; boundary=" + boundary)
                         .POST(HttpRequest.BodyPublishers.ofByteArray(body)), bearer).build(),
@@ -449,7 +450,7 @@ public final class RegistryClient {
                     + "&refresh_token=" + encode(tokens.refreshToken())
                     + "&client_id=" + CLI_CLIENT_ID
                     + "&client_secret=" + encode(cliPublicSecret());
-            HttpRequest req = HttpRequest.newBuilder(url)
+            HttpRequest req = tracedRequest(url)
                     .header("Content-Type", "application/x-www-form-urlencoded")
                     .timeout(Duration.ofSeconds(15))
                     .POST(HttpRequest.BodyPublishers.ofString(form))
@@ -495,6 +496,10 @@ public final class RegistryClient {
         }
     }
 
+    private static HttpRequest.Builder tracedRequest(URI uri) {
+        return CliObservability.injectCurrentW3c(HttpRequest.newBuilder(uri));
+    }
+
     private static void drainIfNeeded(HttpResponse<?> resp) {
         if (resp.body() instanceof java.io.InputStream in) {
             try { in.close(); } catch (IOException ignored) {}
@@ -521,7 +526,7 @@ public final class RegistryClient {
     private Map<String, Object> get(String path) throws IOException {
         URI url = URI.create(strip(config.baseUrl().toString()) + path);
         HttpResponse<String> resp = sendAuthed(
-                bearer -> addAuth(HttpRequest.newBuilder(url).timeout(Duration.ofSeconds(15)).GET(), bearer).build(),
+                bearer -> addAuth(tracedRequest(url).timeout(Duration.ofSeconds(15)).GET(), bearer).build(),
                 HttpResponse.BodyHandlers.ofString());
         if (resp.statusCode() == 404) throw new IOException("not found: " + url);
         if (resp.statusCode() / 100 != 2) throw new IOException("HTTP " + resp.statusCode() + " from " + url);

@@ -8,6 +8,7 @@ import socket
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 from collections.abc import Iterator
 from pathlib import Path
@@ -373,6 +374,22 @@ def _managed_process(args: list[str]) -> Iterator[subprocess.Popen[str]]:
         text=True,
         env=env,
     )
+    # Always drain the child pipe: structured gateway request logs can exceed
+    # the OS pipe capacity and otherwise deadlock this live-process fixture.
+    captured_output: list[str] = []
+
+    def drain_output() -> None:
+        assert proc.stdout is not None
+        captured_output.extend(proc.stdout)
+
+    output_thread = threading.Thread(
+        target=drain_output,
+        name=f"process-output-{proc.pid}",
+        daemon=True,
+    )
+    output_thread.start()
+    proc._captured_output = captured_output  # type: ignore[attr-defined]
+    proc._output_thread = output_thread  # type: ignore[attr-defined]
     try:
         yield proc
     finally:
@@ -387,6 +404,9 @@ def _stop_process(proc: subprocess.Popen[str]) -> None:
         except subprocess.TimeoutExpired:
             proc.kill()
             proc.wait(timeout=10)
+    output_thread = getattr(proc, "_output_thread", None)
+    if output_thread is not None:
+        output_thread.join(timeout=2)
     if proc.stdout is not None:
         with contextlib.suppress(Exception):
             proc.stdout.close()
@@ -411,6 +431,9 @@ def _wait_for_http_ready(proc: subprocess.Popen[str], url: str, timeout_seconds:
 
 
 def _process_output(proc: subprocess.Popen[str]) -> str:
+    captured_output = getattr(proc, "_captured_output", None)
+    if captured_output is not None:
+        return "".join(captured_output)
     if proc.stdout is None:
         return ""
     try:

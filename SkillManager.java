@@ -24,6 +24,8 @@
 //DEPS org.eclipse.jgit:org.eclipse.jgit:6.10.0.202406032230-r
 //DEPS io.modelcontextprotocol.sdk:mcp:1.1.1
 //DEPS org.slf4j:slf4j-simple:2.0.16
+//DEPS io.opentelemetry:opentelemetry-sdk-extension-autoconfigure:1.62.0
+//DEPS io.opentelemetry:opentelemetry-exporter-otlp:1.62.0
 
 import dev.skillmanager.cli.SkillManagerCli;
 

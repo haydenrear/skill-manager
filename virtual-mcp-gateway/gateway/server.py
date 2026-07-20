@@ -5,17 +5,26 @@ import asyncio
 import logging
 import os
 from contextlib import asynccontextmanager
-from typing import Annotated, Any, AsyncIterator
+from typing import Annotated, Any, AsyncIterator, Mapping
 
 import uvicorn
 from mcp.server.fastmcp import Context, FastMCP
 from pydantic import Field
 from starlette.requests import Request
 from starlette.responses import JSONResponse
+from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from .clients import MCPError, _stable_subprocess_cwd
 from .config import GatewayConfigModel, load_config
 from .models import DEFAULT_SCOPE, InitSchemaField, VALID_SCOPES
+from .observability import (
+    DEFAULT_FLUSH_TIMEOUT_MILLIS,
+    DisabledGatewayObservability,
+    GatewayObservabilitySink,
+    configure_gateway_observability,
+    trace_id_from_carrier,
+    w3c_carrier,
+)
 from .persistence import DynamicServerStore, LastInitStore
 from .provisioning import LoadSpec, Provisioner, default_data_dir
 from .registry import ToolRegistry
@@ -65,8 +74,14 @@ class GatewayServer:
             config: GatewayConfigModel,
             provisioner: Provisioner | None = None,
             persistence: DynamicServerStore | None = None,
+            observability: GatewayObservabilitySink | None = None,
     ):
         self.config = config
+        self.observability = (
+            observability
+            if observability is not None
+            else DisabledGatewayObservability()
+        )
         servers = {item.server_id: item.to_internal() for item in config.mcp_servers}
         self.provisioner = provisioner or Provisioner(default_data_dir())
         data_dir = self.provisioner.data_dir
@@ -96,14 +111,28 @@ class GatewayServer:
         # /servers, we wrap the app in a one-shot middleware that awaits
         # registry.start() on first dispatch.
         self._app_started = False
+        self._shutdown_complete = False
         self._startup_lock = asyncio.Lock()
         self._wrap_app_with_startup_middleware()
 
     def _wrap_app_with_startup_middleware(self) -> None:
-        inner = self.app
+        inner: ASGIApp = self.app
 
-        async def middleware(scope, receive, send):
-            if scope["type"] in ("http", "websocket") and not self._app_started:
+        async def middleware(
+            scope: Scope,
+            receive: Receive,
+            send: Send,
+        ) -> None:
+            if scope["type"] == "lifespan":
+                try:
+                    await inner(scope, receive, send)
+                finally:
+                    await self._app_shutdown()
+                return
+            if scope["type"] == "http":
+                await self._observe_http_request(inner, scope, receive, send)
+                return
+            if scope["type"] == "websocket" and not self._app_started:
                 async with self._startup_lock:
                     if not self._app_started:
                         await self._app_startup()
@@ -111,9 +140,101 @@ class GatewayServer:
 
         self.app = middleware  # ASGI callable replacement
 
+    async def _observe_http_request(
+        self,
+        inner: ASGIApp,
+        scope: Scope,
+        receive: Receive,
+        send: Send,
+    ) -> None:
+        method = _observability_method(str(scope.get("method") or ""))
+        route = _observability_route(str(scope.get("path") or ""))
+        headers = _headers_from_asgi_scope(scope)
+        try:
+            request_trace = self.observability.begin_request(
+                headers,
+                method=method,
+                route=route,
+            )
+        except Exception:
+            logger.exception(
+                "virtual_mcp_gateway.observability.request_begin_failed",
+                extra={
+                    "event.name": (
+                        "virtual_mcp_gateway.observability.request_begin_failed"
+                    ),
+                    "http.request.method": method,
+                    "http.route": route,
+                },
+            )
+            request_trace = DisabledGatewayObservability().begin_request(
+                headers,
+                method=method,
+                route=route,
+            )
+
+        traced_scope = _scope_with_trace_context(scope, request_trace.carrier)
+        status_code = 500
+
+        async def send_with_trace_handle(message: Message) -> None:
+            nonlocal status_code
+            if message["type"] == "http.response.start":
+                status_code = int(message.get("status", 500))
+                trace_id = (
+                    request_trace.trace_id
+                    or trace_id_from_carrier(request_trace.carrier)
+                )
+                if trace_id is not None:
+                    response_headers = list(message.get("headers", []))
+                    if not any(
+                        bytes(key).lower() == b"x-trace-id"
+                        for key, _ in response_headers
+                    ):
+                        response_headers.append(
+                            (b"x-trace-id", trace_id.encode("ascii"))
+                        )
+                    message = {**message, "headers": response_headers}
+            await send(message)
+
+        outcome = "error"
+        try:
+            with self.observability.activate(request_trace):
+                if not self._app_started:
+                    async with self._startup_lock:
+                        if not self._app_started:
+                            await self._app_startup()
+                await inner(
+                    traced_scope,
+                    receive,
+                    send_with_trace_handle,
+                )
+                outcome = "error" if status_code >= 500 else "success"
+        except asyncio.CancelledError:
+            outcome = "cancelled"
+            raise
+        finally:
+            try:
+                self.observability.finish_request(
+                    request_trace,
+                    status_code=status_code,
+                    outcome=outcome,
+                )
+            except Exception:
+                logger.exception(
+                    "virtual_mcp_gateway.observability.request_finish_failed",
+                    extra={
+                        "event.name": (
+                            "virtual_mcp_gateway.observability.request_finish_failed"
+                        ),
+                        "http.request.method": method,
+                        "http.route": route,
+                    },
+                )
+
     async def _app_startup(self) -> None:
         if self._app_started:
             return
+        self._shutdown_complete = False
         self._app_started = True
         await self.registry.start()
         logger.info(
@@ -123,9 +244,38 @@ class GatewayServer:
         )
 
     async def _app_shutdown(self) -> None:
-        if not self._app_started:
+        if self._shutdown_complete:
             return
-        await self.registry.stop()
+        self._shutdown_complete = True
+        try:
+            if self._app_started:
+                await self.registry.stop()
+        finally:
+            self._app_started = False
+            try:
+                flushed = await asyncio.to_thread(
+                    self.observability.flush,
+                    DEFAULT_FLUSH_TIMEOUT_MILLIS,
+                )
+                if not flushed:
+                    logger.warning(
+                        "virtual_mcp_gateway.observability.flush_incomplete",
+                        extra={
+                            "event.name": (
+                                "virtual_mcp_gateway.observability.flush_incomplete"
+                            ),
+                            "timeout_millis": DEFAULT_FLUSH_TIMEOUT_MILLIS,
+                        },
+                    )
+            except Exception:
+                logger.exception(
+                    "virtual_mcp_gateway.observability.flush_failed",
+                    extra={
+                        "event.name": (
+                            "virtual_mcp_gateway.observability.flush_failed"
+                        ),
+                    },
+                )
 
     @asynccontextmanager
     async def _lifespan(self, _: FastMCP) -> AsyncIterator[None]:
@@ -547,9 +697,69 @@ def _headers_from_context(ctx: Context) -> dict[str, str]:
     return _normalize_headers(dict(raw_headers))
 
 
-def build_app(config_path: str) -> Any:
+def _headers_from_asgi_scope(scope: Mapping[str, Any]) -> dict[str, str]:
+    headers: dict[str, str] = {}
+    for key, value in scope.get("headers", []):
+        headers[bytes(key).decode("latin-1").lower()] = bytes(value).decode(
+            "latin-1"
+        )
+    return headers
+
+
+def _scope_with_trace_context(
+    scope: Mapping[str, Any],
+    carrier: Mapping[str, str],
+) -> dict[str, Any]:
+    propagated = w3c_carrier(carrier)
+    if not propagated:
+        return dict(scope)
+    headers = [
+        (key, value)
+        for key, value in scope.get("headers", [])
+        if bytes(key).decode("latin-1").lower() not in propagated
+    ]
+    headers.extend(
+        (key.encode("ascii"), value.encode("ascii"))
+        for key, value in propagated.items()
+    )
+    return {**scope, "headers": headers}
+
+
+def _observability_route(path: str) -> str:
+    if path == "/mcp" or path.startswith("/mcp/"):
+        return "/mcp"
+    if path == "/health":
+        return "/health"
+    if path == "/servers":
+        return "/servers"
+    if path.startswith("/servers/"):
+        return "/servers/{server_id}"
+    return "unmatched"
+
+
+def _observability_method(method: str) -> str:
+    normalized = method.upper()
+    if normalized in {
+        "CONNECT",
+        "DELETE",
+        "GET",
+        "HEAD",
+        "OPTIONS",
+        "PATCH",
+        "POST",
+        "PUT",
+        "TRACE",
+    }:
+        return normalized
+    return "OTHER"
+
+
+def build_app(config_path: str, log_level: str = "INFO") -> Any:
     config = load_config(config_path)
-    gateway = GatewayServer(config)
+    gateway = GatewayServer(
+        config,
+        observability=configure_gateway_observability(log_level),
+    )
     return gateway.app
 
 
@@ -571,8 +781,13 @@ def main() -> None:
     # boot so the daemon itself, and any cwd-inheriting subprocess we
     # haven't explicitly overridden, stays alive across upgrades.
     os.chdir(_stable_subprocess_cwd())
-    app = build_app(args.config)
-    uvicorn.run(app, host=args.host, port=args.port)
+    app = build_app(args.config, log_level=args.log_level)
+    uvicorn.run(
+        app,
+        host=args.host,
+        port=args.port,
+        log_config=None,
+    )
 
 
 if __name__ == "__main__":

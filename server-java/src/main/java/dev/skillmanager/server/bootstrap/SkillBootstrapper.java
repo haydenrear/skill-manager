@@ -1,7 +1,9 @@
 package dev.skillmanager.server.bootstrap;
 
+import dev.skillmanager.server.observability.ServerObservability;
 import dev.skillmanager.server.publish.PublishException;
 import dev.skillmanager.server.publish.SkillPublishService;
+import io.opentelemetry.context.Scope;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
@@ -17,6 +19,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 import java.util.zip.GZIPOutputStream;
 
@@ -70,9 +73,11 @@ public final class SkillBootstrapper {
     );
 
     private final SkillPublishService publishService;
+    private final ServerObservability observability;
 
-    public SkillBootstrapper(SkillPublishService publishService) {
+    public SkillBootstrapper(SkillPublishService publishService, ServerObservability observability) {
         this.publishService = publishService;
+        this.observability = observability;
     }
 
     @EventListener(ApplicationReadyEvent.class)
@@ -87,14 +92,35 @@ public final class SkillBootstrapper {
         log.info("SkillBootstrapper: seeding bundled skills from {}", root);
         for (String name : BUNDLED_SKILLS) {
             Path skillDir = root.resolve(name);
+            long startedAt = System.nanoTime();
+            String status = "ok";
+            ServerObservability.Operation operation =
+                    observability.beginBackground("bootstrap.skill");
+            Scope scope = observability.makeCurrent(operation);
             try {
                 seedOne(skillDir);
             } catch (Exception e) {
+                status = "error";
                 // Don't let one bad skill block the rest, and don't let
                 // the bootstrapper fail the whole server start.
                 log.warn("SkillBootstrapper: failed to seed {}: {}", name, e.getMessage());
+            } finally {
+                try {
+                    scope.close();
+                } catch (Throwable ignored) {
+                    // Telemetry context cleanup cannot change bootstrap status.
+                }
+                observability.endBackground(
+                        operation,
+                        "bootstrap.skill",
+                        status,
+                        elapsedMillis(startedAt));
             }
         }
+    }
+
+    private static double elapsedMillis(long startedAt) {
+        return (double) (System.nanoTime() - startedAt) / TimeUnit.MILLISECONDS.toNanos(1);
     }
 
     private void seedOne(Path skillDir) throws IOException {

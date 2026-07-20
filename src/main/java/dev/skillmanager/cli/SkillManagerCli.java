@@ -31,9 +31,11 @@ import dev.skillmanager.commands.UninstallCommand;
 import dev.skillmanager.commands.UpgradeCommand;
 import dev.skillmanager.registry.AuthenticationRequiredException;
 import dev.skillmanager.registry.RegistryUnavailableException;
+import dev.skillmanager.observability.CliObservability;
 import dev.skillmanager.store.GitCloneAuthException;
 import dev.skillmanager.store.GitFetcherException;
 import dev.skillmanager.util.Log;
+import io.opentelemetry.context.Scope;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
@@ -102,6 +104,25 @@ public final class SkillManagerCli implements Runnable {
     }
 
     public static int run(String[] args) {
+        CliObservability observability = CliObservability.configure();
+        int[] exitCode = {1};
+        try {
+            try (Scope ignored = observability.makeCurrent()) {
+                try {
+                    exitCode[0] = execute(args);
+                    return exitCode[0];
+                } finally {
+                    // Most paths complete with the parsed command below. This
+                    // idempotent fallback also covers picocli startup failures.
+                    observability.complete("skill-manager", exitCode[0]);
+                }
+            }
+        } finally {
+            observability.flushAndClose(CliObservability.DEFAULT_FLUSH_TIMEOUT_MILLIS);
+        }
+    }
+
+    private static int execute(String[] args) {
         dev.skillmanager.effects.UnitReadProblemReporter.reset();
         CommandLine cmd = new CommandLine(new SkillManagerCli());
         cmd.setExecutionStrategy(pr -> {
@@ -149,8 +170,14 @@ public final class SkillManagerCli implements Runnable {
 
     private static int completeExecution(SkillManagerCli root, CommandLine.ParseResult pr, int rc) {
         tryPrintOutstandingErrors();
+        String commandPath = CliAgentContext.commandPath(pr);
+        CliObservability.completeCurrent(commandPath, rc);
         if (isAgentContextRequested(root)) {
-            CliAgentContext.emit(System.err, CliAgentContext.commandPath(pr), rc);
+            CliAgentContext.emit(
+                    System.err,
+                    commandPath,
+                    rc,
+                    CliObservability.currentTraceId());
         }
         return rc;
     }

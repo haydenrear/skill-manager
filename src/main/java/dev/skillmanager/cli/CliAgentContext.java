@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 /**
  * Renders a bounded agent-facing context block for an executed CLI command.
@@ -19,10 +20,13 @@ import java.util.Set;
 public final class CliAgentContext {
     public static final String BEGIN = "SKILL_MANAGER_AGENT_CONTEXT_BEGIN";
     public static final String END = "SKILL_MANAGER_AGENT_CONTEXT_END";
+    private static final Pattern TRACE_ID = Pattern.compile("[0-9a-f]{32}");
+    private static final String ZERO_TRACE_ID = "00000000000000000000000000000000";
 
     private CliAgentContext() {}
 
     public static String commandPath(CommandLine.ParseResult parseResult) {
+        if (parseResult == null) return "skill-manager";
         CommandLine.ParseResult leaf = parseResult;
         while (leaf.hasSubcommand()) {
             leaf = leaf.subcommand();
@@ -41,13 +45,21 @@ public final class CliAgentContext {
     }
 
     public static void emit(PrintStream err, String commandPath, int exitCode) {
-        String block = render(commandPath, exitCode);
+        emit(err, commandPath, exitCode, null);
+    }
+
+    public static void emit(PrintStream err, String commandPath, int exitCode, String traceId) {
+        String block = render(commandPath, exitCode, traceId);
         if (!block.isBlank()) {
             err.print(block);
         }
     }
 
     public static String render(String commandPath, int exitCode) {
+        return render(commandPath, exitCode, null);
+    }
+
+    public static String render(String commandPath, int exitCode, String traceId) {
         String normalized = commandPath == null || commandPath.isBlank()
                 ? "skill-manager"
                 : commandPath.trim();
@@ -69,6 +81,9 @@ public final class CliAgentContext {
         out.append("command_path: ").append(normalized).append('\n');
         out.append("exit_code: ").append(exitCode).append('\n');
         out.append("status: ").append(exitCode == 0 ? "success" : "failed").append('\n');
+        if (isValidTraceId(traceId)) {
+            out.append("trace_id: ").append(traceId).append('\n');
+        }
         out.append("workflow_state: command_completed").append('\n');
         appendList(out, "workflows", workflowIds);
         appendList(out, "related_skill_docs", docs);
@@ -78,6 +93,12 @@ public final class CliAgentContext {
         out.append("  - $SKILL_MANAGER_HOME/logs\n");
         out.append(END).append('\n');
         return out.toString();
+    }
+
+    public static boolean isValidTraceId(String traceId) {
+        return traceId != null
+                && TRACE_ID.matcher(traceId).matches()
+                && !ZERO_TRACE_ID.equals(traceId);
     }
 
     private static List<CliMetadata.WorkflowMetadata> workflowsForCommandPath(String commandPath) {
