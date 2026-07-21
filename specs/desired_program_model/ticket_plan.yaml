@@ -1,0 +1,71 @@
+# This file is part of the desired program model.
+# It is intentionally general: use it for any model-backed ticket workflow,
+# not only migrations. Keep it synchronized with spec_manifest.yaml status.
+version: 1
+name: desired-ticket-workflow
+updated: null
+purpose: "Break the desired whole-program change into tickets that can be implemented, modeled in specs/current, unit-tested, and then validated with broader graph or integration checks."
+
+planning_rules:
+  current_model_rule: Update specs/current after each production slice lands as a whole-program working copy of specs/program_model, not a ticket projection.
+  unit_validation_rule: Run current-model TLC and adapter/unit tests before adding graph execution.
+  graph_rule: Add graph or integration nodes only after current-model validation passes.
+  semantic_model_rule: Do not add test graph nodes, pytest jobs, CI workflow steps, integration harnesses, or validation scripts as TLA+ program state/actions.
+  evidence_rule: Record tests and graph runs as evidence for semantic program actions in manifests or ticket status.
+  desired_sync_rule: Update this file and spec_manifest.yaml whenever scope, order, acceptance checks, or status changes.
+  promotion_rule: When specs/current equals specs/desired_program_model, promote the converged model to specs/program_model.
+
+status:
+  workflow: ticket
+  active_ticket: 128-clear-stale-transitive-error
+  active_ticket_title: "Stale TRANSITIVE_RESOLVE_FAILED error never clears after the offending reference is removed"
+  desired_module: SkillManager
+  phase: planning
+
+# Replace or extend these sections with project-specific domains. Service,
+# process, queue, database, file, API, model, permission, or UI boundaries can
+# all be listed here when they matter to correctness.
+service_catalog:
+  existing_boundaries: []
+  desired_boundaries: []
+  adapter_boundaries: []
+  known_gaps: []
+
+tickets:
+  - id: 128-clear-stale-transitive-error
+    title: "Stale TRANSITIVE_RESOLVE_FAILED error never clears after the offending reference is removed"
+    status: next
+    depends_on: []
+    objective: "Describe the behavior change in program terms. Name the resource or state boundary that must become true, not only the implementation file."
+    desired_actions:
+      # Add TLA+ action names that will exist in specs/desired_program_model.
+      - ReplaceWithDesiredAction
+    implementation_scope:
+      # Add production files, scripts, descriptors, infrastructure, or adapters
+      # this ticket is allowed to touch.
+      - Replace with implementation surfaces
+    current_increment:
+      model_state:
+        # Add state fields that the whole-program specs/current model will gain after implementation.
+        # Preserve all existing specs/program_model fields unless the program behavior changes.
+        - replace_with_state_field
+      model_actions:
+        # Add semantic program actions that specs/current will gain after implementation.
+        # Do not add tests, graph nodes, CI jobs, or validation harness steps here.
+        - ReplaceWithDesiredAction
+      adapters:
+        # Add adapter classes or commands that prove production conforms.
+        - ReplaceWithAdapter
+      unit_tests:
+        # Add current-model tests that must pass before graph coverage.
+        - pytest specs/current/tests
+      graph_after_unit_pass:
+        # Add graph/test nodes only after current-model tests pass.
+        - replace.with.graph.node
+    acceptance:
+      commands:
+        - python scripts/run_tlc_or_project_specific_check.py
+      assertions:
+        - The production slice refines to the current model.
+        - The current model advances toward the desired model.
+      evidence: []
