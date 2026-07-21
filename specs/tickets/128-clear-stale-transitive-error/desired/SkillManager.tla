@@ -721,12 +721,17 @@ SyncUnit(u) ==
         cli_skill_scripts_run \cup (ScriptsFor(surfaced) \ cli_cli_lock)
     /\ gateway_catalog' = gateway_catalog \cup McpServersFor(surfaced)
     /\ gateway_dynamic_servers' = gateway_dynamic_servers \cup McpServersFor(surfaced)
+    \* A pass where every surfaced dependency resolves clears the
+    \* unit's persisted resolve error (TRANSITIVE_RESOLVE_FAILED
+    \* self-clear contract) -- including when the offending
+    \* reference was removed, leaving nothing unmet.
+    /\ cli_errors' = cli_errors \ {u}
     /\ EffectOk
     /\ result' = Ok
     /\ UNCHANGED << cli_doc_repos, cli_harness_templates,
                     cli_harness_instances, cli_projection_rows,
                     cli_managed_copies, cli_import_directives,
-                    cli_projection_conflicts, cli_errors,
+                    cli_projection_conflicts,
                     cli_gateway_url_configured, cli_registry_url_configured,
                     cli_gateway_mcp_snapshot, always_after_ran,
                     rollback_journal, gateway_global_deployments,
@@ -788,12 +793,17 @@ SyncUnitForceScripts(u) ==
     /\ cli_skill_scripts_run' = cli_skill_scripts_run \cup ScriptsFor(surfaced)
     /\ gateway_catalog' = gateway_catalog \cup McpServersFor(surfaced)
     /\ gateway_dynamic_servers' = gateway_dynamic_servers \cup McpServersFor(surfaced)
+    \* A pass where every surfaced dependency resolves clears the
+    \* unit's persisted resolve error (TRANSITIVE_RESOLVE_FAILED
+    \* self-clear contract) -- including when the offending
+    \* reference was removed, leaving nothing unmet.
+    /\ cli_errors' = cli_errors \ {u}
     /\ EffectOk
     /\ result' = OkForceScripts
     /\ UNCHANGED << cli_doc_repos, cli_harness_templates,
                     cli_harness_instances, cli_projection_rows,
                     cli_managed_copies, cli_import_directives,
-                    cli_projection_conflicts, cli_errors,
+                    cli_projection_conflicts,
                     cli_gateway_url_configured, cli_registry_url_configured,
                     cli_gateway_mcp_snapshot, always_after_ran,
                     rollback_journal, gateway_global_deployments,
