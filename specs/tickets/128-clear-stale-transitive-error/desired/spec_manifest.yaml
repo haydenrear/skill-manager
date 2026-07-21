@@ -9,17 +9,29 @@ status:
   relation_to_desired_program_model: implemented_prefix_of_desired_ticket_plan
   current_model_rule: whole_program_working_copy_not_ticket_projection
   test_modeling_rule: do_not_model_tests_or_validation_harnesses_as_program_behavior
-  updated: null
+  updated: "2026-07-20"
   current_slice:
-    name: baseline
-    status: scaffolded
-    refines: []
-    implemented_actions: []
+    name: 128-clear-stale-transitive-error
+    status: implemented
+    refines:
+      - SyncUnit
+      - SyncUnitForceScripts
+    implemented_actions:
+      - SyncUnit (fully-resolving pass clears the unit's persisted resolve error)
+      - SyncUnitForceScripts (same clear-on-success semantics)
     validation:
-      unit: []
-      tlc: []
-      graph: []
-      evidence: []
+      unit:
+        - jbang RunTests.java (ResolveGraphDirectGitSyncTest clear-after-ref-removal + reconcile cases)
+        - uv run --with pytest pytest specs/current/tests specs/tickets/128-clear-stale-transitive-error/tests
+      tlc:
+        - bash specs/current/run_tlc.sh SkillManager.tla MC.cfg
+      graph:
+        - source-tracking (source.sync.clears_stale_transitive_error)
+        - smoke
+        - project-resolve
+        - hyper-experiments
+      evidence:
+        - ../tickets/128-clear-stale-transitive-error/results/validation-evidence.md
   next:
     - Fill in whole-program current state fields, actions, invariants, and adapters after the first production slice lands.
     - Preserve all existing specs/program_model state/actions unless production behavior changes them.
