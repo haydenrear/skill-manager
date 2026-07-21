@@ -34,7 +34,7 @@ service_catalog:
 tickets:
   - id: 128-clear-stale-transitive-error
     title: "Stale TRANSITIVE_RESOLVE_FAILED error never clears after the offending reference is removed"
-    status: next
+    status: closed
     depends_on: []
     objective: "A persisted TRANSITIVE_RESOLVE_FAILED error on installed/<parent>.json must not outlive its cause: after any sync pass in which every reference the parent currently declares resolves (including the pass after the offending reference was removed, leaving zero refs), and after a reconcile pass, the outstanding-errors state no longer contains the error. Restores the ErrorKind doc contract 'Self-clears on the next pass where every ref resolves'."
     desired_actions:
