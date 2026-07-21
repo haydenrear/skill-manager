@@ -1,0 +1,46 @@
+version: 1
+name: desired-program-model
+canonical_tla_module: SkillManager
+views:
+  internal:
+    module: Internal.tla
+    config: Internal.cfg
+    generates: spec_unit
+    adapter_mapping: case_adapters.toml
+  external:
+    module: External.tla
+    config: External.cfg
+    generates: testgraph
+    adapter_mapping: testgraph_bindings.yml
+manifest: spec_manifest.yaml
+ticket_plan: ticket_plan.yaml
+
+relationship:
+  extends_current_program_model: ../program_model/Internal.tla
+  extends_current_external_model: ../program_model/External.tla
+  purpose: desired whole-program model for ticket workflow
+  generation_status: planned
+
+implementation_status:
+  updated: null
+  policy: specs/current is the executable state of landed work; this file summarizes the desired destination.
+  active_ticket: 128-clear-stale-transitive-error
+  active_ticket_title: "Stale TRANSITIVE_RESOLVE_FAILED error never clears after the offending reference is removed"
+  summary:
+    desired_model_scaffolded: true
+    ticket_breakdown: scaffolded
+    current_model: scaffolded
+    generated_desired_cases: pending
+    adapters: pending
+
+modeled_boundary_status:
+  ticket_plan:
+    status: scaffolded
+    artifact: ticket_plan.yaml
+    next_ticket: 128-clear-stale-transitive-error
+
+program_domains: []
+implementation_sources: {}
+adapter_plan:
+  desired_new_ports: []
+guardrails: {}
