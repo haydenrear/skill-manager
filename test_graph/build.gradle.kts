@@ -379,9 +379,13 @@ validationGraph {
         // has commits ahead of the install-time baseline, so it
         // shows up as needing --merge.
         node("sources/source-tracking/SourceSyncAllAggregates.java")
+        // Issue #128: a recorded TRANSITIVE_RESOLVE_FAILED must clear
+        // on the next sync after the offending reference is removed.
+        // Self-contained fixture, so it runs after the aggregate sweep.
+        node("sources/source-tracking/SourceSyncClearsStaleTransitiveError.java")
 
         node("sources/common/ServersDown.java")
-                .dependsOn("source.sync.all_aggregates")
+                .dependsOn("source.sync.clears_stale_transitive_error")
     }
 
     /*
