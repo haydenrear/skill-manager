@@ -949,36 +949,32 @@ public final class LiveInterpreter implements ProgramInterpreter {
                 .map(InstalledUnit::unitKind)
                 .orElse(UnitKind.SKILL);
         Path dir = ctx.store().unitDir(e.unitName(), unitKind);
-        boolean cleared = false;
-        switch (e.kind()) {
-            case MERGE_CONFLICT -> {
-                if (GitOps.isGitRepo(dir) && GitOps.unmergedFiles(dir).isEmpty()) {
-                    ctx.clearError(e.unitName(), InstalledUnit.ErrorKind.MERGE_CONFLICT);
-                    cleared = true;
-                }
-            }
-            case NO_GIT_REMOTE -> {
-                if (GitOps.isGitRepo(dir) && GitOps.originUrl(dir) != null) {
-                    ctx.clearError(e.unitName(), InstalledUnit.ErrorKind.NO_GIT_REMOTE);
-                    cleared = true;
-                }
-            }
-            case NEEDS_GIT_MIGRATION -> {
-                if (GitOps.isGitRepo(dir)) {
-                    ctx.clearError(e.unitName(), InstalledUnit.ErrorKind.NEEDS_GIT_MIGRATION);
-                    cleared = true;
-                }
-            }
+        // Exhaustive switch EXPRESSION, no default: a newly added
+        // ErrorKind fails to compile here until someone decides whether
+        // it gets a cheap self-heal probe — a kind can never again be
+        // silently left un-reconciled.
+        boolean cleared = switch (e.kind()) {
+            case MERGE_CONFLICT -> clearIf(ctx, e.unitName(), e.kind(),
+                    GitOps.isGitRepo(dir) && GitOps.unmergedFiles(dir).isEmpty());
+            case NO_GIT_REMOTE -> clearIf(ctx, e.unitName(), e.kind(),
+                    GitOps.isGitRepo(dir) && GitOps.originUrl(dir) != null);
+            case NEEDS_GIT_MIGRATION -> clearIf(ctx, e.unitName(), e.kind(),
+                    GitOps.isGitRepo(dir));
             case GATEWAY_UNAVAILABLE, AGENT_SYNC_FAILED,
                  MCP_REGISTRATION_FAILED, REGISTRY_UNAVAILABLE,
-                 AUTHENTICATION_NEEDED -> {
+                 AUTHENTICATION_NEEDED, PROJECT_SYNC_FAILED -> {
                 // No cheap "is it really fixed" probe — pinging the gateway
                 // tells us nothing about whether THIS skill's MCPs are
                 // registered, etc., and a registry-side auth-validity probe
                 // costs a real HTTP round-trip per unit. Handlers clear
                 // these on actual success (RegisterMcp / SyncAgents /
                 // SyncGit registry lookup → AUTHENTICATION_NEEDED clears
-                // the moment the next describeVersion succeeds).
+                // the moment the next describeVersion succeeds;
+                // PROJECT_SYNC_FAILED clears when the next parent-home
+                // sync refreshes the claiming projects — re-running a
+                // project realization here would be a full sync, not a
+                // probe).
+                yield false;
             }
             case HARNESS_CLI_UNAVAILABLE -> {
                 // Probe is cheap: are both harness CLIs on PATH? Fully
@@ -990,13 +986,36 @@ public final class LiveInterpreter implements ProgramInterpreter {
                 for (var d : dev.skillmanager.project.HarnessPluginCli.defaultDrivers()) {
                     if (!d.available()) { allAvailable = false; break; }
                 }
-                if (allAvailable) {
-                    ctx.clearError(e.unitName(), InstalledUnit.ErrorKind.HARNESS_CLI_UNAVAILABLE);
-                    cleared = true;
-                }
+                yield clearIf(ctx, e.unitName(), e.kind(), allAvailable);
             }
-        }
+            case TRANSITIVE_RESOLVE_FAILED -> {
+                // Contract: "self-clears on the next pass where every ref
+                // resolves." Probe is cheap — no clone/network: read the
+                // unit's CURRENT references. Zero declared refs means
+                // nothing can be unmet (the offending reference was
+                // removed) and clears unconditionally; otherwise clear
+                // only when every ref is already met by an installed
+                // unit. Sync's resolve pass owns the expensive path.
+                boolean allMet;
+                try {
+                    var unit = ctx.store().loadUnit(e.unitName());
+                    allMet = unit.isPresent()
+                            && ResolveGraphHandlers.allReferencesMetInStore(
+                                    e.unitName(), unit.get().references(), ctx);
+                } catch (IOException unreadable) {
+                    // Can't prove the refs are met/removed — keep the error.
+                    allMet = false;
+                }
+                yield clearIf(ctx, e.unitName(), e.kind(), allMet);
+            }
+        };
         return EffectReceipt.ok(e, new ContextFact.ErrorValidated(e.unitName(), e.kind(), cleared));
+    }
+
+    private static boolean clearIf(EffectContext ctx, String unitName,
+                                   InstalledUnit.ErrorKind kind, boolean fixed) throws IOException {
+        if (fixed) ctx.clearError(unitName, kind);
+        return fixed;
     }
 
     private static String ownerOf(List<AgentUnit> units, String mcpServerId) {
