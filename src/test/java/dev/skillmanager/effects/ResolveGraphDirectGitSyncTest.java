@@ -141,6 +141,88 @@ public final class ResolveGraphDirectGitSyncTest {
                         }
                     }
                 })
+                .test("removing the offending reference clears the stale error on the next sync", () -> {
+                    try (TestHarness h = TestHarness.create()) {
+                        Path missingRepo = Files.createTempDirectory("sync-direct-git-removed-")
+                                .resolve("never-a-repository");
+                        Skill broken = scaffoldSkill(
+                                h.store().skillDir("ref-removed-parent"),
+                                "ref-removed-parent",
+                                "git+" + missingRepo.toUri() + "#deadbeef");
+                        h.seedUnit("ref-removed-parent", dev.skillmanager.model.UnitKind.SKILL);
+
+                        h.run(new SkillEffect.BuildResolveGraphFromUnmetReferences(List.of(broken)));
+                        h.context().resolvedGraph().ifPresent(ResolvedGraph::cleanup);
+                        assertTrue(h.sourceOf("ref-removed-parent")
+                                        .map(u -> u.hasError(
+                                                InstalledUnit.ErrorKind.TRANSITIVE_RESOLVE_FAILED))
+                                        .orElse(false),
+                                "failing sync records the transitive error");
+
+                        // The user's fix: REMOVE the offending (only) reference.
+                        Skill fixed = scaffoldSkill(
+                                h.store().skillDir("ref-removed-parent"),
+                                "ref-removed-parent",
+                                null);
+                        EffectReceipt receipt = h.run(
+                                new SkillEffect.BuildResolveGraphFromUnmetReferences(List.of(fixed)));
+                        assertEquals(EffectStatus.OK, receipt.status(),
+                                "sync with the ref removed is clean");
+                        assertFalse(h.sourceOf("ref-removed-parent")
+                                        .map(u -> u.hasError(
+                                                InstalledUnit.ErrorKind.TRANSITIVE_RESOLVE_FAILED))
+                                        .orElse(true),
+                                "stale error clears once the offending ref is removed");
+                    }
+                })
+                .test("reconcile validateAndClear clears the error only once refs are met or removed", () -> {
+                    try (TestHarness h = TestHarness.create()) {
+                        Path missingRepo = Files.createTempDirectory("sync-direct-git-reconcile-")
+                                .resolve("never-a-repository");
+                        Skill broken = scaffoldSkill(
+                                h.store().skillDir("reconcile-parent"),
+                                "reconcile-parent",
+                                "git+" + missingRepo.toUri() + "#deadbeef");
+                        h.seedUnit("reconcile-parent", dev.skillmanager.model.UnitKind.SKILL);
+                        h.run(new SkillEffect.BuildResolveGraphFromUnmetReferences(List.of(broken)));
+                        h.context().resolvedGraph().ifPresent(ResolvedGraph::cleanup);
+                        assertTrue(h.sourceOf("reconcile-parent")
+                                        .map(u -> u.hasError(
+                                                InstalledUnit.ErrorKind.TRANSITIVE_RESOLVE_FAILED))
+                                        .orElse(false),
+                                "failing sync records the transitive error");
+
+                        // Ref still declared and still unmet: reconcile must NOT clear.
+                        EffectReceipt kept = h.run(new SkillEffect.ValidateAndClearError(
+                                "reconcile-parent",
+                                InstalledUnit.ErrorKind.TRANSITIVE_RESOLVE_FAILED));
+                        assertTrue(kept.facts().stream().anyMatch(f ->
+                                        f instanceof ContextFact.ErrorValidated ev && !ev.cleared()),
+                                "reconcile keeps the error while the ref is still unmet");
+                        assertTrue(h.sourceOf("reconcile-parent")
+                                        .map(u -> u.hasError(
+                                                InstalledUnit.ErrorKind.TRANSITIVE_RESOLVE_FAILED))
+                                        .orElse(false),
+                                "error still persisted while the ref is still unmet");
+
+                        // Remove the offending reference, reconcile again: clears.
+                        scaffoldSkill(
+                                h.store().skillDir("reconcile-parent"),
+                                "reconcile-parent",
+                                null);
+                        EffectReceipt receipt = h.run(new SkillEffect.ValidateAndClearError(
+                                "reconcile-parent",
+                                InstalledUnit.ErrorKind.TRANSITIVE_RESOLVE_FAILED));
+                        assertTrue(receipt.facts().stream().anyMatch(f ->
+                                        f instanceof ContextFact.ErrorValidated ev && ev.cleared()),
+                                "reconcile reports the error as cleared");
+                        assertFalse(h.sourceOf("reconcile-parent")
+                                        .map(u -> u.hasError(
+                                                InstalledUnit.ErrorKind.TRANSITIVE_RESOLVE_FAILED))
+                                        .orElse(true),
+                                "reconcile-only path clears the persisted error after ref removal");
+                    }
+                })
                 .runAll();
     }
 
