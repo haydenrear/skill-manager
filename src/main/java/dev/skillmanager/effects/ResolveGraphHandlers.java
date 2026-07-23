@@ -145,13 +145,17 @@ final class ResolveGraphHandlers {
         // all resolve).
         Map<String, Set<String>> resolutionToParents = new LinkedHashMap<>();
         Set<String> seenResolutions = new LinkedHashSet<>();
-        Set<String> parentsWithRefs = new LinkedHashSet<>();
+        // Every live skill is a clear candidate, not just those still
+        // declaring refs this pass — a parent whose offending (only)
+        // reference was REMOVED has nothing left to resolve, and its
+        // persisted TRANSITIVE_RESOLVE_FAILED must clear too.
+        Set<String> liveParents = new LinkedHashSet<>();
         List<Resolver.Coord> unmet = new ArrayList<>();
         UnitStore installedUnits = ctx.sourceStore();
         for (Skill s : e.liveSkills()) {
+            liveParents.add(s.name());
             for (UnitReference ref : s.skillReferences()) {
                 String coord = referenceToCoord(ref, store, s.name());
-                parentsWithRefs.add(s.name());
                 String installedName = ref.name();
                 if (installedName == null && ref.isDirectGit()) {
                     installedName = installedUnits.findInstalledNameByOrigin(ref.gitUrl()).orElse(null);
@@ -170,10 +174,11 @@ final class ResolveGraphHandlers {
             }
         }
         if (unmet.isEmpty()) {
-            // Everything in scope is already in the store — clear any
-            // lingering TRANSITIVE_RESOLVE_FAILED on the parents.
-            // Self-clearing matches REGISTRY_UNAVAILABLE etc.
-            for (String parent : parentsWithRefs) {
+            // Everything in scope is already in the store (or no refs
+            // remain declared) — clear any lingering
+            // TRANSITIVE_RESOLVE_FAILED on the parents. Self-clearing
+            // matches REGISTRY_UNAVAILABLE etc.
+            for (String parent : liveParents) {
                 try { ctx.clearError(parent, InstalledUnit.ErrorKind.TRANSITIVE_RESOLVE_FAILED); }
                 catch (IOException ignored) {}
             }
@@ -208,9 +213,10 @@ final class ResolveGraphHandlers {
                 }
             }
         }
-        // Parents whose refs ALL succeeded this pass: clear any
-        // lingering TRANSITIVE_RESOLVE_FAILED error.
-        for (String parent : parentsWithRefs) {
+        // Parents with no failing ref this pass — refs all succeeded,
+        // or no refs declared anymore: clear any lingering
+        // TRANSITIVE_RESOLVE_FAILED error.
+        for (String parent : liveParents) {
             if (parentsWithFailures.contains(parent)) continue;
             try { ctx.clearError(parent, InstalledUnit.ErrorKind.TRANSITIVE_RESOLVE_FAILED); }
             catch (IOException ignored) {}
@@ -221,6 +227,32 @@ final class ResolveGraphHandlers {
         }
         return EffectReceipt.partial(e, facts,
                 outcome.failures().size() + " of " + unmet.size() + " unmet ref(s) failed to resolve");
+    }
+
+    /**
+     * Cheap store-membership probe shared with the reconcile path
+     * ({@code LiveInterpreter.validateAndClear}): TRUE when every given
+     * reference is already met by an installed unit — trivially TRUE
+     * for an empty list (zero declared refs ⇒ nothing can be unmet, the
+     * ref-removed fix path). Mirrors the met-check at the top of
+     * {@link #buildFromUnmetReferences}; never resolves, clones, or
+     * touches the network.
+     */
+    static boolean allReferencesMetInStore(
+            String parentName, List<UnitReference> refs, EffectContext ctx) throws IOException {
+        SkillStore store = ctx.store();
+        UnitStore installedUnits = ctx.sourceStore();
+        for (UnitReference ref : refs) {
+            String coord = referenceToCoord(ref, store, parentName);
+            String installedName = ref.name();
+            if (installedName == null && ref.isDirectGit()) {
+                installedName = installedUnits.findInstalledNameByOrigin(ref.gitUrl()).orElse(null);
+            } else if (installedName == null) {
+                installedName = guessName(coord);
+            }
+            if (installedName == null || !store.containsUnit(installedName)) return false;
+        }
+        return true;
     }
 
     // ----------------------------------------------------------------

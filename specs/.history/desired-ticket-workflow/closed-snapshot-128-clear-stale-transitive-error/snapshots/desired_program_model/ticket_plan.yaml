@@ -1,0 +1,78 @@
+# This file is part of the desired program model.
+# It is intentionally general: use it for any model-backed ticket workflow,
+# not only migrations. Keep it synchronized with spec_manifest.yaml status.
+version: 1
+name: desired-ticket-workflow
+updated: null
+purpose: "Break the desired whole-program change into tickets that can be implemented, modeled in specs/current, unit-tested, and then validated with broader graph or integration checks."
+
+planning_rules:
+  current_model_rule: Update specs/current after each production slice lands as a whole-program working copy of specs/program_model, not a ticket projection.
+  unit_validation_rule: Run current-model TLC and adapter/unit tests before adding graph execution.
+  graph_rule: Add graph or integration nodes only after current-model validation passes.
+  semantic_model_rule: Do not add test graph nodes, pytest jobs, CI workflow steps, integration harnesses, or validation scripts as TLA+ program state/actions.
+  evidence_rule: Record tests and graph runs as evidence for semantic program actions in manifests or ticket status.
+  desired_sync_rule: Update this file and spec_manifest.yaml whenever scope, order, acceptance checks, or status changes.
+  promotion_rule: When specs/current equals specs/desired_program_model, promote the converged model to specs/program_model.
+
+status:
+  workflow: ticket
+  active_ticket: 128-clear-stale-transitive-error
+  active_ticket_title: "Stale TRANSITIVE_RESOLVE_FAILED error never clears after the offending reference is removed"
+  desired_module: SkillManager
+  phase: planning
+
+# Replace or extend these sections with project-specific domains. Service,
+# process, queue, database, file, API, model, permission, or UI boundaries can
+# all be listed here when they matter to correctness.
+service_catalog:
+  existing_boundaries: []
+  desired_boundaries: []
+  adapter_boundaries: []
+  known_gaps: []
+
+tickets:
+  - id: 128-clear-stale-transitive-error
+    title: "Stale TRANSITIVE_RESOLVE_FAILED error never clears after the offending reference is removed"
+    status: closed
+    depends_on: []
+    objective: "A persisted TRANSITIVE_RESOLVE_FAILED error on installed/<parent>.json must not outlive its cause: after any sync pass in which every reference the parent currently declares resolves (including the pass after the offending reference was removed, leaving zero refs), and after a reconcile pass, the outstanding-errors state no longer contains the error. Restores the ErrorKind doc contract 'Self-clears on the next pass where every ref resolves'."
+    desired_actions:
+      # Existing actions whose semantics change: a fully-resolving sync
+      # pass clears the unit's persisted resolve error (cli_errors \ {u})
+      # instead of leaving cli_errors unchanged.
+      - SyncUnit
+      - SyncUnitForceScripts
+    implementation_scope:
+      - src/main/java/dev/skillmanager/effects/ResolveGraphHandlers.java
+      - src/main/java/dev/skillmanager/effects/LiveInterpreter.java
+      - src/test/java/dev/skillmanager/effects/ResolveGraphDirectGitSyncTest.java
+      - test_graph sync/source-tracking coverage (stale-error-clearing case)
+    current_increment:
+      model_state:
+        # No new state fields; cli_errors transition semantics change on
+        # the SyncUnit/SyncUnitForceScripts success branch.
+        - cli_errors
+      model_actions:
+        - SyncUnit
+        - SyncUnitForceScripts
+      adapters:
+        - dev.skillmanager.effects.ResolveGraphDirectGitSyncTest (clear-after-ref-removal + reconcile validateAndClear cases)
+      unit_tests:
+        - pytest specs/current/tests
+        - jbang RunTests.java
+      graph_after_unit_pass:
+        - source-tracking
+        - smoke
+        - resolve
+        - hyper
+    acceptance:
+      commands:
+        - jbang RunTests.java
+        - python skills/test_graph/scripts/run.py source-tracking
+        - python skills/test_graph/scripts/run.py --all
+      assertions:
+        - A sync pass after the offending reference is removed clears the persisted TRANSITIVE_RESOLVE_FAILED error (zero remaining refs clears unconditionally).
+        - A reconcile pass (ValidateAndClearError) clears a persisted TRANSITIVE_RESOLVE_FAILED whose declared references are all met, and leaves it when refs remain unmet.
+        - Attribution behavior for genuinely failing refs is unchanged.
+      evidence: []

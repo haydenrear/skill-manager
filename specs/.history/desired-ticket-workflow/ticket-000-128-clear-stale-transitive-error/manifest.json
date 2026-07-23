@@ -1,0 +1,206 @@
+{
+  "accept_new": false,
+  "accept_new_promotion": null,
+  "active_ticket_dir": "specs/tickets/128-clear-stale-transitive-error",
+  "commit_recommendation": {
+    "git_add": "git add specs/.history/desired-ticket-workflow/ticket-000-128-clear-stale-transitive-error specs/current",
+    "git_commit": "git commit -m 'record spec history for 128-clear-stale-transitive-error'",
+    "message": "It is recommended to commit this history directory now: specs/.history/desired-ticket-workflow/ticket-000-128-clear-stale-transitive-error"
+  },
+  "created_at_utc": "2026-07-21T01:08:45.876805+00:00",
+  "entry_name": "ticket-000-128-clear-stale-transitive-error",
+  "git": {
+    "branch": "fix/128-clear-stale-transitive-error",
+    "commit": "925bbed",
+    "inside_work_tree": "true"
+  },
+  "history_policy": "append-only by convention; existing entries are not overwritten and filesystem permissions remain git-friendly",
+  "kind": "ticket",
+  "promotion": {
+    "destination": "specs",
+    "merged": [
+      {
+        "destination": "specs/current",
+        "files": [
+          {
+            "destination": "specs/current/MC.cfg",
+            "relative": "MC.cfg",
+            "source": "specs/tickets/128-clear-stale-transitive-error/desired/MC.cfg"
+          },
+          {
+            "destination": "specs/current/MC_program_promotion.cfg",
+            "relative": "MC_program_promotion.cfg",
+            "source": "specs/tickets/128-clear-stale-transitive-error/desired/MC_program_promotion.cfg"
+          },
+          {
+            "destination": "specs/current/README.md",
+            "relative": "README.md",
+            "source": "specs/tickets/128-clear-stale-transitive-error/desired/README.md"
+          },
+          {
+            "destination": "specs/current/SkillManager.tla",
+            "relative": "SkillManager.tla",
+            "source": "specs/tickets/128-clear-stale-transitive-error/desired/SkillManager.tla"
+          },
+          {
+            "destination": "specs/current/case_adapters.toml",
+            "relative": "case_adapters.toml",
+            "source": "specs/tickets/128-clear-stale-transitive-error/desired/case_adapters.toml"
+          },
+          {
+            "destination": "specs/current/extract_manifest.sh",
+            "relative": "extract_manifest.sh",
+            "source": "specs/tickets/128-clear-stale-transitive-error/desired/extract_manifest.sh"
+          },
+          {
+            "destination": "specs/current/production_adapters.py",
+            "relative": "production_adapters.py",
+            "source": "specs/tickets/128-clear-stale-transitive-error/desired/production_adapters.py"
+          },
+          {
+            "destination": "specs/current/run_tlc.sh",
+            "relative": "run_tlc.sh",
+            "source": "specs/tickets/128-clear-stale-transitive-error/desired/run_tlc.sh"
+          },
+          {
+            "destination": "specs/current/spec_manifest.yaml",
+            "relative": "spec_manifest.yaml",
+            "source": "specs/tickets/128-clear-stale-transitive-error/desired/spec_manifest.yaml"
+          },
+          {
+            "destination": "specs/current/tests/test_cli_agent_context_program_model.py",
+            "relative": "tests/test_cli_agent_context_program_model.py",
+            "source": "specs/tickets/128-clear-stale-transitive-error/desired/tests/test_cli_agent_context_program_model.py"
+          },
+          {
+            "destination": "specs/current/tests/test_cli_help_program_model.py",
+            "relative": "tests/test_cli_help_program_model.py",
+            "source": "specs/tickets/128-clear-stale-transitive-error/desired/tests/test_cli_help_program_model.py"
+          },
+          {
+            "destination": "specs/current/tests/test_cli_metadata_program_model.py",
+            "relative": "tests/test_cli_metadata_program_model.py",
+            "source": "specs/tickets/128-clear-stale-transitive-error/desired/tests/test_cli_metadata_program_model.py"
+          },
+          {
+            "destination": "specs/current/tests/test_cli_skill_docs_program_model.py",
+            "relative": "tests/test_cli_skill_docs_program_model.py",
+            "source": "specs/tickets/128-clear-stale-transitive-error/desired/tests/test_cli_skill_docs_program_model.py"
+          },
+          {
+            "destination": "specs/current/tests/test_program_model_contract.py",
+            "relative": "tests/test_program_model_contract.py",
+            "source": "specs/tickets/128-clear-stale-transitive-error/desired/tests/test_program_model_contract.py"
+          }
+        ],
+        "operation": "replace",
+        "role": "current",
+        "source": "specs/tickets/128-clear-stale-transitive-error/desired"
+      }
+    ],
+    "operation": "replace project current with ticket desired and merge ticket artifacts into project specs",
+    "source": "specs/tickets/128-clear-stale-transitive-error"
+  },
+  "results": [
+    {
+      "exists": true,
+      "role": "result",
+      "snapshot": "specs/.history/desired-ticket-workflow/ticket-000-128-clear-stale-transitive-error/results/validation-evidence.md",
+      "source": "specs/tickets/128-clear-stale-transitive-error/results/validation-evidence.md"
+    }
+  ],
+  "schema_version": 1,
+  "snapshots": [
+    {
+      "exists": true,
+      "role": "program_model",
+      "snapshot": "specs/.history/desired-ticket-workflow/ticket-000-128-clear-stale-transitive-error/snapshots/program_model",
+      "source": "specs/program_model"
+    },
+    {
+      "exists": true,
+      "role": "desired_program_model",
+      "snapshot": "specs/.history/desired-ticket-workflow/ticket-000-128-clear-stale-transitive-error/snapshots/desired_program_model",
+      "source": "specs/desired_program_model"
+    },
+    {
+      "exists": true,
+      "role": "current",
+      "snapshot": "specs/.history/desired-ticket-workflow/ticket-000-128-clear-stale-transitive-error/snapshots/current",
+      "source": "specs/current"
+    },
+    {
+      "exists": true,
+      "moved": true,
+      "role": "ticket_workdir",
+      "snapshot": "specs/.history/desired-ticket-workflow/ticket-000-128-clear-stale-transitive-error/ticket",
+      "source": "specs/tickets/128-clear-stale-transitive-error"
+    }
+  ],
+  "spec_root": "specs",
+  "summary": "Stale TRANSITIVE_RESOLVE_FAILED now clears after ref removal via sync clear-loop (liveParents) and reconcile validateAndClear probe; model: SyncUnit/SyncUnitForceScripts success clears cli_errors",
+  "ticket": {
+    "acceptance": {
+      "assertions": [
+        "A sync pass after the offending reference is removed clears the persisted TRANSITIVE_RESOLVE_FAILED error (zero remaining refs clears unconditionally).",
+        "A reconcile pass (ValidateAndClearError) clears a persisted TRANSITIVE_RESOLVE_FAILED whose declared references are all met, and leaves it when refs remain unmet.",
+        "Attribution behavior for genuinely failing refs is unchanged."
+      ],
+      "commands": [
+        "jbang RunTests.java",
+        "python skills/test_graph/scripts/run.py source-tracking",
+        "python skills/test_graph/scripts/run.py --all"
+      ],
+      "evidence": []
+    },
+    "current_increment": {
+      "adapters": [
+        "dev.skillmanager.effects.ResolveGraphDirectGitSyncTest (clear-after-ref-removal + reconcile validateAndClear cases)"
+      ],
+      "graph_after_unit_pass": [
+        "source-tracking",
+        "smoke",
+        "resolve",
+        "hyper"
+      ],
+      "model_actions": [
+        "SyncUnit",
+        "SyncUnitForceScripts"
+      ],
+      "model_state": [
+        "cli_errors"
+      ],
+      "unit_tests": [
+        "pytest specs/current/tests",
+        "jbang RunTests.java"
+      ]
+    },
+    "depends_on": [],
+    "desired_actions": [
+      "SyncUnit",
+      "SyncUnitForceScripts"
+    ],
+    "id": "128-clear-stale-transitive-error",
+    "implementation_scope": [
+      "src/main/java/dev/skillmanager/effects/ResolveGraphHandlers.java",
+      "src/main/java/dev/skillmanager/effects/LiveInterpreter.java",
+      "src/test/java/dev/skillmanager/effects/ResolveGraphDirectGitSyncTest.java",
+      "test_graph sync/source-tracking coverage (stale-error-clearing case)"
+    ],
+    "objective": "A persisted TRANSITIVE_RESOLVE_FAILED error on installed/<parent>.json must not outlive its cause: after any sync pass in which every reference the parent currently declares resolves (including the pass after the offending reference was removed, leaving zero refs), and after a reconcile pass, the outstanding-errors state no longer contains the error. Restores the ErrorKind doc contract 'Self-clears on the next pass where every ref resolves'.",
+    "status": "closed",
+    "title": "Stale TRANSITIVE_RESOLVE_FAILED error never clears after the offending reference is removed"
+  },
+  "ticket_id": "128-clear-stale-transitive-error",
+  "ticket_index": 0,
+  "ticket_plan": "specs/desired_program_model/ticket_plan.yaml",
+  "ticket_status": "closed",
+  "ticket_workdir": {
+    "exists": true,
+    "moved": true,
+    "role": "ticket_workdir",
+    "snapshot": "specs/.history/desired-ticket-workflow/ticket-000-128-clear-stale-transitive-error/ticket",
+    "source": "specs/tickets/128-clear-stale-transitive-error"
+  },
+  "workflow_name": "desired-ticket-workflow"
+}
