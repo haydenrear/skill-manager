@@ -46,6 +46,8 @@
 //SOURCES server-java/src/main/java/dev/skillmanager/server/publish/SkillPublishService.java
 //SOURCES server-java/src/main/java/dev/skillmanager/server/bootstrap/SkillBootstrapper.java
 //SOURCES server-java/src/main/java/dev/skillmanager/server/ads/AdStatsController.java
+//SOURCES server-java/src/main/java/dev/skillmanager/server/observability/ServerObservability.java
+//SOURCES server-java/src/main/java/dev/skillmanager/server/observability/ServerObservabilityFilter.java
 //FILES application.properties=server-java/src/main/resources/application.properties
 //JAVA_OPTIONS -Dorg.slf4j.simpleLogger.defaultLogLevel=info
 //JAVA_OPTIONS -Dspring.main.banner-mode=off
@@ -61,12 +63,14 @@
 //DEPS com.fasterxml.jackson.core:jackson-annotations:2.20
 //DEPS com.fasterxml.jackson.core:jackson-databind:2.20.2
 //DEPS org.apache.commons:commons-compress:1.27.1
+//DEPS io.opentelemetry:opentelemetry-sdk-extension-autoconfigure:1.62.0
+//DEPS io.opentelemetry:opentelemetry-exporter-otlp:1.62.0
 
 import dev.skillmanager.server.SkillRegistryApp;
 
 public class SkillManagerServer {
     // x-release-please-start-version
-    public static final String VERSION = "0.18.1";
+    public static final String VERSION = "0.19.2";
     // x-release-please-end
 
     public static void main(String[] args) {

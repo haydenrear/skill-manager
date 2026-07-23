@@ -168,7 +168,7 @@ public final class OnboardCommand implements Callable<Integer> {
         stage1Effects.add(new SkillEffect.BuildResolveGraphFromBundledSkills(installRoot, specs));
 
         stage1Effects.add(new SkillEffect.SnapshotMcpDeps());
-        stage1Effects.add(new SkillEffect.BuildInstallPlan());
+        stage1Effects.add(new SkillEffect.BuildInstallPlan(false, !skipGateway));
 
         if (!dryRun) {
             stage1Effects.add(new SkillEffect.CommitUnitsToStore());
@@ -187,11 +187,15 @@ public final class OnboardCommand implements Callable<Integer> {
             ResolvedGraph graph = ctx.resolvedGraph().orElse(new ResolvedGraph());
             List<AgentUnit> tailUnits = graph.units();
             List<SkillEffect> stage2Effects = new ArrayList<>();
-            stage2Effects.add(new SkillEffect.SyncAgents(tailUnits, gw));
+            if (!skipGateway) {
+                stage2Effects.add(new SkillEffect.SyncAgents(tailUnits, gw));
+            }
             if (!dryRun) {
                 stage2Effects.add(SkillEffect.RefreshHarnessPlugins.reinstallAll(pluginNames(tailUnits)));
             }
-            stage2Effects.add(new SkillEffect.UnregisterMcpOrphans(gw));
+            if (!skipGateway) {
+                stage2Effects.add(new SkillEffect.UnregisterMcpOrphans(gw));
+            }
             if (!dryRun) {
                 stage2Effects.add(buildLockUpdate(store, graph));
             }

@@ -7,7 +7,9 @@ import com.hayden.testgraphsdk.sdk.NodeSpec;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -37,6 +39,10 @@ public class HyperSyncCleanNoOp {
                 return NodeResult.fail("hyper.sync.clean.noop", "missing upstream context");
             }
             Path storeDir = Path.of(home).resolve("skills").resolve("hyper-experiments");
+            Path acpRecord = Path.of(home).resolve("installed/acp-cdc-ai-python.json");
+            byte[] acpRecordBefore = Files.isRegularFile(acpRecord)
+                    ? Files.readAllBytes(acpRecord)
+                    : new byte[0];
 
             Path repoRoot = Path.of(System.getProperty("user.dir")).resolve("..").normalize();
             Path sm = repoRoot.resolve("skill-manager");
@@ -56,21 +62,35 @@ public class HyperSyncCleanNoOp {
             }
             int rc = p.waitFor();
 
-            String porcelain = run(storeDir, List.of("git", "status", "--porcelain"));
-            boolean wtClean = porcelain.isBlank();
+            CommandResult status = run(storeDir, List.of("git", "status", "--porcelain"));
+            String porcelain = status.output();
+            boolean gitStatusOk = status.rc() == 0;
+            boolean wtClean = gitStatusOk && porcelain.isBlank();
+            byte[] acpRecordAfter = Files.isRegularFile(acpRecord)
+                    ? Files.readAllBytes(acpRecord)
+                    : new byte[0];
+            boolean acpRecordPresent = acpRecordBefore.length > 0 && acpRecordAfter.length > 0;
+            boolean acpRecordStable = acpRecordPresent
+                    && Arrays.equals(acpRecordBefore, acpRecordAfter);
 
-            boolean pass = rc == 0 && wtClean;
+            boolean pass = rc == 0 && gitStatusOk && wtClean && acpRecordStable;
             return (pass
                     ? NodeResult.pass("hyper.sync.clean.noop")
                     : NodeResult.fail("hyper.sync.clean.noop",
                             "rc=" + rc + " wtClean=" + wtClean
+                                    + " gitStatusRc=" + status.rc()
+                                    + " acpRecordPresent=" + acpRecordPresent
+                                    + " acpRecordStable=" + acpRecordStable
                                     + " porcelain=[" + porcelain.trim() + "]"))
                     .assertion("sync_exit_zero", rc == 0)
-                    .assertion("working_tree_clean_after_sync", wtClean);
+                    .assertion("git_status_exit_zero", gitStatusOk)
+                    .assertion("working_tree_clean_after_sync", wtClean)
+                    .assertion("acp_installed_record_present", acpRecordPresent)
+                    .assertion("acp_installed_record_unchanged", acpRecordStable);
         });
     }
 
-    private static String run(Path dir, List<String> argv) {
+    private static CommandResult run(Path dir, List<String> argv) {
         try {
             ProcessBuilder pb = new ProcessBuilder(argv).redirectErrorStream(true);
             pb.directory(dir.toFile());
@@ -80,10 +100,11 @@ public class HyperSyncCleanNoOp {
                 String line;
                 while ((line = r.readLine()) != null) out.append(line).append('\n');
             }
-            p.waitFor();
-            return out.toString();
+            return new CommandResult(p.waitFor(), out.toString());
         } catch (Exception e) {
-            return "";
+            return new CommandResult(-1, e.getMessage() == null ? "" : e.getMessage());
         }
     }
+
+    private record CommandResult(int rc, String output) {}
 }

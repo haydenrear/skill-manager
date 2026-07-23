@@ -27,6 +27,11 @@ public final class RegistryConfig {
 
     public URI baseUrl() { return baseUrl; }
 
+    /** Build a non-persisted config from an explicit URL. */
+    public static RegistryConfig of(URI baseUrl) {
+        return new RegistryConfig(baseUrl);
+    }
+
     public static RegistryConfig resolve(SkillStore store, String override) throws IOException {
         String env = System.getenv("SKILL_MANAGER_REGISTRY_URL");
         if (env != null && !env.isBlank()) return new RegistryConfig(URI.create(env.trim()));

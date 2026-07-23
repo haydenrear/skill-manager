@@ -488,6 +488,7 @@ validationGraph {
                         "plugin.markdown.import.targets",
                         "plugin.uninstalled.mixed.orphans",
                         "plugin.skill_script.force.sync")
+        node("sources/common/PostgresDown.java").dependsOn("servers.down")
     }
 
     // -------------------------------------------------------- doc-smoke

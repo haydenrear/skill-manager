@@ -9,8 +9,10 @@ import tempfile
 from typing import Any, Dict, List, Optional
 
 import httpx
+from tracing_skill_observability import inject_trace_context
 
 from .models import ClientConfig, DownstreamTool
+from .observability import process_w3c_carrier, w3c_carrier
 
 logger = logging.getLogger(__name__)
 
@@ -421,7 +423,7 @@ class StreamableHTTPMCPClient(MCPClientLibraryClient):
     @contextlib.asynccontextmanager
     async def _transport_context(self, forwarded_headers: Optional[Dict[str, str]]) -> Any:
         _require_mcp_sdk(self.config.transport, require_streamable_http=True)
-        headers = _merge_headers(self.config.headers, forwarded_headers)
+        headers = _transport_headers(self.config.headers, forwarded_headers)
         timeout = httpx.Timeout(self.config.request_timeout_seconds)
         async with httpx.AsyncClient(
             headers=headers or None,
@@ -450,7 +452,7 @@ class SSEMCPClient(MCPClientLibraryClient):
     @contextlib.asynccontextmanager
     async def _transport_context(self, forwarded_headers: Optional[Dict[str, str]]) -> Any:
         _require_mcp_sdk(self.config.transport)
-        headers = _merge_headers(self.config.headers, forwarded_headers)
+        headers = _transport_headers(self.config.headers, forwarded_headers)
         async with sse_client(
             self.endpoint,
             headers=headers or None,
@@ -496,7 +498,8 @@ class StdioMCPClient(MCPClientLibraryClient):
             result = await self._dispatch(
                 lambda session: self._list_tools_with_session(
                     session, forwarded_headers=forwarded_headers
-                )
+                ),
+                forwarded_headers,
             )
             return self._normalize_tools(list(result.tools))
         except Exception as exc:
@@ -518,7 +521,8 @@ class StdioMCPClient(MCPClientLibraryClient):
                     tool_name,
                     arguments,
                     forwarded_headers=forwarded_headers,
-                )
+                ),
+                forwarded_headers,
             )
             return _model_to_dict(result)
         except Exception as exc:
@@ -547,7 +551,11 @@ class StdioMCPClient(MCPClientLibraryClient):
                 # Worker task errors during close are logged by the worker itself.
                 pass
 
-    async def _dispatch(self, op: Any) -> Any:
+    async def _dispatch(
+        self,
+        op: Any,
+        forwarded_headers: Optional[Dict[str, str]],
+    ) -> Any:
         queue = self._worker_queue
         task = self._worker_task
         if queue is None or task is None:
@@ -559,7 +567,7 @@ class StdioMCPClient(MCPClientLibraryClient):
             ) from cause
         loop = asyncio.get_event_loop()
         future: asyncio.Future[Any] = loop.create_future()
-        await queue.put((op, future))
+        await queue.put((op, future, forwarded_headers))
         return await future
 
     async def _worker_loop(self) -> None:
@@ -572,7 +580,7 @@ class StdioMCPClient(MCPClientLibraryClient):
                 item = await queue.get()
                 if item is None:
                     break
-                op, future = item
+                op, future, forwarded_headers = item
                 if future.done():
                     continue
                 last_exc: Optional[BaseException] = None
@@ -582,7 +590,8 @@ class StdioMCPClient(MCPClientLibraryClient):
                             stack = contextlib.AsyncExitStack()
                             try:
                                 session = await self._open_session(
-                                    stack, forwarded_headers=None
+                                    stack,
+                                    forwarded_headers=forwarded_headers,
                                 )
                             except BaseException:
                                 with contextlib.suppress(BaseException):
@@ -630,7 +639,7 @@ class StdioMCPClient(MCPClientLibraryClient):
                 return
             if pending is None:
                 continue
-            _, pending_future = pending
+            _, pending_future, _ = pending
             if not pending_future.done():
                 pending_future.set_exception(
                     MCPError(f"stdio client {self.server_id} worker exited")
@@ -641,10 +650,15 @@ class StdioMCPClient(MCPClientLibraryClient):
         _require_mcp_sdk(self.config.transport)
         assert StdioServerParameters is not None
 
+        forwarded_carrier = w3c_carrier(forwarded_headers)
+        active_carrier = forwarded_carrier or _active_w3c_carrier()
         params = StdioServerParameters(
             command=self.config.command[0],
             args=self.config.command[1:],
-            env=getattr(self.config, "env", None),  # optional later
+            env=_stdio_environment(
+                getattr(self.config, "env", None),
+                active_carrier,
+            ),
             cwd=_stable_subprocess_cwd(),
         )
         async with stdio_client(params) as streams:
@@ -664,6 +678,9 @@ class StdioMCPClient(MCPClientLibraryClient):
         }
         if forwarded_headers:
             payload["_forwarded_headers"] = dict(forwarded_headers)
+        trace_metadata = w3c_carrier(forwarded_headers)
+        if trace_metadata:
+            payload["_meta"] = trace_metadata
         return await session.send_request(
             mcp_types.ClientRequest(
                 mcp_types.CallToolRequest(
@@ -692,6 +709,49 @@ def _merge_headers(*groups: Optional[Dict[str, str]]) -> Dict[str, str]:
         if group:
             merged.update(group)
     return merged
+
+
+def _transport_headers(
+    configured: Optional[Dict[str, str]],
+    forwarded: Optional[Dict[str, str]],
+) -> Dict[str, str]:
+    merged = _merge_headers(configured, forwarded)
+    for key in list(merged):
+        if key.lower() in {"traceparent", "tracestate"}:
+            del merged[key]
+    propagated = w3c_carrier(forwarded) or _active_w3c_carrier()
+    merged.update(propagated)
+    return merged
+
+
+def _active_w3c_carrier() -> dict[str, str]:
+    try:
+        active = w3c_carrier(inject_trace_context({}))
+        return active or process_w3c_carrier()
+    except Exception:
+        logger.exception(
+            "virtual_mcp_gateway.observability.trace_context.inject_failed",
+            extra={
+                "event.name": (
+                    "virtual_mcp_gateway.observability.trace_context.inject_failed"
+                ),
+            },
+        )
+        return process_w3c_carrier()
+
+
+def _stdio_environment(
+    configured: Optional[Dict[str, str]],
+    carrier: Dict[str, str],
+) -> Optional[Dict[str, str]]:
+    propagated = w3c_carrier(carrier)
+    if not propagated:
+        return configured
+    environment = dict(configured or {})
+    for key, value in propagated.items():
+        environment[key] = value
+        environment[key.upper()] = value
+    return environment
 
 
 def _model_to_dict(value: Any) -> Dict[str, Any]:

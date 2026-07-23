@@ -1,5 +1,6 @@
 package dev.skillmanager.mcp;
 
+import dev.skillmanager.observability.CliObservability;
 import dev.skillmanager.store.SkillStore;
 import dev.skillmanager.shared.util.Fs;
 import dev.skillmanager.util.Log;
@@ -153,6 +154,9 @@ public final class GatewayRuntime {
         // home is on the gateway's environment regardless of how the
         // operator invoked `skill-manager gateway up`.
         pb.environment().put("SKILL_MANAGER_HOME", store.root().toString());
+        // Carry the active CLI trace into the long-lived Python gateway
+        // without keeping a recording JVM span open around process startup.
+        CliObservability.injectEnvironment(pb.environment());
         Process proc = pb.start();
         Files.writeString(pidFile(), Long.toString(proc.pid()));
         Log.info("gateway pid=%d log=%s", proc.pid(), logFile());
@@ -184,7 +188,10 @@ public final class GatewayRuntime {
         while (System.currentTimeMillis() < deadline) {
             try {
                 HttpResponse<Void> resp = http.send(
-                        HttpRequest.newBuilder(url).timeout(Duration.ofSeconds(2)).GET().build(),
+                        CliObservability.injectCurrentW3c(HttpRequest.newBuilder(url))
+                                .timeout(Duration.ofSeconds(2))
+                                .GET()
+                                .build(),
                         HttpResponse.BodyHandlers.discarding());
                 if (resp.statusCode() / 100 == 2) return true;
             } catch (Exception ignored) {}
