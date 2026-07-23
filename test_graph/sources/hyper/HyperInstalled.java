@@ -9,18 +9,22 @@ import com.hayden.testgraphsdk.sdk.ProcessRecord;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 
 /**
  * Installs the just-published {@code hyper-experiments} skill from the
  * registry into the per-run {@code SKILL_MANAGER_HOME}, asserts the SKILL.md
- * + skill-manager.toml landed, and triggers transitive registration of the
- * declared MCP servers (runpod) with the gateway.
+ * + skill-manager.toml landed, proves its pinned direct-git ACP dependency
+ * landed under the manifest-declared unit name, and triggers registration of
+ * the declared MCP servers (runpod) with the gateway.
  *
  * <p>The install runs from a temp working directory rather than inside the
  * checkout — the user explicitly wanted the install path exercised from a
  * "fresh folder", not the source repo.
  */
 public class HyperInstalled {
+    private static final String ACP_PIN = "dde427ed315409f9e869466f9ad45e11c37cfbb0";
+
     static final NodeSpec SPEC = NodeSpec.of("hyper.installed")
             .kind(NodeSpec.Kind.ACTION)
             .dependsOn("hyper.published", "gateway.up")
@@ -88,25 +92,81 @@ public class HyperInstalled {
 
             ProcessRecord proc = Procs.run(ctx, "install", pb);
             int rc = proc.exitCode();
+            Path installLogFile = Procs.logFile(ctx, "install");
+            String installLog = Files.isRegularFile(installLogFile)
+                    ? Files.readString(installLogFile)
+                    : "";
 
             Path skillDir = Path.of(home).resolve("skills/hyper-experiments");
             boolean mdOk = Files.isRegularFile(skillDir.resolve("SKILL.md"));
             boolean tomlOk = Files.isRegularFile(skillDir.resolve("skill-manager.toml"));
 
-            boolean pass = rc == 0 && mdOk && tomlOk;
+            Path acpDir = Path.of(home).resolve("skills/acp-cdc-ai-python");
+            boolean acpMdOk = Files.isRegularFile(acpDir.resolve("SKILL.md"));
+            boolean acpTomlOk = Files.isRegularFile(acpDir.resolve("skill-manager.toml"));
+            Path acpRecordFile = Path.of(home).resolve("installed/acp-cdc-ai-python.json");
+            String acpRecord = Files.isRegularFile(acpRecordFile)
+                    ? Files.readString(acpRecordFile)
+                    : "";
+            boolean acpPinRecorded = acpRecord.contains(ACP_PIN)
+                    && acpRecord.contains("acp-cdc-ai-python-skill");
+            CommandResult acpHead = run(acpDir, List.of("git", "rev-parse", "HEAD"));
+            boolean acpHeadPinned = acpHead.rc() == 0
+                    && ACP_PIN.equals(acpHead.output().trim());
+            boolean twoUnitsResolved = installLog.contains("resolve: 2 unit(s)");
+            boolean noSkippedReferences =
+                    !installLog.contains("skipping reference with no name or path");
+
+            boolean pass = rc == 0
+                    && mdOk
+                    && tomlOk
+                    && acpMdOk
+                    && acpTomlOk
+                    && acpPinRecorded
+                    && acpHeadPinned
+                    && twoUnitsResolved
+                    && noSkippedReferences;
             NodeResult result = pass
                     ? NodeResult.pass("hyper.installed")
                     : NodeResult.fail("hyper.installed",
-                            "rc=" + rc + " md=" + mdOk + " toml=" + tomlOk);
+                            "rc=" + rc
+                                    + " hyperMd=" + mdOk
+                                    + " hyperToml=" + tomlOk
+                                    + " acpMd=" + acpMdOk
+                                    + " acpToml=" + acpTomlOk
+                                    + " acpPin=" + acpPinRecorded
+                                    + " acpHeadPinned=" + acpHeadPinned
+                                    + " resolvedTwo=" + twoUnitsResolved
+                                    + " noSkippedRefs=" + noSkippedReferences);
             return result
                     .process(proc)
                     .assertion("install_ok", rc == 0)
                     .assertion("skill_md_present", mdOk)
                     .assertion("skill_manager_toml_present", tomlOk)
+                    .assertion("acp_skill_md_present", acpMdOk)
+                    .assertion("acp_skill_manager_toml_present", acpTomlOk)
+                    .assertion("acp_direct_git_pin_recorded", acpPinRecorded)
+                    .assertion("acp_checkout_head_matches_pin", acpHeadPinned)
+                    .assertion("two_units_resolved", twoUnitsResolved)
+                    .assertion("no_skipped_transitive_references", noSkippedReferences)
                     .metric("exitCode", rc)
                     .publish("skillDir", skillDir.toString());
         });
     }
+
+    private static CommandResult run(Path dir, List<String> argv) {
+        try {
+            ProcessBuilder pb = new ProcessBuilder(argv).redirectErrorStream(true);
+            pb.directory(dir.toFile());
+            Process p = pb.start();
+            String output = new String(p.getInputStream().readAllBytes());
+            return new CommandResult(p.waitFor(), output);
+        } catch (Exception e) {
+            return new CommandResult(-1, e.getMessage() == null ? "" : e.getMessage());
+        }
+    }
+
+    private record CommandResult(int rc, String output) {}
 
     /**
      * Resolve {@code tool} against the supplied {@code pathEnv} string.

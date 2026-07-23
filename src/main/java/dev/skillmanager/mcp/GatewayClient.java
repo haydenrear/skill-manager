@@ -6,6 +6,7 @@ import com.fasterxml.jackson.core.json.JsonWriteFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import dev.skillmanager.model.McpDependency;
+import dev.skillmanager.observability.CliObservability;
 import dev.skillmanager.util.Log;
 
 import java.io.IOException;
@@ -58,7 +59,7 @@ public final class GatewayClient {
         try {
             URI health = URI.create(stripSlash(config.baseUrl().toString()) + "/health");
             HttpResponse<String> resp = http.send(
-                    HttpRequest.newBuilder(health).timeout(Duration.ofSeconds(3)).GET().build(),
+                    tracedRequest(health).timeout(Duration.ofSeconds(3)).GET().build(),
                     HttpResponse.BodyHandlers.ofString());
             return resp.statusCode() / 100 == 2;
         } catch (Exception e) {
@@ -81,7 +82,7 @@ public final class GatewayClient {
                                    Map<String, Object> extraInitValues) throws IOException {
         Map<String, Object> body = registerPayload(dep, deploy, extraInitValues);
         String payload = json.writeValueAsString(body);
-        HttpRequest req = HttpRequest.newBuilder(config.serversEndpoint())
+        HttpRequest req = tracedRequest(config.serversEndpoint())
                 .header("Content-Type", "application/json")
                 .timeout(Duration.ofSeconds(120))
                 .POST(HttpRequest.BodyPublishers.ofString(payload))
@@ -111,7 +112,7 @@ public final class GatewayClient {
     /** Describe a registered server. Returns empty if the gateway has no such entry. */
     public Optional<ServerState> describe(String serverId) throws IOException {
         URI uri = URI.create(stripSlash(config.serversEndpoint().toString()) + "/" + serverId);
-        HttpRequest req = HttpRequest.newBuilder(uri)
+        HttpRequest req = tracedRequest(uri)
                 .timeout(Duration.ofSeconds(10))
                 .GET()
                 .build();
@@ -187,7 +188,7 @@ public final class GatewayClient {
     public boolean unregister(String serverId) throws IOException {
         URI uri = URI.create(stripSlash(config.serversEndpoint().toString()) + "/" + serverId);
         Log.debug("DELETE %s", uri);
-        HttpRequest req = HttpRequest.newBuilder(uri).timeout(Duration.ofSeconds(10)).DELETE().build();
+        HttpRequest req = tracedRequest(uri).timeout(Duration.ofSeconds(10)).DELETE().build();
         try {
             HttpResponse<String> resp = http.send(req, HttpResponse.BodyHandlers.ofString());
             if (resp.statusCode() == 404) return false;
@@ -282,6 +283,10 @@ public final class GatewayClient {
             out.add(m);
         }
         return out;
+    }
+
+    private static HttpRequest.Builder tracedRequest(URI uri) {
+        return CliObservability.injectCurrentW3c(HttpRequest.newBuilder(uri));
     }
 
     private static String stripSlash(String s) {

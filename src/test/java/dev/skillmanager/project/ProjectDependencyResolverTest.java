@@ -4,21 +4,31 @@ import dev.skillmanager._lib.fixtures.DepSpec;
 import dev.skillmanager._lib.fixtures.UnitFixtures;
 import dev.skillmanager._lib.harness.TestHarness;
 import dev.skillmanager._lib.test.Tests;
+import dev.skillmanager.app.InstallUseCase;
 import dev.skillmanager.app.RemoveUseCase;
 import dev.skillmanager.app.SyncUseCase;
+import dev.skillmanager.agent.Agent;
 import dev.skillmanager.bindings.BindingStore;
 import dev.skillmanager.bindings.ChildHomeRegistry;
 import dev.skillmanager.commands.SyncCommand;
+import dev.skillmanager.effects.EffectContext;
+import dev.skillmanager.effects.EffectStatus;
 import dev.skillmanager.effects.Executor;
 import dev.skillmanager.effects.SkillEffect;
+import dev.skillmanager.lock.UnitsLockReader;
+import dev.skillmanager.mcp.GatewayConfig;
 import dev.skillmanager.model.SkillProject;
 import dev.skillmanager.model.SkillProjectParser;
 import dev.skillmanager.model.UnitKind;
 import dev.skillmanager.source.InstalledUnit;
 
+import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
+import java.util.Base64;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -64,6 +74,69 @@ public final class ProjectDependencyResolverTest {
                                 "direct project skill projected into Codex home");
                         assertTrue(Files.exists(repoRoot.resolve(".gemini/skills/project-child")),
                                 "transitive project skill projected into Gemini home");
+                    }
+                })
+                .test("skip-gateway resolves a skill with MCP dependencies without registering them", () -> {
+                    try (TestHarness h = TestHarness.create()) {
+                        Path repoRoot = Files.createTempDirectory("project-resolve-skip-gateway-");
+                        Path skill = UnitFixtures.scaffoldSkill(
+                                repoRoot.resolve("units"),
+                                "project-mcp-skill",
+                                DepSpec.of().mcp("project-mcp-server").build()).sourcePath();
+                        SkillProject project = project(repoRoot, """
+                                [project]
+                                name = "skip-gateway-project"
+
+                                [skills.mcp]
+                                source = "%s"
+                                """.formatted(skill));
+
+                        var noGatewayInstall = InstallUseCase.buildProgram(
+                                h.store(), null, null, skill.toString(), null,
+                                true, false, false, true);
+                        SkillEffect.BuildInstallPlan planEffect =
+                                (SkillEffect.BuildInstallPlan) noGatewayInstall.stage1().effects().stream()
+                                        .filter(SkillEffect.BuildInstallPlan.class::isInstance)
+                                        .findFirst()
+                                        .orElseThrow();
+                        assertFalse(planEffect.withMcp(),
+                                "no-gateway install plan omits MCP registration");
+                        var noGatewayTail =
+                                noGatewayInstall.stage2().apply(new EffectContext(h.store(), null));
+                        assertFalse(noGatewayTail.effects().stream().anyMatch(
+                                        effect -> effect instanceof SkillEffect.SyncAgents
+                                                || effect instanceof SkillEffect.UnregisterMcpOrphans),
+                                "no-gateway install tail omits gateway-dependent effects");
+                        assertTrue(noGatewayTail.effects().stream().anyMatch(
+                                        SkillEffect.UpdateUnitsLock.class::isInstance),
+                                "no-gateway install tail still persists the unit lock");
+
+                        var dryRunInstall = InstallUseCase.buildProgram(
+                                h.store(), null, null, skill.toString(), null,
+                                false, true);
+                        SkillEffect.BuildInstallPlan dryRunPlan =
+                                (SkillEffect.BuildInstallPlan) dryRunInstall.stage1().effects().stream()
+                                        .filter(SkillEffect.BuildInstallPlan.class::isInstance)
+                                        .findFirst()
+                                        .orElseThrow();
+                        assertTrue(dryRunPlan.withMcp(),
+                                "dry-run still describes MCP registration without starting a gateway");
+
+                        ProjectDependencyResolver.Result result = resolver(h).resolve(
+                                project,
+                                new ProjectDependencyResolver.Options(true, false));
+
+                        assertTrue(h.store().containsUnit("project-mcp-skill"),
+                                "MCP-bearing skill installed without a gateway");
+                        assertTrue(result.installed().contains("project-mcp-skill"),
+                                "resolver reports the installed unit");
+                        assertTrue(result.bindingIds().contains(
+                                        "project:skip-gateway-project:unit:project-mcp-skill"),
+                                "project binding is still materialized");
+                        assertTrue(h.sourceOf("project-mcp-skill")
+                                        .map(unit -> unit.errors().isEmpty())
+                                        .orElse(false),
+                                "gateway skip leaves no registration error");
                     }
                 })
                 .test("materializes direct skills and plugins into project agent homes", () -> {
@@ -447,6 +520,103 @@ public final class ProjectDependencyResolverTest {
                                 "project lock is rewritten");
                     }
                 })
+                .test("failed unmet-ref sync preserves global and project reconciliation state", () -> {
+                    try (TestHarness h = TestHarness.create()) {
+                        String unitName = "transactional-sync-skill";
+                        String projectName = "transactional-sync-project";
+                        Path repoRoot = Files.createTempDirectory("project-sync-rollback-");
+                        Path original = UnitFixtures.scaffoldSkill(
+                                repoRoot.resolve("units"), unitName, DepSpec.empty()).sourcePath();
+                        SkillProject project = project(repoRoot, """
+                                [project]
+                                name = "%s"
+
+                                [skills.demo]
+                                source = "%s"
+                                """.formatted(projectName, original));
+                        resolver(h).resolve(project,
+                                new ProjectDependencyResolver.Options(true, false));
+
+                        GatewayConfig gateway = GatewayConfig.of(
+                                URI.create("http://127.0.0.1:51717"));
+                        var unit = h.store().loadUnit(unitName).orElseThrow();
+                        var projectionReceipt = h.run(
+                                new SkillEffect.SyncAgents(java.util.List.of(unit), gateway));
+                        assertEquals(EffectStatus.OK, projectionReceipt.status(),
+                                "default projections seeded without errors");
+
+                        Map<String, Map<String, String>> defaultProjectionsBefore =
+                                new LinkedHashMap<>();
+                        for (Agent agent : Agent.all()) {
+                            Path projection = agent.skillsDir().resolve(unitName);
+                            assertTrue(Files.exists(projection, LinkOption.NOFOLLOW_LINKS),
+                                    agent.id() + " default projection exists before sync");
+                            defaultProjectionsBefore.put(agent.id(), snapshotTree(projection));
+                        }
+                        Path ledger = new BindingStore(h.store()).file(unitName);
+                        byte[] ledgerBefore = Files.readAllBytes(ledger);
+                        Path unitsLock = UnitsLockReader.defaultPath(h.store());
+                        byte[] unitsLockBytesBefore = Files.readAllBytes(unitsLock);
+                        var unitsLockBefore = UnitsLockReader.read(unitsLock);
+                        Map<String, String> projectHomeBefore =
+                                snapshotTree(repoRoot.resolve(".skill-manager"));
+                        Map<String, String> projectRegistrationBefore =
+                                snapshotTree(h.store().projectsDir().resolve(projectName));
+                        Path childHomeRecord =
+                                new ChildHomeRegistry(h.store()).file(project.childHomeId());
+                        byte[] childHomeRecordBefore = Files.readAllBytes(childHomeRecord);
+
+                        Path update = UnitFixtures.scaffoldSkill(
+                                repoRoot.resolve("update"),
+                                unitName,
+                                DepSpec.of()
+                                        .ref(repoRoot.resolve("never-installed").toString())
+                                        .build())
+                                .sourcePath();
+                        var program = SyncUseCase.buildProgram(
+                                h.store(),
+                                gateway,
+                                new SyncUseCase.Options(
+                                        null, false, false, false, true, true),
+                                java.util.List.of(
+                                        new SyncUseCase.Target.FromDir(unitName, update)),
+                                java.util.List.of());
+                        Executor.Outcome<SyncUseCase.Report> outcome =
+                                new Executor(h.store(), gateway).runStaged(program);
+
+                        assertTrue(outcome.rolledBack(),
+                                "total unmet-ref failure marks the sync rolled back");
+                        assertTrue(h.sourceOf(unitName)
+                                        .map(source -> source.hasError(
+                                                InstalledUnit.ErrorKind.TRANSITIVE_RESOLVE_FAILED))
+                                        .orElse(false),
+                                "the actionable transitive error remains recorded");
+                        for (Agent agent : Agent.all()) {
+                            assertEquals(defaultProjectionsBefore.get(agent.id()),
+                                    snapshotTree(agent.skillsDir().resolve(unitName)),
+                                    agent.id() + " default projection is unchanged");
+                        }
+                        assertTrue(java.util.Arrays.equals(
+                                        ledgerBefore, Files.readAllBytes(ledger)),
+                                "default/project projection ledger is byte-identical");
+                        assertEquals(projectHomeBefore,
+                                snapshotTree(repoRoot.resolve(".skill-manager")),
+                                "project child-home metadata is unchanged");
+                        assertEquals(projectRegistrationBefore,
+                                snapshotTree(h.store().projectsDir().resolve(projectName)),
+                                "project registration metadata is unchanged");
+                        assertTrue(java.util.Arrays.equals(
+                                        childHomeRecordBefore,
+                                        Files.readAllBytes(childHomeRecord)),
+                                "child-home registry metadata is byte-identical");
+                        assertTrue(java.util.Arrays.equals(
+                                        unitsLockBytesBefore,
+                                        Files.readAllBytes(unitsLock)),
+                                "units.lock.toml is byte-identical");
+                        assertEquals(unitsLockBefore, UnitsLockReader.read(unitsLock),
+                                "units.lock.toml is logically unchanged");
+                    }
+                })
                 .test("local sync --from refreshes claiming project child homes when CLI deps change", () -> {
                     try (TestHarness h = TestHarness.create()) {
                         Path repoRoot = Files.createTempDirectory("project-sync-claiming-cli-");
@@ -747,6 +917,100 @@ public final class ProjectDependencyResolverTest {
                                 "direct git skill projected into project agent home");
                     }
                 })
+                .test("direct git transitive uses manifest identity in project lock and child homes", () -> {
+                    try (TestHarness h = TestHarness.create()) {
+                        Path repoRoot = Files.createTempDirectory("project-resolve-transitive-git-");
+                        Path stagedChild = UnitFixtures.scaffoldSkill(
+                                repoRoot.resolve("staging"), "acp-cdc-ai-python", DepSpec.empty()).sourcePath();
+                        Path gitChild = repoRoot.resolve("acp-cdc-ai-python-skill");
+                        Files.move(stagedChild, gitChild);
+                        gitInitCommit(gitChild);
+
+                        Path parent = UnitFixtures.scaffoldSkill(
+                                repoRoot.resolve("units"), "hyper-experiments",
+                                DepSpec.of()
+                                        .ref("git+" + gitChild.toUri() + "#main")
+                                        .build()).sourcePath();
+                        SkillProject project = project(repoRoot, """
+                                [project]
+                                name = "transitive-git-project"
+
+                                [skills.hyper]
+                                source = "%s"
+                                """.formatted(parent));
+
+                        ProjectDependencyResolver.Result first = resolver(h).resolve(
+                                project,
+                                new ProjectDependencyResolver.Options(true, false));
+                        ProjectDependencyResolver.Result second = resolver(h).resolve(
+                                project,
+                                new ProjectDependencyResolver.Options(true, false));
+
+                        assertTrue(h.store().containsUnit("acp-cdc-ai-python"),
+                                "transitive unit installed by manifest name");
+                        assertFalse(h.store().containsUnit("acp-cdc-ai-python-skill"),
+                                "repository basename is not treated as the unit name");
+                        SkillProjectLock.ResolvedUnit child = second.lock().resolvedUnits().stream()
+                                .filter(u -> u.name().equals("acp-cdc-ai-python"))
+                                .findFirst()
+                                .orElseThrow();
+                        assertFalse(child.direct(), "transitive direct-git child is not marked direct");
+                        assertTrue(first.lock().resolvedUnits().stream()
+                                        .anyMatch(u -> u.name().equals("acp-cdc-ai-python")),
+                                "first resolve locks transitive direct-git child");
+                        assertTrue(Files.isRegularFile(repoRoot
+                                        .resolve(".skill-manager/skills/acp-cdc-ai-python/SKILL.md")),
+                                "transitive child copied into project child store");
+                        assertTrue(pointsTo(
+                                        repoRoot.resolve(".codex/skills/acp-cdc-ai-python"),
+                                        repoRoot.resolve(".skill-manager/skills/acp-cdc-ai-python")),
+                                "Codex projection uses manifest identity");
+                        assertTrue(pointsTo(
+                                        repoRoot.resolve(".gemini/skills/acp-cdc-ai-python"),
+                                        repoRoot.resolve(".skill-manager/skills/acp-cdc-ai-python")),
+                                "Gemini projection uses manifest identity");
+                        assertTrue(new ChildHomeRegistry(h.store())
+                                        .childHomesClaiming("acp-cdc-ai-python")
+                                        .contains("project:transitive-git-project"),
+                                "project child-home registry claims transitive unit");
+                        assertEquals(0, second.installed().size(),
+                                "second resolve reuses the complete installed closure");
+                    }
+                })
+                .test("preinstalled parent cannot silently omit a missing direct git child", () -> {
+                    try (TestHarness h = TestHarness.create()) {
+                        Path repoRoot = Files.createTempDirectory("project-missing-transitive-git-");
+                        Path missingChild = repoRoot.resolve("missing-child-repository");
+                        Path parent = UnitFixtures.scaffoldSkill(
+                                h.store().skillsDir(), "preinstalled-parent",
+                                DepSpec.of()
+                                        .ref("git+" + missingChild.toUri() + "#main")
+                                        .build()).sourcePath();
+                        h.seedUnit("preinstalled-parent", UnitKind.SKILL);
+                        SkillProject project = project(repoRoot, """
+                                [project]
+                                name = "missing-transitive-git-project"
+
+                                [skills.parent]
+                                source = "%s"
+                                """.formatted(parent));
+
+                        boolean rejected = false;
+                        try {
+                            resolver(h).resolve(
+                                    project,
+                                    new ProjectDependencyResolver.Options(true, false));
+                        } catch (java.io.IOException io) {
+                            rejected = io.getMessage().contains("project dependency closure is missing")
+                                    && io.getMessage().contains("preinstalled-parent")
+                                    && io.getMessage().contains("missing-child-repository")
+                                    && io.getMessage().contains(
+                                            "skill-manager sync preinstalled-parent");
+                        }
+                        assertTrue(rejected,
+                                "incomplete reused-parent closure fails with an actionable error");
+                    }
+                })
                 .test("preinstalled direct git dependency is projected into project child home", () -> {
                     try (TestHarness h = TestHarness.create()) {
                         Path repoRoot = Files.createTempDirectory("project-resolve-preinstalled-git-");
@@ -984,6 +1248,27 @@ public final class ProjectDependencyResolverTest {
             return resolved.equals(expected.toAbsolutePath().normalize());
         }
         return projection.toRealPath().equals(expected.toRealPath());
+    }
+
+    private static Map<String, String> snapshotTree(Path root) throws Exception {
+        if (!Files.exists(root, LinkOption.NOFOLLOW_LINKS)) return Map.of();
+        Map<String, String> snapshot = new LinkedHashMap<>();
+        try (var paths = Files.walk(root)) {
+            for (Path path : paths.sorted().toList()) {
+                String relative = root.equals(path)
+                        ? "."
+                        : root.relativize(path).toString();
+                if (Files.isSymbolicLink(path)) {
+                    snapshot.put(relative, "link:" + Files.readSymbolicLink(path));
+                } else if (Files.isDirectory(path, LinkOption.NOFOLLOW_LINKS)) {
+                    snapshot.put(relative, "directory");
+                } else {
+                    snapshot.put(relative, "file:" + Base64.getEncoder()
+                            .encodeToString(Files.readAllBytes(path)));
+                }
+            }
+        }
+        return snapshot;
     }
 
     private static void addSkillScriptCli(Path skillDir, String toolName) throws Exception {

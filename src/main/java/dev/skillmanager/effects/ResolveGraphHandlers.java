@@ -5,6 +5,7 @@ import dev.skillmanager.model.UnitReference;
 import dev.skillmanager.resolve.ResolvedGraph;
 import dev.skillmanager.resolve.Resolver;
 import dev.skillmanager.source.InstalledUnit;
+import dev.skillmanager.source.UnitStore;
 import dev.skillmanager.store.SkillStore;
 
 import java.io.IOException;
@@ -142,22 +143,30 @@ final class ResolveGraphHandlers {
         // attribute resolver failures back to them (and clear stale
         // TRANSITIVE_RESOLVE_FAILED errors on parents whose refs now
         // all resolve).
-        Map<String, Set<String>> coordToParents = new LinkedHashMap<>();
-        Set<String> seenCoords = new LinkedHashSet<>();
+        Map<String, Set<String>> resolutionToParents = new LinkedHashMap<>();
+        Set<String> seenResolutions = new LinkedHashSet<>();
         Set<String> parentsWithRefs = new LinkedHashSet<>();
         List<Resolver.Coord> unmet = new ArrayList<>();
+        UnitStore installedUnits = ctx.sourceStore();
         for (Skill s : e.liveSkills()) {
             for (UnitReference ref : s.skillReferences()) {
                 String coord = referenceToCoord(ref, store, s.name());
-                String refName = ref.name() != null ? ref.name() : guessName(coord);
-                if (refName == null || refName.isBlank()) continue;
                 parentsWithRefs.add(s.name());
-                if (store.contains(refName)) continue;
-                coordToParents
-                        .computeIfAbsent(coord, k -> new LinkedHashSet<>())
+                String installedName = ref.name();
+                if (installedName == null && ref.isDirectGit()) {
+                    installedName = installedUnits.findInstalledNameByOrigin(ref.gitUrl()).orElse(null);
+                } else if (installedName == null) {
+                    installedName = guessName(coord);
+                }
+                if (installedName != null && store.containsUnit(installedName)) continue;
+
+                String version = referenceVersion(ref);
+                String resolutionKey = coord + "\u0000" + (version == null ? "" : version);
+                resolutionToParents
+                        .computeIfAbsent(resolutionKey, k -> new LinkedHashSet<>())
                         .add(s.name());
-                if (!seenCoords.add(refName)) continue;
-                unmet.add(new Resolver.Coord(coord, ref.version()));
+                if (!seenResolutions.add(resolutionKey)) continue;
+                unmet.add(new Resolver.Coord(coord, version));
             }
         }
         if (unmet.isEmpty()) {
@@ -181,13 +190,15 @@ final class ResolveGraphHandlers {
         Set<String> parentsWithFailures = new LinkedHashSet<>();
         for (Resolver.ResolveFailure f : outcome.failures()) {
             facts.add(new ContextFact.TransitiveFailed(
-                    f.source(), f.requestedBy(), f.reason()));
-            for (String parent : coordToParents.getOrDefault(f.source(), Set.of())) {
+                    f.coordinate(), f.requestedBy(), f.reason()));
+            String failureKey = f.source() + "\u0000"
+                    + (f.version() == null ? "" : f.version());
+            for (String parent : resolutionToParents.getOrDefault(failureKey, Set.of())) {
                 if (!store.contains(parent)) continue;
                 try {
                     ctx.addError(parent,
                             InstalledUnit.ErrorKind.TRANSITIVE_RESOLVE_FAILED,
-                            "could not resolve " + f.source() + ": " + f.reason());
+                            "could not resolve " + f.coordinate() + ": " + f.reason());
                     parentsWithFailures.add(parent);
                 } catch (IOException ignored) {
                     // addError persistence failure doesn't crash the
@@ -249,7 +260,7 @@ final class ResolveGraphHandlers {
                 outcome.graph().resolved().size(), outcome.failures().size()));
         for (Resolver.ResolveFailure f : outcome.failures()) {
             facts.add(new ContextFact.TransitiveFailed(
-                    f.source(), f.requestedBy(), f.reason()));
+                    f.coordinate(), f.requestedBy(), f.reason()));
         }
         if (outcome.failures().isEmpty()) return EffectReceipt.ok(effect, facts);
         // The renderer already prints a one-line warn per failure from
@@ -308,9 +319,14 @@ final class ResolveGraphHandlers {
             if (rel.isAbsolute()) return rel.toString();
             return store.skillDir(parentSkillName).resolve(rel).normalize().toString();
         }
+        if (ref.isDirectGit()) return "git+" + ref.gitUrl();
         return ref.version() != null && !ref.version().isBlank()
                 ? ref.name() + "@" + ref.version()
                 : ref.name();
+    }
+
+    private static String referenceVersion(UnitReference ref) {
+        return ref.isDirectGit() ? ref.gitRef() : ref.version();
     }
 
     private static String guessName(String coord) {

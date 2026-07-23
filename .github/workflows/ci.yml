@@ -70,6 +70,10 @@ jobs:
         run: jbang RunTests.java
 
   gateway-tests:
+    # Temporarily opt-in while tracing-skill-observability is resolved from a
+    # private repository. Re-enable only after bounded Actions read access or a
+    # released package artifact is available.
+    if: ${{ vars.ENABLE_PRIVATE_TRACING_CI == 'true' }}
     name: virtual-mcp-gateway pytest
     runs-on: ubuntu-latest
     defaults:

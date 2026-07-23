@@ -1,5 +1,36 @@
 # Changelog
 
+## [0.19.2](https://github.com/haydenrear/skill-manager/compare/v0.19.1...v0.19.2) (2026-07-20)
+
+
+### Bug Fixes
+
+* keep gateway telemetry version release-managed ([340558f](https://github.com/haydenrear/skill-manager/commit/340558f1790593d02a869c591ddc7d12b70267cf))
+* keep gateway telemetry version release-managed ([9dd2d8c](https://github.com/haydenrear/skill-manager/commit/9dd2d8c8796ebe6e73447ea8e1a05237935efeb9))
+
+## [0.19.1](https://github.com/haydenrear/skill-manager/compare/v0.19.0...v0.19.1) (2026-07-20)
+
+
+### Bug Fixes
+
+* correct gateway lock release selector ([a1bf087](https://github.com/haydenrear/skill-manager/commit/a1bf08759f6af80c92166ec6c152283f1fb7bbc8))
+* keep gateway lock and smoke validation deterministic ([691f72f](https://github.com/haydenrear/skill-manager/commit/691f72febe2056c3803aabb156b0d32a9214e4ba))
+* keep gateway release lock consistent ([a5420b3](https://github.com/haydenrear/skill-manager/commit/a5420b33df56729451669f657e258d9ead5679ab))
+* resolve direct-git transitive references ([5cf9c3e](https://github.com/haydenrear/skill-manager/commit/5cf9c3e28ebf3e89f48f05f6fda311058a449f4a))
+* resolve direct-git transitive references ([801ba67](https://github.com/haydenrear/skill-manager/commit/801ba6756cd29a1bb21fd7709cdb895e92c546df))
+
+## [0.19.0](https://github.com/haydenrear/skill-manager/compare/v0.18.1...v0.19.0) (2026-07-20)
+
+
+### Features
+
+* **observability:** enable default-on telemetry ([9cd229a](https://github.com/haydenrear/skill-manager/commit/9cd229afc79c66dc9373c39ccd732a28994bda6c))
+
+
+### Bug Fixes
+
+* **project:** honor skip-gateway for MCP dependencies ([7759a35](https://github.com/haydenrear/skill-manager/commit/7759a354b625dd67b8f1b393e7924c1d1203586a))
+
 ## [0.18.1](https://github.com/haydenrear/skill-manager/compare/v0.18.0...v0.18.1) (2026-07-12)
 
 

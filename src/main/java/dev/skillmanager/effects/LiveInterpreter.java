@@ -1122,7 +1122,7 @@ public final class LiveInterpreter implements ProgramInterpreter {
                 return EffectReceipt.skipped(e, "no resolved graph in context");
             }
             InstallPlan plan = dev.skillmanager.app.InstallUseCase.buildPlan(
-                    ctx.store(), graph, e.forceScripts(), e.forceScriptUnitNames());
+                    ctx.store(), graph, e.forceScripts(), e.forceScriptUnitNames(), e.withMcp());
             dev.skillmanager.plan.PlanPrinter.print(plan);
             ctx.setPlan(plan);
             if (plan.blocked()) {
@@ -1356,6 +1356,9 @@ public final class LiveInterpreter implements ProgramInterpreter {
     }
 
     private EffectReceipt registerMcpServer(SkillEffect.RegisterMcpServer e, EffectContext ctx) {
+        if (e.gateway() == null) {
+            return EffectReceipt.skipped(e, "no gateway configured");
+        }
         if (!new GatewayClient(e.gateway()).ping()) {
             try {
                 ctx.addError(e.unitName(), InstalledUnit.ErrorKind.GATEWAY_UNAVAILABLE,

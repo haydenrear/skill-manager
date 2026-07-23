@@ -228,7 +228,13 @@ public sealed interface SkillEffect permits
      * the store; self-clears next pass when refs resolve again.
      */
     record BuildResolveGraphFromUnmetReferences(
-            List<dev.skillmanager.model.Skill> liveSkills) implements SkillEffect {}
+            List<dev.skillmanager.model.Skill> liveSkills) implements SkillEffect {
+        // A total resolve failure leaves no new graph work to apply. Halt
+        // before the global/project reconciliation tail rewrites existing
+        // projections and metadata only to have the transaction roll back.
+        // PARTIAL remains CONTINUE so successfully resolved refs still land.
+        @Override public Continuation continuationOnFail() { return Continuation.HALT; }
+    }
 
     /**
      * Report installed-unit directories that existed but could not be
@@ -516,12 +522,22 @@ public sealed interface SkillEffect permits
     record BuildInstallPlan(
             ResolvedGraph graph,
             boolean forceScripts,
-            List<String> forceScriptUnitNames) implements SkillEffect {
-        public BuildInstallPlan() { this(null, false, List.of()); }
-        public BuildInstallPlan(boolean forceScripts) { this(null, forceScripts, List.of()); }
-        public BuildInstallPlan(ResolvedGraph graph) { this(graph, false, List.of()); }
+            List<String> forceScriptUnitNames,
+            boolean withMcp) implements SkillEffect {
+        public BuildInstallPlan() { this(null, false, List.of(), true); }
+        public BuildInstallPlan(boolean forceScripts) { this(null, forceScripts, List.of(), true); }
+        public BuildInstallPlan(boolean forceScripts, boolean withMcp) {
+            this(null, forceScripts, List.of(), withMcp);
+        }
+        public BuildInstallPlan(ResolvedGraph graph) { this(graph, false, List.of(), true); }
         public BuildInstallPlan(ResolvedGraph graph, boolean forceScripts) {
-            this(graph, forceScripts, List.of());
+            this(graph, forceScripts, List.of(), true);
+        }
+        public BuildInstallPlan(
+                ResolvedGraph graph,
+                boolean forceScripts,
+                List<String> forceScriptUnitNames) {
+            this(graph, forceScripts, forceScriptUnitNames, true);
         }
         public BuildInstallPlan {
             forceScriptUnitNames = forceScriptUnitNames == null
