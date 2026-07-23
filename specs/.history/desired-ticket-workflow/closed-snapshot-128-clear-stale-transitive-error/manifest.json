@@ -1,0 +1,102 @@
+{
+  "commit_recommendation": {
+    "git_add": "git add specs/.history/desired-ticket-workflow/closed-snapshot-128-clear-stale-transitive-error",
+    "git_commit": "git commit -m 'close spec ticket workflow'",
+    "message": "It is recommended to commit this history directory now: specs/.history/desired-ticket-workflow/closed-snapshot-128-clear-stale-transitive-error"
+  },
+  "created_at_utc": "2026-07-21T01:09:31.046214+00:00",
+  "entry_name": "closed-snapshot-128-clear-stale-transitive-error",
+  "git": {
+    "branch": "fix/128-clear-stale-transitive-error",
+    "commit": "925bbed",
+    "inside_work_tree": "true"
+  },
+  "history_policy": "append-only by convention; existing entries are not overwritten and filesystem permissions remain git-friendly",
+  "kind": "workflow-close",
+  "results": [
+    {
+      "exists": false,
+      "role": "result",
+      "source": "specs/tickets/128-clear-stale-transitive-error/results/validation-evidence.md"
+    }
+  ],
+  "schema_version": 1,
+  "snapshots": [
+    {
+      "exists": true,
+      "role": "program_model",
+      "snapshot": "specs/.history/desired-ticket-workflow/closed-snapshot-128-clear-stale-transitive-error/snapshots/program_model",
+      "source": "specs/program_model"
+    },
+    {
+      "exists": true,
+      "role": "desired_program_model",
+      "snapshot": "specs/.history/desired-ticket-workflow/closed-snapshot-128-clear-stale-transitive-error/snapshots/desired_program_model",
+      "source": "specs/desired_program_model"
+    },
+    {
+      "exists": true,
+      "role": "current",
+      "snapshot": "specs/.history/desired-ticket-workflow/closed-snapshot-128-clear-stale-transitive-error/snapshots/current",
+      "source": "specs/current"
+    }
+  ],
+  "spec_root": "specs",
+  "summary": "Promoted desired/current into program_model: sync success clears persisted TRANSITIVE_RESOLVE_FAILED (issue #128)",
+  "ticket_plan": "specs/desired_program_model/ticket_plan.yaml",
+  "tickets": [
+    {
+      "acceptance": {
+        "assertions": [
+          "A sync pass after the offending reference is removed clears the persisted TRANSITIVE_RESOLVE_FAILED error (zero remaining refs clears unconditionally).",
+          "A reconcile pass (ValidateAndClearError) clears a persisted TRANSITIVE_RESOLVE_FAILED whose declared references are all met, and leaves it when refs remain unmet.",
+          "Attribution behavior for genuinely failing refs is unchanged."
+        ],
+        "commands": [
+          "jbang RunTests.java",
+          "python skills/test_graph/scripts/run.py source-tracking",
+          "python skills/test_graph/scripts/run.py --all"
+        ],
+        "evidence": []
+      },
+      "current_increment": {
+        "adapters": [
+          "dev.skillmanager.effects.ResolveGraphDirectGitSyncTest (clear-after-ref-removal + reconcile validateAndClear cases)"
+        ],
+        "graph_after_unit_pass": [
+          "source-tracking",
+          "smoke",
+          "resolve",
+          "hyper"
+        ],
+        "model_actions": [
+          "SyncUnit",
+          "SyncUnitForceScripts"
+        ],
+        "model_state": [
+          "cli_errors"
+        ],
+        "unit_tests": [
+          "pytest specs/current/tests",
+          "jbang RunTests.java"
+        ]
+      },
+      "depends_on": [],
+      "desired_actions": [
+        "SyncUnit",
+        "SyncUnitForceScripts"
+      ],
+      "id": "128-clear-stale-transitive-error",
+      "implementation_scope": [
+        "src/main/java/dev/skillmanager/effects/ResolveGraphHandlers.java",
+        "src/main/java/dev/skillmanager/effects/LiveInterpreter.java",
+        "src/test/java/dev/skillmanager/effects/ResolveGraphDirectGitSyncTest.java",
+        "test_graph sync/source-tracking coverage (stale-error-clearing case)"
+      ],
+      "objective": "A persisted TRANSITIVE_RESOLVE_FAILED error on installed/<parent>.json must not outlive its cause: after any sync pass in which every reference the parent currently declares resolves (including the pass after the offending reference was removed, leaving zero refs), and after a reconcile pass, the outstanding-errors state no longer contains the error. Restores the ErrorKind doc contract 'Self-clears on the next pass where every ref resolves'.",
+      "status": "closed",
+      "title": "Stale TRANSITIVE_RESOLVE_FAILED error never clears after the offending reference is removed"
+    }
+  ],
+  "workflow_name": "desired-ticket-workflow"
+}

@@ -1,0 +1,60 @@
+{
+  "current_dir": "current",
+  "desired_dir": "desired",
+  "promotion": {
+    "close_command": "tla-spec-dev --spec-root specs close ticket 128-clear-stale-transitive-error",
+    "on_close": "replace project current with ticket desired/ and merge Test Graph artifacts into project specs/",
+    "worktree": "deferred"
+  },
+  "results_dir": "results",
+  "schema_version": "tla-spec-dev.ticket-workflow.v1",
+  "source_current": "/Users/hayde/IdeaProjects/wt-clear-transitive-error/specs/current",
+  "source_project_desired": "/Users/hayde/IdeaProjects/wt-clear-transitive-error/specs/desired_program_model",
+  "status": "active",
+  "testgraph_dir": "testgraph",
+  "ticket": {
+    "acceptance": {
+      "assertions": [
+        "The production slice refines to the current model.",
+        "The current model advances toward the desired model."
+      ],
+      "commands": [
+        "python scripts/run_tlc_or_project_specific_check.py"
+      ],
+      "evidence": []
+    },
+    "current_increment": {
+      "adapters": [
+        "ReplaceWithAdapter"
+      ],
+      "graph_after_unit_pass": [
+        "replace.with.graph.node"
+      ],
+      "model_actions": [
+        "ReplaceWithDesiredAction"
+      ],
+      "model_state": [
+        "replace_with_state_field"
+      ],
+      "unit_tests": [
+        "pytest specs/current/tests"
+      ]
+    },
+    "depends_on": [],
+    "desired_actions": [
+      "ReplaceWithDesiredAction"
+    ],
+    "id": "128-clear-stale-transitive-error",
+    "implementation_scope": [
+      "Replace with implementation surfaces"
+    ],
+    "objective": "Describe the behavior change in program terms. Name the resource or state boundary that must become true, not only the implementation file.",
+    "status": "next",
+    "title": "Stale TRANSITIVE_RESOLVE_FAILED error never clears after the offending reference is removed"
+  },
+  "ticket_dir": "/Users/hayde/IdeaProjects/wt-clear-transitive-error/specs/tickets/128-clear-stale-transitive-error",
+  "ticket_id": "128-clear-stale-transitive-error",
+  "ticket_index": 0,
+  "ticket_plan": "/Users/hayde/IdeaProjects/wt-clear-transitive-error/specs/desired_program_model/ticket_plan.yaml",
+  "ticket_root": "/Users/hayde/IdeaProjects/wt-clear-transitive-error/specs/tickets"
+}

@@ -1,0 +1,40 @@
+module: SkillManager
+package: desired_program_cases
+
+status:
+  workflow: ticket
+  initial_ticket: 128-clear-stale-transitive-error
+  initial_ticket_title: "Stale TRANSITIVE_RESOLVE_FAILED error never clears after the offending reference is removed"
+  ticket_plan: ticket_plan.yaml
+  relation_to_program_model: desired_successor_of_accepted_program_model
+  relation_to_current: target_state_for_specs_current_to_converge_to
+  updated: null
+  summary:
+    desired_model_scaffolded: true
+    ticket_plan_scaffolded: true
+    current_model_scaffolded: true
+    generated_cases: pending
+    adapters: pending
+  done: []
+  pending:
+    - Fill in desired state/actions/invariants for the ticket.
+    - Break the work into tickets in ticket_plan.yaml.
+    - Update specs/current as each ticket lands.
+    - Promote converged desired/current model back into specs/program_model.
+
+source_model:
+  program_model_manifest: ../program_model/spec_manifest.yaml
+  program_model_core: ../program_model/Core.tla
+  program_model_internal: ../program_model/Internal.tla
+  program_model_external: ../program_model/External.tla
+  baseline_package: skillmanager_program_cases
+
+case_codegen:
+  style: explicit_transition_cases
+  generation_status: planned
+
+state_fields: []
+actions: []
+ports: {}
+notes:
+  direction: "This manifest records the target whole-program model and the ticket workflow status. Keep ticket_plan.yaml synchronized whenever scope, order, validation, or acceptance criteria change."
