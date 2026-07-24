@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.19.3](https://github.com/haydenrear/skill-manager/compare/v0.19.2...v0.19.3) (2026-07-24)
+
+
+### Bug Fixes
+
+* bound telemetry failures and preserve sync state ([06d6fbe](https://github.com/haydenrear/skill-manager/commit/06d6fbe10ca63472fda80d038d801c961111f66e))
+* bound unavailable telemetry diagnostics ([9bd1a7c](https://github.com/haydenrear/skill-manager/commit/9bd1a7cf80e9f93bb2429dd2a8122cf74edc5978))
+* clear stale TRANSITIVE_RESOLVE_FAILED after ref removal (sync + reconcile) ([ba0245e](https://github.com/haydenrear/skill-manager/commit/ba0245ecffa847c86732f86ef95a961c9f1bfec3)), closes [#128](https://github.com/haydenrear/skill-manager/issues/128)
+* detach persistent gateway from test nodes ([55bef8e](https://github.com/haydenrear/skill-manager/commit/55bef8ed4164f9730f30ebcb6e4c59240bf4793b))
+* halt sync reconciliation on unresolved graph ([5e132fc](https://github.com/haydenrear/skill-manager/commit/5e132fcc49de4306437c4df05f52b15823779d5b))
+* retain filtered exporter loggers ([f150afe](https://github.com/haydenrear/skill-manager/commit/f150afec7f2b92318cfa49b340c1bbabf029b088))
+
 ## [0.19.2](https://github.com/haydenrear/skill-manager/compare/v0.19.1...v0.19.2) (2026-07-20)
 
 
