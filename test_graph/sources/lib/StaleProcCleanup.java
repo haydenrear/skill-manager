@@ -45,6 +45,21 @@ public final class StaleProcCleanup {
      * @return ids of processes that were signaled.
      */
     public static List<Long> killByCommandLineMatch(NodeContext ctx, String label, String... patterns) {
+        return killByCommandLineMatch(ctx, label, false, patterns);
+    }
+
+    /**
+     * Send SIGTERM only when every supplied marker occurs in the command
+     * line. Use this for shared developer machines where a broad server-name
+     * match could otherwise terminate a non-test process.
+     */
+    public static List<Long> killByCommandLineMatchAll(
+            NodeContext ctx, String label, String... patterns) {
+        return killByCommandLineMatch(ctx, label, true, patterns);
+    }
+
+    private static List<Long> killByCommandLineMatch(
+            NodeContext ctx, String label, boolean requireAll, String... patterns) {
         long self = ProcessHandle.current().pid();
         java.util.Set<Long> ancestors = new java.util.HashSet<>();
         ancestors.add(self);
@@ -56,15 +71,23 @@ public final class StaleProcCleanup {
         List<Long> killed = new ArrayList<>();
         StringBuilder log = new StringBuilder();
         log.append("scanning processes for stale ").append(label)
-                .append(" (patterns: ").append(String.join(", ", patterns)).append(")\n");
+                .append(" (").append(requireAll ? "all" : "any").append(" patterns: ")
+                .append(String.join(", ", patterns)).append(")\n");
 
         ProcessHandle.allProcesses().forEach(ph -> {
             if (ancestors.contains(ph.pid())) return;
             String cmd = ph.info().commandLine().orElse("");
             if (cmd.isEmpty()) return;
-            boolean match = false;
+            boolean match = requireAll;
             for (String p : patterns) {
-                if (cmd.contains(p)) { match = true; break; }
+                if (requireAll && !cmd.contains(p)) {
+                    match = false;
+                    break;
+                }
+                if (!requireAll && cmd.contains(p)) {
+                    match = true;
+                    break;
+                }
             }
             if (!match) return;
 

@@ -46,10 +46,10 @@ public class GatewayUp {
             // previous run that crashed before teardown. Pidfiles live
             // under random per-run homes, so command-line match is the
             // only reliable signal across runs.
-            StaleProcCleanup.killByCommandLineMatch(
+            StaleProcCleanup.killByCommandLineMatchAll(
                     ctx, "gateway-stale-cleanup",
                     "gateway.server",
-                    "virtual-mcp-gateway");
+                    "sm-testgraph-");
 
             Path repoRoot = Path.of(System.getProperty("user.dir")).resolve("..").normalize();
             Path sm = repoRoot.resolve("skill-manager");

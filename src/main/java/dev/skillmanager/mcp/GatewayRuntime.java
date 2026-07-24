@@ -15,6 +15,7 @@ import java.nio.file.Path;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 /** Manages the lifecycle of the bundled virtual-mcp-gateway Python server. */
 public final class GatewayRuntime {
@@ -117,7 +118,7 @@ public final class GatewayRuntime {
         }
     }
 
-    public Process start(String host, int port) throws IOException {
+    public void start(String host, int port) throws IOException {
         if (isRunning()) throw new IOException("gateway already running (pid=" + readPid() + ")");
 
         Path src = gatewaySource();
@@ -132,8 +133,9 @@ public final class GatewayRuntime {
             Files.writeString(configFile(), "{\n  \"protocol_version\": \"2025-11-05\",\n  \"mcp_servers\": []\n}\n");
         }
 
+        String python = pythonExecutable();
         List<String> cmd = new ArrayList<>();
-        cmd.add(pythonExecutable());
+        cmd.add(python);
         cmd.add("-m");
         cmd.add("gateway.server");
         cmd.add("--config");
@@ -142,6 +144,10 @@ public final class GatewayRuntime {
         cmd.add(host);
         cmd.add("--port");
         cmd.add(Integer.toString(port));
+        String osName = System.getProperty("os.name", "");
+        boolean daemonized = supportsPosixDaemon(osName);
+        Files.deleteIfExists(pidFile());
+        cmd = daemonizedGatewayCommand(cmd, python, osName, pidFile());
 
         ProcessBuilder pb = new ProcessBuilder(cmd)
                 .directory(src.toFile())
@@ -158,9 +164,95 @@ public final class GatewayRuntime {
         // without keeping a recording JVM span open around process startup.
         CliObservability.injectEnvironment(pb.environment());
         Process proc = pb.start();
-        Files.writeString(pidFile(), Long.toString(proc.pid()));
-        Log.info("gateway pid=%d log=%s", proc.pid(), logFile());
-        return proc;
+        if (daemonized) {
+            awaitDaemonLauncher(proc);
+            Long daemonPid = awaitPidFile(Duration.ofSeconds(5));
+            if (daemonPid == null
+                    || ProcessHandle.of(daemonPid).map(ProcessHandle::isAlive).orElse(false) == false) {
+                throw new IOException("gateway daemon did not publish a live pid");
+            }
+            Log.info("gateway pid=%d log=%s", daemonPid, logFile());
+        } else {
+            Files.writeString(pidFile(), Long.toString(proc.pid()));
+            Log.info("gateway pid=%d log=%s", proc.pid(), logFile());
+        }
+    }
+
+    /**
+     * Double-fork the intentionally long-lived gateway outside the invoking
+     * CLI's process tree and process group on macOS/Linux.
+     *
+     * <p>This prevents a terminal, CI runner, or Test Graph node supervisor
+     * from mistaking the healthy background server for a leaked descendant
+     * when the short-lived {@code gateway up} command exits. The final child
+     * writes its own PID atomically before it execs the real command.
+     */
+    static List<String> daemonizedGatewayCommand(
+            List<String> gatewayCommand, String python, String osName, Path pidFile) {
+        if (!supportsPosixDaemon(osName)) {
+            return List.copyOf(gatewayCommand);
+        }
+        List<String> detached = new ArrayList<>();
+        detached.add(python);
+        detached.add("-c");
+        detached.add("""
+                import os,sys
+                child=os.fork()
+                if child:
+                    _,status=os.waitpid(child,0)
+                    sys.exit(os.waitstatus_to_exitcode(status))
+                os.setsid()
+                daemon=os.fork()
+                if daemon:
+                    os._exit(0)
+                pid_file=sys.argv[1]
+                temporary=pid_file+".tmp"
+                with open(temporary,"w",encoding="utf-8") as handle:
+                    handle.write(str(os.getpid()))
+                    handle.flush()
+                    os.fsync(handle.fileno())
+                os.replace(temporary,pid_file)
+                os.execvp(sys.argv[2],sys.argv[2:])
+                """);
+        detached.add(pidFile.toString());
+        detached.addAll(gatewayCommand);
+        return detached;
+    }
+
+    private static boolean supportsPosixDaemon(String osName) {
+        String normalizedOs = osName.toLowerCase(java.util.Locale.ROOT);
+        return normalizedOs.contains("mac") || normalizedOs.contains("linux");
+    }
+
+    private static void awaitDaemonLauncher(Process launcher) throws IOException {
+        try {
+            if (!launcher.waitFor(5, TimeUnit.SECONDS)) {
+                launcher.destroyForcibly();
+                throw new IOException("gateway daemon launcher timed out");
+            }
+            if (launcher.exitValue() != 0) {
+                throw new IOException(
+                        "gateway daemon launcher exited " + launcher.exitValue());
+            }
+        } catch (InterruptedException interrupted) {
+            Thread.currentThread().interrupt();
+            throw new IOException("gateway daemon launcher interrupted", interrupted);
+        }
+    }
+
+    private Long awaitPidFile(Duration timeout) throws IOException {
+        long deadline = System.nanoTime() + timeout.toNanos();
+        while (System.nanoTime() < deadline) {
+            Long pid = readPid();
+            if (pid != null) return pid;
+            try {
+                Thread.sleep(20);
+            } catch (InterruptedException interrupted) {
+                Thread.currentThread().interrupt();
+                throw new IOException("gateway pid wait interrupted", interrupted);
+            }
+        }
+        return null;
     }
 
     public boolean stop(Duration timeout) throws IOException {
