@@ -160,6 +160,13 @@ public final class HarnessCommand {
                 Log.info("  codex home:               %s", result.layout().codexHome());
                 Log.info("  gemini home:              %s", result.layout().geminiHome());
                 Log.info("  project dir:              %s", result.layout().targetDir());
+                if (!result.heldBack().isEmpty()) {
+                    Log.warn("held back %d child-home unit(s) with local changes (not overwritten):",
+                            result.heldBack().size());
+                    for (var outcome : result.heldBack()) {
+                        Log.warn("  %s — %s", outcome.label(), outcome.childPath());
+                    }
+                }
                 return 0;
             }
 

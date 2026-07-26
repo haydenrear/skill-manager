@@ -43,7 +43,7 @@ public final class ProjectSyncUseCase {
                 ProjectRealizationSnapshot.capture(store, project, previousLock);
         try {
             ProjectRemoveUseCase.Result removed = new ProjectRemoveUseCase(store, gateway)
-                    .removeRealization(project, previousLock, true);
+                    .removeRealization(project, previousLock, true, true);
             ProjectDependencyResolver.Result resolved = new ProjectDependencyResolver(store, gateway)
                     .resolve(project, opts);
             return new Result(resolved, removed.bindingsRemoved(), removed.clearedPaths());

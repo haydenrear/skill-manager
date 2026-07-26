@@ -3,6 +3,7 @@ package dev.skillmanager.project;
 import dev.skillmanager.bindings.Binding;
 import dev.skillmanager.bindings.BindingStore;
 import dev.skillmanager.bindings.ChildHomeHarnessInstaller;
+import dev.skillmanager.bindings.ChildHomeMaterializer;
 import dev.skillmanager.bindings.ChildHomeRegistry;
 import dev.skillmanager.bindings.Projection;
 import dev.skillmanager.bindings.ProjectionKind;
@@ -14,6 +15,7 @@ import dev.skillmanager.model.SkillProject;
 import dev.skillmanager.model.SkillProjectParser;
 import dev.skillmanager.model.UnitKind;
 import dev.skillmanager.shared.util.Fs;
+import dev.skillmanager.source.UnitStore;
 import dev.skillmanager.store.SkillStore;
 
 import java.io.IOException;
@@ -96,9 +98,24 @@ public final class ProjectRemoveUseCase {
 
     Result removeRealization(SkillProject project, SkillProjectLock lock, boolean keepRegistration)
             throws IOException {
+        return removeRealization(project, lock, keepRegistration, false);
+    }
+
+    /**
+     * @param preserveLocalChanges keep child-home units the agent has edited
+     *        (and the provenance needed to recognize them). Set by
+     *        {@code project sync}, whose teardown is only a step towards
+     *        rebuilding the same child home — tearing an edited unit down there
+     *        would destroy the agent's work before the rebuild ever gets the
+     *        chance to hold it back. {@code project remove} leaves it false:
+     *        removing the realization is the whole point of that command.
+     */
+    Result removeRealization(SkillProject project, SkillProjectLock lock, boolean keepRegistration,
+                             boolean preserveLocalChanges)
+            throws IOException {
         int removed = removeProjectBindings(project, lock);
         new ChildHomeRegistry(store).delete(project.childHomeId());
-        List<Path> cleared = clearGeneratedProjectState(project, lock);
+        List<Path> cleared = clearGeneratedProjectState(project, lock, preserveLocalChanges);
         if (!keepRegistration) {
             new SkillProjectLockStore(store).delete(project.registryName());
         }
@@ -271,7 +288,8 @@ public final class ProjectRemoveUseCase {
                 childStore.docsDir(),
                 childStore.harnessesDir(),
                 childStore.installedDir(),
-                childStore.binDir()));
+                childStore.binDir(),
+                childStore.root().resolve(ChildHomeMaterializer.RECORDS_DIR)));
 
         if (lock != null) {
             for (SkillProjectLock.EnvRealization env : lock.envs()) {
@@ -284,15 +302,21 @@ public final class ProjectRemoveUseCase {
         return List.copyOf(generated);
     }
 
-    private static List<Path> clearGeneratedProjectState(SkillProject project, SkillProjectLock lock)
+    private List<Path> clearGeneratedProjectState(SkillProject project, SkillProjectLock lock,
+                                                  boolean preserveLocalChanges)
             throws IOException {
         ChildHomeHarnessInstaller.Layout layout = ProjectChildHomeScaffolder.layoutFor(project);
         List<Path> generated = generatedProjectStatePaths(project, lock);
+        Set<Path> preserve = preserveLocalChanges
+                ? locallyModifiedPaths(layout)
+                : Set.of();
         List<Path> cleared = new ArrayList<>();
         for (Path path : generated) {
             if (path == null || !Files.exists(path)) continue;
-            Fs.deleteRecursive(path);
-            cleared.add(path);
+            // Only report what actually went away: a directory holding a
+            // preserved unit survives, and counting it would overstate the
+            // teardown in `project sync --json`.
+            if (deleteExcept(path, preserve)) cleared.add(path);
         }
         deleteIfEmpty(layout.claudeHome().resolve("skills"));
         deleteIfEmpty(layout.claudeHome().resolve("plugins"));
@@ -305,6 +329,60 @@ public final class ProjectRemoveUseCase {
         deleteIfEmpty(layout.geminiHome());
         deleteIfEmpty(layout.childSkillManagerHome());
         return List.copyOf(cleared);
+    }
+
+    /**
+     * Paths that must survive a sync teardown: each locally-modified child unit,
+     * the materialization record that proves it is modified (without it the
+     * rebuild has no baseline and would refuse the unit for the wrong reason),
+     * and its child-home installed record.
+     */
+    private Set<Path> locallyModifiedPaths(ChildHomeHarnessInstaller.Layout layout)
+            throws IOException {
+        SkillStore childStore = new SkillStore(layout.childSkillManagerHome());
+        ChildHomeMaterializer materializer = new ChildHomeMaterializer(store, childStore);
+        UnitStore childUnits = new UnitStore(childStore);
+        Set<Path> preserve = new LinkedHashSet<>();
+        for (ChildHomeMaterializer.UnitOutcome outcome : materializer.locallyModifiedUnits()) {
+            preserve.add(normalize(outcome.childPath()));
+            preserve.add(normalize(materializer.recordFile(outcome.unitName(), outcome.unitKind())));
+            preserve.add(normalize(childUnits.file(outcome.unitName())));
+        }
+        return preserve;
+    }
+
+    /**
+     * Deletes {@code path} but keeps every preserved path (and the directories
+     * on the way to it). A directory that still holds preserved content is left
+     * behind once its other children are gone.
+     *
+     * @return true when nothing of {@code path} remains.
+     */
+    private static boolean deleteExcept(Path path, Set<Path> preserve) throws IOException {
+        Path target = normalize(path);
+        if (preserve.isEmpty()) {
+            Fs.deleteRecursive(target);
+            return true;
+        }
+        if (preserve.contains(target)) return false;
+        boolean isDir = Files.isDirectory(target, LinkOption.NOFOLLOW_LINKS)
+                && !Files.isSymbolicLink(target);
+        if (!isDir) {
+            Fs.deleteRecursive(target);
+            return true;
+        }
+        if (preserve.stream().noneMatch(p -> p.startsWith(target))) {
+            Fs.deleteRecursive(target);
+            return true;
+        }
+        try (var children = Files.list(target)) {
+            for (Path child : children.toList()) deleteExcept(child, preserve);
+        }
+        try (var remaining = Files.list(target)) {
+            if (remaining.findAny().isPresent()) return false;
+        }
+        Files.delete(target);
+        return true;
     }
 
     private static void addPath(List<Path> paths, String value) {

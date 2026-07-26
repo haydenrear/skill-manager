@@ -132,7 +132,7 @@ public final class ProjectCommand {
                     : null;
             if (json) {
                 System.out.println("""
-                        {"name":"%s","profile":"%s","installed":%d,"resolved":%d,"bindings":%d,"libs":%d,"childHome":"%s","lock":"%s"}"""
+                        {"name":"%s","profile":"%s","installed":%d,"resolved":%d,"bindings":%d,"libs":%d,"heldBack":%s,"childHome":"%s","lock":"%s"}"""
                         .formatted(
                                 esc(result.registration().name()),
                                 esc(project.activeProfile() == null ? "" : project.activeProfile()),
@@ -140,6 +140,7 @@ public final class ProjectCommand {
                                 result.lock().resolvedUnits().size(),
                                 result.bindingIds().size(),
                                 libResult == null ? result.lock().libs().size() : libResult.libs().size(),
+                                heldBackJson(result.childHome()),
                                 esc(result.childHome().layout().childSkillManagerHome().toString()),
                                 esc(result.registration().registrationDir()
                                         .resolve(dev.skillmanager.project.SkillProjectLock.FILENAME)
@@ -154,6 +155,7 @@ public final class ProjectCommand {
                 Log.info("  child:     %s", result.childHome().layout().childSkillManagerHome());
                 Log.info("  lock:      %s", result.registration().registrationDir()
                         .resolve(dev.skillmanager.project.SkillProjectLock.FILENAME));
+                reportHeldBack(result.childHome());
             }
             return 0;
         }
@@ -199,7 +201,7 @@ public final class ProjectCommand {
                     .sync(project, new ProjectDependencyResolver.Options(true, !skipGateway));
             if (json) {
                 System.out.println("""
-                        {"name":"%s","profile":"%s","mode":"placeholder-uninstall-reinstall","bindingsRemoved":%d,"clearedPaths":%d,"installed":%d,"resolved":%d,"childHome":"%s"}"""
+                        {"name":"%s","profile":"%s","mode":"placeholder-uninstall-reinstall","bindingsRemoved":%d,"clearedPaths":%d,"installed":%d,"resolved":%d,"heldBack":%s,"childHome":"%s"}"""
                         .formatted(
                                 esc(result.resolved().registration().name()),
                                 esc(project.activeProfile() == null ? "" : project.activeProfile()),
@@ -207,6 +209,7 @@ public final class ProjectCommand {
                                 result.clearedPaths().size(),
                                 result.resolved().installed().size(),
                                 result.resolved().lock().resolvedUnits().size(),
+                                heldBackJson(result.resolved().childHome()),
                                 esc(result.resolved().childHome().layout().childSkillManagerHome().toString())));
             } else {
                 Log.warn("project sync is a placeholder: uninstalling and reinstalling the project realization; "
@@ -219,6 +222,7 @@ public final class ProjectCommand {
                 Log.info("  installed:        %d", result.resolved().installed().size());
                 Log.info("  resolved:         %d", result.resolved().lock().resolvedUnits().size());
                 Log.info("  child:            %s", result.resolved().childHome().layout().childSkillManagerHome());
+                reportHeldBack(result.resolved().childHome());
             }
             return 0;
         }
@@ -394,6 +398,33 @@ public final class ProjectCommand {
 
     private static String esc(String s) {
         return s.replace("\\", "\\\\").replace("\"", "\\\"");
+    }
+
+    /**
+     * Tells the user which child-home units were left alone because they carry
+     * local edits. {@code ChildHomeMaterializer} already warned per unit; this
+     * makes the count part of the command summary so it is not lost in the
+     * scroll, and spells out how to take the parent's version instead.
+     */
+    private static void reportHeldBack(
+            dev.skillmanager.project.ProjectChildHomeScaffolder.Result childHome) {
+        if (childHome == null || childHome.heldBack().isEmpty()) return;
+        Log.warn("held back %d child-home unit(s) with local changes (not overwritten):",
+                childHome.heldBack().size());
+        for (var outcome : childHome.heldBack()) {
+            Log.warn("  %s — %s", outcome.label(), outcome.childPath());
+        }
+        Log.warn("  delete or move a path above and re-run to take the parent store's version");
+    }
+
+    private static String heldBackJson(
+            dev.skillmanager.project.ProjectChildHomeScaffolder.Result childHome) {
+        if (childHome == null || childHome.heldBack().isEmpty()) return "[]";
+        return childHome.heldBack().stream()
+                .map(outcome -> "{\"unit\":\"" + esc(outcome.label())
+                        + "\",\"path\":\"" + esc(outcome.childPath().toString())
+                        + "\",\"reason\":\"" + esc(outcome.detail()) + "\"}")
+                .collect(java.util.stream.Collectors.joining(",", "[", "]"));
     }
 
     static Path resolveManifestPath(Path root, String manifest) {
