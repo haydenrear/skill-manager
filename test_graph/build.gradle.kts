@@ -576,6 +576,34 @@ validationGraph {
         node("sources/project/ProjectLocalSyncCliRefresh.java")
     }
 
+    // Child-home materialization contract, driven end to end through the real
+    // `skill-manager` CLI against throwaway projects. Mirrors the External /
+    // Internal invariants in specs/desired_program_model:
+    //
+    //   ChildHomeWritesNeverReachTheParentStore    independence
+    //   AgentEditedChildUnitsAreNeverDestroyed     no silent destruction
+    //   EveryPassReportsExactlyTheHeldBackUnits    reporting
+    //   UnmodifiedChildUnitsConvergeOnTheirSource  convergence
+    //   ResolveLeavesOnlyClaimedOrHeldBackUnits    prune scope
+    //   InFlightMaterializationLeavesTheChildUnitIntact  atomicity
+    //
+    // Strictly ordered: each node builds on the child-home state the previous
+    // one left behind, and the agent's edited bytes are carried forward through
+    // published context so a later node can prove they are still there.
+    testGraph("project-child-home") {
+        node("sources/common/EnvPrepared.java")
+        node("sources/child-home/ChildHomeProjectFixture.java")
+        node("sources/child-home/ChildHomeResolved.java")
+        node("sources/child-home/ChildHomeUnitsIndependent.java")
+        node("sources/child-home/ChildHomeUnitEdited.java")
+        node("sources/child-home/ChildHomeEditStaysInChildHome.java")
+        node("sources/child-home/ChildHomeResolvePreservesEdits.java")
+        node("sources/child-home/ChildHomeSyncPreservesEdits.java")
+        node("sources/child-home/ChildHomePrunePreservesEdits.java")
+        node("sources/child-home/ChildHomeConvergesOnSource.java")
+        node("sources/child-home/ChildHomeMaterializationAtomic.java")
+    }
+
     testGraph("project-env") {
         node("sources/common/EnvPrepared.java")
         node("sources/project/ProjectEnvMaterialized.java")

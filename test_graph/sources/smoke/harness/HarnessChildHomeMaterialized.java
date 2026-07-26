@@ -63,10 +63,64 @@ public class HarnessChildHomeMaterialized {
                     && Files.isRegularFile(childHome.resolve("installed/hello-plugin.json"))
                     && Files.isRegularFile(childHome.resolve("installed/hello-doc-repo.json"))
                     && Files.isRegularFile(childHome.resolve("installed/" + harnessName + ".json"));
+            // Presence. NOTE: Files.exists(NOFOLLOW) is true of a symlink at the
+            // parent store AND of an independent copy, so this says the entry is
+            // there and nothing about what it is. Independence is asserted below.
             boolean childUnits = existsNoFollow(childSkill)
                     && existsNoFollow(childPlugin)
                     && existsNoFollow(childDoc)
                     && existsNoFollow(childHarness);
+
+            // Independence: `harness instantiate --child-home-dir` goes through
+            // the same ChildHomeMaterializer as `project resolve`, so it owes
+            // the same guarantee — the child home is an independent tree.
+            Path parentHome = Path.of(home);
+            java.util.List<Path> parentUnitRoots = parentUnitRoots(parentHome);
+            java.util.List<String> notIndependent = new java.util.ArrayList<>();
+            java.util.List<String> notCopyRecorded = new java.util.ArrayList<>();
+            java.util.List<String> storeLinks = new java.util.ArrayList<>();
+            String[][] childUnitEntries = {
+                    {"skills/pip-cli-skill", "skill", "pip-cli-skill"},
+                    {"plugins/hello-plugin", "plugin", "hello-plugin"},
+                    {"docs/hello-doc-repo", "doc", "hello-doc-repo"},
+                    {"harnesses/" + harnessName, "harness", harnessName},
+            };
+            for (String[] entry : childUnitEntries) {
+                Path unitDir = childHome.resolve(entry[0]);
+                if (!isRealDirectory(unitDir) || realPathInsideAny(unitDir, parentUnitRoots)) {
+                    notIndependent.add(entry[0]);
+                }
+                String record = readOrEmpty(childHome.resolve(".materialization")
+                        .resolve(entry[1]).resolve(entry[2] + ".json"));
+                if (!record.contains("\"mode\" : \"COPY\"")) notCopyRecorded.add(entry[0]);
+                // Only unit trees: bin/ shims are symlinks into the parent
+                // toolchain by design (ChildHomeMaterializer#mirrorExistingShim).
+                for (String link : storeLinksBelow(unitDir, parentUnitRoots)) {
+                    storeLinks.add(entry[0] + "/" + link);
+                }
+            }
+            boolean childUnitsAreIndependentCopies = notIndependent.isEmpty();
+            boolean childUnitsRecordedAsCopies = notCopyRecorded.isEmpty();
+            boolean noChildUnitLinksIntoParentStore = storeLinks.isEmpty();
+
+            // Independence, empirically. The probe write is reverted so the
+            // teardown nodes downstream still see an unmodified child home.
+            Path childSkillMd = childSkill.resolve("SKILL.md");
+            Path parentSkillMd = Path.of(home, "skills", "pip-cli-skill", "SKILL.md");
+            String childSkillBefore = readOrEmpty(childSkillMd);
+            String parentSkillBefore = readOrEmpty(parentSkillMd);
+            boolean childEditIsolated;
+            try {
+                Files.writeString(childSkillMd, childSkillBefore + "AGENT-EDIT-PROBE\n");
+                childEditIsolated = !childSkillBefore.isEmpty()
+                        && readOrEmpty(parentSkillMd).equals(parentSkillBefore)
+                        && !readOrEmpty(parentSkillMd).contains("AGENT-EDIT-PROBE")
+                        && readOrEmpty(childSkillMd).contains("AGENT-EDIT-PROBE");
+                Files.writeString(childSkillMd, childSkillBefore);
+            } catch (Exception e) {
+                childEditIsolated = false;
+            }
+            boolean childEditRestored = readOrEmpty(childSkillMd).equals(childSkillBefore);
             boolean childAgentHomes = Files.isDirectory(target.resolve(".codex"))
                     && Files.isDirectory(target.resolve(".claude"))
                     && Files.isDirectory(target.resolve(".gemini"));
@@ -96,8 +150,15 @@ public class HarnessChildHomeMaterialized {
                     && claudeMd.contains("@docs/agents/build-instructions.md")
                     && agentsMd.contains("@docs/agents/review-stance.md");
 
+            // Shims are DELIBERATELY symlinks at the parent bin entry, whatever
+            // the unit materialization mode: they launch toolchains the parent
+            // installed, and nothing edits a shim through the child home. Assert
+            // that contract explicitly rather than leaving existsNoFollow to be
+            // true of anything at all.
             Path cliShim = childHome.resolve("bin/cli/pycowsay");
             boolean cliShimMirrored = existsNoFollow(cliShim);
+            boolean cliShimIsLinkIntoParent = Files.isSymbolicLink(cliShim)
+                    && linkTargetIs(cliShim, parentHome.resolve("bin/cli/pycowsay"));
 
             Path lock = Path.of(home, "harnesses", "instances", instanceId, ".harness-instance.json");
             boolean lockPresent = Files.isRegularFile(lock);
@@ -131,11 +192,17 @@ public class HarnessChildHomeMaterialized {
             boolean pass = rc == 0
                     && childStore
                     && childUnits
+                    && childUnitsAreIndependentCopies
+                    && childUnitsRecordedAsCopies
+                    && noChildUnitLinksIntoParentStore
+                    && childEditIsolated
+                    && childEditRestored
                     && childAgentHomes
                     && agentProjections
                     && projectionsUseChildStore
                     && docsBound
                     && cliShimMirrored
+                    && cliShimIsLinkIntoParent
                     && lockPresent
                     && lockCarriesChildPaths
                     && childHomeRecordPresent
@@ -148,11 +215,17 @@ public class HarnessChildHomeMaterialized {
                             "rc=" + rc
                                     + " childStore=" + childStore
                                     + " childUnits=" + childUnits
+                                    + " notIndependent=" + notIndependent
+                                    + " notCopyRecorded=" + notCopyRecorded
+                                    + " storeLinksInChildUnits=" + storeLinks
+                                    + " childEditIsolated=" + childEditIsolated
+                                    + " childEditRestored=" + childEditRestored
                                     + " childAgentHomes=" + childAgentHomes
                                     + " agentProjections=" + agentProjections
                                     + " projectionsUseChildStore=" + projectionsUseChildStore
                                     + " docsBound=" + docsBound
                                     + " cliShimMirrored=" + cliShimMirrored
+                                    + " cliShimIsLinkIntoParent=" + cliShimIsLinkIntoParent
                                     + " lockPresent=" + lockPresent
                                     + " lockCarriesChildPaths=" + lockCarriesChildPaths
                                     + " childHomeRecordPresent=" + childHomeRecordPresent
@@ -165,11 +238,18 @@ public class HarnessChildHomeMaterialized {
                     .assertion("instantiate_ok", rc == 0)
                     .assertion("child_store_initialized", childStore)
                     .assertion("child_units_projected_from_parent", childUnits)
+                    .assertion("child_units_are_independent_copies", childUnitsAreIndependentCopies)
+                    .assertion("child_units_recorded_as_copies", childUnitsRecordedAsCopies)
+                    .assertion("no_child_unit_entry_links_into_the_parent_store",
+                            noChildUnitLinksIntoParentStore)
+                    .assertion("child_home_edit_does_not_reach_the_parent_store", childEditIsolated)
+                    .assertion("child_home_edit_probe_restored", childEditRestored)
                     .assertion("child_agent_homes_created", childAgentHomes)
                     .assertion("agent_projections_created", agentProjections)
                     .assertion("agent_projections_point_at_child_store", projectionsUseChildStore)
                     .assertion("docs_bound_into_child_project_root", docsBound)
                     .assertion("cli_shim_mirrored_into_child_home", cliShimMirrored)
+                    .assertion("cli_shim_stays_a_symlink_at_the_parent_toolchain", cliShimIsLinkIntoParent)
                     .assertion("harness_instance_lock_present", lockPresent)
                     .assertion("harness_instance_lock_uses_child_paths", lockCarriesChildPaths)
                     .assertion("parent_child_home_registry_present", childHomeRecordPresent)
@@ -185,6 +265,120 @@ public class HarnessChildHomeMaterialized {
 
     private static boolean existsNoFollow(Path path) {
         return Files.exists(path, LinkOption.NOFOLLOW_LINKS);
+    }
+
+    /** Real directory, not a symlink — the check {@code Files.isDirectory} cannot make. */
+    private static boolean isRealDirectory(Path path) {
+        return Files.isDirectory(path, LinkOption.NOFOLLOW_LINKS) && !Files.isSymbolicLink(path);
+    }
+
+    /** True when {@code path}'s real location lies inside {@code root}. */
+    private static boolean realPathInside(Path path, Path root) {
+        try {
+            return path.toRealPath().startsWith(root.toRealPath());
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    /**
+     * The parent store's four unit roots. Scoped deliberately: a child home may
+     * legitimately sit UNDER the parent home (harness instantiation puts one
+     * there), so "inside the parent home" is not the same question as "inside
+     * the parent store's units", and only the latter is the isolation boundary.
+     */
+    private static java.util.List<Path> parentUnitRoots(Path parentHome) {
+        return java.util.List.of(
+                parentHome.resolve("skills"),
+                parentHome.resolve("plugins"),
+                parentHome.resolve("docs"),
+                parentHome.resolve("harnesses"));
+    }
+
+    private static boolean realPathInsideAny(Path path, java.util.List<Path> roots) {
+        for (Path root : roots) {
+            if (realPathInside(path, root)) return true;
+        }
+        return false;
+    }
+
+    /**
+     * The raw symlink target, not its real path: the parent bin entry is itself
+     * usually a symlink into a brew/uv toolchain, so resolving through it says
+     * nothing about whether the child home points at the PARENT's shim.
+     */
+    private static boolean linkTargetIs(Path link, Path expected) {
+        try {
+            Path raw = Files.readSymbolicLink(link);
+            Path resolved = raw.isAbsolute()
+                    ? raw.normalize()
+                    : link.getParent().resolve(raw).normalize();
+            return resolved.equals(expected.toAbsolutePath().normalize());
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private static String readOrEmpty(Path path) {
+        try {
+            return Files.readString(path);
+        } catch (Exception e) {
+            return "";
+        }
+    }
+
+    /**
+     * Every symlink at or below {@code root} that resolves inside {@code store}:
+     * each is a live write-through channel from the child home into the parent
+     * store, which is what COPY materialization removes.
+     */
+    private static java.util.List<String> storeLinksBelow(Path root, java.util.List<Path> stores) {
+        java.util.List<String> out = new java.util.ArrayList<>();
+        java.util.List<Path> real = new java.util.ArrayList<>();
+        for (Path store : stores) {
+            try {
+                real.add(store.toRealPath());
+            } catch (Exception missing) {
+                // A kind with no installed units has no directory; nothing to link into.
+            }
+        }
+        try {
+            collectStoreLinks(root, root, real, out);
+        } catch (Exception e) {
+            return out;
+        }
+        return out;
+    }
+
+    private static void collectStoreLinks(Path base, Path current, java.util.List<Path> storeReal,
+                                          java.util.List<String> out) throws Exception {
+        if (!Files.exists(current, LinkOption.NOFOLLOW_LINKS)) return;
+        if (Files.isSymbolicLink(current)) {
+            Path raw = Files.readSymbolicLink(current);
+            Path resolved = raw.isAbsolute()
+                    ? raw.normalize()
+                    : current.getParent().resolve(raw).normalize();
+            Path real;
+            try {
+                real = resolved.toRealPath();
+            } catch (Exception broken) {
+                real = resolved;
+            }
+            for (Path store : storeReal) {
+                if (real.startsWith(store)) {
+                    out.add(base.relativize(current) + " -> " + raw);
+                    break;
+                }
+            }
+            return;
+        }
+        if (Files.isDirectory(current, LinkOption.NOFOLLOW_LINKS)) {
+            try (var entries = Files.list(current)) {
+                for (Path child : entries.sorted().toList()) {
+                    collectStoreLinks(base, child, storeReal, out);
+                }
+            }
+        }
     }
 
     private static boolean pointsTo(Path symlink, Path expected) {

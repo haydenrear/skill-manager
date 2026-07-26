@@ -1,0 +1,214 @@
+# External.tla -> Test Graph bindings for the child-home materialization slice.
+#
+# STATUS: PARTIAL AND DELIBERATELY LOUD. Ticket CHM-8 owns this file. What is
+# recorded here is the half that is real today: every External action now has a
+# concrete Test Graph node and named assertions that drive it against the real
+# `skill-manager` CLI (graph `project-child-home`, plus the strengthened
+# `project-resolve` / `harness-smoke` nodes).
+#
+# What is NOT here, and why, rather than a plausible-looking mapping that would
+# fail at the first run:
+#
+#   * `adapter` / `projector` / `expected_projection` / `assertion` are absent.
+#     references/testgraph_adapters.md requires four Python classes per action,
+#     loaded by scripts/run_generated_case_adapters.py. This repository has no
+#     specs/desired_program_model/adapters.py and no tlc_projection.py, and
+#     spec_manifest.yaml still records `case_codegen.generation_status: planned`
+#     — there are no generated cases for these bindings to bind. Naming classes
+#     that do not exist would turn a missing deliverable into a silent one.
+#     External channel enforcement treats an absent key as a violation, which is
+#     the correct behavior here: this file fails loudly until CHM-8 lands.
+#
+#   * `production_package` names the Java package under test. The enforcement
+#     gate is a PYTHON import guard, so it is vacuous for this program: the unit
+#     under test is a Java CLI driven out-of-process over the `cli` channel and
+#     the filesystem, and no Python adapter could import it in-process even by
+#     accident. CHM-8 should decide whether to keep this declaration as
+#     documentation or to widen the contract for non-Python programs.
+#
+# The `test_graph` keys below are not part of the spec-double-compiler binding
+# schema. They are the traceability CHM-8 needs and the thing this ticket
+# actually delivered: which node and which named assertion check each action.
+
+external:
+  production_package: dev.skillmanager
+  port_bindings:
+    SkillManagerCliChildHomePort: real
+    AgentWorkspacePort: real
+    ChildHomeMaterializerPort: real
+
+actions:
+
+  ResolveProjectChildHome:
+    view: external
+    layer: external
+    channel: cli
+    controllability: e2e_direct
+    port: SkillManagerCli.resolve_project_child_home
+    command: skill-manager project resolve --skip-gateway --json --project-dir <project>
+    test_graph:
+      graph: project-child-home
+      nodes:
+        child.home.resolved:
+          - initial_resolve_ok
+          - resolve_after_store_link_injection_ok
+          - resolve_json_summary_carries_a_held_back_field
+          - clean_child_home_holds_back_nothing
+          - all_claimed_units_materialized
+        child.home.resolve.preserves.edits:
+          - resolve_did_not_destroy_the_agent_edit          # AgentEditedChildUnitsAreNeverDestroyed
+          - resolve_did_not_destroy_the_edit_behind_the_link
+          - resolve_reports_exactly_the_held_back_units      # EveryPassReportsExactlyTheHeldBackUnits
+          - default_output_names_the_held_back_units_and_how_to_take_the_parent_version
+          - resolve_left_the_parent_store_untouched          # ChildHomeWritesNeverReachTheParentStore
+        child.home.prune.preserves.edits:
+          - prune_did_not_destroy_the_agent_edit
+          - prune_removed_the_unmodified_dropped_unit
+          - child_home_holds_only_claimed_or_held_back_units # ResolveLeavesOnlyClaimedOrHeldBackUnits
+        child.home.materialization.atomic:
+          - failed_materialization_left_the_child_unit_bytes_intact  # Internal: InFlightMaterializationLeavesTheChildUnitIntact
+          - failed_materialization_left_the_child_unit_tree_intact
+      also_covered_by:
+        - graph: project-resolve
+          node: project.dependencies.resolved
+          assertions:
+            - project_child_home_units_are_independent_copies
+            - no_child_home_entry_links_into_the_parent_store
+            - child_home_edit_does_not_reach_the_parent_store
+        - graph: project-profiles
+          node: project.profiles.resolved
+          assertions:
+            - shared_unit_is_a_distinct_copy_in_each_profile_child_home
+            - profile_child_home_units_recorded_as_copies
+            - profile_child_home_edit_reaches_neither_sibling_nor_parent
+          note: >
+            Two profiles of one project both claim the same unit. Under the
+            pre-epic symlink child home those were literally the same directory,
+            so profile isolation and unit independence are the same property
+            here.
+        - graph: project-smoke
+          nodes:
+            project.global.sync.cli.refresh:
+              - project_child_cli_is_a_symlink_at_the_parent_shim
+            project.local.sync.cli.refresh:
+              - project_child_cli_is_a_symlink_at_the_parent_shim
+          note: >
+            The shim exception, from the other side: units are copies, shims are
+            still links at the parent toolchain.
+
+  SyncProjectChildHome:
+    view: external
+    layer: external
+    channel: cli
+    controllability: e2e_direct
+    port: SkillManagerCli.sync_claiming_project_child_homes
+    command: skill-manager project sync --skip-gateway --json --project-dir <project>
+    test_graph:
+      graph: project-child-home
+      nodes:
+        child.home.sync.preserves.edits:
+          - sync_over_modified_child_home_ok
+          - sync_did_not_destroy_the_agent_edit
+          - sync_did_not_destroy_the_edit_behind_the_link
+          - sync_reports_exactly_the_held_back_units
+          - sync_left_the_parent_store_untouched
+
+  InstantiateHarnessChildHome:
+    view: external
+    layer: external
+    channel: cli
+    controllability: e2e_direct
+    port: SkillManagerCli.instantiate_child_home_from_harness
+    command: skill-manager harness instantiate <harness> --id <id> --child-home-dir <dir>
+    test_graph:
+      graph: harness-smoke
+      nodes:
+        harness.child.home.materialized:
+          - child_units_are_independent_copies
+          - child_units_recorded_as_copies
+          - no_child_unit_entry_links_into_the_parent_store
+          - child_home_edit_does_not_reach_the_parent_store
+          - cli_shim_stays_a_symlink_at_the_parent_toolchain
+    note: >
+      The harness path shares ChildHomeMaterializer with project resolve, so its
+      hold-back and convergence behavior is covered by the project-child-home
+      graph. What is asserted here is the part that is specific to this entry
+      point: that `--child-home-dir` materializes copies, and that CLI shims are
+      still symlinks at the parent toolchain (the one documented exception).
+
+  EditChildHomeUnit:
+    view: external
+    layer: external
+    channel: fs
+    controllability: e2e_direct
+    port: AgentWorkspace.edit_child_home_unit
+    test_graph:
+      graph: project-child-home
+      nodes:
+        child.home.unit.edited:
+          - agent_edit_written_into_child_unit
+          - agent_edit_written_behind_dereferenced_link
+        child.home.edit.stays.in.child.home:
+          - parent_store_tree_is_byte_identical_after_child_edit
+          - edited_child_unit_bytes_did_not_reach_the_parent_unit
+          - edit_behind_the_link_did_not_reach_the_linked_parent_unit
+          - no_symlink_in_a_child_unit_resolves_into_the_parent_store
+          - in_unit_store_link_is_dereferenced_content
+    note: >
+      Two edits, matching the two write-through channels the model distinguishes:
+      an ordinary file in the unit (escapes under MaterializationMode.LINK) and a
+      file behind an in-unit symlink into the parent store (escapes under
+      PRESERVE_LINK). The bytes written are published downstream so a later pass
+      can prove they are still there, which is what distinguishes destruction
+      from a consistent-but-empty held-back report.
+
+  UpgradeParentStoreUnit:
+    view: external
+    layer: external
+    channel: fs
+    controllability: e2e_direct
+    port: SkillManagerCli.sync_unit
+    test_graph:
+      graph: project-child-home
+      nodes:
+        child.home.converges.on.source:
+          - unmodified_child_unit_picks_up_new_parent_bytes
+          - next_pass_agrees_the_refreshed_unit_is_unmodified
+          - convergence_did_not_cost_the_hold_back_rule
+    note: >
+      Driven by writing the parent store unit directory directly, which is what
+      install / sync / upgrade all reduce to. Binding it to the `sync_unit` port
+      through the real CLI is CHM-8 work.
+
+  UpgradeLinkedParentSource:
+    view: external
+    layer: external
+    channel: fs
+    controllability: e2e_direct
+    port: SkillManagerCli.sync_unit
+    test_graph:
+      graph: project-child-home
+      nodes:
+        child.home.converges.on.source:
+          - unmodified_child_unit_picks_up_bytes_behind_the_store_link
+          - refreshed_link_content_is_still_dereferenced
+    note: >
+      Upgraded in a pass of its OWN, before the unit's own bytes change. If both
+      changed together, a materializer digesting the raw source tree would still
+      refresh — because the unit's own file moved — and would pick up the linked
+      content as a side effect, hiding the freshness bug this action exists to
+      expose (External_regression_rawdigest).
+
+# ---------------------------------------------------------------------------
+blocked:
+  ticket: CHM-8
+  missing:
+    - specs/desired_program_model/adapters.py (adapter / projector /
+      expected_projection / assertion classes for all six actions)
+    - specs/desired_program_model/tlc_projection.py
+    - generated external case package (spec_manifest.yaml
+      case_codegen.generation_status is `planned`, so no cases exist yet)
+    - a decision on `production_package` for a non-Python program under test
+  not_blocked:
+    - the Test Graph nodes themselves, which exist and pass; see
+      spec_manifest.yaml validation.graph

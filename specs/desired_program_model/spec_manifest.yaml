@@ -26,7 +26,8 @@ status:
   pending:
     - Owner decision on the Internal/External scope (see internal_external_decision below).
     - Owner approval of budgets before any effectful/modular migration work starts (migration.md Phase 0).
-    - Spec-unit adapters (case_adapters.toml) and Test Graph bindings (testgraph_bindings.yml) for the new actions.
+    - Spec-unit adapters (case_adapters.toml) for the new Internal actions; the unmapped inventory and the reason are recorded in that file.
+    - Adapter classes and generated cases behind testgraph_bindings.yml. The External-action-to-Test-Graph-node half of that file is authored and its nodes pass; see validation.graph.
     - Fold the remaining monolithic SkillManager.tla behavior into Internal/External (ticket_plan.yaml phase MIG).
     - Update specs/current as each ticket lands, then promote.
 
@@ -361,13 +362,84 @@ validation:
     status: not_run
     blocked_on: case_adapters.toml mappings for the new actions (ticket CHM-4)
   graph:
-    status: not_run
-    blocked_on: testgraph_bindings.yml and test_graph nodes (ticket CHM-5, owned by another agent)
+    status: nodes_authored_and_passing_generated_cases_pending
+    blocked_on: >
+      Generated external cases and their adapter classes (ticket CHM-8). The
+      Test Graph NODES half is no longer blocked: every External action now has
+      a node and named assertions driving the real CLI, recorded action by
+      action in testgraph_bindings.yml. What is missing is
+      specs/desired_program_model/adapters.py, tlc_projection.py, and a
+      generated external case package — case_codegen.generation_status is still
+      `planned`, so there are no cases for the bindings to bind. See the
+      `blocked:` block at the end of testgraph_bindings.yml.
+    testgraph_bindings: testgraph_bindings.yml
+    new_graph:
+      name: project-child-home
+      command: python3 skills/test_graph/scripts/run.py project-child-home
+      status: passed
+      nodes: 11
+      note: >
+        Drives `project resolve`, `project sync`, and prune end to end against
+        throwaway projects. Each behavior was proven sensitive by mutating
+        production code until the property was violated and confirming the
+        matching assertion failed: LINK materialization, PRESERVE_LINK,
+        OVERWRITE_LOCAL_CHANGES, silent hold-back, prune-ignores-local-changes,
+        raw source digest, DELETE_THEN_WRITE, and a displaced tree parked beside
+        the unit.
     affected_graphs:
+      - project-child-home
       - project-resolve
+      - project-smoke
+      - project-profiles
       - harness-smoke
       - smoke
       - source-tracking
+    strengthened_nodes:
+      - graph: project-resolve
+        node: project.dependencies.resolved
+        was: >
+          Asserted child units with Files.isRegularFile, which follows symlinks
+          and is therefore true both of a symlink into the parent store and of
+          an independent copy. It asserted reachability, never independence.
+        now: >
+          Adds NOFOLLOW/toRealPath independence checks, COPY-mode
+          materialization records, a no-store-links-in-unit scan, and an actual
+          write into the child unit with the parent store compared afterwards.
+      - graph: project-profiles
+        node: project.profiles.resolved
+        was: >
+          Asserted dev_profile_child_home_is_isolated and
+          review_profile_child_home_is_isolated entirely with follow-links calls.
+          Both profiles claim the same unit, which under the pre-epic symlink
+          child home was literally the SAME directory — so both assertions passed
+          then too, and still pass under a LINK-mode mutation today.
+        now: >
+          Adds that the shared unit is a DISTINCT real copy in each profile child
+          home, that neither resolves into the parent store, that both carry COPY
+          materialization records, and that an edit in one profile reaches neither
+          the sibling profile nor the parent store.
+      - graph: project-smoke
+        nodes:
+          - project.global.sync.cli.refresh
+          - project.local.sync.cli.refresh
+        was: >
+          Asserted the child-home CLI shim with Files.isExecutable, which follows
+          symlinks and is therefore equally true of a copied binary.
+        now: >
+          Adds project_child_cli_is_a_symlink_at_the_parent_shim, comparing the
+          RAW link target against the parent bin entry. Shims are the one
+          documented exception to copy materialization; a copy here would
+          silently pin the project to a toolchain the parent may later upgrade.
+      - graph: harness-smoke
+        node: harness.child.home.materialized
+        was: >
+          Asserted child units with Files.exists(NOFOLLOW), which is equally
+          true of a symlink and of a real directory — vacuous from the other
+          direction. 14 assertions could not distinguish symlink from copy.
+        now: >
+          Same independence checks as above, plus an explicit assertion that CLI
+          shims DO stay symlinks at the parent bin entry, which is the one
+          documented exception to copy materialization.
 
 # Generated-case index stanzas: placeholders owned by case codegen, filled only
 # when case_codegen.generation_status reaches `generated`. Empty means "no
