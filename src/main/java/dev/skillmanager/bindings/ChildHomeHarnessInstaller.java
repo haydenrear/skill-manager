@@ -8,16 +8,12 @@ import dev.skillmanager.model.AgentUnit;
 import dev.skillmanager.model.HarnessParser;
 import dev.skillmanager.model.HarnessUnit;
 import dev.skillmanager.model.UnitKind;
-import dev.skillmanager.shared.util.Fs;
 import dev.skillmanager.source.InstalledUnit;
 import dev.skillmanager.source.UnitStore;
 import dev.skillmanager.store.SkillStore;
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.LinkOption;
 import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -47,8 +43,13 @@ public final class ChildHomeHarnessInstaller {
             String instanceId,
             Layout layout,
             List<String> childUnits,
-            HarnessInstantiator.Plan harnessPlan
-    ) {}
+            HarnessInstantiator.Plan harnessPlan,
+            List<ChildHomeMaterializer.UnitOutcome> heldBack
+    ) {
+        public Result {
+            heldBack = heldBack == null ? List.of() : List.copyOf(heldBack);
+        }
+    }
 
     public Result instantiate(String harnessName, String instanceId, Path targetDir,
                               GatewayConfig gateway, boolean json) throws IOException {
@@ -79,22 +80,26 @@ public final class ChildHomeHarnessInstaller {
         SkillStore childStore = new SkillStore(layout.childSkillManagerHome());
         childStore.init();
         UnitStore childUnits = new UnitStore(childStore);
+        ChildHomeMaterializer materializer = new ChildHomeMaterializer(parentStore, childStore);
+        materializer.cleanStaging();
+        List<ChildHomeMaterializer.UnitOutcome> heldBack = new ArrayList<>();
         Map<String, InstalledUnit> projected = new LinkedHashMap<>();
-        projectInstalledUnit(harnessRecord, childStore, childUnits);
+        record(heldBack, projectInstalledUnit(harnessRecord, materializer, childUnits));
         projected.put(key(harnessRecord), harnessRecord);
         for (Binding b : parentPlan.bindings()) {
-            InstalledUnit record = parentUnits.read(b.unitName()).orElseThrow(() ->
+            InstalledUnit unitRecord = parentUnits.read(b.unitName()).orElseThrow(() ->
                     new IOException("harness " + harnessName + " resolved " + b.unitName()
                             + " but parent installed record is missing"));
-            projectInstalledUnit(record, childStore, childUnits);
-            projected.put(key(record), record);
+            record(heldBack, projectInstalledUnit(unitRecord, materializer, childUnits));
+            projected.put(key(unitRecord), unitRecord);
         }
 
         HarnessUnit childHarness = HarnessParser.load(childStore.unitDir(harnessName, UnitKind.HARNESS));
         HarnessInstantiator.Plan childPlan = HarnessInstantiator.plan(
                 childHarness, id, layout.claudeHome(), layout.codexHome(), layout.geminiHome(),
                 layout.targetDir(), childStore);
-        mirrorToolShims(childStore);
+        mirrorToolShims(childStore, materializer);
+        materializer.cleanStaging();
 
         List<SkillEffect> effects = new ArrayList<>();
         for (Binding b : childPlan.bindings()) {
@@ -134,7 +139,7 @@ public final class ChildHomeHarnessInstaller {
                 .map(u -> u.unitKind().name().toLowerCase() + ":" + u.name())
                 .sorted(String.CASE_INSENSITIVE_ORDER)
                 .toList();
-        return new Result(harnessName, id, layout, names, childPlan);
+        return new Result(harnessName, id, layout, names, childPlan, List.copyOf(heldBack));
     }
 
     public static Layout layout(Path targetDir) {
@@ -147,62 +152,51 @@ public final class ChildHomeHarnessInstaller {
                 target.resolve(".gemini"));
     }
 
-    private void projectInstalledUnit(InstalledUnit record, SkillStore childStore,
-                                      UnitStore childUnits) throws IOException {
-        Path source = parentStore.unitDir(record.name(), record.unitKind()).toAbsolutePath().normalize();
-        if (!Files.isDirectory(source)) {
-            throw new IOException("parent unit directory missing for " + record.unitKind()
-                    + ":" + record.name() + " at " + source);
+    /**
+     * Materializes one parent unit into the child home.
+     *
+     * <p>Routed through {@link ChildHomeMaterializer} with
+     * {@link MaterializationMode#COPY}: this installer writes into the very
+     * same {@code <dir>/.skill-manager} layout that {@code project resolve}
+     * uses, so if it symlinked the units back at the parent store it would
+     * re-open the write-through hole in a directory the project flow had
+     * already isolated.
+     */
+    private ChildHomeMaterializer.UnitOutcome projectInstalledUnit(
+            InstalledUnit record, ChildHomeMaterializer materializer, UnitStore childUnits)
+            throws IOException {
+        ChildHomeMaterializer.UnitOutcome outcome = materializer.materializeUnit(
+                record.name(), record.unitKind(), MaterializationMode.COPY);
+        if (!outcome.heldBack()) {
+            childUnits.write(record);
+        } else if (childUnits.read(record.name()).isEmpty()) {
+            // Held back: the child tree is the agent's, so do not advertise the
+            // parent's git sha for it.
+            childUnits.write(new InstalledUnit(
+                    record.name(), record.version(), record.kind(), record.installSource(),
+                    record.origin(), null, record.gitRef(), record.installedAt(),
+                    record.errors(), record.unitKind()));
         }
-        Path dest = childStore.unitDir(record.name(), record.unitKind()).toAbsolutePath().normalize();
-        linkOrCopy(source, dest);
-        childUnits.write(record);
+        return outcome;
     }
 
-    private void mirrorToolShims(SkillStore childStore) throws IOException {
+    private void mirrorToolShims(SkillStore childStore, ChildHomeMaterializer materializer)
+            throws IOException {
         for (AgentUnit unit : childStore.listInstalledUnits().units()) {
             for (var dep : unit.cliDependencies()) {
-                mirrorExistingShim(parentStore.cliBinDir().resolve(dep.name()),
+                materializer.mirrorExistingShim(parentStore.cliBinDir().resolve(dep.name()),
                         childStore.cliBinDir().resolve(dep.name()));
             }
             for (var dep : unit.mcpDependencies()) {
-                mirrorExistingShim(parentStore.mcpBinDir().resolve(dep.name()),
+                materializer.mirrorExistingShim(parentStore.mcpBinDir().resolve(dep.name()),
                         childStore.mcpBinDir().resolve(dep.name()));
             }
         }
     }
 
-    private static void mirrorExistingShim(Path source, Path dest) throws IOException {
-        if (Files.exists(source, LinkOption.NOFOLLOW_LINKS)) {
-            linkOrCopy(source.toAbsolutePath().normalize(), dest.toAbsolutePath().normalize());
-        }
-    }
-
-    private static void linkOrCopy(Path source, Path dest) throws IOException {
-        Files.createDirectories(dest.getParent());
-        if (Files.exists(dest, LinkOption.NOFOLLOW_LINKS)) {
-            if (Files.isSymbolicLink(dest)) {
-                Path existing = Files.readSymbolicLink(dest);
-                Path normalizedExisting = existing.isAbsolute()
-                        ? existing.normalize()
-                        : dest.getParent().resolve(existing).normalize();
-                if (normalizedExisting.equals(source)) return;
-                Files.delete(dest);
-            } else if (Files.isDirectory(dest)) {
-                return;
-            } else {
-                throw new IOException("child home path already exists: " + dest);
-            }
-        }
-        try {
-            Files.createSymbolicLink(dest, source);
-        } catch (UnsupportedOperationException | IOException sym) {
-            if (Files.isDirectory(source)) {
-                Fs.copyRecursive(source, dest);
-            } else {
-                Files.copy(source, dest, StandardCopyOption.REPLACE_EXISTING);
-            }
-        }
+    private static void record(List<ChildHomeMaterializer.UnitOutcome> heldBack,
+                               ChildHomeMaterializer.UnitOutcome outcome) {
+        if (outcome.heldBack()) heldBack.add(outcome);
     }
 
     private static String key(InstalledUnit unit) {
