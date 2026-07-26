@@ -65,8 +65,25 @@ public final class ProjectChildHomeScaffolder {
                            List<SkillProjectLock.ResolvedUnit> resolvedUnits,
                            MaterializationMode mode)
             throws IOException {
+        return scaffold(project, resolvedUnits, mode, Set.of());
+    }
+
+    /**
+     * @param checkoutUnits units to materialize as {@link MaterializationMode#CHECKOUT}
+     *        instead of {@code mode}. Naming them here — rather than switching the
+     *        whole child home — is what keeps the mode a per-unit fact, and the
+     *        materializer persists it per unit so a later pass with the ordinary
+     *        default does not clobber the checkout. See
+     *        {@link MaterializationMode} for why that matters.
+     */
+    public Result scaffold(SkillProject project,
+                           List<SkillProjectLock.ResolvedUnit> resolvedUnits,
+                           MaterializationMode mode,
+                           Set<String> checkoutUnits)
+            throws IOException {
         if (project == null) throw new IllegalArgumentException("project must not be null");
         MaterializationMode materialization = mode == null ? DEFAULT_MODE : mode;
+        Set<String> checkouts = checkoutUnits == null ? Set.of() : checkoutUnits;
         parentStore.init();
         ChildHomeHarnessInstaller.Layout layout = layoutFor(project);
         SkillStore childStore = new SkillStore(layout.childSkillManagerHome());
@@ -89,7 +106,10 @@ public final class ProjectChildHomeScaffolder {
             InstalledUnit record = parentUnits.read(unit.name()).orElseThrow(() ->
                     new IOException("project resolved unit is not installed: " + unit.name()));
             ChildHomeMaterializer.UnitOutcome outcome = materializer.materializeUnit(
-                    record.name(), record.unitKind(), materialization);
+                    record.name(), record.unitKind(),
+                    checkouts.contains(record.name())
+                            ? MaterializationMode.CHECKOUT
+                            : materialization);
             if (outcome.heldBack()) heldBack.add(outcome);
             writeChildRecord(childUnits, record, outcome.heldBack());
             claims.add(record.name());

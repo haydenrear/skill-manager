@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import dev.skillmanager.model.UnitKind;
 import dev.skillmanager.shared.util.Fs;
+import dev.skillmanager.source.GitOps;
 import dev.skillmanager.store.SkillStore;
 import dev.skillmanager.util.Log;
 
@@ -108,11 +109,14 @@ public final class ChildHomeMaterializer {
      * On-disk provenance for one materialized unit.
      *
      * <p>{@code mode} is stored as a plain string rather than an enum so a
-     * record written by a newer skill-manager (say a git-checkout mode) is
-     * readable here: an unrecognized mode simply means "no usable baseline",
-     * which routes to the conservative skip-and-report path instead of a
-     * parse failure. {@code sourceRevision} is unused today and reserved for
-     * that mode.
+     * record written by a newer skill-manager is readable here: an unrecognized
+     * mode simply means "no usable baseline", which routes to the conservative
+     * skip-and-report path instead of a parse failure.
+     *
+     * <p>{@code sourceRevision} carries the git revision for
+     * {@link MaterializationMode#CHECKOUT} units — the commit the checkout was
+     * materialized at, which is how a later pass tells "still exactly what we
+     * cloned" from "the agent has committed something here".
      */
     @JsonInclude(JsonInclude.Include.NON_NULL)
     @JsonIgnoreProperties(ignoreUnknown = true)
@@ -154,9 +158,39 @@ public final class ChildHomeMaterializer {
                     + ":" + name + " at " + source);
         }
         Path dest = childStore.unitDir(name, kind).toAbsolutePath().normalize();
-        return mode == MaterializationMode.COPY
-                ? copyUnit(name, kind, source, dest)
-                : linkUnit(name, kind, source, dest);
+        return switch (effectiveMode(name, kind, mode)) {
+            case COPY -> copyUnit(name, kind, source, dest);
+            case CHECKOUT -> checkoutUnit(name, kind, source, dest);
+            case LINK -> linkUnit(name, kind, source, dest);
+        };
+    }
+
+    /**
+     * The mode this pass will actually use for {@code name}, which is not always
+     * the one it was asked for.
+     *
+     * <p>A recorded {@link MaterializationMode#CHECKOUT} wins over any requested
+     * mode. That single rule is what keeps a checkout from being destroyed by an
+     * ordinary resolve: the caller's default is a property of the <em>project</em>
+     * ("copy units into the child home"), while the checkout is a property of
+     * <em>one unit</em> that some agent asked for so it could commit and push.
+     * Letting the project-wide default win would delete a tree that may hold
+     * unpushed commits, and the deletion would look like routine reconciliation.
+     *
+     * <p>The other direction needs no rule: nothing recorded as COPY or LINK is
+     * silently promoted, because promotion is what the caller asked for.
+     */
+    private MaterializationMode effectiveMode(String name, UnitKind kind,
+                                              MaterializationMode requested) {
+        MaterializationMode fallback = requested == null ? MaterializationMode.LINK : requested;
+        MaterializationRecord record = readRecord(name, kind).orElse(null);
+        if (record == null) return fallback;
+        if (!MaterializationMode.CHECKOUT.name().equals(record.mode())) return fallback;
+        // A recorded checkout whose directory is gone (deleted on purpose, per
+        // the documented way to leave the mode) is no longer a checkout.
+        Path dest = childStore.unitDir(name, kind).toAbsolutePath().normalize();
+        if (!Files.isDirectory(dest, LinkOption.NOFOLLOW_LINKS)) return fallback;
+        return MaterializationMode.CHECKOUT;
     }
 
     /**
@@ -167,9 +201,38 @@ public final class ChildHomeMaterializer {
     public boolean isLocallyModified(String name, UnitKind kind) throws IOException {
         Path dest = childStore.unitDir(name, kind).toAbsolutePath().normalize();
         if (!Files.isDirectory(dest, LinkOption.NOFOLLOW_LINKS)) return false;
-        String baseline = copyBaseline(readRecord(name, kind).orElse(null));
+        MaterializationRecord record = readRecord(name, kind).orElse(null);
+        if (record != null && MaterializationMode.CHECKOUT.name().equals(record.mode())) {
+            return checkoutIsModified(dest, record);
+        }
+        String baseline = copyBaseline(record);
         if (baseline == null) return true;
         return !baseline.equals(treeDigest(dest));
+    }
+
+    /**
+     * Whether a {@code CHECKOUT} unit carries work the parent store does not
+     * have.
+     *
+     * <p>A content digest is the wrong question for a checkout: {@code .git}
+     * churns on every command, so a digest comparison would report a checkout as
+     * modified permanently and for no reason. Git already tracks this exactly —
+     * an uncommitted worktree change, or a HEAD that has moved off the revision
+     * the materialization recorded, means there is something here that would be
+     * lost.
+     *
+     * <p>A checkout git cannot answer for (no {@code git} on PATH, a
+     * {@code .git} that was removed) is reported as modified. That is the same
+     * asymmetry the no-record case takes: without evidence that a tree is
+     * disposable, it is not disposable.
+     */
+    private static boolean checkoutIsModified(Path dest, MaterializationRecord record) {
+        if (!GitOps.isAvailable() || !GitOps.isGitRepo(dest)) return true;
+        if (GitOps.hasWorktreeChanges(dest)) return true;
+        String recorded = record.sourceRevision();
+        if (recorded == null || recorded.isBlank()) return true;
+        String head = GitOps.headHash(dest);
+        return head == null || !head.equals(recorded);
     }
 
     /**
@@ -297,6 +360,72 @@ public final class ChildHomeMaterializer {
         }
     }
 
+    /**
+     * Materializes the unit as its own git clone, so edits inside the child home
+     * are commits that can be pushed back to the unit's trunk.
+     *
+     * <p>The clone source is the parent store's own checkout, not the unit's
+     * remote URL: the parent is already at the revision the project resolved, and
+     * cloning it needs no network. {@code origin} is then re-pointed at the
+     * unit's real remote when the parent has one, because the point of a checkout
+     * is to push somewhere that is not this machine.
+     *
+     * <p><b>An existing checkout is never replaced.</b> Not when it is dirty, not
+     * when it has moved ahead of the parent, not when the parent has moved ahead
+     * of it. It may hold commits that exist nowhere else; the correct response to
+     * "the parent has newer content" is a pull into the checkout
+     * ({@code project sync}), which merges, and never a re-materialization, which
+     * would delete.
+     */
+    private UnitOutcome checkoutUnit(String name, UnitKind kind, Path source, Path dest)
+            throws IOException {
+        Files.createDirectories(dest.getParent());
+        boolean exists = Files.exists(dest, LinkOption.NOFOLLOW_LINKS);
+        if (exists && Files.isSymbolicLink(dest)) {
+            // A leftover LINK materialization: it points at the parent store, so
+            // there is nothing of the agent's in it to lose.
+            Files.delete(dest);
+            exists = false;
+        }
+        if (exists) {
+            if (!Files.isDirectory(dest, LinkOption.NOFOLLOW_LINKS)) {
+                throw new IOException("child home path already exists: " + dest);
+            }
+            if (GitOps.isGitRepo(dest)) {
+                writeRecord(name, kind, MaterializationMode.CHECKOUT, source,
+                        GitOps.headHash(dest), null, null);
+                return new UnitOutcome(name, kind, Status.UNCHANGED, dest,
+                        "existing checkout left in place at " + shortHash(GitOps.headHash(dest)));
+            }
+            // A directory that is not a checkout and whose provenance we cannot
+            // establish. Same rule as COPY: report, do not overwrite.
+            return heldBack(name, kind, dest);
+        }
+        if (!GitOps.isAvailable()) {
+            throw new IOException("CHECKOUT materialization of " + kind.name().toLowerCase()
+                    + ":" + name + " needs git on PATH");
+        }
+        if (!GitOps.isGitRepo(source)) {
+            throw new IOException("cannot check out " + kind.name().toLowerCase() + ":" + name
+                    + " — the parent store copy at " + source + " is not a git repository. "
+                    + "Reinstall it from a git source, or materialize it as a copy.");
+        }
+        if (!GitOps.clone(dest, source.toString(), null)) {
+            throw new IOException("git clone of " + source + " into " + dest + " failed");
+        }
+        String upstream = GitOps.originUrl(source);
+        if (upstream != null && !upstream.isBlank()) GitOps.setOrigin(dest, upstream);
+        String head = GitOps.headHash(dest);
+        writeRecord(name, kind, MaterializationMode.CHECKOUT, source, head, null, null);
+        return new UnitOutcome(name, kind, Status.MATERIALIZED, dest,
+                "checked out from the parent store at " + shortHash(head));
+    }
+
+    private static String shortHash(String hash) {
+        if (hash == null || hash.isBlank()) return "(unknown)";
+        return hash.length() > 8 ? hash.substring(0, 8) : hash;
+    }
+
     private UnitOutcome copyUnit(String name, UnitKind kind, Path source, Path dest)
             throws IOException {
         Files.createDirectories(dest.getParent());
@@ -369,6 +498,12 @@ public final class ChildHomeMaterializer {
 
     private void writeRecord(String name, UnitKind kind, MaterializationMode mode, Path source,
                              String sourceDigest, String contentDigest) throws IOException {
+        writeRecord(name, kind, mode, source, null, sourceDigest, contentDigest);
+    }
+
+    private void writeRecord(String name, UnitKind kind, MaterializationMode mode, Path source,
+                             String sourceRevision, String sourceDigest, String contentDigest)
+            throws IOException {
         Path file = recordFile(name, kind);
         Fs.ensureDir(file.getParent());
         BindingJson.MAPPER.writerWithDefaultPrettyPrinter().writeValue(file.toFile(),
@@ -378,7 +513,7 @@ public final class ChildHomeMaterializer {
                         kind.name(),
                         mode.name(),
                         source.toString(),
-                        null,
+                        sourceRevision,
                         sourceDigest,
                         contentDigest,
                         BindingStore.nowIso()));
@@ -587,6 +722,60 @@ public final class ChildHomeMaterializer {
      */
     public static String treeDigest(Path root) throws IOException {
         return viewDigest(plainView(root));
+    }
+
+    /**
+     * Per-entry digests for a tree: relative path → digest of that one entry.
+     *
+     * <p>Built on the same walk as {@link #treeDigest(Path)} deliberately. The
+     * drift digest ({@code dev.skillmanager.store.HomeDigest}) needs to say
+     * <em>which files</em> changed, not just that something did, and a second
+     * independent walker would be a second definition of "the content of a unit"
+     * — free to disagree with the one the hold-back rule uses about symlinks,
+     * executable bits, or which entries count at all.
+     *
+     * <p>{@code skipNames} drops directories by name at any depth. Callers pass
+     * {@code .git} for that: a git directory rewrites itself on every read-only
+     * command, so including it would report drift constantly and train whoever
+     * reads the report to ignore it.
+     */
+    public static java.util.LinkedHashMap<String, String> entryDigests(
+            Path root, java.util.Set<String> skipNames) throws IOException {
+        java.util.LinkedHashMap<String, String> out = new java.util.LinkedHashMap<>();
+        java.util.Set<String> skip = skipNames == null ? java.util.Set.of() : skipNames;
+        List<ViewEntry> view = new ArrayList<>(plainView(root));
+        view.sort(Comparator.comparing(ViewEntry::rel));
+        for (ViewEntry entry : view) {
+            if (isUnder(entry.rel(), skip)) continue;
+            MessageDigest digest = sha256();
+            switch (entry.kind()) {
+                case DIR -> frame(digest, "D", entry.rel(), 0);
+                case LINK -> {
+                    byte[] target = entry.linkTarget().toString().getBytes(StandardCharsets.UTF_8);
+                    frame(digest, "L", entry.rel(), target.length);
+                    digest.update(target);
+                }
+                case FILE -> {
+                    frame(digest, entry.executable() ? "X" : "F", entry.rel(),
+                            Files.size(entry.source()));
+                    try (InputStream in = Files.newInputStream(entry.source())) {
+                        byte[] buffer = new byte[8192];
+                        int read;
+                        while ((read = in.read(buffer)) > 0) digest.update(buffer, 0, read);
+                    }
+                }
+            }
+            out.put(entry.rel(), hex(digest.digest()));
+        }
+        return out;
+    }
+
+    private static boolean isUnder(String rel, java.util.Set<String> skipNames) {
+        if (skipNames.isEmpty()) return false;
+        for (String segment : rel.split("/")) {
+            if (skipNames.contains(segment)) return true;
+        }
+        return false;
     }
 
     private static String viewDigest(List<ViewEntry> view) throws IOException {

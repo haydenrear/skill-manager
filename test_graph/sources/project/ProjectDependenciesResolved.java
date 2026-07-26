@@ -173,6 +173,32 @@ public class ProjectDependenciesResolved {
                 childEditIsolated = false;
             }
             boolean childEditRestored = read(childSkillMd).equals(childBefore);
+
+            // The assertion that replaces `project_sync_placeholder_ok`: a real
+            // sync must not destroy an agent's edit. Checked on the BYTES, not on
+            // the sync's own report — a sync that overwrote the unit and then
+            // truthfully reported "nothing held back" would satisfy any
+            // report-only check, because after the overwrite the unit really is
+            // not modified any more.
+            String agentEdit = childBefore + "AGENT-EDIT-SURVIVES-SYNC\n";
+            boolean syncKeptAgentEdit;
+            // Seeded with the first sync's record rather than null: the envelope
+            // serializes every process it is handed, and a node that fails while
+            // planting the probe must still produce a readable report.
+            ProcessRecord syncAfterEdit = sync;
+            try {
+                Files.writeString(childSkillMd, agentEdit);
+                syncAfterEdit = run(ctx, "sync-after-edit", home, repoRoot, sm,
+                        "project", "sync", "--skip-gateway", "--project-dir", projectDir.toString());
+                syncKeptAgentEdit = syncAfterEdit.exitCode() == 0
+                        && read(childSkillMd).equals(agentEdit)
+                        && readLog(ctx, "sync-after-edit").contains("held back");
+                Files.writeString(childSkillMd, childBefore);
+            } catch (Exception e) {
+                syncKeptAgentEdit = false;
+            }
+            boolean agentEditProbeRestored = read(childSkillMd).equals(childBefore);
+
             Path childRecord = Path.of(home, "child-homes", "project_tg-resolved-project", "child-home.json");
             String childRecordText = read(childRecord);
             boolean childRegistry = Files.isRegularFile(childRecord)
@@ -195,9 +221,15 @@ public class ProjectDependenciesResolved {
             boolean showResolved = show.exitCode() == 0
                     && readLog(ctx, "show").contains("resolved:")
                     && readLog(ctx, "show").contains("bindings:");
-            boolean syncPlaceholder = sync.exitCode() == 0
-                    && readLog(ctx, "sync").contains("project sync is a placeholder")
-                    && readLog(ctx, "sync").contains("uninstall/reinstall placeholder");
+            // `project sync` used to be a placeholder that tore the realization
+            // down and re-resolved it; the assertion below used to grep that
+            // admission out of its own output. It now pulls each unit's trunk and
+            // reconciles in place, so the contract to check is the mode it reports
+            // and the fact that it reports a pull at all.
+            boolean syncPullsAndReconciles = sync.exitCode() == 0
+                    && readLog(ctx, "sync").contains("mode:             pull-reconcile")
+                    && readLog(ctx, "sync").contains("pulled:")
+                    && !readLog(ctx, "sync").contains("placeholder");
             boolean secondResolveOk = resolveAgain.exitCode() == 0
                     && readLog(ctx, "resolve-again").contains("resolved project tg-resolved-project");
 
@@ -226,7 +258,9 @@ public class ProjectDependenciesResolved {
 
             boolean pass = resolve.exitCode() == 0
                     && secondResolveOk
-                    && syncPlaceholder
+                    && syncPullsAndReconciles
+                    && syncKeptAgentEdit
+                    && agentEditProbeRestored
                     && showResolved
                     && lockWritten
                     && lockHasParent
@@ -272,7 +306,9 @@ public class ProjectDependenciesResolved {
                                     + " remove=" + remove.exitCode()
                                     + " projectRemove=" + projectRemove.exitCode()
                                     + " secondResolveOk=" + secondResolveOk
-                                    + " syncPlaceholder=" + syncPlaceholder
+                                    + " syncPullsAndReconciles=" + syncPullsAndReconciles
+                                    + " syncKeptAgentEdit=" + syncKeptAgentEdit
+                                    + " agentEditProbeRestored=" + agentEditProbeRestored
                                     + " lockWritten=" + lockWritten
                                     + " lockParent=" + lockHasParent
                                     + " lockChild=" + lockHasChild
@@ -309,12 +345,15 @@ public class ProjectDependenciesResolved {
                     .process(resolve)
                     .process(resolveAgain)
                     .process(sync)
+                    .process(syncAfterEdit)
                     .process(show)
                     .process(remove)
                     .process(projectRemove)
                     .assertion("resolve_command_ok", resolve.exitCode() == 0)
                     .assertion("resolve_existing_project_is_idempotent", secondResolveOk)
-                    .assertion("project_sync_placeholder_ok", syncPlaceholder)
+                    .assertion("project_sync_pulls_and_reconciles_in_place", syncPullsAndReconciles)
+                    .assertion("project_sync_did_not_destroy_the_agent_edit", syncKeptAgentEdit)
+                    .assertion("agent_edit_probe_restored", agentEditProbeRestored)
                     .assertion("show_reports_lock_counts", showResolved)
                     .assertion("project_lock_written", lockWritten)
                     .assertion("lock_records_direct_and_transitive_units",

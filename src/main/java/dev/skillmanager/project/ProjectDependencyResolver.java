@@ -54,8 +54,21 @@ public final class ProjectDependencyResolver {
         this.gateway = gateway;
     }
 
-    public record Options(boolean yes, boolean withGateway) {
-        public static Options defaults() { return new Options(true, true); }
+    /**
+     * @param checkoutUnits units to materialize into the child home as their own
+     *        git checkouts rather than copies, named individually. Per-unit rather
+     *        than a project-wide switch because it is a per-unit decision: an
+     *        agent asks for a checkout of the one skill it intends to improve and
+     *        push back, and every other unit stays a cheap copy.
+     */
+    public record Options(boolean yes, boolean withGateway, Set<String> checkoutUnits) {
+        public Options {
+            checkoutUnits = checkoutUnits == null ? Set.of() : Set.copyOf(checkoutUnits);
+        }
+
+        public Options(boolean yes, boolean withGateway) { this(yes, withGateway, Set.of()); }
+
+        public static Options defaults() { return new Options(true, true, Set.of()); }
     }
 
     public record Result(
@@ -74,8 +87,9 @@ public final class ProjectDependencyResolver {
         InstalledProjectUnits installed = installMissing(project, opts);
         List<SkillProjectLock.ResolvedUnit> resolvedUnits =
                 collectResolvedUnits(project, installed.directNames());
-        ProjectChildHomeScaffolder.Result childHome =
-                new ProjectChildHomeScaffolder(store).scaffold(project, resolvedUnits);
+        ProjectChildHomeScaffolder.Result childHome = new ProjectChildHomeScaffolder(store)
+                .scaffold(project, resolvedUnits,
+                        ProjectChildHomeScaffolder.DEFAULT_MODE, opts.checkoutUnits());
         List<SkillProjectLock.ProjectBinding> projectBindings =
                 materializeProjectBindings(project, childHome.layout(), childHome.childStore(),
                         resolvedUnits, previousLock);

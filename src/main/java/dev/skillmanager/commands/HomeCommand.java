@@ -1,11 +1,14 @@
 package dev.skillmanager.commands;
 
 import dev.skillmanager.bindings.BindingStore;
+import dev.skillmanager.launch.LauncherShims;
 import dev.skillmanager.mcp.GatewayConfig;
 import dev.skillmanager.policy.HomePolicy;
 import dev.skillmanager.source.UnitStore;
+import dev.skillmanager.store.DriftGate;
 import dev.skillmanager.store.HomeCloner;
 import dev.skillmanager.store.HomeDescriptor;
+import dev.skillmanager.store.HomeDigest;
 import dev.skillmanager.store.SkillStore;
 import dev.skillmanager.util.Log;
 import picocli.CommandLine.Command;
@@ -30,7 +33,9 @@ import java.util.concurrent.Callable;
                 HomeCommand.CloneCmd.class,
                 HomeCommand.VerifyCmd.class,
                 HomeCommand.DescribeCmd.class,
-                HomeCommand.PolicyCmd.class
+                HomeCommand.PolicyCmd.class,
+                HomeCommand.ShimsCmd.class,
+                HomeCommand.DriftCmd.class
         })
 public final class HomeCommand {
 
@@ -252,6 +257,148 @@ public final class HomeCommand {
                 Log.ok("%s is now live", store.root());
             }
             return 0;
+        }
+    }
+
+    /**
+     * {@code home shims} — write the {@code claude}/{@code codex}/{@code
+     * gemini} launchers into {@code <home>/bin/launch}.
+     *
+     * <p>Putting that directory on {@code PATH} for a worktree is what makes
+     * the correct launch environment the default: nobody exports anything, and
+     * an agent needs no knowledge of the mechanism.
+     */
+    @Command(name = "shims",
+            description = "Generate the claude/codex/gemini launchers for a home under "
+                    + "bin/launch. Put that directory on PATH for a worktree and every launch "
+                    + "binds to that home automatically.")
+    public static final class ShimsCmd implements Callable<Integer> {
+
+        @Option(names = "--home",
+                description = "Skill Manager home. Defaults to $SKILL_MANAGER_HOME.")
+        Path home;
+
+        @Option(names = "--json", description = "Emit machine-readable JSON.")
+        boolean json;
+
+        private final SkillStore injectedStore;
+
+        public ShimsCmd() { this(null); }
+
+        public ShimsCmd(SkillStore injectedStore) { this.injectedStore = injectedStore; }
+
+        @Override
+        public Integer call() throws Exception {
+            SkillStore store = resolveStore(injectedStore, home);
+            store.init();
+            LauncherShims.Result result = LauncherShims.write(store);
+            if (json) {
+                System.out.println("""
+                        {"dir":"%s","shims":[%s]}"""
+                        .formatted(esc(result.dir().toString()),
+                                result.written().stream()
+                                        .map(p -> "\"" + esc(p.toString()) + "\"")
+                                        .collect(java.util.stream.Collectors.joining(","))));
+                return 0;
+            }
+            Log.ok("wrote %d launcher(s) to %s", result.written().size(), result.dir());
+            for (Path shim : result.written()) Log.info("  %s", shim);
+            Log.info("  put %s first on PATH to launch against this home by default", result.dir());
+            return 0;
+        }
+    }
+
+    /**
+     * {@code home drift} — what changed in this home, and the acknowledgement
+     * that lets a launch proceed.
+     *
+     * <p>{@code --record} takes a fresh digest and reports the difference from the
+     * last one; {@code --show} prints the pending change; {@code --ack} marks it
+     * read. The gate itself lives in {@link dev.skillmanager.store.DriftGate};
+     * see its javadoc for why an acknowledgement is required rather than a
+     * refreshed digest being enough.
+     */
+    @Command(name = "drift",
+            description = "Show, record, or acknowledge changes to this home's units. A launch "
+                    + "refuses while a change is unacknowledged, so an agent cannot keep acting "
+                    + "on a skill that moved underneath it.")
+    public static final class DriftCmd implements Callable<Integer> {
+
+        @Option(names = "--home",
+                description = "Skill Manager home. Defaults to $SKILL_MANAGER_HOME.")
+        Path home;
+
+        @Option(names = "--record",
+                description = "Compare the home against its recorded digest, record any change "
+                        + "as pending, and refresh the digest.")
+        boolean record;
+
+        @Option(names = "--ack", description = "Mark the pending change read, clearing the gate.")
+        boolean ack;
+
+        @Option(names = "--json", description = "Emit machine-readable JSON.")
+        boolean json;
+
+        private final SkillStore injectedStore;
+
+        public DriftCmd() { this(null); }
+
+        public DriftCmd(SkillStore injectedStore) { this.injectedStore = injectedStore; }
+
+        @Override
+        public Integer call() throws Exception {
+            SkillStore store = resolveStore(injectedStore, home);
+            store.init();
+            if (record) {
+                HomeDigest baseline = HomeDigest.read(store).orElse(null);
+                DriftGate recorded = DriftGate.recordSince(store, baseline, "home drift --record")
+                        .orElse(null);
+                if (baseline == null && recorded == null) {
+                    Log.ok("recorded the first digest for %s — nothing to compare against yet",
+                            store.root());
+                    return 0;
+                }
+            }
+            if (ack) {
+                DriftGate acked = DriftGate.acknowledge(store).orElse(null);
+                if (acked == null) {
+                    Log.ok("no unread change in %s", store.root());
+                    return 0;
+                }
+                Log.ok("acknowledged %d changed unit(s) in %s",
+                        acked.report().units().size(), store.root());
+                for (String line : acked.report().render()) Log.info("  %s", line);
+                return 0;
+            }
+            DriftGate pending = DriftGate.pending(store).orElse(null);
+            if (json) {
+                System.out.println(pending == null
+                        ? "{\"pending\":false,\"units\":[]}"
+                        : "{\"pending\":true,\"operation\":\"" + esc(pending.operation())
+                                + "\",\"detectedAt\":\"" + esc(pending.detectedAt())
+                                + "\",\"units\":" + driftJson(pending) + "}");
+                return pending == null ? 0 : DriftGate.EXIT_CODE;
+            }
+            if (pending == null) {
+                Log.ok("no unread change in %s", store.root());
+                return 0;
+            }
+            Log.warn("%d unit(s) changed in %s (%s) and have not been read:",
+                    pending.report().units().size(), store.root(), pending.operation());
+            for (String line : pending.report().render()) Log.info("  %s", line);
+            Log.warn("  run `skill-manager home drift --ack` once you have taken it in");
+            return DriftGate.EXIT_CODE;
+        }
+
+        private static String driftJson(DriftGate gate) {
+            return gate.report().units().stream()
+                    .map(unit -> "{\"unit\":\"" + esc(unit.label())
+                            + "\",\"change\":\"" + unit.change().name().toLowerCase()
+                            + "\",\"files\":[" + unit.allFiles().stream()
+                                    .map(f -> "\"" + esc(f) + "\"")
+                                    .collect(java.util.stream.Collectors.joining(","))
+                            + "]}")
+                    .collect(java.util.stream.Collectors.joining(",", "[", "]"));
         }
     }
 

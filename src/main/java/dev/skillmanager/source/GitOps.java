@@ -32,8 +32,14 @@ public final class GitOps {
     }
 
     public static String originUrl(Path dir) {
-        Result r = run(dir, List.of("git", "remote", "get-url", "origin"));
-        return r.exit == 0 ? r.stdout.trim() : null;
+        return remoteUrl(dir, "origin");
+    }
+
+    /** The URL of a named remote, or null when the repository has no such remote. */
+    public static String remoteUrl(Path dir, String remote) {
+        if (remote == null || remote.isBlank()) return null;
+        Result r = run(dir, List.of("git", "remote", "get-url", remote.trim()));
+        return r.exit == 0 && !r.stdout.trim().isBlank() ? r.stdout.trim() : null;
     }
 
     /**
@@ -208,6 +214,98 @@ public final class GitOps {
     }
 
     public record MergeOutcome(boolean ok, List<String> conflictedFiles, String log) {}
+
+    // ------------------------------------------------------------ push-back
+    //
+    // Everything below supports `unit publish`: taking the edits an agent made
+    // to a unit inside a Skill Manager home and getting them back to the unit's
+    // own repository. All of it is deliberately additive — nothing here moves,
+    // resets, or force-updates a branch, because the whole point is that a
+    // push-back must not be able to lose work on either side.
+
+    /** The branch currently checked out, or null on a detached HEAD. */
+    public static String currentBranch(Path dir) {
+        Result r = run(dir, List.of("git", "symbolic-ref", "--short", "--quiet", "HEAD"));
+        return r.exit == 0 && !r.stdout.trim().isBlank() ? r.stdout.trim() : null;
+    }
+
+    public static boolean branchExists(Path dir, String branch) {
+        if (branch == null || branch.isBlank()) return false;
+        return run(dir, List.of("git", "rev-parse", "--verify", "--quiet",
+                "refs/heads/" + branch)).exit == 0;
+    }
+
+    /**
+     * Move onto {@code branch}, creating it at the current HEAD when it does not
+     * exist yet.
+     *
+     * <p>Deliberately {@code switch -c} / {@code switch} rather than
+     * {@code checkout -B}: {@code -B} <em>resets</em> an existing branch to
+     * HEAD, so re-running a publish after adding a second commit would silently
+     * throw away the first one.
+     */
+    public static boolean switchToBranch(Path dir, String branch) {
+        if (branch == null || branch.isBlank()) return false;
+        if (branch.equals(currentBranch(dir))) return true;
+        if (branchExists(dir, branch)) {
+            return run(dir, List.of("git", "switch", "--quiet", branch)).exit == 0;
+        }
+        return run(dir, List.of("git", "switch", "--quiet", "-c", branch)).exit == 0;
+    }
+
+    /**
+     * Stage everything and commit. Returns the new commit's hash, or null when
+     * there was nothing to commit (which is not an error — an idempotent
+     * re-publish reaches this).
+     */
+    public static String commitAll(Path dir, String message) {
+        if (run(dir, List.of("git", "add", "-A")).exit != 0) return null;
+        if (run(dir, List.of("git", "diff", "--cached", "--quiet")).exit == 0) return null;
+        Result commit = run(dir, List.of("git",
+                "-c", "user.email=skill-manager@localhost",
+                "-c", "user.name=skill-manager",
+                "commit", "--quiet", "-m", message));
+        return commit.exit == 0 ? headHash(dir) : null;
+    }
+
+    /**
+     * {@code git push <remote> <local>:<remote-ref>}. No {@code --force} and no
+     * {@code +} refspec anywhere in this class: a rejected non-fast-forward push
+     * is information the caller must surface, never something to overrule.
+     */
+    public static PushOutcome push(Path dir, String remote, String localRef, String remoteBranch) {
+        Result r = run(dir, List.of("git", "push", remote,
+                localRef + ":refs/heads/" + remoteBranch));
+        return new PushOutcome(r.exit == 0, r.stdout);
+    }
+
+    public record PushOutcome(boolean ok, String log) {}
+
+    /** The hash {@code remote}'s {@code branch} currently points at, or null. */
+    public static String remoteBranchHash(Path dir, String remote, String branch) {
+        Result r = run(dir, List.of("git", "ls-remote", "--heads", remote, branch));
+        if (r.exit != 0 || r.stdout.isBlank()) return null;
+        String first = r.stdout.trim().split("\\r?\\n")[0];
+        int tab = first.indexOf('\t');
+        return tab > 0 ? first.substring(0, tab).trim() : null;
+    }
+
+    /**
+     * Clone {@code source} (a path or URL) into {@code dest}, optionally at
+     * {@code ref}. Used by {@code CHECKOUT} materialization, where the source is
+     * normally the parent store's own checkout — so the clone is local and needs
+     * no network.
+     */
+    public static boolean clone(Path dest, String source, String ref) {
+        if (source == null || source.isBlank() || dest == null) return false;
+        Path parent = dest.getParent();
+        java.util.ArrayList<String> argv = new java.util.ArrayList<>(List.of(
+                "git", "clone", "--quiet", source, dest.toString()));
+        if (run(parent, argv).exit != 0) return false;
+        if (ref == null || ref.isBlank()) return true;
+        return run(dest, List.of("git", "checkout", "--quiet", ref)).exit == 0
+                || headHash(dest) != null;
+    }
 
     private record Result(int exit, String stdout, String stderr) {}
 

@@ -213,6 +213,9 @@ public class RunTests {
         failures += dev.skillmanager.store.HomeCloneTest.run();
         failures += dev.skillmanager.store.HomeDescriptorTest.run();
         failures += dev.skillmanager.policy.HomePolicyTest.run();
+        failures += dev.skillmanager.launch.LauncherShimsTest.run();
+        failures += dev.skillmanager.project.ProjectTrunkSyncTest.run();
+        failures += dev.skillmanager.store.HomeDriftGateTest.run();
         failures += dev.skillmanager.mcp.SharedGatewayTest.run();
         failures += dev.skillmanager.project.GeminiHomeParityTest.run();
         failures += BindingsTest.run();

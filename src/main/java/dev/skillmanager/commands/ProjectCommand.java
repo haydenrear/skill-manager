@@ -9,6 +9,7 @@ import dev.skillmanager.project.ProjectRemoveUseCase;
 import dev.skillmanager.project.ProjectSyncUseCase;
 import dev.skillmanager.project.SkillProjectRegistration;
 import dev.skillmanager.project.SkillProjectRegistry;
+import dev.skillmanager.project.UnitTrunkPull;
 import dev.skillmanager.store.SkillStore;
 import dev.skillmanager.util.Log;
 import picocli.CommandLine.Command;
@@ -16,6 +17,8 @@ import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
 
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.concurrent.Callable;
 
@@ -161,8 +164,18 @@ public final class ProjectCommand {
         }
     }
 
+    /**
+     * {@code project sync} — pull each unit's trunk, then reconcile the
+     * realization in place.
+     *
+     * <p>Was a placeholder that tore the realization down and re-resolved it from
+     * the same local store. See {@link ProjectSyncUseCase} for what replaced it
+     * and why the teardown is now behind {@code --rebuild}.
+     */
     @Command(name = "sync",
-            description = "Placeholder project sync: uninstall and reinstall the project realization.")
+            description = "Pull each project unit's trunk and reconcile the project realization "
+                    + "in place. Units with local edits are held back, not merged over, unless "
+                    + "--merge is given.")
     public static final class SyncCmd implements Callable<Integer> {
 
         @Option(names = "--project-dir",
@@ -181,12 +194,53 @@ public final class ProjectCommand {
                 description = "Named project profile to sync as a concrete project harness.")
         String profile;
 
+        @Option(names = "--no-pull",
+                description = "Reconcile only; do not fetch or merge any unit's trunk.")
+        boolean noPull;
+
+        @Option(names = "--merge",
+                description = "Three-way merge the trunk into units that have local changes, "
+                        + "instead of holding them back. A conflict is reported and left for you; "
+                        + "local work is never discarded either way.")
+        boolean merge;
+
+        @Option(names = "--ref",
+                description = "Branch to pull. Defaults to " + UnitTrunkPull.DEFAULT_TRUNK
+                        + ", falling back to the remote's default branch.")
+        String ref;
+
+        @Option(names = "--git-latest",
+                description = "Pull the ref each unit was installed from instead of the trunk.")
+        boolean gitLatest;
+
+        @Option(names = "--from", paramLabel = "DIR",
+                description = "Directory holding <unit-name> checkouts to pull from instead of "
+                        + "each unit's origin.")
+        Path from;
+
+        @Option(names = "--checkout", paramLabel = "UNIT",
+                description = "Materialize this unit into the child home as its own git checkout "
+                        + "so its edits can be published back (repeatable).")
+        List<String> checkout = new ArrayList<>();
+
+        @Option(names = "--rebuild",
+                description = "Tear the realization down and rebuild it instead of reconciling in "
+                        + "place. For a realization that is actually broken; it is the only path "
+                        + "that removes child-home content, so it is not the default.")
+        boolean rebuild;
+
         @Option(names = "--json", description = "Emit machine-readable JSON.")
         boolean json;
 
+        private final SkillStore injectedStore;
+
+        public SyncCmd() { this(null); }
+
+        public SyncCmd(SkillStore injectedStore) { this.injectedStore = injectedStore; }
+
         @Override
         public Integer call() throws Exception {
-            SkillStore store = SkillStore.defaultStore();
+            SkillStore store = injectedStore != null ? injectedStore : SkillStore.defaultStore();
             store.init();
             Path root = projectDir == null || projectDir.isBlank()
                     ? Path.of(System.getProperty("user.dir"))
@@ -198,13 +252,23 @@ public final class ProjectCommand {
             project = project.withProfile(profile);
             GatewayConfig gw = skipGateway ? null : GatewayConfig.resolve(store, null);
             ProjectSyncUseCase.Result result = new ProjectSyncUseCase(store, gw)
-                    .sync(project, new ProjectDependencyResolver.Options(true, !skipGateway));
+                    .sync(project,
+                            new ProjectDependencyResolver.Options(true, !skipGateway,
+                                    new LinkedHashSet<>(checkout)),
+                            new ProjectSyncUseCase.Options(!noPull, rebuild,
+                                    new UnitTrunkPull.Options(merge, ref, gitLatest, from)));
             if (json) {
                 System.out.println("""
-                        {"name":"%s","profile":"%s","mode":"placeholder-uninstall-reinstall","bindingsRemoved":%d,"clearedPaths":%d,"installed":%d,"resolved":%d,"heldBack":%s,"childHome":"%s"}"""
+                        {"name":"%s","profile":"%s","mode":"%s","pulled":%d,"pullHeldBack":%s,\
+                        "pullProblems":%s,"bindingsRemoved":%d,"clearedPaths":%d,"installed":%d,\
+                        "resolved":%d,"heldBack":%s,"childHome":"%s"}"""
                         .formatted(
                                 esc(result.resolved().registration().name()),
                                 esc(project.activeProfile() == null ? "" : project.activeProfile()),
+                                result.mode(),
+                                result.pull().changed().size(),
+                                pullJson(result.pull().heldBack()),
+                                pullJson(result.pull().problems()),
                                 result.bindingsRemoved(),
                                 result.clearedPaths().size(),
                                 result.resolved().installed().size(),
@@ -212,19 +276,22 @@ public final class ProjectCommand {
                                 heldBackJson(result.resolved().childHome()),
                                 esc(result.resolved().childHome().layout().childSkillManagerHome().toString())));
             } else {
-                Log.warn("project sync is a placeholder: uninstalling and reinstalling the project realization; "
-                        + "further work is needed for incremental project sync");
                 Log.ok("synced project %s", result.resolved().registration().name());
                 if (project.activeProfile() != null) Log.info("  profile:          %s", project.activeProfile());
-                Log.info("  mode:             uninstall/reinstall placeholder");
-                Log.info("  bindings removed: %d", result.bindingsRemoved());
-                Log.info("  cleared paths:    %d", result.clearedPaths().size());
+                Log.info("  mode:             %s", result.mode());
+                Log.info("  pulled:           %d of %d unit(s) moved",
+                        result.pull().changed().size(), result.pull().pulls().size());
+                if (rebuild) {
+                    Log.info("  bindings removed: %d", result.bindingsRemoved());
+                    Log.info("  cleared paths:    %d", result.clearedPaths().size());
+                }
                 Log.info("  installed:        %d", result.resolved().installed().size());
                 Log.info("  resolved:         %d", result.resolved().lock().resolvedUnits().size());
                 Log.info("  child:            %s", result.resolved().childHome().layout().childSkillManagerHome());
+                reportPull(result.pull());
                 reportHeldBack(result.resolved().childHome());
             }
-            return 0;
+            return result.pull().problems().isEmpty() ? 0 : 1;
         }
     }
 
@@ -415,6 +482,38 @@ public final class ProjectCommand {
             Log.warn("  %s — %s", outcome.label(), outcome.childPath());
         }
         Log.warn("  delete or move a path above and re-run to take the parent store's version");
+    }
+
+    /**
+     * Says out loud which units were left alone and which need a human.
+     *
+     * <p>A held-back unit is the point of the whole hold-back rule, so it cannot
+     * be a silent skip; and a conflict is the one outcome where {@code sync}
+     * deliberately stops short of finishing, so the path to finish it has to be
+     * printed.
+     */
+    private static void reportPull(dev.skillmanager.project.UnitTrunkPull.Report pull) {
+        if (!pull.heldBack().isEmpty()) {
+            Log.warn("held back %d unit(s) with uncommitted local changes (not merged over):",
+                    pull.heldBack().size());
+            for (var unit : pull.heldBack()) Log.warn("  %s — %s", unit.label(), unit.detail());
+            Log.warn("  re-run with --merge to three-way merge them against the trunk");
+        }
+        for (var unit : pull.problems()) {
+            Log.error("%s — %s", unit.label(), unit.detail());
+            for (String file : unit.conflictedFiles()) Log.error("    conflict: %s", file);
+        }
+    }
+
+    private static String pullJson(
+            List<dev.skillmanager.project.UnitTrunkPull.UnitPull> units) {
+        if (units == null || units.isEmpty()) return "[]";
+        return units.stream()
+                .map(unit -> "{\"unit\":\"" + esc(unit.label())
+                        + "\",\"status\":\"" + unit.status().name().toLowerCase()
+                        + "\",\"repo\":\"" + esc(String.valueOf(unit.repo()))
+                        + "\",\"detail\":\"" + esc(unit.detail()) + "\"}")
+                .collect(java.util.stream.Collectors.joining(",", "[", "]"));
     }
 
     private static String heldBackJson(

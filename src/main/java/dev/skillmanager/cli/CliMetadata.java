@@ -55,6 +55,7 @@ public final class CliMetadata {
             command("env"),
             command("env sync"),
             command("env run"),
+            command("exec"),
             command("gateway"),
             command("gateway up"),
             command("gateway down"),
@@ -72,6 +73,8 @@ public final class CliMetadata {
             command("home verify"),
             command("home describe"),
             command("home policy"),
+            command("home shims"),
+            command("home drift"),
             command("install"),
             command("list", "ls"),
             command("lock"),
@@ -110,6 +113,8 @@ public final class CliMetadata {
             command("sync"),
             command("unbind"),
             command("uninstall", "un"),
+            command("unit"),
+            command("unit publish"),
             command("upgrade")
     );
 
@@ -133,7 +138,8 @@ public final class CliMetadata {
             workflow("gateway-lifecycle", "gateway", docs("skill-manager-skill"),
                     "skill-manager gateway status"),
             // No `workflow(...)` rows for `home describe` / `home policy` /
-            // `gateway attach` yet: SkillManagerSkillDocsTest requires every
+            // `home shims` / `exec` / `unit publish` / `gateway attach` yet:
+            // SkillManagerSkillDocsTest requires every
             // modeled workflow to be documented in the bundled skill docs,
             // and those docs live in the duplicated `skill-manager-skill/`
             // leaf, which must be edited in its own repository first (see

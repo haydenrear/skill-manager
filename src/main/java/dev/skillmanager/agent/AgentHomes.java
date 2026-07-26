@@ -126,12 +126,45 @@ public final class AgentHomes {
      * a second {@code .claude} appended to it.
      */
     public static ClaudeHome claude() {
-        Path explicitConfigDir = resolve(CLAUDE_CONFIG_DIR);
+        return claude(AgentHomes::resolve);
+    }
+
+    /**
+     * The same resolution applied to an explicit environment rather than the
+     * ambient one — used when deciding where a launch <em>would</em> put
+     * Claude before starting it (see
+     * {@code dev.skillmanager.launch.LaunchEnv}).
+     *
+     * <p>It delegates to the same private implementation as {@link #claude()}
+     * precisely so there is still exactly one place the
+     * {@code CLAUDE_CONFIG_DIR} → {@code CLAUDE_HOME} → {@code user.home}
+     * precedence is written down. A launcher that re-derived it could disagree
+     * with the reader, and then a launch could pass its own isolation check
+     * while skill-manager wrote skills somewhere else — the split brain this
+     * method's javadoc describes, reintroduced from the other side.
+     *
+     * <p>A key absent from {@code env} is treated as unset, <em>not</em> as
+     * "fall back to the ambient variable". A launch environment is the
+     * complete statement of what the child gets, so an ambient
+     * {@code CLAUDE_CONFIG_DIR} that the launch does not pass on must not
+     * influence the answer.
+     */
+    public static ClaudeHome claude(Map<String, String> env) {
+        Map<String, String> source = env == null ? Map.of() : env;
+        return claude(key -> {
+            String value = source.get(key);
+            return value == null || value.isBlank() ? null : Path.of(value);
+        });
+    }
+
+    private static ClaudeHome claude(java.util.function.Function<String, Path> lookup) {
+        Path explicitConfigDir = lookup.apply(CLAUDE_CONFIG_DIR);
         if (explicitConfigDir != null) {
             Path parent = explicitConfigDir.getParent();
             return new ClaudeHome(parent != null ? parent : explicitConfigDir, explicitConfigDir);
         }
-        Path root = resolveOrDefault(CLAUDE_HOME, Path.of(System.getProperty("user.home")));
+        Path root = lookup.apply(CLAUDE_HOME);
+        if (root == null) root = Path.of(System.getProperty("user.home"));
         return new ClaudeHome(root, root.resolve(CLAUDE_DIR_NAME));
     }
 

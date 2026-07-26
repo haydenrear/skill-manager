@@ -10,6 +10,7 @@ import dev.skillmanager.commands.CreateAccountCommand;
 import dev.skillmanager.commands.CreateCommand;
 import dev.skillmanager.commands.DepsCommand;
 import dev.skillmanager.commands.EnvCommand;
+import dev.skillmanager.commands.ExecCommand;
 import dev.skillmanager.commands.GatewayCommand;
 import dev.skillmanager.commands.InstallCommand;
 import dev.skillmanager.commands.ListCommand;
@@ -29,6 +30,7 @@ import dev.skillmanager.commands.ShowCommand;
 import dev.skillmanager.commands.SyncCommand;
 import dev.skillmanager.commands.UnbindCommand;
 import dev.skillmanager.commands.UninstallCommand;
+import dev.skillmanager.commands.UnitCommand;
 import dev.skillmanager.commands.UpgradeCommand;
 import dev.skillmanager.registry.AuthenticationRequiredException;
 import dev.skillmanager.registry.RegistryUnavailableException;
@@ -65,6 +67,7 @@ import picocli.CommandLine.Option;
                 PmCommand.class,
                 CliCommand.class,
                 EnvCommand.class,
+                ExecCommand.class,
                 CreateCommand.class,
                 AdsCommand.class,
                 LoginCommand.class,
@@ -77,7 +80,8 @@ import picocli.CommandLine.Option;
                 BindingsCommand.class,
                 HarnessCommand.class,
                 HomeCommand.class,
-                ProjectCommand.class
+                ProjectCommand.class,
+                UnitCommand.class
         })
 public final class SkillManagerCli implements Runnable {
 
