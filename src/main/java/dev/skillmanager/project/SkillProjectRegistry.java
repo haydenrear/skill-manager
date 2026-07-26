@@ -3,6 +3,7 @@ package dev.skillmanager.project;
 import dev.skillmanager.model.SkillProject;
 import dev.skillmanager.model.SkillProjectParser;
 import dev.skillmanager.shared.util.Fs;
+import dev.skillmanager.store.HomePaths;
 import dev.skillmanager.store.SkillStore;
 import org.tomlj.Toml;
 import org.tomlj.TomlParseResult;
@@ -56,8 +57,15 @@ public final class SkillProjectRegistry {
                 registered_at = "%s"
                 """.formatted(
                         escape(name),
+                        // project_root points at a checkout elsewhere on disk
+                        // and stays absolute. manifest_path is whichever
+                        // manifest the caller registered from — the project's
+                        // own file, or (when re-registering from a snapshot)
+                        // this registry's copy under projects/<name>/. Only
+                        // the latter is a self-reference, and encode() leaves
+                        // the former alone.
                         escape(project.projectRoot().toString()),
-                        escape(project.manifestPath().toString()),
+                        escape(HomePaths.of(store.root()).encode(project.manifestPath())),
                         escape(manifestFile),
                         escape(project.activeProfile() == null ? "" : project.activeProfile()),
                         escape(registeredAt)));
@@ -83,7 +91,8 @@ public final class SkillProjectRegistry {
         }
         String projectName = toml.getString("project.name");
         String root = toml.getString("project.project_root");
-        String manifest = toml.getString("project.manifest_path");
+        String manifest = HomePaths.of(store.root())
+                .decodeToString(toml.getString("project.manifest_path"));
         String manifestFile = toml.getString("project.manifest_file");
         String registeredAt = toml.getString("project.registered_at");
         if (projectName == null || root == null || manifest == null) {

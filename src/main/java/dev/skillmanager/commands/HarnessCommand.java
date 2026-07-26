@@ -201,7 +201,7 @@ public final class HarnessCommand {
                 new dev.skillmanager.bindings.HarnessInstanceLock(
                         name, id, resolvedClaude, resolvedCodex, resolvedGemini, resolvedProject,
                         dev.skillmanager.bindings.BindingStore.nowIso())
-                        .write(sandboxRoot);
+                        .write(sandboxRoot, store.root());
             }
 
             List<SkillEffect> effects = new ArrayList<>();

@@ -1,5 +1,6 @@
 package dev.skillmanager.bindings;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.skillmanager.shared.util.Fs;
 import dev.skillmanager.store.SkillStore;
 
@@ -32,6 +33,15 @@ public final class BindingStore {
         this.store = store;
     }
 
+    /**
+     * Ledgers live inside the home they describe, so their store-side
+     * paths are self-references and are persisted relative to it. See
+     * {@link dev.skillmanager.store.HomePaths}.
+     */
+    private ObjectMapper mapper() {
+        return BindingJson.mapperFor(store.root());
+    }
+
     public Path file(String unitName) {
         return store.installedDir().resolve(unitName + ".projections.json");
     }
@@ -40,10 +50,36 @@ public final class BindingStore {
         Path f = file(unitName);
         if (!Files.isRegularFile(f)) return ProjectionLedger.empty(unitName);
         try {
-            return BindingJson.MAPPER.readValue(f.toFile(), ProjectionLedger.class);
+            return mapPaths(mapper().readValue(f.toFile(), ProjectionLedger.class), false);
         } catch (IOException e) {
             return ProjectionLedger.empty(unitName);
         }
+    }
+
+    /**
+     * Apply the home encoding to {@link Projection#backupOf()}, which the
+     * mapper cannot reach: it is a {@code String}, so
+     * {@link BindingJson}'s {@code Path} serializer never sees it. It holds
+     * the destination a {@link ConflictPolicy#RENAME_EXISTING} moved out of
+     * the way, so it is normally external — but nothing structurally
+     * prevents it naming a path in the home, and unbind moves the backup
+     * back to it.
+     */
+    private ProjectionLedger mapPaths(ProjectionLedger ledger, boolean encoding) {
+        dev.skillmanager.store.HomePaths paths =
+                dev.skillmanager.store.HomePaths.of(store.root());
+        List<Binding> bindings = new ArrayList<>(ledger.bindings().size());
+        for (Binding b : ledger.bindings()) {
+            List<Projection> projections = new ArrayList<>(b.projections().size());
+            for (Projection p : b.projections()) {
+                String backupOf = p.backupOf() == null ? null
+                        : encoding ? paths.encode(p.backupOf()) : paths.decodeToString(p.backupOf());
+                projections.add(new Projection(p.bindingId(), p.sourcePath(), p.destPath(),
+                        p.kind(), backupOf, p.boundHash()));
+            }
+            bindings.add(b.withProjections(projections));
+        }
+        return new ProjectionLedger(ledger.unitName(), bindings);
     }
 
     public void write(ProjectionLedger ledger) throws IOException {
@@ -53,8 +89,8 @@ public final class BindingStore {
             delete(ledger.unitName());
             return;
         }
-        BindingJson.MAPPER.writerWithDefaultPrettyPrinter()
-                .writeValue(file(ledger.unitName()).toFile(), ledger);
+        mapper().writerWithDefaultPrettyPrinter()
+                .writeValue(file(ledger.unitName()).toFile(), mapPaths(ledger, true));
     }
 
     public void delete(String unitName) throws IOException {
@@ -73,7 +109,8 @@ public final class BindingStore {
         try (DirectoryStream<Path> stream = Files.newDirectoryStream(dir, "*.projections.json")) {
             for (Path f : stream) {
                 try {
-                    ProjectionLedger l = BindingJson.MAPPER.readValue(f.toFile(), ProjectionLedger.class);
+                    ProjectionLedger l = mapPaths(
+                            mapper().readValue(f.toFile(), ProjectionLedger.class), false);
                     out.addAll(l.bindings());
                 } catch (IOException ignored) {}
             }
@@ -88,7 +125,8 @@ public final class BindingStore {
         try (DirectoryStream<Path> stream = Files.newDirectoryStream(dir, "*.projections.json")) {
             for (Path f : stream) {
                 try {
-                    ProjectionLedger l = BindingJson.MAPPER.readValue(f.toFile(), ProjectionLedger.class);
+                    ProjectionLedger l = mapPaths(
+                            mapper().readValue(f.toFile(), ProjectionLedger.class), false);
                     for (Binding b : l.bindings()) {
                         if (b.bindingId().equals(bindingId)) {
                             return Optional.of(new LocatedBinding(l.unitName(), b));

@@ -5,6 +5,7 @@ import dev.skillmanager.commands.BindCommand;
 import dev.skillmanager.commands.BindingsCommand;
 import dev.skillmanager.commands.CliCommand;
 import dev.skillmanager.commands.HarnessCommand;
+import dev.skillmanager.commands.HomeCommand;
 import dev.skillmanager.commands.CreateAccountCommand;
 import dev.skillmanager.commands.CreateCommand;
 import dev.skillmanager.commands.DepsCommand;
@@ -75,6 +76,7 @@ import picocli.CommandLine.Option;
                 RebindCommand.class,
                 BindingsCommand.class,
                 HarnessCommand.class,
+                HomeCommand.class,
                 ProjectCommand.class
         })
 public final class SkillManagerCli implements Runnable {

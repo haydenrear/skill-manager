@@ -22,6 +22,11 @@ public final class SkillProjectLockStore {
 
     private final SkillStore store;
 
+    /** Self-references in the lock are stored relative to the home holding it. */
+    private dev.skillmanager.store.HomePaths homePaths() {
+        return dev.skillmanager.store.HomePaths.of(store.root());
+    }
+
     public SkillProjectLockStore(SkillStore store) {
         this.store = store;
     }
@@ -84,7 +89,7 @@ public final class SkillProjectLockStore {
                         unitName,
                         UnitKind.valueOf(kind),
                         BindingSource.valueOf(source),
-                        row.getString("target_root")));
+                        homePaths().decodeToString(row.getString("target_root"))));
             }
         }
         List<SkillProjectLock.EnvRealization> envs = new ArrayList<>();
@@ -98,7 +103,7 @@ public final class SkillProjectLockStore {
                 envs.add(new SkillProjectLock.EnvRealization(
                         envName,
                         row.getString("python"),
-                        row.getString("env_root"),
+                        homePaths().decodeToString(row.getString("env_root")),
                         row.getString("pyproject_file"),
                         row.getString("lock_file"),
                         row.getString("venv_dir"),
@@ -164,7 +169,7 @@ public final class SkillProjectLockStore {
         return claimers;
     }
 
-    private static String render(SkillProjectLock lock) {
+    private String render(SkillProjectLock lock) {
         StringBuilder sb = new StringBuilder();
         sb.append("version = 1\n\n");
         sb.append("[project]\n");
@@ -193,7 +198,11 @@ public final class SkillProjectLockStore {
             sb.append("kind = \"").append(binding.unitKind().name()).append("\"\n");
             sb.append("source = \"").append(binding.source().name()).append("\"\n");
             if (binding.targetRoot() != null) {
-                sb.append("target_root = \"").append(esc(binding.targetRoot())).append("\"\n");
+                // Normally a project checkout or an agent home, i.e. external.
+                // encode() leaves those alone and only rewrites the case that
+                // does point into this home.
+                sb.append("target_root = \"").append(esc(homePaths().encode(binding.targetRoot())))
+                        .append("\"\n");
             }
             sb.append("\n");
         }
@@ -204,7 +213,8 @@ public final class SkillProjectLockStore {
                 sb.append("python = \"").append(esc(env.python())).append("\"\n");
             }
             if (env.envRoot() != null) {
-                sb.append("env_root = \"").append(esc(env.envRoot())).append("\"\n");
+                sb.append("env_root = \"").append(esc(homePaths().encode(env.envRoot())))
+                        .append("\"\n");
             }
             if (env.pyprojectFile() != null) {
                 sb.append("pyproject_file = \"").append(esc(env.pyprojectFile())).append("\"\n");

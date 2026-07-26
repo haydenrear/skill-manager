@@ -1840,7 +1840,7 @@ public final class LiveInterpreter implements ProgramInterpreter {
             // the instantiator wrote. Falls back to the sandbox-subdir
             // defaults when missing (covers instances that predate the
             // lock file or were created with the old API).
-            var lock = dev.skillmanager.bindings.HarnessInstanceLock.read(sandboxRoot, e.instanceId());
+            var lock = dev.skillmanager.bindings.HarnessInstanceLock.read(sandboxRoot, e.instanceId(), ctx.store().root());
             java.nio.file.Path instanceDir = sandboxRoot.resolve(e.instanceId());
             java.nio.file.Path claudeConfigDir = lock.map(
                     dev.skillmanager.bindings.HarnessInstanceLock::claudeConfigDir)

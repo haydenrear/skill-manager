@@ -39,17 +39,37 @@ public record HarnessInstanceLock(
         return sandboxRoot.resolve(instanceId).resolve(FILENAME);
     }
 
+    /**
+     * Write with paths stored verbatim. Prefer
+     * {@link #write(Path, Path)} — the sandbox root is
+     * {@code <home>/harnesses/instances}, and when the caller does not
+     * override the agent homes they default to subdirectories of it, so
+     * these fields routinely point back into the home that holds this file.
+     */
     public void write(Path sandboxRoot) throws IOException {
+        write(sandboxRoot, null);
+    }
+
+    /** Write with self-references relative to {@code homeRoot}. */
+    public void write(Path sandboxRoot, Path homeRoot) throws IOException {
         Path f = file(sandboxRoot, instanceId);
         Files.createDirectories(f.getParent());
-        BindingJson.MAPPER.writerWithDefaultPrettyPrinter().writeValue(f.toFile(), this);
+        BindingJson.mapperFor(homeRoot).writerWithDefaultPrettyPrinter()
+                .writeValue(f.toFile(), this);
     }
 
     public static Optional<HarnessInstanceLock> read(Path sandboxRoot, String instanceId) {
+        return read(sandboxRoot, instanceId, null);
+    }
+
+    /** Read, resolving {@code $SKILL_MANAGER_HOME} against {@code homeRoot}. */
+    public static Optional<HarnessInstanceLock> read(Path sandboxRoot, String instanceId,
+                                                     Path homeRoot) {
         Path f = file(sandboxRoot, instanceId);
         if (!Files.isRegularFile(f)) return Optional.empty();
         try {
-            return Optional.of(BindingJson.MAPPER.readValue(f.toFile(), HarnessInstanceLock.class));
+            return Optional.of(BindingJson.mapperFor(homeRoot)
+                    .readValue(f.toFile(), HarnessInstanceLock.class));
         } catch (IOException e) {
             return Optional.empty();
         }

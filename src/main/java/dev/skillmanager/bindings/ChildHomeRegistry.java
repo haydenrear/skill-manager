@@ -3,6 +3,7 @@ package dev.skillmanager.bindings;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import dev.skillmanager.shared.util.Fs;
+import dev.skillmanager.store.HomePaths;
 import dev.skillmanager.store.SkillStore;
 
 import java.io.IOException;
@@ -10,9 +11,17 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Parent-side registry for child Skill Manager homes.
+ *
+ * <p>{@code parentHome} names the home this registry lives in — a
+ * self-reference, so it is persisted as {@code $SKILL_MANAGER_HOME} and
+ * the record survives the home being copied elsewhere. {@code childHome}
+ * points at a project checkout somewhere else on disk and is stored
+ * verbatim. Reads accept either spelling of {@code parentHome}, so
+ * records written before this encoding existed still load.
  */
 public final class ChildHomeRegistry {
 
@@ -43,7 +52,41 @@ public final class ChildHomeRegistry {
     public void write(ChildHomeRecord record) throws IOException {
         Path file = file(record.id());
         Fs.ensureDir(file.getParent());
-        BindingJson.MAPPER.writerWithDefaultPrettyPrinter().writeValue(file.toFile(), record);
+        BindingJson.MAPPER.writerWithDefaultPrettyPrinter().writeValue(file.toFile(), encode(record));
+    }
+
+    /** Read one record with {@code parentHome} resolved back to a real path. */
+    public Optional<ChildHomeRecord> read(String id) {
+        Path file = file(id);
+        if (!Files.isRegularFile(file)) return Optional.empty();
+        try {
+            return Optional.of(decode(
+                    BindingJson.MAPPER.readValue(file.toFile(), ChildHomeRecord.class)));
+        } catch (IOException e) {
+            return Optional.empty();
+        }
+    }
+
+    private ChildHomeRecord encode(ChildHomeRecord record) {
+        HomePaths paths = HomePaths.of(store.root());
+        return new ChildHomeRecord(
+                record.id(),
+                paths.encode(record.parentHome()),
+                record.childHome(),
+                record.harnessName(),
+                record.units(),
+                record.createdAt());
+    }
+
+    private ChildHomeRecord decode(ChildHomeRecord record) {
+        HomePaths paths = HomePaths.of(store.root());
+        return new ChildHomeRecord(
+                record.id(),
+                paths.decodeToString(record.parentHome()),
+                record.childHome(),
+                record.harnessName(),
+                record.units(),
+                record.createdAt());
     }
 
     public void delete(String id) throws IOException {

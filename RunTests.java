@@ -209,6 +209,8 @@ public class RunTests {
         failures += dev.skillmanager.mcp.McpWriterTest.run();
         failures += dev.skillmanager.mcp.GatewayRuntimeTest.run();
         failures += dev.skillmanager.store.FetcherGitCloneTest.run();
+        failures += dev.skillmanager.store.HomePathsTest.run();
+        failures += dev.skillmanager.store.HomeCloneTest.run();
         failures += BindingsTest.run();
         failures += dev.skillmanager.bindings.DocRepoTest.run();
         failures += dev.skillmanager.bindings.HarnessTest.run();
