@@ -252,23 +252,57 @@ public final class HomeCloneTest {
                     "a resolvable shim is not flagged");
         });
 
-        suite.test("a venv shebang is re-anchored at the copy's own interpreter", () -> {
+        suite.test("a provisioned shebang is re-anchored at the copy's own interpreter", () -> {
             // A shebang is resolved literally by the kernel, exactly like a
             // symlink target, so it cannot carry $SKILL_MANAGER_HOME. Left
             // alone, the copy would execute the source home's python.
+            //
+            // Staged under pm/ rather than venvs/: venvs/ is skipped and
+            // re-provisioned, but pm/ holds the bundled node and uv that
+            // re-provisioning itself needs, so it is copied and its shebangs
+            // are the ones that must be re-anchored.
             Path source = seededHome();
-            Path venvBin = Files.createDirectories(source.resolve("venvs/jinja2-cli/bin"));
-            Files.writeString(venvBin.resolve("jinja2"),
-                    "#!" + source + "/venvs/jinja2-cli/bin/python\nprint('hi')\n");
+            Path pmBin = Files.createDirectories(source.resolve("pm/uv/bin"));
+            Files.writeString(pmBin.resolve("uvx"),
+                    "#!" + source + "/pm/uv/bin/python\nprint('hi')\n");
             Path dest = newDir("dest-").resolve("home");
 
             HomeCloner.Report report = HomeCloner.cloneHome(source, dest);
 
-            String shebang = Files.readString(dest.resolve("venvs/jinja2-cli/bin/jinja2"));
+            String shebang = Files.readString(dest.resolve("pm/uv/bin/uvx"));
             assertTrue(report.clean(), "clone clean: " + report.leaks());
             assertEquals(1, report.provisionedRewritten(), "one provisioned file rewritten");
-            assertContains(shebang, "#!" + dest + "/venvs/jinja2-cli/bin/python",
+            assertContains(shebang, "#!" + dest + "/pm/uv/bin/python",
                     "shebang points at the copy");
+        });
+
+        suite.test("toolchain roots are skipped for re-provisioning, pm is kept", () -> {
+            // Installers write into venvs/, tools/ and npm/ (UV_TOOL_DIR,
+            // SKILL_MANAGER_CACHE_DIR, sync --force-scripts), so sharing one
+            // copy between homes would move this mechanism's own bug from
+            // skills/ to venvs/. A clone carries none of them and
+            // re-provisions from cli-lock.toml instead. pm/ is the exception:
+            // it holds the package managers re-provisioning needs.
+            Path source = seededHome();
+            Files.createDirectories(source.resolve("venvs/jinja2-cli/bin"));
+            Files.writeString(source.resolve("venvs/jinja2-cli/bin/jinja2"),
+                    "#!" + source + "/venvs/jinja2-cli/bin/python\n");
+            Files.createDirectories(source.resolve("tools/vision-toolbelt"));
+            Files.writeString(source.resolve("tools/vision-toolbelt/model.bin"), "weights");
+            Files.createDirectories(source.resolve("npm/hyper-experiments"));
+            Files.writeString(source.resolve("npm/hyper-experiments/index.js"), "//js");
+            Files.createDirectories(source.resolve("pm/uv/bin"));
+            Files.writeString(source.resolve("pm/uv/bin/uv"), "#!/bin/sh\nexit 0\n");
+            Path dest = newDir("dest-").resolve("home");
+
+            HomeCloner.Report report = HomeCloner.cloneHome(source, dest);
+
+            assertTrue(report.clean(), "clone clean: " + report.leaks());
+            assertTrue(Files.notExists(dest.resolve("venvs")), "venvs/ not copied");
+            assertTrue(Files.notExists(dest.resolve("tools")), "tools/ not copied");
+            assertTrue(Files.notExists(dest.resolve("npm")), "npm/ not copied");
+            assertTrue(Files.isRegularFile(dest.resolve("pm/uv/bin/uv")),
+                    "pm/ IS copied - re-provisioning needs the bundled package managers");
         });
 
         suite.test("authored unit content is reported but never rewritten", () -> {
@@ -382,9 +416,9 @@ public final class HomeCloneTest {
             // this: the file is simply a tool that will not exec.
             Path source = newDir("s-");
             new SkillStore(source).init();
-            Path venvBin = Files.createDirectories(source.resolve("venvs/tool/bin"));
-            Files.writeString(venvBin.resolve("tool"),
-                    "#!" + source + "/venvs/tool/bin/python\nprint('hi')\n");
+            Path pmBin = Files.createDirectories(source.resolve("pm/tool/bin"));
+            Files.writeString(pmBin.resolve("tool"),
+                    "#!" + source + "/pm/tool/bin/python\nprint('hi')\n");
             Path deep = newDir("d-");
             for (int i = 0; i < 40; i++) deep = deep.resolve("aaaaaaaaaaaaaaaaaaaa");
             Path dest = deep.resolve("home");
@@ -403,7 +437,7 @@ public final class HomeCloneTest {
             // let a binary payload be substituted whole and every offset in
             // the tail shifted.
             Path source = seededHome();
-            Path venvBin = Files.createDirectories(source.resolve("venvs/tool/bin"));
+            Path venvBin = Files.createDirectories(source.resolve("pm/tool/bin"));
             byte[] head = ("# " + "x".repeat(9000) + "\n# " + source + "\n")
                     .getBytes(java.nio.charset.StandardCharsets.UTF_8);
             byte[] tail = new byte[]{0, 1, 2, 3};
@@ -415,7 +449,7 @@ public final class HomeCloneTest {
 
             HomeCloner.Report report = HomeCloner.cloneHome(source, dest);
 
-            assertEquals((long) payload.length, Files.size(dest.resolve("venvs/tool/bin/packed")),
+            assertEquals((long) payload.length, Files.size(dest.resolve("pm/tool/bin/packed")),
                     "binary-tailed file copied byte for byte");
             assertFalse(report.clean(), "and reported rather than silently rewritten");
         });

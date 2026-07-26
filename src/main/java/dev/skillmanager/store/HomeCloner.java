@@ -76,8 +76,38 @@ import java.util.Set;
  */
 public final class HomeCloner {
 
-    /** Top-level directories a clone does not copy. */
-    public static final Set<String> SKIPPED_DIRS = Set.of("cache", "tmp", "logs");
+    /**
+     * Top-level directories a clone does not copy.
+     *
+     * <p>{@code cache}, {@code tmp} and {@code logs} are transient. The three
+     * toolchain roots are skipped for a different and load-bearing reason:
+     * <b>installers write into them</b>. {@code PipBackend} points
+     * {@code UV_TOOL_DIR} at {@code venvs/}, {@code SkillScriptBackend} hands
+     * {@code SKILL_MANAGER_CACHE_DIR} to arbitrary install scripts, and
+     * {@code sync --force-scripts} reruns both. Sharing one copy between
+     * homes would therefore reintroduce exactly the cross-project mutation
+     * this whole mechanism exists to remove, only moved from {@code skills/}
+     * to {@code venvs/} — and silently, since a skill-script installer is
+     * unbounded user code. Copying them per clone is the alternative, and it
+     * is expensive: {@code tools/} is 1.3 GB and {@code npm/} 155 MB on a
+     * real home. So a clone carries neither: it skips them and re-provisions
+     * from {@code cli-lock.toml}, which is also the only option under which
+     * one project installing a CLI dep cannot disturb another.
+     *
+     * <p>{@code venvs/} is only ~2 MB, so it is skipped for correctness
+     * rather than size: a pip/uv console script's shebang is an absolute path
+     * to that venv's interpreter, and a shebang is resolved literally by the
+     * kernel, so it cannot be tokenized the way stored paths can.
+     * Re-provisioning writes a correct one instead of rewriting a file a
+     * third-party tool generated.
+     *
+     * <p><b>{@code pm/} is deliberately NOT here.</b> It holds the bundled
+     * {@code node} and {@code uv} — the package managers re-provisioning
+     * itself needs. Skipping it would leave a clone unable to rebuild the
+     * very toolchains it is missing.
+     */
+    public static final Set<String> SKIPPED_DIRS =
+            Set.of("cache", "tmp", "logs", "venvs", "tools", "npm");
 
     /**
      * Derived build caches, skipped wherever they appear. These are the
