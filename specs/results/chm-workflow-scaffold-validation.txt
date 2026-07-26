@@ -1,0 +1,124 @@
+child-home-materialization-workflow -- scaffold validation evidence
+date: 2026-07-25
+scope: specs/ only. No production code was changed; no ticket was opened,
+       closed, or promoted; specs/current is unchanged from the accepted
+       baseline.
+
+-----------------------------------------------------------------------------
+1. Workflow scaffold
+-----------------------------------------------------------------------------
+$ tla-spec-dev --repo-root . --spec-root specs scaffold workflow CHM-1 \
+    "Child home units materialize by copy"
+
+WARNING emitted by the tool itself:
+  specs/program_model is a single-module baseline with no Internal.tla/
+  External.tla. It cannot generate Test Graph cases, so this project's public
+  surface is not validated. Split it into Core/Internal/External and add
+  adapters.py + testgraph_bindings.yml.
+
+Created specs/current/ and specs/desired_program_model/ from the accepted
+baseline (monolithic SkillManager.tla + MC.cfg + MC_program_promotion.cfg +
+case_adapters.toml + production_adapters.py + tests/).
+
+-----------------------------------------------------------------------------
+2. Desired-state TLC -- must be clean
+-----------------------------------------------------------------------------
+$ bash specs/desired_program_model/run_tlc.sh \
+    specs/desired_program_model/External.tla \
+    specs/desired_program_model/External.cfg
+  Model checking completed. No error has been found.
+  1302 states generated, 250 distinct states found, 0 states left on queue.
+  The depth of the complete state graph search is 9.
+  Finished in 00s.
+  full log: chm-external-tlc.txt
+
+$ bash specs/desired_program_model/run_tlc.sh \
+    specs/desired_program_model/Internal.tla \
+    specs/desired_program_model/Internal.cfg
+  Model checking completed. No error has been found.
+  8306 states generated, 2065 distinct states found, 0 states left on queue.
+  The depth of the complete state graph search is 12.
+  Finished in 00s.
+  full log: chm-internal-tlc.txt
+
+-----------------------------------------------------------------------------
+3. Expected-violation regression configs -- must each fail
+-----------------------------------------------------------------------------
+5 configs run, 5 counterexamples produced (full traces: chm-regression-configs.txt)
+
+  External_regression_overwrite.cfg  -> AgentEditedChildUnitsAreNeverDestroyed
+                                        violated at depth 4
+  External_regression_symlink.cfg    -> ChildHomeWritesNeverReachTheParentStore
+                                        violated at depth 3
+  External_regression_rawdigest.cfg  -> UnmodifiedChildUnitsConvergeOnTheirSource
+                                        violated at depth 3
+  Internal_regression_overwrite.cfg  -> AgentEditsSurviveMaterialization
+                                        violated at depth 4
+  Internal_regression_nonatomic.cfg  -> InFlightMaterializationLeavesTheChildUnitIntact
+                                        violated at depth 5
+
+The overwrite trace is the epic's actual bug, reproduced as a model
+counterexample:
+  1 initial
+  2 ResolveProjectChildHome   child ChildUnitA materialized, content 0
+  3 EditChildHomeUnit         child ChildUnitA content := AgentBytes,
+                              agent_edits := {ChildUnitA},
+                              store_body unchanged
+  4 ResolveProjectChildHome   child ChildUnitA content := 0
+                              -> AgentEditedChildUnitsAreNeverDestroyed VIOLATED
+
+-----------------------------------------------------------------------------
+4. Complexity descriptors
+-----------------------------------------------------------------------------
+External  bound 108, 250 reachable states, no warnings
+          (chm-external-complexity.txt)
+Internal  bound 432, 2065 reachable states, ONE advisory warning:
+          component C1 touched by 12 actions, exceeding max_component_actions 8
+          (chm-internal-complexity.txt)
+Monolith  bound 2, 37 variables of which 36 resolve as unconstrained,
+          no TypeOK at all, project_model and result each touched by 9/9
+          actions, clusters C1 21 vars / C2 16 vars / C3 1 var, Q = 0.122
+          (chm-monolith-complexity.txt)
+
+Record-typed variables (child_home, pass, child_unit, record, staging) are
+reported as explicit UNKNOWNs: record sets are on the documented not-sizable
+list. The bounds above exclude them; the reachable-state counts are the
+load-bearing measurement.
+
+-----------------------------------------------------------------------------
+5. Carried-forward monolith
+-----------------------------------------------------------------------------
+$ bash specs/desired_program_model/run_tlc.sh \
+    specs/desired_program_model/SkillManager.tla \
+    specs/desired_program_model/MC_program_promotion.cfg
+
+  DID NOT COMPLETE. Stopped manually after >3000s of wall time at
+  79,225,632 states generated / 3,032,979 distinct / BFS depth 14, with
+  836,363 states still on the queue. No invariant violation up to that point.
+  Budget is tlc_seconds 120, so this is 25x+ over.
+
+  It also ran past the last figures recorded anywhere in this repository
+  (60,920,609 generated / 2,337,504 distinct / depth 23, from
+  .history/project-and-child-home-workflow) without terminating, so that
+  record is stale and no completed whole-model TLC number for the monolith
+  currently exists.
+
+  This model is carried forward UNCHANGED from the accepted baseline. The
+  failure to finish is a property of the monolith, not of anything authored
+  in this workflow, and it is the primary input for phase MIG.
+  full log: chm-monolith-tlc.txt
+
+MC.cfg (CliDisclosureSpec) is a stuttering-only configuration: 10 states
+generated, 1 distinct, depth 1. It checks the CLI disclosure invariants
+against the initial state and nothing else.
+
+-----------------------------------------------------------------------------
+6. Not run
+-----------------------------------------------------------------------------
+spec-unit tests   blocked: no case_adapters.toml mappings for the new actions
+                  (ticket CHM-8)
+test_graph        blocked: no testgraph_bindings.yml, and test_graph nodes for
+                  this epic are owned by a separate agent
+effect providers  hard-blocked: effectful_onboarding.md requires the
+                  Internal/External views to be onboarded first, and that is
+                  true for this slice only (ticket_plan.yaml phases MIG, EFF)

@@ -1,0 +1,391 @@
+module: SkillManager
+package: desired_program_cases
+
+status:
+  workflow: ticket
+  workflow_name: child-home-materialization-workflow
+  initial_ticket: CHM-1
+  initial_ticket_title: "Child home units materialize by copy, not by symlink"
+  ticket_plan: ticket_plan.yaml
+  relation_to_program_model: desired_successor_of_accepted_program_model
+  relation_to_current: target_state_for_specs_current_to_converge_to
+  updated: "2026-07-25"
+  summary:
+    desired_model_scaffolded: true
+    ticket_plan_scaffolded: true
+    current_model_scaffolded: true
+    desired_tla_authored: partial_child_home_slice_only
+    generated_cases: pending
+    adapters: pending
+    promotion: not_started
+  done:
+    - Scaffolded specs/current and specs/desired_program_model from the accepted baseline.
+    - Authored Core.tla, Internal.tla, and External.tla for the child-home materialization slice.
+    - TLC green on Internal.cfg and External.cfg; five expected-violation regression configs each produce their counterexample.
+    - Recorded complexity descriptors for External, Internal, and the carried-forward monolith.
+  pending:
+    - Owner decision on the Internal/External scope (see internal_external_decision below).
+    - Owner approval of budgets before any effectful/modular migration work starts (migration.md Phase 0).
+    - Spec-unit adapters (case_adapters.toml) and Test Graph bindings (testgraph_bindings.yml) for the new actions.
+    - Fold the remaining monolithic SkillManager.tla behavior into Internal/External (ticket_plan.yaml phase MIG).
+    - Update specs/current as each ticket lands, then promote.
+
+# --------------------------------------------------------------------------
+# Module layout of this workflow directory.
+#
+# TRANSITIONAL, AND DELIBERATELY SO. The accepted baseline in
+# specs/program_model is a single 1897-line SkillManager.tla with no
+# Internal/External split -- `tla-spec-dev scaffold workflow` warns about
+# exactly this. That monolith is carried forward here unchanged so
+# desired_program_model still describes the WHOLE program, while the new
+# Core/Internal/External modules carry the child-home materialization slice
+# this epic changes.
+#
+# Two representations of one program is a hazard, not a feature. The overlap
+# is enumerated below so it stays visible, and phase MIG in ticket_plan.yaml
+# retires it.
+modules:
+  core:
+    module: Core.tla
+    role: shared constants and operators for the child-home slice
+  internal:
+    module: Internal.tla
+    config: Internal.cfg
+    role: fine-grained program state; spec-unit case source
+    generates: spec_unit
+    adapter_mapping: case_adapters.toml
+    status: authored_tlc_green_adapters_pending
+  external:
+    module: External.tla
+    config: External.cfg
+    role: publicly observable behavior; Test Graph case source
+    generates: testgraph
+    adapter_mapping: testgraph_bindings.yml
+    status: authored_tlc_green_bindings_pending
+  legacy_monolith:
+    module: SkillManager.tla
+    config: MC_program_promotion.cfg
+    role: the not-yet-migrated remainder of the accepted program model
+    status: carried_forward_unchanged
+    # OWNER DECISION 2026-07-26: record this and proceed on the new views.
+    # Phase MIG owns fixing it; this epic validates against External/Internal.
+    baseline_has_no_completed_tlc_run: true
+    baseline_tlc_finding: >
+      MC_program_promotion.cfg does not complete. Killed after >3000s at
+      79,225,632 generated / 3,032,979 distinct / depth 14 with 836,363 states
+      still on the queue - 25x over the tlc_seconds budget, no violation found
+      up to that point. It also exceeded the 2,337,504-distinct figure recorded
+      in .history/project-and-child-home-workflow, so THAT RECORD IS STALE and
+      no completed whole-model TLC number currently exists for this baseline.
+      Root cause is not module structure: SkillManager.tla declares 37 variables
+      and has no TypeOK at all, so 36 of 37 resolve as unconstrained. Writing
+      those domains is the expensive part of phase MIG, not splitting modules.
+      Evidence: ../results/chm-monolith-tlc.txt
+    baseline_validation_rule: >
+      Until MIG lands, do not treat a monolith TLC run as a gate for this
+      epic's tickets. External.cfg (250 distinct, depth 9) and Internal.cfg
+      (2065 distinct, depth 12) are the authoritative fast checks for
+      child-home materialization behavior.
+    overlaps_with_new_modules:
+      - ScaffoldProjectChildHome
+      - InstantiateChildHomeFromHarness
+      - SyncClaimingProjectChildHomes
+      - ResolveProjectProfile
+    overlap_rule: >
+      While both representations exist, the Core/Internal/External modules are
+      authoritative for child-home MATERIALIZATION (what a child unit contains,
+      whether it is independent, and what happens to local edits). SkillManager.tla
+      stays authoritative for child-home MEMBERSHIP (which units, servers, shims,
+      and agent configs a child home has, and the parent/registration graph).
+      Do not restate a rule in both. Phase MIG removes the split.
+
+# --------------------------------------------------------------------------
+internal_external_decision:
+  question: "Introduce Internal/External for this slice only, migrate the whole monolith, or something else?"
+  chosen: slice_now_full_migration_planned_not_executed
+  rationale: >
+    Option (b), a full migration in this pass, is not honest work: the monolith
+    has 37 variables, no TypeOK at all (every dimension resolves as
+    "unconstrained"), two god-state variables written by 9/9 actions, and a
+    promotion config that does not finish inside the 120s tlc_seconds budget.
+    Splitting that correctly is its own multi-ticket epic and it would bury the
+    child-home behavior this epic is actually about. Option (a) alone leaves the
+    repository permanently in the state the scaffolder warns about. So: author a
+    REAL Core/Internal/External for this slice now -- three modules, both cfgs
+    TLC green, invariants that fail on the regressions -- and record the full
+    migration as phase MIG with a component inventory, ordering, and risk, to be
+    scheduled separately with the owner.
+  evidence:
+    - specs/results/chm-monolith-complexity.txt
+    - specs/results/chm-external-complexity.txt
+    - specs/results/chm-internal-complexity.txt
+
+# --------------------------------------------------------------------------
+# Per-program complexity and case budgets. PROPOSED, NOT AGREED.
+# migration.md Phase 0 requires these to be settled with the owner BEFORE any
+# effectful/modular migration touches a spec. Values below are the
+# modular_fuzzing.md defaults except where `rationale` names a reason to move.
+# Set source: negotiated once the owner has accepted or adjusted them.
+budgets:
+  tlc_seconds: 120
+  max_distinct_states: 50000
+  max_state_space_bound: 1000000
+  max_internal_cases_per_component: 200
+  max_external_cases_per_action: 50
+  kill_rate_floor: 0.8
+  max_component_variables: 6
+  max_component_actions: 12
+  max_symmetric_instances: 2
+  source: owner_approved
+  approved: "2026-07-26"
+  approval_note: >
+    Approved as proposed. max_component_actions raised 8 -> 12 deliberately:
+    Internal is the fine-grained view of one materializer whose real lifecycle
+    has that many named outcomes, and collapsing them into a status field would
+    trade trace-readable actions for exactly the god-state the complexity
+    descriptor warns about. The alternative considered and declined was
+    splitting Internal into materializer + store components, which would add a
+    component boundary and its ports before we know the split is natural.
+    Revisit if Internal grows past 12 transitions rather than raising again.
+  rationale:
+    tlc_seconds: "Default kept. External is 250 states and Internal 2065, both sub-second; the only model that blows it is the carried-forward monolith, and that is the argument for phase MIG rather than for a bigger budget."
+    max_distinct_states: "Default kept. Measured 250 (External) and 2065 (Internal), two orders of magnitude of headroom for the remaining slices."
+    max_state_space_bound: "Default kept. Both new views report a resolvable bound of 108 and 432; the record-typed variables are honest UNKNOWNs the resolver cannot size, not hidden size."
+    max_internal_cases_per_component: "Default kept. Internal has 12 transitions over 2065 states; an exhaustive dump is expected to sit well under 200, and the cap is the right place to find out otherwise."
+    max_external_cases_per_action: "Default kept. Six external actions; 50 representatives each is far more than the child-home behavior distinguishes."
+    kill_rate_floor: "Default kept. Non-gating (CD-09) and not yet exercised on this repository; keeping the default avoids pretending a floor was calibrated here."
+    max_component_variables: "Default kept. Internal sits exactly at 6 and External at 4; keeping the default keeps pressure on phase MIG rather than legitimizing the monolith's 37."
+    max_component_actions: "RAISED 8 -> 12. Internal is the fine-grained view of ONE materializer whose real lifecycle has this many named outcomes (stage/swap/abort/hold-back/adopt/prune/place-untracked plus two source-change and two pre-epic paths). Collapsing them into a status field would trade trace-readable actions for exactly the kind of god-state the descriptor warns about. Owner should reject this if the preferred answer is to split Internal into a materializer component and a store component instead."
+    max_symmetric_instances: "Default kept. The finite model uses one project, one child home, one parent home."
+
+fitness_functions:
+  - name: child-home-bound-stays-behavioral
+    rule:
+      all:
+        - {fact: bound_known, op: "==", value: true}
+        - {fact: bound, op: "<=", value: 10000}
+  - name: no-unread-child-home-state
+    rule:
+      all:
+        - {fact: unread_by_invariant_count, op: "==", value: 0}
+
+justification:
+  store_body:
+    invariants: [ChildHomeWritesNeverReachTheParentStore, UnmodifiedChildUnitsConvergeOnTheirSource]
+    effects: [parent_store_unit_content]
+  child_home:
+    invariants: [AgentEditedChildUnitsAreNeverDestroyed, EveryPassReportsExactlyTheHeldBackUnits, UnmodifiedChildUnitsConvergeOnTheirSource, ResolveLeavesOnlyClaimedOrHeldBackUnits]
+    effects: [child_home_unit_content]
+  child_unit:
+    invariants: [AgentEditsSurviveMaterialization, ChildUnitContentMatchesItsRecord, InFlightMaterializationLeavesTheChildUnitIntact]
+    effects: [child_home_unit_content]
+  record:
+    invariants: [ChildUnitContentMatchesItsRecord, MaterializationRecordsDescribePresentChildUnits, InFlightMaterializationLeavesTheChildUnitIntact]
+    effects: [materialization_record_written]
+  staging:
+    invariants: [InFlightMaterializationLeavesTheChildUnitIntact]
+    effects: [staging_tree_written, staging_tree_swept]
+  held_back:
+    invariants: [HeldBackUnitsAreLocallyModified]
+    effects: [held_back_report]
+  agent_edits:
+    invariants: [AgentEditedChildUnitsAreNeverDestroyed, AgentEditsSurviveMaterialization]
+    effects: []
+  pass:
+    invariants: [EveryPassReportsExactlyTheHeldBackUnits, UnmodifiedChildUnitsConvergeOnTheirSource, ResolveLeavesOnlyClaimedOrHeldBackUnits]
+    effects: [held_back_report]
+
+source_model:
+  program_model_manifest: ../program_model/spec_manifest.yaml
+  program_model_monolith: ../program_model/SkillManager.tla
+  baseline_package: current_program_cases
+  note: >
+    ../program_model has no Core.tla / Internal.tla / External.tla. The scaffold
+    template's source_model keys pointing at them were removed rather than left
+    pointing at files that do not exist.
+
+implementation_sources:
+  ChildHomeMaterializer: src/main/java/dev/skillmanager/bindings/ChildHomeMaterializer.java
+  ProjectChildHomeScaffolder: src/main/java/dev/skillmanager/project/ProjectChildHomeScaffolder.java
+  ChildHomeHarnessInstaller: src/main/java/dev/skillmanager/bindings/ChildHomeHarnessInstaller.java
+  MaterializationMode: src/main/java/dev/skillmanager/bindings/MaterializationMode.java
+
+ports:
+  ChildHomeMaterializerPort:
+    role: adapter
+    surface: ChildHomeMaterializer
+    methods:
+      stage:
+        command: StageChildUnitMaterialization
+        result: MaterializationOutcome
+      swap_in:
+        command: SwapInChildUnit
+        result: MaterializationOutcome
+      abort:
+        command: AbortChildUnitMaterialization
+        result: MaterializationOutcome
+      hold_back:
+        command: HoldBackModifiedChildUnit
+        result: MaterializationOutcome
+      adopt:
+        command: AdoptIdenticalChildUnit
+        result: MaterializationOutcome
+      prune:
+        command: PruneUnclaimedChildUnit
+        result: MaterializationOutcome
+  SkillManagerCliChildHomePort:
+    role: adapter
+    surface: SkillManagerCli
+    methods:
+      resolve_project_child_home:
+        command: ResolveProjectChildHome
+        result: ChildHomeResult
+      sync_claiming_project_child_homes:
+        command: SyncProjectChildHome
+        result: ChildHomeResult
+      instantiate_child_home_from_harness:
+        command: InstantiateHarnessChildHome
+        result: ChildHomeResult
+  AgentWorkspacePort:
+    role: adapter
+    surface: AgentWorkspace
+    methods:
+      edit_child_home_unit:
+        command: EditChildHomeUnit
+        result: ChildHomeResult
+      place_untracked_child_unit:
+        command: PlaceUntrackedChildUnit
+        result: MaterializationOutcome
+
+# Effect ports are NOT declared yet. effectful_onboarding.md makes the
+# Internal/External split a hard prerequisite for the effect-provider work, and
+# that prerequisite is only met for this slice. Declaring a filesystem effect
+# port now would be a boundary contract for a program model that is still half
+# monolith. See ticket_plan.yaml phases MIG and EFF.
+effect_ports: {}
+
+case_codegen:
+  style: explicit_transition_cases
+  generation_status: planned
+
+validation:
+  tlc:
+    desired_external:
+      command: bash specs/desired_program_model/run_tlc.sh specs/desired_program_model/External.tla specs/desired_program_model/External.cfg
+      expect: no invariant violations
+      status: passed
+      states_generated: 1302
+      distinct_states: 250
+      depth: 9
+      evidence: ../results/chm-external-tlc.txt
+    desired_internal:
+      command: bash specs/desired_program_model/run_tlc.sh specs/desired_program_model/Internal.tla specs/desired_program_model/Internal.cfg
+      expect: no invariant violations
+      status: passed
+      states_generated: 8306
+      distinct_states: 2065
+      depth: 12
+      evidence: ../results/chm-internal-tlc.txt
+    carried_forward_monolith:
+      command: bash specs/desired_program_model/run_tlc.sh specs/desired_program_model/SkillManager.tla specs/desired_program_model/MC_program_promotion.cfg
+      expect: no invariant violations
+      status: did_not_complete
+      measured:
+        wall_time_seconds: ">3000, stopped manually"
+        states_generated_at_stop: 79225632
+        distinct_states_at_stop: 3032979
+        depth_at_stop: 14
+        queue_at_stop: 836363
+        violations_found: none up to the point it was stopped
+      note: >
+        Unchanged from the accepted baseline; the failure to finish is a
+        property of the monolith, not of anything authored in this workflow. It
+        is 25x+ over the 120s tlc_seconds budget and still had 836,363 states
+        queued when stopped. It also passed the last figures recorded anywhere
+        in the repository (60,920,609 generated / 2,337,504 distinct / depth 23,
+        from .history/project-and-child-home-workflow) without terminating, so
+        that record is stale -- the monolith has grown since. Nobody currently
+        has a completed whole-model TLC number for it. Primary input for
+        ticket_plan.yaml phase MIG.
+      evidence: ../results/chm-monolith-tlc.txt
+  regression_configs:
+    purpose: >
+      Expected-violation configs. Each models a real behavior skill-manager has
+      or had, and each must produce a TLC counterexample. A clean run is a
+      failure of the invariant, not a pass: it means the desired-state model
+      stopped being able to see that regression.
+    External_regression_overwrite.cfg:
+      models: the pre-epic refresh policy that silently deleted an agent's edits
+      expect_violation: AgentEditedChildUnitsAreNeverDestroyed
+      status: violated_as_expected
+      trace_depth: 4
+    External_regression_symlink.cfg:
+      models: the historical symlink child home, where child and parent were the same bytes
+      expect_violation: ChildHomeWritesNeverReachTheParentStore
+      status: violated_as_expected
+      trace_depth: 3
+    External_regression_rawdigest.cfg:
+      models: a copy that recreates in-unit store links instead of dereferencing them
+      expect_violation: UnmodifiedChildUnitsConvergeOnTheirSource
+      status: violated_as_expected
+      trace_depth: 3
+    Internal_regression_overwrite.cfg:
+      models: the same pre-epic refresh policy, at unit granularity
+      expect_violation: AgentEditsSurviveMaterialization
+      status: violated_as_expected
+      trace_depth: 4
+    Internal_regression_nonatomic.cfg:
+      models: a materializer that removes the live child unit before writing the new tree
+      expect_violation: InFlightMaterializationLeavesTheChildUnitIntact
+      status: violated_as_expected
+      trace_depth: 5
+  complexity:
+    external:
+      command: tla-spec-dev --spec-root specs analyze complexity specs/desired_program_model/External.tla specs/desired_program_model/External.cfg --manifest specs/desired_program_model/spec_manifest.yaml --tlc-report specs/results/chm-external-tlc.txt
+      bound: 108
+      distinct_states: 250
+      warnings: none
+      evidence: ../results/chm-external-complexity.txt
+    internal:
+      command: tla-spec-dev --spec-root specs analyze complexity specs/desired_program_model/Internal.tla specs/desired_program_model/Internal.cfg --manifest specs/desired_program_model/spec_manifest.yaml --tlc-report specs/results/chm-internal-tlc.txt
+      bound: 432
+      distinct_states: 2065
+      warnings: "component C1 touched by 12 actions, exceeding max_component_actions 8 (see budgets.rationale)"
+      evidence: ../results/chm-internal-complexity.txt
+    monolith:
+      command: tla-spec-dev --spec-root specs analyze complexity specs/desired_program_model/SkillManager.tla specs/desired_program_model/MC_program_promotion.cfg --manifest specs/desired_program_model/spec_manifest.yaml
+      bound: 2
+      warnings: "C1 has 21 variables, C2 has 16 variables and 9 actions; 36 of 37 variables resolve as unconstrained"
+      evidence: ../results/chm-monolith-complexity.txt
+  spec_unit:
+    status: not_run
+    blocked_on: case_adapters.toml mappings for the new actions (ticket CHM-4)
+  graph:
+    status: not_run
+    blocked_on: testgraph_bindings.yml and test_graph nodes (ticket CHM-5, owned by another agent)
+    affected_graphs:
+      - project-resolve
+      - harness-smoke
+      - smoke
+      - source-tracking
+
+# Generated-case index stanzas: placeholders owned by case codegen, filled only
+# when case_codegen.generation_status reaches `generated`. Empty means "no
+# generated case index yet", NOT "the model has no state/actions/ports".
+state_fields: []
+actions: []
+
+notes:
+  direction: "This manifest records the target whole-program model and the ticket workflow status. Keep ticket_plan.yaml synchronized whenever scope, order, validation, or acceptance criteria change."
+  package_from_program_model: skillmanager_program_cases
+  resolver_limitation: >
+    `analyze complexity` reports record-typed variables (child_home, pass,
+    child_unit, record, staging) as explicit UNKNOWNs -- record sets are on the
+    documented not-sizable list in architecture_tractability.md. The bounds of
+    108 and 432 therefore exclude them. The reachable-state counts from TLC
+    (250 and 2065) are the load-bearing measurement, not the static bound.
+  variables_block_formatting: >
+    Blank lines between entries in a TLA+ VARIABLES block make the complexity
+    scanner see only the first variable. Both new modules keep the block
+    contiguous and put per-variable commentary above it. Candidate
+    skill_feedback item (profile-schema-cli) at workflow close.

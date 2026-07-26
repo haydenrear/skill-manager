@@ -1,0 +1,103 @@
+analyze complexity -- Internal (complexity descriptor)
+  spec:     /Users/hayde/IdeaProjects/skill-manager-integration-repository/constituents/skill-manager/specs/desired_program_model/Internal.tla
+  config:   /Users/hayde/IdeaProjects/skill-manager-integration-repository/constituents/skill-manager/specs/desired_program_model/Internal.cfg
+  manifest: /Users/hayde/IdeaProjects/skill-manager-integration-repository/constituents/skill-manager/specs/desired_program_model/spec_manifest.yaml
+
+This is a DESCRIPTOR: every figure below is [MEASURED] -- parsed from this
+spec + cfg. It states facts about the model and makes no suggestions.
+
+[MEASURED] Dimension table
+variable     domain                               cardinality  source  note
+-----------  -----------------------------------  -----------  ------  -----------------------------------------------------------------------------
+store_body   [Units -> StoreBodies]               27           TypeOK  3^3 total functions
+child_unit   [ChildHomeUnits -> ChildUnitStates]  unknown      TypeOK  domain found but not resolvable -- excluded from the bound (explicit UNKNOWN)
+record       [ChildHomeUnits -> RecordStates]     unknown      TypeOK  domain found but not resolvable -- excluded from the bound (explicit UNKNOWN)
+staging      StagingStates                        unknown      TypeOK  domain found but not resolvable -- excluded from the bound (explicit UNKNOWN)
+held_back    SUBSET ChildHomeUnits                4            TypeOK  powerset of 2 elements
+agent_edits  SUBSET ChildHomeUnits                4            TypeOK  powerset of 2 elements
+  (domain sources merge per-variable: TypeInvariant, then TypeOK, then the
+  configured invariants -- first source that resolves wins. What the resolver
+  can and cannot see: references/architecture_tractability.md,
+  'What The Domain Resolver Can And Cannot See'.)
+
+[MEASURED] State-space upper bound
+  bound = 432  (product of 3 bounded dimensions; domains from TypeOK)
+  excluded (no resolvable domain): child_unit, record, staging
+  dominant dimensions:
+    store_body: 27 (54.3% of the bound in log space)
+    held_back: 4 (22.8% of the bound in log space)
+    agent_edits: 4 (22.8% of the bound in log space)
+
+[MEASURED] Variables x actions read/write matrix
+  (actions = top-level disjuncts of the next-state relation Next, called-operator bodies expanded transitively; helpers are not actions)
+variable     StageChildUnitMaterialization  SwapInChildUnit  AbortChildUnitMaterialization  HoldBackModifiedChildUnit  AdoptIdenticalChildUnit  PruneUnclaimedChildUnit  PlaceUntrackedChildUnit  AgentEditChildUnit  UpgradeParentStoreUnit  UpgradeLinkedParentSource  OverwriteModifiedChildUnit  DeleteUnclaimedModifiedChildUnit
+-----------  -----------------------------  ---------------  -----------------------------  -------------------------  -----------------------  -----------------------  -----------------------  ------------------  ----------------------  -------------------------  --------------------------  --------------------------------
+store_body   r                              .                .                              .                          r                        .                        r                        rw                  rw                      rw                         r                           .
+child_unit   rw                             rw               .                              r                          r                        rw                       rw                       rw                  .                       .                          rw                          rw
+record       r                              rw               .                              r                          rw                       rw                       r                        .                   .                       .                          rw                          rw
+staging      rw                             rw               rw                             r                          r                        r                        r                        r                   .                       .                          r                           r
+held_back    .                              rw               .                              rw                         rw                       rw                       .                        .                   .                       .                          .                           .
+agent_edits  .                              .                .                              .                          .                        .                        .                        rw                  .                       .                          .                           .
+
+[MEASURED] Near-decomposability
+  graph modularity Q = 0.000 over the variable interaction graph
+  (weight of an edge = number of actions touching both variables)
+  C1: agent_edits, child_unit, held_back, record, staging, store_body  (6 variables, 12 actions)
+  no port-crossing actions (single component, or fully independent components)
+
+[MEASURED] Dense rows and columns of the R/W matrix
+  dense rows (god-state signature -- variable touched by more than half the actions):
+    staging touched by 10/12 actions
+    child_unit touched by 9/12 actions
+    record touched by 8/12 actions
+    store_body touched by 7/12 actions
+  dense columns (action touching more than half the variables):
+    AdoptIdenticalChildUnit
+    AgentEditChildUnit
+    HoldBackModifiedChildUnit
+    OverwriteModifiedChildUnit
+    PlaceUntrackedChildUnit
+    PruneUnclaimedChildUnit
+    StageChildUnitMaterialization
+    SwapInChildUnit
+
+[MEASURED] Invariant coverage (aliased/composed invariants resolved transitively)
+  every variable is read by at least one configured invariant.
+
+[MEASURED] Justification linkage
+  no justification: table in the manifest -- dead-weight analysis skipped.
+  Add one to make every variable's right to exist auditable
+  (references/architecture_tractability.md, 'Grow The Model By Evidence').
+
+[MEASURED] TLC transition-level diagnostics
+  INFO: TLC measured 8306 generated / 2065 distinct / depth 12. Pass --baseline-tlc to check for the self-loop-deletion signature.
+  INFO: TLC-measured 2,065 distinct reachable states is within max_distinct_states 50,000.
+
+  A poor score is not a verdict. Some components score badly and still need to
+  exist in that form -- performance paths, protocol-mandated shapes, irreducible
+  domain complexity. This output is evidence for the owner, not a decision.
+  Before recording ANY complexity reduction as a result: read the transition-level
+  diff. A generated-states drop at constant distinct states is a RED FLAG (a
+  deleted self-loop), not a win -- the distinct-state gate cannot see it.
+
+[MEASURED] Complexity thresholds (advisory -- warnings only)
+  source: /Users/hayde/IdeaProjects/skill-manager-integration-repository/constituents/skill-manager/specs/desired_program_model/spec_manifest.yaml
+    max_state_space_bound: 1,000,000
+    max_distinct_states: 50,000
+    max_component_variables: 6
+    max_component_actions: 8
+  max_state_space_bound compares against the STATIC declared-representation bound above.
+  max_distinct_states compares against ACTUAL reachable states and is checked only once
+  TLC has measured them (--tlc-report); the two are not interchangeable.
+
+  COMPLEXITY WARNINGS -- these are FINDINGS. They do NOT block promotion,
+  do NOT refuse case generation, and do NOT change the exit code. Complexity is a
+  scanner, not a gate (references/architecture_tractability.md, 'Advisory, Not
+  Blocking'). The owner decides, with the user, whether to act on each one.
+
+  WARNING: component C1 is touched by 12 actions (StageChildUnitMaterialization, SwapInChildUnit, AbortChildUnitMaterialization, HoldBackModifiedChildUnit, AdoptIdenticalChildUnit, PruneUnclaimedChildUnit, PlaceUntrackedChildUnit, AgentEditChildUnit, UpgradeParentStoreUnit, UpgradeLinkedParentSource, OverwriteModifiedChildUnit, DeleteUnclaimedModifiedChildUnit), exceeding max_component_actions 8
+
+  `analyze complexity` exits 0 whenever it can analyze the model -- a complex model
+  is a finding, not a failure. It exits nonzero ONLY when the model cannot be
+  analyzed at all (e.g. an unresolved module hierarchy); that is 'I could not
+  measure this', which is distinct from 'this is complex'.

@@ -1,0 +1,540 @@
+# Desired program model + ticket plan for the child-home materialization epic.
+# Source of truth for tickets. Keep synchronized with spec_manifest.yaml status.
+version: 1
+name: child-home-materialization-workflow
+updated: "2026-07-25"
+purpose: >
+  Project child homes stop being symlink farms into the parent store and become
+  independent copies that an agent can edit. Every unit in
+  <project>/.skill-manager is materialized by copy, carries a per-unit
+  materialization record, and is held back and reported -- never overwritten,
+  never deleted -- once it has local edits. Symlinks inside a unit that point
+  into the parent store are dereferenced so the isolation actually holds, and
+  `harness instantiate --child-home-dir` goes through the same materializer.
+
+sources:
+  implementation:
+    - src/main/java/dev/skillmanager/bindings/ChildHomeMaterializer.java
+    - src/main/java/dev/skillmanager/project/ProjectChildHomeScaffolder.java
+  predecessor_workflow: ../.history/project-and-child-home-workflow/
+  superseded_port: "specs/program_model/SkillManager.tla:1315 (@port SkillManagerCli.scaffold_project_child_home)"
+
+problem_statement: >
+  The accepted model made this epic's central bug inexpressible.
+  ScaffoldProjectChildHome models child_home_units as a bare set of
+  <<home, unit>> pairs that only ever grows: there is no notion of what a child
+  unit CONTAINS, no notion of materialization, and no notion of independence.
+  Under symlinks the parent store unit and the child home unit were the same
+  bytes, so "the agent's edit survived" and "the parent store was not touched"
+  were the same proposition, and neither could be violated. The first
+  implementation of this epic silently deleted an agent's edits on the next
+  `project resolve` and the model could not have caught it. Core/Internal/
+  External make parent-store content and child-home content two distinct
+  objects so all four properties below are statable AND violable.
+
+planning_rules:
+  current_model_rule: Update specs/current after each production slice lands as a whole-program working copy of specs/program_model, not a ticket projection.
+  unit_validation_rule: Run current-model TLC and adapter/unit tests before adding graph execution.
+  graph_validation_rule: Run the narrow affected test_graph graph after unit/current-model checks pass; run all graphs before promotion.
+  semantic_model_rule: Do not add test graph nodes, pytest jobs, CI workflow steps, integration harnesses, or validation scripts as TLA+ program state/actions.
+  evidence_rule: Record tests and graph runs as evidence for semantic program actions in manifests or ticket status.
+  regression_config_rule: >
+    Every desired-state property carries an expected-violation cfg that must
+    keep failing. A regression config that starts passing is a defect in the
+    invariant, and closing a ticket requires re-running all five.
+  dual_representation_rule: >
+    While SkillManager.tla and Core/Internal/External coexist, never state the
+    same rule in both. See spec_manifest.yaml modules.legacy_monolith.overlap_rule.
+  desired_sync_rule: Update this file and spec_manifest.yaml whenever scope, order, acceptance checks, or status changes.
+  promotion_rule: When specs/current equals specs/desired_program_model, promote the converged model to specs/program_model.
+
+status:
+  workflow: ticket
+  active_ticket: CHM-1
+  active_ticket_title: "Child home units materialize by copy, not by symlink"
+  desired_modules: [Core.tla, Internal.tla, External.tla]
+  carried_forward_module: SkillManager.tla
+  phase: planning
+  desired_tlc:
+    external:
+      command: bash specs/desired_program_model/run_tlc.sh specs/desired_program_model/External.tla specs/desired_program_model/External.cfg
+      status: passed
+      result: no invariant violations
+      states_generated: 1302
+      distinct_states: 250
+      depth: 9
+    internal:
+      command: bash specs/desired_program_model/run_tlc.sh specs/desired_program_model/Internal.tla specs/desired_program_model/Internal.cfg
+      status: passed
+      result: no invariant violations
+      states_generated: 8306
+      distinct_states: 2065
+      depth: 12
+  test_graph:
+    status: not_run
+    note: test_graph nodes and adapters for this epic are owned by a separate agent.
+
+desired_properties:
+  independence:
+    invariant: ChildHomeWritesNeverReachTheParentStore
+    view: External (restated in Internal)
+    statement: A write to a child-home unit does not change the parent-store unit it was materialized from.
+    regression_config: External_regression_symlink.cfg
+  no_silent_destruction:
+    invariant: AgentEditedChildUnitsAreNeverDestroyed
+    view: External (AgentEditsSurviveMaterialization in Internal)
+    statement: An agent-modified child unit is never overwritten or deleted by resolve, sync, or prune; it is held back and reported.
+    regression_config: External_regression_overwrite.cfg
+    reporting_invariant: EveryPassReportsExactlyTheHeldBackUnits
+  convergence:
+    invariant: UnmodifiedChildUnitsConvergeOnTheirSource
+    view: External
+    statement: An unmodified child unit refreshes when its source changes, including when the change is behind a dereferenced symlink.
+    regression_config: External_regression_rawdigest.cfg
+  atomicity:
+    invariant: InFlightMaterializationLeavesTheChildUnitIntact
+    view: Internal
+    statement: A failed materialization leaves the previous child unit intact.
+    regression_config: Internal_regression_nonatomic.cfg
+
+service_catalog:
+  existing_boundaries:
+    - project dependency resolution into SKILL_MANAGER_HOME
+    - project child-home scaffolding and the parent child-home registry
+    - harness-derived child Skill Manager homes
+    - child-home CLI/MCP shim mirroring
+    - parent-side sync refresh of claiming child homes
+  desired_boundaries:
+    - per-unit materialization by copy with a staged, atomically swapped tree
+    - per-unit materialization record (mode, source digest, content digest)
+    - locally-modified detection against that record
+    - hold-back-and-report on refresh and on prune
+    - dereferencing of in-unit symlinks that point into the parent store
+    - one materializer shared by project resolve and harness instantiate
+  adapter_boundaries:
+    - ChildHomeMaterializer (stage / swap / abort / hold-back / adopt / prune)
+    - ProjectChildHomeScaffolder (pass orchestration and the held-back report)
+    - ChildHomeHarnessInstaller (same materializer, harness payload)
+  known_gaps:
+    - Shim mirroring stays a symlink and is deliberately outside the isolation guarantee; not modeled.
+    - Symlinks pointing outside the parent store are preserved verbatim; writes through them are out of scope and not modeled.
+    - A symlink cycle inside the parent store omits the entry with a warning; the omission is not modeled as a distinct outcome.
+    - Child-home MCP servers, tool shims, and agent configs stay in SkillManager.tla until phase MIG.
+
+# ---------------------------------------------------------------------------
+tickets:
+  - id: CHM-1
+    title: "Child home units materialize by copy, not by symlink"
+    phase: CHM
+    status: next
+    depends_on: []
+    production_status: implemented_spec_pending
+    objective: >
+      A project child home holds an independent tree per unit. No entry in it
+      is a symlink at a parent-store unit directory, so an ordinary edit below
+      a child unit cannot reach the parent store.
+    desired_actions:
+      - EditChildHomeUnit
+      - ResolveProjectChildHome
+    implementation_scope:
+      - src/main/java/dev/skillmanager/bindings/ChildHomeMaterializer.java
+      - src/main/java/dev/skillmanager/bindings/MaterializationMode.java
+      - src/main/java/dev/skillmanager/project/ProjectChildHomeScaffolder.java
+    current_increment:
+      model_state:
+        - store_body
+        - child_home
+        - agent_edits
+      model_actions:
+        - EditChildHomeUnit
+        - ResolveProjectChildHome
+      adapters:
+        - ChildHomeMaterializerPort.swap_in
+        - AgentWorkspacePort.edit_child_home_unit
+      unit_tests:
+        - editing a child unit does not change the parent store unit
+        - a resolved child unit directory is not a symlink
+      graph_after_unit_pass:
+        - project-resolve
+    acceptance:
+      commands:
+        - bash specs/current/run_tlc.sh specs/current/External.tla specs/current/External.cfg
+        - bash specs/desired_program_model/run_tlc.sh specs/desired_program_model/External.tla specs/desired_program_model/External_regression_symlink.cfg
+      assertions:
+        - ChildHomeWritesNeverReachTheParentStore holds under External.cfg.
+        - External_regression_symlink.cfg still produces a counterexample.
+      evidence: []
+
+  - id: CHM-2
+    title: "Per-unit materialization record as the local-change baseline"
+    phase: CHM
+    status: planned
+    depends_on: [CHM-1]
+    production_status: implemented_spec_pending
+    objective: >
+      Each materialized unit writes <child home>/.materialization/<kind>/<name>.json
+      recording the mode, the digest of the MATERIALIZED VIEW of the parent tree,
+      and the digest of the tree that was written. That record is the only
+      evidence that a child unit is disposable; a unit without a usable one is
+      treated as modified.
+    desired_actions:
+      - StageChildUnitMaterialization
+      - SwapInChildUnit
+      - AdoptIdenticalChildUnit
+      - PlaceUntrackedChildUnit
+    implementation_scope:
+      - src/main/java/dev/skillmanager/bindings/ChildHomeMaterializer.java
+    current_increment:
+      model_state:
+        - record
+        - child_unit
+      model_actions:
+        - StageChildUnitMaterialization
+        - SwapInChildUnit
+        - AdoptIdenticalChildUnit
+        - PlaceUntrackedChildUnit
+      adapters:
+        - ChildHomeMaterializerPort.adopt
+      unit_tests:
+        - a record written by a newer skill-manager with an unknown mode reads as "no usable baseline"
+        - a directory with no record and identical content is adopted
+        - a directory with no record and different content is refused
+      graph_after_unit_pass:
+        - project-resolve
+    acceptance:
+      commands:
+        - bash specs/current/run_tlc.sh specs/current/Internal.tla specs/current/Internal.cfg
+      assertions:
+        - ChildUnitContentMatchesItsRecord holds.
+        - MaterializationRecordsDescribePresentChildUnits holds.
+      evidence: []
+
+  - id: CHM-3
+    title: "Hold back and report locally modified units on resolve and sync"
+    phase: CHM
+    status: planned
+    depends_on: [CHM-2]
+    production_status: implemented_spec_pending
+    objective: >
+      A child unit whose tree no longer matches its record is left completely
+      alone by resolve and sync and is reported to the caller. This is the
+      slice that fixes the silent-deletion bug.
+    desired_actions:
+      - HoldBackModifiedChildUnit
+      - SyncProjectChildHome
+    implementation_scope:
+      - src/main/java/dev/skillmanager/bindings/ChildHomeMaterializer.java
+      - src/main/java/dev/skillmanager/project/ProjectChildHomeScaffolder.java
+    current_increment:
+      model_state:
+        - held_back
+        - pass
+      model_actions:
+        - HoldBackModifiedChildUnit
+        - SyncProjectChildHome
+      adapters:
+        - ChildHomeMaterializerPort.hold_back
+        - SkillManagerCliChildHomePort.sync_claiming_project_child_homes
+      unit_tests:
+        - an edited child unit survives a second project resolve byte for byte
+        - the held-back unit appears in the resolve result
+        - the child installed record for a held-back unit is not rewritten with the parent's sha
+      graph_after_unit_pass:
+        - project-resolve
+        - smoke
+    acceptance:
+      commands:
+        - bash specs/current/run_tlc.sh specs/current/External.tla specs/current/External.cfg
+        - bash specs/desired_program_model/run_tlc.sh specs/desired_program_model/External.tla specs/desired_program_model/External_regression_overwrite.cfg
+      assertions:
+        - AgentEditedChildUnitsAreNeverDestroyed holds under External.cfg.
+        - EveryPassReportsExactlyTheHeldBackUnits holds under External.cfg.
+        - External_regression_overwrite.cfg still produces a counterexample at depth 4.
+      evidence: []
+
+  - id: CHM-4
+    title: "Prune holds back modified units it no longer claims"
+    phase: CHM
+    status: planned
+    depends_on: [CHM-3]
+    production_status: implemented_spec_pending
+    objective: >
+      "No longer a dependency" is not a licence to delete someone's work. A
+      child unit the project stopped claiming is dropped only when it is
+      unmodified; otherwise it stays and is reported.
+    desired_actions:
+      - PruneUnclaimedChildUnit
+    implementation_scope:
+      - src/main/java/dev/skillmanager/project/ProjectChildHomeScaffolder.java
+    current_increment:
+      model_state:
+        - child_unit
+        - record
+      model_actions:
+        - PruneUnclaimedChildUnit
+      adapters:
+        - ChildHomeMaterializerPort.prune
+      unit_tests:
+        - an unclaimed unmodified unit is removed and its record forgotten
+        - an unclaimed modified unit is left in place and reported
+        - pruning is skipped entirely when the child home resolves to the parent store
+      graph_after_unit_pass:
+        - project-resolve
+    acceptance:
+      commands:
+        - bash specs/current/run_tlc.sh specs/current/External.tla specs/current/External.cfg
+      assertions:
+        - ResolveLeavesOnlyClaimedOrHeldBackUnits holds.
+        - AgentEditedChildUnitsAreNeverDestroyed holds across a prune.
+      evidence: []
+
+  - id: CHM-5
+    title: "Dereference in-unit symlinks that point into the parent store"
+    phase: CHM
+    status: planned
+    depends_on: [CHM-1]
+    production_status: implemented_spec_pending
+    objective: >
+      A symlink inside a copied unit whose target resolves back into the parent
+      store is replaced by its content, and the freshness digest is taken over
+      that materialized view. Hashing the raw tree would hash the link as its
+      target string, so an upgrade behind the link would never be noticed.
+    desired_actions:
+      - UpgradeLinkedParentSource
+    implementation_scope:
+      - src/main/java/dev/skillmanager/bindings/ChildHomeMaterializer.java
+    current_increment:
+      model_state:
+        - store_body
+      model_actions:
+        - UpgradeLinkedParentSource
+        - UpgradeParentStoreUnit
+      adapters:
+        - ChildHomeMaterializerPort.stage
+      unit_tests:
+        - a store link inside a unit becomes real content in the child home
+        - upgrading the linked unit refreshes the child copy
+        - a link outside the parent store is preserved verbatim
+        - a relative link that stays inside the unit is preserved
+        - a link cycle inside the store omits the entry with a warning
+      graph_after_unit_pass:
+        - project-resolve
+        - source-tracking
+    acceptance:
+      commands:
+        - bash specs/current/run_tlc.sh specs/current/External.tla specs/current/External.cfg
+        - bash specs/desired_program_model/run_tlc.sh specs/desired_program_model/External.tla specs/desired_program_model/External_regression_rawdigest.cfg
+      assertions:
+        - UnmodifiedChildUnitsConvergeOnTheirSource holds under External.cfg.
+        - External_regression_rawdigest.cfg still produces a counterexample.
+      evidence: []
+
+  - id: CHM-6
+    title: "Staged, atomically swapped materialization"
+    phase: CHM
+    status: planned
+    depends_on: [CHM-2]
+    production_status: implemented_spec_pending
+    objective: >
+      The desired tree is built under the child home's staging area and moved
+      into place with ATOMIC_MOVE; the displaced tree is parked under staging,
+      never beside the destination. A failure part way through leaves the
+      previous child unit exactly as it was.
+    desired_actions:
+      - AbortChildUnitMaterialization
+    implementation_scope:
+      - src/main/java/dev/skillmanager/bindings/ChildHomeMaterializer.java
+    current_increment:
+      model_state:
+        - staging
+      model_actions:
+        - AbortChildUnitMaterialization
+      adapters:
+        - ChildHomeMaterializerPort.abort
+      unit_tests:
+        - a copy failure leaves the previous child unit intact
+        - a move failure restores the displaced tree
+        - staging left by an interrupted run is swept before and after a pass
+        - a non-directory squatting on the staging path is removed
+      graph_after_unit_pass:
+        - project-resolve
+    acceptance:
+      commands:
+        - bash specs/current/run_tlc.sh specs/current/Internal.tla specs/current/Internal.cfg
+        - bash specs/desired_program_model/run_tlc.sh specs/desired_program_model/Internal.tla specs/desired_program_model/Internal_regression_nonatomic.cfg
+      assertions:
+        - InFlightMaterializationLeavesTheChildUnitIntact holds under Internal.cfg.
+        - Internal_regression_nonatomic.cfg still produces a counterexample at depth 5.
+      evidence: []
+
+  - id: CHM-7
+    title: "harness instantiate --child-home-dir goes through the same materializer"
+    phase: CHM
+    status: planned
+    depends_on: [CHM-3, CHM-6]
+    production_status: implemented_spec_pending
+    objective: >
+      Both paths that populate a child home write the same layout, so they must
+      agree on how units get there and on what happens to local edits.
+    desired_actions:
+      - InstantiateHarnessChildHome
+    implementation_scope:
+      - src/main/java/dev/skillmanager/bindings/ChildHomeHarnessInstaller.java
+    current_increment:
+      model_state:
+        - child_home
+      model_actions:
+        - InstantiateHarnessChildHome
+      adapters:
+        - SkillManagerCliChildHomePort.instantiate_child_home_from_harness
+      unit_tests:
+        - harness instantiate holds back a locally modified child unit
+        - harness and project payloads share one materialization record layout
+      graph_after_unit_pass:
+        - harness-smoke
+        - project-resolve
+    acceptance:
+      commands:
+        - bash specs/current/run_tlc.sh specs/current/External.tla specs/current/External.cfg
+      assertions:
+        - EveryPassReportsExactlyTheHeldBackUnits holds for pass.kind = "harness".
+      evidence: []
+
+  - id: CHM-8
+    title: "Spec-unit adapters and Test Graph bindings for the new views"
+    phase: CHM
+    status: planned
+    depends_on: [CHM-1, CHM-2, CHM-3, CHM-4, CHM-5, CHM-6, CHM-7]
+    objective: >
+      Wire case_adapters.toml (Internal -> spec-unit) and testgraph_bindings.yml
+      (External -> Test Graph) so the model is actually validated against
+      production instead of only against itself.
+    desired_actions: []
+    implementation_scope:
+      - specs/desired_program_model/case_adapters.toml
+      - specs/desired_program_model/testgraph_bindings.yml
+      - specs/desired_program_model/adapters.py
+      - specs/desired_program_model/tlc_projection.py
+    current_increment:
+      model_state: []
+      model_actions: []
+      adapters:
+        - ChildHomeMaterializerPort
+        - SkillManagerCliChildHomePort
+        - AgentWorkspacePort
+      unit_tests:
+        - tla-spec-dev run spec-unit-tests --target specs/current
+      graph_after_unit_pass:
+        - project-resolve
+        - harness-smoke
+        - smoke
+        - source-tracking
+    acceptance:
+      commands:
+        - tla-spec-dev --spec-root specs run spec-unit-tests --target specs/current
+      assertions:
+        - Every Internal action has a spec-unit adapter.
+        - Every External action has a Test Graph binding running out of process.
+      note: >
+        test_graph node authoring for this epic is owned by a separate agent;
+        this ticket owns the bindings file, not the nodes.
+      evidence: []
+
+# ---------------------------------------------------------------------------
+# PHASE MIG -- fold the remaining monolith into Internal/External.
+# PLANNED, NOT SCHEDULED. Do not start without owner sign-off: this is a
+# whole-program remodel, not a slice of the child-home epic.
+  - id: MIG-0
+    title: "Owner decision: schedule the Internal/External migration"
+    phase: MIG
+    status: blocked_on_owner
+    depends_on: [CHM-8]
+    objective: >
+      Decide whether to migrate SkillManager.tla into Core/Internal/External as
+      its own epic, and on what budget. Inputs are recorded, the decision is not.
+    inputs:
+      measured_today:
+        variables: 37
+        actions_in_next: 9
+        type_invariant: absent
+        resolvable_bound: 2
+        unconstrained_variables: 36
+        god_state_variables: "project_model and result, each touched by 9/9 actions"
+        clusters: "C1 21 variables / 1 action, C2 16 variables / 9 actions, C3 1 variable / 0 actions, modularity Q = 0.122"
+        promotion_tlc: "measured 2026-07-25: did NOT complete. Stopped after >3000s at 79,225,632 generated / 3,032,979 distinct / depth 14 with 836,363 states still queued. 25x+ over tlc_seconds 120, and past the stale 2,337,504-distinct figure recorded in .history/project-and-child-home-workflow -- nobody has a completed whole-model number for it."
+        ports: 29
+      cost_estimate: >
+        Six to eight tickets, comparable in size to the child-home epic itself.
+        The expensive parts are not the module split: they are (1) writing a
+        TypeOK for 37 variables that currently have no declared domains at all,
+        which is where the state space becomes measurable and where most of the
+        real modeling decisions surface; (2) deciding which of the 29 @port
+        blocks are External (public CLI surface) and which are Internal
+        (fine-grained program state), since today every one of them is both;
+        and (3) writing the Test Graph adapters that External implies, which
+        the repository has never had. The mechanical part -- moving CONSTANTS
+        and helper operators into Core -- is a day.
+      risk:
+        - "The monolith's promotion config is the only thing checking 57 invariants. Splitting it can silently drop coverage; every invariant must be re-homed explicitly and counted before and after."
+        - "project_model is a single record holding ~30 relations. Splitting it across views is the hard call and the place where the two views can start disagreeing."
+        - "The promotion cfg already exceeds tlc_seconds. If the split does not reduce per-view state, the migration buys structure and no measurability."
+        - "specs/current, specs/program_model and the five history snapshots all carry the monolith. The close-time semantic comparison spans them, so a partial migration must keep both shapes valid simultaneously."
+    proposed_ordering:
+      - "MIG-1 Core.tla absorbs the shared constants, domain sets, and edge relations from SkillManager.tla; monolith EXTENDS Core. No behavior change, TLC must be byte-equivalent in state counts."
+      - "MIG-2 Write TypeOK for all 37 variables and add it to MC_program_promotion.cfg. Measurement only; expect the bound to go from 2 to a real number and expect warnings."
+      - "MIG-3 Split the C1 cluster (gateway + server + effect/rollback, 21 variables, 1 crossing action) into its own view first. It is the loosest cluster and the cheapest rehearsal."
+      - "MIG-4 Split the CLI store/bindings half of C2 (cli_store_units, cli_installed_records, cli_lock_units, cli_bindings, cli_projection_rows, cli_managed_copies, cli_import_directives, cli_tool_records, cli_cli_lock)."
+      - "MIG-5 Decompose project_model. Largest and riskiest; the child-home part is already done by this epic and is the worked example."
+      - "MIG-6 Rebuild External.tla as public CLI inputs plus observable projection only, re-home all 57 invariants with a before/after count, and add testgraph_bindings.yml for every external action."
+    acceptance:
+      assertions:
+        - Every invariant in MC_program_promotion.cfg is re-homed to exactly one view, with a before/after count.
+        - Each view model-checks inside tlc_seconds.
+        - External gets thinner, not thicker, than the monolith's public surface.
+      evidence: []
+
+# ---------------------------------------------------------------------------
+# PHASE EFF -- effectful fuzzing and complexity minimization.
+# PLANNED, NOT SCHEDULED, AND HARD-BLOCKED. effectful_onboarding.md states the
+# prerequisite plainly: Internal/External views, TLC green, adapters mapped.
+# That prerequisite is met for the child-home slice ONLY. Phase 0 of
+# migration.md also requires the budgets in spec_manifest.yaml to be AGREED
+# with the owner before any spec is touched; they are currently
+# source: proposed_awaiting_owner.
+  - id: EFF-0
+    title: "Phase 0: agree the budgets"
+    phase: EFF
+    status: blocked_on_owner
+    depends_on: []
+    objective: >
+      Owner accepts or adjusts the budgets in spec_manifest.yaml, and
+      budgets.source becomes negotiated. Nothing in phase EFF starts first.
+    proposed_changes_from_defaults:
+      - "max_component_actions 8 -> 12, so Internal can keep one named action per materializer outcome instead of collapsing them into a status field."
+    all_other_values: "modular_fuzzing.md defaults, rationale recorded per key in spec_manifest.yaml budgets.rationale"
+    acceptance:
+      assertions:
+        - budgets.source is negotiated.
+        - Every value the owner changed carries a one-line rationale.
+      evidence: []
+
+  - id: EFF-1
+    title: "Declare the child-home filesystem effect port"
+    phase: EFF
+    status: blocked_on_prerequisite
+    depends_on: [EFF-0, MIG-0]
+    blocked_because: >
+      effectful_onboarding.md requires the Internal/External views to be
+      onboarded first. They exist for the child-home slice but not for the
+      program, so a filesystem effect port declared now would be a boundary
+      contract for a model that is still half monolith.
+    objective: >
+      Declare ChildHomeFsPort (role: effect) with the materializer's real
+      boundary -- staged writes, atomic move, record write, recursive delete --
+      add effect_ports: [] to every other action, and implement one provider
+      against a temp-directory sandbox.
+    acceptance:
+      assertions:
+        - Observed side effects diff clean against declared effects.
+        - Provider assertions check effect values, counts, and ordering, not existence.
+      evidence: []
