@@ -31,6 +31,10 @@ public final class ProjectSyncUseCase {
 
     public Result sync(SkillProject project, ProjectDependencyResolver.Options options) throws IOException {
         if (project == null) throw new IllegalArgumentException("project must not be null");
+        // A project sync tears the realization down and rebuilds it, which
+        // is the most destructive in-place mutation of a home there is —
+        // so a frozen home refuses it for the same reason it refuses sync.
+        dev.skillmanager.policy.HomePolicy.requireLive(store, "project sync");
         store.init();
         ProjectDependencyResolver.Options opts = options == null
                 ? ProjectDependencyResolver.Options.defaults()

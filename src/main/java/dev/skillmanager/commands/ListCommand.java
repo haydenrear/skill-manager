@@ -80,7 +80,13 @@ public final class ListCommand implements Callable<Integer> {
         return 0;
     }
 
-    private static List<Row> rows(List<AgentUnit> units, UnitStore sources, BindingStore bindings) {
+    /**
+     * The {@code list --json} rows for {@code units}. Public because the
+     * {@code home.runtime.json} descriptor's {@code units} field <em>is</em>
+     * this snapshot — building it separately there would let the two drift
+     * and defeat the point of publishing it as chain of custody.
+     */
+    public static List<Row> rows(List<AgentUnit> units, UnitStore sources, BindingStore bindings) {
         List<Row> rows = new ArrayList<>();
         for (AgentUnit u : units) {
             InstalledUnit rec = sources.read(u.name()).orElse(null);

@@ -211,6 +211,10 @@ public class RunTests {
         failures += dev.skillmanager.store.FetcherGitCloneTest.run();
         failures += dev.skillmanager.store.HomePathsTest.run();
         failures += dev.skillmanager.store.HomeCloneTest.run();
+        failures += dev.skillmanager.store.HomeDescriptorTest.run();
+        failures += dev.skillmanager.policy.HomePolicyTest.run();
+        failures += dev.skillmanager.mcp.SharedGatewayTest.run();
+        failures += dev.skillmanager.project.GeminiHomeParityTest.run();
         failures += BindingsTest.run();
         failures += dev.skillmanager.bindings.DocRepoTest.run();
         failures += dev.skillmanager.bindings.HarnessTest.run();

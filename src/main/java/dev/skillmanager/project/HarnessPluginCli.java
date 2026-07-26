@@ -318,30 +318,18 @@ public final class HarnessPluginCli {
         }
 
         /**
-         * {@code CLAUDE_CONFIG_DIR} is what the Claude CLI honors; it's
-         * derived from skill-manager's {@code CLAUDE_HOME} (parent of
-         * {@code .claude/}). Passing it explicitly means a test run that
-         * overrides {@code CLAUDE_HOME} keeps the CLI's writes inside
-         * the same sandboxed home.
-         *
-         * <p>An explicit {@link dev.skillmanager.agent.AgentHomes#CLAUDE_CONFIG_DIR}
-         * override takes precedence over the {@link dev.skillmanager.agent.AgentHomes#CLAUDE_HOME}
-         * + {@code .claude} composition — needed for tests that want to
-         * point CLI subprocess writes at a fully bespoke config root,
-         * not just at {@code $CLAUDE_HOME/.claude}.
+         * {@code CLAUDE_CONFIG_DIR} is what the Claude CLI honors, so it
+         * is the variable this driver passes down. The value comes from
+         * {@link dev.skillmanager.agent.AgentHomes#claude()} — the same
+         * single lookup {@link dev.skillmanager.agent.ClaudeAgent} uses
+         * for the skill-symlink target — so the CLI's writes and
+         * skill-manager's projections can never land in different
+         * directories. Resolving it here independently is what previously
+         * let those two diverge.
          */
         private static Map<String, String> claudeEnv() {
-            Path explicit = dev.skillmanager.agent.AgentHomes
-                    .resolve(dev.skillmanager.agent.AgentHomes.CLAUDE_CONFIG_DIR);
-            if (explicit != null) {
-                return Map.of(dev.skillmanager.agent.AgentHomes.CLAUDE_CONFIG_DIR,
-                        explicit.toString());
-            }
-            Path home = dev.skillmanager.agent.AgentHomes.resolveOrDefault(
-                    dev.skillmanager.agent.AgentHomes.CLAUDE_HOME,
-                    Path.of(System.getProperty("user.home")));
             return Map.of(dev.skillmanager.agent.AgentHomes.CLAUDE_CONFIG_DIR,
-                    home.resolve(".claude").toString());
+                    dev.skillmanager.agent.AgentHomes.claude().configDir().toString());
         }
     }
 

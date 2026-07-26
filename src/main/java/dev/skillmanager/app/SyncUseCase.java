@@ -134,6 +134,12 @@ public final class SyncUseCase {
                                                      Options options,
                                                      List<Target> targets,
                                                      List<UnitReadProblem> initialReadProblems) throws IOException {
+        // The frozen-home gate sits here rather than in each command
+        // because this one program *is* both `sync` and `upgrade` (and the
+        // `sync --lock` reconcile). Guarding the program means a future
+        // caller cannot reach the mutation by adding another entry point
+        // and forgetting the check.
+        dev.skillmanager.policy.HomePolicy.requireLive(store, "sync");
         Program<?> stage1 = buildStage1(store, gw, options, targets, initialReadProblems);
         java.util.function.Function<EffectContext, Program<?>> stage2 =
                 ctx -> buildStage2(ctx, gw, options, targets);

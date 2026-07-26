@@ -1,13 +1,23 @@
 package dev.skillmanager.commands;
 
+import dev.skillmanager.bindings.BindingStore;
+import dev.skillmanager.mcp.GatewayConfig;
+import dev.skillmanager.policy.HomePolicy;
+import dev.skillmanager.source.UnitStore;
 import dev.skillmanager.store.HomeCloner;
+import dev.skillmanager.store.HomeDescriptor;
 import dev.skillmanager.store.SkillStore;
 import dev.skillmanager.util.Log;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
+import picocli.CommandLine.Parameters;
 
+import java.io.IOException;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.Callable;
 
 /**
@@ -15,10 +25,12 @@ import java.util.concurrent.Callable;
  * units inside it.
  */
 @Command(name = "home",
-        description = "Inspect and copy Skill Manager homes.",
+        description = "Inspect, copy, describe, and set the policy of Skill Manager homes.",
         subcommands = {
                 HomeCommand.CloneCmd.class,
-                HomeCommand.VerifyCmd.class
+                HomeCommand.VerifyCmd.class,
+                HomeCommand.DescribeCmd.class,
+                HomeCommand.PolicyCmd.class
         })
 public final class HomeCommand {
 
@@ -50,12 +62,42 @@ public final class HomeCommand {
         @Option(names = "--json", description = "Emit machine-readable JSON.")
         boolean json;
 
+        @Option(names = "--own-gateway",
+                description = "Let the copy claim ownership of the gateway URL it inherited. "
+                        + "Off by default: two homes cannot both own one port.")
+        boolean ownGateway;
+
         @Override
         public Integer call() throws Exception {
             Path source = from != null ? from : SkillStore.defaultStore().root();
             HomeCloner.Report report = HomeCloner.cloneHome(source, to, strict);
             print(report, json);
-            return report.clean() ? 0 : 1;
+            if (!report.clean()) return 1;
+            SkillStore cloned = new SkillStore(report.dest());
+            // A gateway is one process on one port, and the copy inherited
+            // the source's `gateway.properties` verbatim — including its
+            // ownership. Left alone, the copy would believe it runs the
+            // gateway the source actually runs, then collide with it on
+            // `gateway up` and kill it on `gateway down`. Attaching is the
+            // only inheritance that is true of a copy.
+            if (!ownGateway) {
+                GatewayConfig inherited = GatewayConfig.resolve(cloned, null);
+                if (inherited.owned()) {
+                    GatewayConfig.attach(cloned, inherited.baseUrl().toString());
+                    if (!json) {
+                        Log.info("  gateway:     attached to %s (the source home owns it; "
+                                + "pass --own-gateway to claim it instead)", inherited.baseUrl());
+                    }
+                }
+            }
+            // Descriptor last, so it reports the ownership decision above.
+            HomeDescriptor descriptor = describe(cloned, null,
+                    HomeDescriptor.read(cloned.root())
+                            .map(HomeDescriptor::envContributions)
+                            .orElse(Map.of()));
+            descriptor.write(cloned.root());
+            if (!json) Log.info("  descriptor:  %s", HomeDescriptor.file(cloned.root()));
+            return 0;
         }
     }
 
@@ -103,6 +145,188 @@ public final class HomeCommand {
             for (HomeCloner.Leak leak : result.leaks()) Log.error("  %s", leak);
             return 1;
         }
+    }
+
+    /**
+     * {@code home describe} — compute (and optionally persist) the
+     * {@code home.runtime.json} interop contract for a home.
+     *
+     * <p>The descriptor is derived from the home on every call rather than
+     * read back: {@code units} is a snapshot, so a stale one is worse than
+     * none. {@code --write} persists the freshly computed value.
+     */
+    @Command(name = "describe",
+            description = "Print the home.runtime.json interop descriptor for a home: the env to "
+                    + "export, the resolved CLI, the gateway, the installed-unit snapshot, and "
+                    + "the home policy.")
+    public static final class DescribeCmd implements Callable<Integer> {
+
+        @Option(names = "--home",
+                description = "Skill Manager home to describe. Defaults to $SKILL_MANAGER_HOME.")
+        Path home;
+
+        @Option(names = "--home-root",
+                description = "The directory holding .claude/.codex/.gemini beside the store. "
+                        + "Defaults to the store's parent when the store is named "
+                        + ".skill-manager, else the store itself.")
+        Path homeRoot;
+
+        @Option(names = "--set-env", paramLabel = "NAME=VALUE",
+                description = "Declare an extra env contribution (repeatable). Replaces the "
+                        + "recorded set; omit to keep whatever the existing descriptor declared.")
+        List<String> setEnv = new ArrayList<>();
+
+        @Option(names = "--write",
+                description = "Persist the descriptor to <home>/" + HomeDescriptor.FILENAME + ".")
+        boolean write;
+
+        @Option(names = "--json", description = "Emit machine-readable JSON (the descriptor itself).")
+        boolean json;
+
+        private final SkillStore injectedStore;
+
+        public DescribeCmd() { this(null); }
+
+        public DescribeCmd(SkillStore injectedStore) { this.injectedStore = injectedStore; }
+
+        @Override
+        public Integer call() throws Exception {
+            SkillStore store = resolveStore(injectedStore, home);
+            store.init();
+            Map<String, String> contributions = setEnv.isEmpty()
+                    ? HomeDescriptor.read(store.root())
+                            .map(HomeDescriptor::envContributions)
+                            .orElse(Map.of())
+                    : parseEnv(setEnv);
+            HomeDescriptor descriptor = describe(store, homeRoot, contributions);
+            if (write) descriptor.write(store.root());
+            if (json) {
+                System.out.println(descriptor.toJson());
+                return 0;
+            }
+            renderHuman(descriptor, store, write);
+            return 0;
+        }
+    }
+
+    /**
+     * {@code home policy [live|frozen]} — read or declare whether a home
+     * may be mutated in place.
+     */
+    @Command(name = "policy",
+            description = "Show or set this home's policy: live (mutable) or frozen (sync, "
+                    + "upgrade, and push-back are refused).")
+    public static final class PolicyCmd implements Callable<Integer> {
+
+        @Parameters(index = "0", arity = "0..1",
+                description = "New policy: live or frozen. Omit to show the current one.")
+        String policy;
+
+        @Option(names = "--home",
+                description = "Skill Manager home. Defaults to $SKILL_MANAGER_HOME.")
+        Path home;
+
+        private final SkillStore injectedStore;
+
+        public PolicyCmd() { this(null); }
+
+        public PolicyCmd(SkillStore injectedStore) { this.injectedStore = injectedStore; }
+
+        @Override
+        public Integer call() throws Exception {
+            SkillStore store = resolveStore(injectedStore, home);
+            store.init();
+            if (policy == null || policy.isBlank()) {
+                HomePolicy current = HomePolicy.load(store);
+                System.out.println("policy: " + current.wire());
+                System.out.println("file:   " + HomePolicy.file(store)
+                        + (java.nio.file.Files.isRegularFile(HomePolicy.file(store))
+                            ? "" : "  (absent — live by default)"));
+                return 0;
+            }
+            HomePolicy next = HomePolicy.parse(policy, null);
+            HomePolicy.write(store, next);
+            if (next.frozen()) {
+                Log.ok("%s is now frozen — sync, upgrade, and project sync will refuse", store.root());
+            } else {
+                Log.ok("%s is now live", store.root());
+            }
+            return 0;
+        }
+    }
+
+    // -------------------------------------------------------- descriptor
+
+    /**
+     * Assemble the descriptor for {@code store}.
+     *
+     * <p>Everything in it is read from the home, not from the ambient
+     * process: the env block is derived from the home's own layout
+     * ({@link HomeDescriptor#envFor}), the gateway comes from the home's
+     * {@code gateway.properties}, the policy from its
+     * {@code home.policy.toml}, and {@code units} from
+     * {@link ListCommand#rows} so the descriptor and {@code list --json}
+     * cannot disagree.
+     */
+    public static HomeDescriptor describe(SkillStore store, Path homeRootOverride,
+                                          Map<String, String> envContributions)
+            throws IOException {
+        Path root = homeRootOverride != null
+                ? homeRootOverride.toAbsolutePath().normalize()
+                : HomeDescriptor.homeRootFor(store.root());
+        GatewayConfig gw = GatewayConfig.resolve(store, null);
+        var listed = store.listInstalledUnits();
+        List<HomeDescriptor.Unit> units = new ArrayList<>();
+        for (ListCommand.Row row : ListCommand.rows(
+                listed.units(), new UnitStore(store), new BindingStore(store))) {
+            units.add(new HomeDescriptor.Unit(
+                    row.name(), row.kind(), row.version(), row.source(), row.sha()));
+        }
+        return new HomeDescriptor(
+                root,
+                HomePolicy.load(store).wire(),
+                HomeDescriptor.envFor(root, store.root()),
+                new HomeDescriptor.Cli(HomeDescriptor.resolveCli(store.root())),
+                new HomeDescriptor.Gateway(gw.baseUrl().toString(), gw.owned()),
+                units,
+                envContributions);
+    }
+
+    private static SkillStore resolveStore(SkillStore injected, Path home) {
+        if (injected != null) return injected;
+        if (home != null) return new SkillStore(home.toAbsolutePath().normalize());
+        return SkillStore.defaultStore();
+    }
+
+    private static Map<String, String> parseEnv(List<String> assignments) {
+        Map<String, String> out = new LinkedHashMap<>();
+        for (String assignment : assignments) {
+            int eq = assignment.indexOf('=');
+            if (eq <= 0) {
+                throw new IllegalArgumentException(
+                        "--set-env expects NAME=VALUE, got: " + assignment);
+            }
+            out.put(assignment.substring(0, eq), assignment.substring(eq + 1));
+        }
+        return out;
+    }
+
+    private static void renderHuman(HomeDescriptor d, SkillStore store, boolean wrote) {
+        Log.info("  home root:   %s", d.homeRoot());
+        Log.info("  policy:      %s", d.policy());
+        Log.info("  cli:         %s", d.cli() == null || d.cli().skillManager() == null
+                ? "(unresolved — set SKILL_MANAGER_CLI or put skill-manager on PATH)"
+                : d.cli().skillManager());
+        Log.info("  gateway:     %s (%s)", d.gateway().url(),
+                d.gateway().owned() ? "owned" : "attached to a shared gateway");
+        Log.info("  env:");
+        d.env().asMap().forEach((k, v) -> Log.info("    %-18s %s", k, v));
+        if (!d.envContributions().isEmpty()) {
+            Log.info("  env contributions:");
+            d.envContributions().forEach((k, v) -> Log.info("    %-18s %s", k, v));
+        }
+        Log.info("  units:       %d", d.units().size());
+        if (wrote) Log.ok("wrote %s", HomeDescriptor.file(store.root()));
     }
 
     private static void print(HomeCloner.Report report, boolean json) {

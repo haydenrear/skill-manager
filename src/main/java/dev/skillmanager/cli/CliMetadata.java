@@ -60,6 +60,8 @@ public final class CliMetadata {
             command("gateway down"),
             command("gateway status"),
             command("gateway set"),
+            command("gateway attach"),
+            command("gateway detach"),
             command("harness"),
             command("harness instantiate"),
             command("harness rm"),
@@ -68,6 +70,8 @@ public final class CliMetadata {
             command("home"),
             command("home clone"),
             command("home verify"),
+            command("home describe"),
+            command("home policy"),
             command("install"),
             command("list", "ls"),
             command("lock"),
@@ -128,6 +132,13 @@ public final class CliMetadata {
                     "skill-manager sync acme-skill --force-scripts"),
             workflow("gateway-lifecycle", "gateway", docs("skill-manager-skill"),
                     "skill-manager gateway status"),
+            // No `workflow(...)` rows for `home describe` / `home policy` /
+            // `gateway attach` yet: SkillManagerSkillDocsTest requires every
+            // modeled workflow to be documented in the bundled skill docs,
+            // and those docs live in the duplicated `skill-manager-skill/`
+            // leaf, which must be edited in its own repository first (see
+            // the integration repo's CLAUDE.md). The commands are catalogued
+            // above; the workflow rows land with the leaf's doc change.
             workflow("harness-instantiate", "harness instantiate", docs("skill-manager-skill"),
                     "skill-manager harness instantiate app-harness --id dev"),
             workflow("harness-remove", "harness rm", docs("skill-manager-skill"),

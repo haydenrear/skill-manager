@@ -46,6 +46,9 @@ public final class AgentHomes {
     public static final String CODEX_HOME = "CODEX_HOME";
     public static final String GEMINI_HOME = "GEMINI_HOME";
 
+    /** The directory name Claude Code keeps its config tree under. */
+    public static final String CLAUDE_DIR_NAME = ".claude";
+
     private static final ThreadLocal<Map<String, Path>> OVERRIDES =
             ThreadLocal.withInitial(HashMap::new);
 
@@ -72,6 +75,64 @@ public final class AgentHomes {
     public static Path resolveOrDefault(String key, Path defaultValue) {
         Path p = resolve(key);
         return p != null ? p : defaultValue;
+    }
+
+    /**
+     * The one Claude config location, in both of the spellings callers
+     * need: {@code root} is the parent that holds {@code .claude/} and
+     * {@code .claude.json}; {@code configDir} is the {@code .claude/}
+     * directory itself.
+     *
+     * <p>They are two views of a single value, never two values.
+     */
+    public record ClaudeHome(Path root, Path configDir) {}
+
+    /**
+     * Resolve Claude's config location <em>once</em>, for every caller.
+     *
+     * <h2>Why this must be a single lookup</h2>
+     *
+     * <p>{@code CLAUDE_HOME} and {@code CLAUDE_CONFIG_DIR} name the same
+     * directory in two different spellings, and they used to be resolved
+     * independently: {@link ClaudeAgent} read only {@code CLAUDE_HOME},
+     * while {@code HarnessPluginCli.Claude} preferred
+     * {@code CLAUDE_CONFIG_DIR}. A context that set only
+     * {@code CLAUDE_CONFIG_DIR} — which is the variable the Claude CLI
+     * itself honours, so it is the one a per-project home actually has to
+     * set — therefore got a split brain: the CLI wrote into the
+     * project-local config dir while skill-manager symlinked its skills
+     * into the developer's real {@code ~/.claude/skills}. The home
+     * isolation was defeated in the one place that matters most, silently,
+     * and the only visible symptom was skills appearing globally.
+     *
+     * <p>Resolution order, highest precedence first:
+     * <ol>
+     *   <li>{@code CLAUDE_CONFIG_DIR} (override, then env) — taken
+     *       verbatim as the config dir, with its parent as the root. It
+     *       wins because it is what the Claude CLI reads, so honouring
+     *       anything else would put skill-manager and the CLI in
+     *       different directories.</li>
+     *   <li>{@code CLAUDE_HOME} (override, then env) — the parent;
+     *       config dir is {@code <CLAUDE_HOME>/.claude}.</li>
+     *   <li>{@code user.home}.</li>
+     * </ol>
+     *
+     * <p>This precedence is also what makes it safe for a home descriptor
+     * to publish {@code CLAUDE_HOME} and {@code CLAUDE_CONFIG_DIR} as the
+     * <em>same</em> string (see
+     * {@link dev.skillmanager.store.HomeDescriptor}): consumers read
+     * whichever one they know about, and because
+     * {@code CLAUDE_CONFIG_DIR} is consulted first, the value never gets
+     * a second {@code .claude} appended to it.
+     */
+    public static ClaudeHome claude() {
+        Path explicitConfigDir = resolve(CLAUDE_CONFIG_DIR);
+        if (explicitConfigDir != null) {
+            Path parent = explicitConfigDir.getParent();
+            return new ClaudeHome(parent != null ? parent : explicitConfigDir, explicitConfigDir);
+        }
+        Path root = resolveOrDefault(CLAUDE_HOME, Path.of(System.getProperty("user.home")));
+        return new ClaudeHome(root, root.resolve(CLAUDE_DIR_NAME));
     }
 
     /**
