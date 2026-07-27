@@ -120,7 +120,23 @@ public final class HomeCloner {
      * would guarantee a leak; not copying them costs one recompile.
      */
     public static final Set<String> SKIPPED_SEGMENTS = Set.of(
-            "__pycache__", ".gradle", ".pytest_cache", ".mypy_cache", ".ruff_cache", ".tox");
+            "__pycache__", ".gradle", ".pytest_cache", ".mypy_cache", ".ruff_cache", ".tox",
+            // A derived cache that is a FILE rather than a directory, which is
+            // why the enumeration above missed it. lark writes an absolute
+            // grammar path into this binary blob, so it is classed PROVISIONED,
+            // looksBinary correctly refuses to byte-substitute it, and verify()
+            // then reports FILE_CONTENT and fails the clone.
+            //
+            // Found by cloning the operator's real home: this single 504 KB
+            // file under skills/deploy-helm/.venv/.../hcl2/ was the only leak,
+            // and it made `home clone` unusable on the one home that matters --
+            // which would have failed the fan-out on every constituent.
+            //
+            // isSkipped() splits the relative path on '/' and tests each
+            // segment, so a bare file name belongs here. Same argument as
+            // .pyc: derived, regenerated on demand, and binary enough that
+            // rewriting it would corrupt it.
+            ".lark_cache.bin");
 
     /** Root-level files a clone does not copy. */
     public static final Set<String> SKIPPED_ROOT_FILES =
