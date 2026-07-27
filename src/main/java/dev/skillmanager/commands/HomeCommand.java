@@ -504,8 +504,10 @@ public final class HomeCommand {
         }
         int unresolved = report.danglingLinks().size() + report.danglingReferences().size();
         if (unresolved > 0) {
+            // `skill-manager cli` has only read-only subcommands, so the old
+            // hint sent the reader somewhere that could not fix anything.
             Log.warn("  %d reference(s) do not resolve in the copy (targets under a skipped "
-                    + "directory); re-provision with `skill-manager cli`", unresolved);
+                    + "directory); re-provision with `skill-manager sync --force-scripts`", unresolved);
             for (String dangling : report.danglingLinks()) Log.warn("    link   %s", dangling);
             for (String dangling : report.danglingReferences()) Log.warn("    script %s", dangling);
         }

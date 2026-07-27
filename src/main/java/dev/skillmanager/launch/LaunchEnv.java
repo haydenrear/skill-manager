@@ -214,18 +214,31 @@ public final class LaunchEnv {
      */
     static boolean isForeignHomeBin(Path entry, Path activeStoreRoot) {
         if (entry == null) return false;
-        // <store>/bin, <store>/bin/cli, <store>/bin/mcp, <store>/bin/launch —
-        // three levels is the whole shape, so the walk is bounded rather than
-        // climbing to the filesystem root and calling an unrelated ancestor a
-        // home.
-        Path candidate = entry;
-        for (int depth = 0; depth < 3 && candidate != null; depth++) {
-            Path parent = candidate.getParent();
-            if (parent == null) return false;
+        // This walk was bounded to three levels, on the reasoning that
+        // <store>/bin and <store>/bin/{cli,mcp,launch} were "the whole shape".
+        // They are not: <store>/plugin-marketplace/plugins/<name>/bin is four
+        // levels down, so a foreign home's plugin bin survived on every launch
+        // PATH — the isolation this class exists to provide, silently absent.
+        //
+        // The bound is gone rather than raised. Raising it to four would be the
+        // same mistake with a bigger number, and this epic has now hit
+        // "enumeration correct for imagined shapes" often enough to stop
+        // enumerating: a skip list of directory names that missed a cache file,
+        // a shim relativizer that assumed symlinks and met scripts, a binary
+        // sniffer reading only the first 8 KB.
+        //
+        // Walking to the filesystem root is affordable — this runs once per
+        // PATH entry when a launch environment is built, and a typical entry is
+        // a handful of levels deep — and it cannot be wrong about a shape
+        // nobody thought of. Recognition stays strict (looksLikeStoreRoot wants
+        // a descriptor, or the installed/ + skills/ pair), so an unrelated
+        // ancestor is not mistaken for a home; and if some ancestor really does
+        // carry a store's layout, treating its bin directories as foreign is
+        // the correct answer, not a false positive.
+        for (Path parent = entry.getParent(); parent != null; parent = parent.getParent()) {
             if (looksLikeStoreRoot(parent)) {
                 return activeStoreRoot == null || !parent.equals(activeStoreRoot);
             }
-            candidate = parent;
         }
         return false;
     }

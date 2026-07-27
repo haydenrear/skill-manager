@@ -646,6 +646,52 @@ validationGraph {
         node("sources/home-clone/HomeCloneNoAgentHomeLeak.java")
     }
 
+    /**
+     * The home tripwire: the operator's four real agent homes are snapshotted,
+     * a real install runs against a sandboxed home, and the snapshot is
+     * re-taken and diffed.
+     *
+     * This replaces two scratchpad shell scripts that were run by hand around a
+     * batch of work and that found four leak paths no assertion did — including
+     * issue #18, where a projection reached the real ~/.claude and showed up in
+     * a live agent's skill list. An oracle that fires only when someone
+     * remembers to run it is not a regression guard.
+     *
+     * home.tripwire.sensitive is the reason to believe the rest: it plants one
+     * mutation per observed defect class into a decoy home and asserts each is
+     * detected, with an unmutated control asserted clean in the same run. It
+     * has no dependency on the other three nodes and touches no real home, so
+     * it keeps its meaning even if the bracket is ever skipped.
+     */
+    testGraph("home-tripwire") {
+        node("sources/tripwire/HomeTripwireSensitive.java")
+        node("sources/common/EnvPrepared.java")
+        // Armed AFTER env.prepared so the watched window is exactly this
+        // graph's skill-manager work. A leak from shared fixture setup is a
+        // finding about every graph, not about this one.
+        node("sources/tripwire/HomeTripwireArmed.java").dependsOn("env.prepared")
+        node("sources/tripwire/HomeTripwireWorkload.java")
+        node("sources/tripwire/HomeTripwireChecked.java")
+    }
+
+    /**
+     * The per-checkout home contract, formerly assert-home.sh — a scratchpad
+     * script run by hand once at the end of ticket #10.
+     *
+     * Reuses home-clone's fixture and clone nodes rather than scaffolding a
+     * second fixture home. The thing under test is the CONTRACT a provisioned
+     * home has to satisfy, not a second way of producing one, and a duplicate
+     * fixture would be a second idiom to keep in step (issue #24).
+     */
+    testGraph("checkout-home") {
+        node("sources/common/EnvPrepared.java")
+        node("sources/home-clone/HomeCloneFixtureBuilt.java")
+        node("sources/home-clone/HomeClonedIntoProject.java")
+        node("sources/checkout-home/CheckoutHomeProvisioned.java")
+        node("sources/checkout-home/CheckoutHomeContract.java")
+        node("sources/checkout-home/CheckoutHomeLaunchIsolated.java")
+    }
+
     testGraph("project-env") {
         node("sources/common/EnvPrepared.java")
         node("sources/project/ProjectEnvMaterialized.java")
