@@ -16,6 +16,89 @@
 
 EXTENDS Core
 
+CONSTANTS
+  \* ------------------------------------------- home-to-home reconciliation
+  \* The five dimensions of `home sync` / `home close-out`. Same discipline as
+  \* every other policy constant in this model: each value names a behavior
+  \* skill-manager has today, had before this epic, or must have -- and the
+  \* FIRST value of each is the desired configuration, which is not always the
+  \* one the code implements. Where they differ it is called out, because a
+  \* desired-state model that quietly described the current code would have
+  \* nothing to say.
+
+  \* HOLD_BACK_OR_MERGE    -- today: a destination unit that carries work the
+  \*      source does not have is held back, or three-way merged under --merge.
+  \* OVERWRITE_DESTINATION -- a reconciler that treats the destination as
+  \*      disposable, which is what "copy the newer home over the older one"
+  \*      degenerates into.
+  HomeSyncPolicy,
+
+  \* THREE_WAY     -- today: four cases per path and no fifth (agree / only the
+  \*      source moved / only the destination moved / both moved = conflict).
+  \* PREFER_SOURCE -- "the source is newer, so it wins", which silently makes
+  \*      every conflict a deletion of the destination's half.
+  MergeAlgebra,
+
+  \* SHARED_ANCESTOR    -- the merge base for a reconciliation from g into h is
+  \*      a state g ITSELF passed through. DESIRED; NOT WHAT THE CODE DOES.
+  \* DESTINATION_RECORD -- today (ChildHomeMaterializer.mergeBase): the
+  \*      destination's own record, whoever last wrote it. Its javadoc claims
+  \*      "the cost of choosing wrong here is a conflict a human resolves, not
+  \*      an edit nobody sees again"; that is true only when the chosen base is
+  \*      OLDER than the true common ancestor. When a previous reconciliation
+  \*      from a THIRD home advanced the destination's record past anything the
+  \*      current source ever held, the base is NEWER, the algebra concludes
+  \*      "only the source moved", and the third home's work is taken away
+  \*      without a conflict. See ticket CHM-10.
+  MergeBasePolicy,
+
+  \* SOURCE_AWARE     -- a destination may be overwritten wholesale only when
+  \*      its current content came from the home now pushing (or from nobody).
+  \*      DESIRED; NOT WHAT THE CODE DOES.
+  \* MERGE_KIND_ONLY  -- today (MaterializationRecord.reconcileKind): a merge
+  \*      RESULT is protected, a pristine copy is not -- and a pristine copy of
+  \*      a torn-down worktree's only version of an edit is indistinguishable
+  \*      from a pristine copy of the root's. Reproduced end to end; see ticket
+  \*      CHM-9.
+  \* IGNORED          -- before commit 7468b4f: no reconcileKind at all, so the
+  \*      second source change deleted everything the first merge folded in.
+  ReconcileProvenance,
+
+  \* WHOLE_UNIT_OR_NOTHING -- today: a conflicted unit writes NOTHING, so the
+  \*      destination stays coherent and both versions still exist.
+  \* WRITE_THE_CLEAN_PATHS -- the helpful-looking alternative: write the paths
+  \*      that did merge and report the rest. The unit is then half one version
+  \*      and half another, and its record describes a tree nobody chose.
+  ConflictHandling,
+
+  \* REFUSE_WHILE_WORK_REMAINS -- today (`home close-out` exits non-zero).
+  \* DISCARD_UNCONDITIONALLY   -- the pre-epic teardown: `rm -rf` the worktree.
+  \*      It succeeds exactly as loudly whether the directory held work or not.
+  CloseOutGate,
+
+  \* ------------------------------------------------ the two sync dimensions
+  \* These are not policies. They are the two axes the sync slice is
+  \* DECOMPOSED along, and they are constants so a config can pick one axis and
+  \* pin the other. Checking both at full width put the slice at 456,874
+  \* distinct states and still climbing at the 120s budget, and every extra
+  \* state was a combination of a tier question with a path question that no
+  \* invariant relates. See spec_manifest.yaml validation.decomposition.
+  \*
+  \* SyncTiers -- which home tiers exist. Three (root / project / worktree) is
+  \*      what the provenance, merge-base and close-out properties need: each of
+  \*      them turns on a destination whose content came from a home that is not
+  \*      the one now pushing, which two homes cannot express. Two is enough for
+  \*      everything about the merge algebra, which is a question about one pair.
+  SyncTiers,
+
+  \* SyncPaths -- the files inside the one unit. Two is what the merge algebra
+  \*      needs and the minimum that does: it is the difference between "each
+  \*      side moved a different file" and "both moved the same file", and it is
+  \*      the only way a reconciliation can write SOME of a unit. One is enough
+  \*      for every tier-level property, none of which is about more than one
+  \*      file at a time.
+  SyncPaths
+
 \* store_body   parent store: content of each installed unit directory.
 \* child_home   child home: content of each unit directory the child home holds.
 \* agent_edits  witness variable -- the units an agent has edited inside the
@@ -53,6 +136,40 @@ EXTENDS Core
 \* source_snapshot  WITNESS. What the source home held when it was first cloned.
 \*              Captured once and never rewritten -- capturing it a second time
 \*              would let a corrupted source be re-baselined as correct.
+\*
+\* --------------------------------------------------- the three-tier level
+\* sync_body    per tier, per path: what that home's copy of the unit holds.
+\*              Per PATH rather than per unit, because that is the granularity
+\*              the mechanism decides at: a whole-tree digest can only say "this
+\*              unit changed", and merging two disjoint edits needs to know
+\*              WHICH files each side changed.
+\* sync_record  per tier: the materialization record -- the per-file baseline
+\*              (MaterializationRecord.entryDigests) and where the current
+\*              content came from (MaterializationRecord.reconcileKind,
+\*              generalized from "was it a merge" to "whose bytes are these").
+\* sync_history WITNESS. Every <<home, path, content>> that has ever been on
+\*              disk at that location. Monotone: nothing in skill-manager may
+\*              remove a triple. It answers the one question a merge base has to
+\*              answer and no report can -- "did the SOURCE ever pass through
+\*              the state we are calling the common ancestor" -- and it survives
+\*              the overwrite that destroys the bytes it is a record of.
+\* sync_unsound WITNESS. <<path, reason>> pairs: one per path a reconciliation
+\*              wrote that it was not entitled to write, and why. Same shape and
+\*              same reason as home_writes -- whether a write was entitled to
+\*              happen is only observable at the instant of the write, and
+\*              afterwards the overwritten bytes and the bytes that were always
+\*              there are the same bytes. The reasons are evaluated by the MODEL
+\*              from the pre-state, not reported by the policy, so a policy that
+\*              writes anyway is caught by its own write log.
+\*
+\*              Recorded as reasons rather than as a full per-write log for a
+\*              measured reason: the log form (one tuple per write, carrying the
+\*              destination and three booleans) put the sync slice at 574,209
+\*              distinct states and still climbing at the 120s tlc_seconds
+\*              budget. See spec_manifest.yaml validation.decomposition.
+\* sync_gone    WITNESS. What the worktree home held at the moment it was torn
+\*              down. A teardown deletes both the work and the evidence of it,
+\*              which is exactly why the evidence has to be taken first.
 VARIABLES
   store_body,
   child_home,
@@ -63,17 +180,24 @@ VARIABLES
   home_body,
   home_writes,
   home_authored,
-  source_snapshot
+  source_snapshot,
+  sync_body,
+  sync_record,
+  sync_history,
+  sync_unsound,
+  sync_gone
 
 unit_vars == << store_body, child_home, agent_edits, pass >>
 home_vars == << home, home_anchor, home_body, home_writes, home_authored,
                 source_snapshot >>
+sync_vars == << sync_body, sync_record, sync_history, sync_unsound, sync_gone >>
 \* Written out literally rather than as unit_vars \o home_vars: TLC recognizes
 \* the subscript of [][A]_vars syntactically and warns that every variable is
 \* missing from it when the tuple is built by concatenation.
 vars == << store_body, child_home, agent_edits, pass,
            home, home_anchor, home_body, home_writes, home_authored,
-           source_snapshot >>
+           source_snapshot,
+           sync_body, sync_record, sync_history, sync_unsound, sync_gone >>
 
 PassKinds == {"none", "resolve", "sync", "harness"}
 
@@ -97,6 +221,67 @@ SourceHomeState ==
 
 NoSnapshot == [captured |-> FALSE, body |-> [u \in HomeUnits |-> InstalledBytes]]
 
+-----------------------------------------------------------------------------
+\*                       THE THREE HOME TIERS
+\*
+\* The home-level section above models CLONING: one home is copied and the copy
+\* must touch nothing else. This section models the RETURN PATH -- content
+\* flowing back up and down between tiers after the copies have diverged, which
+\* is a different proposition and was previously unsayable. `home_body` there is
+\* written only by an agent or a clone; nothing reconciles two populated homes,
+\* so "the reconciliation destroyed an edit" had no action to be about.
+\*
+\* Three tiers, not two, and that is load-bearing rather than decorative. The
+\* defects this section exists to expose all need a THIRD home: work arrives in
+\* the project from the worktree, the worktree is torn down, and then the ROOT
+\* pushes -- against a baseline it never held. With two homes the source of a
+\* reconciliation is always the home the destination's content came from, and
+\* every one of those defects is unreachable.
+
+RootHome     == "root"
+ProjectHome  == "project"
+WorktreeHome == "worktree"
+
+AllSyncHomes == {RootHome, ProjectHome, WorktreeHome}
+
+SyncHomes == SyncTiers
+
+\* What a path holds: the bytes as installed, or the bytes an agent wrote
+\* THROUGH a particular tier -- the home's own name is the token, exactly as in
+\* the home-level section above, so `sync_body[g][p] = h` reads "g's copy of p
+\* holds bytes authored in h".
+SyncContents == {InstalledBytes} \cup SyncHomes
+
+\* Where a home's current copy came from. This is MaterializationRecord's
+\* reconcileKind, widened from a two-valued "copy or merge" to the question the
+\* two-valued form could not answer: a pristine copy is only disposable with
+\* respect to the home it is a copy OF.
+AdoptedOrigin == "adopted"   \* no provenance: the home's own clone-time baseline
+MergedOrigin  == "merged"    \* a three-way result; a copy of nothing
+Origins == {AdoptedOrigin, MergedOrigin} \cup SyncHomes
+
+SyncStatuses ==
+  {"unchanged", "updated", "held_back", "merged", "conflicted"}
+
+\* Why a write was not entitled to happen. One per substantive invariant.
+DestinationMovedIt  == "destination_moved_it"
+BaseNeverShared     == "base_never_shared"
+UnitWasConflicted   == "unit_was_conflicted"
+UnsoundReasons ==
+  {DestinationMovedIt, BaseNeverShared, UnitWasConflicted}
+
+SyncRecords == [entries: [SyncPaths -> SyncContents], origin: Origins]
+
+InitialSyncRecord ==
+  [entries |-> [p \in SyncPaths |-> InstalledBytes], origin |-> AdoptedOrigin]
+
+\* --------------------------------------------------------------- policies
+HoldsBackOrMerges      == HomeSyncPolicy = "HOLD_BACK_OR_MERGE"
+MergeIsThreeWay        == MergeAlgebra = "THREE_WAY"
+UsesSharedAncestorBase == MergeBasePolicy = "SHARED_ANCESTOR"
+WritesConflictedPaths  == ConflictHandling = "WRITE_THE_CLEAN_PATHS"
+GatesTeardown          == CloseOutGate = "REFUSE_WHILE_WORK_REMAINS"
+
 Init ==
   /\ store_body = [u \in Units |-> 0]
   /\ child_home = [u \in ChildHomeUnits |-> AbsentUnit]
@@ -111,6 +296,15 @@ Init ==
   /\ home_writes = {}
   /\ home_authored = {SourceHome}
   /\ source_snapshot = NoSnapshot
+  \* Every tier starts as an unmodified copy of the same installed unit, with a
+  \* clone-time baseline and no provenance -- which is exactly the state
+  \* ChildHomeMaterializer.adoptUnrecordedUnits leaves a freshly cloned home in.
+  /\ sync_body = [h \in SyncHomes |-> [p \in SyncPaths |-> InstalledBytes]]
+  /\ sync_record = [h \in SyncHomes |-> InitialSyncRecord]
+  /\ sync_history = {<<h, p, InstalledBytes>> : h \in SyncHomes, p \in SyncPaths}
+  /\ sync_unsound = {}
+  /\ sync_gone = [torn_down |-> FALSE,
+                  body |-> [p \in SyncPaths |-> InstalledBytes]]
 
 ChildUnitStates == [present: BOOLEAN, content: Contents]
 
@@ -135,6 +329,11 @@ TypeOK ==
   /\ home_writes \subseteq (Homes \X HomeUnits \X Homes)
   /\ home_authored \subseteq Homes
   /\ source_snapshot \in SnapshotStates
+  /\ sync_body \in [SyncHomes -> [SyncPaths -> SyncContents]]
+  /\ sync_record \in [SyncHomes -> SyncRecords]
+  /\ sync_history \subseteq (SyncHomes \X SyncPaths \X SyncContents)
+  /\ sync_unsound \subseteq (SyncPaths \X UnsoundReasons)
+  /\ sync_gone \in [torn_down: BOOLEAN, body: [SyncPaths -> SyncContents]]
 
 \* A child unit whose bytes are no longer the bytes skill-manager wrote.
 LocallyModified(u) ==
@@ -189,6 +388,101 @@ ClonedHomeState(from, dest) ==
    reported_shims   |-> ReportsMissingToolchains,
    reported_content |-> ReportsToleratedContent]
 
+\* ------------------------------------------------------- sync predicates
+
+\* Homes that still exist. A torn-down worktree is not a place work can be.
+SyncLive == IF sync_gone.torn_down THEN SyncHomes \ {WorktreeHome} ELSE SyncHomes
+
+\* The three-way comparison, per path, exactly as ChildHomeMaterializer.mergePlan
+\* makes it: source value, destination value, and the destination record's
+\* per-file baseline. "Absent" needs no rule of its own here for the same reason
+\* it needs none there -- it is a value like any other in the comparison.
+AgreeAt(from, to, p)    == sync_body[from][p] = sync_body[to][p]
+DestMovedAt(to, p)      == sync_body[to][p]   # sync_record[to].entries[p]
+SrcMovedAt(from, to, p) == sync_body[from][p] # sync_record[to].entries[p]
+
+\* Whether the baseline this reconciliation is about to merge against is a state
+\* the SOURCE itself ever held. That is what makes it a common ancestor rather
+\* than merely a recorded one, and it is the whole difference between "only the
+\* source moved" and "the destination is carrying a third home's work that this
+\* source has never seen".
+SharedBaseAt(from, to, p) ==
+  <<from, p, sync_record[to].entries[p]>> \in sync_history
+
+DestUnmoved(to) == \A p \in SyncPaths: ~DestMovedAt(to, p)
+
+\* Whether the destination may be replaced wholesale -- the fast path a plain
+\* `home sync` takes when the destination "held no local work".
+\*
+\* The three values are three answers to "what does a pristine copy mean". A
+\* pristine copy is disposable only relative to the home it is a copy OF: once
+\* the project home holds a fast-forwarded copy of a worktree that has since
+\* been torn down, those bytes exist nowhere else, and nothing about the
+\* destination's own digest can say so.
+WholesaleCopyAllowed(from, to) ==
+  /\ DestUnmoved(to)
+  /\ CASE ReconcileProvenance = "IGNORED"         -> TRUE
+       [] ReconcileProvenance = "MERGE_KIND_ONLY" ->
+            sync_record[to].origin # MergedOrigin
+       [] OTHER ->
+            sync_record[to].origin \in {AdoptedOrigin, from}
+
+\* Paths where the source has something the destination does not already have.
+SyncCandidates(from, to) ==
+  {p \in SyncPaths : ~AgreeAt(from, to, p) /\ SrcMovedAt(from, to, p)}
+
+\* Of those, the ones a merge is entitled to take: the destination has not moved
+\* them, and the baseline is one the source passed through.
+SyncTakePaths(from, to) ==
+  IF ~MergeIsThreeWay
+  THEN SyncCandidates(from, to)
+  ELSE {p \in SyncCandidates(from, to) :
+          /\ ~DestMovedAt(to, p)
+          /\ (UsesSharedAncestorBase => SharedBaseAt(from, to, p))}
+
+\* Everything else a merge found: nothing here is entitled to settle it.
+SyncConflictPaths(from, to) ==
+  IF ~MergeIsThreeWay
+  THEN {}
+  ELSE SyncCandidates(from, to) \ SyncTakePaths(from, to)
+
+SyncStatusOf(from, to, merge) ==
+  IF \A p \in SyncPaths: AgreeAt(from, to, p) THEN "unchanged"
+  ELSE IF ~HoldsBackOrMerges THEN "updated"
+  ELSE IF WholesaleCopyAllowed(from, to) THEN "updated"
+  ELSE IF ~merge THEN "held_back"
+  ELSE IF SyncConflictPaths(from, to) # {} THEN "conflicted"
+  ELSE IF SyncTakePaths(from, to) = {} THEN "unchanged"
+  ELSE "merged"
+
+\* Which paths of the destination the reconciliation actually rewrites.
+SyncWrittenPaths(from, to, merge) ==
+  LET status == SyncStatusOf(from, to, merge) IN
+  CASE status = "updated"    -> {p \in SyncPaths : ~AgreeAt(from, to, p)}
+    [] status = "merged"     -> SyncTakePaths(from, to)
+    \* The one case where "helpful" is destructive: writing the paths that DID
+    \* merge leaves the unit half one version and half another.
+    [] status = "conflicted" -> IF WritesConflictedPaths
+                                THEN SyncTakePaths(from, to)
+                                ELSE {}
+    [] OTHER                 -> {}
+
+NewSyncOrigin(from, to, status) ==
+  CASE status = "updated" -> from
+    [] status = "merged"  -> MergedOrigin
+    [] status = "conflicted" -> IF WritesConflictedPaths
+                                THEN MergedOrigin
+                                ELSE sync_record[to].origin
+    [] OTHER -> sync_record[to].origin
+
+\* `home close-out` is a dry-run `home sync --merge` from the worktree into the
+\* project, and it refuses on anything it would have had to write or hold back.
+\* Implemented as the same computation deliberately: answering "would a merge
+\* into the project lose anything" with a second comparison would give the gate
+\* and the sync two different opinions about the same unit.
+CloseOutIsSafe ==
+  SyncStatusOf(WorktreeHome, ProjectHome, TRUE) = "unchanged"
+
 -----------------------------------------------------------------------------
 \* Actions
 
@@ -211,6 +505,7 @@ ResolveProjectChildHome ==
               held_back |-> HeldBackIn(ChildHomeUnits)]
   /\ UNCHANGED << store_body, agent_edits >>
   /\ UNCHANGED home_vars
+  /\ UNCHANGED sync_vars
 
 \* @command SyncProjectChildHome
 \* @result ChildHomeResult
@@ -228,6 +523,7 @@ SyncProjectChildHome ==
               held_back |-> HeldBackIn(ProjectChildHomePayload)]
   /\ UNCHANGED << store_body, agent_edits >>
   /\ UNCHANGED home_vars
+  /\ UNCHANGED sync_vars
 
 \* @command InstantiateHarnessChildHome
 \* @result ChildHomeResult
@@ -245,6 +541,7 @@ InstantiateHarnessChildHome ==
               held_back |-> HeldBackIn(HarnessChildHomePayload)]
   /\ UNCHANGED << store_body, agent_edits >>
   /\ UNCHANGED home_vars
+  /\ UNCHANGED sync_vars
 
 \* @command EditChildHomeUnit
 \* @result ChildHomeResult
@@ -263,6 +560,7 @@ EditChildHomeUnit(u) ==
   \* Any report the last pass printed is now out of date.
   /\ pass' = NoPass
   /\ UNCHANGED home_vars
+  /\ UNCHANGED sync_vars
 
 \* @command UpgradeParentStoreUnit
 \* @result ChildHomeResult
@@ -275,6 +573,7 @@ UpgradeParentStoreUnit(u) ==
   /\ pass' = NoPass
   /\ UNCHANGED << child_home, agent_edits >>
   /\ UNCHANGED home_vars
+  /\ UNCHANGED sync_vars
 
 \* @command UpgradeLinkedParentSource
 \* @result ChildHomeResult
@@ -288,6 +587,7 @@ UpgradeLinkedParentSource ==
   /\ pass' = NoPass
   /\ UNCHANGED << child_home, agent_edits >>
   /\ UNCHANGED home_vars
+  /\ UNCHANGED sync_vars
 
 Next ==
   \/ ResolveProjectChildHome
@@ -326,6 +626,7 @@ CloneHomeIntoProject(from, dest) ==
                         ELSE [captured |-> TRUE, body |-> home_body[SourceHome]]
   /\ UNCHANGED home_writes
   /\ UNCHANGED unit_vars
+  /\ UNCHANGED sync_vars
 
 \* @command EditUnitThroughHome
 \* @result HomeCloneResult
@@ -350,6 +651,7 @@ EditUnitThroughHome(h, u) ==
         {<<h, u, g>> : g \in WriteReach(h, home_anchor[h][SymlinkSurface])}
   /\ UNCHANGED << home, home_anchor, home_authored, source_snapshot >>
   /\ UNCHANGED unit_vars
+  /\ UNCHANGED sync_vars
 
 \* @command UnbindUnitThroughHome
 \* @result HomeCloneResult
@@ -366,6 +668,7 @@ UnbindUnitThroughHome(h, u) ==
         ![UnbindTarget(h, home_anchor[h][StateSurface])][u] = MissingUnit]
   /\ UNCHANGED << home, home_anchor, home_writes, home_authored, source_snapshot >>
   /\ UNCHANGED unit_vars
+  /\ UNCHANGED sync_vars
 
 \* @command RelocateHome
 \* @result HomeCloneResult
@@ -380,6 +683,7 @@ RelocateHome(h) ==
   /\ UNCHANGED << home_anchor, home_body, home_writes, home_authored,
                   source_snapshot >>
   /\ UNCHANGED unit_vars
+  /\ UNCHANGED sync_vars
 
 \* @command ReprovisionToolchains
 \* @result HomeCloneResult
@@ -395,6 +699,7 @@ ReprovisionToolchains(h) ==
   /\ home_anchor' = [home_anchor EXCEPT ![h][ProvisionedSurface] = h]
   /\ UNCHANGED << home_body, home_writes, home_authored, source_snapshot >>
   /\ UNCHANGED unit_vars
+  /\ UNCHANGED sync_vars
 
 HomeNext ==
   \/ \E from \in Homes, dest \in Clones: CloneHomeIntoProject(from, dest)
@@ -402,6 +707,107 @@ HomeNext ==
   \/ \E h \in Homes, u \in HomeUnits: UnbindUnitThroughHome(h, u)
   \/ \E h \in Homes: RelocateHome(h)
   \/ \E h \in Homes: ReprovisionToolchains(h)
+
+-----------------------------------------------------------------------------
+\* Three-tier reconciliation actions
+
+\* @command EditUnitInHomeTier
+\* @result HomeSyncResult
+\* @port AgentWorkspace.edit_unit_in_home
+\* An agent edits one file of the unit inside whichever tier's home its
+\* SKILL_MANAGER_HOME names. No skill-manager code runs. The bytes are tagged
+\* with the tier they were written through, which is what makes "this edit"
+\* a thing the model can follow across a copy.
+EditUnitInHomeTier(h, p) ==
+  /\ h \in SyncLive
+  /\ sync_body[h][p] # h
+  /\ sync_body' = [sync_body EXCEPT ![h][p] = h]
+  /\ sync_history' = sync_history \cup {<<h, p, h>>}
+  /\ UNCHANGED << sync_record, sync_unsound, sync_gone >>
+  /\ UNCHANGED unit_vars
+  /\ UNCHANGED home_vars
+
+\* @command ReconcileHomeTiers
+\* @result HomeSyncReport
+\* @port SkillManagerCli.home_sync
+\* `skill-manager home sync --from <home> --to <home> [--merge]`.
+\*
+\* Direction is the caller's and safety is not: nothing here knows or cares
+\* whether it is pushing a worktree's edits up or pulling the root's new skills
+\* down, so `from` and `to` range over every ordered pair of live tiers. That is
+\* also what makes the round trip -- worktree to project to root and back down
+\* -- a reachable behavior of this model rather than a claim in a comment.
+\*
+\* One action for the whole per-unit decision, deliberately. Splitting "what
+\* would happen" from "make it happen" is how a --dry-run comes to report
+\* something the real run does not do; here as in ChildHomeMaterializer.reconcile
+\* there is one decision and `merge` only chooses which branch of it applies.
+ReconcileHomeTiers(from, to, merge) ==
+  /\ from \in SyncLive
+  /\ to \in SyncLive
+  /\ from # to
+  /\ LET status  == SyncStatusOf(from, to, merge)
+         written == SyncWrittenPaths(from, to, merge)
+         newBody == [p \in SyncPaths |->
+                       IF p \in written THEN sync_body[from][p] ELSE sync_body[to][p]]
+     IN
+     /\ sync_body' = [sync_body EXCEPT ![to] = newBody]
+     \* The record is rewritten over the tree that was actually written -- the
+     \* merged result, local work included -- exactly as writeCopyRecord does.
+     \* Nothing written, no record: that is what makes a conflicted unit
+     \* indistinguishable from one the pass never reached.
+     /\ sync_record' = IF written = {}
+                       THEN sync_record
+                       ELSE [sync_record EXCEPT ![to] =
+                               [entries |-> newBody,
+                                origin  |-> NewSyncOrigin(from, to, status)]]
+     /\ sync_history' = sync_history \cup {<<to, p, newBody[p]>> : p \in SyncPaths}
+     \* The write log. Every reason is computed here, from the PRE-state, by the
+     \* model rather than by the policy -- a reconciler that writes anyway still
+     \* logs that it was not entitled to.
+     /\ sync_unsound' = sync_unsound
+          \cup {<<p, DestinationMovedIt>> :
+                  p \in {q \in written : DestMovedAt(to, q)}}
+          \cup {<<p, BaseNeverShared>> :
+                  p \in {q \in written : ~SharedBaseAt(from, to, q)}}
+          \* Conditioned on the reported STATUS, not on the conflict set: a
+          \* wholesale copy never ran a merge, so the paths a merge would have
+          \* found irreconcilable are not something it declared and then wrote
+          \* through. Conflating the two made a provenance defect show up as a
+          \* conflict-atomicity one.
+          \cup {<<p, UnitWasConflicted>> :
+                  p \in (IF status = "conflicted" THEN written ELSE {})}
+  /\ UNCHANGED sync_gone
+  /\ UNCHANGED unit_vars
+  /\ UNCHANGED home_vars
+
+\* @command TearDownWorktreeHome
+\* @result HomeCloseOutVerdict
+\* @port Operator.remove_worktree
+\* Removing a ticket worktree removes its Skill Manager home with it. Under the
+\* gate this is enabled only when `home close-out` found nothing to lose;
+\* without the gate it is always enabled, which is the whole of the pre-epic
+\* behavior -- `rm -rf` reports exactly the same thing whether the directory
+\* held work or not.
+\*
+\* The snapshot is taken BEFORE the home stops existing, because a teardown
+\* destroys the evidence and the work in the same step, and an invariant with
+\* nothing to compare against finds nothing.
+TearDownWorktreeHome ==
+  /\ WorktreeHome \in SyncHomes
+  /\ ProjectHome \in SyncHomes
+  /\ ~sync_gone.torn_down
+  /\ (GatesTeardown => CloseOutIsSafe)
+  /\ sync_gone' = [torn_down |-> TRUE, body |-> sync_body[WorktreeHome]]
+  /\ UNCHANGED << sync_body, sync_record, sync_history, sync_unsound >>
+  /\ UNCHANGED unit_vars
+  /\ UNCHANGED home_vars
+
+SyncNext ==
+  \/ \E h \in SyncHomes, p \in SyncPaths: EditUnitInHomeTier(h, p)
+  \/ \E from \in SyncHomes, to \in SyncHomes, m \in BOOLEAN:
+       ReconcileHomeTiers(from, to, m)
+  \/ TearDownWorktreeHome
 
 -----------------------------------------------------------------------------
 \* Specifications
@@ -428,9 +834,15 @@ HomeNext ==
 \* counterexample only when the box subscript encloses a bare disjunction of
 \* actions, so `[][Next /\ UNCHANGED home_vars]_vars` costs every trace in this
 \* module its action names.
+\* A third spec was added for the sync slice on the same measured grounds. Its
+\* variables are disjoint from both existing slices and no invariant crosses
+\* them, so a combined Next would multiply 250 x 706 x (the sync slice) and
+\* check nothing that the three do not already check separately.
 Spec == Init /\ [][Next]_vars
 
 HomeSpec == Init /\ [][HomeNext]_vars
+
+SyncSpec == Init /\ [][SyncNext]_vars
 
 -----------------------------------------------------------------------------
 \* Invariants
@@ -608,5 +1020,131 @@ EveryHomeMissingItsToolchainsSaysSo ==
 EveryToleratedContentReferenceIsReported ==
   \A h \in Homes:
     (home[h].present /\ ToleratedContentReference(h)) => home[h].reported_content
+
+-----------------------------------------------------------------------------
+\* Three-tier reconciliation invariants
+\*
+\* Every guarantee the epic had built before this slice --
+\* AgentEditedChildUnitsAreNeverDestroyed, the hold-back, the atomic swap --
+\* stopped at the boundary of ONE home, and the boundary is where the work was
+\* being lost. These four extend that reach across the boundary. They do not
+\* restate AgentEditedChildUnitsAreNeverDestroyed: that invariant is about one
+\* home's units and a materializer refreshing them from a store, and its
+\* destroyer is a refresh policy. These are about two homes, per path, and their
+\* destroyers are a merge base, a provenance rule and a teardown -- none of
+\* which the unit-level slice has an action for.
+\*
+\* All four are stated over sync_unsound or sync_gone rather than over a
+\* report, and tla-spec-dev issue #127 is why. A reporting invariant explored
+\* the entire reachable state space and found nothing while a record was being
+\* destroyed, because after the destruction the antecedent went false too. The
+\* same trap is live here in a sharper form: after a reconciliation overwrites a
+\* destination it also rewrites that destination's record, so the home is
+\* PERFECTLY COHERENT afterwards and every consistency check passes over the
+\* wreckage. EveryDivergenceFromARecordIsAnEditMadeInThatHome below is that
+\* demonstration, kept as a config that must never fail.
+
+\* @invariant AReconciliationOnlyWritesPathsTheDestinationDidNotMove
+\* NO EDIT LOSS. Every path a reconciliation wrote was one the destination had
+\* not moved away from its own recorded baseline. This is the "held back or
+\* merged, never lost" claim stated as a fact about writes: a destination that
+\* HAD moved a path is entitled to keep it, whatever the source has.
+\*
+\* Stated over the sync_unsound write log because entitlement is only observable
+\* at the instant of the write. Afterwards the overwritten bytes and the bytes that
+\* were always there are the same bytes, and the destination's record has been
+\* rewritten to agree with both.
+AReconciliationOnlyWritesPathsTheDestinationDidNotMove ==
+  \A p \in SyncPaths: <<p, DestinationMovedIt>> \notin sync_unsound
+
+\* @invariant AReconciliationOnlyWritesAgainstABaselineBothHomesPassedThrough
+\* MERGE SOUNDNESS. A three-way merge folds in only changes ONE side made, and
+\* "the source moved this and the destination did not" is only true relative to
+\* a state the source actually passed through. A baseline the destination
+\* recorded from some THIRD home is not a common ancestor of these two: measured
+\* against it the source looks like the only side that moved, the third home's
+\* work is taken away, and no conflict is ever reported.
+\*
+\* This is the invariant today's ChildHomeMaterializer does not satisfy, in two
+\* independent ways -- mergeBase preferring the destination's record
+\* (MergeBasePolicy = DESTINATION_RECORD) and reconcileKind protecting merge
+\* results only (ReconcileProvenance = MERGE_KIND_ONLY). Tickets CHM-9 / CHM-10.
+AReconciliationOnlyWritesAgainstABaselineBothHomesPassedThrough ==
+  \A p \in SyncPaths: <<p, BaseNeverShared>> \notin sync_unsound
+
+\* @invariant AConflictedUnitIsNeverPartiallyWritten
+\* CONFLICT ATOMICITY. A unit with any conflicted path writes NOTHING -- not the
+\* paths that would have merged cleanly. The destination therefore stays a
+\* coherent version of something rather than half of two, and both versions
+\* still exist for whoever resolves it.
+\*
+\* Deliberately not derivable from the loss invariant above: a partial write
+\* takes only paths the destination had not moved, so it destroys no edit and
+\* AReconciliationOnlyWritesPathsTheDestinationDidNotMove is satisfied
+\* throughout. What it destroys is the unit's coherence, which is a different
+\* thing and needs its own reason recorded. See External_sync_guard_conflict.cfg.
+AConflictedUnitIsNeverPartiallyWritten ==
+  \A p \in SyncPaths: <<p, UnitWasConflicted>> \notin sync_unsound
+
+\* @invariant NoHomeIsTornDownWhileItHoldsUniqueWork
+\* THE CLOSE-OUT GATE. A worktree home is not removed while it holds content
+\* that exists in no other live home. This is the failure the whole slice exists
+\* for and the only one that is completely silent: the teardown succeeds, and a
+\* directory that held work and one that held nothing are deleted with exactly
+\* the same message.
+\*
+\* sync_gone is a witness for the reason a teardown makes obvious -- it destroys
+\* the work and the evidence of the work in one step, so the evidence has to be
+\* taken before the step. Comparing against the home afterwards compares against
+\* nothing.
+\*
+\* "Exists in another live home" is stated over sync_history rather than over
+\* sync_body, and TLC is the reason -- the same shape of correction
+\* WritesThroughOneHomeReachNoOtherHome needed. The body form produces a
+\* counterexample at depth 5 that is not a defect: the worktree's edit reaches
+\* the project, the project's own agent then edits that same path on top of it,
+\* and the worktree is torn down still holding the older bytes. Nothing was
+\* lost -- the project HAD the work and deliberately moved past it -- but by the
+\* time of the teardown the bytes are no longer anywhere. What close-out
+\* actually promises is that the work REACHED another tier, and a tier that has
+\* held something is exactly what the history witness records.
+NoHomeIsTornDownWhileItHoldsUniqueWork ==
+  sync_gone.torn_down =>
+    \A p \in SyncPaths:
+      \E g \in SyncLive: <<g, p, sync_gone.body[p]>> \in sync_history
+
+\* @invariant EveryDivergenceFromARecordIsAnEditMadeInThatHome
+\* THE NEGATIVE RESULT, in its sharpest form yet. A home's bytes differ from its
+\* own materialization record only where an agent edited that home.
+\*
+\* This is TRUE, and it is USELESS as a safety property, and both halves are the
+\* point. Every destructive policy in this section satisfies it: an overwrite
+\* rewrites the record along with the bytes, a prefer-source merge rewrites the
+\* record along with the bytes, a partial conflicted write rewrites the record
+\* along with the bytes. The destination is left perfectly self-consistent about
+\* content that was chosen by nobody. It is carried as a config that must keep
+\* returning "No error has been found" so that this stays written down: a
+\* coherent home is not an intact one, and checking coherence is not checking
+\* that nothing was lost.
+EveryDivergenceFromARecordIsAnEditMadeInThatHome ==
+  \A h \in SyncHomes, p \in SyncPaths:
+    sync_body[h][p] # sync_record[h].entries[p] => sync_body[h][p] = h
+
+\* @invariant NoWorktreeEditEverReachesTheRootHome
+\* REACHABILITY PROBE -- THIS ONE MUST FAIL.
+\*
+\* Round-trip is not a safety property, so it cannot be stated as one. It is
+\* stated as its negation instead: if TLC can find no trace in which bytes an
+\* agent wrote in the worktree end up in the root home, then the return path
+\* this whole slice exists to build does not exist, and every safety invariant
+\* above is being satisfied by a mechanism that simply never moves anything.
+\* Over-holding-back is safe and worthless, and this is the only check in the
+\* directory that would notice.
+\*
+\* Its counterexample IS the round trip: the shortest trace TLC prints for it is
+\* the demonstration that worktree -> project -> root delivers the edit intact.
+NoWorktreeEditEverReachesTheRootHome ==
+  RootHome \in SyncHomes =>
+    \A p \in SyncPaths: sync_body[RootHome][p] # WorktreeHome
 
 =============================================================================

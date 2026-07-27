@@ -37,8 +37,10 @@ of rewording the model to fit the template.
 | `Internal.tla` / `Internal_clone.cfg` | `home clone` phase by phase: copy, per-surface fixups, complete or roll back, hand over. |
 | `External.tla` / `External.cfg` | Publicly observable behavior of a child-home pass. Test Graph case source. |
 | `External.tla` / `External_home.cfg` | Publicly observable behavior of a **home**: clone it, write through it, move it, re-provision it. |
+| `External.tla` / `External_sync.cfg`, `External_sync_merge.cfg` | Publicly observable behavior of **three home tiers**: `home sync` and `home close-out`. Two configs, one per decomposition axis — see below. |
 | `External_regression_*.cfg`, `Internal_regression_*.cfg` | **Expected-violation** configs. Each must keep producing a TLC counterexample. |
-| `External_regression_rewritecontent_reportonly.cfg` | The one config that must keep returning **"No error has been found"**. See "The negative result" below. |
+| `External_regression_rewritecontent_reportonly.cfg`, `External_sync_guard_*.cfg` | **Guard** configs. Each must keep returning **"No error has been found"** *while modelling a defect*. See "The negative result" below. |
+| `External_sync_roundtrip.cfg` | **Reachability** config: its counterexample is the round trip. Must keep producing one. |
 | `SkillManager.tla` / `MC.cfg` / `MC_program_promotion.cfg` | The accepted monolith, carried forward unchanged: the not-yet-migrated remainder of the program. |
 
 Two representations of one program is a hazard, not a feature. While both
@@ -92,6 +94,60 @@ that, and each is the declared target of exactly one regression config.
 | Fixups precede hand-over | `EveryOwnedSurfaceIsReanchoredBeforeAHomeIsHandedOver` | Internal `CloneSpec` | `Internal_regression_unreanchored.cfg` |
 | A failed clone leaves nothing | `NoUnfinishedDestinationSurvivesAFailedClone` | Internal `CloneSpec` | `Internal_regression_partialclone.cfg` |
 
+## The three home tiers: `home sync` and `home close-out`
+
+Content used to flow only **down**, at materialization time. A ticket agent
+improved a skill inside a worktree home, the worktree was removed, and the
+improvement was gone with no symptom at all — `rm -rf` succeeds identically
+whether the directory held work or not. Every guarantee above stops at the
+boundary of one home, and the boundary is where the work was being lost.
+
+| Property | Invariant | Witness | Regression config | Guard config |
+| --- | --- | --- | --- | --- |
+| No edit loss | `AReconciliationOnlyWritesPathsTheDestinationDidNotMove` | `sync_unsound` | `External_regression_syncoverwrite.cfg`, `External_regression_prefersource.cfg` | `External_sync_guard_overwrite.cfg` |
+| Merge soundness | `AReconciliationOnlyWritesAgainstABaselineBothHomesPassedThrough` | `sync_history` | `External_regression_nomergekind.cfg`, `External_regression_ffprovenance.cfg`, `External_regression_mergebase.cfg` | `External_sync_guard_ffprovenance.cfg` |
+| Conflict atomicity | `AConflictedUnitIsNeverPartiallyWritten` | `sync_unsound` | `External_regression_partialconflict.cfg` | `External_sync_guard_conflict.cfg` |
+| Close-out gate | `NoHomeIsTornDownWhileItHoldsUniqueWork` | `sync_gone` | `External_regression_ungatedcloseout.cfg` | `External_sync_guard_teardown.cfg` |
+| Round trip | `NoWorktreeEditEverReachesTheRootHome` | — | `External_sync_roundtrip.cfg` *(must fail)* | — |
+
+These **extend** `AgentEditedChildUnitsAreNeverDestroyed`; they do not restate
+it. That invariant is about one home's units and a materializer refreshing them
+from a store, and its destroyer is a refresh policy. These are about two homes,
+per path, and their destroyers are a merge base, a provenance rule and a
+teardown — none of which the unit-level slice has an action for.
+
+**Two of the regression configs model code that is in the tree today.**
+`External_regression_ffprovenance.cfg` is `MaterializationRecord.reconcileKind`
+protecting merge results but not a fast-forward from a home that is then torn
+down (CHM-9); `External_regression_mergebase.cfg` is
+`ChildHomeMaterializer.mergeBase` preferring the destination's record, which
+after a merge is *newer* than the true common ancestor (CHM-10). Both were
+reproduced end to end against the real classes and neither is fixed. So
+`External_sync.cfg` describes the desired state, not the current one — which is
+what `desired_program_model` is for.
+
+### Why two configs and not one
+
+The slice was first authored at full width — three tiers, two paths, a
+per-write log carrying the destination home. It reached **574,209 distinct
+states** at the 120s `tlc_seconds` budget and was still climbing. The budget
+was not raised. The write log was compressed to `<<path, reason>>` pairs
+(456,874 — not enough), and then the slice was split along its two independent
+axes, expressed as the constants `SyncTiers` and `SyncPaths`:
+
+```
+External_sync.cfg        SyncTiers = {root, project, worktree}   SyncPaths = {p1}         180 distinct
+External_sync_merge.cfg  SyncTiers = {project, worktree}         SyncPaths = {p1, p2}     283 distinct
+```
+
+Three tiers is what the provenance, merge-base and close-out properties need:
+each turns on a destination whose content came from a home that is **not** the
+one now pushing, which two homes cannot express. Two paths is what the merge
+algebra needs. No invariant relates a tier question to a path question, so
+checking them together was multiplying two state spaces to check nothing new.
+The cost — a property needing three tiers *and* two files at once cannot be
+stated — is recorded in `spec_manifest.yaml validation.decomposition`.
+
 ### Two surfaces are deliberately NOT held to relocatability
 
 `RelocatableSurfaces` is `{state, symlink}` only.
@@ -133,6 +189,29 @@ The only difference is an invariant that reads the `home_authored` witness.
 Keep both: if the `reportonly` config ever starts failing, the reporting
 invariant has been changed into something else and this record is stale.
 
+The sync slice restates it in a **stronger** form. There the guard invariant is
+not a report at all — it is a filesystem-consistency check, `every divergence
+from a record is an edit made in that home` — and it *still* finds nothing:
+
+```
+External_sync_guard_overwrite.cfg    HomeSyncPolicy = "OVERWRITE_DESTINATION"
+  -> No error has been found. 9545 states generated, 2357 distinct, depth 14.
+     A reconciliation that overwrites a destination rewrites that destination's
+     RECORD in the same step, so afterwards the home agrees with itself exactly,
+     at every path, over content nobody chose.
+
+External_regression_syncoverwrite.cfg  ... + AReconciliationOnlyWritesPathsTheDestinationDidNotMove
+  -> Error: Invariant ... is violated. 14 states, depth 3.
+```
+
+A coherent home is not an intact one. And a witness can be correct and still
+blind: under today's provenance rule (`External_sync_guard_ffprovenance.cfg`)
+the write log's own "the destination had not moved this path" test is **true**
+for every write the CHM-9 defect makes — the project home really had not moved
+anything. Catching that needed a witness of a *different question*
+(`sync_history`: did the source ever pass through this state), which is a fact
+about the other home entirely.
+
 The accepted model could not state any of them: `@port
 SkillManagerCli.scaffold_project_child_home` (`SkillManager.tla:1315`) models
 `child_home_units` as a bare, monotonically growing relation with no notion of
@@ -155,6 +234,20 @@ bash specs/desired_program_model/run_tlc.sh specs/desired_program_model/External
 bash specs/desired_program_model/run_tlc.sh specs/desired_program_model/External.tla specs/desired_program_model/External_regression_rawdigest.cfg
 bash specs/desired_program_model/run_tlc.sh specs/desired_program_model/Internal.tla specs/desired_program_model/Internal_regression_overwrite.cfg
 bash specs/desired_program_model/run_tlc.sh specs/desired_program_model/Internal.tla specs/desired_program_model/Internal_regression_nonatomic.cfg
+
+# three home tiers — desired state clean, regressions must each fail,
+# guards must each stay clean, and the round trip must produce its trace
+bash specs/desired_program_model/run_tlc.sh specs/desired_program_model/External.tla specs/desired_program_model/External_sync.cfg
+bash specs/desired_program_model/run_tlc.sh specs/desired_program_model/External.tla specs/desired_program_model/External_sync_merge.cfg
+for cfg in syncoverwrite prefersource partialconflict ungatedcloseout ffprovenance nomergekind mergebase; do
+  bash specs/desired_program_model/run_tlc.sh specs/desired_program_model/External.tla \
+       specs/desired_program_model/External_regression_$cfg.cfg
+done
+for cfg in overwrite teardown conflict ffprovenance; do
+  bash specs/desired_program_model/run_tlc.sh specs/desired_program_model/External.tla \
+       specs/desired_program_model/External_sync_guard_$cfg.cfg
+done
+bash specs/desired_program_model/run_tlc.sh specs/desired_program_model/External.tla specs/desired_program_model/External_sync_roundtrip.cfg
 ```
 
 `run_tlc.sh` takes paths relative to the **current** directory, so from inside

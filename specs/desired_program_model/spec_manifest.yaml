@@ -9,12 +9,12 @@ status:
   ticket_plan: ticket_plan.yaml
   relation_to_program_model: desired_successor_of_accepted_program_model
   relation_to_current: target_state_for_specs_current_to_converge_to
-  updated: "2026-07-26"
+  updated: "2026-07-27"
   summary:
     desired_model_scaffolded: true
     ticket_plan_scaffolded: true
     current_model_scaffolded: true
-    desired_tla_authored: child_home_unit_slice_and_home_isolation_slice
+    desired_tla_authored: child_home_unit_slice_home_isolation_slice_and_three_tier_sync_slice
     generated_cases: pending
     adapters: pending
     promotion: not_started
@@ -25,7 +25,12 @@ status:
     - Recorded complexity descriptors for External, Internal, and the carried-forward monolith.
     - Extended Core/Internal/External with the HOME-level isolation slice (T19/#20). TLC green on External_home.cfg and Internal_clone.cfg; nine more expected-violation configs each produce their counterexample; the unit-level slice's seven configs keep their exact state counts.
     - Recorded the negative result that a reporting invariant cannot replace a witness, at home granularity, as a config that must keep returning "No error has been found" (External_regression_rewritecontent_reportonly.cfg).
+    - Extended Core/Internal/External with the THREE-TIER SYNC slice (`home sync`, `home close-out`). External gains a third spec, SyncSpec, over five variables disjoint from both existing slices. Four substantive invariants, all witness-backed; seven more expected-violation configs; four guard configs that must keep passing; one reachability config whose counterexample IS the round trip. TLC green on External_sync.cfg (180 distinct) and External_sync_merge.cfg (283 distinct); all nineteen pre-existing configs keep their exact state counts.
+    - Decomposed that slice along two measured axes after the single-spec form reached 574,209 distinct states at the 120s budget and was still climbing. The budget was not raised. See validation.decomposition.
+    - Found TWO defects in code that is already merged, both silent data loss, both reproduced end to end against the real classes and neither fixed: CHM-9 (reconcileKind protects merge results but not a fast-forward from a home that is then torn down) and CHM-10 (mergeBase prefers the destination record, which after a merge is NEWER than the true common ancestor, so the next --merge reverts the work the previous one kept).
   pending:
+    - "CHM-9 and CHM-10: two merged-code defects the sync model exposed. Modelled, pinned by unit test, ticketed, NOT fixed -- each needs an owner decision about the contract, not a patch."
+    - "CHM-11: `home sync` and `home close-out` have no out-of-process Test Graph coverage at all."
     - Owner decision on the Internal/External scope (see internal_external_decision below).
     - Owner approval of budgets before any effectful/modular migration work starts (migration.md Phase 0).
     - Spec-unit adapters (case_adapters.toml) for the new Internal actions; the unmapped inventory and the reason are recorded in that file.
@@ -74,6 +79,13 @@ two_specs_per_module:
   external:
     Spec: unit-level child-home materialization (store_body, child_home, agent_edits, pass)
     HomeSpec: home-level isolation (home, home_anchor, home_body, home_writes, home_authored, source_snapshot)
+    SyncSpec: >
+      three-tier reconciliation (sync_body, sync_record, sync_history,
+      sync_unsound, sync_gone). Added 2026-07-27 on the same measured grounds as
+      the first split: its variables are disjoint from both other slices and no
+      invariant crosses them, so a combined Next would explore 250 x 706 x 180
+      and check nothing the three do not already check apart. Five variables,
+      inside budgets.max_component_variables 6.
   internal:
     Spec: the materializer, per unit (adds record, staging, held_back)
     CloneSpec: "`home clone` phase by phase (clone, dest, handed_over)"
@@ -87,7 +99,7 @@ two_specs_per_module:
     slice at its Init value, which is why the seven pre-existing configs still
     report exactly 250 / 2065 / 35 / 27 / 9 / 202 / 114 distinct states.
   cost_of_the_split: >
-    A rule spanning the two levels cannot be stated in either view. The concrete
+    A rule spanning the levels cannot be stated in any one view. The concrete
     example is "materializing a child unit inside a cloned home must not write
     through the clone's own in-home links": both halves are covered
     independently (unit-level PRESERVE_LINK, home-level
@@ -263,6 +275,22 @@ justification:
   handed_over:
     invariants: [EveryOwnedSurfaceIsReanchoredBeforeAHomeIsHandedOver, AnInFlightCloneIsNeverHandedOver, NoHandedOverHomeNamesAnotherHome]
     effects: []
+  # --- three-tier reconciliation --------------------------------------------
+  sync_body:
+    invariants: [NoHomeIsTornDownWhileItHoldsUniqueWork, EveryDivergenceFromARecordIsAnEditMadeInThatHome, NoWorktreeEditEverReachesTheRootHome]
+    effects: [home_unit_content]
+  sync_record:
+    invariants: [EveryDivergenceFromARecordIsAnEditMadeInThatHome]
+    effects: [materialization_record_written]
+  sync_history:
+    invariants: [AReconciliationOnlyWritesAgainstABaselineBothHomesPassedThrough, NoHomeIsTornDownWhileItHoldsUniqueWork]
+    effects: []
+  sync_unsound:
+    invariants: [AReconciliationOnlyWritesPathsTheDestinationDidNotMove, AReconciliationOnlyWritesAgainstABaselineBothHomesPassedThrough, AConflictedUnitIsNeverPartiallyWritten]
+    effects: []
+  sync_gone:
+    invariants: [NoHomeIsTornDownWhileItHoldsUniqueWork]
+    effects: []
 
 # The three witness variables at home granularity, and what each one is for.
 # A witness exists when the property it guards is NOT recoverable from the final
@@ -291,6 +319,40 @@ witnesses:
       comparing against a live re-read compares the source to itself and passes
       unconditionally, and recapturing on every clone lets a source corrupted by
       clone 1 be re-baselined as correct by clone 2.
+  sync_unsound:
+    guards:
+      - AReconciliationOnlyWritesPathsTheDestinationDidNotMove
+      - AReconciliationOnlyWritesAgainstABaselineBothHomesPassedThrough
+      - AConflictedUnitIsNeverPartiallyWritten
+    why: >
+      A reconciliation that overwrites a destination also REWRITES THAT
+      DESTINATION'S RECORD, so afterwards the home is perfectly coherent, its
+      report is perfectly truthful, and there is nothing left in the final state
+      that differs from a correct run. Entitlement to write is only observable
+      at the instant of the write. Same shape and same reason as home_writes.
+      The reasons are computed by the model from the pre-state, never reported
+      by the policy, so a reconciler that writes anyway logs that it was not
+      entitled to. Guarded by External_sync_guard_overwrite.cfg and
+      External_sync_guard_conflict.cfg.
+  sync_history:
+    guards: AReconciliationOnlyWritesAgainstABaselineBothHomesPassedThrough
+    why: >
+      Monotone: every <<home, path, content>> that has ever been on disk at that
+      location, and nothing may remove a triple. It answers the one question a
+      merge base has to answer and that no report and no final state can --
+      whether the SOURCE ever passed through the state being called the common
+      ancestor -- and it survives the overwrite that destroys the bytes it is a
+      record of. Also the thing that made NoHomeIsTornDownWhileItHoldsUniqueWork
+      statable at all; see validation.negative_result_sync.
+  sync_gone:
+    guards: NoHomeIsTornDownWhileItHoldsUniqueWork
+    why: >
+      A teardown destroys the work and the evidence of the work in the SAME
+      step, so the evidence has to be taken before the step. Comparing against
+      the home afterwards compares against nothing, and that is precisely why
+      the failure this slice exists for is completely silent: `rm -rf` succeeds
+      identically whether the directory held work or not. Guarded by
+      External_sync_guard_teardown.cfg.
 
 source_model:
   program_model_manifest: ../program_model/spec_manifest.yaml
@@ -303,6 +365,9 @@ source_model:
 
 implementation_sources:
   ChildHomeMaterializer: src/main/java/dev/skillmanager/bindings/ChildHomeMaterializer.java
+  HomeSync: src/main/java/dev/skillmanager/store/HomeSync.java
+  HomeCloseOut: src/main/java/dev/skillmanager/store/HomeCloseOut.java
+  HomeLock: src/main/java/dev/skillmanager/store/HomeLock.java
   ProjectChildHomeScaffolder: src/main/java/dev/skillmanager/project/ProjectChildHomeScaffolder.java
   ChildHomeHarnessInstaller: src/main/java/dev/skillmanager/bindings/ChildHomeHarnessInstaller.java
   MaterializationMode: src/main/java/dev/skillmanager/bindings/MaterializationMode.java
@@ -353,6 +418,19 @@ ports:
       place_untracked_child_unit:
         command: PlaceUntrackedChildUnit
         result: MaterializationOutcome
+      edit_unit_in_home:
+        command: EditUnitInHomeTier
+        result: HomeSyncResult
+  SkillManagerCliHomeSyncPort:
+    role: adapter
+    surface: HomeSync / HomeCloseOut
+    methods:
+      home_sync:
+        command: ReconcileHomeTiers
+        result: HomeSyncReport
+      home_close_out:
+        command: TearDownWorktreeHome
+        result: HomeCloseOutVerdict
 
 # Effect ports are NOT declared yet. effectful_onboarding.md makes the
 # Internal/External split a hard prerequisite for the effect-provider work, and
@@ -399,6 +477,24 @@ validation:
       distinct_states: 105
       depth: 13
       evidence: ../results/chm-home-isolation-tlc.txt
+    desired_sync_tiers:
+      command: bash specs/desired_program_model/run_tlc.sh specs/desired_program_model/External.tla specs/desired_program_model/External_sync.cfg
+      expect: no invariant violations
+      status: passed
+      states_generated: 1841
+      distinct_states: 180
+      depth: 8
+      axis: "SyncTiers = {root, project, worktree}, SyncPaths = {p1}"
+      evidence: ../results/chm-home-sync-tlc.txt
+    desired_sync_merge:
+      command: bash specs/desired_program_model/run_tlc.sh specs/desired_program_model/External.tla specs/desired_program_model/External_sync_merge.cfg
+      expect: no invariant violations
+      status: passed
+      states_generated: 1153
+      distinct_states: 283
+      depth: 14
+      axis: "SyncTiers = {project, worktree}, SyncPaths = {p1, p2}"
+      evidence: ../results/chm-home-sync-tlc.txt
     carried_forward_monolith:
       command: bash specs/desired_program_model/run_tlc.sh specs/desired_program_model/SkillManager.tla specs/desired_program_model/MC_program_promotion.cfg
       expect: no invariant violations
@@ -421,12 +517,59 @@ validation:
         has a completed whole-model TLC number for it. Primary input for
         ticket_plan.yaml phase MIG.
       evidence: ../results/chm-monolith-tlc.txt
+  # ------------------------------------------------------------------------
+  # THE DECOMPOSITION, recorded because it was a discovery and not a tidy-up.
+  decomposition:
+    slice: three-tier reconciliation (External SyncSpec)
+    what_happened: >
+      The slice was first authored as ONE spec at full width -- three home
+      tiers, two paths, and a per-write log carrying the destination home and
+      three booleans. It did not finish: 574,209 distinct states at the 120s
+      tlc_seconds budget with 223,650 still queued, 11x over
+      budgets.max_distinct_states 50000 and still climbing.
+    what_was_not_done: >
+      The timeout was not raised. A model that needs more than the budget is
+      telling you it is checking something it does not need to check.
+    step_1:
+      change: >
+        The write log became <<path, reason>> pairs instead of one tuple per
+        write carrying the destination and three booleans. Every invariant that
+        reads it reads the same information; the destination component was
+        never read by anything. The reporting variable sync_pass went with it,
+        along with the reporting invariant it carried, which was the weakest
+        thing in the set -- EveryDivergenceFromARecordIsAnEditMadeInThatHome
+        makes the same negative-result point more sharply and costs nothing.
+      result: 456,874 distinct at the budget. Not enough.
+    step_2:
+      change: >
+        The slice was split along its two independent axes, expressed as
+        CONSTANTS so a config picks one and pins the other -- SyncTiers and
+        SyncPaths. Three tiers is what the provenance, merge-base and close-out
+        properties need: every one of them turns on a destination whose content
+        came from a home that is NOT the one now pushing, which two homes
+        cannot express. Two paths is what the merge algebra needs: the
+        difference between "each side moved a different file" and "both moved
+        the same file", and the only shape in which a reconciliation can write
+        SOME of a unit. No invariant relates a tier question to a path
+        question, so checking them together was multiplying two state spaces to
+        check nothing new.
+      result: 180 and 283 distinct states, under a second each.
+    cost: >
+      A property needing three tiers AND two files at once cannot be stated.
+      None of the four does. The one candidate -- "a reconciliation from a
+      third home partially writes a unit" -- is the composition of two
+      properties that are each checked on their own axis, and it is recorded
+      here rather than left implicit for the same reason the unit/home split
+      records its own gap.
+    evidence: ../results/chm-home-sync-tlc.txt
+
   regression_configs:
     purpose: >
-      Expected-violation configs. Each models a real behavior skill-manager has
-      or had, and each must produce a TLC counterexample. A clean run is a
-      failure of the invariant, not a pass: it means the desired-state model
-      stopped being able to see that regression.
+      Expected-violation configs. Each models a real behavior skill-manager has,
+      had, or would have under a plausible alternative, and each must produce a
+      TLC counterexample. A clean run is a failure of the invariant, not a pass:
+      it means the desired-state model stopped being able to see that
+      regression. Twenty as of 2026-07-27.
     External_regression_overwrite.cfg:
       models: the pre-epic refresh policy that silently deleted an agent's edits
       expect_violation: AgentEditedChildUnitsAreNeverDestroyed
@@ -535,6 +678,151 @@ validation:
         TypeOK + the target only. NoHandedOverHomeNamesAnotherHome is violated in
         the same state and would mask the gate; it is covered by the External
         leak configs.
+    # ------------------------------------------------ three-tier sync level
+    # Seven more, and two of them model CODE THAT IS IN THE TREE TODAY rather
+    # than code that was removed. Every one is narrowed to TypeOK plus its
+    # declared target, so a defect at depth 2 cannot mask the behavioral
+    # consequence the config exists to show.
+    External_regression_syncoverwrite.cfg:
+      models: a reconciler that treats the destination home as disposable and copies the source over it
+      expect_violation: AReconciliationOnlyWritesPathsTheDestinationDidNotMove
+      status: violated_as_expected
+      trace_depth: 3
+      axis: merge
+    External_regression_prefersource.cfg:
+      models: '"the source is newer, so it wins" -- every path the source moved is taken, so a path both sides moved is resolved silently instead of reported'
+      expect_violation: AReconciliationOnlyWritesPathsTheDestinationDidNotMove
+      status: violated_as_expected
+      trace_depth: 4
+      axis: merge
+    External_regression_partialconflict.cfg:
+      models: a conflicted unit that helpfully writes the paths which DID merge
+      expect_violation: AConflictedUnitIsNeverPartiallyWritten
+      status: violated_as_expected
+      trace_depth: 5
+      axis: merge
+      note: >
+        This one destroys nothing -- every path it writes is one the destination
+        had not moved -- so the loss invariants are satisfied at every step. It
+        is the reason conflict atomicity is a separate invariant and not a
+        corollary. See External_sync_guard_conflict.cfg.
+    External_regression_ungatedcloseout.cfg:
+      models: the pre-epic teardown -- the worktree home goes when the worktree goes, with no close-out gate
+      expect_violation: NoHomeIsTornDownWhileItHoldsUniqueWork
+      status: violated_as_expected
+      trace_depth: 3
+      axis: tiers
+    External_regression_nomergekind.cfg:
+      models: skill-manager before commit 7468b4f, with no reconcileKind at all
+      expect_violation: AReconciliationOnlyWritesAgainstABaselineBothHomesPassedThrough
+      status: violated_as_expected
+      trace_depth: 4
+      axis: tiers
+    External_regression_ffprovenance.cfg:
+      models: "TODAY'S CODE. reconcileKind protects a merge result but not a fast-forward, so a project home holding a torn-down worktree's only copy of an edit is overwritten by the next sync from the root."
+      expect_violation: AReconciliationOnlyWritesAgainstABaselineBothHomesPassedThrough
+      status: violated_as_expected
+      trace_depth: 4
+      axis: tiers
+      defect: CHM-9
+      reproduced_against_production: true
+    External_regression_mergebase.cfg:
+      models: "TODAY'S CODE. ChildHomeMaterializer.mergeBase prefers the destination's record; after a merge that record is NEWER than the true common ancestor, so the next reconciliation reads the source as the only side that moved."
+      expect_violation: AReconciliationOnlyWritesAgainstABaselineBothHomesPassedThrough
+      status: violated_as_expected
+      trace_depth: 4
+      axis: tiers
+      defect: CHM-10
+      reproduced_against_production: true
+      note: >
+        The model reaches it through three tiers because its one-token-per-home
+        abstraction cannot express one home editing one path twice. The unit
+        test reaches the SAME root cause in two homes with one repeated source
+        change (HomeSyncMergeTest, "DEFECT PIN CHM-10"). Two routes, one
+        mergeBase.
+
+  guard_configs:
+    purpose: >
+      Configs that must keep returning "No error has been found" WHILE MODELLING
+      A DEFECT. Each one names an invariant that is witness-dependent and shows
+      what is left when the witness is taken away: the entire reachable state
+      space explored, nothing found, the work gone. They are the reason the four
+      sync invariants are stated where they are, and a guard that starts failing
+      means an invariant has been strengthened into something else and the
+      record no longer says what it says.
+    External_sync_guard_overwrite.cfg:
+      policy: HomeSyncPolicy = "OVERWRITE_DESTINATION"
+      guards: AReconciliationOnlyWritesPathsTheDestinationDidNotMove
+      invariants_checked: [TypeOK, EveryDivergenceFromARecordIsAnEditMadeInThatHome]
+      status: passed
+      states_generated: 9545
+      distinct_states: 2357
+      depth: 14
+      why: >
+        A reconciliation that overwrites a destination rewrites that
+        destination's record in the same step. Afterwards the home is perfectly
+        coherent about content nobody chose, and there is nothing in the final
+        state that differs from a correct run. This is tla-spec-dev issue #127
+        at home-pair granularity, and in a sharper form: the invariant that goes
+        vacuous here is not even a report, it is a filesystem-consistency check.
+    External_sync_guard_teardown.cfg:
+      policy: CloseOutGate = "DISCARD_UNCONDITIONALLY"
+      guards: NoHomeIsTornDownWhileItHoldsUniqueWork
+      invariants_checked: every sync invariant except the one that reads sync_gone
+      status: passed
+      states_generated: 2133
+      distinct_states: 232
+      depth: 8
+      why: >
+        The teardown writes nothing, moves nothing and reports nothing, so every
+        write-log invariant is satisfied and every coherence check passes -- on
+        a home that no longer exists to be incoherent. Only a snapshot taken
+        before the directory was removed has anything left to compare against.
+    External_sync_guard_conflict.cfg:
+      policy: ConflictHandling = "WRITE_THE_CLEAN_PATHS"
+      guards: AConflictedUnitIsNeverPartiallyWritten
+      invariants_checked: every sync invariant except the one that reads the UnitWasConflicted reason
+      status: passed
+      states_generated: 2123
+      distinct_states: 539
+      depth: 14
+      why: >
+        A partial write takes only paths the destination had NOT moved, so it
+        destroys no edit and the loss invariants hold at every step. Conflict
+        atomicity is a claim about coherence, not about loss, and no
+        loss-shaped invariant can stand in for it.
+    External_sync_guard_ffprovenance.cfg:
+      policy: ReconcileProvenance = "MERGE_KIND_ONLY"   # today's code
+      guards: AReconciliationOnlyWritesAgainstABaselineBothHomesPassedThrough
+      invariants_checked: every sync invariant except the merge-base one
+      status: passed
+      states_generated: 5209
+      distinct_states: 510
+      depth: 10
+      why: >
+        The finding, not just the guard. "The destination had not moved this
+        path" is TRUE for every write CHM-9 makes -- the project home really had
+        not moved anything, it was a pristine copy. What it was a pristine copy
+        OF is the only thing that separates safe from destructive here, and no
+        invariant about the destination alone can see it. That is why the second
+        invariant exists and why it is stated over sync_history.
+
+  reachability_configs:
+    purpose: >
+      Round-trip is not a safety property, so it cannot be stated as one. It is
+      checked as its negation: a config whose counterexample IS the deliverable.
+    External_sync_roundtrip.cfg:
+      invariant: NoWorktreeEditEverReachesTheRootHome
+      expect: counterexample
+      status: violated_as_expected
+      trace_depth: 3
+      trace: EditUnitInHomeTier(worktree, p1) -> ReconcileHomeTiers(worktree, project) -> ReconcileHomeTiers(project, root)
+      why: >
+        Every other config in this directory checks that the mechanism does not
+        destroy anything. A mechanism that moves nothing at all satisfies every
+        one of them -- over-holding-back is safe and worthless -- and this is
+        the only check here that would notice. If it ever stops producing a
+        counterexample the return path has ceased to exist.
 
   # ------------------------------------------------------------------------
   # THE NEGATIVE RESULT, restated at home granularity and re-measured.
@@ -573,6 +861,54 @@ validation:
       invariant has been strengthened into something else and this record no
       longer says what it says.
     evidence: ../results/chm-home-isolation-tlc.txt
+  # ------------------------------------------------------------------------
+  # THE NEGATIVE RESULT, restated for home-to-home reconciliation, and in a
+  # stronger form than the two before it.
+  #
+  # The unit-level version showed a REPORT cannot catch silent destruction. The
+  # home-level version showed the same at home granularity. This one shows that
+  # a FILESYSTEM CONSISTENCY CHECK cannot either -- which is worse, because a
+  # consistency check feels like it is looking at the thing itself.
+  negative_result_sync:
+    property: a coherent home is not an intact one
+    config: External_sync_guard_overwrite.cfg
+    policy: HomeSyncPolicy = "OVERWRITE_DESTINATION"
+    invariants_checked: [TypeOK, EveryDivergenceFromARecordIsAnEditMadeInThatHome]
+    result: >
+      "Model checking completed. No error has been found." 9545 states
+      generated, 2357 distinct, 0 left on queue, depth 14 -- the entire
+      reachable state space. Every reconciliation rewrites the destination's
+      materialization record over the tree it just wrote, so after destroying an
+      agent's work the destination agrees with its own record exactly, at every
+      path, and nothing in the final state distinguishes it from a correct run.
+    contrast:
+      config: External_regression_syncoverwrite.cfg
+      invariants_checked: [TypeOK, AReconciliationOnlyWritesPathsTheDestinationDidNotMove]
+      result: >
+        "Error: Invariant AReconciliationOnlyWritesPathsTheDestinationDidNotMove
+        is violated." 14 states generated, depth 3. The only difference between
+        the two runs is an invariant that reads the sync_unsound write log --
+        the record that the write was not entitled to happen.
+    second_finding: >
+      A second, independent instance of the same lesson was found while writing
+      this slice, and it is the more useful one because it caught a REAL defect
+      rather than a modelled policy. Under today's ReconcileProvenance rule
+      (External_sync_guard_ffprovenance.cfg), the write log's own
+      "the destination had not moved this path" test is TRUE for every write the
+      defect makes: the project home genuinely had not moved anything. A witness
+      can be perfectly correct and still blind, and the fix was not a better
+      witness of the same kind but a witness of a DIFFERENT question --
+      sync_history, "did the source ever pass through this state" -- which is a
+      fact about the other home entirely.
+    keep_all_four: >
+      External_regression_rewritecontent_reportonly.cfg,
+      External_sync_guard_overwrite.cfg, External_sync_guard_teardown.cfg and
+      External_sync_guard_conflict.cfg must all keep returning "No error has
+      been found" while modelling a regression. Any of them starting to produce
+      a violation means the invariants it checks have been strengthened into
+      something else and these records no longer say what they say.
+    evidence: ../results/chm-home-sync-tlc.txt
+
   complexity:
     external:
       command: tla-spec-dev --spec-root specs analyze complexity specs/desired_program_model/External.tla specs/desired_program_model/External.cfg --manifest specs/desired_program_model/spec_manifest.yaml --tlc-report specs/results/chm-external-tlc.txt
@@ -591,6 +927,39 @@ validation:
       bound: 2
       warnings: "C1 has 21 variables, C2 has 16 variables and 9 actions; 36 of 37 variables resolve as unconstrained"
       evidence: ../results/chm-monolith-complexity.txt
+  unit_tests:
+    command: "HOME=<sandbox> jbang -Duser.home=<sandbox> RunTests.java"
+    baseline: "709 passed, 0 failed"
+    after: "723 passed, 0 failed"
+    new_suite: src/test/java/dev/skillmanager/store/HomeSyncMergeTest.java
+    new_cases: 14
+    covers: >
+      What a Test Graph node cannot reach cheaply: the merge algebra decided
+      path by path with absence as a value (added / deleted on each side, and
+      delete-versus-edit), conflict atomicity with a cleanly-mergeable path
+      present alongside the conflict, the reconcileKind protection against a
+      second source change, record-absent and unknown-mode conservatism, the
+      absent-per-file-baseline refusal, HomeLock placement / re-entrancy /
+      release-on-failure / per-home independence, and the close-out gate
+      followed by an ACTUAL teardown.
+    mutation_proof:
+      mutations: 5
+      killed: 5
+      floor: budgets.kill_rate_floor 0.8
+      note: >
+        Every kill is on a filesystem fact -- bytes, a file's existence, or a
+        directory listing -- never on an exit code or a status enum, and two
+        assertions were reordered to put the bytes first after a first pass
+        killed on the status. Every mutation was reverted and verified with
+        `shasum -a 256 -c`.
+      evidence: ../results/chm-home-sync-mutations.txt
+    observed_flakiness: >
+      Two unrelated cases failed once each across six full runs and passed on
+      every other run, including the pre-change baseline: three cases in
+      ProjectTrunkSyncTest (git publish/push) and one in HomeSyncTest
+      ("close-out refuses while the worktree holds work"). Not reproduced, not
+      diagnosed, and recorded rather than explained away. Another agent was
+      running test_graph against this checkout throughout.
   spec_unit:
     status: not_run
     blocked_on: case_adapters.toml mappings for the new actions (ticket CHM-4)
@@ -672,6 +1041,13 @@ validation:
         OVERWRITE_LOCAL_CHANGES, silent hold-back, prune-ignores-local-changes,
         raw source digest, DELETE_THEN_WRITE, and a displaced tree parked beside
         the unit.
+    home_sync_coverage: >
+      NONE. `home sync` and `home close-out` have no Test Graph node, so they
+      have no out-of-process coverage at all: nothing exercises their argument
+      parsing, exit codes, or --json shape. The JVM suite drives the classes
+      in-process. Tracked as CHM-11; recorded here because an action missing
+      from testgraph_bindings.yml and an action with no coverage read
+      identically to whoever opens that file, and only one of them is true.
     affected_graphs:
       - home-clone
       - project-child-home

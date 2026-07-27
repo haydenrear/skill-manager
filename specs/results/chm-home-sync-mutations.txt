@@ -1,0 +1,96 @@
+chm-home-sync-mutations.txt -- mutation proof for the home-sync unit assertions
+Recorded 2026-07-27. Every mutation was applied to production source, the whole
+suite was run, the named test was observed to fail ON A FILESYSTEM FACT, the
+file was restored from a pristine copy and verified with `shasum -a 256 -c`.
+
+Pristine digests (verified OK after every mutation):
+  edcd9bbee9422309d96f7a8db68abd03091235e917d3052ebb9af5a8be3b10d9  src/main/java/dev/skillmanager/bindings/ChildHomeMaterializer.java
+  20a2017426fe0817a4a335394338e1cd5510d898d6511d56b341ac517c53cf0f  src/main/java/dev/skillmanager/store/HomeLock.java
+
+Baseline: 709 passed / 0 failed. After: 722 passed / 0 failed (13 new cases).
+
+-------------------------------------------------------------------------------
+M1  CONFLICT ATOMICITY -- ChildHomeMaterializer.reconcile
+    The conflicted branch writes the paths that DID merge before returning
+    CONFLICTED (i.e. ConflictHandling = "WRITE_THE_CLEAN_PATHS"):
+
+        if (!plan.conflicts().isEmpty()) {
+      +     if (apply && !plan.take().isEmpty()) {
+      +         List<ViewEntry> mergedM = mergedView(view, dest, plan.take());
+      +         Path stagedM = stage(mergedM, name, kind);
+      +         try { Fingerprint sp = fingerprint(stagedM); swapIn(stagedM, dest);
+      +               writeCopyRecord(name, kind, source, sp, src.digest(),
+      +                               MaterializationRecord.MERGED); }
+      +         finally { if (Files.exists(stagedM, LinkOption.NOFOLLOW_LINKS))
+      +                       Fs.deleteRecursive(stagedM); }
+      +     }
+            return new UnitSync(name, kind, SyncStatus.CONFLICTED, ...);
+
+    KILLS  HomeSyncMergeTest
+           "a conflict anywhere in a unit suppresses the paths that would have merged"
+           on  "the cleanly-mergeable path was NOT written: expected <base> but was ..."
+    Note   this mutation destroys NOTHING -- every path it writes is one the
+           destination never moved -- so the loss invariants stay satisfied. It
+           is caught on the bytes of an unrelated file, which is the whole
+           argument for stating conflict atomicity separately.
+
+-------------------------------------------------------------------------------
+M2  NO BASELINE, NO ASSUMPTION -- ChildHomeMaterializer.reconcile
+    An unrecorded destination is treated as disposable:
+
+      - boolean destUntouched = baseline != null && baseline.equals(dst.digest());
+      - if (destUntouched && src.digest().equals(record.sourceDigest())) {
+      + boolean destUntouched = baseline == null || baseline.equals(dst.digest());
+      + if (destUntouched && record != null && record.sourceDigest() != null
+      +         && src.digest().equals(record.sourceDigest())) {
+      ...
+      - if (destUntouched && !record.isMergeResult()) {
+      + if (destUntouched && (record == null || !record.isMergeResult())) {
+
+    KILLS  HomeSyncMergeTest
+           "a destination unit with no materialization record is never overwritten"
+           on  "the untracked content is still there: expected <somebody copied this in>"
+           "a record written by a newer skill-manager reads as no baseline, not as a crash"
+           on  "the tree is left exactly as it was: expected <agent work>"
+       and HomeSyncTest
+           "a cloned home records the baseline that lets its edits merge back"
+
+-------------------------------------------------------------------------------
+M3  LOCK PLACEMENT -- HomeLock.file
+      - return homeRoot.resolve(ChildHomeMaterializer.RECORDS_DIR).resolve(FILENAME);
+      + return homeRoot.resolve(FILENAME);
+
+    KILLS  HomeSyncMergeTest
+           "the home lock lives where nothing that enumerates a home will find it"
+           on  "taking the lock puts no lock file at the home root" -- observed by
+               listing the directory, not by asking HomeLock where it put it
+       and HomeSyncTest "--dry-run reports the whole reconciliation and writes nothing"
+           on  the fresh-home listing: expected <[home]> but was <[.home.lock]>
+
+-------------------------------------------------------------------------------
+M4  LOCK RE-ENTRANCY -- HomeLock.acquire
+      - if (jvmLock.getHoldCount() > 1) return new HomeLock(jvmLock, null, null);
+      + // MUTATION: nested acquisition asks the OS for the lock a second time
+
+    KILLS  HomeSyncMergeTest
+           "the home lock is re-entrant on one thread and exclusive across threads"
+           on  the nested acquire timing out against its own JVM's file lock:
+               "inner: <home> is locked by another skill-manager process ... and
+                did not free up within 1000ms"
+    Note   FileLock belongs to the JVM, not the thread. Without this branch any
+           lock-holding operation that calls another one deadlocks against
+           itself, and the message blames a peer process that does not exist.
+
+-------------------------------------------------------------------------------
+M5  ABSENCE IS A VALUE -- ChildHomeMaterializer.mergedView
+      - if (replacement != null) out.add(replacement);
+      + out.add(replacement != null ? replacement : entry);
+
+    KILLS  HomeSyncMergeTest "absence is a value in the merge, not a case of its own"
+           on  "a file deleted upstream is deleted here too" -- the file is still
+               on disk in the destination.
+
+-------------------------------------------------------------------------------
+No mutation in this set killed nothing. Restoration verified after each:
+  src/main/java/dev/skillmanager/bindings/ChildHomeMaterializer.java: OK
+  src/main/java/dev/skillmanager/store/HomeLock.java: OK

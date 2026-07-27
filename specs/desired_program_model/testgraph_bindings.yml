@@ -1,10 +1,17 @@
 # External.tla -> Test Graph bindings for the child-home materialization slice.
 #
 # STATUS: PARTIAL AND DELIBERATELY LOUD. Ticket CHM-8 owns this file. What is
-# recorded here is the half that is real today: every External action now has a
-# concrete Test Graph node and named assertions that drive it against the real
-# `skill-manager` CLI (graph `project-child-home`, plus the strengthened
-# `project-resolve` / `harness-smoke` nodes).
+# recorded here is the half that is real today: the six unit-level and
+# home-level External actions each have a concrete Test Graph node and named
+# assertions that drive them against the real `skill-manager` CLI (graph
+# `project-child-home`, plus the strengthened `project-resolve` /
+# `harness-smoke` nodes).
+#
+# The three three-tier actions added with the `home sync` slice have NO node.
+# They are listed anyway, with `test_graph: status: absent` and the named JVM
+# cases that do cover them, because an action missing from this file and an
+# action with no coverage read identically to whoever opens it and only one of
+# them is true. See `blocked.decision_2026_07_27` at the end.
 #
 # What is NOT here, and why, rather than a plausible-looking mapping that would
 # fail at the first run:
@@ -199,16 +206,147 @@ actions:
       content as a side effect, hiding the freshness bug this action exists to
       expose (External_regression_rawdigest).
 
+  # -------------------------------------------------------------------------
+  # The three-tier reconciliation actions, added with the `home sync` /
+  # `home close-out` slice of External.tla (SyncSpec).
+  #
+  # These have NO `test_graph` key, and that absence is the honest record
+  # rather than an oversight. The two halves of a binding are the External
+  # action and the out-of-process node that drives it; the node half does not
+  # exist for any of these three, and test_graph node authoring for this epic
+  # is owned by a separate agent. Inventing a graph and node name here would
+  # make a missing deliverable look like a delivered one, which is the same
+  # failure mode as naming adapter classes that are not on disk.
+  #
+  # What DOES exercise them today is named per action under `unit_tests`. That
+  # is a weaker binding than a Test Graph node in exactly one way that matters
+  # and should be said plainly: these run IN-PROCESS against the Java classes,
+  # so they cannot catch anything that only goes wrong across the CLI boundary
+  # — argument parsing, exit codes, JSON shape, the launcher's environment.
+  # `home sync --json` and `home close-out --json` have no out-of-process
+  # coverage at all. That is CHM-11.
+
+  ReconcileHomeTiers:
+    view: external
+    layer: external
+    channel: cli
+    controllability: e2e_direct
+    port: SkillManagerCli.home_sync
+    command: skill-manager home sync --from <home> --to <home> [--merge] [--dry-run] [--json]
+    test_graph:
+      status: absent
+      owner: test_graph node authoring (separate agent)
+      ticket: CHM-11
+    unit_tests:
+      suite: src/test/java/dev/skillmanager/store/HomeSyncMergeTest.java
+      cases:
+        - "absence is a value in the merge, not a case of its own"
+        - "a file deleted on one side and edited on the other is a conflict"
+        - "a conflict anywhere in a unit suppresses the paths that would have merged"   # AConflictedUnitIsNeverPartiallyWritten
+        - "a merge result survives a second, unrelated source change"                    # AReconciliationOnlyWritesPathsTheDestinationDidNotMove
+        - "a plain fast-forward records which home the bytes came from"                  # CHM-9 characterization
+        - "a destination unit with no materialization record is never overwritten"
+        - "a record written by a newer skill-manager reads as no baseline, not as a crash"
+        - "a merge with no per-file baseline anywhere conflicts rather than guessing"
+        - "DEFECT PIN CHM-10: a second --merge reverts the work the first one kept"
+      also_covered_by:
+        suite: src/test/java/dev/skillmanager/store/HomeSyncTest.java
+        cases:
+          - "a clean fast-forward copies the source unit into the destination"
+          - "a locally modified destination unit is held back with its bytes intact"
+          - "--merge folds disjoint edits from both homes together"
+          - "a file changed on both sides is reported as a conflict and nothing is written"
+          - "--dry-run reports the whole reconciliation and writes nothing"
+          - "a sync that fails part way leaves the destination unit exactly as it was"
+          - "two concurrent syncs into one home do not interleave"
+          - "a unit only the source has arrives; one only the destination has is reported"
+          - "a frozen destination refuses and a frozen source is only read"
+          - "a cloned home records the baseline that lets its edits merge back"
+
+  TearDownWorktreeHome:
+    view: external
+    layer: external
+    channel: cli
+    controllability: e2e_direct
+    port: SkillManagerCli.home_close_out
+    command: skill-manager home close-out --home <worktree home> --into <project home> [--json]
+    test_graph:
+      status: absent
+      owner: test_graph node authoring (separate agent)
+      ticket: CHM-11
+    unit_tests:
+      suite: src/test/java/dev/skillmanager/store/HomeSyncTest.java
+      cases:
+        - "close-out refuses while the worktree holds work and passes once it is synced"  # NoHomeIsTornDownWhileItHoldsUniqueWork
+        - "close-out refuses a unit whose two sides conflict, and names it"
+      also_covered_by:
+        suite: src/test/java/dev/skillmanager/store/HomeSyncMergeTest.java
+        cases:
+          - "the work survives the teardown that close-out cleared"
+        note: >
+          Written for this slice because the two HomeSyncTest cases above assert
+          the VERDICT and stop there, and the proposition
+          NoHomeIsTornDownWhileItHoldsUniqueWork is about what happens after the
+          verdict is acted on. This case removes the worktree home and then
+          compares the project home's tree, by digest, against what the worktree
+          held at the moment the gate cleared it. A gate that returns the right
+          answer to a teardown that then loses the work is no gate at all, and
+          nothing here could previously tell those apart.
+
+  EditUnitInHomeTier:
+    view: external
+    layer: external
+    channel: fs
+    controllability: e2e_direct
+    port: AgentWorkspace.edit_unit_in_home
+    test_graph:
+      status: absent
+      owner: test_graph node authoring (separate agent)
+      ticket: CHM-11
+    note: >
+      An ordinary editor write inside whichever home SKILL_MANAGER_HOME names.
+      No skill-manager code runs, which is why it is driven directly by every
+      unit test above rather than through a port.
+
 # ---------------------------------------------------------------------------
 blocked:
   ticket: CHM-8
+  decision_2026_07_27: >
+    The gap was NOT closed for the sync slice, and the reasoning is recorded
+    here rather than left as an absence. Closing it means four Python classes
+    per action loaded by scripts/run_generated_case_adapters.py, and those
+    classes bind GENERATED CASES. `case_codegen.generation_status` is still
+    `planned`, so there are no cases; adapters written now would be classes
+    that nothing loads, validating nothing, while making
+    `adapter:`/`projector:`/`expected_projection:`/`assertion:` keys appear in
+    this file and turn a missing deliverable into a silent one. That is the
+    same failure the header already warns about, and adding three more actions
+    to it would have made it worse rather than better.
+
+    So the honest documentation was EXTENDED to cover the three new actions
+    instead: each carries the port and command it is bound to, the named
+    unit-test cases that exercise it today, and — for TearDownWorktreeHome —
+    the specific proposition that nothing currently checks. What is still
+    missing is unchanged and listed below.
+
+    On `production_package`: the External content rule forbids an External
+    adapter from importing the production package. For this program the rule is
+    unenforceable AND unnecessary in the same breath, because the unit under
+    test is a Java CLI driven out of process over the `cli` channel and the
+    filesystem: no Python adapter could import it if it wanted to. The
+    declaration is kept as documentation of what is under test. CHM-8 should
+    decide whether to widen the contract for non-Python programs or drop the
+    key for them.
   missing:
     - specs/desired_program_model/adapters.py (adapter / projector /
-      expected_projection / assertion classes for all six actions)
+      expected_projection / assertion classes for all nine actions)
     - specs/desired_program_model/tlc_projection.py
     - generated external case package (spec_manifest.yaml
       case_codegen.generation_status is `planned`, so no cases exist yet)
     - a decision on `production_package` for a non-Python program under test
+    - Test Graph nodes for ReconcileHomeTiers / TearDownWorktreeHome /
+      EditUnitInHomeTier, so `home sync` and `home close-out` get their first
+      out-of-process coverage (CHM-11)
   not_blocked:
-    - the Test Graph nodes themselves, which exist and pass; see
-      spec_manifest.yaml validation.graph
+    - the Test Graph nodes for the six unit-level and home-level actions, which
+      exist and pass; see spec_manifest.yaml validation.graph

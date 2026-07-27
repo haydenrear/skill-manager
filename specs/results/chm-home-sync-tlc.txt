@@ -1,0 +1,106 @@
+chm-home-sync-tlc.txt -- three-tier home reconciliation (home sync / home close-out)
+Recorded 2026-07-27. tlc2 2.19. Every run under the 120s tlc_seconds budget.
+
+==================== DECOMPOSITION, AND WHY ====================
+The sync slice was first authored as ONE spec at full width: three home tiers,
+two paths, and a per-write log carrying the destination home and three
+booleans. Measured:
+
+  three tiers x two paths, full write log
+    Progress(11)  2,393,751 generated / 312,704 distinct / 132,161 queued
+    Progress(12)  4,574,065 generated / 574,209 distinct / 223,650 queued
+    -> still climbing at 120s, 11x over budgets.max_distinct_states 50000.
+
+The timeout was NOT raised. Two changes, each of which removes states that no
+invariant relates:
+
+  1. The write log became <<path, reason>> pairs instead of one tuple per write
+     carrying the destination and three booleans. Same information for every
+     invariant that reads it; the destination component was never read.
+       -> Progress(17) 3,884,494 generated / 456,874 distinct. Not enough.
+
+  2. The slice was split along its two independent axes, as CONSTANTS so a
+     config picks one and pins the other:
+       SyncTiers  {root, project, worktree} | {project, worktree}
+       SyncPaths  {p1}                      | {p1, p2}
+     Three tiers is what the provenance / merge-base / close-out properties
+     need: each turns on a destination whose content came from a home that is
+     not the one now pushing, which two homes cannot express. Two paths is what
+     the merge algebra needs: the difference between "each side moved a
+     different file" and "both moved the same one", and the only way a
+     reconciliation can write SOME of a unit. No invariant relates a tier
+     question to a path question, so checking them together was multiplying two
+     state spaces to check nothing new.
+       -> 180 and 283 distinct states. 1s each.
+
+==================== SWEEP: NEW SYNC CONFIGS ====================
+External_sync.cfg                                    PASS                   2s  1841 states generated, 180 distinct states found  depth=8 traceStates=0
+External_sync_merge.cfg                              PASS                   1s  1153 states generated, 283 distinct states found  depth=14 traceStates=0
+External_regression_syncoverwrite.cfg                VIOLATED[AReconciliationOnlyWritesPathsTheDestinationDidNotMove] 1s  14 states generated, 10 distinct states found  depth=3 traceStates=3
+External_regression_prefersource.cfg                 VIOLATED[AReconciliationOnlyWritesPathsTheDestinationDidNotMove] 1s  47 states generated, 21 distinct states found  depth=4 traceStates=4
+External_regression_partialconflict.cfg              VIOLATED[AConflictedUnitIsNeverPartiallyWritten] 1s  118 states generated, 47 distinct states found  depth=5 traceStates=5
+External_regression_ungatedcloseout.cfg              VIOLATED[NoHomeIsTornDownWhileItHoldsUniqueWork] 1s  62 states generated, 17 distinct states found  depth=3 traceStates=3
+External_regression_ffprovenance.cfg                 VIOLATED[AReconciliationOnlyWritesAgainstABaselineBothHomesPassedThrough] 1s  100 states generated, 24 distinct states found  depth=4 traceStates=4
+External_regression_nomergekind.cfg                  VIOLATED[AReconciliationOnlyWritesAgainstABaselineBothHomesPassedThrough] 1s  100 states generated, 24 distinct states found  depth=4 traceStates=4
+External_regression_mergebase.cfg                    VIOLATED[AReconciliationOnlyWritesAgainstABaselineBothHomesPassedThrough] 1s  106 states generated, 26 distinct states found  depth=4 traceStates=4
+External_sync_guard_overwrite.cfg                    PASS                   1s  9545 states generated, 2357 distinct states found  depth=14 traceStates=0
+External_sync_guard_teardown.cfg                     PASS                   1s  2133 states generated, 232 distinct states found  depth=8 traceStates=0
+External_sync_guard_conflict.cfg                     PASS                   1s  2123 states generated, 539 distinct states found  depth=14 traceStates=0
+External_sync_guard_ffprovenance.cfg                 PASS                   1s  5209 states generated, 510 distinct states found  depth=10 traceStates=0
+External_sync_roundtrip.cfg                          VIOLATED[NoWorktreeEditEverReachesTheRootHome] 1s  51 states generated, 15 distinct states found  depth=3 traceStates=3
+
+==================== SWEEP: PRE-EXISTING CONFIGS (unchanged counts) ====================
+External.cfg                                         PASS                   1s  1302 states generated, 250 distinct states found  depth=9 traceStates=0
+External_home.cfg                                    PASS                   1s  2966 states generated, 706 distinct states found  depth=12 traceStates=0
+Internal.cfg                                         PASS                   1s  8306 states generated, 2065 distinct states found  depth=12 traceStates=0
+Internal_clone.cfg                                   PASS                   1s  303 states generated, 105 distinct states found  depth=13 traceStates=0
+External_regression_overwrite.cfg                    VIOLATED[AgentEditedChildUnitsAreNeverDestroyed] 1s  52 states generated, 35 distinct states found  depth=4 traceStates=4
+External_regression_symlink.cfg                      VIOLATED[ChildHomeWritesNeverReachTheParentStore] 1s  11 states generated, 9 distinct states found  depth=3 traceStates=3
+External_regression_rawdigest.cfg                    VIOLATED[UnmodifiedChildUnitsConvergeOnTheirSource] 1s  39 states generated, 27 distinct states found  depth=3 traceStates=3
+External_regression_absstate.cfg                     VIOLATED[AHomeIsAPureFunctionOfItsRoot] 1s  4 states generated, 4 distinct states found  depth=2 traceStates=2
+External_regression_verbatimstate.cfg                VIOLATED[SourceHomeIsByteIdenticalToItsCloneTimeSelf] 1s  8 states generated, 7 distinct states found  depth=3 traceStates=3
+External_regression_abslink.cfg                      VIOLATED[WritesThroughOneHomeReachNoOtherHome] 1s  7 states generated, 6 distinct states found  depth=3 traceStates=3
+External_regression_sharedtoolchain.cfg              VIOLATED[NoOwnedSurfaceNamesAnotherHome] 1s  2 states generated, 2 distinct states found  depth=2 traceStates=2
+External_regression_silentshims.cfg                  VIOLATED[EveryHomeMissingItsToolchainsSaysSo] 1s  2 states generated, 2 distinct states found  depth=2 traceStates=2
+External_regression_nopm.cfg                         VIOLATED[AHomeMissingItsToolchainsStillHasItsPackageManagers] 1s  2 states generated, 2 distinct states found  depth=2 traceStates=2
+External_regression_rewritecontent.cfg               VIOLATED[AuthoredContentIsNeverRewritten] 1s  2 states generated, 2 distinct states found  depth=2 traceStates=2
+External_regression_rewritecontent_reportonly.cfg    PASS                   1s  2966 states generated, 706 distinct states found  depth=12 traceStates=0
+Internal_regression_overwrite.cfg                    VIOLATED[AgentEditsSurviveMaterialization] 1s  255 states generated, 114 distinct states found  depth=4 traceStates=4
+Internal_regression_nonatomic.cfg                    VIOLATED[InFlightMaterializationLeavesTheChildUnitIntact] 1s  442 states generated, 202 distinct states found  depth=5 traceStates=5
+Internal_regression_partialclone.cfg                 VIOLATED[NoUnfinishedDestinationSurvivesAFailedClone] 1s  9 states generated, 9 distinct states found  depth=3 traceStates=3
+Internal_regression_unreanchored.cfg                 VIOLATED[EveryOwnedSurfaceIsReanchoredBeforeAHomeIsHandedOver] 1s  44 states generated, 24 distinct states found  depth=6 traceStates=6
+
+==================== THE ROUND TRIP, AS A COUNTEREXAMPLE ====================
+External_sync_roundtrip.cfg. NoWorktreeEditEverReachesTheRootHome is asserted
+so that TLC must refute it; the refutation IS worktree -> project -> root.
+
+State 1: <Initial predicate>
+/\ sync_body = [ root |-> [p1 |-> "installed"],
+State 2: <EditUnitInHomeTier line 722, col 3 to line 728, col 24 of module External>
+/\ sync_body = [ root |-> [p1 |-> "installed"],
+State 3: <ReconcileHomeTiers line 746, col 3 to line 782, col 24 of module External>
+/\ sync_body = [ root |-> [p1 |-> "worktree"],
+
+==================== CHM-9 TRACE (ReconcileProvenance = MERGE_KIND_ONLY) ====================
+State 1: <Initial predicate>
+/\ sync_unsound = {}
+/\ sync_gone = [body |-> [p1 |-> "installed"], torn_down |-> FALSE]
+State 2: <EditUnitInHomeTier line 722, col 3 to line 728, col 24 of module External>
+/\ sync_unsound = {}
+/\ sync_gone = [body |-> [p1 |-> "installed"], torn_down |-> FALSE]
+State 3: <ReconcileHomeTiers line 746, col 3 to line 782, col 24 of module External>
+/\ sync_unsound = {}
+/\ sync_gone = [body |-> [p1 |-> "installed"], torn_down |-> FALSE]
+State 4: <ReconcileHomeTiers line 746, col 3 to line 782, col 24 of module External>
+/\ sync_unsound = {<<"p1", "base_never_shared">>}
+/\ sync_gone = [body |-> [p1 |-> "installed"], torn_down |-> FALSE]
+
+==================== CHM-10 TRACE (MergeBasePolicy = DESTINATION_RECORD) ====================
+State 1: <Initial predicate>
+/\ sync_unsound = {}
+State 2: <EditUnitInHomeTier line 722, col 3 to line 728, col 24 of module External>
+/\ sync_unsound = {}
+State 3: <ReconcileHomeTiers line 746, col 3 to line 782, col 24 of module External>
+/\ sync_unsound = {}
+State 4: <ReconcileHomeTiers line 746, col 3 to line 782, col 24 of module External>
+/\ sync_unsound = {<<"p1", "base_never_shared">>}
