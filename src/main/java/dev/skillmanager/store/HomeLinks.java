@@ -39,10 +39,23 @@ public final class HomeLinks {
         Path absLink = link.toAbsolutePath().normalize();
         Path absTarget = target.toAbsolutePath().normalize();
         if (!paths.isInsideHome(absLink) || !paths.isInsideHome(absTarget)) return absTarget;
-        Path linkDir = absLink.getParent();
-        if (linkDir == null) return absTarget;
+        // Relativize INSIDE the home, not across absolute paths.
+        //
+        // The two can legitimately arrive in different spellings of the same
+        // location: the link dir as SKILL_MANAGER_HOME was given (/var/...)
+        // and the target as `uv` canonicalized it (/private/var/...).
+        // isInsideHome accepts both, so relativizing one against the other
+        // does not fail — it quietly returns a path with one `../` too few.
+        // That produced bin/cli/pycowsay -> ...../private/private/var/...,
+        // a dangling shim, and it was the last thing keeping `--all` red.
+        // Home-relative forms are spelling-independent, so this cannot recur.
+        Path relLink = paths.relativeToHome(absLink);
+        Path relTarget = paths.relativeToHome(absTarget);
+        if (relLink == null || relTarget == null) return absTarget;
+        Path relLinkDir = relLink.getParent();
+        if (relLinkDir == null) return relTarget;
         try {
-            return linkDir.relativize(absTarget);
+            return relLinkDir.relativize(relTarget);
         } catch (IllegalArgumentException e) {
             // Different roots (Windows drives) — nothing relative to say.
             return absTarget;

@@ -168,6 +168,24 @@ public final class HomePaths {
     }
 
     /**
+     * The part of {@code path} below this home, or null when it is outside.
+     *
+     * <p>Exposed because two paths in the same home can arrive in different
+     * spellings of the same location — {@code /var/...} as
+     * {@code SKILL_MANAGER_HOME} was given, and {@code /private/var/...} as
+     * {@code uv} canonicalized it — and {@link #isInsideHome} accepts both.
+     * Anything that then wants to relate two such paths to each other must
+     * compare them in this home-relative form, because relativizing across
+     * spellings silently produces a wrong answer rather than an error.
+     * {@code HomeLinks.storedTarget} learned that the hard way: it emitted a
+     * link whose {@code ../} count was one short, so the target resolved to
+     * {@code /private/private/var/...} and the shim dangled.
+     */
+    public Path relativeToHome(Path path) {
+        return relativize(path.toAbsolutePath().normalize());
+    }
+
+    /**
      * Everything after the token, or null when {@code stored} does not
      * start with it. An empty string means the value is exactly the home
      * root. A value like {@code $SKILL_MANAGER_HOMEX} is not a match —

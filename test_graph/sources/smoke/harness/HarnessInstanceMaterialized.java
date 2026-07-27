@@ -1,5 +1,6 @@
 ///usr/bin/env jbang "$0" "$@" ; exit $?
 //SOURCES ../../../sdk/java/src/main/java/com/hayden/testgraphsdk/sdk/*.java
+//SOURCES ../../lib/StoredPaths.java
 
 import com.hayden.testgraphsdk.sdk.Node;
 import com.hayden.testgraphsdk.sdk.NodeResult;
@@ -121,10 +122,10 @@ public class HarnessInstanceMaterialized {
             Path lock = sandboxStub.resolve(".harness-instance.json");
             boolean lockPresent = Files.isRegularFile(lock);
             String lockJson = lockPresent ? Files.readString(lock) : "";
-            boolean lockCarriesClaudePath = lockJson.contains(claudeConfigDir.toString());
-            boolean lockCarriesCodexPath = lockJson.contains(codexHome.toString());
-            boolean lockCarriesGeminiPath = lockJson.contains(geminiHome.toString());
-            boolean lockCarriesProjectPath = lockJson.contains(projectDir.toString());
+            boolean lockCarriesClaudePath = StoredPaths.records(lockJson, home, claudeConfigDir);
+            boolean lockCarriesCodexPath = StoredPaths.records(lockJson, home, codexHome);
+            boolean lockCarriesGeminiPath = StoredPaths.records(lockJson, home, geminiHome);
+            boolean lockCarriesProjectPath = StoredPaths.records(lockJson, home, projectDir);
 
             // Ledger sanity.
             Path docLedger = Path.of(home, "installed", "hello-doc-repo.projections.json");
@@ -192,4 +193,5 @@ public class HarnessInstanceMaterialized {
                     .publish("projectDir", projectDir.toString());
         });
     }
+
 }

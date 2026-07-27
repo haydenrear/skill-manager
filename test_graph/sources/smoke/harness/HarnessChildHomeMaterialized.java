@@ -1,5 +1,6 @@
 ///usr/bin/env jbang "$0" "$@" ; exit $?
 //SOURCES ../../../sdk/java/src/main/java/com/hayden/testgraphsdk/sdk/*.java
+//SOURCES ../../lib/StoredPaths.java
 
 import com.hayden.testgraphsdk.sdk.Node;
 import com.hayden.testgraphsdk.sdk.NodeResult;
@@ -163,10 +164,11 @@ public class HarnessChildHomeMaterialized {
             Path lock = Path.of(home, "harnesses", "instances", instanceId, ".harness-instance.json");
             boolean lockPresent = Files.isRegularFile(lock);
             String lockJson = lockPresent ? Files.readString(lock) : "";
-            boolean lockCarriesChildPaths = lockJson.contains(target.resolve(".claude").toString())
-                    && lockJson.contains(target.resolve(".codex").toString())
-                    && lockJson.contains(target.resolve(".gemini").toString())
-                    && lockJson.contains(target.toString());
+            boolean lockCarriesChildPaths =
+                    StoredPaths.records(lockJson, home, target.resolve(".claude"))
+                    && StoredPaths.records(lockJson, home, target.resolve(".codex"))
+                    && StoredPaths.records(lockJson, home, target.resolve(".gemini"))
+                    && StoredPaths.records(lockJson, home, target);
 
             Path childHomeRecord = Path.of(home, "child-homes", instanceId, "child-home.json");
             boolean childHomeRecordPresent = Files.isRegularFile(childHomeRecord);
@@ -177,8 +179,9 @@ public class HarnessChildHomeMaterialized {
 
             Path skillLedger = Path.of(home, "installed", "pip-cli-skill.projections.json");
             String skillLedgerJson = Files.isRegularFile(skillLedger) ? Files.readString(skillLedger) : "";
-            boolean parentLedgerTracksChild = skillLedgerJson.contains("\"harness:" + instanceId + ":pip-cli-skill\"")
-                    && skillLedgerJson.contains(target.toString());
+            boolean parentLedgerTracksChild =
+                    skillLedgerJson.contains("\"harness:" + instanceId + ":pip-cli-skill\"")
+                    && StoredPaths.records(skillLedgerJson, home, target);
 
             ProcessBuilder removePb = new ProcessBuilder(sm.toString(), "remove", "pip-cli-skill");
             removePb.environment().put("SKILL_MANAGER_HOME", home);

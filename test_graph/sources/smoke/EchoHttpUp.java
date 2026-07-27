@@ -1,6 +1,7 @@
 ///usr/bin/env jbang "$0" "$@" ; exit $?
 //SOURCES ../../sdk/java/src/main/java/com/hayden/testgraphsdk/sdk/*.java
 //SOURCES ../lib/Daemons.java
+//SOURCES ../lib/StaleProcCleanup.java
 
 import com.hayden.testgraphsdk.sdk.Node;
 import com.hayden.testgraphsdk.sdk.NodeResult;
@@ -46,6 +47,17 @@ public class EchoHttpUp {
                         "missing python or fixture: " + venvPy + " / " + fixture);
             }
 
+            // Reap fixtures leaked by an earlier run. servers.down kills this
+            // one via its pidfile, but a graph that fails before teardown
+            // skips servers.down entirely, and the pidfile lives under that
+            // run's random home — so the survivor can only be matched on its
+            // command line, exactly as registry.up and gateway.up do. Without
+            // this, every failed run strands another fixture holding a port.
+            StaleProcCleanup.killByCommandLineMatchAll(
+                    ctx, "echo-http-stale-cleanup",
+                    "downstream_mcp_server.py",
+                    "echo-http");
+
             Path tgDir = Path.of(home, "test-graph");
             Path pidFile = tgDir.resolve("echo-http.pid");
             Path logFile = tgDir.resolve("echo-http.log");
@@ -75,7 +87,7 @@ public class EchoHttpUp {
             return NodeResult.pass("echo.http.up")
                     .assertion("fixture_healthy", true)
                     .metric("port", port)
-                    .metric("pid", proc.pid())
+                    .metric("pid", fixturePid)
                     .publish("mcpUrl", baseUrl + "/mcp");
         });
     }
