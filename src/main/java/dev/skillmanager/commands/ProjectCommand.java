@@ -115,6 +115,13 @@ public final class ProjectCommand {
                 description = "Also materialize project [[libs]] checkouts under project libs/ and lock their git shas.")
         boolean resolveLibs;
 
+        @Option(names = "--repair-vendored",
+                description = "Re-point declared [[vendored]] paths at this project's own "
+                        + ".skill-manager home. Off by default: a vendored path is a tracked "
+                        + "symlink, so repairing one edits your working tree. Validation always "
+                        + "runs; only the writing is opt-in.")
+        boolean repairVendored;
+
         @Override
         public Integer call() throws Exception {
             SkillStore store = SkillStore.defaultStore();
@@ -129,13 +136,15 @@ public final class ProjectCommand {
             project = project.withProfile(profile);
             GatewayConfig gw = skipGateway ? null : GatewayConfig.resolve(store, null);
             ProjectDependencyResolver.Result result = new ProjectDependencyResolver(store, gw)
-                    .resolve(project, new ProjectDependencyResolver.Options(true, !skipGateway));
+                    .resolve(project, new ProjectDependencyResolver.Options(
+                            true, !skipGateway, java.util.Set.of(), repairVendored));
             ProjectLibResolver.Result libResult = resolveLibs
                     ? new ProjectLibResolver(store).resolve(project)
                     : null;
             if (json) {
                 System.out.println("""
-                        {"name":"%s","profile":"%s","installed":%d,"resolved":%d,"bindings":%d,"libs":%d,"heldBack":%s,"childHome":"%s","lock":"%s"}"""
+                        {"name":"%s","profile":"%s","installed":%d,"resolved":%d,"bindings":%d,"libs":%d,\
+                        "vendored":%d,"vendoredRepaired":%d,"vendoredProblems":%s,"heldBack":%s,"childHome":"%s","lock":"%s"}"""
                         .formatted(
                                 esc(result.registration().name()),
                                 esc(project.activeProfile() == null ? "" : project.activeProfile()),
@@ -143,6 +152,9 @@ public final class ProjectCommand {
                                 result.lock().resolvedUnits().size(),
                                 result.bindingIds().size(),
                                 libResult == null ? result.lock().libs().size() : libResult.libs().size(),
+                                result.vendored().entries().size(),
+                                result.vendored().repairs().size(),
+                                vendoredJson(result.vendored()),
                                 heldBackJson(result.childHome()),
                                 esc(result.childHome().layout().childSkillManagerHome().toString()),
                                 esc(result.registration().registrationDir()
@@ -155,6 +167,10 @@ public final class ProjectCommand {
                 Log.info("  resolved:  %d", result.lock().resolvedUnits().size());
                 Log.info("  bindings:  %d", result.bindingIds().size());
                 Log.info("  libs:      %d", libResult == null ? result.lock().libs().size() : libResult.libs().size());
+                Log.info("  vendored:  %d checked, %d repaired, %d finding(s)",
+                        result.vendored().entries().size(),
+                        result.vendored().repairs().size(),
+                        result.vendored().problems().size());
                 Log.info("  child:     %s", result.childHome().layout().childSkillManagerHome());
                 Log.info("  lock:      %s", result.registration().registrationDir()
                         .resolve(dev.skillmanager.project.SkillProjectLock.FILENAME));
@@ -229,6 +245,13 @@ public final class ProjectCommand {
                         + "that removes child-home content, so it is not the default.")
         boolean rebuild;
 
+        @Option(names = "--repair-vendored",
+                description = "Re-point declared [[vendored]] paths at this project's own "
+                        + ".skill-manager home. Off by default: a vendored path is a tracked "
+                        + "symlink, so repairing one edits your working tree. Validation always "
+                        + "runs; only the writing is opt-in.")
+        boolean repairVendored;
+
         @Option(names = "--json", description = "Emit machine-readable JSON.")
         boolean json;
 
@@ -254,14 +277,15 @@ public final class ProjectCommand {
             ProjectSyncUseCase.Result result = new ProjectSyncUseCase(store, gw)
                     .sync(project,
                             new ProjectDependencyResolver.Options(true, !skipGateway,
-                                    new LinkedHashSet<>(checkout)),
+                                    new LinkedHashSet<>(checkout), repairVendored),
                             new ProjectSyncUseCase.Options(!noPull, rebuild,
                                     new UnitTrunkPull.Options(merge, ref, gitLatest, from)));
             if (json) {
                 System.out.println("""
                         {"name":"%s","profile":"%s","mode":"%s","pulled":%d,"pullHeldBack":%s,\
                         "pullProblems":%s,"bindingsRemoved":%d,"clearedPaths":%d,"installed":%d,\
-                        "resolved":%d,"heldBack":%s,"childHome":"%s"}"""
+                        "resolved":%d,"vendored":%d,"vendoredRepaired":%d,"vendoredProblems":%s,\
+                        "heldBack":%s,"childHome":"%s"}"""
                         .formatted(
                                 esc(result.resolved().registration().name()),
                                 esc(project.activeProfile() == null ? "" : project.activeProfile()),
@@ -273,6 +297,9 @@ public final class ProjectCommand {
                                 result.clearedPaths().size(),
                                 result.resolved().installed().size(),
                                 result.resolved().lock().resolvedUnits().size(),
+                                result.resolved().vendored().entries().size(),
+                                result.resolved().vendored().repairs().size(),
+                                vendoredJson(result.resolved().vendored()),
                                 heldBackJson(result.resolved().childHome()),
                                 esc(result.resolved().childHome().layout().childSkillManagerHome().toString())));
             } else {
@@ -287,6 +314,10 @@ public final class ProjectCommand {
                 }
                 Log.info("  installed:        %d", result.resolved().installed().size());
                 Log.info("  resolved:         %d", result.resolved().lock().resolvedUnits().size());
+                Log.info("  vendored:         %d checked, %d repaired, %d finding(s)",
+                        result.resolved().vendored().entries().size(),
+                        result.resolved().vendored().repairs().size(),
+                        result.resolved().vendored().problems().size());
                 Log.info("  child:            %s", result.resolved().childHome().layout().childSkillManagerHome());
                 reportPull(result.pull());
                 reportHeldBack(result.resolved().childHome());
@@ -392,6 +423,8 @@ public final class ProjectCommand {
                 System.out.printf("harnesses:%d%n", project.harnesses().size());
                 System.out.printf("envs:     %d%n", project.envs().size());
                 System.out.printf("libs:     %d%n", project.libs().size());
+                System.out.printf("vendored: %d%n", project.vendored().stream()
+                        .mapToInt(v -> v.paths().size()).sum());
                 System.out.printf("cli:      %d%n", project.cliDependencies().size());
                 System.out.printf("mcp:      %d%n", project.mcpDependencies().size());
                 System.out.printf("profiles: %d%n", project.profiles().size());
@@ -513,6 +546,29 @@ public final class ProjectCommand {
                         + "\",\"status\":\"" + unit.status().name().toLowerCase()
                         + "\",\"repo\":\"" + esc(String.valueOf(unit.repo()))
                         + "\",\"detail\":\"" + esc(unit.detail()) + "\"}")
+                .collect(java.util.stream.Collectors.joining(",", "[", "]"));
+    }
+
+    /**
+     * The surviving vendored findings, in machine-readable form.
+     *
+     * <p>Carries {@code resolvedTo} as well as {@code linkText}: the whole point
+     * of the check is that those two can disagree — a relative link text that
+     * resolves into a foreign home through a sibling link is the case a text-only
+     * report cannot express.
+     */
+    private static String vendoredJson(
+            dev.skillmanager.project.ProjectVendoredResolver.Report report) {
+        if (report == null || report.problems().isEmpty()) return "[]";
+        return report.problems().stream()
+                .map(entry -> "{\"declaration\":\"" + esc(entry.declaration())
+                        + "\",\"path\":\"" + esc(entry.declaredPath())
+                        + "\",\"status\":\"" + entry.status().name().toLowerCase()
+                        + "\",\"fatal\":" + entry.fatal()
+                        + ",\"linkText\":\"" + esc(String.valueOf(entry.linkText()))
+                        + "\",\"resolvedTo\":\"" + esc(String.valueOf(entry.resolvedTo()))
+                        + "\",\"expected\":\"" + esc(String.valueOf(entry.expectedTarget()))
+                        + "\",\"detail\":\"" + esc(entry.detail()) + "\"}")
                 .collect(java.util.stream.Collectors.joining(",", "[", "]"));
     }
 

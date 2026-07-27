@@ -25,6 +25,7 @@ import dev.skillmanager.resolve.Resolver;
 import dev.skillmanager.resolve.TransitiveFailures;
 import dev.skillmanager.source.UnitStore;
 import dev.skillmanager.store.SkillStore;
+import dev.skillmanager.util.Log;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -60,15 +61,25 @@ public final class ProjectDependencyResolver {
      *        than a project-wide switch because it is a per-unit decision: an
      *        agent asks for a checkout of the one skill it intends to improve and
      *        push back, and every other unit stays a cheap copy.
+     * @param repairVendored re-point declared {@code [[vendored]]} paths at the
+     *        project's own home. Opt-in, never the default: a vendored path is a
+     *        <em>tracked</em> symlink, so repairing one edits the user's working
+     *        tree and shows up in {@code git status}. Validation always runs;
+     *        only the writing is asked for.
      */
-    public record Options(boolean yes, boolean withGateway, Set<String> checkoutUnits) {
+    public record Options(boolean yes, boolean withGateway, Set<String> checkoutUnits,
+                          boolean repairVendored) {
         public Options {
             checkoutUnits = checkoutUnits == null ? Set.of() : Set.copyOf(checkoutUnits);
         }
 
-        public Options(boolean yes, boolean withGateway) { this(yes, withGateway, Set.of()); }
+        public Options(boolean yes, boolean withGateway, Set<String> checkoutUnits) {
+            this(yes, withGateway, checkoutUnits, false);
+        }
 
-        public static Options defaults() { return new Options(true, true, Set.of()); }
+        public Options(boolean yes, boolean withGateway) { this(yes, withGateway, Set.of(), false); }
+
+        public static Options defaults() { return new Options(true, true, Set.of(), false); }
     }
 
     public record Result(
@@ -76,8 +87,13 @@ public final class ProjectDependencyResolver {
             SkillProjectLock lock,
             List<String> installed,
             List<String> bindingIds,
-            ProjectChildHomeScaffolder.Result childHome
-    ) {}
+            ProjectChildHomeScaffolder.Result childHome,
+            ProjectVendoredResolver.Report vendored
+    ) {
+        public Result {
+            vendored = vendored == null ? ProjectVendoredResolver.Report.empty() : vendored;
+        }
+    }
 
     public Result resolve(SkillProject project, Options options) throws IOException {
         Options opts = options == null ? Options.defaults() : options;
@@ -90,6 +106,7 @@ public final class ProjectDependencyResolver {
         ProjectChildHomeScaffolder.Result childHome = new ProjectChildHomeScaffolder(store)
                 .scaffold(project, resolvedUnits,
                         ProjectChildHomeScaffolder.DEFAULT_MODE, opts.checkoutUnits());
+        ProjectVendoredResolver.Report vendored = checkVendored(project, opts);
         List<SkillProjectLock.ProjectBinding> projectBindings =
                 materializeProjectBindings(project, childHome.layout(), childHome.childStore(),
                         resolvedUnits, previousLock);
@@ -108,7 +125,53 @@ public final class ProjectDependencyResolver {
                 lock,
                 installed.installed(),
                 projectBindings.stream().map(SkillProjectLock.ProjectBinding::bindingId).toList(),
-                childHome);
+                childHome,
+                vendored);
+    }
+
+    /**
+     * Validate (and, with {@code --repair-vendored}, re-point) the project's
+     * declared vendored paths.
+     *
+     * <h2>Why this seam</h2>
+     *
+     * <p>Placed in {@code resolve}, after the child home is scaffolded and before
+     * any binding is materialized. Three reasons, in order:
+     *
+     * <ol>
+     *   <li><b>One call site covers both commands.</b> {@code project sync}
+     *       reaches {@code resolve} on both of its paths — {@code reconcile} calls
+     *       it directly and {@code rebuild} calls it after the teardown — so
+     *       wiring here means the check cannot be true of one command and not the
+     *       other. Adding it separately to {@code ProjectSyncUseCase} would be a
+     *       second copy of one rule, which is the shape this epic has already
+     *       paid for twice.</li>
+     *   <li><b>The home has to exist first.</b> The declared source lives at
+     *       {@code <project>/.skill-manager/skills/<unit>/...}, which the
+     *       scaffolder above creates. Checking before it would report every path
+     *       as dangling on a fresh checkout and be useless exactly when it is
+     *       most needed.</li>
+     *   <li><b>Failing before binding materialization.</b> Bindings write
+     *       projections into agent homes; a resolve that is going to fail should
+     *       not leave those behind first.</li>
+     * </ol>
+     */
+    private ProjectVendoredResolver.Report checkVendored(SkillProject project, Options opts)
+            throws IOException {
+        ProjectVendoredResolver.Report report =
+                ProjectVendoredResolver.check(project, opts.repairVendored());
+        for (var repaired : report.repairs()) {
+            Log.ok("repaired vendored %s: %s -> %s",
+                    repaired.declaration(), repaired.declaredPath(), repaired.expectedText());
+        }
+        if (report.clean()) return report;
+        if (!report.fatalProblems().isEmpty()) {
+            throw new IOException(report.failureMessage());
+        }
+        Log.warn("%d declared vendored path(s) do not point at this project's own home "
+                + "(on_invalid = \"warn\"):", report.problems().size());
+        for (String line : report.render()) Log.warn("  %s", line);
+        return report;
     }
 
     private record InstalledProjectUnits(List<String> installed, List<String> directNames) {}

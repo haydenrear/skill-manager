@@ -81,6 +81,7 @@ import dev.skillmanager.project.ProjectChildHomeMaterializationTest;
 import dev.skillmanager.project.ProjectDependencyResolverTest;
 import dev.skillmanager.project.ProjectEnvMaterializerTest;
 import dev.skillmanager.project.ProjectLibResolverTest;
+import dev.skillmanager.project.ProjectVendoredResolverTest;
 import dev.skillmanager.project.ProjectorRegistryTest;
 import dev.skillmanager.project.SkillProjectRegistryTest;
 import dev.skillmanager.effects.RefreshHarnessPluginsTest;
@@ -183,6 +184,7 @@ public class RunTests {
         failures += ProjectChildHomeMaterializationTest.run();
         failures += ProjectEnvMaterializerTest.run();
         failures += ProjectLibResolverTest.run();
+        failures += ProjectVendoredResolverTest.run();
         failures += PluginMarketplaceTest.run();
         failures += HarnessPluginCliTest.run();
         failures += RefreshHarnessPluginsTest.run();

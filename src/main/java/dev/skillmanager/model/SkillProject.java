@@ -28,6 +28,7 @@ public record SkillProject(
         List<McpDependency> mcpDependencies,
         List<ProjectEnv> envs,
         List<ProjectLib> libs,
+        List<ProjectVendored> vendored,
         List<ProjectProfile> profiles,
         String activeProfile
 ) {
@@ -45,10 +46,17 @@ public record SkillProject(
         mcpDependencies = mcpDependencies == null ? List.of() : List.copyOf(mcpDependencies);
         envs = envs == null ? List.of() : List.copyOf(envs);
         libs = libs == null ? List.of() : List.copyOf(libs);
+        vendored = vendored == null ? List.of() : List.copyOf(vendored);
         profiles = profiles == null ? List.of() : List.copyOf(profiles);
         activeProfile = activeProfile == null || activeProfile.isBlank() ? null : activeProfile;
     }
 
+    /**
+     * A project with no {@code [[vendored]]} declarations and no profiles. Kept
+     * for callers that construct a project directly rather than parsing one;
+     * both defaults are "declares nothing", so the two omitted components add no
+     * behaviour.
+     */
     public SkillProject(
             String name,
             String version,
@@ -65,7 +73,7 @@ public record SkillProject(
             List<ProjectLib> libs
     ) {
         this(name, version, description, projectRoot, manifestPath, skills, plugins, harnesses, docs,
-                cliDependencies, mcpDependencies, envs, libs, List.of(), null);
+                cliDependencies, mcpDependencies, envs, libs, List.of(), List.of(), null);
     }
 
     public String registryName() {
@@ -83,11 +91,22 @@ public record SkillProject(
         return profiles.stream().filter(p -> p.name().equals(profileName)).findFirst();
     }
 
+    /**
+     * The same project narrowed to one profile's unit selection.
+     *
+     * <p>{@link #vendored} deliberately passes through untouched and is not
+     * profile-selectable, unlike {@link #libs}. A profile selects which
+     * <em>units</em> a realization installs, and every profile of a project
+     * shares one working tree — so "which paths in this checkout are vendored"
+     * is a property of the checkout, not of the selection. Making it selectable
+     * would let two profiles disagree about the same file on disk, with the last
+     * command run deciding.
+     */
     public SkillProject withProfile(String profileName) {
         if (profileName == null || profileName.isBlank()) {
             return new SkillProject(name, version, description, projectRoot, manifestPath,
                     skills, plugins, harnesses, docs, cliDependencies, mcpDependencies,
-                    envs, libs, profiles, null);
+                    envs, libs, vendored, profiles, null);
         }
         ProjectProfile selected = profile(profileName).orElseThrow(() ->
                 new IllegalArgumentException("project profile not declared: " + profileName));
@@ -101,6 +120,7 @@ public record SkillProject(
                 effective.inheritsDefault() ? mcpDependencies : List.of(),
                 selectEnvs(envs, effective.envs(), effective.inheritsDefault()),
                 selectLibs(libs, effective.libs(), effective.inheritsDefault()),
+                vendored,
                 profiles,
                 profileName);
     }

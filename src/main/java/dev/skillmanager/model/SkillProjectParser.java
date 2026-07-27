@@ -83,6 +83,7 @@ public final class SkillProjectParser {
                 SkillParser.parseMcpDependencies(toml, "project"),
                 parseEnvs(toml),
                 parseLibs(toml, manifestPath),
+                parseVendored(toml, manifestPath),
                 parseProfiles(toml),
                 null
         );
@@ -173,6 +174,36 @@ public final class SkillProjectParser {
                         lib.getString("sha")));
             } catch (IllegalArgumentException e) {
                 throw new IOException("Malformed project libs[" + i + "] in "
+                        + manifestPath + ": " + e.getMessage(), e);
+            }
+        }
+        return out;
+    }
+
+    /**
+     * {@code [[vendored]]} — an array of tables, read with the same
+     * {@code getArray}/{@code getTable(i)} pair as {@link #parseLibs}. Both
+     * blocks are "a list of named things with a source", so they are spelled the
+     * same way on purpose; a second idiom for the same shape is the cost this
+     * codebase has already decided not to pay again.
+     */
+    private static List<ProjectVendored> parseVendored(TomlParseResult toml, Path manifestPath)
+            throws IOException {
+        TomlArray vendored = toml.getArray("vendored");
+        if (vendored == null) return List.of();
+        List<ProjectVendored> out = new ArrayList<>();
+        for (int i = 0; i < vendored.size(); i++) {
+            TomlTable entry = vendored.getTable(i);
+            if (entry == null) continue;
+            try {
+                out.add(new ProjectVendored(
+                        entry.getString("name"),
+                        strings(entry.getArray("paths")),
+                        entry.getString("from_unit"),
+                        entry.getString("from_subpath"),
+                        ProjectVendored.OnInvalid.parse(entry.getString("on_invalid"))));
+            } catch (IllegalArgumentException e) {
+                throw new IOException("Malformed project vendored[" + i + "] in "
                         + manifestPath + ": " + e.getMessage(), e);
             }
         }
