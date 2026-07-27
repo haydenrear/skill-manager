@@ -606,3 +606,95 @@ tickets:
         - Observed side effects diff clean against declared effects.
         - Provider assertions check effect values, counts, and ordering, not existence.
       evidence: []
+
+  # ------------------------------------------------------------------------
+  # Phase COH -- architectural coherence and edge cases surfaced by review.
+  #
+  # These are not new behavior. They are places where the implementation is
+  # correct but not PREDICTABLE from a neighbouring part, which is the debt
+  # the owner named: "I understand this at one level so I can predict at
+  # multiple others." Each one is a case where knowing one component told you
+  # nothing true about its sibling. Tracked as GitHub issues; recorded here so
+  # the spec workflow owns the conformance question rather than only the code.
+  - id: COH-0
+    title: "Decide whether the effects pipeline is the target architecture"
+    phase: COH
+    status: open
+    github_issue: 24
+    objective: >
+      Executor / Compensation / RollbackJournal exist but are wired to no
+      command -- effects/Executor.java:31-35 says wiring happens in "09b" and
+      until then the class is exercised only by CompensationLogicTest. So
+      rollback is three bespoke idioms (materializer stage-and-swap, cloner
+      cleanup, sync registration snapshot) and new code adds a fourth surface
+      with none. Decide: wire it, or delete the unwired layer so it stops
+      implying a contract that does not exist. The middle state is the
+      expensive one.
+    acceptance:
+      assertions:
+        - A written rule states which rollback idiom applies to which shape of write.
+        - No component invents a fourth idiom without that rule naming it.
+  - id: COH-1
+    title: "Make @port enforceable rather than a comment"
+    phase: COH
+    status: open
+    github_issue: 24
+    objective: >
+      Internal.tla carries 19 @port tags and External.tla 11, including the
+      clone lifecycle phase by phase. Nothing checks that those symbols name
+      real code: case_adapters.toml has no mappings for the new actions,
+      testgraph_bindings.yml has no adapter classes, and zero of the 15
+      ContextFacts mention home / clone / drift / policy. Renaming
+      HomeCloner.reanchorState would break nothing.
+    acceptance:
+      assertions:
+        - Every @port symbol resolves to a declaration in src/main/java, checked by a test.
+        - The check fails when a port names something that no longer exists.
+  - id: COH-2
+    title: "Close the read paths that hide corruption"
+    phase: COH
+    status: open
+    github_issue: 27
+    objective: >
+      Two mutations killed nothing during #20, which is how these surfaced.
+      home describe recomputes the descriptor and never reads the stored one
+      back, so a descriptor whose tokens stopped decoding is read silently.
+      BindingStore reconstructs default-agent bindings, so a deleted ledger is
+      indistinguishable from a healthy one -- and the ledger is the exact
+      surface the unbind-deletes-the-store defect lived on.
+    acceptance:
+      assertions:
+        - Stored and recomputed descriptors are compared, and disagreement is reported.
+        - A reconstructed binding is distinguishable from a read one.
+  - id: COH-3
+    title: "Scope the relocatability claim to the surfaces that hold it"
+    phase: COH
+    status: open
+    github_issue: 26
+    objective: >
+      AHomeIsAPureFunctionOfItsRoot is stated over RelocatableSurfaces ==
+      {state, symlink}. provisioned is excluded for a real reason -- a shebang
+      is resolved literally, so it can be neither tokenized nor relativized --
+      but the invariant's NAME reads as a stronger guarantee than the code
+      provides. Consequence: mv of a home breaks venv console scripts and
+      skill-script shims, while home clone is correct. Nothing says so where a
+      reader would look.
+    acceptance:
+      assertions:
+        - The invariant name or its scope makes the exclusion visible.
+        - home verify detects a home whose recorded root no longer matches its location.
+  - id: COH-4
+    title: "Make an unsatisfiable toolchain version request fail loudly"
+    phase: COH
+    status: open
+    github_issue: 28
+    objective: >
+      cli-lock.toml is keyed [package-manager.tool] with no version dimension,
+      and toolchain roots are one directory per tool name. Two units or two
+      projects needing different versions of one tool cannot coexist even
+      inside a single home, and re-provisioning per clone does not help because
+      every home converges on whatever the lock last recorded. Per-project
+      homes exist so projects can diverge; toolchains still cannot.
+    acceptance:
+      assertions:
+        - Conflicting specs for one tool are reported at resolve, not resolved last-write-wins.
