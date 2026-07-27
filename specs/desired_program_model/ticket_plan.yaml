@@ -2,7 +2,7 @@
 # Source of truth for tickets. Keep synchronized with spec_manifest.yaml status.
 version: 1
 name: child-home-materialization-workflow
-updated: "2026-07-25"
+updated: "2026-07-26"
 purpose: >
   Project child homes stop being symlink farms into the parent store and become
   independent copies that an agent can edit. Every unit in
@@ -56,6 +56,20 @@ status:
   carried_forward_module: SkillManager.tla
   phase: planning
   desired_tlc:
+    external_home:
+      command: bash specs/desired_program_model/run_tlc.sh specs/desired_program_model/External.tla specs/desired_program_model/External_home.cfg
+      status: passed
+      result: no invariant violations
+      states_generated: 2966
+      distinct_states: 706
+      depth: 12
+    internal_clone:
+      command: bash specs/desired_program_model/run_tlc.sh specs/desired_program_model/Internal.tla specs/desired_program_model/Internal_clone.cfg
+      status: passed
+      result: no invariant violations
+      states_generated: 303
+      distinct_states: 105
+      depth: 13
     external:
       command: bash specs/desired_program_model/run_tlc.sh specs/desired_program_model/External.tla specs/desired_program_model/External.cfg
       status: passed
@@ -73,6 +87,60 @@ status:
   test_graph:
     status: not_run
     note: test_graph nodes and adapters for this epic are owned by a separate agent.
+
+# Home-level properties, added for T19 (#20). Same shape as the four below:
+# invariant, view, statement, and the expected-violation config that must keep
+# failing. See spec_manifest.yaml validation.regression_configs for measured
+# traces and validation.negative_result for why every one of these is stated
+# against a witness or a filesystem fact rather than against a report.
+desired_home_properties:
+  relocatability:
+    invariant: AHomeIsAPureFunctionOfItsRoot
+    view: External (HomeSpec)
+    statement: Renaming a home's root changes no behavior; nothing on a relocatable surface anchors to an absolute location.
+    regression_config: External_regression_absstate.cfg
+    scope_note: >
+      Scoped to {state, symlink}. A venv console script's shebang is resolved
+      literally by the kernel, so the provisioned surface can be neither
+      tokenized nor made relative and is re-anchored per clone instead. That
+      asymmetry is why `home clone` exists rather than `mv`, and stating the
+      invariant over all surfaces would claim a guarantee the code does not have.
+  cross_home_independence:
+    invariant: WritesThroughOneHomeReachNoOtherHome
+    view: External (HomeSpec)
+    statement: A write through one home lands in that home and in no other -- not a sibling project's, not the home it was copied from.
+    regression_config: External_regression_abslink.cfg
+  source_untouched:
+    invariant: SourceHomeIsByteIdenticalToItsCloneTimeSelf
+    view: External (HomeSpec)
+    statement: The source home is read once, at clone time, and still holds exactly the bytes it held then.
+    regression_config: External_regression_verbatimstate.cfg
+  toolchains_absent_not_stale:
+    invariant: ToolchainRootsAreNeverShared
+    view: External (HomeSpec)
+    statement: A clone carries no venvs/, tools/ or npm/, never points at another home's, and pm/ IS carried so it can rebuild them.
+    regression_configs:
+      - External_regression_sharedtoolchain.cfg
+      - External_regression_nopm.cfg
+      - External_regression_silentshims.cfg
+    reporting_invariant: EveryHomeMissingItsToolchainsSaysSo
+  authored_content_exception:
+    invariant: AuthoredContentIsNeverRewritten
+    view: External (HomeSpec)
+    statement: A file under skills/, plugins/, docs/ or harnesses/ that records an absolute home path is authored content, left exactly as written and counted in the report.
+    regression_config: External_regression_rewritecontent.cfg
+    reporting_invariant: EveryToleratedContentReferenceIsReported
+    negative_result_config: External_regression_rewritecontent_reportonly.cfg
+  clone_phase_gate:
+    invariant: EveryOwnedSurfaceIsReanchoredBeforeAHomeIsHandedOver
+    view: Internal (CloneSpec)
+    statement: Every surface fixup has run before SKILL_MANAGER_HOME is pointed at the copy -- not merely before the command exits.
+    regression_config: Internal_regression_unreanchored.cfg
+  clone_atomicity:
+    invariant: NoUnfinishedDestinationSurvivesAFailedClone
+    view: Internal (CloneSpec)
+    statement: A failed clone leaves the destination as it was found; a half-populated directory the next attempt refuses is worse than no clone.
+    regression_config: Internal_regression_partialclone.cfg
 
 desired_properties:
   independence:

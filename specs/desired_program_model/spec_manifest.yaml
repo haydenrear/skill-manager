@@ -9,12 +9,12 @@ status:
   ticket_plan: ticket_plan.yaml
   relation_to_program_model: desired_successor_of_accepted_program_model
   relation_to_current: target_state_for_specs_current_to_converge_to
-  updated: "2026-07-25"
+  updated: "2026-07-26"
   summary:
     desired_model_scaffolded: true
     ticket_plan_scaffolded: true
     current_model_scaffolded: true
-    desired_tla_authored: partial_child_home_slice_only
+    desired_tla_authored: child_home_unit_slice_and_home_isolation_slice
     generated_cases: pending
     adapters: pending
     promotion: not_started
@@ -23,6 +23,8 @@ status:
     - Authored Core.tla, Internal.tla, and External.tla for the child-home materialization slice.
     - TLC green on Internal.cfg and External.cfg; five expected-violation regression configs each produce their counterexample.
     - Recorded complexity descriptors for External, Internal, and the carried-forward monolith.
+    - Extended Core/Internal/External with the HOME-level isolation slice (T19/#20). TLC green on External_home.cfg and Internal_clone.cfg; nine more expected-violation configs each produce their counterexample; the unit-level slice's seven configs keep their exact state counts.
+    - Recorded the negative result that a reporting invariant cannot replace a witness, at home granularity, as a config that must keep returning "No error has been found" (External_regression_rewritecontent_reportonly.cfg).
   pending:
     - Owner decision on the Internal/External scope (see internal_external_decision below).
     - Owner approval of budgets before any effectful/modular migration work starts (migration.md Phase 0).
@@ -52,6 +54,7 @@ modules:
   internal:
     module: Internal.tla
     config: Internal.cfg
+    clone_config: Internal_clone.cfg
     role: fine-grained program state; spec-unit case source
     generates: spec_unit
     adapter_mapping: case_adapters.toml
@@ -59,10 +62,47 @@ modules:
   external:
     module: External.tla
     config: External.cfg
+    home_config: External_home.cfg
     role: publicly observable behavior; Test Graph case source
     generates: testgraph
     adapter_mapping: testgraph_bindings.yml
     status: authored_tlc_green_bindings_pending
+
+# Each of Internal.tla and External.tla now carries TWO specs over disjoint
+# variable sets, and the reason is measured rather than stylistic.
+two_specs_per_module:
+  external:
+    Spec: unit-level child-home materialization (store_body, child_home, agent_edits, pass)
+    HomeSpec: home-level isolation (home, home_anchor, home_body, home_writes, home_authored, source_snapshot)
+  internal:
+    Spec: the materializer, per unit (adds record, staging, held_back)
+    CloneSpec: "`home clone` phase by phase (clone, dest, handed_over)"
+  rationale: >
+    The two slices share no invariant: nothing in the home-level invariants
+    mentions a unit-level variable or vice versa. A single Next over both
+    therefore explores the PRODUCT of the two reachable state spaces -- 250 x 706
+    for External, 2065 x 105 for Internal -- which is 176,500 and 216,825
+    distinct states against budgets.max_distinct_states 50000, while checking
+    nothing that either spec does not already check. Each spec pins the other
+    slice at its Init value, which is why the seven pre-existing configs still
+    report exactly 250 / 2065 / 35 / 27 / 9 / 202 / 114 distinct states.
+  cost_of_the_split: >
+    A rule spanning the two levels cannot be stated in either view. The concrete
+    example is "materializing a child unit inside a cloned home must not write
+    through the clone's own in-home links": both halves are covered
+    independently (unit-level PRESERVE_LINK, home-level
+    ABSOLUTE_CARRIED_VERBATIM) but their composition is not. Folding the levels
+    together belongs with phase MIG, where store_body indexed BY HOME would
+    remove the duplication instead of multiplying it. Recorded here rather than
+    left implicit because a reader is entitled to know what the split does not
+    check.
+  action_naming_note: >
+    Every action carries the other slice's UNCHANGED itself rather than having it
+    conjoined onto Next in the Spec formula. TLC only names an action in a
+    counterexample when the box subscript encloses a bare disjunction of
+    actions, so `[][Next /\ UNCHANGED home_vars]_vars` silently costs every trace
+    in the module its action names. Measured: traces went from
+    "<Action line 417, ...>" to "<UnbindUnitThroughHome line 362, ...>".
   legacy_monolith:
     module: SkillManager.tla
     config: MC_program_promotion.cfg
@@ -195,6 +235,62 @@ justification:
   pass:
     invariants: [EveryPassReportsExactlyTheHeldBackUnits, UnmodifiedChildUnitsConvergeOnTheirSource, ResolveLeavesOnlyClaimedOrHeldBackUnits]
     effects: [held_back_report]
+  # --- home level -----------------------------------------------------------
+  home:
+    invariants: [AHomeIsAPureFunctionOfItsRoot, NoOwnedSurfaceNamesAnotherHome, ToolchainRootsAreNeverShared, AHomeMissingItsToolchainsStillHasItsPackageManagers, EveryHomeMissingItsToolchainsSaysSo, EveryToleratedContentReferenceIsReported, AuthoredContentIsNeverRewritten]
+    effects: [home_tree_copied, toolchain_reprovisioned, clone_report]
+  home_anchor:
+    invariants: [AHomeIsAPureFunctionOfItsRoot, NoOwnedSurfaceNamesAnotherHome, AuthoredContentIsNeverRewritten, EveryToleratedContentReferenceIsReported]
+    effects: [state_records_reanchored, symlinks_relativized, provisioned_files_reanchored]
+  home_body:
+    invariants: [WritesThroughOneHomeReachNoOtherHome, SourceHomeIsByteIdenticalToItsCloneTimeSelf]
+    effects: [home_unit_content]
+  home_writes:
+    invariants: [WritesThroughOneHomeReachNoOtherHome]
+    effects: []
+  home_authored:
+    invariants: [AuthoredContentIsNeverRewritten]
+    effects: []
+  source_snapshot:
+    invariants: [SourceHomeIsByteIdenticalToItsCloneTimeSelf]
+    effects: []
+  clone:
+    invariants: [NoUnfinishedDestinationSurvivesAFailedClone, AnInFlightCloneIsNeverHandedOver]
+    effects: [staging_clone_written, partial_clone_discarded]
+  dest:
+    invariants: [EveryOwnedSurfaceIsReanchoredBeforeAHomeIsHandedOver, NoUnfinishedDestinationSurvivesAFailedClone, NoHandedOverHomeNamesAnotherHome]
+    effects: [home_tree_copied]
+  handed_over:
+    invariants: [EveryOwnedSurfaceIsReanchoredBeforeAHomeIsHandedOver, AnInFlightCloneIsNeverHandedOver, NoHandedOverHomeNamesAnotherHome]
+    effects: []
+
+# The three witness variables at home granularity, and what each one is for.
+# A witness exists when the property it guards is NOT recoverable from the final
+# state -- that is the whole test for whether one is earning its keep.
+witnesses:
+  home_writes:
+    guards: WritesThroughOneHomeReachNoOtherHome
+    why: >
+      A write's REACH is only observable at the instant of the write. TLC found
+      the reason: the obvious body-comparison form ("no other home's copy holds
+      bytes written through h") produces a counterexample at depth 4 that is not
+      a defect -- edit through clone P, then clone P into clone Q, and Q
+      legitimately carries the edit because copying a home copies its content.
+      Afterwards leaked bytes and copied bytes are the same bytes. So the witness
+      records one triple per home the write LANDED in.
+  home_authored:
+    guards: AuthoredContentIsNeverRewritten
+    why: >
+      A clone joins the set because the copy carried the author's bytes. Without
+      that record, a policy that rewrites those bytes leaves nothing to compare
+      against and nothing to report -- see the negative result below.
+  source_snapshot:
+    guards: SourceHomeIsByteIdenticalToItsCloneTimeSelf
+    why: >
+      Captured on the FIRST clone and never recaptured. Both halves matter:
+      comparing against a live re-read compares the source to itself and passes
+      unconditionally, and recapturing on every clone lets a source corrupted by
+      clone 1 be re-baselined as correct by clone 2.
 
 source_model:
   program_model_manifest: ../program_model/spec_manifest.yaml
@@ -287,6 +383,22 @@ validation:
       distinct_states: 2065
       depth: 12
       evidence: ../results/chm-internal-tlc.txt
+    desired_external_home:
+      command: bash specs/desired_program_model/run_tlc.sh specs/desired_program_model/External.tla specs/desired_program_model/External_home.cfg
+      expect: no invariant violations
+      status: passed
+      states_generated: 2966
+      distinct_states: 706
+      depth: 12
+      evidence: ../results/chm-home-isolation-tlc.txt
+    desired_internal_clone:
+      command: bash specs/desired_program_model/run_tlc.sh specs/desired_program_model/Internal.tla specs/desired_program_model/Internal_clone.cfg
+      expect: no invariant violations
+      status: passed
+      states_generated: 303
+      distinct_states: 105
+      depth: 13
+      evidence: ../results/chm-home-isolation-tlc.txt
     carried_forward_monolith:
       command: bash specs/desired_program_model/run_tlc.sh specs/desired_program_model/SkillManager.tla specs/desired_program_model/MC_program_promotion.cfg
       expect: no invariant violations
@@ -340,6 +452,127 @@ validation:
       expect_violation: InFlightMaterializationLeavesTheChildUnitIntact
       status: violated_as_expected
       trace_depth: 5
+    # ---------------------------------------------------------- home level
+    # Nine more, one per home-level invariant. Every invariant in
+    # External_home.cfg and Internal_clone.cfg is the declared target of exactly
+    # one config here; two configs carry a narrowed invariant list, noted in
+    # their headers, so that an invariant violated at depth 2 does not mask the
+    # behavioral consequence the config exists to show.
+    External_regression_absstate.cfg:
+      models: pre-epic absolute self-references, repaired by HomeCloner's substitution pass -- every clone comes out correct, but `mv` on a home breaks it
+      expect_violation: AHomeIsAPureFunctionOfItsRoot
+      status: violated_as_expected
+      trace_depth: 2
+      trace: RelocateHome
+    External_regression_verbatimstate.cfg:
+      models: "issue #20's headline finding -- 54 metadata files in a plain `cp -R` copy still name the ORIGINAL home"
+      expect_violation: SourceHomeIsByteIdenticalToItsCloneTimeSelf
+      status: violated_as_expected
+      trace_depth: 3
+      trace: CloneHomeIntoProject -> UnbindUnitThroughHome
+      note: >
+        The flagship home-level regression. The copy reads correctly; it goes
+        wrong on the first WRITE, because `unbind` deletes the tree its ledger
+        recorded as destPath and that path names the source. This is the defect
+        reproduced end to end during review of #20 (encode() resolving the
+        candidate's leaf, after which unbind deleted the installed unit from the
+        store and left the agent symlink dangling). No report catches it: the
+        clone truthfully reports 0 leaks, because the leak is in what a stored
+        path MEANS, not in a path the scan can see.
+      narrowed_invariants: >
+        TypeOK + the target only. NoOwnedSurfaceNamesAnotherHome and
+        AHomeIsAPureFunctionOfItsRoot are both violated at depth 2 under this
+        policy and would mask the trace; each is the declared target of another
+        config in this set.
+    External_regression_abslink.cfg:
+      models: the seven absolute in-unit symlinks #20 found, copied verbatim, so the copy holds a live channel into the home it came from
+      expect_violation: WritesThroughOneHomeReachNoOtherHome
+      status: violated_as_expected
+      trace_depth: 3
+      trace: CloneHomeIntoProject -> EditUnitThroughHome
+      note: >
+        No skill-manager code participates in this leak -- an ordinary editor
+        write below the link lands in the other home -- which is why the fix is
+        write-time relativization rather than a guard on a code path.
+      narrowed_invariants: same reason as External_regression_verbatimstate.cfg
+    External_regression_sharedtoolchain.cfg:
+      models: the toolchain option considered and rejected on #20 -- clones share the source home's venvs/, tools/ and npm/
+      expect_violation: NoOwnedSurfaceNamesAnotherHome
+      status: violated_as_expected
+      trace_depth: 2
+      trace: CloneHomeIntoProject
+    External_regression_silentshims.cfg:
+      models: a clone that skips the toolchain roots and reports success anyway, handing over CLI shims whose exec target does not exist
+      expect_violation: EveryHomeMissingItsToolchainsSaysSo
+      status: violated_as_expected
+      trace_depth: 2
+      trace: CloneHomeIntoProject
+    External_regression_nopm.cfg:
+      models: skipping pm/ along with the other toolchain roots, leaving a clone that cannot rebuild what it is missing
+      expect_violation: AHomeMissingItsToolchainsStillHasItsPackageManagers
+      status: violated_as_expected
+      trace_depth: 2
+      trace: CloneHomeIntoProject
+    External_regression_rewritecontent.cfg:
+      models: re-anchoring authored unit content like any other path, corrupting append-only spec history and effect-provider evidence
+      expect_violation: AuthoredContentIsNeverRewritten
+      status: violated_as_expected
+      trace_depth: 2
+      trace: CloneHomeIntoProject
+    Internal_regression_partialclone.cfg:
+      models: a clone that leaves whatever it had copied when it failed, so the next attempt refuses the destination as non-empty
+      expect_violation: NoUnfinishedDestinationSurvivesAFailedClone
+      status: violated_as_expected
+      trace_depth: 3
+      trace: BeginCloneCopyTree -> AbortCloneAndDiscardPartial
+    Internal_regression_unreanchored.cfg:
+      models: a plain `cp -R` with no state re-anchoring pass at all -- the copy COMPLETES and reports success
+      expect_violation: EveryOwnedSurfaceIsReanchoredBeforeAHomeIsHandedOver
+      status: violated_as_expected
+      trace_depth: 6
+      trace: BeginCloneCopyTree -> RelativizeInHomeLinks -> ReanchorProvisionedFiles -> CompleteClone -> PointEnvAtClone
+      narrowed_invariants: >
+        TypeOK + the target only. NoHandedOverHomeNamesAnotherHome is violated in
+        the same state and would mask the gate; it is covered by the External
+        leak configs.
+
+  # ------------------------------------------------------------------------
+  # THE NEGATIVE RESULT, restated at home granularity and re-measured.
+  #
+  # An earlier ticket on this epic established that a REPORTING invariant cannot
+  # catch silent destruction: under OVERWRITE_LOCAL_CHANGES with only
+  # EveryPassReportsExactlyTheHeldBackUnits, TLC returns "No error has been
+  # found", because after an overwrite the unit is no longer modified and both
+  # sides of the equivalence go false together. It fails only against the
+  # agent_edits witness. Every invariant added at home level was held to the
+  # same standard, and this pair is the proof.
+  negative_result:
+    property: a self-consistent report is worthless as an invariant
+    config: External_regression_rewritecontent_reportonly.cfg
+    policy: CloneContentPolicy = "REWRITE"
+    invariants_checked: [TypeOK, EveryToleratedContentReferenceIsReported]
+    result: >
+      "Model checking completed. No error has been found." 2966 states generated,
+      706 distinct states found, 0 states left on queue, depth 12 -- the ENTIRE
+      reachable state space, not a truncated search. After the rewrite there is
+      no surviving content reference, so the antecedent of the reporting
+      invariant goes false and the equivalence holds vacuously: the report is
+      perfectly self-consistent about a record that has been silently destroyed.
+    contrast:
+      config: External_regression_rewritecontent.cfg
+      invariants_checked: [TypeOK, ..., AuthoredContentIsNeverRewritten]
+      result: >
+        "Error: Invariant AuthoredContentIsNeverRewritten is violated." 2 states
+        generated, depth 2, trace CloneHomeIntoProject. The only difference
+        between the two runs is an invariant that reads the home_authored
+        witness -- the record that those bytes WERE there.
+    keep_both: >
+      External_regression_rewritecontent_reportonly.cfg is the one config in this
+      directory that must keep returning "No error has been found" while modeling
+      a regression. If it ever starts producing a violation, the reporting
+      invariant has been strengthened into something else and this record no
+      longer says what it says.
+    evidence: ../results/chm-home-isolation-tlc.txt
   complexity:
     external:
       command: tla-spec-dev --spec-root specs analyze complexity specs/desired_program_model/External.tla specs/desired_program_model/External.cfg --manifest specs/desired_program_model/spec_manifest.yaml --tlc-report specs/results/chm-external-tlc.txt
@@ -373,6 +606,59 @@ validation:
       `planned`, so there are no cases for the bindings to bind. See the
       `blocked:` block at the end of testgraph_bindings.yml.
     testgraph_bindings: testgraph_bindings.yml
+    new_graph_home_level:
+      name: home-clone
+      command: python3 skills/test_graph/scripts/run.py home-clone
+      status: passed
+      nodes: 8
+      assertions: 59
+      models: External.tla HomeSpec
+      note: >
+        Clones a SYNTHETIC fixture home into a scaffolded project, points
+        SKILL_MANAGER_HOME at the copy, writes through the copy, renames the
+        source away, and asserts the source is BYTE-IDENTICAL by independent
+        digest rather than by reading the clone's report. The fixture is built
+        rather than copied from the developer's home: that home is 5.4 GB,
+        /private/tmp has less free space than that, and the standing constraint
+        on issue #1 forbids writing to it. It carries one artifact per problem
+        class issue #20 measured -- an absolute in-unit symlink into the store,
+        an absolute bin/cli symlink, a shim with the home path in its body, a
+        shim whose target is under a skipped root, a pm/ entry, a venvs/ entry,
+        legacy-form absolute state records, and an authored file that
+        legitimately records an absolute home path.
+      sandboxing: >
+        Every subprocess gets SKILL_MANAGER_HOME, CLAUDE_HOME,
+        CLAUDE_CONFIG_DIR, CODEX_HOME, GEMINI_HOME, HOME and
+        JAVA_TOOL_OPTIONS=-Duser.home=<sandbox>. ProjectDependenciesResolved
+        passes only the first and SKILL_MANAGER_INSTALL_DIR, which is issue #18:
+        the agent-home fallbacks end at user.home, and on macOS the JVM derives
+        user.home from the OS and ignores $HOME. A dedicated node
+        (home.clone.no.agent.home.leak) asserts the OUTCOME rather than trusting
+        the helper.
+      mutations_registered: 17
+      mutations_killed: 17
+      mutation_note: >
+        14 production-code mutations plus 3 artifact fault injections for the
+        strictly-ordered tail nodes, which no production mutation can reach --
+        every one is caught earlier by home.cloned.into.project's independent
+        scan. Two mutations initially killed NOTHING and each exposed a real
+        gap that is now closed: disabling HomeCloner.reanchorLedgers was
+        invisible because reanchorRemainingState's byte substitution covers the
+        same files (the clone silently degrades from relocatable to
+        correct-once), and a ledger left naming the source home was invisible
+        because `bindings list` never prints sourcePath. See
+        specs/results/chm-home-isolation-mutations.txt.
+      findings:
+        - >
+          `home describe` recomputes the descriptor from the home on every call
+          and never reads the stored one back except for envContributions, so
+          HomeDescriptor.decodeTravelling is unobservable through the CLI:
+          disabling it entirely changes no output. The stored form is asserted
+          by reading the file directly instead.
+        - >
+          BindingStore reconstructs deterministic default-agent bindings, so
+          deleting a clone's installed/<unit>.projections.json does not make
+          `bindings list` lose them.
     new_graph:
       name: project-child-home
       command: python3 skills/test_graph/scripts/run.py project-child-home
@@ -387,6 +673,7 @@ validation:
         raw source digest, DELETE_THEN_WRITE, and a displaced tree parked beside
         the unit.
     affected_graphs:
+      - home-clone
       - project-child-home
       - project-resolve
       - project-smoke

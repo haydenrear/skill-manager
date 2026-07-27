@@ -1,0 +1,225 @@
+Mutation evidence for the `home-clone` test graph (T19 / issue #20, home-level
+isolation). Recorded 2026-07-27.
+
+Method
+------
+Each entry is one edit to PRODUCTION code, a full run of
+`python3 skills/test_graph/scripts/run.py home-clone`, the NAMED assertions that
+failed, and a byte-identity check of the restored file. The harness backs up
+exactly the files it mutates and restores by `cp`; it deliberately does NOT use
+`git checkout --`, because this branch carries uncommitted spec work that
+`git diff --name-only` would sweep into the restore. (Learned by destroying it
+once on M1 and recovering from the saved patch.)
+
+The graph is strictly ordered, so a mutation reports at the FIRST node it
+reaches. Where that is an earlier node than the one nominally under test, the
+cascade is recorded rather than hidden: `home.cloned.into.project`'s independent
+filesystem scan is by construction the strongest gate in the graph and catches
+almost every leak before a later node can see its behavioral consequence.
+
+=====================================================================
+PRODUCTION MUTATIONS
+=====================================================================
+
+M1  HomeCloner.SKIPPED_DIRS: drop venvs, tools, npm  (copy the toolchain roots)
+    -> home.clone.toolchains.reprovisionable FAILED
+         venvs_tools_npm_and_cache_carry_no_content_in_the_clone
+         the_skipped_shims_target_really_is_missing
+
+M2  HomeCloner.SKIPPED_DIRS: add pm  (skip the package managers too)
+    -> home.clone.toolchains.reprovisionable FAILED
+         pm_is_carried_so_the_clone_can_reprovision
+
+M3  HomeCloner.copyLink: never relativize an absolute in-home link
+    -> home.cloned.into.project FAILED
+         home_clone_exits_zero
+         home_clone_reports_clean
+         independent_scan_finds_no_owned_surface_naming_the_source
+         in_home_symlinks_are_relative_in_the_clone
+         relative_symlinks_resolve_inside_the_clone
+
+M4  HomeCloner.reanchorLedgers: return 0 without rewriting anything
+    FIRST RUN: no node failed.  <-- REAL GAP, now closed.
+      Cause: reanchorRemainingState's byte substitution covers the same files, so
+      the clone still holds no reference to the source. The two repair paths are
+      NOT equivalent: the structured pass yields
+      "$SKILL_MANAGER_HOME/skills/<unit>" (relocatable again, indefinitely),
+      substitution yields "<clone>/skills/<unit>" (correct once; the next `mv`
+      breaks it). That is exactly the difference between External.cfg and
+      External_regression_absstate.cfg in the spec.
+      Assertion added: the_cloned_ledger_is_tokenized_not_byte_substituted, in
+      the one node that runs before any CLI command rewrites the ledger.
+    SECOND RUN: home.cloned.into.project FAILED
+         the_cloned_ledger_is_tokenized_not_byte_substituted
+
+M5  HomeCloner.classify: never return Surface.CONTENT (authored content is
+    re-anchored like any other path)
+    -> home.cloned.into.project FAILED
+         authored_content_survives_the_clone_byte_for_byte
+         tolerated_content_references_are_counted_in_the_report
+
+M6  HomeCloner.missingDestReferences: return an empty list
+    -> home.clone.toolchains.reprovisionable FAILED
+         the_shim_whose_target_was_skipped_is_reported_exactly_once
+
+M7  HomeCloner.reanchorProvisioned: return 0 immediately
+    -> home.cloned.into.project FAILED
+         home_clone_exits_zero
+         home_clone_reports_clean
+         independent_scan_finds_no_owned_surface_naming_the_source
+    (cascade: the un-re-anchored shim still names the source, which the
+     independent scan catches before the shim is ever executed)
+
+M8  HomeDescriptor.encodeTravelling: return path.toString() (never tokenize)
+    -> home.clone.descriptor.resolves FAILED
+         the_stored_descriptor_is_tokenized
+         the_stored_descriptor_names_neither_home_absolutely
+
+M9  HomeDescriptor.envFor: derive claudeConfigDir from user.home
+    -> home.clone.descriptor.resolves FAILED
+         claude_config_dir_lands_inside_the_clone_not_the_real_home
+
+M10 HomeCloner.build: reanchorState(src, src) -- re-anchor the SOURCE, not the copy
+    -> home.cloned.into.project FAILED
+         home_clone_exits_zero
+         home_clone_reports_clean
+         independent_scan_finds_no_owned_surface_naming_the_source
+         the_cloned_ledger_is_tokenized_not_byte_substituted
+         cloning_does_not_write_to_the_source_home     <-- the byte-identity assertion
+
+M11 LiveInterpreter.reverseProjection: delete sourcePath instead of destPath
+    (the reproduced defect class on #20 -- unbind deleting the installed unit)
+    -> home.clone.edit.stays.in.clone FAILED
+         unbind_deleted_no_installed_unit_in_either_home
+         bind_through_the_clone_succeeds
+         the_rebound_agent_symlink_resolves_into_the_clone
+         the_rebound_agent_symlink_does_not_resolve_into_the_source
+
+M13 HomeCloner.copyLink: relativize back into the SOURCE home, not the copy
+    (no absolute source path survives, so the textual scan cannot see it)
+    -> home.cloned.into.project FAILED
+         relative_symlinks_resolve_inside_the_clone
+    This is why that assertion exists separately from
+    in_home_symlinks_are_relative_in_the_clone: relative is worthless if it
+    resolves somewhere else, and only toRealPath can tell.
+
+M14 HomeDescriptor.decodeTravelling: return the stored string unresolved
+    -> no node failed.  FINDING, not closed by an assertion:
+      `home describe` recomputes the descriptor from the home on every call and
+      reads the stored one back only for envContributions (a Map<String,String>,
+      which is never decoded), so the decode path is unobservable through the CLI.
+      The stored form is asserted by reading the file directly
+      (the_stored_descriptor_is_tokenized, killed by M8) and the derived form by
+      M9/M15/M17. Worth an issue: a descriptor written by an older skill-manager
+      whose tokens no longer decode would be read silently.
+
+M15 HomeDescriptor.envFor: derive CLAUDE_HOME, CODEX_HOME, GEMINI_HOME from
+    user.home while leaving CLAUDE_CONFIG_DIR correct
+    -> home.clone.descriptor.resolves FAILED
+         claude_home_and_claude_config_dir_carry_one_value
+         codex_and_gemini_homes_land_inside_the_project
+
+M16 HomeDescriptor.write: no-op
+    -> home.clone.fixture.built FAILED
+         fixture_carries_a_home_runtime_descriptor
+
+M17 HomeDescriptor.homeRootFor: never step up to the store's parent
+    -> home.clone.descriptor.resolves FAILED
+         the_printed_descriptor_resolves_under_the_new_root
+
+M18 HomeCloner.copyTree: symlink each skipped root at the source, RELATIVELY
+    (the "share the toolchains" option considered and rejected on #20, encoded
+     so that no absolute source path survives the textual scan)
+    -> home.clone.toolchains.reprovisionable FAILED
+         venvs_tools_npm_and_cache_carry_no_content_in_the_clone
+         the_clone_does_not_link_venvs_at_the_source_home
+         the_shim_whose_target_was_skipped_is_reported_exactly_once
+         the_skipped_shims_target_really_is_missing
+
+M19 HomeCloner.copyTree: for SKILL.md, symlink the source's file relatively
+    instead of copying it (the home-level analogue of the pre-epic symlink
+    child home)
+    -> home.cloned.into.project FAILED
+         relative_symlinks_resolve_inside_the_clone
+    (cascade: bin/cli/hc-link points at hc-unit-b/SKILL.md, which is now itself
+     a link into the source, so toRealPath on the shim resolves there. The
+     resolution check is transitive, which is why it catches this.)
+
+=====================================================================
+ARTIFACT FAULT INJECTIONS (tail nodes)
+=====================================================================
+Every production mutation that would make these nodes fail is caught earlier by
+home.cloned.into.project's independent scan or by
+home.clone.toolchains.reprovisionable, so a whole-graph mutation run cannot reach
+them. These reproduce the exact on-disk state a defective clone would have
+produced, then re-run one node with
+`./gradlew home-clone --resume-from-build <run> --run-only-node <node>`.
+No production file is touched (verified with `git status -- src/`).
+
+FI-A  Repoint the clone's in-unit symlink ABSOLUTELY at the source home
+      -> home.clone.edit.stays.in.clone FAILED
+           a_write_through_the_clones_in_unit_symlink_lands_in_the_clone
+           the_source_home_is_byte_identical_after_writing_through_the_clone
+         (digestBefore 4e2025b1... != digestAfter d06b2861... -- the write went
+          through the link into the source home)
+
+FI-B  Delete the clone's installed/hc-unit-a.projections.json
+      -> node PASSED. FINDING: BindingStore reconstructs deterministic
+         default-agent bindings (`default:<agent>:<unit>`), so a missing ledger
+         does not make `bindings list` lose them.
+         the_clone_can_read_its_own_binding_ledger is therefore an ANTECEDENT
+         GUARD, not an independent claim: its job is to stop the unbind/bind
+         assertions from passing vacuously on a blank binding id, and M11 proves
+         those three do fail when the id is present.
+
+FI-C  Leave the clone's bin/cli shim body naming the SOURCE home
+      -> home.clone.works.with.source.renamed FAILED
+           a_bin_cli_shim_execs_the_clones_own_bytes_with_the_source_gone
+         (shim exit 1 with the source renamed away)
+
+FI-D  Leave the clone's ledger sourcePath naming the SOURCE home
+      FIRST RUN: node PASSED.  <-- REAL GAP, now closed.
+        Cause: `bindings list --json` prints only the target root, never
+        sourcePath -- and sourcePath is the exact surface the reproduced defect
+        on #20 lived on. Nothing in the node's command set printed it.
+        Assertion added: the_ledgers_recorded_source_paths_name_no_missing_home,
+        driving `bindings show <id> --json` with the source renamed away.
+      SECOND RUN: home.clone.works.with.source.renamed FAILED
+           the_ledgers_recorded_source_paths_name_no_missing_home
+
+FI-E  Agent-home leak detection (home.clone.no.agent.home.leak).
+      A production mutation here -- making AgentHomes ignore CLAUDE_CONFIG_DIR so
+      the user.home fallback fires -- WOULD WRITE INTO THE OWNER'S REAL
+      ~/.claude, which the standing constraint on issue #1 forbids. It was NOT
+      run. Instead, a negative control: both nodes' "real home" was temporarily
+      pointed at a decoy directory, a leaked unit was planted there, and the node
+      re-run.
+      -> home.clone.no.agent.home.leak FAILED
+           the_real_claude_skills_root_is_unchanged
+           none_of_this_graphs_units_appear_in_a_real_agent_home
+         (claudeBefore=[] claudeNow=[hc-unit-a],
+          ourUnitsInRealAgentHomes=[.claude/skills/hc-unit-a])
+      Both edited node files restored and verified byte-identical.
+      the_real_codex_skills_root_is_unchanged and
+      the_real_gemini_skills_root_is_unchanged are the same comparison over the
+      other two roots and were not separately injected.
+
+=====================================================================
+NOT PROVEN BY MUTATION
+=====================================================================
+Fixture guards in home.clone.fixture.built (7 of its 8 assertions) check that the
+fixture really contains the artifact each later assertion is about -- an absolute
+in-unit symlink, an absolute bin/cli symlink, a working shim, both a venvs/ and a
+pm/ entry, aged ledgers, and a self-reference on all three surfaces. They are
+sensitive by construction: deleting the planting code makes them fail, and they
+exist precisely so that a downstream assertion cannot pass vacuously against an
+artifact that was never created. fixture_carries_a_home_runtime_descriptor is the
+exception and is killed by M16.
+
+Antecedent guards, whose only job is to stop a later assertion passing vacuously:
+  the_clone_can_read_its_own_binding_ledger      (see FI-B)
+  unbind_through_the_clone_succeeds              (M11 makes bind fail alongside)
+  home_describe_reads_the_clone_successfully     (exit-code guard for M8/M9/M15/M17)
+  an_edit_through_the_clone_lands_in_the_clone   (guard for the source comparison)
+  the_source_home_really_was_renamed_away        (guard for the four commands)
+  the_source_home_was_restored                   (guard for the round-trip digest)

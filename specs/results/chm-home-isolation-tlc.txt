@@ -1,0 +1,147 @@
+TLC runs for the HOME-LEVEL isolation slice of child-home-materialization-workflow.
+Recorded 2026-07-27T00:28:36Z. tlc2 2.19; run from specs/desired_program_model.
+Command form: bash run_tlc.sh <SPEC>.tla <CFG>.cfg
+
+==============================================================================
+DESIRED STATE -- must be clean
+==============================================================================
+
+--- External.tla External_home.cfg
+Model checking completed. No error has been found.
+2966 states generated, 706 distinct states found, 0 states left on queue.
+The depth of the complete state graph search is 12.
+
+--- Internal.tla Internal_clone.cfg
+Model checking completed. No error has been found.
+303 states generated, 105 distinct states found, 0 states left on queue.
+The depth of the complete state graph search is 13.
+
+==============================================================================
+HOME-LEVEL REGRESSIONS -- each must produce a counterexample
+==============================================================================
+
+--- External.tla External_regression_absstate.cfg
+Error: Invariant AHomeIsAPureFunctionOfItsRoot is violated.
+State 1: <Initial predicate>
+State 2: <RelocateHome line 377, col 3 to line 382, col 24 of module External>
+4 states generated, 4 distinct states found, 2 states left on queue.
+The depth of the complete state graph search is 2.
+
+--- External.tla External_regression_verbatimstate.cfg
+Error: Invariant SourceHomeIsByteIdenticalToItsCloneTimeSelf is violated.
+State 1: <Initial predicate>
+State 2: <CloneHomeIntoProject line 312, col 3 to line 328, col 24 of module External>
+State 3: <UnbindUnitThroughHome line 362, col 3 to line 368, col 24 of module External>
+8 states generated, 7 distinct states found, 4 states left on queue.
+The depth of the complete state graph search is 3.
+
+--- External.tla External_regression_abslink.cfg
+Error: Invariant WritesThroughOneHomeReachNoOtherHome is violated.
+State 1: <Initial predicate>
+State 2: <CloneHomeIntoProject line 312, col 3 to line 328, col 24 of module External>
+State 3: <EditUnitThroughHome line 341, col 3 to line 352, col 24 of module External>
+7 states generated, 6 distinct states found, 3 states left on queue.
+The depth of the complete state graph search is 3.
+
+--- External.tla External_regression_sharedtoolchain.cfg
+Error: Invariant NoOwnedSurfaceNamesAnotherHome is violated.
+State 1: <Initial predicate>
+State 2: <CloneHomeIntoProject line 312, col 3 to line 328, col 24 of module External>
+2 states generated, 2 distinct states found, 0 states left on queue.
+The depth of the complete state graph search is 2.
+
+--- External.tla External_regression_silentshims.cfg
+Error: Invariant EveryHomeMissingItsToolchainsSaysSo is violated.
+State 1: <Initial predicate>
+State 2: <CloneHomeIntoProject line 312, col 3 to line 328, col 24 of module External>
+2 states generated, 2 distinct states found, 0 states left on queue.
+The depth of the complete state graph search is 2.
+
+--- External.tla External_regression_nopm.cfg
+Error: Invariant AHomeMissingItsToolchainsStillHasItsPackageManagers is violated.
+State 1: <Initial predicate>
+State 2: <CloneHomeIntoProject line 312, col 3 to line 328, col 24 of module External>
+2 states generated, 2 distinct states found, 0 states left on queue.
+The depth of the complete state graph search is 2.
+
+--- External.tla External_regression_rewritecontent.cfg
+Error: Invariant AuthoredContentIsNeverRewritten is violated.
+State 1: <Initial predicate>
+State 2: <CloneHomeIntoProject line 312, col 3 to line 328, col 24 of module External>
+2 states generated, 2 distinct states found, 0 states left on queue.
+The depth of the complete state graph search is 2.
+
+--- Internal.tla Internal_regression_partialclone.cfg
+Error: Invariant NoUnfinishedDestinationSurvivesAFailedClone is violated.
+State 1: <Initial predicate>
+State 2: <BeginCloneCopyTree line 351, col 3 to line 360, col 24 of module Internal>
+State 3: <AbortCloneAndDiscardPartial line 443, col 3 to line 450, col 24 of module Internal>
+9 states generated, 9 distinct states found, 6 states left on queue.
+The depth of the complete state graph search is 3.
+
+--- Internal.tla Internal_regression_unreanchored.cfg
+Error: Invariant EveryOwnedSurfaceIsReanchoredBeforeAHomeIsHandedOver is violated.
+State 1: <Initial predicate>
+State 2: <BeginCloneCopyTree line 351, col 3 to line 360, col 24 of module Internal>
+State 3: <RelativizeInHomeLinks line 369, col 3 to line 375, col 24 of module Internal>
+State 4: <ReanchorProvisionedFiles line 403, col 3 to line 409, col 24 of module Internal>
+State 5: <CompleteClone line 429, col 3 to line 434, col 24 of module Internal>
+State 6: <PointEnvAtClone line 458, col 3 to line 463, col 24 of module Internal>
+44 states generated, 24 distinct states found, 5 states left on queue.
+The depth of the complete state graph search is 6.
+
+==============================================================================
+NEGATIVE RESULT -- a reporting invariant cannot replace a witness
+==============================================================================
+
+--- External.tla External_regression_rewritecontent_reportonly.cfg
+    CloneContentPolicy = REWRITE; invariants: TypeOK + EveryToleratedContentReferenceIsReported
+Model checking completed. No error has been found.
+2966 states generated, 706 distinct states found, 0 states left on queue.
+The depth of the complete state graph search is 12.
+
+--- External.tla External_regression_rewritecontent.cfg   (same policy, witness invariant added)
+Error: Invariant AuthoredContentIsNeverRewritten is violated.
+State 1: <Initial predicate>
+State 2: <CloneHomeIntoProject line 312, col 3 to line 328, col 24 of module External>
+2 states generated, 2 distinct states found, 0 states left on queue.
+The depth of the complete state graph search is 2.
+
+==============================================================================
+UNIT-LEVEL SLICE -- unchanged by this work
+==============================================================================
+
+--- External.tla External.cfg
+Model checking completed. No error has been found.
+1302 states generated, 250 distinct states found, 0 states left on queue.
+The depth of the complete state graph search is 9.
+
+--- External.tla External_regression_overwrite.cfg
+Error: Invariant AgentEditedChildUnitsAreNeverDestroyed is violated.
+52 states generated, 35 distinct states found, 25 states left on queue.
+The depth of the complete state graph search is 4.
+
+--- External.tla External_regression_rawdigest.cfg
+Error: Invariant UnmodifiedChildUnitsConvergeOnTheirSource is violated.
+39 states generated, 27 distinct states found, 19 states left on queue.
+The depth of the complete state graph search is 3.
+
+--- External.tla External_regression_symlink.cfg
+Error: Invariant ChildHomeWritesNeverReachTheParentStore is violated.
+11 states generated, 9 distinct states found, 6 states left on queue.
+The depth of the complete state graph search is 3.
+
+--- Internal.tla Internal.cfg
+Model checking completed. No error has been found.
+8306 states generated, 2065 distinct states found, 0 states left on queue.
+The depth of the complete state graph search is 12.
+
+--- Internal.tla Internal_regression_nonatomic.cfg
+Error: Invariant InFlightMaterializationLeavesTheChildUnitIntact is violated.
+442 states generated, 202 distinct states found, 143 states left on queue.
+The depth of the complete state graph search is 5.
+
+--- Internal.tla Internal_regression_overwrite.cfg
+Error: Invariant AgentEditsSurviveMaterialization is violated.
+255 states generated, 114 distinct states found, 81 states left on queue.
+The depth of the complete state graph search is 4.

@@ -604,6 +604,48 @@ validationGraph {
         node("sources/child-home/ChildHomeMaterializationAtomic.java")
     }
 
+    // ---------------------------------------------------------------------
+    // home-clone: HOME-level isolation, T19 / #20.
+    //
+    // Where project-child-home asserts that the UNITS inside a home are
+    // independent, this graph asserts that a HOME is a pure function of
+    // SKILL_MANAGER_HOME: copy it into a project, point the env var at the copy,
+    // and the copy touches neither the home it came from nor ~/.claude.
+    //
+    // Drives the real CLI over a SYNTHETIC fixture home (the developer's is
+    // 5.4 GB and /private/tmp has less free space than that; it is also the home
+    // the standing constraint on #1 forbids writing to). The fixture carries one
+    // artifact per problem class #20 measured: an absolute in-unit symlink into
+    // the store, an absolute bin/cli symlink, a shim with the home path in its
+    // body, a shim whose target is under a skipped root, a pm/ entry, a venvs/
+    // entry, and an authored file that legitimately records an absolute path.
+    //
+    // Invariants from specs/desired_program_model/External.tla (HomeSpec):
+    //   SourceHomeIsByteIdenticalToItsCloneTimeSelf
+    //   AHomeIsAPureFunctionOfItsRoot
+    //   NoOwnedSurfaceNamesAnotherHome
+    //   AuthoredContentIsNeverRewritten
+    //   ToolchainRootsAreNeverShared
+    //   AHomeMissingItsToolchainsStillHasItsPackageManagers
+    //   EveryHomeMissingItsToolchainsSaysSo
+    //
+    // Strictly ordered: each node builds on what the previous one left on disk,
+    // and the source home's digest is carried forward so every later node can
+    // prove the source is still byte-identical rather than trusting a report.
+    testGraph("home-clone") {
+        node("sources/common/EnvPrepared.java")
+        node("sources/home-clone/HomeCloneFixtureBuilt.java")
+        node("sources/home-clone/HomeClonedIntoProject.java")
+        // Shape of the copy first, then what happens when it is used. Every
+        // skill-manager command calls SkillStore.init(), so a node asserting the
+        // clone's layout has to run before one that drives the CLI through it.
+        node("sources/home-clone/HomeCloneToolchainsReprovisionable.java")
+        node("sources/home-clone/HomeCloneDescriptorResolves.java")
+        node("sources/home-clone/HomeCloneEditStaysInClone.java")
+        node("sources/home-clone/HomeCloneWorksWithSourceRenamed.java")
+        node("sources/home-clone/HomeCloneNoAgentHomeLeak.java")
+    }
+
     testGraph("project-env") {
         node("sources/common/EnvPrepared.java")
         node("sources/project/ProjectEnvMaterialized.java")
