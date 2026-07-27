@@ -75,6 +75,8 @@ public final class CliMetadata {
             command("home policy"),
             command("home shims"),
             command("home drift"),
+            command("home sync"),
+            command("home close-out"),
             command("install"),
             command("list", "ls"),
             command("lock"),

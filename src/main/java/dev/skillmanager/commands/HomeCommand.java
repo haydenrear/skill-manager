@@ -1,14 +1,17 @@
 package dev.skillmanager.commands;
 
 import dev.skillmanager.bindings.BindingStore;
+import dev.skillmanager.bindings.ChildHomeMaterializer;
 import dev.skillmanager.launch.LauncherShims;
 import dev.skillmanager.mcp.GatewayConfig;
 import dev.skillmanager.policy.HomePolicy;
 import dev.skillmanager.source.UnitStore;
 import dev.skillmanager.store.DriftGate;
+import dev.skillmanager.store.HomeCloseOut;
 import dev.skillmanager.store.HomeCloner;
 import dev.skillmanager.store.HomeDescriptor;
 import dev.skillmanager.store.HomeDigest;
+import dev.skillmanager.store.HomeSync;
 import dev.skillmanager.store.SkillStore;
 import dev.skillmanager.util.Log;
 import picocli.CommandLine.Command;
@@ -35,7 +38,9 @@ import java.util.concurrent.Callable;
                 HomeCommand.DescribeCmd.class,
                 HomeCommand.PolicyCmd.class,
                 HomeCommand.ShimsCmd.class,
-                HomeCommand.DriftCmd.class
+                HomeCommand.DriftCmd.class,
+                HomeCommand.SyncCmd.class,
+                HomeCommand.CloseOutCmd.class
         })
 public final class HomeCommand {
 
@@ -94,6 +99,18 @@ public final class HomeCommand {
                                 + "pass --own-gateway to claim it instead)", inherited.baseUrl());
                     }
                 }
+            }
+            // Write down what this copy started from, per unit, while that is
+            // still knowable. It is the only witness to the two homes' common
+            // ancestor, and without it the first `home sync` back into the
+            // original can only report the whole unit as conflicted — even when
+            // one side never moved. See
+            // ChildHomeMaterializer#adoptUnrecordedUnits.
+            List<ChildHomeMaterializer.UnitRef> adopted =
+                    ChildHomeMaterializer.adoptUnrecordedUnits(cloned);
+            if (!json && !adopted.isEmpty()) {
+                Log.info("  baseline:    recorded for %d unit(s), so edits made here can be "
+                        + "merged back with `skill-manager home sync`", adopted.size());
             }
             // Descriptor last, so it reports the ownership decision above.
             HomeDescriptor descriptor = describe(cloned, null,
@@ -400,6 +417,177 @@ public final class HomeCommand {
                             + "]}")
                     .collect(java.util.stream.Collectors.joining(",", "[", "]"));
         }
+    }
+
+    /**
+     * {@code home sync} — reconcile one home against another, in either
+     * direction, by copy.
+     *
+     * <p>The mechanism and the reasoning live in {@link HomeSync}. What belongs
+     * here is the surface: two homes named explicitly (never inferred — this
+     * command writes into one of them, and guessing which is not a thing to be
+     * clever about), and a report that is printed whatever happened.
+     */
+    @Command(name = "sync",
+            description = "Reconcile one Skill Manager home against another by copy. Units the "
+                    + "destination has edited are held back and reported, not overwritten; "
+                    + "--merge three-way merges them and reports any conflict.")
+    public static final class SyncCmd implements Callable<Integer> {
+
+        @Option(names = "--from", required = true, description = "Home to read from. Never written.")
+        Path from;
+
+        @Option(names = "--to", required = true, description = "Home to reconcile. Written unless --dry-run.")
+        Path to;
+
+        @Option(names = "--merge",
+                description = "Three-way merge a destination unit that carries local work, using "
+                        + "its recorded per-file baseline. Conflicts are reported, never resolved; "
+                        + "local work is kept either way.")
+        boolean merge;
+
+        @Option(names = "--dry-run",
+                description = "Compute and print the whole report, write nothing.")
+        boolean dryRun;
+
+        @Option(names = "--json", description = "Emit machine-readable JSON.")
+        boolean json;
+
+        @Override
+        public Integer call() throws Exception {
+            SkillStore source = new SkillStore(from.toAbsolutePath().normalize());
+            SkillStore dest = new SkillStore(to.toAbsolutePath().normalize());
+            HomeSync.Report report = HomeSync.run(source, dest, new HomeSync.Options(merge, dryRun));
+            if (json) {
+                System.out.println(syncJson(report));
+            } else {
+                renderSync(report);
+            }
+            // Held-back units are the documented default outcome of a plain
+            // sync, so they are reported and do not fail the command. A
+            // conflict is different: it is a decision nothing here is allowed
+            // to make, and it has to be visible to a script.
+            return report.conflicted().isEmpty() ? 0 : 1;
+        }
+    }
+
+    /**
+     * {@code home close-out} — the refusal a worktree teardown runs before it
+     * deletes a home.
+     *
+     * <p>See {@link HomeCloseOut} for why this reports and refuses rather than
+     * quietly doing the merge itself.
+     */
+    @Command(name = "close-out",
+            description = "Refuse (non-zero) while a worktree home still holds work that "
+                    + "removing it would destroy, naming every unit and what to run for each. "
+                    + "Writes nothing; safe to run repeatedly.")
+    public static final class CloseOutCmd implements Callable<Integer> {
+
+        @Option(names = "--home", required = true,
+                description = "The worktree's Skill Manager home, about to be removed.")
+        Path home;
+
+        @Option(names = "--into", required = true,
+                description = "The project home its work has to reach first.")
+        Path into;
+
+        @Option(names = "--json", description = "Emit a machine-readable verdict.")
+        boolean json;
+
+        @Override
+        public Integer call() throws Exception {
+            SkillStore worktree = new SkillStore(home.toAbsolutePath().normalize());
+            SkillStore project = new SkillStore(into.toAbsolutePath().normalize());
+            HomeCloseOut.Verdict verdict = HomeCloseOut.inspect(worktree, project);
+            if (json) {
+                System.out.println(closeOutJson(verdict));
+                return verdict.exitCode();
+            }
+            for (String line : HomeCloseOut.render(verdict)) Log.info("%s", line);
+            if (verdict.safe()) {
+                Log.ok("%s holds nothing that removing it would destroy", verdict.home());
+                return 0;
+            }
+            Log.error("%d unit(s) in %s would be lost if it were removed now",
+                    verdict.blockers().size(), verdict.home());
+            return verdict.exitCode();
+        }
+    }
+
+    // --------------------------------------------------------- home sync IO
+
+    private static void renderSync(HomeSync.Report report) {
+        Log.info("  from:        %s", report.from());
+        Log.info("  to:          %s%s", report.to(), report.dryRun() ? "  (dry run — nothing written)" : "");
+        for (ChildHomeMaterializer.UnitSync unit : report.units()) {
+            String status = unit.status().name().toLowerCase().replace('_', '-');
+            if (unit.status() == ChildHomeMaterializer.SyncStatus.UNCHANGED) {
+                Log.info("  %-16s %s", status, unit.label());
+                continue;
+            }
+            Log.info("  %-16s %s — %s", status, unit.label(), unit.detail());
+            for (String conflict : unit.conflicts()) Log.warn("      conflict  %s", conflict);
+        }
+        Log.info("  %d unchanged, %d updated, %d new, %d merged, %d held back, %d conflicted, "
+                        + "%d removed upstream",
+                report.count(ChildHomeMaterializer.SyncStatus.UNCHANGED),
+                report.count(ChildHomeMaterializer.SyncStatus.UPDATED),
+                report.count(ChildHomeMaterializer.SyncStatus.NEW),
+                report.count(ChildHomeMaterializer.SyncStatus.MERGED),
+                report.count(ChildHomeMaterializer.SyncStatus.HELD_BACK),
+                report.count(ChildHomeMaterializer.SyncStatus.CONFLICTED),
+                report.count(ChildHomeMaterializer.SyncStatus.REMOVED_UPSTREAM));
+        if (report.clean()) {
+            Log.ok("%s%s", report.dryRun() ? "would reconcile " : "reconciled ", report.to());
+        } else {
+            Log.warn("%d unit(s) were not reconciled and were left exactly as they were",
+                    report.unresolved().size());
+        }
+    }
+
+    private static String syncJson(HomeSync.Report report) {
+        return "{\"from\":\"" + esc(report.from().toString())
+                + "\",\"to\":\"" + esc(report.to().toString())
+                + "\",\"merge\":" + report.merge()
+                + ",\"dryRun\":" + report.dryRun()
+                + ",\"clean\":" + report.clean()
+                + ",\"units\":" + unitsJson(report.units()) + "}";
+    }
+
+    private static String unitsJson(List<ChildHomeMaterializer.UnitSync> units) {
+        return units.stream()
+                .map(unit -> "{\"unit\":\"" + esc(unit.label())
+                        + "\",\"name\":\"" + esc(unit.unitName())
+                        + "\",\"kind\":\"" + unit.unitKind().name().toLowerCase()
+                        + "\",\"status\":\"" + unit.status().name().toLowerCase().replace('_', '-')
+                        + "\",\"detail\":\"" + esc(unit.detail())
+                        + "\",\"files\":" + strings(unit.files())
+                        + ",\"conflicts\":" + strings(unit.conflicts()) + "}")
+                .collect(java.util.stream.Collectors.joining(",", "[", "]"));
+    }
+
+    private static String closeOutJson(HomeCloseOut.Verdict verdict) {
+        String blockers = verdict.blockers().stream()
+                .map(blocker -> "{\"unit\":\"" + esc(blocker.label())
+                        + "\",\"status\":\""
+                        + blocker.unit().status().name().toLowerCase().replace('_', '-')
+                        + "\",\"detail\":\"" + esc(blocker.unit().detail())
+                        + "\",\"conflicts\":" + strings(blocker.unit().conflicts())
+                        + ",\"remedy\":\"" + esc(blocker.remedy()) + "\"}")
+                .collect(java.util.stream.Collectors.joining(",", "[", "]"));
+        return "{\"home\":\"" + esc(verdict.home().toString())
+                + "\",\"into\":\"" + esc(verdict.into().toString())
+                + "\",\"safe\":" + verdict.safe()
+                + ",\"exitCode\":" + verdict.exitCode()
+                + ",\"blockers\":" + blockers
+                + ",\"units\":" + unitsJson(verdict.units()) + "}";
+    }
+
+    private static String strings(List<String> values) {
+        return values.stream()
+                .map(value -> "\"" + esc(value) + "\"")
+                .collect(java.util.stream.Collectors.joining(",", "[", "]"));
     }
 
     // -------------------------------------------------------- descriptor

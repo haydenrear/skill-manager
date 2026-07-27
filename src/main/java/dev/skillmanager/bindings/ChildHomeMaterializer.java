@@ -68,6 +68,21 @@ import java.util.UUID;
  * tree. A raw digest would hash a store link as its target string, so an
  * upgrade of the unit it points at would never be noticed and the child copy
  * would keep stale dereferenced content forever.
+ *
+ * <h2>Reconciling two homes is the same operation</h2>
+ *
+ * <p>{@link #planSync} and {@link #applySync} reconcile one unit from the
+ * "parent" store into the "child" one in whichever direction the caller names
+ * — which is what {@code home sync} needs to push a ticket worktree's edits
+ * back up into the project home it was cloned from. That deliberately reuses
+ * everything above rather than adding a second copier: the hold-back rule, the
+ * record, the staging area and the atomic swap are the same, because "do not
+ * destroy an edit somebody made in this tree" is the same requirement whether
+ * the tree is being refreshed from a store or reconciled against a sibling
+ * home. The only thing reconciliation adds is what to do when <em>both</em>
+ * sides moved, which a downward materialization never had to answer: with
+ * {@code merge} the recorded per-file baseline decides each path, and any path
+ * both sides changed is reported as a conflict rather than resolved.
  */
 public final class ChildHomeMaterializer {
 
@@ -117,6 +132,25 @@ public final class ChildHomeMaterializer {
      * {@link MaterializationMode#CHECKOUT} units — the commit the checkout was
      * materialized at, which is how a later pass tells "still exactly what we
      * cloned" from "the agent has committed something here".
+     *
+     * <p>{@code entryDigests} is the same baseline as {@code contentDigest},
+     * broken out per file. The whole-tree digest can only answer "did this unit
+     * change"; a three-way reconciliation between two homes has to answer
+     * "<em>which files</em> did each side change", and that is the difference
+     * between merging two disjoint edits and declaring the whole unit
+     * conflicted. It is written for {@link MaterializationMode#COPY} only —
+     * a checkout's baseline is its git history, which already answers this
+     * better than any digest map could. Absent (an older record, an
+     * interrupted write) it reads as null, which routes the merge to the same
+     * conservative refusal a missing record already gets.
+     *
+     * <p>{@code reconcileKind} distinguishes a tree that was copied wholesale
+     * from one that is the <em>result of a merge</em>. They are not
+     * interchangeable: a pristine copy may be overwritten the moment its source
+     * moves, because nothing in it is unique. A merge result carries local work
+     * that exists nowhere else, so it must be merged again rather than
+     * overwritten — and it looks exactly like a pristine copy to a digest
+     * comparison against its own record.
      */
     @JsonInclude(JsonInclude.Include.NON_NULL)
     @JsonIgnoreProperties(ignoreUnknown = true)
@@ -129,8 +163,27 @@ public final class ChildHomeMaterializer {
             String sourceRevision,
             String sourceDigest,
             String contentDigest,
-            String materializedAt
-    ) {}
+            String materializedAt,
+            java.util.Map<String, String> entryDigests,
+            String reconcileKind
+    ) {
+        /** A tree written by copying a source wholesale. */
+        public static final String COPIED = "copy";
+
+        /** A tree produced by three-way merging a source into local work. */
+        public static final String MERGED = "merge";
+
+        /** Pre-{@code entryDigests} shape, kept so older call sites still read. */
+        public MaterializationRecord(int schemaVersion, String unitName, String unitKind,
+                                     String mode, String source, String sourceRevision,
+                                     String sourceDigest, String contentDigest,
+                                     String materializedAt) {
+            this(schemaVersion, unitName, unitKind, mode, source, sourceRevision,
+                    sourceDigest, contentDigest, materializedAt, null, null);
+        }
+
+        public boolean isMergeResult() { return MERGED.equals(reconcileKind); }
+    }
 
     private final SkillStore parentStore;
     private final SkillStore childStore;
@@ -248,19 +301,378 @@ public final class ChildHomeMaterializer {
      */
     public List<UnitOutcome> locallyModifiedUnits() throws IOException {
         List<UnitOutcome> out = new ArrayList<>();
+        for (UnitRef ref : unitDirectories(childStore)) {
+            if (!isLocallyModified(ref.name(), ref.kind())) continue;
+            out.add(new UnitOutcome(ref.name(), ref.kind(), Status.SKIPPED_LOCAL_CHANGES,
+                    childStore.unitDir(ref.name(), ref.kind()).toAbsolutePath().normalize(),
+                    "local changes in the child home"));
+        }
+        return out;
+    }
+
+    /** One unit directory in a home, named the way the store names it. */
+    public record UnitRef(String name, UnitKind kind) implements Comparable<UnitRef> {
+        public String label() { return kind.name().toLowerCase() + ":" + name; }
+
+        @Override
+        public int compareTo(UnitRef other) {
+            int byKind = kind.compareTo(other.kind);
+            return byKind != 0 ? byKind : name.compareTo(other.name);
+        }
+    }
+
+    /**
+     * Every unit <em>directory</em> in a home, of every kind.
+     *
+     * <p>Deliberately not {@code listInstalledUnits()}: that parses each unit
+     * and drops the ones that do not load. A unit an agent has half-edited is
+     * exactly the one whose {@code SKILL.md} may not parse yet, and it is
+     * exactly the one a close-out must not silently omit — "it did not appear
+     * in the list" and "there was nothing to lose" are the same report to
+     * whoever reads it, and only one of them is true.
+     */
+    public static List<UnitRef> unitDirectories(SkillStore store) throws IOException {
+        List<UnitRef> out = new ArrayList<>();
         for (UnitKind kind : UnitKind.values()) {
-            Path kindDir = unitRoot(kind);
+            Path kindDir = unitRootOf(store, kind);
             if (kindDir == null || !Files.isDirectory(kindDir, LinkOption.NOFOLLOW_LINKS)) continue;
             for (Path unitDir : listSorted(kindDir)) {
                 if (Files.isSymbolicLink(unitDir)
                         || !Files.isDirectory(unitDir, LinkOption.NOFOLLOW_LINKS)) {
                     continue;
                 }
-                String name = unitDir.getFileName().toString();
-                if (!isLocallyModified(name, kind)) continue;
-                out.add(new UnitOutcome(name, kind, Status.SKIPPED_LOCAL_CHANGES,
-                        unitDir.toAbsolutePath().normalize(), "local changes in the child home"));
+                out.add(new UnitRef(unitDir.getFileName().toString(), kind));
             }
+        }
+        java.util.Collections.sort(out);
+        return out;
+    }
+
+    /**
+     * Record each unrecorded unit in {@code home} as its own baseline.
+     *
+     * <p>What this is for: a home produced by copying another one — {@code home
+     * clone} — has the bytes but no provenance, and provenance is the only
+     * thing that makes an edit inside it recoverable later. Without it, the
+     * first reconciliation back into the home it came from sees two trees that
+     * differ, no common ancestor, and has to report a conflict on the whole
+     * unit — even when only one side ever moved. The clone <em>is</em> the
+     * common ancestor; this writes that down while it is still true.
+     *
+     * <p>Records written here carry no {@code source} path on purpose. The
+     * path would name the home this one was copied from, and a copied home that
+     * names its origin is exactly the leak class {@code home verify} exists to
+     * catch. The digests say everything the merge needs; the path said nothing
+     * it uses.
+     *
+     * <p>Never overwrites an existing record — a copied home may have inherited
+     * real ones, including a {@code CHECKOUT} whose baseline is its git history
+     * and would be destroyed by being restated as a tree digest.
+     */
+    public static List<UnitRef> adoptUnrecordedUnits(SkillStore home) throws IOException {
+        ChildHomeMaterializer materializer = new ChildHomeMaterializer(home, home);
+        List<UnitRef> adopted = new ArrayList<>();
+        for (UnitRef ref : unitDirectories(home)) {
+            if (materializer.readRecord(ref.name(), ref.kind()).isPresent()) continue;
+            Path dir = home.unitDir(ref.name(), ref.kind()).toAbsolutePath().normalize();
+            Fingerprint print = fingerprint(dir);
+            materializer.writeRecord(ref.name(), ref.kind(), MaterializationMode.COPY, null, null,
+                    print.digest(), print.digest(), print.entries(),
+                    MaterializationRecord.COPIED);
+            adopted.add(ref);
+        }
+        return adopted;
+    }
+
+    // ------------------------------------------------- home-to-home reconcile
+
+    /** What reconciling one unit from the source home into this one did, or would do. */
+    public enum SyncStatus {
+        /** The destination already holds what the source holds. */
+        UNCHANGED,
+        /** The destination was a pristine copy and was refreshed from the source. */
+        UPDATED,
+        /** The destination carries local work and was left exactly as it was. */
+        HELD_BACK,
+        /** Both sides moved on disjoint files; the two edits were folded together. */
+        MERGED,
+        /** Both sides changed the same file. Nothing was written; a human decides. */
+        CONFLICTED,
+        /** The source has this unit and the destination does not. */
+        NEW,
+        /** The destination has this unit and the source does not. Never deleted here. */
+        REMOVED_UPSTREAM
+    }
+
+    public record UnitSync(
+            String unitName,
+            UnitKind unitKind,
+            SyncStatus status,
+            Path destPath,
+            List<String> files,
+            List<String> conflicts,
+            String detail
+    ) {
+        public UnitSync {
+            files = files == null ? List.of() : List.copyOf(files);
+            conflicts = conflicts == null ? List.of() : List.copyOf(conflicts);
+        }
+
+        public String label() { return unitKind.name().toLowerCase() + ":" + unitName; }
+
+        /** Did (or would) this outcome write to the destination unit? */
+        public boolean writes() {
+            return status == SyncStatus.UPDATED || status == SyncStatus.MERGED
+                    || status == SyncStatus.NEW;
+        }
+
+        /** Is this an outcome a close-out must refuse on? */
+        public boolean unresolved() {
+            return status == SyncStatus.HELD_BACK || status == SyncStatus.CONFLICTED;
+        }
+    }
+
+    /**
+     * What reconciling {@code name} from the source home into this one would do.
+     * Computes every digest the real run computes and writes nothing at all —
+     * not even into the staging area, which lives inside the destination home.
+     */
+    public UnitSync planSync(String name, UnitKind kind, boolean merge) throws IOException {
+        return reconcile(name, kind, merge, false);
+    }
+
+    /** {@link #planSync} plus the write it describes, staged and swapped in atomically. */
+    public UnitSync applySync(String name, UnitKind kind, boolean merge) throws IOException {
+        return reconcile(name, kind, merge, true);
+    }
+
+    /**
+     * The whole decision, in one place, for both the dry run and the real one.
+     *
+     * <p>Splitting "what would happen" from "make it happen" into two functions
+     * is how a {@code --dry-run} comes to report something the real run does not
+     * do. There is one decision here and {@code apply} only chooses whether to
+     * act on it.
+     */
+    private UnitSync reconcile(String name, UnitKind kind, boolean merge, boolean apply)
+            throws IOException {
+        Path source = parentStore.unitDir(name, kind).toAbsolutePath().normalize();
+        Path dest = childStore.unitDir(name, kind).toAbsolutePath().normalize();
+        boolean destIsDir = Files.isDirectory(dest, LinkOption.NOFOLLOW_LINKS);
+
+        if (!Files.isDirectory(source, LinkOption.NOFOLLOW_LINKS)) {
+            return new UnitSync(name, kind, SyncStatus.REMOVED_UPSTREAM, dest, List.of(), List.of(),
+                    "not in the source home; left in place — deleting a unit is not what a sync is for");
+        }
+        if (destIsDir && sameRealPath(source, dest)) {
+            return new UnitSync(name, kind, SyncStatus.UNCHANGED, dest, List.of(), List.of(),
+                    "source and destination are the same directory");
+        }
+
+        MaterializationRecord record = readRecord(name, kind).orElse(null);
+        if (destIsDir && record != null
+                && MaterializationMode.CHECKOUT.name().equals(record.mode())) {
+            // A checkout's history is the thing of value in it, and a tree copy
+            // cannot carry history. Overwriting one would destroy commits that
+            // may exist nowhere else; merging into one is `project sync`'s job.
+            return new UnitSync(name, kind, SyncStatus.HELD_BACK, dest, List.of(), List.of(),
+                    "materialized as a git checkout — send its commits home with "
+                            + "`skill-manager unit publish " + name + "`, not with a file copy");
+        }
+
+        List<ViewEntry> view = materializedView(source);
+        Fingerprint src = fingerprintOf(view, java.util.Set.of());
+
+        if (!destIsDir) {
+            if (Files.exists(dest, LinkOption.NOFOLLOW_LINKS)) {
+                return new UnitSync(name, kind, SyncStatus.HELD_BACK, dest, List.of(), List.of(),
+                        "a file or symlink already occupies " + dest + "; not replaced");
+            }
+            if (apply) writeCopy(name, kind, view, source, dest, src);
+            return new UnitSync(name, kind, SyncStatus.NEW, dest,
+                    List.copyOf(src.entries().keySet()), List.of(),
+                    "not in the destination home; copied from the source");
+        }
+
+        Fingerprint dst = fingerprint(dest);
+        if (src.digest().equals(dst.digest())) {
+            return new UnitSync(name, kind, SyncStatus.UNCHANGED, dest, List.of(), List.of(),
+                    "already byte-identical to the source");
+        }
+
+        String baseline = copyBaseline(record);
+        boolean destUntouched = baseline != null && baseline.equals(dst.digest());
+        if (destUntouched && src.digest().equals(record.sourceDigest())) {
+            // The destination differs from the source only by work a previous
+            // --merge folded in, and the source has not moved since. Copying the
+            // source over it now would delete that work for no gain.
+            return new UnitSync(name, kind, SyncStatus.UNCHANGED, dest, List.of(), List.of(),
+                    "the source has not moved since the last reconcile");
+        }
+        if (destUntouched && !record.isMergeResult()) {
+            if (apply) writeCopy(name, kind, view, source, dest, src);
+            return new UnitSync(name, kind, SyncStatus.UPDATED, dest,
+                    changedFiles(dst.entries(), src.entries()), List.of(),
+                    "refreshed from the source; the destination held no local work");
+        }
+
+        // Everything below: the destination carries something the source does not.
+        if (!merge) {
+            return new UnitSync(name, kind, SyncStatus.HELD_BACK, dest, List.of(), List.of(),
+                    baseline == null
+                            ? "no usable materialization record, so its contents cannot be shown to be "
+                                    + "disposable; re-run with --merge to reconcile it"
+                            : "locally modified; re-run with --merge to three-way merge it");
+        }
+        java.util.Map<String, String> base = mergeBase(name, kind, record);
+        if (base == null || base.isEmpty()) {
+            return new UnitSync(name, kind, SyncStatus.CONFLICTED, dest, List.of(),
+                    changedFiles(dst.entries(), src.entries()),
+                    "both sides differ and no per-file baseline was recorded for this unit, so "
+                            + "there is no merge base; resolve it by hand or publish the edit with "
+                            + "`skill-manager unit publish " + name + "`");
+        }
+
+        MergePlan plan = mergePlan(base, src.entries(), dst.entries());
+        if (!plan.conflicts().isEmpty()) {
+            return new UnitSync(name, kind, SyncStatus.CONFLICTED, dest, List.of(),
+                    plan.conflicts(),
+                    plan.conflicts().size() + " file(s) changed on both sides; nothing was written");
+        }
+        if (plan.take().isEmpty()) {
+            return new UnitSync(name, kind, SyncStatus.UNCHANGED, dest, List.of(), List.of(),
+                    "the destination is ahead of the source; the source has nothing to contribute");
+        }
+        if (apply) {
+            List<ViewEntry> merged = mergedView(view, dest, plan.take());
+            Path staged = stage(merged, name, kind);
+            try {
+                Fingerprint stagedPrint = fingerprint(staged);
+                swapIn(staged, dest);
+                writeCopyRecord(name, kind, source, stagedPrint, src.digest(),
+                        MaterializationRecord.MERGED);
+            } finally {
+                if (Files.exists(staged, LinkOption.NOFOLLOW_LINKS)) Fs.deleteRecursive(staged);
+            }
+        }
+        return new UnitSync(name, kind, SyncStatus.MERGED, dest,
+                List.copyOf(plan.take()), List.of(),
+                plan.take().size() + " file(s) taken from the source; local work kept");
+    }
+
+    /** Stage the source view and swap it into place — the copy path, atomically. */
+    private void writeCopy(String name, UnitKind kind, List<ViewEntry> view, Path source, Path dest,
+                           Fingerprint src) throws IOException {
+        Path staged = stage(view, name, kind);
+        try {
+            Fingerprint stagedPrint = fingerprint(staged);
+            swapIn(staged, dest);
+            writeCopyRecord(name, kind, source, stagedPrint, src.digest(),
+                    MaterializationRecord.COPIED);
+        } finally {
+            if (Files.exists(staged, LinkOption.NOFOLLOW_LINKS)) Fs.deleteRecursive(staged);
+        }
+    }
+
+    /**
+     * The per-file common ancestor of the two homes' copies of one unit.
+     *
+     * <p>The destination's own record first: it says what the destination was
+     * handed, which is the ancestor of anything the destination has since done
+     * to it. When the destination has none — a home whose units were installed
+     * rather than materialized — the source's record is used instead, because
+     * a home produced by copying this one records, at adoption time, exactly
+     * the content the two homes last shared. That is the case the whole return
+     * path depends on: a ticket worktree is a clone, and its clone-time record
+     * is the only surviving witness to what the project home held when it was
+     * made.
+     *
+     * <p>When both exist the destination's is preferred even though the
+     * source's may be the tighter ancestor. An older ancestor produces more
+     * conflicts and never fewer, so the cost of choosing wrong here is a
+     * conflict a human resolves, not an edit nobody sees again.
+     */
+    private java.util.Map<String, String> mergeBase(String name, UnitKind kind,
+                                                    MaterializationRecord destRecord) {
+        if (destRecord != null && destRecord.entryDigests() != null
+                && !destRecord.entryDigests().isEmpty()) {
+            return destRecord.entryDigests();
+        }
+        return new ChildHomeMaterializer(parentStore, parentStore).readRecord(name, kind)
+                .map(MaterializationRecord::entryDigests)
+                .orElse(null);
+    }
+
+    /** Which paths the source would take over, and which cannot be decided. */
+    private record MergePlan(java.util.LinkedHashSet<String> take, List<String> conflicts) {}
+
+    /**
+     * The three-way decision, per path, against the destination's recorded
+     * per-file baseline.
+     *
+     * <p>Four cases and no fifth: the two sides agree; only the destination
+     * moved (keep it); only the source moved (take it); both moved (a conflict,
+     * which nothing here is entitled to resolve). "Absent" is a value like any
+     * other, so a file added upstream, deleted locally, or deleted upstream all
+     * fall out of the same comparison rather than needing their own rule.
+     */
+    private static MergePlan mergePlan(java.util.Map<String, String> base,
+                                       java.util.Map<String, String> source,
+                                       java.util.Map<String, String> dest) {
+        java.util.TreeSet<String> paths = new java.util.TreeSet<>();
+        paths.addAll(source.keySet());
+        paths.addAll(dest.keySet());
+        java.util.LinkedHashSet<String> take = new java.util.LinkedHashSet<>();
+        List<String> conflicts = new ArrayList<>();
+        for (String path : paths) {
+            String s = source.get(path);
+            String d = dest.get(path);
+            if (java.util.Objects.equals(s, d)) continue;
+            String b = base.get(path);
+            if (java.util.Objects.equals(s, b)) continue;
+            if (java.util.Objects.equals(d, b)) {
+                take.add(path);
+                continue;
+            }
+            conflicts.add(path);
+        }
+        return new MergePlan(take, conflicts);
+    }
+
+    /** The destination tree with exactly {@code take} replaced by the source's version. */
+    private static List<ViewEntry> mergedView(List<ViewEntry> sourceView, Path dest,
+                                              java.util.Set<String> take) throws IOException {
+        java.util.Map<String, ViewEntry> bySourceRel = new java.util.LinkedHashMap<>();
+        for (ViewEntry entry : sourceView) bySourceRel.put(entry.rel(), entry);
+        List<ViewEntry> out = new ArrayList<>();
+        java.util.Set<String> seen = new java.util.LinkedHashSet<>();
+        for (ViewEntry entry : plainView(dest)) {
+            seen.add(entry.rel());
+            if (!take.contains(entry.rel())) {
+                out.add(entry);
+                continue;
+            }
+            // Taken from the source; absent there means the source deleted it.
+            ViewEntry replacement = bySourceRel.get(entry.rel());
+            if (replacement != null) out.add(replacement);
+        }
+        for (String rel : take) {
+            if (seen.contains(rel)) continue;
+            ViewEntry added = bySourceRel.get(rel);
+            if (added != null) out.add(added);
+        }
+        out.sort(Comparator.comparing(ViewEntry::rel));
+        return out;
+    }
+
+    private static List<String> changedFiles(java.util.Map<String, String> from,
+                                             java.util.Map<String, String> to) {
+        java.util.TreeSet<String> paths = new java.util.TreeSet<>();
+        paths.addAll(from.keySet());
+        paths.addAll(to.keySet());
+        List<String> out = new ArrayList<>();
+        for (String path : paths) {
+            if (!java.util.Objects.equals(from.get(path), to.get(path))) out.add(path);
         }
         return out;
     }
@@ -330,7 +742,7 @@ public final class ChildHomeMaterializer {
     private UnitOutcome linkUnit(String name, UnitKind kind, Path source, Path dest)
             throws IOException {
         linkPath(source, dest);
-        writeRecord(name, kind, MaterializationMode.LINK, source, null, null);
+        writeRecord(name, kind, MaterializationMode.LINK, source, null, null, null);
         return new UnitOutcome(name, kind, Status.MATERIALIZED, dest, "linked at parent store");
     }
 
@@ -460,20 +872,22 @@ public final class ChildHomeMaterializer {
 
         Path staged = stage(view, name, kind);
         try {
-            String stagedDigest = treeDigest(staged);
+            Fingerprint stagedPrint = fingerprint(staged);
             if (destIsDir && baseline == null) {
                 // No trustworthy provenance. Adopt the directory only when it
                 // is exactly what we would have written; otherwise refuse,
                 // because we cannot tell an agent's edits from a stale copy.
-                if (!stagedDigest.equals(currentDigest)) {
+                if (!stagedPrint.digest().equals(currentDigest)) {
                     return heldBack(name, kind, dest);
                 }
-                writeRecord(name, kind, MaterializationMode.COPY, source, sourceDigest, currentDigest);
+                writeCopyRecord(name, kind, source, stagedPrint, sourceDigest,
+                        MaterializationRecord.COPIED);
                 return new UnitOutcome(name, kind, Status.UNCHANGED, dest,
                         "adopted an existing identical copy");
             }
             swapIn(staged, dest);
-            writeRecord(name, kind, MaterializationMode.COPY, source, sourceDigest, stagedDigest);
+            writeCopyRecord(name, kind, source, stagedPrint, sourceDigest,
+                    MaterializationRecord.COPIED);
             return new UnitOutcome(name, kind, Status.MATERIALIZED, dest,
                     destIsLink ? "replaced a symlink into the parent store" : "copied from the parent store");
         } finally {
@@ -496,13 +910,23 @@ public final class ChildHomeMaterializer {
         return record.contentDigest();
     }
 
-    private void writeRecord(String name, UnitKind kind, MaterializationMode mode, Path source,
-                             String sourceDigest, String contentDigest) throws IOException {
-        writeRecord(name, kind, mode, source, null, sourceDigest, contentDigest);
+    /** Record for a {@link MaterializationMode#COPY}, with its per-file baseline. */
+    private void writeCopyRecord(String name, UnitKind kind, Path source, Fingerprint written,
+                                 String sourceDigest, String reconcileKind) throws IOException {
+        writeRecord(name, kind, MaterializationMode.COPY, source, null, sourceDigest,
+                written.digest(), written.entries(), reconcileKind);
     }
 
     private void writeRecord(String name, UnitKind kind, MaterializationMode mode, Path source,
                              String sourceRevision, String sourceDigest, String contentDigest)
+            throws IOException {
+        writeRecord(name, kind, mode, source, sourceRevision, sourceDigest, contentDigest,
+                null, null);
+    }
+
+    private void writeRecord(String name, UnitKind kind, MaterializationMode mode, Path source,
+                             String sourceRevision, String sourceDigest, String contentDigest,
+                             java.util.Map<String, String> entryDigests, String reconcileKind)
             throws IOException {
         Path file = recordFile(name, kind);
         Fs.ensureDir(file.getParent());
@@ -512,11 +936,13 @@ public final class ChildHomeMaterializer {
                         name,
                         kind.name(),
                         mode.name(),
-                        source.toString(),
+                        source == null ? null : source.toString(),
                         sourceRevision,
                         sourceDigest,
                         contentDigest,
-                        BindingStore.nowIso()));
+                        BindingStore.nowIso(),
+                        entryDigests,
+                        reconcileKind));
     }
 
     private Optional<MaterializationRecord> readRecordFile(Path file) {
@@ -716,6 +1142,32 @@ public final class ChildHomeMaterializer {
     }
 
     /**
+     * A tree's whole-tree digest and its per-file digests, taken in one pass.
+     *
+     * <p>Both numbers describe the same bytes, so computing them from two
+     * separate walks would read every file twice and — worse — leave two
+     * definitions of "the content of this unit" free to drift apart. The
+     * whole-tree digest decides whether a unit was edited at all; the per-file
+     * map decides which side of a three-way merge owns each path. They have to
+     * agree, so they are produced together.
+     *
+     * <p>{@code digest} is null when {@code skipNames} is non-empty: a
+     * whole-tree digest that silently omitted entries would not be comparable
+     * with one that did not, and every caller that wants the whole-tree number
+     * wants it over the whole tree.
+     */
+    public record Fingerprint(String digest, java.util.LinkedHashMap<String, String> entries) {
+        public Fingerprint {
+            entries = entries == null ? new java.util.LinkedHashMap<>() : entries;
+        }
+    }
+
+    /** {@link Fingerprint} of a tree exactly as it sits on disk. */
+    public static Fingerprint fingerprint(Path root) throws IOException {
+        return fingerprintOf(plainView(root), java.util.Set.of());
+    }
+
+    /**
      * Stable digest over a tree as it is on disk. Framing is shared with the
      * materialized-view digest, so the digest of a view equals the digest of
      * the tree that view produces.
@@ -741,33 +1193,8 @@ public final class ChildHomeMaterializer {
      */
     public static java.util.LinkedHashMap<String, String> entryDigests(
             Path root, java.util.Set<String> skipNames) throws IOException {
-        java.util.LinkedHashMap<String, String> out = new java.util.LinkedHashMap<>();
-        java.util.Set<String> skip = skipNames == null ? java.util.Set.of() : skipNames;
-        List<ViewEntry> view = new ArrayList<>(plainView(root));
-        view.sort(Comparator.comparing(ViewEntry::rel));
-        for (ViewEntry entry : view) {
-            if (isUnder(entry.rel(), skip)) continue;
-            MessageDigest digest = sha256();
-            switch (entry.kind()) {
-                case DIR -> frame(digest, "D", entry.rel(), 0);
-                case LINK -> {
-                    byte[] target = entry.linkTarget().toString().getBytes(StandardCharsets.UTF_8);
-                    frame(digest, "L", entry.rel(), target.length);
-                    digest.update(target);
-                }
-                case FILE -> {
-                    frame(digest, entry.executable() ? "X" : "F", entry.rel(),
-                            Files.size(entry.source()));
-                    try (InputStream in = Files.newInputStream(entry.source())) {
-                        byte[] buffer = new byte[8192];
-                        int read;
-                        while ((read = in.read(buffer)) > 0) digest.update(buffer, 0, read);
-                    }
-                }
-            }
-            out.put(entry.rel(), hex(digest.digest()));
-        }
-        return out;
+        return fingerprintOf(plainView(root),
+                skipNames == null ? java.util.Set.of() : skipNames).entries();
     }
 
     private static boolean isUnder(String rel, java.util.Set<String> skipNames) {
@@ -779,29 +1206,57 @@ public final class ChildHomeMaterializer {
     }
 
     private static String viewDigest(List<ViewEntry> view) throws IOException {
+        return fingerprintOf(view, java.util.Set.of()).digest();
+    }
+
+    /**
+     * The single walk behind {@link #treeDigest}, {@link #entryDigests} and
+     * {@link #fingerprint}: each entry is framed into its own digest and, when
+     * the whole tree is in scope, into the shared one — from the same bytes,
+     * read once.
+     */
+    private static Fingerprint fingerprintOf(List<ViewEntry> view, java.util.Set<String> skipNames)
+            throws IOException {
+        boolean whole = skipNames.isEmpty();
         List<ViewEntry> sorted = new ArrayList<>(view);
         sorted.sort(Comparator.comparing(ViewEntry::rel));
-        MessageDigest digest = sha256();
+        MessageDigest all = whole ? sha256() : null;
+        java.util.LinkedHashMap<String, String> entries = new java.util.LinkedHashMap<>();
         for (ViewEntry entry : sorted) {
+            if (isUnder(entry.rel(), skipNames)) continue;
+            MessageDigest one = sha256();
             switch (entry.kind()) {
-                case DIR -> frame(digest, "D", entry.rel(), 0);
+                case DIR -> {
+                    frame(one, "D", entry.rel(), 0);
+                    if (whole) frame(all, "D", entry.rel(), 0);
+                }
                 case LINK -> {
                     byte[] target = entry.linkTarget().toString().getBytes(StandardCharsets.UTF_8);
-                    frame(digest, "L", entry.rel(), target.length);
-                    digest.update(target);
+                    frame(one, "L", entry.rel(), target.length);
+                    one.update(target);
+                    if (whole) {
+                        frame(all, "L", entry.rel(), target.length);
+                        all.update(target);
+                    }
                 }
                 case FILE -> {
-                    frame(digest, entry.executable() ? "X" : "F", entry.rel(),
-                            Files.size(entry.source()));
+                    String kind = entry.executable() ? "X" : "F";
+                    long size = Files.size(entry.source());
+                    frame(one, kind, entry.rel(), size);
+                    if (whole) frame(all, kind, entry.rel(), size);
                     try (InputStream in = Files.newInputStream(entry.source())) {
                         byte[] buffer = new byte[8192];
                         int read;
-                        while ((read = in.read(buffer)) > 0) digest.update(buffer, 0, read);
+                        while ((read = in.read(buffer)) > 0) {
+                            one.update(buffer, 0, read);
+                            if (whole) all.update(buffer, 0, read);
+                        }
                     }
                 }
             }
+            entries.put(entry.rel(), hex(one.digest()));
         }
-        return hex(digest.digest());
+        return new Fingerprint(whole ? hex(all.digest()) : null, entries);
     }
 
     /**
@@ -850,9 +1305,14 @@ public final class ChildHomeMaterializer {
 
     /** The child-home directory holding units of {@code kind}. */
     private Path unitRoot(UnitKind kind) {
+        return unitRootOf(childStore, kind);
+    }
+
+    /** The directory in {@code store} holding units of {@code kind}. */
+    private static Path unitRootOf(SkillStore store, UnitKind kind) {
         // Derived from the store's own resolver so it cannot drift from where
         // materializeUnit actually writes.
-        return childStore.unitDir("probe", kind).toAbsolutePath().normalize().getParent();
+        return store.unitDir("probe", kind).toAbsolutePath().normalize().getParent();
     }
 
     private static List<Path> listSorted(Path dir) throws IOException {
