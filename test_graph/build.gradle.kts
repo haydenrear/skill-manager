@@ -692,6 +692,62 @@ validationGraph {
         node("sources/checkout-home/CheckoutHomeLaunchIsolated.java")
     }
 
+    /**
+     * home-sync: the return path between the three home tiers.
+     *
+     * Where home-clone asserts that a home is a pure function of its root, this
+     * graph asserts what happens once there are THREE of them — the root home
+     * the operator installs into, a copy per repository, and a copy per ticket
+     * worktree — and edits have to flow back up as well as down. The regression
+     * it guards is silent by construction: a ticket agent improves a skill in
+     * its worktree home, the worktree is removed, and the teardown succeeds
+     * exactly as loudly as it would have if there had been nothing to lose.
+     *
+     * All four directions, driven through the real CLI over real homes:
+     *
+     *   home.sync.root.to.project      scaffold + keep current, no project edit lost
+     *   home.sync.project.to.root      the upward copy path, and `unit publish`
+     *                                  to a LOCAL bare remote for the history path
+     *   home.sync.worktree.to.project  the essential one: close-out refuses, the
+     *                                  remedy it prints is EXECUTED, then it passes
+     *   home.sync.project.to.worktree  picking up what the project learned after
+     *                                  the branch, including a three-way merge
+     *
+     * plus the cases that belong to no direction (home.sync.permutations: dry
+     * run, conflict, removed-upstream, no common ancestor, frozen home),
+     * the two failure shapes (home.sync.hazards: an interrupted pass and two
+     * concurrent ones), git state read from git rather than inferred
+     * (home.sync.git.flawless), and the clone-of-an-edited-home baseline case
+     * (home.sync.stale.baseline).
+     *
+     * home.sync.sensitive is the reason to believe the rest: it plants one
+     * mutation per defect class — an edit silently overwritten, a conflict
+     * silently resolved, a dry run that writes, half a swap left behind, a
+     * removed-upstream unit deleted — each on a fresh pair of real homes, and
+     * asserts each is DETECTED by the same oracles the other nodes use, with
+     * unmutated controls asserted clean in the same run. It runs first and
+     * depends only on env.prepared, so it keeps its meaning independently of
+     * everything below it.
+     *
+     * Strictly ordered from home.sync.fixture.built onward: each of the four
+     * direction nodes builds on the home state the previous one left behind,
+     * which is the only way to assert that a worktree closing out returns work
+     * to a project home that has itself moved on.
+     */
+    testGraph("home-sync") {
+        node("sources/common/EnvPrepared.java")
+        node("sources/home-sync/HomeSyncSensitive.java")
+        node("sources/home-sync/HomeSyncFixtureBuilt.java")
+        node("sources/home-sync/HomeSyncRootToProject.java")
+        node("sources/home-sync/HomeSyncProjectToRoot.java")
+        node("sources/home-sync/HomeSyncWorktreeToProject.java")
+        node("sources/home-sync/HomeSyncProjectToWorktree.java")
+        node("sources/home-sync/HomeSyncGitFlawless.java")
+        node("sources/home-sync/HomeSyncPermutations.java")
+        node("sources/home-sync/HomeSyncHazards.java")
+        node("sources/home-sync/HomeSyncStaleBaseline.java")
+    }
+
     testGraph("project-env") {
         node("sources/common/EnvPrepared.java")
         node("sources/project/ProjectEnvMaterialized.java")
