@@ -85,6 +85,96 @@ public final class AgentHomesTest {
         });
 
         // ----------------------------------------------------------------
+        // AgentHomes.userHome — the last-resort fallback must stay sandboxable
+        //
+        // Issue #18: the fallback used to be written down three times
+        // (AgentHomes.claude, CodexAgent, GeminiAgent) and all three read
+        // System.getProperty("user.home"). On macOS the JVM derives that from
+        // the OS and IGNORES $HOME, so a caller that sandboxed a child by
+        // setting HOME still got the operator's real home — and `install`
+        // projected skills into the real ~/.claude, ~/.codex and ~/.gemini,
+        // leaving dangling symlinks into deleted temp dirs.
+        //
+        // The assertions below drive the fallback deliberately: the three
+        // agent-home vars are left unset (the rest of this suite already
+        // requires that — see the null assertions further down), so every
+        // lookup below lands on the userHome() path and nothing else.
+
+        suite.test("userHome prefers $HOME over the JVM's user.home", () -> {
+            AgentHomes.clearOverrides();
+            Path sandbox = Files.createTempDirectory("agent-homes-user-home-");
+            AgentHomes.setOverride(AgentHomes.HOME, sandbox);
+            try {
+                assertEquals(sandbox, AgentHomes.userHome(),
+                        "userHome() reads HOME, not user.home");
+            } finally {
+                AgentHomes.clearOverrides();
+            }
+        });
+
+        suite.test("a sandboxed HOME keeps every agent home out of the real user.home", () -> {
+            AgentHomes.clearOverrides();
+            Path sandbox = Files.createTempDirectory("agent-homes-sandbox-").toRealPath();
+            Path realUserHome = Path.of(System.getProperty("user.home")).toAbsolutePath();
+            AgentHomes.setOverride(AgentHomes.HOME, sandbox);
+            try {
+                // Every path that used to have its own copy of the
+                // user.home fallback.
+                Path claudeRoot = AgentHomes.claude().root();
+                Path claudeConfig = AgentHomes.claude().configDir();
+                Path codexSkills = new CodexAgent().skillsDir();
+                Path codexConfig = new CodexAgent().mcpConfigPath();
+                Path geminiSkills = new GeminiAgent().skillsDir();
+                Path geminiConfig = new GeminiAgent().mcpConfigPath();
+
+                // The load-bearing claim, and asserted FIRST: it is stated as
+                // the leak rather than as an expected value, so it keeps its
+                // meaning even if the sandbox layout below ever changes — and
+                // asserting it first is what makes a mutation to the fallback
+                // fail on THIS line rather than on an equality that happens to
+                // be adjacent to it.
+                for (Path resolved : List.of(claudeRoot, claudeConfig, codexSkills,
+                        codexConfig, geminiSkills, geminiConfig)) {
+                    assertTrue(!resolved.toAbsolutePath().startsWith(realUserHome),
+                            "escaped the sandbox into the real user.home: " + resolved);
+                }
+
+                assertEquals(sandbox, claudeRoot, "Claude root under the sandbox HOME");
+                assertEquals(sandbox.resolve(".claude"), claudeConfig,
+                        "Claude config dir under the sandbox HOME");
+                assertEquals(sandbox.resolve(".codex").resolve("skills"), codexSkills,
+                        "Codex skills dir under the sandbox HOME");
+                assertEquals(sandbox.resolve(".codex").resolve("config.toml"), codexConfig,
+                        "Codex config under the sandbox HOME");
+                assertEquals(sandbox.resolve(".gemini").resolve("skills"), geminiSkills,
+                        "Gemini skills dir under the sandbox HOME");
+                assertEquals(sandbox.resolve(".gemini").resolve("settings.json"), geminiConfig,
+                        "Gemini settings under the sandbox HOME");
+            } finally {
+                AgentHomes.clearOverrides();
+            }
+        });
+
+        suite.test("claude(env) derives its fallback from the launch env's HOME", () -> {
+            AgentHomes.clearOverrides();
+            // A launch env is the COMPLETE statement of what the child gets, so
+            // the fallback root has to come from the env passed in, not from
+            // the ambient HOME and not from user.home.
+            Path launchHome = Path.of("/sandbox/launch-home");
+            AgentHomes.setOverride(AgentHomes.HOME, Path.of("/ambient/should-not-be-read"));
+            try {
+                AgentHomes.ClaudeHome home =
+                        AgentHomes.claude(Map.of(AgentHomes.HOME, launchHome.toString()));
+                assertEquals(launchHome, home.root(),
+                        "launch env HOME wins over the ambient one");
+                assertEquals(launchHome.resolve(".claude"), home.configDir(),
+                        "config dir derived from the launch env HOME");
+            } finally {
+                AgentHomes.clearOverrides();
+            }
+        });
+
+        // ----------------------------------------------------------------
         // HarnessPluginCli.Claude — env wiring honors the override
 
         suite.test("Claude driver: CLAUDE_HOME override redirects CLAUDE_CONFIG_DIR", () -> {

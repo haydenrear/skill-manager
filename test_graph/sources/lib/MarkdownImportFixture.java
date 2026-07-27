@@ -8,6 +8,26 @@ import java.nio.file.Path;
 final class MarkdownImportFixture {
     private MarkdownImportFixture() {}
 
+    /**
+     * Install a fixture unit into the sandbox home.
+     *
+     * <h2>Why {@code HOME} and {@code JAVA_TOOL_OPTIONS} are set too</h2>
+     *
+     * <p>The five variables above only cover the paths that <em>look up</em> an
+     * agent home. Every fallback for "no agent variable was set" ends at the
+     * user's home directory, and on macOS the JVM derives {@code user.home}
+     * from the OS and IGNORES {@code $HOME}. So a child that is handed only the
+     * five variables is still one unanticipated {@code user.home} read away
+     * from writing into the operator's real {@code ~/.claude}, {@code ~/.codex}
+     * and {@code ~/.gemini} — that is issue #18, which left dangling symlinks
+     * into deleted temp dirs in a live agent's skill list.
+     *
+     * <p>{@code HOME} closes it for anything reading the environment;
+     * {@code JAVA_TOOL_OPTIONS=-Duser.home=...} closes it for anything reading
+     * the JVM property, because every JVM honours that variable. This mirrors
+     * {@code HomeCloneSupport.sm()}, which is the reference implementation for
+     * the full sandbox env.
+     */
     static ProcessRecord install(NodeContext ctx, Path sm, Path repoRoot, String home,
                                  String claudeHome, String codexHome, String geminiHome,
                                  Path unitDir, String label) throws Exception {
@@ -22,6 +42,10 @@ final class MarkdownImportFixture {
         }
         if (codexHome != null) pb.environment().put("CODEX_HOME", codexHome);
         if (geminiHome != null) pb.environment().put("GEMINI_HOME", geminiHome);
+        if (home != null) {
+            pb.environment().put("HOME", home);
+            pb.environment().put("JAVA_TOOL_OPTIONS", "-Duser.home=" + home);
+        }
         return Procs.run(ctx, label, pb);
     }
 
