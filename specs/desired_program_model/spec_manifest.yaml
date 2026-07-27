@@ -30,7 +30,6 @@ status:
     - Found TWO defects in code that is already merged, both silent data loss, both reproduced end to end against the real classes and neither fixed: CHM-9 (reconcileKind protects merge results but not a fast-forward from a home that is then torn down) and CHM-10 (mergeBase prefers the destination record, which after a merge is NEWER than the true common ancestor, so the next --merge reverts the work the previous one kept).
   pending:
     - "CHM-9 and CHM-10: two merged-code defects the sync model exposed. Modelled, pinned by unit test, ticketed, NOT fixed -- each needs an owner decision about the contract, not a patch."
-    - "CHM-11: `home sync` and `home close-out` have no out-of-process Test Graph coverage at all."
     - Owner decision on the Internal/External scope (see internal_external_decision below).
     - Owner approval of budgets before any effectful/modular migration work starts (migration.md Phase 0).
     - Spec-unit adapters (case_adapters.toml) for the new Internal actions; the unmapped inventory and the reason are recorded in that file.
@@ -1041,13 +1040,29 @@ validation:
         OVERWRITE_LOCAL_CHANGES, silent hold-back, prune-ignores-local-changes,
         raw source digest, DELETE_THEN_WRITE, and a displaced tree parked beside
         the unit.
-    home_sync_coverage: >
-      NONE. `home sync` and `home close-out` have no Test Graph node, so they
-      have no out-of-process coverage at all: nothing exercises their argument
-      parsing, exit codes, or --json shape. The JVM suite drives the classes
-      in-process. Tracked as CHM-11; recorded here because an action missing
-      from testgraph_bindings.yml and an action with no coverage read
-      identically to whoever opens that file, and only one of them is true.
+    home_sync_graph:
+      name: home-sync
+      command: python3 skills/test_graph/scripts/run.py home-sync
+      status: passed
+      nodes: 11
+      assertions: 112
+      models: External.tla SyncSpec
+      landed: ea03c22
+      note: >
+        Authored separately and landed the same day this slice was modelled,
+        which is why testgraph_bindings.yml briefly recorded these actions as
+        having no node. Corrected there against the graph's real node and
+        assertion ids. All four directions between the three tiers, driving the
+        real CLI over real homes, with every survival claim taken as a per-file
+        digest immediately before and after the pass. CHM-11 is closed by it.
+      independent_findings: >
+        That graph reports two findings of its own, neither fixed: a merge
+        baseline that goes STALE (too old) and turns a clean fast-forward into a
+        spurious conflict, and `home sync` / `home close-out` not catching
+        FrozenHomeException, so they exit 1 with a picocli stack trace instead
+        of the declared exit code 9. The stale-baseline one is the opposite
+        direction of CHM-10 and the two should be decided together; see
+        ticket_plan.yaml CHM-10 relationship_to_the_stale_baseline_finding.
     affected_graphs:
       - home-clone
       - project-child-home

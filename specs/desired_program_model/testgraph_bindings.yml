@@ -7,11 +7,13 @@
 # `project-child-home`, plus the strengthened `project-resolve` /
 # `harness-smoke` nodes).
 #
-# The three three-tier actions added with the `home sync` slice have NO node.
-# They are listed anyway, with `test_graph: status: absent` and the named JVM
-# cases that do cover them, because an action missing from this file and an
-# action with no coverage read identically to whoever opens it and only one of
-# them is true. See `blocked.decision_2026_07_27` at the end.
+# The three three-tier actions added with the `home sync` slice are bound to
+# the `home-sync` graph (11 nodes, 112 assertions), which landed in ea03c22
+# while this slice was being modelled. They also carry the named JVM cases that
+# cover them, because the two layers answer different questions: the graph runs
+# the real CLI over real homes and can see argument parsing, exit codes and
+# --json shape; the JVM cases hold the merge algebra still and ask it one
+# question per path.
 #
 # What is NOT here, and why, rather than a plausible-looking mapping that would
 # fail at the first run:
@@ -210,21 +212,10 @@ actions:
   # The three-tier reconciliation actions, added with the `home sync` /
   # `home close-out` slice of External.tla (SyncSpec).
   #
-  # These have NO `test_graph` key, and that absence is the honest record
-  # rather than an oversight. The two halves of a binding are the External
-  # action and the out-of-process node that drives it; the node half does not
-  # exist for any of these three, and test_graph node authoring for this epic
-  # is owned by a separate agent. Inventing a graph and node name here would
-  # make a missing deliverable look like a delivered one, which is the same
-  # failure mode as naming adapter classes that are not on disk.
-  #
-  # What DOES exercise them today is named per action under `unit_tests`. That
-  # is a weaker binding than a Test Graph node in exactly one way that matters
-  # and should be said plainly: these run IN-PROCESS against the Java classes,
-  # so they cannot catch anything that only goes wrong across the CLI boundary
-  # — argument parsing, exit codes, JSON shape, the launcher's environment.
-  # `home sync --json` and `home close-out --json` have no out-of-process
-  # coverage at all. That is CHM-11.
+  # The `test_graph` half was authored separately and landed in ea03c22, after
+  # this file first recorded it as absent. That record is corrected here rather
+  # than quietly overwritten: the gap was real when the sync slice was modelled
+  # and is not real now, and the two commits are one working day apart.
 
   ReconcileHomeTiers:
     view: external
@@ -234,9 +225,33 @@ actions:
     port: SkillManagerCli.home_sync
     command: skill-manager home sync --from <home> --to <home> [--merge] [--dry-run] [--json]
     test_graph:
-      status: absent
-      owner: test_graph node authoring (separate agent)
-      ticket: CHM-11
+      graph: home-sync
+      nodes:
+        home.sync.root.to.project:
+          - a_project_home_scaffolds_cleanly_from_the_root_home
+          - a_root_side_edit_reaches_the_project_home
+          - a_project_edited_unit_is_held_back                  # AReconciliationOnlyWritesPathsTheDestinationDidNotMove
+          - the_project_edit_keeps_every_byte_it_had
+          - the_root_home_is_only_read_never_written
+          - every_root_unit_arrives_byte_for_byte_nested_files_included
+          - no_recorded_baseline_names_the_home_it_was_copied_from
+        home.sync.project.to.root: []
+        home.sync.project.to.worktree: []
+        home.sync.permutations:
+          - a_locally_modified_destination_unit_is_held_back    # AReconciliationOnlyWritesPathsTheDestinationDidNotMove
+          - a_file_changed_on_both_sides_is_reported_as_a_conflict
+          - a_conflicted_unit_has_nothing_written_into_it       # AConflictedUnitIsNeverPartiallyWritten
+          - a_unit_with_no_common_ancestor_conflicts_rather_than_guessing
+          - a_unit_with_no_materialization_record_is_held_back
+          - a_unit_removed_upstream_while_edited_locally_is_never_deleted
+          - a_dry_run_writes_nothing_but_the_home_lock
+        home.sync.hazards:
+          - an_interrupted_sync_leaves_the_destination_unit_exactly_as_it_was
+          - a_contended_destination_holds_exactly_one_sources_tree
+          - the_record_left_by_a_contended_run_describes_the_tree_on_disk
+        home.sync.stale.baseline: []
+        home.sync.sensitive:
+          - "one mutation per defect class this graph claims to detect, plus three unmutated controls"
     unit_tests:
       suite: src/test/java/dev/skillmanager/store/HomeSyncMergeTest.java
       cases:
@@ -271,9 +286,18 @@ actions:
     port: SkillManagerCli.home_close_out
     command: skill-manager home close-out --home <worktree home> --into <project home> [--json]
     test_graph:
-      status: absent
-      owner: test_graph node authoring (separate agent)
-      ticket: CHM-11
+      graph: home-sync
+      nodes:
+        home.sync.worktree.to.project:
+          - close_out_refuses_while_the_worktree_still_holds_work   # NoHomeIsTornDownWhileItHoldsUniqueWork
+          - close_out_names_every_unit_that_would_be_lost
+          - close_out_writes_nothing_at_all
+          - close_out_gives_the_same_verdict_twice
+          - the_remedy_the_gate_printed_is_a_runnable_command
+          - running_the_printed_remedy_clears_the_blocker
+          - close_out_passes_once_the_work_has_been_synced
+          - the_project_home_holds_the_agents_bytes_exactly
+          - a_nested_file_the_agent_added_reaches_the_project_home
     unit_tests:
       suite: src/test/java/dev/skillmanager/store/HomeSyncTest.java
       cases:
@@ -300,9 +324,10 @@ actions:
     controllability: e2e_direct
     port: AgentWorkspace.edit_unit_in_home
     test_graph:
-      status: absent
-      owner: test_graph node authoring (separate agent)
-      ticket: CHM-11
+      graph: home-sync
+      note: >
+        Driven directly by every node above -- each writes into the unit
+        directory of whichever home it is about, then measures the pass.
     note: >
       An ordinary editor write inside whichever home SKILL_MANAGER_HOME names.
       No skill-manager code runs, which is why it is driven directly by every
@@ -344,9 +369,8 @@ blocked:
     - generated external case package (spec_manifest.yaml
       case_codegen.generation_status is `planned`, so no cases exist yet)
     - a decision on `production_package` for a non-Python program under test
-    - Test Graph nodes for ReconcileHomeTiers / TearDownWorktreeHome /
-      EditUnitInHomeTier, so `home sync` and `home close-out` get their first
-      out-of-process coverage (CHM-11)
   not_blocked:
     - the Test Graph nodes for the six unit-level and home-level actions, which
       exist and pass; see spec_manifest.yaml validation.graph
+    - the Test Graph nodes for the three three-tier actions, added in ea03c22
+      (graph `home-sync`, 11 nodes, 112 assertions). CHM-11 is closed by it.

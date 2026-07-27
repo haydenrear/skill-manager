@@ -110,6 +110,10 @@ boundary of one home, and the boundary is where the work was being lost.
 | Close-out gate | `NoHomeIsTornDownWhileItHoldsUniqueWork` | `sync_gone` | `External_regression_ungatedcloseout.cfg` | `External_sync_guard_teardown.cfg` |
 | Round trip | `NoWorktreeEditEverReachesTheRootHome` | — | `External_sync_roundtrip.cfg` *(must fail)* | — |
 
+All three actions are bound to the `home-sync` graph (11 nodes, 112
+assertions, all four directions between the tiers), which landed in `ea03c22`
+the same day this slice was modelled — see `testgraph_bindings.yml`.
+
 These **extend** `AgentEditedChildUnitsAreNeverDestroyed`; they do not restate
 it. That invariant is about one home's units and a materializer refreshing them
 from a store, and its destroyer is a refresh policy. These are about two homes,

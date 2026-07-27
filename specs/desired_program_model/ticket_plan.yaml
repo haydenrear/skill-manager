@@ -333,7 +333,6 @@ service_catalog:
     - ProjectChildHomeScaffolder (pass orchestration and the held-back report)
     - ChildHomeHarnessInstaller (same materializer, harness payload)
   known_gaps:
-    - "`home sync` and `home close-out` have no out-of-process coverage; both are driven only through their Java classes (CHM-11)."
     - "The sync model gives each home ONE authoring token per path, so it cannot express one home editing one path twice. CHM-10 is therefore reached in the model through three tiers and in the unit test through two; same mergeBase, two routes."
     - Shim mirroring stays a symlink and is deliberately outside the isolation guarantee; not modeled.
     - Symlinks pointing outside the parent store are preserved verbatim; writes through them are out of scope and not modeled.
@@ -839,6 +838,16 @@ tickets:
       worktree, a teardown, or three tiers. Any project home that has ever taken
       a --merge is exposed on the next one.
     modelled_as: 'MergeBasePolicy: SHARED_ANCESTOR (desired) vs DESTINATION_RECORD (today)'
+    relationship_to_the_stale_baseline_finding: >
+      ea03c22 records the OPPOSITE failure of the same design: a baseline that
+      is too OLD (a clone inherits a record describing content neither home
+      holds any more, and a completed sync rewrites only the destination's
+      record) turns a clean fast-forward into a conflict a human has to settle.
+      That one is safe and annoying; this one is unsafe and silent. They are the
+      two directions of one question -- what is the common ancestor of these two
+      homes -- and mergeBase currently answers it with whatever the destination
+      last wrote down. Fixing either without the other will move the failure
+      rather than remove it, so they should be decided together.
     design_note: >
       The model's SHARED_ANCESTOR abstraction -- take a path only against a
       baseline the SOURCE has itself held -- is one implementable answer
@@ -856,28 +865,34 @@ tickets:
   - id: CHM-11
     title: "`home sync` and `home close-out` have no out-of-process coverage"
     phase: CHM
-    status: open
-    depends_on: []
+    status: closed
+    closed: "2026-07-27"
+    closed_by: ea03c22
+    opened_and_closed_the_same_day: true
     objective: >
-      Both commands are exercised only through their Java classes, in process.
-      Nothing anywhere runs `skill-manager home sync` or
-      `skill-manager home close-out` as a command, so argument parsing, exit
-      codes and the --json shape have never been executed by a test -- including
-      HomeCloseOut.BLOCKED_EXIT_CODE, whose entire purpose is to be observed by
-      a caller that is not this JVM.
-    implementation_scope:
-      - test_graph nodes for ReconcileHomeTiers / TearDownWorktreeHome / EditUnitInHomeTier
-      - specs/desired_program_model/testgraph_bindings.yml
-    note: >
-      test_graph node authoring for this epic is owned by a separate agent. The
-      bindings file already carries the three actions with
-      `test_graph: status: absent` and this ticket, so the gap is visible where
-      a reader would look for it rather than only in a report.
-    acceptance:
-      assertions:
-        - "`home close-out` exits non-zero from a real process while the worktree holds work, and zero after the sync it names."
-        - "`home sync --json` output is parsed by a node, not by a Java test."
-      evidence: []
+      Both commands were exercised only through their Java classes, in process.
+      Nothing ran `skill-manager home sync` or `skill-manager home close-out` as
+      a command, so argument parsing, exit codes and the --json shape had never
+      been executed by a test -- including HomeCloseOut.BLOCKED_EXIT_CODE, whose
+      entire purpose is to be observed by a caller that is not this JVM.
+    resolution: >
+      Closed by the `home-sync` graph: 11 nodes, 112 assertions, all four
+      directions between the three tiers, driving the real CLI over real homes.
+      It landed while this slice was being modelled, so the ticket was written
+      against a gap that was real that morning and closed that evening. Recorded
+      as opened-and-closed rather than deleted, because the bindings file said
+      `status: absent` for a day and someone reading the history is entitled to
+      see why.
+    evidence:
+      graph: home-sync
+      command: python3 skills/test_graph/scripts/run.py home-sync
+      result: "BUILD SUCCESSFUL, 11/11 node envelopes passed, 112 assertions, 0 non-passing"
+      mutations: "3 registered, 3 killed, each on state rather than on an exit code"
+      note: >
+        Not run by this ticket's author; recorded from ea03c22, whose own
+        evidence block reports it. The bindings this file now carries name the
+        graph's real node and assertion ids, checked against
+        test_graph/sources/home-sync/.
 
 # ---------------------------------------------------------------------------
 # PHASE MIG -- fold the remaining monolith into Internal/External.
