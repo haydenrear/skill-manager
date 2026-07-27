@@ -1,5 +1,6 @@
 ///usr/bin/env jbang "$0" "$@" ; exit $?
 //SOURCES ../../sdk/java/src/main/java/com/hayden/testgraphsdk/sdk/*.java
+//SOURCES ../lib/Daemons.java
 
 import com.hayden.testgraphsdk.sdk.Node;
 import com.hayden.testgraphsdk.sdk.NodeResult;
@@ -56,13 +57,19 @@ public class EchoHttpUp {
                     "--port", Integer.toString(port))
                     .redirectErrorStream(true)
                     .redirectOutput(logFile.toFile());
-            Process proc = pb.start();
-            Files.writeString(pidFile, Long.toString(proc.pid()));
+            // See Daemons.spawn: a raw start() leaves a live descendant and
+            // the supervisor reaps the fixture.
+            long fixturePid;
+            try {
+                fixturePid = Daemons.spawn(pb, pidFile, Duration.ofSeconds(30));
+            } catch (IOException failed) {
+                return NodeResult.fail("echo.http.up", failed.getMessage());
+            }
 
             String baseUrl = "http://127.0.0.1:" + port;
             boolean healthy = waitForHealthy(baseUrl + "/health", Duration.ofSeconds(30));
             if (!healthy) {
-                proc.destroy();
+                Daemons.stop(fixturePid);
                 return NodeResult.fail("echo.http.up", "echo fixture not healthy within 30s");
             }
             return NodeResult.pass("echo.http.up")
