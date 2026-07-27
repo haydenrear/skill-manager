@@ -185,31 +185,33 @@ public final class HomeSyncMergeTest {
                             "and nothing was refreshed behind its back");
                 })
 
-                .test("DEFECT PIN CHM-10: a second --merge reverts the work the first one kept", () -> {
-                    // THIS TEST ASSERTS BEHAVIOR THAT IS WRONG. It is pinned so
-                    // the defect is a fact the suite states rather than a
-                    // paragraph in a report, and so that fixing it FAILS here
-                    // and whoever fixes it deletes the pin deliberately.
+                .test("a second --merge keeps the work the first one kept (CHM-10)", () -> {
+                    // Was "DEFECT PIN CHM-10", which asserted the opposite and
+                    // failed the moment the defect was fixed — deliberately, so
+                    // that whoever fixed it had to come here and say what the
+                    // right answer is. This is that answer.
                     //
-                    // ChildHomeMaterializer.mergeBase prefers the DESTINATION's
-                    // record. A merge rewrites that record over the whole merged
-                    // tree — local work included — so the destination's own
-                    // edits become part of its recorded baseline. On the next
-                    // --merge the source, which never held those bytes, is
-                    // measured against them: `s != d`, `s != b`, `d == b`, which
-                    // the algebra reads as "only the source moved" and takes.
-                    // The agent's work is reverted to the source's version with
-                    // no conflict and no report.
+                    // The defect: ChildHomeMaterializer.mergeBase preferred the
+                    // DESTINATION's record, and a merge rewrote that record over
+                    // the whole merged tree — local work included — so the
+                    // destination's own edits became part of its recorded
+                    // baseline. On the next --merge the source, which never held
+                    // those bytes, was measured against them: `s != d`,
+                    // `s != b`, `d == b`, which the algebra reads as "only the
+                    // source moved" and takes. The agent's work was reverted to
+                    // the source's version with no conflict and no report.
                     //
-                    // mergeBase's javadoc argues the cost of choosing the wrong
-                    // base "is a conflict a human resolves, not an edit nobody
-                    // sees again". That holds only when the chosen base is OLDER
-                    // than the true common ancestor. Here it is NEWER, and the
-                    // cost is exactly the edit nobody sees again.
+                    // The fix is one line of meaning rather than one of code:
+                    // entryDigests records the SOURCE's tree at the reconcile —
+                    // the state the two homes then shared — while contentDigest
+                    // keeps recording what was written here. A merge result is
+                    // a state the source never passed through, so it was never
+                    // eligible to be the next merge's base.
                     //
                     // Two homes and one repeated source change are enough; the
                     // three-tier form of the same root cause is modelled by
-                    // External_regression_mergebase.cfg.
+                    // External_regression_mergebase.cfg, which must keep
+                    // producing a counterexample because it models the OLD rule.
                     Homes homes = Homes.create("mergebase-defect");
                     write(homes.sourceUnit().resolve("SKILL.md"), "SHARED\n");
                     write(homes.sourceUnit().resolve("upstream.md"), "v1\n");
@@ -233,43 +235,60 @@ public final class HomeSyncMergeTest {
                     assertEquals("v3\n", read(homes.destUnit().resolve("upstream.md")),
                             "the third source change arrives, as it should");
 
-                    // The line below is the defect, asserted as it behaves
-                    // TODAY. When CHM-10 is fixed this assertion fails, and the
-                    // correct response is to replace it with the two commented
-                    // lines beneath it and delete this pin.
-                    assertEquals("v1\n", read(homes.destUnit().resolve("local.md")),
-                            "PINNED DEFECT CHM-10: the agent's work is silently reverted "
-                                    + "to the source's version");
-                    // Correct behavior, for whoever fixes it:
-                    //   assertEquals("AGENT WORK\n", read(destUnit/local.md), ...)
-                    //   -- or CONFLICTED, if the chosen fix is to refuse rather
-                    //      than to track a per-source ancestor.
+                    // The assertion the whole ticket is about. Bytes, not
+                    // status: a merge that reports MERGED over a reverted file
+                    // and one that reports MERGED over the kept file are the
+                    // same string.
+                    assertEquals("AGENT WORK\n", read(homes.destUnit().resolve("local.md")),
+                            "the agent's work survives the second merge");
                     assertTrue(second.conflicts().isEmpty(),
-                            "PINNED DEFECT CHM-10: and no conflict is reported for it");
+                            "and it did not need a conflict to survive — the source never "
+                                    + "moved that file, so there was nothing to resolve");
+                    assertEquals(List.of("upstream.md"), second.files(),
+                            "exactly the file the source moved was taken, and nothing else");
+
+                    // A third round, because the defect was in what a merge
+                    // WRITES DOWN: if the record still described a state the
+                    // source never held, the next merge would revert the work
+                    // one round later instead of never.
+                    write(homes.sourceUnit().resolve("upstream.md"), "v4\n");
+                    UnitSync third = only(sync(homes, true, false));
+                    assertEquals(SyncStatus.MERGED, third.status(), "a third merge still merges");
+                    assertEquals("AGENT WORK\n", read(homes.destUnit().resolve("local.md")),
+                            "and the agent's work is still there");
+                    assertEquals("v4\n", read(homes.destUnit().resolve("upstream.md")),
+                            "with the fourth source change folded in");
                 })
 
-                .test("a plain fast-forward records which home the bytes came from", () -> {
-                    // CHARACTERIZATION, and the reason ticket CHM-9 exists.
+                .test("a fast-forward is not disposable to a home it never came from (CHM-9)", () -> {
+                    // The whole of CHM-9, in the order it happened in
+                    // production: sync up, close out, tear down, sync down.
                     //
                     // A plain (non-merge) `home sync --from <worktree> --to
                     // <project>` is a fast-forward: the project had moved
                     // nothing, so the whole unit is replaced. The record it
-                    // writes says reconcileKind = "copy", and `source` names the
-                    // worktree — but ChildHomeMaterializer.reconcile reads only
-                    // reconcileKind, never `source`. So the project home now
-                    // holds the agent's only copy of the work while looking,
-                    // to the next reconciliation, exactly like a pristine copy
-                    // of anything else.
+                    // writes says reconcileKind = "copy" and `source` names the
+                    // worktree — and reconcile used to read only reconcileKind.
+                    // So the project home held the agent's ONLY copy of the work
+                    // while looking, to the next reconciliation, exactly like a
+                    // pristine copy of anything else, and the next sync from the
+                    // root home deleted it. Nothing was reported, because by
+                    // every measurement of the destination alone the write was
+                    // entitled: the project home genuinely had not moved
+                    // anything.
                     //
-                    // What is asserted here is the state, which is true today.
-                    // What follows from it — the next `home sync` from a
-                    // DIFFERENT source silently overwriting that work — is
-                    // modelled by External_regression_ffprovenance.cfg and is
-                    // deliberately not asserted as desired behavior.
-                    Homes homes = Homes.create("ff-provenance");
+                    // Modelled as External_regression_ffprovenance.cfg, which
+                    // must keep producing a counterexample: it models the rule
+                    // this test now asserts is gone.
+                    Homes homes = Homes.create("ff-provenance");   // source = worktree
+                    SkillStore root = store(homes.dest().root().resolveSibling("root"));
+                    UnitFixtures.scaffoldSkill(root.skillsDir(), UNIT, DepSpec.empty());
+                    write(root.skillDir(UNIT).resolve("SKILL.md"), "PROJECT V1\n");
+
                     write(homes.sourceUnit().resolve("SKILL.md"), "PROJECT V1\n");
                     sync(homes, false, false);
                     write(homes.sourceUnit().resolve("SKILL.md"), "AGENT IMPROVED THIS\n");
+                    write(homes.sourceUnit().resolve("agent-note.md"), "notes only the agent has\n");
 
                     assertEquals(SyncStatus.UPDATED, only(sync(homes, false, false)).status(),
                             "an unmoved destination fast-forwards");
@@ -280,9 +299,45 @@ public final class HomeSyncMergeTest {
                     assertEquals(MaterializationRecord.COPIED, written.reconcileKind(),
                             "a fast-forward is recorded as a copy");
                     assertEquals(homes.sourceUnit().toString(), written.source(),
-                            "and the record does name the home the bytes came from");
+                            "and the record names the home the bytes came from");
                     assertTrue(HomeCloseOut.inspect(homes.source(), homes.dest()).safe(),
                             "close-out then allows that source home to be torn down");
+
+                    // The teardown the gate just cleared. From here the project
+                    // home is the only place the agent's work exists.
+                    dev.skillmanager.shared.util.Fs.deleteRecursive(homes.source().root());
+
+                    // And now the ROOT home ships its own new version.
+                    write(root.skillDir(UNIT).resolve("SKILL.md"), "ROOT V2\n");
+                    String digestBefore = ChildHomeMaterializer.treeDigest(homes.destUnit());
+                    UnitSync fromRoot = only(HomeSync.run(root, homes.dest(),
+                            new HomeSync.Options(false, false)));
+
+                    // Bytes first: a status that says UPDATED over a tree that
+                    // kept the work and one that says HELD_BACK over a tree that
+                    // was overwritten anyway are the same string, and only one
+                    // of them has lost the ticket's work.
+                    assertEquals("AGENT IMPROVED THIS\n", read(homes.destUnit().resolve("SKILL.md")),
+                            "the agent's work is still the project home's content");
+                    assertEquals("notes only the agent has\n",
+                            read(homes.destUnit().resolve("agent-note.md")),
+                            "including the file that existed only in the worktree");
+                    assertEquals(digestBefore, ChildHomeMaterializer.treeDigest(homes.destUnit()),
+                            "not one byte was written by the home that never held it");
+                    assertEquals(SyncStatus.HELD_BACK, fromRoot.status(),
+                            "and it is reported rather than silently skipped");
+                    assertContains(fromRoot.detail(), "never held",
+                            "the report says why: this source never had these bytes");
+
+                    // --merge does not resolve it either: there is no state the
+                    // root home and the project home can be shown to share, so
+                    // the answer is a conflict a human settles, not a guess.
+                    UnitSync merged = only(HomeSync.run(root, homes.dest(),
+                            new HomeSync.Options(true, false)));
+                    assertEquals(SyncStatus.CONFLICTED, merged.status(),
+                            "with --merge it conflicts rather than inventing a common ancestor");
+                    assertEquals(digestBefore, ChildHomeMaterializer.treeDigest(homes.destUnit()),
+                            "and a conflict still writes nothing");
                 })
 
                 .test("the work survives the teardown that close-out cleared", () -> {

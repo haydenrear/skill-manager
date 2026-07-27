@@ -8,7 +8,7 @@
 # `harness-smoke` nodes).
 #
 # The three three-tier actions added with the `home sync` slice are bound to
-# the `home-sync` graph (11 nodes, 112 assertions), which landed in ea03c22
+# the `home-sync` graph (12 nodes, 124 assertions), which landed in ea03c22
 # while this slice was being modelled. They also carry the named JVM cases that
 # cover them, because the two layers answer different questions: the graph runs
 # the real CLI over real homes and can see argument parsing, exit codes and
@@ -249,7 +249,16 @@ actions:
           - an_interrupted_sync_leaves_the_destination_unit_exactly_as_it_was
           - a_contended_destination_holds_exactly_one_sources_tree
           - the_record_left_by_a_contended_run_describes_the_tree_on_disk
-        home.sync.stale.baseline: []
+        home.sync.stale.baseline:
+          - the_project_home_is_either_reconciled_or_untouched_never_partial
+          - the_worktree_home_is_only_read
+        home.sync.provenance:
+          - a_push_from_a_home_that_never_held_the_work_destroys_nothing   # AReconciliationOnlyWritesAgainstABaselineBothHomesPassedThrough (CHM-9)
+          - and_it_is_reported_rather_than_silently_skipped
+          - a_merge_with_no_shared_baseline_conflicts_and_writes_nothing
+          - a_second_merge_does_not_revert_the_work_the_first_one_kept     # AReconciliationOnlyWritesAgainstABaselineBothHomesPassedThrough (CHM-10)
+          - and_it_needed_no_conflict_to_keep_it
+          - the_local_work_survives_repeated_merges_from_the_same_source
         home.sync.sensitive:
           - "one mutation per defect class this graph claims to detect, plus three unmutated controls"
     unit_tests:
@@ -259,11 +268,11 @@ actions:
         - "a file deleted on one side and edited on the other is a conflict"
         - "a conflict anywhere in a unit suppresses the paths that would have merged"   # AConflictedUnitIsNeverPartiallyWritten
         - "a merge result survives a second, unrelated source change"                    # AReconciliationOnlyWritesPathsTheDestinationDidNotMove
-        - "a plain fast-forward records which home the bytes came from"                  # CHM-9 characterization
+        - "a fast-forward is not disposable to a home it never came from (CHM-9)"         # AReconciliationOnlyWritesAgainstABaselineBothHomesPassedThrough
         - "a destination unit with no materialization record is never overwritten"
         - "a record written by a newer skill-manager reads as no baseline, not as a crash"
         - "a merge with no per-file baseline anywhere conflicts rather than guessing"
-        - "DEFECT PIN CHM-10: a second --merge reverts the work the first one kept"
+        - "a second --merge keeps the work the first one kept (CHM-10)"                   # AReconciliationOnlyWritesAgainstABaselineBothHomesPassedThrough
       also_covered_by:
         suite: src/test/java/dev/skillmanager/store/HomeSyncTest.java
         cases:
@@ -277,6 +286,7 @@ actions:
           - "a unit only the source has arrives; one only the destination has is reported"
           - "a frozen destination refuses and a frozen source is only read"
           - "a cloned home records the baseline that lets its edits merge back"
+          - "a clone of a home that edited a unit in place restates the baseline"
 
   TearDownWorktreeHome:
     view: external
@@ -373,4 +383,4 @@ blocked:
     - the Test Graph nodes for the six unit-level and home-level actions, which
       exist and pass; see spec_manifest.yaml validation.graph
     - the Test Graph nodes for the three three-tier actions, added in ea03c22
-      (graph `home-sync`, 11 nodes, 112 assertions). CHM-11 is closed by it.
+      (graph `home-sync`, 12 nodes, 124 assertions). CHM-11 is closed by it.

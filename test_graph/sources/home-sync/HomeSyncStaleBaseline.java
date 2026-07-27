@@ -21,17 +21,20 @@ import java.util.Map;
  *
  * <p>A project home's materialization record says what the home was
  * <em>handed</em>. Editing a unit in place does not update it, and should not —
- * the record is provenance, not a snapshot. But {@code home clone} copies those
- * records verbatim, and {@code adoptUnrecordedUnits} only writes a baseline for
- * units that have none. So a worktree cloned from a project home whose unit was
- * edited inherits a baseline describing content <em>neither home has any
- * more</em>, and the merge base for the return path is older than the two homes'
- * real common ancestor — which is the clone itself.
+ * the record is provenance, not a snapshot. But {@code home clone} copied those
+ * records verbatim and only wrote a baseline for units that had none, so a
+ * worktree cloned from a project home whose unit was edited inherited a
+ * baseline describing content <em>neither home had any more</em>, and the merge
+ * base for the return path was older than the two homes' real common ancestor —
+ * which is the clone itself.
  *
  * <p>An older base never loses work; it produces conflicts. That is the right
- * direction to be wrong in, and it is still worth pinning, because the cost is
- * paid by the exact flow this epic exists to make routine: the ticket agent's
- * close-out.
+ * direction to be wrong in, which is why this was a finding rather than a
+ * defect — but the cost was paid by the exact flow this epic exists to make
+ * routine, the ticket agent's close-out, so it was fixed with CHM-9 and CHM-10
+ * as the third face of one baseline rule:
+ * {@code ChildHomeMaterializer.recordCloneBaselines} restates the baseline of a
+ * COPY unit whose inherited record describes content the copy does not hold.
  *
  * <h2>What is asserted, and what is only measured</h2>
  *

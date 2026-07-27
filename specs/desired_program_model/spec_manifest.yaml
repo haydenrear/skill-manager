@@ -27,9 +27,9 @@ status:
     - Recorded the negative result that a reporting invariant cannot replace a witness, at home granularity, as a config that must keep returning "No error has been found" (External_regression_rewritecontent_reportonly.cfg).
     - Extended Core/Internal/External with the THREE-TIER SYNC slice (`home sync`, `home close-out`). External gains a third spec, SyncSpec, over five variables disjoint from both existing slices. Four substantive invariants, all witness-backed; seven more expected-violation configs; four guard configs that must keep passing; one reachability config whose counterexample IS the round trip. TLC green on External_sync.cfg (180 distinct) and External_sync_merge.cfg (283 distinct); all nineteen pre-existing configs keep their exact state counts.
     - Decomposed that slice along two measured axes after the single-spec form reached 574,209 distinct states at the 120s budget and was still climbing. The budget was not raised. See validation.decomposition.
-    - Found TWO defects in code that is already merged, both silent data loss, both reproduced end to end against the real classes and neither fixed: CHM-9 (reconcileKind protects merge results but not a fast-forward from a home that is then torn down) and CHM-10 (mergeBase prefers the destination record, which after a merge is NEWER than the true common ancestor, so the next --merge reverts the work the previous one kept).
+    - Found TWO defects in code that is already merged, both silent data loss, both reproduced end to end against the real classes: CHM-9 (reconcileKind protects merge results but not a fast-forward from a home that is then torn down) and CHM-10 (mergeBase prefers the destination record, which after a merge is NEWER than the true common ancestor, so the next --merge reverts the work the previous one kept).
+    - Fixed CHM-9, CHM-10 and the stale-baseline finding TOGETHER, under one rule written down once in ChildHomeMaterializer ("The baseline rule"): a reconciliation may destroy bytes only where it can show the SOURCE passed through them. MergeBasePolicy and ReconcileProvenance therefore now describe the code, and the configs that model the rules they replaced (External_regression_ffprovenance.cfg, External_regression_mergebase.cfg) are kept as configs that must keep failing.
   pending:
-    - "CHM-9 and CHM-10: two merged-code defects the sync model exposed. Modelled, pinned by unit test, ticketed, NOT fixed -- each needs an owner decision about the contract, not a patch."
     - Owner decision on the Internal/External scope (see internal_external_decision below).
     - Owner approval of budgets before any effectful/modular migration work starts (migration.md Phase 0).
     - Spec-unit adapters (case_adapters.toml) for the new Internal actions; the unmapped inventory and the reason are recorded in that file.
@@ -718,7 +718,7 @@ validation:
       trace_depth: 4
       axis: tiers
     External_regression_ffprovenance.cfg:
-      models: "TODAY'S CODE. reconcileKind protects a merge result but not a fast-forward, so a project home holding a torn-down worktree's only copy of an edit is overwritten by the next sync from the root."
+      models: "THE CODE UNTIL CHM-9 WAS FIXED. reconcileKind protects a merge result but not a fast-forward, so a project home holding a torn-down worktree's only copy of an edit is overwritten by the next sync from the root."
       expect_violation: AReconciliationOnlyWritesAgainstABaselineBothHomesPassedThrough
       status: violated_as_expected
       trace_depth: 4
@@ -726,7 +726,7 @@ validation:
       defect: CHM-9
       reproduced_against_production: true
     External_regression_mergebase.cfg:
-      models: "TODAY'S CODE. ChildHomeMaterializer.mergeBase prefers the destination's record; after a merge that record is NEWER than the true common ancestor, so the next reconciliation reads the source as the only side that moved."
+      models: "THE CODE UNTIL CHM-10 WAS FIXED. ChildHomeMaterializer.mergeBase preferred the destination's record; after a merge that record was NEWER than the true common ancestor, so the next reconciliation read the source as the only side that moved."
       expect_violation: AReconciliationOnlyWritesAgainstABaselineBothHomesPassedThrough
       status: violated_as_expected
       trace_depth: 4
@@ -737,8 +737,9 @@ validation:
         The model reaches it through three tiers because its one-token-per-home
         abstraction cannot express one home editing one path twice. The unit
         test reaches the SAME root cause in two homes with one repeated source
-        change (HomeSyncMergeTest, "DEFECT PIN CHM-10"). Two routes, one
-        mergeBase.
+        change (HomeSyncMergeTest, "a second --merge keeps the work the first
+        one kept (CHM-10)", which was the defect pin and is now the assertion of
+        the fixed behaviour). Two routes, one mergeBase.
 
   guard_configs:
     purpose: >
@@ -1044,10 +1045,10 @@ validation:
       name: home-sync
       command: python3 skills/test_graph/scripts/run.py home-sync
       status: passed
-      nodes: 11
-      assertions: 112
+      nodes: 12
+      assertions: 124
       models: External.tla SyncSpec
-      landed: ea03c22
+      landed: ea03c22, extended by the CHM-9 / CHM-10 fix
       note: >
         Authored separately and landed the same day this slice was modelled,
         which is why testgraph_bindings.yml briefly recorded these actions as
@@ -1056,13 +1057,22 @@ validation:
         real CLI over real homes, with every survival claim taken as a per-file
         digest immediately before and after the pass. CHM-11 is closed by it.
       independent_findings: >
-        That graph reports two findings of its own, neither fixed: a merge
-        baseline that goes STALE (too old) and turns a clean fast-forward into a
-        spurious conflict, and `home sync` / `home close-out` not catching
-        FrozenHomeException, so they exit 1 with a picocli stack trace instead
-        of the declared exit code 9. The stale-baseline one is the opposite
-        direction of CHM-10 and the two should be decided together; see
-        ticket_plan.yaml CHM-10 relationship_to_the_stale_baseline_finding.
+        That graph reported two findings of its own and both are now fixed. The
+        merge baseline that went STALE (too old) and turned a clean fast-forward
+        into a spurious conflict was the third direction of the one baseline
+        question and was fixed with CHM-9 and CHM-10 rather than after them --
+        `home clone` restates the baseline of a COPY unit whose inherited record
+        describes content the copy does not hold, and home.sync.stale.baseline
+        now measures reconciledWithoutAHuman = 1, spuriousConflict = 0. `home
+        sync` / `home close-out` now catch FrozenHomeException and return its
+        declared exit code 9 instead of a picocli stack trace.
+      new_node: >
+        home.sync.provenance, 12 assertions: CHM-9 as the three-command sequence
+        it actually occurs in (sync up, close out, remove the worktree, sync
+        down) and CHM-10 as three merges from one source. Neither is reachable
+        in a single command, and every intermediate command reported success
+        while the work was being destroyed, which is why they needed an
+        end-to-end node and not only the unit pins.
     affected_graphs:
       - home-clone
       - project-child-home

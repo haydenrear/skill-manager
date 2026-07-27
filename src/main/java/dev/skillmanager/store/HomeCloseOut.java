@@ -117,7 +117,21 @@ public final class HomeCloseOut {
         return new Verdict(homeRoot, intoRoot, blockers.isEmpty(), blockers, report.units());
     }
 
-    /** What to run for this unit, or null when it holds nothing that would be lost. */
+    /**
+     * What to run for this unit, or null when it holds nothing that would be
+     * lost.
+     *
+     * <p>{@code UPDATED} gets a plain {@code home sync} — the same command the
+     * gate just dry-ran, so it produces the outcome that was reported rather
+     * than something like it. That used to be the wrong advice for a reason
+     * that was not local to this method: the fast-forward it names left the
+     * project home holding a pristine copy of a worktree about to be deleted,
+     * and the next sync from any other home overwrote it (CHM-9). It is the
+     * right advice now because the copy records which home it came from and
+     * {@link ChildHomeMaterializer}'s baseline rule reads it — a later pass
+     * from a home that never held those bytes holds back instead of
+     * overwriting.
+     */
     private static String remedyFor(UnitSync unit, Path home, Path into) {
         String sync = "skill-manager home sync --from " + home + " --to " + into;
         return switch (unit.status()) {

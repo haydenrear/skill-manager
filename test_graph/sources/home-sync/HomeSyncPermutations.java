@@ -57,6 +57,8 @@ public class HomeSyncPermutations {
     private static final String ORPHAN = "p-orphan";
     private static final String FRESH = "p-fresh";
     private static final String GHOST = "p-ghost";
+    /** {@code FrozenHomeException.EXIT_CODE} — the contract, restated here because a graph node runs the CLI as a process. */
+    private static final int FROZEN_EXIT_CODE = 9;
 
     static final NodeSpec SPEC = NodeSpec.of("home.sync.permutations")
             .kind(NodeSpec.Kind.ASSERTION)
@@ -189,9 +191,20 @@ public class HomeSyncPermutations {
             ProcessRecord refusedDry = HomeSyncSupport.sm(ctx, "perm-frozen-dry",
                     source.toString(), "home", "sync", "--from", source.toString(),
                     "--to", frozen.toString(), "--dry-run", "--json");
+            ProcessRecord refusedGate = HomeSyncSupport.sm(ctx, "perm-frozen-close-out",
+                    source.toString(), "home", "close-out", "--home", source.toString(),
+                    "--into", frozen.toString(), "--json");
             List<String> frozenMoved = HomeSyncSupport.difference(frozenBefore,
                     HomeSyncSupport.entryDigests(frozen));
-            boolean frozenRefuses = refused.exitCode() != 0 && refusedDry.exitCode() != 0;
+            // The exact code, not merely non-zero. FrozenHomeException.EXIT_CODE
+            // is 9 and its whole purpose is to be branched on by a caller that
+            // is not this JVM: "refused, nothing attempted" is a different
+            // situation from 1 ("this worktree still holds work") and from the
+            // 2 a picocli usage error exits with. Both commands used to let the
+            // exception escape as a stack trace, which is 1.
+            boolean frozenRefuses = refused.exitCode() == FROZEN_EXIT_CODE
+                    && refusedDry.exitCode() == FROZEN_EXIT_CODE
+                    && refusedGate.exitCode() == FROZEN_EXIT_CODE;
             boolean frozenWroteNothing = frozenMoved.isEmpty()
                     && HomeSyncSupport.names(HomeSyncSupport.skills(frozen)).isEmpty();
 
@@ -224,9 +237,11 @@ public class HomeSyncPermutations {
                                     + HomeSyncSupport.status(mergeReport, "skill:" + BOTH)
                                     + " bothMoved=" + bothMoved + " ghostMoved=" + ghostMoved
                                     + " frozenExits=" + refused.exitCode() + "/"
-                                    + refusedDry.exitCode() + " frozenMoved=" + frozenMoved))
+                                    + refusedDry.exitCode() + "/" + refusedGate.exitCode()
+                                    + " (expected " + FROZEN_EXIT_CODE + ")"
+                                    + " frozenMoved=" + frozenMoved))
                     .process(seed).process(dry).process(dryFresh).process(real).process(merge)
-                    .process(refused).process(refusedDry).process(thawed)
+                    .process(refused).process(refusedDry).process(refusedGate).process(thawed)
                     .assertion("a_dry_run_writes_nothing_but_the_home_lock", dryRunWroteNothing)
                     .assertion("a_dry_run_reports_a_new_unit_without_creating_it",
                             dryRunSawTheNewUnit)
@@ -246,7 +261,7 @@ public class HomeSyncPermutations {
                     .assertion("a_conflicted_unit_has_nothing_written_into_it", conflictWroteNothing)
                     .assertion("a_unit_with_no_common_ancestor_conflicts_rather_than_guessing",
                             recordlessUnitConflicts)
-                    .assertion("a_frozen_destination_refuses_a_real_run_and_a_dry_run",
+                    .assertion("a_frozen_destination_refuses_a_sync_a_dry_run_and_a_close_out_with_exit_9",
                             frozenRefuses)
                     .assertion("a_frozen_destination_has_nothing_written_into_it",
                             frozenWroteNothing)
@@ -254,6 +269,7 @@ public class HomeSyncPermutations {
                             thawedHomeAcceptsTheSameSync)
                     .metric("frozenSyncExitCode", refused.exitCode())
                     .metric("frozenDryRunExitCode", refusedDry.exitCode())
+                    .metric("frozenCloseOutExitCode", refusedGate.exitCode())
                     .metric("mergeExitCode", merge.exitCode());
         });
     }

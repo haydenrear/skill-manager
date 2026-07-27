@@ -4,6 +4,7 @@ import dev.skillmanager.bindings.BindingStore;
 import dev.skillmanager.bindings.ChildHomeMaterializer;
 import dev.skillmanager.launch.LauncherShims;
 import dev.skillmanager.mcp.GatewayConfig;
+import dev.skillmanager.policy.FrozenHomeException;
 import dev.skillmanager.policy.HomePolicy;
 import dev.skillmanager.source.UnitStore;
 import dev.skillmanager.store.DriftGate;
@@ -104,13 +105,15 @@ public final class HomeCommand {
             // still knowable. It is the only witness to the two homes' common
             // ancestor, and without it the first `home sync` back into the
             // original can only report the whole unit as conflicted — even when
-            // one side never moved. See
-            // ChildHomeMaterializer#adoptUnrecordedUnits.
-            List<ChildHomeMaterializer.UnitRef> adopted =
-                    ChildHomeMaterializer.adoptUnrecordedUnits(cloned);
-            if (!json && !adopted.isEmpty()) {
+            // one side never moved. That covers units with no record AND units
+            // whose inherited record describes content this copy does not hold,
+            // which is what the source home editing a unit in place leaves
+            // behind. See ChildHomeMaterializer#recordCloneBaselines.
+            List<ChildHomeMaterializer.UnitRef> recorded =
+                    ChildHomeMaterializer.recordCloneBaselines(cloned);
+            if (!json && !recorded.isEmpty()) {
                 Log.info("  baseline:    recorded for %d unit(s), so edits made here can be "
-                        + "merged back with `skill-manager home sync`", adopted.size());
+                        + "merged back with `skill-manager home sync`", recorded.size());
             }
             // Descriptor last, so it reports the ownership decision above.
             HomeDescriptor descriptor = describe(cloned, null,
@@ -457,7 +460,17 @@ public final class HomeCommand {
         public Integer call() throws Exception {
             SkillStore source = new SkillStore(from.toAbsolutePath().normalize());
             SkillStore dest = new SkillStore(to.toAbsolutePath().normalize());
-            HomeSync.Report report = HomeSync.run(source, dest, new HomeSync.Options(merge, dryRun));
+            HomeSync.Report report;
+            try {
+                report = HomeSync.run(source, dest, new HomeSync.Options(merge, dryRun));
+            } catch (FrozenHomeException frozen) {
+                // The refusal is the answer, not a crash: FrozenHomeException's
+                // whole contract is an exit code a caller can branch on, and
+                // `sync`/`upgrade` already return it. Letting picocli print a
+                // stack trace instead made a deliberate policy look like a bug.
+                Log.error("%s", frozen.getMessage());
+                return FrozenHomeException.EXIT_CODE;
+            }
             if (json) {
                 System.out.println(syncJson(report));
             } else {
@@ -499,7 +512,18 @@ public final class HomeCommand {
         public Integer call() throws Exception {
             SkillStore worktree = new SkillStore(home.toAbsolutePath().normalize());
             SkillStore project = new SkillStore(into.toAbsolutePath().normalize());
-            HomeCloseOut.Verdict verdict = HomeCloseOut.inspect(worktree, project);
+            HomeCloseOut.Verdict verdict;
+            try {
+                verdict = HomeCloseOut.inspect(worktree, project);
+            } catch (FrozenHomeException frozen) {
+                // The gate is a dry-run sync into the project home, so a frozen
+                // project refuses it. Same contract as `home sync` above: an
+                // exit code, not a stack trace — a teardown script branches on
+                // this, and 9 ("refused, nothing attempted") is not 1 ("this
+                // worktree still holds work").
+                Log.error("%s", frozen.getMessage());
+                return FrozenHomeException.EXIT_CODE;
+            }
             if (json) {
                 System.out.println(closeOutJson(verdict));
                 return verdict.exitCode();

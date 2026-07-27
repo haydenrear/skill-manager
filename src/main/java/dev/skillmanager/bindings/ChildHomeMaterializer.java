@@ -83,6 +83,64 @@ import java.util.UUID;
  * sides moved, which a downward materialization never had to answer: with
  * {@code merge} the recorded per-file baseline decides each path, and any path
  * both sides changed is reported as a conflict rather than resolved.
+ *
+ * <h2 id="baseline-rule">The baseline rule — one rule, three places</h2>
+ *
+ * <p><b>A reconciliation may destroy bytes in the destination only where it can
+ * show the source home passed through those same bytes.</b> Everything below is
+ * that one sentence applied to the three decisions a reconcile makes, and the
+ * three defects it replaces (CHM-9, CHM-10, and the stale clone baseline) were
+ * three different answers to it.
+ *
+ * <p>What a {@link MaterializationRecord} is evidence <em>of</em> follows from
+ * it, and the two halves must never be confused:
+ *
+ * <ul>
+ *   <li>{@code contentDigest} is evidence about the DESTINATION alone — "these
+ *       are the bytes this reconcile wrote here". Anything may read it to tell
+ *       an untouched tree from an edited one, whoever wrote it.</li>
+ *   <li>{@code source}, {@code sourceDigest} and {@code entryDigests} are
+ *       evidence about a PAIR of homes — "this destination and that source last
+ *       shared exactly this". {@code entryDigests} therefore holds the SOURCE's
+ *       tree at the moment of the reconcile, not the tree that was written: for
+ *       a wholesale copy those are the same thing, and for a merge they are
+ *       emphatically not, because the merged result is a state the source never
+ *       held. A record says nothing at all about a third home.</li>
+ * </ul>
+ *
+ * <p>The three decisions:
+ *
+ * <ol>
+ *   <li><b>Wholesale copy</b> (a fast-forward). Allowed only when the
+ *       destination still holds exactly what its record says was written there
+ *       <em>and</em> that record is evidence about this source. A pristine copy
+ *       is disposable only relative to the home it is a copy OF: once a project
+ *       home holds a fast-forwarded copy of a worktree that has since been torn
+ *       down, those bytes exist nowhere else, and nothing about the
+ *       destination's own digest can say so. That was CHM-9.</li>
+ *   <li><b>The merge base.</b> The destination's own record is the tighter
+ *       ancestor and is preferred — but only when it is evidence about this
+ *       source. Otherwise the SOURCE's record is used, which is sound for a
+ *       reason worth stating: it records a state the source itself was handed,
+ *       and the destination's half is enforced per path by the algebra, which
+ *       takes a path only where {@code d == b}. Neither available, no base, and
+ *       a conflict is reported rather than a guess written. That was
+ *       CHM-10.</li>
+ *   <li><b>What a clone writes down.</b> A copied home's inherited records
+ *       describe a pair it is not part of. Its own baseline is its content at
+ *       clone time — which the home it was copied from also held, by
+ *       construction — so {@link #recordCloneBaselines} states that, instead of
+ *       leaving a baseline describing content neither home has any more.</li>
+ * </ol>
+ *
+ * <p><b>The asymmetry is deliberate and is the whole design.</b> A baseline
+ * that is too OLD costs a conflict a human resolves; a baseline that is too
+ * NEW, or that belongs to a different pair of homes, costs an edit nobody ever
+ * sees again. Where the rule cannot show a shared baseline it holds back or
+ * conflicts — never writes. {@code specs/desired_program_model/External.tla}
+ * states the same thing as {@code MergeBasePolicy = "SHARED_ANCESTOR"} and
+ * {@code ReconcileProvenance = "SOURCE_AWARE"}, checked by
+ * {@code External_sync.cfg}.
  */
 public final class ChildHomeMaterializer {
 
@@ -133,24 +191,44 @@ public final class ChildHomeMaterializer {
      * materialized at, which is how a later pass tells "still exactly what we
      * cloned" from "the agent has committed something here".
      *
-     * <p>{@code entryDigests} is the same baseline as {@code contentDigest},
-     * broken out per file. The whole-tree digest can only answer "did this unit
-     * change"; a three-way reconciliation between two homes has to answer
-     * "<em>which files</em> did each side change", and that is the difference
-     * between merging two disjoint edits and declaring the whole unit
-     * conflicted. It is written for {@link MaterializationMode#COPY} only —
-     * a checkout's baseline is its git history, which already answers this
-     * better than any digest map could. Absent (an older record, an
-     * interrupted write) it reads as null, which routes the merge to the same
-     * conservative refusal a missing record already gets.
+     * <p>{@code source} names the tree the content came from — a parent-store
+     * unit directory for a materialization, the other home's unit directory for
+     * a reconcile, and {@code null} when there is no such tree (a clone's own
+     * baseline, restated by {@link #recordCloneBaselines}). It is <b>read</b>,
+     * not merely written: see the <a href="#baseline-rule">baseline rule</a>.
+     * A record whose {@code source} names some other home is evidence about
+     * that pair of homes and about no other, which is exactly what CHM-9 turned
+     * on — the field was there, correct, and nothing consulted it.
+     *
+     * <p>{@code entryDigests} is the per-file form of the baseline the two
+     * homes shared: <b>the SOURCE's tree at the moment of the reconcile</b>,
+     * which for a wholesale copy is also the tree that was written and for a
+     * merge deliberately is not. The whole-tree digest can only answer "did
+     * this unit change"; a three-way reconciliation between two homes has to
+     * answer "<em>which files</em> did each side change", and that is the
+     * difference between merging two disjoint edits and declaring the whole
+     * unit conflicted. Recording the MERGED tree here instead is CHM-10: the
+     * destination's own local work becomes part of its recorded ancestor, the
+     * next merge measures a source that never held those bytes against them,
+     * reads {@code d == b} as "only the source moved", and reverts the work
+     * with no conflict and no report. Written for
+     * {@link MaterializationMode#COPY} only — a checkout's baseline is its git
+     * history, which already answers this better than any digest map could.
+     * Absent (an older record, an interrupted write) it reads as null, which
+     * routes the merge to the same conservative refusal a missing record
+     * already gets.
+     *
+     * <p>{@code contentDigest} is the other half and stays what it always was:
+     * the tree that was actually written here, so a later pass can tell an
+     * untouched destination from an edited one.
      *
      * <p>{@code reconcileKind} distinguishes a tree that was copied wholesale
      * from one that is the <em>result of a merge</em>. They are not
-     * interchangeable: a pristine copy may be overwritten the moment its source
-     * moves, because nothing in it is unique. A merge result carries local work
-     * that exists nowhere else, so it must be merged again rather than
-     * overwritten — and it looks exactly like a pristine copy to a digest
-     * comparison against its own record.
+     * interchangeable: a pristine copy may be overwritten by the home it is a
+     * copy of, because nothing in it is unique to it. A merge result is a copy
+     * of no home at all — it carries work folded in from two — so it must be
+     * merged again rather than overwritten, and it looks exactly like a
+     * pristine copy to a digest comparison against its own record.
      */
     @JsonInclude(JsonInclude.Include.NON_NULL)
     @JsonIgnoreProperties(ignoreUnknown = true)
@@ -349,15 +427,47 @@ public final class ChildHomeMaterializer {
     }
 
     /**
-     * Record each unrecorded unit in {@code home} as its own baseline.
+     * State each unit in a freshly copied {@code home} against its own content:
+     * the third of the three decisions in the <a href="#baseline-rule">baseline
+     * rule</a>.
      *
      * <p>What this is for: a home produced by copying another one — {@code home
-     * clone} — has the bytes but no provenance, and provenance is the only
-     * thing that makes an edit inside it recoverable later. Without it, the
-     * first reconciliation back into the home it came from sees two trees that
-     * differ, no common ancestor, and has to report a conflict on the whole
-     * unit — even when only one side ever moved. The clone <em>is</em> the
-     * common ancestor; this writes that down while it is still true.
+     * clone} — has the bytes but no provenance of its own, and provenance is
+     * the only thing that makes an edit inside it recoverable later. Without
+     * it, the first reconciliation back into the home it came from sees two
+     * trees that differ, no common ancestor, and has to report a conflict on
+     * the whole unit — even when only one side ever moved. The clone
+     * <em>is</em> the common ancestor; this writes that down while it is still
+     * true.
+     *
+     * <p>Two cases, one rule:
+     *
+     * <ul>
+     *   <li><b>No record at all.</b> The unit's content is its baseline.</li>
+     *   <li><b>A {@link MaterializationMode#COPY} record inherited from the
+     *       home this one was copied from, describing content this copy does
+     *       not hold.</b> That happens for the ordinary reason: a record says
+     *       what a home was <em>handed</em>, and editing a unit in place does
+     *       not update it — correctly, because a record is provenance and not a
+     *       snapshot. But the inherited record describes a pair of homes this
+     *       copy is not part of, and a baseline OLDER than the two homes' real
+     *       common ancestor turns a clean fast-forward back into a conflict a
+     *       human has to settle. Measured: a worktree whose content strictly
+     *       CONTAINS the project's reported CONFLICTED and wrote nothing.
+     *       Restating it costs nothing that was true — the copy really did
+     *       start from these bytes, and so did the home it came from.</li>
+     * </ul>
+     *
+     * <p>An inherited record that still describes this copy's content is left
+     * exactly as it is: it is accurate, and it additionally names the home the
+     * bytes came from, which is evidence a later reconcile can use and this
+     * function cannot reconstruct.
+     *
+     * <p>{@link MaterializationMode#CHECKOUT} is never touched, whatever its
+     * content says. A checkout's baseline is its git history, and restating it
+     * as a tree digest would destroy the only thing that can answer whether its
+     * commits have been pushed. {@link MaterializationMode#LINK} likewise: it
+     * has no tree of its own to be the baseline of.
      *
      * <p>Records written here carry no {@code source} path on purpose. The
      * path would name the home this one was copied from, and a copied home that
@@ -365,23 +475,26 @@ public final class ChildHomeMaterializer {
      * catch. The digests say everything the merge needs; the path said nothing
      * it uses.
      *
-     * <p>Never overwrites an existing record — a copied home may have inherited
-     * real ones, including a {@code CHECKOUT} whose baseline is its git history
-     * and would be destroyed by being restated as a tree digest.
+     * @return every unit whose baseline this call wrote or restated
      */
-    public static List<UnitRef> adoptUnrecordedUnits(SkillStore home) throws IOException {
+    public static List<UnitRef> recordCloneBaselines(SkillStore home) throws IOException {
         ChildHomeMaterializer materializer = new ChildHomeMaterializer(home, home);
-        List<UnitRef> adopted = new ArrayList<>();
+        List<UnitRef> recorded = new ArrayList<>();
         for (UnitRef ref : unitDirectories(home)) {
-            if (materializer.readRecord(ref.name(), ref.kind()).isPresent()) continue;
+            MaterializationRecord inherited =
+                    materializer.readRecord(ref.name(), ref.kind()).orElse(null);
+            if (inherited != null && !MaterializationMode.COPY.name().equals(inherited.mode())) {
+                continue;
+            }
             Path dir = home.unitDir(ref.name(), ref.kind()).toAbsolutePath().normalize();
             Fingerprint print = fingerprint(dir);
+            if (inherited != null && print.digest().equals(inherited.contentDigest())) continue;
             materializer.writeRecord(ref.name(), ref.kind(), MaterializationMode.COPY, null, null,
                     print.digest(), print.digest(), print.entries(),
                     MaterializationRecord.COPIED);
-            adopted.add(ref);
+            recorded.add(ref);
         }
-        return adopted;
+        return recorded;
     }
 
     // ------------------------------------------------- home-to-home reconcile
@@ -500,37 +613,44 @@ public final class ChildHomeMaterializer {
                     "already byte-identical to the source");
         }
 
+        // The destination's record is evidence about the pair (this
+        // destination, the home named in it). Read it as evidence about THIS
+        // source only when it can be shown to be — see the baseline rule.
+        MaterializationRecord sourceRecord = sourceRecordFor(name, kind);
+        boolean recordIsAboutThisSource = describesSource(record, source, src, sourceRecord);
+
         String baseline = copyBaseline(record);
         boolean destUntouched = baseline != null && baseline.equals(dst.digest());
-        if (destUntouched && src.digest().equals(record.sourceDigest())) {
+        if (destUntouched && recordIsAboutThisSource
+                && src.digest().equals(record.sourceDigest())) {
             // The destination differs from the source only by work a previous
             // --merge folded in, and the source has not moved since. Copying the
             // source over it now would delete that work for no gain.
             return new UnitSync(name, kind, SyncStatus.UNCHANGED, dest, List.of(), List.of(),
                     "the source has not moved since the last reconcile");
         }
-        if (destUntouched && !record.isMergeResult()) {
+        if (destUntouched && !record.isMergeResult() && recordIsAboutThisSource) {
             if (apply) writeCopy(name, kind, view, source, dest, src);
             return new UnitSync(name, kind, SyncStatus.UPDATED, dest,
                     changedFiles(dst.entries(), src.entries()), List.of(),
                     "refreshed from the source; the destination held no local work");
         }
 
-        // Everything below: the destination carries something the source does not.
+        // Everything below: the destination carries something this source
+        // cannot be shown to have — either work made here, or a copy of a
+        // THIRD home's work, which is indistinguishable from the first by any
+        // measurement of the destination alone.
         if (!merge) {
             return new UnitSync(name, kind, SyncStatus.HELD_BACK, dest, List.of(), List.of(),
-                    baseline == null
-                            ? "no usable materialization record, so its contents cannot be shown to be "
-                                    + "disposable; re-run with --merge to reconcile it"
-                            : "locally modified; re-run with --merge to three-way merge it");
+                    holdBackReason(record, baseline, destUntouched, recordIsAboutThisSource));
         }
-        java.util.Map<String, String> base = mergeBase(name, kind, record);
+        java.util.Map<String, String> base = mergeBase(record, recordIsAboutThisSource, sourceRecord);
         if (base == null || base.isEmpty()) {
             return new UnitSync(name, kind, SyncStatus.CONFLICTED, dest, List.of(),
                     changedFiles(dst.entries(), src.entries()),
-                    "both sides differ and no per-file baseline was recorded for this unit, so "
-                            + "there is no merge base; resolve it by hand or publish the edit with "
-                            + "`skill-manager unit publish " + name + "`");
+                    "both sides differ and neither home recorded a per-file baseline they can be "
+                            + "shown to share, so there is no merge base; resolve it by hand or "
+                            + "publish the edit with `skill-manager unit publish " + name + "`");
         }
 
         MergePlan plan = mergePlan(base, src.entries(), dst.entries());
@@ -549,7 +669,11 @@ public final class ChildHomeMaterializer {
             try {
                 Fingerprint stagedPrint = fingerprint(staged);
                 swapIn(staged, dest);
-                writeCopyRecord(name, kind, source, stagedPrint, src.digest(),
+                // The written tree is the merged one; the BASELINE recorded
+                // against this source is the source's tree, which is the state
+                // the two homes now demonstrably share. Recording the merged
+                // tree as the baseline instead is CHM-10.
+                writeCopyRecord(name, kind, source, stagedPrint.digest(), src,
                         MaterializationRecord.MERGED);
             } finally {
                 if (Files.exists(staged, LinkOption.NOFOLLOW_LINKS)) Fs.deleteRecursive(staged);
@@ -567,40 +691,109 @@ public final class ChildHomeMaterializer {
         try {
             Fingerprint stagedPrint = fingerprint(staged);
             swapIn(staged, dest);
-            writeCopyRecord(name, kind, source, stagedPrint, src.digest(),
+            writeCopyRecord(name, kind, source, stagedPrint.digest(), src,
                     MaterializationRecord.COPIED);
         } finally {
             if (Files.exists(staged, LinkOption.NOFOLLOW_LINKS)) Fs.deleteRecursive(staged);
         }
     }
 
+    /** The source home's own record for this unit, or null. */
+    private MaterializationRecord sourceRecordFor(String name, UnitKind kind) {
+        return new ChildHomeMaterializer(parentStore, parentStore)
+                .readRecord(name, kind).orElse(null);
+    }
+
+    private static boolean hasEntries(MaterializationRecord record) {
+        return record != null && record.entryDigests() != null && !record.entryDigests().isEmpty();
+    }
+
     /**
-     * The per-file common ancestor of the two homes' copies of one unit.
+     * Whether {@code record} — written by the destination — is evidence about
+     * <em>this</em> source, i.e. whether the baseline in it is a state the
+     * source itself passed through. The pivot of the
+     * <a href="#baseline-rule">baseline rule</a>, and the question CHM-9 and
+     * CHM-10 both answered by not asking it.
      *
-     * <p>The destination's own record first: it says what the destination was
-     * handed, which is the ancestor of anything the destination has since done
-     * to it. When the destination has none — a home whose units were installed
-     * rather than materialized — the source's record is used instead, because
-     * a home produced by copying this one records, at adoption time, exactly
-     * the content the two homes last shared. That is the case the whole return
-     * path depends on: a ticket worktree is a clone, and its clone-time record
-     * is the only surviving witness to what the project home held when it was
-     * made.
+     * <p>Four ways to show it, and no fifth. Every one of them is local
+     * evidence on disk; none of them is an assumption about who ran what:
      *
-     * <p>When both exist the destination's is preferred even though the
-     * source's may be the tighter ancestor. An older ancestor produces more
-     * conflicts and never fewer, so the cost of choosing wrong here is a
-     * conflict a human resolves, not an edit nobody sees again.
+     * <ol>
+     *   <li><b>The record names no source at all.</b> It is a home's own
+     *       clone-time baseline ({@link #recordCloneBaselines}), which is what
+     *       it held when it was copied — and therefore what the home it was
+     *       copied from held too. This is the one case with no better witness
+     *       available, and it is safe for the same reason a clone is: the bytes
+     *       are still in the home this one came from. A teardown of that home
+     *       is what {@code home close-out} gates.</li>
+     *   <li><b>The record names this source.</b> These bytes came from here, or
+     *       a merge with this source recorded the state it then held.</li>
+     *   <li><b>The source is standing on the baseline right now.</b> Nothing to
+     *       argue about: it is in the source's tree as we read it.</li>
+     *   <li><b>Both homes recorded the same baseline.</b> Two homes handed the
+     *       same content — the ordinary shape of a clone that inherited its
+     *       records, and the reason the epic's core flow does not turn into a
+     *       conflict when a project home's record names the root it came
+     *       from.</li>
+     * </ol>
      */
-    private java.util.Map<String, String> mergeBase(String name, UnitKind kind,
-                                                    MaterializationRecord destRecord) {
-        if (destRecord != null && destRecord.entryDigests() != null
-                && !destRecord.entryDigests().isEmpty()) {
-            return destRecord.entryDigests();
+    private static boolean describesSource(MaterializationRecord record, Path sourceUnit,
+                                           Fingerprint src, MaterializationRecord sourceRecord) {
+        if (!hasEntries(record)) return false;
+        String named = record.source();
+        if (named == null || named.isBlank()) return true;
+        if (samePathString(named, sourceUnit)) return true;
+        if (record.entryDigests().equals(src.entries())) return true;
+        return hasEntries(sourceRecord)
+                && record.entryDigests().equals(sourceRecord.entryDigests());
+    }
+
+    /**
+     * The per-file common ancestor of the two homes' copies of one unit — a
+     * state BOTH of them passed through, or nothing.
+     *
+     * <p>The destination's own record first, when it is evidence about this
+     * source ({@link #describesSource}): it is the tightest ancestor available,
+     * because it says what these two homes last shared. A record about some
+     * other pair of homes is not an ancestor of this one at all — measured
+     * against it the source looks like the only side that moved, the other
+     * home's work is taken away, and no conflict is ever reported. That is
+     * CHM-10, and it is why this returns the source's record instead rather
+     * than the destination's whenever the destination's cannot be shown to be
+     * shared.
+     *
+     * <p>The source's record is sound as a base for a reason worth stating: it
+     * records what the SOURCE was handed, so the source passed through it by
+     * construction, and the destination's half of "only one side moved" is
+     * enforced per path by {@link #mergePlan}, which takes a path only where
+     * the destination is standing on the base. It may be older than the true
+     * common ancestor; an older ancestor produces more conflicts and never
+     * fewer, and that is the direction this whole mechanism errs in.
+     */
+    private static java.util.Map<String, String> mergeBase(MaterializationRecord destRecord,
+                                                           boolean destRecordIsAboutThisSource,
+                                                           MaterializationRecord sourceRecord) {
+        if (hasEntries(destRecord) && destRecordIsAboutThisSource) return destRecord.entryDigests();
+        return hasEntries(sourceRecord) ? sourceRecord.entryDigests() : null;
+    }
+
+    /** Why a plain (non-merge) pass left this unit alone, in the caller's terms. */
+    private static String holdBackReason(MaterializationRecord record, String baseline,
+                                         boolean destUntouched, boolean recordIsAboutThisSource) {
+        if (baseline == null) {
+            return "no usable materialization record, so its contents cannot be shown to be "
+                    + "disposable; re-run with --merge to reconcile it";
         }
-        return new ChildHomeMaterializer(parentStore, parentStore).readRecord(name, kind)
-                .map(MaterializationRecord::entryDigests)
-                .orElse(null);
+        if (destUntouched && !recordIsAboutThisSource) {
+            return "its content came from " + record.source() + ", which this source has never "
+                    + "held, so replacing it would delete work that may exist nowhere else; "
+                    + "re-run with --merge to reconcile it";
+        }
+        if (destUntouched && record.isMergeResult()) {
+            return "the result of an earlier merge, so it is a copy of no home; "
+                    + "re-run with --merge to reconcile it";
+        }
+        return "locally modified; re-run with --merge to three-way merge it";
     }
 
     /** Which paths the source would take over, and which cannot be decided. */
@@ -855,7 +1048,8 @@ public final class ChildHomeMaterializer {
         }
 
         List<ViewEntry> view = materializedView(source);
-        String sourceDigest = viewDigest(view);
+        Fingerprint sourcePrint = fingerprintOf(view, java.util.Set.of());
+        String sourceDigest = sourcePrint.digest();
         MaterializationRecord record = readRecord(name, kind).orElse(null);
         String baseline = copyBaseline(record);
         String currentDigest = destIsDir ? treeDigest(dest) : null;
@@ -880,13 +1074,13 @@ public final class ChildHomeMaterializer {
                 if (!stagedPrint.digest().equals(currentDigest)) {
                     return heldBack(name, kind, dest);
                 }
-                writeCopyRecord(name, kind, source, stagedPrint, sourceDigest,
+                writeCopyRecord(name, kind, source, stagedPrint.digest(), sourcePrint,
                         MaterializationRecord.COPIED);
                 return new UnitOutcome(name, kind, Status.UNCHANGED, dest,
                         "adopted an existing identical copy");
             }
             swapIn(staged, dest);
-            writeCopyRecord(name, kind, source, stagedPrint, sourceDigest,
+            writeCopyRecord(name, kind, source, stagedPrint.digest(), sourcePrint,
                     MaterializationRecord.COPIED);
             return new UnitOutcome(name, kind, Status.MATERIALIZED, dest,
                     destIsLink ? "replaced a symlink into the parent store" : "copied from the parent store");
@@ -910,11 +1104,22 @@ public final class ChildHomeMaterializer {
         return record.contentDigest();
     }
 
-    /** Record for a {@link MaterializationMode#COPY}, with its per-file baseline. */
-    private void writeCopyRecord(String name, UnitKind kind, Path source, Fingerprint written,
-                                 String sourceDigest, String reconcileKind) throws IOException {
-        writeRecord(name, kind, MaterializationMode.COPY, source, null, sourceDigest,
-                written.digest(), written.entries(), reconcileKind);
+    /**
+     * Record for a {@link MaterializationMode#COPY}.
+     *
+     * <p>Two digests with two different jobs, and the split is the
+     * <a href="#baseline-rule">baseline rule</a> in one method signature:
+     * {@code contentDigest} is what was written HERE (evidence about this home
+     * alone, read to tell an untouched tree from an edited one), while
+     * {@code shared} is the SOURCE's tree — the state the two homes now share,
+     * which is what a later three-way merge against this same source must
+     * measure from. For a wholesale copy they describe the same tree; for a
+     * merge result they must not.
+     */
+    private void writeCopyRecord(String name, UnitKind kind, Path source, String contentDigest,
+                                 Fingerprint shared, String reconcileKind) throws IOException {
+        writeRecord(name, kind, MaterializationMode.COPY, source, null, shared.digest(),
+                contentDigest, shared.entries(), reconcileKind);
     }
 
     private void writeRecord(String name, UnitKind kind, MaterializationMode mode, Path source,
@@ -1343,6 +1548,23 @@ public final class ChildHomeMaterializer {
                 ? existing.normalize()
                 : link.getParent().resolve(existing).normalize();
         return normalized.equals(source);
+    }
+
+    /**
+     * Whether a recorded path string names {@code path}.
+     *
+     * <p>The recorded form and the live one are both produced by
+     * {@code toAbsolutePath().normalize()}, so the string comparison decides it
+     * in every ordinary case; the real-path comparison exists for the one that
+     * is not ordinary — a home reached through a symlinked parent (on macOS,
+     * {@code /tmp} is one), where the same directory has two spellings and
+     * getting this wrong would silently downgrade a shared baseline to "no
+     * evidence".
+     */
+    private static boolean samePathString(String recorded, Path path) {
+        if (recorded == null || recorded.isBlank()) return false;
+        Path named = Path.of(recorded).toAbsolutePath().normalize();
+        return named.equals(path) || sameRealPath(named, path);
     }
 
     private static boolean sameRealPath(Path a, Path b) {

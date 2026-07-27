@@ -407,7 +407,7 @@ public final class HomeSyncTest {
                     Path worktreeRoot = root.resolve("worktree/.skill-manager");
                     HomeCloner.cloneHome(project.root(), worktreeRoot, false);
                     SkillStore worktree = new SkillStore(worktreeRoot);
-                    assertFalse(ChildHomeMaterializer.adoptUnrecordedUnits(worktree).isEmpty(),
+                    assertFalse(ChildHomeMaterializer.recordCloneBaselines(worktree).isEmpty(),
                             "the clone records a baseline for the units it copied");
 
                     // The ticket agent improves the skill inside its worktree.
@@ -438,6 +438,57 @@ public final class HomeSyncTest {
                             .resolve("skill").resolve(UNIT + ".json");
                     assertFalse(Files.readString(record).contains(project.root().toString()),
                             "the adopted baseline records no path back into the source home");
+                })
+
+                .test("a clone of a home that edited a unit in place restates the baseline", () -> {
+                    // The other direction of the same question, and the one
+                    // that costs usability rather than data: a record says what
+                    // a home was HANDED, and editing a unit in place does not
+                    // update it. `home clone` copies those records, so a
+                    // worktree cloned from a project home that had improved the
+                    // unit inherited a baseline describing content NEITHER home
+                    // holds any more — older than their real common ancestor,
+                    // which is the clone itself. Measured before the fix: a
+                    // worktree whose content strictly CONTAINS the project's
+                    // reported CONFLICTED and wrote nothing, and close-out then
+                    // demanded a manual resolution that was not needed.
+                    Path root = Files.createTempDirectory("home-sync-stale-");
+                    SkillStore upstream = store(root.resolve("root"));
+                    SkillStore project = store(root.resolve("project/.skill-manager"));
+                    UnitFixtures.scaffoldSkill(upstream.skillsDir(), UNIT, DepSpec.empty());
+                    write(upstream.skillDir(UNIT).resolve("SKILL.md"), "V1\n");
+                    HomeSync.run(upstream, project, new HomeSync.Options(false, false));
+
+                    // The project home improves the unit itself. Its record
+                    // still describes V1 — correctly.
+                    String projectText = "V1\nthe project home improved this first\n";
+                    write(project.skillDir(UNIT).resolve("SKILL.md"), projectText);
+
+                    Path worktreeRoot = root.resolve("worktree/.skill-manager");
+                    HomeCloner.cloneHome(project.root(), worktreeRoot, false);
+                    SkillStore worktree = new SkillStore(worktreeRoot);
+                    List<String> restated = ChildHomeMaterializer.recordCloneBaselines(worktree)
+                            .stream().map(ChildHomeMaterializer.UnitRef::label).toList();
+
+                    // The ticket agent builds on exactly what it was given, so
+                    // the worktree's content strictly contains the project's.
+                    String worktreeText = projectText + "and the agent improved it further\n";
+                    write(worktree.skillDir(UNIT).resolve("SKILL.md"), worktreeText);
+
+                    UnitSync outcome = only(HomeSync.run(worktree, project,
+                            new HomeSync.Options(true, false)));
+
+                    // The consequence first: what the clone wrote down is only
+                    // interesting because of what it lets the return path do.
+                    assertEquals(SyncStatus.MERGED, outcome.status(),
+                            "the clone-time baseline settles it without a human");
+                    assertEquals(worktreeText, read(project.skillDir(UNIT).resolve("SKILL.md")),
+                            "and the project home ends up with the agent's bytes");
+                    assertTrue(HomeCloseOut.inspect(worktree, project).safe(),
+                            "so close-out lets the worktree go");
+                    assertEquals(List.of("skill:" + UNIT), restated,
+                            "and the clone said so: it restated the baseline of the unit whose "
+                                    + "inherited record describes content it does not hold");
                 })
 
                 .test("close-out refuses a unit whose two sides conflict, and names it", () -> {

@@ -240,12 +240,15 @@ desired_sync_properties:
     guard_config: External_sync_guard_ffprovenance.cfg
     regression_configs:
       - External_regression_nomergekind.cfg    # the defect 7468b4f fixed
-      - External_regression_ffprovenance.cfg   # CHM-9, still in the tree
-      - External_regression_mergebase.cfg      # CHM-10, still in the tree
+      - External_regression_ffprovenance.cfg   # CHM-9, fixed; kept, must keep failing
+      - External_regression_mergebase.cfg      # CHM-10, fixed; kept, must keep failing
     note: >
-      This is the one invariant today's code does not satisfy, in two
-      independent ways. Both were reproduced end to end against the real
-      classes. Neither was fixed here; see CHM-9 and CHM-10.
+      This is the one invariant the code did not satisfy, in two independent
+      ways. Both were reproduced end to end against the real classes, ticketed
+      as CHM-9 and CHM-10, and then fixed together under one rule
+      (ChildHomeMaterializer, "The baseline rule") along with the opposite-
+      direction stale-baseline finding. All three configs above keep producing
+      their counterexamples, because each models a rule the code no longer has.
   conflict_atomicity:
     invariant: AConflictedUnitIsNeverPartiallyWritten
     view: External (SyncSpec)
@@ -333,7 +336,7 @@ service_catalog:
     - ProjectChildHomeScaffolder (pass orchestration and the held-back report)
     - ChildHomeHarnessInstaller (same materializer, harness payload)
   known_gaps:
-    - "The sync model gives each home ONE authoring token per path, so it cannot express one home editing one path twice. CHM-10 is therefore reached in the model through three tiers and in the unit test through two; same mergeBase, two routes."
+    - "The sync model gives each home ONE authoring token per path, so it cannot express one home editing one path twice. CHM-10 was therefore reached in the model through three tiers and in the unit test through two; same mergeBase, two routes."
     - Shim mirroring stays a symlink and is deliberately outside the isolation guarantee; not modeled.
     - Symlinks pointing outside the parent store are preserved verbatim; writes through them are out of scope and not modeled.
     - A symlink cycle inside the parent store omits the entry with a warning; the omission is not modeled as a distinct outcome.
@@ -757,13 +760,18 @@ tickets:
 
 # ---------------------------------------------------------------------------
 # Two defects in ALREADY-MERGED code, found by modelling the sync mechanism and
-# then reproduced end to end against the real classes. Neither is fixed here.
-# Both are silent data loss and both need an owner decision about the CONTRACT
-# rather than a patch, which is exactly what a ticket is for.
+# then reproduced end to end against the real classes. Both were silent data
+# loss and both needed a decision about the CONTRACT rather than a patch, which
+# is what these tickets were for. They were then fixed TOGETHER, with the
+# stale-baseline finding, because all three are the same question -- what is the
+# merge baseline of these two homes, and who is allowed to rewrite it -- and
+# three independent patches would have been a fourth idiom (issue #24).
   - id: CHM-9
     title: "A fast-forward makes the destination a pristine copy of a home that may be gone"
     phase: CHM
-    status: open
+    status: closed
+    closed: "2026-07-27"
+    resolved_with: [CHM-10, the stale-baseline finding]
     depends_on: []
     production_status: defect_in_merged_code
     severity: silent_data_loss
@@ -795,17 +803,34 @@ tickets:
       UPDATED, so the remedy the tool prints is the one that creates this state.
       `--merge` is not affected: it records reconcileKind = "merge".
     modelled_as: 'ReconcileProvenance: SOURCE_AWARE (desired) vs MERGE_KIND_ONLY (today)'
+    resolution: >
+      MaterializationRecord.source was already written and correct; reconcile now
+      READS it. A destination may be replaced wholesale only when it still holds
+      exactly what its record says was written there AND that record is evidence
+      about the home now pushing -- it names it, or names nobody (a clone's own
+      baseline), or the two homes recorded the same baseline, or the source is
+      standing on that baseline right now. Anything else holds back, and under
+      --merge conflicts. The rule is stated once, in ChildHomeMaterializer's
+      class javadoc under "The baseline rule", and CHM-10 and the stale-baseline
+      finding are the same rule applied to the merge base and to what a clone
+      writes down.
     acceptance:
       assertions:
         - A destination may be replaced wholesale only when its current content came from the home now pushing, or from nobody.
         - External_regression_ffprovenance.cfg keeps producing a counterexample.
         - The reproduction above ends with the agent's bytes still in the project home.
-      evidence: []
+      evidence:
+        unit: 'HomeSyncMergeTest "a fast-forward is not disposable to a home it never came from (CHM-9)" -- the whole reproduction including the teardown, asserted on bytes'
+        graph: 'home-sync node home.sync.provenance: sync up, close out, remove the worktree, sync down, through the real CLI over real homes'
+        tlc: External_regression_ffprovenance.cfg still violates AReconciliationOnlyWritesAgainstABaselineBothHomesPassedThrough at depth 4 (24 distinct states)
+        mutation: 'dropped `&& recordIsAboutThisSource` from the wholesale-copy guard; the named unit test failed with "expected <AGENT IMPROVED THIS> but was <ROOT V2>"; reverted and verified with shasum -a 256 -c'
 
   - id: CHM-10
     title: "mergeBase picks a baseline newer than the common ancestor, and reverts work without a conflict"
     phase: CHM
-    status: open
+    status: closed
+    closed: "2026-07-27"
+    resolved_with: [CHM-9, the stale-baseline finding]
     depends_on: []
     production_status: defect_in_merged_code
     severity: silent_data_loss
@@ -845,9 +870,13 @@ tickets:
       record) turns a clean fast-forward into a conflict a human has to settle.
       That one is safe and annoying; this one is unsafe and silent. They are the
       two directions of one question -- what is the common ancestor of these two
-      homes -- and mergeBase currently answers it with whatever the destination
-      last wrote down. Fixing either without the other will move the failure
-      rather than remove it, so they should be decided together.
+      homes -- and mergeBase answered it with whatever the destination last wrote
+      down. Fixing either without the other would have moved the failure rather
+      than removed it, so they were fixed together: `home clone` now restates the
+      baseline of a COPY unit whose inherited record describes content the copy
+      does not hold, which is what makes the merge base of a clone the clone
+      itself. home.sync.stale.baseline measures the result --
+      reconciledWithoutAHuman = 1, spuriousConflict = 0.
     design_note: >
       The model's SHARED_ANCESTOR abstraction -- take a path only against a
       baseline the SOURCE has itself held -- is one implementable answer
@@ -855,12 +884,28 @@ tickets:
       way a remote-tracking ref does). Refusing with a conflict instead is
       another, and cheaper. Which one is an owner decision about what --merge
       promises, which is why this is a ticket and not a patch.
+    resolution: >
+      Neither of the two options in design_note, and both of their effects. What
+      a merge WRITES DOWN was wrong, not only what it reads: entryDigests now
+      records the SOURCE's tree at the reconcile -- the state the two homes then
+      demonstrably share -- while contentDigest goes on recording what was
+      written here. A merged tree is a state the source never passed through, so
+      it was never eligible to be the next merge's base. mergeBase then prefers
+      the destination's record only when it is evidence about this source, and
+      otherwise falls back to the SOURCE's record, which is sound because the
+      source passed through it by construction and the destination's half of
+      "only one side moved" is enforced per path by mergePlan. Neither
+      available: no base, and the unit conflicts.
     acceptance:
       assertions:
         - A merge takes a path only against a baseline the source itself passed through.
         - External_regression_mergebase.cfg keeps producing a counterexample.
-        - "HomeSyncMergeTest \"DEFECT PIN CHM-10\" is deleted, not adjusted: it asserts today's wrong answer on purpose."
-      evidence: []
+        - 'HomeSyncMergeTest "DEFECT PIN CHM-10" is turned into the assertion of the correct behaviour and renamed, not deleted: the pin is the record that the defect was real, and a third merge round was added because the defect was in what a merge writes down and would otherwise revert the work one round later.'
+      evidence:
+        unit: 'HomeSyncMergeTest "a second --merge keeps the work the first one kept (CHM-10)" (was the DEFECT PIN)'
+        graph: 'home-sync node home.sync.provenance: three merges from one source, asserted on the bytes of the file the source never touched'
+        tlc: External_regression_mergebase.cfg still violates AReconciliationOnlyWritesAgainstABaselineBothHomesPassedThrough at depth 4 (26 distinct states)
+        mutation: 'recorded the merged tree as the baseline again (entryDigests from the staged tree, sourceDigest unchanged); the named unit test failed with "expected <AGENT WORK> but was <v1>"; reverted and verified with shasum -a 256 -c'
 
   - id: CHM-11
     title: "`home sync` and `home close-out` have no out-of-process coverage"

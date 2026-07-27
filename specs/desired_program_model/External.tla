@@ -40,26 +40,33 @@ CONSTANTS
   MergeAlgebra,
 
   \* SHARED_ANCESTOR    -- the merge base for a reconciliation from g into h is
-  \*      a state g ITSELF passed through. DESIRED; NOT WHAT THE CODE DOES.
-  \* DESTINATION_RECORD -- today (ChildHomeMaterializer.mergeBase): the
-  \*      destination's own record, whoever last wrote it. Its javadoc claims
-  \*      "the cost of choosing wrong here is a conflict a human resolves, not
-  \*      an edit nobody sees again"; that is true only when the chosen base is
-  \*      OLDER than the true common ancestor. When a previous reconciliation
-  \*      from a THIRD home advanced the destination's record past anything the
-  \*      current source ever held, the base is NEWER, the algebra concludes
-  \*      "only the source moved", and the third home's work is taken away
-  \*      without a conflict. See ticket CHM-10.
+  \*      a state g ITSELF passed through. WHAT THE CODE DOES, since CHM-10:
+  \*      ChildHomeMaterializer.mergeBase takes the destination's record only
+  \*      when it can be shown to be about this source, and a merge now records
+  \*      the SOURCE's tree as the baseline rather than the merged result --
+  \*      which is a state the source never passed through. Where neither home's
+  \*      record can be shown to be shared there is no base and the unit
+  \*      conflicts.
+  \* DESTINATION_RECORD -- before CHM-10: the destination's own record, whoever
+  \*      last wrote it. Its javadoc claimed "the cost of choosing wrong here is
+  \*      a conflict a human resolves, not an edit nobody sees again"; that is
+  \*      true only when the chosen base is OLDER than the true common ancestor.
+  \*      When a previous reconciliation from a THIRD home advanced the
+  \*      destination's record past anything the current source ever held, the
+  \*      base is NEWER, the algebra concludes "only the source moved", and the
+  \*      third home's work is taken away without a conflict.
   MergeBasePolicy,
 
   \* SOURCE_AWARE     -- a destination may be overwritten wholesale only when
   \*      its current content came from the home now pushing (or from nobody).
-  \*      DESIRED; NOT WHAT THE CODE DOES.
-  \* MERGE_KIND_ONLY  -- today (MaterializationRecord.reconcileKind): a merge
-  \*      RESULT is protected, a pristine copy is not -- and a pristine copy of
-  \*      a torn-down worktree's only version of an edit is indistinguishable
-  \*      from a pristine copy of the root's. Reproduced end to end; see ticket
-  \*      CHM-9.
+  \*      WHAT THE CODE DOES, since CHM-9: MaterializationRecord.source names
+  \*      the home the bytes came from and ChildHomeMaterializer.reconcile now
+  \*      READS it -- the field was always written and nothing consulted it.
+  \* MERGE_KIND_ONLY  -- before CHM-9 (MaterializationRecord.reconcileKind
+  \*      alone): a merge RESULT is protected, a pristine copy is not -- and a
+  \*      pristine copy of a torn-down worktree's only version of an edit is
+  \*      indistinguishable from a pristine copy of the root's. Reproduced end
+  \*      to end.
   \* IGNORED          -- before commit 7468b4f: no reconcileKind at all, so the
   \*      second source change deleted everything the first merge folded in.
   ReconcileProvenance,
@@ -1065,10 +1072,15 @@ AReconciliationOnlyWritesPathsTheDestinationDidNotMove ==
 \* against it the source looks like the only side that moved, the third home's
 \* work is taken away, and no conflict is ever reported.
 \*
-\* This is the invariant today's ChildHomeMaterializer does not satisfy, in two
-\* independent ways -- mergeBase preferring the destination's record
-\* (MergeBasePolicy = DESTINATION_RECORD) and reconcileKind protecting merge
-\* results only (ReconcileProvenance = MERGE_KIND_ONLY). Tickets CHM-9 / CHM-10.
+\* This is the invariant ChildHomeMaterializer failed in two independent ways --
+\* mergeBase preferring the destination's record (MergeBasePolicy =
+\* DESTINATION_RECORD) and reconcileKind protecting merge results only
+\* (ReconcileProvenance = MERGE_KIND_ONLY). Both were fixed together, under one
+\* rule stated in ChildHomeMaterializer's javadoc: a reconciliation may destroy
+\* bytes only where it can show the SOURCE passed through them. The two configs
+\* that model the old rules -- External_regression_mergebase.cfg and
+\* External_regression_ffprovenance.cfg -- must keep producing counterexamples,
+\* because they describe what the code no longer does. Tickets CHM-9 / CHM-10.
 AReconciliationOnlyWritesAgainstABaselineBothHomesPassedThrough ==
   \A p \in SyncPaths: <<p, BaseNeverShared>> \notin sync_unsound
 

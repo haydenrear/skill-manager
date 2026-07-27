@@ -720,6 +720,14 @@ validationGraph {
      * (home.sync.git.flawless), and the clone-of-an-edited-home baseline case
      * (home.sync.stale.baseline).
      *
+     * home.sync.provenance is the two silent-data-loss defects of the baseline
+     * rule as sequences rather than as states: CHM-9 needs three homes and a
+     * teardown between two successful commands (sync up, close out, remove the
+     * worktree, sync down) and CHM-10 needs the same source to merge twice.
+     * Neither is reachable in one command, and both reported success while
+     * destroying the ticket's work, so nothing shorter than the sequence can
+     * assert they are gone.
+     *
      * home.sync.sensitive is the reason to believe the rest: it plants one
      * mutation per defect class — an edit silently overwritten, a conflict
      * silently resolved, a dry run that writes, half a swap left behind, a
@@ -746,6 +754,7 @@ validationGraph {
         node("sources/home-sync/HomeSyncPermutations.java")
         node("sources/home-sync/HomeSyncHazards.java")
         node("sources/home-sync/HomeSyncStaleBaseline.java")
+        node("sources/home-sync/HomeSyncProvenance.java")
     }
 
     testGraph("project-env") {
