@@ -150,6 +150,20 @@ import java.util.UUID;
  *       edit.</li>
  * </ol>
  *
+ * <p><b>One rule needs one reader.</b> The four decisions above are read by
+ * three different writers into a home — {@link #copyUnit} (the downward
+ * materialization {@code project resolve} and {@code project sync} run),
+ * {@link #linkUnit}, and {@link #reconcile} ({@code home sync}) — plus the
+ * predicate {@link #isLocallyModified} that a prune, a teardown and a close-out
+ * consult before deleting. Each of them used to inline its own conjunction, and
+ * they did not agree: the reconcile asked whether the record was evidence about
+ * this source, and the other three did not. A unit a worktree merged up into a
+ * project home is <em>pristine by its own record</em> while being a copy of no
+ * store on earth, so the omitted clause was the whole difference between
+ * refreshing a stale tree and deleting work that exists nowhere else — CHM-15,
+ * the {@code project sync} × {@code home sync} seam. {@link Disposal} is now the
+ * single reading; nothing else answers "may these bytes go".
+ *
  * <p><b>The asymmetry is deliberate and is the whole design.</b> A baseline
  * that is too OLD costs a conflict a human resolves; a baseline that is too
  * NEW, or that belongs to a different pair of homes, costs an edit nobody ever
@@ -347,9 +361,16 @@ public final class ChildHomeMaterializer {
     }
 
     /**
-     * Reports whether one child-home unit currently differs from the tree that
-     * was materialized into it. Units with no usable record are reported as
+     * Reports whether one child-home unit holds anything the parent store cannot
+     * be shown to have — the predicate a prune, a teardown and a close-out
+     * consult before destroying it. Units with no usable record are reported as
      * modified: without provenance there is no evidence they are disposable.
+     *
+     * <p>"Differs from the tree that was materialized into it" is the weaker
+     * question and was the wrong one. A unit a worktree merged up into this home
+     * matches its own record exactly and is still a copy of no store: it is the
+     * whole of {@link Disposal}, not just its first clause, that says whether the
+     * bytes may go.
      */
     public boolean isLocallyModified(String name, UnitKind kind) throws IOException {
         Path dest = childStore.unitDir(name, kind).toAbsolutePath().normalize();
@@ -358,9 +379,7 @@ public final class ChildHomeMaterializer {
         if (record != null && MaterializationMode.CHECKOUT.name().equals(record.mode())) {
             return checkoutIsModified(dest, record);
         }
-        String baseline = copyBaseline(record);
-        if (baseline == null) return true;
-        return !baseline.equals(treeDigest(dest));
+        return !disposalOf(name, kind, record, treeDigest(dest)).disposable();
     }
 
     /**
@@ -699,12 +718,13 @@ public final class ChildHomeMaterializer {
 
         // The destination's record is evidence about the pair (this
         // destination, the home named in it). Read it as evidence about THIS
-        // source only when it can be shown to be — see the baseline rule.
-        MaterializationRecord sourceRecord = sourceRecordFor(name, kind);
-        boolean recordIsAboutThisSource = describesSource(record, source, src, sourceRecord);
-
-        String baseline = copyBaseline(record);
-        boolean destUntouched = baseline != null && baseline.equals(dst.digest());
+        // source only when it can be shown to be — see the baseline rule. One
+        // reading, shared with copyUnit and isLocallyModified.
+        Disposal disposal = disposal(name, kind, record, source, src, dst.digest());
+        MaterializationRecord sourceRecord = disposal.sourceRecord();
+        boolean recordIsAboutThisSource = disposal.recordIsAboutThisSource();
+        String baseline = disposal.baseline();
+        boolean destUntouched = disposal.destUntouched();
         if (destUntouched && recordIsAboutThisSource
                 && src.digest().equals(record.sourceDigest())) {
             // The destination differs from the source only by work a previous
@@ -713,7 +733,7 @@ public final class ChildHomeMaterializer {
             return new UnitSync(name, kind, SyncStatus.UNCHANGED, dest, List.of(), List.of(),
                     "the source has not moved since the last reconcile");
         }
-        if (destUntouched && !record.isMergeResult() && recordIsAboutThisSource) {
+        if (disposal.disposable()) {
             if (apply) writeCopy(name, kind, view, source, dest, src);
             return new UnitSync(name, kind, SyncStatus.UPDATED, dest,
                     changedFiles(dst.entries(), src.entries()), List.of(),
@@ -1152,8 +1172,26 @@ public final class ChildHomeMaterializer {
 
     // ------------------------------------------------------------ interns
 
+    /**
+     * Replaces the child unit with a symlink at the parent store.
+     *
+     * <p>Subject to the same {@link Disposal} as a copy, and for the same
+     * reason: {@link #linkPath} deletes a real directory to put a link where it
+     * stood, so a home that was materialized as {@code COPY} and then edited
+     * would have its edits deleted by a later pass that merely asked for
+     * {@code LINK}. Only a tree this pass can show the parent store passed
+     * through is disposable; everything else is reported and left alone.
+     */
     private UnitOutcome linkUnit(String name, UnitKind kind, Path source, Path dest)
             throws IOException {
+        if (Files.isDirectory(dest, LinkOption.NOFOLLOW_LINKS) && !sameRealPath(source, dest)) {
+            MaterializationRecord record = readRecord(name, kind).orElse(null);
+            if (!disposalOf(name, kind, record, treeDigest(dest)).disposable()) {
+                return heldBack(name, kind, dest,
+                        "a real directory the parent store cannot be shown to have passed through; "
+                                + "not replaced with a symlink into it");
+            }
+        }
         linkPath(source, dest);
         writeRecord(name, kind, MaterializationMode.LINK, source, null, null, null);
         return new UnitOutcome(name, kind, Status.MATERIALIZED, dest, "linked at parent store");
@@ -1271,16 +1309,35 @@ public final class ChildHomeMaterializer {
         Fingerprint sourcePrint = fingerprintOf(view, java.util.Set.of());
         String sourceDigest = sourcePrint.digest();
         MaterializationRecord record = readRecord(name, kind).orElse(null);
-        String baseline = copyBaseline(record);
         String currentDigest = destIsDir ? treeDigest(dest) : null;
+        Disposal disposal = disposal(name, kind, record, source, sourcePrint, currentDigest);
+        String baseline = disposal.baseline();
 
         if (destIsDir && baseline != null) {
-            if (!baseline.equals(currentDigest)) {
+            if (!disposal.destUntouched()) {
                 return heldBack(name, kind, dest);
             }
             if (sourceDigest.equals(record.sourceDigest())) {
                 return new UnitOutcome(name, kind, Status.UNCHANGED, dest,
                         "already matches the parent store");
+            }
+            if (!disposal.disposable()) {
+                // Pristine by its own record, and a copy of no store this pass
+                // can name. `home sync` leaves exactly this shape behind when a
+                // worktree merges its work up into a project home: the record
+                // then names the WORKTREE, and reading it as a licence to
+                // refresh from the parent store deletes that work while calling
+                // itself routine reconciliation. The dry seam this closes is
+                // `project resolve` / `project sync` interleaved with
+                // `home sync` — CHM-15.
+                return heldBack(name, kind, dest, disposal.mergeResult()
+                        ? "the result of an earlier merge, so it is a wholesale copy of no home; "
+                                + "send it on with `skill-manager unit publish " + name + "` (or "
+                                + "`home sync`) before this home is refreshed from the store"
+                        : "its content came from " + record.source() + ", which this store has "
+                                + "never held, so replacing it would delete work that may exist "
+                                + "nowhere else; send it on with `skill-manager unit publish "
+                                + name + "` (or `home sync`) first");
             }
         }
 
@@ -1310,10 +1367,13 @@ public final class ChildHomeMaterializer {
     }
 
     private static UnitOutcome heldBack(String name, UnitKind kind, Path dest) {
-        Log.warn("child home %s:%s has local changes — left as-is, not refreshed from the parent store (%s)",
-                kind.name().toLowerCase(), name, dest);
-        return new UnitOutcome(name, kind, Status.SKIPPED_LOCAL_CHANGES, dest,
-                "local changes in the child home");
+        return heldBack(name, kind, dest, "local changes in the child home");
+    }
+
+    private static UnitOutcome heldBack(String name, UnitKind kind, Path dest, String detail) {
+        Log.warn("child home %s:%s — left as-is, not refreshed from the parent store: %s (%s)",
+                kind.name().toLowerCase(), name, detail, dest);
+        return new UnitOutcome(name, kind, Status.SKIPPED_LOCAL_CHANGES, dest, detail);
     }
 
     /** The recorded content digest, or null when the record cannot be trusted. */
@@ -1322,6 +1382,83 @@ public final class ChildHomeMaterializer {
         if (!MaterializationMode.COPY.name().equals(record.mode())) return null;
         if (record.contentDigest() == null || record.sourceDigest() == null) return null;
         return record.contentDigest();
+    }
+
+    /**
+     * The one question every writer that destroys a destination tree has to ask,
+     * answered in one place: <b>may this pass destroy what is in the
+     * destination?</b>
+     *
+     * <p>This is the <a href="#baseline-rule">baseline rule</a>'s first decision
+     * as a value rather than as an inlined conjunction. It exists because the
+     * conjunction was inlined twice and the two copies did not agree:
+     * {@link #reconcile} asked all three parts of it, while {@link #copyUnit} —
+     * the downward materialization {@code project resolve} and {@code project
+     * sync} run — asked only the first, and {@link #isLocallyModified}, the
+     * predicate a prune and a teardown consult, asked only the first too. A unit
+     * a worktree had merged up into a project home is <em>pristine</em> by its
+     * own record while being a copy of no store on earth, so the missing two
+     * parts were exactly the difference between "refresh this" and "delete work
+     * that exists nowhere else" (CHM-15). Three readings of one rule is how a
+     * rule gets two answers; there is now one reading.
+     *
+     * @param baseline               the trusted content digest, or null when the
+     *                               record cannot be read as one at all
+     * @param destUntouched          the destination still holds exactly the bytes
+     *                               its own record says were written there
+     * @param recordIsAboutThisSource that record is evidence about THIS source —
+     *                               see {@link #describesSource}
+     * @param mergeResult            the destination's tree was produced by a
+     *                               merge, so it is a wholesale copy of no home
+     * @param sourceRecord           the source home's own record, carried so the
+     *                               merge base is chosen from the same reading
+     */
+    record Disposal(String baseline, boolean destUntouched, boolean recordIsAboutThisSource,
+                    boolean mergeResult, MaterializationRecord sourceRecord) {
+
+        /**
+         * True only where the source can be shown to have passed through the
+         * bytes now in the destination. Everything else holds back.
+         */
+        boolean disposable() {
+            return destUntouched && recordIsAboutThisSource && !mergeResult;
+        }
+    }
+
+    /**
+     * Compute {@link Disposal} for one unit. {@code destDigest} is the
+     * destination tree's digest, or null when there is no destination tree.
+     */
+    private Disposal disposal(String name, UnitKind kind, MaterializationRecord record,
+                              Path source, Fingerprint src, String destDigest) {
+        MaterializationRecord sourceRecord = sourceRecordFor(name, kind);
+        String baseline = copyBaseline(record);
+        return new Disposal(
+                baseline,
+                baseline != null && baseline.equals(destDigest),
+                describesSource(record, source, src, sourceRecord),
+                record != null && record.isMergeResult(),
+                sourceRecord);
+    }
+
+    /**
+     * The same computation for a caller that has no source fingerprint in hand —
+     * {@link #isLocallyModified}, which is asked about units whose source may not
+     * even exist any more (a dependency the project dropped, a unit uninstalled
+     * upstream). A source that is not there cannot be shown to have passed
+     * through anything, so it contributes no evidence: the empty fingerprint
+     * leaves {@link #describesSource}'s "the source is standing on it right now"
+     * arm false and the name-based arms intact, which is exactly the reading
+     * that lets an ordinary pristine copy still be pruned while a tree some
+     * other home contributed is not.
+     */
+    private Disposal disposalOf(String name, UnitKind kind, MaterializationRecord record,
+                                String destDigest) throws IOException {
+        Path source = parentStore.unitDir(name, kind).toAbsolutePath().normalize();
+        Fingerprint src = Files.isDirectory(source, LinkOption.NOFOLLOW_LINKS)
+                ? fingerprintOf(materializedView(source), java.util.Set.of())
+                : new Fingerprint(null, new java.util.LinkedHashMap<>());
+        return disposal(name, kind, record, source, src, destDigest);
     }
 
     /**

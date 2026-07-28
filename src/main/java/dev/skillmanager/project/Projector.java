@@ -1,9 +1,12 @@
 package dev.skillmanager.project;
 
 import dev.skillmanager.model.AgentUnit;
+import dev.skillmanager.shared.util.Fs;
 import dev.skillmanager.store.SkillStore;
 
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.util.List;
 
@@ -56,13 +59,52 @@ public interface Projector {
      * contents of {@code source}. Symlink preferred; falls back to a
      * recursive copy when the filesystem refuses symlinks. Replaces an
      * existing projection at {@code target} cleanly.
+     *
+     * @return true when {@code target} now resolves to {@code source};
+     *         false when the projection was held back because something
+     *         at {@code target} is not this projector's to destroy.
      */
-    void apply(Projection projection) throws IOException;
+    default boolean apply(Projection projection) throws IOException {
+        Fs.ensureDir(projection.target().getParent());
+        if (!clearForProjection(projection)) return false;
+        try {
+            Files.createSymbolicLink(projection.target(), projection.source());
+        } catch (UnsupportedOperationException | IOException fallback) {
+            // Filesystems that don't support symlinks (rare on macOS/Linux,
+            // common on some Windows configs) fall through to a recursive
+            // copy — bytes match, semantics roughly the same for read.
+            Fs.copyRecursive(projection.source(), projection.target());
+        }
+        return true;
+    }
 
     /**
      * Reverse one projection: remove {@code target} if present. No-op
      * when absent. Does not touch {@code source} — that lives in the
      * store and is owned by {@code RemoveUnitFromStore}.
+     *
+     * @return true when nothing this projector put there is left at
+     *         {@code target}; false when something that is not this
+     *         projector's projection was found and left in place.
      */
-    void remove(Projection projection) throws IOException;
+    default boolean remove(Projection projection) throws IOException {
+        if (!Files.exists(projection.target(), LinkOption.NOFOLLOW_LINKS)
+                && !Files.isSymbolicLink(projection.target())) {
+            return true;
+        }
+        if (!clearForProjection(projection)) return false;
+        return true;
+    }
+
+    /**
+     * Free the target, or report that it is not this projector's to destroy.
+     * The decision itself lives in {@link ProjectionOwnership}, shared with the
+     * ledger-driven removal path and with the backfill that writes ledger rows
+     * — the three doors into the same agent tree.
+     *
+     * @return true when {@code target} is now free for this projection
+     */
+    private boolean clearForProjection(Projection projection) throws IOException {
+        return ProjectionOwnership.clear(agentId(), projection.target(), projection.source());
+    }
 }

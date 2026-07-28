@@ -58,26 +58,6 @@ public final class ClaudeProjector implements Projector {
         return List.of(new Projection(agentId(), source, target, unit.kind()));
     }
 
-    @Override
-    public void apply(Projection p) throws IOException {
-        Fs.ensureDir(p.target().getParent());
-        if (Files.exists(p.target(), LinkOption.NOFOLLOW_LINKS) || Files.isSymbolicLink(p.target())) {
-            Fs.deleteRecursive(p.target());
-        }
-        try {
-            Files.createSymbolicLink(p.target(), p.source());
-        } catch (UnsupportedOperationException | IOException fallback) {
-            // Filesystems that don't support symlinks (rare on macOS/Linux,
-            // common on some Windows configs) fall through to a recursive
-            // copy — bytes match, semantics roughly the same for read.
-            Fs.copyRecursive(p.source(), p.target());
-        }
-    }
-
-    @Override
-    public void remove(Projection p) throws IOException {
-        if (Files.exists(p.target(), LinkOption.NOFOLLOW_LINKS) || Files.isSymbolicLink(p.target())) {
-            Fs.deleteRecursive(p.target());
-        }
-    }
+    // apply/remove are Projector's — one implementation of "destroy only what
+    // can be shown to be this projection", not one per agent.
 }

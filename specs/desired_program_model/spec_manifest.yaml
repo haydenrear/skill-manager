@@ -30,6 +30,9 @@ status:
     - Found TWO defects in code that is already merged, both silent data loss, both reproduced end to end against the real classes: CHM-9 (reconcileKind protects merge results but not a fast-forward from a home that is then torn down) and CHM-10 (mergeBase prefers the destination record, which after a merge is NEWER than the true common ancestor, so the next --merge reverts the work the previous one kept).
     - Fixed CHM-9, CHM-10 and the stale-baseline finding TOGETHER, under one rule written down once in ChildHomeMaterializer ("The baseline rule"): a reconciliation may destroy bytes only where it can show the SOURCE passed through them. MergeBasePolicy and ReconcileProvenance therefore now describe the code, and the configs that model the rules they replaced (External_regression_ffprovenance.cfg, External_regression_mergebase.cfg) are kept as configs that must keep failing.
     - Found and fixed CHM-12, the same rule broken through its WRITE side rather than its read side. writeCopyRecord wrote the SOURCE's entire tree as the destination's new entryDigests, paths the reconciliation had DECLINED to write included; a later reconcile in the opposite direction read that claim as a shared baseline and overwrote the work. Reproduced end to end over four homes (root, project, two ticket worktrees) with every command reporting clean=true. Fixed by ChildHomeMaterializer.sharedAfterMerge, which claims a path only where BOTH homes can be shown to have stood on the byte and omits everything else. The baseline rule gained a fourth decision, "what a reconciliation writes down".
+    - Found and fixed CHM-15, the same rule broken by a DIFFERENT WRITER. `home sync --merge` from a ticket worktree leaves the project home holding a tree that is pristine by its own materialization record -- the merge rewrote that record -- while being a wholesale copy of no store on earth. ChildHomeMaterializer.reconcile asked all three clauses of the baseline rule; copyUnit (the downward materialization `project resolve` / `project sync` run) and isLocallyModified (the predicate a prune, a teardown and a close-out consult) asked only the first. Reproduced end to end against the real CLI: resolve, clone, edit, merge back, close-out clears, rm -rf the worktree, resolve again -- the ticket's bytes then existed in no home, and the command that deleted them reported MATERIALIZED, "copied from the parent store". Fixed by making the whole conjunction ONE value, ChildHomeMaterializer.Disposal, which is now the only reading of the rule anywhere in the class. linkUnit was brought under it too: linkPath deletes a real directory to put a symlink where it stood.
+    - Extended External with ChildRefreshProvenance and the RefreshProjectChildHomeFromStore action, which is what made CHM-15 expressible at all. The unit slice already forbade destroying an agent's edit and always had -- its LocallyModified is content-based, so in a two-token world it is stronger than the record-based predicate the code actually runs. The gap was an ABSTRACTION gap: the model could not distinguish "the destination still holds what its record says" from "the destination holds what the source gave it", because nothing in the unit slice wrote a record. Modelling `project resolve` as a tier-slice action puts both writers on one home, and the violated invariant is the existing AReconciliationOnlyWritesAgainstABaselineBothHomesPassedThrough rather than a new one -- naming a second invariant for the second writer would have been the same mistake the code made. All 23 pre-existing expected-violation configs still produce a counterexample for the same invariant; all 11 pre-existing terminating must-pass configs still pass; External_regression_childrefresh.cfg is the 24th. State counts in the sync-slice configs changed with the new action and are re-recorded below.
+    - Found and fixed CHM-16, the same requirement in the OTHER half of a home. `<home>/.claude|.codex|.gemini/skills/<name>` is where a human writes skills by hand, and three writers destroyed content there with no report: the three projectors' apply, their remove, and BindingBackfill -- which adopted any existing path at a projection target into the projection ledger, after which the ledger-driven LiveInterpreter.reverseProjection deleted it on the next uninstall believing it was removing its own symlink. Reproduced end to end: `install` over a hand-written skill deleted it; after guarding only the projectors, `uninstall` still deleted it through the ledger door. Fixed with ProjectionOwnership, one predicate shared by all three doors. Deliberately NOT a materialization record: a projection is a pure function of the store, so entitlement is decidable from the two paths alone (a symlink, or a tree the source still holds), and a provenance file for it would be machinery nobody needs. Two mechanisms because the available evidence differs; one rule because the requirement does not.
     - Separated the record-WRITE decision from base selection in the model, which is what made CHM-12 expressible at all. External gains RecordWritePolicy (SHARED_ONLY / SOURCE_TREE / MERGED_TREE), the NoBaseline value a partial entryDigests map needs, the source-record FALLBACK the code has always had and the model did not, and one new invariant (ARecordClaimsNoBaselineTheDestinationNeverStoodOn) with its expected-violation config. All 22 pre-existing expected-violation configs still produce a counterexample for the same invariant, and all 11 pre-existing terminating must-pass configs still pass.
   pending:
     - Owner decision on the Internal/External scope (see internal_external_decision below).
@@ -744,6 +747,31 @@ validation:
         change (HomeSyncMergeTest, "a second --merge keeps the work the first
         one kept (CHM-10)", which was the defect pin and is now the assertion of
         the fixed behaviour). Two routes, one mergeBase.
+    External_regression_childrefresh.cfg:
+      models: "THE CODE UNTIL CHM-15 WAS FIXED. ChildHomeMaterializer.copyUnit -- the downward materialization `project resolve` and `project sync` run -- read the destination's materialization record as `does the destination still hold what this record says was written there`, and nothing else. After `home sync --merge` from a ticket worktree, the answer is YES and the record is about the worktree."
+      expect_violation: AReconciliationOnlyWritesAgainstABaselineBothHomesPassedThrough
+      status: violated_as_expected
+      trace: EditUnitInHomeTier -> ReconcileHomeTiers -> RefreshProjectChildHomeFromStore
+      axis: "SyncTiers = {root, project, worktree}, SyncPaths = {p1}"
+      defect: CHM-15
+      reproduced_against_production: true
+      states_generated: 228
+      distinct_states: 51
+      note: >
+        The invariant is the one the whole epic turns on, not a new one, and
+        that is the point: `project resolve` is a reconciliation and the parent
+        store is a source. Two writers, one home, one rule -- naming a second
+        invariant for the second writer would have reproduced in the model the
+        exact mistake the code made, which was to read one rule in two places
+        and get two answers.
+
+        Modelled in the TIER slice rather than the unit slice deliberately. The
+        unit slice's LocallyModified is content-based and therefore already
+        forbids this; the code's is record-based and did not. The defect lives
+        in the difference between those two, so it is only expressible where
+        records are, which is here. The end-to-end witness is the graph node
+        home.sync.project.seam, which runs the sequence through the real CLI
+        with a real `rm -rf` in the middle.
     External_regression_recordsourcetree.cfg:
       models: "THE CODE UNTIL CHM-12 WAS FIXED. writeCopyRecord recorded the SOURCE's entire tree as the destination's shared baseline, paths the reconciliation DECLINED to write included, so the destination's record claimed bytes the destination had never held and the next reconcile in the opposite direction overwrote the work."
       expect_violation: ARecordClaimsNoBaselineTheDestinationNeverStoodOn

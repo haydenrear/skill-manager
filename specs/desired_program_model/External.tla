@@ -110,6 +110,24 @@ CONSTANTS
   \*      It succeeds exactly as loudly whether the directory held work or not.
   CloseOutGate,
 
+  \* How `project resolve` / `project sync` decide whether the project home's
+  \* current bytes may be replaced with the parent store's. The SAME question
+  \* ReconcileProvenance asks about `home sync`, asked by the other writer into
+  \* the same home -- which is the whole of why it needs its own axis: the two
+  \* commands consult one materialization record and, until CHM-15, read it
+  \* differently.
+  \*
+  \* SOURCE_AWARE         -- today, since CHM-15: the record must be evidence
+  \*      about the parent store. A record naming a worktree, or one written by
+  \*      a merge, is evidence about a pair of homes this refresh is not part of.
+  \* CONTENT_DIGEST_ONLY  -- before CHM-15: "does the destination still hold
+  \*      exactly what its record says was written there", and nothing else. The
+  \*      answer is YES for a project home a worktree just merged into -- the
+  \*      merge rewrote the record -- so the refresh reads a pristine tree,
+  \*      overwrites it from the store, and reports it as routine reconciliation
+  \*      while the ticket's work stops existing anywhere.
+  ChildRefreshProvenance,
+
   \* ------------------------------------------------ the two sync dimensions
   \* These are not policies. They are the two axes the sync slice is
   \* DECOMPOSED along, and they are constants so a config can pick one axis and
@@ -292,7 +310,20 @@ SyncContents == {InstalledBytes} \cup SyncHomes
 \* respect to the home it is a copy OF.
 AdoptedOrigin == "adopted"   \* no provenance: the home's own clone-time baseline
 MergedOrigin  == "merged"    \* a three-way result; a copy of nothing
-Origins == {AdoptedOrigin, MergedOrigin} \cup SyncHomes
+\* The parent store, which is not a tier: `project resolve` writes into a tier
+\* from something that is not one of them. Naming it is what lets the refresh's
+\* entitlement be stated in the same terms as a reconcile's -- see
+\* RefreshProjectChildHomeFromStore and ChildRefreshProvenance.
+StoreOrigin   == "store"
+Origins == {AdoptedOrigin, MergedOrigin, StoreOrigin} \cup SyncHomes
+
+\* Origins a refresh from the parent store may destroy. The store's own bytes
+\* (however this home came to hold them) and nothing else: an origin naming a
+\* worktree, or a merge, is evidence about a pair of homes the store is not part
+\* of. RootHome is here as a plain token because a two-tier decomposition may
+\* not have it, and a set literal that never matches is the correct behavior
+\* there.
+StoreSideOrigins == {AdoptedOrigin, StoreOrigin, RootHome}
 
 SyncStatuses ==
   {"unchanged", "updated", "held_back", "merged", "conflicted"}
@@ -325,6 +356,7 @@ InitialSyncRecord ==
 HoldsBackOrMerges      == HomeSyncPolicy = "HOLD_BACK_OR_MERGE"
 MergeIsThreeWay        == MergeAlgebra = "THREE_WAY"
 UsesSharedAncestorBase == MergeBasePolicy = "SHARED_ANCESTOR"
+SourceAwareChildRefresh == ChildRefreshProvenance = "SOURCE_AWARE"
 WritesConflictedPaths  == ConflictHandling = "WRITE_THE_CLEAN_PATHS"
 GatesTeardown          == CloseOutGate = "REFUSE_WHILE_WORK_REMAINS"
 
@@ -937,10 +969,59 @@ TearDownWorktreeHome ==
   /\ UNCHANGED unit_vars
   /\ UNCHANGED home_vars
 
+\* @command RefreshProjectChildHomeFromStore
+\* @result ChildHomeResult
+\* @port SkillManagerCli.resolve_project_child_home
+\* `skill-manager project resolve` / `project sync` — the OTHER writer into the
+\* project home, modelled here in the tier slice rather than in the unit slice
+\* because the defect it carries is not about one home at all. It is about the
+\* ORDER two commands touch one home.
+\*
+\* The unit slice already forbids destroying an agent's edit, and it always did.
+\* What it cannot see is this: `home sync --merge` from a worktree leaves the
+\* project home holding bytes that are pristine BY ITS OWN RECORD -- the merge
+\* rewrote that record -- while being a wholesale copy of no store on earth. A
+\* refresh that asks only "does the destination still hold what its record says"
+\* reads that as a licence and deletes the ticket's work. Every command in the
+\* sequence reports success. Ticket CHM-15.
+\*
+\* Same entitlement as ReconcileHomeTiers' wholesale-copy branch, and stated the
+\* same way: the destroyed bytes must be bytes this source can be shown to have
+\* held. Here the source is the parent store, whose bytes are InstalledBytes, so
+\* the showing is that the destination's record names the store side -- its own
+\* clone-time baseline, or the root tier -- and not a worktree or a merge.
+RefreshProjectChildHomeFromStore ==
+  /\ ProjectHome \in SyncLive
+  /\ LET entitled == \/ ~SourceAwareChildRefresh
+                     \/ sync_record[ProjectHome].origin \in StoreSideOrigins
+         stale    == {p \in SyncPaths : sync_body[ProjectHome][p] # InstalledBytes}
+         written  == IF entitled THEN stale ELSE {}
+         newBody  == [p \in SyncPaths |->
+                        IF p \in written THEN InstalledBytes ELSE sync_body[ProjectHome][p]]
+     IN
+     /\ written # {}
+     /\ sync_body' = [sync_body EXCEPT ![ProjectHome] = newBody]
+     /\ sync_record' = [sync_record EXCEPT ![ProjectHome] =
+                          [entries |-> [p \in SyncPaths |-> InstalledBytes],
+                           origin  |-> StoreOrigin]]
+     /\ sync_history' = sync_history \cup {<<ProjectHome, p, newBody[p]>> : p \in SyncPaths}
+     \* The write log, computed from the PRE-state by the model rather than by
+     \* the policy: a refresh that writes anyway still records that it was not
+     \* entitled to. Exactly the CHM-9 question the wholesale-copy branch asks,
+     \* pointed at the store instead of at another tier.
+     /\ sync_unsound' = sync_unsound
+          \cup {<<p, BaseNeverShared>> :
+                  p \in {q \in written :
+                           sync_record[ProjectHome].origin \notin StoreSideOrigins}}
+  /\ UNCHANGED sync_gone
+  /\ UNCHANGED unit_vars
+  /\ UNCHANGED home_vars
+
 SyncNext ==
   \/ \E h \in SyncHomes, p \in SyncPaths: EditUnitInHomeTier(h, p)
   \/ \E from \in SyncHomes, to \in SyncHomes, m \in BOOLEAN:
        ReconcileHomeTiers(from, to, m)
+  \/ RefreshProjectChildHomeFromStore
   \/ TearDownWorktreeHome
 
 -----------------------------------------------------------------------------

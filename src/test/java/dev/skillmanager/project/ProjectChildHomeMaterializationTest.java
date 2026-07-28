@@ -196,6 +196,87 @@ public final class ProjectChildHomeMaterializationTest {
                                 "nothing is held back when the child home is untouched");
                     }
                 })
+                // CHM-15. The three-tier flow leaves a project home holding a
+                // tree that is pristine BY ITS OWN RECORD and is a wholesale
+                // copy of no store: `home sync --merge` from a worktree writes
+                // a record naming the WORKTREE. The downward materialization
+                // read only "does the destination still hold what its record
+                // says", so it read that record as a licence to refresh from
+                // the parent store — and deleted a ticket's work while
+                // reporting MATERIALIZED, "copied from the parent store".
+                //
+                // Asserted on BYTES. The status alone cannot tell a refresh of
+                // something stale from a deletion of the only copy.
+                .test("a merge from a worktree survives the next parent-store materialization", () -> {
+                    try (TestHarness h = TestHarness.create()) {
+                        Path base = Files.createTempDirectory("chm15-seam-");
+                        SkillStore project = new SkillStore(base.resolve("project/.skill-manager"));
+                        SkillStore worktree = new SkillStore(base.resolve("worktree/.skill-manager"));
+                        project.init();
+                        worktree.init();
+
+                        Path rootUnit = h.store().unitDir("seam-skill", UnitKind.SKILL);
+                        Fs.ensureDir(rootUnit);
+                        Files.writeString(rootUnit.resolve("SKILL.md"), "ROOT STORE v1\n");
+
+                        ChildHomeMaterializer intoProject =
+                                new ChildHomeMaterializer(h.store(), project);
+                        intoProject.materializeUnit("seam-skill", UnitKind.SKILL,
+                                MaterializationMode.COPY);
+                        new ChildHomeMaterializer(project, worktree)
+                                .materializeUnit("seam-skill", UnitKind.SKILL,
+                                        MaterializationMode.COPY);
+
+                        Path inWorktree = worktree.unitDir("seam-skill", UnitKind.SKILL);
+                        Files.writeString(inWorktree.resolve("SKILL.md"), "THE TICKET'S WORK\n");
+                        new ChildHomeMaterializer(worktree, project)
+                                .applySync("seam-skill", UnitKind.SKILL, true);
+                        Path inProject = project.unitDir("seam-skill", UnitKind.SKILL);
+                        assertEquals("THE TICKET'S WORK\n",
+                                Files.readString(inProject.resolve("SKILL.md")),
+                                "precondition: the merge reached the project home");
+
+                        assertTrue(intoProject.isLocallyModified("seam-skill", UnitKind.SKILL),
+                                "a tree merged up from a worktree is not the parent store's to delete");
+
+                        ChildHomeMaterializer.UnitOutcome outcome = intoProject.materializeUnit(
+                                "seam-skill", UnitKind.SKILL, MaterializationMode.COPY);
+                        assertEquals("THE TICKET'S WORK\n",
+                                Files.readString(inProject.resolve("SKILL.md")),
+                                "the worktree's merged work survives the next materialization");
+                        assertTrue(outcome.heldBack(),
+                                "and the unit is reported as held back, not as materialized");
+                    }
+                })
+                // The same rule for the LINK arm: linkPath deletes a real
+                // directory to put a symlink where it stood, so a COPY child
+                // home somebody edited must not be replaced by a later pass
+                // that merely asked for LINK.
+                .test("LINK mode does not delete an edited child unit to install a symlink", () -> {
+                    try (TestHarness h = TestHarness.create()) {
+                        Path base = Files.createTempDirectory("chm15-link-");
+                        SkillStore child = new SkillStore(base.resolve("child/.skill-manager"));
+                        child.init();
+                        Path rootUnit = h.store().unitDir("link-guard-skill", UnitKind.SKILL);
+                        Fs.ensureDir(rootUnit);
+                        Files.writeString(rootUnit.resolve("SKILL.md"), "ROOT STORE v1\n");
+
+                        ChildHomeMaterializer m = new ChildHomeMaterializer(h.store(), child);
+                        m.materializeUnit("link-guard-skill", UnitKind.SKILL,
+                                MaterializationMode.COPY);
+                        Path childUnit = child.unitDir("link-guard-skill", UnitKind.SKILL);
+                        Files.writeString(childUnit.resolve("SKILL.md"), "AGENT EDIT\n");
+
+                        ChildHomeMaterializer.UnitOutcome outcome = m.materializeUnit(
+                                "link-guard-skill", UnitKind.SKILL, MaterializationMode.LINK);
+                        assertFalse(Files.isSymbolicLink(childUnit),
+                                "the edited directory is not replaced by a symlink");
+                        assertEquals("AGENT EDIT\n",
+                                Files.readString(childUnit.resolve("SKILL.md")),
+                                "LINK mode leaves the agent's edit alone");
+                        assertTrue(outcome.heldBack(), "and reports it");
+                    }
+                })
                 .test("project sync keeps local child home edits and reports them", () -> {
                     try (TestHarness h = TestHarness.create()) {
                         Path repoRoot = Files.createTempDirectory("child-home-sync-hold-");

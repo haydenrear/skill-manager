@@ -1015,6 +1015,136 @@ tickets:
       tlc: 'External_regression_recordsourcetree.cfg violates ARecordClaimsNoBaselineTheDestinationNeverStoodOn at depth 7 (2,815 distinct states, 1s). External_sync.cfg and External_sync_merge.cfg carry the same invariant and pass to exhaustion. All 22 pre-existing expected-violation configs still violate the same invariant; all 11 pre-existing terminating must-pass configs still pass.'
       mutation: 'restored `writeCopyRecord(name, kind, source, stagedPrint.digest(), src, MERGED)` in place of the sharedAfterMerge call (1 occurrence, counted first); the named unit test failed on the record claim AND the round-trip test failed on the bytes; reverted and verified with shasum -a 256 -c'
 
+  - id: CHM-15
+    title: "`project resolve` refreshes from the store over a tree a worktree just merged in"
+    phase: CHM
+    status: closed
+    closed: "2026-07-28"
+    found_by: asking which OTHER writers destroy bytes in a home, after CHM-9/10/12 closed home sync
+    objective: >
+      `home sync --merge` from a ticket worktree leaves the project home
+      holding a tree that is PRISTINE BY ITS OWN RECORD -- the merge rewrote
+      that record -- while being a wholesale copy of no store on earth.
+      ChildHomeMaterializer.reconcile asks all three clauses of the baseline
+      rule before it destroys anything: the destination still holds what its
+      record says, the record is evidence about THIS source, and the tree is
+      not a merge result. copyUnit -- the downward materialization that
+      `project resolve` and `project sync` run -- asked only the first, and so
+      did isLocallyModified, the predicate a prune, a teardown and a close-out
+      consult before deleting.
+
+      Consequence, reproduced end to end against the real CLI: resolve, clone
+      the project home into a worktree, edit, `home sync --merge` back,
+      `home close-out` clears, `rm -rf` the worktree, `project resolve` again.
+      The ticket's bytes then existed in NO home, and the command that deleted
+      them reported MATERIALIZED with the detail "copied from the parent
+      store". No operator error is involved: it is the epic's documented flow
+      with the ordinary dependency-refresh command run after it.
+    resolution: >
+      One reading of the rule, not three. ChildHomeMaterializer.Disposal is the
+      whole conjunction as a value -- baseline, destUntouched,
+      recordIsAboutThisSource, mergeResult -- computed once by disposal() and
+      consumed by copyUnit, reconcile and isLocallyModified. The three inlined
+      copies that disagreed are gone. linkUnit was brought under the same
+      value: linkPath deletes a real directory to put a symlink where it stood,
+      so a COPY child home somebody edited could be destroyed by a later pass
+      that merely asked for LINK.
+
+      The choke point is inside ChildHomeMaterializer rather than in Fs or in a
+      new collaborator, and the reason is what evidence is available where: Fs
+      knows nothing about homes or records, so a guard there would either have
+      to be handed a baseline by every caller -- which is the same N call sites
+      -- or invent provenance it cannot have.
+    model_change: >
+      External gains ChildRefreshProvenance (SOURCE_AWARE /
+      CONTENT_DIGEST_ONLY), the StoreOrigin token for a writer that is not a
+      tier, and the action RefreshProjectChildHomeFromStore in the tier slice.
+      That is what made the defect expressible at all: the unit slice's
+      LocallyModified is content-based and so already forbade this, while the
+      code's is record-based and did not. The defect lives in the difference,
+      and the difference is only visible where records are.
+    acceptance:
+      assertions:
+        - A tree a worktree merged into a project home survives the next materialization from the store.
+        - The pass that declines to overwrite it names it, and names something to run.
+        - A LINK-mode pass does not delete an edited child unit to install a symlink.
+        - External_regression_childrefresh.cfg keeps producing a counterexample.
+    evidence:
+      unit:
+        - 'ProjectChildHomeMaterializationTest "a merge from a worktree survives the next parent-store materialization" -- bytes, plus the isLocallyModified predicate'
+        - 'ProjectChildHomeMaterializationTest "LINK mode does not delete an edited child unit to install a symlink"'
+      graph: 'home-sync node home.sync.project.seam: resolve / clone / edit / merge / close-out / rm -rf / resolve / project sync, through the real CLI over real homes, asserted on bytes read back off disk'
+      tlc: 'External_regression_childrefresh.cfg violates AReconciliationOnlyWritesAgainstABaselineBothHomesPassedThrough (51 distinct states). All 23 pre-existing expected-violation configs still violate the same invariant; all 11 pre-existing terminating must-pass configs still pass.'
+      mutation: >
+        Three, each reverted and verified with shasum -a 256 -c.
+        (1) `if (!disposal.disposable())` -> `if (false)` in copyUnit (1 occurrence, counted first)
+        failed "a merge from a worktree survives the next parent-store materialization" on the bytes.
+        (2) isLocallyModified restored to the two-line copyBaseline comparison
+        failed the same test on "a tree merged up from a worktree is not the parent store's to delete".
+        (3) the linkUnit guard condition -> `if (false)`
+        failed "LINK mode does not delete an edited child unit to install a symlink" on the symlink assertion.
+
+  - id: CHM-16
+    title: "Three writers delete hand-authored skills out of an agent tree, and one of them writes the licence for another"
+    phase: CHM
+    status: closed
+    closed: "2026-07-28"
+    found_by: enumerating every writer into a home that does not go through ChildHomeMaterializer
+    objective: >
+      `<home>/.claude|.codex|.gemini/skills/<name>` is not a skill-manager-only
+      namespace. It is where a human writes skills by hand. Three writers
+      destroyed content there with no warning, no backup, and no mention in any
+      report, and no two of them were in the same file:
+
+      - the three projectors' apply(), each carrying its own copy of "delete
+        whatever is at the target, then link";
+      - their remove(), the same six lines inverted;
+      - BindingBackfill, which adopted ANY existing path at a projection target
+        into the projection ledger as though skill-manager had put it there --
+        after which the ledger-driven LiveInterpreter.reverseProjection deleted
+        it on the next uninstall, believing it was removing its own symlink.
+
+      The third is the one that makes this a choke-point problem rather than a
+      guard problem: guarding the projectors closed the install door and left
+      the uninstall door open, and the ledger row that authorized the deletion
+      was written by a third file again. Measured that way -- the graph node
+      failed on `uninstall` after the projector fix passed on `install`.
+    resolution: >
+      ProjectionOwnership, one predicate shared by all three doors: a
+      projection may destroy only a symlink (its bytes live where it points) or
+      a directory the source still holds byte for byte (the copy fallback's own
+      output). Anything else is left alone and named.
+
+      Deliberately NOT a materialization record. A projection is a pure
+      function of the store, so entitlement is decidable from the two paths
+      alone; a provenance file for it would be machinery nobody needs. Two
+      mechanisms -- ChildHomeMaterializer.Disposal for unit trees,
+      ProjectionOwnership for agent trees -- because the evidence available
+      differs; one rule, because the requirement does not.
+
+      Projector.apply and .remove became default methods returning whether the
+      write landed, so ProjectorRegistry records only projections that are
+      really there, and a unit whose every projection was held back fails its
+      agent-sync step instead of reporting success.
+    acceptance:
+      assertions:
+        - Installing a unit whose name collides with a hand-written skill does not destroy it.
+        - Uninstalling does not delete a hand-written skill through the ledger.
+        - The backfill does not adopt a path it cannot show is a projection.
+        - An ordinary unit still projects, and an ordinary uninstall still removes its own projection.
+    evidence:
+      unit:
+        - 'ClaudeProjectorTest "skill -- apply does not destroy a hand-authored directory at the target"'
+        - 'ClaudeProjectorTest "skill -- remove does not delete a hand-authored directory at the target"'
+        - 'ClaudeProjectorTest "skill -- apply still replaces the projector''s own copy-fallback output" (the happy path a guard must not refuse)'
+      graph: 'home-sync node home.sync.authored.agent.tree: install over a hand-written skill, then uninstall, through the real CLI, asserted on the authored bytes'
+      tlc: 'Not modelled. The agent-tree slice has no record to reason about and the entitlement is a two-path comparison; AuthoredContentIsNeverRewritten already carries the home-level form of the requirement. Recorded as a deliberate omission rather than an oversight.'
+      mutation: >
+        Replaced ProjectionOwnership.clear''s hold-back branch with
+        `Fs.deleteRecursive(target); return true;` (1 occurrence, counted first).
+        Both named ClaudeProjectorTest cases failed on the authored bytes;
+        reverted and verified with shasum -a 256 -c.
+
   - id: CHM-13
     title: "`home close-out` clears a teardown for a path that is not a home at all"
     phase: CHM

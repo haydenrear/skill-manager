@@ -64,12 +64,21 @@ public final class BindingBackfill {
                     List<Projection> ledgerProjections = new ArrayList<>(entries.size());
                     boolean allPresent = true;
                     for (var e : entries) {
-                        if (!Files.exists(e.target(), LinkOption.NOFOLLOW_LINKS)) {
+                        // "Something exists here" is not "we put it here". A
+                        // ledger row is what later authorizes the removal path
+                        // to delete the path, so adopting a hand-authored
+                        // directory into the ledger is how an uninstall came to
+                        // delete somebody's skill — the write was silent and
+                        // the deletion looked routine. Adopt only what the
+                        // shared entitlement check calls ours.
+                        if (!dev.skillmanager.project.ProjectionOwnership
+                                .isOurs(e.target(), e.source())
+                                || !Files.exists(e.target(), LinkOption.NOFOLLOW_LINKS)) {
                             allPresent = false;
-                            Log.warn("reconcile: expected symlink missing for %s on %s. "
+                            Log.warn("reconcile: no skill-manager projection for %s on %s at %s. "
                                             + "In order to create all symlinks missing, please run: "
                                             + "skill-manager sync --skip-mcp",
-                                    rec.name(), proj.agentId());
+                                    rec.name(), proj.agentId(), e.target());
                             break;
                         }
                         ledgerProjections.add(new Projection(

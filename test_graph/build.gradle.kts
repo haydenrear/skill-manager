@@ -773,6 +773,13 @@ validationGraph {
         node("sources/home-sync/HomeSyncProvenance.java")
         node("sources/home-sync/HomeSyncRoundTrip.java")
         node("sources/home-sync/HomeSyncHomeness.java")
+        // The two writers that are not `home sync` but write into the same
+        // home: `project resolve`/`project sync` (CHM-15) and the agent-tree
+        // projectors (CHM-16). Both live here because the defect in each is a
+        // reconcile ordering, and this is the graph that owns "who may destroy
+        // bytes in a home".
+        node("sources/home-sync/HomeSyncProjectSeam.java")
+        node("sources/home-sync/HomeSyncAuthoredAgentTree.java")
     }
 
     testGraph("project-env") {

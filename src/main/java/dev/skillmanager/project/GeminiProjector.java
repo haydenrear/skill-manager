@@ -48,23 +48,5 @@ public final class GeminiProjector implements Projector {
         return List.of(new Projection(agentId(), source, target, unit.kind()));
     }
 
-    @Override
-    public void apply(Projection p) throws IOException {
-        Fs.ensureDir(p.target().getParent());
-        if (Files.exists(p.target(), LinkOption.NOFOLLOW_LINKS) || Files.isSymbolicLink(p.target())) {
-            Fs.deleteRecursive(p.target());
-        }
-        try {
-            Files.createSymbolicLink(p.target(), p.source());
-        } catch (UnsupportedOperationException | IOException fallback) {
-            Fs.copyRecursive(p.source(), p.target());
-        }
-    }
-
-    @Override
-    public void remove(Projection p) throws IOException {
-        if (Files.exists(p.target(), LinkOption.NOFOLLOW_LINKS) || Files.isSymbolicLink(p.target())) {
-            Fs.deleteRecursive(p.target());
-        }
-    }
+    // apply/remove are Projector's — see Projector#clearForProjection.
 }

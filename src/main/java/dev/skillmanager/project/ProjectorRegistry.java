@@ -45,8 +45,12 @@ public final class ProjectorRegistry {
         List<Projection> applied = new ArrayList<>();
         for (Projector p : projectors) {
             for (Projection proj : p.planProjection(unit, store)) {
-                p.apply(proj);
-                applied.add(proj);
+                // Only what actually landed. A projection held back because the
+                // target holds somebody's authored content is reported by the
+                // projector and must not be recorded here as applied — a ledger
+                // entry claiming a projection that is not there is how the
+                // removal path later deletes the thing it never wrote.
+                if (p.apply(proj)) applied.add(proj);
             }
         }
         return applied;
@@ -62,8 +66,7 @@ public final class ProjectorRegistry {
         List<Projection> removed = new ArrayList<>();
         for (Projector p : projectors) {
             for (Projection proj : p.planProjection(unit, store)) {
-                p.remove(proj);
-                removed.add(proj);
+                if (p.remove(proj)) removed.add(proj);
             }
         }
         return removed;
