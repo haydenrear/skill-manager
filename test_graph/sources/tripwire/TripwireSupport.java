@@ -147,7 +147,18 @@ final class TripwireSupport {
         Path claude = home.resolve(".claude");
         for (String churn : new String[] {
                 "projects", "todos", "statsig", "shell-snapshots",
-                "file-history", "paste-history", "logs" }) {
+                "file-history", "paste-history", "logs",
+                // Same reasoning as every entry above, and added because the
+                // node went red on them: a live agent session NECESSARILY
+                // churns these while it runs. Claude Code writes
+                // .claude/tasks/<session>/N.json as it works and rotates
+                // .claude.json.backup.* into .claude/backups/ on its own
+                // schedule, so the tripwire was firing on the runtime of the
+                // very agent running it. Confirmed benign when it did:
+                // contentDiff was empty and leaked was empty — the metadata
+                // diff was entirely session state. Nothing a skill, a binding
+                // or a projection lives in is pruned by these two.
+                "tasks", "backups" }) {
             if (path.equals(claude.resolve(churn))) return true;
         }
         Path codex = home.resolve(".codex");

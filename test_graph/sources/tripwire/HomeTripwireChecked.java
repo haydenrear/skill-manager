@@ -56,7 +56,16 @@ public class HomeTripwireChecked {
             String realHome = ctx.get("home.tripwire.armed", "realHome").orElse(null);
             String unit = ctx.get("home.tripwire.workload", "unitName").orElse(null);
             if (metadataBaseline == null || contentBaseline == null || realHome == null || unit == null) {
-                return NodeResult.fail("home.tripwire.checked", "missing upstream context");
+                // Every abort still carries the full assertion roster. The
+                // point of naming four claims is that a reader learns WHICH one
+                // failed; a node that bails out with a bare sentence teaches
+                // them nothing and — worse — teaches the aggregate report that
+                // this run made no claims at all, which reads exactly like a
+                // run that made them and passed.
+                return unproven(NodeResult.fail("home.tripwire.checked",
+                        "missing upstream context: metadataBaseline=" + metadataBaseline
+                                + " contentBaseline=" + contentBaseline
+                                + " realHome=" + realHome + " unit=" + unit));
             }
             Path home = Path.of(realHome);
 
@@ -77,7 +86,11 @@ public class HomeTripwireChecked {
                 afterMetadata = TripwireSupport.collectAll(roots, home, TripwireSupport.Fidelity.METADATA);
                 afterContent = TripwireSupport.collectAll(contentRoots, home, TripwireSupport.Fidelity.CONTENT);
             } catch (Exception e) {
-                return NodeResult.error("home.tripwire.checked", e);
+                // Same rule on the exception path. A tripwire that could not
+                // read the homes has PROVEN NOTHING about them, and saying so
+                // in the assertion rows is the only way a reader can tell that
+                // from a tripwire that read them and found them clean.
+                return unproven(NodeResult.error("home.tripwire.checked", e));
             }
 
             boolean theBaselinesWereActuallyRead = !beforeMetadata.isEmpty() && !beforeContent.isEmpty();
@@ -116,6 +129,15 @@ public class HomeTripwireChecked {
                     .metric("metadataEntries", afterMetadata.size())
                     .metric("contentEntries", afterContent.size());
         });
+    }
+
+    /** The node's four named claims, all failed, for a run that proved none of them. */
+    private static NodeResult unproven(NodeResult result) {
+        return result
+                .assertion("the_baselines_were_actually_read", false)
+                .assertion("the_real_agent_homes_are_unchanged", false)
+                .assertion("the_watched_content_surfaces_are_byte_identical", false)
+                .assertion("this_graphs_probe_unit_is_in_no_real_home", false);
     }
 
     private static String elide(List<String> lines) {
