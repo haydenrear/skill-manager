@@ -9,7 +9,7 @@ status:
   ticket_plan: ticket_plan.yaml
   relation_to_program_model: desired_successor_of_accepted_program_model
   relation_to_current: target_state_for_specs_current_to_converge_to
-  updated: "2026-07-27"
+  updated: "2026-07-28"
   summary:
     desired_model_scaffolded: true
     ticket_plan_scaffolded: true
@@ -29,6 +29,8 @@ status:
     - Decomposed that slice along two measured axes after the single-spec form reached 574,209 distinct states at the 120s budget and was still climbing. The budget was not raised. See validation.decomposition.
     - Found TWO defects in code that is already merged, both silent data loss, both reproduced end to end against the real classes: CHM-9 (reconcileKind protects merge results but not a fast-forward from a home that is then torn down) and CHM-10 (mergeBase prefers the destination record, which after a merge is NEWER than the true common ancestor, so the next --merge reverts the work the previous one kept).
     - Fixed CHM-9, CHM-10 and the stale-baseline finding TOGETHER, under one rule written down once in ChildHomeMaterializer ("The baseline rule"): a reconciliation may destroy bytes only where it can show the SOURCE passed through them. MergeBasePolicy and ReconcileProvenance therefore now describe the code, and the configs that model the rules they replaced (External_regression_ffprovenance.cfg, External_regression_mergebase.cfg) are kept as configs that must keep failing.
+    - Found and fixed CHM-12, the same rule broken through its WRITE side rather than its read side. writeCopyRecord wrote the SOURCE's entire tree as the destination's new entryDigests, paths the reconciliation had DECLINED to write included; a later reconcile in the opposite direction read that claim as a shared baseline and overwrote the work. Reproduced end to end over four homes (root, project, two ticket worktrees) with every command reporting clean=true. Fixed by ChildHomeMaterializer.sharedAfterMerge, which claims a path only where BOTH homes can be shown to have stood on the byte and omits everything else. The baseline rule gained a fourth decision, "what a reconciliation writes down".
+    - Separated the record-WRITE decision from base selection in the model, which is what made CHM-12 expressible at all. External gains RecordWritePolicy (SHARED_ONLY / SOURCE_TREE / MERGED_TREE), the NoBaseline value a partial entryDigests map needs, the source-record FALLBACK the code has always had and the model did not, and one new invariant (ARecordClaimsNoBaselineTheDestinationNeverStoodOn) with its expected-violation config. All 22 pre-existing expected-violation configs still produce a counterexample for the same invariant, and all 11 pre-existing terminating must-pass configs still pass.
   pending:
     - Owner decision on the Internal/External scope (see internal_external_decision below).
     - Owner approval of budgets before any effectful/modular migration work starts (migration.md Phase 0).
@@ -279,10 +281,10 @@ justification:
     invariants: [NoHomeIsTornDownWhileItHoldsUniqueWork, EveryDivergenceFromARecordIsAnEditMadeInThatHome, NoWorktreeEditEverReachesTheRootHome]
     effects: [home_unit_content]
   sync_record:
-    invariants: [EveryDivergenceFromARecordIsAnEditMadeInThatHome]
+    invariants: [EveryDivergenceFromARecordIsAnEditMadeInThatHome, ARecordClaimsNoBaselineTheDestinationNeverStoodOn]
     effects: [materialization_record_written]
   sync_history:
-    invariants: [AReconciliationOnlyWritesAgainstABaselineBothHomesPassedThrough, NoHomeIsTornDownWhileItHoldsUniqueWork]
+    invariants: [AReconciliationOnlyWritesAgainstABaselineBothHomesPassedThrough, NoHomeIsTornDownWhileItHoldsUniqueWork, ARecordClaimsNoBaselineTheDestinationNeverStoodOn]
     effects: []
   sync_unsound:
     invariants: [AReconciliationOnlyWritesPathsTheDestinationDidNotMove, AReconciliationOnlyWritesAgainstABaselineBothHomesPassedThrough, AConflictedUnitIsNeverPartiallyWritten]
@@ -480,18 +482,20 @@ validation:
       command: bash specs/desired_program_model/run_tlc.sh specs/desired_program_model/External.tla specs/desired_program_model/External_sync.cfg
       expect: no invariant violations
       status: passed
-      states_generated: 1841
-      distinct_states: 180
+      states_generated: 2347
+      distinct_states: 233
       depth: 8
+      re_measured: "2026-07-28, after CHM-12 added RecordWritePolicy, the source-record fallback and one invariant. Was 1841 / 180.
       axis: "SyncTiers = {root, project, worktree}, SyncPaths = {p1}"
       evidence: ../results/chm-home-sync-tlc.txt
     desired_sync_merge:
       command: bash specs/desired_program_model/run_tlc.sh specs/desired_program_model/External.tla specs/desired_program_model/External_sync_merge.cfg
       expect: no invariant violations
       status: passed
-      states_generated: 1153
-      distinct_states: 283
+      states_generated: 1248
+      distinct_states: 325
       depth: 14
+      re_measured: "2026-07-28, same change. Was 1153 / 283.
       axis: "SyncTiers = {project, worktree}, SyncPaths = {p1, p2}"
       evidence: ../results/chm-home-sync-tlc.txt
     carried_forward_monolith:
@@ -568,7 +572,7 @@ validation:
       had, or would have under a plausible alternative, and each must produce a
       TLC counterexample. A clean run is a failure of the invariant, not a pass:
       it means the desired-state model stopped being able to see that
-      regression. Twenty as of 2026-07-27.
+      regression. Twenty-one as of 2026-07-28 (CHM-12 added one).
     External_regression_overwrite.cfg:
       models: the pre-epic refresh policy that silently deleted an agent's edits
       expect_violation: AgentEditedChildUnitsAreNeverDestroyed
@@ -740,6 +744,37 @@ validation:
         change (HomeSyncMergeTest, "a second --merge keeps the work the first
         one kept (CHM-10)", which was the defect pin and is now the assertion of
         the fixed behaviour). Two routes, one mergeBase.
+    External_regression_recordsourcetree.cfg:
+      models: "THE CODE UNTIL CHM-12 WAS FIXED. writeCopyRecord recorded the SOURCE's entire tree as the destination's shared baseline, paths the reconciliation DECLINED to write included, so the destination's record claimed bytes the destination had never held and the next reconcile in the opposite direction overwrote the work."
+      expect_violation: ARecordClaimsNoBaselineTheDestinationNeverStoodOn
+      status: violated_as_expected
+      trace_depth: 7
+      trace: EditUnitInHomeTier -> ReconcileHomeTiers -> EditUnitInHomeTier -> ReconcileHomeTiers -> EditUnitInHomeTier -> ReconcileHomeTiers
+      axis: "BOTH -- SyncTiers = {root, project, worktree} AND SyncPaths = {p1, p2}"
+      defect: CHM-12
+      reproduced_against_production: true
+      states_generated: 14154
+      distinct_states: 2815
+      note: >
+        The one config in this directory that needs both decomposition axes at
+        once, and the cost validation.decomposition recorded in advance coming
+        due. Three tiers is what makes the destination's record be about a home
+        that is not the one now pushing, which is what selects the source-record
+        FALLBACK; two paths is what lets a reconciliation DECLINE one path while
+        writing another, which is the only situation in which the record-write
+        policy has anything to decide. Measured: with either axis alone,
+        RecordWritePolicy = "SOURCE_TREE" is behaviourally identical to
+        "SHARED_ONLY" and this config would pass -- silently, which is the
+        failure mode a regression config exists to prevent.
+
+        It therefore does not run to exhaustion; the full 3x2 shape was measured
+        at 364,454 distinct states and still climbing at 200s, 7x over
+        budgets.max_distinct_states. It does not need to. A counterexample is a
+        WITNESS: TLC checks invariants as it generates and finds this one at
+        depth 7 in one second, 2,815 distinct states in. The must-pass twin of
+        the same claim IS run to exhaustion, on each axis separately, in
+        External_sync.cfg (3 tiers, 1 path) and External_sync_merge.cfg (2
+        tiers, 2 paths), which both now carry the invariant.
 
   guard_configs:
     purpose: >
@@ -755,9 +790,10 @@ validation:
       guards: AReconciliationOnlyWritesPathsTheDestinationDidNotMove
       invariants_checked: [TypeOK, EveryDivergenceFromARecordIsAnEditMadeInThatHome]
       status: passed
-      states_generated: 9545
-      distinct_states: 2357
+      states_generated: 12681
+      distinct_states: 3207
       depth: 14
+      re_measured: "2026-07-28, after CHM-12. Was 9545 / 2357."
       why: >
         A reconciliation that overwrites a destination rewrites that
         destination's record in the same step. Afterwards the home is perfectly
@@ -770,9 +806,10 @@ validation:
       guards: NoHomeIsTornDownWhileItHoldsUniqueWork
       invariants_checked: every sync invariant except the one that reads sync_gone
       status: passed
-      states_generated: 2133
-      distinct_states: 232
+      states_generated: 2724
+      distinct_states: 298
       depth: 8
+      re_measured: "2026-07-28, after CHM-12. Was 2133 / 232."
       why: >
         The teardown writes nothing, moves nothing and reports nothing, so every
         write-log invariant is satisfied and every coherence check passes -- on
@@ -783,9 +820,10 @@ validation:
       guards: AConflictedUnitIsNeverPartiallyWritten
       invariants_checked: every sync invariant except the one that reads the UnitWasConflicted reason
       status: passed
-      states_generated: 2123
-      distinct_states: 539
+      states_generated: 2504
+      distinct_states: 659
       depth: 14
+      re_measured: "2026-07-28, after CHM-12. Was 2123 / 539."
       why: >
         A partial write takes only paths the destination had NOT moved, so it
         destroys no edit and the loss invariants hold at every step. Conflict
@@ -796,9 +834,10 @@ validation:
       guards: AReconciliationOnlyWritesAgainstABaselineBothHomesPassedThrough
       invariants_checked: every sync invariant except the merge-base one
       status: passed
-      states_generated: 5209
-      distinct_states: 510
+      states_generated: 5927
+      distinct_states: 584
       depth: 10
+      re_measured: "2026-07-28, after CHM-12. Was 5209 / 510."
       why: >
         The finding, not just the guard. "The destination had not moved this
         path" is TRUE for every write CHM-9 makes -- the project home really had
@@ -1055,7 +1094,7 @@ validation:
         having no node. Corrected there against the graph's real node and
         assertion ids. All four directions between the three tiers, driving the
         real CLI over real homes, with every survival claim taken as a per-file
-        digest immediately before and after the pass. CHM-11 is closed by it.
+        digest immediately before and after the pass. CHM-12 is closed by it.
       independent_findings: >
         That graph reported two findings of its own and both are now fixed. The
         merge baseline that went STALE (too old) and turned a clean fast-forward

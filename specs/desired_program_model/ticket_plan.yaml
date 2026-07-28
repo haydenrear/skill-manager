@@ -2,7 +2,7 @@
 # Source of truth for tickets. Keep synchronized with spec_manifest.yaml status.
 version: 1
 name: child-home-materialization-workflow
-updated: "2026-07-27"
+updated: "2026-07-28"
 purpose: >
   Project child homes stop being symlink farms into the parent store and become
   independent copies that an agent can edit. Every unit in
@@ -938,6 +938,173 @@ tickets:
         evidence block reports it. The bindings this file now carries name the
         graph's real node and assertion ids, checked against
         test_graph/sources/home-sync/.
+
+  - id: CHM-12
+    title: "A merge records the source's whole tree as the shared baseline, and the next reconcile overwrites the work"
+    phase: CHM
+    status: closed
+    closed: "2026-07-28"
+    found_by: manual exploratory testing of the ordinary three-tier round trip
+    objective: >
+      The documented three-tier flow, with TWO ticket worktrees instead of one,
+      destroys the second worktree's edit while reporting clean=true at every
+      step. No operator error is involved. Root cause: writeCopyRecord wrote the
+      SOURCE's entire tree as the destination's new entryDigests, including
+      paths the reconciliation had DECLINED to write. After `project -> root
+      --merge`, the root home's record claimed root and project last shared a
+      byte root had never held; the next `root -> project --merge` read d = b as
+      "the destination is standing on the base" and overwrote it, describing
+      itself as "1 file(s) taken from the source; local work kept" while
+      deleting the local work. Afterwards the edit existed in NO home.
+
+      This is CHM-10's failure mode reintroduced through the record-WRITE side
+      rather than the base-selection side, and it violates the class's own
+      stated rule: a reconciliation may destroy bytes in the destination only
+      where it can show the SOURCE passed through them.
+    resolution: >
+      The baseline rule gains a fourth decision, "what a reconciliation writes
+      down", stated in ChildHomeMaterializer's class javadoc beside the three
+      that were already there. ChildHomeMaterializer.sharedAfterMerge computes
+      the record a merge may write: a path is claimed only where this pass can
+      SHOW both homes stood on the byte -- it was just written here from the
+      source, the two sides already agreed on it, or the source is still
+      standing on a base that was itself shared with this destination. Anything
+      else is omitted, and a missing path reads as "no baseline here", which
+      routes the next merge on that path to a conflict rather than to a silent
+      overwrite. writeMergeRecord is separate from writeCopyRecord so that
+      passing the source's whole fingerprint is no longer something a caller can
+      do by accident.
+    also_fixed: >
+      The related report. A merge whose every differing path had s = b announced
+      "the destination is ahead of the source; the source has nothing to
+      contribute" even when the destination was BEHIND and the base was only the
+      source's own record of what it was handed. The status stays UNCHANGED --
+      measured: reporting it as unresolved blocks close-out for the ordinary,
+      correct case of a worktree that is merely behind on a file another
+      worktree contributed -- but the sentence no longer asserts a direction the
+      evidence cannot support, and it names what to run when the direction turns
+      out to be the other one.
+    model_change: >
+      The record-WRITE decision is now separate from base selection in
+      External.tla, and it had to be: with only MergeBasePolicy to vary, a
+      reconciler that reads soundly and then records something it has no right
+      to was inexpressible, and this defect was invisible to every config in the
+      directory. External gains RecordWritePolicy (SHARED_ONLY / SOURCE_TREE /
+      MERGED_TREE), the NoBaseline value a partial entryDigests map needs, the
+      source-record FALLBACK the code has always had and the model did not, and
+      the invariant ARecordClaimsNoBaselineTheDestinationNeverStoodOn.
+
+      Two operators were split along the way, because separating the policies
+      exposed that the model had been conflating them: DestMovedAt ("has the
+      destination moved off its OWN record", which is what makes a tree pristine
+      for the wholesale-copy path) and DestOnBaseAt ("is the destination
+      standing on the base this merge measured"). The write log now asks the
+      wholesale-copy path and the merge path the question each of them actually
+      answered, which is also why all three pre-existing merge-base regression
+      configs keep producing their original counterexamples.
+    acceptance:
+      assertions:
+        - After a merge, entryDigests names no path the two homes are not both standing on.
+        - The ordinary three-tier round trip with two worktrees loses neither worktree's edit.
+        - External_regression_recordsourcetree.cfg keeps producing a counterexample.
+    evidence:
+      unit:
+        - 'HomeSyncMergeTest "a merge claims no shared baseline for a path it declined to write (CHM-12)" -- the invariant, stated over the record on disk'
+        - 'HomeSyncMergeTest "the ordinary three-tier round trip destroys no worktree edit (CHM-12)" -- the consequence, four homes and a teardown'
+      graph: 'home-sync node home.sync.round.trip: the six-command sequence through the real CLI over real homes, with a real rm -rf between, asserted on bytes read back off disk'
+      tlc: 'External_regression_recordsourcetree.cfg violates ARecordClaimsNoBaselineTheDestinationNeverStoodOn at depth 7 (2,815 distinct states, 1s). External_sync.cfg and External_sync_merge.cfg carry the same invariant and pass to exhaustion. All 22 pre-existing expected-violation configs still violate the same invariant; all 11 pre-existing terminating must-pass configs still pass.'
+      mutation: 'restored `writeCopyRecord(name, kind, source, stagedPrint.digest(), src, MERGED)` in place of the sharedAfterMerge call (1 occurrence, counted first); the named unit test failed on the record claim AND the round-trip test failed on the bytes; reverted and verified with shasum -a 256 -c'
+
+  - id: CHM-13
+    title: "`home close-out` clears a teardown for a path that is not a home at all"
+    phase: CHM
+    status: closed
+    closed: "2026-07-28"
+    found_by: manual exploratory testing
+    objective: >
+      `home close-out --home <the worktree DIRECTORY>` -- rather than
+      <worktree>/.skill-manager -- exited 0 with "safe": true, "blockers": [],
+      and printed the check mark line naming the directory that held the only
+      copy of the agent's edit. So did a --home that did not exist at all. The
+      gate FAILED OPEN, and the mistake is maximally likely: <worktree> is
+      exactly the argument `git worktree remove` takes.
+
+      Mechanism: nothing validated home-ness. HomeSync.unitsToVisit returns the
+      union of both sides, a non-home yields zero units, every unit becomes
+      REMOVED_UPSTREAM, and HomeCloseOut.remedyFor maps REMOVED_UPSTREAM to no
+      blocker. Same hole on the sync side: `home sync --from <a nonexistent
+      path>` printed "reconciled" with all-zero counts, exit 0, and created the
+      destination's layout on the way; --from <a regular file> behaved
+      identically.
+    resolution: >
+      NotAHomeException.require refuses before anything is read or written, for
+      `home sync --from`, `home close-out --home` and `home close-out --into`.
+      Home-ness is decided by LaunchEnv.looksLikeStoreRoot, made public rather
+      than re-spelled: it already encoded the test for the PATH sanitizer, and
+      three spellings of "is this a home" would eventually disagree about
+      exactly the homes where it matters. Exit code 2, distinct from 0
+      (reconciled / safe), 1 (this home still holds work) and 9 (refused by
+      policy); --json callers get {"error":"not_a_home", "safe":false,
+      "clean":false} rather than a stack trace, so a script cannot read the
+      refusal as approval.
+
+      A sync DESTINATION is deliberately not validated: creating a tier by
+      reconciling into it is the operation this epic exists for.
+    not_fixed_here: >
+      `home describe`, `home drift` and `home policy` also answer for arbitrary
+      paths, and each calls store.init(), which lays out a home wherever it is
+      pointed. Left alone on purpose and reported instead: `home policy frozen
+      --home <a home being created>` is a real gesture, and none of the three
+      claims anything about content or authorises a teardown. A command that
+      says "there is nothing here to lose" is a different class of defect from
+      one that leaves an empty directory tree at a mistyped path.
+    evidence:
+      unit: 'HomeSyncTest "close-out refuses a path that is not a home rather than clearing it" -- the worktree directory, a nonexistent path, a regular file, and the --into end, each asserted on the exception TYPE and on the real home being untouched'
+      graph: 'home-sync node home.sync.homeness: the same four through the real CLI, asserted on exit code AND on nothing having been created'
+      mutation: 'deleted the NotAHomeException.require call in HomeSync.run (1 occurrence, counted first) and both in HomeCloseOut.inspect (2 occurrences, both mutated); the named unit test failed with "it did NOT refuse, which is the defect"; reverted and verified with shasum -a 256 -c'
+
+  - id: CHM-14
+    title: "A symlinked unit or kind directory is invisible to the enumerator and reported clean"
+    phase: CHM
+    status: closed
+    closed: "2026-07-28"
+    found_by: manual exploratory testing
+    objective: >
+      ChildHomeMaterializer.unitDirectories skipped any unit directory that was
+      a symlink, and skipped an entire KIND directory that was one, with no
+      report of either. MaterializationMode.LINK produces exactly that shape.
+      Measured: a home whose skills/ was a symlink reconciled as
+      {"clean":true,"units":[]} with the destination's skills/ left empty; a
+      single symlinked unit beside a normal one synced only the normal one,
+      reported clean=true, and never named the other.
+
+      Worse, the enumerator and the reconciler disagreed. reconcile() applies
+      NOFOLLOW_LINKS only to the final path component, so it reads THROUGH a
+      symlinked skills/, and the same unit was invisible to `home sync` while
+      `home close-out` reported it conflicted -- purely because the destination
+      contributed the name to the union.
+    resolution: >
+      Symlinks are enumerated, not skipped, and answered by a new outcome:
+      SyncStatus.LINKED, which is unresolved(), so clean is false, `home sync`
+      exits non-zero and `home close-out` blocks with a remedy. reconcile()
+      checks both levels -- the kind directory and the unit directory -- through
+      one helper (symlinkOnUnitPath) before it reads any bytes, so the
+      enumerator and the reconciler cannot disagree by construction. The report
+      names which side is linked and where it points.
+
+      The gate blocks rather than clears on LINKED because it genuinely cannot
+      tell whether the link points inside the home about to be removed or
+      outside it. "Cannot tell" is not "nothing to lose".
+    known_gap: >
+      `home clone` still reproduces such a link verbatim, so the clone is not an
+      independent copy for that unit, and `home verify --against <source>` still
+      passes because the link points somewhere else rather than back at the
+      source. Reported, not fixed here: it is a home-clone property, and the
+      sync side now refuses to be silent about the result either way.
+    evidence:
+      unit: 'HomeSyncTest "a symlinked unit or kind directory is reported, never silently skipped"'
+      graph: 'home-sync node home.sync.homeness: both shapes through the real CLI, asserting the unit is NAMED, the report is not clean, nothing was copied through the link, and the link target outside every home was never written to'
+      mutation: 'restored the two skip conditions in unitDirectories -- the kind-directory NOFOLLOW_LINKS test and the per-unit isSymbolicLink skip (2 sites, counted first, both mutated); the named unit test failed with "the linked unit was not named at all: []"; reverted and verified with shasum -a 256 -c'
 
 # ---------------------------------------------------------------------------
 # PHASE MIG -- fold the remaining monolith into Internal/External.

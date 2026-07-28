@@ -71,6 +71,33 @@ CONSTANTS
   \*      second source change deleted everything the first merge folded in.
   ReconcileProvenance,
 
+  \* What a completed reconciliation WRITES DOWN as the two homes' shared
+  \* baseline. Separate from MergeBasePolicy on purpose, and the separation was
+  \* forced by a defect: the two are the READ and the WRITE sides of the same
+  \* rule, and a model that only varied the read side could not express a
+  \* reconciler that reads soundly and then records something it has no right
+  \* to. CHM-12 is exactly that, so it was invisible here until this constant
+  \* existed.
+  \*
+  \* SHARED_ONLY -- today, since CHM-12: a path is claimed only where this pass
+  \*      can SHOW both homes stood on the byte. Three showings and no fourth:
+  \*      the pass just wrote it from the source; the two sides already agreed;
+  \*      or the source is still standing on a base that was itself shared with
+  \*      this destination. Everything else is recorded as NoBaseline, which
+  \*      routes the next merge on that path to a conflict.
+  \*      ChildHomeMaterializer.sharedAfterMerge.
+  \* SOURCE_TREE -- before CHM-12: the SOURCE's whole tree, paths the
+  \*      reconciliation DECLINED to write included. Sound whenever the base was
+  \*      the destination's own record and a lie whenever it was the source's:
+  \*      the destination's record then names bytes the destination has never
+  \*      held, and the NEXT reconcile in the opposite direction reads `d = b`
+  \*      as "the destination is standing on the base" and overwrites the work.
+  \*      Reproduced end to end over four homes with every command reporting
+  \*      clean=true.
+  \* MERGED_TREE -- before CHM-10: the merged result, local work included. The
+  \*      destination's own edits become part of its recorded ancestor.
+  RecordWritePolicy,
+
   \* WHOLE_UNIT_OR_NOTHING -- today: a conflicted unit writes NOTHING, so the
   \*      destination stays coherent and both versions still exist.
   \* WRITE_THE_CLEAN_PATHS -- the helpful-looking alternative: write the paths
@@ -277,7 +304,19 @@ UnitWasConflicted   == "unit_was_conflicted"
 UnsoundReasons ==
   {DestinationMovedIt, BaseNeverShared, UnitWasConflicted}
 
-SyncRecords == [entries: [SyncPaths -> SyncContents], origin: Origins]
+\* A record that declines to claim a path at all.
+\*
+\* entryDigests is PARTIAL in the code -- a map, and a path simply missing from
+\* it. There is no total-function equivalent, so the absence gets a value here.
+\* It has to be one no home can ever hold, because the whole meaning of it is
+\* "no byte is claimed for this path": read as a merge base it matches neither
+\* side, which is what turns a path with no baseline into a conflict rather than
+\* into a silent overwrite.
+NoBaseline == "no_baseline"
+
+RecordedContents == SyncContents \cup {NoBaseline}
+
+SyncRecords == [entries: [SyncPaths -> RecordedContents], origin: Origins]
 
 InitialSyncRecord ==
   [entries |-> [p \in SyncPaths |-> InstalledBytes], origin |-> AdoptedOrigin]
@@ -404,17 +443,62 @@ SyncLive == IF sync_gone.torn_down THEN SyncHomes \ {WorktreeHome} ELSE SyncHome
 \* makes it: source value, destination value, and the destination record's
 \* per-file baseline. "Absent" needs no rule of its own here for the same reason
 \* it needs none there -- it is a value like any other in the comparison.
-AgreeAt(from, to, p)    == sync_body[from][p] = sync_body[to][p]
-DestMovedAt(to, p)      == sync_body[to][p]   # sync_record[to].entries[p]
-SrcMovedAt(from, to, p) == sync_body[from][p] # sync_record[to].entries[p]
+AgreeAt(from, to, p) == sync_body[from][p] = sync_body[to][p]
 
-\* Whether the baseline this reconciliation is about to merge against is a state
-\* the SOURCE itself ever held. That is what makes it a common ancestor rather
-\* than merely a recorded one, and it is the whole difference between "only the
-\* source moved" and "the destination is carrying a third home's work that this
-\* source has never seen".
+\* Whether the destination's own record is evidence about THIS source at all --
+\* ChildHomeMaterializer.describesSource. A record is evidence about ONE pair of
+\* homes: the one it names, or (for a clone's own restated baseline, which names
+\* nobody) the home it was copied from, which is what AdoptedOrigin stands for.
+RecordIsAboutSource(from, to) ==
+  sync_record[to].origin \in {AdoptedOrigin, from}
+
+\* The per-path merge base, WITH the fallback the code has and this model did
+\* not: under SHARED_ANCESTOR, when the destination's record is about some other
+\* pair of homes, the SOURCE's record is used instead. That fallback is why the
+\* record-WRITE side matters at all -- a base taken from the source's record
+\* says what the SOURCE was handed and nothing whatever about this destination,
+\* so anything unsound written into a record propagates into a later
+\* reconcile's base. Without it modelled, RecordWritePolicy = "SOURCE_TREE" is
+\* indistinguishable from "SHARED_ONLY" and CHM-12 is unreachable.
+\*
+\* DESTINATION_RECORD keeps taking the destination's record whether or not it is
+\* about this source -- which is the pre-CHM-10 behavior and the whole content
+\* of that policy.
+BaseAt(from, to, p) ==
+  IF UsesSharedAncestorBase /\ ~RecordIsAboutSource(from, to)
+  THEN sync_record[from].entries[p]
+  ELSE sync_record[to].entries[p]
+
+\* Whether the base above is one the DESTINATION is on record as having shared
+\* with this source, as opposed to one the source merely says it was handed.
+\* Both are usable as a merge base -- the algebra enforces the destination's
+\* half per path, live -- but only the first may be carried FORWARD into a new
+\* record, because only the first is evidence about this pair.
+BaseIsShared(from, to) == RecordIsAboutSource(from, to)
+
+\* Whether the destination has moved off ITS OWN record. A question about the
+\* destination alone, deliberately: it is what makes a tree "a pristine copy"
+\* for the wholesale-copy path, and what makes a write to it an overwrite of
+\* something somebody did here. Distinct from DestOnBaseAt below, which is the
+\* merge algebra's `d = b` and is relative to whichever base was chosen.
+DestMovedAt(to, p)       == sync_body[to][p]   # sync_record[to].entries[p]
+DestOnBaseAt(from, to, p) == sync_body[to][p]  = BaseAt(from, to, p)
+SrcMovedAt(from, to, p)  == sync_body[from][p] # BaseAt(from, to, p)
+
+\* Whether the baseline this reconciliation merges against is a state BOTH homes
+\* passed through. That is what makes it a common ancestor rather than merely a
+\* recorded one, and it is the whole difference between "only the source moved"
+\* and "the destination is carrying a third home's work that this source has
+\* never seen".
+\*
+\* Both halves are stated even though the destination's is implied at take time
+\* by DestOnBaseAt: this operator is also read by the write log, where nothing
+\* has gated anything, and an invariant named "...BothHomesPassedThrough" that
+\* only checked one home would be the sort of claim this directory exists to
+\* stop making.
 SharedBaseAt(from, to, p) ==
-  <<from, p, sync_record[to].entries[p]>> \in sync_history
+  /\ <<from, p, BaseAt(from, to, p)>> \in sync_history
+  /\ <<to,   p, BaseAt(from, to, p)>> \in sync_history
 
 DestUnmoved(to) == \A p \in SyncPaths: ~DestMovedAt(to, p)
 
@@ -444,7 +528,7 @@ SyncTakePaths(from, to) ==
   IF ~MergeIsThreeWay
   THEN SyncCandidates(from, to)
   ELSE {p \in SyncCandidates(from, to) :
-          /\ ~DestMovedAt(to, p)
+          /\ DestOnBaseAt(from, to, p)
           /\ (UsesSharedAncestorBase => SharedBaseAt(from, to, p))}
 
 \* Everything else a merge found: nothing here is entitled to settle it.
@@ -473,6 +557,25 @@ SyncWrittenPaths(from, to, merge) ==
                                 THEN SyncTakePaths(from, to)
                                 ELSE {}
     [] OTHER                 -> {}
+
+\* What one path of the destination's record says after a reconciliation --
+\* the WRITE side of the baseline rule, and the only thing RecordWritePolicy
+\* varies.
+\*
+\* A record's entries are a CLAIM: "this destination and the home named in
+\* `origin` both stood on these bytes". SHARED_ONLY makes the claim only where
+\* the pass can show it, and records NoBaseline everywhere else; the two older
+\* policies claim a whole tree and are each wrong about a different part of it.
+RecordedEntryAfter(from, to, written, newBody, p) ==
+  CASE RecordWritePolicy = "MERGED_TREE" -> newBody[p]
+    [] RecordWritePolicy = "SOURCE_TREE" -> sync_body[from][p]
+    [] OTHER ->
+         IF \/ p \in written                       \* just written here from the source
+            \/ AgreeAt(from, to, p)                \* both sides already held it
+            \/ (/\ ~SrcMovedAt(from, to, p)        \* source still on the base ...
+                /\ BaseIsShared(from, to))         \* ... and the base was shared
+         THEN sync_body[from][p]
+         ELSE NoBaseline
 
 NewSyncOrigin(from, to, status) ==
   CASE status = "updated" -> from
@@ -759,24 +862,48 @@ ReconcileHomeTiers(from, to, merge) ==
                        IF p \in written THEN sync_body[from][p] ELSE sync_body[to][p]]
      IN
      /\ sync_body' = [sync_body EXCEPT ![to] = newBody]
-     \* The record is rewritten over the tree that was actually written -- the
-     \* merged result, local work included -- exactly as writeCopyRecord does.
-     \* Nothing written, no record: that is what makes a conflicted unit
+     \* The record is rewritten per path by RecordedEntryAfter, which is the
+     \* WRITE half of the baseline rule and the half CHM-12 got wrong. Nothing
+     \* written, no record: that is what makes a conflicted unit
      \* indistinguishable from one the pass never reached.
      /\ sync_record' = IF written = {}
                        THEN sync_record
                        ELSE [sync_record EXCEPT ![to] =
-                               [entries |-> newBody,
+                               [entries |-> [p \in SyncPaths |->
+                                   RecordedEntryAfter(from, to, written, newBody, p)],
                                 origin  |-> NewSyncOrigin(from, to, status)]]
      /\ sync_history' = sync_history \cup {<<to, p, newBody[p]>> : p \in SyncPaths}
      \* The write log. Every reason is computed here, from the PRE-state, by the
      \* model rather than by the policy -- a reconciler that writes anyway still
      \* logs that it was not entitled to.
      /\ sync_unsound' = sync_unsound
+          \* Two shapes again, and for the same reason: the two paths ask the
+          \* destination different questions. A MERGE measured each path against
+          \* a base and is entitled to exactly the paths the destination is
+          \* standing on -- relative to that base, not to a record that may be
+          \* about some other pair of homes; a destination standing on the
+          \* SOURCE's recorded base has nothing of its own there to destroy. A
+          \* WHOLESALE COPY measured nothing per path: it declared the whole
+          \* tree pristine on the strength of the destination's own record, so
+          \* that record is the only thing its entitlement can rest on.
           \cup {<<p, DestinationMovedIt>> :
-                  p \in {q \in written : DestMovedAt(to, q)}}
+                  p \in {q \in written :
+                           IF status \in {"merged", "conflicted"}
+                           THEN ~DestOnBaseAt(from, to, q)
+                           ELSE DestMovedAt(to, q)}}
+          \* Two shapes of the same entitlement, because a wholesale copy and a
+          \* merge do not consult the same thing. A merge measured against a
+          \* base, so the base has to be one both homes passed through. A
+          \* wholesale copy consulted NO base at all -- it replaced the
+          \* destination outright -- so its entitlement is the CHM-9 question:
+          \* are the bytes it is about to destroy bytes this source ever held?
+          \* Stating only the merge form is what let a fast-forward from a home
+          \* that had never seen the work look entitled.
           \cup {<<p, BaseNeverShared>> :
-                  p \in {q \in written : ~SharedBaseAt(from, to, q)}}
+                  p \in {q \in written :
+                           IF status \in {"merged", "conflicted"}
+                           THEN ~SharedBaseAt(from, to, q)
+                           ELSE <<from, q, sync_body[to][q]>> \notin sync_history}}
           \* Conditioned on the reported STATUS, not on the conflict set: a
           \* wholesale copy never ran a merge, so the paths a merge would have
           \* found irreconcilable are not something it declared and then wrote
@@ -1138,9 +1265,47 @@ NoHomeIsTornDownWhileItHoldsUniqueWork ==
 \* returning "No error has been found" so that this stays written down: a
 \* coherent home is not an intact one, and checking coherence is not checking
 \* that nothing was lost.
+\*
+\* Guarded by `# NoBaseline` since CHM-12: a record that declines to claim a
+\* path makes no statement to diverge from, and reading the absence of a claim
+\* as a claim of "different" would turn the honest answer into a violation.
 EveryDivergenceFromARecordIsAnEditMadeInThatHome ==
   \A h \in SyncHomes, p \in SyncPaths:
-    sync_body[h][p] # sync_record[h].entries[p] => sync_body[h][p] = h
+    /\ sync_record[h].entries[p] # NoBaseline
+    /\ sync_body[h][p] # sync_record[h].entries[p]
+    => sync_body[h][p] = h
+
+\* @invariant ARecordClaimsNoBaselineTheDestinationNeverStoodOn
+\* THE RECORD-WRITE RULE. A materialization record claims a byte as the baseline
+\* two homes share only where BOTH of them have actually stood on it.
+\*
+\* This is the WRITE half of the rule whose READ half is
+\* AReconciliationOnlyWritesAgainstABaselineBothHomesPassedThrough, and it needs
+\* to be stated separately for the reason CHM-12 exists: a reconciliation can
+\* read a perfectly sound base, write nothing it was not entitled to write, and
+\* still record a claim it had no right to make. Every write in that pass is
+\* entitled; the loss happens in the NEXT pass, in the other direction, when
+\* that record becomes the base and the algebra reads `d = b` as "the
+\* destination is standing on the base".
+\*
+\* Stated over sync_history rather than over sync_body because a record is a
+\* claim about a state the two homes SHARED, not about the state they are in
+\* now -- both may legitimately have moved on since. What may never be true is
+\* that a home is on record as having shared bytes it has never held.
+\*
+\* The `origin \in SyncHomes` guard is not a weakening: AdoptedOrigin means "my
+\* own clone-time baseline, whoever I was copied from", which names no pair, and
+\* MergedOrigin means "a merge result" -- in both cases only the destination's
+\* own half of the claim is checkable, and it is checked.
+\* See External_regression_recordsourcetree.cfg, which models the old rule and
+\* must keep producing a counterexample.
+ARecordClaimsNoBaselineTheDestinationNeverStoodOn ==
+  \A h \in SyncHomes, p \in SyncPaths:
+    LET claimed == sync_record[h].entries[p] IN
+    claimed # NoBaseline =>
+      /\ <<h, p, claimed>> \in sync_history
+      /\ (sync_record[h].origin \in SyncHomes =>
+            <<sync_record[h].origin, p, claimed>> \in sync_history)
 
 \* @invariant NoWorktreeEditEverReachesTheRootHome
 \* REACHABILITY PROBE -- THIS ONE MUST FAIL.

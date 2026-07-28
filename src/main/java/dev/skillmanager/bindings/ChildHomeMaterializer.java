@@ -108,7 +108,7 @@ import java.util.UUID;
  *       held. A record says nothing at all about a third home.</li>
  * </ul>
  *
- * <p>The three decisions:
+ * <p>The four decisions:
  *
  * <ol>
  *   <li><b>Wholesale copy</b> (a fast-forward). Allowed only when the
@@ -131,6 +131,23 @@ import java.util.UUID;
  *       clone time — which the home it was copied from also held, by
  *       construction — so {@link #recordCloneBaselines} states that, instead of
  *       leaving a baseline describing content neither home has any more.</li>
+ *   <li id="record-write"><b>What a reconciliation writes down.</b> The first
+ *       three decisions all concern which baseline is <em>read</em>. This one
+ *       concerns which baseline is <em>written</em>, and it is the same rule
+ *       pointed the other way: a record may claim a path as shared only where
+ *       the reconciliation can show BOTH homes stood on that byte. Three ways
+ *       to show it and no fourth — the path was just written here from the
+ *       source; the two sides already agreed on it; or the source is still
+ *       standing on a baseline this destination is itself on record as having
+ *       shared with this source. A path the reconciliation DECLINED to write,
+ *       measured against a base that was only ever the source's own idea of
+ *       what it was handed, is none of those, and claiming it is CHM-12: the
+ *       record then says the destination holds bytes it has never held, and the
+ *       <em>next</em> reconcile in the opposite direction reads {@code d == b}
+ *       as "the destination is standing on the base" and overwrites the work.
+ *       {@link #sharedAfterMerge} is that decision; everything it cannot
+ *       justify is simply omitted, which costs a later conflict and never an
+ *       edit.</li>
  * </ol>
  *
  * <p><b>The asymmetry is deliberate and is the whole design.</b> A baseline
@@ -201,9 +218,14 @@ public final class ChildHomeMaterializer {
      * on — the field was there, correct, and nothing consulted it.
      *
      * <p>{@code entryDigests} is the per-file form of the baseline the two
-     * homes shared: <b>the SOURCE's tree at the moment of the reconcile</b>,
-     * which for a wholesale copy is also the tree that was written and for a
-     * merge deliberately is not. The whole-tree digest can only answer "did
+     * homes shared, and it is <b>partial by design</b>: it names a path only
+     * where the reconcile that wrote it could show both homes stood on that
+     * byte. For a wholesale copy that is the whole of the source's tree, which
+     * is also the tree that was written. For a merge it is deliberately neither
+     * the merged tree (CHM-10) nor the source's whole tree (CHM-12) but the
+     * subset {@link #sharedAfterMerge} can justify; a path missing from the map
+     * reads as "no baseline here", which routes that path to a conflict rather
+     * than to a silent overwrite. The whole-tree digest can only answer "did
      * this unit change"; a three-way reconciliation between two homes has to
      * answer "<em>which files</em> did each side change", and that is the
      * difference between merging two disjoint edits and declaring the whole
@@ -408,22 +430,57 @@ public final class ChildHomeMaterializer {
      * exactly the one a close-out must not silently omit — "it did not appear
      * in the list" and "there was nothing to lose" are the same report to
      * whoever reads it, and only one of them is true.
+     *
+     * <p>The same reasoning is why <b>symlinks are enumerated, not skipped</b>.
+     * A unit directory that is a link, and an entire kind directory that is a
+     * link, both used to be dropped here with no report at all — so a home
+     * whose {@code skills/} was a symlink reconciled as
+     * {@code {"clean":true,"units":[]}} and a linked unit beside a normal one
+     * was never named. Worse, the enumerator and {@link #reconcile} disagreed:
+     * reconcile applies {@code NOFOLLOW_LINKS} only to the final path
+     * component, so it reads THROUGH a linked kind directory, and the same unit
+     * was invisible to {@code home sync} while {@code home close-out} reported
+     * it conflicted — purely because the destination contributed the name to
+     * the union. Naming them here and letting reconcile answer
+     * {@link SyncStatus#LINKED} makes the two agree by construction.
      */
     public static List<UnitRef> unitDirectories(SkillStore store) throws IOException {
         List<UnitRef> out = new ArrayList<>();
         for (UnitKind kind : UnitKind.values()) {
             Path kindDir = unitRootOf(store, kind);
-            if (kindDir == null || !Files.isDirectory(kindDir, LinkOption.NOFOLLOW_LINKS)) continue;
+            // isDirectory() follows the link deliberately: a linked kind
+            // directory still HAS units, and they have to be named before
+            // anything may call the home clean.
+            if (kindDir == null || !Files.isDirectory(kindDir)) continue;
             for (Path unitDir : listSorted(kindDir)) {
-                if (Files.isSymbolicLink(unitDir)
-                        || !Files.isDirectory(unitDir, LinkOption.NOFOLLOW_LINKS)) {
-                    continue;
-                }
+                boolean link = Files.isSymbolicLink(unitDir);
+                if (!link && !Files.isDirectory(unitDir, LinkOption.NOFOLLOW_LINKS)) continue;
+                // A link is enumerated whatever it points at, a dangling one
+                // included: "this name is a link" is the fact to report, and
+                // resolving it to decide whether to mention it would put the
+                // silence back for the worst-shaped case.
                 out.add(new UnitRef(unitDir.getFileName().toString(), kind));
             }
         }
         java.util.Collections.sort(out);
         return out;
+    }
+
+    /**
+     * The symlink on the path to {@code name}'s unit directory in {@code store}
+     * — the kind directory or the unit directory itself — or null when neither
+     * is one.
+     *
+     * <p>Both levels, because {@link MaterializationMode#LINK} produces the
+     * second and a hand-built or hand-repaired home produces the first, and the
+     * consequence is identical: bytes written "into this home" land somewhere
+     * else, and bytes read "out of this home" belong to somewhere else.
+     */
+    private static Path symlinkOnUnitPath(SkillStore store, String name, UnitKind kind) {
+        Path kindDir = unitRootOf(store, kind);
+        if (kindDir != null && Files.isSymbolicLink(kindDir)) return kindDir;
+        Path unitDir = store.unitDir(name, kind).toAbsolutePath().normalize();
+        return Files.isSymbolicLink(unitDir) ? unitDir : null;
     }
 
     /**
@@ -514,7 +571,23 @@ public final class ChildHomeMaterializer {
         /** The source has this unit and the destination does not. */
         NEW,
         /** The destination has this unit and the source does not. Never deleted here. */
-        REMOVED_UPSTREAM
+        REMOVED_UPSTREAM,
+        /**
+         * One side reaches this unit through a symlink — the unit directory
+         * itself, or the whole kind directory above it. Nothing is written and
+         * nothing is claimed about the bytes.
+         *
+         * <p>This is a reported outcome rather than a skipped one on purpose.
+         * A reconcile owns bytes on behalf of a home; a linked unit's bytes
+         * belong to whatever the link points at, so a copy into it would write
+         * through into a tree no report mentions, and a copy out of it would
+         * claim a shared baseline with a home that does not own what it is
+         * offering. {@link MaterializationMode#LINK} produces exactly this
+         * shape, and so does a hand-made {@code ln -s}. The one thing that must
+         * never happen is what happened before: the enumerator skipped it, the
+         * report said {@code clean: true}, and the unit was never named.
+         */
+        LINKED
     }
 
     public record UnitSync(
@@ -541,7 +614,8 @@ public final class ChildHomeMaterializer {
 
         /** Is this an outcome a close-out must refuse on? */
         public boolean unresolved() {
-            return status == SyncStatus.HELD_BACK || status == SyncStatus.CONFLICTED;
+            return status == SyncStatus.HELD_BACK || status == SyncStatus.CONFLICTED
+                    || status == SyncStatus.LINKED;
         }
     }
 
@@ -572,6 +646,16 @@ public final class ChildHomeMaterializer {
         Path source = parentStore.unitDir(name, kind).toAbsolutePath().normalize();
         Path dest = childStore.unitDir(name, kind).toAbsolutePath().normalize();
         boolean destIsDir = Files.isDirectory(dest, LinkOption.NOFOLLOW_LINKS);
+
+        // Before anything reads bytes: a home that reaches this unit through a
+        // link does not own the bytes on either end of it. Reported, never
+        // skipped — see SyncStatus.LINKED and unitDirectories.
+        Path sourceLink = symlinkOnUnitPath(parentStore, name, kind);
+        Path destLink = symlinkOnUnitPath(childStore, name, kind);
+        if (sourceLink != null || destLink != null) {
+            return new UnitSync(name, kind, SyncStatus.LINKED, dest, List.of(), List.of(),
+                    linkedDetail(sourceLink, destLink));
+        }
 
         if (!Files.isDirectory(source, LinkOption.NOFOLLOW_LINKS)) {
             return new UnitSync(name, kind, SyncStatus.REMOVED_UPSTREAM, dest, List.of(), List.of(),
@@ -644,8 +728,8 @@ public final class ChildHomeMaterializer {
             return new UnitSync(name, kind, SyncStatus.HELD_BACK, dest, List.of(), List.of(),
                     holdBackReason(record, baseline, destUntouched, recordIsAboutThisSource));
         }
-        java.util.Map<String, String> base = mergeBase(record, recordIsAboutThisSource, sourceRecord);
-        if (base == null || base.isEmpty()) {
+        MergeBase base = mergeBase(record, recordIsAboutThisSource, sourceRecord);
+        if (base == null || base.entries().isEmpty()) {
             return new UnitSync(name, kind, SyncStatus.CONFLICTED, dest, List.of(),
                     changedFiles(dst.entries(), src.entries()),
                     "both sides differ and neither home recorded a per-file baseline they can be "
@@ -653,15 +737,50 @@ public final class ChildHomeMaterializer {
                             + "publish the edit with `skill-manager unit publish " + name + "`");
         }
 
-        MergePlan plan = mergePlan(base, src.entries(), dst.entries());
+        MergePlan plan = mergePlan(base.entries(), src.entries(), dst.entries());
         if (!plan.conflicts().isEmpty()) {
             return new UnitSync(name, kind, SyncStatus.CONFLICTED, dest, List.of(),
                     plan.conflicts(),
                     plan.conflicts().size() + " file(s) changed on both sides; nothing was written");
         }
         if (plan.take().isEmpty()) {
+            // Every differing path had s == b: the source has not moved off the
+            // baseline. What that PROVES depends on whose baseline it is, and
+            // saying so is the whole of this branch.
+            //
+            // With a shared base the conclusion is sound: the destination is
+            // demonstrably ahead and the source really has nothing to offer.
+            //
+            // With a base taken from the source's own record it is not. That
+            // record says what the SOURCE was handed; nothing in it says the
+            // destination ever stood there. "The destination moved past it" and
+            // "the destination never received it" are the same arithmetic, and
+            // announcing the first is how a byte stops travelling upward while
+            // every re-run agrees it never had to.
+            //
+            // The status stays UNCHANGED anyway, and that is a measured choice
+            // rather than a shrug. Reporting this as unresolved would block
+            // `home close-out` for the ordinary, correct case it is far more
+            // often: a ticket worktree that is merely BEHIND on a file some
+            // other worktree contributed to the project home holds nothing that
+            // removing it would destroy, and refusing its teardown would refuse
+            // the flow this epic exists to make routine. So the outcome is
+            // unchanged and the SENTENCE is honest — it no longer asserts a
+            // direction the evidence cannot support, and it names what to run
+            // when the direction turns out to be the other one.
+            List<String> differing = changedFiles(dst.entries(), src.entries());
             return new UnitSync(name, kind, SyncStatus.UNCHANGED, dest, List.of(), List.of(),
-                    "the destination is ahead of the source; the source has nothing to contribute");
+                    base.shared()
+                            ? "the destination is ahead of the source; the source has nothing to "
+                                    + "contribute"
+                            : "the source has not moved off the baseline it was handed, so this "
+                                    + "pass has nothing to take — but that baseline is the "
+                                    + "source's own record and says nothing about what this "
+                                    + "destination ever held, so whether the destination is ahead "
+                                    + "on " + String.join(", ", differing) + " or has simply never "
+                                    + "received those bytes cannot be decided here. If it is the "
+                                    + "latter, reconcile through a home that shares a baseline "
+                                    + "with both, or `skill-manager unit publish " + name + "`.");
         }
         if (apply) {
             List<ViewEntry> merged = mergedView(view, dest, plan.take());
@@ -670,11 +789,12 @@ public final class ChildHomeMaterializer {
                 Fingerprint stagedPrint = fingerprint(staged);
                 swapIn(staged, dest);
                 // The written tree is the merged one; the BASELINE recorded
-                // against this source is the source's tree, which is the state
-                // the two homes now demonstrably share. Recording the merged
-                // tree as the baseline instead is CHM-10.
-                writeCopyRecord(name, kind, source, stagedPrint.digest(), src,
-                        MaterializationRecord.MERGED);
+                // against this source is the subset of paths these two homes
+                // can be SHOWN to share. Recording the merged tree is CHM-10;
+                // recording the source's whole tree is CHM-12. See the
+                // <a href="#record-write">fourth decision</a>.
+                writeMergeRecord(name, kind, source, stagedPrint.digest(), src,
+                        sharedAfterMerge(src.entries(), dst.entries(), plan.take(), base));
             } finally {
                 if (Files.exists(staged, LinkOption.NOFOLLOW_LINKS)) Fs.deleteRecursive(staged);
             }
@@ -682,6 +802,28 @@ public final class ChildHomeMaterializer {
         return new UnitSync(name, kind, SyncStatus.MERGED, dest,
                 List.copyOf(plan.take()), List.of(),
                 plan.take().size() + " file(s) taken from the source; local work kept");
+    }
+
+    /** Which side is linked, where it points, and what to do about it. */
+    private static String linkedDetail(Path sourceLink, Path destLink) {
+        StringBuilder sb = new StringBuilder();
+        if (sourceLink != null) sb.append("the source reaches it through the symlink ")
+                .append(sourceLink).append(" -> ").append(linkTargetOf(sourceLink));
+        if (sourceLink != null && destLink != null) sb.append("; ");
+        if (destLink != null) sb.append("the destination reaches it through the symlink ")
+                .append(destLink).append(" -> ").append(linkTargetOf(destLink));
+        return sb + ". Nothing was written and no baseline was recorded: a reconcile moves bytes "
+                + "between two homes that own them, and a link's bytes belong to what it points "
+                + "at. Replace the link with a real directory (`skill-manager home clone`, or a "
+                + "COPY materialization) to reconcile this unit.";
+    }
+
+    private static String linkTargetOf(Path link) {
+        try {
+            return Files.readSymbolicLink(link).toString();
+        } catch (IOException e) {
+            return "(unreadable)";
+        }
     }
 
     /** Stage the source view and swap it into place — the copy path, atomically. */
@@ -770,11 +912,89 @@ public final class ChildHomeMaterializer {
      * common ancestor; an older ancestor produces more conflicts and never
      * fewer, and that is the direction this whole mechanism errs in.
      */
-    private static java.util.Map<String, String> mergeBase(MaterializationRecord destRecord,
-                                                           boolean destRecordIsAboutThisSource,
-                                                           MaterializationRecord sourceRecord) {
-        if (hasEntries(destRecord) && destRecordIsAboutThisSource) return destRecord.entryDigests();
-        return hasEntries(sourceRecord) ? sourceRecord.entryDigests() : null;
+    private static MergeBase mergeBase(MaterializationRecord destRecord,
+                                       boolean destRecordIsAboutThisSource,
+                                       MaterializationRecord sourceRecord) {
+        if (hasEntries(destRecord) && destRecordIsAboutThisSource) {
+            return new MergeBase(destRecord.entryDigests(), true);
+        }
+        return hasEntries(sourceRecord)
+                ? new MergeBase(sourceRecord.entryDigests(), false)
+                : null;
+    }
+
+    /**
+     * The per-file base a merge measured against, and whether it is a state the
+     * DESTINATION is on record as having shared with this source.
+     *
+     * <p>Carrying that flag rather than only the map is what keeps two very
+     * different situations from being reported as one. A shared base makes
+     * {@code s == b} mean "the source has not moved and the destination is
+     * ahead". A base taken from the source's own record makes the identical
+     * comparison mean only "the source has not moved off what it was handed" —
+     * the destination may be ahead, or it may never have received the byte at
+     * all, and nothing on disk distinguishes those. Both the report and
+     * {@link #sharedAfterMerge} need to know which one they are looking at.
+     *
+     * @param entries relative path → digest of the state the base names
+     * @param shared  true when the base came from the destination's own record
+     *                and that record was shown to be evidence about this source
+     */
+    private record MergeBase(java.util.Map<String, String> entries, boolean shared) {}
+
+    /**
+     * The per-path baseline a completed merge may write down: the
+     * <a href="#record-write">fourth decision</a> of the baseline rule.
+     *
+     * <p>A record's {@code entryDigests} is a claim that the destination and
+     * the named source both stood on these bytes. Writing the source's whole
+     * tree there — which is what a merge did until CHM-12 — claims it for
+     * paths the merge explicitly DECLINED to write, and a claim about bytes the
+     * destination has never held is a licence for the next reconcile in the
+     * opposite direction to overwrite them. It is CHM-10's failure mode
+     * reintroduced through the record-write side rather than the base-selection
+     * side, and it costs the same thing: an edit nobody ever sees again.
+     *
+     * <p>So a path is claimed only where this pass can show both homes stood on
+     * it, and there are exactly three such showings:
+     *
+     * <ol>
+     *   <li><b>The merge took it.</b> The destination is standing on the
+     *       source's byte because this pass just put it there.</li>
+     *   <li><b>The two sides already agreed.</b> Nothing to argue about: both
+     *       trees were read this pass and hold the same digest.</li>
+     *   <li><b>The source has not moved off a SHARED base.</b> {@code s == b}
+     *       where {@code b} came from the destination's own record about this
+     *       source — so the destination is on record as having stood on it, and
+     *       the source is standing on it now. This is the case that keeps a
+     *       repeated merge from the same source working: the file the agent
+     *       owns keeps its ancestor, so the next pass still reads "only the
+     *       source moved" for the file upstream owns. It is <em>not</em>
+     *       available when the base is the source's own record, which says
+     *       what the SOURCE was handed and nothing about this destination.</li>
+     * </ol>
+     *
+     * <p>Everything else is omitted. A missing path reads as "no baseline
+     * here", which routes the next merge on that path to a conflict — the
+     * direction this whole mechanism errs in, and the only one that cannot
+     * silently destroy work.
+     */
+    private static java.util.LinkedHashMap<String, String> sharedAfterMerge(
+            java.util.Map<String, String> source, java.util.Map<String, String> dest,
+            java.util.Set<String> taken, MergeBase base) {
+        java.util.LinkedHashMap<String, String> shared = new java.util.LinkedHashMap<>();
+        for (java.util.Map.Entry<String, String> entry : source.entrySet()) {
+            String path = entry.getKey();
+            String digest = entry.getValue();
+            boolean justWritten = taken.contains(path);
+            boolean alreadyAgreed = digest.equals(dest.get(path));
+            boolean sourceStillOnASharedBase =
+                    base.shared() && digest.equals(base.entries().get(path));
+            if (justWritten || alreadyAgreed || sourceStillOnASharedBase) {
+                shared.put(path, digest);
+            }
+        }
+        return shared;
     }
 
     /** Why a plain (non-merge) pass left this unit alone, in the caller's terms. */
@@ -1120,6 +1340,30 @@ public final class ChildHomeMaterializer {
                                  Fingerprint shared, String reconcileKind) throws IOException {
         writeRecord(name, kind, MaterializationMode.COPY, source, null, shared.digest(),
                 contentDigest, shared.entries(), reconcileKind);
+    }
+
+    /**
+     * Record for a completed three-way merge.
+     *
+     * <p>Separate from {@link #writeCopyRecord} because the two differ in
+     * exactly the place the <a href="#record-write">fourth decision</a> is
+     * about, and a single method taking "the entries" would have let a caller
+     * pass the source's whole fingerprint by accident — which is the defect.
+     * A wholesale copy wrote the source's tree, so the source's tree IS what
+     * the two homes share; a merge wrote a tree neither home held, so what
+     * they share has to be computed ({@link #sharedAfterMerge}) and is a
+     * SUBSET of the source's paths.
+     *
+     * <p>{@code sourceDigest} stays the source's whole-tree digest: it answers
+     * a different question ("has the source moved at all since this record was
+     * written"), and narrowing it to the shared subset would make a source that
+     * changed a held-back path look unmoved.
+     */
+    private void writeMergeRecord(String name, UnitKind kind, Path source, String contentDigest,
+                                  Fingerprint src, java.util.Map<String, String> shared)
+            throws IOException {
+        writeRecord(name, kind, MaterializationMode.COPY, source, null, src.digest(),
+                contentDigest, shared, MaterializationRecord.MERGED);
     }
 
     private void writeRecord(String name, UnitKind kind, MaterializationMode mode, Path source,

@@ -8,7 +8,7 @@
 # `harness-smoke` nodes).
 #
 # The three three-tier actions added with the `home sync` slice are bound to
-# the `home-sync` graph (12 nodes, 124 assertions), which landed in ea03c22
+# the `home-sync` graph (14 nodes, 151 assertions), which landed in ea03c22
 # while this slice was being modelled. They also carry the named JVM cases that
 # cover them, because the two layers answer different questions: the graph runs
 # the real CLI over real homes and can see argument parsing, exit codes and
@@ -259,6 +259,19 @@ actions:
           - a_second_merge_does_not_revert_the_work_the_first_one_kept     # AReconciliationOnlyWritesAgainstABaselineBothHomesPassedThrough (CHM-10)
           - and_it_needed_no_conflict_to_keep_it
           - the_local_work_survives_repeated_merges_from_the_same_source
+        home.sync.round.trip:
+          - a_merge_claims_no_baseline_the_two_homes_do_not_both_hold      # ARecordClaimsNoBaselineTheDestinationNeverStoodOn (CHM-12)
+          - the_second_tickets_edit_survives_the_whole_round_trip
+          - the_first_tickets_edit_survives_the_whole_round_trip
+          - the_edit_exists_in_at_least_one_surviving_home
+          - no_home_records_a_baseline_it_never_stood_on
+        home.sync.homeness:
+          - home_sync_refuses_a_source_that_is_not_a_home                  # CHM-13
+          - a_symlinked_unit_directory_is_named_in_the_report              # CHM-14
+          - and_it_is_reported_as_linked
+          - a_report_that_could_not_account_for_a_unit_is_not_clean
+          - a_home_whose_kind_directory_is_a_link_is_not_reported_as_empty
+          - nothing_is_copied_through_a_linked_kind_directory
         home.sync.sensitive:
           - "one mutation per defect class this graph claims to detect, plus three unmutated controls"
     unit_tests:
@@ -273,6 +286,8 @@ actions:
         - "a record written by a newer skill-manager reads as no baseline, not as a crash"
         - "a merge with no per-file baseline anywhere conflicts rather than guessing"
         - "a second --merge keeps the work the first one kept (CHM-10)"                   # AReconciliationOnlyWritesAgainstABaselineBothHomesPassedThrough
+        - "a merge claims no shared baseline for a path it declined to write (CHM-12)"   # ARecordClaimsNoBaselineTheDestinationNeverStoodOn
+        - "the ordinary three-tier round trip destroys no worktree's edit (CHM-12)"
       also_covered_by:
         suite: src/test/java/dev/skillmanager/store/HomeSyncTest.java
         cases:
@@ -313,6 +328,8 @@ actions:
       cases:
         - "close-out refuses while the worktree holds work and passes once it is synced"  # NoHomeIsTornDownWhileItHoldsUniqueWork
         - "close-out refuses a unit whose two sides conflict, and names it"
+        - "close-out refuses a path that is not a home rather than clearing it"           # CHM-13
+        - "a symlinked unit or kind directory is reported, never silently skipped"        # CHM-14
       also_covered_by:
         suite: src/test/java/dev/skillmanager/store/HomeSyncMergeTest.java
         cases:
@@ -383,4 +400,6 @@ blocked:
     - the Test Graph nodes for the six unit-level and home-level actions, which
       exist and pass; see spec_manifest.yaml validation.graph
     - the Test Graph nodes for the three three-tier actions, added in ea03c22
-      (graph `home-sync`, 12 nodes, 124 assertions). CHM-11 is closed by it.
+      (graph `home-sync`, now 14 nodes / 151 assertions after CHM-12 and
+      CHM-13/CHM-14 added home.sync.round.trip and home.sync.homeness).
+      CHM-11 is closed by it.

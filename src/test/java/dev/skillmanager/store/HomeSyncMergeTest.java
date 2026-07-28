@@ -202,11 +202,13 @@ public final class HomeSyncMergeTest {
                     // the source's version with no conflict and no report.
                     //
                     // The fix is one line of meaning rather than one of code:
-                    // entryDigests records the SOURCE's tree at the reconcile —
-                    // the state the two homes then shared — while contentDigest
-                    // keeps recording what was written here. A merge result is
-                    // a state the source never passed through, so it was never
-                    // eligible to be the next merge's base.
+                    // entryDigests records the state the two homes can be SHOWN
+                    // to share, while contentDigest keeps recording what was
+                    // written here. A merge result is a state the source never
+                    // passed through, so it was never eligible to be the next
+                    // merge's base. (Recording the source's whole tree instead
+                    // is the other half of the same mistake and is CHM-12,
+                    // pinned two tests below.)
                     //
                     // Two homes and one repeated source change are enough; the
                     // three-tier form of the same root cause is modelled by
@@ -258,6 +260,137 @@ public final class HomeSyncMergeTest {
                             "and the agent's work is still there");
                     assertEquals("v4\n", read(homes.destUnit().resolve("upstream.md")),
                             "with the fourth source change folded in");
+                })
+
+                .test("a merge claims no shared baseline for a path it declined to write (CHM-12)", () -> {
+                    // The unit-level invariant, stated directly on the record
+                    // the merge writes. It is the cheapest possible witness for
+                    // CHM-12 and it is the one that generalises: every
+                    // multi-home sequence that loses an edit does it by reading
+                    // a baseline that names bytes the destination never held,
+                    // so forbidding the WRITE forbids the whole family at once.
+                    //
+                    // The shape: the destination's own record is about a
+                    // DIFFERENT source, so the merge base falls back to this
+                    // source's record — which says what the SOURCE was handed
+                    // and nothing whatever about this destination. Under that
+                    // base a path where `s == b` is declined ("the source has
+                    // not moved"), and recording the source's digest for it
+                    // claims the two homes share a byte only one of them has
+                    // ever held.
+                    Path root = Files.createTempDirectory("home-sync-merge-chm11-");
+                    SkillStore project = store(root.resolve("project"));
+                    SkillStore first = store(root.resolve("wt1"));
+                    SkillStore second = store(root.resolve("wt2"));
+                    UnitFixtures.scaffoldSkill(project.skillsDir(), UNIT, DepSpec.empty());
+                    write(project.skillDir(UNIT).resolve("owned-by-upstream.md"), "BASE\n");
+                    write(project.skillDir(UNIT).resolve("owned-by-wt2.md"), "BASE\n");
+
+                    // Both worktrees start from the project home's bytes.
+                    HomeSync.run(project, first, new HomeSync.Options(false, false));
+                    HomeSync.run(project, second, new HomeSync.Options(false, false));
+
+                    // Each edits a different file, which is the ordinary case.
+                    write(first.skillDir(UNIT).resolve("owned-by-upstream.md"), "WT1 EDIT\n");
+                    write(second.skillDir(UNIT).resolve("owned-by-wt2.md"), "WT2 EDIT\n");
+
+                    // wt1 goes home first: a clean fast-forward, so the project
+                    // home's record now names wt1.
+                    HomeSync.run(first, project, new HomeSync.Options(true, false));
+                    // wt2 goes home second: its file merges, and the file wt1
+                    // moved is DECLINED (the source, wt2, still holds the base).
+                    UnitSync merged = only(HomeSync.run(second, project,
+                            new HomeSync.Options(true, false)));
+                    assertEquals(SyncStatus.MERGED, merged.status(), "wt2's edit is folded in");
+                    assertEquals(List.of("owned-by-wt2.md"), merged.files(),
+                            "and exactly its file was taken");
+                    assertEquals("WT1 EDIT\n",
+                            read(project.skillDir(UNIT).resolve("owned-by-upstream.md")),
+                            "wt1's file was declined, so it still holds wt1's bytes");
+
+                    MaterializationRecord written = new ChildHomeMaterializer(second, project)
+                            .readRecord(UNIT, UnitKind.SKILL)
+                            .orElseThrow(() -> new AssertionError("no record after the merge"));
+                    ChildHomeMaterializer.Fingerprint sourceTree =
+                            ChildHomeMaterializer.fingerprint(second.skillDir(UNIT));
+                    ChildHomeMaterializer.Fingerprint destTree =
+                            ChildHomeMaterializer.fingerprint(project.skillDir(UNIT));
+
+                    // THE INVARIANT. Not "the map equals X" — that would pin
+                    // one implementation — but the property every entry has to
+                    // have: a claimed baseline is a byte BOTH homes hold right
+                    // now, because the paths where they differ are exactly the
+                    // paths this pass refused to decide.
+                    for (var claimed : written.entryDigests().entrySet()) {
+                        String path = claimed.getKey();
+                        assertEquals(claimed.getValue(), destTree.entries().get(path),
+                                "the record claims " + path + " as shared, so the DESTINATION "
+                                        + "must be standing on the byte it names");
+                        assertEquals(claimed.getValue(), sourceTree.entries().get(path),
+                                "the record claims " + path + " as shared, so the SOURCE "
+                                        + "must be standing on the byte it names");
+                    }
+                    // And the declined path is really the one at issue: the
+                    // source does hold a digest for it, and it is not claimed.
+                    assertTrue(sourceTree.entries().containsKey("owned-by-upstream.md"),
+                            "the source has the declined path in its tree");
+                    assertFalse(written.entryDigests().containsKey("owned-by-upstream.md"),
+                            "the declined path is not claimed as a shared baseline — claiming it "
+                                    + "is exactly CHM-12");
+                })
+
+                .test("the ordinary three-tier round trip destroys no worktree's edit (CHM-12)", () -> {
+                    // The end-to-end sequence CHM-12 was found in. Every command
+                    // in it reported success and `clean: true`, and afterwards
+                    // the second worktree's edit existed in NO home. The unit
+                    // invariant above is the cause; this is the consequence, and
+                    // it is here as well because the invariant alone would not
+                    // have caught the ordering (root -> project -> two worktrees
+                    // -> project -> root -> project) that produced it.
+                    Path base = Files.createTempDirectory("home-sync-merge-roundtrip-");
+                    SkillStore rootHome = store(base.resolve("root"));
+                    SkillStore project = store(base.resolve("project"));
+                    SkillStore first = store(base.resolve("wt1"));
+                    SkillStore second = store(base.resolve("wt2"));
+                    UnitFixtures.scaffoldSkill(rootHome.skillsDir(), UNIT, DepSpec.empty());
+                    write(rootHome.skillDir(UNIT).resolve("shared.md"), "ORIGINAL\n");
+
+                    HomeSync.run(rootHome, project, new HomeSync.Options(false, false));
+                    HomeSync.run(project, first, new HomeSync.Options(false, false));
+                    HomeSync.run(project, second, new HomeSync.Options(false, false));
+
+                    write(first.skillDir(UNIT).resolve("SKILL.md"), "WT1 IMPROVED THIS\n");
+                    write(second.skillDir(UNIT).resolve("shared.md"), "WT2-EDIT\n");
+
+                    HomeSync.run(first, project, new HomeSync.Options(true, false));
+                    HomeSync.run(second, project, new HomeSync.Options(true, false));
+                    assertEquals("WT2-EDIT\n", read(project.skillDir(UNIT).resolve("shared.md")),
+                            "both worktrees' work reached the project home");
+
+                    // The gate clears for both, so the operator removes them —
+                    // the point of no return, exactly as an epic worktree
+                    // teardown does it.
+                    assertTrue(HomeCloseOut.inspect(first, project).safe(),
+                            "close-out clears the first worktree");
+                    assertTrue(HomeCloseOut.inspect(second, project).safe(),
+                            "close-out clears the second worktree");
+                    deleteTree(first.root());
+                    deleteTree(second.root());
+
+                    // The ordinary end of the epic flow: push the project home
+                    // up to the root home, then pull the root home back down.
+                    // Neither command is unusual and neither is optional.
+                    HomeSync.run(project, rootHome, new HomeSync.Options(true, false));
+                    HomeSync.run(rootHome, project, new HomeSync.Options(true, false));
+
+                    // Bytes. Before the fix this read "ORIGINAL" and the report
+                    // for the command that overwrote it said
+                    // "1 file(s) taken from the source; local work kept".
+                    assertEquals("WT2-EDIT\n", read(project.skillDir(UNIT).resolve("shared.md")),
+                            "the second worktree's edit survives the whole round trip");
+                    assertEquals("WT1 IMPROVED THIS\n",
+                            read(project.skillDir(UNIT).resolve("SKILL.md")),
+                            "and so does the first worktree's");
                 })
 
                 .test("a fast-forward is not disposable to a home it never came from (CHM-9)", () -> {
@@ -663,6 +796,11 @@ public final class HomeSyncMergeTest {
     private static void write(Path file, String content) throws IOException {
         Files.createDirectories(file.getParent());
         Files.writeString(file, content);
+    }
+
+    /** Remove a home the way `git worktree remove` removes the one inside it. */
+    private static void deleteTree(Path root) throws IOException {
+        dev.skillmanager.shared.util.Fs.deleteRecursive(root);
     }
 
     private static String read(Path file) throws IOException {
