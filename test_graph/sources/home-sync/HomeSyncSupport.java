@@ -420,8 +420,27 @@ final class HomeSyncSupport {
 
     static Path unitDir(Path home, String name) { return skills(home).resolve(name); }
 
+    /**
+     * The layout that makes a directory a Skill Manager HOME rather than a
+     * directory with skills in it.
+     *
+     * <p>{@code installed/} is not decoration here. {@code home sync --from}
+     * and {@code home close-out} now refuse a path that is not a home
+     * ({@code LaunchEnv.looksLikeStoreRoot}: a descriptor, or the
+     * {@code installed/} + {@code skills/} pair), because a non-home used to
+     * contribute zero units to the reconcile and zero units reads exactly like
+     * "the two homes agree" — which is how `close-out --home <the worktree
+     * directory>` cleared a teardown. A fixture that skipped it would have been
+     * testing the refusal rather than the reconcile.
+     */
+    static void mkHome(Path home) throws IOException {
+        Files.createDirectories(skills(home));
+        Files.createDirectories(home.resolve("installed"));
+    }
+
     /** A minimal installable skill unit, written straight into a home. */
     static void mkUnit(Path home, String name, String body) throws IOException {
+        mkHome(home);
         Path dir = unitDir(home, name);
         Files.createDirectories(dir);
         Files.writeString(dir.resolve("SKILL.md"), """

@@ -395,6 +395,146 @@ public final class HomeSyncTest {
                             "the agent's work reached the project home");
                 })
 
+                .test("close-out refuses a path that is not a home rather than clearing it", () -> {
+                    // The gate FAILED OPEN. `--home <the worktree directory>`
+                    // instead of `<worktree>/.skill-manager`, or a `--home`
+                    // that did not exist at all, exited 0 with "safe": true and
+                    // "blockers": [] — naming the directory that held the only
+                    // copy of the agent's edit. The arithmetic: a non-home
+                    // contributes zero units to the union, every remaining unit
+                    // becomes REMOVED_UPSTREAM, and REMOVED_UPSTREAM maps to no
+                    // blocker. That mistake is maximally likely, because
+                    // <worktree> is exactly what `git worktree remove` takes.
+                    Homes homes = Homes.create("nothome");
+                    write(homes.sourceUnit().resolve("SKILL.md"), "AGENT WORK NOBODY ELSE HAS\n");
+
+                    // 1. The worktree DIRECTORY rather than the home inside it.
+                    //    Built to look like a real worktree: a checkout with
+                    //    files in it, and the home one level down.
+                    Path worktreeDir = Files.createTempDirectory("home-sync-worktree-");
+                    write(worktreeDir.resolve("README.md"), "a checkout, not a home\n");
+                    SkillStore inside = store(worktreeDir.resolve(".skill-manager"));
+                    UnitFixtures.scaffoldSkill(inside.skillsDir(), UNIT, DepSpec.empty());
+                    write(inside.skillDir(UNIT).resolve("SKILL.md"), "THE ONLY COPY\n");
+
+                    assertThrowsNotAHome(() -> HomeCloseOut.inspect(
+                                    new SkillStore(worktreeDir), homes.dest()),
+                            "the worktree directory is not the home inside it");
+                    // The message has to point at the fix, not merely refuse.
+                    assertTrue(notAHomeMessage(() -> HomeCloseOut.inspect(
+                                    new SkillStore(worktreeDir), homes.dest()))
+                                    .contains(worktreeDir.resolve(".skill-manager").toString()),
+                            "the refusal names the home the operator meant");
+
+                    // 2. A path that does not exist at all.
+                    Path missing = worktreeDir.resolve("no/such/home");
+                    assertThrowsNotAHome(() -> HomeCloseOut.inspect(
+                                    new SkillStore(missing), homes.dest()),
+                            "a --home that does not exist is not a home");
+
+                    // 3. A regular file wearing the name of a home.
+                    Path file = worktreeDir.resolve("not-a-directory");
+                    write(file, "definitely not a home\n");
+                    assertThrowsNotAHome(() -> HomeCloseOut.inspect(
+                                    new SkillStore(file), homes.dest()),
+                            "a regular file is not a home");
+
+                    // 4. The other end too: --into.
+                    assertThrowsNotAHome(() -> HomeCloseOut.inspect(
+                                    homes.source(), new SkillStore(worktreeDir)),
+                            "an --into that is not a home is refused as well");
+
+                    // And the same hole on the sync side, which created the
+                    // destination layout and printed "✓ reconciled" with
+                    // all-zero counts before this.
+                    Path freshDest = worktreeDir.resolve("would-have-been-created");
+                    assertThrowsNotAHome(() -> HomeSync.run(new SkillStore(missing),
+                                    new SkillStore(freshDest), new HomeSync.Options(false, false)),
+                            "home sync --from a non-home is refused");
+                    assertFalse(Files.exists(freshDest),
+                            "and the refusal happened before anything was written");
+
+                    // The gate still works for the home it was pointed past.
+                    assertFalse(HomeCloseOut.inspect(inside, homes.dest()).safe(),
+                            "naming the real home gives the real answer: it holds work");
+                })
+
+                .test("a symlinked unit or kind directory is reported, never silently skipped", () -> {
+                    // Measured before the fix: a home whose skills/ was a
+                    // symlink reconciled as {"clean":true,"units":[]} and the
+                    // destination's skills/ stayed empty; a single symlinked
+                    // unit beside a normal one synced only the normal one,
+                    // reported clean=true, and never named the other. Worse,
+                    // the enumerator and the reconciler disagreed — reconcile
+                    // applies NOFOLLOW_LINKS only to the final component, so it
+                    // read THROUGH a linked skills/ and close-out reported the
+                    // same unit conflicted purely because the destination
+                    // contributed the name.
+                    Path root = Files.createTempDirectory("home-sync-linked-");
+                    Path elsewhere = root.resolve("elsewhere");
+                    UnitFixtures.scaffoldSkill(elsewhere, "linked-unit", DepSpec.empty());
+                    write(elsewhere.resolve("linked-unit/SKILL.md"), "LIVES SOMEWHERE ELSE\n");
+
+                    // --- a single linked unit beside a normal one ------------
+                    SkillStore source = store(root.resolve("source"));
+                    SkillStore dest = store(root.resolve("dest"));
+                    UnitFixtures.scaffoldSkill(source.skillsDir(), UNIT, DepSpec.empty());
+                    Files.createSymbolicLink(source.skillsDir().resolve("linked-unit"),
+                            elsewhere.resolve("linked-unit"));
+
+                    HomeSync.Report report =
+                            HomeSync.run(source, dest, new HomeSync.Options(false, false));
+                    UnitSync linked = report.units().stream()
+                            .filter(u -> u.unitName().equals("linked-unit")).findFirst()
+                            .orElseThrow(() -> new AssertionError(
+                                    "the linked unit was not named at all: " + report.units()));
+                    assertEquals(SyncStatus.LINKED, linked.status(),
+                            "a linked unit directory is reported as linked");
+                    assertTrue(linked.detail().contains("symlink"),
+                            "and the report says why: " + linked.detail());
+                    assertFalse(report.clean(),
+                            "a report that could not account for a unit is not clean");
+                    assertFalse(Files.exists(dest.skillsDir().resolve("linked-unit"),
+                                    LinkOption.NOFOLLOW_LINKS),
+                            "nothing was written for it");
+                    assertEquals(SyncStatus.NEW, report.units().stream()
+                                    .filter(u -> u.unitName().equals(UNIT)).findFirst()
+                                    .orElseThrow().status(),
+                            "the ordinary unit beside it still reconciles");
+
+                    // The gate must refuse rather than clear: it cannot say
+                    // whether the link points inside the home about to be
+                    // removed or outside it.
+                    HomeCloseOut.Verdict verdict = HomeCloseOut.inspect(source, dest);
+                    assertFalse(verdict.safe(), "close-out blocks on a unit it cannot account for");
+                    assertTrue(verdict.blockers().stream()
+                                    .anyMatch(b -> b.label().equals("skill:linked-unit")),
+                            "and the linked unit is one of the blockers: " + verdict.blockers());
+
+                    // --- the whole kind directory is a link ------------------
+                    SkillStore linkedHome = store(root.resolve("linked-home"));
+                    dev.skillmanager.shared.util.Fs.deleteRecursive(linkedHome.skillsDir());
+                    Files.createSymbolicLink(linkedHome.skillsDir(), elsewhere);
+                    SkillStore target = store(root.resolve("target"));
+
+                    HomeSync.Report viaLink =
+                            HomeSync.run(linkedHome, target, new HomeSync.Options(false, false));
+                    assertFalse(viaLink.units().isEmpty(),
+                            "a home whose skills/ is a link does not reconcile as an empty home");
+                    assertEquals(SyncStatus.LINKED, viaLink.units().stream()
+                                    .filter(u -> u.unitName().equals("linked-unit")).findFirst()
+                                    .orElseThrow(() -> new AssertionError(
+                                            "the unit under the linked kind directory was not "
+                                                    + "named: " + viaLink.units()))
+                                    .status(),
+                            "the unit under a linked kind directory is reported as linked");
+                    assertFalse(viaLink.clean(), "and the report is not clean");
+                    assertEquals(List.of(), listing(target.skillsDir()),
+                            "nothing was copied through the link");
+                    assertFalse(HomeCloseOut.inspect(linkedHome, target).safe(),
+                            "close-out refuses to clear a home it reaches through a link");
+                })
+
                 .test("a cloned home records the baseline that lets its edits merge back", () -> {
                     Path root = Files.createTempDirectory("home-sync-clone-");
                     SkillStore project = store(root.resolve("project/.skill-manager"));
@@ -549,6 +689,42 @@ public final class HomeSyncTest {
                 .filter(unit -> unit.unitName().equals(UNIT))
                 .findFirst()
                 .orElseThrow(() -> new AssertionError("no outcome reported for " + UNIT));
+    }
+
+    /** Something that runs and may refuse. */
+    @FunctionalInterface
+    private interface HomeCall {
+        void run() throws Exception;
+    }
+
+    /**
+     * Assert that {@code call} refuses with {@link NotAHomeException}.
+     *
+     * <p>The exception TYPE, never merely "it threw". Before the fix these
+     * calls did not throw at all — they returned a clean verdict — and after
+     * it, a call that failed for some unrelated IO reason would satisfy a bare
+     * "it threw" and hide the fact that the check had stopped running.
+     */
+    private static void assertThrowsNotAHome(HomeCall call, String why) {
+        try {
+            call.run();
+        } catch (NotAHomeException expected) {
+            return;
+        } catch (Exception other) {
+            throw new AssertionError(why + " — refused, but with " + other, other);
+        }
+        throw new AssertionError(why + " — it did NOT refuse, which is the defect");
+    }
+
+    private static String notAHomeMessage(HomeCall call) {
+        try {
+            call.run();
+        } catch (NotAHomeException expected) {
+            return expected.getMessage();
+        } catch (Exception other) {
+            throw new AssertionError("expected a not-a-home refusal, got " + other, other);
+        }
+        throw new AssertionError("expected a not-a-home refusal, nothing was thrown");
     }
 
     /** Digest of a whole home directory, lock file and records included. */

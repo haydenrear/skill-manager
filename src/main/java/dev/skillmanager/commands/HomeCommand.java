@@ -13,6 +13,7 @@ import dev.skillmanager.store.HomeCloner;
 import dev.skillmanager.store.HomeDescriptor;
 import dev.skillmanager.store.HomeDigest;
 import dev.skillmanager.store.HomeSync;
+import dev.skillmanager.store.NotAHomeException;
 import dev.skillmanager.store.SkillStore;
 import dev.skillmanager.util.Log;
 import picocli.CommandLine.Command;
@@ -463,6 +464,15 @@ public final class HomeCommand {
             HomeSync.Report report;
             try {
                 report = HomeSync.run(source, dest, new HomeSync.Options(merge, dryRun));
+            } catch (NotAHomeException notAHome) {
+                // Same contract as the frozen case below: a refusal is the
+                // answer, so it is an exit code and a sentence, not a stack
+                // trace. --json callers get a payload rather than nothing,
+                // because a script that parses stdout must be able to tell
+                // "refused" from "crashed".
+                if (json) System.out.println(errorJson(notAHome));
+                Log.error("%s", notAHome.getMessage());
+                return NotAHomeException.EXIT_CODE;
             } catch (FrozenHomeException frozen) {
                 // The refusal is the answer, not a crash: FrozenHomeException's
                 // whole contract is an exit code a caller can branch on, and
@@ -479,8 +489,13 @@ public final class HomeCommand {
             // Held-back units are the documented default outcome of a plain
             // sync, so they are reported and do not fail the command. A
             // conflict is different: it is a decision nothing here is allowed
-            // to make, and it has to be visible to a script.
-            return report.conflicted().isEmpty() ? 0 : 1;
+            // to make, and it has to be visible to a script. A LINKED unit is
+            // the same kind of thing one step earlier — the pass could not even
+            // decide whose bytes they were — and a script that reads exit 0 as
+            // "reconciled" would be reading it wrong.
+            return report.conflicted().isEmpty()
+                    && report.with(ChildHomeMaterializer.SyncStatus.LINKED).isEmpty()
+                    ? 0 : 1;
         }
     }
 
@@ -515,6 +530,15 @@ public final class HomeCommand {
             HomeCloseOut.Verdict verdict;
             try {
                 verdict = HomeCloseOut.inspect(worktree, project);
+            } catch (NotAHomeException notAHome) {
+                // The defect this refuses used to look like success: safe=true,
+                // blockers=[], exit 0, for a --home that was the worktree
+                // DIRECTORY rather than the home inside it. A JSON consumer
+                // therefore gets safe=false explicitly rather than an absent
+                // field it might default the wrong way.
+                if (json) System.out.println(errorJson(notAHome));
+                Log.error("%s", notAHome.getMessage());
+                return NotAHomeException.EXIT_CODE;
             } catch (FrozenHomeException frozen) {
                 // The gate is a dry-run sync into the project home, so a frozen
                 // project refuses it. Same contract as `home sync` above: an
@@ -554,14 +578,15 @@ public final class HomeCommand {
             for (String conflict : unit.conflicts()) Log.warn("      conflict  %s", conflict);
         }
         Log.info("  %d unchanged, %d updated, %d new, %d merged, %d held back, %d conflicted, "
-                        + "%d removed upstream",
+                        + "%d removed upstream, %d linked",
                 report.count(ChildHomeMaterializer.SyncStatus.UNCHANGED),
                 report.count(ChildHomeMaterializer.SyncStatus.UPDATED),
                 report.count(ChildHomeMaterializer.SyncStatus.NEW),
                 report.count(ChildHomeMaterializer.SyncStatus.MERGED),
                 report.count(ChildHomeMaterializer.SyncStatus.HELD_BACK),
                 report.count(ChildHomeMaterializer.SyncStatus.CONFLICTED),
-                report.count(ChildHomeMaterializer.SyncStatus.REMOVED_UPSTREAM));
+                report.count(ChildHomeMaterializer.SyncStatus.REMOVED_UPSTREAM),
+                report.count(ChildHomeMaterializer.SyncStatus.LINKED));
         if (report.clean()) {
             Log.ok("%s%s", report.dryRun() ? "would reconcile " : "reconciled ", report.to());
         } else {
@@ -606,6 +631,22 @@ public final class HomeCommand {
                 + ",\"exitCode\":" + verdict.exitCode()
                 + ",\"blockers\":" + blockers
                 + ",\"units\":" + unitsJson(verdict.units()) + "}";
+    }
+
+    /**
+     * The refusal, as a payload a script can branch on.
+     *
+     * <p>{@code safe} and {@code clean} are both present and both false. The
+     * defect being refused printed {@code "safe": true} for a path that was not
+     * a home at all, so a consumer that reads only one of those fields — or
+     * that treats an absent field as its cheerful default — must not be able to
+     * read this as approval.
+     */
+    private static String errorJson(NotAHomeException error) {
+        return "{\"error\":\"not_a_home\",\"path\":\"" + esc(String.valueOf(error.path()))
+                + "\",\"message\":\"" + esc(error.getMessage())
+                + "\",\"safe\":false,\"clean\":false,\"blockers\":[],\"units\":[],\"exitCode\":"
+                + NotAHomeException.EXIT_CODE + "}";
     }
 
     private static String strings(List<String> values) {

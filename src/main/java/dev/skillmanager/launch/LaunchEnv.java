@@ -243,7 +243,26 @@ public final class LaunchEnv {
         return false;
     }
 
-    private static boolean looksLikeStoreRoot(Path dir) {
+    /**
+     * Whether {@code dir} is a Skill Manager home, decided by layout rather
+     * than by name.
+     *
+     * <p>Public and shared rather than private and re-spelled. This started as
+     * the PATH sanitizer's private test for "is some ancestor of this bin
+     * directory a foreign home", and it is the same question {@code home sync}
+     * and {@code home close-out} have to answer about the paths they are handed
+     * — a question they used not to ask at all, which is how {@code home
+     * close-out --home <the worktree directory>} (rather than
+     * {@code <worktree>/.skill-manager}) came to exit 0 with
+     * {@code "blockers": []} while naming the directory holding the only copy
+     * of an agent's edit. Three spellings of "is this a home" would have
+     * disagreed about exactly the homes that matter; there is one.
+     *
+     * <p>A name test would be wrong here: a per-project home is routinely
+     * cloned to a differently named directory, and the descriptor or the
+     * {@code installed/} + {@code skills/} pair is what every home has.
+     */
+    public static boolean looksLikeStoreRoot(Path dir) {
         if (dir == null || !Files.isDirectory(dir)) return false;
         if (Files.isRegularFile(dir.resolve(HomeDescriptor.FILENAME))) return true;
         return Files.isDirectory(dir.resolve("installed")) && Files.isDirectory(dir.resolve("skills"));

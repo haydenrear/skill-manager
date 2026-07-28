@@ -85,9 +85,20 @@ public final class HomeCloseOut {
      * "safe" because the sync moved the units it named.
      */
     public static Verdict inspect(SkillStore home, SkillStore into) throws IOException {
-        HomeSync.Report report = HomeSync.run(home, into, new HomeSync.Options(true, true));
         Path homeRoot = home.root().toAbsolutePath().normalize();
         Path intoRoot = into.root().toAbsolutePath().normalize();
+        // Both ends, before anything is compared. `--home` is covered by the
+        // same check inside HomeSync (it is the dry run's source), but stating
+        // it here as well is deliberate: this is the gate, the failure mode was
+        // that it approved a teardown of a directory it had never established
+        // was a home, and a gate should not depend on a subroutine to notice
+        // that its own argument was nonsense. `--into` is checked too — a
+        // project home that is not a home makes every unit look NEW, which
+        // blocks rather than clears, but "blocked with a nonsense remedy" is
+        // still a report nobody can act on.
+        NotAHomeException.require(homeRoot, "home close-out --home");
+        NotAHomeException.require(intoRoot, "home close-out --into");
+        HomeSync.Report report = HomeSync.run(home, into, new HomeSync.Options(true, true));
 
         // Checkout units are judged in the worktree home itself, against their
         // own git history: a copy-based comparison would call a checkout
@@ -141,6 +152,15 @@ public final class HomeCloseOut {
                     + String.join(", ", unit.conflicts()) + ")";
             case HELD_BACK -> "skill-manager unit publish " + unit.unitName()
                     + ", or " + sync + " --merge";
+            // A linked unit is the one case where the gate cannot say whether
+            // anything would be lost, because it cannot say whose bytes they
+            // are: the link may point inside the worktree (removed with it) or
+            // outside (untouched). "Cannot tell" has to block, not clear —
+            // clearing it is how `clean: true` came to be printed for a home
+            // whose whole skills/ directory was a link and whose report listed
+            // no units at all.
+            case LINKED -> "resolve the symlink first, then re-run: " + sync + " --merge"
+                    + "  (" + unit.detail() + ")";
             case UNCHANGED, REMOVED_UPSTREAM -> null;
         };
     }

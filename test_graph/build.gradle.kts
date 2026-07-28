@@ -728,6 +728,22 @@ validationGraph {
      * destroying the ticket's work, so nothing shorter than the sequence can
      * assert they are gone.
      *
+     * home.sync.round.trip is the same class of finding one tier wider:
+     * CHM-12, where TWO ticket worktrees merge into one project home and the
+     * ordinary push-up-then-pull-down through the root home destroys the
+     * second one's edit while every command reports clean=true. The cause is
+     * what a merge WRITES DOWN rather than which base it reads, so nothing
+     * shorter than the six-command sequence across four homes turns it into a
+     * lost byte.
+     *
+     * home.sync.homeness covers the two ways a report was clean about units it
+     * had never looked at: a `--home` that is not a Skill Manager home at all
+     * (the worktree DIRECTORY rather than the home inside it, which is exactly
+     * what `git worktree remove` takes) contributed zero units and cleared the
+     * teardown with exit 0; and a symlinked unit or kind directory was dropped
+     * by the enumerator with no report, so a home whose skills/ was a link
+     * reconciled as {"clean":true,"units":[]}.
+     *
      * home.sync.sensitive is the reason to believe the rest: it plants one
      * mutation per defect class — an edit silently overwritten, a conflict
      * silently resolved, a dry run that writes, half a swap left behind, a
@@ -755,6 +771,8 @@ validationGraph {
         node("sources/home-sync/HomeSyncHazards.java")
         node("sources/home-sync/HomeSyncStaleBaseline.java")
         node("sources/home-sync/HomeSyncProvenance.java")
+        node("sources/home-sync/HomeSyncRoundTrip.java")
+        node("sources/home-sync/HomeSyncHomeness.java")
     }
 
     testGraph("project-env") {

@@ -128,6 +128,15 @@ public final class HomeSync {
         if (source.equals(dest)) {
             throw new IOException("home sync: --from and --to are the same home (" + source + ")");
         }
+        // Before the lock, before init(), before anything is read: the source
+        // has to actually BE a home. A non-home contributes zero units to the
+        // union below, and zero units is indistinguishable in every report from
+        // "the two homes agree" — which is how `--from <a path that does not
+        // exist>` printed "✓ reconciled" with all-zero counts and exit 0, and
+        // how `close-out --home <the worktree directory>` cleared a teardown.
+        // The destination is deliberately NOT checked: creating a tier by
+        // reconciling into it is the operation this exists for.
+        NotAHomeException.require(source, "home sync --from");
         // The source is only read, so a frozen source is fine — that is the
         // whole point of freezing one. The destination is written, so a frozen
         // destination refuses before anything is staged, dry run included: the
