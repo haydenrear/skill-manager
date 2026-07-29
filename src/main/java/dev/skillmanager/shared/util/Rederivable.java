@@ -47,9 +47,18 @@ import java.util.Set;
  * in the object store — so {@code home close-out} clears the teardown, the
  * worktree is removed, and the commits stop existing. Everything below is
  * re-derivable; git history is the least re-derivable thing in a home.
- * {@code CHECKOUT} units are judged by
- * {@code ChildHomeMaterializer.checkoutIsModified}, which asks git instead of a
- * digest, for exactly this reason.
+ *
+ * <p><b>Not being here does not mean being digested as ordinary content
+ * either.</b> That was the other half of issue #29: a copy of {@code .git}
+ * rewrites itself on every command, so a whole-tree digest reported a
+ * git-sourced unit {@code locally modified} permanently — a false positive that
+ * never cleared, on exactly the units an agent works in. The answer is to split
+ * the tree at {@code .git} rather than to drop either half:
+ * {@code ChildHomeMaterializer.gitCopyIsUntouched} asks the digest about
+ * everything outside {@code .git} and asks git about the history, and
+ * {@code checkoutIsModified} asks git the same question for a {@code CHECKOUT}.
+ * Neither of them may be turned into "skip {@code .git}", which is what this
+ * heading forbids.
  *
  * <p>The same argument bars anything that <em>holds</em> state rather than
  * caching it — {@code .svn}, {@code .hg}, a lock file recording what is

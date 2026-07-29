@@ -297,6 +297,12 @@ justification:
   sync_gone:
     invariants: [NoHomeIsTornDownWhileItHoldsUniqueWork]
     effects: []
+  sync_git:
+    invariants: [GitBookkeepingIsNeverReportedAsWork, CommittedWorkIsNeverDestroyed]
+    effects: []
+  sync_committed:
+    invariants: [CommittedWorkIsNeverDestroyed]
+    effects: []
 
 # The three witness variables at home granularity, and what each one is for.
 # A witness exists when the property it guards is NOT recoverable from the final
@@ -350,6 +356,18 @@ witnesses:
       ancestor -- and it survives the overwrite that destroys the bytes it is a
       record of. Also the thing that made NoHomeIsTornDownWhileItHoldsUniqueWork
       statable at all; see validation.negative_result_sync.
+  sync_committed:
+    guards: CommittedWorkIsNeverDestroyed
+    why: >
+      A reconciliation rewrites the destination's recorded head in the SAME step
+      it replaces the .git that held the commit, so afterwards the home is
+      perfectly self-consistent about a history that no longer exists -- no
+      divergence from its record, no unentitled path write, and a close-out that
+      reports "unchanged". The commit and the evidence of the commit go together
+      unless the evidence is taken at the moment the commit is made. A coherent
+      home is not an intact one. Guarded by External_sync_guard_skipgit.cfg,
+      which explores the whole space with this invariant removed and finds
+      nothing.
   sync_gone:
     guards: NoHomeIsTornDownWhileItHoldsUniqueWork
     why: >
@@ -714,6 +732,22 @@ validation:
         had not moved -- so the loss invariants are satisfied at every step. It
         is the reason conflict atomicity is a separate invariant and not a
         corollary. See External_sync_guard_conflict.cfg.
+    External_regression_wholetreegit.cfg:
+      models: "THE CODE UNTIL #29 WAS FIXED. GitProvenance = \"WHOLE_TREE_DIGEST\": one digest over the whole unit tree, .git included. A copy of .git rewrites itself on every git command, so ChurnGitBookkeepingInHomeTier -- bytes nobody authored -- makes the home differ from its own record and the unit is reported locally modified forever. A false positive that never clears, so `home close-out` can never be satisfied and the worktree can never be torn down."
+      expect_violation: GitBookkeepingIsNeverReportedAsWork
+      status: violated_as_expected
+      trace_depth: 2
+      axis: git
+    External_regression_skipgit.cfg:
+      models: "THE OBVIOUS FIX FOR #29, WHICH IS A DATA-LOSS DEFECT. GitProvenance = \"SKIP_GIT\": .git is excluded from the comparison, so the false positive above disappears -- and a commit moves bytes ONLY inside .git, so after CommitInHomeTier the worktree is byte-identical to what the record describes, the home reads as pristine, a wholesale copy replaces its .git with the source's, and the teardown gate clears for the home whose object store held the only copy."
+      expect_violation: CommittedWorkIsNeverDestroyed
+      status: violated_as_expected
+      trace_depth: 4
+      axis: git
+      note: >
+        Its guard is External_sync_guard_skipgit.cfg. The two configs are the two
+        halves of the pair the epic keeps needing: the same defect with and
+        without the witness that can see it.
     External_regression_ungatedcloseout.cfg:
       models: the pre-epic teardown -- the worktree home goes when the worktree goes, with no close-out gate
       expect_violation: NoHomeIsTornDownWhileItHoldsUniqueWork
@@ -895,6 +929,27 @@ validation:
         destroys no edit and the loss invariants hold at every step. Conflict
         atomicity is a claim about coherence, not about loss, and no
         loss-shaped invariant can stand in for it.
+    External_sync_guard_skipgit.cfg:
+      policy: GitProvenance = "SKIP_GIT"
+      guards: CommittedWorkIsNeverDestroyed
+      invariants_checked: every sync invariant except the one that reads the sync_committed witness
+      status: passed
+      states_generated: 11359
+      distinct_states: 2188
+      depth: 17
+      measured: "2026-07-29, on the git axis (GitBackedUnits = TRUE, two tiers, one path)."
+      why: >
+        A reconciliation rewrites the destination's recorded head in the SAME step
+        it replaces the .git that held the commit. Afterwards the home is
+        perfectly self-consistent about a history that no longer exists:
+        EveryDivergenceFromARecordIsAnEditMadeInThatHome holds because there is no
+        divergence, ARecordClaimsNoBaselineTheDestinationNeverStoodOn holds
+        because the entries are about worktree paths and those never moved, and
+        the teardown gate is satisfied because close-out reports "unchanged". TLC
+        explores the whole space and finds nothing. A coherent home is not an
+        intact one -- the same result as External_sync_guard_overwrite.cfg one
+        dimension across, and the reason sync_committed is written at the moment
+        the commit is made rather than derived afterwards.
     External_sync_guard_ffprovenance.cfg:
       policy: ReconcileProvenance = "MERGE_KIND_ONLY"   # today's code
       guards: AReconciliationOnlyWritesAgainstABaselineBothHomesPassedThrough

@@ -476,11 +476,16 @@ public final class LiveInterpreter implements ProgramInterpreter {
 
     private EffectReceipt recordAudit(SkillEffect.RecordAuditPlan e, EffectContext ctx) {
         InstallPlan plan = ctx.plan();
-        if (plan == null) {
+        if (plan == null && e.targets().isEmpty()) {
             return EffectReceipt.skipped(e, "no plan in context (BuildInstallPlan didn't run)");
         }
         try {
-            new dev.skillmanager.plan.AuditLog(ctx.store()).recordPlan(plan, e.verb());
+            dev.skillmanager.plan.AuditLog log = new dev.skillmanager.plan.AuditLog(ctx.store());
+            if (plan != null) log.recordPlan(plan, e.verb());
+            // Same three-field shape as a plan action, written through the same
+            // AuditLog.record, so the file has one format however a line got
+            // there. Issue #45.
+            for (String target : e.targets()) log.record(e.verb(), "INFO\t" + target);
             return EffectReceipt.ok(e, new ContextFact.AuditRecorded(e.verb()));
         } catch (Exception ex) {
             return EffectReceipt.failed(e, ex.getMessage());

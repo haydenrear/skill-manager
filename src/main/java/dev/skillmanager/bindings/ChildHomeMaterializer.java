@@ -92,6 +92,14 @@ import java.util.UUID;
  * <p>{@code .git} is deliberately NOT skipped, and {@link Rederivable} says at
  * length why: a unit whose agent committed work would otherwise read as
  * unmodified and the next teardown would take the commits with it (issue #29).
+ * It is not <em>digested</em> either, which is the other half of the same issue
+ * and the part that took a second decision: a copy of {@code .git} rewrites
+ * itself on every git command, so a whole-tree digest holds a git-sourced unit
+ * back permanently and for no reason. The tree is therefore split at
+ * {@code .git} and each half asked of the authority that can answer it —
+ * {@link #gitCopyIsUntouched}, the digest for the worktree and git for the
+ * history. Skipping and splitting look alike and are opposites: one loses the
+ * commits, the other keeps them and stops lying about the rest.
  *
  * <h2>Reconciling two homes is the same operation</h2>
  *
@@ -205,7 +213,55 @@ public final class ChildHomeMaterializer {
     /** Staging + displaced-tree area; swept before and after every run. */
     private static final String STAGING_DIR = "tmp";
 
-    private static final int RECORD_SCHEMA_VERSION = 1;
+    /**
+     * The schema every record this build writes carries, and the only one it
+     * reads as evidence.
+     *
+     * <h2>Why it is 2 (issue #46)</h2>
+     *
+     * <p>A record's digests answer a question, and issue #41 changed the
+     * question without changing the number. Before it, every digest here was
+     * computed over the whole unit tree including {@linkplain Rederivable
+     * re-derivable build output}; after it, those paths are invisible to this
+     * class in every direction. A version-1 record and a version-2 record
+     * therefore describe two different trees and are not comparable, so the
+     * first pass over a home holding version-1 records saw a digest mismatch it
+     * could not explain and held the unit back — correctly, and <b>silently</b>.
+     * All seven onboarded constituent homes carry such records. The silence was
+     * the defect, not the hold-back.
+     *
+     * <h2>What a stale-schema record means here, and why that is the safe half
+     * of the choice</h2>
+     *
+     * <p>{@link #usableAsEvidence} makes a record of any other version <b>no
+     * evidence at all</b>: no baseline, no {@code entryDigests}, no
+     * "the source held these bytes". Under the
+     * <a href="#baseline-rule">baseline rule</a> that costs exactly one thing —
+     * the ability to fast-forward — and cannot cost bytes, because every
+     * decision that destroys a destination tree needs evidence and now has
+     * none. The <em>other</em> reading of "re-baseline", recomputing
+     * {@code contentDigest} from whatever the destination currently holds so the
+     * tree reads as untouched again, is the unsafe one: it would be true by
+     * construction, prove nothing about whether an agent edited the unit since
+     * the copy, and hand the next reconcile a licence to overwrite. That is
+     * CHM-9's shape reached through the version field.
+     *
+     * <p>Deliberate re-baselining happens in the one place it is sound:
+     * {@link #recordCloneBaselines}, where the home's content IS what the home
+     * it was copied from held, by construction. Everywhere else a pristine unit
+     * self-heals on the next pass (the adopt-an-identical-copy branch of
+     * {@link #copyUnit}, and the {@code sourceHeldTheseBytes} fast-forward, both
+     * write a fresh record), and a unit that is NOT pristine holds back with
+     * {@link #staleSchemaNote} naming the schema change as the cause — which is
+     * the half of issue #46 an operator actually experiences.
+     *
+     * <p>{@code mode} is deliberately NOT gated on the version: a stale record
+     * that says {@code CHECKOUT} still keeps {@link #effectiveMode} from letting
+     * a project-wide COPY default delete a checkout holding unpushed commits.
+     * Distrusting the digests must not distrust the one field whose whole job is
+     * to stop a deletion.
+     */
+    private static final int RECORD_SCHEMA_VERSION = 2;
 
     /** Guard against pathological symlink graphs while dereferencing. */
     private static final int MAX_DEREFERENCE_DEPTH = 32;
@@ -241,10 +297,28 @@ public final class ChildHomeMaterializer {
      * mode simply means "no usable baseline", which routes to the conservative
      * skip-and-report path instead of a parse failure.
      *
-     * <p>{@code sourceRevision} carries the git revision for
-     * {@link MaterializationMode#CHECKOUT} units — the commit the checkout was
-     * materialized at, which is how a later pass tells "still exactly what we
-     * cloned" from "the agent has committed something here".
+     * <p>{@code sourceRevision} carries the git revision of the tree that was
+     * written here — the commit it was materialized at, which is how a later
+     * pass tells "still exactly what we wrote" from "the agent has committed
+     * something here". Written for {@link MaterializationMode#CHECKOUT} units,
+     * which have never had any other baseline, and — since issue #29 — for a
+     * {@link MaterializationMode#COPY} whose tree carries its own {@code .git}:
+     * the same question, asked of the same authority, rather than a second
+     * spelling of it. Null when the tree is not a git repository, or when git
+     * cannot answer, both of which read as "no evidence" and hold back.
+     *
+     * <p>{@code worktreeDigest} is {@code contentDigest} with {@code .git}
+     * excluded, and it exists only for a git-backed COPY. It is the other half
+     * of the issue #29 answer: {@code contentDigest} moves every time git
+     * rewrites its index or appends a reflog, so on its own it makes a
+     * git-sourced unit differ from its record permanently and holds it back
+     * forever. Splitting the tree at {@code .git} lets each half be judged by
+     * the authority that can actually answer it — git for the history, the
+     * digest for every byte outside it — instead of skipping {@code .git}, which
+     * would make a unit whose agent committed work read as unmodified and is the
+     * data-loss defect the same issue warns about. It is evidence about the
+     * DESTINATION alone, like {@code contentDigest}, and is comparable only with
+     * another digest of the same scope.
      *
      * <p>{@code source} names the tree the content came from — a parent-store
      * unit directory for a materialization, the other home's unit directory for
@@ -301,6 +375,7 @@ public final class ChildHomeMaterializer {
             String sourceRevision,
             String sourceDigest,
             String contentDigest,
+            String worktreeDigest,
             String materializedAt,
             java.util.Map<String, String> entryDigests,
             String reconcileKind
@@ -317,7 +392,7 @@ public final class ChildHomeMaterializer {
                                      String sourceDigest, String contentDigest,
                                      String materializedAt) {
             this(schemaVersion, unitName, unitKind, mode, source, sourceRevision,
-                    sourceDigest, contentDigest, materializedAt, null, null);
+                    sourceDigest, contentDigest, null, materializedAt, null, null);
         }
 
         public boolean isMergeResult() { return MERGED.equals(reconcileKind); }
@@ -403,7 +478,7 @@ public final class ChildHomeMaterializer {
         if (record != null && MaterializationMode.CHECKOUT.name().equals(record.mode())) {
             return checkoutIsModified(dest, record);
         }
-        return !disposalOf(name, kind, record, treeDigest(dest)).disposable();
+        return !disposalOf(name, kind, record, dest, treeDigest(dest)).disposable();
     }
 
     /**
@@ -425,10 +500,107 @@ public final class ChildHomeMaterializer {
     private static boolean checkoutIsModified(Path dest, MaterializationRecord record) {
         if (!GitOps.isAvailable() || !GitOps.isGitRepo(dest)) return true;
         if (GitOps.hasWorktreeChanges(dest)) return true;
-        String recorded = record.sourceRevision();
-        if (recorded == null || recorded.isBlank()) return true;
+        return gitHistoryMovedOn(dest, record.sourceRevision());
+    }
+
+    /**
+     * Whether a git-backed tree's <em>history</em> has moved off the revision a
+     * record says was materialized into it — the {@code .git} half of the
+     * question, asked of git.
+     *
+     * <p>Shared by {@link #checkoutIsModified} and {@link #gitCopyIsUntouched}
+     * so a CHECKOUT and a COPY-with-a-{@code .git} cannot come to disagree about
+     * what "the agent has committed something" means. Two paths that should
+     * agree and don't, with nothing detecting it, is the failure shape this
+     * class has already paid for three times.
+     *
+     * <p>No recorded revision — an older record, a tree that was not a git
+     * repository when it was written, a git that could not answer — is "moved
+     * on". Without evidence that a tree is disposable, it is not disposable, and
+     * that is the same asymmetry the no-record case takes.
+     */
+    private static boolean gitHistoryMovedOn(Path dest, String recordedRevision) {
+        if (recordedRevision == null || recordedRevision.isBlank()) return true;
         String head = GitOps.headHash(dest);
-        return head == null || !head.equals(recorded);
+        return head == null || !head.equals(recordedRevision);
+    }
+
+    /**
+     * Whether a {@link MaterializationMode#COPY} unit that carries its own
+     * {@code .git} still holds exactly what was materialized into it: <b>issue
+     * #29, and the ticket's whole difficulty is that the obvious answer loses
+     * data.</b>
+     *
+     * <h2>The permanent false positive</h2>
+     *
+     * <p>A unit installed from a git source keeps {@code .git} inside the home,
+     * so a COPY carries it — 61 entries, measured. {@code .git} rewrites itself
+     * on every command, {@code git status} included, so the unit's whole-tree
+     * digest moves off {@code contentDigest} the first time anybody so much as
+     * looks at it, and every later pass reports it {@code locally modified}.
+     * Nothing clears that, ever, on exactly the units an agent is most likely to
+     * be working in.
+     *
+     * <h2>Why "skip {@code .git} in the digest" is a data-loss defect</h2>
+     *
+     * <p>Because a commit moves bytes ONLY inside {@code .git}. An agent whose
+     * edit has already been synced up and who then commits it locally has a
+     * working tree byte-identical to the record and history that exists in one
+     * home on earth. Excluded from the digest, that unit reads UNMODIFIED: the
+     * teardown gate clears, the worktree is removed, and the commits stop
+     * existing. {@link Rederivable} says the same thing at length under its
+     * {@code not-git} heading, and epic #1 verified end-to-end that {@code .git}
+     * is not skipped.
+     *
+     * <h2>What this asks instead</h2>
+     *
+     * <p>The tree is split at {@code .git} and each half is judged by the
+     * authority that can answer it — <b>both halves, ANDed</b>, because either
+     * one alone is a defect:
+     *
+     * <ul>
+     *   <li>{@code worktreeDigest}: every byte OUTSIDE {@code .git} is still
+     *       what was written here. This is the ordinary content question, in the
+     *       ordinary ownership scope, so re-derivable build output stays
+     *       invisible (issue #41) — which is also why {@code git status} is NOT
+     *       consulted here: a unit that does not gitignore its {@code build/}
+     *       would come back dirty and put #41 straight back.</li>
+     *   <li>{@link #gitHistoryMovedOn}: HEAD is still the revision the record
+     *       names. A commit — the case the naive fix destroys — moves it.</li>
+     * </ul>
+     *
+     * <p>So git's own bookkeeping (an index rewrite, a reflog append, a
+     * {@code gc} that repacks objects) changes neither half and the unit reads
+     * as untouched; committed work changes the second half and it does not. A
+     * missing {@code worktreeDigest} or {@code sourceRevision} is no evidence
+     * and holds back, which is what a record written before this existed gets.
+     */
+    private static boolean gitCopyIsUntouched(Path dest, MaterializationRecord record)
+            throws IOException {
+        if (!usableAsEvidence(record)) return false;
+        String recordedWorktree = record.worktreeDigest();
+        if (recordedWorktree == null) return false;
+        if (!GitOps.isAvailable() || !GitOps.isGitRepo(dest)) return false;
+        if (!recordedWorktree.equals(worktreeDigest(dest))) return false;
+        return !gitHistoryMovedOn(dest, record.sourceRevision());
+    }
+
+    /**
+     * Whether {@code unit} carries its own git directory — the gate on the
+     * git-aware route above.
+     *
+     * <p>Presence of a {@code .git} DIRECTORY in the unit itself, deliberately
+     * not {@code GitOps.isGitRepo}: that shells out to
+     * {@code rev-parse --is-inside-work-tree}, which walks UP the tree, so any
+     * home that happens to live inside somebody's checkout would answer yes for
+     * every unit in it. A {@code .git} FILE (the shape a git worktree or a
+     * submodule leaves) is deliberately not this either: the history it points
+     * at lives outside the unit, so nothing in the unit's own bytes can be
+     * judged against it, and the unchanged digest path is the conservative
+     * answer.
+     */
+    private static boolean carriesGitDirectory(Path unit) {
+        return Files.isDirectory(unit.resolve(".git"), LinkOption.NOFOLLOW_LINKS);
     }
 
     /**
@@ -446,9 +618,14 @@ public final class ChildHomeMaterializer {
         List<UnitOutcome> out = new ArrayList<>();
         for (UnitRef ref : unitDirectories(childStore)) {
             if (!isLocallyModified(ref.name(), ref.kind())) continue;
+            // Why, when the why is a record this build cannot read rather than
+            // anything the operator did (issue #46). A teardown that names
+            // "local changes" for a unit nobody changed sends whoever reads it
+            // looking for an edit that is not there.
+            String stale = staleSchemaNote(readRecord(ref.name(), ref.kind()).orElse(null));
             out.add(new UnitOutcome(ref.name(), ref.kind(), Status.SKIPPED_LOCAL_CHANGES,
                     childStore.unitDir(ref.name(), ref.kind()).toAbsolutePath().normalize(),
-                    "local changes in the child home"));
+                    stale != null ? stale : "local changes in the child home"));
         }
         return out;
     }
@@ -586,11 +763,18 @@ public final class ChildHomeMaterializer {
             if (inherited != null && !MaterializationMode.COPY.name().equals(inherited.mode())) {
                 continue;
             }
+            // A record this build cannot read is not a baseline (issue #46), and
+            // this is the ONE place re-baselining one is sound rather than a
+            // licence invented by the pass that wanted it: a clone's content is
+            // what the home it was copied from held, by construction. The mode
+            // check above still runs on the record as written, so a stale
+            // CHECKOUT record is never restated as a copy baseline.
+            if (!usableAsEvidence(inherited)) inherited = null;
             Path dir = home.unitDir(ref.name(), ref.kind()).toAbsolutePath().normalize();
             Fingerprint print = fingerprint(dir);
             if (inherited != null && print.digest().equals(inherited.contentDigest())) continue;
-            materializer.writeRecord(ref.name(), ref.kind(), MaterializationMode.COPY, null, null,
-                    print.digest(), print.digest(), print.entries(),
+            materializer.writeRecord(ref.name(), ref.kind(), MaterializationMode.COPY, null,
+                    gitStateOf(dir), print.digest(), print.digest(), print.entries(),
                     MaterializationRecord.COPIED);
             recorded.add(ref);
         }
@@ -744,7 +928,7 @@ public final class ChildHomeMaterializer {
         // destination, the home named in it). Read it as evidence about THIS
         // source only when it can be shown to be — see the baseline rule. One
         // reading, shared with copyUnit and isLocallyModified.
-        Disposal disposal = disposal(name, kind, record, source, src, dst.digest());
+        Disposal disposal = disposal(name, kind, record, source, dest, src, dst.digest());
         MaterializationRecord sourceRecord = disposal.sourceRecord();
         boolean recordIsAboutThisSource = disposal.recordIsAboutThisSource();
         String baseline = disposal.baseline();
@@ -838,7 +1022,7 @@ public final class ChildHomeMaterializer {
                 // can be SHOWN to share. Recording the merged tree is CHM-10;
                 // recording the source's whole tree is CHM-12. See the
                 // <a href="#record-write">fourth decision</a>.
-                writeMergeRecord(name, kind, source, stagedPrint.digest(), src,
+                writeMergeRecord(name, kind, source, dest, stagedPrint.digest(), src,
                         sharedAfterMerge(src.entries(), dst.entries(), plan.take(), base));
             } finally {
                 if (Files.exists(staged, LinkOption.NOFOLLOW_LINKS)) Fs.deleteRecursive(staged);
@@ -879,7 +1063,7 @@ public final class ChildHomeMaterializer {
             Fingerprint stagedPrint = fingerprint(staged);
             carryOverUnownedTrees(dest, staged);
             swapIn(staged, dest);
-            writeCopyRecord(name, kind, source, stagedPrint.digest(), src,
+            writeCopyRecord(name, kind, source, dest, stagedPrint.digest(), src,
                     MaterializationRecord.COPIED);
         } finally {
             if (Files.exists(staged, LinkOption.NOFOLLOW_LINKS)) Fs.deleteRecursive(staged);
@@ -893,7 +1077,8 @@ public final class ChildHomeMaterializer {
     }
 
     private static boolean hasEntries(MaterializationRecord record) {
-        return record != null && record.entryDigests() != null && !record.entryDigests().isEmpty();
+        return usableAsEvidence(record)
+                && record.entryDigests() != null && !record.entryDigests().isEmpty();
     }
 
     /**
@@ -1046,6 +1231,16 @@ public final class ChildHomeMaterializer {
     /** Why a plain (non-merge) pass left this unit alone, in the caller's terms. */
     private static String holdBackReason(MaterializationRecord record, String baseline,
                                          boolean destUntouched, boolean recordIsAboutThisSource) {
+        // Before the generic sentences: a cause the operator can neither see on
+        // the unit nor act on by looking for their own edit (issue #46). It has
+        // to come first, because every message below is TRUE of this case and
+        // all of them send the reader hunting for a change nobody made.
+        String stale = staleSchemaNote(record);
+        if (stale != null) {
+            return stale + " — re-run with --merge to reconcile it, or refresh the unit from its "
+                    + "store (a unit that is still a pristine copy re-baselines itself with no "
+                    + "further hold-back)";
+        }
         if (baseline == null) {
             // Two different situations wore this one sentence until issue #43.
             // A destination with no record of its own is the ORDINARY shape of
@@ -1223,14 +1418,14 @@ public final class ChildHomeMaterializer {
             throws IOException {
         if (Files.isDirectory(dest, LinkOption.NOFOLLOW_LINKS) && !sameRealPath(source, dest)) {
             MaterializationRecord record = readRecord(name, kind).orElse(null);
-            if (!disposalOf(name, kind, record, treeDigest(dest)).disposable()) {
+            if (!disposalOf(name, kind, record, dest, treeDigest(dest)).disposable()) {
                 return heldBack(name, kind, dest,
                         "a real directory the parent store cannot be shown to have passed through; "
                                 + "not replaced with a symlink into it");
             }
         }
         linkPath(source, dest);
-        writeRecord(name, kind, MaterializationMode.LINK, source, null, null, null);
+        writeRecord(name, kind, MaterializationMode.LINK, source, GitState.NONE, null, null);
         return new UnitOutcome(name, kind, Status.MATERIALIZED, dest, "linked at parent store");
     }
 
@@ -1293,7 +1488,7 @@ public final class ChildHomeMaterializer {
             }
             if (GitOps.isGitRepo(dest)) {
                 writeRecord(name, kind, MaterializationMode.CHECKOUT, source,
-                        GitOps.headHash(dest), null, null);
+                        new GitState(GitOps.headHash(dest), null), null, null);
                 return new UnitOutcome(name, kind, Status.UNCHANGED, dest,
                         "existing checkout left in place at " + shortHash(GitOps.headHash(dest)));
             }
@@ -1316,7 +1511,8 @@ public final class ChildHomeMaterializer {
         String upstream = GitOps.originUrl(source);
         if (upstream != null && !upstream.isBlank()) GitOps.setOrigin(dest, upstream);
         String head = GitOps.headHash(dest);
-        writeRecord(name, kind, MaterializationMode.CHECKOUT, source, head, null, null);
+        writeRecord(name, kind, MaterializationMode.CHECKOUT, source,
+                new GitState(head, null), null, null);
         return new UnitOutcome(name, kind, Status.MATERIALIZED, dest,
                 "checked out from the parent store at " + shortHash(head));
     }
@@ -1347,7 +1543,8 @@ public final class ChildHomeMaterializer {
         String sourceDigest = sourcePrint.digest();
         MaterializationRecord record = readRecord(name, kind).orElse(null);
         String currentDigest = destIsDir ? treeDigest(dest) : null;
-        Disposal disposal = disposal(name, kind, record, source, sourcePrint, currentDigest);
+        Disposal disposal = disposal(name, kind, record, source, destIsDir ? dest : null,
+                sourcePrint, currentDigest);
         String baseline = disposal.baseline();
 
         if (destIsDir && baseline != null) {
@@ -1402,16 +1599,27 @@ public final class ChildHomeMaterializer {
                 // may not answer it differently from `home sync` (CHM-15 was
                 // exactly that divergence). Issue #43.
                 if (!stagedPrint.digest().equals(currentDigest)) {
-                    return heldBack(name, kind, dest);
+                    // Same message as `home sync` gives, from the same one
+                    // function, when the reason is a record this build cannot
+                    // read rather than an edit (issue #46). The two surfaces
+                    // saying different things about one cause is how "spurious
+                    // locally-modified" became a thing nobody could act on.
+                    String stale = staleSchemaNote(record);
+                    return stale != null
+                            ? heldBack(name, kind, dest, stale + " — send anything of yours on with "
+                                    + "`skill-manager unit publish " + name + "` (or `home sync "
+                                    + "--merge`) first; an untouched copy re-baselines itself here "
+                                    + "with no further hold-back")
+                            : heldBack(name, kind, dest);
                 }
-                writeCopyRecord(name, kind, source, stagedPrint.digest(), sourcePrint,
+                writeCopyRecord(name, kind, source, dest, stagedPrint.digest(), sourcePrint,
                         MaterializationRecord.COPIED);
                 return new UnitOutcome(name, kind, Status.UNCHANGED, dest,
                         "adopted an existing identical copy");
             }
             if (destIsDir) carryOverUnownedTrees(dest, staged);
             swapIn(staged, dest);
-            writeCopyRecord(name, kind, source, stagedPrint.digest(), sourcePrint,
+            writeCopyRecord(name, kind, source, dest, stagedPrint.digest(), sourcePrint,
                     MaterializationRecord.COPIED);
             return new UnitOutcome(name, kind, Status.MATERIALIZED, dest,
                     destIsLink ? "replaced a symlink into the parent store" : "copied from the parent store");
@@ -1430,9 +1638,46 @@ public final class ChildHomeMaterializer {
         return new UnitOutcome(name, kind, Status.SKIPPED_LOCAL_CHANGES, dest, detail);
     }
 
+    /**
+     * Whether a record's digests may be read at all — the one place the
+     * {@link #RECORD_SCHEMA_VERSION} gate lives.
+     *
+     * <p>Consulted by every reader of a digest and by nothing else:
+     * {@link #copyBaseline}, {@link #hasEntries} (which is what
+     * {@link #describesSource} and {@link #mergeBase} go through) and
+     * {@link #sourceHeldTheseBytes}. Those are exactly the three showings the
+     * <a href="#baseline-rule">baseline rule</a> accepts, so gating them here
+     * gates every licence to destroy a destination tree at once, rather than at
+     * three call sites where one would eventually be missed.
+     */
+    private static boolean usableAsEvidence(MaterializationRecord record) {
+        return record != null && record.schemaVersion() == RECORD_SCHEMA_VERSION;
+    }
+
+    /**
+     * The sentence an operator needs when a hold-back's cause is a record this
+     * build cannot read, or null when that is not the cause.
+     *
+     * <p>Issue #46 is really two defects and only one of them is the hold-back.
+     * A pre-#41 record makes a unit differ from its own record for a reason
+     * nothing on the unit's surface explains: no file was edited, no command was
+     * run, and the report said {@code locally modified}. An operator reading
+     * that looks for their own edit, does not find one, and cannot act. Naming
+     * the schema change turns it into a one-line, one-time, understood event.
+     */
+    private static String staleSchemaNote(MaterializationRecord record) {
+        if (record == null || usableAsEvidence(record)) return null;
+        return "its materialization record is schema " + record.schemaVersion()
+                + " and this build reads " + RECORD_SCHEMA_VERSION
+                + " — the digests in it were computed over a different set of files "
+                + "(re-derivable build output used to count as unit content, issue #41), so they "
+                + "are not evidence about these bytes and nothing may be replaced on their "
+                + "authority. Nothing was written";
+    }
+
     /** The recorded content digest, or null when the record cannot be trusted. */
     private static String copyBaseline(MaterializationRecord record) {
-        if (record == null) return null;
+        if (!usableAsEvidence(record)) return null;
         if (!MaterializationMode.COPY.name().equals(record.mode())) return null;
         if (record.contentDigest() == null || record.sourceDigest() == null) return null;
         return record.contentDigest();
@@ -1549,7 +1794,7 @@ public final class ChildHomeMaterializer {
      */
     private static boolean sourceHeldTheseBytes(MaterializationRecord sourceRecord,
                                                 String destDigest) {
-        if (sourceRecord == null || destDigest == null) return false;
+        if (!usableAsEvidence(sourceRecord) || destDigest == null) return false;
         if (!MaterializationMode.COPY.name().equals(sourceRecord.mode())) return false;
         String held = sourceRecord.contentDigest();
         return held != null && held.equals(destDigest);
@@ -1560,16 +1805,42 @@ public final class ChildHomeMaterializer {
      * destination tree's digest, or null when there is no destination tree.
      */
     private Disposal disposal(String name, UnitKind kind, MaterializationRecord record,
-                              Path source, Fingerprint src, String destDigest) {
+                              Path source, Path dest, Fingerprint src, String destDigest)
+            throws IOException {
         MaterializationRecord sourceRecord = sourceRecordFor(name, kind);
         String baseline = copyBaseline(record);
         return new Disposal(
                 baseline,
-                baseline != null && baseline.equals(destDigest),
+                destUntouched(record, baseline, dest, destDigest),
                 describesSource(record, source, src, sourceRecord),
                 record != null && record.isMergeResult(),
                 sourceHeldTheseBytes(sourceRecord, destDigest),
                 sourceRecord);
+    }
+
+    /**
+     * Whether the destination still holds exactly the bytes its own record says
+     * were written there — the first of {@link Disposal}'s two showings, and the
+     * one place the digest question and the git question meet.
+     *
+     * <p>The digest answers it for an ordinary tree. For a tree carrying its own
+     * {@code .git} the digest CANNOT answer it — git rewrites itself on every
+     * command, so the digest says "edited" forever (issue #29) — and
+     * {@link #gitCopyIsUntouched} is asked instead. Asked here rather than at
+     * each of the four readers, for the same reason {@link Disposal} exists at
+     * all: three inlined readings of one rule is how a rule gets two answers.
+     *
+     * <p>The digest is tried FIRST and the git route is a fallback, never an
+     * override. A tree whose whole digest still matches is untouched by the
+     * stricter measure already, and a git route that could turn a digest MATCH
+     * into "modified" would be a new way to hold a unit back rather than a fix
+     * for one.
+     */
+    private static boolean destUntouched(MaterializationRecord record, String baseline,
+                                         Path dest, String destDigest) throws IOException {
+        if (baseline != null && baseline.equals(destDigest)) return true;
+        if (dest == null || !carriesGitDirectory(dest)) return false;
+        return gitCopyIsUntouched(dest, record);
     }
 
     /**
@@ -1584,12 +1855,12 @@ public final class ChildHomeMaterializer {
      * other home contributed is not.
      */
     private Disposal disposalOf(String name, UnitKind kind, MaterializationRecord record,
-                                String destDigest) throws IOException {
+                                Path dest, String destDigest) throws IOException {
         Path source = parentStore.unitDir(name, kind).toAbsolutePath().normalize();
         Fingerprint src = Files.isDirectory(source, LinkOption.NOFOLLOW_LINKS)
                 ? fingerprintOf(materializedView(source), java.util.Set.of())
                 : new Fingerprint(null, new java.util.LinkedHashMap<>());
-        return disposal(name, kind, record, source, src, destDigest);
+        return disposal(name, kind, record, source, dest, src, destDigest);
     }
 
     /**
@@ -1604,10 +1875,11 @@ public final class ChildHomeMaterializer {
      * measure from. For a wholesale copy they describe the same tree; for a
      * merge result they must not.
      */
-    private void writeCopyRecord(String name, UnitKind kind, Path source, String contentDigest,
+    private void writeCopyRecord(String name, UnitKind kind, Path source, Path dest,
+                                 String contentDigest,
                                  Fingerprint shared, String reconcileKind) throws IOException {
-        writeRecord(name, kind, MaterializationMode.COPY, source, null, shared.digest(),
-                contentDigest, shared.entries(), reconcileKind);
+        writeRecord(name, kind, MaterializationMode.COPY, source, gitStateOf(dest),
+                shared.digest(), contentDigest, shared.entries(), reconcileKind);
     }
 
     /**
@@ -1627,24 +1899,51 @@ public final class ChildHomeMaterializer {
      * written"), and narrowing it to the shared subset would make a source that
      * changed a held-back path look unmoved.
      */
-    private void writeMergeRecord(String name, UnitKind kind, Path source, String contentDigest,
+    private void writeMergeRecord(String name, UnitKind kind, Path source, Path dest,
+                                  String contentDigest,
                                   Fingerprint src, java.util.Map<String, String> shared)
             throws IOException {
-        writeRecord(name, kind, MaterializationMode.COPY, source, null, src.digest(),
+        writeRecord(name, kind, MaterializationMode.COPY, source, gitStateOf(dest), src.digest(),
                 contentDigest, shared, MaterializationRecord.MERGED);
     }
 
-    private void writeRecord(String name, UnitKind kind, MaterializationMode mode, Path source,
-                             String sourceRevision, String sourceDigest, String contentDigest)
-            throws IOException {
-        writeRecord(name, kind, mode, source, sourceRevision, sourceDigest, contentDigest,
-                null, null);
+    /**
+     * The git-shaped evidence a record carries about the tree that was written:
+     * the revision it stands on and the digest of everything outside
+     * {@code .git}. {@link #NONE} means "this tree is not a git repository, or
+     * git could not answer", which every reader takes as no evidence.
+     */
+    private record GitState(String revision, String worktreeDigest) {
+        static final GitState NONE = new GitState(null, null);
+    }
+
+    /**
+     * Read {@link GitState} off a tree that is on disk right now.
+     *
+     * <p>Taken from the DESTINATION after the swap rather than from the staged
+     * copy, because that is what the record is evidence about: "the bytes we
+     * wrote HERE". A staged tree and the live one are the same content by
+     * construction, but only one of them is the thing a later pass will measure.
+     */
+    private static GitState gitStateOf(Path tree) throws IOException {
+        if (tree == null || !carriesGitDirectory(tree)) return GitState.NONE;
+        if (!GitOps.isAvailable() || !GitOps.isGitRepo(tree)) return GitState.NONE;
+        String head = GitOps.headHash(tree);
+        if (head == null || head.isBlank()) return GitState.NONE;
+        return new GitState(head, worktreeDigest(tree));
     }
 
     private void writeRecord(String name, UnitKind kind, MaterializationMode mode, Path source,
-                             String sourceRevision, String sourceDigest, String contentDigest,
+                             GitState git, String sourceDigest, String contentDigest)
+            throws IOException {
+        writeRecord(name, kind, mode, source, git, sourceDigest, contentDigest, null, null);
+    }
+
+    private void writeRecord(String name, UnitKind kind, MaterializationMode mode, Path source,
+                             GitState git, String sourceDigest, String contentDigest,
                              java.util.Map<String, String> entryDigests, String reconcileKind)
             throws IOException {
+        GitState state = git == null ? GitState.NONE : git;
         Path file = recordFile(name, kind);
         Fs.ensureDir(file.getParent());
         BindingJson.MAPPER.writerWithDefaultPrettyPrinter().writeValue(file.toFile(),
@@ -1654,9 +1953,10 @@ public final class ChildHomeMaterializer {
                         kind.name(),
                         mode.name(),
                         source == null ? null : source.toString(),
-                        sourceRevision,
+                        state.revision(),
                         sourceDigest,
                         contentDigest,
+                        state.worktreeDigest(),
                         BindingStore.nowIso(),
                         entryDigests,
                         reconcileKind));
@@ -2011,6 +2311,32 @@ public final class ChildHomeMaterializer {
      */
     public static String treeDigest(Path root) throws IOException {
         return viewDigest(plainView(root));
+    }
+
+    /** The one segment git's own state lives under. */
+    private static final java.util.Set<String> GIT_DIR = java.util.Set.of(".git");
+
+    /**
+     * {@link #treeDigest} of everything OUTSIDE {@code .git} — the worktree half
+     * of a git-backed unit, and half of the issue #29 answer.
+     *
+     * <p>Deliberately its own function producing its own field rather than a
+     * {@code skipNames} argument to {@link #fingerprintOf}: that one returns a
+     * null whole-tree digest whenever anything is skipped, precisely so a
+     * partial digest can never be compared with a whole one by accident. This
+     * one is a different scope with a different name in the record, comparable
+     * only with another of itself, and the filtering is visible at the point the
+     * scope is chosen.
+     *
+     * <p>Segment-wise, so a nested repository's {@code .git} is excluded too:
+     * the same bytes are the same kind of thing four levels down.
+     */
+    private static String worktreeDigest(Path root) throws IOException {
+        List<ViewEntry> outsideGit = new ArrayList<>();
+        for (ViewEntry entry : plainView(root)) {
+            if (!isUnder(entry.rel(), GIT_DIR)) outsideGit.add(entry);
+        }
+        return viewDigest(outsideGit);
     }
 
     /**

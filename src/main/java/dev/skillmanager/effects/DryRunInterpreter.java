@@ -186,7 +186,8 @@ public final class DryRunInterpreter implements ProgramInterpreter {
                     Log.step("[%d] commit %s unit(s) to store", n,
                             e.graph() == null ? "resolved" : Integer.toString(e.graph().resolved().size()));
             case SkillEffect.RecordAuditPlan e ->
-                    Log.step("[%d] append audit entry (verb=%s)", n, e.verb());
+                    Log.step("[%d] append audit entry (verb=%s, targets=%d)", n, e.verb(),
+                            e.targets().size());
             case SkillEffect.RecordSourceProvenance e ->
                     Log.step("[%d] write installed/<name>.json for %s unit(s)", n,
                             e.graph() == null ? "resolved" : Integer.toString(e.graph().resolved().size()));

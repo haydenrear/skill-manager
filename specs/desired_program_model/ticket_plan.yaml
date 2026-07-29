@@ -2,7 +2,7 @@
 # Source of truth for tickets. Keep synchronized with spec_manifest.yaml status.
 version: 1
 name: child-home-materialization-workflow
-updated: "2026-07-28"
+updated: "2026-07-29"
 purpose: >
   Project child homes stop being symlink farms into the parent store and become
   independent copies that an agent can edit. Every unit in
@@ -1425,6 +1425,267 @@ tickets:
         "the cli entrypoint never resolves to itself" on the exec'd output --
         each reporting the refusal banner where the stub sentinel was expected.
         Reverted; shasum -a 256 -c OK.
+
+  - id: CHM-21
+    title: "a git-sourced unit's .git was digested as unit content, so it was held back forever -- and skipping it destroys commits"
+    phase: CHM
+    status: closed
+    closed: "2026-07-29"
+    github_issue: 29
+    found_by: end-to-end home-sync graph coverage, then TLC three times over on the model of the fix
+    objective: >
+      A unit installed from a git source keeps .git inside the home, so a COPY
+      carries it -- 61 entries, measured. .git rewrites itself on every git
+      command, `git status` included, so the unit's whole-tree digest moved off
+      contentDigest the first time anybody looked at it and every later pass
+      reported it locally modified. Nothing cleared that, ever, on exactly the
+      units an agent works in: `home close-out` could not be satisfied and the
+      worktree could not be torn down.
+
+      Skipping .git from the digest removes that symptom and is a DATA-LOSS
+      DEFECT, which is why this is its own ticket. A commit moves bytes ONLY
+      inside .git. An agent whose edit has already been synced up and who then
+      commits it locally has a working tree byte-identical to the record and
+      history that exists in one home on earth; excluded from the digest, that
+      unit reads UNMODIFIED, the gate clears, the worktree is removed, and the
+      commits stop existing.
+    resolution: >
+      Split the tree at .git and ask each half of the authority that can answer
+      it -- ChildHomeMaterializer.gitCopyIsUntouched: the digest for every byte
+      OUTSIDE .git (a new record field, worktreeDigest), and git's own HEAD
+      against the revision the record names (sourceRevision, which a git-backed
+      COPY now writes and which a CHECKOUT always did). Bookkeeping moves
+      neither half; a commit moves the second. `git status` is deliberately NOT
+      consulted for the worktree half: a unit that does not gitignore its build/
+      would come back dirty and put issue #41 straight back.
+
+      gitHistoryMovedOn is shared with checkoutIsModified so a CHECKOUT and a
+      git-backed COPY cannot come to disagree about what "the agent has
+      committed something" means.
+    model_change: >
+      A new axis on External.tla, additive and default-off. Constants
+      GitBackedUnits (FALSE pins every variable the axis adds at its initial
+      value, so all thirty pre-existing configs keep their exact state counts --
+      External_sync.cfg is still 6379 distinct states) and GitProvenance with
+      three values, because BOTH of the other two are defects and they are
+      defects in opposite directions.
+
+      Variables sync_git (per home: whether git has rewritten its own
+      bookkeeping, and the SET of commits reachable from HEAD) and sync_committed
+      (WITNESS: every commit ever made, written at the moment it is made because
+      a reconciliation destroys the commit and the evidence of it in the same
+      step). Actions ChurnGitBookkeepingInHomeTier -- which deliberately leaves
+      sync_history alone, because nobody authored anything -- and
+      CommitInHomeTier, which deliberately leaves sync_body alone, because that
+      is the whole trap. The record gained TWO git fields, not one:
+      git_head (evidence about this home alone) and git_base (evidence about a
+      pair, claimed only where the pass can show it).
+    spec_findings: >
+      THREE defects in the model of the fix, each found by TLC and none of which
+      a test would have reached:
+
+      1. SourceHeldDestBytes licensed a fast-forward into a RECORD-LESS
+         destination on the strength of the worktree paths alone, so a root home
+         that had committed was overwritten from a home whose worktree merely
+         agreed with it. The code does not have that hole -- the digest
+         sourceHeldTheseBytes compares is the WHOLE tree, .git included -- but a
+         desired-state model weaker than the code cannot protect it.
+         SourceHeldDestGit states the other half.
+
+      2. Writing the destination's own current head as the merge base made `d =
+         b` hold trivially, so the next merge read it as "only the source moved"
+         and took the agent's commit away with no conflict and no report. That is
+         CHM-10 exactly, one dimension across, and it is why the record carries
+         git_base separately from git_head.
+
+      3. A tip-only history produced a FALSE violation: a commit merged up and
+         then committed on top of is no longer any home's tip, and git has it as
+         an ancestor. Modelling the history as the reachable SET fixed the
+         invariant rather than weakening it.
+    acceptance:
+      assertions:
+        - Bookkeeping churn inside a unit does not hold the unit back, and the churn is asserted to have moved the whole-tree digest first so the case cannot pass vacuously.
+        - A commit the source does not have holds the unit back, with the working tree asserted byte-identical through entryDigests(root, {".git"}) -- the exact view the naive fix compares.
+        - A reconcile with the source moved on keeps the commit: HEAD, the commit object and the committed file's content are all still readable out of the destination afterwards.
+        - An uncommitted edit still holds the unit back, so the worktree half of the conjunction is load-bearing on its own.
+    evidence:
+      unit:
+        - 'HomeSyncGitUnitTest "git''s own bookkeeping inside a unit does not hold the unit back"'
+        - 'HomeSyncGitUnitTest "a commit the source does not have holds the unit back"'
+        - 'HomeSyncGitUnitTest "a reconcile keeps commits made in a unit whose working tree it did not change"'
+        - 'HomeSyncGitUnitTest "an uncommitted edit in a git-backed unit is still an edit"'
+        - 'HomeSyncTest "a .git directory inside a unit is content, never skipped as build output" -- epic #1''s guard, still green'
+      spec:
+        - 'External_sync_git.cfg -- No error has been found, 6973 states / 1336 distinct'
+        - 'External_regression_wholetreegit.cfg -- GitBookkeepingIsNeverReportedAsWork violated at depth 2'
+        - 'External_regression_skipgit.cfg -- CommittedWorkIsNeverDestroyed violated, 31 distinct states'
+        - 'External_sync_guard_skipgit.cfg -- GUARD: No error has been found, 2188 distinct states, with the witness-reading invariant removed'
+        - 'All 34 External configs re-run: every regression config still violates its named invariant, every guard and must-pass config still clean, and the pre-existing state counts are unchanged (External_sync 6379, External_home 706, External 250)'
+      graph: 'home-sync 17 nodes / 180 assertions passed; project-child-home 11/60; home-clone 8/59'
+      mutation: >
+        THE REQUIRED ONE: replaced gitCopyIsUntouched's history clause with
+        `return true`, which IS the naive fix in this code's terms -- a
+        .git-blind digest comparison and nothing else (1 occurrence, counted
+        first). Killed "a reconcile keeps commits made in a unit whose working
+        tree it did not change" ON THE HASH -- the destination's HEAD came back
+        as the SOURCE's commit, which is the data loss itself -- and "a commit
+        the source does not have holds the unit back" (UNCHANGED for HELD_BACK).
+
+        Also mutated the literal form, adding .git to isUnowned (1 occurrence):
+        killed FOUR tests including epic #1's guard "a .git directory inside a
+        unit is content, never skipped as build output". And removed the
+        worktree half of the conjunction (1 occurrence): killed "an uncommitted
+        edit in a git-backed unit is still an edit" plus
+        ProjectChildHomeMaterializationTest "project sync does not destroy an
+        edit in the child home". Every mutation reverted; shasum -a 256 -c OK.
+
+  - id: CHM-22
+    title: "RECORD_SCHEMA_VERSION was not bumped when the digest scope changed, so a stale record held a unit back with no cause an operator could act on"
+    phase: CHM
+    status: closed
+    closed: "2026-07-29"
+    github_issue: 46
+    found_by: review of #41's fix
+    objective: >
+      #41 changed what a materialization record's digests are computed OVER:
+      re-derivable build output stopped counting as unit content. The version
+      number did not move, so a record written before it and one written after
+      describe two different trees and are not comparable. The first pass over a
+      home holding a pre-#41 record therefore saw a mismatch it could not
+      explain and held the unit back -- correctly, and SILENTLY. All seven
+      onboarded constituent homes carry such records. The silence is the defect,
+      not the hold-back.
+    resolution: >
+      Both halves of the issue's "either/or", because they answer different
+      questions.
+
+      BUMP: RECORD_SCHEMA_VERSION is 2, and usableAsEvidence -- one definition,
+      three readers (copyBaseline, hasEntries, sourceHeldTheseBytes: exactly the
+      three showings the baseline rule accepts) -- makes any other version no
+      evidence at all. Under the baseline rule that costs exactly the ability to
+      fast-forward and cannot cost bytes. The OTHER reading of "re-baseline" --
+      recomputing contentDigest from whatever the destination currently holds so
+      the tree reads as untouched again -- is the unsafe one: true by
+      construction, proving nothing about whether an agent edited the unit since
+      the copy, and a licence for the next reconcile. That is CHM-9's shape
+      reached through the version field.
+
+      `mode` is deliberately NOT gated on the version. It is the one field whose
+      whole job is to stop a deletion: a project-wide COPY default that won over
+      a recorded CHECKOUT would demote a tree holding unpushed commits.
+
+      Deliberate re-baselining happens in the one place it is sound --
+      recordCloneBaselines, where the home's content IS what the home it was
+      copied from held, by construction. Elsewhere a pristine unit self-heals on
+      the next pass and a non-pristine one holds back.
+
+      MESSAGE: staleSchemaNote names the schema and issue #41 as the cause, on
+      all three surfaces that report a hold-back (home sync's detail, which
+      close-out renders; copyUnit's held-back detail; and locallyModifiedUnits,
+      the predicate a prune and a teardown consult).
+    model_change: >
+      NONE, and the reason is worth stating rather than assuming. A record whose
+      schema this build cannot read is exactly RecordlessSyncRecord -- every path
+      claims NoBaseline -- which External.tla has had since #43, and
+      AReconciliationOnlyWritesAgainstABaselineBothHomesPassedThrough is already
+      the property that such a record may not license a write. Adding a schema
+      dimension would state the same rule twice, which
+      planning_rules.dual_representation_rule forbids for the same reason.
+    acceptance:
+      assertions:
+        - A record whose only defect is its version holds the unit back with its bytes intact, and the identical record at the current version still fast-forwards.
+        - The hold-back names the schema and the change, and does NOT say "locally modified".
+        - A clone re-baselines a record it cannot read and leaves one it can.
+        - A stale CHECKOUT record still keeps the unit a checkout.
+    evidence:
+      unit:
+        - 'HomeSyncTest "a record from an older schema is not a licence to replace anything" -- on the destination''s bytes, its tree digest, and both surfaces'' wording, with the current-schema half asserted too'
+        - 'HomeSyncTest "a clone re-baselines a record it cannot read, and leaves one it can"'
+        - 'HomeSyncGitUnitTest "a record this build cannot read still keeps a checkout a checkout" -- on the record''s own bytes'
+      graph: 'home-sync 17/180, project-child-home 11/60, home-clone 8/59 -- all passed'
+      mutation: >
+        Removed the schema gate (usableAsEvidence -> `record != null`, 1
+        definition site feeding 3 readers, counted first): killed "a record from
+        an older schema is not a licence to replace anything" ON THE BYTES --
+        the destination was overwritten -- and "a clone re-baselines a record it
+        cannot read".
+
+        Silenced staleSchemaNote (1 site): killed the same test on the message,
+        which then fell back to the #43 sentence about "no materialization
+        record of its own" -- true, and useless to whoever has to act on it.
+
+        Gated `mode` on the version too (1 site added): killed "a record this
+        build cannot read still keeps a checkout a checkout" -- the record came
+        back as mode COPY, the checkout demoted to an ordinary copy.
+
+        Removed the deliberate clone re-baseline (1 site): killed "a clone
+        re-baselines a record it cannot read". Every mutation reverted;
+        shasum -a 256 -c OK.
+      note: >
+        A first version of the checkout assertion, written against a non-git
+        child tree, was INSENSITIVE to the mode mutation -- the stale record also
+        fails as a COPY baseline, so the unit was held back either way and the
+        test passed for the wrong reason. Replaced with the git-backed form, where
+        the child tree is byte-identical to the store's and the demotion is
+        reachable through the adopt-an-identical-copy branch. A mutation that
+        kills nothing is a finding about the test.
+
+  - id: CHM-23
+    title: "audit.log was written by install and not by sync -- no trail for the command that touches the most files"
+    phase: CHM
+    status: closed
+    closed: "2026-07-29"
+    github_issue: 45
+    found_by: attributing a real-home change during the sync-blocker work, which is exactly what an audit log is for
+    objective: >
+      Measured on the operator's home: audit.log's last entry was 8 days old
+      while a `skill-manager sync` rewrote 101 files in it.
+    resolution: >
+      Give sync install's treatment -- the same SkillEffect.RecordAuditPlan, in
+      the same position (after the plan is built, before it runs) -- and then the
+      part that makes it non-vacuous. Sync's plan comes from
+      BuildResolveGraphFromUnmetReferences, so a steady-state sync plans ZERO
+      actions and the same treatment alone would have logged nothing on the pass
+      that re-merged every unit. Proven by mutation, not asserted.
+
+      So RecordAuditPlan gained a `targets` component, filled from the one place
+      that already builds the targets (SyncUseCase.auditTargets), naming the unit
+      AND the arm -- git, from-dir, doc-repo, harness -- because an entry that
+      named only the unit could not tell an investigator which set of bytes
+      moved. One definition (AuditLog.record), one handler, one emission site. A
+      new component on the existing effect rather than a second audit-writing
+      effect or an AuditLog call in each of the four target handlers: four
+      handlers writing their own line is four chances to miss one, which is how
+      this came to be missing. Install's behaviour is byte-identical (empty
+      targets).
+
+      HomeCloner.SKIPPED_ROOT_FILES still excludes audit.log, and that is now
+      asserted: it is the SOURCE home's history, and a clone that inherited it
+      would claim actions it never took.
+    model_change: none
+    acceptance:
+      assertions:
+        - A sync appends an entry naming the verb, the unit and the arm, and the log had none before it ran.
+        - Every entry keeps the log's four-field shape however it got there.
+        - A second sync appends rather than replacing.
+        - A clone of a home that has a log does not carry it, while demonstrably copying the rest of the home.
+    evidence:
+      unit:
+        - 'AuditTrailTest "sync appends a line naming the verb and the unit it touched" -- on the file''s bytes, through a real Executor run of the sync program'
+        - 'AuditTrailTest "a clone does not carry the source home''s audit log"'
+      mutation: >
+        Removed the effect from the sync program (1 site): killed "sync appends a
+        line naming the verb and the unit it touched" -- no audit.log at all.
+
+        THE INTERESTING ONE: kept the effect and dropped the targets, i.e.
+        install's treatment exactly as specified (1 site). Killed the same test,
+        and again with no audit.log created at all -- direct evidence that "give
+        sync the same treatment" would have shipped a green fix that logged
+        nothing on the measured scenario.
+
+        Removed audit.log from HomeCloner.SKIPPED_ROOT_FILES (1 site): killed "a
+        clone does not carry the source home's audit log". Every mutation
+        reverted; shasum -a 256 -c OK.
 
   - id: CHM-13
     title: "`home close-out` clears a teardown for a path that is not a home at all"

@@ -22,6 +22,7 @@ import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
 
+import static dev.skillmanager._lib.test.Tests.assertContains;
 import static dev.skillmanager._lib.test.Tests.assertEquals;
 import static dev.skillmanager._lib.test.Tests.assertFalse;
 import static dev.skillmanager._lib.test.Tests.assertTrue;
@@ -429,6 +430,114 @@ public final class HomeSyncTest {
                     assertFalse(Files.exists(dest.root().resolve(ChildHomeMaterializer.RECORDS_DIR)
                                     .resolve("tmp")),
                             "no staging leftovers survive a contended run");
+                })
+
+                .test("a record from an older schema is not a licence to replace anything", () -> {
+                    // Issue #46. The fix for #41 changed what a record's digests
+                    // are computed OVER, so a record written before it describes
+                    // a different tree and is not comparable with one written
+                    // after. Read as though it were, it is a claim about bytes
+                    // nobody has verified — which is a licence to overwrite, the
+                    // one thing this class exists to withhold.
+                    Homes homes = Homes.create("staleschema");
+                    write(homes.sourceUnit().resolve("SKILL.md"), "SOURCE V1\n");
+                    sync(homes, false, false);
+
+                    // The record is accurate in every way except its version:
+                    // its contentDigest is the destination's exact tree. The
+                    // only thing standing between it and a fast-forward is the
+                    // schema number, which is the whole point.
+                    String recordBefore = Files.readString(recordFile(homes));
+                    assertTrue(recordBefore.contains("\"schemaVersion\" : 2"),
+                            "this build writes schema 2 — otherwise the rewrite below is a no-op "
+                                    + "and everything after it is vacuous: " + recordBefore);
+                    Files.writeString(recordFile(homes),
+                            recordBefore.replace("\"schemaVersion\" : 2", "\"schemaVersion\" : 1"));
+                    write(homes.sourceUnit().resolve("SKILL.md"), "SOURCE V2\n");
+                    String destDigestBefore = ChildHomeMaterializer.treeDigest(homes.destUnit());
+
+                    UnitSync stale = only(sync(homes, false, false));
+
+                    assertEquals("SOURCE V1\n", read(homes.destUnit().resolve("SKILL.md")),
+                            "the destination's bytes are exactly what they were");
+                    assertEquals(destDigestBefore, ChildHomeMaterializer.treeDigest(homes.destUnit()),
+                            "not one byte of the destination unit changed");
+                    assertEquals(SyncStatus.HELD_BACK, stale.status(),
+                            "an unreadable record holds the unit back rather than licensing a "
+                                    + "fast-forward");
+
+                    // THE HALF THE ISSUE IS ACTUALLY ABOUT: the operator sees a
+                    // cause they can act on instead of "locally modified" for a
+                    // unit nobody modified.
+                    assertContains(stale.detail(), "schema 1",
+                            "the hold-back names the schema the record was written by");
+                    assertContains(stale.detail(), "#41",
+                            "and the change that made it unreadable");
+                    assertFalse(stale.detail().contains("locally modified"),
+                            "and does NOT send the reader looking for an edit that does not "
+                                    + "exist: " + stale.detail());
+                    // The same cause, in the same words, on the OTHER surface
+                    // that reports a hold-back: the predicate a prune and a
+                    // teardown consult. One cause reported two ways is how
+                    // "spurious locally-modified" became folklore.
+                    List<ChildHomeMaterializer.UnitOutcome> modified =
+                            new ChildHomeMaterializer(homes.source(), homes.dest())
+                                    .locallyModifiedUnits();
+                    assertTrue(modified.stream()
+                                    .anyMatch(u -> u.unitName().equals(UNIT)
+                                            && u.detail().contains("schema 1")),
+                            "the teardown predicate names the schema too, instead of reporting "
+                                    + "\"local changes\" for a unit nobody changed: " + modified);
+
+                    // The other half of the claim: with the version restored and
+                    // nothing else changed, the very same pass fast-forwards. A
+                    // one-sided version of this test would pass against a
+                    // reconcile that had simply stopped fast-forwarding at all.
+                    Files.writeString(recordFile(homes), recordBefore);
+                    UnitSync current = only(sync(homes, false, false));
+                    assertEquals(SyncStatus.UPDATED, current.status(),
+                            "the identical record at the current schema still fast-forwards");
+                    assertEquals("SOURCE V2\n", read(homes.destUnit().resolve("SKILL.md")),
+                            "with the source's bytes");
+                })
+
+                .test("a clone re-baselines a record it cannot read, and leaves one it can", () -> {
+                    // The deliberate half of issue #46's "bump and re-baseline".
+                    // Restating a baseline is only sound where the content IS
+                    // what the home it was copied from held, and a clone is the
+                    // one place that is true by construction. Recomputing a
+                    // contentDigest anywhere else would be a claim invented by
+                    // the pass that wanted it — CHM-9's shape through the
+                    // version field.
+                    Homes homes = Homes.create("cloneschema");
+                    write(homes.sourceUnit().resolve("SKILL.md"), "SOURCE V1\n");
+                    sync(homes, false, false);
+
+                    assertTrue(ChildHomeMaterializer.recordCloneBaselines(homes.dest()).isEmpty(),
+                            "a record this build can read is accurate and is left alone");
+
+                    String recordBefore = Files.readString(recordFile(homes));
+                    Files.writeString(recordFile(homes),
+                            recordBefore.replace("\"schemaVersion\" : 2", "\"schemaVersion\" : 1"));
+
+                    List<String> restated = ChildHomeMaterializer.recordCloneBaselines(homes.dest())
+                            .stream().map(ChildHomeMaterializer.UnitRef::name).toList();
+
+                    assertTrue(restated.contains(UNIT),
+                            "a record it cannot read is restated from the clone's own content: "
+                                    + restated);
+                    String after = Files.readString(recordFile(homes));
+                    assertContains(after, "\"schemaVersion\" : 2",
+                            "at the current schema");
+                    assertContains(after,
+                            ChildHomeMaterializer.treeDigest(homes.destUnit()),
+                            "describing the tree that is actually there");
+
+                    // And the re-baseline restored the ability to fast-forward
+                    // rather than merely silencing the message.
+                    write(homes.sourceUnit().resolve("SKILL.md"), "SOURCE V2\n");
+                    assertEquals(SyncStatus.UPDATED, only(sync(homes, false, false)).status(),
+                            "a re-baselined unit fast-forwards again");
                 })
 
                 .test("a unit only the source has arrives; one only the destination has is reported", () -> {
@@ -859,6 +968,12 @@ public final class HomeSyncTest {
         Path sourceUnit() { return source.skillDir(UNIT); }
 
         Path destUnit() { return dest.skillDir(UNIT); }
+    }
+
+    /** The destination home's materialization record for {@link #UNIT}. */
+    private static Path recordFile(Homes homes) {
+        return new ChildHomeMaterializer(homes.source(), homes.dest())
+                .recordFile(UNIT, UnitKind.SKILL);
     }
 
     private static SkillStore store(Path root) throws IOException {

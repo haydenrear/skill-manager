@@ -242,6 +242,19 @@ public final class SyncUseCase {
         List<String> forceScriptUnits = forceScriptUnitNames(targets);
         effects.add(new SkillEffect.BuildInstallPlan(
                 null, options.forceScripts(), forceScriptUnits, options.withMcp()));
+        // Sync had no audit trail at all until issue #45 — measured, the log's
+        // last entry was 8 days old while a sync rewrote 101 files in that home,
+        // which is precisely the situation an audit log exists for. Install's
+        // treatment is this same effect in this same position (after the plan is
+        // built, before the plan runs), so it is reused rather than respelled.
+        //
+        // The plan alone would not have fixed it: sync's plan comes from
+        // BuildResolveGraphFromUnmetReferences, so a steady-state sync plans
+        // zero actions and would still have logged nothing while re-merging
+        // every unit. auditTargets() names the per-target work — the SyncGit /
+        // SyncFromLocalDir / SyncDocRepo / SyncHarness effects stage 1 ran —
+        // from the one place that already knows the targets.
+        effects.add(new SkillEffect.RecordAuditPlan("sync", auditTargets(targets)));
         effects.add(new SkillEffect.RecordSourceProvenance());
         effects.add(new SkillEffect.RunInstallPlan(gw));
         // Cleanup the resolver's staged temp dirs no matter how the
@@ -284,6 +297,29 @@ public final class SyncUseCase {
         Program<?> p = new Program<>("sync-stage2-" + UUID.randomUUID(), effects, receipts -> null);
         for (SkillEffect cleanup : alwaysAfter) p = p.withFinally(cleanup);
         return p;
+    }
+
+    /**
+     * One audit line per sync target, naming the unit AND which arm touched it.
+     *
+     * <p>"Which arm" is the part that made the missing trail expensive: a unit
+     * re-merged from its git trunk, one overwritten from a local directory, and
+     * one whose doc-repo projections were reapplied are three different sets of
+     * bytes moving, and an entry that named only the unit could not tell an
+     * investigator which one happened.
+     */
+    private static List<String> auditTargets(List<Target> targets) {
+        List<String> out = new ArrayList<>();
+        for (Target t : targets == null ? List.<Target>of() : targets) {
+            out.add(switch (t) {
+                case Target.Git g -> "sync git " + g.skillName();
+                case Target.FromDir f -> "sync from-dir " + f.skillName() + " <- " + f.dir();
+                case Target.DocRepo d -> "sync doc-repo " + d.skillName()
+                        + (d.force() ? " --force" : "");
+                case Target.Harness h -> "sync harness " + h.skillName() + " #" + h.instanceId();
+            });
+        }
+        return out;
     }
 
     private static List<String> projectSyncUnitNames(List<Target> targets) {

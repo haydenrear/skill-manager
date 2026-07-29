@@ -220,6 +220,8 @@ public class RunTests {
         failures += dev.skillmanager.store.HomeDriftGateTest.run();
         failures += dev.skillmanager.store.HomeSyncTest.run();
         failures += dev.skillmanager.store.HomeSyncMergeTest.run();
+        failures += dev.skillmanager.store.HomeSyncGitUnitTest.run();
+        failures += dev.skillmanager.plan.AuditTrailTest.run();
         failures += dev.skillmanager.mcp.SharedGatewayTest.run();
         failures += dev.skillmanager.project.GeminiHomeParityTest.run();
         failures += BindingsTest.run();
