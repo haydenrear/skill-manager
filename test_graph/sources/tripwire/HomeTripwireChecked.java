@@ -116,19 +116,20 @@ public class HomeTripwireChecked {
             // will sometimes be red for reasons no one caused, while nothing on
             // this machine registers a git worktree inside the operator's home
             // by accident. When both go red, this one says which finding it is.
-            List<String> newRegistrations =
-                    TripwireSupport.newWorktreeRegistrations(metadataDiff);
-            boolean noGitWorktreeWasRegisteredUnderAWatchedHome = newRegistrations.isEmpty();
+            List<String> registrationChanges =
+                    TripwireSupport.worktreeRegistrationChanges(metadataDiff);
+            boolean noGitWorktreeRegistrationChangedUnderAWatchedHome =
+                    registrationChanges.isEmpty();
 
             boolean pass = theBaselinesWereActuallyRead && theRealHomesAreUnchanged
                     && theWatchedContentSurfacesAreByteIdentical && thisGraphsProbeUnitIsInNoRealHome
-                    && noGitWorktreeWasRegisteredUnderAWatchedHome;
+                    && noGitWorktreeRegistrationChangedUnderAWatchedHome;
 
             return (pass
                     ? NodeResult.pass("home.tripwire.checked")
                     : NodeResult.fail("home.tripwire.checked",
                             "leaked=" + leaked
-                                    + " newWorktreeRegistrations=" + newRegistrations
+                                    + " worktreeRegistrationChanges=" + registrationChanges
                                     + " metadataDiff=" + elide(metadataDiff)
                                     + " contentDiff=" + elide(contentDiff)))
                     .assertion("the_baselines_were_actually_read", theBaselinesWereActuallyRead)
@@ -137,8 +138,8 @@ public class HomeTripwireChecked {
                             theWatchedContentSurfacesAreByteIdentical)
                     .assertion("this_graphs_probe_unit_is_in_no_real_home",
                             thisGraphsProbeUnitIsInNoRealHome)
-                    .assertion("no_git_worktree_was_registered_under_a_watched_home",
-                            noGitWorktreeWasRegisteredUnderAWatchedHome)
+                    .assertion("no_git_worktree_registration_changed_under_a_watched_home",
+                            noGitWorktreeRegistrationChangedUnderAWatchedHome)
                     .metric("metadataDifferences", metadataDiff.size())
                     .metric("contentDifferences", contentDiff.size())
                     .metric("metadataEntries", afterMetadata.size())
@@ -150,7 +151,7 @@ public class HomeTripwireChecked {
                     // nothing, and the number says so out loud.
                     .metric("gitDirectoriesWatched",
                             TripwireSupport.gitDirectoriesWatched(afterMetadata))
-                    .metric("newWorktreeRegistrations", newRegistrations.size());
+                    .metric("worktreeRegistrationChanges", registrationChanges.size());
         });
     }
 
@@ -161,7 +162,7 @@ public class HomeTripwireChecked {
                 .assertion("the_real_agent_homes_are_unchanged", false)
                 .assertion("the_watched_content_surfaces_are_byte_identical", false)
                 .assertion("this_graphs_probe_unit_is_in_no_real_home", false)
-                .assertion("no_git_worktree_was_registered_under_a_watched_home", false);
+                .assertion("no_git_worktree_registration_changed_under_a_watched_home", false);
     }
 
     private static String elide(List<String> lines) {

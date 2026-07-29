@@ -10,8 +10,8 @@ import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.nio.file.attribute.FileTime;
+import java.nio.file.attribute.PosixFilePermissions;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 
 /**
@@ -84,7 +84,7 @@ public class HomeTripwireSensitive {
      *
      * <p>The third field runs the decoy diff through the very function
      * {@code home.tripwire.checked} calls
-     * ({@link TripwireSupport#newWorktreeRegistrations}). Without it, that
+     * ({@link TripwireSupport#worktreeRegistrationChanges}). Without it, that
      * node's narrow assertion would have no falsification anywhere: it can only
      * fire on a real registration appearing in the operator's home mid-run, and
      * planting one there is exactly what this epic's standing constraint
@@ -109,6 +109,8 @@ public class HomeTripwireSensitive {
             Seen deletion;
             Seen plantedWorktree;
             Seen gitChurn;
+            Seen removedWorktree;
+            boolean unreadableIsNotReportedAsZero;
             try {
                 // Control: a decoy nothing was done to.
                 control = probe(home -> { });
@@ -185,6 +187,27 @@ public class HomeTripwireSensitive {
                     Files.writeString(git.resolve("objects/ab/cdef0123"), "a new loose object\n");
                     Files.delete(git.resolve("packed-refs"));
                 });
+
+                // M8 -- the other direction. `git worktree remove`, and
+                // `git worktree prune` clearing exactly the #47 residue, are
+                // writes into the watched home too; a registration quietly
+                // leaving the operator's home says as much about who is writing
+                // there as one arriving. The broad metadata diff saw both from
+                // the start and the named assertion saw only arrivals, which
+                // made its name wider than its filter.
+                removedWorktree = probe(home -> deleteTree(
+                        home.resolve(".skill-manager/skills/unit-a/.git/worktrees/existing-1")));
+
+                // M9 -- not a detection mutation but a VACUITY one, and it is
+                // about this node's own new code. `worktrees=N` is counted by
+                // listing a directory, and a listing that fails is the §7.4
+                // shape: a zero that means "could not look" reported as "looked
+                // and found nothing". Reported that way, a home whose
+                // registrations became unreadable would satisfy "no
+                // registration changed" forever. So the unreadable case gets its
+                // own value, and this asserts on the SNAPSHOT TEXT rather than
+                // on a diff, because the claim is about what the line says.
+                unreadableIsNotReportedAsZero = unreadableIsNotZero();
             } catch (Exception e) {
                 return NodeResult.error("home.tripwire.sensitive", e);
             }
@@ -201,6 +224,8 @@ public class HomeTripwireSensitive {
                             && plantedWorktree.registrations() == 1;
             boolean ordinaryGitChurnIsNotDetected = !gitChurn.metadata() && !gitChurn.content()
                     && gitChurn.registrations() == 0;
+            boolean aRemovedWorktreeRegistrationIsDetected =
+                    removedWorktree.metadata() && removedWorktree.registrations() == 1;
 
             if (!anUnmutatedDecoyReportsClean) failures.add("control decoy was not clean");
             if (!aPlantedProjectionIsDetected) failures.add("M1 planted projection not detected");
@@ -217,6 +242,13 @@ public class HomeTripwireSensitive {
             if (!ordinaryGitChurnIsNotDetected) {
                 failures.add("M7 ordinary git churn fired the tripwire — the prune it replaced "
                         + "existed for this reason");
+            }
+            if (!aRemovedWorktreeRegistrationIsDetected) {
+                failures.add("M8 a REMOVED worktree registration not detected");
+            }
+            if (!unreadableIsNotReportedAsZero) {
+                failures.add("M9 an unreadable worktrees/ was reported as worktrees=0, or the "
+                        + "fixture could not make it unreadable (running as root?)");
             }
 
             boolean pass = failures.isEmpty();
@@ -236,7 +268,11 @@ public class HomeTripwireSensitive {
                             aPlantedWorktreeRegistrationIsDetected)
                     .assertion("ordinary_git_churn_inside_a_watched_home_is_not_detected",
                             ordinaryGitChurnIsNotDetected)
-                    .metric("mutationsPlanted", 7);
+                    .assertion("a_removed_git_worktree_registration_is_detected",
+                            aRemovedWorktreeRegistrationIsDetected)
+                    .assertion("an_unreadable_worktrees_directory_is_not_reported_as_zero",
+                            unreadableIsNotReportedAsZero)
+                    .metric("mutationsPlanted", 9);
         });
     }
 
@@ -255,7 +291,36 @@ public class HomeTripwireSensitive {
             return new Seen(
                     !metadataDiff.isEmpty(),
                     !TripwireSupport.difference(contentBefore, content(decoy)).isEmpty(),
-                    TripwireSupport.newWorktreeRegistrations(metadataDiff).size());
+                    TripwireSupport.worktreeRegistrationChanges(metadataDiff).size());
+        } finally {
+            deleteTree(decoy);
+        }
+    }
+
+    /**
+     * Make a decoy's {@code .git/worktrees} unlistable and report whether the
+     * snapshot says so instead of saying zero.
+     *
+     * <p>Returns false if the directory could still be listed after the chmod —
+     * that is a broken fixture, not a passing check, and the failure message
+     * says which it was.
+     */
+    private static boolean unreadableIsNotZero() throws Exception {
+        Path decoy = Files.createTempDirectory("tripwire-decoy-");
+        try {
+            build(decoy);
+            Path worktrees = decoy.resolve(".skill-manager/skills/unit-a/.git/worktrees");
+            Files.setPosixFilePermissions(worktrees, PosixFilePermissions.fromString("---------"));
+            try (var probe = Files.list(worktrees)) {
+                probe.count();
+                return false;   // still listable: the fixture proved nothing
+            } catch (java.io.IOException expected) {
+                // good — now ask what the snapshot says about it
+            }
+            List<String> after = metadata(decoy);
+            boolean saysZero = after.stream().anyMatch(l -> l.endsWith("\tworktrees=0"));
+            boolean saysUnreadable = after.stream().anyMatch(l -> l.contains("\tworktrees=unreadable:"));
+            return saysUnreadable && !saysZero;
         } finally {
             deleteTree(decoy);
         }
@@ -289,6 +354,13 @@ public class HomeTripwireSensitive {
         Files.writeString(git.resolve("refs/heads/main"), "0".repeat(40) + "\n");
         Files.writeString(git.resolve("logs/HEAD"), "0".repeat(40) + " init\n");
         Files.writeString(git.resolve("objects/00/11223344"), "a loose object\n");
+        // ONE pre-existing registration. Without it a removal has nothing to
+        // remove and only the appearing direction could be mutated at all --
+        // which is how the filter came to look for `+` lines alone.
+        Path existing = git.resolve("worktrees/existing-1");
+        Files.createDirectories(existing);
+        Files.writeString(existing.resolve("gitdir"), "/private/tmp/existing-1/.git\n");
+        Files.writeString(existing.resolve("HEAD"), "0".repeat(40) + "\n");
 
         Files.createSymbolicLink(
                 home.resolve(".skill-manager/skills/linked-unit"), Path.of("../../elsewhere/unit"));
@@ -313,18 +385,35 @@ public class HomeTripwireSensitive {
         return TripwireSupport.collectAll(roots, home, TripwireSupport.Fidelity.CONTENT);
     }
 
+    /**
+     * Recursive delete that RESTORES permissions on the way down.
+     *
+     * <p>{@code Files.walk} cannot descend through the directory M9 chmods to
+     * {@code 000}, so the previous version aborted there and leaked a temp tree
+     * per run. Chmodding each directory back before listing it keeps the decoys
+     * disposable, which is the property the whole node rests on — a mutation
+     * that shares a decoy with another one stops being an isolated experiment.
+     */
     private static void deleteTree(Path root) {
         if (!Files.exists(root, LinkOption.NOFOLLOW_LINKS)) return;
-        try (var walk = Files.walk(root)) {
-            walk.sorted(Comparator.reverseOrder()).forEach(p -> {
+        try {
+            if (Files.isDirectory(root, LinkOption.NOFOLLOW_LINKS)) {
                 try {
-                    Files.deleteIfExists(p);
+                    Files.setPosixFilePermissions(root, PosixFilePermissions.fromString("rwx------"));
                 } catch (Exception ignored) {
-                    // best effort; a leftover temp dir is not a finding
+                    // non-POSIX or already fine; the list below will say
                 }
-            });
+                List<Path> children;
+                try (var entries = Files.list(root)) {
+                    children = entries.toList();
+                } catch (Exception e) {
+                    children = List.of();
+                }
+                for (Path child : children) deleteTree(child);
+            }
+            Files.deleteIfExists(root);
         } catch (Exception ignored) {
-            // ditto
+            // best effort; a leftover temp dir is not a finding
         }
     }
 }

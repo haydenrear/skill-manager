@@ -788,6 +788,58 @@ public final class HomeSyncTest {
                             "the worktree's version is still in the worktree");
                 })
 
+                .test("close-out names a runnable skill-manager, and still names the conflicts", () -> {
+                    // Two halves of one remedy, and the reason to assert both is
+                    // that they fail independently.
+                    //
+                    // HEAD: every remedy used to begin with the literal word
+                    // `skill-manager`, which only runs if the first one on the
+                    // operator's PATH understands the command. On the machine
+                    // this was found on it does not -- `command -v skill-manager`
+                    // is the released 0.19.2 with no `home` subcommand at all --
+                    // so a correct gate printed advice that exits 2.
+                    //
+                    // TAIL: the conflicted-file list. A caller that "fixed" the
+                    // head by substituting a token over the rendered string
+                    // rewrote `skill-manager.toml` too -- the manifest every unit
+                    // has, so the most likely conflicted file there is -- and
+                    // pointed the operator at a file in a different repository.
+                    // A check that read only the first token could not see it.
+                    Homes homes = Homes.create("closeout-remedy");
+                    write(homes.sourceUnit().resolve("SKILL.md"), "V1\n");
+                    write(homes.sourceUnit().resolve("skill-manager.toml"), "[skill]\nname = \"x\"\n");
+                    sync(homes, false, false);
+                    write(homes.sourceUnit().resolve("skill-manager.toml"), "[skill]\nname = \"wt\"\n");
+                    write(homes.destUnit().resolve("skill-manager.toml"), "[skill]\nname = \"proj\"\n");
+
+                    // The home carries its own CLI, which is what a bootstrapped
+                    // home has and what HomeDescriptor.resolveCli prefers over
+                    // PATH. Written here rather than assumed, so this asserts a
+                    // path the test itself put there instead of whatever the
+                    // machine happens to have installed.
+                    Path shim = homes.source().root().resolve("bin/cli/skill-manager");
+                    Files.createDirectories(shim.getParent());
+                    write(shim, "#!/bin/sh\nexit 0\n");
+                    Files.setPosixFilePermissions(shim, EnumSet.of(
+                            PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_EXECUTE,
+                            PosixFilePermission.OWNER_WRITE));
+
+                    HomeCloseOut.Verdict verdict = HomeCloseOut.inspect(homes.source(), homes.dest());
+                    assertFalse(verdict.safe(), "the conflicted manifest blocks the teardown");
+                    String remedy = verdict.blockers().get(0).remedy();
+
+                    assertTrue(remedy.startsWith(shim.toAbsolutePath().normalize().toString() + " "),
+                            "the remedy begins with the home's own CLI, not a bare token: " + remedy);
+                    assertFalse(remedy.startsWith("skill-manager "),
+                            "the remedy does not begin with the bare token: " + remedy);
+                    assertTrue(remedy.contains("(then resolve: "),
+                            "the remedy still carries its conflicted-file tail: " + remedy);
+                    assertTrue(remedy.contains("skill-manager.toml"),
+                            "the tail names the conflicted manifest: " + remedy);
+                    assertFalse(remedy.contains("/skill-manager.toml"),
+                            "the tail names it by its in-unit path, not an absolute one: " + remedy);
+                })
+
                 .runAll();
     }
 

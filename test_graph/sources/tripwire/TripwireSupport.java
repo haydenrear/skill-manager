@@ -222,9 +222,25 @@ final class TripwireSupport {
             return;
         }
         Path worktrees = gitPath.resolve("worktrees");
-        List<Path> registered = Files.isDirectory(worktrees, LinkOption.NOFOLLOW_LINKS)
-                ? listSorted(worktrees)
-                : List.of();
+        if (!Files.isDirectory(worktrees, LinkOption.NOFOLLOW_LINKS)) {
+            out.add(GIT_MARK + "\t" + rel + "\tworktrees=0");
+            return;
+        }
+        List<Path> registered;
+        try (var entries = Files.list(worktrees)) {
+            registered = entries.sorted(Comparator.comparing(p -> p.getFileName().toString()))
+                    .toList();
+        } catch (IOException e) {
+            // NOT "worktrees=0". A directory that could not be listed is the
+            // §7.4 shape exactly — a zero meaning "could not look" reported as
+            // "looked and found nothing" — and this one is load-bearing, because
+            // "no new registration appeared" would then be true of a home whose
+            // registrations had become unreadable. It is recorded as its own
+            // value, so the state is visible in the snapshot AND a transition
+            // into or out of it is a difference like any other.
+            out.add(GIT_MARK + "\t" + rel + "\tworktrees=unreadable:" + e.getClass().getSimpleName());
+            return;
+        }
         out.add(GIT_MARK + "\t" + rel + "\tworktrees=" + registered.size());
         for (Path entry : registered) {
             out.add(GIT_MARK + "\t" + rel + "/worktrees/" + entry.getFileName());
@@ -232,19 +248,32 @@ final class TripwireSupport {
     }
 
     /**
-     * The worktree registrations that APPEARED between the two sides of a
-     * {@link #difference}.
+     * The worktree registrations that CHANGED between the two sides of a
+     * {@link #difference} — appeared, marked {@code +}, and vanished, marked
+     * {@code -}.
+     *
+     * <p>Both directions, and that is a correction rather than generosity. The
+     * first version of this filtered {@code +} only, which made the assertion it
+     * feeds narrower than its own name and narrower than the claim made for it:
+     * {@code git worktree remove} and {@code git worktree prune} are writes into
+     * the watched home too, and a residue quietly disappearing from the
+     * operator's home is exactly as much a fact about who is writing there as
+     * one appearing. The broad metadata diff saw both all along; the named
+     * assertion saw one.
      *
      * <p>Narrower than the whole metadata diff on purpose, and for the reason
      * {@code HomeTripwireChecked} keeps a narrow assertion beside a broad one: a
      * concurrent agent session moves metadata lines all the time, but nothing on
-     * this machine registers a git worktree inside the operator's home by
-     * accident. This one is attributable.
+     * this machine registers or unregisters a git worktree inside the operator's
+     * home by accident. This one is attributable.
      */
-    static List<String> newWorktreeRegistrations(List<String> diff) {
+    static List<String> worktreeRegistrationChanges(List<String> diff) {
         List<String> out = new ArrayList<>();
         for (String line : diff) {
-            if (line.startsWith("+" + GIT_MARK + "\t") && line.contains("/worktrees/")) out.add(line);
+            if (!line.contains("/worktrees/")) continue;
+            if (line.startsWith("+" + GIT_MARK + "\t") || line.startsWith("-" + GIT_MARK + "\t")) {
+                out.add(line);
+            }
         }
         return out;
     }

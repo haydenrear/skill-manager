@@ -131,7 +131,7 @@ public final class HomeCloseOut {
             if (!dirtyCheckouts.contains(unit.label())) continue;
             if (blockers.stream().anyMatch(b -> b.label().equals(unit.label()))) continue;
             blockers.add(new Blocker(unit,
-                    "skill-manager unit publish " + unit.unitName()
+                    cliInvocation(homeRoot) + " unit publish " + unit.unitName()
                             + "  (a git checkout with unpushed work; a file copy cannot carry it)"));
         }
         return new Verdict(homeRoot, intoRoot, blockers.isEmpty(), blockers, report.units());
@@ -153,13 +153,14 @@ public final class HomeCloseOut {
      * overwriting.
      */
     private static String remedyFor(UnitSync unit, Path home, Path into) {
-        String sync = "skill-manager home sync --from " + home + " --to " + into;
+        String cli = cliInvocation(home);
+        String sync = cli + " home sync --from " + home + " --to " + into;
         return switch (unit.status()) {
             case NEW, UPDATED -> sync;
             case MERGED -> sync + " --merge";
             case CONFLICTED -> sync + " --merge  (then resolve: "
                     + String.join(", ", unit.conflicts()) + ")";
-            case HELD_BACK -> "skill-manager unit publish " + unit.unitName()
+            case HELD_BACK -> cli + " unit publish " + unit.unitName()
                     + ", or " + sync + " --merge";
             // A linked unit is the one case where the gate cannot say whether
             // anything would be lost, because it cannot say whose bytes they
@@ -172,6 +173,56 @@ public final class HomeCloseOut {
                     + "  (" + unit.detail() + ")";
             case UNCHANGED, REMOVED_UPSTREAM -> null;
         };
+    }
+
+    /**
+     * How a remedy names the {@code skill-manager} to run.
+     *
+     * <h2>Why a bare token was wrong, and why fixing it HERE</h2>
+     *
+     * <p>Every remedy used to begin with the literal word {@code skill-manager},
+     * which is only runnable if the {@code skill-manager} first on the
+     * operator's {@code PATH} understands the command. Measured on the
+     * development machine it does not: {@code command -v skill-manager} is the
+     * released 0.19.2, which has no {@code home} subcommand at all, so a remedy
+     * copy-pasted verbatim exits 2 — from a gate that was working correctly and
+     * printing correct advice. The gate's whole contract is "here is the exact
+     * command that clears this blocker", and a command that cannot run is not
+     * that.
+     *
+     * <p>It is fixed at this one site because there are two consumers and they
+     * are not equally visible: {@code --json} (which {@code close-change.sh}
+     * renders) and {@link #render}, the human path {@code home close-out} prints
+     * directly. A substitution in the shell script fixed the first and left the
+     * second — the documented human invocation still printed the un-runnable
+     * spelling. A guard at N call sites is N chances to miss one, so the answer
+     * belongs where the string is built.
+     *
+     * <p>{@link dev.skillmanager.store.HomeDescriptor#resolveCli} is that
+     * answer, reused rather than re-derived: it is already the definition of
+     * "which build goes with this home" for the launcher shims and the
+     * descriptor, and it honours {@code SKILL_MANAGER_CLI} first — which is how
+     * a caller that has ALREADY established capability (close-change.sh probes
+     * the help text for {@code --into}, because 0.19.2 answers unknown
+     * subcommands with top-level usage and exit 0) passes that answer in rather
+     * than having it guessed again.
+     *
+     * <p>The worktree home is the store root asked about, not {@code --into}:
+     * {@code <home>/bin/cli/skill-manager} names the build the home was created
+     * with, which is the build that understands its layout.
+     *
+     * <p>Falls back to the bare token when nothing resolves. That is strictly
+     * better than an invented path: the operator sees the same string as
+     * before and can fix their PATH, whereas a plausible-looking wrong absolute
+     * path fails confusingly. Same reasoning as {@code resolveCli} returning
+     * null rather than a guess.
+     */
+    private static String cliInvocation(Path home) {
+        Path cli = HomeDescriptor.resolveCli(home);
+        if (cli == null) return "skill-manager";
+        String path = cli.toString();
+        // A path with a space in it has to survive being pasted into a shell.
+        return path.indexOf(' ') < 0 ? path : "'" + path.replace("'", "'\\''") + "'";
     }
 
     /** Human-readable verdict lines, shared by the CLI and anything that logs one. */
