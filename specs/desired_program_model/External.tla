@@ -128,6 +128,35 @@ CONSTANTS
   \*      while the ticket's work stops existing anywhere.
   ChildRefreshProvenance,
 
+  \* What a reconciliation may do to a destination that has NO materialization
+  \* record at all. Its own axis, and the axis had to be added before the defect
+  \* was expressible: Init used to hand EVERY tier a clone-time baseline, which
+  \* is what `home clone` leaves behind and is exactly what the one destination
+  \* an operator actually has does NOT have. A root home is INSTALLED into,
+  \* never materialized into. The model asserted the problem away.
+  \*
+  \* SOURCE_WITNESSED    -- today, since #43: the destination's bytes may be
+  \*      replaced wholesale when the SOURCE can be shown to have passed through
+  \*      them. Different evidence, same rule -- the destroyed bytes are bytes
+  \*      the source held. In the code that is the source's own record's
+  \*      contentDigest ("the bytes this reconcile wrote HERE"), compared against
+  \*      the destination's current tree; here it is sync_history, which is the
+  \*      same claim without the digest.
+  \* NEVER_DISPOSABLE    -- before #43: no record, no disposal, ever. SAFE and
+  \*      USELESS, and that combination is why it needs its own axis rather than
+  \*      a counterexample: it violates nothing, and it made
+  \*      `home sync --from <project> --to ~/.skill-manager` report every shared
+  \*      unit held-back and exit 0 having reconciled nothing. 6, 7 and 5 units
+  \*      on three real repositories. A model can only say this one is wrong by
+  \*      being able to say the other two are different.
+  \* ALWAYS_DISPOSABLE   -- the tempting fix, and the dangerous one: treat a
+  \*      record-less destination as pristine, or ADOPT a baseline into it, which
+  \*      is the same thing written down. Both assert that two homes shared bytes
+  \*      they may never have shared. The counterexample is a third home's work
+  \*      sitting in the root home, which the pushing project has never seen.
+  \*      External_regression_blindadoption.cfg.
+  RecordlessDestinationPolicy,
+
   \* ------------------------------------------------ the two sync dimensions
   \* These are not policies. They are the two axes the sync slice is
   \* DECOMPOSED along, and they are constants so a config can pick one axis and
@@ -315,7 +344,12 @@ MergedOrigin  == "merged"    \* a three-way result; a copy of nothing
 \* entitlement be stated in the same terms as a reconcile's -- see
 \* RefreshProjectChildHomeFromStore and ChildRefreshProvenance.
 StoreOrigin   == "store"
-Origins == {AdoptedOrigin, MergedOrigin, StoreOrigin} \cup SyncHomes
+\* A home that was INSTALLED into rather than materialized into. It has the
+\* bytes and no provenance whatever -- not a clone-time baseline, not a source,
+\* nothing. This is what the operator's own root home is, and modelling every
+\* tier as though it had a baseline is what made #43 unsayable here.
+NoRecordOrigin == "norecord"
+Origins == {AdoptedOrigin, MergedOrigin, StoreOrigin, NoRecordOrigin} \cup SyncHomes
 
 \* Origins a refresh from the parent store may destroy. The store's own bytes
 \* (however this home came to hold them) and nothing else: an origin naming a
@@ -352,6 +386,12 @@ SyncRecords == [entries: [SyncPaths -> RecordedContents], origin: Origins]
 InitialSyncRecord ==
   [entries |-> [p \in SyncPaths |-> InstalledBytes], origin |-> AdoptedOrigin]
 
+\* The record an installed home has: none. Every path claims NoBaseline, which
+\* already means "this record makes no statement about this path" everywhere
+\* else in this module, so nothing had to learn a new absence.
+RecordlessSyncRecord ==
+  [entries |-> [p \in SyncPaths |-> NoBaseline], origin |-> NoRecordOrigin]
+
 \* --------------------------------------------------------------- policies
 HoldsBackOrMerges      == HomeSyncPolicy = "HOLD_BACK_OR_MERGE"
 MergeIsThreeWay        == MergeAlgebra = "THREE_WAY"
@@ -376,9 +416,17 @@ Init ==
   /\ source_snapshot = NoSnapshot
   \* Every tier starts as an unmodified copy of the same installed unit, with a
   \* clone-time baseline and no provenance -- which is exactly the state
-  \* ChildHomeMaterializer.adoptUnrecordedUnits leaves a freshly cloned home in.
+  \* ChildHomeMaterializer.recordCloneBaselines leaves a freshly cloned home in.
+  \*
+  \* EXCEPT THE ROOT, and that exception is #43. A root home is installed into,
+  \* never materialized into, so it carries no record at all. Handing it one
+  \* here made every tier look like a clone and made the one destination an
+  \* operator actually has unrepresentable -- so a reconciliation that could
+  \* write nothing into it was a behaviour this model could not distinguish
+  \* from a correct one.
   /\ sync_body = [h \in SyncHomes |-> [p \in SyncPaths |-> InstalledBytes]]
-  /\ sync_record = [h \in SyncHomes |-> InitialSyncRecord]
+  /\ sync_record = [h \in SyncHomes |->
+        IF h = RootHome THEN RecordlessSyncRecord ELSE InitialSyncRecord]
   /\ sync_history = {<<h, p, InstalledBytes>> : h \in SyncHomes, p \in SyncPaths}
   /\ sync_unsound = {}
   /\ sync_gone = [torn_down |-> FALSE,
@@ -513,7 +561,16 @@ BaseIsShared(from, to) == RecordIsAboutSource(from, to)
 \* for the wholesale-copy path, and what makes a write to it an overwrite of
 \* something somebody did here. Distinct from DestOnBaseAt below, which is the
 \* merge algebra's `d = b` and is relative to whichever base was chosen.
-DestMovedAt(to, p)       == sync_body[to][p]   # sync_record[to].entries[p]
+\* Guarded by `# NoBaseline` for the same reason
+\* EveryDivergenceFromARecordIsAnEditMadeInThatHome is: a record that declines
+\* to claim a path makes no statement to have moved AWAY from, and reading the
+\* absence of a claim as a claim of "different" would make every path of an
+\* installed home permanently "moved" -- which would report the honest
+\* wholesale copy of #43 as an edit loss while the record-less home in fact has
+\* no recorded edit to lose. Where a record does claim a path this is unchanged.
+DestMovedAt(to, p) ==
+  /\ sync_record[to].entries[p] # NoBaseline
+  /\ sync_body[to][p] # sync_record[to].entries[p]
 DestOnBaseAt(from, to, p) == sync_body[to][p]  = BaseAt(from, to, p)
 SrcMovedAt(from, to, p)  == sync_body[from][p] # BaseAt(from, to, p)
 
@@ -542,7 +599,25 @@ DestUnmoved(to) == \A p \in SyncPaths: ~DestMovedAt(to, p)
 \* the project home holds a fast-forwarded copy of a worktree that has since
 \* been torn down, those bytes exist nowhere else, and nothing about the
 \* destination's own digest can say so.
+\* A destination that was installed into rather than materialized into. It has
+\* no record, so nothing about IT can say whether its bytes are disposable.
+RecordlessDestination(to) == sync_record[to].origin = NoRecordOrigin
+\* The evidence that replaces it: the SOURCE has passed through the bytes the
+\* destination is standing on now, on every path. Then the bytes a wholesale
+\* copy would destroy are bytes the source held -- the baseline rule met by the
+\* source's own history rather than by the destination's record.
+SourceHeldDestBytes(from, to) ==
+  \A p \in SyncPaths: <<from, p, sync_body[to][p]>> \in sync_history
+
+RecordlessCopyAllowed(from, to) ==
+  CASE RecordlessDestinationPolicy = "NEVER_DISPOSABLE"  -> FALSE
+    [] RecordlessDestinationPolicy = "ALWAYS_DISPOSABLE" -> TRUE
+    [] OTHER -> SourceHeldDestBytes(from, to)
+
 WholesaleCopyAllowed(from, to) ==
+  IF RecordlessDestination(to)
+  THEN RecordlessCopyAllowed(from, to)
+  ELSE
   /\ DestUnmoved(to)
   /\ CASE ReconcileProvenance = "IGNORED"         -> TRUE
        [] ReconcileProvenance = "MERGE_KIND_ONLY" ->

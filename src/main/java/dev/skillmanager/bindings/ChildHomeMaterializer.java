@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import dev.skillmanager.model.UnitKind;
 import dev.skillmanager.shared.util.Fs;
+import dev.skillmanager.shared.util.Rederivable;
 import dev.skillmanager.source.GitOps;
 import dev.skillmanager.store.SkillStore;
 import dev.skillmanager.util.Log;
@@ -68,6 +69,29 @@ import java.util.UUID;
  * tree. A raw digest would hash a store link as its target string, so an
  * upgrade of the unit it points at would never be noticed and the child copy
  * would keep stale dereferenced content forever.
+ *
+ * <h2 id="unit-content">What counts as unit content</h2>
+ *
+ * <p>Everything below decides who may destroy which bytes. That question only
+ * makes sense about bytes somebody wrote, so the walkers behind every digest
+ * and every copy skip {@linkplain Rederivable re-derivable build output} —
+ * {@code .gradle/}, {@code __pycache__/}, {@code build/}, {@code node_modules/},
+ * {@code .venv/} and the rest — on BOTH sides at once. A path that is skipped
+ * is invisible to this class in every direction: not hashed, so it cannot make
+ * a unit look edited; not copied, so it cannot travel between homes; and not
+ * deleted, because {@link #carryOverUnownedTrees} carries it across the swap.
+ *
+ * <p>Owning it on one side only is issue #41. {@code HomeCloner} had skipped
+ * these names inside a unit since the first clone and this class had not, so
+ * running {@code discover.py} once in a ticket worktree — the thing a worktree
+ * exists to do — moved the unit's digest, reported it {@code conflicted}, and
+ * printed a remedy naming {@code executionHistory.bin} as a file to resolve.
+ * Running that remedy verbatim exited 1 without clearing the gate, so the
+ * worktree could never be closed out.
+ *
+ * <p>{@code .git} is deliberately NOT skipped, and {@link Rederivable} says at
+ * length why: a unit whose agent committed work would otherwise read as
+ * unmodified and the next teardown would take the commits with it (issue #29).
  *
  * <h2>Reconciling two homes is the same operation</h2>
  *
@@ -807,6 +831,7 @@ public final class ChildHomeMaterializer {
             Path staged = stage(merged, name, kind);
             try {
                 Fingerprint stagedPrint = fingerprint(staged);
+                carryOverUnownedTrees(dest, staged);
                 swapIn(staged, dest);
                 // The written tree is the merged one; the BASELINE recorded
                 // against this source is the subset of paths these two homes
@@ -852,6 +877,7 @@ public final class ChildHomeMaterializer {
         Path staged = stage(view, name, kind);
         try {
             Fingerprint stagedPrint = fingerprint(staged);
+            carryOverUnownedTrees(dest, staged);
             swapIn(staged, dest);
             writeCopyRecord(name, kind, source, stagedPrint.digest(), src,
                     MaterializationRecord.COPIED);
@@ -1021,8 +1047,19 @@ public final class ChildHomeMaterializer {
     private static String holdBackReason(MaterializationRecord record, String baseline,
                                          boolean destUntouched, boolean recordIsAboutThisSource) {
         if (baseline == null) {
-            return "no usable materialization record, so its contents cannot be shown to be "
-                    + "disposable; re-run with --merge to reconcile it";
+            // Two different situations wore this one sentence until issue #43.
+            // A destination with no record of its own is the ORDINARY shape of
+            // an installed root home, not a suspicious one -- and it is now
+            // fast-forwarded whenever the SOURCE's record shows the source held
+            // exactly these bytes (Disposal.sourceHeldTheseBytes). Reaching
+            // here means that showing failed too, so the destination really is
+            // holding something neither home can account for, and saying which
+            // is the difference between a message an operator can act on and
+            // the one that made the upward sync look broken.
+            return "this home has no materialization record of its own and its current bytes are "
+                    + "not a state the source is on record as having held, so replacing them "
+                    + "could delete work that exists nowhere else; re-run with --merge to "
+                    + "reconcile it";
         }
         if (destUntouched && !recordIsAboutThisSource) {
             return "its content came from " + record.source() + ", which this source has never "
@@ -1314,22 +1351,21 @@ public final class ChildHomeMaterializer {
         String baseline = disposal.baseline();
 
         if (destIsDir && baseline != null) {
-            if (!disposal.destUntouched()) {
-                return heldBack(name, kind, dest);
-            }
-            if (sourceDigest.equals(record.sourceDigest())) {
-                return new UnitOutcome(name, kind, Status.UNCHANGED, dest,
-                        "already matches the parent store");
-            }
             if (!disposal.disposable()) {
-                // Pristine by its own record, and a copy of no store this pass
-                // can name. `home sync` leaves exactly this shape behind when a
-                // worktree merges its work up into a project home: the record
-                // then names the WORKTREE, and reading it as a licence to
-                // refresh from the parent store deletes that work while calling
-                // itself routine reconciliation. The dry seam this closes is
-                // `project resolve` / `project sync` interleaved with
-                // `home sync` — CHM-15.
+                // ONE test, three sentences. The conjunction is Disposal's, not
+                // this method's: `home sync` and `project resolve` read the same
+                // value or they eventually disagree about the units that matter,
+                // which is what CHM-15 was. What varies here is only which of
+                // the three ways it can fail the reader is looking at.
+                //
+                // The middle case is the CHM-15 shape itself: pristine by its
+                // own record, and a copy of no store this pass can name.
+                // `home sync` leaves exactly that behind when a worktree merges
+                // its work up into a project home — the record then names the
+                // WORKTREE, and reading it as a licence to refresh from the
+                // parent store deletes that work while calling itself routine
+                // reconciliation.
+                if (!disposal.destUntouched()) return heldBack(name, kind, dest);
                 return heldBack(name, kind, dest, disposal.mergeResult()
                         ? "the result of an earlier merge, so it is a wholesale copy of no home; "
                                 + "send it on with `skill-manager unit publish " + name + "` (or "
@@ -1339,15 +1375,32 @@ public final class ChildHomeMaterializer {
                                 + "nowhere else; send it on with `skill-manager unit publish "
                                 + name + "` (or `home sync`) first");
             }
+            // "The source has not moved since it wrote this record" is only a
+            // reason to do nothing when the destination is still standing on
+            // what that record describes. Reached with the destination moved —
+            // possible now that the SOURCE's record can license a refresh —
+            // this would report UNCHANGED over a stale tree.
+            if (disposal.destUntouched() && sourceDigest.equals(record.sourceDigest())) {
+                return new UnitOutcome(name, kind, Status.UNCHANGED, dest,
+                        "already matches the parent store");
+            }
         }
 
         Path staged = stage(view, name, kind);
         try {
             Fingerprint stagedPrint = fingerprint(staged);
-            if (destIsDir && baseline == null) {
+            if (destIsDir && baseline == null && !disposal.disposable()) {
                 // No trustworthy provenance. Adopt the directory only when it
                 // is exactly what we would have written; otherwise refuse,
                 // because we cannot tell an agent's edits from a stale copy.
+                //
+                // `!disposal.disposable()` is what routes past this: a child
+                // home with no record of its own, whose bytes the PARENT STORE
+                // is on record as having held, is disposable by the same
+                // baseline rule the reconcile applies -- and Disposal is
+                // deliberately the single reading of that rule, so this writer
+                // may not answer it differently from `home sync` (CHM-15 was
+                // exactly that divergence). Issue #43.
                 if (!stagedPrint.digest().equals(currentDigest)) {
                     return heldBack(name, kind, dest);
                 }
@@ -1356,6 +1409,7 @@ public final class ChildHomeMaterializer {
                 return new UnitOutcome(name, kind, Status.UNCHANGED, dest,
                         "adopted an existing identical copy");
             }
+            if (destIsDir) carryOverUnownedTrees(dest, staged);
             swapIn(staged, dest);
             writeCopyRecord(name, kind, source, stagedPrint.digest(), sourcePrint,
                     MaterializationRecord.COPIED);
@@ -1410,19 +1464,95 @@ public final class ChildHomeMaterializer {
      *                               see {@link #describesSource}
      * @param mergeResult            the destination's tree was produced by a
      *                               merge, so it is a wholesale copy of no home
+     * @param sourceHeldTheseBytes   the SOURCE's own record names the tree the
+     *                               destination is standing on now — the second
+     *                               showing, and the only one available against
+     *                               an installed home that has no record of its
+     *                               own. See {@link #sourceHeldTheseBytes}.
      * @param sourceRecord           the source home's own record, carried so the
      *                               merge base is chosen from the same reading
      */
     record Disposal(String baseline, boolean destUntouched, boolean recordIsAboutThisSource,
-                    boolean mergeResult, MaterializationRecord sourceRecord) {
+                    boolean mergeResult, boolean sourceHeldTheseBytes,
+                    MaterializationRecord sourceRecord) {
 
         /**
          * True only where the source can be shown to have passed through the
          * bytes now in the destination. Everything else holds back.
+         *
+         * <p>Two independent showings, and the rule is satisfied by either
+         * because the rule is about the SOURCE, not about which home wrote the
+         * evidence down:
+         *
+         * <ol>
+         *   <li>The destination's own record — it still holds what that record
+         *       says was written there, that record is evidence about this
+         *       source, and the tree is not a merge result.</li>
+         *   <li>{@link #sourceHeldTheseBytes} — the SOURCE's record says the
+         *       source once held exactly the tree the destination is standing
+         *       on now.</li>
+         * </ol>
          */
         boolean disposable() {
-            return destUntouched && recordIsAboutThisSource && !mergeResult;
+            return (destUntouched && recordIsAboutThisSource && !mergeResult)
+                    || sourceHeldTheseBytes;
         }
+    }
+
+    /**
+     * The second showing of the <a href="#baseline-rule">baseline rule</a>'s
+     * first decision: <b>the source's own record names the bytes the
+     * destination is standing on right now.</b>
+     *
+     * <h2>The no-op this exists to remove</h2>
+     *
+     * <p>A root home is <em>installed</em> into, never materialized into, so it
+     * carries no per-unit record at all. With only the destination-record
+     * showing available, {@code home sync --from <project> --to ~/.skill-manager}
+     * reported <em>every</em> shared unit {@code held-back} — "no usable
+     * materialization record, so its contents cannot be shown to be disposable"
+     * — and exited 0 having reconciled nothing. 6, 7 and 5 units on three real
+     * repositories. The documented upward sync was a silent no-op against the
+     * only destination an operator actually has, and the same sync against a
+     * throwaway root produced by {@code home clone} worked, because a clone
+     * records baselines and an installed home has none. Issue #43.
+     *
+     * <h2>Why this is not "adopting a baseline", which would be unsafe</h2>
+     *
+     * <p>Writing a baseline into the record-less destination — asserting that
+     * the two homes shared bytes they may never have shared — is the move this
+     * deliberately does NOT make. It would be a claim invented by the pass that
+     * needed it, it would persist, and the next reconcile in either direction
+     * would read it as licence. Nothing is written here. This is a question
+     * asked and answered from evidence already on disk, once, per pass.
+     *
+     * <p>{@code contentDigest} and not {@code sourceDigest}, and the difference
+     * is the whole safety argument. {@code contentDigest} is defined as "the
+     * bytes this reconcile wrote HERE" — into the source home — so the source
+     * demonstrably held them. {@code sourceDigest} is the tree the source was
+     * HANDED, which for a merge is a tree the source never held; reading that
+     * one would assert exactly the thing this class exists to stop asserting.
+     * It is also a whole-tree digest, which {@code entryDigests} is not:
+     * {@code entryDigests} is partial by design after a merge, so matching a
+     * destination tree against it would compare a full tree with a subset.
+     *
+     * <p>What it licenses: the reconcile may destroy the destination's bytes
+     * B. B is exactly what the source's record says the source was standing on
+     * when that record was written. So the destroyed bytes are bytes the source
+     * passed through — which is the rule, word for word, and the same standard
+     * the destination-record showing meets. Every hazardous shape stays
+     * blocked, because all of them make the destination hold something else:
+     * a THIRD home's work merged into the destination since, an edit made in
+     * the destination, or an upstream change — each moves the destination's
+     * digest off the source's recorded content and routes the unit back to
+     * held-back or to a conflict a human resolves.
+     */
+    private static boolean sourceHeldTheseBytes(MaterializationRecord sourceRecord,
+                                                String destDigest) {
+        if (sourceRecord == null || destDigest == null) return false;
+        if (!MaterializationMode.COPY.name().equals(sourceRecord.mode())) return false;
+        String held = sourceRecord.contentDigest();
+        return held != null && held.equals(destDigest);
     }
 
     /**
@@ -1438,6 +1568,7 @@ public final class ChildHomeMaterializer {
                 baseline != null && baseline.equals(destDigest),
                 describesSource(record, source, src, sourceRecord),
                 record != null && record.isMergeResult(),
+                sourceHeldTheseBytes(sourceRecord, destDigest),
                 sourceRecord);
     }
 
@@ -1623,6 +1754,90 @@ public final class ChildHomeMaterializer {
     private record ViewEntry(String rel, EntryKind kind, Path source, Path linkTarget,
                              boolean executable) {}
 
+    /**
+     * Whether a unit-relative path is something a reconcile does not own.
+     *
+     * <p>Asked at the top of BOTH walkers, so the answer is the same on the
+     * source side and the destination side by construction. A path that is
+     * unowned is invisible to this class in every direction at once: it is not
+     * fingerprinted (so it cannot make a unit look edited), not copied (so it
+     * cannot travel between homes), and not destroyed (see
+     * {@link #carryOverUnownedTrees}). Owning it on one side only is what
+     * produced issue #41 — the cloner skipped {@code .gradle} inside a unit
+     * while the reconcile hashed it, so one run of {@code discover.py} in a
+     * ticket worktree made {@code home close-out} unsatisfiable: the unit came
+     * back {@code conflicted}, the printed remedy named
+     * {@code executionHistory.bin} as a file to "resolve", running that remedy
+     * verbatim exited 1, and {@code home sync --merge} then reported nothing
+     * was written.
+     *
+     * <p>The list is {@link Rederivable}, which is also what {@code HomeCloner}
+     * reads, and its javadoc is where the reasoning lives — including the
+     * loudest part: <b>{@code .git} is not in it, and adding it would be a
+     * data-loss defect</b> (issue #29), because a unit whose agent committed
+     * work would then read as unmodified and the next teardown would take the
+     * commits with it.
+     */
+    private static boolean isUnowned(String rel) {
+        return Rederivable.isDerived(rel);
+    }
+
+    /**
+     * Move every unowned tree out of {@code dest} and into {@code staged}, at
+     * the same relative path, immediately before the two are swapped.
+     *
+     * <p>This is the other half of {@link #isUnowned}, and without it the
+     * exclusion would be half a rule. {@link #swapIn} replaces the destination
+     * WHOLESALE: the staged tree was built from a view that omits these paths,
+     * so a refresh would delete the destination's {@code .gradle/},
+     * {@code build/} and {@code .venv/} as a side effect of not owning them.
+     * "Not mine to compare" and "mine to destroy" cannot both be true of the
+     * same bytes. Re-derivable is not the same as disposable-without-notice:
+     * rebuilding a venv is minutes, and a refresh that silently did it would
+     * train whoever hit it to stop running refreshes.
+     *
+     * <p>Only the top-most unowned entry on each branch is moved, because
+     * moving {@code .venv} carries everything under it. Best-effort by design —
+     * a move that fails leaves the tree where it was and costs a rebuild, which
+     * must not fail a reconciliation that has already succeeded.
+     */
+    private static void carryOverUnownedTrees(Path dest, Path staged) throws IOException {
+        if (!Files.isDirectory(dest, LinkOption.NOFOLLOW_LINKS)) return;
+        for (String rel : unownedRoots(dest)) {
+            Path from = dest.resolve(rel);
+            Path to = staged.resolve(rel);
+            try {
+                Files.createDirectories(to.getParent());
+                if (Files.exists(to, LinkOption.NOFOLLOW_LINKS)) continue;
+                Files.move(from, to);
+            } catch (IOException move) {
+                Log.warn("child home: could not carry %s across the swap in %s (%s) — it is "
+                        + "re-derivable, so rebuild it rather than looking for it", rel, dest,
+                        move.getMessage());
+            }
+        }
+    }
+
+    /** Top-most unowned entries under {@code root}, as unit-relative paths. */
+    private static List<String> unownedRoots(Path root) throws IOException {
+        List<String> out = new ArrayList<>();
+        collectUnownedRoots(root, "", out);
+        return out;
+    }
+
+    private static void collectUnownedRoots(Path dir, String rel, List<String> out)
+            throws IOException {
+        if (!Files.isDirectory(dir, LinkOption.NOFOLLOW_LINKS)) return;
+        for (Path child : listSorted(dir)) {
+            String childRel = join(rel, child.getFileName().toString());
+            if (isUnowned(childRel)) {
+                out.add(childRel);
+                continue;
+            }
+            collectUnownedRoots(child, childRel, out);
+        }
+    }
+
     /** The parent tree as it would look once materialized (store links dereferenced). */
     private List<ViewEntry> materializedView(Path source) throws IOException {
         List<ViewEntry> out = new ArrayList<>();
@@ -1639,6 +1854,7 @@ public final class ChildHomeMaterializer {
 
     private void walk(Path src, String rel, Path unitRootReal, Deque<Path> expanding,
                       List<ViewEntry> out) throws IOException {
+        if (isUnowned(rel)) return;
         if (Files.isSymbolicLink(src)) {
             Path raw = Files.readSymbolicLink(src);
             Path resolved = raw.isAbsolute()
@@ -1669,28 +1885,63 @@ public final class ChildHomeMaterializer {
             return;
         }
         if (Files.isDirectory(src, LinkOption.NOFOLLOW_LINKS)) {
-            if (!rel.isEmpty()) out.add(new ViewEntry(rel, EntryKind.DIR, src, null, false));
-            for (Path child : listSorted(src)) {
-                walk(child, join(rel, child.getFileName().toString()), unitRootReal, expanding, out);
+            List<Path> children = listSorted(src);
+            List<ViewEntry> below = new ArrayList<>();
+            for (Path child : children) {
+                walk(child, join(rel, child.getFileName().toString()), unitRootReal, expanding,
+                        below);
             }
+            if (!rel.isEmpty() && emitDirectory(children, below)) {
+                out.add(new ViewEntry(rel, EntryKind.DIR, src, null, false));
+            }
+            out.addAll(below);
             return;
         }
         out.add(new ViewEntry(rel, EntryKind.FILE, src, null, Files.isExecutable(src)));
     }
 
     private static void walkPlain(Path src, String rel, List<ViewEntry> out) throws IOException {
+        if (isUnowned(rel)) return;
         if (Files.isSymbolicLink(src)) {
             out.add(new ViewEntry(rel, EntryKind.LINK, src, Files.readSymbolicLink(src), false));
             return;
         }
         if (Files.isDirectory(src, LinkOption.NOFOLLOW_LINKS)) {
-            if (!rel.isEmpty()) out.add(new ViewEntry(rel, EntryKind.DIR, src, null, false));
-            for (Path child : listSorted(src)) {
-                walkPlain(child, join(rel, child.getFileName().toString()), out);
+            List<Path> children = listSorted(src);
+            List<ViewEntry> below = new ArrayList<>();
+            for (Path child : children) {
+                walkPlain(child, join(rel, child.getFileName().toString()), below);
             }
+            if (!rel.isEmpty() && emitDirectory(children, below)) {
+                out.add(new ViewEntry(rel, EntryKind.DIR, src, null, false));
+            }
+            out.addAll(below);
             return;
         }
         out.add(new ViewEntry(rel, EntryKind.FILE, src, null, Files.isExecutable(src)));
+    }
+
+    /**
+     * Whether a directory is part of the view once its unowned children have
+     * been dropped: <b>a directory whose only content is unowned is itself
+     * unowned.</b>
+     *
+     * <p>Without this the exclusion is only half applied, and it fails exactly
+     * where it is needed. A build tool that writes {@code build-logic/.gradle/}
+     * into a directory the unit did not already have leaves {@code build-logic/}
+     * behind as a real, empty entry — so the unit still differs from the source,
+     * still reports {@code conflicted}, and issue #41 survives its own fix by
+     * one directory level. Worse, {@link #carryOverUnownedTrees} recreates those
+     * parents in the staged tree so that the {@code .gradle} it carries has
+     * somewhere to land, which would make the destination differ from its own
+     * freshly written record forever.
+     *
+     * <p>An <em>originally</em> empty directory is kept, because that one is an
+     * authoring decision rather than a leftover: the difference is whether the
+     * directory had children at all, not whether it has entries in the view.
+     */
+    private static boolean emitDirectory(List<Path> children, List<ViewEntry> below) {
+        return children.isEmpty() || !below.isEmpty();
     }
 
     private static void copyView(List<ViewEntry> view, Path dest) throws IOException {

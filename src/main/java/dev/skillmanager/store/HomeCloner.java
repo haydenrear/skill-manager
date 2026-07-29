@@ -5,6 +5,7 @@ import dev.skillmanager.bindings.BindingJson;
 import dev.skillmanager.bindings.ChildHomeRegistry;
 import dev.skillmanager.bindings.Projection;
 import dev.skillmanager.bindings.ProjectionLedger;
+import dev.skillmanager.shared.util.Rederivable;
 import dev.skillmanager.util.Log;
 
 import java.io.IOException;
@@ -118,25 +119,17 @@ public final class HomeCloner {
      * embeds task input paths, both inside binary formats where a
      * length-changing substitution would corrupt the file. Copying them
      * would guarantee a leak; not copying them costs one recompile.
+     *
+     * <p><b>The list itself now lives in {@link Rederivable#CACHES}</b>, which
+     * is also what {@code ChildHomeMaterializer} reads. It was duplicated
+     * before — the cloner skipped {@code .gradle} inside a unit and the
+     * reconcile did not — and a name one caller skips and the other does not is
+     * a unit that reports {@code conflicted} forever (issue #41). One
+     * definition, one place to change it. {@link Rederivable#OUTPUT_ROOTS} is
+     * deliberately NOT read here; see that class for why a clone must still
+     * carry {@code node_modules/} and an in-unit {@code .venv/}.
      */
-    public static final Set<String> SKIPPED_SEGMENTS = Set.of(
-            "__pycache__", ".gradle", ".pytest_cache", ".mypy_cache", ".ruff_cache", ".tox",
-            // A derived cache that is a FILE rather than a directory, which is
-            // why the enumeration above missed it. lark writes an absolute
-            // grammar path into this binary blob, so it is classed PROVISIONED,
-            // looksBinary correctly refuses to byte-substitute it, and verify()
-            // then reports FILE_CONTENT and fails the clone.
-            //
-            // Found by cloning the operator's real home: this single 504 KB
-            // file under skills/deploy-helm/.venv/.../hcl2/ was the only leak,
-            // and it made `home clone` unusable on the one home that matters --
-            // which would have failed the fan-out on every constituent.
-            //
-            // isSkipped() splits the relative path on '/' and tests each
-            // segment, so a bare file name belongs here. Same argument as
-            // .pyc: derived, regenerated on demand, and binary enough that
-            // rewriting it would corrupt it.
-            ".lark_cache.bin");
+    public static final Set<String> SKIPPED_SEGMENTS = Rederivable.CACHES;
 
     /** Root-level files a clone does not copy. */
     public static final Set<String> SKIPPED_ROOT_FILES =
@@ -839,10 +832,9 @@ public final class HomeCloner {
         int slash = normalized.indexOf('/');
         String top = slash < 0 ? normalized : normalized.substring(0, slash);
         if (SKIPPED_DIRS.contains(top)) return true;
-        for (String segment : normalized.split("/")) {
-            if (SKIPPED_SEGMENTS.contains(segment)) return true;
-        }
-        if (normalized.endsWith(".pyc")) return true;
+        // Segment-wise, and the .pyc / .pyo suffix rule with it, both from the
+        // one definition shared with the reconcile.
+        if (Rederivable.isCache(normalized)) return true;
         return slash < 0 && SKIPPED_ROOT_FILES.contains(normalized);
     }
 

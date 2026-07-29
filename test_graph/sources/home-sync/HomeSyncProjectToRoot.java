@@ -29,17 +29,33 @@ import java.util.Map;
  * <h2>The root home is the awkward destination, and this is why</h2>
  *
  * <p>A root home is <em>installed</em> into, never materialized into, so it
- * carries no per-unit materialization record. The destination's record is what
- * a reconcile uses to tell "this tree is a pristine copy" from "this tree holds
- * work", and with none it must assume the second. So a plain
- * {@code home sync --from project --to root} holds every differing unit back —
- * correctly, and unhelpfully if that is not expected. {@code --merge} then
- * succeeds, because the merge base falls back to the <em>source's</em> record:
- * the project home was cloned from the root home and wrote down what it started
- * from, and that clone-time record is the only surviving witness to the two
- * homes' common ancestor. Both halves are asserted here, in that order, because
- * the first is the one that surprises people and the second is the one that
- * makes the direction usable at all.
+ * carries no per-unit materialization record of its own. The destination's
+ * record is what a reconcile normally uses to tell "this tree is a pristine
+ * copy" from "this tree holds work" — and a rule that needed one made
+ * {@code home sync --from <project> --to ~/.skill-manager} report EVERY shared
+ * unit {@code held-back} and exit 0 having reconciled nothing. 6, 7 and 5 units
+ * on three real repositories; the documented upward sync was a silent no-op
+ * against the only destination an operator actually has. Issue #43.
+ *
+ * <p>The rule that replaced it does not adopt a baseline into the root home —
+ * asserting a shared history that may never have happened is the move that
+ * destroyed edits three times on this epic. It asks the <em>source's</em>
+ * record instead: the project home was cloned from the root home and wrote down
+ * what it was handed, so when the root's current bytes ARE that recorded tree,
+ * the bytes a fast-forward would destroy are bytes the source demonstrably
+ * passed through. That is the baseline rule word for word, met by different
+ * evidence.
+ *
+ * <p>Both halves are asserted here and neither is worth much alone:
+ *
+ * <ul>
+ *   <li>a unit whose root-side bytes the project is on record as having held is
+ *       fast-forwarded, and the bytes arrive;</li>
+ *   <li>a unit whose root-side bytes moved underneath the project — somebody
+ *       else's work, which is indistinguishable from an operator's own — is
+ *       still {@code held-back} with every byte intact, and {@code --merge}
+ *       then folds the two disjoint edits together rather than choosing.</li>
+ * </ul>
  *
  * <h2>The publish half runs against a real remote, locally</h2>
  *
@@ -53,6 +69,7 @@ public class HomeSyncProjectToRoot {
 
     private static final String ALPHA = "hs-alpha";
     private static final String BETA = "hs-beta";
+    private static final String GAMMA = "hs-gamma";
     private static final String GIT_UNIT = "hs-git";
     private static final String TICKET = "T-B";
     private static final String BRANCH = "skill/t-b-hs-git";
@@ -83,18 +100,53 @@ public class HomeSyncProjectToRoot {
             Path workspace = Path.of(workspaceRaw);
 
             // ---------------- part 1: the copy path, upward ------------------
+            //
+            // Two units, two shapes. BETA is the ordinary one: the project
+            // edited it and the ROOT has not moved since the clone, so the root
+            // is still standing on exactly the tree the project's record says
+            // the project was handed. GAMMA is the guard: somebody edits it in
+            // the root home directly, so the root now holds bytes NO record
+            // accounts for -- and that is indistinguishable from another
+            // worktree's work having been merged there.
+            String rootGamma = HomeSyncSupport
+                    .read(HomeSyncSupport.unitDir(root, GAMMA).resolve("SKILL.md"))
+                    + "gamma — EDITED IN THE ROOT HOME BY SOMEBODY ELSE\n";
+            HomeSyncSupport.write(HomeSyncSupport.unitDir(root, GAMMA).resolve("SKILL.md"),
+                    rootGamma);
+            HomeSyncSupport.write(HomeSyncSupport.unitDir(project, GAMMA).resolve("gamma-note.md"),
+                    "a gamma file only the project home has\n");
+
             LinkedHashMap<String, String> rootBetaBefore =
                     HomeSyncSupport.entryDigests(HomeSyncSupport.unitDir(root, BETA));
+            LinkedHashMap<String, String> rootGammaBefore =
+                    HomeSyncSupport.entryDigests(HomeSyncSupport.unitDir(root, GAMMA));
 
             ProcessRecord plain = HomeSyncSupport.sm(ctx, "sync-project-to-root", ambient,
                     "home", "sync", "--from", projectRaw, "--to", rootRaw, "--json");
             Map<String, Object> plainReport = HomeSyncSupport.json(ctx, "sync-project-to-root");
             List<String> rootBetaMoved = HomeSyncSupport.difference(rootBetaBefore,
                     HomeSyncSupport.entryDigests(HomeSyncSupport.unitDir(root, BETA)));
+            List<String> rootGammaMoved = HomeSyncSupport.difference(rootGammaBefore,
+                    HomeSyncSupport.entryDigests(HomeSyncSupport.unitDir(root, GAMMA)));
 
-            boolean plainHeldBack = plain.exitCode() == 0
-                    && HomeSyncSupport.status(plainReport, "skill:" + BETA).equals("held-back");
-            boolean plainWroteNothing = rootBetaMoved.isEmpty();
+            // Issue #43: this used to be `held-back` for every unit, with exit 0
+            // and nothing reconciled.
+            boolean plainFastForwarded =
+                    HomeSyncSupport.status(plainReport, "skill:" + BETA).equals("updated");
+            boolean plainDeliveredTheBytes = HomeSyncSupport
+                    .read(HomeSyncSupport.unitDir(root, BETA).resolve("SKILL.md"))
+                    .equals(expectedBeta)
+                    && HomeSyncSupport
+                            .read(HomeSyncSupport.unitDir(root, BETA).resolve("project-note.md"))
+                            .equals("a file only the project home has\n");
+            // The guard. Held back, and — the part a status cannot tell you —
+            // with every byte of the root's own edit still on disk.
+            boolean unaccountedUnitHeldBack =
+                    HomeSyncSupport.status(plainReport, "skill:" + GAMMA).equals("held-back");
+            boolean unaccountedUnitIntact = rootGammaMoved.isEmpty();
+            boolean heldBackSaysWhy = String
+                    .valueOf(HomeSyncSupport.unit(plainReport, "skill:" + GAMMA).get("detail"))
+                    .contains("not a state the source is on record as having held");
 
             LinkedHashMap<String, String> projectBefore = HomeSyncSupport.entryDigests(project);
             ProcessRecord merged = HomeSyncSupport.sm(ctx, "merge-project-to-root", ambient,
@@ -102,13 +154,18 @@ public class HomeSyncProjectToRoot {
             Map<String, Object> mergedReport = HomeSyncSupport.json(ctx, "merge-project-to-root");
 
             boolean mergeMoved = merged.exitCode() == 0
-                    && HomeSyncSupport.status(mergedReport, "skill:" + BETA).equals("merged");
+                    && HomeSyncSupport.status(mergedReport, "skill:" + GAMMA).equals("merged");
             boolean rootGotTheEdit = HomeSyncSupport
                     .read(HomeSyncSupport.unitDir(root, BETA).resolve("SKILL.md"))
                     .equals(expectedBeta);
             boolean rootGotTheAddedFile = HomeSyncSupport
-                    .read(HomeSyncSupport.unitDir(root, BETA).resolve("project-note.md"))
-                    .equals("a file only the project home has\n");
+                    .read(HomeSyncSupport.unitDir(root, GAMMA).resolve("gamma-note.md"))
+                    .equals("a gamma file only the project home has\n");
+            // The merge folded the project's new file in WITHOUT spending the
+            // root's own edit, which is the only outcome that is not a loss.
+            boolean rootKeptItsOwnEdit = HomeSyncSupport
+                    .read(HomeSyncSupport.unitDir(root, GAMMA).resolve("SKILL.md"))
+                    .equals(rootGamma);
             boolean otherUnitsUntouched =
                     HomeSyncSupport.status(mergedReport, "skill:" + ALPHA).equals("unchanged");
             boolean projectOnlyRead = HomeSyncSupport.difference(projectBefore,
@@ -167,32 +224,49 @@ public class HomeSyncProjectToRoot {
                     HomeSyncSupport.git(homeUnit, "status", "--porcelain").trimmed().isEmpty();
             boolean publishNamedTheBranch = BRANCH.equals(publishReport.get("branch"));
 
-            boolean pass = plainHeldBack && plainWroteNothing && mergeMoved && rootGotTheEdit
-                    && rootGotTheAddedFile && otherUnitsUntouched && projectOnlyRead
+            boolean pass = plain.exitCode() == 0 && plainFastForwarded && plainDeliveredTheBytes
+                    && unaccountedUnitHeldBack && unaccountedUnitIntact && heldBackSaysWhy
+                    && mergeMoved && rootGotTheEdit
+                    && rootGotTheAddedFile && rootKeptItsOwnEdit && otherUnitsUntouched
+                    && projectOnlyRead
                     && homeUnitIsACheckout && publishOk && branchPushed && branchCarriesTheEdit
                     && trunkUntouched && homeCheckoutIsClean && publishNamedTheBranch;
             return (pass
                     ? NodeResult.pass("home.sync.project.to.root")
                     : NodeResult.fail("home.sync.project.to.root",
-                            "plainHeldBack=" + plainHeldBack
-                                    + " plainWroteNothing=" + plainWroteNothing
+                            "plainExit=" + plain.exitCode()
+                                    + " beta=" + HomeSyncSupport.status(plainReport, "skill:" + BETA)
+                                    + " plainDeliveredTheBytes=" + plainDeliveredTheBytes
                                     + " rootBetaMoved=" + rootBetaMoved
-                                    + " mergeMoved=" + mergeMoved
-                                    + " beta=" + HomeSyncSupport.status(mergedReport, "skill:" + BETA)
+                                    + " gammaPlain="
+                                    + HomeSyncSupport.status(plainReport, "skill:" + GAMMA)
+                                    + " rootGammaMoved=" + rootGammaMoved
+                                    + " heldBackSaysWhy=" + heldBackSaysWhy
+                                    + " gammaMerged="
+                                    + HomeSyncSupport.status(mergedReport, "skill:" + GAMMA)
                                     + " rootGotTheEdit=" + rootGotTheEdit
+                                    + " rootGotTheAddedFile=" + rootGotTheAddedFile
+                                    + " rootKeptItsOwnEdit=" + rootKeptItsOwnEdit
                                     + " projectOnlyRead=" + projectOnlyRead
                                     + " publishExit=" + publish.exitCode()
                                     + " publishStatus=" + publishReport.get("status")
                                     + " branches=" + remoteBranches
                                     + " trunk=" + trunkBefore + "->" + trunkAfter))
                     .process(plain).process(merged).process(install).process(publish)
-                    .assertion("a_plain_sync_into_a_recordless_root_home_holds_every_unit_back",
-                            plainHeldBack)
-                    .assertion("the_held_back_root_unit_keeps_every_byte_it_had", plainWroteNothing)
+                    .assertion("a_plain_sync_into_a_recordless_root_home_is_not_a_silent_no_op",
+                            plainFastForwarded)
+                    .assertion("and_the_projects_bytes_actually_reach_the_root_home",
+                            plainDeliveredTheBytes)
+                    .assertion("a_root_unit_holding_bytes_no_record_accounts_for_is_held_back",
+                            unaccountedUnitHeldBack)
+                    .assertion("the_held_back_root_unit_keeps_every_byte_it_had",
+                            unaccountedUnitIntact)
+                    .assertion("and_the_report_names_the_reason_it_refused", heldBackSaysWhy)
                     .assertion("merge_folds_the_project_edit_into_the_root_home", mergeMoved)
                     .assertion("the_root_home_ends_with_the_projects_bytes", rootGotTheEdit)
                     .assertion("a_file_only_the_project_had_reaches_the_root_home",
                             rootGotTheAddedFile)
+                    .assertion("the_merge_never_spends_the_root_homes_own_edit", rootKeptItsOwnEdit)
                     .assertion("units_neither_side_moved_stay_unchanged", otherUnitsUntouched)
                     .assertion("the_project_home_is_only_read_by_an_upward_sync", projectOnlyRead)
                     .assertion("a_unit_installed_from_git_is_a_checkout_in_the_home",

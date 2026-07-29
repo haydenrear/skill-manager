@@ -34,6 +34,8 @@ status:
     - Extended External with ChildRefreshProvenance and the RefreshProjectChildHomeFromStore action, which is what made CHM-15 expressible at all. The unit slice already forbade destroying an agent's edit and always had -- its LocallyModified is content-based, so in a two-token world it is stronger than the record-based predicate the code actually runs. The gap was an ABSTRACTION gap: the model could not distinguish "the destination still holds what its record says" from "the destination holds what the source gave it", because nothing in the unit slice wrote a record. Modelling `project resolve` as a tier-slice action puts both writers on one home, and the violated invariant is the existing AReconciliationOnlyWritesAgainstABaselineBothHomesPassedThrough rather than a new one -- naming a second invariant for the second writer would have been the same mistake the code made. All 23 pre-existing expected-violation configs still produce a counterexample for the same invariant; all 11 pre-existing terminating must-pass configs still pass; External_regression_childrefresh.cfg is the 24th. State counts in the sync-slice configs changed with the new action and are re-recorded below.
     - Found and fixed CHM-16, the same requirement in the OTHER half of a home. `<home>/.claude|.codex|.gemini/skills/<name>` is where a human writes skills by hand, and three writers destroyed content there with no report: the three projectors' apply, their remove, and BindingBackfill -- which adopted any existing path at a projection target into the projection ledger, after which the ledger-driven LiveInterpreter.reverseProjection deleted it on the next uninstall believing it was removing its own symlink. Reproduced end to end: `install` over a hand-written skill deleted it; after guarding only the projectors, `uninstall` still deleted it through the ledger door. Fixed with ProjectionOwnership, one predicate shared by all three doors. Deliberately NOT a materialization record: a projection is a pure function of the store, so entitlement is decidable from the two paths alone (a symlink, or a tree the source still holds), and a provenance file for it would be machinery nobody needs. Two mechanisms because the available evidence differs; one rule because the requirement does not.
     - Separated the record-WRITE decision from base selection in the model, which is what made CHM-12 expressible at all. External gains RecordWritePolicy (SHARED_ONLY / SOURCE_TREE / MERGED_TREE), the NoBaseline value a partial entryDigests map needs, the source-record FALLBACK the code has always had and the model did not, and one new invariant (ARecordClaimsNoBaselineTheDestinationNeverStoodOn) with its expected-violation config. All 22 pre-existing expected-violation configs still produce a counterexample for the same invariant, and all 11 pre-existing terminating must-pass configs still pass.
+    - Made the RECORD-LESS DESTINATION representable, which is what #43 turned on. Init handed every tier a clone-time baseline -- the state `home clone` leaves behind -- so the one destination an operator actually has was unrepresentable: a root home is INSTALLED into, never materialized into, and carries no record at all. The ROOT tier now starts record-less, External gains RecordlessDestinationPolicy (SOURCE_WITNESSED / NEVER_DISPOSABLE / ALWAYS_DISPOSABLE), and DestMovedAt gained the `# NoBaseline` guard the record-write rule already had, because a record that claims nothing cannot have been moved away from. The fixed behaviour is the baseline rule met by different evidence: where the destination's record cannot say whether its bytes are disposable, the SOURCE's own record can, and it is READ rather than a baseline being written into the destination -- adopting one would assert a shared history that may never have happened. All 24 pre-existing expected-violation configs still produce a counterexample for the same invariant; all 11 pre-existing terminating must-pass configs still pass; External_regression_blindadoption.cfg is the 25th. State counts in the sync-slice configs changed and are re-recorded below.
+    - NOT modelled, and recorded rather than left silent. Issue #41 (build output inside a unit is not unit content) is a claim about WHICH BYTES a reconciliation owns, and sync_body is a total function over SyncPaths in which every path is content by construction; expressing it needs a second, disjoint path class and multiplies the axis this slice was already decomposed to control, for a property decided by one predicate over path NAMES (dev.skillmanager.shared.util.Rederivable). Issue #42 (--dry-run created the home lock in the destination) is a claim about a filesystem side effect of acquiring a lock, and this model has neither a filesystem nor a lock. Both are covered end to end instead -- home.sync.built.in.unit RUNS a script and asserts about whatever it leaves behind, and home.sync.permutations measures a dry run over a whole home with an EMPTY allow-list.
   pending:
     - Owner decision on the Internal/External scope (see internal_external_decision below).
     - Owner approval of budgets before any effectful/modular migration work starts (migration.md Phase 0).
@@ -485,20 +487,20 @@ validation:
       command: bash specs/desired_program_model/run_tlc.sh specs/desired_program_model/External.tla specs/desired_program_model/External_sync.cfg
       expect: no invariant violations
       status: passed
-      states_generated: 2347
-      distinct_states: 233
-      depth: 8
-      re_measured: "2026-07-28, after CHM-12 added RecordWritePolicy, the source-record fallback and one invariant. Was 1841 / 180.
+      states_generated: 65297
+      distinct_states: 6379
+      depth: 21
+      re_measured: "2026-07-29, after #43 made the ROOT tier record-less in Init (a root home is installed into, never materialized into) and DestMovedAt gained the NoBaseline guard. Was 2347 / 233 / 8."
       axis: "SyncTiers = {root, project, worktree}, SyncPaths = {p1}"
       evidence: ../results/chm-home-sync-tlc.txt
     desired_sync_merge:
       command: bash specs/desired_program_model/run_tlc.sh specs/desired_program_model/External.tla specs/desired_program_model/External_sync_merge.cfg
       expect: no invariant violations
       status: passed
-      states_generated: 1248
-      distinct_states: 325
+      states_generated: 7532
+      distinct_states: 1682
       depth: 14
-      re_measured: "2026-07-28, same change. Was 1153 / 283.
+      re_measured: "2026-07-29, after #43 made the ROOT tier record-less in Init (a root home is installed into, never materialized into) and DestMovedAt gained the NoBaseline guard. Was 1248 / 325 / 14."
       axis: "SyncTiers = {project, worktree}, SyncPaths = {p1, p2}"
       evidence: ../results/chm-home-sync-tlc.txt
     carried_forward_monolith:
@@ -772,6 +774,36 @@ validation:
         records are, which is here. The end-to-end witness is the graph node
         home.sync.project.seam, which runs the sequence through the real CLI
         with a real `rm -rf` in the middle.
+    External_regression_blindadoption.cfg:
+      models: "THE FIX #43 WAS NOT ALLOWED TO BE. A destination with no materialization record -- which is what a root home IS, because it is installed into rather than materialized into -- treated as disposable by definition. Adopting a baseline into it is the same policy written down rather than assumed, and has the same consequence."
+      expect_violation: AReconciliationOnlyWritesAgainstABaselineBothHomesPassedThrough
+      status: violated_as_expected
+      trace_depth: 3
+      trace: EditUnitInHomeTier -> ReconcileHomeTiers -> ReconcileHomeTiers
+      axis: "SyncTiers = {root, project, worktree}, SyncPaths = {p1}"
+      defect: "#43"
+      reproduced_against_production: true
+      states_generated: 20
+      distinct_states: 8
+      note: >
+        The invariant is the epic's existing one, deliberately, and for the same
+        reason CHM-15 did not get a new one: a wholesale copy into a record-less
+        home is a reconciliation, and the rule about which bytes it may destroy
+        does not change because the destination happens to carry no provenance.
+        What changes is the EVIDENCE available -- the destination's record
+        cannot answer, so the source's history has to. SOURCE_WITNESSED asks it;
+        ALWAYS_DISPOSABLE does not ask anything, and TLC finds a third home's
+        work being overwritten at depth 3.
+
+        The third value of this axis, NEVER_DISPOSABLE, is the code as it was
+        and it violates NOTHING. That is why the axis exists at all: a policy
+        that is perfectly safe and reconciles nothing cannot be caught by a
+        safety invariant, and the model could not previously even state the
+        situation -- Init handed every tier a clone-time baseline, so the one
+        destination an operator actually has was unrepresentable. Its
+        end-to-end witness is the graph node home.sync.project.to.root, which
+        asserts both halves through the real CLI: the fast-forward that now
+        happens, and the hold-back that still must.
     External_regression_recordsourcetree.cfg:
       models: "THE CODE UNTIL CHM-12 WAS FIXED. writeCopyRecord recorded the SOURCE's entire tree as the destination's shared baseline, paths the reconciliation DECLINED to write included, so the destination's record claimed bytes the destination had never held and the next reconcile in the opposite direction overwrote the work."
       expect_violation: ARecordClaimsNoBaselineTheDestinationNeverStoodOn
@@ -781,8 +813,14 @@ validation:
       axis: "BOTH -- SyncTiers = {root, project, worktree} AND SyncPaths = {p1, p2}"
       defect: CHM-12
       reproduced_against_production: true
-      states_generated: 14154
-      distinct_states: 2815
+      states_generated: 3409
+      distinct_states: 853
+      re_measured: >
+        2026-07-29, after #43 made the ROOT tier record-less in Init. Was
+        14154 / 2815. The number went DOWN, which is worth stating: TLC checks
+        invariants as it generates, so a counterexample found earlier in the
+        search is fewer states, not a weaker witness. Depth 6 rather than 7 --
+        the record-less root reaches the shape one reconciliation sooner.
       note: >
         The one config in this directory that needs both decomposition axes at
         once, and the cost validation.decomposition recorded in advance coming
@@ -818,10 +856,10 @@ validation:
       guards: AReconciliationOnlyWritesPathsTheDestinationDidNotMove
       invariants_checked: [TypeOK, EveryDivergenceFromARecordIsAnEditMadeInThatHome]
       status: passed
-      states_generated: 12681
-      distinct_states: 3207
-      depth: 14
-      re_measured: "2026-07-28, after CHM-12. Was 9545 / 2357."
+      states_generated: 34601
+      distinct_states: 7968
+      depth: 16
+      re_measured: "2026-07-29, after #43 made the ROOT tier record-less in Init (a root home is installed into, never materialized into) and DestMovedAt gained the NoBaseline guard. Was 12681 / 3207 / 14."
       why: >
         A reconciliation that overwrites a destination rewrites that
         destination's record in the same step. Afterwards the home is perfectly
@@ -834,10 +872,10 @@ validation:
       guards: NoHomeIsTornDownWhileItHoldsUniqueWork
       invariants_checked: every sync invariant except the one that reads sync_gone
       status: passed
-      states_generated: 2724
-      distinct_states: 298
-      depth: 8
-      re_measured: "2026-07-28, after CHM-12. Was 2133 / 232."
+      states_generated: 74458
+      distinct_states: 7708
+      depth: 21
+      re_measured: "2026-07-29, after #43 made the ROOT tier record-less in Init (a root home is installed into, never materialized into) and DestMovedAt gained the NoBaseline guard. Was 2724 / 298 / 8."
       why: >
         The teardown writes nothing, moves nothing and reports nothing, so every
         write-log invariant is satisfied and every coherence check passes -- on
@@ -848,10 +886,10 @@ validation:
       guards: AConflictedUnitIsNeverPartiallyWritten
       invariants_checked: every sync invariant except the one that reads the UnitWasConflicted reason
       status: passed
-      states_generated: 2504
-      distinct_states: 659
-      depth: 14
-      re_measured: "2026-07-28, after CHM-12. Was 2123 / 539."
+      states_generated: 11288
+      distinct_states: 2556
+      depth: 17
+      re_measured: "2026-07-29, after #43 made the ROOT tier record-less in Init (a root home is installed into, never materialized into) and DestMovedAt gained the NoBaseline guard. Was 2504 / 659 / 14."
       why: >
         A partial write takes only paths the destination had NOT moved, so it
         destroys no edit and the loss invariants hold at every step. Conflict
@@ -862,10 +900,10 @@ validation:
       guards: AReconciliationOnlyWritesAgainstABaselineBothHomesPassedThrough
       invariants_checked: every sync invariant except the merge-base one
       status: passed
-      states_generated: 5927
-      distinct_states: 584
-      depth: 10
-      re_measured: "2026-07-28, after CHM-12. Was 5209 / 510."
+      states_generated: 480496
+      distinct_states: 45542
+      depth: 24
+      re_measured: "2026-07-29, after #43 made the ROOT tier record-less in Init (a root home is installed into, never materialized into) and DestMovedAt gained the NoBaseline guard. Was 5927 / 584 / 10."
       why: >
         The finding, not just the guard. "The destination had not moved this
         path" is TRUE for every write CHM-9 makes -- the project home really had

@@ -773,6 +773,15 @@ validationGraph {
         node("sources/home-sync/HomeSyncProvenance.java")
         node("sources/home-sync/HomeSyncRoundTrip.java")
         node("sources/home-sync/HomeSyncHomeness.java")
+        // A worktree that was USED. Issue #41: running the tooling inside a
+        // unit — the thing a worktree exists to do — left .gradle/, __pycache__
+        // and a built jar in it, and close-out then reported `conflicted` with
+        // a remedy that exited 1 without clearing the gate. It RUNS a script
+        // and asserts about whatever the run left behind, because a fixture
+        // that writes the artefacts writes only the ones somebody thought of.
+        // It also carries the guard on its own fix: a unit the agent COMMITTED
+        // in must still block (issue #29).
+        node("sources/home-sync/HomeSyncBuiltInUnit.java")
         // The two writers that are not `home sync` but write into the same
         // home: `project resolve`/`project sync` (CHM-15) and the agent-tree
         // projectors (CHM-16). Both live here because the defect in each is a

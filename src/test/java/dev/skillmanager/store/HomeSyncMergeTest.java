@@ -536,8 +536,71 @@ public final class HomeSyncMergeTest {
                             "not one byte of the unrecorded unit changed");
                     assertEquals(SyncStatus.HELD_BACK, outcome.status(),
                             "a unit with no record is held back");
-                    assertContains(outcome.detail(), "no usable materialization record",
+                    // Since issue #43 a record-less destination is NOT
+                    // categorically refused: it is fast-forwarded when the
+                    // SOURCE's own record shows the source held exactly these
+                    // bytes, which is what makes `home sync --to
+                    // ~/.skill-manager` do anything at all. Reaching here means
+                    // that showing failed too — hand-placed.md is in no home's
+                    // record — and the sentence has to say which of the two
+                    // reasons applied, because the old one-size message is what
+                    // made the upward sync look broken rather than careful.
+                    assertContains(outcome.detail(),
+                            "not a state the source is on record as having held",
                             "and the report says why");
+                })
+
+                .test("a record-less destination the source is on record as having held is refreshed",
+                        () -> {
+                    // Issue #43, and the reason it is worth a fix rather than a
+                    // documented limitation: a ROOT home is installed into,
+                    // never materialized into, so it has no record — and the
+                    // documented upward sync `--from <project> --to
+                    // ~/.skill-manager` therefore reported every shared unit
+                    // held-back and exited 0 having reconciled nothing. 6, 7 and
+                    // 5 units on three real repositories.
+                    Path root = Files.createTempDirectory("home-sync-recordless-");
+                    SkillStore installed = store(root.resolve("root"));
+                    SkillStore project = store(root.resolve("project/.skill-manager"));
+                    UnitFixtures.scaffoldSkill(installed.skillsDir(), UNIT, DepSpec.empty());
+                    write(installed.skillDir(UNIT).resolve("SKILL.md"), "INSTALLED\n");
+
+                    // Downward once, so the project carries a record and the
+                    // installed home still carries none. Then the project home
+                    // improves the unit, which does not rewrite its record.
+                    HomeSync.run(installed, project, new HomeSync.Options(false, false));
+                    assertFalse(Files.exists(recordFileIn(installed)),
+                            "the destination really has no record of its own");
+                    write(project.skillDir(UNIT).resolve("SKILL.md"), "INSTALLED\nIMPROVED HERE\n");
+
+                    UnitSync up = only(HomeSync.run(project, installed,
+                            new HomeSync.Options(false, false)));
+
+                    assertEquals(SyncStatus.UPDATED, up.status(),
+                            "a plain upward sync is no longer a silent no-op");
+                    assertEquals("INSTALLED\nIMPROVED HERE\n",
+                            read(installed.skillDir(UNIT).resolve("SKILL.md")),
+                            "and the bytes actually arrive — a status alone proves nothing");
+
+                    // The safety half, in the same test, because "it moved" is
+                    // only worth anything beside "it refuses to move over work
+                    // it cannot account for". A third party edits the
+                    // destination and its record is removed again, so it is
+                    // record-less exactly as before and its bytes are now a
+                    // state the source has never been on record as holding.
+                    Files.delete(recordFileIn(installed));
+                    write(installed.skillDir(UNIT).resolve("third-party.md"), "somebody else\n");
+                    String guarded = ChildHomeMaterializer.treeDigest(installed.skillDir(UNIT));
+                    write(project.skillDir(UNIT).resolve("SKILL.md"), "INSTALLED\nIMPROVED TWICE\n");
+
+                    UnitSync blocked = only(HomeSync.run(project, installed,
+                            new HomeSync.Options(false, false)));
+                    assertEquals(SyncStatus.HELD_BACK, blocked.status(),
+                            "a record-less destination holding bytes nobody can account for is "
+                                    + "still refused");
+                    assertEquals(guarded,
+                            ChildHomeMaterializer.treeDigest(installed.skillDir(UNIT)),
+                            "and not one byte of it changed");
                 })
 
                 .test("a record written by a newer skill-manager reads as no baseline, not as a crash", () -> {
@@ -778,6 +841,11 @@ public final class HomeSyncMergeTest {
     private static Path recordFile(Homes homes) {
         return new ChildHomeMaterializer(homes.source(), homes.dest())
                 .recordFile(UNIT, UnitKind.SKILL);
+    }
+
+    /** {@link #UNIT}'s record inside one home, whatever it is reconciled against. */
+    private static Path recordFileIn(SkillStore home) {
+        return new ChildHomeMaterializer(home, home).recordFile(UNIT, UnitKind.SKILL);
     }
 
     private static List<String> withoutRecords(List<String> names) {

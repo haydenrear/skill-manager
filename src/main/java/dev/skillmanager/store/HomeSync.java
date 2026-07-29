@@ -112,14 +112,24 @@ public final class HomeSync {
      * home-wide lock keeps the <em>home</em> coherent when two worktrees close
      * out at once.
      *
-     * <p>A dry run takes the lock too. It reads every unit in both homes and
-     * reports what a real run would do; a peer reconciling underneath it would
-     * make that report describe a state that never existed, which is worse than
-     * waiting. Taking the lock creates the (empty) lock file, and that is the
-     * <em>only</em> thing a dry run puts on disk: it does not stage, does not
-     * write a record, and does not even initialise the destination's directory
-     * layout, because "what would this do" must not be answered by starting to
-     * do it.
+     * <p>A dry run takes the lock too — but through
+     * {@link HomeLock#acquireWithoutCreating}, which never creates the lock
+     * file. It reads every unit in both homes and reports what a real run would
+     * do; a peer reconciling underneath it would make that report describe a
+     * state that never existed, so where a peer is possible it still waits.
+     *
+     * <p>A dry run now puts <b>nothing whatever</b> on disk. It used to put one
+     * thing there — {@code .materialization/} and a zero-byte
+     * {@code .home.lock} inside it, created by taking the lock — and that was
+     * measured in the operator's own read-only {@code ~/.skill-manager}. It
+     * broke the documented contract ("Compute and print the whole report, write
+     * nothing"), and against a read-only or frozen destination it turned a
+     * report into a crash. Issue #42. The lock file's absence is itself the
+     * evidence that no peer holds the lock — creating it is the first thing
+     * acquiring it does — so the case where nothing exists is exactly the case
+     * where there is nothing to wait for. It does not stage, does not write a
+     * record, and does not initialise the destination's directory layout,
+     * because "what would this do" must not be answered by starting to do it.
      */
     public static Report run(SkillStore from, SkillStore to, Options options) throws IOException {
         Options opts = options == null ? Options.defaults() : options;
@@ -144,7 +154,9 @@ public final class HomeSync {
         // and reporting a plan for it would be reporting a lie.
         HomePolicy.requireLive(to, "home sync");
 
-        try (HomeLock ignored = HomeLock.acquire(dest, "home sync")) {
+        try (HomeLock ignored = opts.dryRun()
+                ? HomeLock.acquireWithoutCreating(dest, "home sync --dry-run")
+                : HomeLock.acquire(dest, "home sync")) {
             if (!opts.dryRun()) to.init();
             ChildHomeMaterializer materializer = new ChildHomeMaterializer(from, to);
             List<UnitSync> outcomes = new ArrayList<>();

@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
 import java.nio.channels.OverlappingFileLockException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.time.Duration;
@@ -88,6 +89,62 @@ public final class HomeLock implements AutoCloseable {
 
     public static HomeLock acquire(Path homeRoot, String operation) throws IOException {
         return acquire(homeRoot, operation, DEFAULT_TIMEOUT);
+    }
+
+    /**
+     * Take the home lock <em>without creating anything</em> — the acquisition a
+     * read-only pass is entitled to.
+     *
+     * <h2>The write this exists to remove</h2>
+     *
+     * <p>{@link #acquire} calls {@code Fs.ensureDir} and opens the lock file
+     * {@code CREATE}, so a {@code home sync --dry-run} against a home that had
+     * never been reconciled into created {@code .materialization/} and a
+     * zero-byte {@code .materialization/.home.lock} inside it. Measured in the
+     * operator's own {@code ~/.skill-manager}. {@code --dry-run} is documented
+     * "Compute and print the whole report, write nothing"; content-benign or
+     * not, it is exactly the write a caller reaches for {@code --dry-run} to
+     * avoid, and against a read-only or frozen destination it is not benign at
+     * all — it is the difference between a report and a crash. Issue #42.
+     *
+     * <h2>Why not locking is sound when the file is absent</h2>
+     *
+     * <p>Creating that file is the FIRST thing {@link #acquire} does, before it
+     * asks the OS for anything. So the file's absence is positive evidence, not
+     * an assumption: no process anywhere holds this home's lock, because
+     * holding it requires the file to exist. There is nothing to exclude
+     * against and nothing to wait for. When the file IS there the ordinary path
+     * runs unchanged — including the wait — because then a peer may well be
+     * holding it.
+     *
+     * <p>The residual window is a peer that begins <em>after</em> the check, and
+     * it is bounded rather than hand-waved: the in-process {@link ReentrantLock}
+     * is still taken unconditionally (it is memory, not disk), which excludes
+     * every writer in this JVM completely; and a writer in another process
+     * stages each unit and swaps it in atomically, so no unit is ever read
+     * half-written. What a dry run can lose is that its report names units from
+     * either side of a peer's pass — which is exactly what it would have said
+     * had the peer run one millisecond earlier, and is not something any
+     * amount of locking makes untrue.
+     */
+    public static HomeLock acquireWithoutCreating(Path homeRoot, String operation)
+            throws IOException {
+        Path root = homeRoot.toAbsolutePath().normalize();
+        if (Files.isRegularFile(file(root))) return acquire(root, operation, DEFAULT_TIMEOUT);
+        ReentrantLock jvmLock = IN_PROCESS.computeIfAbsent(root.toString(), key -> new ReentrantLock());
+        boolean held;
+        try {
+            held = jvmLock.tryLock(DEFAULT_TIMEOUT.toMillis(), TimeUnit.MILLISECONDS);
+        } catch (InterruptedException interrupted) {
+            Thread.currentThread().interrupt();
+            throw new IOException("interrupted waiting for the home lock on " + root, interrupted);
+        }
+        if (!held) {
+            throw new IOException(operation + ": " + root + " is locked by another "
+                    + "operation in this process and did not free up within "
+                    + DEFAULT_TIMEOUT.toMillis() + "ms");
+        }
+        return new HomeLock(jvmLock, null, null);
     }
 
     /**

@@ -42,6 +42,19 @@ public final class HomeSyncTest {
 
     private static final String UNIT = "sync-skill";
 
+    /**
+     * One path per shape of re-derivable output the reconcile must not own: a
+     * tool-private cache directory nested well inside the unit (which is where
+     * #41 actually found it), a compiled-python file whose name and not whose
+     * directory is the signal, and a build-output root holding a produced
+     * artifact — a jar of exactly this shape was carried worktree → project by
+     * a merge as though it were somebody's work.
+     */
+    private static final List<String> BUILD_OUTPUT = List.of(
+            "project_sdk_sources/build-logic/.gradle/8.5/executionHistory/executionHistory.bin",
+            "scripts/__pycache__/discover.cpython-312.pyc",
+            "build/libs/validation-graph-build-logic-0.1.0.jar");
+
     public static int run() throws Exception {
         return Tests.suite("HomeSyncTest")
 
@@ -196,20 +209,122 @@ public final class HomeSyncTest {
                     // A destination that does not exist yet is the case where
                     // "writes nothing" is easiest to get wrong: the store's own
                     // init() would lay out the whole home before anything was
-                    // reported. The lock file is the one artefact a dry run
-                    // leaves, and it is named here rather than tolerated
-                    // silently.
+                    // reported. Taking the home lock was the OTHER way, and it
+                    // was live until issue #42 — a dry run created
+                    // .materialization/ and a zero-byte .home.lock inside it,
+                    // measured in the operator's own read-only home. NOTHING is
+                    // tolerated here now, because the lock file's own absence is
+                    // what proves no peer holds the lock.
                     Path fresh = Files.createTempDirectory("home-sync-dry-fresh-").resolve("home");
                     HomeSync.Report onFresh = HomeSync.run(homes.source(), new SkillStore(fresh),
                             new HomeSync.Options(false, true));
                     assertEquals(2, onFresh.units().size(), "a fresh destination is still reported on");
-                    assertEquals(List.of(HomeLock.file(fresh).getParent().getFileName().toString()),
-                            listing(fresh),
-                            "a dry run creates nothing in a fresh home but the lock's own directory");
-                    assertEquals(List.of(HomeLock.file(fresh).getFileName().toString()),
-                            listing(HomeLock.file(fresh).getParent()),
-                            "and nothing in that directory but the lock file");
-                    assertEquals(0L, Files.size(HomeLock.file(fresh)), "the lock file is empty");
+                    assertFalse(Files.exists(fresh),
+                            "a dry run against a destination that does not exist does not create it");
+                    assertFalse(Files.exists(HomeLock.file(fresh)),
+                            "and takes the home lock without creating the lock file");
+
+                    // The same claim where the destination directory DOES exist,
+                    // so that "nothing was created" is measured rather than
+                    // inferred from the parent's absence.
+                    Path empty = Files.createTempDirectory("home-sync-dry-empty-");
+                    HomeSync.Report onEmpty = HomeSync.run(homes.source(), new SkillStore(empty),
+                            new HomeSync.Options(false, true));
+                    assertEquals(2, onEmpty.units().size(), "an empty destination is reported on too");
+                    assertEquals(List.of(), listing(empty),
+                            "a dry run creates nothing at all in the destination home");
+
+                    // And a real run into the same home still takes the lock the
+                    // ordinary way, so the file that was removed from the dry
+                    // path is not missing from the write path.
+                    HomeSync.run(homes.source(), new SkillStore(empty),
+                            new HomeSync.Options(false, false));
+                    assertTrue(Files.isRegularFile(HomeLock.file(empty)),
+                            "a real run still creates and holds the lock file");
+                })
+
+                // ------------------------- build output is not unit content
+
+                .test("build output written inside a unit does not make the unit differ", () -> {
+                    // Issue #41, in the smallest form that still is it. Running
+                    // `discover.py` once in a ticket worktree — the thing a
+                    // worktree exists to do — leaves .gradle/ and __pycache__/
+                    // INSIDE a unit. Those used to move the unit's digest, so
+                    // the unit came back conflicted, the remedy it printed named
+                    // executionHistory.bin as a file to "resolve", running that
+                    // remedy verbatim exited 1, and close-out could never be
+                    // satisfied again.
+                    Homes homes = Homes.create("derived");
+                    write(homes.sourceUnit().resolve("SKILL.md"), "SOURCE V1\n");
+                    sync(homes, false, false);
+
+                    for (String rel : BUILD_OUTPUT) {
+                        write(homes.destUnit().resolve(rel), "derived " + rel + "\n");
+                    }
+
+                    UnitSync outcome = only(sync(homes, false, false));
+                    assertEquals(SyncStatus.UNCHANGED, outcome.status(),
+                            "a unit that was only built in is not a unit that was edited");
+                    assertTrue(HomeCloseOut.inspect(homes.dest(), homes.source()).safe(),
+                            "so the teardown gate clears instead of demanding a resolution "
+                                    + "nobody can perform");
+                    for (String rel : BUILD_OUTPUT) {
+                        assertEquals("derived " + rel + "\n", read(homes.destUnit().resolve(rel)),
+                                "and " + rel + " is still on disk: not owned is not deleted");
+                    }
+                })
+
+                .test("a refresh keeps the build output it does not own", () -> {
+                    // The other half of "not owned". swapIn replaces the
+                    // destination WHOLESALE, so excluding these paths from the
+                    // view without carrying them across the swap would DELETE
+                    // them as a side effect of not comparing them. "Not mine to
+                    // compare" and "mine to destroy" cannot both be true.
+                    Homes homes = Homes.create("derivedkept");
+                    write(homes.sourceUnit().resolve("SKILL.md"), "SOURCE V1\n");
+                    sync(homes, false, false);
+                    for (String rel : BUILD_OUTPUT) {
+                        write(homes.destUnit().resolve(rel), "derived " + rel + "\n");
+                    }
+
+                    write(homes.sourceUnit().resolve("SKILL.md"), "SOURCE V2\n");
+                    UnitSync outcome = only(sync(homes, false, false));
+
+                    assertEquals(SyncStatus.UPDATED, outcome.status(),
+                            "the upstream change still arrives");
+                    assertEquals("SOURCE V2\n", read(homes.destUnit().resolve("SKILL.md")),
+                            "with the source's bytes");
+                    for (String rel : BUILD_OUTPUT) {
+                        assertEquals("derived " + rel + "\n", read(homes.destUnit().resolve(rel)),
+                                rel + " survived a refresh that rewrote the unit around it");
+                    }
+                })
+
+                .test("a .git directory inside a unit is content, never skipped as build output", () -> {
+                    // THE GUARD ON THE FIX ABOVE, and issue #29 is why it is
+                    // spelled out as a test rather than as a comment. A .git
+                    // directory churns on every read-only command, so every
+                    // instinct that skips .gradle says to skip .git too — and a
+                    // unit whose agent COMMITTED work holds those commits in
+                    // .git and nowhere else. Skipped, that unit reads as
+                    // unmodified (its worktree files really are unchanged), the
+                    // gate clears, the worktree is removed, and the commits stop
+                    // existing.
+                    Homes homes = Homes.create("gitcontent");
+                    write(homes.sourceUnit().resolve("SKILL.md"), "SOURCE V1\n");
+                    sync(homes, false, false);
+
+                    write(homes.destUnit().resolve(".git/objects/ab/cdef"), "a commit object\n");
+                    write(homes.destUnit().resolve(".git/HEAD"), "ref: refs/heads/ticket\n");
+
+                    UnitSync outcome = only(sync(homes, false, false));
+                    assertEquals(SyncStatus.HELD_BACK, outcome.status(),
+                            "a unit carrying git history the source has never had is held back");
+                    assertFalse(HomeCloseOut.inspect(homes.dest(), homes.source()).safe(),
+                            "and the teardown gate REFUSES: those commits exist in one home only");
+                    assertEquals("a commit object\n",
+                            read(homes.destUnit().resolve(".git/objects/ab/cdef")),
+                            "nothing touched the object it refused over");
                 })
 
                 .test("a sync that fails part way leaves the destination unit exactly as it was", () -> {
@@ -620,7 +735,16 @@ public final class HomeSyncTest {
 
                     // The consequence first: what the clone wrote down is only
                     // interesting because of what it lets the return path do.
-                    assertEquals(SyncStatus.MERGED, outcome.status(),
+                    //
+                    // UPDATED rather than MERGED since issue #43, and it is the
+                    // same clone-time baseline doing the work either way. The
+                    // project home has not moved SINCE the clone, so the tree
+                    // this pass is about to replace is exactly the tree the
+                    // worktree is on record as having been handed — which is
+                    // the wholesale-copy showing, so there is nothing for a
+                    // three-way merge to decide. (The test above is the case
+                    // where the project DID move afterwards; it still merges.)
+                    assertEquals(SyncStatus.UPDATED, outcome.status(),
                             "the clone-time baseline settles it without a human");
                     assertEquals(worktreeText, read(project.skillDir(UNIT).resolve("SKILL.md")),
                             "and the project home ends up with the agent's bytes");

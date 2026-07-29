@@ -1145,6 +1145,287 @@ tickets:
         Both named ClaudeProjectorTest cases failed on the authored bytes;
         reverted and verified with shasum -a 256 -c.
 
+  - id: CHM-17
+    title: "close-out compares build and tool state inside a unit as if it were unit content"
+    phase: CHM
+    status: closed
+    closed: "2026-07-29"
+    github_issue: 41
+    found_by: running a worktree's own tooling once, on three real repositories
+    objective: >
+      Running `discover.py` in a ticket worktree -- the thing a worktree exists
+      to do -- writes
+      `skills/test-graph/project_sdk_sources/build-logic/.gradle/**` and
+      `scripts/__pycache__/*.pyc` INSIDE a unit. Those moved the unit's digest,
+      so `home close-out` returned `conflicted` with a non-actionable remedy
+      ("... then resolve: executionHistory.bin, ..."), the printed remedy run
+      verbatim exited 1 without clearing the gate, and `home sync --merge` then
+      reported that nothing was written. The unit stayed unreconciled forever.
+      Authorship confirmed by timestamps: 6, 5 and 5 files across three
+      repositories. A built jar
+      (validation-graph-build-logic-0.1.0.jar) was separately carried
+      worktree -> project by a merge as though it were somebody's work.
+
+      `home clone` had skipped these names inside a unit since the first clone.
+      ChildHomeMaterializer never asked. One name skipped by one caller and not
+      the other is a unit that reports conflicted for good.
+    resolution: >
+      One definition of re-derivable, dev.skillmanager.shared.util.Rederivable,
+      read by both. It is applied at the top of BOTH walkers, so a skipped path
+      is invisible to the materializer in every direction at once: not
+      fingerprinted, so it cannot make a unit look edited; not copied, so it
+      cannot travel between homes; and NOT DELETED, because
+      carryOverUnownedTrees moves it across the atomic swap. "Not mine to
+      compare" and "mine to destroy" cannot both be true of the same bytes. A
+      directory whose only content is unowned is itself unowned, or the
+      exclusion would fail by exactly one directory level.
+
+      TWO SCOPES, and the asymmetry is the answer to "shared, derived, or
+      separate". Rederivable.CACHES -- tool-private names that can only be
+      caches -- is shared verbatim with HomeCloner, so its behaviour is
+      unchanged. Rederivable.OUTPUT_ROOTS (build, target, node_modules, .venv,
+      venv) is read by the reconcile ONLY: a clone has to hand over a home that
+      WORKS and re-anchors those trees per copy, and
+      node_modules/<pkg>/build/Release/*.node is a prebuilt native binary
+      nothing on the destination rebuilds; a reconcile has no re-anchoring pass
+      at all, so a .venv it copied would arrive with console-script shebangs
+      naming the SOURCE home. Two questions, one answer where the questions
+      agree.
+
+      `.git` IS DELIBERATELY NOT IN THE SET, stated at length in Rederivable's
+      javadoc under an anchor, because it churns exactly like the entries that
+      are and every instinct says to add it. Issue #29: a unit whose agent
+      COMMITTED work holds those commits in .git and nowhere else, so a skipped
+      .git makes the unit read as unmodified, clears the teardown, and takes
+      the commits with it.
+    model_change: >
+      None, and the reason is recorded rather than left implicit. The claim is
+      about WHICH BYTES a reconciliation owns; sync_body is a total function
+      over SyncPaths in which every path is content by construction. Expressing
+      it needs a second, disjoint path class and multiplies the axis this slice
+      was already decomposed to control -- for a property decided by one
+      predicate over path NAMES. Covered end to end instead.
+    acceptance:
+      assertions:
+        - A worktree that was only built in is reported unchanged and its teardown clears.
+        - Build output does not travel between homes.
+        - A refresh that rewrites the unit around it does not delete it.
+        - A unit the agent committed in still blocks the teardown.
+    evidence:
+      unit:
+        - 'HomeSyncTest "build output written inside a unit does not make the unit differ" -- status, the gate, and the bytes still on disk'
+        - 'HomeSyncTest "a refresh keeps the build output it does not own"'
+        - 'HomeSyncTest "a .git directory inside a unit is content, never skipped as build output" -- the guard on the fix'
+      graph: >
+        home-sync node home.sync.built.in.unit. It RUNS python3 on a script that
+        imports a sibling module and writes a Gradle cache and a jar, then
+        asserts about whatever the run left behind -- the .pyc's path and
+        filename are CPython's, not the node's. Carries the #29 guard in the
+        same node: a second unit is `git init`ed and committed in, and the
+        teardown must still refuse.
+      tlc: 'Not modelled; see model_change. All 24 pre-existing expected-violation configs still violate and all 11 must-pass configs still pass.'
+      mutation: >
+        `isUnowned` -> `return false` (4 occurrences of the symbol counted
+        first: 1 definition and 3 uses, all routing through the one definition).
+        Killed HomeSyncTest "build output written inside a unit does not make
+        the unit differ" on the STATUS and "a refresh keeps the build output it
+        does not own" on the refresh. Reverted; shasum -a 256 -c OK.
+
+  - id: CHM-18
+    title: "`--dry-run` creates a directory and a lock file in the destination it promised not to write"
+    phase: CHM
+    status: closed
+    closed: "2026-07-29"
+    github_issue: 42
+    found_by: measuring what a dry run left behind in the operator's own read-only home
+    objective: >
+      A dry run created `~/.skill-manager/.materialization/` and a zero-byte
+      `.materialization/.home.lock` inside it. `--dry-run` is documented
+      "Compute and print the whole report, write nothing". Content-benign, and
+      still: it breaks the contract, it would fail outright against a read-only
+      or frozen destination, and it is exactly the write a caller reaches for
+      `--dry-run` to avoid. The lock was acquired BEFORE the plan was computed,
+      so no amount of care later could have prevented it.
+    resolution: >
+      HomeLock.acquireWithoutCreating. The in-process ReentrantLock is taken
+      unconditionally -- it is memory, not disk, and it excludes every writer in
+      this JVM completely. The OS file lock is taken only when the lock file
+      already EXISTS, and that is not a concession: creating that file is the
+      first thing acquiring the lock does, so its absence is positive evidence
+      that no process anywhere holds it. There is nothing to exclude against
+      and nothing to wait for. Where the file is there, the ordinary path runs
+      unchanged, wait included.
+
+      The residual window -- a peer that begins AFTER the check -- is bounded
+      and stated rather than waved away: every real writer stages each unit and
+      swaps it in atomically, so no unit is ever read half-written, and the
+      worst case is a report naming units from either side of a peer's pass,
+      which is what it would have said had the peer run a millisecond earlier.
+    model_change: >
+      None. The claim is about a filesystem side effect of acquiring a lock,
+      and this model has neither a filesystem nor a lock.
+    acceptance:
+      assertions:
+        - A dry run against a destination that does not exist does not create it.
+        - A dry run against an existing home creates nothing at all in it.
+        - A real run still creates and holds the lock file.
+    evidence:
+      unit: 'HomeSyncTest "--dry-run reports the whole reconciliation and writes nothing" -- on file PRESENCE, plus the empty-directory case so "nothing was created" is measured rather than inferred from the parent being absent, plus the real run still locking'
+      graph: 'home-sync node home.sync.permutations: the allow-list handed to wroteNothingBut is now EMPTY, and the fresh-destination case asserts the directory does not exist'
+      tlc: 'Not modelled; see model_change.'
+      mutation: >
+        `HomeLock.acquireWithoutCreating` -> `HomeLock.acquire` at its one call
+        site (counted first: 1 use, 1 javadoc reference). Killed HomeSyncTest
+        "--dry-run reports the whole reconciliation and writes nothing" on
+        "a dry run against a destination that does not exist does not create
+        it", which is a file-presence assertion. Reverted; shasum -a 256 -c OK.
+
+  - id: CHM-19
+    title: "project -> root is a silent no-op against the only destination an operator has"
+    phase: CHM
+    status: closed
+    closed: "2026-07-29"
+    github_issue: 43
+    found_by: running the documented upward sync against the real root home
+    objective: >
+      `home sync --from <project> --to ~/.skill-manager` reported EVERY shared
+      unit held-back -- "no usable materialization record, so its contents
+      cannot be shown to be disposable" -- and exited 0 having reconciled
+      nothing. 6, 7 and 5 units on three real repositories. The same sync
+      against a throwaway root produced by `home clone` succeeds (6 updated,
+      byte-identical), because a clone records baselines and a home that was
+      INSTALLED into has none.
+    resolution: >
+      A second showing of the baseline rule's first decision, not a second
+      rule. Disposal gains sourceHeldTheseBytes: the SOURCE's own record names
+      the tree the destination is standing on now. The rule is unchanged word
+      for word -- the bytes a fast-forward destroys must be bytes the source
+      passed through -- and only the evidence differs, because a record-less
+      destination cannot answer for itself and the source can.
+
+      NOT adoption, deliberately. Writing a baseline into the record-less
+      destination asserts that two homes shared bytes they may never have
+      shared, it persists, and the next reconcile in either direction reads it
+      as a licence. Nothing is written; this is a question asked and answered
+      from evidence already on disk, once, per pass.
+
+      contentDigest and NOT sourceDigest, which is the whole safety argument in
+      one field name: contentDigest is "the bytes this reconcile wrote HERE",
+      so the source demonstrably held them, while sourceDigest is the tree the
+      source was HANDED, which after a merge the source never held. It is also
+      whole-tree, which entryDigests deliberately is not after a merge.
+
+      Every hazardous shape stays blocked because all of them make the
+      destination hold something else -- a third home's work merged in since, an
+      edit made there, an upstream change -- and each moves the destination's
+      digest off the source's recorded content, routing the unit back to
+      held-back or to a conflict a human resolves. copyUnit was brought under
+      the same value in the same edit, because Disposal is the single reading of
+      the rule and CHM-15 was exactly what happens when it is not.
+    model_change: >
+      External gains RecordlessDestinationPolicy (SOURCE_WITNESSED /
+      NEVER_DISPOSABLE / ALWAYS_DISPOSABLE), the NoRecordOrigin token, and a
+      ROOT tier that starts record-less in Init. That last is what made the
+      defect expressible: Init handed EVERY tier a clone-time baseline -- the
+      state `home clone` leaves behind -- so the one destination an operator
+      actually has was unrepresentable, and a reconciliation that could write
+      nothing into it was indistinguishable from a correct one. DestMovedAt
+      gained the `# NoBaseline` guard the record-write rule already had, because
+      a record that claims nothing cannot have been moved away from.
+
+      NEVER_DISPOSABLE -- the code as it was -- violates NOTHING, and that is
+      why the axis had to exist rather than a counterexample: safe and useless
+      is not catchable by a safety invariant.
+    acceptance:
+      assertions:
+        - A plain upward sync into a record-less home moves the bytes.
+        - A record-less home holding bytes no record accounts for is still held back, intact.
+        - The refusal names which of the two reasons applied.
+        - External_regression_blindadoption.cfg keeps producing a counterexample.
+    evidence:
+      unit:
+        - 'HomeSyncMergeTest "a record-less destination the source is on record as having held is refreshed" -- both halves, on bytes'
+        - 'HomeSyncMergeTest "a destination unit with no materialization record is never overwritten" -- the untouched-bytes half, message updated'
+        - 'HomeSyncTest "a clone of a home that edited a unit in place restates the baseline" -- now UPDATED rather than MERGED, same clone-time baseline doing the work'
+      graph: 'home-sync node home.sync.project.to.root, rewritten: the fast-forward that now happens AND the hold-back that still must, plus that --merge folds the two disjoint edits without spending the root home own edit'
+      tlc: 'External_regression_blindadoption.cfg violates AReconciliationOnlyWritesAgainstABaselineBothHomesPassedThrough at depth 3 (8 distinct states). All 24 pre-existing expected-violation configs still violate the same invariant; all 11 pre-existing terminating must-pass configs still pass. Sync-slice state counts moved and are re-recorded in spec_manifest.yaml.'
+      mutation: >
+        `sourceHeldTheseBytes` -> `if (true) return false` (8 occurrences of the
+        symbol counted first: 1 definition, 1 record component, 1 read in
+        disposable(), 1 write in disposal(), 4 in prose -- all routing through
+        the one definition). Killed HomeSyncMergeTest "a record-less destination
+        the source is on record as having held is refreshed" on
+        "a plain upward sync is no longer a silent no-op", and HomeSyncTest
+        "a clone of a home that edited a unit in place restates the baseline".
+        Reverted; shasum -a 256 -c OK.
+
+  - id: CHM-20
+    title: "the home's CLI entrypoint could never find a CLI, and the assertion covering it was one-sided"
+    phase: CHM
+    status: closed
+    closed: "2026-07-29"
+    found_by: an operator running the shim on a machine with a working CLI on PATH
+    objective: >
+      LauncherShims.cliScript() emitted `printf '%%s'`. That is correct in
+      script(String), which ends in `.formatted(agent)`, and wrong here, where
+      nothing unescapes it: the doubled percent reached bash literally, and bash
+      `printf '%%s'` prints the two characters `%s` rather than its argument. So
+      the filtered PATH became the single entry `%s`, `command -v skill-manager`
+      found nothing, and the shim took the "no CLI is provisioned" branch
+      UNCONDITIONALLY. Measured with /opt/homebrew/bin/skill-manager on PATH:
+      exit 127. All seven onboarded constituent homes affected.
+
+      It survived because CheckoutHomeProvisioned only ever exercised the
+      no-CLI-reachable case -- SKILL_MANAGER_CLI cleared and PATH set to the
+      shim's own directory -- and asserted a non-zero exit. A shim that ALWAYS
+      exits 127 satisfies that perfectly. A one-sided assertion cannot tell a
+      correct refusal from a dead command.
+
+      Worse than under-tested: the PATH-filtering loop exists so the shim does
+      not resolve to ITSELF (LaunchEnv puts <home>/bin/cli at the front of the
+      launch PATH). With printf broken the filter had never once run, so the
+      self-recursion guard was untested in practice.
+    resolution: >
+      Write the percent once, and say in the javadoc why it is once here and
+      twice one method above -- naming the trap for whoever adds a format
+      specifier later. The assertion is now two-sided in both the unit suite and
+      the graph, asserted on the exec'd CLI's OUTPUT rather than on a zero exit
+      (a shim that exits 0 without launching is the defect the shim exists to
+      prevent), plus a direct assertion that no `%%` survives in the generated
+      body.
+
+      The recursion guard is exercised for real: the shim's own directory FIRST
+      on PATH and a working stub behind it, exactly as a launch arranges them,
+      with a bounded wait so a self-exec spin is a NAMED failure rather than a
+      hung suite. Every case runs on a hermetic PATH holding links to bash,
+      dirname and tr and nothing else -- emptying PATH makes the shim die on a
+      missing dirname, which is a non-zero exit that looks like a refusal and is
+      not one, and leaving /usr/bin on it would let the refusal case find a real
+      skill-manager on some machines.
+    model_change: none
+    acceptance:
+      assertions:
+        - The shim execs the skill-manager it finds and hands the arguments over.
+        - The shim does not resolve to itself when its own directory leads PATH.
+        - The shim still refuses, with its diagnostic, when nothing is reachable.
+        - The generated body contains no doubled percent.
+    evidence:
+      unit:
+        - 'LauncherShimsTest "the cli entrypoint execs the skill-manager it finds on PATH" -- on the stub CLI output and its view of the arguments'
+        - 'LauncherShimsTest "the cli entrypoint never resolves to itself" -- bounded, so recursion is a named failure'
+        - 'LauncherShimsTest "the cli entrypoint refuses when no skill-manager is reachable" -- on the diagnostic, not on a bare non-zero exit'
+        - 'LauncherShimsTest "the cli entrypoint body carries no unformatted percent"'
+      graph: 'checkout-home node checkout.home.provisioned, three bounded invocations on a hermetic PATH: nothing reachable, a stub reachable, and the shim own directory first with the stub behind it'
+      mutation: >
+        Restored `printf '%%s'` at BOTH sites in cliScript() (2 occurrences
+        counted first; mutating one would have left the other half of the filter
+        working). Killed three named tests: "the cli entrypoint body carries no
+        unformatted percent" on the BYTES, and both
+        "the cli entrypoint execs the skill-manager it finds on PATH" and
+        "the cli entrypoint never resolves to itself" on the exec'd output --
+        each reporting the refusal banner where the stub sentinel was expected.
+        Reverted; shasum -a 256 -c OK.
+
   - id: CHM-13
     title: "`home close-out` clears a teardown for a path that is not a home at all"
     phase: CHM

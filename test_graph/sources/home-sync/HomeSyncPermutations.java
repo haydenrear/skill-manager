@@ -21,12 +21,15 @@ import java.util.Set;
  *
  * <ul>
  *   <li><b>A dry run writes nothing.</b> Measured over the whole destination
- *       home, with exactly one artefact allowed by name — the home lock, which
- *       a dry run takes deliberately so a peer cannot make its report describe
- *       a state that never existed. Allowing it by name rather than by
- *       tolerating "small" differences is the difference between an oracle and
- *       a rounding error: a dry run that wrote a materialization record, one
- *       path along in the same directory, is still a violation.</li>
+ *       home with an EMPTY allow-list, and over a destination that does not
+ *       exist at all. The allow-list used to name one artefact — the home lock,
+ *       which a dry run created by taking it. That was measured in the
+ *       operator's own read-only {@code ~/.skill-manager} and it is issue #42:
+ *       content-benign, and still the write a caller reaches for
+ *       {@code --dry-run} to avoid, and a hard failure against a read-only or
+ *       frozen destination. The lock is still taken; it is taken through a path
+ *       that creates nothing, which is sound because the lock file's own
+ *       absence is what proves no peer holds the lock.</li>
  *   <li><b>A dry run describes the run that follows it.</b> Same statuses, unit
  *       for unit. A {@code --dry-run} that is a separate code path is how a
  *       plan comes to promise something the real pass does not do.</li>
@@ -116,25 +119,32 @@ public class HomeSyncPermutations {
                     "home", "sync", "--from", source.toString(), "--to", dest.toString(),
                     "--dry-run", "--json");
             Map<String, Object> dryReport = HomeSyncSupport.json(ctx, "perm-dry-run");
+            // NOTHING is allowed now. The allow-list used to name the home lock,
+            // which a dry run created by taking it — issue #42, measured in the
+            // operator's own read-only ~/.skill-manager. An empty allow-list is
+            // the whole claim: `--dry-run` is documented "write nothing".
             List<String> dryWrote = HomeSyncSupport.wroteNothingBut(destBeforeDry,
-                    HomeSyncSupport.entryDigests(dest),
-                    Set.of(".materialization", ".materialization/.home.lock"));
+                    HomeSyncSupport.entryDigests(dest), Set.of());
             boolean dryRunWroteNothing = dryWrote.isEmpty();
             boolean dryRunSawTheNewUnit =
                     HomeSyncSupport.status(dryReport, "skill:" + FRESH).equals("new")
                             && !Files.exists(HomeSyncSupport.unitDir(dest, FRESH));
 
             // A destination that does not exist yet is where "writes nothing" is
-            // easiest to get wrong: the store's own init() would lay out a whole
-            // home before anything was reported.
+            // easiest to get wrong, and it had TWO ways to go wrong: the store's
+            // own init() would lay out a whole home before anything was
+            // reported, and taking the home lock created .materialization/ and
+            // a zero-byte .home.lock inside it. The second was live until issue
+            // #42, and it is the write that would have failed outright against a
+            // read-only or frozen destination — precisely the write a caller
+            // reaches for --dry-run to avoid.
             Path fresh = base.resolve("never-existed");
             ProcessRecord dryFresh = HomeSyncSupport.sm(ctx, "perm-dry-run-fresh", source.toString(),
                     "home", "sync", "--from", source.toString(), "--to", fresh.toString(),
                     "--dry-run", "--json");
-            boolean dryRunLeavesOnlyTheLock = dryFresh.exitCode() == 0
-                    && HomeSyncSupport.names(fresh).equals(List.of(".materialization"))
-                    && HomeSyncSupport.names(fresh.resolve(".materialization"))
-                            .equals(List.of(".home.lock"));
+            boolean dryRunCreatesNothing = dryFresh.exitCode() == 0
+                    && !Files.exists(fresh)
+                    && HomeSyncSupport.names(fresh).isEmpty();
 
             // --- 2. the real pass, which must match the plan ------------------
             ProcessRecord real = HomeSyncSupport.sm(ctx, "perm-plain", source.toString(),
@@ -218,7 +228,7 @@ public class HomeSyncPermutations {
                             HomeSyncSupport.unitDir(frozen, KEEP).resolve("SKILL.md"));
 
             boolean pass = seeded && dryRunWroteNothing && dryRunSawTheNewUnit
-                    && dryRunLeavesOnlyTheLock && planMatchedTheRun && newUnitArrived
+                    && dryRunCreatesNothing && planMatchedTheRun && newUnitArrived
                     && editedUnitHeldBack && recordlessUnitHeldBack && removedUpstreamReported
                     && removedUpstreamNeverDeleted && conflictReported && conflictWroteNothing
                     && recordlessUnitConflicts && frozenRefuses && frozenWroteNothing
@@ -242,10 +252,10 @@ public class HomeSyncPermutations {
                                     + " frozenMoved=" + frozenMoved))
                     .process(seed).process(dry).process(dryFresh).process(real).process(merge)
                     .process(refused).process(refusedDry).process(refusedGate).process(thawed)
-                    .assertion("a_dry_run_writes_nothing_but_the_home_lock", dryRunWroteNothing)
+                    .assertion("a_dry_run_writes_nothing_into_the_destination_home", dryRunWroteNothing)
                     .assertion("a_dry_run_reports_a_new_unit_without_creating_it",
                             dryRunSawTheNewUnit)
-                    .assertion("a_dry_run_into_a_fresh_home_lays_out_no_home", dryRunLeavesOnlyTheLock)
+                    .assertion("a_dry_run_into_a_fresh_home_creates_nothing_at_all", dryRunCreatesNothing)
                     .assertion("the_dry_run_reported_exactly_what_the_real_run_did",
                             planMatchedTheRun)
                     .assertion("a_unit_that_appeared_upstream_is_created", newUnitArrived)
