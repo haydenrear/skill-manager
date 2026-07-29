@@ -53,6 +53,21 @@ import java.util.List;
  * not redundant with the cheap one — without it, "we also hash the bytes" is an
  * unfalsified claim about cost, and the honest move would be to delete the
  * content sweep rather than pay for it every run.
+ *
+ * <h2>M6 and M7 are one claim and must be read together</h2>
+ *
+ * <p>M6 plants a git worktree registration inside a unit's checkout — the exact
+ * residue issue #47 found in the operator's home, in a home that was neither
+ * {@code --home} nor {@code --into} — and asserts it is DETECTED. M7 performs
+ * ordinary git bookkeeping in the same {@code .git} — an index rewrite, a moved
+ * ref, a new loose object, a reflog append, a pruned packed-refs — and asserts
+ * it is NOT.
+ *
+ * <p>Either one alone is satisfiable by a broken oracle. Deleting the
+ * {@code .git} prune passes M6 and fails M7; restoring it passes M7 and fails
+ * M6. Only the pair pins the granularity that makes the class detectable
+ * without making the tripwire cry wolf, which is the whole content of #47's
+ * second defect.
  */
 public class HomeTripwireSensitive {
     static final NodeSpec SPEC = NodeSpec.of("home.tripwire.sensitive")
@@ -63,8 +78,20 @@ public class HomeTripwireSensitive {
             // rest of the graph and of the standing read-only constraint.
             .timeout("120s");
 
-    /** What a mutation did to each fidelity's view of the decoy. */
-    private record Seen(boolean metadata, boolean content) {}
+    /**
+     * What a mutation did to the decoy: whether each fidelity saw a difference,
+     * and how many git worktree registrations APPEARED.
+     *
+     * <p>The third field runs the decoy diff through the very function
+     * {@code home.tripwire.checked} calls
+     * ({@link TripwireSupport#newWorktreeRegistrations}). Without it, that
+     * node's narrow assertion would have no falsification anywhere: it can only
+     * fire on a real registration appearing in the operator's home mid-run, and
+     * planting one there is exactly what this epic's standing constraint
+     * forbids. Proving the filter here is the only honest way to know the
+     * assertion there is not vacuous.
+     */
+    private record Seen(boolean metadata, boolean content, int registrations) {}
 
     /** A change planted into a decoy home. */
     private interface Mutation {
@@ -80,6 +107,8 @@ public class HomeTripwireSensitive {
             Seen silentEdit;
             Seen retargetedLink;
             Seen deletion;
+            Seen plantedWorktree;
+            Seen gitChurn;
             try {
                 // Control: a decoy nothing was done to.
                 control = probe(home -> { });
@@ -123,6 +152,39 @@ public class HomeTripwireSensitive {
                 // finding too, and a diff that only looked for additions would
                 // report this one clean.
                 deletion = probe(home -> Files.delete(home.resolve(".gemini/skills/keeper")));
+
+                // M6 — a git worktree registered inside a unit's checkout. The
+                // #47 shape, literally: `home close-out` left
+                // .git/worktrees/test-graph-5747232 in the operator's home, in
+                // a home that was neither --home nor --into, and the tripwire
+                // could not see it because `.git` was pruned outright.
+                plantedWorktree = probe(home -> {
+                    Path reg = home.resolve(
+                            ".skill-manager/skills/unit-a/.git/worktrees/planted-5747232");
+                    Files.createDirectories(reg);
+                    Files.writeString(reg.resolve("gitdir"), "/private/tmp/planted-5747232/.git\n");
+                    Files.writeString(reg.resolve("HEAD"), "0".repeat(40) + "\n");
+                    Files.writeString(reg.resolve("commondir"), "../..\n");
+                });
+
+                // M7 — the OTHER half, and the reason the prune existed. A
+                // commit, a fetch and an index rewrite churn a .git on their own
+                // schedule; a unit is a git checkout and something touches one
+                // on any busy machine. If this is detected the oracle cries
+                // wolf and gets switched off, which is how the class became
+                // undetectable in the first place. M6 without M7 would be
+                // satisfied by simply deleting the prune.
+                gitChurn = probe(home -> {
+                    Path git = home.resolve(".skill-manager/skills/unit-a/.git");
+                    Files.writeString(git.resolve("index"), "a rewritten index\n");
+                    Files.writeString(git.resolve("ORIG_HEAD"), "1".repeat(40) + "\n");
+                    Files.writeString(git.resolve("logs/HEAD"),
+                            "0".repeat(40) + " " + "1".repeat(40) + " commit\n");
+                    Files.writeString(git.resolve("refs/heads/main"), "1".repeat(40) + "\n");
+                    Files.createDirectories(git.resolve("objects/ab"));
+                    Files.writeString(git.resolve("objects/ab/cdef0123"), "a new loose object\n");
+                    Files.delete(git.resolve("packed-refs"));
+                });
             } catch (Exception e) {
                 return NodeResult.error("home.tripwire.sensitive", e);
             }
@@ -134,6 +196,11 @@ public class HomeTripwireSensitive {
             boolean silentEditIsCaughtByContent = silentEdit.content();
             boolean aRetargetedSymlinkIsDetected = retargetedLink.metadata();
             boolean aDeletionIsDetected = deletion.metadata();
+            boolean aPlantedWorktreeRegistrationIsDetected =
+                    plantedWorktree.metadata() && plantedWorktree.content()
+                            && plantedWorktree.registrations() == 1;
+            boolean ordinaryGitChurnIsNotDetected = !gitChurn.metadata() && !gitChurn.content()
+                    && gitChurn.registrations() == 0;
 
             if (!anUnmutatedDecoyReportsClean) failures.add("control decoy was not clean");
             if (!aPlantedProjectionIsDetected) failures.add("M1 planted projection not detected");
@@ -144,6 +211,13 @@ public class HomeTripwireSensitive {
             if (!silentEditIsCaughtByContent) failures.add("M3 silent edit not caught by CONTENT");
             if (!aRetargetedSymlinkIsDetected) failures.add("M4 retargeted symlink not detected");
             if (!aDeletionIsDetected) failures.add("M5 deletion not detected");
+            if (!aPlantedWorktreeRegistrationIsDetected) {
+                failures.add("M6 planted git worktree registration not detected (#47)");
+            }
+            if (!ordinaryGitChurnIsNotDetected) {
+                failures.add("M7 ordinary git churn fired the tripwire — the prune it replaced "
+                        + "existed for this reason");
+            }
 
             boolean pass = failures.isEmpty();
             return (pass
@@ -158,7 +232,11 @@ public class HomeTripwireSensitive {
                             silentEditIsCaughtByContent)
                     .assertion("a_retargeted_symlink_is_detected", aRetargetedSymlinkIsDetected)
                     .assertion("a_deletion_is_detected", aDeletionIsDetected)
-                    .metric("mutationsPlanted", 5);
+                    .assertion("a_planted_git_worktree_registration_is_detected",
+                            aPlantedWorktreeRegistrationIsDetected)
+                    .assertion("ordinary_git_churn_inside_a_watched_home_is_not_detected",
+                            ordinaryGitChurnIsNotDetected)
+                    .metric("mutationsPlanted", 7);
         });
     }
 
@@ -173,9 +251,11 @@ public class HomeTripwireSensitive {
             List<String> metadataBefore = metadata(decoy);
             List<String> contentBefore = content(decoy);
             mutation.apply(decoy);
+            List<String> metadataDiff = TripwireSupport.difference(metadataBefore, metadata(decoy));
             return new Seen(
-                    !TripwireSupport.difference(metadataBefore, metadata(decoy)).isEmpty(),
-                    !TripwireSupport.difference(contentBefore, content(decoy)).isEmpty());
+                    !metadataDiff.isEmpty(),
+                    !TripwireSupport.difference(contentBefore, content(decoy)).isEmpty(),
+                    TripwireSupport.newWorktreeRegistrations(metadataDiff).size());
         } finally {
             deleteTree(decoy);
         }
@@ -191,6 +271,24 @@ public class HomeTripwireSensitive {
 
         Files.createDirectories(home.resolve(".skill-manager/installed"));
         Files.writeString(home.resolve(".skill-manager/installed/unit-a.json"), "{\"name\":\"unit-a\"}\n");
+
+        // unit-a is a git CHECKOUT, because most real units are one and because
+        // M6/M7 are both about what a .git contributes. It carries the files
+        // ordinary git commands rewrite (index, ORIG_HEAD, logs/HEAD, refs,
+        // loose objects, packed-refs) and NO worktrees/ directory, so the
+        // baseline records `worktrees=0` and a planted registration is a change
+        // to both that line and the set of registration lines.
+        Path git = unitA.resolve(".git");
+        Files.createDirectories(git.resolve("refs/heads"));
+        Files.createDirectories(git.resolve("objects/00"));
+        Files.createDirectories(git.resolve("logs"));
+        Files.writeString(git.resolve("HEAD"), "ref: refs/heads/main\n");
+        Files.writeString(git.resolve("config"), "[core]\n\trepositoryformatversion = 0\n");
+        Files.writeString(git.resolve("index"), "an index\n");
+        Files.writeString(git.resolve("packed-refs"), "# pack-refs with: peeled\n");
+        Files.writeString(git.resolve("refs/heads/main"), "0".repeat(40) + "\n");
+        Files.writeString(git.resolve("logs/HEAD"), "0".repeat(40) + " init\n");
+        Files.writeString(git.resolve("objects/00/11223344"), "a loose object\n");
 
         Files.createSymbolicLink(
                 home.resolve(".skill-manager/skills/linked-unit"), Path.of("../../elsewhere/unit"));

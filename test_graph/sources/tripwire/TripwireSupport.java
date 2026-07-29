@@ -54,6 +54,16 @@ import java.util.Set;
  * link is the exact shape of that defect, so the target belongs in the cheap
  * fidelity rather than only in the expensive one.
  *
+ * <h2>{@code .git} is watched at a third granularity, and that is the point</h2>
+ *
+ * Neither fidelity walks a {@code .git} directory, and neither one skips it. It
+ * used to be skipped outright, which made every write into a {@code .git} inside
+ * a watched home invisible — issue #47, where {@code home close-out} registered
+ * a worktree in the operator's home and the tripwire ran seventeen minutes later
+ * and reported all four assertions passing. It contributes a registration
+ * summary instead: see {@link #gitRegistrations}. Ordinary git churn moves none
+ * of those lines; a {@code git worktree add} or {@code remove} moves both.
+ *
  * <h2>Scope is declared, not implied</h2>
  *
  * CONTENT covers {@link #CONTENT_SURFACES} and not {@code venvs/}, {@code tools/},
@@ -136,7 +146,7 @@ final class TripwireSupport {
      */
     private static boolean pruned(Path home, Path path) {
         String name = path.getFileName() == null ? "" : path.getFileName().toString();
-        if (name.equals(".git") || name.equals("__pycache__")) return true;
+        if (name.equals("__pycache__")) return true;
         if (name.equals("models_cache.json") || name.equals("history.jsonl")) return true;
         if (name.startsWith("logs") && name.contains(".sqlite")) return true;
         if (name.startsWith("state") && name.contains(".sqlite")) return true;
@@ -163,6 +173,89 @@ final class TripwireSupport {
         }
         Path codex = home.resolve(".codex");
         return path.equals(codex.resolve("sessions")) || path.equals(codex.resolve("archived_sessions"));
+    }
+
+    // --------------------------------------------------------- git, coarsely
+
+    /** Marks a line describing a {@code .git} directory rather than its contents. */
+    static final String GIT_MARK = "G";
+
+    /**
+     * What a {@code .git} directory contributes to a snapshot: its WORKTREE
+     * REGISTRATIONS, and nothing else.
+     *
+     * <h2>Why a special case rather than a prune or a walk</h2>
+     *
+     * <p>{@code .git} used to be in {@link #pruned}, alongside session
+     * transcripts and sqlite WALs, for a real reason: every git command rewrites
+     * {@code index}, {@code logs/HEAD}, {@code ORIG_HEAD} and a fresh loose
+     * object or two, so a file-level walk of it fires on a {@code git status}.
+     * The cost of that prune was that EVERY write into a {@code .git} directory
+     * inside a watched home was invisible — and issue #47 is exactly that write:
+     * {@code home close-out} registered a worktree at
+     * {@code ~/.skill-manager/skills/test-graph/.git/worktrees/test-graph-5747232},
+     * a home that was neither {@code --home} nor {@code --into}, and the tripwire
+     * ran seventeen minutes later and reported all four assertions passing.
+     *
+     * <p>Walking it at file level is not the answer either; that is the churn
+     * the prune existed to silence, and an oracle that cries wolf gets switched
+     * off. So the resolution is neither prune nor walk but a THIRD granularity:
+     * one line naming the {@code .git} and its registration COUNT, plus one line
+     * per registration. Ordinary git bookkeeping — commits, fetches, index
+     * rewrites, new loose objects, moved refs — changes none of those lines.
+     * {@code git worktree add} changes both, and {@code git worktree remove} or
+     * {@code prune} changes them the other way, so a registration that appears
+     * and one that vanishes are equally visible.
+     *
+     * <p>The count line is emitted even when there are zero registrations. That
+     * is the non-vacuity half: without it, a {@code .git} the walk never reached
+     * and a {@code .git} with no worktrees would both contribute nothing, and
+     * "no new registration appeared" would be indistinguishable from "nothing
+     * looked".
+     */
+    private static void gitRegistrations(Path base, Path gitPath, List<String> out) {
+        String rel = base.equals(gitPath) ? "." : base.relativize(gitPath).toString();
+        if (!Files.isDirectory(gitPath, LinkOption.NOFOLLOW_LINKS)) {
+            // A `.git` FILE is the gitdir pointer a linked worktree carries. Its
+            // presence at a path that had none is itself the finding.
+            out.add(GIT_MARK + "\t" + rel + "\tgitfile");
+            return;
+        }
+        Path worktrees = gitPath.resolve("worktrees");
+        List<Path> registered = Files.isDirectory(worktrees, LinkOption.NOFOLLOW_LINKS)
+                ? listSorted(worktrees)
+                : List.of();
+        out.add(GIT_MARK + "\t" + rel + "\tworktrees=" + registered.size());
+        for (Path entry : registered) {
+            out.add(GIT_MARK + "\t" + rel + "/worktrees/" + entry.getFileName());
+        }
+    }
+
+    /**
+     * The worktree registrations that APPEARED between the two sides of a
+     * {@link #difference}.
+     *
+     * <p>Narrower than the whole metadata diff on purpose, and for the reason
+     * {@code HomeTripwireChecked} keeps a narrow assertion beside a broad one: a
+     * concurrent agent session moves metadata lines all the time, but nothing on
+     * this machine registers a git worktree inside the operator's home by
+     * accident. This one is attributable.
+     */
+    static List<String> newWorktreeRegistrations(List<String> diff) {
+        List<String> out = new ArrayList<>();
+        for (String line : diff) {
+            if (line.startsWith("+" + GIT_MARK + "\t") && line.contains("/worktrees/")) out.add(line);
+        }
+        return out;
+    }
+
+    /** How many {@code .git} directories a snapshot actually looked at. */
+    static int gitDirectoriesWatched(List<String> snapshot) {
+        int n = 0;
+        for (String line : snapshot) {
+            if (line.startsWith(GIT_MARK + "\t") && line.contains("\tworktrees=")) n++;
+        }
+        return n;
     }
 
     // ------------------------------------------------------------ collection
@@ -202,6 +295,13 @@ final class TripwireSupport {
             // Never recurse through a link: a link into a large tree would make
             // the walk quadratic, and the target string is the fact that matters.
             out.add("L\t" + rel + "\t" + Files.readSymbolicLink(current));
+            return;
+        }
+        // Coarse, at BOTH fidelities: a `.git` inside a content surface is
+        // hashed no more deeply than one outside it, because the question asked
+        // of it is the same question. See gitRegistrations.
+        if (".git".equals(current.getFileName() == null ? "" : current.getFileName().toString())) {
+            gitRegistrations(base, current, out);
             return;
         }
         if (Files.isDirectory(current, LinkOption.NOFOLLOW_LINKS)) {

@@ -57,7 +57,7 @@ public class HomeTripwireChecked {
             String unit = ctx.get("home.tripwire.workload", "unitName").orElse(null);
             if (metadataBaseline == null || contentBaseline == null || realHome == null || unit == null) {
                 // Every abort still carries the full assertion roster. The
-                // point of naming four claims is that a reader learns WHICH one
+                // point of naming each claim is that a reader learns WHICH one
                 // failed; a node that bails out with a bare sentence teaches
                 // them nothing and — worse — teaches the aggregate report that
                 // this run made no claims at all, which reads exactly like a
@@ -109,13 +109,26 @@ public class HomeTripwireChecked {
             if (Files.exists(storeUnit, LinkOption.NOFOLLOW_LINKS)) leaked.add(".skill-manager/skills/" + unit);
             boolean thisGraphsProbeUnitIsInNoRealHome = leaked.isEmpty();
 
+            // Issue #47's second defect. The broad metadata diff above now
+            // covers this too — `.git` is no longer skipped — but a registration
+            // gets its own named assertion for the same reason the probe unit
+            // does: the broad diff is perturbed by any concurrent session and
+            // will sometimes be red for reasons no one caused, while nothing on
+            // this machine registers a git worktree inside the operator's home
+            // by accident. When both go red, this one says which finding it is.
+            List<String> newRegistrations =
+                    TripwireSupport.newWorktreeRegistrations(metadataDiff);
+            boolean noGitWorktreeWasRegisteredUnderAWatchedHome = newRegistrations.isEmpty();
+
             boolean pass = theBaselinesWereActuallyRead && theRealHomesAreUnchanged
-                    && theWatchedContentSurfacesAreByteIdentical && thisGraphsProbeUnitIsInNoRealHome;
+                    && theWatchedContentSurfacesAreByteIdentical && thisGraphsProbeUnitIsInNoRealHome
+                    && noGitWorktreeWasRegisteredUnderAWatchedHome;
 
             return (pass
                     ? NodeResult.pass("home.tripwire.checked")
                     : NodeResult.fail("home.tripwire.checked",
                             "leaked=" + leaked
+                                    + " newWorktreeRegistrations=" + newRegistrations
                                     + " metadataDiff=" + elide(metadataDiff)
                                     + " contentDiff=" + elide(contentDiff)))
                     .assertion("the_baselines_were_actually_read", theBaselinesWereActuallyRead)
@@ -124,20 +137,31 @@ public class HomeTripwireChecked {
                             theWatchedContentSurfacesAreByteIdentical)
                     .assertion("this_graphs_probe_unit_is_in_no_real_home",
                             thisGraphsProbeUnitIsInNoRealHome)
+                    .assertion("no_git_worktree_was_registered_under_a_watched_home",
+                            noGitWorktreeWasRegisteredUnderAWatchedHome)
                     .metric("metadataDifferences", metadataDiff.size())
                     .metric("contentDifferences", contentDiff.size())
                     .metric("metadataEntries", afterMetadata.size())
-                    .metric("contentEntries", afterContent.size());
+                    .metric("contentEntries", afterContent.size())
+                    // Non-vacuity, published rather than asserted: a machine
+                    // whose homes hold no git checkout would legitimately watch
+                    // zero, and a red build for that would teach the reader
+                    // nothing. Zero here means the assertion above proved
+                    // nothing, and the number says so out loud.
+                    .metric("gitDirectoriesWatched",
+                            TripwireSupport.gitDirectoriesWatched(afterMetadata))
+                    .metric("newWorktreeRegistrations", newRegistrations.size());
         });
     }
 
-    /** The node's four named claims, all failed, for a run that proved none of them. */
+    /** The node's named claims, all failed, for a run that proved none of them. */
     private static NodeResult unproven(NodeResult result) {
         return result
                 .assertion("the_baselines_were_actually_read", false)
                 .assertion("the_real_agent_homes_are_unchanged", false)
                 .assertion("the_watched_content_surfaces_are_byte_identical", false)
-                .assertion("this_graphs_probe_unit_is_in_no_real_home", false);
+                .assertion("this_graphs_probe_unit_is_in_no_real_home", false)
+                .assertion("no_git_worktree_was_registered_under_a_watched_home", false);
     }
 
     private static String elide(List<String> lines) {
