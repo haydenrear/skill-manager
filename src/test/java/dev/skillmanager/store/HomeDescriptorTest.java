@@ -296,6 +296,58 @@ public final class HomeDescriptorTest {
                     "persisted descriptor round-trips");
         });
 
+        suite.test("describe/drift/policy/shims refuse a path that is not a home, and build none", () -> {
+            // Issue #33. All four opened with store.init(), which lays out a
+            // whole home at whatever path it was given, so a mistyped --home
+            // did not fail — it quietly created a second, empty home and then
+            // answered questions about that one. Every answer was true of the
+            // thing it had just built and false of the thing the operator
+            // meant: the fail-open shape this epic keeps finding.
+            //
+            // Asserted on BYTES, not on the exit code alone. A command that
+            // crashed after scaffolding would satisfy an exit-code test
+            // perfectly while leaving the mess the fix exists to prevent.
+            Path notAHome = Files.createTempDirectory("descriptor-not-a-home-");
+            Files.writeString(notAHome.resolve("README.md"), "a checkout, not a home\n");
+
+            for (String[] argv : List.of(
+                    new String[]{"describe"}, new String[]{"drift"},
+                    new String[]{"policy"}, new String[]{"shims"})) {
+                int rc = switch (argv[0]) {
+                    case "describe" -> new CommandLine(new HomeCommand.DescribeCmd())
+                            .execute("--home", notAHome.toString());
+                    case "drift" -> new CommandLine(new HomeCommand.DriftCmd())
+                            .execute("--home", notAHome.toString());
+                    case "policy" -> new CommandLine(new HomeCommand.PolicyCmd())
+                            .execute("--home", notAHome.toString());
+                    default -> new CommandLine(new HomeCommand.ShimsCmd())
+                            .execute("--home", notAHome.toString());
+                };
+                assertEquals(NotAHomeException.EXIT_CODE, rc,
+                        "home " + argv[0] + " refuses a path that is not a home");
+            }
+            assertFalse(Files.exists(notAHome.resolve("installed")),
+                    "no home was laid out at the path that was refused");
+            assertFalse(Files.exists(notAHome.resolve("skills")),
+                    "not even skills/, which is half the home test");
+            assertFalse(Files.exists(HomeDescriptor.file(notAHome)),
+                    "and no descriptor was written for a directory that is not a home");
+            assertFalse(Files.exists(notAHome.resolve("bin/launch")),
+                    "and no launcher shims either");
+            try (var entries = Files.list(notAHome)) {
+                assertEquals(1, (int) entries.count(),
+                        "the directory holds exactly what it held before");
+            }
+
+            // --init keeps the one gesture the old behaviour covered:
+            // declaring a policy on a home as it is being created.
+            int initRc = new CommandLine(new HomeCommand.PolicyCmd())
+                    .execute("--home", notAHome.toString(), "--init", "frozen");
+            assertEquals(0, initRc, "--init scaffolds deliberately");
+            assertTrue(Files.isDirectory(notAHome.resolve("skills")),
+                    "and the home really is laid out when it was asked for");
+        });
+
         return suite.runAll();
     }
 

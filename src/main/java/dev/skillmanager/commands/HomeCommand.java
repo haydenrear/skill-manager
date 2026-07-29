@@ -162,12 +162,13 @@ public final class HomeCommand {
                 for (String dangling : result.danglingLinks()) Log.warn("    %s", dangling);
             }
             if (result.clean()) {
-                Log.ok("no %sreference to %s survives in %s",
+                Log.ok("no %sreference to %s survives in %s, and no path in it reaches any "
+                                + "other Skill Manager home",
                         result.contentReferences().isEmpty() ? "" : "repairable ", against, home);
                 return 0;
             }
-            Log.error("%d reference(s) to %s survive in %s",
-                    result.leaks().size(), against, home);
+            Log.error("%d reference(s) reach outside %s",
+                    result.leaks().size(), home);
             for (HomeCloner.Leak leak : result.leaks()) Log.error("  %s", leak);
             return 1;
         }
@@ -209,6 +210,11 @@ public final class HomeCommand {
         @Option(names = "--json", description = "Emit machine-readable JSON (the descriptor itself).")
         boolean json;
 
+        @Option(names = "--init",
+                description = "Lay out the home first if it is not one yet. Without this a "
+                        + "path that is not a home is refused rather than created.")
+        boolean init;
+
         private final SkillStore injectedStore;
 
         public DescribeCmd() { this(null); }
@@ -217,8 +223,14 @@ public final class HomeCommand {
 
         @Override
         public Integer call() throws Exception {
-            SkillStore store = resolveStore(injectedStore, home);
-            store.init();
+            SkillStore store;
+            try {
+                store = requireHome(injectedStore, home, init, "home describe --home");
+            } catch (NotAHomeException notAHome) {
+                if (json) System.out.println(errorJson(notAHome));
+                Log.error("%s", notAHome.getMessage());
+                return NotAHomeException.EXIT_CODE;
+            }
             Map<String, String> contributions = setEnv.isEmpty()
                     ? HomeDescriptor.read(store.root())
                             .map(HomeDescriptor::envContributions)
@@ -252,6 +264,12 @@ public final class HomeCommand {
                 description = "Skill Manager home. Defaults to $SKILL_MANAGER_HOME.")
         Path home;
 
+        @Option(names = "--init",
+                description = "Lay out the home first if it is not one yet — the case of "
+                        + "declaring a policy on a home as it is being created. Without this a "
+                        + "path that is not a home is refused rather than created.")
+        boolean init;
+
         private final SkillStore injectedStore;
 
         public PolicyCmd() { this(null); }
@@ -260,8 +278,13 @@ public final class HomeCommand {
 
         @Override
         public Integer call() throws Exception {
-            SkillStore store = resolveStore(injectedStore, home);
-            store.init();
+            SkillStore store;
+            try {
+                store = requireHome(injectedStore, home, init, "home policy --home");
+            } catch (NotAHomeException notAHome) {
+                Log.error("%s", notAHome.getMessage());
+                return NotAHomeException.EXIT_CODE;
+            }
             if (policy == null || policy.isBlank()) {
                 HomePolicy current = HomePolicy.load(store);
                 System.out.println("policy: " + current.wire());
@@ -302,6 +325,11 @@ public final class HomeCommand {
         @Option(names = "--json", description = "Emit machine-readable JSON.")
         boolean json;
 
+        @Option(names = "--init",
+                description = "Lay out the home first if it is not one yet. Without this a "
+                        + "path that is not a home is refused rather than created.")
+        boolean init;
+
         private final SkillStore injectedStore;
 
         public ShimsCmd() { this(null); }
@@ -310,8 +338,14 @@ public final class HomeCommand {
 
         @Override
         public Integer call() throws Exception {
-            SkillStore store = resolveStore(injectedStore, home);
-            store.init();
+            SkillStore store;
+            try {
+                store = requireHome(injectedStore, home, init, "home shims --home");
+            } catch (NotAHomeException notAHome) {
+                if (json) System.out.println(errorJson(notAHome));
+                Log.error("%s", notAHome.getMessage());
+                return NotAHomeException.EXIT_CODE;
+            }
             LauncherShims.Result result = LauncherShims.write(store);
             if (json) {
                 System.out.println("""
@@ -360,6 +394,11 @@ public final class HomeCommand {
         @Option(names = "--json", description = "Emit machine-readable JSON.")
         boolean json;
 
+        @Option(names = "--init",
+                description = "Lay out the home first if it is not one yet. Without this a "
+                        + "path that is not a home is refused rather than created.")
+        boolean init;
+
         private final SkillStore injectedStore;
 
         public DriftCmd() { this(null); }
@@ -368,8 +407,14 @@ public final class HomeCommand {
 
         @Override
         public Integer call() throws Exception {
-            SkillStore store = resolveStore(injectedStore, home);
-            store.init();
+            SkillStore store;
+            try {
+                store = requireHome(injectedStore, home, init, "home drift --home");
+            } catch (NotAHomeException notAHome) {
+                if (json) System.out.println(errorJson(notAHome));
+                Log.error("%s", notAHome.getMessage());
+                return NotAHomeException.EXIT_CODE;
+            }
             if (record) {
                 HomeDigest baseline = HomeDigest.read(store).orElse(null);
                 DriftGate recorded = DriftGate.recordSince(store, baseline, "home drift --record")
@@ -486,6 +531,11 @@ public final class HomeCommand {
             } else {
                 renderSync(report);
             }
+            // A dry run against a frozen destination is a report AND a refusal:
+            // the whole plan is printed above, and the exit code is the one a
+            // real run would have produced, so nothing branching on it changes.
+            // See HomeSync#run, issue #51.
+            if (report.destinationFrozen()) return FrozenHomeException.EXIT_CODE;
             // Held-back units are the documented default outcome of a plain
             // sync, so they are reported and do not fail the command. A
             // conflict is different: it is a decision nothing here is allowed
@@ -568,6 +618,12 @@ public final class HomeCommand {
     private static void renderSync(HomeSync.Report report) {
         Log.info("  from:        %s", report.from());
         Log.info("  to:          %s%s", report.to(), report.dryRun() ? "  (dry run — nothing written)" : "");
+        if (report.destinationFrozen()) {
+            Log.warn("  the destination is frozen (%s declares policy = \"frozen\"), so this is "
+                            + "what a run WOULD do and no run will be allowed to do it — thaw it "
+                            + "with `skill-manager home policy live --home %s`, or clone it",
+                    report.to().resolve(dev.skillmanager.policy.HomePolicy.FILENAME), report.to());
+        }
         for (ChildHomeMaterializer.UnitSync unit : report.units()) {
             String status = unit.status().name().toLowerCase().replace('_', '-');
             if (unit.status() == ChildHomeMaterializer.SyncStatus.UNCHANGED) {
@@ -600,6 +656,7 @@ public final class HomeCommand {
                 + "\",\"to\":\"" + esc(report.to().toString())
                 + "\",\"merge\":" + report.merge()
                 + ",\"dryRun\":" + report.dryRun()
+                + ",\"destinationFrozen\":" + report.destinationFrozen()
                 + ",\"clean\":" + report.clean()
                 + ",\"units\":" + unitsJson(report.units()) + "}";
     }
@@ -698,6 +755,45 @@ public final class HomeCommand {
         return SkillStore.defaultStore();
     }
 
+    /**
+     * The store {@code --home} names, once it has been established that a home
+     * is what it is.
+     *
+     * <h2>Why these three commands stopped calling {@code init()}</h2>
+     *
+     * <p>{@code home describe}, {@code home drift} and {@code home policy} each
+     * opened with {@code store.init()}, which lays out a full home — {@code
+     * installed/}, {@code skills/}, the rest — at whatever path it was given.
+     * So a mistyped {@code --home} did not fail; it silently created a second,
+     * empty home next to the real one and then answered questions about it.
+     * Every answer was true of the thing it had just built and false of the
+     * thing the operator meant, which is the exact shape of the fail-open class
+     * this epic keeps finding: <em>a zero that means "could not look", reported
+     * as "looked and found nothing"</em>. Issue #33.
+     *
+     * <p>{@link NotAHomeException} previously recorded these three as
+     * "reported, not patched", on the reasoning that laying out an empty home
+     * at a mistyped path is a mess rather than a data loss. That reasoning
+     * missed the second half: {@code home describe --json} is what the launch
+     * shims and {@code bootstrap-home.sh} read to decide where an agent's
+     * config lives, so a descriptor computed for the wrong directory is acted
+     * on by a machine, not just read by a person.
+     *
+     * <p>{@code --init} keeps the one legitimate gesture the old behaviour
+     * covered — declaring a policy on a home as it is being created — but makes
+     * it a thing the operator asked for rather than a side effect of a typo.
+     */
+    private static SkillStore requireHome(SkillStore injected, Path home, boolean init, String role)
+            throws IOException {
+        SkillStore store = resolveStore(injected, home);
+        if (init) {
+            store.init();
+            return store;
+        }
+        NotAHomeException.require(store.root(), role);
+        return store;
+    }
+
     private static Map<String, String> parseEnv(List<String> assignments) {
         Map<String, String> out = new LinkedHashMap<>();
         for (String assignment : assignments) {
@@ -765,11 +861,15 @@ public final class HomeCommand {
             for (String dangling : report.danglingReferences()) Log.warn("    script %s", dangling);
         }
         if (report.clean()) {
-            Log.ok("cloned home to %s — no path in it resolves back to %s",
-                    report.dest(), report.source());
+            // Says what was actually checked. The old wording — "no path in it
+            // resolves back to <source>" — was true and useless: it left links
+            // resolving into a THIRD home (the operator's live one) reported as
+            // independence. See HomeCloner#foreignHomeReachedBy, issue #49.
+            Log.ok("cloned home to %s — nothing in it resolves back to %s, and no path in it "
+                    + "reaches any other Skill Manager home", report.dest(), report.source());
         } else {
-            Log.error("clone verification FAILED — %d path(s) still point at %s",
-                    report.leaks().size(), report.source());
+            Log.error("clone verification FAILED — %d path(s) reach outside this copy",
+                    report.leaks().size());
             for (HomeCloner.Leak leak : report.leaks()) Log.error("    %s", leak);
         }
     }

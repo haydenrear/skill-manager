@@ -134,6 +134,82 @@ public final class HomeCloneTest {
                     Files.readSymbolicLink(dest.resolve("bin/cli/tool")), "external link verbatim");
         });
 
+        suite.test("a link into a THIRD home fails the clone; one into a toolchain does not", () -> {
+            // Issue #49. The check used to ask only "does anything resolve back
+            // to the SOURCE", which the measured defect satisfied: the cloned
+            // homes for meta-orchestrator and spec-double-compiler carried
+            //   skills/deploy-helm/test_graph/build-logic
+            //     -> ~/.skill-manager/skills/test-graph/project_sdk_sources/build-logic
+            // — the operator's LIVE home, which was not the source, so the
+            // clone reported independence while a Gradle build through the copy
+            // wrote into the one home the copy exists to stay out of.
+            //
+            // Both halves are asserted together on purpose. "Nothing may
+            // resolve outside the copy" would catch the first link and also the
+            // second, and a home legitimately carries 14–18 links to
+            // interpreters it does not own; a rule that fires on those is a
+            // rule that gets switched off.
+            Path source = seededHome();
+            Path foreignHome = seededHome();
+            Files.createDirectories(foreignHome.resolve("skills/test-graph/project_sdk_sources"));
+            Files.writeString(
+                    foreignHome.resolve("skills/test-graph/project_sdk_sources/marker"), "sdk\n");
+            Path toolchain = newDir("toolchain-");
+            Files.createDirectories(toolchain.resolve("bin"));
+            Files.writeString(toolchain.resolve("bin/python3.14"), "#!/bin/sh\n");
+
+            Files.createDirectories(source.resolve("skills/beta/test_graph"));
+            Files.createSymbolicLink(source.resolve("skills/beta/test_graph/build-logic"),
+                    foreignHome.resolve("skills/test-graph/project_sdk_sources"));
+            Files.createSymbolicLink(source.resolve("skills/beta/test_graph/python"),
+                    toolchain.resolve("bin/python3.14"));
+            Path dest = newDir("dest-").resolve("home");
+
+            HomeCloner.Report report = HomeCloner.cloneHome(source, dest);
+
+            assertFalse(report.clean(),
+                    "a link reaching another home fails the clone: " + report.leaks());
+            List<HomeCloner.Leak> foreign = report.leaks().stream()
+                    .filter(leak -> leak.kind().equals("FOREIGN_HOME")).toList();
+            assertEquals(1, foreign.size(),
+                    "exactly the link into the other home, not the interpreter: " + report.leaks());
+            assertContains(foreign.get(0).path(), "build-logic",
+                    "the leak names the link that reaches the other home");
+            assertContains(foreign.get(0).detail(), foreignHome.toString(),
+                    "and names the home it reaches, so the reader can act on it");
+            assertTrue(Files.isSymbolicLink(dest.resolve("skills/beta/test_graph/python")),
+                    "the interpreter link is still copied — it is not the problem");
+        });
+
+        suite.test("a relative link through an absolute parent still reaches the other home", () -> {
+            // The disguised shape from #49: the offending target was
+            // `sdk/../standard-nodes`, a RELATIVE spelling whose parent `sdk`
+            // was itself the absolute link into the foreign home. Anything that
+            // inspects link text sees a harmless relative path; only resolving
+            // the physical path sees where it lands. Same reason the
+            // [[vendored]] validator compares resolved paths.
+            Path source = seededHome();
+            Path foreignHome = seededHome();
+            Files.createDirectories(foreignHome.resolve("skills/vendored/standard-nodes"));
+            Files.writeString(
+                    foreignHome.resolve("skills/vendored/standard-nodes/marker"), "nodes\n");
+            Files.createDirectories(source.resolve("skills/beta/test_graph"));
+            Files.createSymbolicLink(source.resolve("skills/beta/test_graph/sdk"),
+                    foreignHome.resolve("skills/vendored"));
+            Files.createSymbolicLink(source.resolve("skills/beta/test_graph/standard-nodes"),
+                    Path.of("sdk/standard-nodes"));
+            Path dest = newDir("dest-").resolve("home");
+
+            HomeCloner.Report report = HomeCloner.cloneHome(source, dest);
+
+            List<String> foreign = report.leaks().stream()
+                    .filter(leak -> leak.kind().equals("FOREIGN_HOME"))
+                    .map(HomeCloner.Leak::path).toList();
+            assertTrue(foreign.stream().anyMatch(p -> p.endsWith("standard-nodes")),
+                    "the relative link is caught by where it lands, not by how it is spelled: "
+                            + report.leaks());
+        });
+
         suite.test("cache/ is not copied", () -> {
             Path source = seededHome();
             Files.createDirectories(source.resolve("cache/uv-tools"));

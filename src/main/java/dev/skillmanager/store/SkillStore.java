@@ -70,7 +70,7 @@ public final class SkillStore {
         String env = System.getenv("SKILL_MANAGER_HOME");
         Path root = env != null && !env.isBlank()
                 ? Path.of(env)
-                : Path.of(System.getProperty("user.home"), ".skill-manager");
+                : dev.skillmanager.agent.AgentHomes.userHome().resolve(".skill-manager");
         return new SkillStore(root);
     }
 

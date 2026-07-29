@@ -49,14 +49,17 @@ import java.nio.file.Path;
  * already be a home for the read to mean anything, while the destination is
  * where they are written TO and may legitimately be new.
  *
- * <p>Also not validated: {@code home describe}, {@code home drift} and
- * {@code home policy}, which answer for arbitrary paths too and initialise a
- * home layout at whatever they are pointed at. Left alone on purpose —
- * {@code home policy frozen --home <a home being created>} is a real gesture,
- * and those three neither claim anything about content nor authorise a
- * teardown. The defect being fixed is a command that says "there is nothing
- * here to lose"; a command that lays out an empty home at a mistyped path is a
- * mess, not a data loss. Reported, not patched.
+ * <p>{@code home describe}, {@code home drift}, {@code home policy} and
+ * {@code home shims} were once excluded here, on the reasoning that laying out
+ * an empty home at a mistyped path is a mess rather than a data loss. They now
+ * require a home too. The reasoning was half right and the missing half was
+ * that a descriptor is <em>machine</em>-read: the launch shims and
+ * {@code bootstrap-home.sh} take {@code home describe --json} as the answer to
+ * "where does this agent's config live", so a descriptor computed for a
+ * directory the command had just invented is acted on rather than merely read.
+ * The legitimate gesture the old behaviour covered —
+ * {@code home policy frozen --home <a home being created>} — survives as an
+ * explicit {@code --init}. Issue #33.
  */
 public final class NotAHomeException extends IOException {
 

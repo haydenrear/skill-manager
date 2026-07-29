@@ -81,11 +81,30 @@ public final class ProjectChildHomeScaffolder {
                            MaterializationMode mode,
                            Set<String> checkoutUnits)
             throws IOException {
+        return scaffold(project, resolvedUnits, mode, checkoutUnits, false);
+    }
+
+    /**
+     * @param allowSameHome proceed even when the project's home resolves to the
+     *        parent home itself. See {@link #requireDistinctHomes}.
+     */
+    public Result scaffold(SkillProject project,
+                           List<SkillProjectLock.ResolvedUnit> resolvedUnits,
+                           MaterializationMode mode,
+                           Set<String> checkoutUnits,
+                           boolean allowSameHome)
+            throws IOException {
         if (project == null) throw new IllegalArgumentException("project must not be null");
         MaterializationMode materialization = mode == null ? DEFAULT_MODE : mode;
         Set<String> checkouts = checkoutUnits == null ? Set.of() : checkoutUnits;
-        parentStore.init();
         ChildHomeHarnessInstaller.Layout layout = layoutFor(project);
+        // Before init(), so a refusal is a refusal: laying the home out first
+        // and objecting afterwards leaves the mess and reports the error, which
+        // is how "nothing was written" stops being true.
+        if (!allowSameHome) {
+            requireDistinctHomes(parentStore.root(), layout.childSkillManagerHome());
+        }
+        parentStore.init();
         SkillStore childStore = new SkillStore(layout.childSkillManagerHome());
         childStore.init();
         Fs.ensureDir(layout.claudeHome());
@@ -133,6 +152,76 @@ public final class ProjectChildHomeScaffolder {
                 BindingStore.nowIso()));
         rendered.sort(String.CASE_INSENSITIVE_ORDER);
         return new Result(id, layout, childStore, List.copyOf(rendered), List.copyOf(heldBack));
+    }
+
+    /**
+     * Refuse when the project's home and the parent home are the same directory.
+     *
+     * <h2>Why a refusal and not a shrug</h2>
+     *
+     * <p>{@code project resolve} with {@code SKILL_MANAGER_HOME} already pointing
+     * at {@code <project>/.skill-manager} exited 0 and reported every unit
+     * resolved. Nothing was destroyed — three degenerate-layout guards inside
+     * {@link ChildHomeMaterializer} see source and destination are the same tree
+     * and decline — so this is not a data-loss bug. It is worse in one specific
+     * way: <b>success was indistinguishable from correctness</b>. The command
+     * that exists to produce an isolated home reported that it had, having
+     * produced nothing, and an onboarding pilot walked straight into it because
+     * there was no signal to walk into. {@code references/skill-homes.md} says
+     * this layout "isolates nothing"; nothing enforced it. Issue #32.
+     *
+     * <p>Compared by RESOLVED PHYSICAL PATH, not by string. On macOS a temp home
+     * handed out as {@code /var/...} really lives at {@code /private/var/...},
+     * and the same two-spellings-of-one-directory shape has now defeated a
+     * check in this codebase three times (the {@code [[vendored]]} validator,
+     * {@link dev.skillmanager.store.HomePaths}, and the clone independence
+     * check). A comparison that can be defeated by a spelling is a comparison
+     * that will be.
+     *
+     * <p>Overridable rather than absolute: a home that is legitimately also a
+     * project — the global home registering itself — is a real, if unusual,
+     * layout, and a blanket refusal would break it silently in the other
+     * direction. {@code project resolve --allow-same-home} is the way to say so
+     * out loud.
+     */
+    public static void requireDistinctHomes(Path parentHome, Path childHome) throws IOException {
+        Path parent = realOrNormalized(parentHome);
+        Path child = realOrNormalized(childHome);
+        if (!parent.equals(child)) return;
+        throw new IOException(
+                "project resolve: this project's home IS the parent home (" + child + "), so "
+                + "resolving isolates nothing — every unit would be materialized from the home "
+                + "into itself. Point SKILL_MANAGER_HOME at a different home first (the launch "
+                + "shims under <home>/bin/launch do this for you), or clone one with "
+                + "`skill-manager home clone --to <dir>`. Pass --allow-same-home if this really "
+                + "is a home that is also its own project. Nothing was written.");
+    }
+
+    /**
+     * {@code path} with every symlink in it resolved, whether or not the leaf
+     * exists yet.
+     *
+     * <p>The child home usually does <em>not</em> exist on a first resolve, and
+     * a plain {@link Path#toRealPath()} throws for it. Falling back to the
+     * un-resolved path in that case is exactly the bug this guard exists to
+     * avoid: on macOS the parent home resolves to {@code /private/var/...}
+     * while the not-yet-created child stays {@code /var/...}, so two spellings
+     * of one directory compare unequal and the guard passes on the case it was
+     * written for. Resolve the deepest ancestor that does exist and re-append
+     * the rest.
+     */
+    private static Path realOrNormalized(Path path) {
+        Path normalized = path.toAbsolutePath().normalize();
+        for (Path existing = normalized; existing != null; existing = existing.getParent()) {
+            try {
+                Path real = existing.toRealPath();
+                Path tail = existing.relativize(normalized);
+                return tail.toString().isEmpty() ? real : real.resolve(tail);
+            } catch (IOException notThere) {
+                // keep walking up
+            }
+        }
+        return normalized;
     }
 
     public static ChildHomeHarnessInstaller.Layout layoutFor(SkillProject project) {

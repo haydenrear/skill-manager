@@ -39,6 +39,80 @@ public final class ProjectChildHomeMaterializationTest {
 
     public static int run() throws Exception {
         return Tests.suite("ProjectChildHomeMaterializationTest")
+                .test("resolving a project whose home IS the parent home is refused, not reported "
+                        + "as success", () -> {
+                    // Issue #32. This layout isolates nothing — every unit would
+                    // be materialized from the home into itself — and it exited
+                    // 0 reporting every unit resolved, so an onboarding pilot
+                    // walked into it because success and correctness were
+                    // indistinguishable.
+                    //
+                    // Asserted on BYTES as well as on the refusal: three
+                    // degenerate-layout guards already stop the destruction, so
+                    // an exit-code-only test would pass against a version that
+                    // refused AFTER scaffolding half a home.
+                    try (TestHarness h = TestHarness.create()) {
+                        // The project root is a plain checkout; its home is the
+                        // one the scaffolder is ALSO given as the parent. That
+                        // is the whole shape: SKILL_MANAGER_HOME already points
+                        // at <project>/.skill-manager when resolve runs.
+                        Path repoRoot = Files.createTempDirectory("same-home-repo-");
+                        SkillStore sameHome = new SkillStore(repoRoot.resolve(".skill-manager"));
+                        Path unitSource = UnitFixtures.scaffoldSkill(
+                                Files.createTempDirectory("same-home-units-"),
+                                "same-home-skill", DepSpec.empty()).sourcePath();
+                        SkillProject project = project(repoRoot, """
+                                [project]
+                                name = "same-home-project"
+
+                                [skills.demo]
+                                source = "%s"
+                                """.formatted(unitSource));
+
+                        String refusal = null;
+                        try {
+                            new ProjectChildHomeScaffolder(sameHome).scaffold(project, List.of());
+                        } catch (java.io.IOException expected) {
+                            refusal = expected.getMessage();
+                        }
+                        assertTrue(refusal != null,
+                                "resolving into the parent home itself is refused");
+                        assertTrue(refusal.contains("isolates nothing"),
+                                "and says why, rather than failing on an internal invariant: "
+                                        + refusal);
+                        assertFalse(Files.exists(sameHome.skillsDir()),
+                                "and the refusal came BEFORE the home was laid out");
+
+                        // The /var vs /private/var spelling must not defeat it:
+                        // on a first resolve the child home does not exist yet,
+                        // so a naive toRealPath() falls back to the unresolved
+                        // path on one side and resolves the other — the exact
+                        // shape that has now defeated three checks here.
+                        String spelled = null;
+                        try {
+                            new ProjectChildHomeScaffolder(
+                                    new SkillStore(Path.of("/private" + repoRoot
+                                            .resolve(".skill-manager"))))
+                                    .scaffold(project, List.of());
+                        } catch (java.io.IOException expected) {
+                            spelled = expected.getMessage();
+                        }
+                        if (repoRoot.startsWith("/var/") || repoRoot.startsWith("/tmp/")) {
+                            assertTrue(spelled != null && spelled.contains("isolates nothing"),
+                                    "the other spelling of the same directory is refused too");
+                        }
+
+                        // The escape hatch is real: a home that is also its own
+                        // project is unusual, not impossible, and a refusal with
+                        // no way past it is how a guard gets deleted later.
+                        new ProjectChildHomeScaffolder(sameHome).scaffold(
+                                project, List.of(), MaterializationMode.COPY,
+                                java.util.Set.of(), true);
+                        assertTrue(Files.isDirectory(sameHome.skillsDir()),
+                                "--allow-same-home really proceeds");
+                    }
+                })
+
                 .test("default project resolve copies units into the child home", () -> {
                     try (TestHarness h = TestHarness.create()) {
                         Path repoRoot = Files.createTempDirectory("child-home-copy-default-");

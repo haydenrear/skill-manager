@@ -5,6 +5,7 @@ import dev.skillmanager.bindings.BindingJson;
 import dev.skillmanager.bindings.ChildHomeRegistry;
 import dev.skillmanager.bindings.Projection;
 import dev.skillmanager.bindings.ProjectionLedger;
+import dev.skillmanager.launch.LaunchEnv;
 import dev.skillmanager.shared.util.Rederivable;
 import dev.skillmanager.util.Log;
 
@@ -74,6 +75,15 @@ import java.util.Set;
  * surviving absolute reference to the source home. Anything found in
  * classes 1–3 is a {@link Leak} and fails the clone. Class 4 is counted and
  * reported, and only fails under {@code strict}.
+ *
+ * <p>It also asks a second, larger question that the first one does not
+ * imply: does anything in the copy reach into <em>another</em> Skill Manager
+ * home — the operator's live one, a sibling project's? The source home is
+ * only one of the homes a copy must stay out of, and scoping the check to it
+ * let a link into {@code ~/.skill-manager} pass as independence. See
+ * {@link #foreignHomeReachedBy} for the measurement and for why the
+ * apparently stronger "nothing may resolve outside the copy" is the wrong
+ * rule.
  */
 public final class HomeCloner {
 
@@ -720,6 +730,7 @@ public final class HomeCloner {
             throws IOException {
         byte[] needle = srcRoot.toString().getBytes(StandardCharsets.UTF_8);
         HomePaths srcPaths = HomePaths.of(srcRoot);
+        Path dstReal = realOrSame(dstRoot);
         List<Leak> leaks = new ArrayList<>();
         List<String> contentReferences = new ArrayList<>();
         List<String> dangling = new ArrayList<>();
@@ -735,6 +746,12 @@ public final class HomeCloner {
                     leaks.add(new Leak(rel, "SYMLINK_TARGET", target.toString()));
                 } else if (!Files.exists(file)) {
                     dangling.add(rel + " -> " + target);
+                } else {
+                    Path foreign = foreignHomeReachedBy(file, dstReal);
+                    if (foreign != null) {
+                        leaks.add(new Leak(rel, "FOREIGN_HOME",
+                                target + " resolves into the home at " + foreign));
+                    }
                 }
                 return;
             }
@@ -752,6 +769,67 @@ public final class HomeCloner {
         contentReferences.sort(String::compareTo);
         dangling.sort(String::compareTo);
         return new Verification(leaks, contentReferences, dangling);
+    }
+
+    /**
+     * The Skill Manager home a link in the copy reaches, or null when it
+     * reaches none.
+     *
+     * <h2>Why "outside the clone" is the wrong question and "into another
+     * home" is the right one</h2>
+     *
+     * <p>The check this joins used to ask only whether a path in the copy still
+     * resolved back to {@code source}. That is literally true and operationally
+     * useless: measured on real cloned homes,
+     * {@code skills/deploy-helm/test_graph/build-logic} pointed at
+     * {@code ~/.skill-manager/skills/test-graph/project_sdk_sources/build-logic}
+     * — the operator's <em>live</em> home, which was not the home this copy was
+     * made from, so the check passed and a Gradle build through the copy wrote
+     * into the very home the copy exists to stay out of. Issue #49.
+     *
+     * <p>The obvious repair — "nothing may resolve outside the clone" — is
+     * vacuous in the other direction. A home legitimately contains links to
+     * things that are not homes and never will be: a venv's
+     * {@code bin/python -> /opt/homebrew/.../python3.14}, a uv-managed
+     * interpreter under {@code ~/.local/share/uv}. Measured across the seven
+     * onboarded project homes, 14–18 links per home resolve outside it and
+     * every one of them is a toolchain binary. A rule that fires on all of
+     * those is a rule nobody can keep, and a rule nobody keeps is switched off.
+     *
+     * <p>So the predicate is structural: does the resolved path lie inside
+     * something that <em>is</em> a home? {@link LaunchEnv#looksLikeStoreRoot} is
+     * the one definition of that, already shared by the PATH sanitizer and
+     * {@link NotAHomeException}; a fourth spelling would eventually disagree
+     * about exactly the homes that matter (#24).
+     *
+     * <p>The resolution is {@link Path#toRealPath}, not a textual reading of
+     * the link. One of the measured leaks was {@code sdk/../standard-nodes},
+     * a <em>relative</em> target whose parent {@code sdk} was itself the
+     * absolute link — invisible to anything that inspects link text, and the
+     * same disguised shape that forced the {@code [[vendored]]} validator to
+     * compare resolved physical paths.
+     */
+    private static Path foreignHomeReachedBy(Path link, Path dstReal) {
+        Path resolved;
+        try {
+            resolved = link.toRealPath();
+        } catch (IOException e) {
+            return null;   // dangling; already reported by the caller
+        }
+        if (resolved.equals(dstReal) || resolved.startsWith(dstReal)) return null;
+        for (Path parent = resolved; parent != null; parent = parent.getParent()) {
+            if (parent.equals(dstReal) || parent.startsWith(dstReal)) return null;
+            if (LaunchEnv.looksLikeStoreRoot(parent)) return parent;
+        }
+        return null;
+    }
+
+    private static Path realOrSame(Path path) {
+        try {
+            return path.toRealPath();
+        } catch (IOException e) {
+            return path;
+        }
     }
 
     // -------------------------------------------------- classification

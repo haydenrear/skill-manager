@@ -462,13 +462,25 @@ public final class HomeSyncTest {
                     assertTrue(refused, "a frozen destination refuses");
                     assertFalse(Files.exists(homes.destUnit()), "and nothing was written into it");
 
-                    boolean dryRefused = false;
-                    try {
-                        sync(homes, false, true);
-                    } catch (FrozenHomeException expected) {
-                        dryRefused = true;
-                    }
-                    assertTrue(dryRefused, "a frozen destination refuses a dry run too");
+                    // A dry run against a frozen destination REPORTS. #42's
+                    // rationale was the difference between a report and a
+                    // crash, and a frozen home is where a report is worth most
+                    // — it is the tier one most needs to inspect and least may
+                    // touch (#51). The refusal survives as the exit code the
+                    // command returns; what must not survive is an empty
+                    // answer. Asserted on the report's own unit list, not on a
+                    // "did not throw": a pass that computed nothing would
+                    // satisfy the weaker form perfectly.
+                    HomeSync.Report frozenPlan = sync(homes, false, true);
+                    assertTrue(frozenPlan.destinationFrozen(),
+                            "the dry run says the destination is frozen");
+                    assertEquals(SyncStatus.NEW, only(frozenPlan).status(),
+                            "and still reports what a run would have done");
+                    assertFalse(Files.exists(homes.destUnit()),
+                            "while writing nothing into the frozen home");
+                    assertFalse(Files.exists(homes.dest().root()
+                                    .resolve(ChildHomeMaterializer.RECORDS_DIR)),
+                            "not even the records directory the lock would have created");
 
                     HomePolicy.write(homes.dest(), HomePolicy.LIVE);
                     HomePolicy.write(homes.source(), HomePolicy.FROZEN);

@@ -472,7 +472,7 @@ public final class HarnessPluginCli {
         public static Path codexConfigPath() {
             Path root = dev.skillmanager.agent.AgentHomes.resolveOrDefault(
                     dev.skillmanager.agent.AgentHomes.CODEX_HOME,
-                    Path.of(System.getProperty("user.home"), ".codex"));
+                    dev.skillmanager.agent.AgentHomes.userHome().resolve(".codex"));
             return root.resolve("config.toml");
         }
 

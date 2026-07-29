@@ -122,6 +122,12 @@ public final class ProjectCommand {
                         + "runs; only the writing is opt-in.")
         boolean repairVendored;
 
+        @Option(names = "--allow-same-home",
+                description = "Resolve even when SKILL_MANAGER_HOME already IS this project's "
+                        + "own .skill-manager home. Refused by default: that layout isolates "
+                        + "nothing, and it used to exit 0 reporting every unit resolved.")
+        boolean allowSameHome;
+
         @Override
         public Integer call() throws Exception {
             SkillStore store = SkillStore.defaultStore();
@@ -137,7 +143,8 @@ public final class ProjectCommand {
             GatewayConfig gw = skipGateway ? null : GatewayConfig.resolve(store, null);
             ProjectDependencyResolver.Result result = new ProjectDependencyResolver(store, gw)
                     .resolve(project, new ProjectDependencyResolver.Options(
-                            true, !skipGateway, java.util.Set.of(), repairVendored));
+                            true, !skipGateway, java.util.Set.of(), repairVendored,
+                            allowSameHome));
             ProjectLibResolver.Result libResult = resolveLibs
                     ? new ProjectLibResolver(store).resolve(project)
                     : null;

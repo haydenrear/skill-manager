@@ -67,19 +67,33 @@ public final class ProjectDependencyResolver {
      *        tree and shows up in {@code git status}. Validation always runs;
      *        only the writing is asked for.
      */
+    /**
+     * @param allowSameHome proceed when the project's home resolves to the
+     *        parent home itself, instead of refusing. See
+     *        {@link ProjectChildHomeScaffolder#requireDistinctHomes}.
+     */
     public record Options(boolean yes, boolean withGateway, Set<String> checkoutUnits,
-                          boolean repairVendored) {
+                          boolean repairVendored, boolean allowSameHome) {
         public Options {
             checkoutUnits = checkoutUnits == null ? Set.of() : Set.copyOf(checkoutUnits);
         }
 
-        public Options(boolean yes, boolean withGateway, Set<String> checkoutUnits) {
-            this(yes, withGateway, checkoutUnits, false);
+        public Options(boolean yes, boolean withGateway, Set<String> checkoutUnits,
+                       boolean repairVendored) {
+            this(yes, withGateway, checkoutUnits, repairVendored, false);
         }
 
-        public Options(boolean yes, boolean withGateway) { this(yes, withGateway, Set.of(), false); }
+        public Options(boolean yes, boolean withGateway, Set<String> checkoutUnits) {
+            this(yes, withGateway, checkoutUnits, false, false);
+        }
 
-        public static Options defaults() { return new Options(true, true, Set.of(), false); }
+        public Options(boolean yes, boolean withGateway) {
+            this(yes, withGateway, Set.of(), false, false);
+        }
+
+        public static Options defaults() {
+            return new Options(true, true, Set.of(), false, false);
+        }
     }
 
     public record Result(
@@ -105,7 +119,8 @@ public final class ProjectDependencyResolver {
                 collectResolvedUnits(project, installed.directNames());
         ProjectChildHomeScaffolder.Result childHome = new ProjectChildHomeScaffolder(store)
                 .scaffold(project, resolvedUnits,
-                        ProjectChildHomeScaffolder.DEFAULT_MODE, opts.checkoutUnits());
+                        ProjectChildHomeScaffolder.DEFAULT_MODE, opts.checkoutUnits(),
+                        opts.allowSameHome());
         ProjectVendoredResolver.Report vendored = checkVendored(project, opts);
         List<SkillProjectLock.ProjectBinding> projectBindings =
                 materializeProjectBindings(project, childHome.layout(), childHome.childStore(),

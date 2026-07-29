@@ -68,11 +68,17 @@ public final class HomeSync {
         public static Options defaults() { return new Options(false, false); }
     }
 
+    /**
+     * @param destinationFrozen the destination declares {@code policy = "frozen"},
+     *        so a real run would have been refused. Only ever true under
+     *        {@code dryRun} — a real run throws instead of setting it.
+     */
     public record Report(
             Path from,
             Path to,
             boolean merge,
             boolean dryRun,
+            boolean destinationFrozen,
             List<UnitSync> units
     ) {
         public Report {
@@ -149,10 +155,26 @@ public final class HomeSync {
         NotAHomeException.require(source, "home sync --from");
         // The source is only read, so a frozen source is fine — that is the
         // whole point of freezing one. The destination is written, so a frozen
-        // destination refuses before anything is staged, dry run included: the
-        // answer to "what would this do to a frozen home" is "it is refused",
-        // and reporting a plan for it would be reporting a lie.
-        HomePolicy.requireLive(to, "home sync");
+        // destination refuses before anything is staged.
+        //
+        // A DRY RUN is the exception, and it took a second look to see why.
+        // The first reading was "the answer to 'what would this do to a frozen
+        // home' is 'it is refused', so reporting a plan for it would be
+        // reporting a lie" — and that is right about the plan and wrong about
+        // the report. #42's whole rationale was the difference between a report
+        // and a crash, and a frozen home is where a report is worth most: it is
+        // the tier an operator most needs to inspect and least may touch. So a
+        // dry run against a frozen destination now computes and prints
+        // everything, marks the report `destinationFrozen`, and the command
+        // still exits FrozenHomeException.EXIT_CODE. Nothing that branches on
+        // the exit code changes behaviour; what changes is that the operator
+        // gets the answer as well as the refusal. Issue #51.
+        boolean frozenDest = false;
+        if (opts.dryRun()) {
+            frozenDest = HomePolicy.load(to).frozen();
+        } else {
+            HomePolicy.requireLive(to, "home sync");
+        }
 
         try (HomeLock ignored = opts.dryRun()
                 ? HomeLock.acquireWithoutCreating(dest, "home sync --dry-run")
@@ -172,7 +194,7 @@ public final class HomeSync {
                 }
             }
             if (!opts.dryRun()) materializer.cleanStaging();
-            return new Report(source, dest, opts.merge(), opts.dryRun(), outcomes);
+            return new Report(source, dest, opts.merge(), opts.dryRun(), frozenDest, outcomes);
         }
     }
 

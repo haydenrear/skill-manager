@@ -99,6 +99,15 @@ public final class HomeCloseOut {
         NotAHomeException.require(homeRoot, "home close-out --home");
         NotAHomeException.require(intoRoot, "home close-out --into");
         HomeSync.Report report = HomeSync.run(home, into, new HomeSync.Options(true, true));
+        // `home sync --dry-run` now reports against a frozen destination rather
+        // than refusing (#51). The gate must NOT inherit that: every remedy it
+        // could print is a write into `--into`, and a frozen project home
+        // refuses all of them, so a verdict computed here would name fixes that
+        // cannot be applied. The refusal is the answer, and it is the same
+        // exit code this already returned.
+        if (report.destinationFrozen()) {
+            dev.skillmanager.policy.HomePolicy.requireLive(into, "home close-out --into");
+        }
 
         // Checkout units are judged in the worktree home itself, against their
         // own git history: a copy-based comparison would call a checkout

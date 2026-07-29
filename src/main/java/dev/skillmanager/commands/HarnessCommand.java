@@ -253,7 +253,7 @@ public final class HarnessCommand {
 
         private static Path expandHome(String s) {
             if (s.equals("~") || s.startsWith("~/")) {
-                return Path.of(System.getProperty("user.home") + s.substring(1));
+                return Path.of(dev.skillmanager.agent.AgentHomes.userHome() + s.substring(1));
             }
             return Path.of(s);
         }

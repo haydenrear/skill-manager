@@ -155,6 +155,46 @@ public final class AgentHomesTest {
             }
         });
 
+        suite.test("a sandboxed HOME also covers the four fallbacks outside this package", () -> {
+            // Issue #31. #18 centralized the THREE agent-home fallbacks and
+            // said "there must be no System.getProperty(\"user.home\") anywhere
+            // else in this package" — and four more lived one package over,
+            // where that sentence did not reach: a fourth copy of the ~/.codex
+            // fallback in HarnessPluginCli, the default store root in
+            // SkillStore, and the ~-expansion in bind/rebind/harness.
+            //
+            // SkillStore is the sharpest of them. `SKILL_MANAGER_HOME` unset
+            // plus a sandboxed HOME is exactly the bare-shell case, and the
+            // fallback sent every write to the operator's real home — the one
+            // thing this epic's standing constraint forbids.
+            AgentHomes.clearOverrides();
+            Path sandbox = Files.createTempDirectory("agent-homes-elsewhere-").toRealPath();
+            Path realUserHome = Path.of(System.getProperty("user.home")).toAbsolutePath();
+            AgentHomes.setOverride(AgentHomes.HOME, sandbox);
+            try {
+                Path codexConfig = dev.skillmanager.project.HarnessPluginCli.Codex.codexConfigPath();
+                assertTrue(!codexConfig.toAbsolutePath().startsWith(realUserHome),
+                        "the plugin CLI's codex config escaped into the real user.home: "
+                                + codexConfig);
+                assertEquals(sandbox.resolve(".codex").resolve("config.toml"), codexConfig,
+                        "the fourth copy of the ~/.codex fallback resolves in the sandbox");
+
+                // Only meaningful with SKILL_MANAGER_HOME unset — with it set,
+                // the fallback is never reached and this would pass vacuously,
+                // which is the failure shape §7 is about.
+                String pinned = System.getenv("SKILL_MANAGER_HOME");
+                if (pinned == null || pinned.isBlank()) {
+                    Path storeRoot = dev.skillmanager.store.SkillStore.defaultStore().root();
+                    assertTrue(!storeRoot.toAbsolutePath().startsWith(realUserHome),
+                            "the default store root escaped into the real user.home: " + storeRoot);
+                    assertEquals(sandbox.resolve(".skill-manager"), storeRoot,
+                            "an unset SKILL_MANAGER_HOME resolves under the sandbox HOME");
+                }
+            } finally {
+                AgentHomes.clearOverrides();
+            }
+        });
+
         suite.test("claude(env) derives its fallback from the launch env's HOME", () -> {
             AgentHomes.clearOverrides();
             // A launch env is the COMPLETE statement of what the child gets, so
