@@ -352,7 +352,151 @@ public final class LauncherShimsTest {
                     "and never mentions the home it was copied from");
         });
 
+        // ------------------------------------------------- the CLI entrypoint
+        //
+        // Two-sided on purpose. `cliScript()` emitted `printf '%%s'` — correct
+        // in script(String), which ends in .formatted(agent), and wrong here,
+        // where nothing unescapes it: bash printed the two characters %s, the
+        // filtered PATH became the single entry `%s`, `command -v` found
+        // nothing, and the shim took the "no CLI provisioned" branch on EVERY
+        // home including ones with a working CLI on PATH. The only assertion
+        // covering it checked that a shim with nothing reachable exits
+        // non-zero, which a permanently dead shim satisfies perfectly.
+
+        suite.test("the cli entrypoint's body carries no unformatted percent", () -> {
+            // The cause, named. cliScript() has no .formatted() call, so a
+            // doubled percent is never unescaped and reaches bash literally.
+            assertFalse(LauncherShims.cliScript().contains("%%"),
+                    "a doubled percent in a text block with no .formatted() reaches bash as `%%`");
+            assertContains(LauncherShims.cliScript(), "printf '%s' \"${PATH:-}\"",
+                    "the PATH split prints its argument rather than the characters %s");
+        });
+
+        suite.test("the cli entrypoint execs the skill-manager it finds on PATH", () -> {
+            Home home = Home.create("cli-entrypoint-finds-");
+            LauncherShims.write(home.store);
+            Path shim = home.store.cliBinDir().resolve("skill-manager");
+            Path stub = stubCliDir(home.root.resolve("stub-bin"));
+
+            // Output, not exit code: a shim that exits 0 without launching is
+            // the exact defect this whole surface exists to prevent.
+            Result result = runShim(shim, stub + File.pathSeparator + hermeticTools(home.root));
+            assertContains(result.out, STUB_SENTINEL,
+                    "the shim exec'd the CLI it found rather than refusing");
+            assertContains(result.out, "args=--version",
+                    "and handed the arguments over unchanged");
+            assertEquals(0, result.rc, "so it exits with the exec'd CLI's status");
+        });
+
+        suite.test("the cli entrypoint never resolves to itself", () -> {
+            // LaunchEnv puts <home>/bin/cli FIRST on the launch PATH, so this
+            // is the real arrangement, not a contrived one. Excluding its own
+            // directory is the only way the shim reaches the stub behind it;
+            // failing to, it exec's itself forever. Bounded, so the failure is
+            // a named assertion rather than a hung suite.
+            Home home = Home.create("cli-entrypoint-self-");
+            LauncherShims.write(home.store);
+            Path shim = home.store.cliBinDir().resolve("skill-manager");
+            Path stub = stubCliDir(home.root.resolve("stub-bin"));
+
+            Result result = runShim(shim, home.store.cliBinDir() + File.pathSeparator
+                    + stub + File.pathSeparator + hermeticTools(home.root));
+
+            assertFalse(result.out.contains(SHIM_TIMED_OUT),
+                    "the shim terminated: it filtered its own directory out of PATH");
+            assertContains(result.out, STUB_SENTINEL,
+                    "and reached the stub that was behind it");
+        });
+
+        suite.test("the cli entrypoint refuses when no skill-manager is reachable", () -> {
+            // The half that was already covered, kept and tightened: asserted
+            // on the diagnostic rather than on a non-zero exit, because `set -e`
+            // tripping over a missing `dirname` is also a non-zero exit and is
+            // a different thing entirely.
+            Home home = Home.create("cli-entrypoint-refuses-");
+            LauncherShims.write(home.store);
+            Path shim = home.store.cliBinDir().resolve("skill-manager");
+
+            Result result = runShim(shim,
+                    home.store.cliBinDir() + File.pathSeparator + hermeticTools(home.root));
+
+            assertContains(result.out, "no CLI is provisioned",
+                    "it refuses with the diagnostic, not with an incidental failure");
+            assertEquals(127, result.rc, "and with the not-found status");
+        });
+
         return suite.runAll();
+    }
+
+    // ------------------------------------------------- cli entrypoint fixtures
+
+    /** Printed by the stub CLI; finding it proves the shim really exec'd. */
+    private static final String STUB_SENTINEL = "STUB-CLI-WAS-EXECED";
+
+    /** Injected into the captured output when a shim had to be killed. */
+    private static final String SHIM_TIMED_OUT = "SHIM-DID-NOT-TERMINATE";
+
+    /**
+     * A PATH directory holding exactly the two external programs the shim needs
+     * ({@code dirname} and {@code tr}) and nothing else.
+     *
+     * <p>Emptying PATH instead would make the shim die on a missing
+     * {@code dirname} — a non-zero exit that looks like a refusal and is not
+     * one — and leaving {@code /usr/bin} on it would let the refusal case find
+     * a real skill-manager on some machines.
+     */
+    private static Path hermeticTools(Path sandbox) throws Exception {
+        Path tools = sandbox.resolve("hermetic-tools");
+        Fs.ensureDir(tools);
+        for (String tool : List.of("bash", "dirname", "tr")) {
+            for (String dir : List.of("/usr/bin", "/bin", "/usr/local/bin")) {
+                Path candidate = Path.of(dir, tool);
+                if (!Files.isExecutable(candidate)) continue;
+                Path link = tools.resolve(tool);
+                if (!Files.exists(link, java.nio.file.LinkOption.NOFOLLOW_LINKS)) {
+                    Files.createSymbolicLink(link, candidate);
+                }
+                break;
+            }
+        }
+        return tools;
+    }
+
+    /** A directory holding a working {@code skill-manager} that is not the shim. */
+    private static Path stubCliDir(Path dir) throws Exception {
+        Fs.ensureDir(dir);
+        Path stub = dir.resolve("skill-manager");
+        Files.writeString(stub, """
+                #!/bin/sh
+                echo "%s"
+                echo "args=$*"
+                exit 0
+                """.formatted(STUB_SENTINEL));
+        stub.toFile().setExecutable(true);
+        return dir;
+    }
+
+    /**
+     * Run a shim with {@code path} as its whole PATH and no
+     * {@code SKILL_MANAGER_CLI}, bounded.
+     *
+     * <p>The bound is the point rather than hygiene: the failure being guarded
+     * is an unbounded self-exec, and a suite that hangs reports nothing at all.
+     */
+    private static Result runShim(Path shim, String path) throws Exception {
+        ProcessBuilder pb = new ProcessBuilder(shim.toString(), "--version")
+                .redirectErrorStream(true);
+        pb.environment().remove("SKILL_MANAGER_CLI");
+        pb.environment().put("PATH", path);
+        Process p = pb.start();
+        if (!p.waitFor(30, java.util.concurrent.TimeUnit.SECONDS)) {
+            p.descendants().forEach(ProcessHandle::destroyForcibly);
+            p.destroyForcibly();
+            p.waitFor();
+            return new Result(-1, SHIM_TIMED_OUT, SHIM_TIMED_OUT);
+        }
+        String out = new String(p.getInputStream().readAllBytes());
+        return new Result(p.exitValue(), out, out);
     }
 
     // ------------------------------------------------------------- fixtures

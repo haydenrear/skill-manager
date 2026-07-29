@@ -161,6 +161,31 @@ public final class LauncherShims {
      * added it: the defect being fixed was a shim that printed a usage error and
      * exited 0, which reads as success to every caller and to every graph node
      * that checks an exit code.
+     *
+     * <h2>There is no {@code .formatted()} here, and that is why {@code %} is
+     * written once</h2>
+     *
+     * <p>{@link #script(String)} ends in {@code .formatted(agent)}, so every
+     * literal percent in it must be doubled. This method has no
+     * {@code .formatted()} call, so a doubled percent is never unescaped: it
+     * reaches bash literally, and bash {@code printf '%%s'} prints the two
+     * characters {@code %s} instead of its argument. Copied across from the
+     * method above, that turned the filtered PATH into the single entry
+     * {@code %s}, so {@code command -v skill-manager} found nothing and the
+     * shim took the "no CLI provisioned" branch UNCONDITIONALLY — exit 127 on
+     * every home, including ones with a working CLI on PATH.
+     *
+     * <p>It survived the graph because the assertion covering it was one-sided:
+     * {@code checkout-home}'s {@code cli.entrypoint} case only ever exercised
+     * the no-CLI-reachable branch, and a shim that ALWAYS exits 127 satisfies
+     * "it refuses rather than succeeding silently" perfectly. The node now
+     * asserts the succeeding direction too, on the exec'd CLI's OUTPUT rather
+     * than on an exit code, and asserts that no {@code %%} survives in the
+     * generated body.
+     *
+     * <p>The same trap is live for anyone adding a format specifier here later:
+     * if this method ever gains a {@code .formatted()}, every percent below has
+     * to be doubled in the same edit.
      */
     public static String cliScript() {
         return """
@@ -181,10 +206,10 @@ public final class LauncherShims {
                   filtered=""
                   while IFS= read -r entry; do
                     [ -z "$entry" ] && continue
-                    physical="$(cd -- "$entry" 2>/dev/null && pwd -P || printf '%%s' "$entry")"
+                    physical="$(cd -- "$entry" 2>/dev/null && pwd -P || printf '%s' "$entry")"
                     [ "$physical" = "$self_dir" ] && continue
                     filtered="${filtered:+$filtered:}$entry"
-                  done <<< "$(printf '%%s' "${PATH:-}" | tr ':' '\\n')"
+                  done <<< "$(printf '%s' "${PATH:-}" | tr ':' '\\n')"
                   cli="$(PATH="$filtered" command -v skill-manager || true)"
                 fi
 
