@@ -43,6 +43,7 @@ import dev.skillmanager.observability.CliObservabilityTest;
 import dev.skillmanager.plan.CycleDetectionTest;
 import dev.skillmanager.plan.MixedKindTopoOrderTest;
 import dev.skillmanager.cli.CliAgentContextExecutionTest;
+import dev.skillmanager.cli.LazyHomeScaffoldTest;
 import dev.skillmanager.command.CliAgentContextTest;
 import dev.skillmanager.command.CliHelpProgressiveDisclosureTest;
 import dev.skillmanager.command.CliMetadataTest;
@@ -195,6 +196,7 @@ public class RunTests {
         failures += CliObservabilityTest.run();
         failures += ServerObservabilityContractTest.run();
         failures += CliAgentContextExecutionTest.run();
+        failures += LazyHomeScaffoldTest.run();
         failures += CliAgentContextTest.run();
         failures += CliHelpProgressiveDisclosureTest.run();
         failures += CliMetadataTest.run();

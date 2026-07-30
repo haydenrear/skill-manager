@@ -134,6 +134,11 @@ public final class SkillManagerCli implements Runnable {
         cmd.setExecutionStrategy(pr -> {
             SkillManagerCli root = rootCommand(pr);
             if (root != null) Log.setVerbose(root.verbose);
+            // Before anything can touch a store: state whether THIS
+            // invocation is allowed to bring a home into existence. Nothing
+            // below re-derives it. See CommandHomeAccess for the
+            // classification and HomeScaffold for the defect.
+            dev.skillmanager.store.HomeScaffold.declare(CommandHomeAccess.of(pr));
             tryReconcile();
             int rc = new CommandLine.RunLast().execute(pr);
             return completeExecution(root, pr, rc);
@@ -202,9 +207,21 @@ public final class SkillManagerCli implements Runnable {
         return null;
     }
 
+    /**
+     * Reconcile the ambient home, when there is one.
+     *
+     * <p>This ran on every invocation and opened with {@code store.init()},
+     * which is how {@code --version} came to lay out twelve directories in
+     * whatever {@code SKILL_MANAGER_HOME} named — the scaffold was a side
+     * effect of starting the process rather than of doing work. There is
+     * nothing to reconcile in a home that does not exist yet, so this now
+     * asks before it acts; the first writing command still creates the home
+     * through its own {@code store.init()} and reconciles from then on.
+     */
     private static void tryReconcile() {
         try {
             dev.skillmanager.store.SkillStore store = dev.skillmanager.store.SkillStore.defaultStore();
+            if (!store.isMaterialized()) return;
             store.init();
             dev.skillmanager.mcp.GatewayConfig gw = dev.skillmanager.mcp.GatewayConfig.resolve(store, null);
             dev.skillmanager.lifecycle.SkillReconciler.reconcile(store, gw);
@@ -225,6 +242,9 @@ public final class SkillManagerCli implements Runnable {
         // needed here.
         try {
             dev.skillmanager.store.SkillStore store = dev.skillmanager.store.SkillStore.defaultStore();
+            // Same reason as tryReconcile: a home that does not exist holds
+            // no outstanding errors, and asking is not worth creating one.
+            if (!store.isMaterialized()) return;
             store.init();
             dev.skillmanager.mcp.GatewayConfig gw =
                     dev.skillmanager.mcp.GatewayConfig.resolve(store, null);
