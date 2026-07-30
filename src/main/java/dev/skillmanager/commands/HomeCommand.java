@@ -3,6 +3,8 @@ package dev.skillmanager.commands;
 import dev.skillmanager.bindings.BindingStore;
 import dev.skillmanager.bindings.ChildHomeMaterializer;
 import dev.skillmanager.launch.LauncherShims;
+import dev.skillmanager.launch.SeatbeltProfile;
+import dev.skillmanager.launch.SeatbeltSandbox;
 import dev.skillmanager.mcp.GatewayConfig;
 import dev.skillmanager.policy.FrozenHomeException;
 import dev.skillmanager.policy.HomePolicy;
@@ -130,6 +132,23 @@ public final class HomeCommand {
     /**
      * Re-run only the check. Useful against a home cloned by other means
      * (an {@code rsync}, a container image build) before trusting it.
+     *
+     * <h2>It refuses a path that is not a home, and that is the whole point</h2>
+     *
+     * <p>This command is the ORACLE the onboarding acceptance criterion rests
+     * on — "the copy holds no reference back" is what a person runs it to
+     * learn. And {@code home verify --home <a path that does not exist>} used
+     * to print {@code ✓ no reference to … survives in …} and exit 0, because
+     * {@link HomeCloner#verify} walks the destination and a destination with no
+     * files contributes no leaks. Zero leaks, exit 0, ✓.
+     *
+     * <p>That is {@link dev.skillmanager.store.NotAHomeException}'s exact
+     * shape — a zero that means "could not look" reported as "looked and found
+     * nothing" — in a command #33 did not cover, and it is worse here than in
+     * {@code close-out} because nothing else in the onboarding flow asks the
+     * question again. Both sides are checked: {@code --against} too, since a
+     * mistyped source is a verification against a home that was never the
+     * origin, which also finds nothing and also says ✓.
      */
     @Command(name = "verify",
             description = "Check that a home holds no absolute reference back to another home.")
@@ -147,6 +166,13 @@ public final class HomeCommand {
 
         @Override
         public Integer call() throws Exception {
+            try {
+                NotAHomeException.require(home, "home verify --home");
+                NotAHomeException.require(against, "home verify --against");
+            } catch (NotAHomeException notAHome) {
+                Log.error("%s", notAHome.getMessage());
+                return NotAHomeException.EXIT_CODE;
+            }
             HomeCloner.Verification result = HomeCloner.verify(against, home, strict);
             // Tolerated references are still references. Reporting only the
             // leak list would let "0 leaks" read as "nothing survives" while
@@ -330,6 +356,21 @@ public final class HomeCommand {
                         + "path that is not a home is refused rather than created.")
         boolean init;
 
+        @Option(names = "--sandbox",
+                description = "Also opt this home into the kernel sandbox: write "
+                        + SeatbeltSandbox.PROFILE_FILENAME + " and declare "
+                        + SeatbeltSandbox.ENABLE_VAR + "=1 in the descriptor, so every launch "
+                        + "through this home is confined to its worktree by sandbox-exec. "
+                        + "Opt-in per home on purpose — a bad profile must not be able to brick "
+                        + "every launch on the machine.")
+        boolean sandbox;
+
+        @Option(names = "--no-sandbox",
+                description = "Opt this home back out: declare " + SeatbeltSandbox.ENABLE_VAR
+                        + "=0. The profile file is left in place so the decision is reversible "
+                        + "and auditable.")
+        boolean noSandbox;
+
         private final SkillStore injectedStore;
 
         public ShimsCmd() { this(null); }
@@ -346,19 +387,54 @@ public final class HomeCommand {
                 Log.error("%s", notAHome.getMessage());
                 return NotAHomeException.EXIT_CODE;
             }
+            if (sandbox && noSandbox) {
+                Log.error("--sandbox and --no-sandbox contradict each other; pick one.");
+                return 2;
+            }
             LauncherShims.Result result = LauncherShims.write(store);
+            Path profile = null;
+            if (sandbox || noSandbox) {
+                // The profile is written even when opting OUT so that a later
+                // --sandbox is a one-word change, and so the file a reviewer
+                // reads is the file exec would enforce. The switch is the
+                // descriptor entry, and exec re-validates the file on every
+                // launch — a profile edited to widen it stops launches rather
+                // than silently permitting writes.
+                profile = SeatbeltSandbox.profileFile(store);
+                SeatbeltProfile.install(profile);
+                Map<String, String> contributions = new LinkedHashMap<>(
+                        HomeDescriptor.read(store.root())
+                                .map(HomeDescriptor::envContributions)
+                                .orElse(Map.of()));
+                contributions.put(SeatbeltSandbox.ENABLE_VAR, sandbox ? "1" : "0");
+                describe(store, null, contributions).write(store.root());
+            }
             if (json) {
                 System.out.println("""
-                        {"dir":"%s","shims":[%s]}"""
+                        {"dir":"%s","shims":[%s],"sandbox":%s,"profile":%s}"""
                         .formatted(esc(result.dir().toString()),
                                 result.written().stream()
                                         .map(p -> "\"" + esc(p.toString()) + "\"")
-                                        .collect(java.util.stream.Collectors.joining(","))));
+                                        .collect(java.util.stream.Collectors.joining(",")),
+                                sandbox,
+                                profile == null ? "null" : "\"" + esc(profile.toString()) + "\""));
                 return 0;
             }
             Log.ok("wrote %d launcher(s) to %s", result.written().size(), result.dir());
             for (Path shim : result.written()) Log.info("  %s", shim);
             Log.info("  put %s first on PATH to launch against this home by default", result.dir());
+            if (profile != null) {
+                Log.info("  sandbox:  %s=%s, profile %s",
+                        SeatbeltSandbox.ENABLE_VAR, sandbox ? "1" : "0", profile);
+                if (sandbox) {
+                    Log.info("  every launch through this home is now confined to %s by "
+                                    + "sandbox-exec. That is a filesystem boundary against "
+                                    + "accidents, not containment: an inherited write fd, an "
+                                    + "already-running daemon, and a hardlink made outside it "
+                                    + "each get out.",
+                            HomeDescriptor.homeRootFor(store.root()));
+                }
+            }
             return 0;
         }
     }

@@ -2,11 +2,14 @@ package dev.skillmanager.commands;
 
 import dev.skillmanager.agent.AgentHomes;
 import dev.skillmanager.launch.LaunchEnv;
+import dev.skillmanager.launch.SeatbeltRefusedException;
+import dev.skillmanager.launch.SeatbeltSandbox;
 import dev.skillmanager.launch.UnredirectedLaunchException;
 import dev.skillmanager.lifecycle.SkillReconciler;
 import dev.skillmanager.mcp.GatewayConfig;
 import dev.skillmanager.policy.HomePolicy;
 import dev.skillmanager.store.DriftGate;
+import dev.skillmanager.store.NotAHomeException;
 import dev.skillmanager.store.SkillStore;
 import dev.skillmanager.util.Log;
 import picocli.CommandLine.Command;
@@ -31,6 +34,14 @@ import java.util.concurrent.Callable;
  * {@code bin/} removed from {@code PATH}, and a refusal rather than a warning
  * when the result would still leave Claude reading the operator's global config
  * directory.
+ *
+ * <p>It is also the one place the <em>kernel</em> boundary is applied. A home
+ * that opted in ({@code SKILL_MANAGER_SANDBOX=1} plus {@code <home>/launch.sb},
+ * both written by {@code home shims --sandbox}) has its process tree confined
+ * to its worktree by {@code /usr/bin/sandbox-exec}. The two mechanisms are kept
+ * together deliberately: {@link LaunchEnv#requireClaudeRedirected()} is the
+ * good error message, {@link dev.skillmanager.launch.SeatbeltSandbox} is the
+ * guarantee — the env check knows <em>why</em>, the sandbox knows <em>that</em>.
  *
  * <p>Pass {@code --} before the command when it takes options of its own:
  * {@code skill-manager exec -- claude --version}.
@@ -64,6 +75,11 @@ public final class ExecCommand implements Callable<Integer> {
                     + "refusing the launch.")
     boolean ackDrift;
 
+    @Option(names = "--init",
+            description = "Lay out the home first if it is not one yet. Without this a --home "
+                    + "that is not a home is refused rather than created.")
+    boolean init;
+
     @Parameters(arity = "0..*", paramLabel = "COMMAND",
             description = "Command and arguments to run. Required unless --print-env is given.")
     List<String> commandLine = new ArrayList<>();
@@ -92,6 +108,24 @@ public final class ExecCommand implements Callable<Integer> {
                     : SkillStore.defaultStore();
         String path = inheritedPath != null ? inheritedPath : System.getenv("PATH");
 
+        // #33's shape, in the command #33 did not cover. `exec --home <a path
+        // that does not exist>` used to SCAFFOLD an eleven-entry home there and
+        // exit 0 — LaunchEnv.of(…, bootstrap = true) calls store.init() and
+        // writes a descriptor — and `exec` is what every bin/launch shim calls.
+        // So one mistyped --home silently created a home plus three agent
+        // directories at the typo, and then launched an agent bound to it. The
+        // refusal has to come before LaunchEnv.of for exactly that reason.
+        try {
+            if (init) {
+                store.init();
+            } else {
+                NotAHomeException.require(store.root(), "exec --home");
+            }
+        } catch (NotAHomeException notAHome) {
+            Log.error("%s", notAHome.getMessage());
+            return NotAHomeException.EXIT_CODE;
+        }
+
         LaunchEnv launch = LaunchEnv.of(store, homeRoot, path, true);
 
         // Order matters: the refusal must come before anything is created,
@@ -107,6 +141,25 @@ public final class ExecCommand implements Callable<Integer> {
 
         if (printEnv) {
             launch.exportedEnv().forEach((k, v) -> System.out.println(k + "=" + v));
+            // The sandbox decision is part of the launch environment, so
+            // --print-env has to be able to answer "would this launch be
+            // confined, and to what". A refusal prints as a refusal here for
+            // the same reason it does on the launch path: an operator who asks
+            // what the environment is must not be told "fine" when a launch
+            // would stop.
+            try {
+                SeatbeltSandbox.planFor(store, launch, System.getenv()).ifPresent(plan -> {
+                    System.out.println(SeatbeltSandbox.ACTIVE_VAR + "=" + plan.profile());
+                    plan.parameters().forEach(
+                            (k, v) -> System.out.println("SKILL_MANAGER_SEATBELT_" + k + "=" + v));
+                    plan.env().forEach((k, v) -> {
+                        if (!SeatbeltSandbox.ACTIVE_VAR.equals(k)) System.out.println(k + "=" + v);
+                    });
+                });
+            } catch (SeatbeltRefusedException refused) {
+                Log.error("%s", refused.getMessage());
+                return SeatbeltRefusedException.EXIT_CODE;
+            }
             return 0;
         }
 
@@ -151,8 +204,25 @@ public final class ExecCommand implements Callable<Integer> {
         List<String> argv = new ArrayList<>();
         argv.add(binary.toString());
         argv.addAll(commandLine.subList(1, commandLine.size()));
-        ProcessBuilder pb = new ProcessBuilder(argv).inheritIO();
+
+        // THE SEAM. Every bin/launch shim funnels through `skill-manager exec
+        // --home <home> --`, and every launch spawns exactly this one process,
+        // so wrapping here confines the harness and every grandchild it will
+        // ever spawn — a child cannot loosen an inherited sandbox. See
+        // SeatbeltSandbox for what that does and does not guarantee: it is a
+        // filesystem boundary against accidents, not containment.
+        SeatbeltSandbox.Plan sandbox;
+        try {
+            sandbox = SeatbeltSandbox.planFor(store, launch, System.getenv()).orElse(null);
+        } catch (SeatbeltRefusedException refused) {
+            Log.error("%s", refused.getMessage());
+            return SeatbeltRefusedException.EXIT_CODE;
+        }
+
+        ProcessBuilder pb = new ProcessBuilder(sandbox == null ? argv : sandbox.wrap(argv))
+                .inheritIO();
         pb.environment().putAll(launch.exportedEnv());
+        if (sandbox != null) pb.environment().putAll(sandbox.env());
         Process process = pb.start();
         return process.waitFor();
     }

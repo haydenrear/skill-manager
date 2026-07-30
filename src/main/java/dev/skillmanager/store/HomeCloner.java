@@ -336,6 +336,17 @@ public final class HomeCloner {
                 if (Files.isSymbolicLink(file)) {
                     copyLink(src, dst, file, target, counters);
                 } else if (attrs.isRegularFile()) {
+                    // COPY_ATTRIBUTES is what makes `home clone` cheap enough
+                    // to be the normal way a project or worktree tier comes
+                    // into being: on APFS it takes the clonefile(2) path and
+                    // the copy shares the source's blocks. Measured on this
+                    // host — a real clone of a 189 MB home consumes 7.22 MB
+                    // (3.8%); `cp -Rc` of the 906 MB operator home consumes
+                    // 55 MB against 926 MB for `cp -R`. It is not decoration
+                    // beside REPLACE_EXISTING. See Fs#copyRecursive's javadoc
+                    // and the home.clone.costs.far.less.than.a.copy node, and
+                    // do not measure it with du — du attributes shared blocks
+                    // to both files and reported 197.1 MB for 7.14 MB real.
                     Files.copy(file, target,
                             StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.COPY_ATTRIBUTES);
                     counters.files++;

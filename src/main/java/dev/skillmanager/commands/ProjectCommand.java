@@ -122,10 +122,21 @@ public final class ProjectCommand {
                         + "runs; only the writing is opt-in.")
         boolean repairVendored;
 
+        // The help text used to say "Refused by default: that layout isolates
+        // nothing, and it used to exit 0 reporting every unit resolved." That
+        // refusal was removed — a repository-local home IS the per-checkout
+        // layout this epic exists to produce, so refusing it broke the normal
+        // path — and the behaviour is now
+        // ProjectChildHomeScaffolder#reportSameHome, which warns and proceeds.
+        // A --help that documents a refusal the code no longer performs is the
+        // same fail-open as a check that cannot see: the operator reads a
+        // guarantee, gets none, and has no way to tell.
         @Option(names = "--allow-same-home",
-                description = "Resolve even when SKILL_MANAGER_HOME already IS this project's "
-                        + "own .skill-manager home. Refused by default: that layout isolates "
-                        + "nothing, and it used to exit 0 reporting every unit resolved.")
+                description = "Accepted and no longer consulted. SKILL_MANAGER_HOME already "
+                        + "BEING this project's own .skill-manager home is the per-checkout "
+                        + "layout, not an error: units resolve in place, no separate child home "
+                        + "is created, and resolve says so and proceeds. Kept so existing "
+                        + "invocations and scripts do not break.")
         boolean allowSameHome;
 
         @Override

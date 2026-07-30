@@ -1594,6 +1594,13 @@ public final class ChildHomeMaterializer {
             if (Files.isDirectory(source)) {
                 Fs.copyRecursive(source, dest);
             } else {
+                // COPY_ATTRIBUTES is the APFS clone path and is load-bearing
+                // for cost, not tidiness — see Fs#copyRecursive's javadoc and
+                // the home.clone.costs.far.less.than.a.copy graph node.
+                // Measured: 0.01 MB with the flag, 67.11 MB without, for one
+                // 64 MB file. MaterializationMode.DEFAULT_MODE is COPY on
+                // purpose, and a copy-per-worktree model is only affordable
+                // because these copies share blocks.
                 Files.copy(source, dest,
                         StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.COPY_ATTRIBUTES);
             }
@@ -2413,6 +2420,10 @@ public final class ChildHomeMaterializer {
                 case DIR -> Files.createDirectories(target);
                 case FILE -> {
                     Files.createDirectories(target.getParent());
+                    // COPY_ATTRIBUTES: the APFS clone path. This is the bulk
+                    // site — it writes the whole materialized view of a unit —
+                    // so it is where deleting the flag costs the most. See
+                    // Fs#copyRecursive and home.clone.costs.far.less.than.a.copy.
                     Files.copy(entry.source(), target,
                             StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.COPY_ATTRIBUTES);
                 }
@@ -2433,6 +2444,9 @@ public final class ChildHomeMaterializer {
             if (Files.isDirectory(resolved)) {
                 Fs.copyRecursive(resolved, dst);
             } else if (Files.exists(resolved)) {
+                // COPY_ATTRIBUTES: the APFS clone path, same claim as the two
+                // sites above. See Fs#copyRecursive and
+                // home.clone.costs.far.less.than.a.copy.
                 Files.copy(resolved, dst,
                         StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.COPY_ATTRIBUTES);
             }
