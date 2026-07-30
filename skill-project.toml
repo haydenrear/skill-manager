@@ -1,0 +1,127 @@
+# Skill project manifest for the skill-manager repository.
+#
+# This repo is not a skill unit. There is no skill-manager.toml at its root: it
+# is the CLI's own source tree, and it is itself an integration-repository
+# snapshot carrying four leaf units as ordinary directories —
+# skill-dev-skill/, skill-manager-skill/, skill-publisher-skill/ and
+# skills/test_graph/ — plus infra/homebrew-skill-manager/. So "a repo does not
+# declare its own unit" has nothing to bite on here, and what this manifest
+# declares is simply what an agent working in this checkout needs.
+#
+# How the home is produced — read this before running `project resolve`
+# ---------------------------------------------------------------------
+# `project resolve` writes into whatever `SKILL_MANAGER_HOME` names. Run it
+# before this checkout has its own home and it mutates the operator's global
+# ~/.skill-manager. Create the local home first, point `SKILL_MANAGER_HOME` at
+# it, and only then resolve:
+#
+#   mkdir -p .skill-manager/skills
+#   SKILL_MANAGER_CLI=./skill-manager \
+#     bash <git-integration-repo>/scripts/bootstrap-home.sh --root "$PWD" --force
+#   export SKILL_MANAGER_HOME="$PWD/.skill-manager"
+#   ./skill-manager project resolve --project-dir "$PWD" --skip-gateway
+#
+# `SKILL_MANAGER_HOME` alone does not redirect the agent-home projections;
+# export `CLAUDE_CONFIG_DIR`, `CLAUDE_HOME`, `CODEX_HOME` and `GEMINI_HOME` at
+# this checkout's own `.claude/`, `.codex/` and `.gemini/` as well.
+#
+# NOTE for the unit suite specifically: do NOT export CLAUDE_HOME /
+# CLAUDE_CONFIG_DIR / GEMINI_HOME when running RunTests.java. AgentHomesTest
+# asserts they resolve to null, so "export everything" is unsatisfiable there.
+# The suite is sandboxed differently, with BOTH `HOME=<fakehome>` and
+# `-Duser.home=<fakehome>`, because on macOS the JVM derives user.home from the
+# OS and ignores $HOME.
+#
+# `--allow-same-home` is NOT needed. This project's home IS its own parent home,
+# and `project resolve` used to refuse that layout (#32). The refusal was wrong
+# and has been replaced by a warning naming the layout; the flag is still
+# accepted and does nothing.
+#
+# Coords are git-only (no registry is configured) and they name the REPO, not
+# the installed unit. The table key is the installed unit name, which is what
+# `.skill-manager/skills/<name>` uses.
+
+[project]
+name = "skill-manager"
+version = "0.19.2"
+description = "The Skill Manager CLI: unit resolution and installation, agent-home projection, per-checkout homes, home sync/close-out, project manifests, CLI/MCP tool deps and the virtual MCP gateway."
+
+# --- TLA+ model checking, and the substantive reason this repo wants a home.
+#     specs/program_model/run_tlc.sh resolves the model checker as
+#
+#         tlc2 on PATH
+#         ${SKILL_MANAGER_HOME:-$HOME/.skill-manager}/bin/cli/tlc2
+#         $TLA2TOOLS_JAR
+#
+#     and its own error message says "Install spec-double-compiler with
+#     skill-manager". Without a local home that middle branch reads the
+#     OPERATOR's global home — which is exactly the fallback this epic exists to
+#     remove, sitting in this repo's own spec tooling. Declaring the unit here
+#     puts tlc2 and tla-spec-dev in THIS checkout's bin/cli.
+#
+#     It is also cheap: spec-double-compiler declares `skill_references = []`,
+#     so nothing arrives transitively behind it ---
+
+[skills.spec-double-compiler]
+source = "github:haydenrear/tla-spec-dev"
+
+# --- authoring: this repo carries four leaf skill units as tracked directories
+#     (skill-dev-skill/, skill-manager-skill/, skill-publisher-skill/,
+#     skills/test_graph/), and refreshing or merging any of them is unit work.
+#     skill-publisher is the authority on SKILL.md frontmatter, descriptions,
+#     skill-manager.toml, references/ pages and the install/bind/sync round
+#     trip.
+#
+#     Read CLAUDE.md before editing any of those four: they are duplicated leaf
+#     constituents and a change must start in the top-level leaf repository and
+#     be merged UP into this snapshot, never the other way round ---
+
+[skills.skill-publisher]
+source = "github:haydenrear/skill-publisher-skill"
+
+# --- required BY skill-publisher and by spec-double-compiler, not chosen here:
+#     both name `skill-manager` in their SKILL.md `skill-imports`, and
+#     `project resolve` refuses the whole resolve with "references missing
+#     unit" until the imported unit is declared. Unit `skill_references` are
+#     followed automatically; markdown `skill-imports` are not.
+#
+#     Note the duplication this creates and do not be confused by it: the
+#     installed unit under .skill-manager/skills/skill-manager is a copy of the
+#     skill-manager-skill REPO, which this repository also snapshots at
+#     skill-manager-skill/. The home copy is a gitignored dependency; the
+#     snapshot is tracked content; the leaf repo is the source of truth. Edits
+#     go to the leaf repo (CLAUDE.md's leaf-first ordering), never to either
+#     copy here ---
+
+[skills.skill-manager]
+source = "github:haydenrear/skill-manager-skill"
+
+# --- REPO-SPECIFIC DECISION: test-graph is deliberately NOT declared, even
+#     though this repo has a test_graph/ project and runs graphs constantly.
+#
+#     The runner is the in-repo copy — `python3 skills/test_graph/scripts/run.py
+#     <graph>`, per CLAUDE.md — and test_graph/sdk and test_graph/build-logic
+#     are REAL vendored directories, committed in 56ca0f7 as a band-aid for
+#     issue #21. The graphs therefore run with no installed test-graph unit at
+#     all. Installing one would add yet another copy of the same SDK to a repo
+#     that issue #40 already describes as carrying a fifth idiom for one
+#     problem, and would let a build pick up whichever copy it found first.
+#
+#     It is also the expensive choice: test-graph declares
+#     `github:haydenrear/deploy-cdc` as a hard `skill_reference`, so declaring
+#     it installs deploy-helm, whose three skill-script CLI dependencies each
+#     build a full 530 MB venv — measured, that is 1.6 GB of cache/ in a single
+#     home, and none of it is used by anything in this repository.
+#
+#     Retiring the vendored copy is issue #40's job and it is a decision about
+#     test_graph/, not a side effect of onboarding. Nothing here touches
+#     test_graph/ or src/.
+
+# --- no [[vendored]] block, for the same reason. test_graph/sdk and
+#     test_graph/build-logic are real directories rather than symlinks —
+#     `git ls-files -s | grep ^120000` -> 0 entries — so there is no tracked
+#     link whose resolved physical path could point into a foreign home, and
+#     nothing for the validator to check. Declaring them with
+#     `from_unit = "test-graph"` would assert they OUGHT to be links into this
+#     home's installed unit, which is precisely the change #40 has to decide
+#     deliberately.
