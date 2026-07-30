@@ -55,8 +55,10 @@ import java.util.Set;
  * never cleared, on exactly the units an agent works in. The answer is to split
  * the tree at {@code .git} rather than to drop either half:
  * {@code ChildHomeMaterializer.gitCopyIsUntouched} asks the digest about
- * everything outside {@code .git} and asks git about the history, and
- * {@code checkoutIsModified} asks git the same question for a {@code CHECKOUT}.
+ * everything outside {@code .git} and asks git about the history -- every ref
+ * plus HEAD, because HEAD alone is not a summary of a repository and trusting it
+ * destroyed a side-branch commit and a stash -- and {@code checkoutIsModified}
+ * asks git the same question for a {@code CHECKOUT}.
  * Neither of them may be turned into "skip {@code .git}", which is what this
  * heading forbids.
  *

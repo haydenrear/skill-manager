@@ -101,6 +101,11 @@ import java.util.UUID;
  * history. Skipping and splitting look alike and are opposites: one loses the
  * commits, the other keeps them and stops lying about the rest.
  *
+ * <p>"Git for the history" means EVERY REF, not HEAD. Asking HEAD alone is a
+ * third, separate data-loss defect — it destroyed a side-branch commit and a
+ * {@code git stash} on real homes — and {@link #gitHistoryMovedOn} carries the
+ * measurement under "Every ref, not HEAD".
+ *
  * <h2>Reconciling two homes is the same operation</h2>
  *
  * <p>{@link #planSync} and {@link #applySync} reconcile one unit from the
@@ -255,11 +260,30 @@ public final class ChildHomeMaterializer {
      * {@link #staleSchemaNote} naming the schema change as the cause — which is
      * the half of issue #46 an operator actually experiences.
      *
-     * <p>{@code mode} is deliberately NOT gated on the version: a stale record
-     * that says {@code CHECKOUT} still keeps {@link #effectiveMode} from letting
-     * a project-wide COPY default delete a checkout holding unpushed commits.
-     * Distrusting the digests must not distrust the one field whose whole job is
-     * to stop a deletion.
+     * <h2>What "no evidence at all" does NOT cover, stated so the framing is not
+     * read as wider than it is</h2>
+     *
+     * <p>{@link #usableAsEvidence} gates the three DIGEST readers and nothing
+     * else. Two other fields are read without it, both deliberately:
+     *
+     * <ul>
+     *   <li>{@code mode}, by {@link #effectiveMode}. It is the one field whose
+     *       whole job is to stop a deletion: a stale record that says
+     *       {@code CHECKOUT} still keeps a project-wide COPY default from deleting
+     *       a checkout holding unpushed commits. Distrusting the digests must not
+     *       distrust that.</li>
+     *   <li>{@code historyDigest}, by {@link #gitHistoryMovedOn} on the
+     *       {@link #checkoutIsModified} path. A record whose version this build
+     *       cannot read still fails that comparison unless the refs match
+     *       exactly, so the ungated read can only report a checkout as MORE
+     *       modified, never less — it cannot make a destination writable. Gating
+     *       it would change nothing except to make a stale checkout unconditionally
+     *       "modified", which is where it already lands.</li>
+     * </ul>
+     *
+     * <p>So the rule is "no evidence that anything may be DESTROYED", not "the
+     * record is ignored". Every ungated read was traced: none of them makes a
+     * destination more writable than the gated reading would.
      */
     private static final int RECORD_SCHEMA_VERSION = 2;
 
@@ -306,6 +330,16 @@ public final class ChildHomeMaterializer {
      * the same question, asked of the same authority, rather than a second
      * spelling of it. Null when the tree is not a git repository, or when git
      * cannot answer, both of which read as "no evidence" and hold back.
+     *
+     * <p>{@code historyDigest} is a digest over the tree's full ref listing plus
+     * HEAD, and it is the field that decides whether a git-backed tree holds work
+     * — for a COPY and for a {@link MaterializationMode#CHECKOUT} alike, through
+     * the one predicate {@link #gitHistoryMovedOn}. It exists because
+     * {@code sourceRevision} on its own is not a summary of a repository: a side
+     * branch, a stash, a tag and a note all leave HEAD where it was, and a
+     * reconciliation that trusted HEAD alone destroyed every one of them. See
+     * {@link #gitHistoryMovedOn}, section "Every ref, not HEAD". Evidence about
+     * this home alone, like {@code contentDigest}.
      *
      * <p>{@code worktreeDigest} is {@code contentDigest} with {@code .git}
      * excluded, and it exists only for a git-backed COPY. It is the other half
@@ -376,6 +410,7 @@ public final class ChildHomeMaterializer {
             String sourceDigest,
             String contentDigest,
             String worktreeDigest,
+            String historyDigest,
             String materializedAt,
             java.util.Map<String, String> entryDigests,
             String reconcileKind
@@ -392,7 +427,7 @@ public final class ChildHomeMaterializer {
                                      String sourceDigest, String contentDigest,
                                      String materializedAt) {
             this(schemaVersion, unitName, unitKind, mode, source, sourceRevision,
-                    sourceDigest, contentDigest, null, materializedAt, null, null);
+                    sourceDigest, contentDigest, null, null, materializedAt, null, null);
         }
 
         public boolean isMergeResult() { return MERGED.equals(reconcileKind); }
@@ -500,7 +535,7 @@ public final class ChildHomeMaterializer {
     private static boolean checkoutIsModified(Path dest, MaterializationRecord record) {
         if (!GitOps.isAvailable() || !GitOps.isGitRepo(dest)) return true;
         if (GitOps.hasWorktreeChanges(dest)) return true;
-        return gitHistoryMovedOn(dest, record.sourceRevision());
+        return gitHistoryMovedOn(dest, record);
     }
 
     /**
@@ -514,15 +549,73 @@ public final class ChildHomeMaterializer {
      * agree and don't, with nothing detecting it, is the failure shape this
      * class has already paid for three times.
      *
-     * <p>No recorded revision — an older record, a tree that was not a git
+     * <p>No recorded history — an older record, a tree that was not a git
      * repository when it was written, a git that could not answer — is "moved
      * on". Without evidence that a tree is disposable, it is not disposable, and
      * that is the same asymmetry the no-record case takes.
+     *
+     * <h2 id="not-head">Every ref, not HEAD — and this cost a data-loss
+     * regression to learn</h2>
+     *
+     * <p>The first fix for issue #29 asked git exactly one question,
+     * {@code HEAD == the recorded revision}, and that <b>destroyed bytes</b>.
+     * Measured on real homes with a real {@code git+file://} unit: an agent
+     * commits on a side branch and switches back, so HEAD is unmoved and the
+     * worktree is clean; upstream then moves and a plain downward
+     * {@code home sync} reports {@code updated — the destination held no local
+     * work} and replaces {@code .git} wholesale. {@code cat-file -e} on the side
+     * commit afterwards exits 128. {@code git stash push} does the same: the
+     * stash list comes back empty and {@code reflog show refs/stash} reports an
+     * unknown revision.
+     *
+     * <p>It was a REGRESSION rather than a gap, and that is the part worth
+     * remembering. Before the fix the whole-tree digest never matched after any
+     * git command, so the permanent false positive #29 exists to remove was
+     * <em>accidentally protecting every object in the repository</em>. Replacing
+     * "the bytes are identical" with "(HEAD, worktree bytes) are identical" made
+     * everything else under {@code .git} disposable at a stroke: side branches,
+     * stashes, tags, notes, fetched refs.
+     *
+     * <p>The correction is the asymmetry rule applied literally — <b>when in
+     * doubt, conflict</b>. A digest over the whole ref listing plus HEAD says
+     * "some ref moved" for every one of those cases and says nothing at all for
+     * git's own bookkeeping, because an index rewrite, a reflog append and a
+     * {@code gc} that repacks objects change no ref. So issue #41 stays fixed and
+     * the protection the digest used to give for free is back.
+     *
+     * <p>Two consequences, both named rather than discovered later: a
+     * {@code git fetch} that advances a remote-tracking ref, and a
+     * {@code git branch -d} of a merged branch, both read as "moved on" even
+     * though neither loses anything. Each costs a conflict a human resolves. That
+     * is the direction this whole mechanism errs in, and it is the opposite of
+     * what the HEAD-only reading cost.
      */
-    private static boolean gitHistoryMovedOn(Path dest, String recordedRevision) {
-        if (recordedRevision == null || recordedRevision.isBlank()) return true;
-        String head = GitOps.headHash(dest);
-        return head == null || !head.equals(recordedRevision);
+    private static boolean gitHistoryMovedOn(Path dest, MaterializationRecord record) {
+        String recorded = record == null ? null : record.historyDigest();
+        if (recorded == null || recorded.isBlank()) return true;
+        String now = gitHistoryDigest(dest);
+        return now == null || !now.equals(recorded);
+    }
+
+    /**
+     * A digest over everything in {@code .git} that <em>holds</em> something: the
+     * full ref listing, plus HEAD, which is not a ref under {@code refs/}.
+     *
+     * <p>Null when git cannot answer, which every reader takes as no evidence.
+     * See {@link #gitHistoryMovedOn} for why this is a listing digest rather than
+     * a single revision or a reachability query.
+     */
+    private static String gitHistoryDigest(Path tree) {
+        String refs = GitOps.refListing(tree);
+        if (refs == null) return null;
+        String head = GitOps.headHash(tree);
+        MessageDigest digest = sha256();
+        digest.update(refs.getBytes(StandardCharsets.UTF_8));
+        digest.update("\nHEAD ".getBytes(StandardCharsets.UTF_8));
+        // A repository with no commit yet has no HEAD hash; the absence is itself
+        // part of the state, so it is framed rather than skipped.
+        digest.update((head == null ? "" : head).getBytes(StandardCharsets.UTF_8));
+        return hex(digest.digest());
     }
 
     /**
@@ -565,14 +658,16 @@ public final class ChildHomeMaterializer {
      *       invisible (issue #41) — which is also why {@code git status} is NOT
      *       consulted here: a unit that does not gitignore its {@code build/}
      *       would come back dirty and put #41 straight back.</li>
-     *   <li>{@link #gitHistoryMovedOn}: HEAD is still the revision the record
-     *       names. A commit — the case the naive fix destroys — moves it.</li>
+     *   <li>{@link #gitHistoryMovedOn}: EVERY ref, plus HEAD, is still what the
+     *       record names. A commit — the case the naive fix destroys — moves one.
+     *       Asking about HEAD alone is a data-loss defect in its own right and
+     *       <a href="#not-head">that section</a> is the measurement.</li>
      * </ul>
      *
      * <p>So git's own bookkeeping (an index rewrite, a reflog append, a
      * {@code gc} that repacks objects) changes neither half and the unit reads
      * as untouched; committed work changes the second half and it does not. A
-     * missing {@code worktreeDigest} or {@code sourceRevision} is no evidence
+     * missing {@code worktreeDigest} or {@code historyDigest} is no evidence
      * and holds back, which is what a record written before this existed gets.
      */
     private static boolean gitCopyIsUntouched(Path dest, MaterializationRecord record)
@@ -582,7 +677,51 @@ public final class ChildHomeMaterializer {
         if (recordedWorktree == null) return false;
         if (!GitOps.isAvailable() || !GitOps.isGitRepo(dest)) return false;
         if (!recordedWorktree.equals(worktreeDigest(dest))) return false;
-        return !gitHistoryMovedOn(dest, record.sourceRevision());
+        return !gitHistoryMovedOn(dest, record);
+    }
+
+    /**
+     * Whether two homes' copies of a git-backed unit differ ONLY in git's own
+     * bookkeeping — <b>the symmetric half of issue #29, which the record-based
+     * route cannot reach.</b>
+     *
+     * <p>The issue's words are "after ANY git command <em>on either side</em>",
+     * and {@link #gitCopyIsUntouched} only answers for a destination that has a
+     * usable record. Two cases it cannot help with, both measured:
+     *
+     * <ul>
+     *   <li>the destination is an <em>installed</em> home and has no record at all
+     *       — the operator's root home, which is issue #43's shape;</li>
+     *   <li>the churn happened in the SOURCE, so the destination is pristine by
+     *       its own record and the trees still differ.</li>
+     * </ul>
+     *
+     * <p>In both, {@code home close-out} kept reporting a blocker whose remedy was
+     * a sync that would copy 61 {@code .git} entries and change nothing anybody
+     * wrote. Answered here instead of through the record, because it needs no
+     * record: if the two trees are identical outside {@code .git} <em>and</em>
+     * stand on exactly the same refs, then neither home holds a file or a commit
+     * the other lacks, and the honest outcome is that there is nothing to
+     * reconcile.
+     *
+     * <p>Writing NOTHING is what makes this safe unconditionally — it cannot
+     * destroy anything, in either direction, whatever either record says. What it
+     * can do is fail to propagate, and only for objects that are unreachable from
+     * every ref in both homes, which is the definition of what git itself is
+     * entitled to garbage-collect.
+     *
+     * <p>{@code specs/desired_program_model/External.tla} says the same thing as
+     * {@code GitAgree} in {@code SyncStatusOf}'s first branch; the model had it
+     * before the code did.
+     */
+    private static boolean gitTwinsDifferOnlyInBookkeeping(Path source, Path dest)
+            throws IOException {
+        if (!carriesGitDirectory(source) || !carriesGitDirectory(dest)) return false;
+        if (!GitOps.isAvailable()) return false;
+        if (!GitOps.isGitRepo(source) || !GitOps.isGitRepo(dest)) return false;
+        String sourceHistory = gitHistoryDigest(source);
+        if (sourceHistory == null || !sourceHistory.equals(gitHistoryDigest(dest))) return false;
+        return worktreeDigest(source).equals(worktreeDigest(dest));
     }
 
     /**
@@ -922,6 +1061,12 @@ public final class ChildHomeMaterializer {
         if (src.digest().equals(dst.digest())) {
             return new UnitSync(name, kind, SyncStatus.UNCHANGED, dest, List.of(), List.of(),
                     "already byte-identical to the source");
+        }
+        if (gitTwinsDifferOnlyInBookkeeping(source, dest)) {
+            return new UnitSync(name, kind, SyncStatus.UNCHANGED, dest, List.of(), List.of(),
+                    "identical outside .git and standing on the same refs; the two copies differ "
+                            + "only in git's own bookkeeping (an index, a reflog, a repack), which "
+                            + "belongs to neither home");
         }
 
         // The destination's record is evidence about the pair (this
@@ -1488,7 +1633,7 @@ public final class ChildHomeMaterializer {
             }
             if (GitOps.isGitRepo(dest)) {
                 writeRecord(name, kind, MaterializationMode.CHECKOUT, source,
-                        new GitState(GitOps.headHash(dest), null), null, null);
+                        gitHistoryOf(dest), null, null);
                 return new UnitOutcome(name, kind, Status.UNCHANGED, dest,
                         "existing checkout left in place at " + shortHash(GitOps.headHash(dest)));
             }
@@ -1512,7 +1657,7 @@ public final class ChildHomeMaterializer {
         if (upstream != null && !upstream.isBlank()) GitOps.setOrigin(dest, upstream);
         String head = GitOps.headHash(dest);
         writeRecord(name, kind, MaterializationMode.CHECKOUT, source,
-                new GitState(head, null), null, null);
+                gitHistoryOf(dest), null, null);
         return new UnitOutcome(name, kind, Status.MATERIALIZED, dest,
                 "checked out from the parent store at " + shortHash(head));
     }
@@ -1913,8 +2058,8 @@ public final class ChildHomeMaterializer {
      * {@code .git}. {@link #NONE} means "this tree is not a git repository, or
      * git could not answer", which every reader takes as no evidence.
      */
-    private record GitState(String revision, String worktreeDigest) {
-        static final GitState NONE = new GitState(null, null);
+    private record GitState(String revision, String historyDigest, String worktreeDigest) {
+        static final GitState NONE = new GitState(null, null, null);
     }
 
     /**
@@ -1926,11 +2071,26 @@ public final class ChildHomeMaterializer {
      * construction, but only one of them is the thing a later pass will measure.
      */
     private static GitState gitStateOf(Path tree) throws IOException {
+        GitState history = gitHistoryOf(tree);
+        if (history == GitState.NONE) return GitState.NONE;
+        return new GitState(history.revision(), history.historyDigest(), worktreeDigest(tree));
+    }
+
+    /**
+     * The history half alone — what a {@link MaterializationMode#CHECKOUT} record
+     * carries, since a checkout's baseline IS its history and it has no
+     * worktree-digest baseline to be measured against.
+     *
+     * <p>Written by {@code checkoutUnit} on every pass, which is what makes a
+     * checkout whose record predates {@code historyDigest} heal on the first
+     * resolve rather than stay held back.
+     */
+    private static GitState gitHistoryOf(Path tree) {
         if (tree == null || !carriesGitDirectory(tree)) return GitState.NONE;
         if (!GitOps.isAvailable() || !GitOps.isGitRepo(tree)) return GitState.NONE;
-        String head = GitOps.headHash(tree);
-        if (head == null || head.isBlank()) return GitState.NONE;
-        return new GitState(head, worktreeDigest(tree));
+        String history = gitHistoryDigest(tree);
+        if (history == null) return GitState.NONE;
+        return new GitState(GitOps.headHash(tree), history, null);
     }
 
     private void writeRecord(String name, UnitKind kind, MaterializationMode mode, Path source,
@@ -1957,6 +2117,7 @@ public final class ChildHomeMaterializer {
                         sourceDigest,
                         contentDigest,
                         state.worktreeDigest(),
+                        state.historyDigest(),
                         BindingStore.nowIso(),
                         entryDigests,
                         reconcileKind));

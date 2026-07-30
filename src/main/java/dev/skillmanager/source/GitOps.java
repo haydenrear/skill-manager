@@ -78,6 +78,39 @@ public final class GitOps {
         return commit.exit == 0 || headHash(dir) != null;
     }
 
+    /**
+     * Every ref in the repository as {@code <objectname> <refname>} lines,
+     * sorted by refname — or null when git cannot answer.
+     *
+     * <p><b>HEAD is not a summary of a git repository.</b> This exists because
+     * asking only {@code rev-parse HEAD} treats "I cannot see inside
+     * {@code .git}" as "nothing is in there": a commit on a side branch the agent
+     * switched away from, a {@code git stash}, a tag, a note and a fetched ref
+     * all leave HEAD exactly where it was. Reconciling a home on that answer
+     * destroys every one of them — measured, on a real unit: a side-branch commit
+     * and a stash both came back {@code cat-file -e} exit 128 after a plain
+     * downward sync that reported "the destination held no local work".
+     *
+     * <p>{@code for-each-ref refs/} rather than {@code show-ref}: it names the
+     * scope explicitly, it includes {@code refs/stash} (which is what makes a
+     * stash visible at all), and for an ANNOTATED tag {@code %(objectname)} is
+     * the tag object, so a tag that adds no commit is still a change. HEAD is
+     * appended by the caller, because it is not a ref under {@code refs/}.
+     *
+     * <p>What it deliberately does NOT do is ask about reachability. A ref
+     * DELETION and an annotated tag are both invisible to
+     * {@code rev-list --all --not <rev>}, and the whole point here is to stop
+     * converting "cannot see" into "nothing there". The cost is named where it is
+     * read: a fetched remote-tracking ref and a deleted merged branch both read
+     * as "moved on", which is a conflict a human resolves rather than an edit
+     * nobody sees again.
+     */
+    public static String refListing(Path dir) {
+        Result r = run(dir, List.of("git", "for-each-ref",
+                "--format=%(objectname) %(refname)", "refs/"));
+        return r.exit == 0 ? r.stdout : null;
+    }
+
     public static String porcelainStatus(Path dir) {
         Result r = run(dir, List.of("git", "status", "--porcelain"));
         return r.exit == 0 ? r.stdout : "";

@@ -46,8 +46,10 @@ import static dev.skillmanager._lib.test.Tests.assertTrue;
  *
  * <h2>What these cases pin down</h2>
  *
- * <p>Three cases, and the middle two are the halves the fix must keep apart
- * (plus a fourth, on the record-schema edge issue #46 opens next door):
+ * <p>Six cases. The middle two are the halves the fix must keep apart; two more
+ * are the classes the FIRST fix for this issue destroyed, because it asked git
+ * only about HEAD and HEAD is not a summary of a repository; and one is on the
+ * record-schema edge issue #46 opens next door:
  *
  * <ol>
  *   <li>git's own bookkeeping (here a {@code gc}, which definitely rewrites
@@ -61,8 +63,16 @@ import static dev.skillmanager._lib.test.Tests.assertTrue;
  *       anything but the history;</li>
  *   <li>and with the source moved on — the state that turns a hold-back into a
  *       fast-forward — the commit is still readable out of the destination's
- *       object store afterwards. That last one is the assertion the naive fix
+ *       object store afterwards. That one is the assertion the naive fix
  *       fails.</li>
+ *   <li>a commit on a SIDE BRANCH the agent switched away from, and a
+ *       {@code git stash}: both leave HEAD on the recorded revision with the
+ *       working tree exactly as materialized, so a HEAD-only reading called the
+ *       unit pristine and replaced {@code .git}. Measured on real homes:
+ *       {@code cat-file -e} exit 128 and an empty {@code git stash list}. These
+ *       are asserted on the object store and on {@code git stash list}, never on
+ *       a status, because a repository that has lost a ref still reports a
+ *       plausible status.</li>
  * </ol>
  *
  * <p>Every assertion is on bytes or on git's answer about a specific object, not
@@ -107,21 +117,40 @@ public final class HomeSyncGitUnitTest {
                     "and it changed nothing outside .git");
             assertEquals(head, head(homes.destUnit()), "HEAD is where it was");
 
+            // The DOWNWARD pass -- what `project resolve` and
+            // `home sync --from <project>` run.
             UnitSync outcome = only(sync(homes));
-            assertFalse(outcome.status() == SyncStatus.HELD_BACK,
-                    "a unit whose .git churned is not a unit that was edited, but the reconcile "
-                            + "reported " + outcome.status() + ": " + outcome.detail());
-            // unresolved() is exactly the set `home close-out` refuses on, so
-            // this is the difference between a worktree that can be torn down
-            // and one that never can again.
-            assertFalse(outcome.unresolved(),
-                    "and it is not an outcome a teardown has to refuse on, which is what made "
-                            + "the false positive permanent: " + outcome.status() + " — "
-                            + outcome.detail());
+            assertEquals(SyncStatus.UNCHANGED, outcome.status(),
+                    "a unit whose .git churned is not a unit that was edited: " + outcome.detail());
+
+            // And the gate, asserted against the thing that actually gates a
+            // teardown rather than against UnitSync.unresolved(). Those are NOT
+            // the same set: unresolved() is HELD_BACK/CONFLICTED/LINKED, while
+            // HomeCloseOut.remedyFor blocks on everything except UNCHANGED and
+            // REMOVED_UPSTREAM -- so an `updated` outcome exits 1 too, and a test
+            // asserting only ~unresolved() would call a still-blocked gate clear.
+            // This is the direction the record cannot answer for, because the
+            // source home has no record of its own.
+            assertTrue(HomeCloseOut.inspect(homes.dest(), homes.source()).safe(),
+                    "and the teardown gate clears in the UPWARD direction too, where the "
+                            + "destination has no record at all: "
+                            + HomeCloseOut.render(
+                                    HomeCloseOut.inspect(homes.dest(), homes.source())));
             assertEquals(head, head(homes.destUnit()),
                     "and nothing rewound the destination's history to clear it");
             assertEquals(worktreeBefore, worktree(homes.destUnit()),
                     "and the working tree is untouched either way");
+
+            // The same churn on the OTHER side: the issue says "after ANY git
+            // command on either side", and a source-side gc leaves the
+            // destination pristine by its own record while the trees differ.
+            git(homes.sourceUnit(), "gc", "--quiet", "--prune=now");
+            assertEquals(SyncStatus.UNCHANGED, only(sync(homes)).status(),
+                    "a gc in the SOURCE home is not work either");
+            assertTrue(HomeCloseOut.inspect(homes.dest(), homes.source()).safe(),
+                    "and it does not block the teardown: "
+                            + HomeCloseOut.render(
+                                    HomeCloseOut.inspect(homes.dest(), homes.source())));
         });
 
         suite.test("a commit the source does not have holds the unit back", () -> {
@@ -162,13 +191,19 @@ public final class HomeSyncGitUnitTest {
                     Homes homes = Homes.create("survive");
                     sync(homes);
                     String materializedAt = head(homes.destUnit());
+                    // Captured BEFORE the commit. Taking it afterwards and
+                    // comparing it to a re-read of the same path is an assertion
+                    // that cannot fail, and the proposition it names -- that the
+                    // commit moved nothing outside .git -- is precisely what makes
+                    // this the case the naive fix destroys, so it has to be
+                    // checked rather than asserted at itself.
+                    Map<String, String> worktreeBefore = worktree(homes.destUnit());
 
                     git(homes.destUnit(), "add", "-A");
                     commit(homes.destUnit(), "agent: work that exists only as a commit");
                     String agentCommit = head(homes.destUnit());
-                    Map<String, String> worktreeBefore = worktree(homes.destUnit());
                     assertEquals(worktreeBefore, worktree(homes.destUnit()),
-                            "the destination's working tree is what was materialized");
+                            "the commit moved nothing outside .git");
 
                     // The source moves on, so this pass has something to offer
                     // and a fast-forward is on the table.
@@ -194,6 +229,120 @@ public final class HomeSyncGitUnitTest {
                     assertFalse(Files.exists(homes.destUnit().resolve("upstream.md")),
                             "nothing from the source was written into a held-back unit");
                 });
+
+        suite.test("a commit on a side branch survives, with HEAD never having moved", () -> {
+            // THE REGRESSION THE FIRST FIX FOR #29 SHIPPED, and it destroyed
+            // bytes rather than merely failing to notice them. Asking git one
+            // question -- HEAD == the recorded revision -- converts "I cannot see
+            // inside .git" into "nothing is in there". An agent who commits on a
+            // side branch and switches back leaves HEAD exactly where it was and
+            // the worktree clean, so the whole unit read as pristine and a plain
+            // downward sync replaced .git wholesale, reporting "the destination
+            // held no local work".
+            //
+            // Before #29 the whole-tree digest never matched after any git
+            // command, so the false positive was ACCIDENTALLY protecting every
+            // object in the repository. That is what makes this a regression and
+            // not a gap.
+            Homes homes = Homes.create("sidebranch");
+            sync(homes);
+            String materializedAt = head(homes.destUnit());
+            Map<String, String> worktreeBefore = worktree(homes.destUnit());
+
+            // A tracked file, committed on the branch, so that switching back
+            // RESTORES the materialized bytes. Committing the untracked
+            // references/agent-notes.md instead would make git delete it on the
+            // way back to main, and then the worktree would differ and the case
+            // would be the ordinary edit case wearing a branch.
+            git(homes.destUnit(), "checkout", "--quiet", "-b", "feature");
+            Files.writeString(homes.destUnit().resolve("SKILL.md"),
+                    "---\nname: " + UNIT + "\ndescription: side-branch experiment\n---\n"
+                            + "SIDE BRANCH WORK\n");
+            git(homes.destUnit(), "add", "SKILL.md");
+            commit(homes.destUnit(), "agent: work on a side branch");
+            String sideCommit = head(homes.destUnit());
+            // Back to where we started: HEAD is the recorded revision again and
+            // the only thing that knows about sideCommit is refs/heads/feature.
+            git(homes.destUnit(), "checkout", "--quiet", "main");
+
+            assertEquals(materializedAt, head(homes.destUnit()),
+                    "HEAD is back on the revision the record names — without this the case is "
+                            + "just the ordinary commit case and proves nothing");
+            assertEquals(worktreeBefore, worktree(homes.destUnit()),
+                    "and nothing outside .git differs from what was materialized");
+            assertTrue(objectExists(homes.destUnit(), sideCommit),
+                    "the side commit exists before the sync");
+
+            // Upstream moves, which is what puts a fast-forward on the table.
+            Files.writeString(homes.sourceUnit().resolve("upstream.md"), "upstream v2\n");
+            git(homes.sourceUnit(), "add", "-A");
+            commit(homes.sourceUnit(), "upstream: a later commit");
+
+            UnitSync outcome = only(sync(homes));
+
+            assertTrue(objectExists(homes.destUnit(), sideCommit),
+                    "THE SIDE COMMIT IS STILL IN THE OBJECT STORE — `cat-file -e` came back 128 "
+                            + "with the HEAD-only reading, from a pass that reported \""
+                            + outcome.detail() + "\"");
+            assertContains(showFile(homes.destUnit(), sideCommit, "SKILL.md"), "SIDE BRANCH WORK",
+                    "and its content is still readable out of it");
+            assertTrue(branches(homes.destUnit()).contains("feature"),
+                    "the branch that named it is still there: " + branches(homes.destUnit()));
+            assertEquals(SyncStatus.HELD_BACK, outcome.status(),
+                    "and the unit is held back rather than called pristine: " + outcome.detail());
+            assertFalse(HomeCloseOut.inspect(homes.dest(), homes.source()).safe(),
+                    "and the teardown gate refuses while that commit exists in one home only");
+        });
+
+        suite.test("a stash survives a sync that would otherwise replace .git", () -> {
+            // The second instance of the same defect, and a different git object
+            // graph: `stash push` writes refs/stash and a reflog under it, moves
+            // no branch, and RESTORES the working tree -- so after it, HEAD and
+            // every worktree byte are exactly what the record describes.
+            //
+            // Asserted on `git stash list`, not on a status enum: a stash whose
+            // ref is gone still leaves dangling objects for a while, so "the
+            // repository has this stash" is the only question worth asking.
+            Homes homes = Homes.create("stash");
+            sync(homes);
+            String materializedAt = head(homes.destUnit());
+
+            Map<String, String> worktreeBefore = worktree(homes.destUnit());
+            Files.writeString(homes.destUnit().resolve("SKILL.md"),
+                    "---\nname: " + UNIT + "\ndescription: work in progress\n---\nSTASHED WORK\n");
+            // NOT --include-untracked, deliberately: that also REMOVES the
+            // untracked references/agent-notes.md from the working tree, and then
+            // the unit is held back by the worktree half and this case says
+            // nothing about the history at all. Measured -- the first version of
+            // this test survived the HEAD-only mutation for exactly that reason,
+            // which is a finding about the test and not about the code.
+            git(homes.destUnit(), "stash", "push", "--quiet", "-m", "agent work in progress");
+            Map<String, String> worktreeAfterStash = worktree(homes.destUnit());
+
+            assertEquals(materializedAt, head(homes.destUnit()), "the stash moved no branch");
+            assertEquals(worktreeBefore, worktreeAfterStash,
+                    "and it restored the working tree to exactly what was materialized -- without "
+                            + "this the hold-back below could be coming from the worktree half");
+            assertEquals(1, stashes(homes.destUnit()).size(),
+                    "there is exactly one stash before the sync: " + stashes(homes.destUnit()));
+
+            Files.writeString(homes.sourceUnit().resolve("upstream.md"), "upstream v2\n");
+            git(homes.sourceUnit(), "add", "-A");
+            commit(homes.sourceUnit(), "upstream: a later commit");
+
+            UnitSync outcome = only(sync(homes));
+
+            assertEquals(1, stashes(homes.destUnit()).size(),
+                    "THE STASH IS STILL THERE — `git stash list` came back EMPTY with the "
+                            + "HEAD-only reading, from a pass that reported \"" + outcome.detail()
+                            + "\"; now: " + stashes(homes.destUnit()));
+            assertTrue(objectExists(homes.destUnit(), "refs/stash"),
+                    "and refs/stash still resolves to a commit");
+            assertEquals(SyncStatus.HELD_BACK, outcome.status(),
+                    "and the unit is held back: " + outcome.detail());
+            assertEquals(worktreeAfterStash, worktree(homes.destUnit()),
+                    "with the working tree exactly as the stash left it");
+        });
 
         suite.test("an uncommitted edit in a git-backed unit is still an edit", () -> {
             // The other conjunct. Routing a git-backed unit "through git" and
@@ -354,6 +503,23 @@ public final class HomeSyncGitUnitTest {
 
     private static boolean objectExists(Path unit, String rev) {
         return run(unit, List.of("git", "cat-file", "-e", rev + "^{commit}")).exit == 0;
+    }
+
+    /** Local branch names in the unit's repository. */
+    private static List<String> branches(Path unit) {
+        Result r = run(unit, List.of("git", "for-each-ref", "--format=%(refname:short)",
+                "refs/heads/"));
+        return lines(r);
+    }
+
+    /** {@code git stash list} — the only honest question about a stash. */
+    private static List<String> stashes(Path unit) {
+        return lines(run(unit, List.of("git", "stash", "list")));
+    }
+
+    private static List<String> lines(Result r) {
+        if (r.exit != 0 || r.out.isBlank()) return List.of();
+        return List.of(r.out.strip().split("\\r?\\n"));
     }
 
     // -------------------------------------------------------------- git glue

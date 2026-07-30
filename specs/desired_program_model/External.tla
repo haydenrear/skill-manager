@@ -41,6 +41,17 @@ CONSTANTS
   \*      unit differs from its own record the first time anybody looks at it and
   \*      is reported locally modified forever. A false positive that never
   \*      clears, on exactly the units an agent works in.
+  \* HEAD_ONLY          -- THE FIRST FIX FOR #29, AND A THIRD DATA-LOSS DEFECT.
+  \*      The tree is split at .git correctly and then git is asked exactly one
+  \*      question: is HEAD the revision the record names. HEAD IS NOT A SUMMARY
+  \*      OF A REPOSITORY. A commit on a side branch the agent switched away
+  \*      from, a stash, a tag and a note all leave HEAD where it was, so the
+  \*      unit reads as pristine and a wholesale copy replaces .git -- measured
+  \*      on real homes: `cat-file -e` exit 128 on the side commit and an empty
+  \*      `git stash list`. Worse than a gap: before #29 the whole-tree digest
+  \*      never matched after ANY git command, so the false positive was
+  \*      ACCIDENTALLY protecting every object in the repository, and this
+  \*      reading made all of it disposable at a stroke.
   \* SKIP_GIT           -- THE OBVIOUS FIX, AND A DATA-LOSS DEFECT. .git is
   \*      excluded and only the worktree is compared. A commit moves bytes ONLY
   \*      inside .git, so a home whose agent committed reads as pristine, the
@@ -282,8 +293,15 @@ CONSTANTS
 \*              down. A teardown deletes both the work and the evidence of it,
 \*              which is exactly why the evidence has to be taken first.
 \* sync_git     per tier: the state of that home's own .git -- whether git has
-\*              rewritten its bookkeeping since the record was written, and which
-\*              commit HEAD stands on. Two components rather than one because the
+\*              rewritten its bookkeeping since the record was written, which
+\*              commits are reachable from HEAD, and which are reachable ONLY from
+\*              some other ref (a side branch the agent switched away from, a
+\*              stash, a tag). The second ref is not decoration: with only a tip,
+\*              "the predicate reads HEAD" and "the predicate reads the
+\*              repository" are the same proposition and the HEAD_ONLY defect is
+\*              INEXPRESSIBLE -- the model would be clean because it has nowhere
+\*              for the lost commit to have been. That is the same vacuity as the
+\*              symlink child home, found in review of this very slice. Two components rather than one because the
 \*              whole of issue #29 is that they are different propositions:
 \*              bookkeeping is content nobody authored, and a commit is work that
 \*              exists in one home only. A model with a single "the .git changed"
@@ -462,28 +480,34 @@ GitHeads == SUBSET SyncContents
 \* the agent's commit was taken away with no conflict and no report. That is
 \* CHM-10 exactly, one dimension across.
 SyncRecords == [entries: [SyncPaths -> RecordedContents], origin: Origins,
-                git_head: GitHeads, git_base: GitHeads]
+                git_head: GitHeads, git_side: GitHeads, git_base: GitHeads]
 
 InitialSyncRecord ==
   [entries |-> [p \in SyncPaths |-> InstalledBytes], origin |-> AdoptedOrigin,
-   git_head |-> {InstalledBytes}, git_base |-> {InstalledBytes}]
+   git_head |-> {InstalledBytes}, git_side |-> {}, git_base |-> {InstalledBytes}]
 
 \* A git-backed home's .git as it stands before anybody has run a git command in
 \* it: standing on the commit it was materialized at, nothing rewritten since.
-InitialGitState == [churn |-> FALSE, head |-> {InstalledBytes}]
+InitialGitState == [churn |-> FALSE, head |-> {InstalledBytes}, side |-> {}]
+
+\* Everything the repository can still reach: the union of both. Every rule that
+\* is about "does this home hold a commit" reads THIS, and the one rule that
+\* deliberately reads only `head` is the HEAD_ONLY defect.
+AllRefs(h) == sync_git[h].head \cup sync_git[h].side
 
 \* The record an installed home has: none. Every path claims NoBaseline, which
 \* already means "this record makes no statement about this path" everywhere
 \* else in this module, so nothing had to learn a new absence.
 RecordlessSyncRecord ==
   [entries |-> [p \in SyncPaths |-> NoBaseline], origin |-> NoRecordOrigin,
-   git_head |-> {}, git_base |-> {}]
+   git_head |-> {}, git_side |-> {}, git_base |-> {}]
 
 \* --------------------------------------------------------------- policies
 HasGitBackedUnits      == GitBackedUnits
 SplitsAtGit            == GitProvenance = "SPLIT_AT_GIT"
 DigestsTheWholeTree    == GitProvenance = "WHOLE_TREE_DIGEST"
 SkipsGit               == GitProvenance = "SKIP_GIT"
+ReadsHeadOnly          == GitProvenance = "HEAD_ONLY"
 HoldsBackOrMerges      == HomeSyncPolicy = "HOLD_BACK_OR_MERGE"
 MergeIsThreeWay        == MergeAlgebra = "THREE_WAY"
 UsesSharedAncestorBase == MergeBasePolicy = "SHARED_ANCESTOR"
@@ -553,7 +577,8 @@ TypeOK ==
   /\ sync_history \subseteq (SyncHomes \X SyncPaths \X SyncContents)
   /\ sync_unsound \subseteq (SyncPaths \X UnsoundReasons)
   /\ sync_gone \in [torn_down: BOOLEAN, body: [SyncPaths -> SyncContents]]
-  /\ sync_git \in [SyncHomes -> [churn: BOOLEAN, head: SUBSET SyncContents]]
+  /\ sync_git \in [SyncHomes ->
+        [churn: BOOLEAN, head: SUBSET SyncContents, side: SUBSET SyncContents]]
   /\ sync_committed \subseteq SyncContents
 
 \* A child unit whose bytes are no longer the bytes skill-manager wrote.
@@ -696,8 +721,13 @@ GitStateUnmoved(to) ==
   \/ ~HasGitBackedUnits
   \/ CASE DigestsTheWholeTree -> /\ ~sync_git[to].churn
                                 /\ sync_git[to].head = sync_record[to].git_head
+                                /\ sync_git[to].side = sync_record[to].git_side
        [] SkipsGit           -> TRUE
-       [] OTHER              -> sync_git[to].head = sync_record[to].git_head
+       \* THE HEAD-ONLY DEFECT: the side refs are simply not looked at, so a
+       \* commit that lives on one is invisible and the tree reads as pristine.
+       [] ReadsHeadOnly      -> sync_git[to].head = sync_record[to].git_head
+       [] OTHER              -> /\ sync_git[to].head = sync_record[to].git_head
+                                /\ sync_git[to].side = sync_record[to].git_side
 
 \* Whether the two homes' .git states agree, for the "nothing to do at all"
 \* question. Same three arms and the same reason.
@@ -705,9 +735,10 @@ GitAgree(from, to) ==
   \/ ~HasGitBackedUnits
   \/ CASE DigestsTheWholeTree -> /\ ~sync_git[from].churn
                                 /\ ~sync_git[to].churn
-                                /\ sync_git[from].head = sync_git[to].head
+                                /\ AllRefs(from) = AllRefs(to)
        [] SkipsGit           -> TRUE
-       [] OTHER              -> sync_git[from].head = sync_git[to].head
+       [] ReadsHeadOnly      -> sync_git[from].head = sync_git[to].head
+       [] OTHER              -> AllRefs(from) = AllRefs(to)
 
 \* Whether a MERGE may carry the source's history over: the three-way algebra's
 \* `d = b`, one dimension across. The destination is still standing on the head
@@ -722,10 +753,10 @@ GitAgree(from, to) ==
 \* DISPOSAL question splits the tree at .git, never the copy.
 GitTakeAllowed(from, to) ==
   /\ HasGitBackedUnits
-  /\ sync_git[from].head # sync_git[to].head
-  \* `d = b` against the PAIR baseline, never against this home's own head --
+  /\ AllRefs(from) # AllRefs(to)
+  \* `d = b` against the PAIR baseline, never against this home's own refs --
   \* see SyncRecords.
-  /\ sync_git[to].head = sync_record[to].git_base
+  /\ AllRefs(to) = sync_record[to].git_base
   /\ (UsesSharedAncestorBase => BaseIsShared(from, to))
 
 \* The history moved on both sides, or on one side against no baseline at all.
@@ -739,12 +770,12 @@ GitConflict(from, to) ==
 \* What the record may claim as the shared history baseline afterwards: the same
 \* three showings RecordedEntryAfter allows for a path, and no fourth.
 RecordedGitBaseAfter(from, to, status) ==
-  IF \/ status = "updated"                                  \* written from the source
-     \/ GitTakeAllowed(from, to)                             \* taken by this merge
-     \/ sync_git[from].head = sync_git[to].head              \* both already held it
-     \/ (/\ sync_git[from].head = sync_record[to].git_base   \* source still on ...
-         /\ BaseIsShared(from, to))                          \* ... a SHARED base
-  THEN sync_git[from].head
+  IF \/ status = "updated"                              \* written from the source
+     \/ GitTakeAllowed(from, to)                         \* taken by this merge
+     \/ AllRefs(from) = AllRefs(to)                      \* both already held it
+     \/ (/\ AllRefs(from) = sync_record[to].git_base     \* source still on ...
+         /\ BaseIsShared(from, to))                      \* ... a SHARED base
+  THEN AllRefs(from)
   ELSE {}
 
 \* The .git a reconciliation leaves behind. A WHOLESALE COPY replaces the
@@ -754,10 +785,13 @@ RecordedGitBaseAfter(from, to, status) ==
 \* DESTINATION's tree with taken paths replaced, so it keeps the destination's
 \* history except where the algebra entitles it to take the source's.
 GitStateAfter(from, to, status) ==
-  CASE status = "updated" -> [churn |-> FALSE, head |-> sync_git[from].head]
+  CASE status = "updated" -> [churn |-> FALSE,
+                              head  |-> sync_git[from].head,
+                              side  |-> sync_git[from].side]
     [] status = "merged"  -> IF GitTakeAllowed(from, to)
                              THEN [churn |-> sync_git[to].churn,
-                                   head  |-> sync_git[from].head]
+                                   head  |-> sync_git[from].head,
+                                   side  |-> sync_git[from].side]
                              ELSE sync_git[to]
     [] OTHER              -> sync_git[to]
 
@@ -796,7 +830,8 @@ SourceHeldDestBytes(from, to) ==
 SourceHeldDestGit(from, to) ==
   \/ ~HasGitBackedUnits
   \/ SkipsGit
-  \/ sync_git[from].head = sync_git[to].head
+  \/ IF ReadsHeadOnly THEN sync_git[from].head = sync_git[to].head
+                       ELSE AllRefs(from) = AllRefs(to)
 
 RecordlessCopyAllowed(from, to) ==
   CASE RecordlessDestinationPolicy = "NEVER_DISPOSABLE"  -> FALSE
@@ -1183,6 +1218,29 @@ CommitInHomeTier(h) ==
   /\ UNCHANGED unit_vars
   /\ UNCHANGED home_vars
 
+\* @command CommitOnSideRefInHomeTier
+\* @result GitCommitOnSideRef
+\* @port AgentWorkspace.commit_on_side_ref_in_unit
+\* The agent commits somewhere that is not HEAD: a branch they then switch away
+\* from, a `git stash`, a tag. HEAD DOES NOT MOVE and neither does the working
+\* tree, so a rule that asks git only about HEAD sees a pristine unit.
+\*
+\* This action is the whole reason sync_git has two components. Without it the
+\* model has nowhere for a lost commit to have been, HEAD_ONLY and SPLIT_AT_GIT
+\* are indistinguishable, and External_sync_git.cfg is clean because the question
+\* cannot be asked -- not because the answer is right. That vacuity was found in
+\* review of this slice, which is the sharpest instance of it in the directory:
+\* the model was clean about a defect that had been MEASURED on real homes.
+CommitOnSideRefInHomeTier(h) ==
+  /\ HasGitBackedUnits
+  /\ h \in SyncLive
+  /\ h \notin sync_git[h].side
+  /\ sync_git' = [sync_git EXCEPT ![h].side = sync_git[h].side \cup {h}]
+  /\ sync_committed' = sync_committed \cup {h}
+  /\ UNCHANGED << sync_body, sync_record, sync_history, sync_unsound, sync_gone >>
+  /\ UNCHANGED unit_vars
+  /\ UNCHANGED home_vars
+
 \* @command ReconcileHomeTiers
 \* @result HomeSyncReport
 \* @port SkillManagerCli.home_sync
@@ -1230,6 +1288,8 @@ ReconcileHomeTiers(from, to, merge) ==
                                 \* contentDigest and unlike entries.
                                 git_head |->
                                   GitStateAfter(from, to, status).head,
+                                git_side |->
+                                  GitStateAfter(from, to, status).side,
                                 git_base |->
                                   RecordedGitBaseAfter(from, to, status)]]
      /\ sync_git' = [sync_git EXCEPT ![to] = GitStateAfter(from, to, status)]
@@ -1342,6 +1402,7 @@ RefreshProjectChildHomeFromStore ==
                           [entries |-> [p \in SyncPaths |-> InstalledBytes],
                            origin  |-> StoreOrigin,
                            git_head |-> {InstalledBytes},
+                           git_side |-> {},
                            git_base |-> {InstalledBytes}]]
      /\ sync_git' = [sync_git EXCEPT ![ProjectHome] = InitialGitState]
      /\ UNCHANGED sync_committed
@@ -1362,6 +1423,7 @@ SyncNext ==
   \/ \E h \in SyncHomes, p \in SyncPaths: EditUnitInHomeTier(h, p)
   \/ \E h \in SyncHomes: ChurnGitBookkeepingInHomeTier(h)
   \/ \E h \in SyncHomes: CommitInHomeTier(h)
+  \/ \E h \in SyncHomes: CommitOnSideRefInHomeTier(h)
   \/ \E from \in SyncHomes, to \in SyncHomes, m \in BOOLEAN:
        ReconcileHomeTiers(from, to, m)
   \/ RefreshProjectChildHomeFromStore
@@ -1750,8 +1812,9 @@ GitBookkeepingIsNeverReportedAsWork ==
   \A from \in SyncLive, to \in SyncLive:
     (/\ from # to
      /\ \A p \in SyncPaths: AgreeAt(from, to, p)
-     /\ sync_git[from].head = sync_git[to].head
-     /\ sync_git[to].head = sync_record[to].git_head)
+     /\ AllRefs(from) = AllRefs(to)
+     /\ sync_git[to].head = sync_record[to].git_head
+     /\ sync_git[to].side = sync_record[to].git_side)
     => SyncStatusOf(from, to, FALSE) = "unchanged"
 
 \* @invariant CommittedWorkIsNeverDestroyed
@@ -1775,7 +1838,7 @@ GitBookkeepingIsNeverReportedAsWork ==
 \* exists is stale.
 CommittedWorkIsNeverDestroyed ==
   \A c \in sync_committed:
-    \E h \in SyncLive: c \in sync_git[h].head
+    \E h \in SyncLive: c \in AllRefs(h)
 
 \* @invariant NoWorktreeEditEverReachesTheRootHome
 \* REACHABILITY PROBE -- THIS ONE MUST FAIL.

@@ -300,6 +300,15 @@ justification:
   sync_git:
     invariants: [GitBookkeepingIsNeverReportedAsWork, CommittedWorkIsNeverDestroyed]
     effects: []
+    note: >
+      TWO components, head and side, and the second is load-bearing rather than
+      decorative. With only a tip, "the predicate reads HEAD" and "the predicate
+      reads the repository" are the same proposition, the HEAD_ONLY defect is
+      inexpressible, and External_sync_git.cfg comes back clean because the
+      question cannot be asked -- not because the answer is right. That vacuity was
+      found in review of this slice, on a defect that had already been MEASURED on
+      real homes, which makes it the sharpest instance of the class in this
+      directory.
   sync_committed:
     invariants: [CommittedWorkIsNeverDestroyed]
     effects: []
@@ -738,6 +747,17 @@ validation:
       status: violated_as_expected
       trace_depth: 2
       axis: git
+    External_regression_headonlygit.cfg:
+      models: "THE FIRST FIX FOR #29, WHICH WAS SHIPPED AND HAD TO BE REWORKED. GitProvenance = \"HEAD_ONLY\": the tree is split at .git correctly and then git is asked exactly one question, is HEAD the revision the record names. HEAD IS NOT A SUMMARY OF A REPOSITORY -- CommitOnSideRefInHomeTier moves no tip and no working-tree byte, so the unit reads as pristine, a wholesale copy replaces .git, and the commit is gone. Measured on real homes before it was modelled: cat-file -e exit 128 on a side-branch commit and an empty git stash list, from a pass reporting \"the destination held no local work\". A REGRESSION rather than a gap: before #29 the whole-tree digest never matched after ANY git command, so the false positive was accidentally protecting every object in the repository."
+      expect_violation: CommittedWorkIsNeverDestroyed
+      status: violated_as_expected
+      trace_depth: 3
+      axis: git
+      note: >
+        Its counterexample is CommitOnSideRefInHomeTier followed straight by
+        TearDownWorktreeHome -- the gate cleared because HEAD never moved. Guarded
+        by External_sync_guard_headonlygit.cfg, and the guard needed TWO
+        invariants removed rather than one; see that entry.
     External_regression_skipgit.cfg:
       models: "THE OBVIOUS FIX FOR #29, WHICH IS A DATA-LOSS DEFECT. GitProvenance = \"SKIP_GIT\": .git is excluded from the comparison, so the false positive above disappears -- and a commit moves bytes ONLY inside .git, so after CommitInHomeTier the worktree is byte-identical to what the record describes, the home reads as pristine, a wholesale copy replaces its .git with the source's, and the teardown gate clears for the home whose object store held the only copy."
       expect_violation: CommittedWorkIsNeverDestroyed
@@ -950,6 +970,32 @@ validation:
         intact one -- the same result as External_sync_guard_overwrite.cfg one
         dimension across, and the reason sync_committed is written at the moment
         the commit is made rather than derived afterwards.
+    External_sync_guard_headonlygit.cfg:
+      policy: GitProvenance = "HEAD_ONLY"
+      guards: CommittedWorkIsNeverDestroyed
+      invariants_checked: every sync invariant except the witness-reading one AND GitBookkeepingIsNeverReportedAsWork
+      status: passed
+      states_generated: 80241
+      distinct_states: 13876
+      depth: 17
+      measured: "2026-07-29, on the git axis (GitBackedUnits = TRUE, two tiers, one path)."
+      second_removal_is_the_finding: >
+        GitBookkeepingIsNeverReportedAsWork DOES fire on this arm, at depth 5, and
+        for the WRONG proposition: on a trace where both homes hold the same
+        objects but different tips, a HEAD-only GitAgree calls the unit changed.
+        That is the HEAD-only reading OVER-reporting -- the mirror of the defect --
+        and it says nothing about the commit that was destroyed. Leaving it in the
+        list would let this config look like a caught defect and hide the fact that
+        nothing here can see the loss, so it is removed and the removal is
+        recorded. This is the only guard in the directory that needed two.
+      why: >
+        With both removed TLC explores the whole space and finds nothing, which is
+        why the regression reached a commit and a review rather than a failing
+        check. Nothing about the final state of a home that has lost a side branch
+        is wrong: no path diverges from its record, no write was unentitled, the
+        record's own git_head matches HEAD exactly BECAUSE HEAD never moved, and
+        close-out reports "unchanged" truthfully about every question it asks. The
+        repository is coherent; it is simply missing a commit.
     External_sync_guard_ffprovenance.cfg:
       policy: ReconcileProvenance = "MERGE_KIND_ONLY"   # today's code
       guards: AReconciliationOnlyWritesAgainstABaselineBothHomesPassedThrough
