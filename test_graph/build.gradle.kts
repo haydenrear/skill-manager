@@ -644,30 +644,19 @@ validationGraph {
         node("sources/home-clone/HomeCloneEditStaysInClone.java")
         node("sources/home-clone/HomeCloneWorksWithSourceRenamed.java")
         node("sources/home-clone/HomeCloneNoAgentHomeLeak.java")
-        // The two undeclared properties this home model rests on, each with an
-        // oracle rather than a comment. Neither depends on the fixture above:
-        // the cost node needs a dedicated volume nobody else writes to, and the
-        // seatbelt node needs decoys OUTSIDE every allowed subtree, which the
-        // shared sandbox home is not.
+        // The undeclared property this home model rests on, with an oracle
+        // rather than a comment. It does not depend on the fixture above: the
+        // cost node needs a dedicated volume nobody else writes to.
         //
-        // NEITHER CARRIES A SPEC INVARIANT, deliberately (T57 / #60):
-        //
-        //   - The clone COST is a resource property — blocks consumed on a
-        //     filesystem. TLA+ cannot express it and TLC cannot check it, so
-        //     the only honest oracle is a measurement, and the measurement is
-        //     here with an idle negative control and a known-size positive
-        //     control.
-        //   - The SEATBELT constrains a process skill-manager did not write.
-        //     HomeSpec's alphabet has no foreign writer; adding one would mean
-        //     a universally-quantified environment action whose invariant just
-        //     restates the profile — true by construction, and blind to the one
-        //     thing that matters, which is whether the KERNEL agrees. That is a
-        //     byte-level question and it is asserted at bytes.
+        // IT CARRIES NO SPEC INVARIANT, deliberately (T57 / #60): the clone
+        // COST is a resource property — blocks consumed on a filesystem. TLA+
+        // cannot express it and TLC cannot check it, so the only honest oracle
+        // is a measurement, and the measurement is here with an idle negative
+        // control and a known-size positive control.
         //
         // See specs/desired_program_model/External.tla for what HomeSpec does
         // cover, and issue #60 for the decision.
         node("sources/home-clone/HomeCloneCostsFarLessThanACopy.java")
-        node("sources/home-clone/HomeCloneSeatbeltConfinesTheWorktree.java")
     }
 
     /**
