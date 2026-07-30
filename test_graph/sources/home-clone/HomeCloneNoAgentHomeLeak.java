@@ -16,15 +16,21 @@ import java.util.List;
  * projections into the developer's real {@code ~/.claude}, {@code ~/.codex} and
  * {@code ~/.gemini}.
  *
- * <p>Existing nodes pass agent homes through {@link HomeCloneSupport#sm} and
- * that is where the sandboxing lives — but "a helper sets the right env vars" is
- * a claim about code, and #18 exists because
- * {@code ProjectDependenciesResolved:466-474} makes exactly that claim while
- * passing only {@code SKILL_MANAGER_HOME} and {@code SKILL_MANAGER_INSTALL_DIR}.
- * The agent fallbacks end at {@code user.home}
- * ({@code AgentHomes:167}, {@code CodexAgent:34}, {@code GeminiAgent:34}), so a
+ * <p>Existing nodes pass agent homes through {@link HomeCloneSupport#sm}, which
+ * gets them from {@code SmEnv} — but "a helper sets the right env vars" is a
+ * claim about code, and #18 and #30 are both what happens when that claim is
+ * where the checking stops: #18's leak came from a node that passed only
+ * {@code SKILL_MANAGER_HOME} and {@code SKILL_MANAGER_INSTALL_DIR}, and #30
+ * measured 50 more of them. The agent fallbacks end at {@code user.home}
+ * ({@code AgentHomes.userHome}, {@code CodexAgent}, {@code GeminiAgent}), so a
  * single subprocess spawned without them projects into the real home and the
  * symlinks outlive the run, dangling once the temp home is deleted.
+ *
+ * <p>This node deliberately spawns NOTHING and exports NOTHING. Its whole value
+ * is that it is downstream of every other node in the graph and looks at the
+ * operator's real homes directly, so it holds whatever the helpers did or did
+ * not do. Do not "fix" it by giving it a sandbox env — that would delete the
+ * assertion.
  *
  * <p>So this node asserts the OUTCOME. The immediate child names of the three
  * real agent skill roots were recorded before anything ran; they must be

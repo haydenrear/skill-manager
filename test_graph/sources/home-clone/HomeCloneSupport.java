@@ -54,15 +54,18 @@ import java.util.Set;
  *
  * <h2>Every subprocess gets the sandboxed agent homes</h2>
  *
- * See {@link #sm}. This is not defensive habit: {@code ProjectDependenciesResolved}
- * passes only {@code SKILL_MANAGER_HOME} and {@code SKILL_MANAGER_INSTALL_DIR},
- * and issue #18 is the resulting leak — {@code install} projects units into
- * {@code $CLAUDE_CONFIG_DIR/skills} and the agent fallbacks in
- * {@code AgentHomes}/{@code CodexAgent}/{@code GeminiAgent} end at
- * {@code user.home}, so a node that forgets them writes into the developer's
- * real {@code ~/.claude} and {@code ~/.codex}. The graph also carries a node
- * that PROVES it did not happen, rather than relying on this method being
- * called correctly.
+ * See {@link #sm}, which delegates the env to {@code SmEnv} rather than spelling
+ * it out. It used to spell it out, and that made it one of four copies of the
+ * same recipe that had drifted apart — issue #30, which measured 50 of the 105
+ * env sites in this tree passing neither an agent-home variable nor {@code HOME},
+ * so {@code install} projected units into the developer's real {@code ~/.claude}
+ * and {@code ~/.codex} by way of the {@code user.home} fallback in
+ * {@code AgentHomes}/{@code CodexAgent}/{@code GeminiAgent}.
+ *
+ * <p>The graph still carries a node that PROVES it did not happen, rather than
+ * relying on any helper being called correctly, and
+ * {@code sources/sandbox/SandboxEnvContract.java} now fails on a node that
+ * spells the env itself or spawns the CLI without the helper at all.
  */
 final class HomeCloneSupport {
 
