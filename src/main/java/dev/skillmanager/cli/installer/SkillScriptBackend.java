@@ -170,6 +170,15 @@ public final class SkillScriptBackend implements InstallerBackend {
         if (target.args() != null) cmd.addAll(target.args());
 
         Map<String, String> env = new LinkedHashMap<>();
+        // The shared package stores go in first so the four SKILL_MANAGER_*
+        // variables below still win on a collision. A skill-script is the one
+        // installer whose body this codebase does not control — it may reach
+        // for uv, for `python -m venv` + pip, or for npm — so it gets all
+        // three content-addressed stores plus UV_LINK_MODE rather than
+        // whichever one we guessed it uses. SKILL_MANAGER_CACHE_DIR below is
+        // NOT one of these: it is this home's private staging and
+        // skill-script install root, an install target, and stays per-home.
+        env.putAll(dev.skillmanager.pm.PackageCaches.sharedEnvEnsured(store.venvsDir()));
         env.put("SKILL_MANAGER_BIN_DIR", store.cliBinDir().toString());
         env.put("SKILL_MANAGER_HOME", store.root().toString());
         env.put("SKILL_MANAGER_CACHE_DIR", store.cacheDir().toString());

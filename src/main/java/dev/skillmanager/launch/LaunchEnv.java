@@ -2,6 +2,7 @@ package dev.skillmanager.launch;
 
 import dev.skillmanager.agent.AgentHomes;
 import dev.skillmanager.commands.HomeCommand;
+import dev.skillmanager.pm.PackageCaches;
 import dev.skillmanager.policy.HomePolicy;
 import dev.skillmanager.store.HomeDescriptor;
 import dev.skillmanager.store.SkillStore;
@@ -130,6 +131,14 @@ public final class LaunchEnv {
 
         Path root;
         Map<String, String> assembled = new LinkedHashMap<>();
+        // The shared package stores, first and therefore lowest precedence:
+        // a descriptor that names one of these explicitly is the operator
+        // speaking and wins. Declared here rather than left to inherit
+        // because "it happens to be inherited today" is exactly the property
+        // that regressed when a per-worktree layer started redirecting
+        // UV_CACHE_DIR and nothing noticed. See PackageCaches for which
+        // directories are shareable and which are not.
+        assembled.putAll(PackageCaches.sharedEnv(store.venvsDir()));
         if (existing.isPresent()) {
             HomeDescriptor descriptor = existing.get();
             root = homeRootOverride != null

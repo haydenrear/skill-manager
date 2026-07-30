@@ -657,6 +657,27 @@ validationGraph {
         // See specs/desired_program_model/External.tla for what HomeSpec does
         // cover, and issue #60 for the decision.
         node("sources/home-clone/HomeCloneCostsFarLessThanACopy.java")
+        // The other side of the same economics. HomeCloneCostsFarLessThanACopy
+        // asserts that copying a home is cheap; these two assert that the
+        // PACKAGE STORE the home installs out of is not copied per home at
+        // all, and that what is materialized out of it is materialized by
+        // reference.
+        //
+        // Split in two on purpose. The contract node is deterministic, needs
+        // no network and no volume, and is the one that fails when somebody
+        // gives a home a private cache — it is where the regression will
+        // actually be caught. The cost node is the instrument that proves the
+        // contract is worth having: apparent size and du are identical
+        // whether a venv shares blocks or not, so only free space on a
+        // dedicated volume can tell, and that needs hdiutil, uv and a network
+        // warm-up. It SKIPS with a stated reason when it cannot get them,
+        // which is why it must not be the only guard.
+        //
+        // LIKE THE CLONE-COST NODE ABOVE, NEITHER CARRIES A SPEC INVARIANT:
+        // "these bytes are shared" is a resource property, not a state
+        // machine, and TLC cannot check it.
+        node("sources/home-clone/SharedPackageCacheIsNotPrivateToTheHome.java")
+        node("sources/home-clone/SharedStoreMaterializationCostsFarLessThanACopy.java")
     }
 
     /**

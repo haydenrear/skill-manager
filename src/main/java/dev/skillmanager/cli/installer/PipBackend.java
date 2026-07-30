@@ -1,6 +1,7 @@
 package dev.skillmanager.cli.installer;
 
 import dev.skillmanager.model.CliDependency;
+import dev.skillmanager.pm.PackageCaches;
 import dev.skillmanager.pm.PackageManager;
 import dev.skillmanager.pm.PackageManagerRuntime;
 import dev.skillmanager.store.SkillStore;
@@ -8,6 +9,7 @@ import dev.skillmanager.shared.util.Fs;
 import dev.skillmanager.util.Log;
 
 import java.io.IOException;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -39,10 +41,14 @@ public final class PipBackend implements InstallerBackend {
         }
         String uv = pm.ensureBundled("uv");
 
-        Map<String, String> env = Map.of(
-                "UV_TOOL_BIN_DIR", store.cliBinDir().toString(),
-                "UV_TOOL_DIR", store.venvsDir().toString()
-        );
+        // Shared content-addressed store first, then the two per-home install
+        // targets. The order is the classification: everything from
+        // PackageCaches is append-only and global; UV_TOOL_DIR / UV_TOOL_BIN_DIR
+        // are mutable roots this home owns and must never be shared, so they
+        // are set here and deliberately not in PackageCaches.sharedEnv.
+        Map<String, String> env = new LinkedHashMap<>(PackageCaches.sharedEnvEnsured(store.venvsDir()));
+        env.put("UV_TOOL_BIN_DIR", store.cliBinDir().toString());
+        env.put("UV_TOOL_DIR", store.venvsDir().toString());
         Shell.mustWithEnv(List.of(uv, "tool", "install", "--force", pkg), env);
         Log.ok("cli: installed %s via uv tool (bin=%s)", pkg, store.cliBinDir());
     }
