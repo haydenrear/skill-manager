@@ -2,6 +2,7 @@
 //SOURCES ../../sdk/java/src/main/java/com/hayden/testgraphsdk/sdk/*.java
 //SOURCES ../lib/TgFixture.java
 //SOURCES ../lib/TgMcp.java
+//SOURCES ../lib/SmEnv.java
 
 import com.hayden.testgraphsdk.sdk.Node;
 import com.hayden.testgraphsdk.sdk.NodeResult;
@@ -129,11 +130,8 @@ public class SkillUninstalled {
     private static int run(List<String> argv, String home, String claudeHome,
                            String codexHome, String geminiHome, Path repoRoot) throws Exception {
         ProcessBuilder pb = new ProcessBuilder(argv).redirectErrorStream(true);
-        pb.environment().put("SKILL_MANAGER_HOME", home);
-        pb.environment().put("SKILL_MANAGER_INSTALL_DIR", repoRoot.toString());
-        pb.environment().put("CLAUDE_HOME", claudeHome);
-        pb.environment().put("CODEX_HOME", codexHome);
-        pb.environment().put("GEMINI_HOME", geminiHome);
+        SmEnv.apply(pb, home, repoRoot.toString(),
+                SmEnv.sandbox(claudeHome, codexHome, geminiHome));
         Process p = pb.start();
         try (BufferedReader r = new BufferedReader(new InputStreamReader(p.getInputStream()))) {
             String line;

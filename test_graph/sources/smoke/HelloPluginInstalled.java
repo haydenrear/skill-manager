@@ -1,5 +1,6 @@
 ///usr/bin/env jbang "$0" "$@" ; exit $?
 //SOURCES ../../sdk/java/src/main/java/com/hayden/testgraphsdk/sdk/*.java
+//SOURCES ../lib/SmEnv.java
 
 import com.hayden.testgraphsdk.sdk.Node;
 import com.hayden.testgraphsdk.sdk.NodeResult;
@@ -52,19 +53,13 @@ public class HelloPluginInstalled {
                     sm.toString(), "install", "hello-plugin",
                     "--registry", registryUrl,
                     "--yes");
-            pb.environment().put("SKILL_MANAGER_HOME", home);
-            pb.environment().put("SKILL_MANAGER_INSTALL_DIR", repoRoot.toString());
-            pb.environment().put("CLAUDE_HOME", claudeHome);
-            pb.environment().put("CODEX_HOME", codexHome);
-            pb.environment().put("GEMINI_HOME", geminiHome);
+            SmEnv.apply(ctx, pb, home);
             // CLAUDE_CONFIG_DIR is what the Claude CLI itself honors —
             // skill-manager's HarnessPluginCli.Claude driver also sets
             // it to <claudeHome>/.claude when invoking subprocesses,
             // but pre-setting it here means anything else the install
             // touches via the CLI lands inside the sandboxed harness
             // home rather than the developer's real ~/.claude.
-            pb.environment().put("CLAUDE_CONFIG_DIR",
-                    Path.of(claudeHome).resolve(".claude").toString());
             // hello-plugin's contained skill declares pip:ruff (CLI),
             // which gates by default — turn off the cli flag for this
             // run.

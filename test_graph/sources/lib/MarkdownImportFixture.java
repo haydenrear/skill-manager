@@ -1,3 +1,5 @@
+//SOURCES SmEnv.java
+
 import com.hayden.testgraphsdk.sdk.NodeContext;
 import com.hayden.testgraphsdk.sdk.Procs;
 import com.hayden.testgraphsdk.sdk.ProcessRecord;
@@ -24,28 +26,25 @@ final class MarkdownImportFixture {
      *
      * <p>{@code HOME} closes it for anything reading the environment;
      * {@code JAVA_TOOL_OPTIONS=-Duser.home=...} closes it for anything reading
-     * the JVM property, because every JVM honours that variable. This mirrors
-     * {@code HomeCloneSupport.sm()}, which is the reference implementation for
-     * the full sandbox env.
+     * the JVM property, because every JVM honours that variable.
+     *
+     * <p>The five variables themselves come from {@link SmEnv} and are no longer
+     * written here. This method used to spell them out, and it is the copy that
+     * <em>still leaked</em> — #18's second comment measured
+     * {@code dm-target-skill} reaching all three real agent homes from this
+     * install while the same install's MCP writes landed in the sandbox. A
+     * fourth spelling is not the fix; one is.
      */
     static ProcessRecord install(NodeContext ctx, Path sm, Path repoRoot, String home,
                                  String claudeHome, String codexHome, String geminiHome,
                                  Path unitDir, String label) throws Exception {
         ProcessBuilder pb = new ProcessBuilder(
                 sm.toString(), "install", "file://" + unitDir.toAbsolutePath(), "--yes");
-        pb.environment().put("SKILL_MANAGER_HOME", home);
-        pb.environment().put("SKILL_MANAGER_INSTALL_DIR", repoRoot.toString());
-        if (claudeHome != null) {
-            pb.environment().put("CLAUDE_HOME", claudeHome);
-            pb.environment().put("CLAUDE_CONFIG_DIR",
-                    Path.of(claudeHome).resolve(".claude").toString());
-        }
-        if (codexHome != null) pb.environment().put("CODEX_HOME", codexHome);
-        if (geminiHome != null) pb.environment().put("GEMINI_HOME", geminiHome);
-        if (home != null) {
-            pb.environment().put("HOME", home);
-            pb.environment().put("JAVA_TOOL_OPTIONS", "-Duser.home=" + home);
-        }
+        SmEnv.Sandbox sandbox = claudeHome != null && codexHome != null && geminiHome != null
+                ? SmEnv.sandbox(claudeHome, codexHome, geminiHome)
+                : SmEnv.sandboxOf(ctx, home);
+        SmEnv.apply(pb, home, repoRoot.toString(), sandbox);
+        SmEnv.alsoRedirectPosixHome(pb, home);
         return Procs.run(ctx, label, pb);
     }
 

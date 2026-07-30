@@ -1,3 +1,5 @@
+//SOURCES ../lib/SmEnv.java
+
 import com.hayden.testgraphsdk.sdk.NodeContext;
 import com.hayden.testgraphsdk.sdk.ProcessRecord;
 import com.hayden.testgraphsdk.sdk.Procs;
@@ -98,53 +100,30 @@ final class HomeCloneSupport {
     /**
      * Run the real CLI against {@code home}, with output captured to a node log.
      *
-     * <p>Sets, for every child, without exception:
-     * <ul>
-     *   <li>{@code SKILL_MANAGER_HOME} — the home under test.</li>
-     *   <li>{@code CLAUDE_HOME}, {@code CLAUDE_CONFIG_DIR}, {@code CODEX_HOME},
-     *       {@code GEMINI_HOME} — from {@code env.prepared}. Without these,
-     *       {@code install} writes agent projections into the developer's real
-     *       {@code ~/.claude}: that is issue #18.</li>
-     *   <li>{@code HOME} — so anything reading {@code $HOME} lands in the
-     *       sandbox too.</li>
-     *   <li>{@code JAVA_TOOL_OPTIONS=-Duser.home=<sandbox>} — belt and braces.
-     *       On macOS the JVM derives {@code user.home} from the OS and IGNORES
-     *       {@code $HOME}, so the four vars above are the only thing standing
-     *       between an unanticipated {@code user.home} read and the real home.
-     *       Every JVM honors {@code JAVA_TOOL_OPTIONS}, so this closes the last
-     *       hole for reads this graph did not predict.</li>
-     * </ul>
+     * <p>The five-variable sandbox comes from {@link SmEnv} — this method used to
+     * spell it out and was one of the four copies that disagreed (issue #30).
+     * On top of it this graph redirects {@code HOME} and {@code user.home},
+     * because its claim is about the whole home: {@code NoOwnedSurfaceNamesAnotherHome}
+     * is falsified by an unpredicted {@code user.home} read, not merely slowed by
+     * one.
      */
     static ProcessRecord sm(NodeContext ctx, String label, String home, String... args) {
         String[] command = new String[args.length + 1];
         command[0] = skillManager().toString();
         System.arraycopy(args, 0, command, 1, args.length);
         ProcessBuilder pb = new ProcessBuilder(command);
-        pb.environment().put("SKILL_MANAGER_HOME", home);
-        pb.environment().put("SKILL_MANAGER_INSTALL_DIR", repoRoot().toString());
-        String claude = ctx.get("env.prepared", "claudeHome").orElse(null);
-        if (claude != null) {
-            pb.environment().put("CLAUDE_HOME", claude);
-            pb.environment().put("CLAUDE_CONFIG_DIR", Path.of(claude).resolve(".claude").toString());
-        }
-        ctx.get("env.prepared", "codexHome")
-                .ifPresent(v -> pb.environment().put("CODEX_HOME", v));
-        ctx.get("env.prepared", "geminiHome")
-                .ifPresent(v -> pb.environment().put("GEMINI_HOME", v));
-        String sandbox = ctx.get("env.prepared", "home").orElse(null);
-        if (sandbox != null) {
-            pb.environment().put("HOME", sandbox);
-            pb.environment().put("JAVA_TOOL_OPTIONS", "-Duser.home=" + sandbox);
-        }
+        SmEnv.apply(ctx, pb, home);
+        ctx.get("env.prepared", "home")
+                .ifPresent(sandbox -> SmEnv.alsoRedirectPosixHome(pb, sandbox));
         return Procs.run(ctx, label, pb);
     }
 
     /** Run an arbitrary executable (a generated shim) with the same sandbox. */
     static ProcessRecord exec(NodeContext ctx, String label, String home, List<String> command) {
         ProcessBuilder pb = new ProcessBuilder(command);
-        pb.environment().put("SKILL_MANAGER_HOME", home);
-        String sandbox = ctx.get("env.prepared", "home").orElse(null);
-        if (sandbox != null) pb.environment().put("HOME", sandbox);
+        SmEnv.apply(ctx, pb, home);
+        ctx.get("env.prepared", "home")
+                .ifPresent(sandbox -> SmEnv.alsoRedirectPosixHome(pb, sandbox));
         return Procs.run(ctx, label, pb);
     }
 

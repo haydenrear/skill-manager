@@ -1,5 +1,6 @@
 ///usr/bin/env jbang "$0" "$@" ; exit $?
 //SOURCES ../../sdk/java/src/main/java/com/hayden/testgraphsdk/sdk/*.java
+//SOURCES ../lib/SmEnv.java
 
 import com.hayden.testgraphsdk.sdk.Node;
 import com.hayden.testgraphsdk.sdk.NodeResult;
@@ -55,17 +56,14 @@ public class OnboardCompleted {
                     sm.toString(), "onboard",
                     "--install-dir", repoRoot.toString(),
                     "--registry", registryUrl);
-            pb.environment().put("SKILL_MANAGER_HOME", home);
-            pb.environment().put("SKILL_MANAGER_INSTALL_DIR", repoRoot.toString());
+            SmEnv.apply(pb, home, repoRoot.toString(),
+                    SmEnv.sandbox(agentHome, agentHome.resolve(".codex"), geminiHome));
             // Pin the gateway port to the env-allocated one so onboard's
             // gateway-up doesn't try to bind 51717 (the default, which may
             // already be in use). InstallCommand reads this through the
             // same GatewayConfig.resolve path.
             pb.environment().put("SKILL_MANAGER_GATEWAY_URL",
                     "http://127.0.0.1:" + gatewayPort);
-            pb.environment().put("CLAUDE_HOME", agentHome.toString());
-            pb.environment().put("CODEX_HOME", agentHome.resolve(".codex").toString());
-            pb.environment().put("GEMINI_HOME", geminiHome.toString());
 
             ProcessRecord proc = Procs.run(ctx, "onboard", pb);
             int rc = proc.exitCode();

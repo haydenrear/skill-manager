@@ -1,5 +1,6 @@
 ///usr/bin/env jbang "$0" "$@" ; exit $?
 //SOURCES ../../sdk/java/src/main/java/com/hayden/testgraphsdk/sdk/*.java
+//SOURCES ../lib/SmEnv.java
 
 import com.hayden.testgraphsdk.sdk.Node;
 import com.hayden.testgraphsdk.sdk.NodeResult;
@@ -52,8 +53,7 @@ public class HelloPluginRegisteredWithHarness {
             boolean claudeOnPath = onPath("claude");
             if (claudeOnPath) {
                 ProcessBuilder pb = new ProcessBuilder("claude", "plugin", "list");
-                pb.environment().put("CLAUDE_CONFIG_DIR",
-                        Path.of(claudeHome).resolve(".claude").toString());
+                SmEnv.applyAgentHomes(pb, SmEnv.sandbox(claudeHome, codexHome, geminiHome));
                 ProcessRecord proc = Procs.run(ctx, "claude-plugin-list", pb);
                 int rc = proc.exitCode();
                 String out = readLog(ctx, "claude-plugin-list");

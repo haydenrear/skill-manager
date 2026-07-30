@@ -86,7 +86,8 @@ public final class ProjectChildHomeScaffolder {
 
     /**
      * @param allowSameHome proceed even when the project's home resolves to the
-     *        parent home itself. See {@link #requireDistinctHomes}.
+     *        parent home itself. Accepted and no longer consulted; see
+     *        {@link #reportSameHome}.
      */
     public Result scaffold(SkillProject project,
                            List<SkillProjectLock.ResolvedUnit> resolvedUnits,
@@ -98,12 +99,11 @@ public final class ProjectChildHomeScaffolder {
         MaterializationMode materialization = mode == null ? DEFAULT_MODE : mode;
         Set<String> checkouts = checkoutUnits == null ? Set.of() : checkoutUnits;
         ChildHomeHarnessInstaller.Layout layout = layoutFor(project);
-        // Before init(), so a refusal is a refusal: laying the home out first
-        // and objecting afterwards leaves the mess and reports the error, which
-        // is how "nothing was written" stops being true.
-        if (!allowSameHome) {
-            requireDistinctHomes(parentStore.root(), layout.childSkillManagerHome());
-        }
+        // Reported before init(), so the operator reads which layout they are
+        // getting before anything is written rather than inferring it from the
+        // result. `allowSameHome` is accepted and no longer consulted — the
+        // condition it suppressed is not an error. See #reportSameHome.
+        reportSameHome(parentStore.root(), layout.childSkillManagerHome());
         parentStore.init();
         SkillStore childStore = new SkillStore(layout.childSkillManagerHome());
         childStore.init();
@@ -155,9 +155,47 @@ public final class ProjectChildHomeScaffolder {
     }
 
     /**
-     * Refuse when the project's home and the parent home are the same directory.
+     * Say so, loudly, when the project's home and the parent home are the same
+     * directory — and proceed.
      *
-     * <h2>Why a refusal and not a shrug</h2>
+     * <h2>This was a refusal, and the refusal was wrong</h2>
+     *
+     * <p>It refused, and that broke the documented onboarding recipe on its
+     * normal path. The recipe is: create {@code <repo>/.skill-manager}, point
+     * {@code SKILL_MANAGER_HOME} at it, then {@code project resolve
+     * --project-dir <repo>}. Those three steps <em>are</em> the same-home layout
+     * by construction, so the guard fired on every onboarding — and a guard that
+     * fires on the common case is a guard somebody deletes. Measured: all
+     * sixteen onboarded homes carry a self-referential
+     * {@code child-homes/project_<name>} record, so every one of them resolved
+     * this way.
+     *
+     * <p>The deeper error was reading {@code references/skill-homes.md}'s "this
+     * isolates nothing" as timeless. It was written about the older model, where
+     * the parent was the single global home and a project got a child home
+     * inside it. In the per-checkout model this epic exists to deliver, the
+     * project home <em>is</em> the home its agents use, and units living
+     * directly in it is the intended end state rather than a degenerate one. The
+     * alternative — resolving with the operator's global home as the parent —
+     * writes {@link ChildHomeRegistry} into that home, which is exactly what the
+     * epic's standing constraint forbids.
+     *
+     * <h2>What #32 was actually about</h2>
+     *
+     * <p>Its complaint was not that the layout is wrong. It was that
+     * <b>success was indistinguishable from correctness</b>: the command that
+     * exists to produce an isolated home reported that it had, and an operator
+     * could not tell which layout they had got. That is fixed by making the
+     * outcome <em>visible</em>, not by refusing it. So this reports, names both
+     * paths, and returns — and {@code --allow-same-home} is now accepted and
+     * unnecessary, kept only so anything already passing it keeps working.
+     *
+     * <p>Compared by RESOLVED PHYSICAL PATH, not by string, with the
+     * deepest-existing-ancestor walk below: the child home does not exist on a
+     * first resolve, and {@code /var} vs {@code /private/var} has now defeated
+     * three checks in this codebase.
+     *
+     * <h2>Why the old text is kept below</h2>
      *
      * <p>{@code project resolve} with {@code SKILL_MANAGER_HOME} already pointing
      * at {@code <project>/.skill-manager} exited 0 and reported every unit
@@ -181,20 +219,21 @@ public final class ProjectChildHomeScaffolder {
      * <p>Overridable rather than absolute: a home that is legitimately also a
      * project — the global home registering itself — is a real, if unusual,
      * layout, and a blanket refusal would break it silently in the other
-     * direction. {@code project resolve --allow-same-home} is the way to say so
-     * out loud.
+     * direction. That escape hatch turned out to be needed on the <em>normal</em>
+     * path, which is what made the refusal wrong; see the top of this javadoc.
+     *
+     * @return true when the two are the same home, so a caller can report which
+     *         layout it produced. Never throws for this condition.
      */
-    public static void requireDistinctHomes(Path parentHome, Path childHome) throws IOException {
+    public static boolean reportSameHome(Path parentHome, Path childHome) {
         Path parent = realOrNormalized(parentHome);
         Path child = realOrNormalized(childHome);
-        if (!parent.equals(child)) return;
-        throw new IOException(
-                "project resolve: this project's home IS the parent home (" + child + "), so "
-                + "resolving isolates nothing — every unit would be materialized from the home "
-                + "into itself. Point SKILL_MANAGER_HOME at a different home first (the launch "
-                + "shims under <home>/bin/launch do this for you), or clone one with "
-                + "`skill-manager home clone --to <dir>`. Pass --allow-same-home if this really "
-                + "is a home that is also its own project. Nothing was written.");
+        if (!parent.equals(child)) return false;
+        Log.warn("this project's home IS the parent home (%s) — a per-checkout layout: units "
+                + "resolve in place and no separate child home is created. That is the intended "
+                + "shape for a repository-local home. If you meant to materialize a child home "
+                + "from a DIFFERENT parent, point SKILL_MANAGER_HOME at that one first.", child);
+        return true;
     }
 
     /**

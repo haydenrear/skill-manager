@@ -1,3 +1,5 @@
+//SOURCES ../lib/SmEnv.java
+
 import com.hayden.testgraphsdk.sdk.NodeContext;
 import com.hayden.testgraphsdk.sdk.ProcessRecord;
 import com.hayden.testgraphsdk.sdk.Procs;
@@ -73,28 +75,22 @@ final class HomeSyncSupport {
         return repoRoot().resolve("skill-manager");
     }
 
-    /** Run the real CLI against {@code home}, output captured to a node log. */
+    /**
+     * Run the real CLI against {@code home}, output captured to a node log.
+     *
+     * <p>The env is {@link SmEnv}'s, plus a redirected {@code $HOME}: this graph
+     * asserts that nothing anywhere in a home names another home, and an
+     * unpredicted {@code user.home} read would break that claim rather than
+     * merely slow it down.
+     */
     static ProcessRecord sm(NodeContext ctx, String label, String home, String... args) {
         String[] command = new String[args.length + 1];
         command[0] = skillManager().toString();
         System.arraycopy(args, 0, command, 1, args.length);
         ProcessBuilder pb = new ProcessBuilder(command);
-        pb.environment().put("SKILL_MANAGER_HOME", home);
-        pb.environment().put("SKILL_MANAGER_INSTALL_DIR", repoRoot().toString());
-        String claude = ctx.get("env.prepared", "claudeHome").orElse(null);
-        if (claude != null) {
-            pb.environment().put("CLAUDE_HOME", claude);
-            pb.environment().put("CLAUDE_CONFIG_DIR", Path.of(claude).resolve(".claude").toString());
-        }
-        ctx.get("env.prepared", "codexHome")
-                .ifPresent(v -> pb.environment().put("CODEX_HOME", v));
-        ctx.get("env.prepared", "geminiHome")
-                .ifPresent(v -> pb.environment().put("GEMINI_HOME", v));
-        String sandbox = ctx.get("env.prepared", "home").orElse(null);
-        if (sandbox != null) {
-            pb.environment().put("HOME", sandbox);
-            pb.environment().put("JAVA_TOOL_OPTIONS", "-Duser.home=" + sandbox);
-        }
+        SmEnv.apply(ctx, pb, home);
+        ctx.get("env.prepared", "home")
+                .ifPresent(sandbox -> SmEnv.alsoRedirectPosixHome(pb, sandbox));
         return Procs.run(ctx, label, pb);
     }
 

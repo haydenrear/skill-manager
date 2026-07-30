@@ -1,5 +1,6 @@
 ///usr/bin/env jbang "$0" "$@" ; exit $?
 //SOURCES ../../sdk/java/src/main/java/com/hayden/testgraphsdk/sdk/*.java
+//SOURCES ../lib/SmEnv.java
 
 import com.hayden.testgraphsdk.sdk.Node;
 import com.hayden.testgraphsdk.sdk.NodeResult;
@@ -66,8 +67,7 @@ public class HyperPublished {
                     sm.toString(), "publish", skillDir,
                     "--upload-tarball",
                     "--registry", registryUrl);
-            rejectPb.environment().put("SKILL_MANAGER_HOME", home);
-            rejectPb.environment().put("SKILL_MANAGER_INSTALL_DIR", repoRoot.toString());
+            SmEnv.apply(ctx, rejectPb, home);
             ProcessRecord rejectProc = Procs.run(ctx, "publish-tarball-rejected", rejectPb);
             int rejectRc = rejectProc.exitCode();
             boolean uploadRejected = rejectRc != 0;
@@ -78,8 +78,7 @@ public class HyperPublished {
                     "--github-url", githubUrl,
                     "--ref", ref,
                     "--registry", registryUrl);
-            pb.environment().put("SKILL_MANAGER_HOME", home);
-            pb.environment().put("SKILL_MANAGER_INSTALL_DIR", repoRoot.toString());
+            SmEnv.apply(ctx, pb, home);
             ProcessRecord proc = Procs.run(ctx, "publish", pb);
             int rc = proc.exitCode();
             boolean registerOk = rc == 0;

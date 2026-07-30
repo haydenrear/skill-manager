@@ -1,6 +1,7 @@
 ///usr/bin/env jbang "$0" "$@" ; exit $?
 //SOURCES ../../../sdk/java/src/main/java/com/hayden/testgraphsdk/sdk/*.java
 //SOURCES ../../lib/TgMcp.java
+//SOURCES ../../lib/SmEnv.java
 
 import com.hayden.testgraphsdk.sdk.Node;
 import com.hayden.testgraphsdk.sdk.NodeResult;
@@ -76,13 +77,7 @@ public class PluginUninstalledMixedOrphans {
             // Run uninstall.
             ProcessBuilder pb = new ProcessBuilder(
                     sm.toString(), "uninstall", pluginName);
-            pb.environment().put("SKILL_MANAGER_HOME", home);
-            pb.environment().put("SKILL_MANAGER_INSTALL_DIR", repoRoot.toString());
-            pb.environment().put("CLAUDE_HOME", claudeHome);
-            pb.environment().put("CODEX_HOME", codexHome);
-            pb.environment().put("GEMINI_HOME", geminiHome);
-            pb.environment().put("CLAUDE_CONFIG_DIR",
-                    Path.of(claudeHome).resolve(".claude").toString());
+            SmEnv.apply(ctx, pb, home);
             ProcessRecord proc = Procs.run(ctx, "uninstall", pb);
             int rc = proc.exitCode();
 

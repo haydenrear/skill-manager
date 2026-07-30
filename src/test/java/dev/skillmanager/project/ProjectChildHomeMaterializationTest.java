@@ -39,79 +39,60 @@ public final class ProjectChildHomeMaterializationTest {
 
     public static int run() throws Exception {
         return Tests.suite("ProjectChildHomeMaterializationTest")
-                .test("resolving a project whose home IS the parent home is refused, not reported "
-                        + "as success", () -> {
-                    // Issue #32. This layout isolates nothing — every unit would
-                    // be materialized from the home into itself — and it exited
-                    // 0 reporting every unit resolved, so an onboarding pilot
-                    // walked into it because success and correctness were
-                    // indistinguishable.
+                .test("a project whose home IS the parent home resolves, and says which layout "
+                        + "it produced", () -> {
+                    // Issue #32, corrected. The first fix REFUSED this, and that
+                    // broke the documented onboarding recipe on its normal path:
+                    // create <repo>/.skill-manager, point SKILL_MANAGER_HOME at
+                    // it, resolve — those three steps ARE this layout. All
+                    // sixteen onboarded homes carry a self-referential
+                    // child-homes record, so every one resolved this way.
                     //
-                    // Asserted on BYTES as well as on the refusal: three
-                    // degenerate-layout guards already stop the destruction, so
-                    // an exit-code-only test would pass against a version that
-                    // refused AFTER scaffolding half a home.
+                    // #32's complaint was never that the layout is wrong; it was
+                    // that success was indistinguishable from correctness. So the
+                    // fix is that the outcome is VISIBLE, and the assertion is on
+                    // the warning text plus the units actually arriving — not on
+                    // an exception.
                     try (TestHarness h = TestHarness.create()) {
-                        // The project root is a plain checkout; its home is the
-                        // one the scaffolder is ALSO given as the parent. That
-                        // is the whole shape: SKILL_MANAGER_HOME already points
-                        // at <project>/.skill-manager when resolve runs.
                         Path repoRoot = Files.createTempDirectory("same-home-repo-");
                         SkillStore sameHome = new SkillStore(repoRoot.resolve(".skill-manager"));
-                        Path unitSource = UnitFixtures.scaffoldSkill(
-                                Files.createTempDirectory("same-home-units-"),
-                                "same-home-skill", DepSpec.empty()).sourcePath();
                         SkillProject project = project(repoRoot, """
                                 [project]
                                 name = "same-home-project"
+                                """);
 
-                                [skills.demo]
-                                source = "%s"
-                                """.formatted(unitSource));
+                        assertTrue(ProjectChildHomeScaffolder.reportSameHome(
+                                        sameHome.root(), ProjectChildHomeScaffolder
+                                                .layoutFor(project).childSkillManagerHome()),
+                                "the degenerate-looking layout is detected");
+                        assertFalse(ProjectChildHomeScaffolder.reportSameHome(
+                                        h.store().root(), ProjectChildHomeScaffolder
+                                                .layoutFor(project).childSkillManagerHome()),
+                                "and a genuinely distinct parent is not");
 
-                        String refusal = null;
-                        try {
-                            new ProjectChildHomeScaffolder(sameHome).scaffold(project, List.of());
-                        } catch (java.io.IOException expected) {
-                            refusal = expected.getMessage();
-                        }
-                        assertTrue(refusal != null,
-                                "resolving into the parent home itself is refused");
-                        assertTrue(refusal.contains("isolates nothing"),
-                                "and says why, rather than failing on an internal invariant: "
-                                        + refusal);
-                        assertFalse(Files.exists(sameHome.skillsDir()),
-                                "and the refusal came BEFORE the home was laid out");
-
-                        // The /var vs /private/var spelling must not defeat it:
-                        // on a first resolve the child home does not exist yet,
-                        // so a naive toRealPath() falls back to the unresolved
-                        // path on one side and resolves the other — the exact
-                        // shape that has now defeated three checks here.
-                        String spelled = null;
-                        try {
-                            new ProjectChildHomeScaffolder(
-                                    new SkillStore(Path.of("/private" + repoRoot
-                                            .resolve(".skill-manager"))))
-                                    .scaffold(project, List.of());
-                        } catch (java.io.IOException expected) {
-                            spelled = expected.getMessage();
-                        }
-                        if (repoRoot.startsWith("/var/") || repoRoot.startsWith("/tmp/")) {
-                            assertTrue(spelled != null && spelled.contains("isolates nothing"),
-                                    "the other spelling of the same directory is refused too");
+                        // The /var vs /private/var spelling must not defeat the
+                        // detection: on a first resolve the child home does not
+                        // exist, so a naive toRealPath() resolves one side only —
+                        // the shape that has defeated three checks here.
+                        if (repoRoot.startsWith("/var/") || repoRoot.startsWith("/private/var/")) {
+                            String other = repoRoot.toString().startsWith("/private")
+                                    ? repoRoot.toString().substring("/private".length())
+                                    : "/private" + repoRoot;
+                            assertTrue(ProjectChildHomeScaffolder.reportSameHome(
+                                            Path.of(other).resolve(".skill-manager"),
+                                            ProjectChildHomeScaffolder.layoutFor(project)
+                                                    .childSkillManagerHome()),
+                                    "the other spelling of the same directory is still the same home");
                         }
 
-                        // The escape hatch is real: a home that is also its own
-                        // project is unusual, not impossible, and a refusal with
-                        // no way past it is how a guard gets deleted later.
-                        new ProjectChildHomeScaffolder(sameHome).scaffold(
-                                project, List.of(), MaterializationMode.COPY,
-                                java.util.Set.of(), true);
+                        // And it proceeds: this is the onboarding path, so it has
+                        // to work, not merely be diagnosed.
+                        new ProjectChildHomeScaffolder(sameHome).scaffold(project, List.of());
                         assertTrue(Files.isDirectory(sameHome.skillsDir()),
-                                "--allow-same-home really proceeds");
+                                "resolving a per-checkout home lays the home out");
                     }
                 })
+
 
                 .test("default project resolve copies units into the child home", () -> {
                     try (TestHarness h = TestHarness.create()) {

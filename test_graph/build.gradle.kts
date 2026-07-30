@@ -662,8 +662,17 @@ validationGraph {
      * detected, with an unmutated control asserted clean in the same run. It
      * has no dependency on the other three nodes and touches no real home, so
      * it keeps its meaning even if the bracket is ever skipped.
+     *
+     * sandbox.env.contract belongs here because it watches the same defect from
+     * the other side. The tripwire sees a leak AFTER a node made it, in the run
+     * that made it; the contract node fails on the CODE that would make one —
+     * a node that spells the sandbox env itself, or spawns the CLI without it.
+     * Issue #30 measured 50 such sites, so "every node remembers" is not a
+     * property this suite can rely on being true. It has no dependencies and
+     * touches no home, so it also keeps its meaning if the bracket is skipped.
      */
     testGraph("home-tripwire") {
+        node("sources/sandbox/SandboxEnvContract.java")
         node("sources/tripwire/HomeTripwireSensitive.java")
         node("sources/common/EnvPrepared.java")
         // Armed AFTER env.prepared so the watched window is exactly this

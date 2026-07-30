@@ -1,3 +1,5 @@
+//SOURCES ../lib/SmEnv.java
+
 import com.hayden.testgraphsdk.sdk.NodeContext;
 import com.hayden.testgraphsdk.sdk.Procs;
 import com.hayden.testgraphsdk.sdk.ProcessRecord;
@@ -65,26 +67,19 @@ final class ChildHomeSupport {
     /**
      * Runs the real CLI against {@code home} with output captured to a node log.
      *
-     * <p>The sandboxed agent homes from {@code env.prepared} are passed through
-     * as well, and not optionally: {@code install} projects units into
-     * {@code $CLAUDE_HOME/.claude/skills} and friends, so a node that forgets
-     * them writes symlinks into the developer's real {@code ~/.claude} and
-     * {@code ~/.codex} that outlive the run and dangle once the temp home is
-     * gone.
+     * <p>The environment is {@link SmEnv}'s and not this file's. It used to be
+     * this file's, and it was the incomplete one of the four copies: no
+     * {@code CLAUDE_CONFIG_DIR}, and each agent variable set only
+     * {@code ifPresent} — so a graph that reached here without
+     * {@code env.prepared} silently spawned an unsandboxed child, which is
+     * exactly issue #18's state.
      */
     static ProcessRecord sm(NodeContext ctx, String label, String home, String... args) {
         String[] command = new String[args.length + 1];
         command[0] = skillManager().toString();
         System.arraycopy(args, 0, command, 1, args.length);
         ProcessBuilder pb = new ProcessBuilder(command);
-        pb.environment().put("SKILL_MANAGER_HOME", home);
-        pb.environment().put("SKILL_MANAGER_INSTALL_DIR", repoRoot().toString());
-        ctx.get("env.prepared", "claudeHome")
-                .ifPresent(v -> pb.environment().put("CLAUDE_HOME", v));
-        ctx.get("env.prepared", "codexHome")
-                .ifPresent(v -> pb.environment().put("CODEX_HOME", v));
-        ctx.get("env.prepared", "geminiHome")
-                .ifPresent(v -> pb.environment().put("GEMINI_HOME", v));
+        SmEnv.apply(ctx, pb, home);
         return Procs.run(ctx, label, pb);
     }
 

@@ -1,6 +1,7 @@
 ///usr/bin/env jbang "$0" "$@" ; exit $?
 //SOURCES ../../sdk/java/src/main/java/com/hayden/testgraphsdk/sdk/*.java
 //SOURCES ../home-clone/HomeCloneSupport.java
+//SOURCES ../lib/SmEnv.java
 
 import com.hayden.testgraphsdk.sdk.Node;
 import com.hayden.testgraphsdk.sdk.NodeResult;
@@ -88,10 +89,8 @@ public class CheckoutHomeLaunchIsolated {
             ProcessBuilder pb = new ProcessBuilder(
                     repoRoot.resolve("skill-manager").toString(),
                     "exec", "--home", store, "--no-reconcile", "--ack-drift", "--print-env");
-            pb.environment().put("SKILL_MANAGER_HOME", store);
-            pb.environment().put("SKILL_MANAGER_INSTALL_DIR", repoRoot.toString());
-            pb.environment().put("HOME", sandbox);
-            pb.environment().put("JAVA_TOOL_OPTIONS", "-Duser.home=" + sandbox);
+            SmEnv.apply(ctx, pb, store);
+            SmEnv.alsoRedirectPosixHome(pb, sandbox);
             // Both foreign bins lead the inherited PATH. Anything that survives
             // into the launch PATH did so because stripping did not recognise it.
             pb.environment().put("PATH",

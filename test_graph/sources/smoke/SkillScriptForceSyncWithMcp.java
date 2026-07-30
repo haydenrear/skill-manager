@@ -1,5 +1,6 @@
 ///usr/bin/env jbang "$0" "$@" ; exit $?
 //SOURCES ../../sdk/java/src/main/java/com/hayden/testgraphsdk/sdk/*.java
+//SOURCES ../lib/SmEnv.java
 
 import com.hayden.testgraphsdk.sdk.Node;
 import com.hayden.testgraphsdk.sdk.NodeResult;
@@ -145,11 +146,8 @@ public class SkillScriptForceSyncWithMcp {
         argv.add(sm.toString());
         for (String arg : cliArgs) argv.add(arg);
         ProcessBuilder pb = new ProcessBuilder(argv);
-        pb.environment().put("SKILL_MANAGER_HOME", storeHome.toString());
-        pb.environment().put("SKILL_MANAGER_INSTALL_DIR", repoRoot.toString());
-        pb.environment().put("CLAUDE_HOME", privateClaude.toString());
-        pb.environment().put("CODEX_HOME", privateCodex.toString());
-        pb.environment().put("GEMINI_HOME", privateGemini.toString());
+        SmEnv.apply(pb, storeHome.toString(),
+                SmEnv.sandbox(privateClaude, privateCodex, privateGemini));
         return pb;
     }
 

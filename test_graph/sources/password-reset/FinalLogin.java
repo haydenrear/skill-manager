@@ -43,7 +43,7 @@ public class FinalLogin {
             Path sm = repoRoot.resolve("skill-manager");
 
             BrowserLoginFlow.Result r = BrowserLoginFlow.run(
-                    sm.toString(), home, registryUrl, repoRoot.toString(), username, newPassword);
+                    ctx, sm.toString(), home, registryUrl, repoRoot.toString(), username, newPassword);
 
             return (r.fullySucceeded()
                     ? NodeResult.pass("final.login")

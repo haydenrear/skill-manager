@@ -198,6 +198,25 @@ public final class LauncherShims {
                 set -euo pipefail
 
                 self_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
+                home="$(cd -- "$self_dir/../.." && pwd -P)"
+
+                # BIND THE HOME. Without this the shim exec'd a CLI carrying
+                # whatever SKILL_MANAGER_HOME the caller happened to have — which,
+                # unset, is the operator's global home. Measured: running
+                # <project>/.skill-manager/bin/cli/skill-manager --version against
+                # an empty decoy home created TEN directories in the decoy and
+                # printed `reconcile: backfilled N default-agent binding(s)`. So
+                # the one command whose entire purpose is to be "the CLI for THIS
+                # home" was the command most likely to mutate a different one —
+                # and it is the command an onboarding checklist tells an agent to
+                # run to prove the home works.
+                #
+                # The shim's own location wins over an inherited value on purpose:
+                # its identity is "the CLI for the home I live in", and a shim
+                # that deferred to the environment would be indistinguishable from
+                # the bare CLI. Name a different home with --home, or call the CLI
+                # directly.
+                export SKILL_MANAGER_HOME="$home"
 
                 cli="${SKILL_MANAGER_CLI:-}"
                 if [ -z "$cli" ]; then
@@ -214,7 +233,6 @@ public final class LauncherShims {
                 fi
 
                 if [ -z "$cli" ]; then
-                  home="$(cd -- "$self_dir/../.." && pwd -P)"
                   echo "skill-manager: no CLI is provisioned for the home at $home." >&2
                   echo "  Set SKILL_MANAGER_CLI, or put skill-manager on PATH," >&2
                   echo "  or re-provision this home with \\`skill-manager sync --force-scripts\\`." >&2

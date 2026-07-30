@@ -1,6 +1,7 @@
 ///usr/bin/env jbang "$0" "$@" ; exit $?
 //SOURCES ../../../sdk/java/src/main/java/com/hayden/testgraphsdk/sdk/*.java
 //SOURCES ../../lib/StoredPaths.java
+//SOURCES ../../lib/SmEnv.java
 
 import com.hayden.testgraphsdk.sdk.Node;
 import com.hayden.testgraphsdk.sdk.NodeResult;
@@ -48,8 +49,7 @@ public class HarnessChildHomeMaterialized {
                     sm.toString(), "harness", "instantiate", harnessName,
                     "--id", instanceId,
                     "--child-home-dir", target.toString());
-            pb.environment().put("SKILL_MANAGER_HOME", home);
-            pb.environment().put("SKILL_MANAGER_INSTALL_DIR", repoRoot.toString());
+            SmEnv.apply(ctx, pb, home);
             ProcessRecord proc = Procs.run(ctx, "instantiate-child-home", pb);
             int rc = proc.exitCode();
 
@@ -184,8 +184,7 @@ public class HarnessChildHomeMaterialized {
                     && StoredPaths.records(skillLedgerJson, home, target);
 
             ProcessBuilder removePb = new ProcessBuilder(sm.toString(), "remove", "pip-cli-skill");
-            removePb.environment().put("SKILL_MANAGER_HOME", home);
-            removePb.environment().put("SKILL_MANAGER_INSTALL_DIR", repoRoot.toString());
+            SmEnv.apply(ctx, removePb, home);
             ProcessRecord removeProc = Procs.run(ctx, "remove-child-claimed-skill", removePb);
             String removeLog = Files.isRegularFile(Procs.logFile(ctx, "remove-child-claimed-skill"))
                     ? Files.readString(Procs.logFile(ctx, "remove-child-claimed-skill")) : "";

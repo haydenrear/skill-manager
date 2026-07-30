@@ -70,7 +70,9 @@ public final class ProjectDependencyResolver {
     /**
      * @param allowSameHome proceed when the project's home resolves to the
      *        parent home itself, instead of refusing. See
-     *        {@link ProjectChildHomeScaffolder#requireDistinctHomes}.
+     *        parent home itself. Accepted and no longer consulted: that
+     *        condition is reported, not refused. See
+     *        {@link ProjectChildHomeScaffolder#reportSameHome}.
      */
     public record Options(boolean yes, boolean withGateway, Set<String> checkoutUnits,
                           boolean repairVendored, boolean allowSameHome) {

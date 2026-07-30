@@ -1,5 +1,6 @@
 ///usr/bin/env jbang "$0" "$@" ; exit $?
 //SOURCES ../../sdk/java/src/main/java/com/hayden/testgraphsdk/sdk/*.java
+//SOURCES ../lib/SmEnv.java
 
 import com.hayden.testgraphsdk.sdk.Node;
 import com.hayden.testgraphsdk.sdk.NodeContext;
@@ -158,8 +159,7 @@ public class ProjectLibsResolved {
         command[0] = sm.toString();
         System.arraycopy(args, 0, command, 1, args.length);
         ProcessBuilder pb = new ProcessBuilder(command);
-        pb.environment().put("SKILL_MANAGER_HOME", home);
-        pb.environment().put("SKILL_MANAGER_INSTALL_DIR", repoRoot.toString());
+        SmEnv.apply(ctx, pb, home);
         return Procs.run(ctx, label, pb);
     }
 

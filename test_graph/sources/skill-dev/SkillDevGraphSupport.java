@@ -1,3 +1,5 @@
+//SOURCES ../lib/SmEnv.java
+
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hayden.testgraphsdk.sdk.NodeContext;
@@ -31,13 +33,16 @@ final class SkillDevGraphSupport {
         return home.resolve("bin/cli/skill-dev");
     }
 
+    /**
+     * This graph's child environment: {@link SmEnv}'s five variables plus the
+     * three this graph adds. The five are not spelled out here — that was one of
+     * the four disagreeing copies (issue #30), and this one also omitted
+     * {@code CLAUDE_CONFIG_DIR}.
+     */
     static Map<String, String> env(String home, String claudeHome, String codexHome, String geminiHome, String gatewayUrl, String registryUrl) {
         java.util.LinkedHashMap<String, String> out = new java.util.LinkedHashMap<>();
-        out.put("SKILL_MANAGER_HOME", home);
-        out.put("SKILL_MANAGER_INSTALL_DIR", repoRoot().toString());
-        out.put("CLAUDE_HOME", claudeHome);
-        out.put("CODEX_HOME", codexHome);
-        out.put("GEMINI_HOME", geminiHome);
+        out.putAll(SmEnv.env(home, repoRoot().toString(),
+                SmEnv.sandbox(claudeHome, codexHome, geminiHome)));
         out.put("SKILL_MANAGER_GATEWAY_URL", gatewayUrl);
         out.put("SKILL_MANAGER_REGISTRY_URL", registryUrl);
         out.put("PATH", repoRoot() + System.getProperty("path.separator") + System.getenv("PATH"));

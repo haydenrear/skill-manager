@@ -39,7 +39,7 @@ public class BrowserAuthorized {
             Path sm = repoRoot.resolve("skill-manager");
 
             BrowserLoginFlow.Result r = BrowserLoginFlow.run(
-                    sm.toString(), home, registryUrl, repoRoot.toString(), username, password);
+                    ctx, sm.toString(), home, registryUrl, repoRoot.toString(), username, password);
 
             return (r.fullySucceeded()
                     ? NodeResult.pass("browser.authorized")

@@ -1,5 +1,6 @@
 ///usr/bin/env jbang "$0" "$@" ; exit $?
 //SOURCES ../../../sdk/java/src/main/java/com/hayden/testgraphsdk/sdk/*.java
+//SOURCES ../../lib/SmEnv.java
 
 import com.hayden.testgraphsdk.sdk.Node;
 import com.hayden.testgraphsdk.sdk.NodeResult;
@@ -49,8 +50,7 @@ public class DocSyncUpgrade {
 
             ProcessBuilder pb = new ProcessBuilder(
                     sm.toString(), "sync", "hello-doc-repo");
-            pb.environment().put("SKILL_MANAGER_HOME", home);
-            pb.environment().put("SKILL_MANAGER_INSTALL_DIR", repoRoot.toString());
+            SmEnv.apply(ctx, pb, home);
 
             ProcessRecord proc = Procs.run(ctx, "sync", pb);
             int rc = proc.exitCode();

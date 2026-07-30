@@ -1,5 +1,6 @@
 ///usr/bin/env jbang "$0" "$@" ; exit $?
 //SOURCES ../../sdk/java/src/main/java/com/hayden/testgraphsdk/sdk/*.java
+//SOURCES ../lib/SmEnv.java
 
 import com.hayden.testgraphsdk.sdk.Node;
 import com.hayden.testgraphsdk.sdk.NodeContext;
@@ -221,11 +222,8 @@ public class ProjectLocalSyncCliRefresh {
         }
 
         void apply(ProcessBuilder pb, Path repoRoot) {
-            pb.environment().put("SKILL_MANAGER_HOME", home);
-            pb.environment().put("SKILL_MANAGER_INSTALL_DIR", repoRoot.toString());
-            pb.environment().put("CLAUDE_HOME", claudeHome);
-            pb.environment().put("CODEX_HOME", codexHome);
-            pb.environment().put("GEMINI_HOME", geminiHome);
+            SmEnv.apply(pb, home, repoRoot.toString(),
+                    SmEnv.sandbox(claudeHome, codexHome, geminiHome));
         }
     }
 }

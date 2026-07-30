@@ -1,5 +1,6 @@
 ///usr/bin/env jbang "$0" "$@" ; exit $?
 //SOURCES ../../sdk/java/src/main/java/com/hayden/testgraphsdk/sdk/*.java
+//SOURCES ../lib/SmEnv.java
 
 import com.hayden.testgraphsdk.sdk.Node;
 import com.hayden.testgraphsdk.sdk.NodeResult;
@@ -202,12 +203,9 @@ public class ResolverCyclesVerified {
                 cli.toString(), "install", "file:" + entry, "--yes", "--no-bind-default")
                 .redirectErrorStream(true)
                 .redirectOutput(fixture.output().toFile());
-        builder.environment().put("SKILL_MANAGER_HOME", fixture.home().toString());
-        builder.environment().put("SKILL_MANAGER_INSTALL_DIR", cli.getParent().toString());
+        SmEnv.apply(builder, fixture.home().toString(), cli.getParent().toString(),
+                SmEnv.sandboxUnder(agentHome));
         builder.environment().put("SKILL_MANAGER_GATEWAY_URL", gatewayUrl);
-        builder.environment().put("CLAUDE_HOME", agentHome.toString());
-        builder.environment().put("CODEX_HOME", agentHome.resolve(".codex").toString());
-        builder.environment().put("GEMINI_HOME", agentHome.resolve(".gemini").toString());
 
         Process process = builder.start();
         boolean terminated = process.waitFor(CASE_TIMEOUT.toMillis(), TimeUnit.MILLISECONDS);

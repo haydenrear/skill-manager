@@ -1,6 +1,7 @@
 ///usr/bin/env jbang "$0" "$@" ; exit $?
 //SOURCES ../../../sdk/java/src/main/java/com/hayden/testgraphsdk/sdk/*.java
 //SOURCES ../../lib/StoredPaths.java
+//SOURCES ../../lib/SmEnv.java
 
 import com.hayden.testgraphsdk.sdk.Node;
 import com.hayden.testgraphsdk.sdk.NodeResult;
@@ -69,8 +70,7 @@ public class HarnessInstanceMaterialized {
                     "--codex-home", codexHome.toString(),
                     "--gemini-home", geminiHome.toString(),
                     "--project-dir", projectDir.toString());
-            pb.environment().put("SKILL_MANAGER_HOME", home);
-            pb.environment().put("SKILL_MANAGER_INSTALL_DIR", repoRoot.toString());
+            SmEnv.apply(ctx, pb, home);
             ProcessRecord proc = Procs.run(ctx, "instantiate", pb);
             int rc = proc.exitCode();
 
