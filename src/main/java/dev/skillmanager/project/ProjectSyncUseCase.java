@@ -151,7 +151,8 @@ public final class ProjectSyncUseCase {
         DriftGate gate = DriftGate.recordSince(store, before, "project sync").orElse(null);
         if (gate != null) {
             Log.warn("this sync changed %d unit(s) in %s — a launch will refuse until the change "
-                            + "is read (`skill-manager home drift --show`, then `--ack`)",
+                            + "is read (`skill-manager home drift`, then `skill-manager home "
+                            + "drift --ack`)",
                     gate.report().units().size(), store.root());
             for (String line : gate.report().render()) Log.warn("  %s", line);
         }

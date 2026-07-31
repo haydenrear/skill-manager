@@ -126,7 +126,7 @@ public record DriftReport(String from, String to, List<UnitDrift> units) {
         return List.copyOf(new TreeSet<>(values));
     }
 
-    /** Human-readable rendering, the form {@code home drift --show} prints. */
+    /** Human-readable rendering, the form a bare {@code home drift} prints. */
     public List<String> render() {
         List<String> lines = new ArrayList<>();
         for (UnitDrift unit : units) {

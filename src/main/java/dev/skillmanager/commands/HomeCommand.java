@@ -429,8 +429,10 @@ public final class HomeCommand {
      * that lets a launch proceed.
      *
      * <p>{@code --record} takes a fresh digest and reports the difference from the
-     * last one; {@code --show} prints the pending change; {@code --ack} marks it
-     * read. The gate itself lives in {@link dev.skillmanager.store.DriftGate};
+     * last one; the bare command prints the pending change; {@code --ack} marks
+     * it read. (This javadoc said {@code --show} for the printing spelling, and
+     * so did the refusal {@code exec} prints. There has never been such an
+     * option.) The gate itself lives in {@link dev.skillmanager.store.DriftGate};
      * see its javadoc for why an acknowledgement is required rather than a
      * refreshed digest being enough.
      */
