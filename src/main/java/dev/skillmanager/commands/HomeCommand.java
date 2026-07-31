@@ -249,7 +249,12 @@ public final class HomeCommand {
         public Integer call() throws Exception {
             SkillStore store;
             try {
-                store = requireHome(injectedStore, home, init, "home describe --home");
+                store = requireHome(injectedStore, home, init,
+                        home != null
+                                ? "home describe --home"
+                                : "home describe (no --home; home taken from $"
+                                        + SkillStore.HOME_ENV + ")",
+                        "home describe --init");
             } catch (NotAHomeException notAHome) {
                 if (json) System.out.println(errorJson(notAHome));
                 Log.error("%s", notAHome.getMessage());
@@ -304,7 +309,12 @@ public final class HomeCommand {
         public Integer call() throws Exception {
             SkillStore store;
             try {
-                store = requireHome(injectedStore, home, init, "home policy --home");
+                store = requireHome(injectedStore, home, init,
+                        home != null
+                                ? "home policy --home"
+                                : "home policy (no --home; home taken from $"
+                                        + SkillStore.HOME_ENV + ")",
+                        "home policy --init");
             } catch (NotAHomeException notAHome) {
                 Log.error("%s", notAHome.getMessage());
                 return NotAHomeException.EXIT_CODE;
@@ -364,17 +374,34 @@ public final class HomeCommand {
         public Integer call() throws Exception {
             SkillStore store;
             try {
-                store = requireHome(injectedStore, home, init, "home shims --home");
+                store = requireHome(injectedStore, home, init,
+                        home != null
+                                ? "home shims --home"
+                                : "home shims (no --home; home taken from $"
+                                        + SkillStore.HOME_ENV + ")",
+                        "home shims --init");
             } catch (NotAHomeException notAHome) {
                 if (json) System.out.println(errorJson(notAHome));
                 Log.error("%s", notAHome.getMessage());
                 return NotAHomeException.EXIT_CODE;
             }
-            LauncherShims.Result result = LauncherShims.write(store);
+            Path pin;
+            try {
+                pin = dev.skillmanager.launch.RunningCli.locate();
+            } catch (dev.skillmanager.launch.RunningCli.UnknownLocationException e) {
+                // Reported rather than thrown: the operator has to act on this,
+                // and the alternative the code refused to take (resolve the CLI
+                // from PATH at launch time) is precisely the defect. A home with
+                // no launch surface is visible; one with a silently downgraded
+                // launch surface is not.
+                Log.error("%s", "home shims: " + e.getMessage());
+                return 127;
+            }
+            LauncherShims.Result result = LauncherShims.write(store, pin);
             if (json) {
                 System.out.println("""
-                        {"dir":"%s","shims":[%s]}"""
-                        .formatted(esc(result.dir().toString()),
+                        {"dir":"%s","cli":"%s","shims":[%s]}"""
+                        .formatted(esc(result.dir().toString()), esc(pin.toString()),
                                 result.written().stream()
                                         .map(p -> "\"" + esc(p.toString()) + "\"")
                                         .collect(java.util.stream.Collectors.joining(","))));
@@ -382,6 +409,7 @@ public final class HomeCommand {
             }
             Log.ok("wrote %d launcher(s) to %s", result.written().size(), result.dir());
             for (Path shim : result.written()) Log.info("  %s", shim);
+            Log.info("  pinned CLI: %s", pin);
             Log.info("  put %s first on PATH to launch against this home by default", result.dir());
             return 0;
         }
@@ -433,7 +461,12 @@ public final class HomeCommand {
         public Integer call() throws Exception {
             SkillStore store;
             try {
-                store = requireHome(injectedStore, home, init, "home drift --home");
+                store = requireHome(injectedStore, home, init,
+                        home != null
+                                ? "home drift --home"
+                                : "home drift (no --home; home taken from $"
+                                        + SkillStore.HOME_ENV + ")",
+                        "home drift --init");
             } catch (NotAHomeException notAHome) {
                 if (json) System.out.println(errorJson(notAHome));
                 Log.error("%s", notAHome.getMessage());
@@ -806,15 +839,40 @@ public final class HomeCommand {
      * <p>{@code --init} keeps the one legitimate gesture the old behaviour
      * covered — declaring a policy on a home as it is being created — but makes
      * it a thing the operator asked for rather than a side effect of a typo.
+     *
+     * <h2>The refusal names the argument that was actually used</h2>
+     *
+     * <p>All four callers used to pass {@code role} as {@code "home <x>
+     * --home"} unconditionally, which is a lie whenever no {@code --home} was
+     * given: the path came from {@code $SKILL_MANAGER_HOME}, and telling
+     * someone to fix an option they never typed sends them hunting for a typo
+     * that is not there. It also never mentioned the {@code --init} each of
+     * these commands already declares, so the refusal was a dead end.
+     *
+     * <p>Both were survivable while these refusals were unreachable for the
+     * ambient home — the eager scaffold in {@code SkillManagerCli.tryReconcile}
+     * created it before the command ran, so the path was always a home by the
+     * time it was checked. Removing that scaffold flipped {@code home
+     * describe}, {@code home policy}, {@code home shims} and {@code home drift}
+     * from exit 0 to exit 2 against an ambient non-home, which makes the
+     * no-{@code --home} branch the COMMON one. Same shape, same fix and same
+     * wording as {@code ExecCommand}.
+     *
+     * @param role     how the caller named the path — the ternary belongs at
+     *                 the call site because only it knows whether
+     *                 {@code --home} was passed
+     * @param initHint the opt-in this command declares, e.g.
+     *                 {@code "home policy --init"}
      */
-    private static SkillStore requireHome(SkillStore injected, Path home, boolean init, String role)
+    private static SkillStore requireHome(
+            SkillStore injected, Path home, boolean init, String role, String initHint)
             throws IOException {
         SkillStore store = resolveStore(injected, home);
         if (init) {
             store.init();
             return store;
         }
-        NotAHomeException.require(store.root(), role);
+        NotAHomeException.require(store.root(), role, initHint);
         return store;
     }
 

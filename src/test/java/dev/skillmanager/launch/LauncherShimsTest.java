@@ -284,7 +284,7 @@ public final class LauncherShimsTest {
             Home home = Home.create("shims-frozen-");
             HomePolicy.write(home.store, HomePolicy.FROZEN);
             try {
-                LauncherShims.write(home.store);
+                LauncherShims.write(home.store, stubCli(home.root.resolve("bin")));
                 throw new AssertionError("expected a frozen home to refuse shim generation");
             } catch (FrozenHomeException expected) {
                 assertEquals("home shims", expected.operation(), "operation named");
@@ -295,10 +295,12 @@ public final class LauncherShimsTest {
 
         // ------------------------------------------------------------ shims
 
-        suite.test("generated shims are self-locating and name no absolute home", () -> {
+        suite.test("agent launchers are self-locating and name no absolute home", () -> {
+            // The relocatability that survived issue #61, asserted as such: the
+            // HOME is still derived from the shim's own location. Only the CLI
+            // is pinned, and it is pinned in bin/cli/skill-manager, not here.
             Home home = Home.create("shims-relocatable-");
-            int rc = new CommandLine(new HomeCommand.ShimsCmd(home.store)).execute();
-            assertEquals(0, rc, "home shims rc");
+            LauncherShims.write(home.store, stubCli(home.root.resolve("pin")));
 
             for (String agent : LauncherShims.AGENTS) {
                 Path shim = LauncherShims.dir(home.store).resolve(agent);
@@ -308,6 +310,9 @@ public final class LauncherShimsTest {
                         agent + " shim hardcodes no path into the home it was written for");
                 assertContains(body, "exec \"$cli\" exec --home \"$home\" -- " + agent,
                         agent + " shim delegates to skill-manager exec");
+                assertFalse(body.contains("command -v"),
+                        agent + " shim has no PATH fallback — its last line is `exec ... exec`,"
+                                + " and an older skill-manager on PATH has no `exec` subcommand");
             }
         });
 
@@ -316,7 +321,7 @@ public final class LauncherShimsTest {
             // the assertion is about what the shim actually does rather than
             // about the string it contains.
             Home home = Home.create("shims-run-");
-            LauncherShims.write(home.store);
+            LauncherShims.write(home.store, stubCli(home.root.resolve("pin")));
             Path stub = writeArgvDump(home.root.resolve("stub-cli"));
 
             Result result = runProcess(
@@ -332,9 +337,30 @@ public final class LauncherShimsTest {
                     "the shim resolved its own home and forwarded the arguments");
         });
 
+        suite.test("an agent launcher whose home has no CLI entrypoint refuses, loudly", () -> {
+            // The branch that used to read `command -v skill-manager`. With a
+            // WORKING skill-manager first on PATH, so the assertion is that the
+            // shim declined to use it rather than that none was there.
+            Home home = Home.create("shims-no-entrypoint-");
+            LauncherShims.write(home.store, stubCli(home.root.resolve("pin")));
+            Files.delete(home.store.cliBinDir().resolve("skill-manager"));
+            Path decoy = decoyOnPath(home.root.resolve("decoy"));
+
+            Result result = runProcess(
+                    List.of(LauncherShims.dir(home.store).resolve("claude").toString()),
+                    Map.of("PATH", decoy + File.pathSeparator + "/usr/bin" + File.pathSeparator
+                            + "/bin", "SKILL_MANAGER_CLI", ""));
+
+            assertFalse(result.out.contains(DECOY_SENTINEL),
+                    "the skill-manager on PATH was NOT used — a silent downgrade is the defect");
+            assertContains(result.out, "has no CLI entrypoint", "it says what is missing");
+            assertContains(result.out, "home shims", "and names the command that repairs it");
+            assertEquals(127, result.rc, "with the not-found status");
+        });
+
         suite.test("a shim in a copied home binds the copy, not the original", () -> {
             Home original = Home.create("shims-copy-src-");
-            LauncherShims.write(original.store);
+            LauncherShims.write(original.store, stubCli(original.root.resolve("pin")));
             Path copyRoot = Files.createTempDirectory("shims-copy-dst-");
             Fs.copyRecursive(original.root, copyRoot.resolve("home"));
             Path copiedShim = copyRoot.resolve("home/.skill-manager/bin/launch/claude");
@@ -354,75 +380,207 @@ public final class LauncherShimsTest {
 
         // ------------------------------------------------- the CLI entrypoint
         //
-        // Two-sided on purpose. `cliScript()` emitted `printf '%%s'` — correct
-        // in script(String), which ends in .formatted(agent), and wrong here,
+        // Two-sided on purpose, and now decoy-based rather than absence-based.
+        //
+        // History, because it is the reason for the shape of every case below.
+        // `cliScript()` first emitted `printf '%%s'` — correct in
+        // script(String), which ends in .formatted(agent), and wrong there,
         // where nothing unescapes it: bash printed the two characters %s, the
-        // filtered PATH became the single entry `%s`, `command -v` found
-        // nothing, and the shim took the "no CLI provisioned" branch on EVERY
-        // home including ones with a working CLI on PATH. The only assertion
-        // covering it checked that a shim with nothing reachable exits
-        // non-zero, which a permanently dead shim satisfies perfectly.
+        // filtered PATH became the single entry `%s`, and the shim took its
+        // refusal branch on EVERY home including ones with a working CLI on
+        // PATH. The only assertion covering it checked that a shim with nothing
+        // reachable exits non-zero, which a permanently dead shim satisfies.
+        //
+        // Then issue #61: the PATH search itself was the defect. It found the
+        // globally installed release, which on the reporting machine was a build
+        // with no `exec` subcommand, so every launcher died at its last line —
+        // and both builds answered `--version` identically, so nothing said
+        // which one had run. So "nothing is reachable" is no longer the
+        // interesting arrangement. A WORKING decoy first on PATH is: every case
+        // below asserts the shim ignored it.
 
         suite.test("the cli entrypoint's body carries no unformatted percent", () -> {
-            // The cause, named. cliScript() has no .formatted() call, so a
-            // doubled percent is never unescaped and reaches bash literally.
-            assertFalse(LauncherShims.cliScript().contains("%%"),
-                    "a doubled percent in a text block with no .formatted() reaches bash as `%%`");
-            assertContains(LauncherShims.cliScript(), "printf '%s' \"${PATH:-}\"",
-                    "the PATH split prints its argument rather than the characters %s");
+            // Kept green from the earlier defect. cliScript(Path) interpolates
+            // with String.replace rather than .formatted(), so percents in the
+            // template stay literal and a doubled one can never be intended.
+            String body = LauncherShims.cliScript(Path.of("/opt/build/bin/skill-manager"));
+            assertFalse(body.contains("%%"),
+                    "a doubled percent in a body with no .formatted() reaches bash as `%%`");
+            assertFalse(body.contains(LauncherShims.PIN_PLACEHOLDER),
+                    "the pin placeholder was substituted, not shipped");
         });
 
-        suite.test("the cli entrypoint execs the skill-manager it finds on PATH", () -> {
-            Home home = Home.create("cli-entrypoint-finds-");
-            LauncherShims.write(home.store);
-            Path shim = home.store.cliBinDir().resolve("skill-manager");
-            Path stub = stubCliDir(home.root.resolve("stub-bin"));
+        suite.test("the cli entrypoint pins an absolute CLI and searches no PATH", () -> {
+            Home home = Home.create("cli-entrypoint-pins-");
+            Path pin = stubCli(home.root.resolve("pin"));
+            LauncherShims.write(home.store, pin);
 
-            // Output, not exit code: a shim that exits 0 without launching is
-            // the exact defect this whole surface exists to prevent.
-            Result result = runShim(shim, stub + File.pathSeparator + hermeticTools(home.root));
-            assertContains(result.out, STUB_SENTINEL,
-                    "the shim exec'd the CLI it found rather than refusing");
-            assertContains(result.out, "args=--version",
-                    "and handed the arguments over unchanged");
+            String body = Files.readString(home.store.cliBinDir().resolve("skill-manager"));
+            assertContains(body, pin.toString(), "the body names the CLI that wrote it");
+            assertFalse(body.contains("command -v"),
+                    "and does NOT ask PATH — that question answers 'which build is installed"
+                            + " globally', not 'which build provisioned this home'");
+            assertContains(body, "export SKILL_MANAGER_HOME=\"$home\"",
+                    "a command reached through this file is a command about THIS home");
+            assertContains(body, LauncherShims.PIN_MARKER,
+                    "and carries the stable token another tool can key on — `ensure_cli_pin`"
+                            + " grepped for the words `home shims`, which every version of this"
+                            + " file contains, and overwrote correct pins on 17 of 25 homes");
+        });
+
+        suite.test("the cli entrypoint execs its pin with a working decoy first on PATH", () -> {
+            // The reproduction of #61, inverted into an assertion: the decoy is
+            // a perfectly good executable named skill-manager, first on PATH,
+            // exactly as /opt/homebrew/bin/skill-manager was. Asserted on the
+            // exec'd process's OUTPUT — a shim that exits 0 without launching is
+            // the defect this whole surface exists to prevent.
+            Home home = Home.create("cli-entrypoint-decoy-");
+            Path pin = stubCli(home.root.resolve("pin"));
+            LauncherShims.write(home.store, pin);
+            Path shim = home.store.cliBinDir().resolve("skill-manager");
+            Path decoy = decoyOnPath(home.root.resolve("decoy"));
+
+            Result result = runShim(shim, decoy + File.pathSeparator
+                    + home.store.cliBinDir() + File.pathSeparator + hermeticTools(home.root));
+
+            assertContains(result.out, STUB_SENTINEL, "the pinned CLI ran");
+            assertFalse(result.out.contains(DECOY_SENTINEL),
+                    "and the skill-manager first on PATH did not");
+            assertContains(result.out, "args=--version", "arguments handed over unchanged");
             assertEquals(0, result.rc, "so it exits with the exec'd CLI's status");
         });
 
-        suite.test("the cli entrypoint never resolves to itself", () -> {
-            // LaunchEnv puts <home>/bin/cli FIRST on the launch PATH, so this
-            // is the real arrangement, not a contrived one. Excluding its own
-            // directory is the only way the shim reaches the stub behind it;
-            // failing to, it exec's itself forever. Bounded, so the failure is
-            // a named assertion rather than a hung suite.
-            Home home = Home.create("cli-entrypoint-self-");
-            LauncherShims.write(home.store);
+        suite.test("the cli entrypoint exports the home it lives in", () -> {
+            // Load-bearing, and measurable: the child is told a DIFFERENT home
+            // in its inherited environment, and must still see this one. Unset,
+            // SKILL_MANAGER_HOME means the operator's global home.
+            Home home = Home.create("cli-entrypoint-exports-");
+            Path pin = writeEnvEcho(home.root.resolve("pin-env"), "SKILL_MANAGER_HOME");
+            LauncherShims.write(home.store, pin);
             Path shim = home.store.cliBinDir().resolve("skill-manager");
-            Path stub = stubCliDir(home.root.resolve("stub-bin"));
 
-            Result result = runShim(shim, home.store.cliBinDir() + File.pathSeparator
-                    + stub + File.pathSeparator + hermeticTools(home.root));
+            Result result = runProcess(List.of(shim.toString(), "--version"),
+                    Map.of("SKILL_MANAGER_HOME", "/somewhere/else/.skill-manager"));
 
-            assertFalse(result.out.contains(SHIM_TIMED_OUT),
-                    "the shim terminated: it filtered its own directory out of PATH");
-            assertContains(result.out, STUB_SENTINEL,
-                    "and reached the stub that was behind it");
+            assertContains(result.out, "SKILL_MANAGER_HOME=" + home.store.root().toRealPath(),
+                    "the shim rebound the home to the one it lives in");
+            assertFalse(result.out.contains("/somewhere/else"),
+                    "the caller's home did not survive");
         });
 
-        suite.test("the cli entrypoint refuses when no skill-manager is reachable", () -> {
-            // The half that was already covered, kept and tightened: asserted
-            // on the diagnostic rather than on a non-zero exit, because `set -e`
-            // tripping over a missing `dirname` is also a non-zero exit and is
-            // a different thing entirely.
-            Home home = Home.create("cli-entrypoint-refuses-");
-            LauncherShims.write(home.store);
+        suite.test("the cli entrypoint refuses when its pin is gone, and still ignores PATH", () -> {
+            // The refusal half, with a WORKING skill-manager first on PATH. The
+            // old version of this case ran with nothing reachable, which is why
+            // a permanently dead shim passed it for so long. Asserted on the
+            // diagnostic as well as the status, because `set -e` tripping over a
+            // missing `dirname` is also a non-zero exit and is a different thing.
+            Home home = Home.create("cli-entrypoint-stale-pin-");
+            Path pin = stubCli(home.root.resolve("pin"));
+            LauncherShims.write(home.store, pin);
+            Files.delete(pin);
             Path shim = home.store.cliBinDir().resolve("skill-manager");
+            Path decoy = decoyOnPath(home.root.resolve("decoy"));
 
-            Result result = runShim(shim,
-                    home.store.cliBinDir() + File.pathSeparator + hermeticTools(home.root));
+            Result result = runShim(shim, decoy + File.pathSeparator + hermeticTools(home.root));
 
-            assertContains(result.out, "no CLI is provisioned",
+            assertFalse(result.out.contains(DECOY_SENTINEL),
+                    "a stale pin does NOT silently become 'whatever is installed'");
+            assertContains(result.out, "the CLI pinned for the home at",
                     "it refuses with the diagnostic, not with an incidental failure");
-            assertEquals(127, result.rc, "and with the not-found status");
+            assertContains(result.out, pin.toString(), "and names the path that went missing");
+            assertContains(result.out, "home shims", "and the command that repairs it");
+            assertEquals(127, result.rc, "with the not-found status");
+        });
+
+        suite.test("SKILL_MANAGER_CLI still overrides the pin", () -> {
+            Home home = Home.create("cli-entrypoint-override-");
+            LauncherShims.write(home.store, stubCli(home.root.resolve("pin")));
+            Path shim = home.store.cliBinDir().resolve("skill-manager");
+            Path override = writeArgvDump(home.root.resolve("override-cli"));
+
+            Result result = runProcess(List.of(shim.toString(), "--version"),
+                    Map.of("SKILL_MANAGER_CLI", override.toString()));
+
+            assertEquals(0, result.rc, "override rc");
+            assertContains(result.out, "--version", "the override ran");
+            assertFalse(result.out.contains(STUB_SENTINEL), "the pin did not");
+        });
+
+        // ------------------------------------------- finding the running CLI
+        //
+        // Driven through the package-private seam rather than the ambient
+        // process, because System.getenv cannot be set from inside a JVM and a
+        // resolution rule nobody can drive is a rule nobody can test — which is
+        // how the PATH fallback survived from the first version of this file.
+
+        suite.test("an explicit SKILL_MANAGER_CLI wins and need not be named skill-manager", () -> {
+            Path dir = Files.createTempDirectory("running-cli-env-");
+            Path built = writeArgvDump(dir.resolve("my-own-build"));
+
+            Path found = RunningCli.locate(
+                    Map.of(RunningCli.CLI_ENV, built.toString())::get, "/usr/bin/java", null);
+
+            assertEquals(built.toRealPath(), found.toRealPath(), "the explicit pin is honoured");
+        });
+
+        suite.test("a source checkout is found beside SKILL_MANAGER_INSTALL_DIR", () -> {
+            // `<repo>/skill-manager` exports the repo root, and the launcher
+            // sits in it. This is how the CLI runs in this repo and in the
+            // checkout-home graph.
+            Path repo = Files.createTempDirectory("running-cli-source-");
+            Path launcher = writeArgvDump(repo.resolve("skill-manager"));
+
+            Path found = RunningCli.locate(
+                    Map.of(RunningCli.INSTALL_DIR, repo.toString())::get, "/usr/bin/java", null);
+
+            assertEquals(launcher.toRealPath(), found.toRealPath(), "found beside the install dir");
+        });
+
+        suite.test("a release tarball is found one level up from its share/ dir", () -> {
+            // `<prefix>/bin/skill-manager` exports `<prefix>/share`. This is the
+            // Homebrew layout, and the shape the first version of this
+            // resolution missed.
+            Path prefix = Files.createTempDirectory("running-cli-tarball-");
+            Path launcher = writeArgvDump(prefix.resolve("bin/skill-manager"));
+            Fs.ensureDir(prefix.resolve("share"));
+
+            Path found = RunningCli.locate(
+                    Map.of(RunningCli.INSTALL_DIR, prefix.resolve("share").toString())::get,
+                    "/usr/bin/java", null);
+
+            assertEquals(launcher.toRealPath(), found.toRealPath(), "found via ../bin");
+        });
+
+        suite.test("an install dir that names something else is rejected, not stretched", () -> {
+            Path dir = Files.createTempDirectory("running-cli-wrongname-");
+            writeArgvDump(dir.resolve("skill-manager-server"));
+
+            try {
+                RunningCli.locate(Map.of(RunningCli.INSTALL_DIR, dir.toString())::get,
+                        "/usr/bin/java", null);
+                throw new AssertionError("expected a refusal");
+            } catch (RunningCli.UnknownLocationException expected) {
+                assertContains(expected.getMessage(), "cannot determine which skill-manager build",
+                        "the refusal says what it could not do");
+            }
+        });
+
+        suite.test("with nothing to go on it refuses, and never falls back to PATH", () -> {
+            // The load-bearing negative. A perfectly good skill-manager is on
+            // the PATH handed in; the resolution must still refuse, because
+            // "what is installed globally" is not "what provisioned this home".
+            Path onPath = Files.createTempDirectory("running-cli-refuses-");
+            Path decoy = decoyOnPath(onPath.resolve("decoy"));
+
+            try {
+                RunningCli.locate(Map.of("PATH", decoy.toString())::get, "/usr/bin/java", null);
+                throw new AssertionError("expected a refusal rather than a PATH fallback");
+            } catch (RunningCli.UnknownLocationException expected) {
+                assertFalse(expected.getMessage().contains(decoy.toString()),
+                        "the skill-manager on PATH was never even considered");
+                assertContains(expected.getMessage(), RunningCli.CLI_ENV,
+                        "and the diagnostic says how to fix it");
+            }
         });
 
         return suite.runAll();
@@ -432,6 +590,12 @@ public final class LauncherShimsTest {
 
     /** Printed by the stub CLI; finding it proves the shim really exec'd. */
     private static final String STUB_SENTINEL = "STUB-CLI-WAS-EXECED";
+
+    /**
+     * Printed by the DECOY: a working, executable {@code skill-manager} placed
+     * first on PATH. Finding it in any output is issue #61 reproducing.
+     */
+    private static final String DECOY_SENTINEL = "DECOY-ON-PATH-WAS-EXECED";
 
     /** Injected into the captured output when a shim had to be killed. */
     private static final String SHIM_TIMED_OUT = "SHIM-DID-NOT-TERMINATE";
@@ -462,8 +626,12 @@ public final class LauncherShimsTest {
         return tools;
     }
 
-    /** A directory holding a working {@code skill-manager} that is not the shim. */
-    private static Path stubCliDir(Path dir) throws Exception {
+    /**
+     * A working CLI to pin a home to, at {@code <dir>/skill-manager}. Returns
+     * the FILE, because a pin is a path to a binary rather than a directory to
+     * search — the difference this whole ticket is about.
+     */
+    private static Path stubCli(Path dir) throws Exception {
         Fs.ensureDir(dir);
         Path stub = dir.resolve("skill-manager");
         Files.writeString(stub, """
@@ -473,7 +641,38 @@ public final class LauncherShimsTest {
                 exit 0
                 """.formatted(STUB_SENTINEL));
         stub.toFile().setExecutable(true);
+        return stub;
+    }
+
+    /**
+     * A PATH directory holding a working {@code skill-manager} that is NOT the
+     * one anything was pinned to — the stand-in for
+     * {@code /opt/homebrew/bin/skill-manager}. Returns the DIRECTORY, to be put
+     * on PATH.
+     *
+     * <p>It succeeds on purpose. A decoy that failed would let a shim pass by
+     * accident; this one makes "the shim ignored PATH" the only explanation for
+     * its sentinel being absent.
+     */
+    private static Path decoyOnPath(Path dir) throws Exception {
+        Fs.ensureDir(dir);
+        Path decoy = dir.resolve("skill-manager");
+        Files.writeString(decoy, """
+                #!/bin/sh
+                echo "%s"
+                exit 0
+                """.formatted(DECOY_SENTINEL));
+        decoy.toFile().setExecutable(true);
         return dir;
+    }
+
+    /** A CLI stand-in that reports what {@code var} was set to when it ran. */
+    private static Path writeEnvEcho(Path file, String var) throws Exception {
+        Fs.ensureDir(file.getParent());
+        Files.writeString(file,
+                "#!/usr/bin/env bash\nprintf '" + var + "=%s\\n' \"${" + var + "-unset}\"\n");
+        file.toFile().setExecutable(true);
+        return file;
     }
 
     /**

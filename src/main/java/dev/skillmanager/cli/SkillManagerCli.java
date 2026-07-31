@@ -45,9 +45,15 @@ import picocli.CommandLine.Option;
 
 @Command(
         name = "skill-manager",
-        // x-release-please-start-version
-        version = "skill-manager 0.19.2",
-        // x-release-please-end
+        // The release number alone cannot say WHICH build answered — two
+        // different builds reported `skill-manager 0.19.2` while only one of
+        // them had an `exec` subcommand (issue #61). BuildIdentity keeps that
+        // number as its first line and adds the commit (or artifact
+        // fingerprint) and the launcher path underneath. release-please still
+        // owns the number: it stays in this file, between its markers, in the
+        // same `skill-manager <semver>` shape its generic updater matched
+        // before — only the annotation attribute that consumes it changed.
+        versionProvider = BuildIdentity.class,
         description = "Build tool for agent skills: CLI deps, skill references, MCP servers.",
         subcommands = {
                 ListCommand.class,
@@ -84,6 +90,16 @@ import picocli.CommandLine.Option;
                 UnitCommand.class
         })
 public final class SkillManagerCli implements Runnable {
+
+    /**
+     * The released version, owned by release-please (see
+     * {@code release-please-config.json}, which lists this file as an
+     * extra-file). Read by {@link BuildIdentity}, which prints it as the first
+     * line of {@code --version} exactly as the annotation used to.
+     */
+    // x-release-please-start-version
+    public static final String RELEASE = "skill-manager 0.19.2";
+    // x-release-please-end
 
     @Option(names = {"-h", "--help"}, usageHelp = true,
             description = "Show this help message and exit.",
