@@ -114,17 +114,39 @@ public final class SkillStore {
     public Path sourcesDir() { return installedDir; }
 
     /**
-     * True when this root already holds a home layout, i.e. somebody has
-     * run {@link #init()} against it (or cloned one here) before now.
+     * True when this root is already a Skill Manager home — somebody ran
+     * {@link #init()} against it, or cloned one here, before now.
      *
      * <p>Deliberately not "the root directory exists": the reproduction for
      * the eager-scaffold defect creates an empty decoy directory first, and
      * an empty directory is not a home. Callers that only have work to do
      * when a home is already present — reconciliation, outstanding-error
      * reporting — ask this instead of creating one to find out.
+     *
+     * <h2>Why this delegates rather than deciding for itself</h2>
+     *
+     * <p>It shipped (in {@code 7d87a06}, as {@code isMaterialized()}) as
+     * {@code installed/ || skills/} while
+     * {@link dev.skillmanager.launch.LaunchEnv#looksLikeStoreRoot} — the
+     * predicate {@link NotAHomeException#require} and the PATH sanitizer use —
+     * reads {@code descriptor || (installed/ && skills/)}. Two spellings, and
+     * they disagreed in both directions: a descriptor-only home was "not
+     * materialized" (so a read command skipped reconcile) yet "is a home" (so
+     * {@code exec} launched against it), and an {@code installed/}-only
+     * directory was the reverse. Neither disagreement was ever demonstrated to
+     * lose data, and that is the point — this epic has already paid four times
+     * for one question asked in two spellings, each time in the gap nobody had
+     * demonstrated yet. There is one predicate; this asks it.
+     *
+     * <p>The consequence worth naming: a <em>partial</em> home — one that
+     * carries {@code installed/} but no {@code skills/} and no descriptor —
+     * no longer self-heals on a read-only command, because a read-only command
+     * no longer calls {@code init()} at all (that is {@link HomeScaffold}) and
+     * reconcile is now skipped for it as well. The first writing command
+     * completes the layout, exactly as it does for a home that does not exist.
      */
-    public boolean isMaterialized() {
-        return Files.isDirectory(installedDir) || Files.isDirectory(skillsDir);
+    public boolean isHome() {
+        return dev.skillmanager.launch.LaunchEnv.looksLikeStoreRoot(root);
     }
 
     /**

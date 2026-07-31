@@ -131,6 +131,14 @@ public final class SkillManagerCli implements Runnable {
     private static int execute(String[] args) {
         dev.skillmanager.effects.UnitReadProblemReporter.reset();
         CommandLine cmd = new CommandLine(new SkillManagerCli());
+        // The mode this invocation displaced, so the finally below can put it
+        // back. Captured through a holder because the declaration happens
+        // inside picocli's execution strategy and the restore has to outlive
+        // it. Null until the strategy actually ran: a picocli parse failure
+        // never declares anything, and restoring a mode nobody displaced
+        // would itself be a write to the global.
+        dev.skillmanager.store.HomeScaffold.Access[] displaced = {null};
+        boolean[] declared = {false};
         cmd.setExecutionStrategy(pr -> {
             SkillManagerCli root = rootCommand(pr);
             if (root != null) Log.setVerbose(root.verbose);
@@ -138,7 +146,9 @@ public final class SkillManagerCli implements Runnable {
             // invocation is allowed to bring a home into existence. Nothing
             // below re-derives it. See CommandHomeAccess for the
             // classification and HomeScaffold for the defect.
-            dev.skillmanager.store.HomeScaffold.declare(CommandHomeAccess.of(pr));
+            displaced[0] = dev.skillmanager.store.HomeScaffold
+                    .declare(CommandHomeAccess.of(pr));
+            declared[0] = true;
             tryReconcile();
             int rc = new CommandLine.RunLast().execute(pr);
             return completeExecution(root, pr, rc);
@@ -149,7 +159,15 @@ public final class SkillManagerCli implements Runnable {
         // to picocli's default handler (full stack trace), which is the
         // right diagnostic for unexpected failures.
         cmd.setExecutionExceptionHandler(SkillManagerCli::handleExecutionException);
-        return cmd.execute(args);
+        try {
+            return cmd.execute(args);
+        } finally {
+            // The access mode is scoped to this invocation, not to the JVM.
+            // Without this, an embedded caller (the server, a test harness, an
+            // out-of-tree library user) that ran one READ_ONLY command left
+            // every later SkillStore.init() in the process a silent no-op.
+            if (declared[0]) dev.skillmanager.store.HomeScaffold.restore(displaced[0]);
+        }
     }
 
     static int handleExecutionException(Exception ex, CommandLine c, CommandLine.ParseResult pr)
@@ -217,11 +235,18 @@ public final class SkillManagerCli implements Runnable {
      * nothing to reconcile in a home that does not exist yet, so this now
      * asks before it acts; the first writing command still creates the home
      * through its own {@code store.init()} and reconciles from then on.
+     *
+     * <p>"Is there one" is {@link dev.skillmanager.store.SkillStore#isHome()},
+     * which is the same predicate {@code exec} and {@code home describe} refuse
+     * on rather than a second spelling of it. A <em>partial</em> home therefore
+     * no longer self-heals on a read command: it is not a home by that
+     * predicate, so nothing here completes its layout. The first writing
+     * command does, through {@code init()}.
      */
     private static void tryReconcile() {
         try {
             dev.skillmanager.store.SkillStore store = dev.skillmanager.store.SkillStore.defaultStore();
-            if (!store.isMaterialized()) return;
+            if (!store.isHome()) return;
             store.init();
             dev.skillmanager.mcp.GatewayConfig gw = dev.skillmanager.mcp.GatewayConfig.resolve(store, null);
             dev.skillmanager.lifecycle.SkillReconciler.reconcile(store, gw);
@@ -244,7 +269,7 @@ public final class SkillManagerCli implements Runnable {
             dev.skillmanager.store.SkillStore store = dev.skillmanager.store.SkillStore.defaultStore();
             // Same reason as tryReconcile: a home that does not exist holds
             // no outstanding errors, and asking is not worth creating one.
-            if (!store.isMaterialized()) return;
+            if (!store.isHome()) return;
             store.init();
             dev.skillmanager.mcp.GatewayConfig gw =
                     dev.skillmanager.mcp.GatewayConfig.resolve(store, null);

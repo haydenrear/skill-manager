@@ -105,11 +105,23 @@ public final class ExecCommand implements Callable<Integer> {
         // So one mistyped --home silently created a home plus three agent
         // directories at the typo, and then launched an agent bound to it. The
         // refusal has to come before LaunchEnv.of for exactly that reason.
+        //
+        // The refusal names the argument the operator ACTUALLY used. It used
+        // to say "exec --home" unconditionally, which is a lie whenever no
+        // --home was passed: the path came from $SKILL_MANAGER_HOME (or the
+        // default ~/.skill-manager), and telling someone to fix an option they
+        // never typed sends them hunting for a typo that is not there. That
+        // stopped being hypothetical when the eager home scaffold was removed:
+        // `exec` against an empty or absent ambient home went from exit 0 to
+        // this refusal, so the ambient branch is now the one people hit.
         try {
             if (init) {
                 store.init();
             } else {
-                NotAHomeException.require(store.root(), "exec --home");
+                String role = home != null
+                        ? "exec --home"
+                        : "exec (no --home; home taken from $" + SkillStore.HOME_ENV + ")";
+                NotAHomeException.require(store.root(), role, "exec --init");
             }
         } catch (NotAHomeException notAHome) {
             Log.error("%s", notAHome.getMessage());

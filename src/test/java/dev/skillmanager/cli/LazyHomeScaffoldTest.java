@@ -2,6 +2,8 @@ package dev.skillmanager.cli;
 
 import dev.skillmanager._lib.test.Tests;
 import dev.skillmanager.agent.AgentHomes;
+import dev.skillmanager.launch.LaunchEnv;
+import dev.skillmanager.store.HomeDescriptor;
 import dev.skillmanager.store.HomeScaffold;
 import dev.skillmanager.store.SkillStore;
 import picocli.CommandLine;
@@ -65,9 +67,36 @@ import static dev.skillmanager._lib.test.Tests.assertTrue;
  *       every path in {@link CliMetadata} must be classified. A new
  *       informational command therefore fails this test until someone
  *       classifies it and gives it a probe.</li>
- *   <li><b>It proves writers still work.</b> The last case runs a writing
+ *   <li><b>It proves writers still work.</b> One case runs a writing
  *       command against a fresh decoy and asserts the home IS created — so the
  *       read-only cases cannot pass by the CLI having stopped working.</li>
+ *   <li><b>It proves the declaration does not outlive the invocation.</b> The
+ *       access mode is a process global, and as shipped nothing ever put it
+ *       back: one embedded {@code list} left the whole JVM pinned
+ *       {@link HomeScaffold.Access#READ_ONLY} and every later
+ *       {@link SkillStore#init()} a silent no-op. That case reads the mode in
+ *       force the instant the CLI returned — before this harness resets
+ *       anything, because a probe after the cleanup would be measuring the
+ *       cleanup — and then, in the same window, {@code init()}s a second decoy
+ *       and counts its entries. Two independent detectors, one of them a byte
+ *       counter.</li>
+ * </ul>
+ *
+ * <h2>What else is pinned here</h2>
+ *
+ * <ul>
+ *   <li>A null {@code ParseResult} is WRITES_HOME, the same answer an unknown
+ *       command path gets. Unreachable through picocli; asserted so the one
+ *       fail-closed branch in a fail-open design cannot come back.</li>
+ *   <li>"Is a home" has one definition. {@link SkillStore#isHome()} and
+ *       {@link dev.skillmanager.launch.LaunchEnv#looksLikeStoreRoot} are
+ *       asserted to agree on a descriptor-only home and on a partial
+ *       {@code installed/}-only layout — the two cases where the two former
+ *       spellings disagreed.</li>
+ *   <li>The refusals name the way out. {@code exec} against a non-home
+ *       <em>ambient</em> home must name {@code --init} and must not blame a
+ *       {@code --home} the operator never passed; {@code exec --home} against
+ *       a non-home must still blame {@code --home}.</li>
  * </ul>
  *
  * <p>The home root is redirected through {@link AgentHomes#setOverride}
@@ -103,7 +132,7 @@ public final class LazyHomeScaffoldTest {
             try {
                 SkillStore store = new SkillStore(decoy);
                 store.init();
-                assertTrue(!store.isMaterialized(), "an empty directory is not a home");
+                assertTrue(!store.isHome(), "an empty directory is not a home");
                 assertEquals(0, store.listInstalledUnits().units().size(),
                         "reading a home that does not exist yields nothing");
             } finally {
@@ -205,7 +234,120 @@ public final class LazyHomeScaffoldTest {
                     "the full home layout plus policy.toml; got " + listEntries(decoy));
             assertTrue(Files.isRegularFile(decoy.resolve("policy.toml")),
                     "policy.toml written");
-            assertTrue(new SkillStore(decoy).isMaterialized(), "the home now exists");
+            assertTrue(new SkillStore(decoy).isHome(), "the home now exists");
+        });
+
+        // ------------------------------------- the mode is scoped, not sticky
+        suite.test("a read-only invocation does not pin the JVM read-only", () -> {
+            // Instrument floor #1: the reader can tell the two modes apart. If
+            // `declared()` always answered WRITES_HOME, the assertion below
+            // that it was PUT BACK to WRITES_HOME would be vacuous.
+            HomeScaffold.declare(HomeScaffold.Access.READ_ONLY);
+            assertEquals(HomeScaffold.Access.READ_ONLY, HomeScaffold.declared(),
+                    "the mode reader distinguishes the two modes");
+            HomeScaffold.reset();
+
+            // Instrument floor #2, the one that counts bytes: `witness` is
+            // init()ed after the CLI has returned and BEFORE anything resets
+            // the global, so a leaked READ_ONLY turns it into a silent no-op
+            // and this reads 0. That is the failure the leak actually causes.
+            Path witness = freshDecoy();
+            Path decoy = freshDecoy();
+            Run r = runCli(decoy, () -> new SkillStore(witness).init(), "list");
+
+            assertEquals(HomeScaffold.Access.READ_ONLY, r.declared,
+                    "`list` was classified read-only");
+            assertEquals(HomeScaffold.Access.WRITES_HOME, r.modeAfterRun,
+                    "the CLI put back the mode it displaced — leaving it READ_ONLY "
+                            + "pins every later SkillStore.init() in this JVM to a no-op");
+            assertEquals(HOME_LAYOUT_ENTRIES, countEntries(witness),
+                    "a direct init() after a read-only CLI run still writes a home; got "
+                            + listEntries(witness));
+            assertEquals(0, countEntries(decoy), "the read-only run itself wrote nothing");
+        });
+
+        suite.test("a writing invocation also puts the previous mode back", () -> {
+            Path decoy = freshDecoy();
+            Run r = runCli(decoy, "policy", "init");
+            assertEquals(HomeScaffold.Access.WRITES_HOME, r.declared, "policy init writes");
+            assertEquals(HomeScaffold.Access.WRITES_HOME, r.modeAfterRun,
+                    "the mode outside an invocation is always the permissive default");
+        });
+
+        suite.test("an unparsed invocation is permissive, like an unknown path", () -> {
+            // Fail-open, in the one branch that used to fail closed. Picocli
+            // never hands the execution strategy a null ParseResult today, so
+            // this is a statement about the design rather than a reachable
+            // path: unknown means "keep the old eager behaviour", never
+            // "silently starve a writer".
+            assertEquals(HomeScaffold.Access.WRITES_HOME,
+                    CommandHomeAccess.of((CommandLine.ParseResult) null),
+                    "a null parse result is WRITES_HOME, like an unknown command path");
+            assertEquals(CommandHomeAccess.of("no-such-command"),
+                    CommandHomeAccess.of((CommandLine.ParseResult) null),
+                    "the two unknown-input answers agree");
+        });
+
+        // -------------------------------------- one predicate for 'is a home'
+        suite.test("`is a home` has one definition, not two", () -> {
+            // A descriptor-only home is where the two old spellings disagreed:
+            // SkillStore said "not materialized" (so reconcile was skipped)
+            // while NotAHomeException.require said "is a home" (so exec
+            // accepted it). They now ask LaunchEnv.looksLikeStoreRoot, once.
+            Path descriptorOnly = freshDecoy();
+            Files.writeString(descriptorOnly.resolve(HomeDescriptor.FILENAME), "{}");
+            assertTrue(new SkillStore(descriptorOnly).isHome(),
+                    "a descriptor alone makes it a home");
+            assertEquals(LaunchEnv.looksLikeStoreRoot(descriptorOnly),
+                    new SkillStore(descriptorOnly).isHome(),
+                    "SkillStore and the refusal predicate agree about a descriptor-only home");
+
+            // And in the other direction: a partial layout is not a home under
+            // either spelling. It no longer self-heals on a read command, which
+            // is intended — the first writing command completes it.
+            Path partial = freshDecoy();
+            Files.createDirectory(partial.resolve("installed"));
+            assertTrue(!new SkillStore(partial).isHome(),
+                    "installed/ without skills/ or a descriptor is a partial layout");
+            assertEquals(LaunchEnv.looksLikeStoreRoot(partial),
+                    new SkillStore(partial).isHome(),
+                    "SkillStore and the refusal predicate agree about a partial layout");
+
+            // Floor: the predicate is capable of saying yes.
+            Path real = freshDecoy();
+            HomeScaffold.declare(HomeScaffold.Access.WRITES_HOME);
+            try {
+                new SkillStore(real).init();
+            } finally {
+                HomeScaffold.reset();
+            }
+            assertTrue(new SkillStore(real).isHome(), "a real home is a home");
+        });
+
+        // ------------------------------------- the refusal names the way out
+        suite.test("`exec` against a non-home ambient home names --init, not --home", () -> {
+            Path decoy = freshDecoy();
+            Run r = runCli(decoy, "exec", "--print-env");
+            assertEquals(2, r.exitCode, "NotAHomeException.EXIT_CODE");
+            assertContains(r.output, "is not a Skill Manager home", "the refusal fired");
+            assertContains(r.output, "exec --init", "the refusal names its opt-in");
+            assertContains(r.output, "$" + SkillStore.HOME_ENV,
+                    "it names where the path actually came from");
+            assertTrue(!r.output.contains("exec --home:"),
+                    "it does not blame an option that was never passed; got ["
+                            + r.output.strip() + "]");
+            assertEquals(0, countEntries(decoy), "the refusal wrote nothing");
+        });
+
+        suite.test("`exec --home <not a home>` still blames --home", () -> {
+            Path decoy = freshDecoy();
+            Path elsewhere = freshDecoy();
+            Run r = runCli(decoy, "exec", "--home", elsewhere.toString(), "--print-env");
+            assertEquals(2, r.exitCode, "NotAHomeException.EXIT_CODE");
+            assertContains(r.output, "exec --home:",
+                    "the operator did pass --home, so that is the argument to fix");
+            assertContains(r.output, "exec --init", "the opt-in is still named");
+            assertEquals(0, countEntries(elsewhere), "the refusal wrote nothing");
         });
 
         return suite.runAll();
@@ -264,20 +406,41 @@ public final class LazyHomeScaffoldTest {
     // ------------------------------------------------------------- machinery
 
     /**
-     * @param declared what the CLI itself declared for this invocation, read
-     *                 back after the run. The run starts from
-     *                 {@link HomeScaffold.Access#WRITES_HOME}, so a
-     *                 {@code READ_ONLY} here can only have come from the
-     *                 execution strategy classifying this argv.
+     * @param declared     what the CLI itself declared for this invocation,
+     *                     read from {@link HomeScaffold#lastDeclared()} after
+     *                     the run. The run starts from
+     *                     {@link HomeScaffold.Access#WRITES_HOME}, so a
+     *                     {@code READ_ONLY} here can only have come from the
+     *                     execution strategy classifying this argv.
+     * @param modeAfterRun the mode actually in force the instant the CLI
+     *                     returned, before this harness resets anything. This
+     *                     is the leak detector: the declaration is supposed to
+     *                     be scoped to the invocation, so this must be the
+     *                     permissive default no matter what the command was.
      */
-    private record Run(int exitCode, String output, HomeScaffold.Access declared) {}
+    private record Run(int exitCode, String output, HomeScaffold.Access declared,
+                       HomeScaffold.Access modeAfterRun) {}
+
+    /** Something to measure while the process is still as the CLI left it. */
+    @FunctionalInterface
+    private interface AfterRun { void run() throws Exception; }
+
+    private static Run runCli(Path decoy, String... argv) throws Exception {
+        return runCli(decoy, null, argv);
+    }
 
     /**
      * Run the CLI against {@code decoy} as the home, with the agent config
      * roots pointed at a sibling sandbox so nothing can reach the operator's
      * real {@code ~/.claude}, {@code ~/.codex} or {@code ~/.gemini}.
+     *
+     * <p>{@code afterRun} runs after the CLI returns and <em>before</em> this
+     * harness restores anything, which is the only window in which "what did
+     * the invocation leave behind in this process" can be observed at all. A
+     * probe that ran after the {@code finally} would be measuring the
+     * harness's own cleanup.
      */
-    private static Run runCli(Path decoy, String... argv) throws Exception {
+    private static Run runCli(Path decoy, AfterRun afterRun, String... argv) throws Exception {
         Path sandbox = decoy.resolveSibling(decoy.getFileName() + "-agent-home");
         ByteArrayOutputStream captured = new ByteArrayOutputStream();
         PrintStream sink = new PrintStream(captured, true, StandardCharsets.UTF_8);
@@ -286,6 +449,7 @@ public final class LazyHomeScaffoldTest {
         Map<String, String> otel = quietExporters();
         int rc;
         HomeScaffold.Access declared;
+        HomeScaffold.Access modeAfterRun;
         try {
             // Start permissive so a READ_ONLY reading afterwards can only be
             // the CLI's own decision about this argv, never leftover state.
@@ -299,7 +463,9 @@ public final class LazyHomeScaffoldTest {
             System.setOut(sink);
             System.setErr(sink);
             rc = SkillManagerCli.run(argv);
-            declared = HomeScaffold.declared();
+            declared = HomeScaffold.lastDeclared();
+            modeAfterRun = HomeScaffold.declared();
+            if (afterRun != null) afterRun.run();
         } finally {
             System.setOut(oldOut);
             System.setErr(oldErr);
@@ -307,7 +473,7 @@ public final class LazyHomeScaffoldTest {
             HomeScaffold.reset();
             restore(otel);
         }
-        return new Run(rc, captured.toString(StandardCharsets.UTF_8), declared);
+        return new Run(rc, captured.toString(StandardCharsets.UTF_8), declared, modeAfterRun);
     }
 
     /** Silence the OTLP exporters so no invocation waits on a collector. */

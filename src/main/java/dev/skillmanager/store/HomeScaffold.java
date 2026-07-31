@@ -67,6 +67,26 @@ package dev.skillmanager.store;
  * for the <em>other</em> home. Threading the mode through every constructor
  * would give each of those sites its own chance to forget it, which is how
  * the four disagreeing copies of the sandbox env recipe happened (#30).
+ *
+ * <h2>Process-global, but not process-lifetime</h2>
+ *
+ * <p>A global that is only ever set is a global that leaks. As shipped in
+ * {@code 7d87a06} the CLI declared a mode and nothing un-declared it, so a
+ * caller embedding {@link dev.skillmanager.cli.SkillManagerCli#run} — the
+ * server, a test, an out-of-tree library user — that ran one {@code list}
+ * left the whole JVM pinned {@link Access#READ_ONLY}, and every later
+ * {@link SkillStore#init()} in that process silently created nothing. A
+ * silent no-op on the <em>writing</em> side is the exact failure this class's
+ * fail-open default exists to prevent, arriving through the back door.
+ *
+ * <p>So the mode is scoped to the invocation that declared it:
+ * {@link #declare(Access)} returns the mode it displaced and the CLI puts it
+ * back with {@link #restore(Access)} in a {@code finally}. Nesting works
+ * (each level restores its own predecessor) and the mode outside the
+ * outermost invocation is always the permissive default. {@link #lastDeclared()}
+ * survives the restore, because "what did that invocation classify itself
+ * as" is a question about the past that a test has to be able to ask after
+ * the invocation has ended.
  */
 public final class HomeScaffold {
 
@@ -87,19 +107,66 @@ public final class HomeScaffold {
 
     private static volatile Access current = Access.WRITES_HOME;
 
+    /**
+     * What the most recent {@link #declare} named, retained across
+     * {@link #restore}. Diagnostic only — it never gates anything.
+     */
+    private static volatile Access lastDeclared = null;
+
     private HomeScaffold() {}
 
-    /** State the access mode of the command about to run. */
-    public static void declare(Access access) {
-        current = access == null ? Access.WRITES_HOME : access;
+    /**
+     * State the access mode of the command about to run, and hand back the
+     * mode it displaced.
+     *
+     * <p>The return value is not optional bookkeeping: whoever declares a mode
+     * owns putting the previous one back with {@link #restore}, or the
+     * declaration outlives the invocation and pins the rest of the JVM. See
+     * this class's "Process-global, but not process-lifetime".
+     */
+    public static Access declare(Access access) {
+        Access previous = current;
+        Access next = access == null ? Access.WRITES_HOME : access;
+        current = next;
+        lastDeclared = next;
+        return previous;
     }
 
-    /** The declared mode; {@link Access#WRITES_HOME} when nothing declared one. */
+    /**
+     * Put back a mode captured from {@link #declare}.
+     *
+     * <p>Deliberately not {@code declare(previous)}: restoring is not a
+     * classification, so it leaves {@link #lastDeclared()} naming the
+     * invocation's own answer rather than overwriting it with the ambient
+     * default the invocation happened to start from.
+     */
+    public static void restore(Access previous) {
+        current = previous == null ? Access.WRITES_HOME : previous;
+    }
+
+    /** The mode in force; {@link Access#WRITES_HOME} when nothing declared one. */
     public static Access declared() { return current; }
+
+    /**
+     * What the last {@link #declare} named, or {@code null} if nothing ever
+     * declared anything. Unlike {@link #declared()} this survives
+     * {@link #restore}, which is what lets a test assert that the CLI reached
+     * its classification point for an argv <em>after</em> the run has finished
+     * and the mode has already been put back.
+     */
+    public static Access lastDeclared() { return lastDeclared; }
 
     /** True when the current invocation may create home directories. */
     public static boolean mayScaffold() { return current == Access.WRITES_HOME; }
 
-    /** Restore the permissive default. Tests pair this with {@link #declare}. */
-    public static void reset() { current = Access.WRITES_HOME; }
+    /**
+     * Back to the permissive default, with no memory of a declaration.
+     * Tests pair this with {@link #declare}; production code pairs
+     * {@link #declare} with {@link #restore} instead, so that a nested
+     * invocation cannot clear an outer one.
+     */
+    public static void reset() {
+        current = Access.WRITES_HOME;
+        lastDeclared = null;
+    }
 }

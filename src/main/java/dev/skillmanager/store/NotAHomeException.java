@@ -92,13 +92,41 @@ public final class NotAHomeException extends IOException {
      *             an internal variable
      */
     public static void require(Path candidate, String role) throws NotAHomeException {
+        require(candidate, role, null);
+    }
+
+    /**
+     * Refuse unless {@code candidate} is an existing Skill Manager home, and
+     * name the way out.
+     *
+     * <p>A refusal that does not name its own opt-in is a dead end. Every
+     * command that reaches here has a {@code --init} that says "lay it out
+     * first, I meant this path", and the operator has no way to know that from
+     * a message which only says no. This became load-bearing when the eager
+     * scaffold was removed: refusals that had been unreachable for the ambient
+     * home ({@code exec}, {@code home describe}, {@code home drift},
+     * {@code home policy}, {@code home shims}) started firing, and the first
+     * thing a person hitting one needs is the flag that turns it into the
+     * thing they wanted.
+     *
+     * @param role     how the caller named it — the argument the operator
+     *                 actually used, never one they did not pass
+     * @param initHint the full opt-in to suggest, e.g. {@code "exec --init"},
+     *                 or {@code null} when the caller has no such opt-in
+     */
+    public static void require(Path candidate, String role, String initHint)
+            throws NotAHomeException {
         Path path = candidate == null ? null : candidate.toAbsolutePath().normalize();
         if (path != null && LaunchEnv.looksLikeStoreRoot(path)) return;
+        String remedy = initHint == null || initHint.isBlank()
+                ? ""
+                : " To lay a home out here instead, re-run with `skill-manager "
+                        + initHint.trim() + "`.";
         throw new NotAHomeException(role + ": " + path + " is not a Skill Manager home ("
                 + describe(path) + "). A home carries a " + dev.skillmanager.store.HomeDescriptor.FILENAME
                 + " descriptor, or an installed/ and a skills/ directory. If you meant the home "
                 + "inside a worktree, name it: " + (path == null ? "<dir>" : path.resolve(".skill-manager"))
-                + ". Nothing was read and nothing was written.", path);
+                + "." + remedy + " Nothing was read and nothing was written.", path);
     }
 
     /** Why it failed the test, in the terms whoever typed the path will recognise. */
