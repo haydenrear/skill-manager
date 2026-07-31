@@ -1,5 +1,7 @@
 package dev.skillmanager.source;
 
+import dev.skillmanager.util.Log;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -21,9 +23,65 @@ public final class GitOps {
         return run(null, List.of("git", "--version")).exit == 0;
     }
 
+    /**
+     * Whether {@code dir} is ITSELF a git repository — not whether it happens to
+     * sit inside somebody else's checkout.
+     *
+     * <p><b>This is the boundary that keeps skill-manager out of repositories it
+     * does not own.</b> It used to ask {@code rev-parse --is-inside-work-tree},
+     * which WALKS UP: a Skill Manager home resolved inside a git working tree
+     * (a run-scoped store under a repository's {@code build/} dir, a per-agent
+     * home under a run directory) made every unit dir in it answer "yes" for the
+     * ENCLOSING repository. Every git command downstream of that answer then ran
+     * against the enclosing repository too. The measured consequence was
+     * {@link #setOrigin} rewriting a real repository's {@code remote.origin.url}
+     * to a vendored source directory — silently, once per curated unit, with the
+     * last unit installed left behind as the value. Worktrees share
+     * {@code .git/config}, so the primary checkout went with it.
+     *
+     * <p>Every caller in this codebase means "is this directory its own
+     * repository": a unit checkout, a store dir, a clone source. None of them
+     * wants an answer about an enclosing tree, and
+     * {@code ChildHomeMaterializer.carriesGitDirectory} had already worked
+     * around the walk-up locally before this was fixed at the source.
+     *
+     * <p>{@code rev-parse --show-toplevel} compared against {@code dir} rather
+     * than a {@code .git} probe: a LINKED WORKTREE is its own repository root but
+     * carries {@code .git} as a FILE, and a {@code Files.isDirectory(.git)} test
+     * would wrongly reject it.
+     */
     public static boolean isGitRepo(Path dir) {
-        return Files.isDirectory(dir)
-                && run(dir, List.of("git", "rev-parse", "--is-inside-work-tree")).exit == 0;
+        return isRepoRoot(dir);
+    }
+
+    /**
+     * {@code dir} is the top level of a working tree.
+     *
+     * <p>Deliberately NOT {@code git config --local --get ...}, which reads like
+     * a scoping mechanism and is not one: git DISCOVERS the repository by
+     * walking up, and {@code --local} then names THAT repository's config file.
+     * Measured on git 2.50.1 — from a plain directory nested inside a checkout,
+     * {@code git -C <nested> --no-optional-locks config --local --get
+     * remote.origin.url} prints the enclosing repository's URL, exactly as
+     * {@code git remote get-url origin} does. The scope has to come from asking
+     * where the top level IS.
+     */
+    private static boolean isRepoRoot(Path dir) {
+        if (dir == null || !Files.isDirectory(dir)) return false;
+        Result r = run(dir, List.of("git", "rev-parse", "--show-toplevel"));
+        if (r.exit != 0) return false;
+        String top = r.stdout.trim();
+        if (top.isBlank()) return false;
+        Path toplevel = Path.of(top);
+        try {
+            // isSameFile, not equals: /tmp vs /private/tmp and any other
+            // symlinked path would otherwise read as a different directory and
+            // turn every root into a non-root.
+            return Files.isSameFile(toplevel, dir);
+        } catch (IOException e) {
+            return toplevel.toAbsolutePath().normalize()
+                    .equals(dir.toAbsolutePath().normalize());
+        }
     }
 
     public static String headHash(Path dir) {
@@ -35,9 +93,17 @@ public final class GitOps {
         return remoteUrl(dir, "origin");
     }
 
-    /** The URL of a named remote, or null when the repository has no such remote. */
+    /**
+     * The URL of a named remote of the repository AT {@code dir}, or null when
+     * {@code dir} is not itself a repository or has no such remote.
+     *
+     * <p>The root gate is the point: without it a plain directory inside
+     * somebody's checkout reports that checkout's remote, and callers that then
+     * WRITE (see {@link #setOrigin}) write to that checkout.
+     */
     public static String remoteUrl(Path dir, String remote) {
         if (remote == null || remote.isBlank()) return null;
+        if (!isRepoRoot(dir)) return null;
         Result r = run(dir, List.of("git", "remote", "get-url", remote.trim()));
         return r.exit == 0 && !r.stdout.trim().isBlank() ? r.stdout.trim() : null;
     }
@@ -54,7 +120,23 @@ public final class GitOps {
         return null;
     }
 
+    /**
+     * Point {@code dir}'s own {@code origin} at {@code url}.
+     *
+     * <p>Refuses — loudly, and without writing anything — when {@code dir} is not
+     * a repository root. Both branches below are destructive against the wrong
+     * repository: {@code set-url} repoints an existing remote, and {@code add}
+     * gives a repository that had no origin one pointing at a source directory.
+     * A caller that reaches here with a non-root has already made a mistake, so
+     * this says so rather than failing silently.
+     */
     public static boolean setOrigin(Path dir, String url) {
+        if (!isRepoRoot(dir)) {
+            Log.warn("refusing to set origin on %s: not a git repository root"
+                    + " (a nested directory's git commands would write to the enclosing checkout)",
+                    dir);
+            return false;
+        }
         if (originUrl(dir) != null) {
             return run(dir, List.of("git", "remote", "set-url", "origin", url)).exit == 0;
         }

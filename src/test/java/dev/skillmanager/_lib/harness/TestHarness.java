@@ -64,7 +64,20 @@ public final class TestHarness implements AutoCloseable {
     }
 
     public static TestHarness create() throws IOException {
-        java.nio.file.Path tmp = Files.createTempDirectory("skill-handler-test-");
+        return createIn(Files.createTempDirectory("skill-handler-test-"));
+    }
+
+    /**
+     * A harness whose Skill Manager home is {@code tmp}, chosen by the caller.
+     *
+     * <p>Exists for tests about WHERE a home resolves — notably a home nested
+     * inside a git working tree, which is what
+     * {@link dev.skillmanager.source.GitOps} must not let leak into the
+     * enclosing repository. {@code tmp} must be a throwaway directory; nothing
+     * here protects a real checkout from the effects under test.
+     */
+    public static TestHarness createIn(Path tmp) throws IOException {
+        Files.createDirectories(tmp);
         // Sandboxed agent homes — the harness CLI drivers in
         // HarnessPluginCli read via AgentHomes, which checks these
         // thread-local overrides BEFORE falling back to the real

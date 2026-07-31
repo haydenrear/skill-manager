@@ -106,7 +106,81 @@ public final class SourceProvenanceRecorderTest {
                                 "origin is the bundled upstream");
                     }
                 })
+                .test("a home inside a git checkout does not repoint that checkout's origin", () -> {
+                    // THE INCIDENT, end to end. A Skill Manager home resolved
+                    // inside a git working tree (a run-scoped store under a
+                    // repository), one unit installed from a local path that is
+                    // also inside that tree. Provenance recording used to walk
+                    // up from the unit dir, decide the unit "was" a git repo,
+                    // and `git remote set-url origin <the source dir>` — on the
+                    // ENCLOSING repository. The value left behind was the last
+                    // curated unit's source directory, and the next push would
+                    // have gone into it.
+                    //
+                    // The repository below is built fresh under the system temp
+                    // dir. Pointing this at a real checkout would be the defect,
+                    // not a test of it.
+                    Path root = Files.createTempDirectory("home-inside-checkout-");
+                    Path repo = root.resolve("enclosing");
+                    Files.createDirectories(repo);
+                    git(repo, "init", "-q", "-b", "main");
+                    git(repo, "remote", "add", "origin", "https://example.invalid/enclosing.git");
+
+                    Path source = repo.resolve("constituents/tracer-agent");
+                    Skill skill = scaffoldSkillAt(source, "tracer-agent");
+
+                    try (TestHarness h = TestHarness.createIn(repo.resolve("build/run/.skill-manager"))) {
+                        ResolvedGraph graph = graphFor(skill);
+                        new Executor(h.store(), null).runWithContext(new Program<>(
+                                "home-inside-checkout-provenance",
+                                List.of(
+                                        new SkillEffect.CommitUnitsToStore(graph),
+                                        new SkillEffect.RecordSourceProvenance(graph)),
+                                receipts -> null), h.context());
+                    }
+
+                    assertEquals("https://example.invalid/enclosing.git", configuredOrigin(repo),
+                            "the enclosing repository's origin is untouched by an install");
+
+                    InstalledUnit installed = new dev.skillmanager.source.UnitStore(
+                            new dev.skillmanager.store.SkillStore(repo.resolve("build/run/.skill-manager")))
+                            .read("tracer-agent").orElseThrow();
+                    assertEquals(InstalledUnit.Kind.LOCAL_DIR, installed.kind(),
+                            "a unit dir that is not its own repository is local, not git");
+                })
+
                 .runAll();
+    }
+
+    /**
+     * The origin in {@code repo}'s own config file, read without git — so the
+     * assertion cannot be satisfied by the same walk-up it is checking for.
+     */
+    private static String configuredOrigin(Path repo) throws Exception {
+        Path config = repo.resolve(".git/config");
+        if (!Files.isRegularFile(config)) return null;
+        boolean inOrigin = false;
+        for (String line : Files.readString(config).split("\\R")) {
+            String t = line.trim();
+            if (t.startsWith("[")) {
+                inOrigin = t.startsWith("[remote \"origin\"]");
+                continue;
+            }
+            if (inOrigin && t.startsWith("url")) return t.substring(t.indexOf('=') + 1).trim();
+        }
+        return null;
+    }
+
+    private static void git(Path dir, String... args) throws Exception {
+        java.util.ArrayList<String> argv = new java.util.ArrayList<>();
+        argv.add("git");
+        argv.addAll(List.of(args));
+        Process p = new ProcessBuilder(argv).directory(dir.toFile())
+                .redirectErrorStream(true).start();
+        p.getInputStream().readAllBytes();
+        if (p.waitFor() != 0) {
+            throw new IllegalStateException("git " + String.join(" ", args) + " failed");
+        }
     }
 
     private static ResolvedGraph graphFor(Skill skill) {
