@@ -218,6 +218,132 @@ public final class HomeDriftGateTest {
             assertTrue(DriftGate.pending(home.store).isEmpty(), "and the gate is clear afterwards");
         });
 
+        // -------------------------------------------------- a clone is not drifted
+        //
+        // The measured defect: every worktree home `new-change.sh` provisions is
+        // a clone, `bootstrap-home.sh` baselines it with `home drift --record`,
+        // and the launch it then tells the operator to run refused with exit 8
+        // over "6 unit(s) changed" — on two independent virgin worktrees against
+        // which nothing else had ever run.
+        //
+        // Nothing had moved. The clone copied `home.digest.json` verbatim, so the
+        // baseline the copy was measured against was a statement about the SOURCE
+        // at an earlier moment, recorded by an earlier build. Both shapes of that
+        // are below, plus the two properties that must survive the fix: a real
+        // change after the clone still gates, and the source's own gate is not
+        // inherited.
+        //
+        // Every case here runs the operator's sequence — clone, `home drift
+        // --record`, launch — and asserts on whether the CHILD PROCESS RAN, not
+        // on an exit code. The defect is a refused launch, and a refusal is only
+        // observable as the thing that did not happen.
+
+        suite.test("a clone does not report the source's unrecorded change as its own", () -> {
+            // The general shape, with no schema change anywhere: a source that
+            // edits a unit and does not run `home drift --record` before being
+            // cloned hands every future clone its own change to answer for.
+            Home source = Home.create("drift-clone-stale-src-");
+            source.installSkill("alpha", Map.of("SKILL.md", skillMd("alpha")));
+            HomeDigest.compute(source.store).write(source.store);
+            Files.writeString(source.unitFile("alpha", "SKILL.md"),
+                    skillMd("alpha") + "the source changed this and never recorded it\n");
+
+            Home copy = source.cloneTo("drift-clone-stale-dst-");
+            new CommandLine(new HomeCommand.DriftCmd(copy.store)).execute("--record");
+
+            assertTrue(DriftGate.pending(copy.store).isEmpty(),
+                    "the copy has nothing to acknowledge — the change happened in another home,"
+                            + " before this one existed");
+            assertTrue(copy.launchRan(),
+                    "so the very first launch of the new home is not refused");
+        });
+
+        suite.test("a clone is not drifted by a baseline written under an older content rule", () -> {
+            // The shape actually measured. The source's baseline predated
+            // walkPlain learning to skip re-derivable trees (c2d535c), so it
+            // enumerated .venv entries that the current definition of unit
+            // content excludes — and the diff between two definitions of
+            // "content" came out as thousands of deletions of files the copy
+            // demonstrably still had on disk.
+            Home source = Home.create("drift-clone-schema-src-");
+            source.installSkill("alpha", Map.of(
+                    "SKILL.md", skillMd("alpha"),
+                    ".venv/pyvenv.cfg", "home = /usr/bin\n"));
+
+            // A baseline as the older build would have written it: the same unit,
+            // plus the entries that rule counted, under a digest that therefore
+            // does not match what this build computes.
+            HomeDigest fresh = HomeDigest.compute(source.store);
+            HomeDigest.UnitDigest alpha = fresh.unit("alpha").orElseThrow();
+            Map<String, String> withVenv = new LinkedHashMap<>(alpha.entries());
+            withVenv.put(".venv", "d41d8cd98f00b204e9800998ecf8427e");
+            withVenv.put(".venv/pyvenv.cfg", "b026324c6904b2a9cb4b88d6d61c81d1");
+            new HomeDigest(HomeDigest.SCHEMA_VERSION, fresh.computedAt(), "stale-home-digest",
+                    List.of(new HomeDigest.UnitDigest(alpha.name(), alpha.kind(),
+                            "stale-unit-digest-from-an-older-content-rule", withVenv)))
+                    .write(source.store);
+            assertTrue(Files.exists(source.unitFile("alpha", ".venv/pyvenv.cfg")),
+                    "the file the stale baseline names is really there — the defect reported it"
+                            + " as REMOVED from a copy that still had it");
+
+            Home copy = source.cloneTo("drift-clone-schema-dst-");
+            assertTrue(Files.exists(copy.unitFile("alpha", ".venv/pyvenv.cfg")),
+                    "and the copy has it too, so nothing was actually lost");
+            new CommandLine(new HomeCommand.DriftCmd(copy.store)).execute("--record");
+
+            DriftGate pending = DriftGate.pending(copy.store).orElse(null);
+            assertTrue(pending == null,
+                    "a pristine copy is not drifted"
+                            + (pending == null ? "" : " — reported: " + pending.report().render()));
+            assertTrue(copy.launchRan(), "and its first launch is not refused");
+        });
+
+        suite.test("a clone does not inherit the source's unacknowledged gate", () -> {
+            // The sharper half. An unread change in the source is a fact about
+            // agents working in the SOURCE; inheriting it refuses the first
+            // launch of a home that did not exist when the change happened.
+            // Deleted rather than acknowledged: an acknowledgement is a receipt
+            // saying somebody read this home's change, and writing one for a
+            // change this home never had would be a false receipt.
+            Home source = Home.create("drift-clone-gate-src-");
+            source.installSkill("alpha", Map.of("SKILL.md", skillMd("alpha")));
+            HomeDigest before = HomeDigest.compute(source.store);
+            Files.writeString(source.unitFile("alpha", "SKILL.md"), skillMd("alpha") + "moved\n");
+            DriftGate.recordSince(source.store, before, "project sync");
+            assertTrue(DriftGate.pending(source.store).isPresent(), "the source really is gated");
+
+            Home copy = source.cloneTo("drift-clone-gate-dst-");
+
+            assertTrue(DriftGate.pending(copy.store).isEmpty(), "the copy is not");
+            assertFalse(Files.exists(DriftGate.file(copy.store)),
+                    "and carries no record at all, acknowledged or otherwise");
+            assertTrue(DriftGate.pending(source.store).isPresent(),
+                    "while the SOURCE's gate is untouched — being cloned is not being read");
+            assertTrue(copy.launchRan(), "so the copy launches");
+        });
+
+        suite.test("a change made AFTER the clone still gates the clone's launch", () -> {
+            // The property the fix must not cost. The gate exists so an agent
+            // cannot keep acting on a skill that moved underneath it, and it is
+            // only from the clone onwards that anything can move underneath
+            // anybody in this home. Without this case, "a clone is never
+            // drifted" would be satisfied by deleting the gate.
+            Home source = Home.create("drift-clone-later-src-");
+            source.installSkill("alpha", Map.of("SKILL.md", skillMd("alpha")));
+            Home copy = source.cloneTo("drift-clone-later-dst-");
+            new CommandLine(new HomeCommand.DriftCmd(copy.store)).execute("--record");
+            assertTrue(DriftGate.pending(copy.store).isEmpty(), "clean to begin with");
+
+            Files.writeString(copy.unitFile("alpha", "SKILL.md"),
+                    skillMd("alpha") + "a sync moved this under the agent\n");
+            new CommandLine(new HomeCommand.DriftCmd(copy.store)).execute("--record");
+
+            DriftGate pending = DriftGate.pending(copy.store).orElseThrow();
+            assertTrue(pending.report().unitNames().contains("alpha"),
+                    "the change is recorded against the copy's own baseline");
+            assertFalse(copy.launchRan(), "and the launch is refused, as it must be");
+        });
+
         // ------------------------------------------- the vacuity trap itself
 
         suite.test("a second measurement does not retire an unread change", () -> {
@@ -423,6 +549,44 @@ public final class HomeDriftGateTest {
             Files.writeString(file, "#!/usr/bin/env bash\ntouch '" + sentinel + "'\n");
             file.toFile().setExecutable(true);
             return file;
+        }
+
+        /**
+         * Copy this home to a fresh root, exactly as {@code home clone} does, and
+         * give the copy its own descriptor.
+         *
+         * <p>The descriptor is rewritten rather than inherited because the copied
+         * one names the SOURCE's agent directories, and {@code exec} refuses a
+         * launch whose {@code CLAUDE_CONFIG_DIR} points outside the home it is
+         * launching. {@code HomeCommand.CloneCmd} does the same thing for the
+         * same reason; without it every launch assertion below would be
+         * satisfied by the wrong refusal.
+         */
+        Home cloneTo(String prefix) throws Exception {
+            Path destRoot = Files.createTempDirectory(prefix);
+            HomeCloner.Report report =
+                    HomeCloner.cloneHome(store.root(), destRoot.resolve(".skill-manager"));
+            assertTrue(report.clean(), "the fixture clone is clean: " + report.leaks());
+            Home copy = new Home(destRoot, new SkillStore(destRoot.resolve(".skill-manager")));
+            copy.writeDescriptor();
+            return copy;
+        }
+
+        /**
+         * Launch through {@code exec} and report whether the child really ran.
+         *
+         * <p>A boolean about a process, not an exit code, because that is the
+         * only honest oracle for a gate: one that refuses <em>after</em> spawning
+         * has already lost, and one that returns non-zero for an unrelated reason
+         * looks identical to one that gated.
+         */
+        boolean launchRan() throws Exception {
+            Path sentinel = Files.createTempFile(root, "launch-", ".sentinel");
+            Files.delete(sentinel);
+            Path touch = writeTouch(sentinel);
+            captureBoth(() -> new CommandLine(new ExecCommand(store, "/usr/bin" + SYSTEM_BINS))
+                    .execute("--no-reconcile", touch.toString()));
+            return Files.exists(sentinel);
         }
     }
 
