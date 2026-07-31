@@ -1,6 +1,7 @@
 ///usr/bin/env jbang "$0" "$@" ; exit $?
 //SOURCES ../../sdk/java/src/main/java/com/hayden/testgraphsdk/sdk/*.java
 //SOURCES ../lib/TgFixture.java
+//SOURCES ../lib/SmEnv.java
 
 import com.hayden.testgraphsdk.sdk.Node;
 import com.hayden.testgraphsdk.sdk.NodeResult;
@@ -63,12 +64,10 @@ public class AgentConfigsCorrect {
                     repoRoot.resolve("SkillManager.java").toString(),
                     "install", "file:" + skillDir, "--yes")
                     .redirectErrorStream(true);
-            pb.environment().put("SKILL_MANAGER_HOME", fakeSm.toString());
-            pb.environment().put("SKILL_MANAGER_INSTALL_DIR", repoRoot.toString());
-            pb.environment().put("CLAUDE_HOME", fakeHome.toString());
-            pb.environment().put("CLAUDE_CONFIG_DIR", fakeClaude.toString());
-            pb.environment().put("CODEX_HOME", fakeCodex.toString());
-            pb.environment().put("GEMINI_HOME", fakeHome.resolve(".gemini").toString());
+            // fakeClaude IS fakeHome/.claude, which is what SmEnv derives, so
+            // the sandbox here is the same four values the old six puts named.
+            SmEnv.apply(pb, fakeSm.toString(),
+                    SmEnv.sandbox(fakeHome, fakeCodex, fakeHome.resolve(".gemini")));
             // Without this the install in the fake home falls back to
             // http://127.0.0.1:51717 instead of the test gateway's ephemeral port.
             pb.environment().put("SKILL_MANAGER_GATEWAY_URL", gatewayUrl);
@@ -118,12 +117,10 @@ public class AgentConfigsCorrect {
                     repoRoot.resolve("SkillManager.java").toString(),
                     "install", "file:" + skillDir2, "--yes")
                     .redirectErrorStream(true);
-            pb2.environment().put("SKILL_MANAGER_HOME", fakeSm.toString());
-            pb2.environment().put("SKILL_MANAGER_INSTALL_DIR", repoRoot.toString());
-            pb2.environment().put("CLAUDE_HOME", fakeHome.toString());
-            pb2.environment().put("CLAUDE_CONFIG_DIR", fakeClaude.toString());
-            pb2.environment().put("CODEX_HOME", fakeCodex.toString());
-            pb2.environment().put("GEMINI_HOME", fakeHome.resolve(".gemini").toString());
+            // fakeClaude IS fakeHome/.claude, which is what SmEnv derives, so
+            // the sandbox here is the same four values the old six puts named.
+            SmEnv.apply(pb2, fakeSm.toString(),
+                    SmEnv.sandbox(fakeHome, fakeCodex, fakeHome.resolve(".gemini")));
             pb2.environment().put("SKILL_MANAGER_GATEWAY_URL", gatewayUrl);
             StringBuilder out2 = new StringBuilder();
             Process p2 = pb2.start();

@@ -1,0 +1,2098 @@
+# Desired program model + ticket plan for the child-home materialization epic.
+# Source of truth for tickets. Keep synchronized with spec_manifest.yaml status.
+version: 1
+name: child-home-materialization-workflow
+updated: "2026-07-29"
+purpose: >
+  Project child homes stop being symlink farms into the parent store and become
+  independent copies that an agent can edit. Every unit in
+  <project>/.skill-manager is materialized by copy, carries a per-unit
+  materialization record, and is held back and reported -- never overwritten,
+  never deleted -- once it has local edits. Symlinks inside a unit that point
+  into the parent store are dereferenced so the isolation actually holds, and
+  `harness instantiate --child-home-dir` goes through the same materializer.
+
+sources:
+  implementation:
+    - src/main/java/dev/skillmanager/bindings/ChildHomeMaterializer.java
+    - src/main/java/dev/skillmanager/project/ProjectChildHomeScaffolder.java
+  predecessor_workflow: ../.history/project-and-child-home-workflow/
+  superseded_port: "specs/program_model/SkillManager.tla:1315 (@port SkillManagerCli.scaffold_project_child_home)"
+
+problem_statement: >
+  The accepted model made this epic's central bug inexpressible.
+  ScaffoldProjectChildHome models child_home_units as a bare set of
+  <<home, unit>> pairs that only ever grows: there is no notion of what a child
+  unit CONTAINS, no notion of materialization, and no notion of independence.
+  Under symlinks the parent store unit and the child home unit were the same
+  bytes, so "the agent's edit survived" and "the parent store was not touched"
+  were the same proposition, and neither could be violated. The first
+  implementation of this epic silently deleted an agent's edits on the next
+  `project resolve` and the model could not have caught it. Core/Internal/
+  External make parent-store content and child-home content two distinct
+  objects so all four properties below are statable AND violable.
+
+planning_rules:
+  current_model_rule: Update specs/current after each production slice lands as a whole-program working copy of specs/program_model, not a ticket projection.
+  unit_validation_rule: Run current-model TLC and adapter/unit tests before adding graph execution.
+  graph_validation_rule: Run the narrow affected test_graph graph after unit/current-model checks pass; run all graphs before promotion.
+  semantic_model_rule: Do not add test graph nodes, pytest jobs, CI workflow steps, integration harnesses, or validation scripts as TLA+ program state/actions.
+  evidence_rule: Record tests and graph runs as evidence for semantic program actions in manifests or ticket status.
+  regression_config_rule: >
+    Every desired-state property carries an expected-violation cfg that must
+    keep failing. A regression config that starts passing is a defect in the
+    invariant, and closing a ticket requires re-running ALL of them -- twenty
+    as of 2026-07-27, not the five this rule was first written for.
+  guard_config_rule: >
+    Every WITNESS-DEPENDENT invariant additionally carries a guard cfg that
+    models the same defect with the witness-reading invariant removed, and that
+    guard must keep returning "No error has been found". A guard that starts
+    failing means the remaining invariants have been strengthened into
+    something else and the record of why the witness exists is stale. State for
+    each new invariant whether it is witness-dependent; if it is, it needs one.
+  dual_representation_rule: >
+    While SkillManager.tla and Core/Internal/External coexist, never state the
+    same rule in both. See spec_manifest.yaml modules.legacy_monolith.overlap_rule.
+  desired_sync_rule: Update this file and spec_manifest.yaml whenever scope, order, acceptance checks, or status changes.
+  promotion_rule: When specs/current equals specs/desired_program_model, promote the converged model to specs/program_model.
+
+status:
+  workflow: ticket
+  active_ticket: CHM-1
+  active_ticket_title: "Child home units materialize by copy, not by symlink"
+  desired_modules: [Core.tla, Internal.tla, External.tla]
+  carried_forward_module: SkillManager.tla
+  phase: planning
+  desired_tlc:
+    external_home:
+      command: bash specs/desired_program_model/run_tlc.sh specs/desired_program_model/External.tla specs/desired_program_model/External_home.cfg
+      status: passed
+      result: no invariant violations
+      states_generated: 2966
+      distinct_states: 706
+      depth: 12
+    internal_clone:
+      command: bash specs/desired_program_model/run_tlc.sh specs/desired_program_model/Internal.tla specs/desired_program_model/Internal_clone.cfg
+      status: passed
+      result: no invariant violations
+      states_generated: 303
+      distinct_states: 105
+      depth: 13
+    external:
+      command: bash specs/desired_program_model/run_tlc.sh specs/desired_program_model/External.tla specs/desired_program_model/External.cfg
+      status: passed
+      result: no invariant violations
+      states_generated: 1302
+      distinct_states: 250
+      depth: 9
+    internal:
+      command: bash specs/desired_program_model/run_tlc.sh specs/desired_program_model/Internal.tla specs/desired_program_model/Internal.cfg
+      status: passed
+      result: no invariant violations
+      states_generated: 8306
+      distinct_states: 2065
+      depth: 12
+    sync_tiers:
+      command: bash specs/desired_program_model/run_tlc.sh specs/desired_program_model/External.tla specs/desired_program_model/External_sync.cfg
+      status: passed
+      result: no invariant violations
+      states_generated: 1841
+      distinct_states: 180
+      depth: 8
+    sync_merge:
+      command: bash specs/desired_program_model/run_tlc.sh specs/desired_program_model/External.tla specs/desired_program_model/External_sync_merge.cfg
+      status: passed
+      result: no invariant violations
+      states_generated: 1153
+      distinct_states: 283
+      depth: 14
+  current_model_blocker:
+    fact: >
+      specs/current holds ONLY SkillManager.tla. It has no Core.tla, Internal.tla
+      or External.tla, so the acceptance command every CHM ticket carries --
+      `bash specs/current/run_tlc.sh specs/current/External.tla ...` -- names a
+      file that does not exist and cannot be run today.
+    consequence: >
+      No CHM ticket can be closed as written, whatever its production code does.
+      Each one below now records the half of its acceptance that WAS verified,
+      with measured numbers, and this as the reason the other half was not.
+      planning_rules.current_model_rule says specs/current is updated after each
+      production slice lands; seven slices have landed and it has not been.
+    measured: "2026-07-27, `ls specs/current`"
+  test_graph:
+    status: not_run
+    note: test_graph nodes and adapters for this epic are owned by a separate agent.
+
+# Home-level properties, added for T19 (#20). Same shape as the four below:
+# invariant, view, statement, and the expected-violation config that must keep
+# failing. See spec_manifest.yaml validation.regression_configs for measured
+# traces and validation.negative_result for why every one of these is stated
+# against a witness or a filesystem fact rather than against a report.
+desired_home_properties:
+  relocatability:
+    invariant: AHomeIsAPureFunctionOfItsRoot
+    view: External (HomeSpec)
+    statement: Renaming a home's root changes no behavior; nothing on a relocatable surface anchors to an absolute location.
+    regression_config: External_regression_absstate.cfg
+    scope_note: >
+      Scoped to {state, symlink}. A venv console script's shebang is resolved
+      literally by the kernel, so the provisioned surface can be neither
+      tokenized nor made relative and is re-anchored per clone instead. That
+      asymmetry is why `home clone` exists rather than `mv`, and stating the
+      invariant over all surfaces would claim a guarantee the code does not have.
+  cross_home_independence:
+    invariant: WritesThroughOneHomeReachNoOtherHome
+    view: External (HomeSpec)
+    statement: A write through one home lands in that home and in no other -- not a sibling project's, not the home it was copied from.
+    regression_config: External_regression_abslink.cfg
+  source_untouched:
+    invariant: SourceHomeIsByteIdenticalToItsCloneTimeSelf
+    view: External (HomeSpec)
+    statement: The source home is read once, at clone time, and still holds exactly the bytes it held then.
+    regression_config: External_regression_verbatimstate.cfg
+  toolchains_absent_not_stale:
+    invariant: ToolchainRootsAreNeverShared
+    view: External (HomeSpec)
+    statement: A clone carries no venvs/, tools/ or npm/, never points at another home's, and pm/ IS carried so it can rebuild them.
+    regression_configs:
+      - External_regression_sharedtoolchain.cfg
+      - External_regression_nopm.cfg
+      - External_regression_silentshims.cfg
+    reporting_invariant: EveryHomeMissingItsToolchainsSaysSo
+  authored_content_exception:
+    invariant: AuthoredContentIsNeverRewritten
+    view: External (HomeSpec)
+    statement: A file under skills/, plugins/, docs/ or harnesses/ that records an absolute home path is authored content, left exactly as written and counted in the report.
+    regression_config: External_regression_rewritecontent.cfg
+    reporting_invariant: EveryToleratedContentReferenceIsReported
+    negative_result_config: External_regression_rewritecontent_reportonly.cfg
+  clone_phase_gate:
+    invariant: EveryOwnedSurfaceIsReanchoredBeforeAHomeIsHandedOver
+    view: Internal (CloneSpec)
+    statement: Every surface fixup has run before SKILL_MANAGER_HOME is pointed at the copy -- not merely before the command exits.
+    regression_config: Internal_regression_unreanchored.cfg
+  clone_atomicity:
+    invariant: NoUnfinishedDestinationSurvivesAFailedClone
+    view: Internal (CloneSpec)
+    statement: A failed clone leaves the destination as it was found; a half-populated directory the next attempt refuses is worse than no clone.
+    regression_config: Internal_regression_partialclone.cfg
+
+desired_properties:
+  independence:
+    invariant: ChildHomeWritesNeverReachTheParentStore
+    view: External (restated in Internal)
+    statement: A write to a child-home unit does not change the parent-store unit it was materialized from.
+    regression_config: External_regression_symlink.cfg
+  no_silent_destruction:
+    invariant: AgentEditedChildUnitsAreNeverDestroyed
+    view: External (AgentEditsSurviveMaterialization in Internal)
+    statement: An agent-modified child unit is never overwritten or deleted by resolve, sync, or prune; it is held back and reported.
+    regression_config: External_regression_overwrite.cfg
+    reporting_invariant: EveryPassReportsExactlyTheHeldBackUnits
+  convergence:
+    invariant: UnmodifiedChildUnitsConvergeOnTheirSource
+    view: External
+    statement: An unmodified child unit refreshes when its source changes, including when the change is behind a dereferenced symlink.
+    regression_config: External_regression_rawdigest.cfg
+  atomicity:
+    invariant: InFlightMaterializationLeavesTheChildUnitIntact
+    view: Internal
+    statement: A failed materialization leaves the previous child unit intact.
+    regression_config: Internal_regression_nonatomic.cfg
+
+# Three-tier reconciliation properties, added for the `home sync` slice. Same
+# shape as the blocks above: invariant, view, statement, the expected-violation
+# config that must keep failing, and -- new here, and mandatory -- whether the
+# invariant is witness-dependent and which GUARD config proves it. See
+# spec_manifest.yaml validation.guard_configs and validation.negative_result_sync.
+#
+# These EXTEND AgentEditedChildUnitsAreNeverDestroyed rather than restate it.
+# That invariant is about one home's units and a materializer refreshing them
+# from a store; its destroyer is a refresh policy and its scope is a unit. These
+# are about two homes, per path, and their destroyers are a merge base, a
+# provenance rule and a teardown -- none of which the unit-level slice has an
+# action for. dual_representation_rule is satisfied by that separation, not by
+# accident: no sync invariant mentions child_home and no unit invariant mentions
+# sync_body.
+desired_sync_properties:
+  no_edit_loss:
+    invariant: AReconciliationOnlyWritesPathsTheDestinationDidNotMove
+    view: External (SyncSpec)
+    statement: >
+      Every path a reconciliation wrote was one the destination had not moved
+      away from its own recorded baseline -- held back or merged, never lost.
+    extends: AgentEditedChildUnitsAreNeverDestroyed, across the home boundary and at path granularity
+    witness_dependent: true
+    witness: sync_unsound (the write log)
+    guard_config: External_sync_guard_overwrite.cfg
+    regression_config: External_regression_syncoverwrite.cfg
+    also_violated_by: External_regression_prefersource.cfg
+  merge_soundness:
+    invariant: AReconciliationOnlyWritesAgainstABaselineBothHomesPassedThrough
+    view: External (SyncSpec)
+    statement: >
+      A three-way merge folds in only changes ONE side made, and that is only
+      decidable against a state the SOURCE itself passed through. A baseline the
+      destination recorded from a third home is not a common ancestor of these
+      two: measured against it the source looks like the only side that moved.
+    witness_dependent: true
+    witness: sync_history (every content each home has ever held)
+    guard_config: External_sync_guard_ffprovenance.cfg
+    regression_configs:
+      - External_regression_nomergekind.cfg    # the defect 7468b4f fixed
+      - External_regression_ffprovenance.cfg   # CHM-9, fixed; kept, must keep failing
+      - External_regression_mergebase.cfg      # CHM-10, fixed; kept, must keep failing
+    note: >
+      This is the one invariant the code did not satisfy, in two independent
+      ways. Both were reproduced end to end against the real classes, ticketed
+      as CHM-9 and CHM-10, and then fixed together under one rule
+      (ChildHomeMaterializer, "The baseline rule") along with the opposite-
+      direction stale-baseline finding. All three configs above keep producing
+      their counterexamples, because each models a rule the code no longer has.
+  conflict_atomicity:
+    invariant: AConflictedUnitIsNeverPartiallyWritten
+    view: External (SyncSpec)
+    statement: >
+      A unit with any conflicted path writes nothing -- not even the paths that
+      would have merged cleanly. The destination stays a coherent version of
+      something rather than half of two, and both versions still exist.
+    witness_dependent: true
+    witness: sync_unsound (the UnitWasConflicted reason)
+    guard_config: External_sync_guard_conflict.cfg
+    regression_config: External_regression_partialconflict.cfg
+    note: >
+      Not a corollary of the loss invariant, and the guard config is the proof:
+      a partial write takes only paths the destination had NOT moved, so it
+      destroys no edit and every loss-shaped invariant holds throughout.
+  close_out_gate:
+    invariant: NoHomeIsTornDownWhileItHoldsUniqueWork
+    view: External (SyncSpec)
+    statement: >
+      A worktree home is not removed while it holds content no other live home
+      has ever held.
+    witness_dependent: true
+    witness: sync_gone (the tree, snapshotted BEFORE the directory went)
+    guard_config: External_sync_guard_teardown.cfg
+    regression_config: External_regression_ungatedcloseout.cfg
+    finding: >
+      First stated over final bytes and refuted by TLC at depth 5 with a trace
+      that is not a defect: the worktree's edit reaches the project, the
+      project's own agent edits that path on top of it, and the worktree is torn
+      down still holding the older bytes. Nothing was lost -- the project HAD the
+      work and moved past it deliberately -- but by then the bytes are nowhere.
+      What close-out actually promises is that the work REACHED another tier, so
+      the invariant is stated over sync_history. Same correction, and the same
+      cause, as WritesThroughOneHomeReachNoOtherHome.
+  round_trip:
+    invariant: NoWorktreeEditEverReachesTheRootHome
+    view: External (SyncSpec)
+    kind: reachability probe -- MUST produce a counterexample
+    statement: >
+      Edits flow worktree -> project -> root without loss. Not a safety
+      property, so it is checked as its negation and the counterexample is the
+      deliverable.
+    witness_dependent: false
+    config: External_sync_roundtrip.cfg
+    why: >
+      Every other config checks that the mechanism destroys nothing. A mechanism
+      that moves nothing at all satisfies all of them; over-holding-back is safe
+      and worthless. This is the only check in the directory that would notice.
+  negative_result:
+    invariant: EveryDivergenceFromARecordIsAnEditMadeInThatHome
+    view: External (SyncSpec)
+    kind: guard -- MUST keep returning "No error has been found"
+    statement: >
+      A home's bytes differ from its own materialization record only where an
+      agent edited that home. True, and useless as a safety property, and both
+      halves are the point: every destructive policy here satisfies it, because
+      a reconciliation rewrites the record along with the bytes.
+    witness_dependent: false
+
+service_catalog:
+  existing_boundaries:
+    - project dependency resolution into SKILL_MANAGER_HOME
+    - project child-home scaffolding and the parent child-home registry
+    - harness-derived child Skill Manager homes
+    - child-home CLI/MCP shim mirroring
+    - parent-side sync refresh of claiming child homes
+  desired_boundaries:
+    - reconciliation of one home into another, in either direction, through the same materializer
+    - a per-file baseline (MaterializationRecord.entryDigests) and the three-way merge decided against it
+    - a conflicted unit that writes nothing at all
+    - provenance on the destination record, so "pristine copy" names what it is a copy OF
+    - a home-wide mutex, so two worktrees closing out at once cannot interleave
+    - a close-out gate that refuses while a worktree holds work found nowhere else
+    - per-unit materialization by copy with a staged, atomically swapped tree
+    - per-unit materialization record (mode, source digest, content digest)
+    - locally-modified detection against that record
+    - hold-back-and-report on refresh and on prune
+    - dereferencing of in-unit symlinks that point into the parent store
+    - one materializer shared by project resolve and harness instantiate
+  adapter_boundaries:
+    - HomeSync (which units to visit, the lock, the report)
+    - HomeCloseOut (the gate; writes nothing, exits non-zero while work remains)
+    - HomeLock (process-wide ReentrantLock plus an OS FileLock, because neither substitutes for the other)
+    - ChildHomeMaterializer (stage / swap / abort / hold-back / adopt / prune / planSync / applySync)
+    - ProjectChildHomeScaffolder (pass orchestration and the held-back report)
+    - ChildHomeHarnessInstaller (same materializer, harness payload)
+  known_gaps:
+    - "The sync model gives each home ONE authoring token per path, so it cannot express one home editing one path twice. CHM-10 was therefore reached in the model through three tiers and in the unit test through two; same mergeBase, two routes."
+    - Shim mirroring stays a symlink and is deliberately outside the isolation guarantee; not modeled.
+    - Symlinks pointing outside the parent store are preserved verbatim; writes through them are out of scope and not modeled.
+    - A symlink cycle inside the parent store omits the entry with a warning; the omission is not modeled as a distinct outcome.
+    - Child-home MCP servers, tool shims, and agent configs stay in SkillManager.tla until phase MIG.
+
+# ---------------------------------------------------------------------------
+tickets:
+  - id: CHM-1
+    title: "Child home units materialize by copy, not by symlink"
+    phase: CHM
+    status: next
+    depends_on: []
+    production_status: implemented_spec_pending
+    objective: >
+      A project child home holds an independent tree per unit. No entry in it
+      is a symlink at a parent-store unit directory, so an ordinary edit below
+      a child unit cannot reach the parent store.
+    desired_actions:
+      - EditChildHomeUnit
+      - ResolveProjectChildHome
+    implementation_scope:
+      - src/main/java/dev/skillmanager/bindings/ChildHomeMaterializer.java
+      - src/main/java/dev/skillmanager/bindings/MaterializationMode.java
+      - src/main/java/dev/skillmanager/project/ProjectChildHomeScaffolder.java
+    current_increment:
+      model_state:
+        - store_body
+        - child_home
+        - agent_edits
+      model_actions:
+        - EditChildHomeUnit
+        - ResolveProjectChildHome
+      adapters:
+        - ChildHomeMaterializerPort.swap_in
+        - AgentWorkspacePort.edit_child_home_unit
+      unit_tests:
+        - editing a child unit does not change the parent store unit
+        - a resolved child unit directory is not a symlink
+      graph_after_unit_pass:
+        - project-resolve
+    acceptance:
+      commands:
+        - bash specs/current/run_tlc.sh specs/current/External.tla specs/current/External.cfg
+        - bash specs/desired_program_model/run_tlc.sh specs/desired_program_model/External.tla specs/desired_program_model/External_regression_symlink.cfg
+      assertions:
+        - ChildHomeWritesNeverReachTheParentStore holds under External.cfg.
+        - External_regression_symlink.cfg still produces a counterexample.
+      evidence:
+        desired_model_half: verified 2026-07-27
+        measured: >
+          External.cfg PASS 1302 generated / 250 distinct / depth 9; AgentEdited... and ChildHomeWritesNeverReachTheParentStore hold. External_regression_symlink.cfg VIOLATED[ChildHomeWritesNeverReachTheParentStore] at depth 3.
+        current_model_half: >
+          NOT RUN. The command names specs/current/External.tla (or
+          Internal.tla); specs/current holds only SkillManager.tla. See
+          status.current_model_blocker.
+      status_note: >
+        Left at its existing status deliberately. The desired-state half of
+        the acceptance is met and measured; the current-model half cannot be
+        run at all, so closing this would be closing it on an assumption.
+
+  - id: CHM-2
+    title: "Per-unit materialization record as the local-change baseline"
+    phase: CHM
+    status: planned
+    depends_on: [CHM-1]
+    production_status: implemented_spec_pending
+    objective: >
+      Each materialized unit writes <child home>/.materialization/<kind>/<name>.json
+      recording the mode, the digest of the MATERIALIZED VIEW of the parent tree,
+      and the digest of the tree that was written. That record is the only
+      evidence that a child unit is disposable; a unit without a usable one is
+      treated as modified.
+    desired_actions:
+      - StageChildUnitMaterialization
+      - SwapInChildUnit
+      - AdoptIdenticalChildUnit
+      - PlaceUntrackedChildUnit
+    implementation_scope:
+      - src/main/java/dev/skillmanager/bindings/ChildHomeMaterializer.java
+    current_increment:
+      model_state:
+        - record
+        - child_unit
+      model_actions:
+        - StageChildUnitMaterialization
+        - SwapInChildUnit
+        - AdoptIdenticalChildUnit
+        - PlaceUntrackedChildUnit
+      adapters:
+        - ChildHomeMaterializerPort.adopt
+      unit_tests:
+        - a record written by a newer skill-manager with an unknown mode reads as "no usable baseline"
+        - a directory with no record and identical content is adopted
+        - a directory with no record and different content is refused
+      graph_after_unit_pass:
+        - project-resolve
+    acceptance:
+      commands:
+        - bash specs/current/run_tlc.sh specs/current/Internal.tla specs/current/Internal.cfg
+      assertions:
+        - ChildUnitContentMatchesItsRecord holds.
+        - MaterializationRecordsDescribePresentChildUnits holds.
+      evidence:
+        desired_model_half: verified 2026-07-27
+        measured: >
+          Internal.cfg PASS 8306 generated / 2065 distinct / depth 12, with ChildUnitContentMatchesItsRecord and MaterializationRecordsDescribePresentChildUnits in the checked set.
+        current_model_half: >
+          NOT RUN. The command names specs/current/External.tla (or
+          Internal.tla); specs/current holds only SkillManager.tla. See
+          status.current_model_blocker.
+      status_note: >
+        Left at its existing status deliberately. The desired-state half of
+        the acceptance is met and measured; the current-model half cannot be
+        run at all, so closing this would be closing it on an assumption.
+
+  - id: CHM-3
+    title: "Hold back and report locally modified units on resolve and sync"
+    phase: CHM
+    status: planned
+    depends_on: [CHM-2]
+    production_status: implemented_spec_pending
+    objective: >
+      A child unit whose tree no longer matches its record is left completely
+      alone by resolve and sync and is reported to the caller. This is the
+      slice that fixes the silent-deletion bug.
+    desired_actions:
+      - HoldBackModifiedChildUnit
+      - SyncProjectChildHome
+    implementation_scope:
+      - src/main/java/dev/skillmanager/bindings/ChildHomeMaterializer.java
+      - src/main/java/dev/skillmanager/project/ProjectChildHomeScaffolder.java
+    current_increment:
+      model_state:
+        - held_back
+        - pass
+      model_actions:
+        - HoldBackModifiedChildUnit
+        - SyncProjectChildHome
+      adapters:
+        - ChildHomeMaterializerPort.hold_back
+        - SkillManagerCliChildHomePort.sync_claiming_project_child_homes
+      unit_tests:
+        - an edited child unit survives a second project resolve byte for byte
+        - the held-back unit appears in the resolve result
+        - the child installed record for a held-back unit is not rewritten with the parent's sha
+      graph_after_unit_pass:
+        - project-resolve
+        - smoke
+    acceptance:
+      commands:
+        - bash specs/current/run_tlc.sh specs/current/External.tla specs/current/External.cfg
+        - bash specs/desired_program_model/run_tlc.sh specs/desired_program_model/External.tla specs/desired_program_model/External_regression_overwrite.cfg
+      assertions:
+        - AgentEditedChildUnitsAreNeverDestroyed holds under External.cfg.
+        - EveryPassReportsExactlyTheHeldBackUnits holds under External.cfg.
+        - External_regression_overwrite.cfg still produces a counterexample at depth 4.
+      evidence:
+        desired_model_half: verified 2026-07-27
+        measured: >
+          External.cfg PASS (AgentEditedChildUnitsAreNeverDestroyed and EveryPassReportsExactlyTheHeldBackUnits both in the checked set); External_regression_overwrite.cfg VIOLATED[AgentEditedChildUnitsAreNeverDestroyed] at depth 4, exactly as the acceptance says.
+        current_model_half: >
+          NOT RUN. The command names specs/current/External.tla (or
+          Internal.tla); specs/current holds only SkillManager.tla. See
+          status.current_model_blocker.
+      status_note: >
+        Left at its existing status deliberately. The desired-state half of
+        the acceptance is met and measured; the current-model half cannot be
+        run at all, so closing this would be closing it on an assumption.
+
+  - id: CHM-4
+    title: "Prune holds back modified units it no longer claims"
+    phase: CHM
+    status: planned
+    depends_on: [CHM-3]
+    production_status: implemented_spec_pending
+    objective: >
+      "No longer a dependency" is not a licence to delete someone's work. A
+      child unit the project stopped claiming is dropped only when it is
+      unmodified; otherwise it stays and is reported.
+    desired_actions:
+      - PruneUnclaimedChildUnit
+    implementation_scope:
+      - src/main/java/dev/skillmanager/project/ProjectChildHomeScaffolder.java
+    current_increment:
+      model_state:
+        - child_unit
+        - record
+      model_actions:
+        - PruneUnclaimedChildUnit
+      adapters:
+        - ChildHomeMaterializerPort.prune
+      unit_tests:
+        - an unclaimed unmodified unit is removed and its record forgotten
+        - an unclaimed modified unit is left in place and reported
+        - pruning is skipped entirely when the child home resolves to the parent store
+      graph_after_unit_pass:
+        - project-resolve
+    acceptance:
+      commands:
+        - bash specs/current/run_tlc.sh specs/current/External.tla specs/current/External.cfg
+      assertions:
+        - ResolveLeavesOnlyClaimedOrHeldBackUnits holds.
+        - AgentEditedChildUnitsAreNeverDestroyed holds across a prune.
+      evidence:
+        desired_model_half: verified 2026-07-27
+        measured: >
+          External.cfg PASS, with ResolveLeavesOnlyClaimedOrHeldBackUnits and AgentEditedChildUnitsAreNeverDestroyed in the checked set.
+        current_model_half: >
+          NOT RUN. The command names specs/current/External.tla (or
+          Internal.tla); specs/current holds only SkillManager.tla. See
+          status.current_model_blocker.
+      status_note: >
+        Left at its existing status deliberately. The desired-state half of
+        the acceptance is met and measured; the current-model half cannot be
+        run at all, so closing this would be closing it on an assumption.
+
+  - id: CHM-5
+    title: "Dereference in-unit symlinks that point into the parent store"
+    phase: CHM
+    status: planned
+    depends_on: [CHM-1]
+    production_status: implemented_spec_pending
+    objective: >
+      A symlink inside a copied unit whose target resolves back into the parent
+      store is replaced by its content, and the freshness digest is taken over
+      that materialized view. Hashing the raw tree would hash the link as its
+      target string, so an upgrade behind the link would never be noticed.
+    desired_actions:
+      - UpgradeLinkedParentSource
+    implementation_scope:
+      - src/main/java/dev/skillmanager/bindings/ChildHomeMaterializer.java
+    current_increment:
+      model_state:
+        - store_body
+      model_actions:
+        - UpgradeLinkedParentSource
+        - UpgradeParentStoreUnit
+      adapters:
+        - ChildHomeMaterializerPort.stage
+      unit_tests:
+        - a store link inside a unit becomes real content in the child home
+        - upgrading the linked unit refreshes the child copy
+        - a link outside the parent store is preserved verbatim
+        - a relative link that stays inside the unit is preserved
+        - a link cycle inside the store omits the entry with a warning
+      graph_after_unit_pass:
+        - project-resolve
+        - source-tracking
+    acceptance:
+      commands:
+        - bash specs/current/run_tlc.sh specs/current/External.tla specs/current/External.cfg
+        - bash specs/desired_program_model/run_tlc.sh specs/desired_program_model/External.tla specs/desired_program_model/External_regression_rawdigest.cfg
+      assertions:
+        - UnmodifiedChildUnitsConvergeOnTheirSource holds under External.cfg.
+        - External_regression_rawdigest.cfg still produces a counterexample.
+      evidence:
+        desired_model_half: verified 2026-07-27
+        measured: >
+          External.cfg PASS (UnmodifiedChildUnitsConvergeOnTheirSource in the checked set); External_regression_rawdigest.cfg VIOLATED[UnmodifiedChildUnitsConvergeOnTheirSource] at depth 3.
+        current_model_half: >
+          NOT RUN. The command names specs/current/External.tla (or
+          Internal.tla); specs/current holds only SkillManager.tla. See
+          status.current_model_blocker.
+      status_note: >
+        Left at its existing status deliberately. The desired-state half of
+        the acceptance is met and measured; the current-model half cannot be
+        run at all, so closing this would be closing it on an assumption.
+
+  - id: CHM-6
+    title: "Staged, atomically swapped materialization"
+    phase: CHM
+    status: planned
+    depends_on: [CHM-2]
+    production_status: implemented_spec_pending
+    objective: >
+      The desired tree is built under the child home's staging area and moved
+      into place with ATOMIC_MOVE; the displaced tree is parked under staging,
+      never beside the destination. A failure part way through leaves the
+      previous child unit exactly as it was.
+    desired_actions:
+      - AbortChildUnitMaterialization
+    implementation_scope:
+      - src/main/java/dev/skillmanager/bindings/ChildHomeMaterializer.java
+    current_increment:
+      model_state:
+        - staging
+      model_actions:
+        - AbortChildUnitMaterialization
+      adapters:
+        - ChildHomeMaterializerPort.abort
+      unit_tests:
+        - a copy failure leaves the previous child unit intact
+        - a move failure restores the displaced tree
+        - staging left by an interrupted run is swept before and after a pass
+        - a non-directory squatting on the staging path is removed
+      graph_after_unit_pass:
+        - project-resolve
+    acceptance:
+      commands:
+        - bash specs/current/run_tlc.sh specs/current/Internal.tla specs/current/Internal.cfg
+        - bash specs/desired_program_model/run_tlc.sh specs/desired_program_model/Internal.tla specs/desired_program_model/Internal_regression_nonatomic.cfg
+      assertions:
+        - InFlightMaterializationLeavesTheChildUnitIntact holds under Internal.cfg.
+        - Internal_regression_nonatomic.cfg still produces a counterexample at depth 5.
+      evidence:
+        desired_model_half: verified 2026-07-27
+        measured: >
+          Internal.cfg PASS (InFlightMaterializationLeavesTheChildUnitIntact in the checked set); Internal_regression_nonatomic.cfg VIOLATED[InFlightMaterializationLeavesTheChildUnitIntact] at depth 5, exactly as the acceptance says.
+        current_model_half: >
+          NOT RUN. The command names specs/current/External.tla (or
+          Internal.tla); specs/current holds only SkillManager.tla. See
+          status.current_model_blocker.
+      status_note: >
+        Left at its existing status deliberately. The desired-state half of
+        the acceptance is met and measured; the current-model half cannot be
+        run at all, so closing this would be closing it on an assumption.
+
+  - id: CHM-7
+    title: "harness instantiate --child-home-dir goes through the same materializer"
+    phase: CHM
+    status: planned
+    depends_on: [CHM-3, CHM-6]
+    production_status: implemented_spec_pending
+    objective: >
+      Both paths that populate a child home write the same layout, so they must
+      agree on how units get there and on what happens to local edits.
+    desired_actions:
+      - InstantiateHarnessChildHome
+    implementation_scope:
+      - src/main/java/dev/skillmanager/bindings/ChildHomeHarnessInstaller.java
+    current_increment:
+      model_state:
+        - child_home
+      model_actions:
+        - InstantiateHarnessChildHome
+      adapters:
+        - SkillManagerCliChildHomePort.instantiate_child_home_from_harness
+      unit_tests:
+        - harness instantiate holds back a locally modified child unit
+        - harness and project payloads share one materialization record layout
+      graph_after_unit_pass:
+        - harness-smoke
+        - project-resolve
+    acceptance:
+      commands:
+        - bash specs/current/run_tlc.sh specs/current/External.tla specs/current/External.cfg
+      assertions:
+        - EveryPassReportsExactlyTheHeldBackUnits holds for pass.kind = "harness".
+      evidence:
+        desired_model_half: verified 2026-07-27
+        measured: >
+          External.cfg PASS, which checks EveryPassReportsExactlyTheHeldBackUnits over PassScope("harness").
+        current_model_half: >
+          NOT RUN. The command names specs/current/External.tla (or
+          Internal.tla); specs/current holds only SkillManager.tla. See
+          status.current_model_blocker.
+      status_note: >
+        Left at its existing status deliberately. The desired-state half of
+        the acceptance is met and measured; the current-model half cannot be
+        run at all, so closing this would be closing it on an assumption.
+
+  - id: CHM-8
+    title: "Spec-unit adapters and Test Graph bindings for the new views"
+    phase: CHM
+    status: planned
+    depends_on: [CHM-1, CHM-2, CHM-3, CHM-4, CHM-5, CHM-6, CHM-7]
+    objective: >
+      Wire case_adapters.toml (Internal -> spec-unit) and testgraph_bindings.yml
+      (External -> Test Graph) so the model is actually validated against
+      production instead of only against itself.
+    desired_actions: []
+    implementation_scope:
+      - specs/desired_program_model/case_adapters.toml
+      - specs/desired_program_model/testgraph_bindings.yml
+      - specs/desired_program_model/adapters.py
+      - specs/desired_program_model/tlc_projection.py
+    current_increment:
+      model_state: []
+      model_actions: []
+      adapters:
+        - ChildHomeMaterializerPort
+        - SkillManagerCliChildHomePort
+        - AgentWorkspacePort
+      unit_tests:
+        - tla-spec-dev run spec-unit-tests --target specs/current
+      graph_after_unit_pass:
+        - project-resolve
+        - harness-smoke
+        - smoke
+        - source-tracking
+    acceptance:
+      commands:
+        - tla-spec-dev --spec-root specs run spec-unit-tests --target specs/current
+      assertions:
+        - Every Internal action has a spec-unit adapter.
+        - Every External action has a Test Graph binding running out of process.
+      note: >
+        test_graph node authoring for this epic is owned by a separate agent;
+        this ticket owns the bindings file, not the nodes.
+      evidence:
+        scope_update_2026_07_27: >
+          The three-tier sync slice added three External actions
+          (ReconcileHomeTiers, TearDownWorktreeHome, EditUnitInHomeTier). The
+          adapter gap was NOT closed for them, and the reasoning is recorded in
+          testgraph_bindings.yml `blocked.decision_2026_07_27`: adapters bind
+          GENERATED CASES, case_codegen.generation_status is still `planned`, so
+          adapters written now would be classes nothing loads -- while making
+          the four required keys appear in the file and turning a missing
+          deliverable into a silent one. The honest documentation was extended
+          instead: each new action carries its port, its command, the named JVM
+          test cases that exercise it today, and an explicit
+          `test_graph: status: absent` with its owner and ticket.
+        production_package_decision: >
+          Kept as documentation. The External content rule forbids an External
+          adapter importing the production package; for this program that rule
+          is both unenforceable and unnecessary, because the unit under test is
+          a Java CLI driven out of process and no Python adapter could import it
+          if it tried. CHM-8 still owns deciding whether to widen the contract
+          for non-Python programs or drop the key for them.
+
+
+# ---------------------------------------------------------------------------
+# Two defects in ALREADY-MERGED code, found by modelling the sync mechanism and
+# then reproduced end to end against the real classes. Both were silent data
+# loss and both needed a decision about the CONTRACT rather than a patch, which
+# is what these tickets were for. They were then fixed TOGETHER, with the
+# stale-baseline finding, because all three are the same question -- what is the
+# merge baseline of these two homes, and who is allowed to rewrite it -- and
+# three independent patches would have been a fourth idiom (issue #24).
+  - id: CHM-9
+    title: "A fast-forward makes the destination a pristine copy of a home that may be gone"
+    phase: CHM
+    status: closed
+    closed: "2026-07-27"
+    resolved_with: [CHM-10, the stale-baseline finding]
+    depends_on: []
+    production_status: defect_in_merged_code
+    severity: silent_data_loss
+    found_by: >
+      External_regression_ffprovenance.cfg, then reproduced against HomeSync /
+      HomeCloseOut / ChildHomeMaterializer directly.
+    objective: >
+      MaterializationRecord.reconcileKind distinguishes a merge result from a
+      pristine copy. It does not distinguish one pristine copy from another, and
+      that is the distinction that matters: a pristine copy is only disposable
+      relative to the home it is a copy OF.
+    reproduction:
+      - "root home installs skill s at ROOT V1; project and worktree are clones."
+      - "the ticket agent edits s in the worktree home."
+      - "`home sync --from worktree --to project` -- the project had moved nothing, so this is a clean fast-forward. Status UPDATED. The project's record: reconcileKind = \"copy\", source = <worktree>/skills/s."
+      - "`home close-out` reports the worktree as safe -- correctly, the work is in the project now."
+      - "the worktree is torn down."
+      - "the root home ships ROOT V2. `home sync --from root --to project`."
+      - "reconcile sees destUntouched (true -- the project matches its own record) and !isMergeResult (true -- kind is \"copy\"), takes the wholesale-copy path, and OVERWRITES. The agent's SKILL.md and agent-note.md are gone, from the only place they existed. Status UPDATED. Nothing is reported."
+    why_nothing_catches_it: >
+      The record's `source` field names the worktree, and nothing reads it --
+      reconcile reads sourceDigest, contentDigest, entryDigests and
+      reconcileKind, never source. And the write really is entitled by every
+      test about the DESTINATION: the project home genuinely had not moved
+      anything. External_sync_guard_ffprovenance.cfg is that fact as a config
+      that must keep passing.
+    aggravating: >
+      HomeCloseOut.remedyFor returns a plain `home sync` (no --merge) for status
+      UPDATED, so the remedy the tool prints is the one that creates this state.
+      `--merge` is not affected: it records reconcileKind = "merge".
+    modelled_as: 'ReconcileProvenance: SOURCE_AWARE (desired) vs MERGE_KIND_ONLY (today)'
+    resolution: >
+      MaterializationRecord.source was already written and correct; reconcile now
+      READS it. A destination may be replaced wholesale only when it still holds
+      exactly what its record says was written there AND that record is evidence
+      about the home now pushing -- it names it, or names nobody (a clone's own
+      baseline), or the two homes recorded the same baseline, or the source is
+      standing on that baseline right now. Anything else holds back, and under
+      --merge conflicts. The rule is stated once, in ChildHomeMaterializer's
+      class javadoc under "The baseline rule", and CHM-10 and the stale-baseline
+      finding are the same rule applied to the merge base and to what a clone
+      writes down.
+    acceptance:
+      assertions:
+        - A destination may be replaced wholesale only when its current content came from the home now pushing, or from nobody.
+        - External_regression_ffprovenance.cfg keeps producing a counterexample.
+        - The reproduction above ends with the agent's bytes still in the project home.
+      evidence:
+        unit: 'HomeSyncMergeTest "a fast-forward is not disposable to a home it never came from (CHM-9)" -- the whole reproduction including the teardown, asserted on bytes'
+        graph: 'home-sync node home.sync.provenance: sync up, close out, remove the worktree, sync down, through the real CLI over real homes'
+        tlc: External_regression_ffprovenance.cfg still violates AReconciliationOnlyWritesAgainstABaselineBothHomesPassedThrough at depth 4 (24 distinct states)
+        mutation: 'dropped `&& recordIsAboutThisSource` from the wholesale-copy guard; the named unit test failed with "expected <AGENT IMPROVED THIS> but was <ROOT V2>"; reverted and verified with shasum -a 256 -c'
+
+  - id: CHM-10
+    title: "mergeBase picks a baseline newer than the common ancestor, and reverts work without a conflict"
+    phase: CHM
+    status: closed
+    closed: "2026-07-27"
+    resolved_with: [CHM-9, the stale-baseline finding]
+    depends_on: []
+    production_status: defect_in_merged_code
+    severity: silent_data_loss
+    found_by: >
+      A unit test written for this slice, which failed on the first run:
+      HomeSyncMergeTest "DEFECT PIN CHM-10". Independently modelled as
+      External_regression_mergebase.cfg.
+    objective: >
+      ChildHomeMaterializer.mergeBase prefers the DESTINATION's record. A merge
+      rewrites that record over the whole merged tree -- local work included --
+      so the destination's own edits become part of its recorded baseline. On
+      the next --merge the source, which never held those bytes, is measured
+      against them: s != d, s != b, d == b, which the algebra reads as "only the
+      source moved" and takes. The local work is reverted with no conflict and
+      no report.
+    reproduction:
+      - "source and destination share SKILL.md / upstream.md / local.md at v1."
+      - "the agent edits local.md in the destination; the source moves upstream.md to v2."
+      - "`home sync --merge` -- MERGED. upstream.md becomes v2, local.md keeps the agent's work. Correct. The record's entryDigests now say local.md = the agent's bytes."
+      - "the source moves upstream.md again, to v3. Nothing touches local.md on either side."
+      - "`home sync --merge` -- MERGED. upstream.md becomes v3, and local.md is REVERTED to the source's v1. No conflict is reported."
+    the_javadoc_is_wrong: >
+      mergeBase's own comment argues that the cost of choosing the wrong base
+      "is a conflict a human resolves, not an edit nobody sees again". That
+      holds only when the chosen base is OLDER than the true common ancestor --
+      an older ancestor produces more conflicts and never fewer. Here it is
+      NEWER, and the cost is exactly the edit nobody sees again.
+    scope: >
+      Two homes and one repeated source change are enough. It does not need a
+      worktree, a teardown, or three tiers. Any project home that has ever taken
+      a --merge is exposed on the next one.
+    modelled_as: 'MergeBasePolicy: SHARED_ANCESTOR (desired) vs DESTINATION_RECORD (today)'
+    relationship_to_the_stale_baseline_finding: >
+      ea03c22 records the OPPOSITE failure of the same design: a baseline that
+      is too OLD (a clone inherits a record describing content neither home
+      holds any more, and a completed sync rewrites only the destination's
+      record) turns a clean fast-forward into a conflict a human has to settle.
+      That one is safe and annoying; this one is unsafe and silent. They are the
+      two directions of one question -- what is the common ancestor of these two
+      homes -- and mergeBase answered it with whatever the destination last wrote
+      down. Fixing either without the other would have moved the failure rather
+      than removed it, so they were fixed together: `home clone` now restates the
+      baseline of a COPY unit whose inherited record describes content the copy
+      does not hold, which is what makes the merge base of a clone the clone
+      itself. home.sync.stale.baseline measures the result --
+      reconciledWithoutAHuman = 1, spuriousConflict = 0.
+    design_note: >
+      The model's SHARED_ANCESTOR abstraction -- take a path only against a
+      baseline the SOURCE has itself held -- is one implementable answer
+      (compare the two homes' entryDigests, or keep a per-source ancestor the
+      way a remote-tracking ref does). Refusing with a conflict instead is
+      another, and cheaper. Which one is an owner decision about what --merge
+      promises, which is why this is a ticket and not a patch.
+    resolution: >
+      Neither of the two options in design_note, and both of their effects. What
+      a merge WRITES DOWN was wrong, not only what it reads: entryDigests now
+      records the SOURCE's tree at the reconcile -- the state the two homes then
+      demonstrably share -- while contentDigest goes on recording what was
+      written here. A merged tree is a state the source never passed through, so
+      it was never eligible to be the next merge's base. mergeBase then prefers
+      the destination's record only when it is evidence about this source, and
+      otherwise falls back to the SOURCE's record, which is sound because the
+      source passed through it by construction and the destination's half of
+      "only one side moved" is enforced per path by mergePlan. Neither
+      available: no base, and the unit conflicts.
+    acceptance:
+      assertions:
+        - A merge takes a path only against a baseline the source itself passed through.
+        - External_regression_mergebase.cfg keeps producing a counterexample.
+        - 'HomeSyncMergeTest "DEFECT PIN CHM-10" is turned into the assertion of the correct behaviour and renamed, not deleted: the pin is the record that the defect was real, and a third merge round was added because the defect was in what a merge writes down and would otherwise revert the work one round later.'
+      evidence:
+        unit: 'HomeSyncMergeTest "a second --merge keeps the work the first one kept (CHM-10)" (was the DEFECT PIN)'
+        graph: 'home-sync node home.sync.provenance: three merges from one source, asserted on the bytes of the file the source never touched'
+        tlc: External_regression_mergebase.cfg still violates AReconciliationOnlyWritesAgainstABaselineBothHomesPassedThrough at depth 4 (26 distinct states)
+        mutation: 'recorded the merged tree as the baseline again (entryDigests from the staged tree, sourceDigest unchanged); the named unit test failed with "expected <AGENT WORK> but was <v1>"; reverted and verified with shasum -a 256 -c'
+
+  - id: CHM-11
+    title: "`home sync` and `home close-out` have no out-of-process coverage"
+    phase: CHM
+    status: closed
+    closed: "2026-07-27"
+    closed_by: ea03c22
+    opened_and_closed_the_same_day: true
+    objective: >
+      Both commands were exercised only through their Java classes, in process.
+      Nothing ran `skill-manager home sync` or `skill-manager home close-out` as
+      a command, so argument parsing, exit codes and the --json shape had never
+      been executed by a test -- including HomeCloseOut.BLOCKED_EXIT_CODE, whose
+      entire purpose is to be observed by a caller that is not this JVM.
+    resolution: >
+      Closed by the `home-sync` graph: 11 nodes, 112 assertions, all four
+      directions between the three tiers, driving the real CLI over real homes.
+      It landed while this slice was being modelled, so the ticket was written
+      against a gap that was real that morning and closed that evening. Recorded
+      as opened-and-closed rather than deleted, because the bindings file said
+      `status: absent` for a day and someone reading the history is entitled to
+      see why.
+    evidence:
+      graph: home-sync
+      command: python3 skills/test_graph/scripts/run.py home-sync
+      result: "BUILD SUCCESSFUL, 11/11 node envelopes passed, 112 assertions, 0 non-passing"
+      mutations: "3 registered, 3 killed, each on state rather than on an exit code"
+      note: >
+        Not run by this ticket's author; recorded from ea03c22, whose own
+        evidence block reports it. The bindings this file now carries name the
+        graph's real node and assertion ids, checked against
+        test_graph/sources/home-sync/.
+
+  - id: CHM-12
+    title: "A merge records the source's whole tree as the shared baseline, and the next reconcile overwrites the work"
+    phase: CHM
+    status: closed
+    closed: "2026-07-28"
+    found_by: manual exploratory testing of the ordinary three-tier round trip
+    objective: >
+      The documented three-tier flow, with TWO ticket worktrees instead of one,
+      destroys the second worktree's edit while reporting clean=true at every
+      step. No operator error is involved. Root cause: writeCopyRecord wrote the
+      SOURCE's entire tree as the destination's new entryDigests, including
+      paths the reconciliation had DECLINED to write. After `project -> root
+      --merge`, the root home's record claimed root and project last shared a
+      byte root had never held; the next `root -> project --merge` read d = b as
+      "the destination is standing on the base" and overwrote it, describing
+      itself as "1 file(s) taken from the source; local work kept" while
+      deleting the local work. Afterwards the edit existed in NO home.
+
+      This is CHM-10's failure mode reintroduced through the record-WRITE side
+      rather than the base-selection side, and it violates the class's own
+      stated rule: a reconciliation may destroy bytes in the destination only
+      where it can show the SOURCE passed through them.
+    resolution: >
+      The baseline rule gains a fourth decision, "what a reconciliation writes
+      down", stated in ChildHomeMaterializer's class javadoc beside the three
+      that were already there. ChildHomeMaterializer.sharedAfterMerge computes
+      the record a merge may write: a path is claimed only where this pass can
+      SHOW both homes stood on the byte -- it was just written here from the
+      source, the two sides already agreed on it, or the source is still
+      standing on a base that was itself shared with this destination. Anything
+      else is omitted, and a missing path reads as "no baseline here", which
+      routes the next merge on that path to a conflict rather than to a silent
+      overwrite. writeMergeRecord is separate from writeCopyRecord so that
+      passing the source's whole fingerprint is no longer something a caller can
+      do by accident.
+    also_fixed: >
+      The related report. A merge whose every differing path had s = b announced
+      "the destination is ahead of the source; the source has nothing to
+      contribute" even when the destination was BEHIND and the base was only the
+      source's own record of what it was handed. The status stays UNCHANGED --
+      measured: reporting it as unresolved blocks close-out for the ordinary,
+      correct case of a worktree that is merely behind on a file another
+      worktree contributed -- but the sentence no longer asserts a direction the
+      evidence cannot support, and it names what to run when the direction turns
+      out to be the other one.
+    model_change: >
+      The record-WRITE decision is now separate from base selection in
+      External.tla, and it had to be: with only MergeBasePolicy to vary, a
+      reconciler that reads soundly and then records something it has no right
+      to was inexpressible, and this defect was invisible to every config in the
+      directory. External gains RecordWritePolicy (SHARED_ONLY / SOURCE_TREE /
+      MERGED_TREE), the NoBaseline value a partial entryDigests map needs, the
+      source-record FALLBACK the code has always had and the model did not, and
+      the invariant ARecordClaimsNoBaselineTheDestinationNeverStoodOn.
+
+      Two operators were split along the way, because separating the policies
+      exposed that the model had been conflating them: DestMovedAt ("has the
+      destination moved off its OWN record", which is what makes a tree pristine
+      for the wholesale-copy path) and DestOnBaseAt ("is the destination
+      standing on the base this merge measured"). The write log now asks the
+      wholesale-copy path and the merge path the question each of them actually
+      answered, which is also why all three pre-existing merge-base regression
+      configs keep producing their original counterexamples.
+    acceptance:
+      assertions:
+        - After a merge, entryDigests names no path the two homes are not both standing on.
+        - The ordinary three-tier round trip with two worktrees loses neither worktree's edit.
+        - External_regression_recordsourcetree.cfg keeps producing a counterexample.
+    evidence:
+      unit:
+        - 'HomeSyncMergeTest "a merge claims no shared baseline for a path it declined to write (CHM-12)" -- the invariant, stated over the record on disk'
+        - 'HomeSyncMergeTest "the ordinary three-tier round trip destroys no worktree edit (CHM-12)" -- the consequence, four homes and a teardown'
+      graph: 'home-sync node home.sync.round.trip: the six-command sequence through the real CLI over real homes, with a real rm -rf between, asserted on bytes read back off disk'
+      tlc: 'External_regression_recordsourcetree.cfg violates ARecordClaimsNoBaselineTheDestinationNeverStoodOn at depth 7 (2,815 distinct states, 1s). External_sync.cfg and External_sync_merge.cfg carry the same invariant and pass to exhaustion. All 22 pre-existing expected-violation configs still violate the same invariant; all 11 pre-existing terminating must-pass configs still pass.'
+      mutation: 'restored `writeCopyRecord(name, kind, source, stagedPrint.digest(), src, MERGED)` in place of the sharedAfterMerge call (1 occurrence, counted first); the named unit test failed on the record claim AND the round-trip test failed on the bytes; reverted and verified with shasum -a 256 -c'
+
+  - id: CHM-15
+    title: "`project resolve` refreshes from the store over a tree a worktree just merged in"
+    phase: CHM
+    status: closed
+    closed: "2026-07-28"
+    found_by: asking which OTHER writers destroy bytes in a home, after CHM-9/10/12 closed home sync
+    objective: >
+      `home sync --merge` from a ticket worktree leaves the project home
+      holding a tree that is PRISTINE BY ITS OWN RECORD -- the merge rewrote
+      that record -- while being a wholesale copy of no store on earth.
+      ChildHomeMaterializer.reconcile asks all three clauses of the baseline
+      rule before it destroys anything: the destination still holds what its
+      record says, the record is evidence about THIS source, and the tree is
+      not a merge result. copyUnit -- the downward materialization that
+      `project resolve` and `project sync` run -- asked only the first, and so
+      did isLocallyModified, the predicate a prune, a teardown and a close-out
+      consult before deleting.
+
+      Consequence, reproduced end to end against the real CLI: resolve, clone
+      the project home into a worktree, edit, `home sync --merge` back,
+      `home close-out` clears, `rm -rf` the worktree, `project resolve` again.
+      The ticket's bytes then existed in NO home, and the command that deleted
+      them reported MATERIALIZED with the detail "copied from the parent
+      store". No operator error is involved: it is the epic's documented flow
+      with the ordinary dependency-refresh command run after it.
+    resolution: >
+      One reading of the rule, not three. ChildHomeMaterializer.Disposal is the
+      whole conjunction as a value -- baseline, destUntouched,
+      recordIsAboutThisSource, mergeResult -- computed once by disposal() and
+      consumed by copyUnit, reconcile and isLocallyModified. The three inlined
+      copies that disagreed are gone. linkUnit was brought under the same
+      value: linkPath deletes a real directory to put a symlink where it stood,
+      so a COPY child home somebody edited could be destroyed by a later pass
+      that merely asked for LINK.
+
+      The choke point is inside ChildHomeMaterializer rather than in Fs or in a
+      new collaborator, and the reason is what evidence is available where: Fs
+      knows nothing about homes or records, so a guard there would either have
+      to be handed a baseline by every caller -- which is the same N call sites
+      -- or invent provenance it cannot have.
+    model_change: >
+      External gains ChildRefreshProvenance (SOURCE_AWARE /
+      CONTENT_DIGEST_ONLY), the StoreOrigin token for a writer that is not a
+      tier, and the action RefreshProjectChildHomeFromStore in the tier slice.
+      That is what made the defect expressible at all: the unit slice's
+      LocallyModified is content-based and so already forbade this, while the
+      code's is record-based and did not. The defect lives in the difference,
+      and the difference is only visible where records are.
+    acceptance:
+      assertions:
+        - A tree a worktree merged into a project home survives the next materialization from the store.
+        - The pass that declines to overwrite it names it, and names something to run.
+        - A LINK-mode pass does not delete an edited child unit to install a symlink.
+        - External_regression_childrefresh.cfg keeps producing a counterexample.
+    evidence:
+      unit:
+        - 'ProjectChildHomeMaterializationTest "a merge from a worktree survives the next parent-store materialization" -- bytes, plus the isLocallyModified predicate'
+        - 'ProjectChildHomeMaterializationTest "LINK mode does not delete an edited child unit to install a symlink"'
+      graph: 'home-sync node home.sync.project.seam: resolve / clone / edit / merge / close-out / rm -rf / resolve / project sync, through the real CLI over real homes, asserted on bytes read back off disk'
+      tlc: 'External_regression_childrefresh.cfg violates AReconciliationOnlyWritesAgainstABaselineBothHomesPassedThrough (51 distinct states). All 23 pre-existing expected-violation configs still violate the same invariant; all 11 pre-existing terminating must-pass configs still pass.'
+      mutation: >
+        Three, each reverted and verified with shasum -a 256 -c.
+        (1) `if (!disposal.disposable())` -> `if (false)` in copyUnit (1 occurrence, counted first)
+        failed "a merge from a worktree survives the next parent-store materialization" on the bytes.
+        (2) isLocallyModified restored to the two-line copyBaseline comparison
+        failed the same test on "a tree merged up from a worktree is not the parent store's to delete".
+        (3) the linkUnit guard condition -> `if (false)`
+        failed "LINK mode does not delete an edited child unit to install a symlink" on the symlink assertion.
+
+  - id: CHM-16
+    title: "Three writers delete hand-authored skills out of an agent tree, and one of them writes the licence for another"
+    phase: CHM
+    status: closed
+    closed: "2026-07-28"
+    found_by: enumerating every writer into a home that does not go through ChildHomeMaterializer
+    objective: >
+      `<home>/.claude|.codex|.gemini/skills/<name>` is not a skill-manager-only
+      namespace. It is where a human writes skills by hand. Three writers
+      destroyed content there with no warning, no backup, and no mention in any
+      report, and no two of them were in the same file:
+
+      - the three projectors' apply(), each carrying its own copy of "delete
+        whatever is at the target, then link";
+      - their remove(), the same six lines inverted;
+      - BindingBackfill, which adopted ANY existing path at a projection target
+        into the projection ledger as though skill-manager had put it there --
+        after which the ledger-driven LiveInterpreter.reverseProjection deleted
+        it on the next uninstall, believing it was removing its own symlink.
+
+      The third is the one that makes this a choke-point problem rather than a
+      guard problem: guarding the projectors closed the install door and left
+      the uninstall door open, and the ledger row that authorized the deletion
+      was written by a third file again. Measured that way -- the graph node
+      failed on `uninstall` after the projector fix passed on `install`.
+    resolution: >
+      ProjectionOwnership, one predicate shared by all three doors: a
+      projection may destroy only a symlink (its bytes live where it points) or
+      a directory the source still holds byte for byte (the copy fallback's own
+      output). Anything else is left alone and named.
+
+      Deliberately NOT a materialization record. A projection is a pure
+      function of the store, so entitlement is decidable from the two paths
+      alone; a provenance file for it would be machinery nobody needs. Two
+      mechanisms -- ChildHomeMaterializer.Disposal for unit trees,
+      ProjectionOwnership for agent trees -- because the evidence available
+      differs; one rule, because the requirement does not.
+
+      Projector.apply and .remove became default methods returning whether the
+      write landed, so ProjectorRegistry records only projections that are
+      really there, and a unit whose every projection was held back fails its
+      agent-sync step instead of reporting success.
+    acceptance:
+      assertions:
+        - Installing a unit whose name collides with a hand-written skill does not destroy it.
+        - Uninstalling does not delete a hand-written skill through the ledger.
+        - The backfill does not adopt a path it cannot show is a projection.
+        - An ordinary unit still projects, and an ordinary uninstall still removes its own projection.
+    evidence:
+      unit:
+        - 'ClaudeProjectorTest "skill -- apply does not destroy a hand-authored directory at the target"'
+        - 'ClaudeProjectorTest "skill -- remove does not delete a hand-authored directory at the target"'
+        - 'ClaudeProjectorTest "skill -- apply still replaces the projector''s own copy-fallback output" (the happy path a guard must not refuse)'
+      graph: 'home-sync node home.sync.authored.agent.tree: install over a hand-written skill, then uninstall, through the real CLI, asserted on the authored bytes'
+      tlc: 'Not modelled. The agent-tree slice has no record to reason about and the entitlement is a two-path comparison; AuthoredContentIsNeverRewritten already carries the home-level form of the requirement. Recorded as a deliberate omission rather than an oversight.'
+      mutation: >
+        Replaced ProjectionOwnership.clear''s hold-back branch with
+        `Fs.deleteRecursive(target); return true;` (1 occurrence, counted first).
+        Both named ClaudeProjectorTest cases failed on the authored bytes;
+        reverted and verified with shasum -a 256 -c.
+
+  - id: CHM-17
+    title: "close-out compares build and tool state inside a unit as if it were unit content"
+    phase: CHM
+    status: closed
+    closed: "2026-07-29"
+    github_issue: 41
+    found_by: running a worktree's own tooling once, on three real repositories
+    objective: >
+      Running `discover.py` in a ticket worktree -- the thing a worktree exists
+      to do -- writes
+      `skills/test-graph/project_sdk_sources/build-logic/.gradle/**` and
+      `scripts/__pycache__/*.pyc` INSIDE a unit. Those moved the unit's digest,
+      so `home close-out` returned `conflicted` with a non-actionable remedy
+      ("... then resolve: executionHistory.bin, ..."), the printed remedy run
+      verbatim exited 1 without clearing the gate, and `home sync --merge` then
+      reported that nothing was written. The unit stayed unreconciled forever.
+      Authorship confirmed by timestamps: 6, 5 and 5 files across three
+      repositories. A built jar
+      (validation-graph-build-logic-0.1.0.jar) was separately carried
+      worktree -> project by a merge as though it were somebody's work.
+
+      `home clone` had skipped these names inside a unit since the first clone.
+      ChildHomeMaterializer never asked. One name skipped by one caller and not
+      the other is a unit that reports conflicted for good.
+    resolution: >
+      One definition of re-derivable, dev.skillmanager.shared.util.Rederivable,
+      read by both. It is applied at the top of BOTH walkers, so a skipped path
+      is invisible to the materializer in every direction at once: not
+      fingerprinted, so it cannot make a unit look edited; not copied, so it
+      cannot travel between homes; and NOT DELETED, because
+      carryOverUnownedTrees moves it across the atomic swap. "Not mine to
+      compare" and "mine to destroy" cannot both be true of the same bytes. A
+      directory whose only content is unowned is itself unowned, or the
+      exclusion would fail by exactly one directory level.
+
+      TWO SCOPES, and the asymmetry is the answer to "shared, derived, or
+      separate". Rederivable.CACHES -- tool-private names that can only be
+      caches -- is shared verbatim with HomeCloner, so its behaviour is
+      unchanged. Rederivable.OUTPUT_ROOTS (build, target, node_modules, .venv,
+      venv) is read by the reconcile ONLY: a clone has to hand over a home that
+      WORKS and re-anchors those trees per copy, and
+      node_modules/<pkg>/build/Release/*.node is a prebuilt native binary
+      nothing on the destination rebuilds; a reconcile has no re-anchoring pass
+      at all, so a .venv it copied would arrive with console-script shebangs
+      naming the SOURCE home. Two questions, one answer where the questions
+      agree.
+
+      `.git` IS DELIBERATELY NOT IN THE SET, stated at length in Rederivable's
+      javadoc under an anchor, because it churns exactly like the entries that
+      are and every instinct says to add it. Issue #29: a unit whose agent
+      COMMITTED work holds those commits in .git and nowhere else, so a skipped
+      .git makes the unit read as unmodified, clears the teardown, and takes
+      the commits with it.
+    model_change: >
+      None, and the reason is recorded rather than left implicit. The claim is
+      about WHICH BYTES a reconciliation owns; sync_body is a total function
+      over SyncPaths in which every path is content by construction. Expressing
+      it needs a second, disjoint path class and multiplies the axis this slice
+      was already decomposed to control -- for a property decided by one
+      predicate over path NAMES. Covered end to end instead.
+    acceptance:
+      assertions:
+        - A worktree that was only built in is reported unchanged and its teardown clears.
+        - Build output does not travel between homes.
+        - A refresh that rewrites the unit around it does not delete it.
+        - A unit the agent committed in still blocks the teardown.
+    evidence:
+      unit:
+        - 'HomeSyncTest "build output written inside a unit does not make the unit differ" -- status, the gate, and the bytes still on disk'
+        - 'HomeSyncTest "a refresh keeps the build output it does not own"'
+        - 'HomeSyncTest "a .git directory inside a unit is content, never skipped as build output" -- the guard on the fix'
+      graph: >
+        home-sync node home.sync.built.in.unit. It RUNS python3 on a script that
+        imports a sibling module and writes a Gradle cache and a jar, then
+        asserts about whatever the run left behind -- the .pyc's path and
+        filename are CPython's, not the node's. Carries the #29 guard in the
+        same node: a second unit is `git init`ed and committed in, and the
+        teardown must still refuse.
+      tlc: 'Not modelled; see model_change. All 24 pre-existing expected-violation configs still violate and all 11 must-pass configs still pass.'
+      mutation: >
+        `isUnowned` -> `return false` (4 occurrences of the symbol counted
+        first: 1 definition and 3 uses, all routing through the one definition).
+        Killed HomeSyncTest "build output written inside a unit does not make
+        the unit differ" on the STATUS and "a refresh keeps the build output it
+        does not own" on the refresh. Reverted; shasum -a 256 -c OK.
+
+  - id: CHM-18
+    title: "`--dry-run` creates a directory and a lock file in the destination it promised not to write"
+    phase: CHM
+    status: closed
+    closed: "2026-07-29"
+    github_issue: 42
+    found_by: measuring what a dry run left behind in the operator's own read-only home
+    objective: >
+      A dry run created `~/.skill-manager/.materialization/` and a zero-byte
+      `.materialization/.home.lock` inside it. `--dry-run` is documented
+      "Compute and print the whole report, write nothing". Content-benign, and
+      still: it breaks the contract, it would fail outright against a read-only
+      or frozen destination, and it is exactly the write a caller reaches for
+      `--dry-run` to avoid. The lock was acquired BEFORE the plan was computed,
+      so no amount of care later could have prevented it.
+    resolution: >
+      HomeLock.acquireWithoutCreating. The in-process ReentrantLock is taken
+      unconditionally -- it is memory, not disk, and it excludes every writer in
+      this JVM completely. The OS file lock is taken only when the lock file
+      already EXISTS, and that is not a concession: creating that file is the
+      first thing acquiring the lock does, so its absence is positive evidence
+      that no process anywhere holds it. There is nothing to exclude against
+      and nothing to wait for. Where the file is there, the ordinary path runs
+      unchanged, wait included.
+
+      The residual window -- a peer that begins AFTER the check -- is bounded
+      and stated rather than waved away: every real writer stages each unit and
+      swaps it in atomically, so no unit is ever read half-written, and the
+      worst case is a report naming units from either side of a peer's pass,
+      which is what it would have said had the peer run a millisecond earlier.
+    model_change: >
+      None. The claim is about a filesystem side effect of acquiring a lock,
+      and this model has neither a filesystem nor a lock.
+    acceptance:
+      assertions:
+        - A dry run against a destination that does not exist does not create it.
+        - A dry run against an existing home creates nothing at all in it.
+        - A real run still creates and holds the lock file.
+    evidence:
+      unit: 'HomeSyncTest "--dry-run reports the whole reconciliation and writes nothing" -- on file PRESENCE, plus the empty-directory case so "nothing was created" is measured rather than inferred from the parent being absent, plus the real run still locking'
+      graph: 'home-sync node home.sync.permutations: the allow-list handed to wroteNothingBut is now EMPTY, and the fresh-destination case asserts the directory does not exist'
+      tlc: 'Not modelled; see model_change.'
+      mutation: >
+        `HomeLock.acquireWithoutCreating` -> `HomeLock.acquire` at its one call
+        site (counted first: 1 use, 1 javadoc reference). Killed HomeSyncTest
+        "--dry-run reports the whole reconciliation and writes nothing" on
+        "a dry run against a destination that does not exist does not create
+        it", which is a file-presence assertion. Reverted; shasum -a 256 -c OK.
+
+  - id: CHM-19
+    title: "project -> root is a silent no-op against the only destination an operator has"
+    phase: CHM
+    status: closed
+    closed: "2026-07-29"
+    github_issue: 43
+    found_by: running the documented upward sync against the real root home
+    objective: >
+      `home sync --from <project> --to ~/.skill-manager` reported EVERY shared
+      unit held-back -- "no usable materialization record, so its contents
+      cannot be shown to be disposable" -- and exited 0 having reconciled
+      nothing. 6, 7 and 5 units on three real repositories. The same sync
+      against a throwaway root produced by `home clone` succeeds (6 updated,
+      byte-identical), because a clone records baselines and a home that was
+      INSTALLED into has none.
+    resolution: >
+      A second showing of the baseline rule's first decision, not a second
+      rule. Disposal gains sourceHeldTheseBytes: the SOURCE's own record names
+      the tree the destination is standing on now. The rule is unchanged word
+      for word -- the bytes a fast-forward destroys must be bytes the source
+      passed through -- and only the evidence differs, because a record-less
+      destination cannot answer for itself and the source can.
+
+      NOT adoption, deliberately. Writing a baseline into the record-less
+      destination asserts that two homes shared bytes they may never have
+      shared, it persists, and the next reconcile in either direction reads it
+      as a licence. Nothing is written; this is a question asked and answered
+      from evidence already on disk, once, per pass.
+
+      contentDigest and NOT sourceDigest, which is the whole safety argument in
+      one field name: contentDigest is "the bytes this reconcile wrote HERE",
+      so the source demonstrably held them, while sourceDigest is the tree the
+      source was HANDED, which after a merge the source never held. It is also
+      whole-tree, which entryDigests deliberately is not after a merge.
+
+      Every hazardous shape stays blocked because all of them make the
+      destination hold something else -- a third home's work merged in since, an
+      edit made there, an upstream change -- and each moves the destination's
+      digest off the source's recorded content, routing the unit back to
+      held-back or to a conflict a human resolves. copyUnit was brought under
+      the same value in the same edit, because Disposal is the single reading of
+      the rule and CHM-15 was exactly what happens when it is not.
+    model_change: >
+      External gains RecordlessDestinationPolicy (SOURCE_WITNESSED /
+      NEVER_DISPOSABLE / ALWAYS_DISPOSABLE), the NoRecordOrigin token, and a
+      ROOT tier that starts record-less in Init. That last is what made the
+      defect expressible: Init handed EVERY tier a clone-time baseline -- the
+      state `home clone` leaves behind -- so the one destination an operator
+      actually has was unrepresentable, and a reconciliation that could write
+      nothing into it was indistinguishable from a correct one. DestMovedAt
+      gained the `# NoBaseline` guard the record-write rule already had, because
+      a record that claims nothing cannot have been moved away from.
+
+      NEVER_DISPOSABLE -- the code as it was -- violates NOTHING, and that is
+      why the axis had to exist rather than a counterexample: safe and useless
+      is not catchable by a safety invariant.
+    acceptance:
+      assertions:
+        - A plain upward sync into a record-less home moves the bytes.
+        - A record-less home holding bytes no record accounts for is still held back, intact.
+        - The refusal names which of the two reasons applied.
+        - External_regression_blindadoption.cfg keeps producing a counterexample.
+    evidence:
+      unit:
+        - 'HomeSyncMergeTest "a record-less destination the source is on record as having held is refreshed" -- both halves, on bytes'
+        - 'HomeSyncMergeTest "a destination unit with no materialization record is never overwritten" -- the untouched-bytes half, message updated'
+        - 'HomeSyncTest "a clone of a home that edited a unit in place restates the baseline" -- now UPDATED rather than MERGED, same clone-time baseline doing the work'
+      graph: 'home-sync node home.sync.project.to.root, rewritten: the fast-forward that now happens AND the hold-back that still must, plus that --merge folds the two disjoint edits without spending the root home own edit'
+      tlc: 'External_regression_blindadoption.cfg violates AReconciliationOnlyWritesAgainstABaselineBothHomesPassedThrough at depth 3 (8 distinct states). All 24 pre-existing expected-violation configs still violate the same invariant; all 11 pre-existing terminating must-pass configs still pass. Sync-slice state counts moved and are re-recorded in spec_manifest.yaml.'
+      mutation: >
+        `sourceHeldTheseBytes` -> `if (true) return false` (8 occurrences of the
+        symbol counted first: 1 definition, 1 record component, 1 read in
+        disposable(), 1 write in disposal(), 4 in prose -- all routing through
+        the one definition). Killed HomeSyncMergeTest "a record-less destination
+        the source is on record as having held is refreshed" on
+        "a plain upward sync is no longer a silent no-op", and HomeSyncTest
+        "a clone of a home that edited a unit in place restates the baseline".
+        Reverted; shasum -a 256 -c OK.
+
+  - id: CHM-20
+    title: "the home's CLI entrypoint could never find a CLI, and the assertion covering it was one-sided"
+    phase: CHM
+    status: closed
+    closed: "2026-07-29"
+    found_by: an operator running the shim on a machine with a working CLI on PATH
+    objective: >
+      LauncherShims.cliScript() emitted `printf '%%s'`. That is correct in
+      script(String), which ends in `.formatted(agent)`, and wrong here, where
+      nothing unescapes it: the doubled percent reached bash literally, and bash
+      `printf '%%s'` prints the two characters `%s` rather than its argument. So
+      the filtered PATH became the single entry `%s`, `command -v skill-manager`
+      found nothing, and the shim took the "no CLI is provisioned" branch
+      UNCONDITIONALLY. Measured with /opt/homebrew/bin/skill-manager on PATH:
+      exit 127. All seven onboarded constituent homes affected.
+
+      It survived because CheckoutHomeProvisioned only ever exercised the
+      no-CLI-reachable case -- SKILL_MANAGER_CLI cleared and PATH set to the
+      shim's own directory -- and asserted a non-zero exit. A shim that ALWAYS
+      exits 127 satisfies that perfectly. A one-sided assertion cannot tell a
+      correct refusal from a dead command.
+
+      Worse than under-tested: the PATH-filtering loop exists so the shim does
+      not resolve to ITSELF (LaunchEnv puts <home>/bin/cli at the front of the
+      launch PATH). With printf broken the filter had never once run, so the
+      self-recursion guard was untested in practice.
+    resolution: >
+      Write the percent once, and say in the javadoc why it is once here and
+      twice one method above -- naming the trap for whoever adds a format
+      specifier later. The assertion is now two-sided in both the unit suite and
+      the graph, asserted on the exec'd CLI's OUTPUT rather than on a zero exit
+      (a shim that exits 0 without launching is the defect the shim exists to
+      prevent), plus a direct assertion that no `%%` survives in the generated
+      body.
+
+      The recursion guard is exercised for real: the shim's own directory FIRST
+      on PATH and a working stub behind it, exactly as a launch arranges them,
+      with a bounded wait so a self-exec spin is a NAMED failure rather than a
+      hung suite. Every case runs on a hermetic PATH holding links to bash,
+      dirname and tr and nothing else -- emptying PATH makes the shim die on a
+      missing dirname, which is a non-zero exit that looks like a refusal and is
+      not one, and leaving /usr/bin on it would let the refusal case find a real
+      skill-manager on some machines.
+    model_change: none
+    acceptance:
+      assertions:
+        - The shim execs the skill-manager it finds and hands the arguments over.
+        - The shim does not resolve to itself when its own directory leads PATH.
+        - The shim still refuses, with its diagnostic, when nothing is reachable.
+        - The generated body contains no doubled percent.
+    evidence:
+      unit:
+        - 'LauncherShimsTest "the cli entrypoint execs the skill-manager it finds on PATH" -- on the stub CLI output and its view of the arguments'
+        - 'LauncherShimsTest "the cli entrypoint never resolves to itself" -- bounded, so recursion is a named failure'
+        - 'LauncherShimsTest "the cli entrypoint refuses when no skill-manager is reachable" -- on the diagnostic, not on a bare non-zero exit'
+        - 'LauncherShimsTest "the cli entrypoint body carries no unformatted percent"'
+      graph: 'checkout-home node checkout.home.provisioned, three bounded invocations on a hermetic PATH: nothing reachable, a stub reachable, and the shim own directory first with the stub behind it'
+      mutation: >
+        Restored `printf '%%s'` at BOTH sites in cliScript() (2 occurrences
+        counted first; mutating one would have left the other half of the filter
+        working). Killed three named tests: "the cli entrypoint body carries no
+        unformatted percent" on the BYTES, and both
+        "the cli entrypoint execs the skill-manager it finds on PATH" and
+        "the cli entrypoint never resolves to itself" on the exec'd output --
+        each reporting the refusal banner where the stub sentinel was expected.
+        Reverted; shasum -a 256 -c OK.
+
+  - id: CHM-21
+    title: "a git-sourced unit's .git was digested as unit content, so it was held back forever -- and skipping it destroys commits"
+    phase: CHM
+    status: closed
+    closed: "2026-07-29"
+    github_issue: 29
+    found_by: end-to-end home-sync graph coverage, then TLC three times over on the model of the fix
+    objective: >
+      A unit installed from a git source keeps .git inside the home, so a COPY
+      carries it -- 61 entries, measured. .git rewrites itself on every git
+      command, `git status` included, so the unit's whole-tree digest moved off
+      contentDigest the first time anybody looked at it and every later pass
+      reported it locally modified. Nothing cleared that, ever, on exactly the
+      units an agent works in: `home close-out` could not be satisfied and the
+      worktree could not be torn down.
+
+      Skipping .git from the digest removes that symptom and is a DATA-LOSS
+      DEFECT, which is why this is its own ticket. A commit moves bytes ONLY
+      inside .git. An agent whose edit has already been synced up and who then
+      commits it locally has a working tree byte-identical to the record and
+      history that exists in one home on earth; excluded from the digest, that
+      unit reads UNMODIFIED, the gate clears, the worktree is removed, and the
+      commits stop existing.
+    resolution: >
+      Split the tree at .git and ask each half of the authority that can answer
+      it -- ChildHomeMaterializer.gitCopyIsUntouched: the digest for every byte
+      OUTSIDE .git (a new record field, worktreeDigest), and git for the history
+      (a second new field, historyDigest). Bookkeeping moves neither half; a
+      commit moves the second. `git status` is deliberately NOT consulted for the
+      worktree half: a unit that does not gitignore its build/ would come back
+      dirty and put issue #41 straight back.
+
+      gitHistoryMovedOn is shared with checkoutIsModified so a CHECKOUT and a
+      git-backed COPY cannot come to disagree about what "the agent has
+      committed something" means.
+
+      REWORKED AFTER REVIEW. The first version of this asked git ONE question --
+      HEAD == the recorded revision -- and that was a data-loss REGRESSION, not
+      merely a gap. A commit on a side branch the agent switched away from, and a
+      `git stash`, both leave HEAD where it was and the working tree clean, so the
+      unit read as pristine and a plain downward sync replaced .git wholesale:
+      measured, cat-file -e exit 128 on the side commit and an empty
+      `git stash list`, from a pass reporting "the destination held no local
+      work". Before #29 the whole-tree digest never matched after ANY git command,
+      so the permanent false positive was ACCIDENTALLY protecting every object in
+      the repository; replacing "the bytes are identical" with "(HEAD, worktree
+      bytes) are identical" made side branches, stashes, tags and notes disposable
+      at a stroke.
+
+      historyDigest is therefore a digest over the FULL ref listing
+      (`for-each-ref refs/`, which includes refs/stash) plus HEAD -- the asymmetry
+      rule applied literally, when in doubt conflict. A listing digest rather than
+      `rev-list --all --not <rev>` because a ref DELETION and an annotated tag are
+      both invisible to a reachability query, and the whole point is to stop
+      converting "cannot see" into "nothing there". Named costs: a fetched
+      remote-tracking ref and a deleted merged branch both read as moved-on, each
+      worth one conflict a human resolves.
+
+      Also added, because the record-based route cannot reach it:
+      gitTwinsDifferOnlyInBookkeeping, an UNCHANGED shortcut for two homes that
+      are identical outside .git and stand on the same refs. It is what makes the
+      issue's own words -- "after ANY git command on EITHER side" -- true, and it
+      is the only thing that clears close-out when the destination is an installed
+      home with no record at all (#43's shape) or when the churn happened in the
+      SOURCE. Safe unconditionally because it writes nothing.
+    model_change: >
+      A new axis on External.tla, additive and default-off. Constants
+      GitBackedUnits (FALSE pins every variable the axis adds at its initial
+      value, so all thirty pre-existing configs keep their exact state counts --
+      External_sync.cfg is still 65297/6379/21 and External_sync_guard_ffprovenance
+      still 480496/45542/24) and GitProvenance with FOUR values, because all three
+      of the others are defects and they fail in different directions.
+
+      sync_git carries TWO history components, head and side, and the second was
+      added in the rework because without it the HEAD_ONLY defect is
+      INEXPRESSIBLE: with only a tip, "the predicate reads HEAD" and "the
+      predicate reads the repository" are the same proposition and
+      External_sync_git.cfg is clean because the question cannot be asked. That
+      was a vacuous-model finding about this very slice, on a defect that had
+      already been measured on real homes.
+
+      Variables sync_git (per home: whether git has rewritten its own
+      bookkeeping, and the SET of commits reachable from HEAD) and sync_committed
+      (WITNESS: every commit ever made, written at the moment it is made because
+      a reconciliation destroys the commit and the evidence of it in the same
+      step). Actions ChurnGitBookkeepingInHomeTier -- which deliberately leaves
+      sync_history alone, because nobody authored anything -- and
+      CommitInHomeTier, which deliberately leaves sync_body alone, because that
+      is the whole trap. The record gained TWO git fields, not one:
+      git_head (evidence about this home alone) and git_base (evidence about a
+      pair, claimed only where the pass can show it).
+    spec_findings: >
+      THREE defects in the model of the fix, each found by TLC and none of which
+      a test would have reached:
+
+      1. SourceHeldDestBytes licensed a fast-forward into a RECORD-LESS
+         destination on the strength of the worktree paths alone, so a root home
+         that had committed was overwritten from a home whose worktree merely
+         agreed with it. The code does not have that hole -- the digest
+         sourceHeldTheseBytes compares is the WHOLE tree, .git included -- but a
+         desired-state model weaker than the code cannot protect it.
+         SourceHeldDestGit states the other half.
+
+      2. Writing the destination's own current head as the merge base made `d =
+         b` hold trivially, so the next merge read it as "only the source moved"
+         and took the agent's commit away with no conflict and no report. That is
+         CHM-10 exactly, one dimension across, and it is why the record carries
+         git_base separately from git_head.
+
+      3. A tip-only history produced a FALSE violation: a commit merged up and
+         then committed on top of is no longer any home's tip, and git has it as
+         an ancestor. Modelling the history as the reachable SET fixed the
+         invariant rather than weakening it.
+    acceptance:
+      assertions:
+        - Bookkeeping churn inside a unit does not hold the unit back, on EITHER side, and the churn is asserted to have moved the whole-tree digest first so the case cannot pass vacuously; the gate is asserted through HomeCloseOut.inspect().safe() rather than UnitSync.unresolved(), which is a strictly smaller set than what remedyFor blocks on.
+        - A commit reachable only from a side branch, and a stash, both survive -- asserted on cat-file -e and git stash list, never on a status.
+        - A commit the source does not have holds the unit back, with the working tree asserted byte-identical through entryDigests(root, {".git"}) -- the exact view the naive fix compares.
+        - A reconcile with the source moved on keeps the commit: HEAD, the commit object and the committed file's content are all still readable out of the destination afterwards.
+        - An uncommitted edit still holds the unit back, so the worktree half of the conjunction is load-bearing on its own.
+    evidence:
+      unit:
+        - 'HomeSyncGitUnitTest "git''s own bookkeeping inside a unit does not hold the unit back"'
+        - 'HomeSyncGitUnitTest "a commit the source does not have holds the unit back"'
+        - 'HomeSyncGitUnitTest "a reconcile keeps commits made in a unit whose working tree it did not change"'
+        - 'HomeSyncGitUnitTest "an uncommitted edit in a git-backed unit is still an edit"'
+        - 'HomeSyncGitUnitTest "a commit on a side branch survives, with HEAD never having moved"'
+        - 'HomeSyncGitUnitTest "a stash survives a sync that would otherwise replace .git"'
+        - 'HomeSyncTest "a .git directory inside a unit is content, never skipped as build output" -- epic #1''s guard, still green'
+      spec:
+        - 'External_sync_git.cfg -- No error has been found, 61149 states / 10120 distinct / depth 15'
+        - 'External_regression_wholetreegit.cfg -- GitBookkeepingIsNeverReportedAsWork violated at depth 2'
+        - 'External_regression_headonlygit.cfg -- CommittedWorkIsNeverDestroyed violated at depth 3, counterexample CommitOnSideRefInHomeTier then TearDownWorktreeHome'
+        - 'External_regression_skipgit.cfg -- CommittedWorkIsNeverDestroyed violated, 45 distinct states'
+        - 'External_sync_guard_skipgit.cfg -- GUARD: No error has been found, 83275/14924/19'
+        - 'External_sync_guard_headonlygit.cfg -- GUARD: No error has been found, 80241/13876/17, with TWO invariants removed; see the manifest entry for why the second removal is itself the finding'
+        - 'All 36 External configs re-run: every regression config violates its named invariant, every guard and must-pass config clean, and the pre-existing counts are byte-identical to the parent commit (External_sync 65297/6379/21, External_sync_guard_ffprovenance 480496/45542/24, External_home 2966/706/12, External 1302/250/9)'
+      graph: 'home-sync 17 nodes / 180 assertions passed; project-child-home 11/60; home-clone 8/59'
+      mutation: >
+        R1, THE SHIPPED REGRESSION AS A MUTATION: gitHistoryMovedOn's
+        historyDigest comparison replaced by the HEAD-only reading it had before
+        the rework (1 occurrence, counted first). Killed "a commit on a side
+        branch survives, with HEAD never having moved" ON THE OBJECT STORE
+        (cat-file -e 128) and "a stash survives a sync that would otherwise
+        replace .git" ON `git stash list` (empty) -- both reporting the pass's own
+        words, "refreshed from the source; the destination held no local work".
+
+        R2, the differ-only-in-bookkeeping shortcut stops comparing the history
+        (1 occurrence): killed "a commit the source does not have holds the unit
+        back" -- UNCHANGED for HELD_BACK, i.e. the shortcut would have become a
+        second way to call a home with a unique commit pristine.
+
+        R3, the shortcut removed entirely (1 occurrence): killed "git's own
+        bookkeeping inside a unit does not hold the unit back" on the close-out
+        gate, whose blocker came back as `updated -- the destination held no local
+        work` with a remedy. That is the symptom this shortcut exists for.
+
+        M1, THE REQUIRED NAIVE FIX: gitCopyIsUntouched's history clause replaced
+        by `return true`, which IS "skip .git in the digest" in this code's terms
+        (1 occurrence). Killed FOUR: both commit-survival cases, the side-branch
+        case and the stash case.
+
+        M1b, the literal form, adding .git to isUnowned (1 occurrence): killed
+        SEVEN, including epic #1's guard "a .git directory inside a unit is
+        content, never skipped as build output".
+
+        M1c, the worktree half of the conjunction removed (1 occurrence): killed
+        "an uncommitted edit in a git-backed unit is still an edit" plus
+        ProjectTrunkSyncTest "project sync does not destroy an edit in the child
+        home" -- ProjectTrunkSyncTest, corrected from an earlier report that named
+        ProjectChildHomeMaterializationTest, under which class the mutation kills
+        nothing.
+
+        Every mutation reverted; shasum -a 256 -c OK.
+
+  - id: CHM-24
+    title: "a git-backed unit's .git goes through the three-way merge algebra, so close-out names .git/index as a file to resolve"
+    phase: CHM
+    status: open
+    needs_github_issue: true
+    found_by: adversarial review of CHM-21, which measured it against the parent commit and found it byte-identical
+    objective: >
+      MEASURED, and reproduced again while closing CHM-21. Agent commits real
+      work in the worktree home, upstream also moves, `home close-out` exits 1:
+
+        conflicted  skill:gitskill -- 5 file(s) changed on both sides; nothing was written
+        fix skill:gitskill: <cli> home sync --from <wt> --to <proj> --merge
+          (then resolve: .git/COMMIT_EDITMSG, .git/index, .git/logs/HEAD,
+           .git/logs/refs/heads/main, .git/refs/heads/main)
+
+      Running that remedy verbatim exits 1 and leaves the gate exactly as it was,
+      permanently. Nobody resolves .git/index. This is issue #41's shape
+      re-created one directory over: a binary bookkeeping file named as a human's
+      merge task, in a remedy the gate's whole contract says is the exact command
+      that clears it.
+
+      PRE-EXISTING, not a regression: byte-identical against e8c6b96, and CHM-21
+      touched only the disposal question (Disposal.destUntouched and the
+      differ-only-in-bookkeeping shortcut), never mergePlan or
+      SyncConflictPaths. CHM-21 did narrow it -- a unit whose .git merely CHURNED
+      now reconciles as unchanged in both directions, so the remaining
+      unsatisfiable case needs genuinely divergent commits, where a human really
+      does have to do something. What they have to do is still not
+      "resolve .git/index".
+    why_its_own_ticket: >
+      Both obvious fixes are decisions with blast radius, and one of them is
+      unsafe:
+
+      (a) Exclude .git from the merge algebra's take/conflict sets. Then a
+          divergent history stops being reported by the MERGE path while the
+          DISPOSAL path still asks about it -- two readings of one question in one
+          class, which is CHM-15's shape exactly. Worse, for a unit whose only
+          difference IS the history (worktree files identical, the shape CHM-21's
+          central test uses), take and conflicts both go empty, the status becomes
+          unchanged, and close-out reports a worktree holding a unique commit as
+          SAFE. The narrow fix is itself a data-loss defect -- the same trap #29
+          had, one layer down.
+
+      (b) Route a git-backed COPY to `unit publish` the way a CHECKOUT already is,
+          and never merge its .git by file copy. Coherent, and it decides that a
+          commit may NOT travel between homes by `home sync` at all -- which
+          contradicts what CHM-21's spec slice models (GitTakeAllowed is currently
+          how a commit reaches the tier above) and needs `unit publish` in the
+          model before the invariant can be restated. It also has to answer what
+          clears the gate after publishing, since the two .git trees still differ.
+
+      So it needs a decision, a spec slice and its own mutation proofs. Bundling
+      it into a ticket whose blocker was a data-loss regression is how the epic
+      gets a second one.
+    acceptance:
+      assertions:
+        - The remedy a git-backed conflicted unit prints is runnable and, run verbatim, changes the verdict.
+        - No .git path is ever named to a human as a file to resolve.
+        - A worktree holding a commit the destination lacks is still refused, whichever route is chosen.
+
+  - id: CHM-22
+    title: "RECORD_SCHEMA_VERSION was not bumped when the digest scope changed, so a stale record held a unit back with no cause an operator could act on"
+    phase: CHM
+    status: closed
+    closed: "2026-07-29"
+    github_issue: 46
+    found_by: review of #41's fix
+    objective: >
+      #41 changed what a materialization record's digests are computed OVER:
+      re-derivable build output stopped counting as unit content. The version
+      number did not move, so a record written before it and one written after
+      describe two different trees and are not comparable. The first pass over a
+      home holding a pre-#41 record therefore saw a mismatch it could not
+      explain and held the unit back -- correctly, and SILENTLY. All seven
+      onboarded constituent homes carry such records. The silence is the defect,
+      not the hold-back.
+    resolution: >
+      Both halves of the issue's "either/or", because they answer different
+      questions.
+
+      BUMP: RECORD_SCHEMA_VERSION is 2, and usableAsEvidence -- one definition,
+      three readers (copyBaseline, hasEntries, sourceHeldTheseBytes: exactly the
+      three showings the baseline rule accepts) -- makes any other version no
+      evidence at all. Under the baseline rule that costs exactly the ability to
+      fast-forward and cannot cost bytes. The OTHER reading of "re-baseline" --
+      recomputing contentDigest from whatever the destination currently holds so
+      the tree reads as untouched again -- is the unsafe one: true by
+      construction, proving nothing about whether an agent edited the unit since
+      the copy, and a licence for the next reconcile. That is CHM-9's shape
+      reached through the version field.
+
+      `mode` is deliberately NOT gated on the version. It is the one field whose
+      whole job is to stop a deletion: a project-wide COPY default that won over
+      a recorded CHECKOUT would demote a tree holding unpushed commits.
+
+      Deliberate re-baselining happens in the one place it is sound --
+      recordCloneBaselines, where the home's content IS what the home it was
+      copied from held, by construction. Elsewhere a pristine unit self-heals on
+      the next pass and a non-pristine one holds back.
+
+      MESSAGE: staleSchemaNote names the schema and issue #41 as the cause, on
+      all three surfaces that report a hold-back (home sync's detail, which
+      close-out renders; copyUnit's held-back detail; and locallyModifiedUnits,
+      the predicate a prune and a teardown consult).
+    model_change: >
+      NONE, and the reason is worth stating rather than assuming. A record whose
+      schema this build cannot read is exactly RecordlessSyncRecord -- every path
+      claims NoBaseline -- which External.tla has had since #43, and
+      AReconciliationOnlyWritesAgainstABaselineBothHomesPassedThrough is already
+      the property that such a record may not license a write. Adding a schema
+      dimension would state the same rule twice, which
+      planning_rules.dual_representation_rule forbids for the same reason.
+    acceptance:
+      assertions:
+        - A record whose only defect is its version holds the unit back with its bytes intact, and the identical record at the current version still fast-forwards.
+        - The hold-back names the schema and the change, and does NOT say "locally modified".
+        - A clone re-baselines a record it cannot read and leaves one it can.
+        - A stale CHECKOUT record still keeps the unit a checkout.
+    evidence:
+      unit:
+        - 'HomeSyncTest "a record from an older schema is not a licence to replace anything" -- on the destination''s bytes, its tree digest, and both surfaces'' wording, with the current-schema half asserted too'
+        - 'HomeSyncTest "a clone re-baselines a record it cannot read, and leaves one it can"'
+        - 'HomeSyncGitUnitTest "a record this build cannot read still keeps a checkout a checkout" -- on the record''s own bytes'
+      graph: 'home-sync 17/180, project-child-home 11/60, home-clone 8/59 -- all passed'
+      mutation: >
+        Removed the schema gate (usableAsEvidence -> `record != null`, 1
+        definition site feeding 3 readers, counted first): killed "a record from
+        an older schema is not a licence to replace anything" ON THE BYTES --
+        the destination was overwritten -- and "a clone re-baselines a record it
+        cannot read".
+
+        Silenced staleSchemaNote (1 site): killed the same test on the message,
+        which then fell back to the #43 sentence about "no materialization
+        record of its own" -- true, and useless to whoever has to act on it.
+
+        Gated `mode` on the version too (1 site added): killed "a record this
+        build cannot read still keeps a checkout a checkout" -- the record came
+        back as mode COPY, the checkout demoted to an ordinary copy.
+
+        Removed the deliberate clone re-baseline (1 site): killed "a clone
+        re-baselines a record it cannot read". Every mutation reverted;
+        shasum -a 256 -c OK.
+      note: >
+        The insensitive first version of the checkout assertion never landed --
+        it was written and replaced inside the same session, so
+        `git show --stat -- src/test` on the first commit is 673 insertions and
+        ZERO deletions. No coverage was lost; an earlier report described it as a
+        deletion, which the diff does not say.
+
+        A first version of the checkout assertion, written against a non-git
+        child tree, was INSENSITIVE to the mode mutation -- the stale record also
+        fails as a COPY baseline, so the unit was held back either way and the
+        test passed for the wrong reason. Replaced with the git-backed form, where
+        the child tree is byte-identical to the store's and the demotion is
+        reachable through the adopt-an-identical-copy branch. A mutation that
+        kills nothing is a finding about the test.
+
+  - id: CHM-23
+    title: "audit.log was written by install and not by sync -- no trail for the command that touches the most files"
+    phase: CHM
+    status: closed
+    closed: "2026-07-29"
+    github_issue: 45
+    found_by: attributing a real-home change during the sync-blocker work, which is exactly what an audit log is for
+    objective: >
+      Measured on the operator's home: audit.log's last entry was 8 days old
+      while a `skill-manager sync` rewrote 101 files in it.
+    resolution: >
+      Give sync install's treatment -- the same SkillEffect.RecordAuditPlan, in
+      the same position (after the plan is built, before it runs) -- and then the
+      part that makes it non-vacuous. Sync's plan comes from
+      BuildResolveGraphFromUnmetReferences, so a steady-state sync plans ZERO
+      actions and the same treatment alone would have logged nothing on the pass
+      that re-merged every unit. Proven by mutation, not asserted.
+
+      So RecordAuditPlan gained a `targets` component, filled from the one place
+      that already builds the targets (SyncUseCase.auditTargets), naming the unit
+      AND the arm -- git, from-dir, doc-repo, harness -- because an entry that
+      named only the unit could not tell an investigator which set of bytes
+      moved. One definition (AuditLog.record), one handler, one emission site. A
+      new component on the existing effect rather than a second audit-writing
+      effect or an AuditLog call in each of the four target handlers: four
+      handlers writing their own line is four chances to miss one, which is how
+      this came to be missing. Install's behaviour is byte-identical (empty
+      targets).
+
+      HomeCloner.SKIPPED_ROOT_FILES still excludes audit.log, and that is now
+      asserted: it is the SOURCE home's history, and a clone that inherited it
+      would claim actions it never took.
+    model_change: none
+    acceptance:
+      assertions:
+        - A sync appends an entry naming the verb, the unit and the arm, and the log had none before it ran.
+        - Every entry keeps the log's four-field shape however it got there.
+        - A second sync appends rather than replacing.
+        - A clone of a home that has a log does not carry it, while demonstrably copying the rest of the home.
+    evidence:
+      unit:
+        - 'AuditTrailTest "sync appends a line naming the verb and the unit it touched" -- on the file''s bytes, through a real Executor run of the sync program'
+        - 'AuditTrailTest "a clone does not carry the source home''s audit log"'
+      mutation: >
+        Removed the effect from the sync program (1 site): killed "sync appends a
+        line naming the verb and the unit it touched" -- no audit.log at all.
+
+        THE INTERESTING ONE: kept the effect and dropped the targets, i.e.
+        install's treatment exactly as specified (1 site). Killed the same test,
+        and again with no audit.log created at all -- direct evidence that "give
+        sync the same treatment" would have shipped a green fix that logged
+        nothing on the measured scenario.
+
+        Removed audit.log from HomeCloner.SKIPPED_ROOT_FILES (1 site): killed "a
+        clone does not carry the source home's audit log". Every mutation
+        reverted; shasum -a 256 -c OK.
+
+  - id: CHM-13
+    title: "`home close-out` clears a teardown for a path that is not a home at all"
+    phase: CHM
+    status: closed
+    closed: "2026-07-28"
+    found_by: manual exploratory testing
+    objective: >
+      `home close-out --home <the worktree DIRECTORY>` -- rather than
+      <worktree>/.skill-manager -- exited 0 with "safe": true, "blockers": [],
+      and printed the check mark line naming the directory that held the only
+      copy of the agent's edit. So did a --home that did not exist at all. The
+      gate FAILED OPEN, and the mistake is maximally likely: <worktree> is
+      exactly the argument `git worktree remove` takes.
+
+      Mechanism: nothing validated home-ness. HomeSync.unitsToVisit returns the
+      union of both sides, a non-home yields zero units, every unit becomes
+      REMOVED_UPSTREAM, and HomeCloseOut.remedyFor maps REMOVED_UPSTREAM to no
+      blocker. Same hole on the sync side: `home sync --from <a nonexistent
+      path>` printed "reconciled" with all-zero counts, exit 0, and created the
+      destination's layout on the way; --from <a regular file> behaved
+      identically.
+    resolution: >
+      NotAHomeException.require refuses before anything is read or written, for
+      `home sync --from`, `home close-out --home` and `home close-out --into`.
+      Home-ness is decided by LaunchEnv.looksLikeStoreRoot, made public rather
+      than re-spelled: it already encoded the test for the PATH sanitizer, and
+      three spellings of "is this a home" would eventually disagree about
+      exactly the homes where it matters. Exit code 2, distinct from 0
+      (reconciled / safe), 1 (this home still holds work) and 9 (refused by
+      policy); --json callers get {"error":"not_a_home", "safe":false,
+      "clean":false} rather than a stack trace, so a script cannot read the
+      refusal as approval.
+
+      A sync DESTINATION is deliberately not validated: creating a tier by
+      reconciling into it is the operation this epic exists for.
+    not_fixed_here: >
+      `home describe`, `home drift` and `home policy` also answer for arbitrary
+      paths, and each calls store.init(), which lays out a home wherever it is
+      pointed. Left alone on purpose and reported instead: `home policy frozen
+      --home <a home being created>` is a real gesture, and none of the three
+      claims anything about content or authorises a teardown. A command that
+      says "there is nothing here to lose" is a different class of defect from
+      one that leaves an empty directory tree at a mistyped path.
+    evidence:
+      unit: 'HomeSyncTest "close-out refuses a path that is not a home rather than clearing it" -- the worktree directory, a nonexistent path, a regular file, and the --into end, each asserted on the exception TYPE and on the real home being untouched'
+      graph: 'home-sync node home.sync.homeness: the same four through the real CLI, asserted on exit code AND on nothing having been created'
+      mutation: 'deleted the NotAHomeException.require call in HomeSync.run (1 occurrence, counted first) and both in HomeCloseOut.inspect (2 occurrences, both mutated); the named unit test failed with "it did NOT refuse, which is the defect"; reverted and verified with shasum -a 256 -c'
+
+  - id: CHM-14
+    title: "A symlinked unit or kind directory is invisible to the enumerator and reported clean"
+    phase: CHM
+    status: closed
+    closed: "2026-07-28"
+    found_by: manual exploratory testing
+    objective: >
+      ChildHomeMaterializer.unitDirectories skipped any unit directory that was
+      a symlink, and skipped an entire KIND directory that was one, with no
+      report of either. MaterializationMode.LINK produces exactly that shape.
+      Measured: a home whose skills/ was a symlink reconciled as
+      {"clean":true,"units":[]} with the destination's skills/ left empty; a
+      single symlinked unit beside a normal one synced only the normal one,
+      reported clean=true, and never named the other.
+
+      Worse, the enumerator and the reconciler disagreed. reconcile() applies
+      NOFOLLOW_LINKS only to the final path component, so it reads THROUGH a
+      symlinked skills/, and the same unit was invisible to `home sync` while
+      `home close-out` reported it conflicted -- purely because the destination
+      contributed the name to the union.
+    resolution: >
+      Symlinks are enumerated, not skipped, and answered by a new outcome:
+      SyncStatus.LINKED, which is unresolved(), so clean is false, `home sync`
+      exits non-zero and `home close-out` blocks with a remedy. reconcile()
+      checks both levels -- the kind directory and the unit directory -- through
+      one helper (symlinkOnUnitPath) before it reads any bytes, so the
+      enumerator and the reconciler cannot disagree by construction. The report
+      names which side is linked and where it points.
+
+      The gate blocks rather than clears on LINKED because it genuinely cannot
+      tell whether the link points inside the home about to be removed or
+      outside it. "Cannot tell" is not "nothing to lose".
+    known_gap: >
+      `home clone` still reproduces such a link verbatim, so the clone is not an
+      independent copy for that unit, and `home verify --against <source>` still
+      passes because the link points somewhere else rather than back at the
+      source. Reported, not fixed here: it is a home-clone property, and the
+      sync side now refuses to be silent about the result either way.
+    evidence:
+      unit: 'HomeSyncTest "a symlinked unit or kind directory is reported, never silently skipped"'
+      graph: 'home-sync node home.sync.homeness: both shapes through the real CLI, asserting the unit is NAMED, the report is not clean, nothing was copied through the link, and the link target outside every home was never written to'
+      mutation: 'restored the two skip conditions in unitDirectories -- the kind-directory NOFOLLOW_LINKS test and the per-unit isSymbolicLink skip (2 sites, counted first, both mutated); the named unit test failed with "the linked unit was not named at all: []"; reverted and verified with shasum -a 256 -c'
+
+# ---------------------------------------------------------------------------
+# PHASE MIG -- fold the remaining monolith into Internal/External.
+# PLANNED, NOT SCHEDULED. Do not start without owner sign-off: this is a
+# whole-program remodel, not a slice of the child-home epic.
+  - id: MIG-0
+    title: "Owner decision: schedule the Internal/External migration"
+    phase: MIG
+    status: blocked_on_owner
+    depends_on: [CHM-8]
+    objective: >
+      Decide whether to migrate SkillManager.tla into Core/Internal/External as
+      its own epic, and on what budget. Inputs are recorded, the decision is not.
+    inputs:
+      measured_today:
+        variables: 37
+        actions_in_next: 9
+        type_invariant: absent
+        resolvable_bound: 2
+        unconstrained_variables: 36
+        god_state_variables: "project_model and result, each touched by 9/9 actions"
+        clusters: "C1 21 variables / 1 action, C2 16 variables / 9 actions, C3 1 variable / 0 actions, modularity Q = 0.122"
+        promotion_tlc: "measured 2026-07-25: did NOT complete. Stopped after >3000s at 79,225,632 generated / 3,032,979 distinct / depth 14 with 836,363 states still queued. 25x+ over tlc_seconds 120, and past the stale 2,337,504-distinct figure recorded in .history/project-and-child-home-workflow -- nobody has a completed whole-model number for it."
+        ports: 29
+      cost_estimate: >
+        Six to eight tickets, comparable in size to the child-home epic itself.
+        The expensive parts are not the module split: they are (1) writing a
+        TypeOK for 37 variables that currently have no declared domains at all,
+        which is where the state space becomes measurable and where most of the
+        real modeling decisions surface; (2) deciding which of the 29 @port
+        blocks are External (public CLI surface) and which are Internal
+        (fine-grained program state), since today every one of them is both;
+        and (3) writing the Test Graph adapters that External implies, which
+        the repository has never had. The mechanical part -- moving CONSTANTS
+        and helper operators into Core -- is a day.
+      risk:
+        - "The monolith's promotion config is the only thing checking 57 invariants. Splitting it can silently drop coverage; every invariant must be re-homed explicitly and counted before and after."
+        - "project_model is a single record holding ~30 relations. Splitting it across views is the hard call and the place where the two views can start disagreeing."
+        - "The promotion cfg already exceeds tlc_seconds. If the split does not reduce per-view state, the migration buys structure and no measurability."
+        - "specs/current, specs/program_model and the five history snapshots all carry the monolith. The close-time semantic comparison spans them, so a partial migration must keep both shapes valid simultaneously."
+    proposed_ordering:
+      - "MIG-1 Core.tla absorbs the shared constants, domain sets, and edge relations from SkillManager.tla; monolith EXTENDS Core. No behavior change, TLC must be byte-equivalent in state counts."
+      - "MIG-2 Write TypeOK for all 37 variables and add it to MC_program_promotion.cfg. Measurement only; expect the bound to go from 2 to a real number and expect warnings."
+      - "MIG-3 Split the C1 cluster (gateway + server + effect/rollback, 21 variables, 1 crossing action) into its own view first. It is the loosest cluster and the cheapest rehearsal."
+      - "MIG-4 Split the CLI store/bindings half of C2 (cli_store_units, cli_installed_records, cli_lock_units, cli_bindings, cli_projection_rows, cli_managed_copies, cli_import_directives, cli_tool_records, cli_cli_lock)."
+      - "MIG-5 Decompose project_model. Largest and riskiest; the child-home part is already done by this epic and is the worked example."
+      - "MIG-6 Rebuild External.tla as public CLI inputs plus observable projection only, re-home all 57 invariants with a before/after count, and add testgraph_bindings.yml for every external action."
+    acceptance:
+      assertions:
+        - Every invariant in MC_program_promotion.cfg is re-homed to exactly one view, with a before/after count.
+        - Each view model-checks inside tlc_seconds.
+        - External gets thinner, not thicker, than the monolith's public surface.
+      evidence: []
+
+# ---------------------------------------------------------------------------
+# PHASE EFF -- effectful fuzzing and complexity minimization.
+# PLANNED, NOT SCHEDULED, AND HARD-BLOCKED. effectful_onboarding.md states the
+# prerequisite plainly: Internal/External views, TLC green, adapters mapped.
+# That prerequisite is met for the child-home slice ONLY. Phase 0 of
+# migration.md also requires the budgets in spec_manifest.yaml to be AGREED
+# with the owner before any spec is touched; they are currently
+# source: proposed_awaiting_owner.
+  - id: EFF-0
+    title: "Phase 0: agree the budgets"
+    phase: EFF
+    status: blocked_on_owner
+    depends_on: []
+    objective: >
+      Owner accepts or adjusts the budgets in spec_manifest.yaml, and
+      budgets.source becomes negotiated. Nothing in phase EFF starts first.
+    proposed_changes_from_defaults:
+      - "max_component_actions 8 -> 12, so Internal can keep one named action per materializer outcome instead of collapsing them into a status field."
+    all_other_values: "modular_fuzzing.md defaults, rationale recorded per key in spec_manifest.yaml budgets.rationale"
+    acceptance:
+      assertions:
+        - budgets.source is negotiated.
+        - Every value the owner changed carries a one-line rationale.
+      evidence: []
+
+  - id: EFF-1
+    title: "Declare the child-home filesystem effect port"
+    phase: EFF
+    status: blocked_on_prerequisite
+    depends_on: [EFF-0, MIG-0]
+    blocked_because: >
+      effectful_onboarding.md requires the Internal/External views to be
+      onboarded first. They exist for the child-home slice but not for the
+      program, so a filesystem effect port declared now would be a boundary
+      contract for a model that is still half monolith.
+    objective: >
+      Declare ChildHomeFsPort (role: effect) with the materializer's real
+      boundary -- staged writes, atomic move, record write, recursive delete --
+      add effect_ports: [] to every other action, and implement one provider
+      against a temp-directory sandbox.
+    acceptance:
+      assertions:
+        - Observed side effects diff clean against declared effects.
+        - Provider assertions check effect values, counts, and ordering, not existence.
+      evidence: []
+
+  # ------------------------------------------------------------------------
+  # Phase COH -- architectural coherence and edge cases surfaced by review.
+  #
+  # These are not new behavior. They are places where the implementation is
+  # correct but not PREDICTABLE from a neighbouring part, which is the debt
+  # the owner named: "I understand this at one level so I can predict at
+  # multiple others." Each one is a case where knowing one component told you
+  # nothing true about its sibling. Tracked as GitHub issues; recorded here so
+  # the spec workflow owns the conformance question rather than only the code.
+  - id: COH-0
+    title: "Decide whether the effects pipeline is the target architecture"
+    phase: COH
+    status: open
+    github_issue: 24
+    objective: >
+      Executor / Compensation / RollbackJournal exist but are wired to no
+      command -- effects/Executor.java:31-35 says wiring happens in "09b" and
+      until then the class is exercised only by CompensationLogicTest. So
+      rollback is three bespoke idioms (materializer stage-and-swap, cloner
+      cleanup, sync registration snapshot) and new code adds a fourth surface
+      with none. Decide: wire it, or delete the unwired layer so it stops
+      implying a contract that does not exist. The middle state is the
+      expensive one.
+    acceptance:
+      assertions:
+        - A written rule states which rollback idiom applies to which shape of write.
+        - No component invents a fourth idiom without that rule naming it.
+  - id: COH-1
+    title: "Make @port enforceable rather than a comment"
+    phase: COH
+    status: open
+    github_issue: 24
+    objective: >
+      Internal.tla carries 19 @port tags and External.tla 11, including the
+      clone lifecycle phase by phase. Nothing checks that those symbols name
+      real code: case_adapters.toml has no mappings for the new actions,
+      testgraph_bindings.yml has no adapter classes, and zero of the 15
+      ContextFacts mention home / clone / drift / policy. Renaming
+      HomeCloner.reanchorState would break nothing.
+    acceptance:
+      assertions:
+        - Every @port symbol resolves to a declaration in src/main/java, checked by a test.
+        - The check fails when a port names something that no longer exists.
+  - id: COH-2
+    title: "Close the read paths that hide corruption"
+    phase: COH
+    status: open
+    github_issue: 27
+    objective: >
+      Two mutations killed nothing during #20, which is how these surfaced.
+      home describe recomputes the descriptor and never reads the stored one
+      back, so a descriptor whose tokens stopped decoding is read silently.
+      BindingStore reconstructs default-agent bindings, so a deleted ledger is
+      indistinguishable from a healthy one -- and the ledger is the exact
+      surface the unbind-deletes-the-store defect lived on.
+    acceptance:
+      assertions:
+        - Stored and recomputed descriptors are compared, and disagreement is reported.
+        - A reconstructed binding is distinguishable from a read one.
+  - id: COH-3
+    title: "Scope the relocatability claim to the surfaces that hold it"
+    phase: COH
+    status: open
+    github_issue: 26
+    objective: >
+      AHomeIsAPureFunctionOfItsRoot is stated over RelocatableSurfaces ==
+      {state, symlink}. provisioned is excluded for a real reason -- a shebang
+      is resolved literally, so it can be neither tokenized nor relativized --
+      but the invariant's NAME reads as a stronger guarantee than the code
+      provides. Consequence: mv of a home breaks venv console scripts and
+      skill-script shims, while home clone is correct. Nothing says so where a
+      reader would look.
+    acceptance:
+      assertions:
+        - The invariant name or its scope makes the exclusion visible.
+        - home verify detects a home whose recorded root no longer matches its location.
+  - id: COH-4
+    title: "Make an unsatisfiable toolchain version request fail loudly"
+    phase: COH
+    status: open
+    github_issue: 28
+    objective: >
+      cli-lock.toml is keyed [package-manager.tool] with no version dimension,
+      and toolchain roots are one directory per tool name. Two units or two
+      projects needing different versions of one tool cannot coexist even
+      inside a single home, and re-provisioning per clone does not help because
+      every home converges on whatever the lock last recorded. Per-project
+      homes exist so projects can diverge; toolchains still cannot.
+    acceptance:
+      assertions:
+        - Conflicting specs for one tool are reported at resolve, not resolved last-write-wins.

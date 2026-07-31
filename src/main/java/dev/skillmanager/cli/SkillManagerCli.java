@@ -5,10 +5,12 @@ import dev.skillmanager.commands.BindCommand;
 import dev.skillmanager.commands.BindingsCommand;
 import dev.skillmanager.commands.CliCommand;
 import dev.skillmanager.commands.HarnessCommand;
+import dev.skillmanager.commands.HomeCommand;
 import dev.skillmanager.commands.CreateAccountCommand;
 import dev.skillmanager.commands.CreateCommand;
 import dev.skillmanager.commands.DepsCommand;
 import dev.skillmanager.commands.EnvCommand;
+import dev.skillmanager.commands.ExecCommand;
 import dev.skillmanager.commands.GatewayCommand;
 import dev.skillmanager.commands.InstallCommand;
 import dev.skillmanager.commands.ListCommand;
@@ -28,6 +30,7 @@ import dev.skillmanager.commands.ShowCommand;
 import dev.skillmanager.commands.SyncCommand;
 import dev.skillmanager.commands.UnbindCommand;
 import dev.skillmanager.commands.UninstallCommand;
+import dev.skillmanager.commands.UnitCommand;
 import dev.skillmanager.commands.UpgradeCommand;
 import dev.skillmanager.registry.AuthenticationRequiredException;
 import dev.skillmanager.registry.RegistryUnavailableException;
@@ -42,9 +45,15 @@ import picocli.CommandLine.Option;
 
 @Command(
         name = "skill-manager",
-        // x-release-please-start-version
-        version = "skill-manager 0.19.2",
-        // x-release-please-end
+        // The release number alone cannot say WHICH build answered — two
+        // different builds reported `skill-manager 0.19.2` while only one of
+        // them had an `exec` subcommand (issue #61). BuildIdentity keeps that
+        // number as its first line and adds the commit (or artifact
+        // fingerprint) and the launcher path underneath. release-please still
+        // owns the number: it stays in this file, between its markers, in the
+        // same `skill-manager <semver>` shape its generic updater matched
+        // before — only the annotation attribute that consumes it changed.
+        versionProvider = BuildIdentity.class,
         description = "Build tool for agent skills: CLI deps, skill references, MCP servers.",
         subcommands = {
                 ListCommand.class,
@@ -64,6 +73,7 @@ import picocli.CommandLine.Option;
                 PmCommand.class,
                 CliCommand.class,
                 EnvCommand.class,
+                ExecCommand.class,
                 CreateCommand.class,
                 AdsCommand.class,
                 LoginCommand.class,
@@ -75,9 +85,21 @@ import picocli.CommandLine.Option;
                 RebindCommand.class,
                 BindingsCommand.class,
                 HarnessCommand.class,
-                ProjectCommand.class
+                HomeCommand.class,
+                ProjectCommand.class,
+                UnitCommand.class
         })
 public final class SkillManagerCli implements Runnable {
+
+    /**
+     * The released version, owned by release-please (see
+     * {@code release-please-config.json}, which lists this file as an
+     * extra-file). Read by {@link BuildIdentity}, which prints it as the first
+     * line of {@code --version} exactly as the annotation used to.
+     */
+    // x-release-please-start-version
+    public static final String RELEASE = "skill-manager 0.19.2";
+    // x-release-please-end
 
     @Option(names = {"-h", "--help"}, usageHelp = true,
             description = "Show this help message and exit.",
@@ -125,9 +147,24 @@ public final class SkillManagerCli implements Runnable {
     private static int execute(String[] args) {
         dev.skillmanager.effects.UnitReadProblemReporter.reset();
         CommandLine cmd = new CommandLine(new SkillManagerCli());
+        // The mode this invocation displaced, so the finally below can put it
+        // back. Captured through a holder because the declaration happens
+        // inside picocli's execution strategy and the restore has to outlive
+        // it. Null until the strategy actually ran: a picocli parse failure
+        // never declares anything, and restoring a mode nobody displaced
+        // would itself be a write to the global.
+        dev.skillmanager.store.HomeScaffold.Access[] displaced = {null};
+        boolean[] declared = {false};
         cmd.setExecutionStrategy(pr -> {
             SkillManagerCli root = rootCommand(pr);
             if (root != null) Log.setVerbose(root.verbose);
+            // Before anything can touch a store: state whether THIS
+            // invocation is allowed to bring a home into existence. Nothing
+            // below re-derives it. See CommandHomeAccess for the
+            // classification and HomeScaffold for the defect.
+            displaced[0] = dev.skillmanager.store.HomeScaffold
+                    .declare(CommandHomeAccess.of(pr));
+            declared[0] = true;
             tryReconcile();
             int rc = new CommandLine.RunLast().execute(pr);
             return completeExecution(root, pr, rc);
@@ -138,7 +175,15 @@ public final class SkillManagerCli implements Runnable {
         // to picocli's default handler (full stack trace), which is the
         // right diagnostic for unexpected failures.
         cmd.setExecutionExceptionHandler(SkillManagerCli::handleExecutionException);
-        return cmd.execute(args);
+        try {
+            return cmd.execute(args);
+        } finally {
+            // The access mode is scoped to this invocation, not to the JVM.
+            // Without this, an embedded caller (the server, a test harness, an
+            // out-of-tree library user) that ran one READ_ONLY command left
+            // every later SkillStore.init() in the process a silent no-op.
+            if (declared[0]) dev.skillmanager.store.HomeScaffold.restore(displaced[0]);
+        }
     }
 
     static int handleExecutionException(Exception ex, CommandLine c, CommandLine.ParseResult pr)
@@ -196,9 +241,28 @@ public final class SkillManagerCli implements Runnable {
         return null;
     }
 
+    /**
+     * Reconcile the ambient home, when there is one.
+     *
+     * <p>This ran on every invocation and opened with {@code store.init()},
+     * which is how {@code --version} came to lay out twelve directories in
+     * whatever {@code SKILL_MANAGER_HOME} named — the scaffold was a side
+     * effect of starting the process rather than of doing work. There is
+     * nothing to reconcile in a home that does not exist yet, so this now
+     * asks before it acts; the first writing command still creates the home
+     * through its own {@code store.init()} and reconciles from then on.
+     *
+     * <p>"Is there one" is {@link dev.skillmanager.store.SkillStore#isHome()},
+     * which is the same predicate {@code exec} and {@code home describe} refuse
+     * on rather than a second spelling of it. A <em>partial</em> home therefore
+     * no longer self-heals on a read command: it is not a home by that
+     * predicate, so nothing here completes its layout. The first writing
+     * command does, through {@code init()}.
+     */
     private static void tryReconcile() {
         try {
             dev.skillmanager.store.SkillStore store = dev.skillmanager.store.SkillStore.defaultStore();
+            if (!store.isHome()) return;
             store.init();
             dev.skillmanager.mcp.GatewayConfig gw = dev.skillmanager.mcp.GatewayConfig.resolve(store, null);
             dev.skillmanager.lifecycle.SkillReconciler.reconcile(store, gw);
@@ -219,6 +283,9 @@ public final class SkillManagerCli implements Runnable {
         // needed here.
         try {
             dev.skillmanager.store.SkillStore store = dev.skillmanager.store.SkillStore.defaultStore();
+            // Same reason as tryReconcile: a home that does not exist holds
+            // no outstanding errors, and asking is not worth creating one.
+            if (!store.isHome()) return;
             store.init();
             dev.skillmanager.mcp.GatewayConfig gw =
                     dev.skillmanager.mcp.GatewayConfig.resolve(store, null);

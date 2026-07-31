@@ -1,3 +1,7 @@
+//SOURCES ../lib/SmEnv.java
+
+import com.hayden.testgraphsdk.sdk.NodeContext;
+
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.chrome.ChromeDriver;
@@ -70,7 +74,7 @@ final class BrowserLoginFlow {
         }
     }
 
-    static Result run(String smCli, String home, String registryUrl,
+    static Result run(NodeContext ctx, String smCli, String home, String registryUrl,
                       String repoRoot, String username, String password) throws Exception {
         System.err.println("[browser-login] callback port " + CALLBACK_PORT
                 + " reclaim: " + reclaimPort(CALLBACK_PORT));
@@ -81,8 +85,7 @@ final class BrowserLoginFlow {
                 "--port", String.valueOf(CALLBACK_PORT),
                 "--registry", registryUrl)
                 .redirectErrorStream(true);
-        pb.environment().put("SKILL_MANAGER_HOME", home);
-        pb.environment().put("SKILL_MANAGER_INSTALL_DIR", repoRoot);
+        SmEnv.apply(ctx, pb, home);
         Process proc = pb.start();
 
         List<String> captured = new ArrayList<>();

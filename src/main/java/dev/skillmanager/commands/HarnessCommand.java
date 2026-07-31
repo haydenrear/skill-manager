@@ -160,6 +160,13 @@ public final class HarnessCommand {
                 Log.info("  codex home:               %s", result.layout().codexHome());
                 Log.info("  gemini home:              %s", result.layout().geminiHome());
                 Log.info("  project dir:              %s", result.layout().targetDir());
+                if (!result.heldBack().isEmpty()) {
+                    Log.warn("held back %d child-home unit(s) with local changes (not overwritten):",
+                            result.heldBack().size());
+                    for (var outcome : result.heldBack()) {
+                        Log.warn("  %s — %s", outcome.label(), outcome.childPath());
+                    }
+                }
                 return 0;
             }
 
@@ -194,7 +201,7 @@ public final class HarnessCommand {
                 new dev.skillmanager.bindings.HarnessInstanceLock(
                         name, id, resolvedClaude, resolvedCodex, resolvedGemini, resolvedProject,
                         dev.skillmanager.bindings.BindingStore.nowIso())
-                        .write(sandboxRoot);
+                        .write(sandboxRoot, store.root());
             }
 
             List<SkillEffect> effects = new ArrayList<>();
@@ -246,7 +253,7 @@ public final class HarnessCommand {
 
         private static Path expandHome(String s) {
             if (s.equals("~") || s.startsWith("~/")) {
-                return Path.of(System.getProperty("user.home") + s.substring(1));
+                return Path.of(dev.skillmanager.agent.AgentHomes.userHome() + s.substring(1));
             }
             return Path.of(s);
         }

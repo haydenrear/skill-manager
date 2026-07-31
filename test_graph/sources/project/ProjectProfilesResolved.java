@@ -1,5 +1,6 @@
 ///usr/bin/env jbang "$0" "$@" ; exit $?
 //SOURCES ../../sdk/java/src/main/java/com/hayden/testgraphsdk/sdk/*.java
+//SOURCES ../lib/SmEnv.java
 
 import com.hayden.testgraphsdk.sdk.Node;
 import com.hayden.testgraphsdk.sdk.NodeContext;
@@ -9,6 +10,7 @@ import com.hayden.testgraphsdk.sdk.Procs;
 import com.hayden.testgraphsdk.sdk.ProcessRecord;
 
 import java.nio.file.Files;
+import java.nio.file.LinkOption;
 import java.nio.file.Path;
 
 /**
@@ -119,6 +121,50 @@ public class ProjectProfilesResolved {
                     && Files.isDirectory(reviewHome.resolve("agents/codex"))
                     && Files.isDirectory(reviewHome.resolve("agents/claude"))
                     && Files.isDirectory(reviewHome.resolve("agents/gemini"));
+            // Independence. The two profiles both claim tg-profile-common, so under
+            // the pre-epic symlink child home they were literally the SAME
+            // directory — "isolated" above (all follow-links) was true then too.
+            // What isolation has to mean is that they are different trees and
+            // that neither is the parent store's tree.
+            Path parentHome = Path.of(home);
+            java.util.List<Path> parentUnitRoots = parentUnitRoots(parentHome);
+            Path devCommon = devHome.resolve("skills/tg-profile-common");
+            Path reviewCommon = reviewHome.resolve("skills/tg-profile-common");
+            boolean profileUnitsAreRealCopies = isRealDirectory(devCommon)
+                    && isRealDirectory(reviewCommon)
+                    && !realPathInsideAny(devCommon, parentUnitRoots)
+                    && !realPathInsideAny(reviewCommon, parentUnitRoots)
+                    && !sameRealPath(devCommon, reviewCommon);
+            boolean profileUnitsRecordedAsCopies =
+                    read(devHome.resolve(".materialization/skill/tg-profile-common.json"))
+                            .contains("\"mode\" : \"COPY\"")
+                            && read(reviewHome.resolve(".materialization/skill/tg-profile-common.json"))
+                            .contains("\"mode\" : \"COPY\"");
+
+            // Empirically: an edit in one profile's child home must reach
+            // neither the other profile nor the parent store. Restored after,
+            // so nothing downstream sees a modified child home.
+            Path devCommonSkill = devCommon.resolve("SKILL.md");
+            Path reviewCommonSkill = reviewCommon.resolve("SKILL.md");
+            Path parentCommonSkill = parentHome.resolve("skills/tg-profile-common/SKILL.md");
+            String devBefore = read(devCommonSkill);
+            String reviewBefore = read(reviewCommonSkill);
+            String parentBefore = read(parentCommonSkill);
+            boolean profileEditIsolated;
+            try {
+                Files.writeString(devCommonSkill, devBefore + "AGENT-EDIT-PROBE\n");
+                profileEditIsolated = !devBefore.isEmpty()
+                        && read(devCommonSkill).contains("AGENT-EDIT-PROBE")
+                        && read(reviewCommonSkill).equals(reviewBefore)
+                        && !read(reviewCommonSkill).contains("AGENT-EDIT-PROBE")
+                        && read(parentCommonSkill).equals(parentBefore)
+                        && !read(parentCommonSkill).contains("AGENT-EDIT-PROBE");
+                Files.writeString(devCommonSkill, devBefore);
+            } catch (Exception e) {
+                profileEditIsolated = false;
+            }
+            boolean profileEditRestored = read(devCommonSkill).equals(devBefore);
+
             boolean registryOk = childRecord(home, "project_tg-profiled-project_profile_dev")
                     .contains("\"id\" : \"project:tg-profiled-project:profile:dev\"")
                     && childRecord(home, "project_tg-profiled-project_profile_review")
@@ -131,6 +177,10 @@ public class ProjectProfilesResolved {
                     && reviewLockOk
                     && devHomeOk
                     && reviewHomeOk
+                    && profileUnitsAreRealCopies
+                    && profileUnitsRecordedAsCopies
+                    && profileEditIsolated
+                    && profileEditRestored
                     && registryOk;
 
             return (pass
@@ -144,6 +194,10 @@ public class ProjectProfilesResolved {
                                     + " reviewLockOk=" + reviewLockOk
                                     + " devHomeOk=" + devHomeOk
                                     + " reviewHomeOk=" + reviewHomeOk
+                                    + " profileUnitsAreRealCopies=" + profileUnitsAreRealCopies
+                                    + " profileUnitsRecordedAsCopies=" + profileUnitsRecordedAsCopies
+                                    + " profileEditIsolated=" + profileEditIsolated
+                                    + " profileEditRestored=" + profileEditRestored
                                     + " registryOk=" + registryOk))
                     .process(listProfiles)
                     .process(resolveDev)
@@ -154,6 +208,12 @@ public class ProjectProfilesResolved {
                     .assertion("profile_locks_are_distinct_and_selected", devLockOk && reviewLockOk)
                     .assertion("dev_profile_child_home_is_isolated", devHomeOk)
                     .assertion("review_profile_child_home_is_isolated", reviewHomeOk)
+                    .assertion("shared_unit_is_a_distinct_copy_in_each_profile_child_home",
+                            profileUnitsAreRealCopies)
+                    .assertion("profile_child_home_units_recorded_as_copies", profileUnitsRecordedAsCopies)
+                    .assertion("profile_child_home_edit_reaches_neither_sibling_nor_parent",
+                            profileEditIsolated)
+                    .assertion("profile_child_home_edit_probe_restored", profileEditRestored)
                     .assertion("parent_registry_records_profile_child_homes", registryOk)
                     .publish("projectName", "tg-profiled-project")
                     .publish("projectDir", projectDir.toString())
@@ -187,8 +247,7 @@ public class ProjectProfilesResolved {
         command[0] = sm.toString();
         System.arraycopy(args, 0, command, 1, args.length);
         ProcessBuilder pb = new ProcessBuilder(command);
-        pb.environment().put("SKILL_MANAGER_HOME", home);
-        pb.environment().put("SKILL_MANAGER_INSTALL_DIR", repoRoot.toString());
+        SmEnv.apply(ctx, pb, home);
         return Procs.run(ctx, label, pb);
     }
 
@@ -201,6 +260,47 @@ public class ProjectProfilesResolved {
             return Files.readString(Procs.logFile(ctx, label));
         } catch (Exception e) {
             return "";
+        }
+    }
+
+    /** Real directory, not a symlink — the check {@code Files.isDirectory} cannot make. */
+    private static boolean isRealDirectory(Path path) {
+        return Files.isDirectory(path, LinkOption.NOFOLLOW_LINKS) && !Files.isSymbolicLink(path);
+    }
+
+    private static boolean realPathInside(Path path, Path root) {
+        try {
+            return path.toRealPath().startsWith(root.toRealPath());
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    /**
+     * The parent store's four unit roots. A child home may legitimately sit
+     * under the parent home, so "inside the parent store's units" is the
+     * isolation boundary, not "inside the parent home".
+     */
+    private static java.util.List<Path> parentUnitRoots(Path parentHome) {
+        return java.util.List.of(
+                parentHome.resolve("skills"),
+                parentHome.resolve("plugins"),
+                parentHome.resolve("docs"),
+                parentHome.resolve("harnesses"));
+    }
+
+    private static boolean realPathInsideAny(Path path, java.util.List<Path> roots) {
+        for (Path root : roots) {
+            if (realPathInside(path, root)) return true;
+        }
+        return false;
+    }
+
+    private static boolean sameRealPath(Path a, Path b) {
+        try {
+            return a.toRealPath().equals(b.toRealPath());
+        } catch (Exception e) {
+            return false;
         }
     }
 

@@ -1,5 +1,6 @@
 ///usr/bin/env jbang "$0" "$@" ; exit $?
 //SOURCES ../../sdk/java/src/main/java/com/hayden/testgraphsdk/sdk/*.java
+//SOURCES ../lib/SmEnv.java
 //DEPS com.fasterxml.jackson.core:jackson-databind:2.20.2
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -59,14 +60,13 @@ public class SkillDevSmoke {
             Files.createDirectories(fixture);
             writePermissivePolicy(home);
 
-            Map<String, String> env = Map.of(
-                    "SKILL_MANAGER_HOME", home.toString(),
-                    "SKILL_MANAGER_INSTALL_DIR", repoRoot.toString(),
-                    "CLAUDE_HOME", agentHome.toString(),
-                    "CODEX_HOME", codexHome.toString(),
-                    "GEMINI_HOME", geminiHome.toString(),
-                    "PATH", repoRoot + System.getProperty("path.separator") + System.getenv("PATH")
-            );
+            // The five sandbox variables come from SmEnv, not from a literal
+            // here: this map was the 51st spelling of the same recipe and it
+            // omitted CLAUDE_CONFIG_DIR (issue #30).
+            Map<String, String> env = new java.util.LinkedHashMap<>(
+                    SmEnv.env(home.toString(), repoRoot.toString(),
+                            SmEnv.sandbox(agentHome, codexHome, geminiHome)));
+            env.put("PATH", repoRoot + System.getProperty("path.separator") + System.getenv("PATH"));
 
             initProject(project);
             String fixtureHead = initFixtureSkill(fixture);

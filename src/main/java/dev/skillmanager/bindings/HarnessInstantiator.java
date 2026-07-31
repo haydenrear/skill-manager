@@ -78,8 +78,30 @@ public final class HarnessInstantiator {
                             Path claudeConfigDir, Path codexHome, Path projectDir,
                             SkillStore store) throws IOException {
         return plan(harness, instanceId, claudeConfigDir, codexHome,
-                codexHome == null ? null : codexHome.resolveSibling("gemini"),
-                projectDir, store);
+                geminiSiblingOf(codexHome), projectDir, store);
+    }
+
+    /**
+     * The Gemini home beside a given Codex home, for the legacy overload
+     * that predates Gemini being passed explicitly.
+     *
+     * <p>It mirrors the sibling's own naming convention rather than
+     * hardcoding {@code "gemini"}: the two live layouts spell these
+     * directories differently — {@code <sandbox>/<id>/codex} in the
+     * harness sandbox and {@code <target>/.codex} in a project child home
+     * — and a flat {@code resolveSibling("gemini")} produced
+     * {@code <target>/gemini} for the dotted one. That is a directory no
+     * agent reads and no teardown deletes, so Gemini skills would have
+     * landed somewhere nothing looked while {@code .gemini} stayed empty.
+     * Every production caller passes the home explicitly, so this only
+     * ever bit derived callers — but it is the one place Gemini was
+     * second-class rather than declared.
+     */
+    private static Path geminiSiblingOf(Path codexHome) {
+        if (codexHome == null) return null;
+        Path name = codexHome.getFileName();
+        boolean dotted = name != null && name.toString().startsWith(".");
+        return codexHome.resolveSibling(dotted ? ".gemini" : "gemini");
     }
 
     public static Plan plan(HarnessUnit harness, String instanceId,

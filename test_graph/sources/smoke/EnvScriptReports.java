@@ -1,5 +1,6 @@
 ///usr/bin/env jbang "$0" "$@" ; exit $?
 //SOURCES ../../sdk/java/src/main/java/com/hayden/testgraphsdk/sdk/*.java
+//SOURCES ../lib/SmEnv.java
 //DEPS com.fasterxml.jackson.core:jackson-databind:2.20.2
 
 import com.hayden.testgraphsdk.sdk.Node;
@@ -220,7 +221,7 @@ public class EnvScriptReports {
         cmd.add(script.toString());
         cmd.addAll(extraArgs);
         ProcessBuilder pb = new ProcessBuilder(cmd).redirectErrorStream(false);
-        pb.environment().put("SKILL_MANAGER_HOME", home);
+        SmEnv.apply(ctx, pb, home);
         Instant startedAt = Instant.now();
         Process p = pb.start();
         long pid = p.pid();

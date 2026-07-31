@@ -73,6 +73,16 @@ public final class UpgradeCommand implements Callable<Integer> {
 
     @Override
     public Integer call() throws Exception {
+        // Checked before anything, including --self: `upgrade --self` swaps
+        // the CLI binary a frozen home's recorded results were produced
+        // with, which is exactly the reproducibility the freeze exists to
+        // protect. It also never reaches SyncUseCase's gate.
+        try {
+            dev.skillmanager.policy.HomePolicy.requireLive(store, "upgrade");
+        } catch (dev.skillmanager.policy.FrozenHomeException frozen) {
+            Log.error("%s", frozen.getMessage());
+            return dev.skillmanager.policy.FrozenHomeException.EXIT_CODE;
+        }
         int selfRc = 0;
         if (self) {
             selfRc = upgradeSkillManager();

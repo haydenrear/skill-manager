@@ -476,11 +476,16 @@ public final class LiveInterpreter implements ProgramInterpreter {
 
     private EffectReceipt recordAudit(SkillEffect.RecordAuditPlan e, EffectContext ctx) {
         InstallPlan plan = ctx.plan();
-        if (plan == null) {
+        if (plan == null && e.targets().isEmpty()) {
             return EffectReceipt.skipped(e, "no plan in context (BuildInstallPlan didn't run)");
         }
         try {
-            new dev.skillmanager.plan.AuditLog(ctx.store()).recordPlan(plan, e.verb());
+            dev.skillmanager.plan.AuditLog log = new dev.skillmanager.plan.AuditLog(ctx.store());
+            if (plan != null) log.recordPlan(plan, e.verb());
+            // Same three-field shape as a plan action, written through the same
+            // AuditLog.record, so the file has one format however a line got
+            // there. Issue #45.
+            for (String target : e.targets()) log.record(e.verb(), "INFO\t" + target);
             return EffectReceipt.ok(e, new ContextFact.AuditRecorded(e.verb()));
         } catch (Exception ex) {
             return EffectReceipt.failed(e, ex.getMessage());
@@ -717,9 +722,20 @@ public final class LiveInterpreter implements ProgramInterpreter {
         for (dev.skillmanager.project.Projector proj : projectors.projectors()) {
             for (AgentUnit u : units) {
                 try {
-                    List<dev.skillmanager.project.Projection> planned = proj.planProjection(u, ctx.store());
-                    for (dev.skillmanager.project.Projection p : planned) {
-                        proj.apply(p);
+                    List<dev.skillmanager.project.Projection> plan = proj.planProjection(u, ctx.store());
+                    List<dev.skillmanager.project.Projection> planned = new java.util.ArrayList<>();
+                    for (dev.skillmanager.project.Projection p : plan) {
+                        if (proj.apply(p)) planned.add(p);
+                    }
+                    // A projection the projector held back (the target holds
+                    // content that is not ours to destroy) is a failure of this
+                    // sync for that unit, not a success with a warning: the
+                    // agent will not see the skill, and the outstanding-errors
+                    // banner is how anybody finds out.
+                    if (!plan.isEmpty() && planned.isEmpty()) {
+                        throw new java.io.IOException(plan.get(0).target()
+                                + " already holds content that is not a projection of "
+                                + plan.get(0).source() + "; nothing was overwritten");
                     }
                     // No projection (e.g. Codex skipping a plugin) is not a
                     // failure — but we also don't emit an "AgentSkillSynced"
@@ -1840,7 +1856,7 @@ public final class LiveInterpreter implements ProgramInterpreter {
             // the instantiator wrote. Falls back to the sandbox-subdir
             // defaults when missing (covers instances that predate the
             // lock file or were created with the old API).
-            var lock = dev.skillmanager.bindings.HarnessInstanceLock.read(sandboxRoot, e.instanceId());
+            var lock = dev.skillmanager.bindings.HarnessInstanceLock.read(sandboxRoot, e.instanceId(), ctx.store().root());
             java.nio.file.Path instanceDir = sandboxRoot.resolve(e.instanceId());
             java.nio.file.Path claudeConfigDir = lock.map(
                     dev.skillmanager.bindings.HarnessInstanceLock::claudeConfigDir)
@@ -2017,15 +2033,16 @@ public final class LiveInterpreter implements ProgramInterpreter {
     static void reverseProjection(Projection p) throws IOException {
         switch (p.kind()) {
             case SYMLINK, COPY -> {
-                if (java.nio.file.Files.exists(p.destPath(), java.nio.file.LinkOption.NOFOLLOW_LINKS)) {
-                    if (java.nio.file.Files.isSymbolicLink(p.destPath())) {
-                        java.nio.file.Files.delete(p.destPath());
-                    } else if (java.nio.file.Files.isDirectory(p.destPath(), java.nio.file.LinkOption.NOFOLLOW_LINKS)) {
-                        dev.skillmanager.shared.util.Fs.deleteRecursive(p.destPath());
-                    } else {
-                        java.nio.file.Files.delete(p.destPath());
-                    }
-                }
+                // Through the shared entitlement check, not a raw delete. A
+                // ledger row is a claim that skill-manager put something at
+                // destPath, and a claim is not evidence: `BindingBackfill`
+                // adopted any existing path at a projection target into the
+                // ledger, so this arm deleted hand-authored directories
+                // believing it was removing its own symlink. The rule is the
+                // same one the projectors apply on the way in — a symlink, or
+                // a tree the source still holds, and nothing else.
+                dev.skillmanager.project.ProjectionOwnership.clear(
+                        "unproject", p.destPath(), p.sourcePath());
             }
             case RENAMED_ORIGINAL_BACKUP -> {
                 // Move the backup at destPath back to its original location (backupOf).

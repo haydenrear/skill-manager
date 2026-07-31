@@ -1,5 +1,6 @@
 ///usr/bin/env jbang "$0" "$@" ; exit $?
 //SOURCES ../../sdk/java/src/main/java/com/hayden/testgraphsdk/sdk/*.java
+//SOURCES ../lib/SmEnv.java
 
 import com.hayden.testgraphsdk.sdk.Node;
 import com.hayden.testgraphsdk.sdk.NodeResult;
@@ -56,11 +57,7 @@ public class HyperInstalled {
                     "--registry", registryUrl,
                     "--yes");
             pb.directory(freshCwd.toFile());
-            pb.environment().put("SKILL_MANAGER_HOME", home);
-            pb.environment().put("SKILL_MANAGER_INSTALL_DIR", repoRoot.toString());
-            pb.environment().put("CLAUDE_HOME", claudeHome);
-            pb.environment().put("CODEX_HOME", codexHome);
-            pb.environment().put("GEMINI_HOME", geminiHome);
+            SmEnv.apply(ctx, pb, home);
 
             // Map X_RUNPOD_KEY -> RUNPOD_API_KEY so McpWriter's env-init
             // scan finds the runpod manifest's required field and the
@@ -113,7 +110,7 @@ public class HyperInstalled {
             CommandResult acpHead = run(acpDir, List.of("git", "rev-parse", "HEAD"));
             boolean acpHeadPinned = acpHead.rc() == 0
                     && ACP_PIN.equals(acpHead.output().trim());
-            boolean twoUnitsResolved = installLog.contains("resolve: 2 unit(s)");
+            boolean transitiveClosureResolved = resolvedUnitCount(installLog) >= 2;
             boolean noSkippedReferences =
                     !installLog.contains("skipping reference with no name or path");
 
@@ -124,7 +121,7 @@ public class HyperInstalled {
                     && acpTomlOk
                     && acpPinRecorded
                     && acpHeadPinned
-                    && twoUnitsResolved
+                    && transitiveClosureResolved
                     && noSkippedReferences;
             NodeResult result = pass
                     ? NodeResult.pass("hyper.installed")
@@ -136,7 +133,7 @@ public class HyperInstalled {
                                     + " acpToml=" + acpTomlOk
                                     + " acpPin=" + acpPinRecorded
                                     + " acpHeadPinned=" + acpHeadPinned
-                                    + " resolvedTwo=" + twoUnitsResolved
+                                    + " resolvedClosure=" + transitiveClosureResolved
                                     + " noSkippedRefs=" + noSkippedReferences);
             return result
                     .process(proc)
@@ -147,7 +144,7 @@ public class HyperInstalled {
                     .assertion("acp_skill_manager_toml_present", acpTomlOk)
                     .assertion("acp_direct_git_pin_recorded", acpPinRecorded)
                     .assertion("acp_checkout_head_matches_pin", acpHeadPinned)
-                    .assertion("two_units_resolved", twoUnitsResolved)
+                    .assertion("transitive_closure_resolved", transitiveClosureResolved)
                     .assertion("no_skipped_transitive_references", noSkippedReferences)
                     .metric("exitCode", rc)
                     .publish("skillDir", skillDir.toString());
@@ -167,6 +164,29 @@ public class HyperInstalled {
     }
 
     private record CommandResult(int rc, String output) {}
+
+    /**
+     * The unit count from the installer's {@code resolve: N unit(s)} line,
+     * or {@code -1} when the line is absent.
+     *
+     * <p>Parsed rather than string-matched on an exact count. The closure
+     * size is set by a live upstream repository: {@code hyper-experiments}
+     * declares {@code deploy-helm}, which declares
+     * {@code tracing-observability}, and those references are unpinned
+     * branch refs. An exact-count assertion therefore fails whenever any
+     * upstream skill gains a dependency — which is what happened here: the
+     * closure grew from 2 to 4 with no change on this side. What this node
+     * is actually for is that transitive resolution ran and pulled in more
+     * than the root unit; the identity of the unit it cares about,
+     * {@code acp-cdc-ai-python}, is asserted separately and precisely,
+     * on-disk and at its pinned sha.
+     */
+    private static int resolvedUnitCount(String installLog) {
+        java.util.regex.Matcher m = java.util.regex.Pattern
+                .compile("resolve: (\\d+) unit\\(s\\)")
+                .matcher(installLog);
+        return m.find() ? Integer.parseInt(m.group(1)) : -1;
+    }
 
     /**
      * Resolve {@code tool} against the supplied {@code pathEnv} string.

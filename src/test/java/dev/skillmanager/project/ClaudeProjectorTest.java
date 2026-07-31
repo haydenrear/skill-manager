@@ -115,6 +115,68 @@ public final class ClaudeProjectorTest {
             assertFalse(Files.exists(proj.target(), LinkOption.NOFOLLOW_LINKS), "still absent");
         });
 
+        // CHM-16. `<home>/.claude/skills/<name>` is not a skill-manager-only
+        // namespace — it is where a human writes skills by hand. apply()
+        // deleted whatever was there before linking, so installing a unit whose
+        // name collided destroyed the hand-written directory with no warning,
+        // no backup and no record of whose bytes those were.
+        suite.test(label + " — apply does not destroy a hand-authored directory at the target", () -> {
+            TestHarness h = TestHarness.create();
+            Path agentRoot = Files.createTempDirectory("claude-proj-authored-");
+            ClaudeProjector p = new ClaudeProjector(
+                    agentRoot.resolve("skills"), agentRoot.resolve("plugins"));
+            AgentUnit u = installInStore(h, "widget", kind);
+            Projection proj = p.planProjection(u, h.store()).get(0);
+
+            Fs.ensureDir(proj.target());
+            Files.writeString(proj.target().resolve("private-notes.md"), "AUTHORED BY HAND\n");
+
+            boolean applied = p.apply(proj);
+
+            assertFalse(applied, "apply reports the projection was held back");
+            assertFalse(Files.isSymbolicLink(proj.target()),
+                    "the authored directory is not replaced by a symlink");
+            assertEquals("AUTHORED BY HAND\n",
+                    Files.readString(proj.target().resolve("private-notes.md")),
+                    "the authored bytes are still there");
+        });
+
+        suite.test(label + " — remove does not delete a hand-authored directory at the target", () -> {
+            TestHarness h = TestHarness.create();
+            Path agentRoot = Files.createTempDirectory("claude-proj-authored-rm-");
+            ClaudeProjector p = new ClaudeProjector(
+                    agentRoot.resolve("skills"), agentRoot.resolve("plugins"));
+            AgentUnit u = installInStore(h, "widget", kind);
+            Projection proj = p.planProjection(u, h.store()).get(0);
+
+            Fs.ensureDir(proj.target());
+            Files.writeString(proj.target().resolve("private-notes.md"), "AUTHORED BY HAND\n");
+
+            boolean removed = p.remove(proj);
+
+            assertFalse(removed, "remove reports it left something in place");
+            assertEquals("AUTHORED BY HAND\n",
+                    Files.readString(proj.target().resolve("private-notes.md")),
+                    "an uninstall does not take the human's skill with it");
+        });
+
+        suite.test(label + " — apply still replaces the projector's own copy-fallback output", () -> {
+            TestHarness h = TestHarness.create();
+            Path agentRoot = Files.createTempDirectory("claude-proj-copyshape-");
+            ClaudeProjector p = new ClaudeProjector(
+                    agentRoot.resolve("skills"), agentRoot.resolve("plugins"));
+            AgentUnit u = installInStore(h, "widget", kind);
+            Projection proj = p.planProjection(u, h.store()).get(0);
+
+            // Exactly what the copy fallback writes: a directory byte-identical
+            // to the source. Nothing is lost by rewriting it, so the guard must
+            // not refuse the happy path on a filesystem without symlinks.
+            Fs.copyRecursive(proj.source(), proj.target());
+
+            assertTrue(p.apply(proj), "a byte-identical copy is this projector's own output");
+            assertTrue(Files.isSymbolicLink(proj.target()), "and is replaced by the link");
+        });
+
         suite.test("plugin — planProjection returns empty (handled by RefreshHarnessPlugins)", () -> {
             TestHarness h = TestHarness.create();
             Path agentRoot = Files.createTempDirectory("claude-proj-plugin-");

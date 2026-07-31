@@ -1,5 +1,6 @@
 ///usr/bin/env jbang "$0" "$@" ; exit $?
 //SOURCES ../../sdk/java/src/main/java/com/hayden/testgraphsdk/sdk/*.java
+//SOURCES ../lib/SmEnv.java
 //DEPS com.fasterxml.jackson.core:jackson-databind:2.20.2
 
 import com.hayden.testgraphsdk.sdk.Node;
@@ -67,8 +68,7 @@ public class RefreshHonored {
                     sm.toString(), "login", "show",
                     "--registry", registryUrl)
                     .redirectErrorStream(true);
-            pb.environment().put("SKILL_MANAGER_HOME", home);
-            pb.environment().put("SKILL_MANAGER_INSTALL_DIR", repoRoot.toString());
+            SmEnv.apply(ctx, pb, home);
             Process proc = pb.start();
             String output = new String(proc.getInputStream().readAllBytes());
             int rc = proc.waitFor();

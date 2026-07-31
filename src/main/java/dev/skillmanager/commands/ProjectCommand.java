@@ -9,6 +9,7 @@ import dev.skillmanager.project.ProjectRemoveUseCase;
 import dev.skillmanager.project.ProjectSyncUseCase;
 import dev.skillmanager.project.SkillProjectRegistration;
 import dev.skillmanager.project.SkillProjectRegistry;
+import dev.skillmanager.project.UnitTrunkPull;
 import dev.skillmanager.store.SkillStore;
 import dev.skillmanager.util.Log;
 import picocli.CommandLine.Command;
@@ -16,6 +17,8 @@ import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
 
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.concurrent.Callable;
 
@@ -112,6 +115,30 @@ public final class ProjectCommand {
                 description = "Also materialize project [[libs]] checkouts under project libs/ and lock their git shas.")
         boolean resolveLibs;
 
+        @Option(names = "--repair-vendored",
+                description = "Re-point declared [[vendored]] paths at this project's own "
+                        + ".skill-manager home. Off by default: a vendored path is a tracked "
+                        + "symlink, so repairing one edits your working tree. Validation always "
+                        + "runs; only the writing is opt-in.")
+        boolean repairVendored;
+
+        // The help text used to say "Refused by default: that layout isolates
+        // nothing, and it used to exit 0 reporting every unit resolved." That
+        // refusal was removed — a repository-local home IS the per-checkout
+        // layout this epic exists to produce, so refusing it broke the normal
+        // path — and the behaviour is now
+        // ProjectChildHomeScaffolder#reportSameHome, which warns and proceeds.
+        // A --help that documents a refusal the code no longer performs is the
+        // same fail-open as a check that cannot see: the operator reads a
+        // guarantee, gets none, and has no way to tell.
+        @Option(names = "--allow-same-home",
+                description = "Accepted and no longer consulted. SKILL_MANAGER_HOME already "
+                        + "BEING this project's own .skill-manager home is the per-checkout "
+                        + "layout, not an error: units resolve in place, no separate child home "
+                        + "is created, and resolve says so and proceeds. Kept so existing "
+                        + "invocations and scripts do not break.")
+        boolean allowSameHome;
+
         @Override
         public Integer call() throws Exception {
             SkillStore store = SkillStore.defaultStore();
@@ -126,13 +153,16 @@ public final class ProjectCommand {
             project = project.withProfile(profile);
             GatewayConfig gw = skipGateway ? null : GatewayConfig.resolve(store, null);
             ProjectDependencyResolver.Result result = new ProjectDependencyResolver(store, gw)
-                    .resolve(project, new ProjectDependencyResolver.Options(true, !skipGateway));
+                    .resolve(project, new ProjectDependencyResolver.Options(
+                            true, !skipGateway, java.util.Set.of(), repairVendored,
+                            allowSameHome));
             ProjectLibResolver.Result libResult = resolveLibs
                     ? new ProjectLibResolver(store).resolve(project)
                     : null;
             if (json) {
                 System.out.println("""
-                        {"name":"%s","profile":"%s","installed":%d,"resolved":%d,"bindings":%d,"libs":%d,"childHome":"%s","lock":"%s"}"""
+                        {"name":"%s","profile":"%s","installed":%d,"resolved":%d,"bindings":%d,"libs":%d,\
+                        "vendored":%d,"vendoredRepaired":%d,"vendoredProblems":%s,"heldBack":%s,"childHome":"%s","lock":"%s"}"""
                         .formatted(
                                 esc(result.registration().name()),
                                 esc(project.activeProfile() == null ? "" : project.activeProfile()),
@@ -140,6 +170,10 @@ public final class ProjectCommand {
                                 result.lock().resolvedUnits().size(),
                                 result.bindingIds().size(),
                                 libResult == null ? result.lock().libs().size() : libResult.libs().size(),
+                                result.vendored().entries().size(),
+                                result.vendored().repairs().size(),
+                                vendoredJson(result.vendored()),
+                                heldBackJson(result.childHome()),
                                 esc(result.childHome().layout().childSkillManagerHome().toString()),
                                 esc(result.registration().registrationDir()
                                         .resolve(dev.skillmanager.project.SkillProjectLock.FILENAME)
@@ -151,16 +185,31 @@ public final class ProjectCommand {
                 Log.info("  resolved:  %d", result.lock().resolvedUnits().size());
                 Log.info("  bindings:  %d", result.bindingIds().size());
                 Log.info("  libs:      %d", libResult == null ? result.lock().libs().size() : libResult.libs().size());
+                Log.info("  vendored:  %d checked, %d repaired, %d finding(s)",
+                        result.vendored().entries().size(),
+                        result.vendored().repairs().size(),
+                        result.vendored().problems().size());
                 Log.info("  child:     %s", result.childHome().layout().childSkillManagerHome());
                 Log.info("  lock:      %s", result.registration().registrationDir()
                         .resolve(dev.skillmanager.project.SkillProjectLock.FILENAME));
+                reportHeldBack(result.childHome());
             }
             return 0;
         }
     }
 
+    /**
+     * {@code project sync} — pull each unit's trunk, then reconcile the
+     * realization in place.
+     *
+     * <p>Was a placeholder that tore the realization down and re-resolved it from
+     * the same local store. See {@link ProjectSyncUseCase} for what replaced it
+     * and why the teardown is now behind {@code --rebuild}.
+     */
     @Command(name = "sync",
-            description = "Placeholder project sync: uninstall and reinstall the project realization.")
+            description = "Pull each project unit's trunk and reconcile the project realization "
+                    + "in place. Units with local edits are held back, not merged over, unless "
+                    + "--merge is given.")
     public static final class SyncCmd implements Callable<Integer> {
 
         @Option(names = "--project-dir",
@@ -179,12 +228,60 @@ public final class ProjectCommand {
                 description = "Named project profile to sync as a concrete project harness.")
         String profile;
 
+        @Option(names = "--no-pull",
+                description = "Reconcile only; do not fetch or merge any unit's trunk.")
+        boolean noPull;
+
+        @Option(names = "--merge",
+                description = "Three-way merge the trunk into units that have local changes, "
+                        + "instead of holding them back. A conflict is reported and left for you; "
+                        + "local work is never discarded either way.")
+        boolean merge;
+
+        @Option(names = "--ref",
+                description = "Branch to pull. Defaults to " + UnitTrunkPull.DEFAULT_TRUNK
+                        + ", falling back to the remote's default branch.")
+        String ref;
+
+        @Option(names = "--git-latest",
+                description = "Pull the ref each unit was installed from instead of the trunk.")
+        boolean gitLatest;
+
+        @Option(names = "--from", paramLabel = "DIR",
+                description = "Directory holding <unit-name> checkouts to pull from instead of "
+                        + "each unit's origin.")
+        Path from;
+
+        @Option(names = "--checkout", paramLabel = "UNIT",
+                description = "Materialize this unit into the child home as its own git checkout "
+                        + "so its edits can be published back (repeatable).")
+        List<String> checkout = new ArrayList<>();
+
+        @Option(names = "--rebuild",
+                description = "Tear the realization down and rebuild it instead of reconciling in "
+                        + "place. For a realization that is actually broken; it is the only path "
+                        + "that removes child-home content, so it is not the default.")
+        boolean rebuild;
+
+        @Option(names = "--repair-vendored",
+                description = "Re-point declared [[vendored]] paths at this project's own "
+                        + ".skill-manager home. Off by default: a vendored path is a tracked "
+                        + "symlink, so repairing one edits your working tree. Validation always "
+                        + "runs; only the writing is opt-in.")
+        boolean repairVendored;
+
         @Option(names = "--json", description = "Emit machine-readable JSON.")
         boolean json;
 
+        private final SkillStore injectedStore;
+
+        public SyncCmd() { this(null); }
+
+        public SyncCmd(SkillStore injectedStore) { this.injectedStore = injectedStore; }
+
         @Override
         public Integer call() throws Exception {
-            SkillStore store = SkillStore.defaultStore();
+            SkillStore store = injectedStore != null ? injectedStore : SkillStore.defaultStore();
             store.init();
             Path root = projectDir == null || projectDir.isBlank()
                     ? Path.of(System.getProperty("user.dir"))
@@ -196,31 +293,54 @@ public final class ProjectCommand {
             project = project.withProfile(profile);
             GatewayConfig gw = skipGateway ? null : GatewayConfig.resolve(store, null);
             ProjectSyncUseCase.Result result = new ProjectSyncUseCase(store, gw)
-                    .sync(project, new ProjectDependencyResolver.Options(true, !skipGateway));
+                    .sync(project,
+                            new ProjectDependencyResolver.Options(true, !skipGateway,
+                                    new LinkedHashSet<>(checkout), repairVendored),
+                            new ProjectSyncUseCase.Options(!noPull, rebuild,
+                                    new UnitTrunkPull.Options(merge, ref, gitLatest, from)));
             if (json) {
                 System.out.println("""
-                        {"name":"%s","profile":"%s","mode":"placeholder-uninstall-reinstall","bindingsRemoved":%d,"clearedPaths":%d,"installed":%d,"resolved":%d,"childHome":"%s"}"""
+                        {"name":"%s","profile":"%s","mode":"%s","pulled":%d,"pullHeldBack":%s,\
+                        "pullProblems":%s,"bindingsRemoved":%d,"clearedPaths":%d,"installed":%d,\
+                        "resolved":%d,"vendored":%d,"vendoredRepaired":%d,"vendoredProblems":%s,\
+                        "heldBack":%s,"childHome":"%s"}"""
                         .formatted(
                                 esc(result.resolved().registration().name()),
                                 esc(project.activeProfile() == null ? "" : project.activeProfile()),
+                                result.mode(),
+                                result.pull().changed().size(),
+                                pullJson(result.pull().heldBack()),
+                                pullJson(result.pull().problems()),
                                 result.bindingsRemoved(),
                                 result.clearedPaths().size(),
                                 result.resolved().installed().size(),
                                 result.resolved().lock().resolvedUnits().size(),
+                                result.resolved().vendored().entries().size(),
+                                result.resolved().vendored().repairs().size(),
+                                vendoredJson(result.resolved().vendored()),
+                                heldBackJson(result.resolved().childHome()),
                                 esc(result.resolved().childHome().layout().childSkillManagerHome().toString())));
             } else {
-                Log.warn("project sync is a placeholder: uninstalling and reinstalling the project realization; "
-                        + "further work is needed for incremental project sync");
                 Log.ok("synced project %s", result.resolved().registration().name());
                 if (project.activeProfile() != null) Log.info("  profile:          %s", project.activeProfile());
-                Log.info("  mode:             uninstall/reinstall placeholder");
-                Log.info("  bindings removed: %d", result.bindingsRemoved());
-                Log.info("  cleared paths:    %d", result.clearedPaths().size());
+                Log.info("  mode:             %s", result.mode());
+                Log.info("  pulled:           %d of %d unit(s) moved",
+                        result.pull().changed().size(), result.pull().pulls().size());
+                if (rebuild) {
+                    Log.info("  bindings removed: %d", result.bindingsRemoved());
+                    Log.info("  cleared paths:    %d", result.clearedPaths().size());
+                }
                 Log.info("  installed:        %d", result.resolved().installed().size());
                 Log.info("  resolved:         %d", result.resolved().lock().resolvedUnits().size());
+                Log.info("  vendored:         %d checked, %d repaired, %d finding(s)",
+                        result.resolved().vendored().entries().size(),
+                        result.resolved().vendored().repairs().size(),
+                        result.resolved().vendored().problems().size());
                 Log.info("  child:            %s", result.resolved().childHome().layout().childSkillManagerHome());
+                reportPull(result.pull());
+                reportHeldBack(result.resolved().childHome());
             }
-            return 0;
+            return result.pull().problems().isEmpty() ? 0 : 1;
         }
     }
 
@@ -321,6 +441,8 @@ public final class ProjectCommand {
                 System.out.printf("harnesses:%d%n", project.harnesses().size());
                 System.out.printf("envs:     %d%n", project.envs().size());
                 System.out.printf("libs:     %d%n", project.libs().size());
+                System.out.printf("vendored: %d%n", project.vendored().stream()
+                        .mapToInt(v -> v.paths().size()).sum());
                 System.out.printf("cli:      %d%n", project.cliDependencies().size());
                 System.out.printf("mcp:      %d%n", project.mcpDependencies().size());
                 System.out.printf("profiles: %d%n", project.profiles().size());
@@ -394,6 +516,88 @@ public final class ProjectCommand {
 
     private static String esc(String s) {
         return s.replace("\\", "\\\\").replace("\"", "\\\"");
+    }
+
+    /**
+     * Tells the user which child-home units were left alone because they carry
+     * local edits. {@code ChildHomeMaterializer} already warned per unit; this
+     * makes the count part of the command summary so it is not lost in the
+     * scroll, and spells out how to take the parent's version instead.
+     */
+    private static void reportHeldBack(
+            dev.skillmanager.project.ProjectChildHomeScaffolder.Result childHome) {
+        if (childHome == null || childHome.heldBack().isEmpty()) return;
+        Log.warn("held back %d child-home unit(s) with local changes (not overwritten):",
+                childHome.heldBack().size());
+        for (var outcome : childHome.heldBack()) {
+            Log.warn("  %s — %s", outcome.label(), outcome.childPath());
+        }
+        Log.warn("  delete or move a path above and re-run to take the parent store's version");
+    }
+
+    /**
+     * Says out loud which units were left alone and which need a human.
+     *
+     * <p>A held-back unit is the point of the whole hold-back rule, so it cannot
+     * be a silent skip; and a conflict is the one outcome where {@code sync}
+     * deliberately stops short of finishing, so the path to finish it has to be
+     * printed.
+     */
+    private static void reportPull(dev.skillmanager.project.UnitTrunkPull.Report pull) {
+        if (!pull.heldBack().isEmpty()) {
+            Log.warn("held back %d unit(s) with uncommitted local changes (not merged over):",
+                    pull.heldBack().size());
+            for (var unit : pull.heldBack()) Log.warn("  %s — %s", unit.label(), unit.detail());
+            Log.warn("  re-run with --merge to three-way merge them against the trunk");
+        }
+        for (var unit : pull.problems()) {
+            Log.error("%s — %s", unit.label(), unit.detail());
+            for (String file : unit.conflictedFiles()) Log.error("    conflict: %s", file);
+        }
+    }
+
+    private static String pullJson(
+            List<dev.skillmanager.project.UnitTrunkPull.UnitPull> units) {
+        if (units == null || units.isEmpty()) return "[]";
+        return units.stream()
+                .map(unit -> "{\"unit\":\"" + esc(unit.label())
+                        + "\",\"status\":\"" + unit.status().name().toLowerCase()
+                        + "\",\"repo\":\"" + esc(String.valueOf(unit.repo()))
+                        + "\",\"detail\":\"" + esc(unit.detail()) + "\"}")
+                .collect(java.util.stream.Collectors.joining(",", "[", "]"));
+    }
+
+    /**
+     * The surviving vendored findings, in machine-readable form.
+     *
+     * <p>Carries {@code resolvedTo} as well as {@code linkText}: the whole point
+     * of the check is that those two can disagree — a relative link text that
+     * resolves into a foreign home through a sibling link is the case a text-only
+     * report cannot express.
+     */
+    private static String vendoredJson(
+            dev.skillmanager.project.ProjectVendoredResolver.Report report) {
+        if (report == null || report.problems().isEmpty()) return "[]";
+        return report.problems().stream()
+                .map(entry -> "{\"declaration\":\"" + esc(entry.declaration())
+                        + "\",\"path\":\"" + esc(entry.declaredPath())
+                        + "\",\"status\":\"" + entry.status().name().toLowerCase()
+                        + "\",\"fatal\":" + entry.fatal()
+                        + ",\"linkText\":\"" + esc(String.valueOf(entry.linkText()))
+                        + "\",\"resolvedTo\":\"" + esc(String.valueOf(entry.resolvedTo()))
+                        + "\",\"expected\":\"" + esc(String.valueOf(entry.expectedTarget()))
+                        + "\",\"detail\":\"" + esc(entry.detail()) + "\"}")
+                .collect(java.util.stream.Collectors.joining(",", "[", "]"));
+    }
+
+    private static String heldBackJson(
+            dev.skillmanager.project.ProjectChildHomeScaffolder.Result childHome) {
+        if (childHome == null || childHome.heldBack().isEmpty()) return "[]";
+        return childHome.heldBack().stream()
+                .map(outcome -> "{\"unit\":\"" + esc(outcome.label())
+                        + "\",\"path\":\"" + esc(outcome.childPath().toString())
+                        + "\",\"reason\":\"" + esc(outcome.detail()) + "\"}")
+                .collect(java.util.stream.Collectors.joining(",", "[", "]"));
     }
 
     static Path resolveManifestPath(Path root, String manifest) {

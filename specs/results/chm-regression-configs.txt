@@ -1,0 +1,225 @@
+child-home-materialization-workflow -- expected-violation regression configs
+run: 2026-07-26T01:39:56Z
+Each config models a real behavior skill-manager has or had. Each MUST
+produce a TLC counterexample; a clean run is a defect in the invariant.
+
+==================== External_regression_overwrite ====================
+$ bash specs/desired_program_model/run_tlc.sh specs/desired_program_model/External.tla specs/desired_program_model/External_regression_overwrite.cfg
+Starting... (2026-07-25 21:39:56)
+Computing initial states...
+Finished computing initial states: 1 distinct state generated at 2026-07-25 21:39:56.
+Error: Invariant AgentEditedChildUnitsAreNeverDestroyed is violated.
+Error: The behavior up to this point is:
+State 1: <Initial predicate>
+/\ child_home = ( ChildUnitA :> [present |-> FALSE, content |-> 0] @@
+  ChildUnitB :> [present |-> FALSE, content |-> 0] )
+/\ agent_edits = {}
+/\ store_body = (ChildUnitA :> 0 @@ ChildUnitB :> 0 @@ LinkedSourceA :> 0)
+/\ pass = [kind |-> "none", accepted |-> TRUE, held_back |-> {}]
+
+State 2: <ResolveProjectChildHome line 100, col 3 to line 110, col 44 of module External>
+/\ child_home = ( ChildUnitA :> [present |-> TRUE, content |-> 0] @@
+  ChildUnitB :> [present |-> FALSE, content |-> 0] )
+/\ agent_edits = {}
+/\ store_body = (ChildUnitA :> 0 @@ ChildUnitB :> 0 @@ LinkedSourceA :> 0)
+/\ pass = [kind |-> "resolve", accepted |-> TRUE, held_back |-> {}]
+
+State 3: <EditChildHomeUnit line 151, col 3 to line 159, col 19 of module External>
+/\ child_home = ( ChildUnitA :> [present |-> TRUE, content |-> AgentBytes] @@
+  ChildUnitB :> [present |-> FALSE, content |-> 0] )
+/\ agent_edits = {ChildUnitA}
+/\ store_body = (ChildUnitA :> 0 @@ ChildUnitB :> 0 @@ LinkedSourceA :> 0)
+/\ pass = [kind |-> "none", accepted |-> TRUE, held_back |-> {}]
+
+State 4: <ResolveProjectChildHome line 100, col 3 to line 110, col 44 of module External>
+/\ child_home = ( ChildUnitA :> [present |-> TRUE, content |-> 0] @@
+  ChildUnitB :> [present |-> FALSE, content |-> 0] )
+/\ agent_edits = {ChildUnitA}
+/\ store_body = (ChildUnitA :> 0 @@ ChildUnitB :> 0 @@ LinkedSourceA :> 0)
+/\ pass = [kind |-> "resolve", accepted |-> TRUE, held_back |-> {}]
+
+52 states generated, 35 distinct states found, 25 states left on queue.
+The depth of the complete state graph search is 4.
+The average outdegree of the complete state graph is 4 (minimum is 0, the maximum 6 and the 95th percentile is 6).
+Finished in 00s at (2026-07-25 21:39:56)
+
+==================== External_regression_symlink ====================
+$ bash specs/desired_program_model/run_tlc.sh specs/desired_program_model/External.tla specs/desired_program_model/External_regression_symlink.cfg
+Starting... (2026-07-25 21:39:57)
+Computing initial states...
+Finished computing initial states: 1 distinct state generated at 2026-07-25 21:39:57.
+Error: Invariant ChildHomeWritesNeverReachTheParentStore is violated.
+Error: The behavior up to this point is:
+State 1: <Initial predicate>
+/\ child_home = ( ChildUnitA :> [present |-> FALSE, content |-> 0] @@
+  ChildUnitB :> [present |-> FALSE, content |-> 0] )
+/\ agent_edits = {}
+/\ store_body = (ChildUnitA :> 0 @@ ChildUnitB :> 0 @@ LinkedSourceA :> 0)
+/\ pass = [kind |-> "none", accepted |-> TRUE, held_back |-> {}]
+
+State 2: <ResolveProjectChildHome line 100, col 3 to line 110, col 44 of module External>
+/\ child_home = ( ChildUnitA :> [present |-> TRUE, content |-> 0] @@
+  ChildUnitB :> [present |-> FALSE, content |-> 0] )
+/\ agent_edits = {}
+/\ store_body = (ChildUnitA :> 0 @@ ChildUnitB :> 0 @@ LinkedSourceA :> 0)
+/\ pass = [kind |-> "resolve", accepted |-> TRUE, held_back |-> {}]
+
+State 3: <EditChildHomeUnit line 151, col 3 to line 159, col 19 of module External>
+/\ child_home = ( ChildUnitA :> [present |-> TRUE, content |-> AgentBytes] @@
+  ChildUnitB :> [present |-> FALSE, content |-> 0] )
+/\ agent_edits = {ChildUnitA}
+/\ store_body = (ChildUnitA :> AgentBytes @@ ChildUnitB :> 0 @@ LinkedSourceA :> AgentBytes)
+/\ pass = [kind |-> "none", accepted |-> TRUE, held_back |-> {}]
+
+11 states generated, 9 distinct states found, 6 states left on queue.
+The depth of the complete state graph search is 3.
+The average outdegree of the complete state graph is 6 (minimum is 6, the maximum 6 and the 95th percentile is 6).
+Finished in 00s at (2026-07-25 21:39:57)
+
+==================== External_regression_rawdigest ====================
+$ bash specs/desired_program_model/run_tlc.sh specs/desired_program_model/External.tla specs/desired_program_model/External_regression_rawdigest.cfg
+Starting... (2026-07-25 21:39:58)
+Computing initial states...
+Finished computing initial states: 1 distinct state generated at 2026-07-25 21:39:58.
+Error: Invariant UnmodifiedChildUnitsConvergeOnTheirSource is violated.
+Error: The behavior up to this point is:
+State 1: <Initial predicate>
+/\ child_home = ( ChildUnitA :> [present |-> FALSE, content |-> 0] @@
+  ChildUnitB :> [present |-> FALSE, content |-> 0] )
+/\ agent_edits = {}
+/\ store_body = (ChildUnitA :> 0 @@ ChildUnitB :> 0 @@ LinkedSourceA :> 0)
+/\ pass = [kind |-> "none", accepted |-> TRUE, held_back |-> {}]
+
+State 2: <UpgradeLinkedParentSource line 178, col 3 to line 182, col 44 of module External>
+/\ child_home = ( ChildUnitA :> [present |-> FALSE, content |-> 0] @@
+  ChildUnitB :> [present |-> FALSE, content |-> 0] )
+/\ agent_edits = {}
+/\ store_body = (ChildUnitA :> 0 @@ ChildUnitB :> 0 @@ LinkedSourceA :> 1)
+/\ pass = [kind |-> "none", accepted |-> TRUE, held_back |-> {}]
+
+State 3: <ResolveProjectChildHome line 100, col 3 to line 110, col 44 of module External>
+/\ child_home = ( ChildUnitA :> [present |-> TRUE, content |-> 0] @@
+  ChildUnitB :> [present |-> FALSE, content |-> 0] )
+/\ agent_edits = {}
+/\ store_body = (ChildUnitA :> 0 @@ ChildUnitB :> 0 @@ LinkedSourceA :> 1)
+/\ pass = [kind |-> "resolve", accepted |-> TRUE, held_back |-> {}]
+
+39 states generated, 27 distinct states found, 19 states left on queue.
+The depth of the complete state graph search is 3.
+The average outdegree of the complete state graph is 4 (minimum is 0, the maximum 6 and the 95th percentile is 6).
+Finished in 00s at (2026-07-25 21:39:58)
+
+==================== Internal_regression_overwrite ====================
+$ bash specs/desired_program_model/run_tlc.sh specs/desired_program_model/Internal.tla specs/desired_program_model/Internal_regression_overwrite.cfg
+Starting... (2026-07-25 21:39:58)
+Computing initial states...
+Finished computing initial states: 1 distinct state generated at 2026-07-25 21:39:58.
+Error: Invariant AgentEditsSurviveMaterialization is violated.
+Error: The behavior up to this point is:
+State 1: <Initial predicate>
+/\ agent_edits = {}
+/\ staging = [source |-> 0, active |-> FALSE, unit |-> ChildUnitA]
+/\ store_body = (ChildUnitA :> 0 @@ ChildUnitB :> 0 @@ LinkedSourceA :> 0)
+/\ child_unit = ( ChildUnitA :> [present |-> FALSE, content |-> 0] @@
+  ChildUnitB :> [present |-> FALSE, content |-> 0] )
+/\ held_back = {}
+/\ record = ( ChildUnitA :> [present |-> FALSE, source |-> 0] @@
+  ChildUnitB :> [present |-> FALSE, source |-> 0] )
+
+State 2: <PlaceUntrackedChildUnit line 187, col 3 to line 192, col 72 of module Internal>
+/\ agent_edits = {}
+/\ staging = [source |-> 0, active |-> FALSE, unit |-> ChildUnitA]
+/\ store_body = (ChildUnitA :> 0 @@ ChildUnitB :> 0 @@ LinkedSourceA :> 0)
+/\ child_unit = ( ChildUnitA :> [present |-> TRUE, content |-> 0] @@
+  ChildUnitB :> [present |-> FALSE, content |-> 0] )
+/\ held_back = {}
+/\ record = ( ChildUnitA :> [present |-> FALSE, source |-> 0] @@
+  ChildUnitB :> [present |-> FALSE, source |-> 0] )
+
+State 3: <AgentEditChildUnit line 198, col 3 to line 206, col 47 of module Internal>
+/\ agent_edits = {ChildUnitA}
+/\ staging = [source |-> 0, active |-> FALSE, unit |-> ChildUnitA]
+/\ store_body = (ChildUnitA :> 0 @@ ChildUnitB :> 0 @@ LinkedSourceA :> 0)
+/\ child_unit = ( ChildUnitA :> [present |-> TRUE, content |-> AgentBytes] @@
+  ChildUnitB :> [present |-> FALSE, content |-> 0] )
+/\ held_back = {}
+/\ record = ( ChildUnitA :> [present |-> FALSE, source |-> 0] @@
+  ChildUnitB :> [present |-> FALSE, source |-> 0] )
+
+State 4: <OverwriteModifiedChildUnit line 236, col 3 to line 242, col 64 of module Internal>
+/\ agent_edits = {ChildUnitA}
+/\ staging = [source |-> 0, active |-> FALSE, unit |-> ChildUnitA]
+/\ store_body = (ChildUnitA :> 0 @@ ChildUnitB :> 0 @@ LinkedSourceA :> 0)
+/\ child_unit = ( ChildUnitA :> [present |-> TRUE, content |-> 0] @@
+  ChildUnitB :> [present |-> FALSE, content |-> 0] )
+/\ held_back = {}
+/\ record = ( ChildUnitA :> [present |-> TRUE, source |-> 0] @@
+  ChildUnitB :> [present |-> FALSE, source |-> 0] )
+
+255 states generated, 114 distinct states found, 81 states left on queue.
+The depth of the complete state graph search is 4.
+The average outdegree of the complete state graph is 3 (minimum is 0, the maximum 9 and the 95th percentile is 7).
+Finished in 00s at (2026-07-25 21:39:59)
+
+==================== Internal_regression_nonatomic ====================
+$ bash specs/desired_program_model/run_tlc.sh specs/desired_program_model/Internal.tla specs/desired_program_model/Internal_regression_nonatomic.cfg
+Starting... (2026-07-25 21:39:59)
+Computing initial states...
+Finished computing initial states: 1 distinct state generated at 2026-07-25 21:39:59.
+Error: Invariant InFlightMaterializationLeavesTheChildUnitIntact is violated.
+Error: The behavior up to this point is:
+State 1: <Initial predicate>
+/\ agent_edits = {}
+/\ staging = [source |-> 0, active |-> FALSE, unit |-> ChildUnitA]
+/\ store_body = (ChildUnitA :> 0 @@ ChildUnitB :> 0 @@ LinkedSourceA :> 0)
+/\ child_unit = ( ChildUnitA :> [present |-> FALSE, content |-> 0] @@
+  ChildUnitB :> [present |-> FALSE, content |-> 0] )
+/\ held_back = {}
+/\ record = ( ChildUnitA :> [present |-> FALSE, source |-> 0] @@
+  ChildUnitB :> [present |-> FALSE, source |-> 0] )
+
+State 2: <StageChildUnitMaterialization line 103, col 3 to line 113, col 63 of module Internal>
+/\ agent_edits = {}
+/\ staging = [source |-> 0, active |-> TRUE, unit |-> ChildUnitA]
+/\ store_body = (ChildUnitA :> 0 @@ ChildUnitB :> 0 @@ LinkedSourceA :> 0)
+/\ child_unit = ( ChildUnitA :> [present |-> FALSE, content |-> 0] @@
+  ChildUnitB :> [present |-> FALSE, content |-> 0] )
+/\ held_back = {}
+/\ record = ( ChildUnitA :> [present |-> FALSE, source |-> 0] @@
+  ChildUnitB :> [present |-> FALSE, source |-> 0] )
+
+State 3: <SwapInChildUnit line 120, col 3 to line 125, col 44 of module Internal>
+/\ agent_edits = {}
+/\ staging = [source |-> 0, active |-> FALSE, unit |-> ChildUnitA]
+/\ store_body = (ChildUnitA :> 0 @@ ChildUnitB :> 0 @@ LinkedSourceA :> 0)
+/\ child_unit = ( ChildUnitA :> [present |-> TRUE, content |-> 0] @@
+  ChildUnitB :> [present |-> FALSE, content |-> 0] )
+/\ held_back = {}
+/\ record = ( ChildUnitA :> [present |-> TRUE, source |-> 0] @@
+  ChildUnitB :> [present |-> FALSE, source |-> 0] )
+
+State 4: <UpgradeParentStoreUnit line 212, col 3 to line 215, col 72 of module Internal>
+/\ agent_edits = {}
+/\ staging = [source |-> 0, active |-> FALSE, unit |-> ChildUnitA]
+/\ store_body = (ChildUnitA :> 1 @@ ChildUnitB :> 0 @@ LinkedSourceA :> 0)
+/\ child_unit = ( ChildUnitA :> [present |-> TRUE, content |-> 0] @@
+  ChildUnitB :> [present |-> FALSE, content |-> 0] )
+/\ held_back = {}
+/\ record = ( ChildUnitA :> [present |-> TRUE, source |-> 0] @@
+  ChildUnitB :> [present |-> FALSE, source |-> 0] )
+
+State 5: <StageChildUnitMaterialization line 103, col 3 to line 113, col 63 of module Internal>
+/\ agent_edits = {}
+/\ staging = [source |-> 1, active |-> TRUE, unit |-> ChildUnitA]
+/\ store_body = (ChildUnitA :> 1 @@ ChildUnitB :> 0 @@ LinkedSourceA :> 0)
+/\ child_unit = ( ChildUnitA :> [present |-> FALSE, content |-> 0] @@
+  ChildUnitB :> [present |-> FALSE, content |-> 0] )
+/\ held_back = {}
+/\ record = ( ChildUnitA :> [present |-> TRUE, source |-> 0] @@
+  ChildUnitB :> [present |-> FALSE, source |-> 0] )
+
+442 states generated, 202 distinct states found, 143 states left on queue.
+The depth of the complete state graph search is 5.
+The average outdegree of the complete state graph is 4 (minimum is 0, the maximum 9 and the 95th percentile is 7).
+Finished in 00s at (2026-07-25 21:40:00)
+

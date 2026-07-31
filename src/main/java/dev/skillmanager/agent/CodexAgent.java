@@ -29,8 +29,17 @@ public final class CodexAgent implements Agent {
 
     @Override public String mcpConfigFormat() { return "codex-toml"; }
 
+    /**
+     * {@code $CODEX_HOME}, else {@code <user home>/.codex}.
+     *
+     * <p>The default goes through {@link AgentHomes#userHome()} rather than
+     * {@code System.getProperty("user.home")}: the JVM ignores {@code $HOME} on
+     * macOS, so the direct property read sent skill projection into the
+     * operator's real {@code ~/.codex} whenever {@code CODEX_HOME} was unset
+     * (issue #18).
+     */
     private static Path codexHome() {
         return AgentHomes.resolveOrDefault(AgentHomes.CODEX_HOME,
-                Path.of(System.getProperty("user.home"), ".codex"));
+                AgentHomes.userHome().resolve(".codex"));
     }
 }

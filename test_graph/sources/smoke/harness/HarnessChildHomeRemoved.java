@@ -1,5 +1,6 @@
 ///usr/bin/env jbang "$0" "$@" ; exit $?
 //SOURCES ../../../sdk/java/src/main/java/com/hayden/testgraphsdk/sdk/*.java
+//SOURCES ../../lib/SmEnv.java
 
 import com.hayden.testgraphsdk.sdk.Node;
 import com.hayden.testgraphsdk.sdk.NodeResult;
@@ -38,8 +39,7 @@ public class HarnessChildHomeRemoved {
             String instanceId = "child-smoke-instance";
 
             ProcessBuilder rmPb = new ProcessBuilder(sm.toString(), "harness", "rm", instanceId);
-            rmPb.environment().put("SKILL_MANAGER_HOME", home);
-            rmPb.environment().put("SKILL_MANAGER_INSTALL_DIR", repoRoot.toString());
+            SmEnv.apply(ctx, rmPb, home);
             ProcessRecord rmProc = Procs.run(ctx, "rm-child-home-harness", rmPb);
             int rmRc = rmProc.exitCode();
 
@@ -71,8 +71,7 @@ public class HarnessChildHomeRemoved {
 
             ProcessBuilder dryRunRemovePb = new ProcessBuilder(
                     sm.toString(), "remove", "pip-cli-skill", "--dry-run");
-            dryRunRemovePb.environment().put("SKILL_MANAGER_HOME", home);
-            dryRunRemovePb.environment().put("SKILL_MANAGER_INSTALL_DIR", repoRoot.toString());
+            SmEnv.apply(ctx, dryRunRemovePb, home);
             ProcessRecord dryRunRemoveProc = Procs.run(ctx, "remove-after-child-home-rm", dryRunRemovePb);
             String dryRunRemoveLog = Files.isRegularFile(Procs.logFile(ctx, "remove-after-child-home-rm"))
                     ? Files.readString(Procs.logFile(ctx, "remove-after-child-home-rm")) : "";

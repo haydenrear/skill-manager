@@ -85,6 +85,136 @@ public final class AgentHomesTest {
         });
 
         // ----------------------------------------------------------------
+        // AgentHomes.userHome — the last-resort fallback must stay sandboxable
+        //
+        // Issue #18: the fallback used to be written down three times
+        // (AgentHomes.claude, CodexAgent, GeminiAgent) and all three read
+        // System.getProperty("user.home"). On macOS the JVM derives that from
+        // the OS and IGNORES $HOME, so a caller that sandboxed a child by
+        // setting HOME still got the operator's real home — and `install`
+        // projected skills into the real ~/.claude, ~/.codex and ~/.gemini,
+        // leaving dangling symlinks into deleted temp dirs.
+        //
+        // The assertions below drive the fallback deliberately: the three
+        // agent-home vars are left unset (the rest of this suite already
+        // requires that — see the null assertions further down), so every
+        // lookup below lands on the userHome() path and nothing else.
+
+        suite.test("userHome prefers $HOME over the JVM's user.home", () -> {
+            AgentHomes.clearOverrides();
+            Path sandbox = Files.createTempDirectory("agent-homes-user-home-");
+            AgentHomes.setOverride(AgentHomes.HOME, sandbox);
+            try {
+                assertEquals(sandbox, AgentHomes.userHome(),
+                        "userHome() reads HOME, not user.home");
+            } finally {
+                AgentHomes.clearOverrides();
+            }
+        });
+
+        suite.test("a sandboxed HOME keeps every agent home out of the real user.home", () -> {
+            AgentHomes.clearOverrides();
+            Path sandbox = Files.createTempDirectory("agent-homes-sandbox-").toRealPath();
+            Path realUserHome = Path.of(System.getProperty("user.home")).toAbsolutePath();
+            AgentHomes.setOverride(AgentHomes.HOME, sandbox);
+            try {
+                // Every path that used to have its own copy of the
+                // user.home fallback.
+                Path claudeRoot = AgentHomes.claude().root();
+                Path claudeConfig = AgentHomes.claude().configDir();
+                Path codexSkills = new CodexAgent().skillsDir();
+                Path codexConfig = new CodexAgent().mcpConfigPath();
+                Path geminiSkills = new GeminiAgent().skillsDir();
+                Path geminiConfig = new GeminiAgent().mcpConfigPath();
+
+                // The load-bearing claim, and asserted FIRST: it is stated as
+                // the leak rather than as an expected value, so it keeps its
+                // meaning even if the sandbox layout below ever changes — and
+                // asserting it first is what makes a mutation to the fallback
+                // fail on THIS line rather than on an equality that happens to
+                // be adjacent to it.
+                for (Path resolved : List.of(claudeRoot, claudeConfig, codexSkills,
+                        codexConfig, geminiSkills, geminiConfig)) {
+                    assertTrue(!resolved.toAbsolutePath().startsWith(realUserHome),
+                            "escaped the sandbox into the real user.home: " + resolved);
+                }
+
+                assertEquals(sandbox, claudeRoot, "Claude root under the sandbox HOME");
+                assertEquals(sandbox.resolve(".claude"), claudeConfig,
+                        "Claude config dir under the sandbox HOME");
+                assertEquals(sandbox.resolve(".codex").resolve("skills"), codexSkills,
+                        "Codex skills dir under the sandbox HOME");
+                assertEquals(sandbox.resolve(".codex").resolve("config.toml"), codexConfig,
+                        "Codex config under the sandbox HOME");
+                assertEquals(sandbox.resolve(".gemini").resolve("skills"), geminiSkills,
+                        "Gemini skills dir under the sandbox HOME");
+                assertEquals(sandbox.resolve(".gemini").resolve("settings.json"), geminiConfig,
+                        "Gemini settings under the sandbox HOME");
+            } finally {
+                AgentHomes.clearOverrides();
+            }
+        });
+
+        suite.test("a sandboxed HOME also covers the four fallbacks outside this package", () -> {
+            // Issue #31. #18 centralized the THREE agent-home fallbacks and
+            // said "there must be no System.getProperty(\"user.home\") anywhere
+            // else in this package" — and four more lived one package over,
+            // where that sentence did not reach: a fourth copy of the ~/.codex
+            // fallback in HarnessPluginCli, the default store root in
+            // SkillStore, and the ~-expansion in bind/rebind/harness.
+            //
+            // SkillStore is the sharpest of them. `SKILL_MANAGER_HOME` unset
+            // plus a sandboxed HOME is exactly the bare-shell case, and the
+            // fallback sent every write to the operator's real home — the one
+            // thing this epic's standing constraint forbids.
+            AgentHomes.clearOverrides();
+            Path sandbox = Files.createTempDirectory("agent-homes-elsewhere-").toRealPath();
+            Path realUserHome = Path.of(System.getProperty("user.home")).toAbsolutePath();
+            AgentHomes.setOverride(AgentHomes.HOME, sandbox);
+            try {
+                Path codexConfig = dev.skillmanager.project.HarnessPluginCli.Codex.codexConfigPath();
+                assertTrue(!codexConfig.toAbsolutePath().startsWith(realUserHome),
+                        "the plugin CLI's codex config escaped into the real user.home: "
+                                + codexConfig);
+                assertEquals(sandbox.resolve(".codex").resolve("config.toml"), codexConfig,
+                        "the fourth copy of the ~/.codex fallback resolves in the sandbox");
+
+                // Only meaningful with SKILL_MANAGER_HOME unset — with it set,
+                // the fallback is never reached and this would pass vacuously,
+                // which is the failure shape §7 is about.
+                String pinned = System.getenv("SKILL_MANAGER_HOME");
+                if (pinned == null || pinned.isBlank()) {
+                    Path storeRoot = dev.skillmanager.store.SkillStore.defaultStore().root();
+                    assertTrue(!storeRoot.toAbsolutePath().startsWith(realUserHome),
+                            "the default store root escaped into the real user.home: " + storeRoot);
+                    assertEquals(sandbox.resolve(".skill-manager"), storeRoot,
+                            "an unset SKILL_MANAGER_HOME resolves under the sandbox HOME");
+                }
+            } finally {
+                AgentHomes.clearOverrides();
+            }
+        });
+
+        suite.test("claude(env) derives its fallback from the launch env's HOME", () -> {
+            AgentHomes.clearOverrides();
+            // A launch env is the COMPLETE statement of what the child gets, so
+            // the fallback root has to come from the env passed in, not from
+            // the ambient HOME and not from user.home.
+            Path launchHome = Path.of("/sandbox/launch-home");
+            AgentHomes.setOverride(AgentHomes.HOME, Path.of("/ambient/should-not-be-read"));
+            try {
+                AgentHomes.ClaudeHome home =
+                        AgentHomes.claude(Map.of(AgentHomes.HOME, launchHome.toString()));
+                assertEquals(launchHome, home.root(),
+                        "launch env HOME wins over the ambient one");
+                assertEquals(launchHome.resolve(".claude"), home.configDir(),
+                        "config dir derived from the launch env HOME");
+            } finally {
+                AgentHomes.clearOverrides();
+            }
+        });
+
+        // ----------------------------------------------------------------
         // HarnessPluginCli.Claude — env wiring honors the override
 
         suite.test("Claude driver: CLAUDE_HOME override redirects CLAUDE_CONFIG_DIR", () -> {

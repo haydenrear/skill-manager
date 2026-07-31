@@ -46,8 +46,13 @@ public final class NpmBackend implements InstallerBackend {
         Fs.ensureDir(prefix);
 
         // Ensure node is on PATH for the npm subprocess (npm's shebang assumes it).
+        // The prefix above is the install target and stays per-home; the cache
+        // npm reads tarballs out of is content-addressed (keyed on integrity
+        // hash) and is shared with every other home — see PackageCaches.
         Path nodeDir = Path.of(node).getParent();
-        Map<String, String> env = Map.of("PATH", nodeDir + java.io.File.pathSeparator + System.getenv("PATH"));
+        Map<String, String> env = new java.util.LinkedHashMap<>(
+                dev.skillmanager.pm.PackageCaches.sharedEnvEnsured(store.venvsDir()));
+        env.put("PATH", nodeDir + java.io.File.pathSeparator + System.getenv("PATH"));
         Shell.mustWithEnv(List.of(npm, "install", "-g", "--prefix", prefix.toString(), pkg), env);
 
         Path srcBin = prefix.resolve("bin");

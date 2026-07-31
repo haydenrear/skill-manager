@@ -1,6 +1,7 @@
 ///usr/bin/env jbang "$0" "$@" ; exit $?
 //SOURCES ../../sdk/java/src/main/java/com/hayden/testgraphsdk/sdk/*.java
 //SOURCES ../common/BrowserLoginFlow.java
+//SOURCES ../lib/SmEnv.java
 //DEPS org.seleniumhq.selenium:selenium-java:4.23.0
 //DEPS org.seleniumhq.selenium:selenium-chrome-driver:4.23.0
 //DEPS com.fasterxml.jackson.core:jackson-databind:2.20.2
@@ -62,7 +63,7 @@ public class RefreshOnExpiry {
 
             // (1) Browser-login under the short-TTL server.
             BrowserLoginFlow.Result login = BrowserLoginFlow.run(
-                    sm.toString(), home, registryUrl, repoRoot.toString(), username, password);
+                    ctx, sm.toString(), home, registryUrl, repoRoot.toString(), username, password);
             if (!login.fullySucceeded()) {
                 return NodeResult.fail("refresh.on.expiry",
                         "initial browser login failed under short-TTL server\ncli output:\n"
@@ -86,8 +87,7 @@ public class RefreshOnExpiry {
                     sm.toString(), "login", "show",
                     "--registry", registryUrl)
                     .redirectErrorStream(true);
-            pb.environment().put("SKILL_MANAGER_HOME", home);
-            pb.environment().put("SKILL_MANAGER_INSTALL_DIR", repoRoot.toString());
+            SmEnv.apply(ctx, pb, home);
             Process proc = pb.start();
             String output = new String(proc.getInputStream().readAllBytes());
             int rc = proc.waitFor();

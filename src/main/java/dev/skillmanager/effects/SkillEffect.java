@@ -272,8 +272,36 @@ public sealed interface SkillEffect permits
      * Append the install plan to the audit log under {@code verb}
      * ({@code "install"} / {@code "sync"} / etc.). Reads the plan from
      * {@link EffectContext#plan()} — must run after {@link BuildInstallPlan}.
+     *
+     * <p>{@code targets} names work this command did that the plan cannot
+     * describe, one audit line each. It exists because {@code sync} had NO
+     * audit trail at all (issue #45): its last entry was 8 days old while a
+     * {@code sync} rewrote 101 files in the same home, which was discovered
+     * precisely when a trail was needed. Giving sync "the same treatment" as
+     * install — this effect, with the plan — is necessary and not sufficient:
+     * sync's plan is built from
+     * {@link BuildResolveGraphFromUnmetReferences}, so a steady-state sync
+     * (nothing unmet, which is the ordinary case) plans zero actions and would
+     * have logged zero lines while still re-merging every unit. The per-target
+     * work lives in {@link SyncGit} / {@link SyncFromLocalDir} /
+     * {@link SyncDocRepo} / {@link SyncHarness}, and those are what touched the
+     * bytes.
+     *
+     * <p>A component on this effect rather than a second audit-writing effect
+     * or an {@code AuditLog} call inside each of those four handlers: one
+     * definition ({@code AuditLog.record}), one handler, one emission site (the
+     * loop in {@code SyncUseCase} that already builds the targets). Four
+     * handlers writing their own line is four chances to miss one, which is how
+     * this was missing in the first place. Empty for {@code install}, whose
+     * behaviour is byte-identical to before.
      */
-    record RecordAuditPlan(String verb) implements SkillEffect {}
+    record RecordAuditPlan(String verb, List<String> targets) implements SkillEffect {
+        public RecordAuditPlan {
+            targets = targets == null ? List.of() : List.copyOf(targets);
+        }
+
+        public RecordAuditPlan(String verb) { this(verb, List.of()); }
+    }
 
     /**
      * Walk the committed graph and write {@code sources/<name>.json} for each skill.

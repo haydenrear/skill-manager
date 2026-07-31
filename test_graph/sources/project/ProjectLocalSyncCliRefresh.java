@@ -1,5 +1,6 @@
 ///usr/bin/env jbang "$0" "$@" ; exit $?
 //SOURCES ../../sdk/java/src/main/java/com/hayden/testgraphsdk/sdk/*.java
+//SOURCES ../lib/SmEnv.java
 
 import com.hayden.testgraphsdk.sdk.Node;
 import com.hayden.testgraphsdk.sdk.NodeContext;
@@ -80,12 +81,21 @@ public class ProjectLocalSyncCliRefresh {
 
             boolean parentCliInstalled = Files.isExecutable(parentCli);
             boolean projectCliInstalled = Files.isExecutable(projectCli);
+            // Files.isExecutable follows symlinks, so it is equally true of a
+            // copied binary and of a link at the parent shim. CLI shims are
+            // deliberately the ONE thing a child home still links at the parent
+            // (ChildHomeMaterializer#mirrorExistingShim), so state which it is:
+            // a copy here would silently pin the project to a toolchain the
+            // parent may later upgrade.
+            boolean projectCliIsParentShimLink = Files.isSymbolicLink(projectCli)
+                    && linkTargetIs(projectCli, parentCli);
             boolean pass = resolve.exitCode() == 0
                     && sync.exitCode() == 0
                     && parentStartsWithoutCli
                     && projectStartsWithoutCli
                     && parentCliInstalled
-                    && projectCliInstalled;
+                    && projectCliInstalled
+                    && projectCliIsParentShimLink;
 
             return (pass
                     ? NodeResult.pass("project.local.sync.cli.refresh")
@@ -95,7 +105,8 @@ public class ProjectLocalSyncCliRefresh {
                                     + " parentStartsWithoutCli=" + parentStartsWithoutCli
                                     + " projectStartsWithoutCli=" + projectStartsWithoutCli
                                     + " parentCliInstalled=" + parentCliInstalled
-                                    + " projectCliInstalled=" + projectCliInstalled))
+                                    + " projectCliInstalled=" + projectCliInstalled
+                                    + " projectCliIsParentShimLink=" + projectCliIsParentShimLink))
                     .process(resolve)
                     .process(sync)
                     .assertion("project_resolve_ok", resolve.exitCode() == 0)
@@ -103,8 +114,26 @@ public class ProjectLocalSyncCliRefresh {
                     .assertion("parent_cli_absent_before_sync", parentStartsWithoutCli)
                     .assertion("project_cli_absent_before_sync", projectStartsWithoutCli)
                     .assertion("parent_cli_installed_after_local_sync", parentCliInstalled)
-                    .assertion("project_child_cli_installed_after_local_sync", projectCliInstalled);
+                    .assertion("project_child_cli_installed_after_local_sync", projectCliInstalled)
+                    .assertion("project_child_cli_is_a_symlink_at_the_parent_shim", projectCliIsParentShimLink);
         });
+    }
+
+    /**
+     * The raw symlink target, not its real path: the parent shim is itself
+     * usually a link into a brew/uv/npm prefix, so resolving through it says
+     * nothing about whether the child home points at the PARENT's shim.
+     */
+    private static boolean linkTargetIs(Path link, Path expected) {
+        try {
+            Path raw = Files.readSymbolicLink(link);
+            Path resolved = raw.isAbsolute()
+                    ? raw.normalize()
+                    : link.getParent().resolve(raw).normalize();
+            return resolved.equals(expected.toAbsolutePath().normalize());
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     private static Path scaffoldSkill(Path root, String name) throws Exception {
@@ -193,11 +222,8 @@ public class ProjectLocalSyncCliRefresh {
         }
 
         void apply(ProcessBuilder pb, Path repoRoot) {
-            pb.environment().put("SKILL_MANAGER_HOME", home);
-            pb.environment().put("SKILL_MANAGER_INSTALL_DIR", repoRoot.toString());
-            pb.environment().put("CLAUDE_HOME", claudeHome);
-            pb.environment().put("CODEX_HOME", codexHome);
-            pb.environment().put("GEMINI_HOME", geminiHome);
+            SmEnv.apply(pb, home, repoRoot.toString(),
+                    SmEnv.sandbox(claudeHome, codexHome, geminiHome));
         }
     }
 }

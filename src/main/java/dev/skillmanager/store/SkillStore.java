@@ -66,11 +66,27 @@ public final class SkillStore {
         this.installedDir = root.resolve("installed");
     }
 
+    /** The env var naming the home root. */
+    public static final String HOME_ENV = "SKILL_MANAGER_HOME";
+
+    /**
+     * The ambient home: {@code $SKILL_MANAGER_HOME}, else
+     * {@code <userHome>/.skill-manager}.
+     *
+     * <p>Resolved through {@link dev.skillmanager.agent.AgentHomes#resolve}
+     * rather than {@code System.getenv} directly, so the home root has the
+     * same single interception point every other home-shaped variable has.
+     * A JVM cannot mutate its own environment, and without an override an
+     * in-process test of "what does this command write" has no choice but to
+     * aim at whatever home the developer's shell exported — which is the
+     * operator's real home, which is the thing being tested. Behaviour with
+     * no override set is unchanged: env var when non-blank, else user home.
+     */
     public static SkillStore defaultStore() {
-        String env = System.getenv("SKILL_MANAGER_HOME");
-        Path root = env != null && !env.isBlank()
-                ? Path.of(env)
-                : Path.of(System.getProperty("user.home"), ".skill-manager");
+        Path root = dev.skillmanager.agent.AgentHomes.resolve(HOME_ENV);
+        if (root == null) {
+            root = dev.skillmanager.agent.AgentHomes.userHome().resolve(".skill-manager");
+        }
         return new SkillStore(root);
     }
 
@@ -97,7 +113,58 @@ public final class SkillStore {
     @Deprecated
     public Path sourcesDir() { return installedDir; }
 
+    /**
+     * True when this root is already a Skill Manager home — somebody ran
+     * {@link #init()} against it, or cloned one here, before now.
+     *
+     * <p>Deliberately not "the root directory exists": the reproduction for
+     * the eager-scaffold defect creates an empty decoy directory first, and
+     * an empty directory is not a home. Callers that only have work to do
+     * when a home is already present — reconciliation, outstanding-error
+     * reporting — ask this instead of creating one to find out.
+     *
+     * <h2>Why this delegates rather than deciding for itself</h2>
+     *
+     * <p>It shipped (in {@code 7d87a06}, as {@code isMaterialized()}) as
+     * {@code installed/ || skills/} while
+     * {@link dev.skillmanager.launch.LaunchEnv#looksLikeStoreRoot} — the
+     * predicate {@link NotAHomeException#require} and the PATH sanitizer use —
+     * reads {@code descriptor || (installed/ && skills/)}. Two spellings, and
+     * they disagreed in both directions: a descriptor-only home was "not
+     * materialized" (so a read command skipped reconcile) yet "is a home" (so
+     * {@code exec} launched against it), and an {@code installed/}-only
+     * directory was the reverse. Neither disagreement was ever demonstrated to
+     * lose data, and that is the point — this epic has already paid four times
+     * for one question asked in two spellings, each time in the gap nobody had
+     * demonstrated yet. There is one predicate; this asks it.
+     *
+     * <p>The consequence worth naming: a <em>partial</em> home — one that
+     * carries {@code installed/} but no {@code skills/} and no descriptor —
+     * no longer self-heals on a read-only command, because a read-only command
+     * no longer calls {@code init()} at all (that is {@link HomeScaffold}) and
+     * reconcile is now skipped for it as well. The first writing command
+     * completes the layout, exactly as it does for a home that does not exist.
+     */
+    public boolean isHome() {
+        return dev.skillmanager.launch.LaunchEnv.looksLikeStoreRoot(root);
+    }
+
+    /**
+     * Create the home layout, unless the running command was declared
+     * {@link HomeScaffold.Access#READ_ONLY}.
+     *
+     * <p>This is the single point at which a skill-manager home comes into
+     * being, and therefore the single point at which laziness can be
+     * enforced. See {@link HomeScaffold} for the defect
+     * ({@code --version} materializing twelve directories in whatever
+     * {@code SKILL_MANAGER_HOME} named) and for why the mode is declared once
+     * per invocation instead of threaded through every call site.
+     *
+     * <p>Skipping is safe for readers because every listing below already
+     * treats a missing directory as an empty one.
+     */
     public void init() throws IOException {
+        if (!HomeScaffold.mayScaffold()) return;
         Fs.ensureDir(root);
         Fs.ensureDir(skillsDir);
         Fs.ensureDir(pluginsDir);

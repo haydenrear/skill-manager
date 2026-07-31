@@ -576,6 +576,272 @@ validationGraph {
         node("sources/project/ProjectLocalSyncCliRefresh.java")
     }
 
+    // Child-home materialization contract, driven end to end through the real
+    // `skill-manager` CLI against throwaway projects. Mirrors the External /
+    // Internal invariants in specs/desired_program_model:
+    //
+    //   ChildHomeWritesNeverReachTheParentStore    independence
+    //   AgentEditedChildUnitsAreNeverDestroyed     no silent destruction
+    //   EveryPassReportsExactlyTheHeldBackUnits    reporting
+    //   UnmodifiedChildUnitsConvergeOnTheirSource  convergence
+    //   ResolveLeavesOnlyClaimedOrHeldBackUnits    prune scope
+    //   InFlightMaterializationLeavesTheChildUnitIntact  atomicity
+    //
+    // Strictly ordered: each node builds on the child-home state the previous
+    // one left behind, and the agent's edited bytes are carried forward through
+    // published context so a later node can prove they are still there.
+    testGraph("project-child-home") {
+        node("sources/common/EnvPrepared.java")
+        node("sources/child-home/ChildHomeProjectFixture.java")
+        node("sources/child-home/ChildHomeResolved.java")
+        node("sources/child-home/ChildHomeUnitsIndependent.java")
+        node("sources/child-home/ChildHomeUnitEdited.java")
+        node("sources/child-home/ChildHomeEditStaysInChildHome.java")
+        node("sources/child-home/ChildHomeResolvePreservesEdits.java")
+        node("sources/child-home/ChildHomeSyncPreservesEdits.java")
+        node("sources/child-home/ChildHomePrunePreservesEdits.java")
+        node("sources/child-home/ChildHomeConvergesOnSource.java")
+        node("sources/child-home/ChildHomeMaterializationAtomic.java")
+    }
+
+    // ---------------------------------------------------------------------
+    // home-clone: HOME-level isolation, T19 / #20.
+    //
+    // Where project-child-home asserts that the UNITS inside a home are
+    // independent, this graph asserts that a HOME is a pure function of
+    // SKILL_MANAGER_HOME: copy it into a project, point the env var at the copy,
+    // and the copy touches neither the home it came from nor ~/.claude.
+    //
+    // Drives the real CLI over a SYNTHETIC fixture home (the developer's is
+    // 5.4 GB and /private/tmp has less free space than that; it is also the home
+    // the standing constraint on #1 forbids writing to). The fixture carries one
+    // artifact per problem class #20 measured: an absolute in-unit symlink into
+    // the store, an absolute bin/cli symlink, a shim with the home path in its
+    // body, a shim whose target is under a skipped root, a pm/ entry, a venvs/
+    // entry, and an authored file that legitimately records an absolute path.
+    //
+    // Invariants from specs/desired_program_model/External.tla (HomeSpec):
+    //   SourceHomeIsByteIdenticalToItsCloneTimeSelf
+    //   AHomeIsAPureFunctionOfItsRoot
+    //   NoOwnedSurfaceNamesAnotherHome
+    //   AuthoredContentIsNeverRewritten
+    //   ToolchainRootsAreNeverShared
+    //   AHomeMissingItsToolchainsStillHasItsPackageManagers
+    //   EveryHomeMissingItsToolchainsSaysSo
+    //
+    // Strictly ordered: each node builds on what the previous one left on disk,
+    // and the source home's digest is carried forward so every later node can
+    // prove the source is still byte-identical rather than trusting a report.
+    testGraph("home-clone") {
+        node("sources/common/EnvPrepared.java")
+        node("sources/home-clone/HomeCloneFixtureBuilt.java")
+        node("sources/home-clone/HomeClonedIntoProject.java")
+        // Shape of the copy first, then what happens when it is used. Every
+        // skill-manager command calls SkillStore.init(), so a node asserting the
+        // clone's layout has to run before one that drives the CLI through it.
+        node("sources/home-clone/HomeCloneToolchainsReprovisionable.java")
+        node("sources/home-clone/HomeCloneDescriptorResolves.java")
+        node("sources/home-clone/HomeCloneEditStaysInClone.java")
+        node("sources/home-clone/HomeCloneWorksWithSourceRenamed.java")
+        node("sources/home-clone/HomeCloneNoAgentHomeLeak.java")
+        // The undeclared property this home model rests on, with an oracle
+        // rather than a comment. It does not depend on the fixture above: the
+        // cost node needs a dedicated volume nobody else writes to.
+        //
+        // IT CARRIES NO SPEC INVARIANT, deliberately (T57 / #60): the clone
+        // COST is a resource property — blocks consumed on a filesystem. TLA+
+        // cannot express it and TLC cannot check it, so the only honest oracle
+        // is a measurement.
+        //
+        // That measurement used to be free space on a dedicated APFS sparse
+        // image, and it was flaky, because a sparse image's available space is
+        // bounded by the free space of the disk backing it — so the operator's
+        // own writes leaked into the "dedicated" volume. It now reads block
+        // sharing per file instead (sources/lib/extentprobe.py), which nothing
+        // else on the host can perturb, and carries a hard-link control that
+        // must read as shared plus a byte-copy control that must read as not
+        // shared, in the same run as the measurement.
+        //
+        // See specs/desired_program_model/External.tla for what HomeSpec does
+        // cover, and issue #60 for the decision.
+        node("sources/home-clone/HomeCloneCostsFarLessThanACopy.java")
+        // The other side of the same economics. HomeCloneCostsFarLessThanACopy
+        // asserts that copying a home is cheap; these two assert that the
+        // PACKAGE STORE the home installs out of is not copied per home at
+        // all, and that what is materialized out of it is materialized by
+        // reference.
+        //
+        // Split in two on purpose. The contract node is deterministic, needs
+        // no network, and is the one that fails when somebody gives a home a
+        // private cache — it is where the regression will actually be caught.
+        // The cost node is the instrument that proves the contract is worth
+        // having: apparent size, du, stat's block counts and link counts are
+        // all identical whether a venv shares blocks or not, so only the
+        // physical address of each file's blocks can tell. It still needs uv
+        // and a network warm-up, and SKIPS with a stated reason when it cannot
+        // get them, which is why it must not be the only guard.
+        //
+        // LIKE THE CLONE-COST NODE ABOVE, NEITHER CARRIES A SPEC INVARIANT:
+        // "these bytes are shared" is a resource property, not a state
+        // machine, and TLC cannot check it.
+        node("sources/home-clone/SharedPackageCacheIsNotPrivateToTheHome.java")
+        node("sources/home-clone/SharedStoreMaterializationCostsFarLessThanACopy.java")
+    }
+
+    /**
+     * The home tripwire: the operator's four real agent homes are snapshotted,
+     * a real install runs against a sandboxed home, and the snapshot is
+     * re-taken and diffed.
+     *
+     * This replaces two scratchpad shell scripts that were run by hand around a
+     * batch of work and that found four leak paths no assertion did — including
+     * issue #18, where a projection reached the real ~/.claude and showed up in
+     * a live agent's skill list. An oracle that fires only when someone
+     * remembers to run it is not a regression guard.
+     *
+     * home.tripwire.sensitive is the reason to believe the rest: it plants one
+     * mutation per observed defect class into a decoy home and asserts each is
+     * detected, with an unmutated control asserted clean in the same run. It
+     * has no dependency on the other three nodes and touches no real home, so
+     * it keeps its meaning even if the bracket is ever skipped.
+     *
+     * sandbox.env.contract belongs here because it watches the same defect from
+     * the other side. The tripwire sees a leak AFTER a node made it, in the run
+     * that made it; the contract node fails on the CODE that would make one —
+     * a node that spells the sandbox env itself, or spawns the CLI without it.
+     * Issue #30 measured 50 such sites, so "every node remembers" is not a
+     * property this suite can rely on being true. It has no dependencies and
+     * touches no home, so it also keeps its meaning if the bracket is skipped.
+     */
+    testGraph("home-tripwire") {
+        node("sources/sandbox/SandboxEnvContract.java")
+        node("sources/tripwire/HomeTripwireSensitive.java")
+        node("sources/common/EnvPrepared.java")
+        // Armed AFTER env.prepared so the watched window is exactly this
+        // graph's skill-manager work. A leak from shared fixture setup is a
+        // finding about every graph, not about this one.
+        node("sources/tripwire/HomeTripwireArmed.java").dependsOn("env.prepared")
+        node("sources/tripwire/HomeTripwireWorkload.java")
+        node("sources/tripwire/HomeTripwireChecked.java")
+    }
+
+    /**
+     * The per-checkout home contract, formerly assert-home.sh — a scratchpad
+     * script run by hand once at the end of ticket #10.
+     *
+     * Reuses home-clone's fixture and clone nodes rather than scaffolding a
+     * second fixture home. The thing under test is the CONTRACT a provisioned
+     * home has to satisfy, not a second way of producing one, and a duplicate
+     * fixture would be a second idiom to keep in step (issue #24).
+     */
+    testGraph("checkout-home") {
+        node("sources/common/EnvPrepared.java")
+        node("sources/home-clone/HomeCloneFixtureBuilt.java")
+        node("sources/home-clone/HomeClonedIntoProject.java")
+        node("sources/checkout-home/CheckoutHomeProvisioned.java")
+        node("sources/checkout-home/CheckoutHomeContract.java")
+        node("sources/checkout-home/CheckoutHomeLaunchIsolated.java")
+    }
+
+    /**
+     * home-sync: the return path between the three home tiers.
+     *
+     * Where home-clone asserts that a home is a pure function of its root, this
+     * graph asserts what happens once there are THREE of them — the root home
+     * the operator installs into, a copy per repository, and a copy per ticket
+     * worktree — and edits have to flow back up as well as down. The regression
+     * it guards is silent by construction: a ticket agent improves a skill in
+     * its worktree home, the worktree is removed, and the teardown succeeds
+     * exactly as loudly as it would have if there had been nothing to lose.
+     *
+     * All four directions, driven through the real CLI over real homes:
+     *
+     *   home.sync.root.to.project      scaffold + keep current, no project edit lost
+     *   home.sync.project.to.root      the upward copy path, and `unit publish`
+     *                                  to a LOCAL bare remote for the history path
+     *   home.sync.worktree.to.project  the essential one: close-out refuses, the
+     *                                  remedy it prints is EXECUTED, then it passes
+     *   home.sync.project.to.worktree  picking up what the project learned after
+     *                                  the branch, including a three-way merge
+     *
+     * plus the cases that belong to no direction (home.sync.permutations: dry
+     * run, conflict, removed-upstream, no common ancestor, frozen home),
+     * the two failure shapes (home.sync.hazards: an interrupted pass and two
+     * concurrent ones), git state read from git rather than inferred
+     * (home.sync.git.flawless), and the clone-of-an-edited-home baseline case
+     * (home.sync.stale.baseline).
+     *
+     * home.sync.provenance is the two silent-data-loss defects of the baseline
+     * rule as sequences rather than as states: CHM-9 needs three homes and a
+     * teardown between two successful commands (sync up, close out, remove the
+     * worktree, sync down) and CHM-10 needs the same source to merge twice.
+     * Neither is reachable in one command, and both reported success while
+     * destroying the ticket's work, so nothing shorter than the sequence can
+     * assert they are gone.
+     *
+     * home.sync.round.trip is the same class of finding one tier wider:
+     * CHM-12, where TWO ticket worktrees merge into one project home and the
+     * ordinary push-up-then-pull-down through the root home destroys the
+     * second one's edit while every command reports clean=true. The cause is
+     * what a merge WRITES DOWN rather than which base it reads, so nothing
+     * shorter than the six-command sequence across four homes turns it into a
+     * lost byte.
+     *
+     * home.sync.homeness covers the two ways a report was clean about units it
+     * had never looked at: a `--home` that is not a Skill Manager home at all
+     * (the worktree DIRECTORY rather than the home inside it, which is exactly
+     * what `git worktree remove` takes) contributed zero units and cleared the
+     * teardown with exit 0; and a symlinked unit or kind directory was dropped
+     * by the enumerator with no report, so a home whose skills/ was a link
+     * reconciled as {"clean":true,"units":[]}.
+     *
+     * home.sync.sensitive is the reason to believe the rest: it plants one
+     * mutation per defect class — an edit silently overwritten, a conflict
+     * silently resolved, a dry run that writes, half a swap left behind, a
+     * removed-upstream unit deleted — each on a fresh pair of real homes, and
+     * asserts each is DETECTED by the same oracles the other nodes use, with
+     * unmutated controls asserted clean in the same run. It runs first and
+     * depends only on env.prepared, so it keeps its meaning independently of
+     * everything below it.
+     *
+     * Strictly ordered from home.sync.fixture.built onward: each of the four
+     * direction nodes builds on the home state the previous one left behind,
+     * which is the only way to assert that a worktree closing out returns work
+     * to a project home that has itself moved on.
+     */
+    testGraph("home-sync") {
+        node("sources/common/EnvPrepared.java")
+        node("sources/home-sync/HomeSyncSensitive.java")
+        node("sources/home-sync/HomeSyncFixtureBuilt.java")
+        node("sources/home-sync/HomeSyncRootToProject.java")
+        node("sources/home-sync/HomeSyncProjectToRoot.java")
+        node("sources/home-sync/HomeSyncWorktreeToProject.java")
+        node("sources/home-sync/HomeSyncProjectToWorktree.java")
+        node("sources/home-sync/HomeSyncGitFlawless.java")
+        node("sources/home-sync/HomeSyncPermutations.java")
+        node("sources/home-sync/HomeSyncHazards.java")
+        node("sources/home-sync/HomeSyncStaleBaseline.java")
+        node("sources/home-sync/HomeSyncProvenance.java")
+        node("sources/home-sync/HomeSyncRoundTrip.java")
+        node("sources/home-sync/HomeSyncHomeness.java")
+        // A worktree that was USED. Issue #41: running the tooling inside a
+        // unit — the thing a worktree exists to do — left .gradle/, __pycache__
+        // and a built jar in it, and close-out then reported `conflicted` with
+        // a remedy that exited 1 without clearing the gate. It RUNS a script
+        // and asserts about whatever the run left behind, because a fixture
+        // that writes the artefacts writes only the ones somebody thought of.
+        // It also carries the guard on its own fix: a unit the agent COMMITTED
+        // in must still block (issue #29).
+        node("sources/home-sync/HomeSyncBuiltInUnit.java")
+        // The two writers that are not `home sync` but write into the same
+        // home: `project resolve`/`project sync` (CHM-15) and the agent-tree
+        // projectors (CHM-16). Both live here because the defect in each is a
+        // reconcile ordering, and this is the graph that owns "who may destroy
+        // bytes in a home".
+        node("sources/home-sync/HomeSyncProjectSeam.java")
+        node("sources/home-sync/HomeSyncAuthoredAgentTree.java")
+    }
+
     testGraph("project-env") {
         node("sources/common/EnvPrepared.java")
         node("sources/project/ProjectEnvMaterialized.java")

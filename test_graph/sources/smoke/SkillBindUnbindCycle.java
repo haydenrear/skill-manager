@@ -1,5 +1,6 @@
 ///usr/bin/env jbang "$0" "$@" ; exit $?
 //SOURCES ../../sdk/java/src/main/java/com/hayden/testgraphsdk/sdk/*.java
+//SOURCES ../lib/SmEnv.java
 
 import com.hayden.testgraphsdk.sdk.Node;
 import com.hayden.testgraphsdk.sdk.NodeResult;
@@ -56,8 +57,7 @@ public class SkillBindUnbindCycle {
             // bind hello-skill --to <project>
             ProcessBuilder bindPb = new ProcessBuilder(
                     sm.toString(), "bind", "hello-skill", "--to", project.toString());
-            bindPb.environment().put("SKILL_MANAGER_HOME", home);
-            bindPb.environment().put("SKILL_MANAGER_INSTALL_DIR", repoRoot.toString());
+            SmEnv.apply(ctx, bindPb, home);
             ProcessRecord bindProc = Procs.run(ctx, "bind", bindPb);
             int bindRc = bindProc.exitCode();
 
@@ -83,8 +83,7 @@ public class SkillBindUnbindCycle {
             if (explicitId != null) {
                 ProcessBuilder unbindPb = new ProcessBuilder(
                         sm.toString(), "unbind", explicitId);
-                unbindPb.environment().put("SKILL_MANAGER_HOME", home);
-                unbindPb.environment().put("SKILL_MANAGER_INSTALL_DIR", repoRoot.toString());
+                SmEnv.apply(ctx, unbindPb, home);
                 unbindProc = Procs.run(ctx, "unbind", unbindPb);
                 unbindRc = unbindProc.exitCode();
             }

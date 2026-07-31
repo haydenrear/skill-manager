@@ -1,6 +1,7 @@
 ///usr/bin/env jbang "$0" "$@" ; exit $?
 //SOURCES ../../sdk/java/src/main/java/com/hayden/testgraphsdk/sdk/*.java
 //SOURCES ../lib/StaleProcCleanup.java
+//SOURCES ../lib/Daemons.java
 
 import com.hayden.testgraphsdk.sdk.Node;
 import com.hayden.testgraphsdk.sdk.NodeResult;
@@ -14,6 +15,8 @@ import java.net.http.HttpResponse;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Starts the Java Spring Boot skill registry server as a background process
@@ -98,19 +101,29 @@ public class RegistryUp {
                     pb.environment().put("SKILL_REGISTRY_ACCESS_TOKEN_TTL_SECONDS", s));
             ctx.get("short.access.token.ttl", "clockSkewSeconds").ifPresent(s ->
                     pb.environment().put("SKILL_REGISTRY_JWT_CLOCK_SKEW_SECONDS", s));
-            Process proc = pb.start();
-            Files.writeString(pidFile, Long.toString(proc.pid()));
+            // A TESTBED node must leave the registry running, but the SDK
+            // supervisor forbids live descendants. Daemons.spawn is the one
+            // idiom for that; see its javadoc for why a raw start() fails.
+            long serverPid;
+            try {
+                serverPid = Daemons.spawn(pb, pidFile, Duration.ofSeconds(30));
+            } catch (IOException failed) {
+                return NodeResult.fail("registry.up",
+                        failed.getMessage() + "; see " + logFile);
+            }
 
             String baseUrl = "http://127.0.0.1:" + port;
             boolean healthy = waitForHealthy(baseUrl, Duration.ofSeconds(180));
             if (!healthy) {
-                proc.destroy();
+                // The daemon is re-parented, so there is no Process handle to
+                // destroy; signal the recorded pid instead.
+                Daemons.stop(serverPid);
                 return NodeResult.fail("registry.up",
-                        "registry not healthy within 60s; see " + logFile);
+                        "registry not healthy within 180s; see " + logFile);
             }
             return NodeResult.pass("registry.up")
                     .assertion("health_ok", true)
-                    .metric("pid", proc.pid())
+                    .metric("pid", serverPid)
                     .metric("port", port)
                     .publish("baseUrl", baseUrl);
         });

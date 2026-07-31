@@ -29,8 +29,16 @@ public final class GeminiAgent implements Agent {
 
     @Override public String mcpConfigFormat() { return "gemini-json"; }
 
+    /**
+     * {@code $GEMINI_HOME}, else {@code <user home>/.gemini}.
+     *
+     * <p>Same reasoning as {@code CodexAgent.codexHome()}: the default is
+     * derived from {@link AgentHomes#userHome()}, because the JVM's
+     * {@code user.home} ignores {@code $HOME} on macOS and so bypasses every
+     * sandbox (issue #18).
+     */
     private static Path geminiHome() {
         return AgentHomes.resolveOrDefault(AgentHomes.GEMINI_HOME,
-                Path.of(System.getProperty("user.home"), ".gemini"));
+                AgentHomes.userHome().resolve(".gemini"));
     }
 }

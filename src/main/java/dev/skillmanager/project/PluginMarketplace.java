@@ -117,7 +117,11 @@ public final class PluginMarketplace {
                 Fs.deleteRecursive(link);
             }
             try {
-                Files.createSymbolicLink(link, target);
+                // Both ends live in this home, so the link is stored
+                // relative — an absolute one would make a copy of the home
+                // reach back into the original.
+                Files.createSymbolicLink(link,
+                        dev.skillmanager.store.HomeLinks.storedTarget(store.root(), link, target));
             } catch (UnsupportedOperationException | IOException fallback) {
                 Fs.copyRecursive(target, link);
             }

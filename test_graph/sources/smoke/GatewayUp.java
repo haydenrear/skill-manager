@@ -1,6 +1,7 @@
 ///usr/bin/env jbang "$0" "$@" ; exit $?
 //SOURCES ../../sdk/java/src/main/java/com/hayden/testgraphsdk/sdk/*.java
 //SOURCES ../lib/StaleProcCleanup.java
+//SOURCES ../lib/SmEnv.java
 
 import com.hayden.testgraphsdk.sdk.Node;
 import com.hayden.testgraphsdk.sdk.NodeResult;
@@ -58,14 +59,10 @@ public class GatewayUp {
                     sm.toString(), "gateway", "up",
                     "--port", Integer.toString(port),
                     "--wait-seconds", "45");
-            pb.environment().put("SKILL_MANAGER_HOME", home);
-            pb.environment().put("SKILL_MANAGER_INSTALL_DIR", repoRoot.toString());
             // gateway up now syncs agent MCP configs as part of its run —
             // sandbox CLAUDE_HOME / CODEX_HOME / GEMINI_HOME to the per-run agent dirs
             // so the test doesn't clobber the developer's real configs.
-            pb.environment().put("CLAUDE_HOME", claudeHome);
-            pb.environment().put("CODEX_HOME", codexHome);
-            pb.environment().put("GEMINI_HOME", geminiHome);
+            SmEnv.apply(ctx, pb, home);
 
             ProcessRecord proc = Procs.run(ctx, "gateway-up", pb);
             int rc = proc.exitCode();

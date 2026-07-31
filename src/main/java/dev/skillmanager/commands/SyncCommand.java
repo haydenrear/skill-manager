@@ -125,6 +125,16 @@ public final class SyncCommand implements Callable<Integer> {
         SkillStore store = injectedStore != null ? injectedStore : SkillStore.defaultStore();
         store.init();
 
+        // A frozen home refuses every mutation below, including --refresh:
+        // rewriting units.lock.toml from live state is how a frozen home
+        // would quietly adopt drift that happened out of band.
+        try {
+            dev.skillmanager.policy.HomePolicy.requireLive(store, "sync");
+        } catch (dev.skillmanager.policy.FrozenHomeException frozen) {
+            Log.error("%s", frozen.getMessage());
+            return dev.skillmanager.policy.FrozenHomeException.EXIT_CODE;
+        }
+
         // --refresh is a one-shot lockfile rewrite; it doesn't run the
         // sync pipeline at all.
         if (refresh) {

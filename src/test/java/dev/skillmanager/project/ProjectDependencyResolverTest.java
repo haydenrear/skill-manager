@@ -487,13 +487,56 @@ public final class ProjectDependencyResolverTest {
                                 "new dependency is projected into Codex home");
                     }
                 })
-                .test("placeholder project sync clears generated child store and resolves again", () -> {
+                .test("project sync reconciles in place and tears nothing down", () -> {
+                    // Replaces the assertion that encoded the placeholder
+                    // ("clears generated child store and resolves again"). The
+                    // teardown was the destructive part and is now opt-in, so the
+                    // interesting assertion inverted: the file a teardown would
+                    // have removed must still be there afterwards.
                     try (TestHarness h = TestHarness.create()) {
-                        Path repoRoot = Files.createTempDirectory("project-sync-placeholder-");
+                        Path repoRoot = Files.createTempDirectory("project-sync-reconcile-");
                         Path doc = scaffoldDocRepo(repoRoot.resolve("units"), "sync-prompts");
                         SkillProject project = project(repoRoot, """
                                 [project]
                                 name = "sync-project"
+
+                                [docs.prompts]
+                                source = "%s"
+                                """.formatted(doc));
+                        resolver(h).resolve(project, new ProjectDependencyResolver.Options(true, false));
+                        Path childFile = repoRoot.resolve(".skill-manager/bin/cli/local-tool");
+                        Files.createDirectories(childFile.getParent());
+                        Files.writeString(childFile, "local\n");
+
+                        ProjectSyncUseCase.Result result = new ProjectSyncUseCase(h.store(), null)
+                                .sync(project, new ProjectDependencyResolver.Options(true, false));
+
+                        assertEquals("pull-reconcile", result.mode(), "sync reconciles by default");
+                        assertEquals(0, result.bindingsRemoved(),
+                                "no binding is torn down to rebuild the same one");
+                        assertTrue(Files.isRegularFile(childFile),
+                                "content in the child home survives a sync — bytes intact");
+                        assertEquals("local\n", Files.readString(childFile),
+                                "and unmodified");
+                        assertTrue(Files.isRegularFile(repoRoot.resolve(".skill-manager/docs/sync-prompts/skill-manager.toml")),
+                                "project child doc is still materialized");
+                        assertTrue(Files.isRegularFile(repoRoot.resolve("docs/agents/review.md")),
+                                "project doc binding is still materialized");
+                        assertTrue(h.store().containsDocRepo("sync-prompts"),
+                                "parent store dependency remains installed");
+                        assertTrue(new ChildHomeRegistry(h.store()).exists("project:sync-project"),
+                                "parent child-home registry is intact");
+                        assertEquals("sync-project", result.resolved().lock().projectName(),
+                                "project lock is rewritten");
+                    }
+                })
+                .test("project sync --rebuild still tears the realization down", () -> {
+                    try (TestHarness h = TestHarness.create()) {
+                        Path repoRoot = Files.createTempDirectory("project-sync-rebuild-");
+                        Path doc = scaffoldDocRepo(repoRoot.resolve("units"), "rebuild-prompts");
+                        SkillProject project = project(repoRoot, """
+                                [project]
+                                name = "rebuild-project"
 
                                 [docs.prompts]
                                 source = "%s"
@@ -504,20 +547,18 @@ public final class ProjectDependencyResolverTest {
                         Files.writeString(staleShim, "stale\n");
 
                         ProjectSyncUseCase.Result result = new ProjectSyncUseCase(h.store(), null)
-                                .sync(project, new ProjectDependencyResolver.Options(true, false));
+                                .sync(project, new ProjectDependencyResolver.Options(true, false),
+                                        ProjectSyncUseCase.Options.rebuildOnly());
 
-                        assertEquals(1, result.bindingsRemoved(), "placeholder sync removes old project binding");
+                        assertEquals("rebuild", result.mode(), "the escape hatch is reported as such");
+                        assertEquals(1, result.bindingsRemoved(), "rebuild removes the old project binding");
                         assertFalse(Files.exists(staleShim), "generated child-store bin directory is cleared");
-                        assertTrue(Files.isRegularFile(repoRoot.resolve(".skill-manager/docs/sync-prompts/skill-manager.toml")),
+                        assertTrue(Files.isRegularFile(repoRoot.resolve(".skill-manager/docs/rebuild-prompts/skill-manager.toml")),
                                 "project child doc is reinstalled");
                         assertTrue(Files.isRegularFile(repoRoot.resolve("docs/agents/review.md")),
                                 "project doc binding is re-materialized");
-                        assertTrue(h.store().containsDocRepo("sync-prompts"),
-                                "parent store dependency remains installed");
-                        assertTrue(new ChildHomeRegistry(h.store()).exists("project:sync-project"),
+                        assertTrue(new ChildHomeRegistry(h.store()).exists("project:rebuild-project"),
                                 "parent child-home registry is recreated");
-                        assertEquals("sync-project", result.resolved().lock().projectName(),
-                                "project lock is rewritten");
                     }
                 })
                 .test("failed unmet-ref sync preserves global and project reconciliation state", () -> {

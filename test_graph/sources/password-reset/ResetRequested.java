@@ -1,6 +1,7 @@
 ///usr/bin/env jbang "$0" "$@" ; exit $?
 //SOURCES ../../sdk/java/src/main/java/com/hayden/testgraphsdk/sdk/*.java
 //SOURCES ../common/TestDb.java
+//SOURCES ../lib/SmEnv.java
 //DEPS org.postgresql:postgresql:42.7.4
 
 import com.hayden.testgraphsdk.sdk.Node;
@@ -50,8 +51,7 @@ public class ResetRequested {
                     sm.toString(), "reset-password",
                     "--email", email,
                     "--registry", registryUrl);
-            pb.environment().put("SKILL_MANAGER_HOME", home);
-            pb.environment().put("SKILL_MANAGER_INSTALL_DIR", repoRoot.toString());
+            SmEnv.apply(ctx, pb, home);
             ProcessRecord proc = Procs.run(ctx, "reset-password", pb);
             int rc = proc.exitCode();
             if (rc != 0) {

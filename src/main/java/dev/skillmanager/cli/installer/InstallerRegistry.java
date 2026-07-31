@@ -2,6 +2,7 @@ package dev.skillmanager.cli.installer;
 
 import dev.skillmanager.model.CliDependency;
 import dev.skillmanager.model.Skill;
+import dev.skillmanager.store.HomeLinks;
 import dev.skillmanager.store.SkillStore;
 import dev.skillmanager.shared.util.Fs;
 import dev.skillmanager.util.Log;
@@ -58,5 +59,11 @@ public final class InstallerRegistry {
             return;
         }
         backend.install(dep, store, skillName, force);
+        // Backends we do not control write absolute symlinks into bin/cli:
+        // `uv tool install` and `npm -g` both do, and neither has a flag for
+        // it. An absolute link into the home is the one thing a copy of the
+        // home cannot survive, so normalize after every install rather than
+        // patching each backend and hoping the next one remembers.
+        HomeLinks.relativizeShims(store);
     }
 }

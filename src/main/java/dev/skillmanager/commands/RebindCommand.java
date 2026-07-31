@@ -134,7 +134,7 @@ public final class RebindCommand implements Callable<Integer> {
     private static String expandHome(String path) {
         if (path == null) return null;
         if (path.equals("~") || path.startsWith("~/")) {
-            return System.getProperty("user.home") + path.substring(1);
+            return dev.skillmanager.agent.AgentHomes.userHome() + path.substring(1);
         }
         return path;
     }
