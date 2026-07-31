@@ -651,8 +651,16 @@ validationGraph {
         // IT CARRIES NO SPEC INVARIANT, deliberately (T57 / #60): the clone
         // COST is a resource property — blocks consumed on a filesystem. TLA+
         // cannot express it and TLC cannot check it, so the only honest oracle
-        // is a measurement, and the measurement is here with an idle negative
-        // control and a known-size positive control.
+        // is a measurement.
+        //
+        // That measurement used to be free space on a dedicated APFS sparse
+        // image, and it was flaky, because a sparse image's available space is
+        // bounded by the free space of the disk backing it — so the operator's
+        // own writes leaked into the "dedicated" volume. It now reads block
+        // sharing per file instead (sources/lib/extentprobe.py), which nothing
+        // else on the host can perturb, and carries a hard-link control that
+        // must read as shared plus a byte-copy control that must read as not
+        // shared, in the same run as the measurement.
         //
         // See specs/desired_program_model/External.tla for what HomeSpec does
         // cover, and issue #60 for the decision.
@@ -664,14 +672,14 @@ validationGraph {
         // reference.
         //
         // Split in two on purpose. The contract node is deterministic, needs
-        // no network and no volume, and is the one that fails when somebody
-        // gives a home a private cache — it is where the regression will
-        // actually be caught. The cost node is the instrument that proves the
-        // contract is worth having: apparent size and du are identical
-        // whether a venv shares blocks or not, so only free space on a
-        // dedicated volume can tell, and that needs hdiutil, uv and a network
-        // warm-up. It SKIPS with a stated reason when it cannot get them,
-        // which is why it must not be the only guard.
+        // no network, and is the one that fails when somebody gives a home a
+        // private cache — it is where the regression will actually be caught.
+        // The cost node is the instrument that proves the contract is worth
+        // having: apparent size, du, stat's block counts and link counts are
+        // all identical whether a venv shares blocks or not, so only the
+        // physical address of each file's blocks can tell. It still needs uv
+        // and a network warm-up, and SKIPS with a stated reason when it cannot
+        // get them, which is why it must not be the only guard.
         //
         // LIKE THE CLONE-COST NODE ABOVE, NEITHER CARRIES A SPEC INVARIANT:
         // "these bytes are shared" is a resource property, not a state
