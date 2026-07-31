@@ -64,9 +64,23 @@ public final class ProjectVendoredResolverTest {
                     // same directory, and relativizing across the two returns a
                     // wrong answer rather than an error. Comparing real paths on
                     // both sides is what makes it a non-issue here.
-                    Path raw = Files.createTempDirectory("vendored-spelling-").toAbsolutePath().normalize();
+                    //
+                    // The divergent spelling is BUILT rather than borrowed from the
+                    // platform. Relying on macOS handing back /var/... for a
+                    // directory that lives at /private/var/... made the fixture
+                    // vacuous on Linux, where createTempDirectory returns an already
+                    // canonical /tmp/... and the precondition below could not hold —
+                    // this case was one of exactly two that failed on ubuntu-latest.
+                    // A symlinked parent reproduces the same two-spellings-one-
+                    // directory shape on every platform, so the case now tests the
+                    // resolver instead of testing the host's /var layout.
+                    Path base = Files.createTempDirectory("vendored-spelling-").toRealPath();
+                    Path canonical = Files.createDirectories(base.resolve("canonical"));
+                    Path raw = Files.createSymbolicLink(base.resolve("alias"), canonical);
                     assertFalse(raw.equals(raw.toRealPath()),
                             "fixture is only meaningful when the two spellings differ");
+                    assertEquals(canonical, raw.toRealPath(),
+                            "the two spellings must name the same directory");
                     Files.createDirectories(raw.resolve("test_graph"));
                     seedHome(raw.resolve(".skill-manager"));
                     linkVendored(raw, "sdk", "../.skill-manager/skills/test-graph/project_sdk_sources/sdk");

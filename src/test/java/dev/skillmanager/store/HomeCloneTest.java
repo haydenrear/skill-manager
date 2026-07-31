@@ -541,11 +541,30 @@ public final class HomeCloneTest {
             Files.createDirectories(deepSource);
             Files.writeString(deepSource.resolve("buried.txt"), "x");
             Path dest = newDir("dest-");
-            // ~820 + "/skills/alpha/" + 121 + 121 + "buried.txt" clears the
-            // 1024-byte path limit; the parent directories are created first,
-            // so the failure lands mid-copy with a partial tree on disk.
-            while (dest.toString().length() < 820) dest = dest.resolve("d".repeat(60));
+            // The destination is grown until "<dest>/skills/alpha/<n120>/<m120>/
+            // buried.txt" clears the platform's path limit while <dest> itself
+            // still does not, so the parent directories are created first and
+            // the failure lands mid-copy with a partial tree on disk.
+            //
+            // The limit is PROBED, not assumed. Hard-coding the 820 that clears
+            // macOS's 1024-byte PATH_MAX made this case vacuous on Linux, whose
+            // limit is 4096: the clone simply succeeded, `failed` stayed false,
+            // and this was one of exactly two cases that failed on ubuntu-latest.
+            int longestCreatable = probeLongestCreatablePath(dest);
+            // Back off far enough that <dest> and <dest>/skills/alpha are both
+            // creatable, and close enough that adding the 265-character buried
+            // suffix still overshoots. The probe steps in 32-character
+            // components, so the true limit is within 33 of longestCreatable and
+            // (longestCreatable - 100) + 265 clears it with 132 to spare.
+            int destLength = longestCreatable - 100;
+            while (dest.toString().length() < destLength) {
+                dest = dest.resolve("d".repeat(Math.min(60,
+                        Math.max(1, destLength - dest.toString().length() - 1))));
+            }
             Path target = dest;
+            assertTrue(target.toString().length() >= destLength - 60,
+                    "fixture only means anything if the destination really got long: "
+                            + target.toString().length() + " of " + destLength);
 
             boolean failed = false;
             try {
@@ -733,5 +752,52 @@ public final class HomeCloneTest {
 
     private static Path newDir(String prefix) throws Exception {
         return Files.createTempDirectory(prefix).toRealPath();
+    }
+
+    /**
+     * The length of the longest path under {@code base} that this filesystem
+     * will actually let us create, found by creating directories until one is
+     * refused.
+     *
+     * <p>Measured rather than assumed because the number differs by an order of
+     * magnitude across the platforms this suite runs on — macOS's {@code
+     * PATH_MAX} is 1024 and Linux's is 4096 — and a test that hard-codes one of
+     * them does not fail on the other, it silently stops testing anything. The
+     * step is 32 characters so the answer brackets the real limit tightly
+     * enough for the caller to sit just under it on purpose.
+     *
+     * <p>Directories are created in a throwaway subtree of {@code base}, which
+     * the caller does not otherwise use, so the probe leaves the fixture alone.
+     */
+    private static int probeLongestCreatablePath(Path base) throws Exception {
+        Path probeRoot = Files.createDirectories(base.resolve("path-limit-probe"));
+        Path deepest = probeRoot;
+        // 4096 (Linux PATH_MAX) / 32 is 128 steps; the bound only stops a
+        // filesystem with no limit at all from looping forever.
+        for (int step = 0; step < 512; step++) {
+            Path next = deepest.resolve("p".repeat(32));
+            try {
+                Files.createDirectory(next);
+            } catch (java.io.IOException refused) {
+                break;
+            }
+            deepest = next;
+        }
+        int length = deepest.toString().length();
+        assertTrue(length > 300,
+                "probe never got far enough to bracket a path limit: " + length);
+        deleteRecursively(probeRoot);
+        return length;
+    }
+
+    /** Depth-first delete; the probe subtree is deeper than walkFileTree likes. */
+    private static void deleteRecursively(Path root) throws Exception {
+        if (!Files.exists(root, java.nio.file.LinkOption.NOFOLLOW_LINKS)) return;
+        if (Files.isDirectory(root, java.nio.file.LinkOption.NOFOLLOW_LINKS)) {
+            try (java.util.stream.Stream<Path> children = Files.list(root)) {
+                for (Path child : children.toList()) deleteRecursively(child);
+            }
+        }
+        Files.deleteIfExists(root);
     }
 }
