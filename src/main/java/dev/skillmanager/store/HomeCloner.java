@@ -288,6 +288,7 @@ public final class HomeCloner {
         List<String> danglingReferences = new ArrayList<>();
         int provisionedRewritten = reanchorProvisioned(src, dst, overflows, danglingReferences);
         HomeLinks.relativizeShims(new SkillStore(dst));
+        rebaselineDrift(new SkillStore(dst));
 
         Verification verification = verifyRoots(src, dst, strict);
         // A shebang that would not fit is a failure the walk below cannot
@@ -301,6 +302,74 @@ public final class HomeCloner {
                 counters.linksRelativized, stateReanchored, provisionedRewritten,
                 leaks, verification.contentReferences(), verification.danglingLinks(),
                 danglingReferences);
+    }
+
+    // --------------------------------------------------- the drift baseline
+
+    /**
+     * Give the copy its OWN drift baseline, and drop the source's drift record.
+     *
+     * <h2>A clone is not drifted, and it was reporting that it was</h2>
+     *
+     * <p>Measured on this repository. Every home {@code new-change.sh}
+     * provisions is a clone, {@code bootstrap-home.sh} baselines it with
+     * {@code home drift --record}, and that command exits telling the operator
+     * to launch — at which point {@code <wt>/.skill-manager/bin/launch/claude}
+     * refused with exit 8 and "6 unit(s) changed", on two independent virgin
+     * worktrees against which nothing else had ever run. Every one of the six
+     * was a skill carrying a {@code .venv}, and every reported path was a
+     * REMOVAL of a file the copy demonstrably still had on disk (1739 entries
+     * under {@code skills/acp-cdc-ai-python/scripts/sources/.venv} in both
+     * homes).
+     *
+     * <p>Nothing had moved. The clone copied {@code home.digest.json} verbatim,
+     * so the "baseline" the copy was measured against was a statement about the
+     * SOURCE at some earlier moment, recorded by some earlier build. In this
+     * case it predated {@code walkPlain} learning to skip re-derivable trees
+     * (c2d535c), so it enumerated {@code .venv} entries that the current
+     * definition of unit content excludes — and the diff between two different
+     * definitions of "content" came out as thousands of deletions.
+     *
+     * <p>The specific cause was that schema drift, but fixing only that would
+     * leave the general one standing. <b>An inherited baseline is evidence about
+     * a pair of moments in another home's history, and the copy is not part of
+     * that history.</b> A source that installs a unit and does not run
+     * {@code home drift --record} before being cloned hands every future clone
+     * its own unrecorded change to answer for, with the same symptom and no
+     * schema change anywhere. This is precisely the argument
+     * {@code ChildHomeMaterializer.recordCloneBaselines} already makes for the
+     * per-unit reconcile records — "a copied home's inherited records describe a
+     * pair it is not part of" — and the home digest was simply left out of it.
+     *
+     * <h2>Why this does not weaken the gate</h2>
+     *
+     * <p>The gate exists so that an agent cannot keep acting on a skill that
+     * moved underneath it. Nothing has moved underneath anybody in a home that
+     * did not exist a moment ago: the copy's content is exactly what it was
+     * provisioned with, and no agent has read anything else. The property is
+     * preserved exactly where it means something — every later sync, pull,
+     * install or {@code home sync} into this copy still diffs against this
+     * baseline and still records a pending change, and the tests that assert
+     * that are untouched. What is removed is the ability to report, as this
+     * home's drift, a change that happened somewhere else before this home
+     * existed.
+     *
+     * <p>The inherited {@code home.drift.json} goes for the same reason, and it
+     * is the sharper half: an UNACKNOWLEDGED record in the source would
+     * otherwise be inherited by the copy and refuse its first launch over a
+     * change that predates it. Deleted rather than acknowledged — an
+     * acknowledgement is a receipt saying somebody read this home's change, and
+     * writing one for a change this home never had would be a false receipt.
+     *
+     * <p>Order matters. The record goes first, the baseline second: a crash in
+     * between leaves the copy with no gate and a stale baseline, so the next
+     * {@code home drift --record} re-derives the difference and gates — the
+     * conservative direction. That is the same reasoning, and the same
+     * direction, as {@link DriftGate#recordSince}.
+     */
+    private static void rebaselineDrift(SkillStore copy) throws IOException {
+        Files.deleteIfExists(DriftGate.file(copy));
+        HomeDigest.compute(copy).write(copy);
     }
 
     // ------------------------------------------------------------- copy

@@ -116,6 +116,15 @@ public final class HomeCommand {
                 Log.info("  baseline:    recorded for %d unit(s), so edits made here can be "
                         + "merged back with `skill-manager home sync`", recorded.size());
             }
+            if (!json) {
+                // Written by HomeCloner.rebaselineDrift, reported here because
+                // it is the difference an operator notices: before it, the copy
+                // inherited the source's baseline and its first launch could be
+                // refused over a change made in another home.
+                Log.info("  drift:       baselined against this copy's own content (%d unit(s)); "
+                                + "a clone is not drifted",
+                        HomeDigest.read(cloned).map(d -> d.units().size()).orElse(0));
+            }
             // Descriptor last, so it reports the ownership decision above.
             HomeDescriptor descriptor = describe(cloned, null,
                     HomeDescriptor.read(cloned.root())
@@ -420,8 +429,10 @@ public final class HomeCommand {
      * that lets a launch proceed.
      *
      * <p>{@code --record} takes a fresh digest and reports the difference from the
-     * last one; {@code --show} prints the pending change; {@code --ack} marks it
-     * read. The gate itself lives in {@link dev.skillmanager.store.DriftGate};
+     * last one; the bare command prints the pending change; {@code --ack} marks
+     * it read. (This javadoc said {@code --show} for the printing spelling, and
+     * so did the refusal {@code exec} prints. There has never been such an
+     * option.) The gate itself lives in {@link dev.skillmanager.store.DriftGate};
      * see its javadoc for why an acknowledgement is required rather than a
      * refreshed digest being enough.
      */

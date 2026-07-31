@@ -5,13 +5,18 @@ import dev.skillmanager.cli.CliMetadata;
 import dev.skillmanager.cli.SkillManagerCli;
 import picocli.CommandLine;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import static dev.skillmanager._lib.test.Tests.assertEquals;
 import static dev.skillmanager._lib.test.Tests.assertTrue;
@@ -55,6 +60,44 @@ public final class CliMetadataTest {
             }
         });
 
+        suite.test("every command the CLI prints back at a user actually parses", () -> {
+            // The pattern, not the instance. `exec`'s drift refusal told its
+            // reader to read the change with "home drift --show", and that
+            // option has never existed — it answered "Unknown option: '--show'"
+            // with exit 2. (Spelled without backticks here on purpose: the scan
+            // reads main sources only today, and a quoted counter-example in a
+            // file it might one day also read would fail this test with itself.)
+            // That is the second time this epic shipped a
+            // remedy that does not resolve (the first was a CLI pin that named
+            // nothing), so the fix is a sweep with an oracle rather than one
+            // corrected string.
+            //
+            // A remedy is the one instruction a refusal's reader has. One that
+            // does not parse converts a one-command recovery into a hunt through
+            // --help, and it fails in exactly the situation where the reader is
+            // already stuck — which is why nothing catches it in normal use.
+            //
+            // Options are checked against the resolved subcommand rather than by
+            // handing the whole line to parseArgs: a required positional would
+            // make `skill-manager sync <name>` fail for having no <name>, which
+            // is not the defect and would make this test noise.
+            List<String> commands = backtickedCommands(sourceRoot());
+            assertTrue(commands.size() >= 20,
+                    "the scan found " + commands.size() + " command(s) — too few to be reading the"
+                            + " real sources, and a scan that finds nothing passes vacuously");
+            assertTrue(commands.contains("skill-manager home drift --ack"),
+                    "the scan reaches the drift refusal's own remedies");
+
+            List<String> broken = new java.util.ArrayList<>();
+            for (String command : commands) {
+                String problem = whyItWouldNotParse(command);
+                if (problem != null) broken.add(command + "  →  " + problem);
+            }
+            assertEquals(List.of(), broken,
+                    "every `skill-manager …` the sources quote names a real subcommand and real"
+                            + " options");
+        });
+
         suite.test("lockfile workflow examples point at distinct sync modes", () -> {
             Map<String, CliMetadata.WorkflowMetadata> byId = new LinkedHashMap<>();
             for (CliMetadata.WorkflowMetadata workflow : CliMetadata.workflows()) {
@@ -86,6 +129,100 @@ public final class CliMetadataTest {
         });
 
         return suite.runAll();
+    }
+
+    // ------------------------------------- the remedies the sources quote
+
+    /**
+     * {@code src/main/java}, found by walking up from the working directory.
+     *
+     * <p>Fails loudly when it cannot be found. A scan that silently reads
+     * nothing reports zero broken commands, which is the vacuous pass this
+     * whole file's sibling tests were written to avoid.
+     */
+    private static Path sourceRoot() {
+        Path dir = Path.of(System.getProperty("user.dir")).toAbsolutePath();
+        for (Path p = dir; p != null; p = p.getParent()) {
+            Path candidate = p.resolve("src/main/java/dev/skillmanager");
+            if (Files.isDirectory(candidate)) return candidate;
+        }
+        throw new AssertionError("cannot find src/main/java/dev/skillmanager from " + dir
+                + " — run the suite from the repository root");
+    }
+
+    private static final Pattern BACKTICKED =
+            Pattern.compile("`(skill-manager[ \\t][^`]*)`");
+
+    /**
+     * Every distinct {@code `skill-manager …`} the sources quote, normalized.
+     *
+     * <p>Java string concatenation and format placeholders are cut out rather
+     * than resolved: what this test checks is the SPELLING of subcommands and
+     * options, and a value that is interpolated at runtime is not a spelling.
+     * Everything from the first {@code "} or {@code %} onwards is dropped, and
+     * so is any token that is obviously a placeholder.
+     */
+    private static List<String> backtickedCommands(Path root) throws Exception {
+        Set<String> out = new java.util.TreeSet<>();
+        try (var walk = Files.walk(root)) {
+            for (Path file : walk.toList()) {
+                if (!file.toString().endsWith(".java")) continue;
+                for (String line : Files.readAllLines(file)) {
+                    Matcher m = BACKTICKED.matcher(line);
+                    while (m.find()) {
+                        String cleaned = clean(m.group(1));
+                        if (cleaned != null) out.add(cleaned);
+                    }
+                }
+            }
+        }
+        return List.copyOf(out);
+    }
+
+    private static String clean(String raw) {
+        int cut = raw.length();
+        for (String boundary : List.of("\"", "%", "…", "<", "$")) {
+            int i = raw.indexOf(boundary);
+            if (i >= 0 && i < cut) cut = i;
+        }
+        String cleaned = raw.substring(0, cut).trim();
+        return cleaned.equals("skill-manager") ? null : cleaned;
+    }
+
+    /**
+     * Why {@code command} would not parse, or null when it would.
+     *
+     * <p>Walks the real picocli tree: leading words descend into subcommands
+     * until one is not a subcommand (a positional), and every {@code -}-prefixed
+     * token must be an option the command it lands on declares. Inherited
+     * options come along, because picocli copies a {@code ScopeType.INHERIT}
+     * option into every subcommand spec.
+     */
+    private static String whyItWouldNotParse(String command) {
+        CommandLine current = new CommandLine(new SkillManagerCli());
+        StringBuilder path = new StringBuilder("skill-manager");
+        boolean positionalsStarted = false;
+        for (String token : command.split("\\s+")) {
+            if (token.equals("skill-manager")) continue;
+            if (token.startsWith("-")) {
+                String flag = token.contains("=") ? token.substring(0, token.indexOf('=')) : token;
+                if (current.getCommandSpec().findOption(flag) == null) {
+                    return "`" + path + "` has no option " + flag;
+                }
+                continue;
+            }
+            if (positionalsStarted) continue;
+            CommandLine sub = current.getSubcommands().get(token);
+            if (sub == null) {
+                // Not a subcommand: from here on the words are arguments, which
+                // this test deliberately does not judge.
+                positionalsStarted = true;
+                continue;
+            }
+            current = sub;
+            path.append(' ').append(token);
+        }
+        return null;
     }
 
     private static CommandTree commandTree() {

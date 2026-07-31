@@ -428,6 +428,53 @@ public final class LauncherShimsTest {
                             + " file contains, and overwrote correct pins on 17 of 25 homes");
         });
 
+        suite.test("the pin another tool reads back out of the body is a real executable", () -> {
+            // Two failures at once, and neither is caught by asserting that the
+            // body CONTAINS the pin.
+            //
+            // 1. The pin has to be a path that resolves. A body carrying
+            //    `@SKILL_MANAGER_CLI_PIN@`, or `$pin`, or any other four
+            //    characters satisfies "contains the pin" vacuously — the string
+            //    is there, it just does not name a file. This is the same class
+            //    of defect as a printed remedy that does not parse, and this
+            //    epic has now shipped that class twice.
+            //
+            // 2. The shape is a CONTRACT WITH A SECOND READER. bootstrap-home.sh
+            //    finds this file by PIN_MARKER and then extracts the pinned path
+            //    by string prefix, exactly as reproduced below, so it can assert
+            //    the pinned build still exists. Hoisting the path into a `pin=`
+            //    variable left the shim working perfectly and handed that reader
+            //    `$pin`, which refused every home it checked. The extraction is
+            //    duplicated here on purpose: it is the only way a change to the
+            //    shape fails in THIS repository rather than in the other one.
+            Home home = Home.create("cli-entrypoint-pin-resolves-");
+            Path pin = stubCli(home.root.resolve("pin"));
+            LauncherShims.write(home.store, pin);
+            String body = Files.readString(home.store.cliBinDir().resolve("skill-manager"));
+
+            assertContains(body, LauncherShims.PIN_MARKER,
+                    "the marker bootstrap-home.sh keys on to decide this file is not its own");
+            // GENERATED_PIN_PREFIX, verbatim, then the trailing `}` and `"`.
+            // FIRST match in the whole file, comments included — that is
+            // `grep -m1 -F`, and reproducing it faithfully is the point. A
+            // filtered version of this passed while a COMMENT quoting the prefix
+            // sat above the real assignment and would have won the grep.
+            String prefix = "cli=\"${SKILL_MANAGER_CLI:-";
+            String line = body.lines().filter(l -> l.contains(prefix)).findFirst()
+                    .orElseThrow(() -> new AssertionError(
+                            "no `" + prefix + "…` line — bootstrap-home.sh reads the pin out of"
+                                    + " this exact shape and dies when it cannot find it"));
+            String extracted = line.substring(line.indexOf(prefix) + prefix.length());
+            extracted = extracted.substring(0, extracted.length() - 2);
+
+            assertEquals(pin.toString(), extracted, "the extracted pin is the absolute path");
+            assertTrue(Files.isExecutable(Path.of(extracted)),
+                    "and it names an executable that exists — a pin is only a pin if it resolves");
+            assertFalse(extracted.contains("$"),
+                    "no shell variable survived into it: another tool reads this line as a PATH,"
+                            + " not as bash, so nothing in it gets expanded");
+        });
+
         suite.test("the cli entrypoint execs its pin with a working decoy first on PATH", () -> {
             // The reproduction of #61, inverted into an assertion: the decoy is
             // a perfectly good executable named skill-manager, first on PATH,
@@ -490,6 +537,153 @@ public final class LauncherShimsTest {
             assertContains(result.out, pin.toString(), "and names the path that went missing");
             assertContains(result.out, "home shims", "and the command that repairs it");
             assertEquals(127, result.rc, "with the not-found status");
+        });
+
+        // ------------------------------------------- exec'ing itself, forever
+        //
+        // Every case here is BOUNDED and asserts the bound was not hit. The
+        // defect is a shim that re-enters itself with the same environment and
+        // does it again: no output, no timeout, no non-zero exit, and it
+        // outlives the parent that started it. An unbounded runner would not
+        // fail on it — it would hang the suite, which reports nothing at all.
+        //
+        // It is reached by construction, not by a typo:
+        // git-integration-repo's close-change.sh picks the home's own
+        // bin/cli/skill-manager and then runs it as
+        // SKILL_MANAGER_CLI="$CLI" "$CLI" …. One orphan from that path burned
+        // 7:03 of CPU over 13:06 elapsed, silently.
+
+        suite.test("the cli entrypoint refuses to exec itself and uses its pin instead", () -> {
+            // The measured reproduction, as an assertion. Two things have to
+            // hold and neither implies the other: it TERMINATED (the bound was
+            // not hit), and the pinned CLI is what actually ran — a guard that
+            // exited cleanly without launching would satisfy the first alone,
+            // which is the failure mode this whole file exists to reject.
+            Home home = Home.create("cli-entrypoint-self-exec-");
+            LauncherShims.write(home.store, stubCli(home.root.resolve("pin")));
+            Path shim = home.store.cliBinDir().resolve("skill-manager");
+
+            Result result = runBounded(List.of(shim.toString(), "--version"),
+                    Map.of("SKILL_MANAGER_CLI", shim.toString()));
+
+            assertFalse(result.out.contains(SHIM_TIMED_OUT),
+                    "the shim TERMINATED — before the guard this exec'd itself forever, and the"
+                            + " only symptom was a process that never returned");
+            assertContains(result.out, STUB_SENTINEL,
+                    "and the pinned CLI ran: falling back is the point, not merely not hanging");
+            assertContains(result.out, "args=--version", "arguments handed over unchanged");
+            assertContains(result.out, "resolves to this shim",
+                    "and the ignored value is reported rather than silently dropped");
+            assertEquals(0, result.rc, "so it exits with the exec'd CLI's status");
+        });
+
+        suite.test("a symlink to the cli entrypoint is still the cli entrypoint", () -> {
+            // Physical paths, not strings. The same file reached under another
+            // name is the same file, and a string compare would exec it.
+            Home home = Home.create("cli-entrypoint-self-link-");
+            LauncherShims.write(home.store, stubCli(home.root.resolve("pin")));
+            Path shim = home.store.cliBinDir().resolve("skill-manager");
+            Path alias = home.root.resolve("aliased-skill-manager");
+            Files.createSymbolicLink(alias, shim);
+
+            Result result = runBounded(List.of(shim.toString(), "--version"),
+                    Map.of("SKILL_MANAGER_CLI", alias.toString()));
+
+            assertFalse(result.out.contains(SHIM_TIMED_OUT), "terminated");
+            assertContains(result.out, STUB_SENTINEL, "the pin ran, not the alias");
+            assertEquals(0, result.rc, "rc");
+        });
+
+        suite.test("a relative spelling of the cli entrypoint is still the cli entrypoint", () -> {
+            Home home = Home.create("cli-entrypoint-self-relative-");
+            LauncherShims.write(home.store, stubCli(home.root.resolve("pin")));
+            Path shim = home.store.cliBinDir().resolve("skill-manager");
+
+            ProcessBuilder pb = new ProcessBuilder(shim.toString(), "--version")
+                    .directory(home.store.cliBinDir().toFile())
+                    .redirectErrorStream(true);
+            pb.environment().put("SKILL_MANAGER_CLI", "./skill-manager");
+            Result result = bounded(pb);
+
+            assertFalse(result.out.contains(SHIM_TIMED_OUT), "terminated");
+            assertContains(result.out, STUB_SENTINEL, "`./skill-manager` did not slip past");
+            assertEquals(0, result.rc, "rc");
+        });
+
+        suite.test("a pin that is the entrypoint itself refuses loudly rather than looping", () -> {
+            // The one case with nothing to fall back to. Refusing is right here
+            // and falling back is right above, and the difference is which of
+            // the two inputs is the mistake: an environment variable is a
+            // request a caller made, the pin is a fact `home shims` recorded.
+            Home home = Home.create("cli-entrypoint-self-pin-");
+            LauncherShims.write(home.store, stubCli(home.root.resolve("pin")));
+            Path shim = home.store.cliBinDir().resolve("skill-manager");
+            // A home shims run that pinned the home's own entrypoint — which is
+            // exactly what an unguarded SKILL_MANAGER_CLI self-reference reaching
+            // RunningCli.locate would have written.
+            Files.writeString(shim, LauncherShims.cliScript(shim));
+            Fs.makeExecutable(shim);
+
+            Result result = runBounded(List.of(shim.toString(), "--version"), Map.of());
+
+            assertFalse(result.out.contains(SHIM_TIMED_OUT), "terminated");
+            assertEquals(LauncherShims.SELF_EXEC_EXIT_CODE, result.rc,
+                    "refused with the misconfiguration status, not 0 and not a hang");
+            assertContains(result.out, "is this shim itself", "and says what it found");
+            assertContains(result.out, "home shims", "and names the command that repairs it");
+        });
+
+        suite.test("an agent launcher refuses to exec itself and uses the home's entrypoint", () -> {
+            // Same defect in the other generated shim, and worse in one way:
+            // its last line appends `exec --home … -- claude` to the argument
+            // list every time round, so the argv grows without bound too.
+            Home home = Home.create("shims-self-exec-");
+            LauncherShims.write(home.store, stubCli(home.root.resolve("pin")));
+            Path launcher = LauncherShims.dir(home.store).resolve("claude");
+
+            Result result = runBounded(List.of(launcher.toString(), "--model", "opus"),
+                    Map.of("SKILL_MANAGER_CLI", launcher.toString()));
+
+            assertFalse(result.out.contains(SHIM_TIMED_OUT), "terminated");
+            assertContains(result.out, STUB_SENTINEL,
+                    "it fell back to <home>/bin/cli/skill-manager, which exec'd the pin");
+            assertContains(result.out,
+                    "exec --home " + home.store.root().toRealPath() + " -- claude --model opus",
+                    "with the launch arguments unchanged — the fallback is a real launch");
+            assertEquals(0, result.rc, "rc");
+        });
+
+        suite.test("both generated shims carry the guard, and neither carries a bare exec", () -> {
+            // The bytes, so a regeneration that drops the guard is caught even
+            // where no process is run. Keyed on the stable marker rather than on
+            // prose, for the reason PIN_MARKER exists.
+            Home home = Home.create("shims-guard-marker-");
+            LauncherShims.write(home.store, stubCli(home.root.resolve("pin")));
+
+            List<Path> shims = new java.util.ArrayList<>();
+            shims.add(home.store.cliBinDir().resolve("skill-manager"));
+            for (String agent : LauncherShims.AGENTS) {
+                shims.add(LauncherShims.dir(home.store).resolve(agent));
+            }
+            for (Path shim : shims) {
+                String body = Files.readString(shim);
+                assertContains(body, LauncherShims.SELF_GUARD_MARKER,
+                        shim.getFileName() + " carries the self-exec guard");
+                // `cli="$sm_cli"` exists only at a CALL site. Asserting on the
+                // name `sm_refuse_self_exec` would not do: the definition
+                // contains it too, so a body that carried the function and
+                // never invoked it — which is exactly what deleting the call
+                // leaves behind, and which still hangs — passed that version of
+                // this assertion while the four process-level cases below
+                // failed. Assert on the line only a caller has.
+                assertContains(body, "cli=\"$sm_cli\"",
+                        shim.getFileName() + " actually CALLS the guard rather than merely"
+                                + " defining it");
+                assertFalse(body.contains("%%"),
+                        shim.getFileName() + " has no doubled percent: neither generated body"
+                                + " runs through .formatted() any more, so a doubled one would"
+                                + " reach bash literally");
+            }
         });
 
         suite.test("SKILL_MANAGER_CLI still overrides the pin", () -> {
@@ -774,6 +968,45 @@ public final class LauncherShimsTest {
         Process p = pb.start();
         String out = new String(p.getInputStream().readAllBytes());
         return new Result(p.waitFor(), out, out);
+    }
+
+    /**
+     * As {@link #runProcess}, but bounded, and it reads the child's output on
+     * another thread.
+     *
+     * <p>Both halves are needed for the self-exec cases and neither is
+     * hygiene. {@code runProcess} blocks in {@code readAllBytes()} until the
+     * child's stdout closes, so a child that never exits parks the test thread
+     * <em>before</em> any {@code waitFor} bound could apply — the suite hangs
+     * and reports nothing, which is the same non-answer as the defect. And the
+     * descendants are destroyed rather than just the child: a self-exec'ing
+     * shim replaces its own process image, so the thing still running when the
+     * bound expires need not be the process that was started.
+     */
+    private static Result runBounded(List<String> argv, Map<String, String> env) throws Exception {
+        ProcessBuilder pb = new ProcessBuilder(argv).redirectErrorStream(true);
+        pb.environment().putAll(env);
+        return bounded(pb);
+    }
+
+    private static Result bounded(ProcessBuilder pb) throws Exception {
+        Process p = pb.start();
+        java.util.concurrent.CompletableFuture<String> output =
+                java.util.concurrent.CompletableFuture.supplyAsync(() -> {
+                    try {
+                        return new String(p.getInputStream().readAllBytes());
+                    } catch (java.io.IOException e) {
+                        return "";
+                    }
+                });
+        if (!p.waitFor(30, java.util.concurrent.TimeUnit.SECONDS)) {
+            p.descendants().forEach(ProcessHandle::destroyForcibly);
+            p.destroyForcibly();
+            p.waitFor();
+            return new Result(-1, SHIM_TIMED_OUT, SHIM_TIMED_OUT);
+        }
+        String out = output.get(30, java.util.concurrent.TimeUnit.SECONDS);
+        return new Result(p.exitValue(), out, out);
     }
 
     // ------------------------------------------------------------- plumbing

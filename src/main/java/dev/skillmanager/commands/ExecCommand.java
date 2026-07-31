@@ -156,7 +156,13 @@ public final class ExecCommand implements Callable<Integer> {
             Log.error("refusing to launch: %s changed and the change has not been read.",
                     store.root());
             for (String line : drift.report().render()) Log.error("  %s", line);
-            Log.error("  Read it with `skill-manager home drift --show`, then clear the gate with");
+            // Bare `home drift` is the spelling that shows the pending change.
+            // This line said `--show` for as long as the gate has existed, and
+            // that option has never existed: it answered `Unknown option:
+            // '--show'` with exit 2. A remedy printed by a refusal is the one
+            // instruction its reader has, and one that does not parse turns a
+            // one-command recovery into a hunt through --help.
+            Log.error("  Read it with `skill-manager home drift`, then clear the gate with");
             Log.error("  `skill-manager home drift --ack` (or launch with --ack-drift).");
             return DriftGate.EXIT_CODE;
         }
