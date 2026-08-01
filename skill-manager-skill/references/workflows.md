@@ -157,6 +157,41 @@ Use this when the current checkout has a `skill-project.toml` or
 
 Details live in `references/projects.md`.
 
+## Get an edit out of a home before the home is gone
+
+Use this when an agent has edited a unit **inside** a Skill Manager home — a
+project or worktree `.skill-manager` — rather than in that unit's own repository.
+Homes are gitignored, so such an edit is in no diff, no PR, and no fan-out, and it
+is deleted with the directory.
+
+Route by what you are trying to guarantee, because the two commands answer
+different questions and neither substitutes for the other:
+
+1. **"Will removing this checkout destroy it?"** →
+   `skill-manager home sync --from <child>/.skill-manager --to <parent>/.skill-manager --merge`.
+   Moves the edit up exactly one tier, on this machine. Without `--merge` an edited
+   destination unit is held back and reported rather than overwritten; with
+   `--merge` conflicts are reported, never resolved, and a conflicted unit writes
+   nothing. `--dry-run` reports and writes nothing at all.
+2. **"Will anyone else ever get it?"** →
+   `skill-manager unit publish <unit> --ticket <t>`. Commits to
+   `skill/<ticket>-<unit>` in the unit's own repository and opens a PR. This is the
+   only route that reaches a sibling project or outlives this machine.
+3. **Before discarding a worktree home at all** →
+   `skill-manager home close-out --home <worktree>/.skill-manager --into <project>/.skill-manager`.
+   Writes nothing, exits non-zero while work would be lost, and prints a literal
+   remedy per blocking unit. Run it *before* `git worktree remove`; afterwards
+   there is nothing to save. It has no `--force` — the override belongs to the
+   caller that decides whether to obey the verdict.
+
+Read the verdict, not the exit code alone: a `LINKED` blocker means the gate cannot
+determine whose bytes a symlink target is, and "cannot tell" blocks by design.
+
+These flows are not yet keyed in the modeled coverage table above; the `home` and
+`unit` command families are absent from the CLI metadata catalog's workflow ids.
+Use `skill-manager home --help` and `skill-manager unit --help` as the authority
+until they are modeled.
+
 ## Use an installed CLI dependency
 
 Do not assume the right binary is on `PATH`. Resolve absolute paths with

@@ -85,8 +85,21 @@ Use `skill-manager env sync <name>` to materialize project-local uv envs
 under `.skill-manager/envs/<name>/` and `skill-manager env run <name>`
 to execute through the generated env.
 
+Homes come in tiers — root `~/.skill-manager`, project
+`<project>/.skill-manager`, worktree `<worktree>/.skill-manager` — and each
+is a **real copy, not a symlink**, so that two agents in two checkouts
+cannot silently overwrite each other's units. Downward is a copy and needs
+nothing from you. Upward does: an edit made to a unit inside a home is in
+no diff, so it reaches the tier above only via `skill-manager home sync`
+and the unit's own repository only via `skill-manager unit publish`, and
+`skill-manager home close-out` refuses to let a home be discarded while it
+still holds such work. Never run `install`, `sync`, `bind`, `upgrade` or
+`project resolve` before the local home exists — they write into whatever
+`SKILL_MANAGER_HOME` names, which until then is the operator's global home.
+
 See `references/projects.md` for the project workflow, child-home
-relationship, env docs, and cleanup rules.
+relationship, the tier model and both upward paths, `[[vendored]]`
+declarations, env docs, and cleanup rules.
 
 For authoring unit manifests, scaffolding, TOML anatomy, and examples,
 use the `skill-publisher` skill rather than this one.
@@ -100,7 +113,11 @@ flows:
   harness, sync, publish, CLI tools, gateway-backed MCP tools, and the
   modeled CLI workflow coverage table.
 - `references/projects.md` - skill project manifests, project envs,
-  project `.skill-manager` child homes, and agent launch homes.
+  project `.skill-manager` child homes, and agent launch homes. Also the
+  **upward** path, which nothing else documents: the three home tiers and why
+  each is a copy, `[[vendored]]` declarations, `home sync` (edit → the tier
+  above), `unit publish` (edit → the unit's own repo), `home close-out` (refuse
+  to discard a home that still holds work), and the rest of the `home` family.
 - `references/virtual-mcp-gateway.md` - the gateway architecture,
   virtual tool surface, deployment scopes, disclosure gate, and MCP
   troubleshooting.

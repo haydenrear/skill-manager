@@ -44,6 +44,71 @@ Project resolution also treats the checkout as a harness descriptor:
 Any Skill Manager home can itself be a parent. Do not assume there is a
 distinguished global root.
 
+## Homes Come In Tiers, And Every Tier Is A Copy
+
+In practice a machine holds up to three:
+
+```
+root       ~/.skill-manager              where the operator installs
+   |  copy  (project resolve, home clone)
+project    <repo>/.skill-manager         one per repository, gitignored
+   |  copy  (home clone)
+worktree   <worktree>/.skill-manager     one per ticket, gitignored
+```
+
+Each tier is a **real copy, not a symlink**, and this is a deliberate design
+decision rather than an implementation detail. A symlink farm makes the child and
+the parent the same bytes; then "the agent's edit survived" and "the parent store
+was not touched" become the same proposition, so neither can be violated and
+neither can be checked. Copies make those two facts independent — which is what
+lets two agents in two worktrees work at once without silently overwriting each
+other's units.
+
+Downward is easy: it is a copy, and `project resolve` / `home clone` do it.
+**Upward is the whole difficulty**, and it is what the rest of this page is about.
+
+The rule the mechanism enforces, and the one to reason from when a report
+surprises you:
+
+> A reconciliation may destroy bytes in the destination only where it can show
+> the **source** passed through them.
+
+Two consequences worth holding on to:
+
+- **A materialization record is evidence about two different things.** Its
+  content digest says "these are the bytes we wrote *here*" — about the
+  destination alone. Its source/baseline fields say "this destination and *that*
+  source last shared exactly this" — about a **pair** of homes. A record saying
+  "I and the worktree last shared X" says nothing about whether the root home
+  ever held X.
+- **When unsure, conflict.** A merge base that is too old costs a spurious
+  conflict a human resolves; one that is too new costs an edit nobody sees again.
+  So `home sync` defaults to *hold back and report*, `--merge` reports conflicts
+  rather than resolving them, and a conflicted unit writes **nothing**.
+
+### Concurrency: what actually excludes what
+
+Several worktrees can reconcile into one project home at the same time, so the
+unit of exclusion is the **home**, not the unit: per-unit staging makes one
+unit's swap atomic, but two whole-home syncs interleaved leave a destination
+coherent per unit and incoherent as a home.
+
+If you are writing code that needs that exclusion, the primitive is `HomeLock` —
+a process-wide `ReentrantLock` keyed by the home path **plus** a `FileLock`. Both
+are needed: a `FileLock` is held by the JVM rather than by the thread, so two
+threads in one process do not exclude each other (the second gets
+`OverlappingFileLockException` instead of waiting).
+
+**`HarnessInstanceLock` is not a locking primitive.** Neither are `CliLock`,
+`UnitsLock` or `SkillProjectLock`. They are lock *files* in the manifest sense —
+durable JSON/TOML records of what is installed — with no exclusion semantics
+whatsoever. Code that "reuses the existing lock" by reaching for one of those
+gets no exclusion and no error.
+
+And exclusion is not merging. Serialized syncs cannot corrupt a home, but the
+second one is **held back and reported**: a result to read, not a step that
+succeeded.
+
 ## Discovery
 
 From a checkout, start with:
@@ -75,6 +140,14 @@ projected into the project child home:
 skill-manager project resolve --project-dir <project>
 ```
 
+**Order matters, and getting it wrong writes the operator's home.** `install`,
+`sync`, `bind`, `upgrade` and `project resolve` all write into whatever
+`SKILL_MANAGER_HOME` names, and `project resolve` additionally puts a child-home
+record and a projection ledger into that store. Before a local home exists, that
+store is the operator's global `~/.skill-manager`. So: create the local home
+first, point `SKILL_MANAGER_HOME` at it, and only then resolve — never the other
+way round.
+
 After resolve, project-local agent launches should point at the child
 home and child-local agent homes:
 
@@ -87,6 +160,146 @@ GEMINI_HOME=<project>/.gemini
 
 Use CLI help for exact flags such as JSON output, gateway skipping, lib
 resolution, and custom manifest paths.
+
+## Vendored Paths: `[[vendored]]`
+
+A vendored path is the one thing a project checkout carries that the checkout
+cannot describe by itself: a file or directory inside the working tree whose
+*content* belongs to an installed unit, and which is therefore expected to be a
+link into this project's own home. `test_graph/sdk` is the canonical case — a
+tracked symlink, so git stores the target **bytes**, which means whatever
+`SKILL_MANAGER_HOME` happened to be when the scaffolder ran is what every later
+clone of that repository gets.
+
+Nothing in the manifest said those paths were supposed to point anywhere in
+particular, so nothing could say they were wrong. This block is that statement:
+
+```toml
+[[vendored]]
+name = "test-graph-sdk"
+paths = ["test_graph/sdk", "test_graph/build-logic", "test_graph/standard-nodes"]
+from_unit = "test-graph"        # installed unit name; content comes from here
+from_subpath = "project_sdk_sources"   # optional; omit when the unit root is the source
+on_invalid = "error"            # error (default) | warn
+```
+
+An array of tables, like `[[libs]]`. `paths` are project-root-relative, must not
+be absolute, and must not escape the project root — a path that escapes is the
+very defect the block exists to catch, so it cannot be spelled in the
+declaration. `name` identifies the group in diagnostics; it is not a filesystem
+name. `paths` is per-declaration because the sets genuinely differ between
+repositories.
+
+Two things about how it is checked:
+
+- **Validation compares resolved physical paths, not link text.** A link whose
+  text is relative (`standard-nodes -> sdk/../standard-nodes`) matches no string
+  test yet resolves *through an absolute sibling link* straight into the
+  operator's home. Any check that reads link text misses that shape entirely.
+- **Validation always runs; only the writing is opt-in.** `project resolve`
+  reports findings by default. `project resolve --repair-vendored` re-points the
+  declared paths at this project's own `.skill-manager` — off by default because a
+  vendored path may be a tracked symlink, so repairing one edits your working
+  tree. `project sync` takes the same flag.
+
+`on_invalid = "error"` fails the command; the default is deliberate — a declared
+contract that cannot fail is a comment. Use `"warn"` only for a project
+mid-migration.
+
+## Moving An Edit Up A Tier: `home sync`
+
+An agent that improves a unit does it *inside a home*. The home is gitignored, so
+that edit is in no diff, no PR, and no fan-out, and it is deleted with the
+directory. `home sync` reconciles one home against another by copy:
+
+```bash
+skill-manager home sync --from <worktree>/.skill-manager \
+                        --to <repo>/.skill-manager [--merge] [--dry-run] [--json]
+```
+
+- `--from` is **never written**. `--to` is written unless `--dry-run`.
+- Without `--merge`, a destination unit that has been edited is **held back and
+  reported**, not overwritten. That is the default because holding back costs a
+  conflict and overwriting costs an edit nobody sees again.
+- `--merge` three-way merges such a unit against its recorded per-file baseline.
+  Conflicts are **reported, never resolved**; local work is kept either way and a
+  conflicted unit writes nothing.
+- `--dry-run` computes and prints the whole report and writes nothing at all — no
+  records, no lock file. Use it to ask the question without answering it.
+
+`home sync` is local to this machine and moves an edit exactly one tier. It does
+not reach any other project.
+
+## Publishing An Edit: `unit publish`
+
+```bash
+skill-manager unit publish <name> [--ticket T] [--home H] [--child-home DIR] \
+                                  [--base main] [--remote origin] \
+                                  [--direct] [--no-pr] [--dry-run] [--json]
+```
+
+This commits the home's edits to that unit on `skill/<ticket>-<unit>`, pushes, and
+opens a pull request against the unit's trunk. `--ticket` defaults to
+`$SKILL_MANAGER_TICKET`; `--child-home` is for a unit materialized into a project
+child home as its own checkout (see `project sync --checkout UNIT`); `--direct`
+pushes straight to the base with no review; `--no-pr` pushes the branch only.
+
+**`home sync` and `unit publish` are not alternatives.** They answer different
+questions, and both are needed:
+
+| | `home sync` | `unit publish` |
+|---|---|---|
+| Moves | home → home, one tier up | home → the unit's own git repo |
+| Reaches | the tier above, on this machine | every project, on every machine |
+| Answers | "will closing this worktree destroy the edit?" | "will anyone else ever get this improvement?" |
+
+A chain-only design would need the same improvement merged up twice and would
+still never reach a **sibling** project. If you improved a unit, `unit publish`
+is the one you owe.
+
+## Discarding A Child Home: `home close-out`
+
+Removing a worktree deletes its home without asking, and succeeds exactly as
+quietly whether the home held a week of work or nothing. Ask first:
+
+```bash
+skill-manager home close-out --home <worktree>/.skill-manager \
+                             --into <repo>/.skill-manager [--json]
+```
+
+- `--home` is the home about to be removed; `--into` is the **project home its
+  work has to reach first** — the one it was cloned from, not `~/.skill-manager`.
+  Get the pair wrong and the verdict is about the wrong two homes.
+- It **writes nothing** and is safe to run repeatedly.
+- **Exit 0** means it has established there is nothing to lose.
+- **Exit 1** is the blocked verdict, and the only exit that prints blockers: every
+  blocking unit, its status, and a **literal remedy command** per unit —
+  `home sync` for a fast-forward, `home sync --merge` for a merge or a conflict
+  (with the conflicted files listed), `unit publish` for a git checkout carrying
+  unpushed work that a file copy cannot carry.
+- **Exit 2** (`NotAHomeException`) means the path presented as a home is not one.
+  Nothing was assessed and nothing is printed. This exit exists because the gate
+  used to answer `safe: true` for a `--home` that was the worktree **directory**
+  rather than its `.skill-manager` — and that directory is exactly what
+  `git worktree remove` takes.
+- **Exit 9** (`FrozenHomeException`) means the destination home's policy is
+  `frozen`, so the gate — a dry-run sync into it — was refused and **nothing was
+  attempted**. Branch on this separately in any teardown script: `9` ("refused,
+  nothing attempted") is not `1` ("this worktree still holds work").
+- A `LINKED` unit **blocks**. The gate cannot say whose bytes a symlink's target
+  is — it may point inside the worktree or outside it — and "cannot tell" has to
+  block rather than clear. Resolve the link, then re-run.
+- `--json` gives `.blockers[]` with `unit`, `status`, `conflicts[]` and `remedy`.
+
+There is **no `--force` on this command**, deliberately: the CLI owns the verdict.
+The override lives in the caller —
+`git-integration-repo`'s `close-change.sh <ticket> --force` still runs the gate and
+still prints every blocker, and only declines to stop. A named, loud override is
+safer than the `rm -rf` an operator improvises when a gate has no escape hatch.
+
+`close-change.sh` runs this gate before `git worktree remove` and refuses (exit 4)
+on a non-zero verdict, which is what makes "push back before teardown" a mechanism
+rather than a discipline.
 
 ## Project Envs
 
@@ -102,6 +315,30 @@ Generated `.skill-manager/env.md`, env `pyproject.toml`, vendor
 checkouts, and tool shims are derived from the manifest and lock. Update
 the manifest, then re-run the CLI instead of editing generated env files
 by hand.
+
+## The Rest Of The `home` Family
+
+Run `skill-manager home <sub> --help` for flags; this is the routing map.
+
+| Subcommand | Use when |
+| --- | --- |
+| `clone --to` | Make a new home from an existing one, skipping re-derivable `cache/`, and verify nothing in the copy still points at the original. This — not `project resolve` — is how a checkout an agent works in gets its home. |
+| `verify --home --against` | Assert a home holds no absolute reference back to another home. |
+| `policy [live\|frozen]` | Declare a home mutable, or evidence. A **frozen** home refuses sync, upgrade and push-back, and is never modified in place. |
+| `describe [--json] [--write]` | The `home.runtime.json` interop descriptor: the env to export, the resolved CLI, the gateway, the installed-unit snapshot, the policy. |
+| `shims` | Generate `bin/launch/{claude,codex,gemini}`. Launch through these rather than exporting variables: skills also load from the Claude config dir, and `skill-script` CLI deps are generated shell scripts with a home's absolute path in the body that no variable redirects. |
+| `drift [--record] [--ack]` | Show/record/acknowledge unit changes. A launch refuses while a change is unacknowledged, so an agent cannot keep acting on a skill that moved underneath it. |
+
+`describe`, `policy`, `shims` and `drift` take `--init` to lay out a home at a path
+that is not one yet. Without `--init` they refuse — a mistyped path should not get a
+home scaffolded at it.
+
+A cloned home and a `project resolve` child home both want the path
+`<project>/.skill-manager`, and they are not the same thing. Resolving a root
+against that root's own home makes the home its own child: it isolates nothing,
+because there is nothing to be isolated from. `project resolve` refuses that layout
+unless you pass `--allow-same-home`. Use the clone for a checkout an agent works
+in; use `project resolve` when the parent home lives somewhere else.
 
 ## Cleanup
 
