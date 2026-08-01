@@ -222,9 +222,17 @@ public final class HomeCommand {
                     Log.info("    … %d more", mentions.size() - TOLERATED_SAMPLE);
                 }
             }
-            if (!result.danglingLinks().isEmpty()) {
-                Log.warn("%d symlink(s) do not resolve in %s", result.danglingLinks().size(), home);
-                for (String dangling : result.danglingLinks()) Log.warn("    %s", dangling);
+            // Provisioning that never completed. A message printed once by the
+            // clone was not enough: nobody ran the remedy, and nothing asked
+            // again. This is the command that asks again — issue #133 item 2.
+            List<String> unresolved = result.unresolved();
+            if (!unresolved.isEmpty()) {
+                Log.error("%d reference(s) in %s do not resolve — provisioning was never "
+                                + "completed, so the tools they name will fail at exec time",
+                        unresolved.size(), home);
+                for (String ref : unresolved) Log.error("    %s", ref);
+                Log.error("  complete it with `skill-manager sync --force-scripts` "
+                        + "(SKILL_MANAGER_HOME=%s), then re-run this check", home);
             }
             // Last, because it is the verdict, and because a terminal keeps
             // the tail. Never gated on --strict: a path that RESOLVES into
@@ -242,7 +250,7 @@ public final class HomeCommand {
                 Log.error("%d authored mention(s) of %s, fatal under --strict; no path in %s "
                         + "resolves into another Skill Manager home", tolerated, against, home);
             }
-            if (!result.clean()) return 1;
+            if (!result.clean() || !unresolved.isEmpty()) return 1;
             Log.ok("no %sreference to %s survives in %s, and no path in it reaches any "
                             + "other Skill Manager home",
                     mentions.isEmpty() ? "" : "repairable ", against, home);
@@ -736,20 +744,16 @@ public final class HomeCommand {
                     report.to().resolve(dev.skillmanager.policy.HomePolicy.FILENAME), report.to());
         }
         for (ChildHomeMaterializer.UnitSync unit : report.units()) {
-            // Tensed by whether THIS run wrote. A dry run reaches the same
-            // verdicts as a real one and used to print them in the same past
-            // tense — see UnitSync#statusLabel and issue #133.
-            String status = unit.statusLabel(!report.dryRun());
+            String status = unit.status().name().toLowerCase().replace('_', '-');
             if (unit.status() == ChildHomeMaterializer.SyncStatus.UNCHANGED) {
-                Log.info("  %-18s %s", status, unit.label());
+                Log.info("  %-16s %s", status, unit.label());
                 continue;
             }
-            Log.info("  %-18s %s — %s", status, unit.label(), unit.detail());
+            Log.info("  %-16s %s — %s", status, unit.label(), unit.detail());
             for (String conflict : unit.conflicts()) Log.warn("      conflict  %s", conflict);
         }
-        Log.info("  " + (report.dryRun() ? "would be: " : "")
-                        + "%d unchanged, %d updated, %d new, %d merged, %d held back, "
-                        + "%d conflicted, %d removed upstream, %d linked",
+        Log.info("  %d unchanged, %d updated, %d new, %d merged, %d held back, %d conflicted, "
+                        + "%d removed upstream, %d linked",
                 report.count(ChildHomeMaterializer.SyncStatus.UNCHANGED),
                 report.count(ChildHomeMaterializer.SyncStatus.UPDATED),
                 report.count(ChildHomeMaterializer.SyncStatus.NEW),
@@ -995,9 +999,18 @@ public final class HomeCommand {
         if (unresolved > 0) {
             // `skill-manager cli` has only read-only subcommands, so the old
             // hint sent the reader somewhere that could not fix anything.
-
+            //
+            // The remedy is still printed here, but it is no longer only
+            // printed: `home verify` re-derives this same set from the copy
+            // and refuses while it is non-empty (#133 item 2). A step named
+            // once, in the middle of a successful clone, across a 24-repo
+            // fan-out, is a step nobody performs — and the failure it prevents
+            // does not surface until some later tool execs a shim that points
+            // at nothing.
             Log.warn("  %d reference(s) do not resolve in the copy (targets under a skipped "
-                    + "directory); re-provision with `skill-manager sync --force-scripts`", unresolved);
+                    + "directory); re-provision with `SKILL_MANAGER_HOME=%s skill-manager sync "
+                    + "--force-scripts` — `home verify` refuses this home until you do",
+                    unresolved, report.dest());
             for (String dangling : report.danglingLinks()) Log.warn("    link   %s", dangling);
             for (String dangling : report.danglingReferences()) Log.warn("    script %s", dangling);
         }
