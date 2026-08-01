@@ -51,7 +51,7 @@ class ValidationGraphPlugin : Plugin<Project> {
         project.tasks.register("validationPlanGraph", ValidationPlanGraphTask::class.java)
             .configure {
                 graphsProvider = { ext.graphs.toMap() }
-                sourcesDirsProvider = { ext.sourcesDirs.toList() }
+                sourcesDirsProvider = { ext.indexedSourcesDirs() }
                 projectDirectory.set(projDir)
                 group = "validation"
             }
@@ -59,7 +59,7 @@ class ValidationGraphPlugin : Plugin<Project> {
         project.tasks.register("validationGraphDot", ValidationGraphDotTask::class.java)
             .configure {
                 graphsProvider = { ext.graphs.toMap() }
-                sourcesDirsProvider = { ext.sourcesDirs.toList() }
+                sourcesDirsProvider = { ext.indexedSourcesDirs() }
                 projectDirectory.set(projDir)
                 group = "validation"
             }

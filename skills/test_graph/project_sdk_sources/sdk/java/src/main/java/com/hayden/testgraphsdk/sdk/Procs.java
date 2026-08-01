@@ -1,11 +1,16 @@
 package com.hayden.testgraphsdk.sdk;
 
+import io.opentelemetry.api.trace.propagation.W3CTraceContextPropagator;
+import io.opentelemetry.context.Context;
+
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Subprocess helpers that produce a structured {@link ProcessRecord}
@@ -21,6 +26,15 @@ import java.util.List;
  * that grabs the whole report tree picks them up automatically. The
  * file name bakes in the node id so a flat {@code grep -r} or file
  * browse immediately traces any log back to its origin node.
+ *
+ * <p>Every child also receives the node's active W3C trace context, so a
+ * subprocess that joins it reports the same trace as the node that launched
+ * it. {@link ProcessBuilder} already inherits the node's own environment,
+ * which carries the graph's context; {@link #traced(ProcessBuilder)} closes
+ * the remaining case where a node replaces that environment instead of
+ * extending it. It uses the W3C propagator the SDK already depends on — no
+ * extra provider, exporter, or transport — and is fail-open, so a node never
+ * fails because context could not be exported.
  *
  * <p>Never throws on spawn failure: if {@code pb.start()} blows up
  * (binary not found, IOException), we still return a
@@ -73,6 +87,7 @@ public final class Procs {
         Process proc;
         try {
             pb.redirectErrorStream(true).redirectOutput(log.toFile());
+            traced(pb);
             proc = pb.start();
         } catch (IOException e) {
             return new ProcessRecord(label, command, startedAt, Instant.now(),
@@ -91,6 +106,40 @@ public final class Procs {
         return new ProcessRecord(
                 label, command, startedAt, Instant.now(),
                 exit, pid, relativeLog, null);
+    }
+
+    /**
+     * Apply the node's active W3C trace context to {@code pb}'s child
+     * environment and return the same builder.
+     *
+     * <p>Falls back to the context the node process itself was handed when no
+     * span context is active — that is the executor-supplied graph carrier —
+     * and does nothing at all when neither is available. Any failure is
+     * swallowed: propagation must never change what the node does.
+     *
+     * <p>Exposed for nodes that spawn a subprocess with custom IO handling
+     * instead of {@link #run(NodeContext, String, ProcessBuilder)}.
+     */
+    public static ProcessBuilder traced(ProcessBuilder pb) {
+        try {
+            Map<String, String> carrier = new LinkedHashMap<>();
+            W3CTraceContextPropagator.getInstance()
+                    .inject(Context.current(), carrier, Map::put);
+            if (carrier.isEmpty()) {
+                inheritedContext(carrier);
+            }
+            pb.environment().putAll(carrier);
+        } catch (Throwable ignored) {
+            // Trace propagation is fail-open; the child still runs.
+        }
+        return pb;
+    }
+
+    private static void inheritedContext(Map<String, String> carrier) {
+        for (String key : new String[] {"traceparent", "tracestate"}) {
+            String value = System.getenv(key);
+            if (value != null && !value.isBlank()) carrier.put(key, value);
+        }
     }
 
     /**

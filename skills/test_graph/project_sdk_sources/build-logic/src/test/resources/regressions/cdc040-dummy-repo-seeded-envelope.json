@@ -1,0 +1,37 @@
+{
+  "nodeId": "dummy.repo.seeded",
+  "status": "passed",
+  "startedAt": "2026-07-22T05:06:08.630838Z",
+  "endedAt": "2026-07-22T05:06:08.632752Z",
+  "assertions": [
+    {
+      "name": "all_fixed_files_written",
+      "status": "passed"
+    },
+    {
+      "name": "raw_artifact_oracle_bounded",
+      "status": "passed"
+    }
+  ],
+  "artifacts": [
+    {
+      "type": "dummy-repo",
+      "path": "/Users/hayde/IdeaProjects/wt-38-cdc-index-040/test_graph/build/validation-reports/20260722-050551/fixtures/dummy-java-repo"
+    },
+    {
+      "type": "raw-artifact-oracle",
+      "path": "/Users/hayde/IdeaProjects/wt-38-cdc-index-040/test_graph/build/validation-reports/20260722-050551/fixtures/dummy-raw-artifact-oracle.json"
+    }
+  ],
+  "processes": [],
+  "metrics": {
+    "durationMs": 1
+  },
+  "logs": [],
+  "published": {
+    "repoRoot": "/Users/hayde/IdeaProjects/wt-38-cdc-index-040/test_graph/build/validation-reports/20260722-050551/fixtures/dummy-java-repo",
+    "coordinate": "local:dummy-java-repo:0.1.0",
+    "rawArtifactOracle": "{\"schemaVersion\":\"cdc-plugin-raw-artifact-oracle-v1\",\"entries\":[{\"logicalPath\":\"docs/runbook.md\",\"pluginId\":\"markdown\",\"pluginVersion\":\"1\",\"pluginConfigDigest\":\"sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\",\"descriptorDigest\":\"sha256:04857b6336f7344f338078c08d0a04e1c7c848071851782f626547e17385729b\",\"inputIdentity\":\"sha256:a76af2bc9e036d4c3a8a790b404e5a3982ea6c856de29ce29b822179edfc4821\"},{\"logicalPath\":\"gradle.properties\",\"pluginId\":\"properties\",\"pluginVersion\":\"1\",\"pluginConfigDigest\":\"sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\",\"descriptorDigest\":\"sha256:5b5ad8bd3fc02bbf6db888c63d2f03b73ceae9326ac8819c0d02b7c986693026\",\"inputIdentity\":\"sha256:6e4f51f79bb7e41a31d64bbe2d0979568ce8ce825ee7f49e3e52af72c7c80b28\"},{\"logicalPath\":\"notes/overview.txt\",\"pluginId\":\"plain-text\",\"pluginVersion\":\"1\",\"pluginConfigDigest\":\"sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\",\"descriptorDigest\":\"sha256:e8eb78c8c500d63114c563594d93289bc7b35d3f84a46b11ceeb1683a2a9a34e\",\"inputIdentity\":\"sha256:fbea493305928dd160dd2519e499328e241de2060e888dbe5014f5971fca637f\"},{\"logicalPath\":\"scripts/tooling.py\",\"pluginId\":\"python\",\"pluginVersion\":\"1\",\"pluginConfigDigest\":\"sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\",\"descriptorDigest\":\"sha256:74a750f3991013461e2d9eb12c5077edbaef0a49635a29a09ee9ed0b444ee7de\",\"inputIdentity\":\"sha256:0225141d5b70375e03486cbb1f1ddbf0f29ccaabba0d758a8bd5126fb1c8699e\"},{\"logicalPath\":\"settings.toml\",\"pluginId\":\"toml\",\"pluginVersion\":\"1\",\"pluginConfigDigest\":\"sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\",\"descriptorDigest\":\"sha256:8d5dfbc26ee646b17b8df77364b0ce103895c684b102047c2420f11011c25daa\",\"inputIdentity\":\"sha256:f3a4f61eae5d013a9e86584844aa0157ca5270d4f7a2604e62462a8b91005dff\"},{\"logicalPath\":\"site/status.html\",\"pluginId\":\"html\",\"pluginVersion\":\"1\",\"pluginConfigDigest\":\"sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\",\"descriptorDigest\":\"sha256:a921351b4abf282159eac0a0e0387c842983a2162c1396311b49f3edfaf14af2\",\"inputIdentity\":\"sha256:ac14d87f26cb231ed50b72241b38fc826b8cadc84db80c2f7e6241180d4f328c\"},{\"logicalPath\":\"src/main/java/com/example/dummy/Greeter.java\",\"pluginId\":\"java-source\",\"pluginVersion\":\"1\",\"pluginConfigDigest\":\"sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\",\"descriptorDigest\":\"sha256:ba102909c0724d3733989b5a8b853780d65d9522a6b43a0520a4cc1c5884aead\",\"inputIdentity\":\"sha256:4824777483affed5836fdab6915bccf69f6c596361d8c8840c78909f865867a6\"},{\"logicalPath\":\"src/main/java/com/example/dummy/GreeterApp.java\",\"pluginId\":\"java-source\",\"pluginVersion\":\"1\",\"pluginConfigDigest\":\"sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\",\"descriptorDigest\":\"sha256:ba102909c0724d3733989b5a8b853780d65d9522a6b43a0520a4cc1c5884aead\",\"inputIdentity\":\"sha256:2006127adde8cf81997672e607be4599bc0970f5f7923563936facf638cda3e1\"},{\"logicalPath\":\"src/main/resources/application.yml\",\"pluginId\":\"yaml\",\"pluginVersion\":\"1\",\"pluginConfigDigest\":\"sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\",\"descriptorDigest\":\"sha256:413326ae83d768ecf2c7f4a66407f1282e987255df14503e33a34cbd91893d8b\",\"inputIdentity\":\"sha256:ba8f005ff07bf083820efe06ec7e725d109eddfe1df7692c1b848f9769604ca4\"}]}\n",
+    "rawArtifactOracleDigest": "sha256:23a3ae505763f75578fcaae9197c6f7481d67273aeb376bbe74a69aa5dc626c8"
+  }
+,"executorStartedAt":"2026-07-22T05:06:08.370722Z","executorEndedAt":"2026-07-22T05:06:08.671081Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/dummy.repo.seeded.stdout.log","inputContextFile":"context/dummy.repo.seeded.input.json","traceId":"337c101aae18cd3f0cef99191bcc280e"}

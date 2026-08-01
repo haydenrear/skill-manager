@@ -25,6 +25,7 @@ public class __CLASS_NAME__ {
             // .dependsOn("some.upstream")
             // .tags("ui", "smoke")
             // .timeout("60s")
+            // .rerun(false) // opt out when replay from saved context is unsafe
             // .sideEffects("net:local")
             // .input("baseUrl", "string")
             // .output("success", "boolean")
