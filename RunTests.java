@@ -162,6 +162,7 @@ public class RunTests {
         failures += PolicyGatingTest.run();
         failures += HandlerSubstitutabilityTest.run();
         failures += ListTypedHandlerSubstitutabilityTest.run();
+        failures += dev.skillmanager.source.GitOpsRepoBoundaryTest.run();
         failures += SourceProvenanceRecorderTest.run();
         failures += ResolveGraphDirectGitSyncTest.run();
         failures += KindAwareDispatchTest.run();
