@@ -94,12 +94,81 @@ final class HomeSyncSupport {
         return Procs.run(ctx, label, pb);
     }
 
+    /**
+     * A setup command refused, so the fixture never reached the state the
+     * assertions below it were written against.
+     *
+     * <p>Thrown rather than returned. {@code Node.run} turns anything thrown
+     * out of a node body into an ERROR envelope, which is the point: a setup
+     * step is not a claim, it is a precondition, and the only two honest
+     * outcomes are "the state was reached" and "the node did not run".
+     */
+    static final class SetupRefused extends RuntimeException {
+
+        SetupRefused(String label, int exitCode, List<String> command, String output) {
+            super("setup step '" + label + "' exited " + exitCode + " — the fixture was NOT put"
+                    + " into the state the assertions below it measure, so every one of them"
+                    + " would have been measuring something else.\n  command: "
+                    + String.join(" ", command) + "\n  output: " + output.strip());
+        }
+    }
+
+    /**
+     * Run a CLI command that exists to put the fixture into a state, and fail
+     * the node when it refuses.
+     *
+     * <h2>Why this is not just {@link #sm}</h2>
+     *
+     * <p>Issue #135. {@code HomeSyncPermutations} froze
+     * {@code base.resolve("frozen-dest")} — a path that was never laid out as a
+     * home — and discarded the {@link ProcessRecord}. When {@code home policy}
+     * grew its {@code NotAHomeException} refusal the freeze started exiting 2
+     * and doing nothing, the destination stayed <b>live</b>, and the three
+     * commands the node asserts exit 9 exited 0 and populated it instead. The
+     * node had been asserting against a destination that was never in the state
+     * it believed for as long as the refusal had existed.
+     *
+     * <p>The one-line repair is {@code --init}. The repair that stops the class
+     * is this: a setup step that does not reach its state must fail the node
+     * loudly, at the step, rather than quietly change what is being tested and
+     * leave a downstream assertion to report a symptom that names the wrong
+     * thing. {@code frozenExits=0/0/0} reads as "the freeze contract broke";
+     * the truth was "nothing was ever frozen".
+     *
+     * <p>It throws instead of returning a flag because a returned flag is
+     * ignorable in exactly the way the original call was, and every one of
+     * these sites is a statement whose value nobody wanted.
+     */
+    static ProcessRecord setup(NodeContext ctx, String label, String home, String... args) {
+        ProcessRecord record = sm(ctx, label, home, args);
+        if (record.exitCode() != 0) {
+            throw new SetupRefused(label, record.exitCode(), record.command(), log(ctx, label));
+        }
+        return record;
+    }
+
     static String log(NodeContext ctx, String label) {
         try {
             return Files.readString(Procs.logFile(ctx, label));
         } catch (Exception e) {
             return "";
         }
+    }
+
+    /**
+     * The policy {@code home policy --home <h>} reported, or {@code ""}.
+     *
+     * <p>The home's own answer to "what am I", read back rather than inferred
+     * from the exit code of the command that set it. Issue #135 is the whole
+     * argument for the distinction: exit 0 from a freeze that was never
+     * attempted and exit 0 from a freeze that landed are the same number.
+     */
+    static String policyLine(String logText) {
+        for (String line : logText.split("\n", -1)) {
+            String trimmed = line.trim();
+            if (trimmed.startsWith("policy:")) return trimmed.substring("policy:".length()).trim();
+        }
+        return "";
     }
 
     /** Exit code and captured stdout of a plain subprocess (git queries). */

@@ -90,13 +90,33 @@ import java.util.Map;
  *
  * <h2>A mutation that does not mutate</h2>
  *
- * <p>{@code UV_LINK_MODE=copy} is <b>not</b> a way to break sharing on macOS:
- * Rust's {@code std::fs::copy} calls {@code fclonefileat}, so uv's copy mode
- * still produces clones on APFS. Measured: clone mode 99.56% of measurable
- * bytes shared, copy mode 99.56%. The mutation that does break it is a
- * materialization that genuinely rewrites the bytes — see {@link
- * StorageSharing#streamCopy}, which is what the negative control uses and what
- * the node was mutation-tested against.
+ * <p>{@code UV_LINK_MODE=copy} is <b>not</b> a way to break sharing, and
+ * whether it is depends on the FILESYSTEM rather than on the platform. An
+ * earlier version of this paragraph called it a macOS/APFS property; issue
+ * #131 measured otherwise. uv's copy mode is Rust's {@code std::fs::copy},
+ * which calls {@code fclonefileat} on APFS and {@code copy_file_range} on
+ * Linux — and {@code copy_file_range} is serviced by a reflink on btrfs and on
+ * xfs with {@code reflink=1}:
+ *
+ * <pre>
+ *   APFS   clone mode 99.56% shared, copy mode 99.56% — no mutation
+ *   btrfs  copy mode 99.83% shared with viaExtent=381 — no mutation, and
+ *          indistinguishable from the hardlink run
+ *   ext4   copy mode 0.00% shared — a genuine byte copy
+ * </pre>
+ *
+ * <p>So "run it on Linux, where copy mode is a real control" is false on two
+ * of the three filesystems anyone would run it on. The mutation that does
+ * break sharing everywhere is a materialization that genuinely rewrites the
+ * bytes — see {@link StorageSharing#streamCopy}, which is what the negative
+ * control uses on every platform and what this node was mutation-tested
+ * against.
+ *
+ * <p>The probe's own two soundness gates — an extent whose {@code fe_physical}
+ * is not a device address, and an overlayfs whose synthetic {@code st_dev}
+ * does not name one backing store — are the other half of issue #131 and are
+ * asserted by {@code extent.probe.is.sound}, which runs offline and therefore
+ * still runs when this node skips.
  *
  * <h2>And the acceptance test the whole design rests on</h2>
  *

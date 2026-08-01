@@ -45,8 +45,23 @@ import java.util.Set;
  *       {@code home clone} used to produce provenance-less homes, and every
  *       unit in them reported as conflicted forever.</li>
  *   <li><b>A frozen destination refuses</b>, before anything is staged, dry run
- *       included.</li>
+ *       included — and the destination is read back as {@code frozen} first,
+ *       because a refusal measured against a home that was never frozen is a
+ *       measurement of nothing.</li>
  * </ul>
+ *
+ * <h2>Setup steps are preconditions, not claims</h2>
+ *
+ * <p>Every command here that exists to put the fixture into a state goes
+ * through {@link HomeSyncSupport#setup}, which fails the node when the command
+ * refuses. Issue #135: the freeze below used to run through
+ * {@link HomeSyncSupport#sm} with its record discarded, against a path that was
+ * never laid out as a home. Once {@code home policy} grew its
+ * {@code NotAHomeException} refusal the freeze exited 2 and did nothing, the
+ * destination stayed <em>live</em>, and the three commands asserted to exit 9
+ * exited 0 and populated it. The node reported {@code frozenExits=0/0/0}, which
+ * names the freeze contract; the actual defect was one line above, in this
+ * file.
  *
  * <p>Runs against its own pair of homes rather than the graph's three tiers:
  * these cases need the destination in states the tiered flow deliberately never
@@ -191,9 +206,27 @@ public class HomeSyncPermutations {
                             && ghostMoved.isEmpty();
 
             // --- 4. a frozen destination ------------------------------------
+            // `--init` and `setup` are both issue #135. This path had never
+            // been laid out as a home, so once `home policy` grew its
+            // NotAHomeException refusal the freeze exited 2 and did nothing —
+            // and because the record was discarded, the destination stayed
+            // LIVE and the three commands below exited 0 and populated it. The
+            // node reported `frozenExits=0/0/0`, which reads as "the freeze
+            // contract broke" and was in fact "nothing was ever frozen".
+            // HomeSyncSupport.setup fails the node at the setup step instead.
             Path frozen = base.resolve("frozen-dest");
-            HomeSyncSupport.sm(ctx, "perm-freeze", frozen.toString(),
-                    "home", "policy", "frozen", "--home", frozen.toString());
+            HomeSyncSupport.setup(ctx, "perm-freeze", frozen.toString(),
+                    "home", "policy", "frozen", "--home", frozen.toString(), "--init");
+            // And the state itself is read back, not inferred from exit 0: an
+            // exit code says a command did not refuse, and only the policy the
+            // home reports says the destination is in the state the three
+            // refusals below are a claim ABOUT. This assertion is what makes
+            // `a_frozen_destination_refuses_...` mean anything at all.
+            HomeSyncSupport.setup(ctx, "perm-freeze-readback", frozen.toString(),
+                    "home", "policy", "--home", frozen.toString());
+            boolean theDestinationIsActuallyFrozenBeforeAnythingIsMeasured =
+                    HomeSyncSupport.policyLine(HomeSyncSupport.log(ctx, "perm-freeze-readback"))
+                            .equals("frozen");
             LinkedHashMap<String, String> frozenBefore = HomeSyncSupport.entryDigests(frozen);
             ProcessRecord refused = HomeSyncSupport.sm(ctx, "perm-frozen-sync", source.toString(),
                     "home", "sync", "--from", source.toString(), "--to", frozen.toString(),
@@ -218,7 +251,7 @@ public class HomeSyncPermutations {
             boolean frozenWroteNothing = frozenMoved.isEmpty()
                     && HomeSyncSupport.names(HomeSyncSupport.skills(frozen)).isEmpty();
 
-            HomeSyncSupport.sm(ctx, "perm-thaw", frozen.toString(),
+            HomeSyncSupport.setup(ctx, "perm-thaw", frozen.toString(),
                     "home", "policy", "live", "--home", frozen.toString());
             ProcessRecord thawed = HomeSyncSupport.sm(ctx, "perm-thawed-sync", source.toString(),
                     "home", "sync", "--from", source.toString(), "--to", frozen.toString(),
@@ -231,7 +264,9 @@ public class HomeSyncPermutations {
                     && dryRunCreatesNothing && planMatchedTheRun && newUnitArrived
                     && editedUnitHeldBack && recordlessUnitHeldBack && removedUpstreamReported
                     && removedUpstreamNeverDeleted && conflictReported && conflictWroteNothing
-                    && recordlessUnitConflicts && frozenRefuses && frozenWroteNothing
+                    && recordlessUnitConflicts
+                    && theDestinationIsActuallyFrozenBeforeAnythingIsMeasured
+                    && frozenRefuses && frozenWroteNothing
                     && thawedHomeAcceptsTheSameSync;
             return (pass
                     ? NodeResult.pass("home.sync.permutations")
@@ -246,6 +281,8 @@ public class HomeSyncPermutations {
                                     + " bothMerge="
                                     + HomeSyncSupport.status(mergeReport, "skill:" + BOTH)
                                     + " bothMoved=" + bothMoved + " ghostMoved=" + ghostMoved
+                                    + " destinationPolicy=" + HomeSyncSupport.policyLine(
+                                            HomeSyncSupport.log(ctx, "perm-freeze-readback"))
                                     + " frozenExits=" + refused.exitCode() + "/"
                                     + refusedDry.exitCode() + "/" + refusedGate.exitCode()
                                     + " (expected " + FROZEN_EXIT_CODE + ")"
@@ -271,6 +308,8 @@ public class HomeSyncPermutations {
                     .assertion("a_conflicted_unit_has_nothing_written_into_it", conflictWroteNothing)
                     .assertion("a_unit_with_no_common_ancestor_conflicts_rather_than_guessing",
                             recordlessUnitConflicts)
+                    .assertion("the_destination_the_refusals_are_measured_against_is_really_frozen",
+                            theDestinationIsActuallyFrozenBeforeAnythingIsMeasured)
                     .assertion("a_frozen_destination_refuses_a_sync_a_dry_run_and_a_close_out_with_exit_9",
                             frozenRefuses)
                     .assertion("a_frozen_destination_has_nothing_written_into_it",

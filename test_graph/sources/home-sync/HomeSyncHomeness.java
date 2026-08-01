@@ -99,7 +99,12 @@ public class HomeSyncHomeness {
             Files.createDirectories(worktreeDir);
             HomeSyncSupport.write(worktreeDir.resolve("README.md"), "a checkout, not a home\n");
             HomeSyncSupport.mkUnit(projectHome, UNIT, "unit v1");
-            HomeSyncSupport.sm(ctx, "hn-seed-worktree", ambient, "home", "sync",
+            // Issue #135: a seed is a precondition, not a claim. If this
+            // reconcile refuses, `worktreeHome` never gets the unit, and
+            // `theRealHomeStillGetsTheRealVerdict` below stops being a check on
+            // close-out's blocker arithmetic and becomes a check on an empty
+            // home. HomeSyncSupport.setup fails the node here instead.
+            HomeSyncSupport.setup(ctx, "hn-seed-worktree", ambient, "home", "sync",
                     "--from", projectHome.toString(), "--to", worktreeHome.toString(), "--json");
 
             String onlyCopy = "THE ONLY COPY OF THE AGENT'S WORK\n";
