@@ -29,8 +29,10 @@ public final class NodeSpec {
     private final Set<String> tags = new LinkedHashSet<>();
     private String timeout = "60s";
     private int retries = 0;
+    private boolean rerun = true;
     private boolean cacheable = false;
     private final Set<String> sideEffects = new LinkedHashSet<>();
+    private EnvironmentRepository environmentRepository = null;
     private final Map<String, String> inputs = new LinkedHashMap<>();
     private final Map<String, String> outputs = new LinkedHashMap<>();
     private boolean reportStructuredJson = true;
@@ -58,8 +60,34 @@ public final class NodeSpec {
      * non-timeout exit code) is final on the first attempt.
      */
     public NodeSpec retries(int n)                   { this.retries = Math.max(0, n); return this; }
+    /**
+     * Whether operators and agents should be offered a direct rerun command
+     * from a saved build-directory input context when this node fails.
+     * Defaults to {@code true}. Set {@code false} for nodes where a manual
+     * replay is unsafe because the node claims external state, consumes a
+     * one-shot token, mutates non-idempotent resources, or otherwise cannot
+     * be retried from the previous input context alone.
+     *
+     * <p>This is distinct from {@link #retries(int)}. Retries are automatic
+     * executor attempts after timeouts. Rerun is a user-directed debugging
+     * affordance exposed after a completed node attempt.
+     */
+    public NodeSpec rerun(boolean enabled)           { this.rerun = enabled; return this; }
     public NodeSpec cacheable(boolean b)             { this.cacheable = b; return this; }
-    public NodeSpec sideEffects(String... s)         { sideEffects.addAll(Arrays.asList(s)); return this; }
+    public NodeSpec sideEffects(String... s) {
+        for (String raw : s) sideEffects.add(SideEffect.of(raw).raw());
+        return this;
+    }
+    public NodeSpec sideEffects(SideEffect... s) {
+        for (SideEffect effect : s) sideEffects.add(effect.raw());
+        return this;
+    }
+    public NodeSpec sideEffect(SideEffect effect)    { sideEffects.add(effect.raw()); return this; }
+    public NodeSpec environmentRepository(EnvironmentRepository repository) {
+        if (repository == null) throw new IllegalArgumentException("environmentRepository must not be null");
+        this.environmentRepository = repository;
+        return this;
+    }
     public NodeSpec input(String name, String type)  { inputs.put(name, type); return this; }
     public NodeSpec output(String name, String type) { outputs.put(name, type); return this; }
     public NodeSpec junitXml()                       { this.reportJunitXml = true; return this; }
@@ -86,8 +114,10 @@ public final class NodeSpec {
         out.put("tags", new ArrayList<>(tags));
         out.put("timeout", timeout);
         out.put("retries", retries);
+        out.put("rerun", rerun);
         out.put("cacheable", cacheable);
         out.put("sideEffects", new ArrayList<>(sideEffects));
+        if (environmentRepository != null) out.put("environmentRepository", environmentRepository.toMap());
         out.put("inputs", inputs);
         out.put("outputs", outputs);
         out.put("reports", reports);

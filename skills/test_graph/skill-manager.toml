@@ -2,7 +2,8 @@
 # agent runtime never reads this - it reads SKILL.md.
 #
 # The skill is mostly documentation plus Python 3 scaffolding scripts
-# (scripts/scaffold.py, github-action.py, run.py, discover.py,
+# (scripts/scaffold.py, prepare-bindings.py, migrate-bindings.py,
+# github-action.py, run.py, discover.py,
 # new-jbang-node.py, new-uv-node.py, clean.py). Those scripts use only
 # the stdlib (tomllib requires Python 3.11+, which the target audience
 # already has), so there are no third-party CLI dependencies to install
@@ -16,10 +17,16 @@
 # skill-manager would then bundle them into $SKILL_MANAGER_HOME/bin/
 # even on machines where the project under validation already has its
 # own pinned versions on PATH.
+#
+# The shipped monitoring standard nodes are different: they invoke deploy-helm's
+# public `monitoring` launcher. The deploy-cdc unit reference installs that
+# prerequisite transitively without coupling the Test Graph SDK to provider code.
 
-skill_references = []
+skill_references = [
+  "github:haydenrear/deploy-cdc", # installs the deploy-helm skill and its monitoring CLI
+]
 
 [skill]
 name = "test-graph"
-version = "0.1.0"
-description = "Scaffold a test_graph project, add JBang/uv validation nodes, compose graphs in build.gradle.kts, run them, and aggregate reports."
+version = "0.2.1"
+description = "Scaffold a portable test_graph project, manage provider bindings, add JBang/uv validation nodes, compose graphs, run them, and aggregate reports."

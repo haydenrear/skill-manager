@@ -29,6 +29,18 @@ open class ValidationGraphExtension(internal val project: Project) {
     internal val graphs = linkedMapOf<String, TestGraphSpec>()
 
     /**
+     * Catalog sources precede consumer sources so a shipped standard-node id
+     * cannot be shadowed by a local script during transitive resolution.
+     */
+    internal fun indexedSourcesDirs(): List<File> {
+        val standardNodes = project.file("standard-nodes")
+        return buildList {
+            if (standardNodes.isDirectory) add(standardNodes)
+            addAll(sourcesDirs.filterNot { it.absoluteFile == standardNodes.absoluteFile })
+        }
+    }
+
+    /**
      * Register a directory scanned for transitive-dep resolution.
      * Multiple directories allowed; earlier calls win on id collisions.
      */
@@ -56,7 +68,7 @@ open class ValidationGraphExtension(internal val project: Project) {
         val outerExt = this
         project.tasks.register(name, RunTestGraphTask::class.java).configure {
             graphSpec = spec
-            sourcesDirsProvider = { outerExt.sourcesDirs.toList() }
+            sourcesDirsProvider = { outerExt.indexedSourcesDirs() }
             projectDirectory.set(project.layout.projectDirectory)
             reportRoot.set(project.layout.buildDirectory.dir("validation-reports"))
             // No `finalizedBy("validationReport")` here. Each

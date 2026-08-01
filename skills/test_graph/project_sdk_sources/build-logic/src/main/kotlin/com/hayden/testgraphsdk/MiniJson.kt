@@ -1,5 +1,7 @@
 package com.hayden.testgraphsdk
 
+import java.math.BigDecimal
+
 /**
  * Tiny JSON parser for describe output. Scope is narrow: primitives,
  * string-keyed objects, and lists — exactly what NodeSpec emits.
@@ -7,7 +9,9 @@ package com.hayden.testgraphsdk
  */
 internal object MiniJson {
 
-    fun parse(s: String): Any? = Parser(s).readValue()
+    private const val MAX_NUMBER_CHARS = 1_024
+
+    fun parse(s: String): Any? = Parser(s).readDocument()
 
     @Suppress("UNCHECKED_CAST")
     fun obj(v: Any?): Map<String, Any?> = v as Map<String, Any?>
@@ -30,7 +34,14 @@ internal object MiniJson {
     private class Parser(private val s: String) {
         private var i = 0
 
-        fun readValue(): Any? {
+        fun readDocument(): Any? {
+            val value = readValue()
+            skipWs()
+            if (i != s.length) error("unexpected trailing content at $i")
+            return value
+        }
+
+        private fun readValue(): Any? {
             skipWs()
             return when (peek()) {
                 '{' -> readObject()
@@ -38,7 +49,8 @@ internal object MiniJson {
                 '"' -> readString()
                 't', 'f' -> readBool()
                 'n' -> readNull()
-                else -> readNumber()
+                '-', in '0'..'9' -> readNumber()
+                else -> error("expected JSON value at $i")
             }
         }
 
@@ -51,6 +63,7 @@ internal object MiniJson {
                 skipWs()
                 val key = readString()
                 skipWs(); expect(':')
+                if (out.containsKey(key)) error("duplicate object key '$key' at $i")
                 out[key] = readValue()
                 skipWs()
                 val c = s[i++]
@@ -80,15 +93,25 @@ internal object MiniJson {
                 val c = s[i++]
                 if (c == '"') return sb.toString()
                 if (c == '\\') {
+                    if (i >= s.length) error("unterminated string escape")
                     when (val n = s[i++]) {
                         '"', '\\', '/' -> sb.append(n)
+                        'b' -> sb.append('\b')
+                        'f' -> sb.append('\u000c')
                         'n' -> sb.append('\n')
                         'r' -> sb.append('\r')
                         't' -> sb.append('\t')
-                        'u' -> { sb.append(s.substring(i, i + 4).toInt(16).toChar()); i += 4 }
-                        else -> sb.append(n)
+                        'u' -> {
+                            if (i + 4 > s.length) error("incomplete unicode escape")
+                            sb.append(s.substring(i, i + 4).toInt(16).toChar())
+                            i += 4
+                        }
+                        else -> error("invalid string escape at $i")
                     }
-                } else sb.append(c)
+                } else {
+                    if (c.code < 0x20) error("unescaped control character at $i")
+                    sb.append(c)
+                }
             }
             error("unterminated string")
         }
@@ -103,11 +126,55 @@ internal object MiniJson {
         private fun readNull(): Any? =
             if (s.startsWith("null", i)) { i += 4; null } else error("expected null at $i")
 
-        private fun readNumber(): Any {
+        private fun readNumber(): Number {
             val start = i
-            while (i < s.length && s[i] !in ",}]" && !s[i].isWhitespace()) i++
+            consumeIf('-')
+            when (peekRaw()) {
+                '0' -> {
+                    advanceNumberChar(start)
+                    if (peekRaw() in '0'..'9') error("leading zero in JSON number at $i")
+                }
+                in '1'..'9' -> consumeDigits(start)
+                else -> error("invalid JSON number at $i")
+            }
+            if (consumeIf('.')) {
+                checkNumberLength(start)
+                if (peekRaw() !in '0'..'9') error("fraction requires a digit at $i")
+                consumeDigits(start)
+            }
+            if (peekRaw() == 'e' || peekRaw() == 'E') {
+                advanceNumberChar(start)
+                if (peekRaw() == '+' || peekRaw() == '-') advanceNumberChar(start)
+                if (peekRaw() !in '0'..'9') error("exponent requires a digit at $i")
+                consumeDigits(start)
+            }
             val lit = s.substring(start, i)
-            return lit.toLongOrNull() ?: lit.toDoubleOrNull() ?: lit
+            return lit.toLongOrNull() ?: try {
+                BigDecimal(lit)
+            } catch (_: NumberFormatException) {
+                error("invalid JSON number at $start")
+            }
+        }
+
+        private fun consumeDigits(start: Int) {
+            while (peekRaw() in '0'..'9') advanceNumberChar(start)
+        }
+
+        private fun advanceNumberChar(start: Int) {
+            i++
+            checkNumberLength(start)
+        }
+
+        private fun checkNumberLength(start: Int) {
+            if (i - start > MAX_NUMBER_CHARS) {
+                error("JSON number exceeds $MAX_NUMBER_CHARS characters at $start")
+            }
+        }
+
+        private fun consumeIf(expected: Char): Boolean {
+            if (peekRaw() != expected) return false
+            i++
+            return true
         }
 
         private fun expect(c: Char) {
@@ -116,7 +183,19 @@ internal object MiniJson {
             i++
         }
 
-        private fun skipWs() { while (i < s.length && s[i].isWhitespace()) i++ }
-        private fun peek(): Char { skipWs(); return s[i] }
+        private fun skipWs() {
+            while (i < s.length) {
+                when (s[i]) {
+                    ' ', '\t', '\n', '\r' -> i++
+                    else -> return
+                }
+            }
+        }
+        private fun peekRaw(): Char? = s.getOrNull(i)
+        private fun peek(): Char {
+            skipWs()
+            if (i >= s.length) error("unexpected end of JSON")
+            return s[i]
+        }
     }
 }

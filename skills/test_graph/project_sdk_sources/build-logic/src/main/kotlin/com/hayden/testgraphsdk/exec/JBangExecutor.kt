@@ -25,11 +25,13 @@ class JBangExecutor(private val jbangPath: String) : ValidationExecutor {
         argv += standardArgs(invocation)
 
         invocation.stdoutLog.parentFile?.mkdirs()
-        val process = ProcessBuilder(argv)
+        val managedCommand = PosixProcessGroupController.wrap(argv)
+        val process = ProcessBuilder(managedCommand.arguments)
             .directory(invocation.projectDir.asFile)
             .redirectErrorStream(true)
             .redirectOutput(invocation.stdoutLog)
+            .also { it.environment().putAll(invocation.environment) }
             .start()
-        return awaitWithTimeout(process, invocation.timeoutMillis)
+        return awaitWithTimeout(process, invocation.timeoutMillis, managedCommand)
     }
 }

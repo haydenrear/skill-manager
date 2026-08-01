@@ -1,5 +1,16 @@
 package com.hayden.testgraphsdk
 
+private val VALID_NODE_ID = Regex("[a-z0-9._-]{1,128}")
+
+internal fun isValidNodeId(nodeId: String): Boolean = VALID_NODE_ID.matches(nodeId)
+
+internal fun requireValidNodeId(nodeId: String, label: String = "node id"): String {
+    require(isValidNodeId(nodeId)) {
+        "$label must match [a-z0-9._-]{1,128}"
+    }
+    return nodeId
+}
+
 /**
  * Typed graph-model representation of a node.
  *
@@ -23,12 +34,29 @@ data class ValidationNodeSpec(
      * `.retries(n)`); most nodes are stateful and not safely re-runnable.
      */
     val retries: Int = 0,
+    /**
+     * Whether failed-run output should suggest a direct rerun command from the
+     * saved build-directory input context. Defaults true and is independent of
+     * timeout [retries], which are automatic executor attempts.
+     */
+    val rerun: Boolean = true,
     val cacheable: Boolean = false,
     val sideEffects: Set<String> = emptySet(),
+    val environmentRepository: EnvironmentRepositorySpec? = null,
     val inputs: Map<String, String> = emptyMap(),
     val outputs: Map<String, String> = emptyMap(),
     val reports: ReportsSpec = ReportsSpec(),
-)
+) {
+    init {
+        requireValidNodeId(id)
+    }
+
+    fun sideEffectSpecs(): Set<SideEffectSpec> =
+        SideEffectSpec.parseAll(sideEffects, "node '$id' sideEffects")
+}
+
+internal fun ValidationNodeSpec.isFinalizerNode(): Boolean =
+    id.endsWith(".cleanup") || "finalizer" in tags
 
 data class ReportsSpec(
     val structuredJson: Boolean = true,

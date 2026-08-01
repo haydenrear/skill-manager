@@ -25,6 +25,7 @@ SPEC = (
     # .depends_on("some.upstream")
     # .tags("smoke")
     # .timeout("60s")
+    # .rerun(False)  # opt out when replay from saved context is unsafe
     # .side_effects("db:writes")
     # .input("username", "string")
     # .output("userId", "string")

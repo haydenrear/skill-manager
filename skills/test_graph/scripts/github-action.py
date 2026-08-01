@@ -1,12 +1,11 @@
 #!/usr/bin/env python3
 """Scaffold a GitHub Actions workflow for a test_graph project.
 
-The normal test_graph scaffold keeps ``test_graph/sdk`` and
-``test_graph/build-logic`` as symlinks into the installed test-graph
-skill. A GitHub runner only works if those symlinks point at a real
-skill-manager install, so this script writes a workflow that installs
-the skill with skill-manager before running graph discovery and
-execution.
+Managed test_graph scaffolds commit ``provider-bindings.json`` and generate
+``test_graph/sdk``, ``test_graph/build-logic``, and
+``test_graph/standard-nodes`` at runtime. Legacy scaffolds keep committed
+symlinks. This script writes a workflow that supports both layouts after it
+installs the skill with skill-manager.
 
 Usage:
     github-action.py [repo-root]
@@ -18,6 +17,19 @@ the runner's installed test-graph skill. Use ``--symlink-mode preserve``
 when the checked-in symlink target already points under a fixed
 ``$SKILL_MANAGER_HOME/skills/test-graph/project_sdk_sources`` path and
 you want the runner to create that same home.
+
+Preserve mode is legacy-only, and legacy scaffolds vary: some point at a
+home outside the checkout, some at one inside it (the per-checkout
+``<repo>/.skill-manager`` layout). An inferred home *inside* the checkout is
+emitted as ``${{ github.workspace }}/...`` rather than as this machine's
+absolute path, which would only resolve on the machine that generated the
+workflow. Preserve mode validates the resulting shape by resolved directory,
+not by ``readlink`` string, and - when the home is in the workspace - rejects
+an absolute committed target.
+
+None of this is needed for a managed project: it commits
+``provider-bindings.json`` instead of links, so it uses ``repair`` mode and
+``prepare-bindings.py``. ``migrate-bindings.py`` moves a legacy project there.
 """
 from __future__ import annotations
 
@@ -33,6 +45,7 @@ from _common import target_project_root
 DEFAULT_WORKFLOW = "test-graph.yml"
 DEFAULT_SKILL_COORDINATE = "github:haydenrear/test_graph_skill"
 DEFAULT_SKILL_MANAGER_HOME = "/Users/runner/.skill-manager"
+WORKSPACE = "${{ github.workspace }}"
 DEFAULT_TRIGGER_PATHS = [
     "test_graph/**",
     "src/**",
@@ -137,6 +150,7 @@ def main() -> int:
     skill_manager_home = _skill_manager_home(
         args.skill_manager_home,
         args.symlink_mode,
+        repo_root,
         test_graph_root,
     )
 
@@ -211,7 +225,12 @@ def _job_id(name: str) -> str:
     return ident or "test-graph"
 
 
-def _skill_manager_home(override: str | None, mode: str, test_graph_root: Path) -> str:
+def _skill_manager_home(
+    override: str | None,
+    mode: str,
+    repo_root: Path,
+    test_graph_root: Path,
+) -> str:
     if override:
         home = Path(override).expanduser()
         if not home.is_absolute():
@@ -221,19 +240,38 @@ def _skill_manager_home(override: str | None, mode: str, test_graph_root: Path) 
     if mode == "repair":
         return DEFAULT_SKILL_MANAGER_HOME
 
+    if (test_graph_root / "provider-bindings.json").is_file():
+        sys.exit(
+            "error: --symlink-mode preserve is only for legacy committed symlinks; "
+            "managed provider-bindings.json projects use --symlink-mode repair"
+        )
+
     inferred = _infer_skill_manager_home(test_graph_root)
     if inferred is None:
         sys.exit(
-            "error: --symlink-mode preserve requires test_graph/sdk or "
-            "test_graph/build-logic to point under "
+            "error: --symlink-mode preserve requires test_graph/sdk, "
+            "test_graph/build-logic, or test_graph/standard-nodes to point under "
             "<home>/skills/test-graph/project_sdk_sources/.\n"
             "  Pass --skill-manager-home explicitly, or use --symlink-mode repair."
         )
+
+    # A legacy home inside the checkout is the per-checkout
+    # `<repo>/.skill-manager` layout. Emitting this machine's absolute path
+    # for it would put the same non-portability the managed bindings removed
+    # from the symlinks back into the workflow YAML, where nothing
+    # regenerates it: the workflow is committed, and a runner's workspace is
+    # never `/Users/<someone>/...`.
+    if _is_within(inferred, repo_root):
+        return "/".join([WORKSPACE, *inferred.relative_to(repo_root).parts])
     return inferred.as_posix()
 
 
+def _is_within(path: Path, parent: Path) -> bool:
+    return path == parent or parent in path.parents
+
+
 def _infer_skill_manager_home(test_graph_root: Path) -> Path | None:
-    for name in ("sdk", "build-logic"):
+    for name in ("sdk", "build-logic", "standard-nodes"):
         link = test_graph_root / name
         if not link.is_symlink():
             continue
@@ -307,6 +345,10 @@ def render_workflow(
         "",
         "permissions:",
         "  contents: read",
+        "",
+        "concurrency:",
+        "  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}",
+        "  cancel-in-progress: true",
         "",
         "jobs:",
         f"  {job_id}:",
@@ -402,6 +444,7 @@ def render_workflow(
             f"          skill-manager install -y {_shell_quote(skill_coordinate)}",
             "          test -d \"$TEST_GRAPH_SKILL_HOME/project_sdk_sources/sdk\"",
             "          test -d \"$TEST_GRAPH_SKILL_HOME/project_sdk_sources/build-logic\"",
+            "          test -d \"$TEST_GRAPH_SKILL_HOME/project_sdk_sources/standard-nodes\"",
             "",
             "      - name: Save skill-manager tool caches",
             "        if: always() && steps.skill-manager-tool-cache.outputs.cache-hit != 'true'",
@@ -416,7 +459,9 @@ def render_workflow(
         ]
     )
 
-    workflow.extend(_symlink_step(symlink_mode))
+    workflow.extend(
+        _symlink_step(symlink_mode, workspace_home=skill_manager_home.startswith(WORKSPACE))
+    )
     workflow.extend(_discover_step(graphs))
     workflow.extend(_run_step(graphs))
     workflow.extend(
@@ -434,18 +479,68 @@ def render_workflow(
     return "\n".join(workflow)
 
 
-def _symlink_step(mode: str) -> list[str]:
+def _symlink_step(mode: str, *, workspace_home: bool) -> list[str]:
     if mode == "preserve":
-        return [
+        # Compare resolved directories, not the raw readlink string. A
+        # string compare only holds for a legacy link whose literal text
+        # equals the runner's $TEST_GRAPH_SKILL_HOME path; it fails for a
+        # relative link, for a link through a symlinked home (/var vs
+        # /private/var on macOS), and it passes for a link whose text
+        # matches but whose target does not exist.
+        lines = [
             "      - name: Validate scaffold symlinks resolve to skill-manager install",
             "        run: |",
-            "          test \"$(readlink \"$TEST_GRAPH_ROOT/sdk\")\" = \"$TEST_GRAPH_SKILL_HOME/project_sdk_sources/sdk\"",
-            "          test \"$(readlink \"$TEST_GRAPH_ROOT/build-logic\")\" = \"$TEST_GRAPH_SKILL_HOME/project_sdk_sources/build-logic\"",
-            "",
+            "          check() {",
+            "            name=\"$1\"",
+            "            link=\"$TEST_GRAPH_ROOT/$name\"",
+            "            if [ ! -L \"$link\" ]; then",
+            "              echo \"::error::$link is not a symlink\"",
+            "              exit 1",
+            "            fi",
         ]
+        if workspace_home:
+            # Only reachable when the home is inside the checkout. An
+            # absolute committed target then names *this* checkout's path,
+            # so it resolves on exactly one machine and no environment
+            # override can redirect a path already frozen into a Git blob.
+            # Fail the PR rather than let Gradle silently load nothing.
+            lines.extend(
+                [
+                    "            case \"$(readlink \"$link\")\" in",
+                    "              /*)",
+                    "                echo \"::error::$link is an absolute symlink"
+                    " ($(readlink \"$link\")); run migrate-bindings.py to replace the"
+                    " committed links with provider-bindings.json\"",
+                    "                exit 1",
+                    "                ;;",
+                    "            esac",
+                ]
+            )
+        lines.extend(
+            [
+                "            actual=\"$(cd -P \"$link\" 2>/dev/null && pwd)\"",
+                "            expected=\"$(cd -P \"$TEST_GRAPH_SKILL_HOME/project_sdk_sources/$name\""
+                " && pwd)\"",
+                "            if [ \"$actual\" != \"$expected\" ]; then",
+                "              echo \"::error::$link resolves to '$actual', expected '$expected'\"",
+                "              exit 1",
+                "            fi",
+                "          }",
+                "          check sdk",
+                "          check build-logic",
+                "          check standard-nodes",
+                "",
+            ]
+        )
+        return lines
     return [
-        "      - name: Point scaffold symlinks at installed skill",
+        "      - name: Prepare Test Graph provider bindings",
         "        run: |",
+        "          if [ -f \"$TEST_GRAPH_ROOT/provider-bindings.json\" ]; then",
+        "            \"$TEST_GRAPH_SKILL_HOME/scripts/prepare-bindings.py\" --test-graph-root \"$TEST_GRAPH_ROOT\"",
+        "            exit 0",
+        "          fi",
+        "          # Legacy compatibility; migrate-bindings.py removes the need for this branch.",
         "          relink() {",
         "            name=\"$1\"",
         "            link=\"$TEST_GRAPH_ROOT/$name\"",
@@ -464,6 +559,7 @@ def _symlink_step(mode: str) -> list[str]:
         "          }",
         "          relink sdk",
         "          relink build-logic",
+        "          relink standard-nodes",
         "",
     ]
 

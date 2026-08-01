@@ -12,8 +12,15 @@ repositories {
 }
 
 dependencies {
+    val openTelemetryVersion = "1.62.0"
+
+    implementation(platform("io.opentelemetry:opentelemetry-bom:$openTelemetryVersion"))
+    implementation("io.opentelemetry:opentelemetry-sdk-extension-autoconfigure")
+    implementation("io.opentelemetry:opentelemetry-exporter-otlp")
+
     // Node specs come from invoking scripts with --describe-out, parsed by
-    // MiniJson.kt. No YAML, no JSON library — plugin stays dependency-free.
+    // MiniJson.kt. No YAML sidecar is required.
+    testImplementation(kotlin("test"))
 }
 
 gradlePlugin {

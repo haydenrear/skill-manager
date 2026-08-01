@@ -26,7 +26,10 @@ class NodeOverlay(internal val file: File) {
 
     fun dependsOn(vararg ids: String): NodeOverlay { extraDependsOn.addAll(ids); return this }
     fun tags(vararg t: String): NodeOverlay { extraTags.addAll(t); return this }
-    fun sideEffects(vararg s: String): NodeOverlay { extraSideEffects.addAll(s); return this }
+    fun sideEffects(vararg s: String): NodeOverlay {
+        extraSideEffects.addAll(s.map { SideEffectSpec.parse(it, "DSL sideEffects").raw })
+        return this
+    }
     fun timeout(v: String): NodeOverlay { timeoutOverride = v; return this }
     fun retries(n: Int): NodeOverlay { retriesOverride = n.coerceAtLeast(0); return this }
     fun cacheable(b: Boolean): NodeOverlay { cacheableOverride = b; return this }
@@ -77,5 +80,23 @@ class TestGraphBuilder(private val project: Project, private val name: String) {
         return explicitNodes.getOrPut(f) { NodeOverlay(f) }
     }
 
+    /**
+     * Compose a centrally shipped node by its stable semantic id.
+     *
+     * Standard nodes are resolved from the scaffold's `standard-nodes/`
+     * symlink when the graph is planned. Consumers name the contract; they do
+     * not copy or address its provider-owned script path.
+     */
+    fun standardNode(id: String): NodeOverlay {
+        require(STANDARD_NODE_ID.matches(id)) {
+            "standard node id must be dotted (for example, 'monitoring.cluster.ensure'): '$id'"
+        }
+        return node("standard-nodes/${id.replace('.', '_')}.py")
+    }
+
     internal fun build(): TestGraphSpec = TestGraphSpec(name, explicitNodes.toMap())
+
+    private companion object {
+        val STANDARD_NODE_ID = Regex("[A-Za-z0-9_-]+(?:\\.[A-Za-z0-9_-]+)+")
+    }
 }
