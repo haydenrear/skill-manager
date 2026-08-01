@@ -79,6 +79,7 @@ import dev.skillmanager.project.GeminiProjectorTest;
 import dev.skillmanager.project.HarnessPluginCliTest;
 import dev.skillmanager.project.PluginMarketplaceTest;
 import dev.skillmanager.project.ProjectChildHomeMaterializationTest;
+import dev.skillmanager.project.ProjectSyncIdempotencyTest;
 import dev.skillmanager.project.ProjectDependencyResolverTest;
 import dev.skillmanager.project.ProjectEnvMaterializerTest;
 import dev.skillmanager.project.ProjectLibResolverTest;
@@ -184,6 +185,7 @@ public class RunTests {
         failures += SkillProjectRegistryTest.run();
         failures += ProjectDependencyResolverTest.run();
         failures += ProjectChildHomeMaterializationTest.run();
+        failures += ProjectSyncIdempotencyTest.run();
         failures += ProjectEnvMaterializerTest.run();
         failures += ProjectLibResolverTest.run();
         failures += ProjectVendoredResolverTest.run();

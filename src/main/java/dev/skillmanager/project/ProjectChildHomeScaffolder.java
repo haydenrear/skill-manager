@@ -295,14 +295,34 @@ public final class ProjectChildHomeScaffolder {
             throws IOException {
         for (AgentUnit unit : childStore.listInstalledUnits().units()) {
             for (var dep : unit.cliDependencies()) {
-                materializer.mirrorExistingShim(parentStore.cliBinDir().resolve(dep.name()),
-                        childStore.cliBinDir().resolve(dep.name()));
+                Path dest = childStore.cliBinDir().resolve(dep.name());
+                reportKeptShim(unit.name(), "cli", dep.name(), dest,
+                        materializer.mirrorExistingShim(
+                                parentStore.cliBinDir().resolve(dep.name()), dest));
             }
             for (var dep : unit.mcpDependencies()) {
-                materializer.mirrorExistingShim(parentStore.mcpBinDir().resolve(dep.name()),
-                        childStore.mcpBinDir().resolve(dep.name()));
+                Path dest = childStore.mcpBinDir().resolve(dep.name());
+                reportKeptShim(unit.name(), "mcp", dep.name(), dest,
+                        materializer.mirrorExistingShim(
+                                parentStore.mcpBinDir().resolve(dep.name()), dest));
             }
         }
+    }
+
+    /**
+     * Say when the child home's own tool was kept over the parent's shim.
+     *
+     * <p>Reported rather than silent, because it is a real difference between
+     * the two homes; reported rather than fatal, because it is the normal state
+     * of a home that has provisioned its own {@code skill-script} tools — see
+     * {@link ChildHomeMaterializer.ShimOutcome#KEPT_LOCAL}. Issue #144.
+     */
+    public static void reportKeptShim(String unitName, String surface, String depName, Path dest,
+                                      ChildHomeMaterializer.ShimOutcome outcome) {
+        if (!outcome.keptLocal()) return;
+        Log.warn("child home provisions %s %s itself (%s) — kept, not replaced with a link into "
+                        + "the parent store (declared by %s)",
+                surface, depName, dest, unitName);
     }
 
     /**
