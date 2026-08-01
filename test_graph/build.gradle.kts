@@ -686,6 +686,16 @@ validationGraph {
         // machine, and TLC cannot check it.
         node("sources/home-clone/SharedPackageCacheIsNotPrivateToTheHome.java")
         node("sources/home-clone/SharedStoreMaterializationCostsFarLessThanACopy.java")
+        // And the instrument those two lean on, checked on its own terms.
+        // Issue #131 found two ways sources/lib/extentprobe.py could report
+        // sharing that is not there: an extent whose fe_physical is not a
+        // device address, and an overlayfs whose synthetic st_dev does not
+        // name one backing store. Neither hazard is produced by a healthy
+        // host, so neither is exercised by any run of the two nodes above --
+        // the gates could be deleted and nothing would go red. This node
+        // drives them from tables, needs no uv and no network, and so keeps
+        // its meaning in exactly the environments where the cost node skips.
+        node("sources/home-clone/ExtentProbeIsSound.java")
     }
 
     /**

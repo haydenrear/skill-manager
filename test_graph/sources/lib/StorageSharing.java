@@ -223,10 +223,35 @@ final class StorageSharing {
      * anything on any filesystem. The instrument's discrimination control: a
      * probe that reports THIS as shared is reporting sharing for everything.
      *
-     * <p>Deliberately not {@code Files.copy}. On APFS the JDK takes the
-     * {@code clonefile} path when {@code COPY_ATTRIBUTES} is present, and
-     * Rust's {@code std::fs::copy} clones unconditionally — which is why
-     * {@code UV_LINK_MODE=copy} is NOT a way to defeat sharing on macOS.
+     * <h2>Why the loop, and not any "copy" the platform offers</h2>
+     *
+     * <p>Deliberately not {@code Files.copy}, and deliberately not
+     * {@code UV_LINK_MODE=copy}. <b>Whether a "copy" copies is a property of
+     * the filesystem, not of the platform</b> — an earlier version of this
+     * comment called it a macOS/APFS quirk, and that is wrong in the direction
+     * that costs something: it invites reintroducing {@code UV_LINK_MODE=copy}
+     * as a negative control "because Linux is safe", where it silently stops
+     * being one. Measured (issue #131):
+     *
+     * <pre>
+     *   filesystem            UV_LINK_MODE=copy      valid negative control?
+     *   APFS (macOS)          clones                 NO
+     *   btrfs                 99.83% shared,         NO
+     *                         viaExtent=381
+     *   xfs with reflink=1    clones                 NO
+     *   ext4                  0.00% shared           yes
+     * </pre>
+     *
+     * <p>The mechanism is the same everywhere: the JDK takes {@code clonefile}
+     * on APFS when {@code COPY_ATTRIBUTES} is present, and Rust's
+     * {@code std::fs::copy} — which is what uv's copy mode is — calls
+     * {@code fclonefileat} on APFS and {@code copy_file_range} on Linux, which
+     * btrfs and reflink-enabled xfs service by reflinking. On btrfs the copy
+     * run was indistinguishable from the hardlink run.
+     *
+     * <p>Only a read/write loop through userspace is a copy on every
+     * filesystem, which is why this method exists and why every caller's
+     * negative control must be this and nothing else.
      */
     static void streamCopy(Path from, Path to) throws IOException {
         Files.createDirectories(to.getParent());
