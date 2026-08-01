@@ -72,7 +72,68 @@ public final class BuildIdentity implements picocli.CommandLine.IVersionProvider
     public String[] getVersion() { return lines(); }
 
     public static String[] lines() {
-        return new String[] { RELEASE, "build:  " + build(), "cli:    " + launcher() };
+        return new String[] { releaseLine(), "build:  " + build(), "cli:    " + launcher() };
+    }
+
+    /**
+     * The first line: the release number, plus a build discriminator when this
+     * build is <em>not</em> the released artifact.
+     *
+     * <h2>Why the number alone was still not enough after #61</h2>
+     *
+     * <p>#61 added the {@code build:} line and it works — but the first line is
+     * the one people read, quote in an issue, and paste into a report, and it
+     * stayed identical between a Homebrew 0.19.2 (which has no {@code exec}
+     * subcommand) and every working-tree build also called 0.19.2. During the
+     * epic #2 pilot that ambiguity was not hypothetical: {@code home verify}
+     * transcripts were attributed to the merged build and the behaviour they
+     * record does not reproduce on it. Which binary answered cannot be
+     * recovered afterwards, because the line both of them print is the same
+     * line.
+     *
+     * <h2>What is appended, and when</h2>
+     *
+     * <p>{@code +g<short sha>}, SemVer build metadata: {@code 0.19.2+gabc123}
+     * is a valid SemVer with the same precedence as {@code 0.19.2}, and any
+     * reader scraping {@code \d+\.\d+\.\d+} still finds the release. It is
+     * appended only when this program is running out of its own git checkout
+     * AND {@code HEAD} is not the commit tagged for this release:
+     *
+     * <ul>
+     *   <li>an installed jar with no checkout around it — plain {@code RELEASE};
+     *       nothing is known to append, and a fabricated discriminator would be
+     *       worse than none (the same rule {@link #build()} follows);</li>
+     *   <li>a checkout standing exactly on {@code v<release>} — plain
+     *       {@code RELEASE}, because it IS that release, and marking it
+     *       otherwise would make every tagged build look unreleased;</li>
+     *   <li>anything else — {@code RELEASE+g<sha>}, which is exactly the case
+     *       that used to be indistinguishable from the first.</li>
+     * </ul>
+     *
+     * <p>A dirty working tree is deliberately NOT flagged. It would cost an
+     * index read and a status walk on every {@code --version}, and it does not
+     * address the confusion this exists to remove, which is two different
+     * <em>commits</em> reporting one number. Issue #133.
+     */
+    public static String releaseLine() {
+        return releaseLine(ownGitDir());
+    }
+
+    /** {@link #releaseLine()} against a given git directory; the seam tests use. */
+    static String releaseLine(Path gitDir) {
+        if (gitDir == null) return RELEASE;               // no checkout: nothing to add
+        String head = resolveRef(gitDir, null);
+        if (head == null) return RELEASE;
+        String tagged = resolveRef(gitDir, "refs/tags/" + releaseTag());
+        if (head.equals(tagged)) return RELEASE;          // this IS the release
+        return RELEASE + "+g" + shortSha(head);
+    }
+
+    /** The tag this release would be cut as: {@code v0.19.2} from "skill-manager 0.19.2". */
+    static String releaseTag() {
+        String trimmed = RELEASE.trim();
+        int space = trimmed.lastIndexOf(' ');
+        return "v" + (space < 0 ? trimmed : trimmed.substring(space + 1));
     }
 
     /** A commit, or an artifact digest, or {@code unknown} — never a guess. */
@@ -114,6 +175,108 @@ public final class BuildIdentity implements picocli.CommandLine.IVersionProvider
     }
 
     /**
+     * The {@code .git} directory of this program's own checkout, or null when
+     * it is not running out of one. Same guard as {@link #fromGitCheckout}:
+     * the tree must carry {@code SkillManager.java}, so an install that merely
+     * sits under some unrelated repository is not mistaken for a source build.
+     */
+    private static Path ownGitDir() {
+        for (Path root : candidateRoots()) {
+            if (!Files.isRegularFile(root.resolve("SkillManager.java"))) continue;
+            Path resolved = gitDir(root);
+            if (resolved != null) return resolved;
+        }
+        return null;
+    }
+
+    /**
+     * Resolve {@code ref} — or {@code HEAD} when it is null — to a full sha,
+     * reading {@code .git} directly.
+     *
+     * <p>Loose ref first, then {@code packed-refs}, whose peeled {@code ^{}}
+     * line wins for an annotated tag because that line carries the commit and
+     * the other carries the tag object.
+     *
+     * <p><b>Both directories are searched.</b> In a linked worktree, {@code
+     * HEAD} lives in the per-worktree git dir while {@code refs/} and {@code
+     * packed-refs} live in the common one, so looking only in the first
+     * resolves nothing — which is why the {@code build:} line #61 added
+     * reported an artifact fingerprint instead of a commit for every build run
+     * from a worktree, the exact place where knowing the commit matters most.
+     */
+    private static String resolveRef(Path gitDir, String ref) {
+        try {
+            if (ref == null) {
+                String head = Files.readString(gitDir.resolve("HEAD")).trim();
+                if (!head.startsWith("ref:")) return head;
+                ref = head.substring(4).trim();
+            }
+        } catch (IOException | RuntimeException e) {
+            return null;
+        }
+        for (Path dir : new Path[] { gitDir, commonDir(gitDir) }) {
+            if (dir == null) continue;
+            String sha = lookupRef(dir, ref);
+            if (sha != null) return sha;
+        }
+        return null;
+    }
+
+    private static String lookupRef(Path gitDir, String ref) {
+        try {
+            Path loose = gitDir.resolve(ref);
+            if (Files.isRegularFile(loose)) return Files.readString(loose).trim();
+            Path packed = gitDir.resolve("packed-refs");
+            if (!Files.isRegularFile(packed)) return null;
+            // packed-refs writes an annotated tag as two lines: the tag object,
+            // then `^<commit>`. The second is the one a release comparison
+            // wants — an annotated v0.19.2 whose tag-object sha was compared
+            // against HEAD would never match, and every tagged build would
+            // report itself as unreleased.
+            List<String> lines = Files.readAllLines(packed);
+            for (int i = 0; i < lines.size(); i++) {
+                String line = lines.get(i);
+                if (!line.endsWith(" " + ref)) continue;
+                if (i + 1 < lines.size() && lines.get(i + 1).startsWith("^")) {
+                    return lines.get(i + 1).substring(1).trim();
+                }
+                return line.substring(0, line.indexOf(' '));
+            }
+            return null;
+        } catch (IOException | RuntimeException e) {
+            return null;
+        }
+    }
+
+    /** The shared git dir behind a linked worktree's, or null when there is none. */
+    private static Path commonDir(Path gitDir) {
+        try {
+            Path marker = gitDir.resolve("commondir");
+            if (!Files.isRegularFile(marker)) return null;
+            Path common = gitDir.resolve(Files.readString(marker).trim()).normalize();
+            return Files.isDirectory(common) && !common.equals(gitDir) ? common : null;
+        } catch (IOException | RuntimeException e) {
+            return null;
+        }
+    }
+
+    /** {@code root}'s git directory, following a {@code .git} file. */
+    private static Path gitDir(Path root) {
+        try {
+            Path gitDir = root.resolve(".git");
+            if (Files.isRegularFile(gitDir)) {
+                // A worktree or submodule: `.git` is a file naming the real dir.
+                String line = Files.readString(gitDir).trim();
+                if (!line.startsWith("gitdir:")) return null;
+                gitDir = root.resolve(line.substring("gitdir:".length()).trim()).normalize();
+            }
+            return Files.isDirectory(gitDir) ? gitDir : null;
+        } catch (IOException | RuntimeException e) {
+            return null;
+        }
+    }
+
+    /**
      * Directories that might be the checkout this build came from: the launcher
      * exports its install directory, and for a source run that IS the repo root.
      * The jar's location is probed too, for a build run out of a working tree.
@@ -141,37 +304,18 @@ public final class BuildIdentity implements picocli.CommandLine.IVersionProvider
      * installed, and must not spawn a process to answer.
      */
     private static String readHead(Path root) {
+        Path gitDir = gitDir(root);
+        if (gitDir == null) return null;
+        String head;
         try {
-            Path gitDir = root.resolve(".git");
-            if (Files.isRegularFile(gitDir)) {
-                // A worktree or submodule: `.git` is a file naming the real dir.
-                String line = Files.readString(gitDir).trim();
-                if (!line.startsWith("gitdir:")) return null;
-                gitDir = root.resolve(line.substring("gitdir:".length()).trim()).normalize();
-            }
-            if (!Files.isDirectory(gitDir)) return null;
-            String head = Files.readString(gitDir.resolve("HEAD")).trim();
-            if (head.startsWith("ref:")) {
-                String ref = head.substring(4).trim();
-                Path refFile = gitDir.resolve(ref);
-                if (Files.isRegularFile(refFile)) {
-                    return shortSha(Files.readString(refFile).trim()) + " (" + ref + ")";
-                }
-                // Packed refs: the loose file is absent after a `git gc`.
-                Path packed = gitDir.resolve("packed-refs");
-                if (Files.isRegularFile(packed)) {
-                    for (String l : Files.readAllLines(packed)) {
-                        if (l.endsWith(" " + ref)) {
-                            return shortSha(l.substring(0, l.indexOf(' '))) + " (" + ref + ")";
-                        }
-                    }
-                }
-                return null;
-            }
-            return shortSha(head) + " (detached)";
+            head = Files.readString(gitDir.resolve("HEAD")).trim();
         } catch (IOException | RuntimeException e) {
             return null;
         }
+        if (!head.startsWith("ref:")) return shortSha(head) + " (detached)";
+        String ref = head.substring(4).trim();
+        String sha = resolveRef(gitDir, ref);
+        return sha == null ? null : shortSha(sha) + " (" + ref + ")";
     }
 
     private static String shortSha(String sha) {
