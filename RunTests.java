@@ -223,6 +223,7 @@ public class RunTests {
         failures += dev.skillmanager.project.ProjectTrunkSyncTest.run();
         failures += dev.skillmanager.store.HomeDriftGateTest.run();
         failures += dev.skillmanager.store.HomeSyncTest.run();
+        failures += dev.skillmanager.store.HomeCloseOutTenseTest.run();
         failures += dev.skillmanager.store.HomeSyncMergeTest.run();
         failures += dev.skillmanager.store.HomeSyncGitUnitTest.run();
         failures += dev.skillmanager.plan.AuditTrailTest.run();

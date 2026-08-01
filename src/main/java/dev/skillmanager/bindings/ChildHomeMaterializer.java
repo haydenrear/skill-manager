@@ -926,7 +926,7 @@ public final class ChildHomeMaterializer {
     public enum SyncStatus {
         /** The destination already holds what the source holds. */
         UNCHANGED,
-        /** The destination was a pristine copy and was refreshed from the source. */
+        /** The destination is a pristine copy and the source has moved on. */
         UPDATED,
         /** The destination carries local work and was left exactly as it was. */
         HELD_BACK,
@@ -982,6 +982,43 @@ public final class ChildHomeMaterializer {
         public boolean unresolved() {
             return status == SyncStatus.HELD_BACK || status == SyncStatus.CONFLICTED
                     || status == SyncStatus.LINKED;
+        }
+
+        /**
+         * The status word to print, given whether the run that produced this
+         * outcome actually wrote.
+         *
+         * <h2>Why a status needs a tense at all</h2>
+         *
+         * <p>{@link SyncStatus} names a verdict about a pair of homes, and the
+         * same verdict is reached by the run that performs the write and by
+         * the dry run that only plans it. Printing the bare enum name gave
+         * both the past tense: {@code home close-out} — documented "Writes
+         * nothing; safe to run repeatedly", and measurably writing nothing —
+         * announced {@code updated skill:&lt;unit&gt;} for a unit it had not
+         * touched. An operator reading that concludes the refusal printed
+         * beside it has already been remediated, and tears the worktree down.
+         * The behaviour was right and the sentence was false, which is the
+         * more dangerous of the two failures. Issue #133.
+         *
+         * <p>Only the writing statuses take the prefix. {@code held-back} and
+         * {@code conflicted} describe what is true of the two homes right now,
+         * and are equally true of a run that wrote and one that did not.
+         *
+         * <p>The JSON {@code status} field deliberately keeps the untensed
+         * token: consumers branch on it, and {@code close-change.sh} is one of
+         * them. What JSON carries instead is {@link #detail}, which was
+         * rewritten to state a condition rather than an act.
+         */
+        public String statusLabel(boolean applied) {
+            String word = status.name().toLowerCase().replace('_', '-');
+            if (applied || !writes()) return word;
+            return switch (status) {
+                case UPDATED -> "would-update";
+                case NEW -> "would-create";
+                case MERGED -> "would-merge";
+                default -> "would-" + word;
+            };
         }
     }
 
@@ -1054,7 +1091,7 @@ public final class ChildHomeMaterializer {
             if (apply) writeCopy(name, kind, view, source, dest, src);
             return new UnitSync(name, kind, SyncStatus.NEW, dest,
                     List.copyOf(src.entries().keySet()), List.of(),
-                    "not in the destination home; copied from the source");
+                    "not in the destination home; the source holds it and this home does not");
         }
 
         Fingerprint dst = fingerprint(dest);
@@ -1090,7 +1127,7 @@ public final class ChildHomeMaterializer {
             if (apply) writeCopy(name, kind, view, source, dest, src);
             return new UnitSync(name, kind, SyncStatus.UPDATED, dest,
                     changedFiles(dst.entries(), src.entries()), List.of(),
-                    "refreshed from the source; the destination held no local work");
+                    "the destination holds no local work, so a sync replaces it with the source copy");
         }
 
         // Everything below: the destination carries something this source
@@ -1175,7 +1212,7 @@ public final class ChildHomeMaterializer {
         }
         return new UnitSync(name, kind, SyncStatus.MERGED, dest,
                 List.copyOf(plan.take()), List.of(),
-                plan.take().size() + " file(s) taken from the source; local work kept");
+                plan.take().size() + " file(s) come from the source; local work is kept");
     }
 
     /** Which side is linked, where it points, and what to do about it. */

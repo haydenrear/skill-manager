@@ -225,14 +225,22 @@ public final class HomeCloseOut {
         return path.indexOf(' ') < 0 ? path : "'" + path.replace("'", "'\\''") + "'";
     }
 
-    /** Human-readable verdict lines, shared by the CLI and anything that logs one. */
+    /**
+     * Human-readable verdict lines, shared by the CLI and anything that logs
+     * one.
+     *
+     * <p>Every line is prospective. {@code applied = false} is passed as a
+     * literal rather than plumbed from a flag, because there is no call path
+     * through this class that writes — {@link #inspect} is a dry run by
+     * construction — so there must be no call path that can claim to have.
+     * Issue #133.
+     */
     public static List<String> render(Verdict verdict) {
         List<String> out = new ArrayList<>();
         for (UnitSync unit : verdict.units()) {
             if (unit.status() == SyncStatus.UNCHANGED) continue;
-            out.add("  %-14s %s — %s".formatted(
-                    unit.status().name().toLowerCase().replace('_', '-'),
-                    unit.label(), unit.detail()));
+            out.add("  %-18s %s — %s".formatted(
+                    unit.statusLabel(false), unit.label(), unit.detail()));
         }
         for (Blocker blocker : verdict.blockers()) {
             out.add("  fix %s: %s".formatted(blocker.label(), blocker.remedy()));

@@ -744,16 +744,20 @@ public final class HomeCommand {
                     report.to().resolve(dev.skillmanager.policy.HomePolicy.FILENAME), report.to());
         }
         for (ChildHomeMaterializer.UnitSync unit : report.units()) {
-            String status = unit.status().name().toLowerCase().replace('_', '-');
+            // Tensed by whether THIS run wrote. A dry run reaches the same
+            // verdicts as a real one and used to print them in the same past
+            // tense — see UnitSync#statusLabel and issue #133.
+            String status = unit.statusLabel(!report.dryRun());
             if (unit.status() == ChildHomeMaterializer.SyncStatus.UNCHANGED) {
-                Log.info("  %-16s %s", status, unit.label());
+                Log.info("  %-18s %s", status, unit.label());
                 continue;
             }
-            Log.info("  %-16s %s — %s", status, unit.label(), unit.detail());
+            Log.info("  %-18s %s — %s", status, unit.label(), unit.detail());
             for (String conflict : unit.conflicts()) Log.warn("      conflict  %s", conflict);
         }
-        Log.info("  %d unchanged, %d updated, %d new, %d merged, %d held back, %d conflicted, "
-                        + "%d removed upstream, %d linked",
+        Log.info("  " + (report.dryRun() ? "would be: " : "")
+                        + "%d unchanged, %d updated, %d new, %d merged, %d held back, "
+                        + "%d conflicted, %d removed upstream, %d linked",
                 report.count(ChildHomeMaterializer.SyncStatus.UNCHANGED),
                 report.count(ChildHomeMaterializer.SyncStatus.UPDATED),
                 report.count(ChildHomeMaterializer.SyncStatus.NEW),
