@@ -204,6 +204,22 @@ public final class HomeCloner {
 
     /** One surviving absolute reference to the source home in the copy. */
     public record Leak(String path, String kind, String detail) {
+
+        /**
+         * The one leak kind that is a <em>mention</em> rather than a live path.
+         * Named as a constant because two readers have to agree on it: the
+         * check that only records it under {@code strict}, and every report
+         * that must not fold it in with the kinds that are never acceptable.
+         * A live symlink into another home and an append-only history file
+         * that quotes a path differ by two orders of magnitude in count and
+         * entirely in meaning; a reader that cannot tell them apart reports
+         * the loud one and buries the real one. Issue #133.
+         */
+        public static final String CONTENT_REFERENCE = "CONTENT_REFERENCE";
+
+        /** True when this is an authored mention, not a path that resolves. */
+        public boolean tolerable() { return CONTENT_REFERENCE.equals(kind); }
+
         @Override
         public String toString() {
             return kind + " " + path + (detail == null || detail.isBlank() ? "" : " (" + detail + ")");
@@ -739,8 +755,8 @@ public final class HomeCloner {
      * 1.6 GB in total, which is most of what skipping {@code cache/} saves.
      *
      * <p>Best-effort by nature: the path is recovered from arbitrary text, so
-     * it stops at the first shell/quoting delimiter. It feeds a warning, not
-     * a gate.
+     * it stops at the first shell/quoting delimiter.
+
      */
     private static List<String> missingDestReferences(byte[] content, Path dstRoot) {
         String text = new String(content, StandardCharsets.UTF_8);
@@ -785,6 +801,17 @@ public final class HomeCloner {
      * not folded into {@code leaks} — it is tolerated, not absent — so any
      * caller reporting a result has to decide what to say about it rather
      * than reading an empty leak list as "nothing survives".
+     *
+     * <h2>Why the split is exposed rather than left to each reporter</h2>
+     *
+     * <p>The check has always classified a live {@code SYMLINK_TARGET} apart
+     * from an authored {@code CONTENT_REFERENCE}. What it did not do was hand
+     * that classification to its callers in a usable shape, so every reporter
+     * re-derived it — and the one in {@code home verify} did not, printing
+     * {@code 169 reference(s)} as a single alphabetically sorted list in which
+     * the six paths that actually resolve into another home sat between
+     * authored history files 30 and 31. {@link #isolationFailures()} and
+     * {@link #toleratedFailures()} are that split, computed once. Issue #133.
      */
     public record Verification(List<Leak> leaks, List<String> contentReferences,
                                List<String> danglingLinks) {
@@ -795,6 +822,24 @@ public final class HomeCloner {
         }
 
         public boolean clean() { return leaks.isEmpty(); }
+
+        /**
+         * The leaks that are never acceptable in any mode: a symlink or a
+         * generated path in this home that <em>resolves</em> into another one.
+         * Independent of {@code strict}, because there is no reading under
+         * which a live path into another home is fine.
+         */
+        public List<Leak> isolationFailures() {
+            return leaks.stream().filter(leak -> !leak.tolerable()).toList();
+        }
+
+        /** The authored mentions, promoted to failures only under {@code strict}. */
+        public List<Leak> toleratedFailures() {
+            return leaks.stream().filter(Leak::tolerable).toList();
+        }
+
+        /** True when nothing in this home resolves into any other home. */
+        public boolean isolated() { return isolationFailures().isEmpty(); }
     }
 
     /**
@@ -840,7 +885,7 @@ public final class HomeCloner {
             Surface surface = classify(rel);
             if (surface == Surface.CONTENT) {
                 contentReferences.add(rel);
-                if (strict) leaks.add(new Leak(rel, "CONTENT_REFERENCE", "authored unit content"));
+                if (strict) leaks.add(new Leak(rel, Leak.CONTENT_REFERENCE, "authored unit content"));
             } else {
                 leaks.add(new Leak(rel, "FILE_CONTENT", surface.name().toLowerCase()));
             }

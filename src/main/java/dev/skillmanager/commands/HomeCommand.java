@@ -156,10 +156,33 @@ public final class HomeCommand {
      * question again. Both sides are checked: {@code --against} too, since a
      * mistyped source is a verification against a home that was never the
      * origin, which also finds nothing and also says ✓.
+     *
+     * <h2>The two failure classes are reported apart, loudest last</h2>
+     *
+     * <p>Measured on a constituent checkout: 169 findings, of which 163 were
+     * append-only history files that merely quote a path and 6 were live
+     * symlinks resolving into the operator's global home. The old report
+     * printed the 163 first, in full, then the 6 in one alphabetically sorted
+     * list with the 163 interleaved. Both numbers were correct and the reader
+     * came away with the wrong one, which is the same defect as reporting
+     * nothing: an instrument whose signal is 96% noise is not read.
+     *
+     * <p>So: isolation failures print last and alone, the authored mentions
+     * are summarised rather than enumerated, and the count line names both
+     * kinds separately. {@code --strict} keeps its meaning — <em>also</em>
+     * fail on the mentions — and changes which of the two lists is fatal,
+     * never which of them is shown. Issue #133.
      */
     @Command(name = "verify",
             description = "Check that a home holds no absolute reference back to another home.")
     public static final class VerifyCmd implements Callable<Integer> {
+
+        /**
+         * How many tolerated mentions to name before summarising. Enough to
+         * show what they look like, few enough that they cannot bury the
+         * findings below them.
+         */
+        private static final int TOLERATED_SAMPLE = 3;
 
         @Option(names = "--home", required = true, description = "Home to check.")
         Path home;
@@ -183,27 +206,47 @@ public final class HomeCommand {
             HomeCloner.Verification result = HomeCloner.verify(against, home, strict);
             // Tolerated references are still references. Reporting only the
             // leak list would let "0 leaks" read as "nothing survives" while
-            // authored content still names the other home.
-            if (!result.contentReferences().isEmpty()) {
-                Log.info("%d unit-content file(s) mention %s — historical records, tolerated%s",
-                        result.contentReferences().size(), against,
-                        strict ? " (counted as failures under --strict)" : "; re-run with --strict to fail on them");
-                for (String ref : result.contentReferences()) Log.info("    %s", ref);
+            // authored content still names the other home. Summarised, not
+            // enumerated: 163 lines of history file is how the six that matter
+            // went unread.
+            List<String> mentions = result.contentReferences();
+            if (!mentions.isEmpty()) {
+                Log.info("%d unit-content file(s) mention %s — historical records, %s",
+                        mentions.size(), against,
+                        strict ? "counted as failures under --strict"
+                                : "tolerated; re-run with --strict to fail on them");
+                for (String ref : mentions.subList(0, Math.min(TOLERATED_SAMPLE, mentions.size()))) {
+                    Log.info("    %s", ref);
+                }
+                if (mentions.size() > TOLERATED_SAMPLE) {
+                    Log.info("    … %d more", mentions.size() - TOLERATED_SAMPLE);
+                }
             }
             if (!result.danglingLinks().isEmpty()) {
                 Log.warn("%d symlink(s) do not resolve in %s", result.danglingLinks().size(), home);
                 for (String dangling : result.danglingLinks()) Log.warn("    %s", dangling);
             }
-            if (result.clean()) {
-                Log.ok("no %sreference to %s survives in %s, and no path in it reaches any "
-                                + "other Skill Manager home",
-                        result.contentReferences().isEmpty() ? "" : "repairable ", against, home);
-                return 0;
+            // Last, because it is the verdict, and because a terminal keeps
+            // the tail. Never gated on --strict: a path that RESOLVES into
+            // another home is not a historical record under any reading.
+            List<HomeCloner.Leak> isolation = result.isolationFailures();
+            int tolerated = result.toleratedFailures().size();
+            if (!isolation.isEmpty()) {
+                Log.error("%d path(s) in %s resolve into another Skill Manager home%s",
+                        isolation.size(), home,
+                        tolerated == 0 ? ""
+                                : " (plus " + tolerated
+                                        + " authored mention(s), fatal under --strict)");
+                for (HomeCloner.Leak leak : isolation) Log.error("  %s", leak);
+            } else if (tolerated > 0) {
+                Log.error("%d authored mention(s) of %s, fatal under --strict; no path in %s "
+                        + "resolves into another Skill Manager home", tolerated, against, home);
             }
-            Log.error("%d reference(s) reach outside %s",
-                    result.leaks().size(), home);
-            for (HomeCloner.Leak leak : result.leaks()) Log.error("  %s", leak);
-            return 1;
+            if (!result.clean()) return 1;
+            Log.ok("no %sreference to %s survives in %s, and no path in it reaches any "
+                            + "other Skill Manager home",
+                    mentions.isEmpty() ? "" : "repairable ", against, home);
+            return 0;
         }
     }
 
@@ -693,16 +736,20 @@ public final class HomeCommand {
                     report.to().resolve(dev.skillmanager.policy.HomePolicy.FILENAME), report.to());
         }
         for (ChildHomeMaterializer.UnitSync unit : report.units()) {
-            String status = unit.status().name().toLowerCase().replace('_', '-');
+            // Tensed by whether THIS run wrote. A dry run reaches the same
+            // verdicts as a real one and used to print them in the same past
+            // tense — see UnitSync#statusLabel and issue #133.
+            String status = unit.statusLabel(!report.dryRun());
             if (unit.status() == ChildHomeMaterializer.SyncStatus.UNCHANGED) {
-                Log.info("  %-16s %s", status, unit.label());
+                Log.info("  %-18s %s", status, unit.label());
                 continue;
             }
-            Log.info("  %-16s %s — %s", status, unit.label(), unit.detail());
+            Log.info("  %-18s %s — %s", status, unit.label(), unit.detail());
             for (String conflict : unit.conflicts()) Log.warn("      conflict  %s", conflict);
         }
-        Log.info("  %d unchanged, %d updated, %d new, %d merged, %d held back, %d conflicted, "
-                        + "%d removed upstream, %d linked",
+        Log.info("  " + (report.dryRun() ? "would be: " : "")
+                        + "%d unchanged, %d updated, %d new, %d merged, %d held back, "
+                        + "%d conflicted, %d removed upstream, %d linked",
                 report.count(ChildHomeMaterializer.SyncStatus.UNCHANGED),
                 report.count(ChildHomeMaterializer.SyncStatus.UPDATED),
                 report.count(ChildHomeMaterializer.SyncStatus.NEW),
@@ -948,6 +995,7 @@ public final class HomeCommand {
         if (unresolved > 0) {
             // `skill-manager cli` has only read-only subcommands, so the old
             // hint sent the reader somewhere that could not fix anything.
+
             Log.warn("  %d reference(s) do not resolve in the copy (targets under a skipped "
                     + "directory); re-provision with `skill-manager sync --force-scripts`", unresolved);
             for (String dangling : report.danglingLinks()) Log.warn("    link   %s", dangling);
