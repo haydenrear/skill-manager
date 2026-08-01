@@ -842,6 +842,81 @@ validationGraph {
         node("sources/home-sync/HomeSyncAuthoredAgentTree.java")
     }
 
+    /**
+     * ticket-lifecycle: the whole per-checkout-home ticket workflow, composed.
+     *
+     * Every piece of this workflow is covered in isolation and the COMPOSITION
+     * of them was covered nowhere: before this graph existed,
+     * `grep -rl 'close-change|new-change|propagate.sh' test_graph/sources/`
+     * returned nothing. Every regression epic #2 found — a livelocked teardown,
+     * a clone that refused its own first launch, a remedy that was not a
+     * command — was found by a human running the workflow by hand, and each of
+     * them lived in the seam between two repositories whose changes were
+     * individually correct.
+     *
+     * So the scenario is the hard one rather than the happy path: TWO
+     * concurrent tickets, each with its own worktree, both editing one shared
+     * skill plus one distinct skill each, closing out into one project home at
+     * the same time. Two tickets is the smallest configuration that can
+     * exercise the conflict path, the HomeLock exclusion path, and "does the
+     * next ticket agent get the change" at once.
+     *
+     * The model is the one part that is stubbed. No claude/codex/gemini process
+     * is launched: the ticket agent is simulated by writing files into
+     * <worktree>/.skill-manager/skills/<unit>/ and then invoking the same CLI
+     * the real flow invokes. What is under test is the machinery around the
+     * agent. The shims' RESOLUTION path is exercised, because that is machinery
+     * rather than model.
+     *
+     * Strictly ordered from the fixture onward: each node builds on the disk
+     * state the previous one left, which is the only way to assert that a
+     * teardown is gated on work a previous node actually created.
+     *
+     * Two things this graph asserts that nothing else does, and how:
+     *
+     *   ticket.lifecycle.concurrent.close.out asserts on the LOCK, not on
+     *   process wall-clock. A skill-manager process spends 2-3s in jbang/JVM
+     *   startup before HomeLock.acquire is reached, so two runs whose locked
+     *   sections are strictly ordered still show overlapping process windows,
+     *   and a wall-clock oracle over them is simply wrong.
+     *   sources/ticket-lifecycle/lockprobe.py reads the fcntl record lock the
+     *   JVM actually takes, and F_GETLK names the holding pid, so the
+     *   attribution is the kernel's rather than the test's.
+     *
+     *   Each assertion that could pass by not looking carries a companion
+     *   proving it can fail, in the same run: the lock oracle is shown
+     *   reporting an unserialised pair, the conflict oracle is shown detecting
+     *   a silent clobber, the leak oracle is shown detecting a planted write,
+     *   and the cache oracle is shown detecting a private cache. That is the
+     *   defect class this epic hit four separate times.
+     *
+     * It drives scripts that live in the git-integration-repo skill, not in
+     * this repository. They are located from the integration repo above this
+     * checkout's git common dir — the common dir, because this repository is
+     * normally worked on from a worktree deliberately placed OUTSIDE that
+     * parent — with $TICKET_LIFECYCLE_SCRIPTS as the override. When they cannot
+     * be found the fixture FAILS rather than skipping: the scripts are the
+     * subject, and a run that could not find them measured nothing.
+     */
+    testGraph("ticket-lifecycle") {
+        node("sources/common/EnvPrepared.java")
+        node("sources/ticket-lifecycle/TicketLifecycleFixtureBuilt.java")
+        node("sources/ticket-lifecycle/TicketLifecycleProvisioned.java")
+        node("sources/ticket-lifecycle/TicketLifecycleFirstLaunch.java")
+        node("sources/ticket-lifecycle/TicketLifecycleCaches.java")
+        node("sources/ticket-lifecycle/TicketLifecycleAgentEdits.java")
+        node("sources/ticket-lifecycle/TicketLifecycleConcurrentCloseOut.java")
+        node("sources/ticket-lifecycle/TicketLifecycleConflict.java")
+        node("sources/ticket-lifecycle/TicketLifecycleTeardown.java")
+        node("sources/ticket-lifecycle/TicketLifecycleNextAgent.java")
+        node("sources/ticket-lifecycle/TicketLifecyclePublish.java")
+        // Last, because it compares the operator's real homes against a
+        // baseline it takes at the start, across everything the whole workflow
+        // did in between. It carries its own sensitivity proof, so it keeps its
+        // meaning even if a node above it is skipped.
+        node("sources/ticket-lifecycle/TicketLifecycleGlobalHomeUntouched.java")
+    }
+
     testGraph("project-env") {
         node("sources/common/EnvPrepared.java")
         node("sources/project/ProjectEnvMaterialized.java")
