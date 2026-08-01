@@ -141,6 +141,15 @@ public final class HomeCloner {
      */
     public static final Set<String> SKIPPED_SEGMENTS = Rederivable.CACHES;
 
+    /**
+     * The skipped roots a {@code sync --force-scripts} rebuilds. A generated
+     * path into one of these that does not exist is a tool that will fail at
+     * exec time; a path into {@code logs/} or {@code tmp/} that does not exist
+     * is a home nobody has run yet. Only the former is a defect.
+     */
+    private static final Set<String> PROVISIONABLE_ROOTS =
+            Set.of("cache", "venvs", "tools", "npm", "pm");
+
     /** Root-level files a clone does not copy. */
     public static final Set<String> SKIPPED_ROOT_FILES =
             Set.of("audit.log", "gateway.log", "gateway.pid");
@@ -204,6 +213,22 @@ public final class HomeCloner {
 
     /** One surviving absolute reference to the source home in the copy. */
     public record Leak(String path, String kind, String detail) {
+
+        /**
+         * The one leak kind that is a <em>mention</em> rather than a live path.
+         * Named as a constant because two readers have to agree on it: the
+         * check that only records it under {@code strict}, and every report
+         * that must not fold it in with the kinds that are never acceptable.
+         * A live symlink into another home and an append-only history file
+         * that quotes a path differ by two orders of magnitude in count and
+         * entirely in meaning; a reader that cannot tell them apart reports
+         * the loud one and buries the real one. Issue #133.
+         */
+        public static final String CONTENT_REFERENCE = "CONTENT_REFERENCE";
+
+        /** True when this is an authored mention, not a path that resolves. */
+        public boolean tolerable() { return CONTENT_REFERENCE.equals(kind); }
+
         @Override
         public String toString() {
             return kind + " " + path + (detail == null || detail.isBlank() ? "" : " (" + detail + ")");
@@ -297,6 +322,14 @@ public final class HomeCloner {
         List<Leak> leaks = new ArrayList<>(verification.leaks());
         leaks.addAll(overflows);
         leaks.sort(java.util.Comparator.comparing(Leak::path));
+        // The rewrite only sees files it rewrote. The verification walk sees
+        // every provisioned file, including shims that already named the
+        // destination and so were never touched — the union is what the copy
+        // actually holds, and it is what `home verify` will refuse on later.
+        for (String unresolved : verification.unresolvedReferences()) {
+            if (!danglingReferences.contains(unresolved)) danglingReferences.add(unresolved);
+        }
+        danglingReferences.sort(String::compareTo);
         return new Report(src, dst,
                 counters.directories, counters.files, counters.symlinks, counters.bytes,
                 counters.linksRelativized, stateReanchored, provisionedRewritten,
@@ -739,8 +772,14 @@ public final class HomeCloner {
      * 1.6 GB in total, which is most of what skipping {@code cache/} saves.
      *
      * <p>Best-effort by nature: the path is recovered from arbitrary text, so
-     * it stops at the first shell/quoting delimiter. It feeds a warning, not
-     * a gate.
+     * it stops at the first shell/quoting delimiter.
+     *
+     * <p><b>Restricted to the re-provisionable roots</b> ({@link
+     * #PROVISIONABLE_ROOTS}) since #133 made this a gate rather than a
+     * warning. {@code logs/} and {@code tmp/} are skipped by the clone too,
+     * but a missing log file is the normal state of a home nobody has run
+     * yet — failing on it would be a gate that fires on every fresh clone,
+     * and a gate that always fires is a gate somebody turns off.
      */
     private static List<String> missingDestReferences(byte[] content, Path dstRoot) {
         String text = new String(content, StandardCharsets.UTF_8);
@@ -759,11 +798,23 @@ public final class HomeCloner {
                 candidate = candidate.substring(0, candidate.length() - 1);
             }
             if (candidate.length() <= root.length()) continue;
+            if (!underProvisionableRoot(candidate, root)) continue;
             if (!Files.exists(Path.of(candidate)) && !missing.contains(candidate)) {
                 missing.add(candidate);
             }
         }
         return missing;
+    }
+
+    /**
+     * Whether {@code candidate}'s first home-relative segment names a root a
+     * re-provision rebuilds. See {@link #missingDestReferences}.
+     */
+    private static boolean underProvisionableRoot(String candidate, String root) {
+        String rel = candidate.substring(root.length());
+        while (rel.startsWith("/")) rel = rel.substring(1);
+        int slash = rel.indexOf('/');
+        return PROVISIONABLE_ROOTS.contains(slash < 0 ? rel : rel.substring(0, slash));
     }
 
     /**
@@ -785,16 +836,58 @@ public final class HomeCloner {
      * not folded into {@code leaks} — it is tolerated, not absent — so any
      * caller reporting a result has to decide what to say about it rather
      * than reading an empty leak list as "nothing survives".
+     *
+     * <h2>Why the split is exposed rather than left to each reporter</h2>
+     *
+     * <p>The check has always classified a live {@code SYMLINK_TARGET} apart
+     * from an authored {@code CONTENT_REFERENCE}. What it did not do was hand
+     * that classification to its callers in a usable shape, so every reporter
+     * re-derived it — and the one in {@code home verify} did not, printing
+     * {@code 169 reference(s)} as a single alphabetically sorted list in which
+     * the six paths that actually resolve into another home sat between
+     * authored history files 30 and 31. {@link #isolationFailures()} and
+     * {@link #toleratedFailures()} are that split, computed once. Issue #133.
      */
     public record Verification(List<Leak> leaks, List<String> contentReferences,
-                               List<String> danglingLinks) {
+                               List<String> danglingLinks,
+                               List<String> unresolvedReferences) {
         public Verification {
             leaks = leaks == null ? List.of() : List.copyOf(leaks);
             contentReferences = contentReferences == null ? List.of() : List.copyOf(contentReferences);
             danglingLinks = danglingLinks == null ? List.of() : List.copyOf(danglingLinks);
+            unresolvedReferences = unresolvedReferences == null
+                    ? List.of() : List.copyOf(unresolvedReferences);
         }
 
         public boolean clean() { return leaks.isEmpty(); }
+
+        /**
+         * The leaks that are never acceptable in any mode: a symlink or a
+         * generated path in this home that <em>resolves</em> into another one.
+         * Independent of {@code strict}, because there is no reading under
+         * which a live path into another home is fine.
+         */
+        public List<Leak> isolationFailures() {
+            return leaks.stream().filter(leak -> !leak.tolerable()).toList();
+        }
+
+        /** The authored mentions, promoted to failures only under {@code strict}. */
+        public List<Leak> toleratedFailures() {
+            return leaks.stream().filter(Leak::tolerable).toList();
+        }
+
+        /** True when nothing in this home resolves into any other home. */
+        public boolean isolated() { return isolationFailures().isEmpty(); }
+
+        /**
+         * Links and generated scripts naming a path in this home that does not
+         * exist — the shape a skipped provisioning root leaves behind.
+         */
+        public List<String> unresolved() {
+            List<String> all = new ArrayList<>(danglingLinks);
+            all.addAll(unresolvedReferences);
+            return List.copyOf(all);
+        }
     }
 
     /**
@@ -814,6 +907,7 @@ public final class HomeCloner {
         List<Leak> leaks = new ArrayList<>();
         List<String> contentReferences = new ArrayList<>();
         List<String> dangling = new ArrayList<>();
+        List<String> unresolved = new ArrayList<>();
         Files.walkFileTree(dstRoot, new SimpleWalker((file, rel) -> {
             if (Files.isSymbolicLink(file)) {
                 Path target;
@@ -836,11 +930,21 @@ public final class HomeCloner {
                 return;
             }
             if (!Files.isRegularFile(file)) return;
-            if (!containsBytes(file, needle)) return;
             Surface surface = classify(rel);
+            // Provisioning that never completed: a generated script naming a
+            // path in THIS home that does not exist. Re-derived from the home
+            // on every check rather than remembered from the clone that made
+            // it, so it cannot go stale and it clears itself the moment the
+            // re-provision runs. Issue #133.
+            if (surface == Surface.PROVISIONED) {
+                for (String missing : missingReferencesIn(file, dstRoot)) {
+                    unresolved.add(rel + " -> " + missing);
+                }
+            }
+            if (!containsBytes(file, needle)) return;
             if (surface == Surface.CONTENT) {
                 contentReferences.add(rel);
-                if (strict) leaks.add(new Leak(rel, "CONTENT_REFERENCE", "authored unit content"));
+                if (strict) leaks.add(new Leak(rel, Leak.CONTENT_REFERENCE, "authored unit content"));
             } else {
                 leaks.add(new Leak(rel, "FILE_CONTENT", surface.name().toLowerCase()));
             }
@@ -848,7 +952,20 @@ public final class HomeCloner {
         leaks.sort(java.util.Comparator.comparing(Leak::path));
         contentReferences.sort(String::compareTo);
         dangling.sort(String::compareTo);
-        return new Verification(leaks, contentReferences, dangling);
+        unresolved.sort(String::compareTo);
+        return new Verification(leaks, contentReferences, dangling, unresolved);
+    }
+
+    /** {@link #missingDestReferences} for a file that has not been read yet. */
+    private static List<String> missingReferencesIn(Path file, Path dstRoot) {
+        try {
+            if (Files.size(file) > WHOLE_FILE_LIMIT) return List.of();
+            byte[] content = Files.readAllBytes(file);
+            if (looksBinary(content)) return List.of();
+            return missingDestReferences(content, dstRoot);
+        } catch (IOException e) {
+            return List.of();
+        }
     }
 
     /**

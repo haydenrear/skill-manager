@@ -215,12 +215,16 @@ public class RunTests {
         failures += dev.skillmanager.store.FetcherGitCloneTest.run();
         failures += dev.skillmanager.store.HomePathsTest.run();
         failures += dev.skillmanager.store.HomeCloneTest.run();
+        failures += dev.skillmanager.commands.HomeVerifyReportTest.run();
+        failures += dev.skillmanager.commands.HomeUnresolvedGateTest.run();
+        failures += dev.skillmanager.cli.BuildIdentityTest.run();
         failures += dev.skillmanager.store.HomeDescriptorTest.run();
         failures += dev.skillmanager.policy.HomePolicyTest.run();
         failures += dev.skillmanager.launch.LauncherShimsTest.run();
         failures += dev.skillmanager.project.ProjectTrunkSyncTest.run();
         failures += dev.skillmanager.store.HomeDriftGateTest.run();
         failures += dev.skillmanager.store.HomeSyncTest.run();
+        failures += dev.skillmanager.store.HomeCloseOutTenseTest.run();
         failures += dev.skillmanager.store.HomeSyncMergeTest.run();
         failures += dev.skillmanager.store.HomeSyncGitUnitTest.run();
         failures += dev.skillmanager.plan.AuditTrailTest.run();
