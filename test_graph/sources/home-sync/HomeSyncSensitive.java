@@ -165,7 +165,15 @@ public class HomeSyncSensitive {
     private record Probe(List<String> unitViolations, List<String> homeViolations,
                          List<String> leftovers) {}
 
-    /** A fresh source/destination pair, already reconciled once. */
+    /**
+     * A fresh source/destination pair, already reconciled once.
+     *
+     * <p>The seed goes through {@link HomeSyncSupport#setup} — issue #135. This
+     * node's whole claim is that the oracles report a planted defect, and a
+     * seed that refused would leave every scenario measuring an empty
+     * destination: the unmutated controls would still read clean, so the node
+     * would look green-adjacent while measuring nothing.
+     */
     private static Path[] pair(NodeContext ctx, Path base, String name) throws Exception {
         Path source = base.resolve(name).resolve("source");
         Path dest = base.resolve(name).resolve("dest");
@@ -174,7 +182,7 @@ public class HomeSyncSensitive {
                 "shared v1\n");
         HomeSyncSupport.write(HomeSyncSupport.unitDir(source, UNIT).resolve("references/page.md"),
                 "page v1\n");
-        HomeSyncSupport.sm(ctx, name + "-seed", source.toString(), "home", "sync",
+        HomeSyncSupport.setup(ctx, name + "-seed", source.toString(), "home", "sync",
                 "--from", source.toString(), "--to", dest.toString(), "--json");
         return new Path[] {source, dest};
     }
