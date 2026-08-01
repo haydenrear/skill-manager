@@ -1,5 +1,27 @@
 # Changelog
 
+## [0.20.0](https://github.com/haydenrear/skill-manager/compare/v0.19.2...v0.20.0) (2026-08-01)
+
+
+### Features
+
+* per-checkout skill-manager homes — three tiers, each a real copy, with a return path ([86b7936](https://github.com/haydenrear/skill-manager/commit/86b7936d52fcfdc7e4302429acf7572beecfb854))
+
+
+### Bug Fixes
+
+* a generated shim would exec itself forever, and a clone inherited a foreign drift baseline ([c57dc88](https://github.com/haydenrear/skill-manager/commit/c57dc88971d449a5eeeb28b8d863b99b2b8b3f6a))
+* a home inside a checkout repointed that checkout's origin ([2c6ef77](https://github.com/haydenrear/skill-manager/commit/2c6ef773d3d5ed91831c610353b4ea8cdb2e16fa))
+* a home inside a checkout repointed that checkout's origin ([5c21fff](https://github.com/haydenrear/skill-manager/commit/5c21fffa748f8f740135f034b9c3364418af2a18))
+* bound telemetry failures and preserve sync state ([06d6fbe](https://github.com/haydenrear/skill-manager/commit/06d6fbe10ca63472fda80d038d801c961111f66e))
+* bound unavailable telemetry diagnostics ([9bd1a7c](https://github.com/haydenrear/skill-manager/commit/9bd1a7cf80e9f93bb2429dd2a8122cf74edc5978))
+* clear stale TRANSITIVE_RESOLVE_FAILED after ref removal (sync + reconcile) ([ba0245e](https://github.com/haydenrear/skill-manager/commit/ba0245ecffa847c86732f86ef95a961c9f1bfec3)), closes [#128](https://github.com/haydenrear/skill-manager/issues/128)
+* detach persistent gateway from test nodes ([55bef8e](https://github.com/haydenrear/skill-manager/commit/55bef8ed4164f9730f30ebcb6e4c59240bf4793b))
+* halt sync reconciliation on unresolved graph ([5e132fc](https://github.com/haydenrear/skill-manager/commit/5e132fcc49de4306437c4df05f52b15823779d5b))
+* home verify buried its isolation failures, and three smaller message defects ([26c7bd6](https://github.com/haydenrear/skill-manager/commit/26c7bd6e14c77a4649d560baa5c647011d519715))
+* retain filtered exporter loggers ([f150afe](https://github.com/haydenrear/skill-manager/commit/f150afec7f2b92318cfa49b340c1bbabf029b088))
+* the permutations node froze a path that was never a home, and the extent probe trusted two unaddressable cases ([8ef6b80](https://github.com/haydenrear/skill-manager/commit/8ef6b803e981ef6cd6bf15873c0d0c32d27dee07))
+
 ## [0.19.2](https://github.com/haydenrear/skill-manager/compare/v0.19.1...v0.19.2) (2026-07-20)
 
 
