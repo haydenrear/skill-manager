@@ -249,10 +249,14 @@ public final class QuietConsoleTest {
                             new dev.skillmanager.cli.installer.TarBackend();
 
                     dev.skillmanager.cli.installer.InstallOutcome[] outcome =
-                            new dev.skillmanager.cli.installer.InstallOutcome[2];
+                            new dev.skillmanager.cli.installer.InstallOutcome[3];
                     Capture c = capture(() -> {
                         outcome[0] = backend.install(dep("already-there"), store, "unit-a");
                         outcome[1] = backend.install(dep("no-target-here"), store, "unit-a");
+                        // The OTHER no-op branch, and the one the real home hits
+                        // 18 times: a dep declaring an `on_path` binary that is
+                        // already there. `sh` is on PATH on every host this runs on.
+                        outcome[2] = backend.install(onPathDep("sh"), store, "unit-a");
                     });
 
                     // The classification.
@@ -260,18 +264,65 @@ public final class QuietConsoleTest {
                             outcome[0], "a binary already in bin/cli is a STATE, not an event");
                     assertEquals(dev.skillmanager.cli.installer.InstallOutcome.SKIPPED,
                             outcome[1], "and a dep with no install target is neither");
+                    assertEquals(dev.skillmanager.cli.installer.InstallOutcome.ALREADY_PRESENT,
+                            outcome[2], "and a declared on_path binary that is present is a state");
 
-                    // The routing: the no-op does not reach the console...
+                    // The routing. BOTH no-op branches are off the console —
+                    // these are the two lines that made up 18 of the 26 on the
+                    // real home, and each is asserted separately because a
+                    // mutation that reverts one leaves the other.
                     assertFalse(c.text().contains("already installed"),
-                            "the backend's own no-op line is off the console; got:\n" + c.text());
-                    // ...but the refusal, which the caller may have to act on, does.
+                            "the already-installed line is off the console; got:\n" + c.text());
+                    assertFalse(c.text().contains("already on PATH"),
+                            "and so is the already-on-PATH line; got:\n" + c.text());
+                    // ...but the refusal, which the caller may have to act on, does print.
                     assertContains(c.text(), "no install target for no-target-here",
                             "while the refusal it cannot fix by itself still prints");
-                    // ...and the no-op is written down rather than dropped.
+                    // ...and both no-ops are written down rather than dropped.
+                    assertNotNull(c.log(), "a run log was written");
+                    String body = Files.readString(c.log(), StandardCharsets.UTF_8);
+                    assertContains(body, "cli: already-there already installed",
+                            "the demoted already-installed line is in the run log");
+                    assertContains(body, "cli: sh already on PATH",
+                            "and the demoted already-on-PATH line");
+                })
+
+                .test("ToolInstallRecorder demotes a presence check that passed", () -> {
+                    // The tool half of the same defect, at ITS print site: four
+                    // `✓ tool: … ready / on PATH` lines on the real home, one
+                    // per declared tool, on every run. Driven through the real
+                    // recorder with a real plan.
+                    SkillStore store = tempStore("tools");
+                    dev.skillmanager.plan.InstallPlan plan = new dev.skillmanager.plan.InstallPlan();
+                    // `sh` is on PATH on every host this runs on — the passing
+                    // presence check, which is the line being demoted.
+                    plan.add(new dev.skillmanager.plan.PlanAction.EnsureTool(
+                            external("sh", "install a shell"), false));
+                    // And one that is not there: the event that must survive.
+                    plan.add(new dev.skillmanager.plan.PlanAction.EnsureTool(
+                            external("definitely-not-a-real-tool", "install the ghost"), true));
+
+                    dev.skillmanager.cli.installer.ProvisionTally[] tally =
+                            new dev.skillmanager.cli.installer.ProvisionTally[1];
+                    Capture c = capture(() ->
+                            tally[0] = dev.skillmanager.tools.ToolInstallRecorder.run(plan, store));
+
+                    // The passing check is counted and demoted.
+                    assertEquals(1, tally[0].alreadyPresent(),
+                            "the tool that was already there is counted");
+                    assertFalse(c.text().contains("tool: sh on PATH"),
+                            "and its line is off the console; got:\n" + c.text());
                     assertNotNull(c.log(), "a run log was written");
                     assertContains(Files.readString(c.log(), StandardCharsets.UTF_8),
-                            "cli: already-there already installed",
-                            "the demoted backend line is in the run log");
+                            "tool: sh on PATH", "and in the run log");
+
+                    // The missing one is an event the caller must act on, and
+                    // it still prints, with the hint the dependency declared.
+                    assertEquals(1, tally[0].missing(), "the missing tool is counted as missing");
+                    assertContains(c.text(), "definitely-not-a-real-tool missing on PATH",
+                            "and named on the console");
+                    assertContains(c.text(), "install the ghost",
+                            "with its remedy");
                 })
 
                 .test("a sync refusal still names the unit and the command that clears it", () -> {
@@ -511,6 +562,18 @@ public final class QuietConsoleTest {
     private static dev.skillmanager.model.CliDependency dep(String name) {
         return new dev.skillmanager.model.CliDependency(
                 name, "tar:" + name, null, null, null, false, java.util.Map.of());
+    }
+
+    /** The same, declaring {@code onPath} as its already-satisfied binary. */
+    private static dev.skillmanager.model.CliDependency onPathDep(String onPath) {
+        return new dev.skillmanager.model.CliDependency(
+                onPath, "tar:" + onPath, null, null, onPath, false, java.util.Map.of());
+    }
+
+    /** An external tool dependency: realized by a presence check, never installed. */
+    private static dev.skillmanager.tools.ToolDependency external(String id, String hint) {
+        return new dev.skillmanager.tools.ToolDependency.External(
+                id, id, dev.skillmanager.pm.PackageManager.DOCKER, hint, java.util.Set.of());
     }
 
     private static Capture renderSync(boolean verbose) throws Exception {
