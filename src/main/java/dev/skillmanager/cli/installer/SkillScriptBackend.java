@@ -114,20 +114,21 @@ public final class SkillScriptBackend implements InstallerBackend {
     @Override public boolean available() { return true; }
 
     @Override
-    public void install(CliDependency dep, SkillStore store, String skillName) throws IOException {
-        install(dep, store, skillName, false);
+    public InstallOutcome install(CliDependency dep, SkillStore store, String skillName)
+            throws IOException {
+        return install(dep, store, skillName, false);
     }
 
     @Override
-    public void install(CliDependency dep, SkillStore store, String skillName,
-                        boolean force) throws IOException {
+    public InstallOutcome install(CliDependency dep, SkillStore store, String skillName,
+                                  boolean force) throws IOException {
         Fs.ensureDir(store.cliBinDir());
 
         CliDependency.InstallTarget target = pickTarget(dep);
         if (target == null || target.script() == null || target.script().isBlank()) {
             Log.warn("cli: skill-script %s has no install target with a 'script' field "
                     + "(needed under [cli_dependencies.install.<platform>])", dep.name());
-            return;
+            return InstallOutcome.SKIPPED;
         }
 
         // Resolve the script path under <skillRoot>/skill-scripts/.
@@ -155,9 +156,11 @@ public final class SkillScriptBackend implements InstallerBackend {
                 && prev.installFingerprint() != null
                 && prev.installFingerprint().equals(currentFingerprint)
                 && declaredBinaryStillPresent(target, store)) {
-            Log.ok("cli: skill-script %s — scripts unchanged since last install (skipping)",
-                    dep.name());
-            return;
+            // The fingerprint matched and the declared binary is where the
+            // last run left it: nothing ran. A state, not an event.
+            Log.detail("✓ cli: skill-script %s — scripts unchanged since last install "
+                    + "(skipping)", dep.name());
+            return InstallOutcome.ALREADY_PRESENT;
         }
         if (force) {
             Log.step("cli: skill-script %s - force rerun requested", dep.name());
@@ -212,6 +215,7 @@ public final class SkillScriptBackend implements InstallerBackend {
             Log.ok("cli: skill-script %s completed (no 'binary' declared — "
                     + "skipping post-run verification)", dep.name());
         }
+        return InstallOutcome.INSTALLED;
     }
 
     /**

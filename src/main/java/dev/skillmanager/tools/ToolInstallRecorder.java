@@ -1,5 +1,7 @@
 package dev.skillmanager.tools;
 
+import dev.skillmanager.cli.installer.InstallOutcome;
+import dev.skillmanager.cli.installer.ProvisionTally;
 import dev.skillmanager.pm.PackageManagerRuntime;
 import dev.skillmanager.plan.InstallPlan;
 import dev.skillmanager.plan.PlanAction;
@@ -29,30 +31,46 @@ public final class ToolInstallRecorder {
 
     private ToolInstallRecorder() {}
 
-    public static void run(InstallPlan plan, SkillStore store) {
+    public static ProvisionTally run(InstallPlan plan, SkillStore store) {
         PackageManagerRuntime pm = new PackageManagerRuntime(store);
+        ProvisionTally tally = ProvisionTally.EMPTY;
         for (PlanAction action : plan.actions()) {
             if (!(action instanceof PlanAction.EnsureTool ensure)) continue;
             ToolDependency tool = ensure.tool();
             try {
                 if (tool instanceof ToolDependency.Bundled) {
+                    // ensureBundled is idempotent and cannot say afterwards
+                    // whether it did anything, so ask before. Without this the
+                    // rollup would report every bundled tool as "installed" on
+                    // every run and the count would stop meaning anything.
+                    boolean wasPresent = pm.bundledPath(tool.id()) != null;
                     String path = pm.ensureBundled(tool.id());
-                    Log.ok("tool: %s ready  → %s", tool.id(), path);
+                    if (wasPresent) {
+                        Log.detail("✓ tool: %s ready  → %s", tool.id(), path);
+                        tally = tally.plus(InstallOutcome.ALREADY_PRESENT);
+                    } else {
+                        Log.ok("tool: %s installed  → %s", tool.id(), path);
+                        tally = tally.plus(InstallOutcome.INSTALLED);
+                    }
                 } else if (tool instanceof ToolDependency.External ext) {
                     String onPath = pm.systemPath(tool.id());
                     if (onPath != null) {
-                        Log.ok("tool: %s on PATH  → %s", tool.id(), onPath);
+                        // A presence check that passed. Nothing was done, it
+                        // will pass again on every run, and it is one line per
+                        // declared external tool.
+                        Log.detail("✓ tool: %s on PATH  → %s", tool.id(), onPath);
+                        tally = tally.plus(InstallOutcome.ALREADY_PRESENT);
                     } else {
                         // Don't fail install — the user might install the tool
                         // later and re-deploy. But surface the gap loudly so
                         // the next deploy of a dependent server isn't a
                         // mystery failure.
-                        Log.error("tool: %s missing on PATH — %s", tool.id(),
+                        Log.error("tool: %s missing on PATH — %s; deploys requiring it "
+                                + "will fail until it is installed", tool.id(),
                                 ext.installHint() == null
                                         ? "install via the vendor's instructions"
                                         : ext.installHint());
-                        Log.error("       deploys requiring '%s' will fail until "
-                                + "it's installed", tool.id());
+                        tally = tally.withMissing();
                     }
                 }
             } catch (IOException e) {
@@ -61,7 +79,9 @@ public final class ToolInstallRecorder {
                 // bundleable PM; the operator can retry the install or set
                 // up offline mirrors.
                 Log.error("tool: %s install failed: %s", tool.id(), e.getMessage());
+                tally = tally.withFailure();
             }
         }
+        return tally;
     }
 }

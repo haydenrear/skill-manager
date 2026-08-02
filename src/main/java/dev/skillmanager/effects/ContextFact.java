@@ -1,5 +1,6 @@
 package dev.skillmanager.effects;
 
+import dev.skillmanager.cli.installer.ProvisionTally;
 import dev.skillmanager.mcp.InstallResult;
 import dev.skillmanager.mcp.McpWriter;
 import dev.skillmanager.source.InstalledUnit;
@@ -84,8 +85,21 @@ public sealed interface ContextFact {
     record BundledSkillFromGithub(String publishedName, String coord) implements ContextFact {}
 
     // ---- Tools / CLI deps ----
-    record ToolsInstalledFor(int skillCount) implements ContextFact {}
-    record CliInstalledFor(int skillCount) implements ContextFact {}
+    //
+    // The tally field is ADDITIVE — `skillCount` keeps its name, its position
+    // and its meaning, so a --json consumer reading it is unaffected. It
+    // exists because these two facts are the only thing the bulk provisioning
+    // path (sync / upgrade, through ToolInstallRecorder and
+    // CliInstallRecorder) reports to the renderer: until they carried counts
+    // the renderer had nothing to say about provisioning, so the backends
+    // printed one line per dep themselves and 18 of 26 said "already on PATH".
+    record ToolsInstalledFor(int skillCount, ProvisionTally tally) implements ContextFact {
+        public ToolsInstalledFor(int skillCount) { this(skillCount, ProvisionTally.EMPTY); }
+    }
+
+    record CliInstalledFor(int skillCount, ProvisionTally tally) implements ContextFact {
+        public CliInstalledFor(int skillCount) { this(skillCount, ProvisionTally.EMPTY); }
+    }
 
     // ---- MCP gateway ----
     record McpRegistered(String skillName, String serverId) implements ContextFact {}

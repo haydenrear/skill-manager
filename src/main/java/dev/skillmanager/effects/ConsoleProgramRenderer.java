@@ -81,8 +81,17 @@ public final class ConsoleProgramRenderer implements ProgramRenderer {
     private final LinkedHashSet<String> gitMerged = new LinkedHashSet<>();
     private final LinkedHashSet<String> gitCurrent = new LinkedHashSet<>();
     private final LinkedHashSet<String> gitLocalOnly = new LinkedHashSet<>();
-    private int toolsReady;
-    private int cliInstalled;
+    // Provisioning, tallied by outcome rather than counted flat. Fed from BOTH
+    // paths that provision a home — `install`'s decomposed EnsureTool /
+    // RunCliInstall effects and `sync`'s bulk ToolsInstalledFor /
+    // CliInstalledFor facts — so the two report identically without sharing an
+    // implementation. `toolsReady`/`cliInstalled` as bare counters could not
+    // say whether a run installed anything, which is the one question the
+    // rollup exists to answer.
+    private dev.skillmanager.cli.installer.ProvisionTally tools =
+            dev.skillmanager.cli.installer.ProvisionTally.EMPTY;
+    private dev.skillmanager.cli.installer.ProvisionTally clis =
+            dev.skillmanager.cli.installer.ProvisionTally.EMPTY;
     private int mcpRegistered;
     private int bindingsCreated;
     private int bindingsRemoved;
@@ -171,9 +180,16 @@ public final class ConsoleProgramRenderer implements ProgramRenderer {
                     Log.error("bundled: %s not found (expected %s)",
                             x.publishedName(), x.expectedPath());
 
-            // ---- bulk tool/CLI counters (legacy effects) ----
-            case ContextFact.ToolsInstalledFor ignored -> { /* silent: per-tool facts cover it */ }
-            case ContextFact.CliInstalledFor ignored -> { /* silent: per-dep facts cover it */ }
+            // ---- bulk tool/CLI provisioning (sync / upgrade) ----
+            //
+            // These used to be silent on the grounds that "per-tool facts cover
+            // it". They do not: this path does not emit per-tool facts at all —
+            // ToolInstallRecorder and CliInstallRecorder print directly — so
+            // the renderer said nothing about provisioning while the backends
+            // said 22 lines of it. The tally is now the renderer's, and the
+            // backends' per-item lines are Log.detail.
+            case ContextFact.ToolsInstalledFor x -> tools = merge(tools, x.tally());
+            case ContextFact.CliInstalledFor x -> clis = merge(clis, x.tally());
 
             // ---- MCP gateway (bulk legacy + per-server new) ----
             case ContextFact.McpRegistered x -> {
@@ -325,18 +341,37 @@ public final class ConsoleProgramRenderer implements ProgramRenderer {
                     Log.detail("✓ pm: installed %s@%s → %s", x.pmId(), x.version(), x.installPath());
 
             // ---- decomposed plan-action effects ----
+            // The decomposed path's own per-item facts. The backends below them
+            // classify the outcome and print it; these two only need to be
+            // counted into the same tally so `install` and `sync` report the
+            // same shape. `missingOnPath` is the plan's pre-flight reading, so
+            // it is the one thing here that distinguishes an event from a state.
             case ContextFact.ToolEnsured x -> {
                 String hint = x.bundled() ? "bundled" : (x.missingOnPath() ? "missing" : "on PATH");
-                Log.detail("✓ tool: %s ready (%s)", x.toolId(), hint);
-                toolsReady++;
+                // An EVENT when the plan found it missing (this run provisioned
+                // it), a STATE otherwise. The state case is one line per
+                // declared tool on every run forever; the event case is work
+                // that was done and may need to be known about.
+                if (x.missingOnPath()) Log.ok("tool: %s ready (%s)", x.toolId(), hint);
+                else Log.detail("✓ tool: %s ready (%s)", x.toolId(), hint);
+                tools = tools.plus(x.missingOnPath()
+                        ? dev.skillmanager.cli.installer.InstallOutcome.INSTALLED
+                        : dev.skillmanager.cli.installer.InstallOutcome.ALREADY_PRESENT);
             }
+            // Always an event: this fact is only emitted when an install ran.
+            // It was demoted in the first pass, which was wrong — it is the
+            // decomposed path's only report that work happened, and a run that
+            // fetched and linked a binary should say so per item.
             case ContextFact.CliInstalled x -> {
-                Log.detail("✓ cli: %s [%s] installed for %s",
+                Log.ok("cli: %s [%s] installed for %s",
                         x.depName(), x.backend(), x.skillName());
-                cliInstalled++;
+                clis = clis.plus(dev.skillmanager.cli.installer.InstallOutcome.INSTALLED);
             }
-            case ContextFact.CliInstallFailed x -> Log.error(
-                    "cli: %s install failed for %s — %s", x.depName(), x.skillName(), x.message());
+            case ContextFact.CliInstallFailed x -> {
+                Log.error("cli: %s install failed for %s — %s",
+                        x.depName(), x.skillName(), x.message());
+                clis = clis.withFailure();
+            }
             // Kept on the console: it is the evidence that the run reached its
             // lock write, which is what "the store and the lock agree" rests
             // on, and it is one line however many units there are.
@@ -540,9 +575,17 @@ public final class ConsoleProgramRenderer implements ProgramRenderer {
             Log.ok("agents: %d unit(s) unlinked from %s",
                     unlinkedUnits.size(), String.join(", ", syncedAgents));
         }
+        // Provisioning gets its own lines rather than a slot in "side effects",
+        // because the categories are the point: "cli: 18 already present,
+        // 2 installed" says something a bare "20 cli dep(s)" cannot, namely
+        // whether this run did any work. Both are emitted only when the surface
+        // was touched at all.
+        String toolLine = tools.render("tools");
+        if (toolLine != null) Log.ok("%s", toolLine);
+        String cliLine = clis.render("cli");
+        if (cliLine != null) Log.ok("%s", cliLine);
+
         List<String> side = new ArrayList<>();
-        if (toolsReady > 0) side.add(toolsReady + " tool(s)");
-        if (cliInstalled > 0) side.add(cliInstalled + " cli dep(s)");
         if (mcpRegistered > 0) side.add(mcpRegistered + " mcp server(s)");
         if (bindingsCreated > 0) side.add(bindingsCreated + " binding(s) bound");
         if (bindingsRemoved > 0) side.add(bindingsRemoved + " binding(s) unbound");
@@ -550,6 +593,22 @@ public final class ConsoleProgramRenderer implements ProgramRenderer {
             side.add(projectionsMaterialized + " projection(s) materialized");
         }
         if (!side.isEmpty()) Log.ok("side effects: %s", String.join(", ", side));
+    }
+
+    /**
+     * Sum two tallies. A program can run the bulk provisioning effects more
+     * than once (sync's post-update tail after a sub-program), and a sub-program
+     * shares this renderer.
+     */
+    private static dev.skillmanager.cli.installer.ProvisionTally merge(
+            dev.skillmanager.cli.installer.ProvisionTally a,
+            dev.skillmanager.cli.installer.ProvisionTally b) {
+        if (b == null) return a;
+        return new dev.skillmanager.cli.installer.ProvisionTally(
+                a.alreadyPresent() + b.alreadyPresent(),
+                a.installed() + b.installed(),
+                a.missing() + b.missing(),
+                a.failed() + b.failed());
     }
 
     private void printMcpResultsBlock() {
