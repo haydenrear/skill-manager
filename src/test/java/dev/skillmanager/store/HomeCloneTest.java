@@ -608,6 +608,106 @@ public final class HomeCloneTest {
             assertContains(out, "specs/.history/ticket/result.md", "the specific file is named");
         });
 
+        // ------------------------------------------------- issue #145
+
+        suite.test("a clone re-anchors the ledger's AGENT-home paths, not just the store's", () -> {
+            // #145. Re-anchoring re-rooted paths inside the STORE and left
+            // everything else alone, on the rule that a path outside the home
+            // names something real elsewhere. An agent directory is not
+            // "elsewhere": <root>/.claude sits beside <root>/.skill-manager and
+            // is as much a part of that home as the store is — it is the span
+            // HomeDescriptor already encodes and the span
+            // LaunchEnv#requireClaudeRedirected already polices.
+            //
+            // Measured before the fix, with the CLI, against a fixture $HOME: an
+            // `uninstall` in the copy walked these inherited rows and deleted
+            // three of the SOURCE home's global skill links, printing
+            // "✓ unbound" three times and exiting 0.
+            Home src = Home.conventional("src-");
+            Home dst = Home.destination("dst-");
+
+            HomeCloner.Report report = HomeCloner.cloneHome(src.store, dst.store);
+
+            assertTrue(report.clean(), "clone clean: " + report.leaks());
+            List<Binding> bindings = new BindingStore(new SkillStore(dst.store)).read("alpha")
+                    .bindings();
+            Binding managed = bindings.stream()
+                    .filter(b -> b.source() == BindingSource.DEFAULT_AGENT).findFirst()
+                    .orElseThrow();
+            assertEquals(dst.root.resolve(".claude/skills"), managed.targetRoot(),
+                    "the default-agent target follows the copy");
+            assertEquals(dst.root.resolve(".claude/skills/alpha"),
+                    managed.projections().get(0).destPath(),
+                    "and so does the projection it would undo");
+            assertFalse(managed.projections().get(0).destPath().startsWith(src.root),
+                    "nothing in the copy still names the source home's agent tree");
+
+            // The bound, asserted in the same test so a fix cannot satisfy one
+            // half by widening until it swallows the other: a binding to a
+            // project checkout is genuinely external and must survive verbatim.
+            Binding explicit = bindings.stream()
+                    .filter(b -> b.source() == BindingSource.EXPLICIT).findFirst().orElseThrow();
+            assertEquals(Path.of("/some-checkout/.agent/skills/alpha"),
+                    explicit.projections().get(0).destPath(),
+                    "a path that is not part of either home is left naming what it names");
+        });
+
+        suite.test("verification catches a planted reference to the source's agent home", () -> {
+            // The mutation guard for the test above. Re-anchoring is one pass
+            // over records the production serde can parse; anything it cannot
+            // parse, or a future record shape nobody remapped, has to fail the
+            // clone rather than ride along. Before #145 this file was invisible
+            // to the check, because the check only ever searched for the STORE
+            // root's bytes.
+            Home src = Home.conventional("src-");
+            Home dst = Home.destination("dst-");
+            HomeCloner.cloneHome(src.store, dst.store);
+
+            Files.writeString(dst.store.resolve("installed/planted.projections.json"),
+                    "{\"unitName\":\"planted\",\"destPath\":\""
+                            + src.root.resolve(".codex/skills/planted") + "\"}");
+
+            List<HomeCloner.Leak> leaks = HomeCloner.verify(src.store, dst.store, false).leaks();
+
+            assertEquals(1, leaks.size(), "one leak found: " + leaks);
+            assertEquals(HomeCloner.Leak.SOURCE_AGENT_HOME, leaks.get(0).kind(), "leak kind");
+            assertContains(leaks.get(0).detail(), "delete",
+                    "the report says what acting on it would do, not just that it exists");
+        });
+
+        suite.test("a link into ANOTHER home's agent dir fails the clone", () -> {
+            // The agent-tree twin of #49's FOREIGN_HOME. looksLikeStoreRoot is
+            // false for ~/.claude — it has no installed/ + skills/ pair and no
+            // descriptor — so a link into the operator's global agent tree
+            // passed a check whose success line said "no path in it reaches any
+            // other Skill Manager home". True, and the reader heard something
+            // else.
+            Home src = Home.conventional("src-");
+            Home dst = Home.destination("dst-");
+            Home other = Home.conventional("other-");
+            Path otherSkills = Files.createDirectories(other.root.resolve(".claude/skills/victim"));
+            Files.writeString(otherSkills.resolve("SKILL.md"), "---\nname: victim\n---\n");
+            // A plain .claude that no home owns — the negative half.
+            Path unowned = newDir("unowned-");
+            Files.createDirectories(unowned.resolve(".claude/skills/bystander"));
+            Files.createSymbolicLink(src.store.resolve("skills/alpha/reaches-agent-home"),
+                    other.root.resolve(".claude/skills/victim"));
+            Files.createSymbolicLink(src.store.resolve("skills/alpha/reaches-nobodys-config"),
+                    unowned.resolve(".claude/skills/bystander"));
+
+            HomeCloner.Report report = HomeCloner.cloneHome(src.store, dst.store);
+
+            List<HomeCloner.Leak> foreign = report.leaks().stream()
+                    .filter(leak -> leak.kind().equals(HomeCloner.Leak.FOREIGN_AGENT_HOME))
+                    .toList();
+            assertFalse(report.clean(), "a link into another home's agent dir fails the clone");
+            assertEquals(1, foreign.size(),
+                    "exactly the one whose .claude belongs to a home: " + report.leaks());
+            assertContains(foreign.get(0).path(), "reaches-agent-home", "names the offending link");
+            assertTrue(Files.isSymbolicLink(dst.store.resolve("skills/alpha/reaches-nobodys-config")),
+                    "a .claude no Skill Manager home owns is not this mechanism's business");
+        });
+
         suite.test("cloning onto a non-empty destination is refused", () -> {
             Path source = seededHome();
             Path dest = newDir("dest-");
@@ -638,6 +738,65 @@ public final class HomeCloneTest {
     }
 
     // ------------------------------------------------------------ fixtures
+
+    /**
+     * A home in the layout every real one has: a store at
+     * {@code <root>/.skill-manager} with its three agent directories beside it.
+     *
+     * <p>{@link #seededHome()} deliberately does not have this shape — its
+     * store is a bare temp directory, so {@code homeRootFor} answers "itself"
+     * and there is no agent span to speak of. That was fine while nothing
+     * reasoned about the span, and it is exactly why #145's tests need their
+     * own fixture: a defect about the directory beside the store cannot be
+     * reproduced in a fixture that has no directory beside the store.
+     */
+    private record Home(Path root, Path store) {
+
+        static Home conventional(String prefix) throws Exception {
+            Path root = newDir(prefix);
+            Path store = root.resolve(".skill-manager");
+            SkillStore skillStore = new SkillStore(store);
+            skillStore.init();
+            Files.createDirectories(store.resolve("skills/alpha"));
+            Files.writeString(store.resolve("skills/alpha/SKILL.md"),
+                    "---\nname: alpha\ndescription: fixture\n---\nbody\n");
+            for (String agentDir : List.of(".claude", ".codex", ".gemini")) {
+                Files.createDirectories(root.resolve(agentDir).resolve("skills"));
+            }
+            // The two rows whose difference is the point: a DEFAULT_AGENT row
+            // naming this home's own agent directory, and an EXPLICIT row
+            // naming a checkout that belongs to neither home.
+            Path ownClaudeSkills = root.resolve(".claude/skills");
+            new BindingStore(skillStore).write(new ProjectionLedger("alpha", List.of(
+                    new Binding("b1", "alpha", UnitKind.SKILL, null, ownClaudeSkills,
+                            ConflictPolicy.ERROR, "2026-01-01T00:00:00Z",
+                            BindingSource.DEFAULT_AGENT,
+                            List.of(new Projection("b1", store.resolve("skills/alpha"),
+                                    ownClaudeSkills.resolve("alpha"),
+                                    ProjectionKind.SYMLINK, null))),
+                    new Binding("b2", "alpha", UnitKind.SKILL, null,
+                            Path.of("/some-checkout/.agent/skills"),
+                            ConflictPolicy.ERROR, "2026-01-01T00:00:00Z",
+                            BindingSource.EXPLICIT,
+                            List.of(new Projection("b2", store.resolve("skills/alpha"),
+                                    Path.of("/some-checkout/.agent/skills/alpha"),
+                                    ProjectionKind.SYMLINK, null))))));
+            return new Home(root, store);
+        }
+
+        /**
+         * The destination shape a clone actually lands in: the checkout and
+         * its three empty agent directories exist (bootstrap-home.sh creates
+         * them), and the store does not yet.
+         */
+        static Home destination(String prefix) throws Exception {
+            Path root = newDir(prefix);
+            for (String agentDir : List.of(".claude", ".codex", ".gemini")) {
+                Files.createDirectories(root.resolve(agentDir).resolve("skills"));
+            }
+            return new Home(root, root.resolve(".skill-manager"));
+        }
+    }
 
     /** A home written the way current skill-manager writes one. */
     private static Path seededHome() throws Exception {

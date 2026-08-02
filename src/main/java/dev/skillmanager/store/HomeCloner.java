@@ -1,5 +1,6 @@
 package dev.skillmanager.store;
 
+import dev.skillmanager.agent.AgentHomes;
 import dev.skillmanager.bindings.Binding;
 import dev.skillmanager.bindings.BindingJson;
 import dev.skillmanager.bindings.ChildHomeRegistry;
@@ -225,6 +226,23 @@ public final class HomeCloner {
          * the loud one and buries the real one. Issue #133.
          */
         public static final String CONTENT_REFERENCE = "CONTENT_REFERENCE";
+
+        /**
+         * A record in the copy that names one of the <em>source</em> home's
+         * agent directories. Its own kind rather than a {@code FILE_CONTENT}
+         * because the remedy differs: a {@code FILE_CONTENT} leak means a path
+         * was missed by a re-anchoring pass, while this one means the copy is
+         * holding a live instruction to touch another home's agent tree —
+         * measured as an {@code uninstall} in a clone deleting three of the
+         * source home's global skill links and reporting success. Issue #145.
+         */
+        public static final String SOURCE_AGENT_HOME = "SOURCE_AGENT_HOME";
+
+        /**
+         * A resolved path in the copy that lands in some other home's agent
+         * directory — the agent-tree twin of {@code FOREIGN_HOME}.
+         */
+        public static final String FOREIGN_AGENT_HOME = "FOREIGN_AGENT_HOME";
 
         /** True when this is an authored mention, not a path that resolves. */
         public boolean tolerable() { return CONTENT_REFERENCE.equals(kind); }
@@ -902,6 +920,17 @@ public final class HomeCloner {
     private static Verification verifyRoots(Path srcRoot, Path dstRoot, boolean strict)
             throws IOException {
         byte[] needle = srcRoot.toString().getBytes(StandardCharsets.UTF_8);
+        // The source home's agent directories are part of the source home, and
+        // until #145 nothing looked for them. The old check searched for the
+        // STORE root only, so a ledger row naming <srcRoot>/../.claude/skills
+        // was invisible to it — which is exactly how the clone could report
+        // that "nothing in it resolves back to the source" while carrying three
+        // live instructions to delete files in the source's agent directories.
+        List<byte[]> agentNeedles = new ArrayList<>();
+        for (Path agentDir : AgentHomes.agentDirsUnder(AgentHomes.homeRootFor(srcRoot))) {
+            if (dstRoot.startsWith(agentDir)) continue;   // the copy lives there; not a leak
+            agentNeedles.add(agentDir.toString().getBytes(StandardCharsets.UTF_8));
+        }
         HomePaths srcPaths = HomePaths.of(srcRoot);
         Path dstReal = realOrSame(dstRoot);
         List<Leak> leaks = new ArrayList<>();
@@ -925,6 +954,13 @@ public final class HomeCloner {
                     if (foreign != null) {
                         leaks.add(new Leak(rel, "FOREIGN_HOME",
                                 target + " resolves into the home at " + foreign));
+                    } else {
+                        Path foreignAgent = foreignAgentHomeReachedBy(file, dstReal);
+                        if (foreignAgent != null) {
+                            leaks.add(new Leak(rel, Leak.FOREIGN_AGENT_HOME,
+                                    target + " resolves into the agent directory "
+                                            + foreignAgent + ", which belongs to another home"));
+                        }
                     }
                 }
                 return;
@@ -941,12 +977,22 @@ public final class HomeCloner {
                     unresolved.add(rel + " -> " + missing);
                 }
             }
-            if (!containsBytes(file, needle)) return;
+            boolean namesStore = containsBytes(file, needle);
+            boolean namesAgentHome = false;
+            for (byte[] agentNeedle : agentNeedles) {
+                if (containsBytes(file, agentNeedle)) { namesAgentHome = true; break; }
+            }
+            if (!namesStore && !namesAgentHome) return;
             if (surface == Surface.CONTENT) {
                 contentReferences.add(rel);
                 if (strict) leaks.add(new Leak(rel, Leak.CONTENT_REFERENCE, "authored unit content"));
-            } else {
+            } else if (namesStore) {
                 leaks.add(new Leak(rel, "FILE_CONTENT", surface.name().toLowerCase()));
+            } else {
+                leaks.add(new Leak(rel, Leak.SOURCE_AGENT_HOME,
+                        "names an agent directory of the source home (" + surface.name().toLowerCase()
+                                + ") — acting on this record would read or delete files "
+                                + "in the home this copy was made from"));
             }
         }));
         leaks.sort(java.util.Comparator.comparing(Leak::path));
@@ -1017,6 +1063,54 @@ public final class HomeCloner {
         for (Path parent = resolved; parent != null; parent = parent.getParent()) {
             if (parent.equals(dstReal) || parent.startsWith(dstReal)) return null;
             if (LaunchEnv.looksLikeStoreRoot(parent)) return parent;
+        }
+        return null;
+    }
+
+    /**
+     * The <em>agent</em> directory of another home that a link in the copy
+     * reaches, or null when it reaches none.
+     *
+     * <h2>Why {@link #foreignHomeReachedBy} could not see this</h2>
+     *
+     * <p>That check asks {@link LaunchEnv#looksLikeStoreRoot} about every
+     * ancestor, and {@code ~/.claude} is not a store root: it has no
+     * {@code installed/}, no {@code skills/} pair in that sense, no descriptor.
+     * So a link into the operator's global {@code ~/.claude/skills} passed a
+     * check whose success line said "no path in it reaches any other Skill
+     * Manager home" — literally true, because an agent home is not a Skill
+     * Manager home, and materially false, because that is the directory every
+     * agent session actually loads skills from. Issue #145.
+     *
+     * <p>The predicate stays structural, like its sibling: a directory is
+     * another home's agent directory when it is named {@code .claude},
+     * {@code .codex} or {@code .gemini} <em>and</em> its parent holds a Skill
+     * Manager store. The second half is what keeps this from firing on any
+     * {@code .claude} anywhere — an unrelated project's config directory that
+     * no home manages is not this mechanism's business, and a rule that fires
+     * on it is a rule somebody switches off.
+     */
+    private static Path foreignAgentHomeReachedBy(Path link, Path dstReal) {
+        Path resolved;
+        try {
+            resolved = link.toRealPath();
+        } catch (IOException e) {
+            return null;   // dangling; already reported by the caller
+        }
+        for (Path parent = resolved; parent != null; parent = parent.getParent()) {
+            if (parent.equals(dstReal) || parent.startsWith(dstReal)) return null;
+            Path name = parent.getFileName();
+            if (name == null) continue;
+            if (!AgentHomes.CLAUDE_DIR_NAME.equals(name.toString())
+                    && !".codex".equals(name.toString())
+                    && !".gemini".equals(name.toString())) {
+                continue;
+            }
+            Path owner = parent.getParent();
+            if (owner == null) continue;
+            Path store = owner.resolve(AgentHomes.STORE_DIR_NAME);
+            if (store.equals(dstReal) || store.startsWith(dstReal)) return null;
+            if (LaunchEnv.looksLikeStoreRoot(store)) return parent;
         }
         return null;
     }
@@ -1117,11 +1211,54 @@ public final class HomeCloner {
         return root.relativize(path).toString();
     }
 
+    /**
+     * Where {@code path} lands in the copy: unchanged when it names something
+     * genuinely external, re-rooted when it names part of the source home.
+     *
+     * <h2>A home is its store AND its agent directories</h2>
+     *
+     * <p>This used to re-root only paths inside the <em>store</em>, and
+     * {@link HomePaths}' own javadoc endorsed the omission: "{@code destPath}
+     * points at {@code ~/.claude/skills/<unit>} and stays absolute". That is
+     * right for a home being written in place and wrong for a home being
+     * copied, and issue #145 is the difference. A home's agent directories sit
+     * beside its store at {@code <root>/.claude|.codex|.gemini} — the same
+     * "beside the store" span {@code HomeDescriptor}'s storage mapper already
+     * encodes, and the same directories {@code LaunchEnv#requireClaudeRedirected}
+     * insists a launch stay inside. Leaving them absolute means the copy's
+     * ledger describes the <em>source's</em> agent directories.
+     *
+     * <p>Measured, and this is the half that a corrected resolution rule does
+     * <b>not</b> cover: with the write path fixed so that a sync in the copy
+     * writes only the copy's own agent dirs, an {@code uninstall} in the copy
+     * still walked the inherited rows and <b>deleted the source home's agent
+     * links</b> — three of them, reporting {@code ✓ unbound} and exiting 0. The
+     * write path re-derives its destinations every run and so heals itself; the
+     * removal path is ledger-driven by construction, because the whole point of
+     * the ledger is to know the exact footprint to undo. A stale row is
+     * therefore not a stale opinion about where to write. It is a live
+     * instruction to delete something in another home.
+     *
+     * <p>The bound is the same one the descriptor accepts: exactly the three
+     * agent directories directly beside the store. A path deeper in the
+     * operator's home, or an agent directory they placed somewhere else
+     * entirely, is external and is left naming what it names.
+     */
     private static Path remapPath(Path path, Path srcRoot, Path dstRoot) {
         if (path == null) return null;
         Path abs = path.toAbsolutePath().normalize();
-        if (!HomePaths.of(srcRoot).isInsideHome(abs)) return path;
-        return dstRoot.resolve(srcRoot.relativize(abs));
+        if (HomePaths.of(srcRoot).isInsideHome(abs)) {
+            return dstRoot.resolve(srcRoot.relativize(abs));
+        }
+        List<Path> srcAgentDirs = AgentHomes.agentDirsUnder(AgentHomes.homeRootFor(srcRoot));
+        List<Path> dstAgentDirs = AgentHomes.agentDirsUnder(AgentHomes.homeRootFor(dstRoot));
+        for (int i = 0; i < srcAgentDirs.size(); i++) {
+            Path srcAgentDir = srcAgentDirs.get(i);
+            if (abs.equals(srcAgentDir) || abs.startsWith(srcAgentDir)) {
+                return dstAgentDirs.get(i).resolve(srcAgentDir.relativize(abs));
+            }
+        }
+        return path;
     }
 
     private static String remapString(String value, Path srcRoot, Path dstRoot) {
