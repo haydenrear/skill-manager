@@ -66,6 +66,7 @@ import dev.skillmanager.registry.PublishDetectsPluginTest;
 import dev.skillmanager.registry.PublishDetectsSkillTest;
 import dev.skillmanager.validation.MarkdownImportValidatorTest;
 import dev.skillmanager.effects.CompensationLogicTest;
+import dev.skillmanager.effects.ProjectSyncErrorReportingTest;
 import dev.skillmanager.effects.CompensationOrphanTest;
 import dev.skillmanager.effects.CompensationPairingTest;
 import dev.skillmanager.effects.FailureInjectionSweepTest;
@@ -168,6 +169,7 @@ public class RunTests {
         failures += ResolveGraphDirectGitSyncTest.run();
         failures += KindAwareDispatchTest.run();
         failures += CompensationLogicTest.run();
+        failures += ProjectSyncErrorReportingTest.run();
         failures += CompensationPairingTest.run();
         failures += CompensationOrphanTest.run();
         failures += UninstallScenarioTest.run();

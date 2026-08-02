@@ -87,10 +87,15 @@ public class PluginSynced {
             boolean mcpReRegistered = body.contains("---MCP-INSTALL-RESULTS-BEGIN---")
                     && body.contains("---MCP-INSTALL-RESULTS-END---");
             boolean expectedMigrationExit = rc == 1;
+            // Both plugins carry the SAME NEEDS_GIT_MIGRATION message, so the
+            // report names both units on one line and states the cause once.
+            // It used to print two identical blocks; issue #144 made one cause
+            // one entry, and the unit count in the header is unchanged.
             boolean expectedMigrationErrors = body.contains("skills with outstanding errors (2)")
-                    && body.contains("hello-plugin:")
-                    && body.contains("umbrella-plugin:")
-                    && occurrences(body, "NEEDS_GIT_MIGRATION:") == 2;
+                    && body.contains("1 distinct cause")
+                    && body.contains("hello-plugin")
+                    && body.contains("umbrella-plugin")
+                    && occurrences(body, "NEEDS_GIT_MIGRATION:") == 1;
 
             boolean pass = preSymlinkGone && preManifestStubbed
                     && symlinkRestored && manifestRestored && mcpReRegistered
