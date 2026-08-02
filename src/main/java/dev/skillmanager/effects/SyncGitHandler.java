@@ -43,13 +43,52 @@ public final class SyncGitHandler {
         Path storeDir = store.unitDir(skillName, e.kind());
         InstalledUnit src = ctx.source(skillName).orElse(null);
 
-        if (!GitOps.isAvailable() || !GitOps.isGitRepo(storeDir)) {
+        if (!GitOps.isGitRepo(storeDir)) {
+            // A unit the operator DELIBERATELY installed from a local path is
+            // in exactly the state they asked for. It has nothing upstream, so
+            // there is nothing for sync to do and nothing for anyone to fix.
+            //
+            // This used to record NEEDS_GIT_MIGRATION here regardless, which
+            // made `file:` sources incoherent end to end: `skill-project.toml`
+            // accepts `source = "file:///abs/path"`, `project resolve` installs
+            // it and exits 0 printing `✓ installed <unit>` — and from then on
+            // EVERY invocation (`list`, `--help`, `exec`, `home describe`,
+            // `bindings list`) appended
+            //
+            //   ⚠ skills with outstanding errors (1) … NEEDS_GIT_MIGRATION
+            //
+            // with a remedy ("reinstall from a git source") that undoes the
+            // thing the operator asked for. Accept, install, celebrate, then
+            // error forever is not a contract either way round: either the
+            // manifest schema should refuse `file:`, or a `file:` install
+            // should be a state the tool is at peace with. It is the second —
+            // local installs are how a unit is developed before it has a
+            // remote, and skill-dev depends on them.
+            //
+            // The fact is still REPORTED on every sync, so "this will not
+            // update" stays visible; it is a note about a choice, not an
+            // outstanding error against the unit. Clearing here is also what
+            // heals homes that already carry the record.
+            if (src != null && src.installSource() == InstalledUnit.InstallSource.LOCAL_FILE) {
+                ctx.clearError(skillName, InstalledUnit.ErrorKind.NEEDS_GIT_MIGRATION);
+                return EffectReceipt.ok(e,
+                        new ContextFact.SyncGitLocalInstall(skillName, src.origin()));
+            }
+            // Everything else that is not git-tracked genuinely cannot sync
+            // and nobody chose it: a REGISTRY or GIT install whose .git is
+            // gone, or a directory the reconciler found in the store with no
+            // provenance at all. That is still an error.
             ctx.addError(skillName, InstalledUnit.ErrorKind.NEEDS_GIT_MIGRATION,
                     "not git-tracked; file/local installs do not sync — reinstall from github: "
                             + "or git+ source, or add a git remote");
             return EffectReceipt.partial(e, "not git-tracked",
                     new ContextFact.SyncGitNotGitTracked(skillName));
         }
+        // The old condition was `!GitOps.isAvailable() || !GitOps.isGitRepo(dir)`.
+        // The first half is subsumed: isGitRepo shells out to `git rev-parse`
+        // and reads false when git is not on PATH, so a machine with no git
+        // takes the branch above — and takes the LOCAL_FILE arm of it, which is
+        // right: a local install has nothing upstream whether or not git exists.
         ctx.clearError(skillName, InstalledUnit.ErrorKind.NEEDS_GIT_MIGRATION);
 
         String upstream = src != null && src.origin() != null && !src.origin().isBlank()

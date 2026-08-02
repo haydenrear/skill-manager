@@ -42,25 +42,50 @@ import java.util.regex.Pattern;
  * permanent error record on every subsequent command. Accept-install-celebrate-
  * then-error-forever is not a coherent contract either way.
  *
+ * <p>The implementation took the second branch: a deliberate local install is
+ * a state the tool is at peace with, reported on every sync ("nothing upstream
+ * to sync") and recorded as no error at all. The question the node asks is
+ * therefore about ONE unit — is {@code acme-lint}, the {@code file:}-installed
+ * one, still held at fault? — rather than about the banner as a whole, which
+ * would go red the moment any unrelated unit legitimately carried a cause.
+ *
  * <p><b>Vacuous-pass risk:</b> a disjunction passes if either branch holds, and
  * it would pass trivially if the fixture's unit happened to be git-tracked.
  * <br><b>Companion:</b> the fixture unit is asserted to have no {@code .git}
  * and no git remote BEFORE anything is concluded, and the resolve is asserted
  * to have exited 0 — so the "rejected" branch is known not to have been taken,
  * and the node RECORDS which branch the implementation chose rather than
- * hiding it behind a green tick.
+ * hiding it behind a green tick. Both the printed banner AND the record on
+ * disk are checked, because a renderer that merely stopped printing the unit
+ * would leave the record for the next renderer to find.
  *
  * <h2>The dedup-and-clear guard</h2>
  *
  * <p>A persisted error affecting N units must print ONCE, not per unit, and
  * removing the cause must remove it from the banner.
  *
- * <p><b>Vacuous-pass risk:</b> counting occurrences in a log too short to
+ * <p><b>Vacuous-pass risk 1:</b> counting occurrences in a log too short to
  * contain a duplicate.
  * <br><b>Companion:</b> the banner's own {@code (N)} count must equal the
  * number of affected units and N must be ≥2, so a single-unit home cannot make
  * "printed once" true by arithmetic. Then the cause is removed and the banner
- * must shrink.
+ * must shrink by exactly one.
+ *
+ * <p><b>Vacuous-pass risk 2 — the one this node was itself guilty of.</b>
+ * Until the {@code file:} contract above was fixed, this guard got its "two
+ * units sharing one cause" for free: every unit in the fixture is installed
+ * from a local path, and every local install carried a permanent
+ * {@code NEEDS_GIT_MIGRATION} record. The guard was riding on the defect
+ * measured six lines above it — so fixing that defect would have taken the
+ * guard's subject away with it and left {@code unitsAffected: 0} reading as a
+ * pass. That is the fourth assertion in this graph's history that only held
+ * while something was broken.
+ * <br><b>Companion:</b> the cause is now PLANTED, as the shape the error was
+ * written for — two units whose provenance record the fixture deletes, which
+ * the reconciler re-onboards as {@code installSource: UNKNOWN}. Their error is
+ * correct and no choice of source would remove it. The node asserts that the
+ * shared cause comes from those units specifically, and that the unit the
+ * clear half removes is one that actually carried it.
  */
 public class OnboardingErrorRecordsCoherent {
 
@@ -95,26 +120,41 @@ public class OnboardingErrorRecordsCoherent {
                     OnboardingSupport.storeUnits(home).contains(OnboardingSupport.LINT);
 
             // --- which branch did the implementation choose? --------------------
+            //
+            // The question is about ONE unit, not about the banner as a whole.
+            // Asserting "no banner at all" would have been right only while
+            // every unit in this home was errored, and it would go red the
+            // moment any unrelated unit legitimately carried a cause — which
+            // is exactly the state the dedup half below deliberately plants.
+            // So: does anything in this home still hold acme-lint, the
+            // file:-installed unit, at fault?
             List<ProcessRecord> readOnly = new ArrayList<>();
             readOnly.add(OnboardingSupport.sm(ctx, "err-list", home, proj, "list"));
             readOnly.add(OnboardingSupport.sm(ctx, "err-home-describe", home, proj,
                     "home", "describe"));
             readOnly.add(OnboardingSupport.sm(ctx, "err-bindings", home, proj,
                     "bindings", "list"));
-            List<String> commandsCarryingTheBanner = new ArrayList<>();
+            List<String> commandsBlamingTheFileInstalledUnit = new ArrayList<>();
             for (ProcessRecord p : readOnly) {
-                if (OnboardingSupport.log(ctx, p).contains(BANNER)) {
-                    commandsCarryingTheBanner.add(p.label());
+                if (blames(OnboardingSupport.log(ctx, p), OnboardingSupport.LINT)) {
+                    commandsBlamingTheFileInstalledUnit.add(p.label());
                 }
             }
+            // The state behind the output. A banner that merely stopped
+            // PRINTING the unit would leave the record on disk, and the next
+            // renderer would find it again.
+            boolean theRecordItselfIsClean = !OnboardingSupport.unitRecordSays(
+                    home, OnboardingSupport.LINT, "NEEDS_GIT_MIGRATION");
             boolean aFileInstalledUnitLeavesNoPermanentErrorRecord =
-                    commandsCarryingTheBanner.isEmpty();
+                    commandsBlamingTheFileInstalledUnit.isEmpty() && theRecordItselfIsClean;
             String branch = !theResolveThatInstalledItExitedZero
                     ? "REJECTED: project resolve refused the file: source"
                     : aFileInstalledUnitLeavesNoPermanentErrorRecord
                             ? "ACCEPTED AND CLEAN: installed, and no permanent error record"
                             : "INCOHERENT: installed and celebrated, then errors on every"
-                                    + " subsequent command (" + commandsCarryingTheBanner + ")";
+                                    + " subsequent command ("
+                                    + commandsBlamingTheFileInstalledUnit
+                                    + ", recordClean=" + theRecordItselfIsClean + ")";
             boolean theFileSourceContractIsCoherent =
                     !theResolveThatInstalledItExitedZero
                             || aFileInstalledUnitLeavesNoPermanentErrorRecord;
@@ -129,6 +169,22 @@ public class OnboardingErrorRecordsCoherent {
             // The floor: with fewer than two affected units, "printed once" is
             // arithmetic rather than evidence.
             boolean atLeastTwoUnitsShareTheCause = affected >= 2;
+            // WHICH units share it is the part that keeps this guard honest.
+            // Before the file: contract was fixed the answer was "all of them,
+            // because every unit here is a local install" — the guard was
+            // riding on the defect measured six lines above it, and fixing that
+            // defect would have taken the guard's subject away while leaving it
+            // green. The cause must now come from the planted provenance-less
+            // units, whose error is correct and which no choice of source
+            // would remove.
+            int provenancelessCarryingTheCause = 0;
+            for (String unit : OnboardingSupport.PROVENANCELESS) {
+                if (OnboardingSupport.unitRecordSays(home, unit, CAUSE)) {
+                    provenancelessCarryingTheCause++;
+                }
+            }
+            boolean theCauseIsCarriedByUnitsThatCannotBeFixedByChoosingDifferently =
+                    provenancelessCarryingTheCause >= 2;
             boolean theRecordPrintedOnceRatherThanPerUnit =
                     bannerOccurrences <= 1 && causeOccurrences <= 1;
             boolean theLogWasLongEnoughToContainADuplicate =
@@ -145,10 +201,16 @@ public class OnboardingErrorRecordsCoherent {
             // measured: the banner then stayed at its original count and this
             // assertion went red on the harness's choice of unit rather than on
             // the product.
+            // It must also be a unit that ACTUALLY carries the cause, or the
+            // count cannot drop — which is why the victim comes from the
+            // planted provenance-less set rather than from an arbitrary unit
+            // the project happens not to declare.
             String victim = null;
             for (String unit : OnboardingSupport.storeUnits(home)) {
-                if (unit.equals(OnboardingSupport.GAMMA)) { victim = unit; break; }
+                if (OnboardingSupport.PROVENANCELESS.contains(unit)) { victim = unit; break; }
             }
+            boolean theVictimActuallyCarriesTheCause = victim != null
+                    && OnboardingSupport.unitRecordSays(home, victim, CAUSE);
             ProcessRecord uninstall = victim == null ? null
                     : OnboardingSupport.sm(ctx, "uninstall-" + victim, home, proj,
                             "uninstall", victim);
@@ -163,6 +225,8 @@ public class OnboardingErrorRecordsCoherent {
             boolean pass = theFixtureUnitIsNotGitTracked
                     && theFileSourceContractIsCoherent
                     && atLeastTwoUnitsShareTheCause
+                    && theCauseIsCarriedByUnitsThatCannotBeFixedByChoosingDifferently
+                    && theVictimActuallyCarriesTheCause
                     && theLogWasLongEnoughToContainADuplicate
                     && theRecordPrintedOnceRatherThanPerUnit
                     && theBannerShrankWhenTheCauseWasRemoved;
@@ -184,6 +248,10 @@ public class OnboardingErrorRecordsCoherent {
                             theFileSourceContractIsCoherent)
                     .assertion("at_least_two_units_share_the_cause_so_dedup_is_measurable",
                             atLeastTwoUnitsShareTheCause)
+                    .assertion("the_shared_cause_is_planted_rather_than_borrowed_from_a_defect",
+                            theCauseIsCarriedByUnitsThatCannotBeFixedByChoosingDifferently)
+                    .assertion("the_unit_removed_by_the_clear_half_actually_carried_the_cause",
+                            theVictimActuallyCarriesTheCause)
                     .assertion("the_log_was_long_enough_to_contain_a_duplicate",
                             theLogWasLongEnoughToContainADuplicate)
                     .assertion("the_error_record_printed_once_rather_than_per_unit",
@@ -191,11 +259,48 @@ public class OnboardingErrorRecordsCoherent {
                     .assertion("the_banner_shrank_by_one_when_one_cause_was_removed",
                             theBannerShrankWhenTheCauseWasRemoved)
                     .metric("unitsAffected", affected)
+                    .metric("provenancelessUnitsCarryingTheCause", provenancelessCarryingTheCause)
                     .metric("bannerOccurrencesInSyncLog", bannerOccurrences)
                     .metric("unitsAffectedAfterUninstall", afterCount)
                     .log("branch chosen by the implementation: " + branch)
-                    .log("read-only commands carrying the banner: " + commandsCarryingTheBanner);
+                    .log("read-only commands blaming the file:-installed unit: "
+                    + commandsBlamingTheFileInstalledUnit);
         });
+    }
+
+    /**
+     * Does this output hold {@code unit} at fault in an outstanding-errors
+     * banner?
+     *
+     * <p>The banner names its units on one indented, comma-separated line
+     * ending in a colon, under the {@code BANNER} header:
+     *
+     * <pre>
+     * ⚠ skills with outstanding errors (2) — 1 distinct cause(s) — re-run after fixing:
+     *
+     *   ob-gamma, ob-umbrella:
+     *     - NEEDS_GIT_MIGRATION: …
+     * </pre>
+     *
+     * <p>Scoped to that block rather than a whole-log substring search,
+     * because the log also carries the unit's name in every ordinary row —
+     * {@code list} prints it, {@code bindings list} prints it three times —
+     * and a contains-check over the whole output would report the unit as
+     * blamed on any run that merely mentioned it.
+     */
+    private static boolean blames(String log, String unit) {
+        boolean inBanner = false;
+        for (String raw : log.split("\n", -1)) {
+            String line = raw.strip();
+            if (line.contains(BANNER)) { inBanner = true; continue; }
+            if (!inBanner) continue;
+            if (line.isEmpty()) continue;
+            if (!line.endsWith(":") || line.startsWith("-")) continue;
+            for (String named : line.substring(0, line.length() - 1).split(",")) {
+                if (named.strip().equals(unit)) return true;
+            }
+        }
+        return false;
     }
 
     private static Path path(NodeContext ctx, String node, String key) {

@@ -974,8 +974,19 @@ public final class LiveInterpreter implements ProgramInterpreter {
                     GitOps.isGitRepo(dir) && GitOps.unmergedFiles(dir).isEmpty());
             case NO_GIT_REMOTE -> clearIf(ctx, e.unitName(), e.kind(),
                     GitOps.isGitRepo(dir) && GitOps.originUrl(dir) != null);
+            // Cleared when the unit became git-tracked — OR when the record
+            // describes a unit the operator deliberately installed from a
+            // local path, which never becomes git-tracked and so could never
+            // clear. That second clause is what heals a home that already
+            // carries the record: without it every `file:` install made before
+            // this change would keep appending an outstanding error to every
+            // command until someone uninstalled it.
             case NEEDS_GIT_MIGRATION -> clearIf(ctx, e.unitName(), e.kind(),
-                    GitOps.isGitRepo(dir));
+                    GitOps.isGitRepo(dir)
+                            || ctx.source(e.unitName())
+                                    .map(InstalledUnit::installSource)
+                                    .filter(InstalledUnit.InstallSource.LOCAL_FILE::equals)
+                                    .isPresent());
             case GATEWAY_UNAVAILABLE, AGENT_SYNC_FAILED,
                  MCP_REGISTRATION_FAILED, REGISTRY_UNAVAILABLE,
                  AUTHENTICATION_NEEDED -> {

@@ -113,10 +113,12 @@ public class OnboardingSynced {
 
             ProcessRecord sync = OnboardingSupport.sm(ctx, "sync", home, proj, "sync");
             String syncLog = OnboardingSupport.log(ctx, sync);
-            // Sync's exit code is NOT asserted zero: the fixture's units are
-            // file:-installed and therefore carry a permanent error record,
-            // which is itself under test in onboarding.error.records.coherent.
-            // What is asserted is that it ran far enough to write the lock.
+            // Sync's exit code is NOT asserted zero: the fixture deliberately
+            // plants two units with no provenance record, which correctly
+            // carry NEEDS_GIT_MIGRATION and make the run partial. That
+            // planting, and the file:-installed unit that must NOT carry it,
+            // are under test in onboarding.error.records.coherent. What is
+            // asserted here is that sync ran far enough to write the lock.
             boolean theSyncRanToItsLockWrite = syncLog.contains("units.lock.toml");
 
             boolean pass = theProjectRegistered && theRegistrationIsTheOnlyOne

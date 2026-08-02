@@ -197,6 +197,29 @@ public class OnboardingFixtureBuilt {
             }
             boolean everyInstallExitedZero = installs.stream().allMatch(p -> p.exitCode() == 0);
 
+            // --- a cause the dedup guard can measure without a defect ----------
+            //
+            // Every unit here is installed from a local path, and until the
+            // `file:` contract was fixed every local install carried a
+            // permanent NEEDS_GIT_MIGRATION record. The dedup-and-clear guard
+            // therefore got its "two units sharing one cause" for free — from
+            // the very defect it shares a node with. Fixing that defect would
+            // have taken the guard's subject with it and left
+            // `unitsAffected: 0` reading as a pass, which is the fourth time
+            // this graph's history would have recorded an assertion that only
+            // held while something was broken.
+            //
+            // So the cause is planted, as the shape the error was written for:
+            // the provenance record is DELETED and the reconciler in the
+            // product re-onboards the unit as `installSource: UNKNOWN`. Such a
+            // unit genuinely cannot sync and nobody chose it. The reconcile
+            // happens on the next CLI call — the foreign-checkout registers
+            // immediately below — and the outcome is asserted, not assumed, by
+            // assertSourceHomeIsRealistic.
+            for (String unit : OnboardingSupport.PROVENANCELESS) {
+                OnboardingSupport.stripProvenanceRecord(srcHome, unit);
+            }
+
             // --- the inherited-state pollution --------------------------------
             //
             // ORDER MATTERS, AND IT IS NOT OBVIOUS. The registrations go in
@@ -339,6 +362,8 @@ public class OnboardingFixtureBuilt {
                             realism.danglingShim())
                     .assertion("the_source_home_carries_foreign_binding_and_child_home_claims",
                             realism.foreignClaims())
+                    .assertion("the_source_home_carries_two_units_with_no_provenance_record",
+                            realism.provenancelessUnits() >= 2)
                     .assertion("the_source_home_carries_at_least_two_foreign_registrations",
                             srcRegistrations >= 2)
                     .assertion("the_checkout_is_a_clean_git_repository",
@@ -353,6 +378,7 @@ public class OnboardingFixtureBuilt {
                     .metric("sourceHomeUnits", OnboardingSupport.storeUnits(srcHome).size())
                     .metric("foreignBindingRecords", realism.foreignBindingRecords())
                     .metric("foreignChildHomes", realism.foreignChildHomes())
+                    .metric("provenancelessUnits", realism.provenancelessUnits())
                     .metric("foreignRegistrations", srcRegistrations)
                     .log("scripts: " + scripts.how())
                     .log("dangling shim planted at " + danglingShim)

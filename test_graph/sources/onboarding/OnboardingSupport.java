@@ -92,6 +92,36 @@ final class OnboardingSupport {
     /** The shim that dep lands. */
     static final String SCRIPT_SHIM = "ob-script-shim";
 
+    /**
+     * The two units whose provenance record is REMOVED after install, so the
+     * reconciler re-onboards them with {@code installSource: UNKNOWN}.
+     *
+     * <h2>Why the fixture has to plant this</h2>
+     *
+     * <p>The dedup-and-clear guard needs at least two units sharing one error
+     * cause, and until the {@code file:} contract was fixed it got them for
+     * free: EVERY unit here is installed from a local path, and every local
+     * install carried a permanent {@code NEEDS_GIT_MIGRATION} record. That is
+     * the fourth assertion in this graph's history that only held while
+     * something was broken — fixing the defect the SAME node measures would
+     * have taken the guard's subject away with it and left
+     * {@code unitsAffected: 0} reading as a pass.
+     *
+     * <p>So the cause is now planted deliberately, and planted as the shape it
+     * was WRITTEN for: a unit sitting in the store with no provenance record,
+     * which is what {@code InstallSource.UNKNOWN} means ("pre-tracking install
+     * — onboarded by the reconciler") and what a hand-copied skill looks like.
+     * That unit genuinely cannot sync and nobody chose it, so the error is
+     * correct — unlike the {@code file:} case, where it was a complaint about
+     * the operator's own decision.
+     *
+     * <p>The record is deleted rather than edited, so the reconciler in the
+     * PRODUCT writes the state under test. Both are units the project does not
+     * declare, so removing one in the clear half cannot collide with a project
+     * lock.
+     */
+    static final List<String> PROVENANCELESS = List.of(GAMMA, UMBRELLA);
+
     /** A unit whose two markdown skill-imports are both VALID. */
     static final String LINT = "acme-lint";
     /** A unit with exactly two INVALID imports: one missing unit, one missing path. */
@@ -582,9 +612,10 @@ final class OnboardingSupport {
      */
     record Realism(boolean transitivelyResolvedUnit, boolean regularFileCliShim,
                    boolean danglingShim, boolean foreignClaims, int foreignBindingRecords,
-                   int foreignChildHomes) {
+                   int foreignChildHomes, int provenancelessUnits) {
         boolean ok() {
-            return transitivelyResolvedUnit && regularFileCliShim && danglingShim && foreignClaims;
+            return transitivelyResolvedUnit && regularFileCliShim && danglingShim && foreignClaims
+                    && provenancelessUnits >= 2;
         }
     }
 
@@ -620,8 +651,43 @@ final class OnboardingSupport {
             bindings += count(text, "\"source\" : \"PROJECT\"");
         }
         int children = names(srcHome.resolve("child-homes")).size();
+        // The dedup-and-clear guard's subject: units the reconciler onboarded
+        // with no provenance, which is the shape NEEDS_GIT_MIGRATION was
+        // written for. Counted here rather than assumed, because until the
+        // `file:` contract was fixed this cause arrived for free and the guard
+        // rode on the defect it shared a node with.
+        int provenanceless = 0;
+        for (String unit : PROVENANCELESS) {
+            if (unitRecordSays(srcHome, unit, "\"installSource\" : \"UNKNOWN\"")
+                    && unitRecordSays(srcHome, unit, "NEEDS_GIT_MIGRATION")) {
+                provenanceless++;
+            }
+        }
         return new Realism(transitive, regularShim, dangling,
-                bindings >= 2 && children >= 2, bindings, children);
+                bindings >= 2 && children >= 2, bindings, children, provenanceless);
+    }
+
+    /** Does {@code installed/<unit>.json} in {@code home} contain {@code needle}? */
+    static boolean unitRecordSays(Path home, String unit, String needle) {
+        Path record = home.resolve("installed").resolve(unit + ".json");
+        if (!Files.isRegularFile(record)) return false;
+        try {
+            return Files.readString(record).contains(needle);
+        } catch (IOException e) {
+            return false;
+        }
+    }
+
+    /**
+     * Delete {@code installed/<unit>.json} so the reconciler re-onboards the
+     * unit from what is on disk.
+     *
+     * <p>Only the provenance record: {@code installed/<unit>.projections.json}
+     * stays, so the unit keeps its bindings and its agent links and nothing
+     * downstream sees a unit count change.
+     */
+    static void stripProvenanceRecord(Path home, String unit) throws IOException {
+        Files.deleteIfExists(home.resolve("installed").resolve(unit + ".json"));
     }
 
     // ------------------------------------------------- the ledger, on disk

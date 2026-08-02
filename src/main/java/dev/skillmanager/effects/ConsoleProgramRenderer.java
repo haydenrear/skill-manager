@@ -199,6 +199,14 @@ public final class ConsoleProgramRenderer implements ProgramRenderer {
             case ContextFact.SyncGitNotGitTracked x ->
                     Log.warn("%s: not git-tracked — file/local installs do not sync; use github: or git+",
                             x.skillName());
+            // A note about a choice, not a complaint about a fault: the
+            // operator asked for a local install and has one. Still said on
+            // every sync, so "this will not update" never becomes invisible.
+            case ContextFact.SyncGitLocalInstall x ->
+                    Log.info("%s: installed from a local path%s — nothing upstream to sync "
+                                    + "(reinstall from github: or git+ to track a remote)",
+                            x.skillName(),
+                            x.origin() == null || x.origin().isBlank() ? "" : " (" + x.origin() + ")");
             case ContextFact.SyncGitNoOrigin x ->
                     Log.warn("%s: git-tracked but no origin remote configured", x.skillName());
             case ContextFact.SyncGitRegistryUnavailable x ->
