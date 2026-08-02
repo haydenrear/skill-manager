@@ -54,6 +54,7 @@ import dev.skillmanager.command.GatewayStatusCommandTest;
 import dev.skillmanager.command.ListShowsKindAndShaTest;
 import dev.skillmanager.commands.ProjectCommandTest;
 import dev.skillmanager.commands.RemediesAreRunnableTest;
+import dev.skillmanager.validation.ProjectMarkdownImportsTest;
 import dev.skillmanager.store.HomeVerifyDiagnosticTextTest;
 import dev.skillmanager.cli.installer.SkillScriptBackendTest;
 import dev.skillmanager.bindings.BindingsTest;
@@ -200,6 +201,7 @@ public class RunTests {
         failures += PublishDetectsPluginTest.run();
         failures += PublishDetectsSkillTest.run();
         failures += MarkdownImportValidatorTest.run();
+        failures += ProjectMarkdownImportsTest.run();
         failures += ScaffoldPluginTest.run();
         failures += CliObservabilityTest.run();
         failures += ServerObservabilityContractTest.run();

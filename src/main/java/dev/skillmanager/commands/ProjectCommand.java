@@ -12,6 +12,7 @@ import dev.skillmanager.project.SkillProjectRegistry;
 import dev.skillmanager.project.UnitTrunkPull;
 import dev.skillmanager.store.SkillStore;
 import dev.skillmanager.util.Log;
+import dev.skillmanager.validation.MarkdownImportValidator;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
@@ -159,10 +160,18 @@ public final class ProjectCommand {
             ProjectLibResolver.Result libResult = resolveLibs
                     ? new ProjectLibResolver(store).resolve(project)
                     : null;
+            // The project's OWN markdown, which until now nothing validated.
+            // AFTER the resolve, deliberately: a `skill-imports` entry names an
+            // installed unit, and the resolve is what installs them, so checking
+            // first would report every declared unit as missing.
+            List<MarkdownImportValidator.Violation> importViolations =
+                    MarkdownImportValidator.validateProject(
+                            store, result.registration().name(), root);
             if (json) {
                 System.out.println("""
                         {"name":"%s","profile":"%s","installed":%d,"resolved":%d,"bindings":%d,"libs":%d,\
-                        "vendored":%d,"vendoredRepaired":%d,"vendoredProblems":%s,"heldBack":%s,"childHome":"%s","lock":"%s"}"""
+                        "vendored":%d,"vendoredRepaired":%d,"vendoredProblems":%s,"heldBack":%s,"childHome":"%s","lock":"%s",\
+                        "markdownImportViolations":%d}"""
                         .formatted(
                                 esc(result.registration().name()),
                                 esc(project.activeProfile() == null ? "" : project.activeProfile()),
@@ -177,7 +186,8 @@ public final class ProjectCommand {
                                 esc(result.childHome().layout().childSkillManagerHome().toString()),
                                 esc(result.registration().registrationDir()
                                         .resolve(dev.skillmanager.project.SkillProjectLock.FILENAME)
-                                        .toString())));
+                                        .toString()),
+                                importViolations.size()));
             } else {
                 Log.ok("resolved project %s", result.registration().name());
                 if (project.activeProfile() != null) Log.info("  profile:   %s", project.activeProfile());
@@ -194,8 +204,49 @@ public final class ProjectCommand {
                         .resolve(dev.skillmanager.project.SkillProjectLock.FILENAME));
                 reportHeldBack(result.childHome());
             }
-            return 0;
+            return reportProjectImportViolations(importViolations, json);
         }
+    }
+
+    /**
+     * Print the project checkout's own markdown skill-import violations, and
+     * give them an exit code.
+     *
+     * <h2>Why an exit code, and why THIS exit code</h2>
+     *
+     * <p>A printed violation that does not reach {@code $?} is a comment. That
+     * lesson was already paid for on {@code install}, which used to print the
+     * block after its success banner and exit 0 —
+     * {@link MarkdownImportValidator#EXIT_CODE} exists because of it. This
+     * reuses that code rather than inventing a second one: the condition is
+     * the same condition ("your markdown names something that is not there"),
+     * and a caller that already handles 11 from {@code install} should not
+     * have to learn a second number to handle it from {@code resolve}.
+     *
+     * <p>Printed before the return and on stderr, next to the summary rather
+     * than beneath a wall of success output, for the same reason.
+     *
+     * <p>The resolve itself is NOT rolled back. The units are installed, the
+     * bindings are materialized, and the manifest that describes them is
+     * correct; what is wrong is a reference inside the checkout's own prose.
+     * Undoing the install over that would be a worse trade than reporting it,
+     * which is the same call {@code install} makes when a committed unit
+     * carries a bad reference.
+     */
+    private static int reportProjectImportViolations(
+            List<MarkdownImportValidator.Violation> violations, boolean json) {
+        if (violations.isEmpty()) return 0;
+        if (!json) {
+            System.err.println();
+            System.err.println("markdown skill-import violations (" + violations.size()
+                    + ") in this project's own files — fix these references:");
+            for (MarkdownImportValidator.Violation v : violations) {
+                System.err.println("  - " + v.unitName() + " (project): " + v.file());
+                System.err.println("    " + v.message());
+            }
+            System.err.println();
+        }
+        return MarkdownImportValidator.EXIT_CODE;
     }
 
     /**
