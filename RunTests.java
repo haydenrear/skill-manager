@@ -216,6 +216,7 @@ public class RunTests {
         failures += ShowPluginListsContainedSkillsTest.run();
         failures += SkillManagerSkillDocsTest.run();
         failures += dev.skillmanager.agent.AgentHomesTest.run();
+        failures += dev.skillmanager.agent.AgentProjectionFollowsHomeTest.run();
         failures += dev.skillmanager.mcp.McpWriterTest.run();
         failures += dev.skillmanager.mcp.GatewayRuntimeTest.run();
         failures += dev.skillmanager.store.FetcherGitCloneTest.run();

@@ -277,6 +277,49 @@ public final class LaunchEnv {
         return Files.isDirectory(dir.resolve("installed")) && Files.isDirectory(dir.resolve("skills"));
     }
 
+    /**
+     * The agent directory <em>owned by some Skill Manager home</em> that
+     * contains {@code path}, or null when {@code path} is not inside one.
+     *
+     * <p>The companion to {@link #looksLikeStoreRoot} for the other half of a
+     * home. {@code ~/.claude} is not a store root — no {@code installed/}, no
+     * {@code skills/} pair, no descriptor — so every check built on that
+     * predicate was blind to the directory agents actually load skills from.
+     * Issue #145 is what that blindness cost: {@code home clone} reported "no
+     * path in it reaches any other Skill Manager home" while the copy held live
+     * instructions to delete files in the source's {@code ~/.claude}, and an
+     * {@code uninstall} in the copy carried three of them out and exited 0.
+     *
+     * <p>The predicate is structural and both halves are load-bearing. A
+     * directory qualifies when it is named {@code .claude}, {@code .codex} or
+     * {@code .gemini} <b>and</b> its parent holds a Skill Manager store.
+     * Without the first half this would match anything; without the second it
+     * would match every {@code .claude} on the machine, including the many no
+     * home manages — and a rule that fires on those is a rule somebody
+     * switches off.
+     *
+     * <p>It returns the directory rather than a boolean because every caller
+     * has to name it: a refusal that cannot say which directory it is
+     * protecting is a refusal the operator cannot act on.
+     */
+    public static Path agentDirOwnedByAHome(Path path) {
+        if (path == null) return null;
+        Path abs = path.toAbsolutePath().normalize();
+        for (Path parent = abs; parent != null; parent = parent.getParent()) {
+            Path name = parent.getFileName();
+            if (name == null) continue;
+            String segment = name.toString();
+            if (!AgentHomes.CLAUDE_DIR_NAME.equals(segment)
+                    && !".codex".equals(segment) && !".gemini".equals(segment)) {
+                continue;
+            }
+            Path owner = parent.getParent();
+            if (owner == null) continue;
+            if (looksLikeStoreRoot(owner.resolve(AgentHomes.STORE_DIR_NAME))) return parent;
+        }
+        return null;
+    }
+
     // ---------------------------------------------------------------- gate
 
     /**

@@ -30,16 +30,19 @@ public final class CodexAgent implements Agent {
     @Override public String mcpConfigFormat() { return "codex-toml"; }
 
     /**
-     * {@code $CODEX_HOME}, else {@code <user home>/.codex}.
+     * {@code $CODEX_HOME}, else {@code <the active home's root>/.codex}.
      *
-     * <p>The default goes through {@link AgentHomes#userHome()} rather than
-     * {@code System.getProperty("user.home")}: the JVM ignores {@code $HOME} on
-     * macOS, so the direct property read sent skill projection into the
-     * operator's real {@code ~/.codex} whenever {@code CODEX_HOME} was unset
-     * (issue #18).
+     * <p>The default goes through {@link AgentHomes#agentHomeRoot()} rather
+     * than {@code System.getProperty("user.home")} for two reasons that arrived
+     * as two separate incidents. The JVM ignores {@code $HOME} on macOS, so the
+     * direct property read sent skill projection into the operator's real
+     * {@code ~/.codex} whenever {@code CODEX_HOME} was unset (issue #18); and
+     * {@code $HOME} is the wrong base even when it is read correctly, because a
+     * unit installed into {@code <project>/.skill-manager} belongs in that
+     * project's {@code .codex} and not in the operator's (issue #145).
      */
     private static Path codexHome() {
         return AgentHomes.resolveOrDefault(AgentHomes.CODEX_HOME,
-                AgentHomes.userHome().resolve(".codex"));
+                AgentHomes.agentHomeRoot().resolve(".codex"));
     }
 }

@@ -1,5 +1,6 @@
 package dev.skillmanager.store;
 
+import dev.skillmanager.agent.AgentHomes;
 import dev.skillmanager.bindings.Binding;
 import dev.skillmanager.bindings.BindingJson;
 import dev.skillmanager.bindings.ChildHomeRegistry;
@@ -154,6 +155,65 @@ public final class HomeCloner {
     public static final Set<String> SKIPPED_ROOT_FILES =
             Set.of("audit.log", "gateway.log", "gateway.pid");
 
+    /**
+     * Directories a clone does not copy because their contents are
+     * <b>claims of stewardship over directories outside the home</b>, and a
+     * copy of a home is not a copy of those relationships.
+     *
+     * <h2>Why {@code projects/} is here (issue #145 item 3)</h2>
+     *
+     * <p>A registration records {@code project_root} — a repository elsewhere
+     * on this machine — and every operation that reads it is an operation that
+     * writes to it. Measured with the CLI: a clone inherited a registration
+     * verbatim, {@code project list} in the copy reported the source's project,
+     * and {@code project resolve} then materialized a child home plus
+     * {@code .claude}, {@code .codex} and {@code .gemini} inside a repository
+     * the copy had never been pointed at. That is the issue's "wrote into five
+     * unrelated repositories under ~/IdeaProjects".
+     *
+     * <p>It is also the sharper failure the worktree tier hits.
+     * {@code ProjectChildHomeScaffolder.layoutFor} resolves everything from
+     * {@code project.projectRoot()}, so a worktree home cloned from a project
+     * home resolves its "child home" to the ORIGINAL checkout's
+     * {@code .skill-manager} — the very home the worktree exists to stay out
+     * of. It also explains a failure message that names the parent home while
+     * the command ran in the worktree, which looks like cwd sensitivity and is
+     * not.
+     *
+     * <h2>Why dropping, rather than re-anchoring or tokenizing</h2>
+     *
+     * <p>Both alternatives were considered and both are guesses.
+     *
+     * <p><b>Tokenizing {@code project_root}</b> as {@code $SKILL_MANAGER_HOME/..},
+     * symmetric with the {@code manifest_path} beside it, is correct only for
+     * the self-registration case where the project root IS the home's own root.
+     * For the global home registering {@code ~/IdeaProjects/foo} it requires
+     * walking up and back down, which is exactly what {@link HomeDescriptor}'s
+     * storage mapper refuses to encode because it "would silently repoint an
+     * unrelated path at whatever sits at that offset from the copy". The
+     * asymmetry between the two fields is not an oversight — it is the one
+     * field that names something the home does not own.
+     *
+     * <p><b>Re-anchoring it</b> to the copy's root assumes the copy should now
+     * manage the copy's checkout. Often true, nowhere stated. A worktree home
+     * that silently adopts stewardship of the worktree is a better guess than
+     * the current one and is still a guess, and the cost of guessing wrong is
+     * writes into somebody's working tree.
+     *
+     * <p>Dropping is the only option with no offset to get wrong. Nothing is
+     * lost silently — the clone names every registration it dropped — and
+     * re-registering is one command that re-reads the project's OWN manifest
+     * rather than a snapshot taken by a different home.
+     *
+     * <p>{@code child-homes/} is deliberately NOT here despite being the same
+     * shape: its {@code childHome} field names a checkout and stays absolute
+     * too. Those records carry the teardown path for the worktree tier and
+     * several tests depend on them surviving a clone, so removing them is a
+     * larger change than this one. It is the next record of this kind to look
+     * at.
+     */
+    public static final Set<String> DROPPED_STATE_DIRS = Set.of("projects");
+
     /** Path segments that mark a subtree as machine-provisioned, not authored. */
     private static final Set<String> PROVISIONED_SEGMENTS = Set.of(
             ".venv", "venv", "site-packages", "node_modules", "__pycache__",
@@ -227,6 +287,23 @@ public final class HomeCloner {
         public static final String CONTENT_REFERENCE = "CONTENT_REFERENCE";
 
         /**
+         * A record in the copy that names one of the <em>source</em> home's
+         * agent directories. Its own kind rather than a {@code FILE_CONTENT}
+         * because the remedy differs: a {@code FILE_CONTENT} leak means a path
+         * was missed by a re-anchoring pass, while this one means the copy is
+         * holding a live instruction to touch another home's agent tree —
+         * measured as an {@code uninstall} in a clone deleting three of the
+         * source home's global skill links and reporting success. Issue #145.
+         */
+        public static final String SOURCE_AGENT_HOME = "SOURCE_AGENT_HOME";
+
+        /**
+         * A resolved path in the copy that lands in some other home's agent
+         * directory — the agent-tree twin of {@code FOREIGN_HOME}.
+         */
+        public static final String FOREIGN_AGENT_HOME = "FOREIGN_AGENT_HOME";
+
+        /**
          * A path that appears only inside a persisted error MESSAGE.
          *
          * <p>{@code installed/<unit>.json} carries an {@code errors[]} array,
@@ -251,7 +328,16 @@ public final class HomeCloner {
          */
         public static final String DIAGNOSTIC_TEXT = "DIAGNOSTIC_TEXT";
 
-        /** True when this is a mention — authored or diagnostic — not a path that resolves. */
+        /**
+         * True when this is a mention — authored or diagnostic — not a path
+         * that resolves.
+         *
+         * <p>Deliberately an allow-list of the two tolerable kinds rather than
+         * a deny-list of the intolerable ones. {@code SOURCE_AGENT_HOME} and
+         * {@code FOREIGN_AGENT_HOME} (#145) are live instructions to touch
+         * another home's agent tree and are never tolerable; a deny-list would
+         * have silently tolerated them the moment they were added.
+         */
         public boolean tolerable() {
             return CONTENT_REFERENCE.equals(kind) || DIAGNOSTIC_TEXT.equals(kind);
         }
@@ -275,13 +361,23 @@ public final class HomeCloner {
             List<Leak> leaks,
             List<String> contentReferences,
             List<String> danglingLinks,
-            List<String> danglingReferences
+            List<String> danglingReferences,
+            /**
+             * Project registrations the copy deliberately did not inherit, by
+             * name. Reported rather than merely omitted: dropping them is the
+             * right default and it is still a change to what the copy knows,
+             * so the operator has to be able to see it and re-register.
+             * See {@link HomeCloner#DROPPED_STATE_DIRS}.
+             */
+            List<String> droppedRegistrations
     ) {
         public Report {
             leaks = leaks == null ? List.of() : List.copyOf(leaks);
             contentReferences = contentReferences == null ? List.of() : List.copyOf(contentReferences);
             danglingLinks = danglingLinks == null ? List.of() : List.copyOf(danglingLinks);
             danglingReferences = danglingReferences == null ? List.of() : List.copyOf(danglingReferences);
+            droppedRegistrations = droppedRegistrations == null
+                    ? List.of() : List.copyOf(droppedRegistrations);
         }
 
         /** True when nothing in the copy still points at the source home. */
@@ -333,6 +429,10 @@ public final class HomeCloner {
 
     private static Report build(Path src, Path dst, boolean strict, Counters counters)
             throws IOException {
+        // Enumerated from the SOURCE before the copy, because the copy is what
+        // omits them: after copyTree there is nothing left in the destination
+        // to enumerate, and a drop nobody can name is a drop nobody can undo.
+        List<String> droppedRegistrations = registrationsIn(src);
         copyTree(src, dst, counters);
 
         int stateReanchored = reanchorState(src, dst);
@@ -361,7 +461,25 @@ public final class HomeCloner {
                 counters.directories, counters.files, counters.symlinks, counters.bytes,
                 counters.linksRelativized, stateReanchored, provisionedRewritten,
                 leaks, verification.contentReferences(), verification.danglingLinks(),
-                danglingReferences);
+                danglingReferences, droppedRegistrations);
+    }
+
+    /** Registration names in {@code home}, for the report. */
+    private static List<String> registrationsIn(Path home) {
+        Path dir = home.resolve("projects");
+        if (!Files.isDirectory(dir)) return List.of();
+        List<String> names = new ArrayList<>();
+        try (var stream = Files.list(dir)) {
+            for (Path project : (Iterable<Path>) stream::iterator) {
+                if (Files.isRegularFile(project.resolve("registration.toml"))) {
+                    names.add(project.getFileName().toString());
+                }
+            }
+        } catch (IOException e) {
+            Log.warn("clone: could not list %s: %s", dir, e.getMessage());
+        }
+        names.sort(String::compareTo);
+        return names;
     }
 
     // --------------------------------------------------- the drift baseline
@@ -537,10 +655,20 @@ public final class HomeCloner {
         int rewritten = 0;
         rewritten += reanchorLedgers(srcRoot, dstRoot);
         rewritten += reanchorChildHomes(srcRoot, dstRoot);
-        rewritten += reanchorProjectRegistrations(srcRoot, dstRoot);
         rewritten += reanchorRemainingState(srcRoot, dstRoot);
         return rewritten;
     }
+
+    // There was a fourth pass here, rewriting projects/<name>/registration.toml's
+    // manifest_path. It is gone because projects/ is no longer copied at all
+    // ({@link #DROPPED_STATE_DIRS}), and deleting it rather than leaving it
+    // unreachable is deliberate: a projects/ directory that arrives in a copy by
+    // some other route — an rsync, a restored backup, an older skill-manager's
+    // clone — now FAILS verification as an un-re-anchored STATE file, instead of
+    // being quietly rewritten into something that looks repaired and still names
+    // another machine's checkout in project_root. That is this class's
+    // default-deny rule applied to the one record class that had an exemption
+    // from it. Issue #145 item 3.
 
     /**
      * Catch-all for state files the structured passes above do not model.
@@ -664,64 +792,6 @@ public final class HomeCloner {
             Log.warn("clone: could not list %s: %s", dir, e.getMessage());
         }
         return rewritten;
-    }
-
-    /**
-     * {@code registration.toml} is a small fixed template; only its
-     * {@code manifest_path} can be a self-reference. Rewriting that one
-     * assignment keeps every other recorded field (including
-     * {@code project_root}, which is deliberately external) byte-identical.
-     */
-    private static int reanchorProjectRegistrations(Path srcRoot, Path dstRoot) {
-        Path dir = dstRoot.resolve("projects");
-        if (!Files.isDirectory(dir)) return 0;
-        HomePaths dstPaths = HomePaths.of(dstRoot);
-        int rewritten = 0;
-        try (var stream = Files.list(dir)) {
-            for (Path project : (Iterable<Path>) stream::iterator) {
-                Path f = project.resolve("registration.toml");
-                if (!Files.isRegularFile(f)) continue;
-                try {
-                    List<String> lines = Files.readAllLines(f, StandardCharsets.UTF_8);
-                    boolean changed = false;
-                    for (int i = 0; i < lines.size(); i++) {
-                        String line = lines.get(i);
-                        String value = tomlStringValue(line, "manifest_path");
-                        if (value == null) continue;
-                        String resolved = HomePaths.isEncoded(value)
-                                ? dstPaths.decodeToString(value)
-                                : remapString(value, srcRoot, dstRoot);
-                        String encoded = dstPaths.encode(resolved);
-                        String next = "manifest_path = \"" + encoded.replace("\\", "\\\\")
-                                .replace("\"", "\\\"") + "\"";
-                        if (!next.equals(line)) {
-                            lines.set(i, next);
-                            changed = true;
-                        }
-                    }
-                    if (changed) {
-                        Files.writeString(f, String.join("\n", lines) + "\n", StandardCharsets.UTF_8);
-                        rewritten++;
-                    }
-                } catch (IOException e) {
-                    Log.warn("clone: could not re-anchor %s: %s", f, e.getMessage());
-                }
-            }
-        } catch (IOException e) {
-            Log.warn("clone: could not list %s: %s", dir, e.getMessage());
-        }
-        return rewritten;
-    }
-
-    /** The raw value of {@code key = "..."}, or null if this is another line. */
-    private static String tomlStringValue(String line, String key) {
-        String trimmed = line.trim();
-        if (!trimmed.startsWith(key)) return null;
-        int eq = trimmed.indexOf('=');
-        if (eq < 0 || !trimmed.substring(0, eq).trim().equals(key)) return null;
-        String rhs = trimmed.substring(eq + 1).trim();
-        if (rhs.length() < 2 || rhs.charAt(0) != '"' || !rhs.endsWith("\"")) return null;
-        return rhs.substring(1, rhs.length() - 1).replace("\\\"", "\"").replace("\\\\", "\\");
     }
 
     // ------------------------------------------ provisioned re-anchoring
@@ -937,6 +1007,17 @@ public final class HomeCloner {
     private static Verification verifyRoots(Path srcRoot, Path dstRoot, boolean strict)
             throws IOException {
         byte[] needle = srcRoot.toString().getBytes(StandardCharsets.UTF_8);
+        // The source home's agent directories are part of the source home, and
+        // until #145 nothing looked for them. The old check searched for the
+        // STORE root only, so a ledger row naming <srcRoot>/../.claude/skills
+        // was invisible to it — which is exactly how the clone could report
+        // that "nothing in it resolves back to the source" while carrying three
+        // live instructions to delete files in the source's agent directories.
+        List<byte[]> agentNeedles = new ArrayList<>();
+        for (Path agentDir : AgentHomes.agentDirsUnder(AgentHomes.homeRootFor(srcRoot))) {
+            if (dstRoot.startsWith(agentDir)) continue;   // the copy lives there; not a leak
+            agentNeedles.add(agentDir.toString().getBytes(StandardCharsets.UTF_8));
+        }
         HomePaths srcPaths = HomePaths.of(srcRoot);
         Path dstReal = realOrSame(dstRoot);
         List<Leak> leaks = new ArrayList<>();
@@ -962,6 +1043,13 @@ public final class HomeCloner {
                     if (foreign != null) {
                         leaks.add(new Leak(rel, "FOREIGN_HOME",
                                 target + " resolves into the home at " + foreign));
+                    } else {
+                        Path foreignAgent = foreignAgentHomeReachedBy(file, dstReal);
+                        if (foreignAgent != null) {
+                            leaks.add(new Leak(rel, Leak.FOREIGN_AGENT_HOME,
+                                    target + " resolves into the agent directory "
+                                            + foreignAgent + ", which belongs to another home"));
+                        }
                     }
                 }
                 return;
@@ -978,10 +1066,27 @@ public final class HomeCloner {
                     unresolved.add(rel + " -> " + missing);
                 }
             }
-            if (!containsBytes(file, needle)) return;
+            boolean namesStore = containsBytes(file, needle);
+            boolean namesAgentHome = false;
+            for (byte[] agentNeedle : agentNeedles) {
+                if (containsBytes(file, agentNeedle)) { namesAgentHome = true; break; }
+            }
+            if (!namesStore && !namesAgentHome) return;
             if (surface == Surface.CONTENT) {
                 contentReferences.add(rel);
                 if (strict) leaks.add(new Leak(rel, Leak.CONTENT_REFERENCE, "authored unit content"));
+            } else if (namesAgentHome) {
+                // FIRST, before any downgrade. #144's diagnostic check accounts
+                // only for occurrences of the STORE needle, so a record holding
+                // both a diagnostic store-mention and a live agent-home
+                // reference would satisfy mentionIsOnlyDiagnostic and be
+                // downgraded whole — losing the #145 finding entirely. This
+                // kind is never tolerable, so it is tested before anything that
+                // can tolerate.
+                leaks.add(new Leak(rel, Leak.SOURCE_AGENT_HOME,
+                        "names an agent directory of the source home (" + surface.name().toLowerCase()
+                                + ") — acting on this record would read or delete files "
+                                + "in the home this copy was made from"));
             } else if (mentionIsOnlyDiagnostic(file, rel, needleText)) {
                 // A sentence about another home, not a path into one. See
                 // Leak#DIAGNOSTIC_TEXT — and note this is the only branch that
@@ -1125,6 +1230,54 @@ public final class HomeCloner {
         return null;
     }
 
+    /**
+     * The <em>agent</em> directory of another home that a link in the copy
+     * reaches, or null when it reaches none.
+     *
+     * <h2>Why {@link #foreignHomeReachedBy} could not see this</h2>
+     *
+     * <p>That check asks {@link LaunchEnv#looksLikeStoreRoot} about every
+     * ancestor, and {@code ~/.claude} is not a store root: it has no
+     * {@code installed/}, no {@code skills/} pair in that sense, no descriptor.
+     * So a link into the operator's global {@code ~/.claude/skills} passed a
+     * check whose success line said "no path in it reaches any other Skill
+     * Manager home" — literally true, because an agent home is not a Skill
+     * Manager home, and materially false, because that is the directory every
+     * agent session actually loads skills from. Issue #145.
+     *
+     * <p>The predicate stays structural, like its sibling: a directory is
+     * another home's agent directory when it is named {@code .claude},
+     * {@code .codex} or {@code .gemini} <em>and</em> its parent holds a Skill
+     * Manager store. The second half is what keeps this from firing on any
+     * {@code .claude} anywhere — an unrelated project's config directory that
+     * no home manages is not this mechanism's business, and a rule that fires
+     * on it is a rule somebody switches off.
+     */
+    private static Path foreignAgentHomeReachedBy(Path link, Path dstReal) {
+        Path resolved;
+        try {
+            resolved = link.toRealPath();
+        } catch (IOException e) {
+            return null;   // dangling; already reported by the caller
+        }
+        for (Path parent = resolved; parent != null; parent = parent.getParent()) {
+            if (parent.equals(dstReal) || parent.startsWith(dstReal)) return null;
+            Path name = parent.getFileName();
+            if (name == null) continue;
+            if (!AgentHomes.CLAUDE_DIR_NAME.equals(name.toString())
+                    && !".codex".equals(name.toString())
+                    && !".gemini".equals(name.toString())) {
+                continue;
+            }
+            Path owner = parent.getParent();
+            if (owner == null) continue;
+            Path store = owner.resolve(AgentHomes.STORE_DIR_NAME);
+            if (store.equals(dstReal) || store.startsWith(dstReal)) return null;
+            if (LaunchEnv.looksLikeStoreRoot(store)) return parent;
+        }
+        return null;
+    }
+
     private static Path realOrSame(Path path) {
         try {
             return path.toRealPath();
@@ -1211,6 +1364,10 @@ public final class HomeCloner {
         int slash = normalized.indexOf('/');
         String top = slash < 0 ? normalized : normalized.substring(0, slash);
         if (SKIPPED_DIRS.contains(top)) return true;
+        // Not skipped for being transient or re-derivable, like everything
+        // above — dropped because a copy of a home does not inherit that home's
+        // claims over directories elsewhere on the machine. Issue #145 item 3.
+        if (DROPPED_STATE_DIRS.contains(top)) return true;
         // Segment-wise, and the .pyc / .pyo suffix rule with it, both from the
         // one definition shared with the reconcile.
         if (Rederivable.isCache(normalized)) return true;
@@ -1221,11 +1378,54 @@ public final class HomeCloner {
         return root.relativize(path).toString();
     }
 
+    /**
+     * Where {@code path} lands in the copy: unchanged when it names something
+     * genuinely external, re-rooted when it names part of the source home.
+     *
+     * <h2>A home is its store AND its agent directories</h2>
+     *
+     * <p>This used to re-root only paths inside the <em>store</em>, and
+     * {@link HomePaths}' own javadoc endorsed the omission: "{@code destPath}
+     * points at {@code ~/.claude/skills/<unit>} and stays absolute". That is
+     * right for a home being written in place and wrong for a home being
+     * copied, and issue #145 is the difference. A home's agent directories sit
+     * beside its store at {@code <root>/.claude|.codex|.gemini} — the same
+     * "beside the store" span {@code HomeDescriptor}'s storage mapper already
+     * encodes, and the same directories {@code LaunchEnv#requireClaudeRedirected}
+     * insists a launch stay inside. Leaving them absolute means the copy's
+     * ledger describes the <em>source's</em> agent directories.
+     *
+     * <p>Measured, and this is the half that a corrected resolution rule does
+     * <b>not</b> cover: with the write path fixed so that a sync in the copy
+     * writes only the copy's own agent dirs, an {@code uninstall} in the copy
+     * still walked the inherited rows and <b>deleted the source home's agent
+     * links</b> — three of them, reporting {@code ✓ unbound} and exiting 0. The
+     * write path re-derives its destinations every run and so heals itself; the
+     * removal path is ledger-driven by construction, because the whole point of
+     * the ledger is to know the exact footprint to undo. A stale row is
+     * therefore not a stale opinion about where to write. It is a live
+     * instruction to delete something in another home.
+     *
+     * <p>The bound is the same one the descriptor accepts: exactly the three
+     * agent directories directly beside the store. A path deeper in the
+     * operator's home, or an agent directory they placed somewhere else
+     * entirely, is external and is left naming what it names.
+     */
     private static Path remapPath(Path path, Path srcRoot, Path dstRoot) {
         if (path == null) return null;
         Path abs = path.toAbsolutePath().normalize();
-        if (!HomePaths.of(srcRoot).isInsideHome(abs)) return path;
-        return dstRoot.resolve(srcRoot.relativize(abs));
+        if (HomePaths.of(srcRoot).isInsideHome(abs)) {
+            return dstRoot.resolve(srcRoot.relativize(abs));
+        }
+        List<Path> srcAgentDirs = AgentHomes.agentDirsUnder(AgentHomes.homeRootFor(srcRoot));
+        List<Path> dstAgentDirs = AgentHomes.agentDirsUnder(AgentHomes.homeRootFor(dstRoot));
+        for (int i = 0; i < srcAgentDirs.size(); i++) {
+            Path srcAgentDir = srcAgentDirs.get(i);
+            if (abs.equals(srcAgentDir) || abs.startsWith(srcAgentDir)) {
+                return dstAgentDirs.get(i).resolve(srcAgentDir.relativize(abs));
+            }
+        }
+        return path;
     }
 
     private static String remapString(String value, Path srcRoot, Path dstRoot) {

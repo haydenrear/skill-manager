@@ -1031,6 +1031,16 @@ public final class HomeCommand {
                 String.join(", ", HomeCloner.SKIPPED_DIRS.stream().sorted().toList()));
         Log.info("  re-anchored: %d links relativized, %d records, %d provisioned files",
                 report.linksRelativized(), report.stateReanchored(), report.provisionedRewritten());
+        if (!report.droppedRegistrations().isEmpty()) {
+            // Named, not merely omitted. Dropping them is right (see
+            // HomeCloner.DROPPED_STATE_DIRS) and it is still a change to what
+            // the copy knows, so it is stated with the command that undoes it.
+            Log.info("  registrations: %d not inherited — a registration names a repository "
+                            + "this copy has not been asked to manage. Re-register with "
+                            + "`skill-manager project register --project-dir <path>`: %s",
+                    report.droppedRegistrations().size(),
+                    String.join(", ", report.droppedRegistrations()));
+        }
         if (!report.contentReferences().isEmpty()) {
             Log.info("  %d unit-content file(s) mention the source home — historical records, "
                     + "left as written", report.contentReferences().size());
@@ -1055,12 +1065,30 @@ public final class HomeCommand {
             for (String dangling : report.danglingReferences()) Log.warn("    script %s", dangling);
         }
         if (report.clean()) {
-            // Says what was actually checked. The old wording — "no path in it
-            // resolves back to <source>" — was true and useless: it left links
-            // resolving into a THIRD home (the operator's live one) reported as
-            // independence. See HomeCloner#foreignHomeReachedBy, issue #49.
-            Log.ok("cloned home to %s — nothing in it resolves back to %s, and no path in it "
-                    + "reaches any other Skill Manager home", report.dest(), report.source());
+            // Says what was actually checked — and this line has now been wrong
+            // twice in the same way, each time by naming the category the check
+            // covered and letting the reader hear a guarantee it did not make.
+            //
+            // #49: "no path in it resolves back to <source>" was true while
+            // links resolved into a THIRD home. Widened to "any other Skill
+            // Manager home".
+            //
+            // #145: "any other Skill Manager home" was true while the copy's
+            // ledger named ~/.claude, ~/.codex and ~/.gemini — AGENT homes,
+            // which are not Skill Manager homes and so were invisible to both
+            // the re-anchoring and the check. An uninstall in such a copy
+            // deleted three of the source home's global skill links and exited
+            // 0. Both classes are now re-anchored and both are checked, so the
+            // sentence may name them — under a standing rule this line broke
+            // twice and now states outright: enumerate what was examined, say
+            // what was not, and never generalise to "independent" or
+            // "isolated". A reader who wants the general claim has to assemble
+            // it from the list, which is the only form in which it is honest.
+            Log.ok("cloned home to %s — checked: nothing in it resolves back to %s; no path in "
+                    + "it reaches another Skill Manager home; no record or link in it names "
+                    + "another home's agent directories (.claude, .codex, .gemini). NOT checked: "
+                    + "paths outside all of those — toolchains, project checkouts, anything else "
+                    + "on this machine.", report.dest(), report.source());
         } else {
             Log.error("clone verification FAILED — %d path(s) reach outside this copy",
                     report.leaks().size());
