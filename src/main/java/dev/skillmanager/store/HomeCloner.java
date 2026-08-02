@@ -7,6 +7,7 @@ import dev.skillmanager.bindings.ChildHomeRegistry;
 import dev.skillmanager.bindings.Projection;
 import dev.skillmanager.bindings.ProjectionLedger;
 import dev.skillmanager.launch.LaunchEnv;
+import dev.skillmanager.shared.util.Fs;
 import dev.skillmanager.shared.util.Rederivable;
 import dev.skillmanager.util.Log;
 
@@ -205,12 +206,26 @@ public final class HomeCloner {
      * re-registering is one command that re-reads the project's OWN manifest
      * rather than a snapshot taken by a different home.
      *
-     * <p>{@code child-homes/} is deliberately NOT here despite being the same
-     * shape: its {@code childHome} field names a checkout and stays absolute
-     * too. Those records carry the teardown path for the worktree tier and
-     * several tests depend on them surviving a clone, so removing them is a
-     * larger change than this one. It is the next record of this kind to look
-     * at.
+     * <h2>The other two record classes, and why they are filtered rather than
+     * dropped wholesale</h2>
+     *
+     * <p>{@code installed/<unit>.projections.json} and {@code child-homes/}
+     * carry claims of the same kind, and leaving them was measured: a scratch
+     * home under {@code /private/tmp} listed 18 bindings naming four of the
+     * operator's real checkouts, each with live {@code SYMLINK} projection
+     * targets inside them, and {@code uninstall --dry-run} in that home refused
+     * on child-home claims it had never made. A ledger row is not a stale
+     * opinion about where to write — {@code unbind}/{@code uninstall} are
+     * ledger-driven by construction, so it is a live instruction to delete
+     * something in another checkout.
+     *
+     * <p>They are not in this set because, unlike a registration, most of what
+     * they hold really is a record <em>about this home</em>: a binding whose
+     * target is the source home's own root is the copy's own projection once
+     * re-anchored, and dropping those would throw away the copy's knowledge of
+     * its own footprint. So the rule is per-record and structural — see
+     * {@link #insideNewHome} — and every dropped record is named in the report,
+     * exactly as a dropped registration is.
      */
     public static final Set<String> DROPPED_STATE_DIRS = Set.of("projects");
 
@@ -369,7 +384,21 @@ public final class HomeCloner {
              * so the operator has to be able to see it and re-register.
              * See {@link HomeCloner#DROPPED_STATE_DIRS}.
              */
-            List<String> droppedRegistrations
+            List<String> droppedRegistrations,
+
+            /**
+             * Binding records the copy deliberately did not inherit, as
+             * {@code <unit>:<bindingId> → <target>}. Same reasoning as
+             * {@link #droppedRegistrations}, applied to the half that carries
+             * projection targets. See {@link HomeCloner#insideNewHome}.
+             */
+            List<String> droppedBindings,
+
+            /**
+             * {@code child-homes/} records the copy deliberately did not
+             * inherit, by id. See {@link HomeCloner#insideNewHome}.
+             */
+            List<String> droppedChildHomes
     ) {
         public Report {
             leaks = leaks == null ? List.of() : List.copyOf(leaks);
@@ -378,6 +407,9 @@ public final class HomeCloner {
             danglingReferences = danglingReferences == null ? List.of() : List.copyOf(danglingReferences);
             droppedRegistrations = droppedRegistrations == null
                     ? List.of() : List.copyOf(droppedRegistrations);
+            droppedBindings = droppedBindings == null ? List.of() : List.copyOf(droppedBindings);
+            droppedChildHomes = droppedChildHomes == null
+                    ? List.of() : List.copyOf(droppedChildHomes);
         }
 
         /** True when nothing in the copy still points at the source home. */
@@ -435,7 +467,9 @@ public final class HomeCloner {
         List<String> droppedRegistrations = registrationsIn(src);
         copyTree(src, dst, counters);
 
-        int stateReanchored = reanchorState(src, dst);
+        List<String> droppedBindings = new ArrayList<>();
+        List<String> droppedChildHomes = new ArrayList<>();
+        int stateReanchored = reanchorState(src, dst, droppedBindings, droppedChildHomes);
         List<Leak> overflows = new ArrayList<>();
         List<String> danglingReferences = new ArrayList<>();
         int provisionedRewritten = reanchorProvisioned(src, dst, overflows, danglingReferences);
@@ -461,7 +495,15 @@ public final class HomeCloner {
                 counters.directories, counters.files, counters.symlinks, counters.bytes,
                 counters.linksRelativized, stateReanchored, provisionedRewritten,
                 leaks, verification.contentReferences(), verification.danglingLinks(),
-                danglingReferences, droppedRegistrations);
+                danglingReferences, droppedRegistrations,
+                sorted(droppedBindings), sorted(droppedChildHomes));
+    }
+
+    /** Directory iteration order is not a contract; the report's order is. */
+    private static List<String> sorted(List<String> values) {
+        List<String> out = new ArrayList<>(values);
+        out.sort(String::compareTo);
+        return List.copyOf(out);
     }
 
     /** Registration names in {@code home}, for the report. */
@@ -651,12 +693,38 @@ public final class HomeCloner {
      * Runs through the production serde rather than editing bytes, so a
      * record it cannot parse is left alone instead of half-rewritten.
      */
-    private static int reanchorState(Path srcRoot, Path dstRoot) throws IOException {
+    private static int reanchorState(Path srcRoot, Path dstRoot,
+                                     List<String> droppedBindings,
+                                     List<String> droppedChildHomes) throws IOException {
         int rewritten = 0;
-        rewritten += reanchorLedgers(srcRoot, dstRoot);
-        rewritten += reanchorChildHomes(srcRoot, dstRoot);
+        rewritten += reanchorLedgers(srcRoot, dstRoot, droppedBindings);
+        rewritten += reanchorChildHomes(srcRoot, dstRoot, droppedChildHomes);
         rewritten += reanchorRemainingState(srcRoot, dstRoot);
         return rewritten;
+    }
+
+    /**
+     * Whether {@code path} is something the home rooted at {@code dstRoot} owns
+     * — its store, its three agent directories, anything else beside them.
+     *
+     * <p>The predicate every inherited claim is filtered by, and it is
+     * deliberately about the <b>destination</b> rather than about a literal
+     * path prefix like {@code /Users}. A record is foreign when it names
+     * something outside the home being created, wherever that home happens to
+     * be; under a test fixture both homes live in {@code /private/tmp} and a
+     * prefix test would call every claim domestic.
+     *
+     * <p>It runs <em>after</em> {@link #remapPath}, so a record that named part
+     * of the source home has already become the corresponding part of the copy
+     * and is inside by construction. What is left outside is what the source
+     * home held about somewhere else on the machine.
+     */
+    private static boolean insideNewHome(Path path, Path dstRoot) {
+        if (path == null) return true;
+        Path abs = path.toAbsolutePath().normalize();
+        if (HomePaths.of(dstRoot).isInsideHome(abs)) return true;
+        Path root = AgentHomes.homeRootFor(dstRoot);
+        return abs.equals(root) || abs.startsWith(root);
     }
 
     // There was a fourth pass here, rewriting projects/<name>/registration.toml's
@@ -720,7 +788,7 @@ public final class HomeCloner {
         return rewritten[0];
     }
 
-    private static int reanchorLedgers(Path srcRoot, Path dstRoot) {
+    private static int reanchorLedgers(Path srcRoot, Path dstRoot, List<String> dropped) {
         Path dir = dstRoot.resolve("installed");
         if (!Files.isDirectory(dir)) return 0;
         int rewritten = 0;
@@ -729,7 +797,7 @@ public final class HomeCloner {
                 try {
                     ProjectionLedger ledger = BindingJson.mapperFor(srcRoot)
                             .readValue(f.toFile(), ProjectionLedger.class);
-                    ProjectionLedger remapped = remap(ledger, srcRoot, dstRoot);
+                    ProjectionLedger remapped = remap(ledger, srcRoot, dstRoot, dropped);
                     BindingJson.mapperFor(dstRoot).writerWithDefaultPrettyPrinter()
                             .writeValue(f.toFile(), remapped);
                     rewritten++;
@@ -743,25 +811,62 @@ public final class HomeCloner {
         return rewritten;
     }
 
-    private static ProjectionLedger remap(ProjectionLedger ledger, Path srcRoot, Path dstRoot) {
+    /**
+     * Re-anchor a unit's bindings onto the copy, and drop the ones that are
+     * not the copy's to hold.
+     *
+     * <p>A binding survives when everything it names — its {@code targetRoot}
+     * and every projection {@code destPath} — is inside the new home after
+     * re-anchoring. A binding that still names a checkout elsewhere on the
+     * machine is dropped whole rather than half-kept: a binding minus the
+     * projections that reach outside would claim a footprint it can no longer
+     * undo, which is worse than not claiming it.
+     */
+    private static ProjectionLedger remap(ProjectionLedger ledger, Path srcRoot, Path dstRoot,
+                                          List<String> dropped) {
         List<Binding> bindings = new ArrayList<>(ledger.bindings().size());
         for (Binding b : ledger.bindings()) {
             List<Projection> projections = new ArrayList<>(b.projections().size());
+            boolean foreign = false;
+            Path targetRoot = remapPath(b.targetRoot(), srcRoot, dstRoot);
+            if (!insideNewHome(targetRoot, dstRoot)) foreign = true;
             for (Projection p : b.projections()) {
+                Path dest = remapPath(p.destPath(), srcRoot, dstRoot);
+                if (!insideNewHome(dest, dstRoot)) foreign = true;
                 projections.add(new Projection(
                         p.bindingId(),
                         remapPath(p.sourcePath(), srcRoot, dstRoot),
-                        remapPath(p.destPath(), srcRoot, dstRoot),
+                        dest,
                         p.kind(), p.backupOf(), p.boundHash()));
             }
+            if (foreign) {
+                dropped.add(ledger.unitName() + ":" + b.bindingId()
+                        + " → " + (targetRoot == null ? "(no target)" : targetRoot));
+                continue;
+            }
             bindings.add(new Binding(b.bindingId(), b.unitName(), b.unitKind(), b.subElement(),
-                    remapPath(b.targetRoot(), srcRoot, dstRoot),
+                    targetRoot,
                     b.conflictPolicy(), b.createdAt(), b.source(), projections));
         }
         return new ProjectionLedger(ledger.unitName(), bindings);
     }
 
-    private static int reanchorChildHomes(Path srcRoot, Path dstRoot) {
+    /**
+     * Re-anchor the {@code child-homes/} records, and drop the ones naming a
+     * child home outside the copy.
+     *
+     * <p>Kept per-record rather than dropped wholesale (contrast
+     * {@link #DROPPED_STATE_DIRS}) because a record whose {@code childHome} is
+     * the home itself is a record about this home and survives the copy
+     * meaningfully. A record naming another checkout does not: the
+     * {@code projects/} registration that would let {@code project remove}
+     * reach it has already been dropped, so nothing in the copy can act on it
+     * except {@link dev.skillmanager.app.RemoveUseCase}, which reads it only to
+     * <em>refuse</em> — which is how a brand-new home came to refuse to
+     * uninstall a unit it had never asked for, naming two of the operator's
+     * repositories as the thing to remove first.
+     */
+    private static int reanchorChildHomes(Path srcRoot, Path dstRoot, List<String> dropped) {
         Path dir = dstRoot.resolve(ChildHomeRegistry.DIR);
         if (!Files.isDirectory(dir)) return 0;
         ChildHomeRegistry registry = new ChildHomeRegistry(new SkillStore(dstRoot));
@@ -780,8 +885,15 @@ public final class HomeCloner {
                     String parentHome = HomePaths.isEncoded(raw.parentHome())
                             ? HomePaths.of(dstRoot).decodeToString(raw.parentHome())
                             : remapString(raw.parentHome(), srcRoot, dstRoot);
+                    String childHome = remapString(raw.childHome(), srcRoot, dstRoot);
+                    if (childHome != null && !childHome.isBlank()
+                            && !insideNewHome(Path.of(childHome), dstRoot)) {
+                        Fs.deleteRecursive(child);
+                        dropped.add(raw.id() == null ? child.getFileName().toString() : raw.id());
+                        continue;
+                    }
                     registry.write(new ChildHomeRegistry.ChildHomeRecord(
-                            raw.id(), parentHome, raw.childHome(), raw.harnessName(),
+                            raw.id(), parentHome, childHome, raw.harnessName(),
                             raw.units(), raw.createdAt()));
                     rewritten++;
                 } catch (IOException e) {
@@ -1417,8 +1529,18 @@ public final class HomeCloner {
         if (HomePaths.of(srcRoot).isInsideHome(abs)) {
             return dstRoot.resolve(srcRoot.relativize(abs));
         }
-        List<Path> srcAgentDirs = AgentHomes.agentDirsUnder(AgentHomes.homeRootFor(srcRoot));
-        List<Path> dstAgentDirs = AgentHomes.agentDirsUnder(AgentHomes.homeRootFor(dstRoot));
+        Path srcHomeRoot = AgentHomes.homeRootFor(srcRoot);
+        Path dstHomeRoot = AgentHomes.homeRootFor(dstRoot);
+        // The home root ITSELF, and only by exact match. A binding's
+        // targetRoot for the home's own agent projection is the root, not one
+        // of the agent directories under it, so without this the row that
+        // OWNS the three re-anchored projections kept naming the source's
+        // checkout. Exact match and not startsWith: for the global home the
+        // root is `~`, and re-rooting everything under `~` would relocate the
+        // operator's entire machine into the copy.
+        if (abs.equals(srcHomeRoot)) return dstHomeRoot;
+        List<Path> srcAgentDirs = AgentHomes.agentDirsUnder(srcHomeRoot);
+        List<Path> dstAgentDirs = AgentHomes.agentDirsUnder(dstHomeRoot);
         for (int i = 0; i < srcAgentDirs.size(); i++) {
             Path srcAgentDir = srcAgentDirs.get(i);
             if (abs.equals(srcAgentDir) || abs.startsWith(srcAgentDir)) {

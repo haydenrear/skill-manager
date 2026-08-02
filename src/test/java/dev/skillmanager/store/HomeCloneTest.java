@@ -39,14 +39,16 @@ public final class HomeCloneTest {
 
             assertTrue(report.clean(), "clone verified clean: " + report.leaks());
             SkillStore cloned = new SkillStore(dest);
-            Projection p = new BindingStore(cloned).read("alpha")
-                    .bindings().get(0).projections().get(0);
+            List<Binding> kept = new BindingStore(cloned).read("alpha").bindings();
+            assertEquals(1, kept.size(),
+                    "only the row about this home survives: " + kept);
+            Projection p = kept.get(0).projections().get(0);
             assertEquals(dest.resolve("skills/alpha"), p.sourcePath(),
                     "store-side path follows the clone");
-            assertEquals(Path.of("/agent-home/skills/alpha"), p.destPath(),
-                    "external path unchanged by the clone");
+            assertEquals(dest.resolve(".claude/skills/alpha"), p.destPath(),
+                    "and the agent-side path follows it too");
             assertEquals(dest.toString(),
-                    new ChildHomeRegistry(cloned).read("project:demo").orElseThrow().parentHome(),
+                    new ChildHomeRegistry(cloned).read("project:self").orElseThrow().parentHome(),
                     "parentHome follows the clone");
             // A registration is not a record about this home; it is a claim
             // over a repository elsewhere on the machine, and a copy of a home
@@ -58,6 +60,12 @@ public final class HomeCloneTest {
                     "the registration is not inherited");
             assertEquals(List.of("demo"), report.droppedRegistrations(),
                     "and it is named in the report rather than silently omitted");
+            assertEquals(1, report.droppedBindings().size(),
+                    "the binding naming somewhere else is named too: " + report.droppedBindings());
+            assertContains(report.droppedBindings().get(0), "/agent-home/skills",
+                    "and it says which path made it foreign");
+            assertEquals(List.of("project:demo"), report.droppedChildHomes(),
+                    "so is the child-home record naming somewhere else");
         });
 
         suite.test("a legacy home full of absolute paths clones into a clean copy", () -> {
@@ -655,13 +663,99 @@ public final class HomeCloneTest {
                     "nothing in the copy still names the source home's agent tree");
 
             // The bound, asserted in the same test so a fix cannot satisfy one
-            // half by widening until it swallows the other: a binding to a
-            // project checkout is genuinely external and must survive verbatim.
-            Binding explicit = bindings.stream()
-                    .filter(b -> b.source() == BindingSource.EXPLICIT).findFirst().orElseThrow();
-            assertEquals(Path.of("/some-checkout/.agent/skills/alpha"),
-                    explicit.projections().get(0).destPath(),
-                    "a path that is not part of either home is left naming what it names");
+            // half by widening until it swallows the other. This half used to
+            // read "a binding to a project checkout is genuinely external and
+            // must survive verbatim", and that was measured wrong: a ledger
+            // row is not an opinion about where to write, it is the exact
+            // footprint `unbind`/`uninstall` will undo. Surviving verbatim
+            // means the copy holds a live instruction to delete files in a
+            // checkout it was never pointed at — 18 such rows across four of
+            // the operator's repositories in one scratch home. So the bound is
+            // now the other way round: the row does not survive, and the copy
+            // says which one it dropped.
+            assertTrue(bindings.stream().noneMatch(b -> b.source() == BindingSource.EXPLICIT),
+                    "the row naming a checkout outside this home is not inherited: " + bindings);
+            assertEquals(1, report.droppedBindings().size(),
+                    "and it is named rather than silently omitted: " + report.droppedBindings());
+            assertContains(report.droppedBindings().get(0), "/some-checkout/.agent/skills",
+                    "the report says which path made it foreign");
+        });
+
+        // --------------------------------------- inherited foreign claims (D2)
+
+        suite.test("a clone inherits no claim over a checkout outside the new home", () -> {
+            // Measured with the CLI on a home under /private/tmp: `bindings
+            // list` showed 18 rows naming four of the operator's real
+            // repositories, each with live SYMLINK projection targets inside
+            // them, and `uninstall <unit> --dry-run` in that brand-new home
+            // refused, naming two of those repositories as the thing to remove
+            // first. The registration store had already been cleared for
+            // exactly this reason (#145 item 3); the projection ledger and
+            // child-homes/ are the same claim, one file over.
+            Home src = Home.conventional("src-");
+            Home dst = Home.destination("dst-");
+            // Deliberately NOT under /Users and NOT a literal-prefix cousin of
+            // either home: the property is "outside the home being created",
+            // and a check written as a path-prefix test would call these
+            // domestic under a temp-dir fixture. Both foreign checkouts and
+            // both homes live under the same temp root.
+            Path foreignA = newDir("foreign-checkout-a-");
+            Path foreignB = newDir("foreign-checkout-b-");
+            pollute(src, foreignA, foreignB);
+
+            // Companion 1, mandatory: prove the pollution is there BEFORE the
+            // clone. A fixture that is clean by construction makes "zero
+            // foreign rows" vacuously true, and being clean by construction is
+            // exactly why this survived four evals.
+            List<Binding> sourceRows = new BindingStore(new SkillStore(src.store))
+                    .read("alpha").bindings();
+            assertEquals(4, sourceRows.size(),
+                    "fixture precondition: 2 domestic + 2 foreign rows, got " + sourceRows);
+            assertEquals(2, (int) sourceRows.stream()
+                            .filter(b -> outside(b.targetRoot(), src.root)).count(),
+                    "fixture precondition: 2 rows name somewhere outside the source home");
+            assertEquals(List.of("project:foreign-a", "project:foreign-b"),
+                    new ChildHomeRegistry(new SkillStore(src.store)).childHomesClaiming("alpha"),
+                    "fixture precondition: 2 child-home records claim the unit");
+
+            HomeCloner.Report report = HomeCloner.cloneHome(src.store, dst.store);
+
+            List<Binding> rows = new BindingStore(new SkillStore(dst.store))
+                    .read("alpha").bindings();
+            // Companion 3: a short or empty listing must not read as "no
+            // foreign rows". The copy has to still hold its own rows.
+            assertEquals(2, rows.size(),
+                    "the copy keeps exactly its own rows, not zero: " + rows);
+            for (Binding b : rows) {
+                assertFalse(outside(b.targetRoot(), dst.root),
+                        "no surviving row names anything outside the new home: " + b.targetRoot());
+                for (Projection p : b.projections()) {
+                    assertFalse(outside(p.destPath(), dst.root),
+                            "no surviving projection names anything outside it: " + p.destPath());
+                }
+            }
+            assertEquals(2, report.droppedBindings().size(),
+                    "both foreign rows named in the report: " + report.droppedBindings());
+
+            // The child-homes half, and the operator-visible symptom it caused.
+            assertEquals(List.of(), new ChildHomeRegistry(new SkillStore(dst.store))
+                            .childHomesClaiming("alpha"),
+                    "no inherited child-home claim, so `uninstall` has nothing to refuse over");
+            assertEquals(List.of("project:foreign-a", "project:foreign-b"),
+                    report.droppedChildHomes(), "and both are named");
+            // Can-fail companion for the drop rule itself: a self-referential
+            // record — the shape every per-checkout home has — must survive.
+            assertTrue(new ChildHomeRegistry(new SkillStore(dst.store)).exists("project:self"),
+                    "the record about this home itself is inherited and re-anchored");
+            assertEquals(dst.store.toString(),
+                    new ChildHomeRegistry(new SkillStore(dst.store))
+                            .read("project:self").orElseThrow().childHome(),
+                    "and its childHome follows the copy");
+
+            // And the source is untouched — a filter, not a deletion.
+            assertEquals(4, new BindingStore(new SkillStore(src.store))
+                            .read("alpha").bindings().size(),
+                    "the source home still holds all four rows");
         });
 
         suite.test("verification catches a planted reference to the source's agent home", () -> {
@@ -820,14 +914,31 @@ public final class HomeCloneTest {
                 "---\nname: alpha\ndescription: fixture\n---\nbody\n");
         Files.writeString(home.resolve("units.lock.toml"), "version = 1\n");
 
-        Projection projection = new Projection("b1", home.resolve("skills/alpha"),
-                Path.of("/agent-home/skills/alpha"), ProjectionKind.SYMLINK, null);
+        // Two rows and two child-home records, and the difference between each
+        // pair is the point (#D2): one is a record about THIS home, which a
+        // copy inherits meaningfully once re-anchored; the other is a claim
+        // over somewhere else on the machine, which it must not.
+        Files.createDirectories(home.resolve(".claude/skills"));
+        Path ownClaudeSkills = home.resolve(".claude/skills");
         new BindingStore(store).write(new ProjectionLedger("alpha", List.of(
+                new Binding("b0", "alpha", UnitKind.SKILL, null, ownClaudeSkills,
+                        ConflictPolicy.ERROR, "2026-01-01T00:00:00Z",
+                        BindingSource.DEFAULT_AGENT,
+                        List.of(new Projection("b0", home.resolve("skills/alpha"),
+                                ownClaudeSkills.resolve("alpha"), ProjectionKind.SYMLINK, null))),
                 new Binding("b1", "alpha", UnitKind.SKILL, null, Path.of("/agent-home/skills"),
                         ConflictPolicy.ERROR, "2026-01-01T00:00:00Z",
-                        BindingSource.DEFAULT_AGENT, List.of(projection)))));
+                        BindingSource.DEFAULT_AGENT,
+                        List.of(new Projection("b1", home.resolve("skills/alpha"),
+                                Path.of("/agent-home/skills/alpha"),
+                                ProjectionKind.SYMLINK, null))))));
         new ChildHomeRegistry(store).write(new ChildHomeRegistry.ChildHomeRecord(
                 "project:demo", home.toString(), "/checkout/.skill-manager",
+                null, List.of("alpha"), "2026-01-01T00:00:00Z"));
+        // The self-referential shape every per-checkout home has: the project
+        // home IS the child home. See ProjectChildHomeScaffolder#reportSameHome.
+        new ChildHomeRegistry(store).write(new ChildHomeRegistry.ChildHomeRecord(
+                "project:self", home.toString(), home.toString(),
                 null, List.of("alpha"), "2026-01-01T00:00:00Z"));
         Path projectDir = Files.createDirectories(home.resolve("projects/demo"));
         Files.writeString(projectDir.resolve("skill-project.toml"), "[project]\nname = \"demo\"\n");
@@ -857,25 +968,25 @@ public final class HomeCloneTest {
                     "bindingId" : "b1",
                     "unitName" : "legacy",
                     "unitKind" : "SKILL",
-                    "targetRoot" : "/agent-home/skills",
+                    "targetRoot" : "%s/.claude/skills",
                     "conflictPolicy" : "ERROR",
                     "createdAt" : "2026-01-01T00:00:00Z",
                     "source" : "DEFAULT_AGENT",
                     "projections" : [ {
                       "bindingId" : "b1",
                       "sourcePath" : "%s",
-                      "destPath" : "/agent-home/skills/legacy",
+                      "destPath" : "%s/.claude/skills/legacy",
                       "kind" : "SYMLINK"
                     } ]
                   } ]
                 }
-                """.formatted(home.resolve("skills/legacy")));
+                """.formatted(home, home.resolve("skills/legacy"), home));
         Path childHome = Files.createDirectories(home.resolve("child-homes/project_legacy"));
         Files.writeString(childHome.resolve("child-home.json"), """
                 { "id" : "project:legacy", "parentHome" : "%s",
-                  "childHome" : "/checkout/.skill-manager", "units" : [ "legacy" ],
+                  "childHome" : "%s", "units" : [ "legacy" ],
                   "createdAt" : "2026-01-01T00:00:00Z" }
-                """.formatted(home));
+                """.formatted(home, home));
         Path projectDir = Files.createDirectories(home.resolve("projects/legacy"));
         Files.writeString(projectDir.resolve("skill-project.toml"), "[project]\nname = \"legacy\"\n");
         Files.writeString(projectDir.resolve("registration.toml"), """
@@ -923,6 +1034,56 @@ public final class HomeCloneTest {
 
     private static Path newDir(String prefix) throws Exception {
         return Files.createTempDirectory(prefix).toRealPath();
+    }
+
+    /**
+     * Whether {@code path} names something outside the home rooted at
+     * {@code homeRoot} — the property {@code HomeCloner#insideNewHome} decides,
+     * spelled independently here so the test is not the implementation.
+     */
+    private static boolean outside(Path path, Path homeRoot) {
+        return path != null && !path.toAbsolutePath().normalize().startsWith(homeRoot);
+    }
+
+    /**
+     * Give {@code home} the inherited-state pollution a real source home has:
+     * bindings and child-home records naming checkouts elsewhere on the
+     * machine, beside records about the home itself.
+     *
+     * <p>The foreign checkouts are passed in rather than hard-coded so they can
+     * live under the same temp root as both homes — the property under test is
+     * "outside the home being created", not "under /Users".
+     */
+    private static void pollute(Home home, Path foreignA, Path foreignB) throws Exception {
+        Path ownClaude = home.root.resolve(".claude/skills");
+        Path ownCodex = home.root.resolve(".codex/skills");
+        SkillStore store = new SkillStore(home.store);
+        new BindingStore(store).write(new ProjectionLedger("alpha", List.of(
+                row("own-claude", ownClaude, home.store, BindingSource.DEFAULT_AGENT),
+                row("own-codex", ownCodex, home.store, BindingSource.DEFAULT_AGENT),
+                row("foreign-a", foreignA.resolve(".claude/skills"), home.store,
+                        BindingSource.EXPLICIT),
+                row("foreign-b", foreignB.resolve(".claude/skills"), home.store,
+                        BindingSource.EXPLICIT))));
+        ChildHomeRegistry registry = new ChildHomeRegistry(store);
+        registry.write(new ChildHomeRegistry.ChildHomeRecord(
+                "project:self", home.store.toString(), home.store.toString(),
+                null, List.of("beta"), "2026-01-01T00:00:00Z"));
+        registry.write(new ChildHomeRegistry.ChildHomeRecord(
+                "project:foreign-a", home.store.toString(),
+                foreignA.resolve(".skill-manager").toString(),
+                null, List.of("alpha"), "2026-01-01T00:00:00Z"));
+        registry.write(new ChildHomeRegistry.ChildHomeRecord(
+                "project:foreign-b", home.store.toString(),
+                foreignB.resolve(".skill-manager").toString(),
+                null, List.of("alpha"), "2026-01-01T00:00:00Z"));
+    }
+
+    private static Binding row(String id, Path targetRoot, Path store, BindingSource source) {
+        return new Binding(id, "alpha", UnitKind.SKILL, null, targetRoot,
+                ConflictPolicy.ERROR, "2026-01-01T00:00:00Z", source,
+                List.of(new Projection(id, store.resolve("skills/alpha"),
+                        targetRoot.resolve("alpha"), ProjectionKind.SYMLINK, null)));
     }
 
     /**
