@@ -71,7 +71,8 @@ public class HomeCloneFixtureBuilt {
             .output("authoredDigest", "string")
             .output("realClaudeSkills", "string")
             .output("realCodexSkills", "string")
-            .output("realGeminiSkills", "string");
+            .output("realGeminiSkills", "string")
+            .output("fixtureAgentRoot", "string");
 
     public static void main(String[] args) {
         Node.run(args, SPEC, ctx -> {
@@ -97,11 +98,11 @@ public class HomeCloneFixtureBuilt {
             String fixtureStr = fixture.toString();
 
             // --- install through the real CLI ------------------------------
-            ProcessRecord installA = HomeCloneSupport.sm(ctx, "install-a", fixtureStr,
+            ProcessRecord installA = HomeCloneSupport.smIntoOwnAgentHomes(ctx, "install-a", fixtureStr,
                     "install", unitsDir.resolve(HomeCloneSupport.UNIT_A).toString(), "--yes");
-            ProcessRecord installB = HomeCloneSupport.sm(ctx, "install-b", fixtureStr,
+            ProcessRecord installB = HomeCloneSupport.smIntoOwnAgentHomes(ctx, "install-b", fixtureStr,
                     "install", unitsDir.resolve(HomeCloneSupport.UNIT_B).toString(), "--yes");
-            ProcessRecord installLinked = HomeCloneSupport.sm(ctx, "install-linked", fixtureStr,
+            ProcessRecord installLinked = HomeCloneSupport.smIntoOwnAgentHomes(ctx, "install-linked", fixtureStr,
                     "install", unitsDir.resolve(HomeCloneSupport.LINKED).toString(), "--yes");
 
             boolean unitsInstalled = installA.exitCode() == 0 && installB.exitCode() == 0
@@ -297,7 +298,15 @@ public class HomeCloneFixtureBuilt {
                     .publish("authoredDigest", authoredDigest)
                     .publish("realClaudeSkills", realClaude)
                     .publish("realCodexSkills", realCodex)
-                    .publish("realGeminiSkills", realGemini);
+                    .publish("realGeminiSkills", realGemini)
+                    // Where THIS fixture's installs projected. Published rather
+                    // than re-derived downstream: the leak check's "and the
+                    // projections did happen" half has to look at the directory
+                    // the installs actually used, and a checker that guessed
+                    // would report the most interesting possible finding — an
+                    // empty agent home — as a clean pass.
+                    .publish("fixtureAgentRoot",
+                            HomeCloneSupport.agentRootOf(fixtureStr).toString());
         });
     }
 }

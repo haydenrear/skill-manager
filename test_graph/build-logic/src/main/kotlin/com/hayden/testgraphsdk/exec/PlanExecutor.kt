@@ -363,7 +363,29 @@ class PlanExecutor(
         spec: ValidationNodeSpec,
         executed: Set<String>,
     ): Boolean =
-        spec.isFinalizerNode() && spec.dependsOn.all { it in executed }
+        continueAfterFailure() || (spec.isFinalizerNode() && spec.dependsOn.all { it in executed })
+
+    /**
+     * Opt-in: keep executing after a node fails, instead of skipping the rest.
+     *
+     * Default behaviour is unchanged — a failed node stops the plan, because in
+     * a strictly ordered graph every node after it is measuring disk state its
+     * predecessor did not produce, and reporting those results as findings is
+     * worse than reporting nothing.
+     *
+     * The exception this exists for is a graph whose assertions are DELIBERATELY
+     * red: one written against a known defect list, where the value of a run is
+     * "which of these sixteen are still failing, and for what reason". Halting
+     * at the first one reveals exactly one finding per run, and the `onboarding`
+     * graph has fifteen. Set TESTGRAPH_CONTINUE_AFTER_FAILURE=1 for that sweep.
+     *
+     * It is not a way to make a red graph green: every node still reports its
+     * own status, the run still fails, and a node whose upstream state was never
+     * built still fails on its own preconditions — which is why those
+     * preconditions are asserted separately in the first place.
+     */
+    private fun continueAfterFailure(): Boolean =
+        System.getenv("TESTGRAPH_CONTINUE_AFTER_FAILURE") == "1"
 
     private fun writeSkippedEnvelope(
         spec: ValidationNodeSpec,

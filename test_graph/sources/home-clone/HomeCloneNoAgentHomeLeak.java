@@ -93,7 +93,17 @@ public class HomeCloneNoAgentHomeLeak {
             boolean noneOfOurUnitsAreInARealAgentHome = ours.isEmpty();
 
             // The other half: the projections DID happen, in the sandbox.
-            Path sandboxClaudeSkills = Path.of(claudeHome).resolve(".claude/skills");
+            //
+            // Read from the path the FIXTURE published rather than from
+            // env.prepared's shared agent-home. The fixture now installs into
+            // its own home's agent directories — the layout every real home has,
+            // and the one whose bindings survive a clone — so env.prepared's
+            // agent-home is empty for this graph. A checker still looking there
+            // would report "no leak" and "no projections either" as a pass,
+            // which is precisely the half of this node that exists to stop that.
+            Path fixtureAgentRoot = ctx.get("home.clone.fixture.built", "fixtureAgentRoot")
+                    .map(Path::of).orElse(Path.of(claudeHome));
+            Path sandboxClaudeSkills = fixtureAgentRoot.resolve(".claude/skills");
             List<String> sandboxNames = HomeCloneSupport.names(sandboxClaudeSkills);
             boolean projectionsLandedInTheSandbox =
                     sandboxNames.contains(HomeCloneSupport.UNIT_A)

@@ -121,6 +121,61 @@ final class HomeCloneSupport {
         return Procs.run(ctx, label, pb);
     }
 
+    /**
+     * {@link #sm}, but with the agent homes BESIDE the home being written
+     * rather than at the run's shared sandbox root.
+     *
+     * <h2>Why the fixture needs its own agent homes</h2>
+     *
+     * <p>{@link #sm} points every install at {@code env.prepared}'s shared
+     * {@code <sandbox>/agent-home/…}, which is outside the fixture home's own
+     * root. That produced a source home whose {@code DEFAULT_AGENT} bindings
+     * all named a directory belonging to no home in particular — and a clone of
+     * it whose ledger named the SAME directory as the source's. Two homes, one
+     * set of links: an {@code uninstall} in the copy deletes the original's
+     * projections. That is the #145 shape, in a layout
+     * {@code LaunchEnv.requireClaudeRedirected} refuses to launch anyway.
+     *
+     * <p>Since {@code home clone} stopped inheriting claims over paths outside
+     * the new home, those bindings are dropped by the copy — correctly — and
+     * the ledger assertions downstream had nothing left to read. The repair is
+     * the fixture, not the assertion: give the fixture home the layout every
+     * real home has, {@code <root>/{.claude,.codex,.gemini}} beside the store,
+     * so its bindings are its own and the clone can re-anchor them.
+     *
+     * <p>Deliberately NOT repaired by weakening "outside the new home's root"
+     * to "inside some other home's span": that would keep the graph green while
+     * letting a binding into a plain, non-home checkout survive a clone, which
+     * is the half of the defect with the projection targets in it.
+     */
+    static ProcessRecord smIntoOwnAgentHomes(NodeContext ctx, String label, String home,
+                                             String... args) {
+        String[] command = new String[args.length + 1];
+        command[0] = skillManager().toString();
+        System.arraycopy(args, 0, command, 1, args.length);
+        ProcessBuilder pb = new ProcessBuilder(command);
+        SmEnv.apply(pb, home, SmEnv.repoRoot().toString(),
+                SmEnv.sandboxUnder(agentRootOf(home)));
+        ctx.get("env.prepared", "home")
+                .ifPresent(sandbox -> SmEnv.alsoRedirectPosixHome(pb, sandbox));
+        return Procs.run(ctx, label, pb);
+    }
+
+    /**
+     * The root whose {@code .claude}/{@code .codex}/{@code .gemini} belong to
+     * the home at {@code storeRoot} — {@code AgentHomes.homeRootFor}'s rule:
+     * the parent when the store is named {@code .skill-manager}, the store
+     * itself otherwise.
+     */
+    static Path agentRootOf(String storeRoot) {
+        Path abs = Path.of(storeRoot).toAbsolutePath().normalize();
+        Path name = abs.getFileName();
+        if (name != null && ".skill-manager".equals(name.toString()) && abs.getParent() != null) {
+            return abs.getParent();
+        }
+        return abs;
+    }
+
     /** Run an arbitrary executable (a generated shim) with the same sandbox. */
     static ProcessRecord exec(NodeContext ctx, String label, String home, List<String> command) {
         ProcessBuilder pb = new ProcessBuilder(command);

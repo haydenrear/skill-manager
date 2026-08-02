@@ -85,7 +85,14 @@ public class AgentConfigsCorrect {
             boolean codexMarketplaceOpsSucceeded =
                     !codexCliAvailable || noCodexMarketplaceFailure(out.toString());
 
-            Path claudeJson = fakeHome.resolve(".claude.json");
+            // fakeHome/.claude/.claude.json, not fakeHome/.claude.json: this
+            // node runs with CLAUDE_CONFIG_DIR set (SmEnv.sandbox derives it as
+            // fakeHome/.claude, per the comment above), and Claude Code reads
+            // $CLAUDE_CONFIG_DIR/.claude.json when the variable is set. The
+            // entry used to be written to the parent, which the agent never
+            // reads. The unset case still resolves to <root>/.claude.json and is
+            // not exercised here.
+            Path claudeJson = fakeHome.resolve(".claude").resolve(".claude.json");
             Path codexToml = fakeHome.resolve(".codex").resolve("config.toml");
             Path geminiSettings = fakeHome.resolve(".gemini").resolve("settings.json");
             String claudeText = Files.isRegularFile(claudeJson) ? Files.readString(claudeJson) : "";

@@ -966,4 +966,109 @@ validationGraph {
                         "skill-dev.conflict.resolved")
         node("sources/common/PostgresDown.java").dependsOn("servers.down")
     }
+
+    /*
+     * onboarding: the walk a fresh repository takes from "no home" to "a
+     * launchable agent with the skills it declared", transcribed from a
+     * hand-run enumeration of that path.
+     *
+     * The walk was run by hand four times before this graph existed. Each pass
+     * found the same class of defect and each pass cost a round trip, because
+     * the walk crosses two repositories — skill-manager and
+     * git-integration-repo — and every finding lived in the seam: a copy or a
+     * check that enumerated the places it knew about and missed one. Agent
+     * directories but not their sibling `.claude.json`; store symlinks but not
+     * agent symlinks; the registration store but not the binding ledger; store
+     * bins but not agent-home plugin bins.
+     *
+     * WHY THE COMPANIONS ARE THE POINT. This project has repeatedly shipped
+     * instruments that reported clean while measuring nothing: a free-space
+     * check the host decided, a zsh word-splitting bug that made every result
+     * vacuous, a fixture that froze a path which was never a home, and four
+     * exit codes read off the wrong process because `cmd | head; echo $?`
+     * reports head's status. The walk then found three MORE inside the product
+     * itself — `bootstrap-home.sh`'s `verified: N skill(s) servable` counts the
+     * store rather than the agent-visible links, `install` exits 0 over printed
+     * violations, and `ADDED claude (<path>)` names a file the agent does not
+     * read. So every assertion here that could pass by not looking carries a
+     * companion, in the same run, that proves it can fail. Each node's javadoc
+     * names its own.
+     *
+     * ORDERING IS THE STEP LOG. Strictly ordered from the fixture onward: each
+     * node builds on the disk state the previous one left, in the order the
+     * hand walk took, because half these properties are only observable at one
+     * point in that sequence. `.claude.json` appears at sync, not at bootstrap;
+     * the close-out gate only blocks after a unit has been removed from the
+     * project home; the foreign claims are only visible in a clone of a
+     * polluted source.
+     *
+     * WHAT IS NOT HERE, deliberately. The gateway singleton's PROCESS half
+     * (a home created under a redirected HOME still attaches to whatever owns
+     * 127.0.0.1:51717) is not automatable: it needs a live gateway owned by a
+     * different home on a fixed port, and two graphs on one machine would
+     * contend for that port — which IS the defect, so a node asserting it would
+     * be testing the CI scheduler. The FILE half is asserted in
+     * onboarding.clone.is.honest; the process half is a documented manual
+     * check, recorded in that node's javadoc. Likewise `--onboard`'s execution
+     * needs the network; its offline REFUSAL and remedy text are asserted, its
+     * execution is not.
+     *
+     * Exit codes are captured from Process.waitFor, never through a pipeline.
+     * That is a harness rule rather than a product assertion, and it is written
+     * down because the shell transcription this graph replaces produced five
+     * false readings from `cmd | head; echo $?` — which under zsh reports
+     * head's status, not the command's.
+     *
+     * RUNNING IT WHILE IT IS RED. Most of these assertions describe defects
+     * that are still open, so a plain run stops at the first one and reveals a
+     * single finding. For the whole sweep:
+     *
+     *   TESTGRAPH_CONTINUE_AFTER_FAILURE=1 \
+     *     python3 skills/test_graph/scripts/run.py onboarding
+     *
+     * Every node then executes in order against the disk state its predecessor
+     * left, each reports its own status, and the run still fails. That flag is
+     * not a way to make a red graph green: a node whose upstream state was never
+     * built fails on its own stated preconditions, which is exactly why those
+     * preconditions are separate assertions rather than silent assumptions.
+     */
+    testGraph("onboarding") {
+        node("sources/common/EnvPrepared.java")
+
+        // Cheapest first, and it needs no home at all: does the skill ship the
+        // files its own documentation tells you to copy, and does any script
+        // resolve a CLI by a path relative to itself?
+        node("sources/onboarding/OnboardingDocsAndScriptsStatic.java")
+
+        node("sources/onboarding/OnboardingFixtureBuilt.java")
+
+        // The two refusal paths, before anything has been built on top of them:
+        // a source home that is absent (exit 1) and one that is empty (exit 5).
+        node("sources/onboarding/OnboardingBootstrapRefusals.java")
+
+        node("sources/onboarding/OnboardingBootstrapped.java")
+        node("sources/onboarding/OnboardingCloneIsHonest.java")
+        node("sources/onboarding/OnboardingCloneDropsForeignClaims.java")
+        node("sources/onboarding/OnboardingProjectionsMaterialized.java")
+
+        node("sources/onboarding/OnboardingSynced.java")
+        node("sources/onboarding/OnboardingLeavesWorkTreeClean.java")
+        node("sources/onboarding/OnboardingClaudeMcpConfigReadable.java")
+        node("sources/onboarding/OnboardingLaunchEnv.java")
+        node("sources/onboarding/OnboardingProjectMarkdownImportsChecked.java")
+        node("sources/onboarding/OnboardingErrorRecordsCoherent.java")
+        node("sources/onboarding/OnboardingImportViolationsAreFatal.java")
+        node("sources/onboarding/OnboardingRefusalsAreMessages.java")
+        node("sources/onboarding/OnboardingRemediesAreRunnable.java")
+        node("sources/onboarding/OnboardingCliProjectionIdempotent.java")
+
+        node("sources/onboarding/OnboardingWorktreeLifecycle.java")
+        node("sources/onboarding/OnboardingWtContractLines.java")
+
+        // Last, because it compares the operator's real homes against a
+        // baseline taken before any of the walk ran. It carries its own
+        // sensitivity proof, so it keeps its meaning even if a node above it
+        // failed.
+        node("sources/onboarding/OnboardingGlobalHomeUntouched.java")
+    }
 }
