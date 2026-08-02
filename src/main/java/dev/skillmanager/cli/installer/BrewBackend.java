@@ -29,10 +29,14 @@ public final class BrewBackend implements InstallerBackend {
     }
 
     @Override
-    public void install(CliDependency dep, SkillStore store, String skillName) throws IOException {
+    public InstallOutcome install(CliDependency dep, SkillStore store, String skillName)
+            throws IOException {
         if (dep.onPath() != null && isOnPath(dep.onPath())) {
-            Log.ok("cli: %s already on PATH", dep.onPath());
-            return;
+            // A state, not an event: nothing was done, and this is true on
+            // every run forever. The count reaches the console; the name
+            // reaches the run log. See InstallOutcome.
+            Log.detail("✓ cli: %s already on PATH", dep.onPath());
+            return InstallOutcome.ALREADY_PRESENT;
         }
         String pkg = dep.packageRef();
         if (pkg == null || pkg.isBlank()) throw new IOException("brew: spec missing package name (brew:<package>)");
@@ -42,12 +46,12 @@ public final class BrewBackend implements InstallerBackend {
         String prefix = Shell.capture(List.of("brew", "--prefix", pkg));
         if (prefix == null || prefix.isBlank()) {
             Log.warn("cli: brew install %s succeeded but --prefix returned empty", pkg);
-            return;
+            return InstallOutcome.INSTALLED;
         }
         Path brewBin = Path.of(prefix.trim()).resolve("bin");
         if (!Files.isDirectory(brewBin)) {
             Log.warn("cli: no bin/ under %s", brewBin);
-            return;
+            return InstallOutcome.INSTALLED;
         }
         Fs.ensureDir(store.cliBinDir());
         try (Stream<Path> entries = Files.list(brewBin)) {
@@ -68,5 +72,6 @@ public final class BrewBackend implements InstallerBackend {
             }
         }
         Log.ok("cli: installed brew %s; linked bins into %s", pkg, store.cliBinDir());
+        return InstallOutcome.INSTALLED;
     }
 }

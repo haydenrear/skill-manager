@@ -543,15 +543,15 @@ public final class LiveInterpreter implements ProgramInterpreter {
     private EffectReceipt installTools(SkillEffect.InstallTools e) throws IOException {
         List<AgentUnit> units = freshen(e.units());
         InstallPlan plan = buildPlan(units);
-        ToolInstallRecorder.run(plan, store);
-        return EffectReceipt.ok(e, new ContextFact.ToolsInstalledFor(units.size()));
+        return EffectReceipt.ok(e, new ContextFact.ToolsInstalledFor(
+                units.size(), ToolInstallRecorder.run(plan, store)));
     }
 
     private EffectReceipt installCli(SkillEffect.InstallCli e) throws IOException {
         List<AgentUnit> units = freshen(e.units());
         InstallPlan plan = buildPlan(units, e.forceScripts(), e.forceScriptUnitNames());
-        CliInstallRecorder.run(plan, store);
-        return EffectReceipt.ok(e, new ContextFact.CliInstalledFor(units.size()));
+        return EffectReceipt.ok(e, new ContextFact.CliInstalledFor(
+                units.size(), CliInstallRecorder.run(plan, store)));
     }
 
     /**

@@ -1,6 +1,7 @@
 package dev.skillmanager.lock;
 
 import dev.skillmanager.cli.installer.InstallerRegistry;
+import dev.skillmanager.cli.installer.ProvisionTally;
 import dev.skillmanager.plan.InstallPlan;
 import dev.skillmanager.plan.PlanAction;
 import dev.skillmanager.store.SkillStore;
@@ -11,18 +12,25 @@ import java.io.IOException;
 /**
  * Runs every {@link PlanAction.RunCliInstall} in a plan, records each success
  * to the {@link CliLock}, and saves the lock once at the end.
+ *
+ * <p>Returns a {@link ProvisionTally} rather than printing a summary itself:
+ * the handler turns it into a {@link
+ * dev.skillmanager.effects.ContextFact.CliInstalledFor} fact and
+ * {@code ConsoleProgramRenderer} is still the only place that prints.
  */
 public final class CliInstallRecorder {
 
     private CliInstallRecorder() {}
 
-    public static void run(InstallPlan plan, SkillStore store) throws IOException {
+    public static ProvisionTally run(InstallPlan plan, SkillStore store) throws IOException {
         InstallerRegistry registry = new InstallerRegistry();
         CliLock lock = CliLock.load(store);
+        ProvisionTally tally = ProvisionTally.EMPTY;
         for (PlanAction a : plan.actions()) {
             if (!(a instanceof PlanAction.RunCliInstall rc)) continue;
             try {
-                registry.installOne(rc.dep(), store, rc.unitName(), rc.forceScripts());
+                tally = tally.plus(
+                        registry.installOne(rc.dep(), store, rc.unitName(), rc.forceScripts()));
                 var req = RequestedVersion.of(rc.dep());
                 String sha = findHash(rc.dep());
                 // Stamp the post-install scripts-tree fingerprint into
@@ -39,9 +47,11 @@ public final class CliInstallRecorder {
                         rc.dep().spec(), sha, rc.unitName(), fingerprint);
             } catch (Exception e) {
                 Log.warn("cli: %s failed: %s", rc.dep().name(), e.getMessage());
+                tally = tally.withFailure();
             }
         }
         lock.save(store);
+        return tally;
     }
 
     private static String findHash(dev.skillmanager.model.CliDependency dep) {

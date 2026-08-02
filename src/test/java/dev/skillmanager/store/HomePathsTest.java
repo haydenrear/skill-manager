@@ -496,10 +496,12 @@ public final class HomePathsTest {
     private record AbsoluteLinkBackend(Path payload) implements InstallerBackend {
         @Override public String id() { return "absolute-link"; }
         @Override public boolean available() { return true; }
-        @Override public void install(CliDependency dep, SkillStore store, String skillName)
+        @Override public dev.skillmanager.cli.installer.InstallOutcome install(
+                CliDependency dep, SkillStore store, String skillName)
                 throws java.io.IOException {
             Files.createDirectories(store.cliBinDir());
             Files.createSymbolicLink(store.cliBinDir().resolve(dep.name()), payload);
+            return dev.skillmanager.cli.installer.InstallOutcome.INSTALLED;
         }
     }
 

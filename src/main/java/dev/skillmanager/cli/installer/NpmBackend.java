@@ -26,10 +26,11 @@ public final class NpmBackend implements InstallerBackend {
     @Override public boolean available() { return true; }
 
     @Override
-    public void install(CliDependency dep, SkillStore store, String skillName) throws IOException {
+    public InstallOutcome install(CliDependency dep, SkillStore store, String skillName)
+            throws IOException {
         if (dep.onPath() != null && isOnPath(dep.onPath())) {
-            Log.ok("cli: %s already on PATH", dep.onPath());
-            return;
+            Log.detail("✓ cli: %s already on PATH", dep.onPath());
+            return InstallOutcome.ALREADY_PRESENT;
         }
         String pkg = dep.packageRef();
         if (pkg == null || pkg.isBlank()) throw new IOException("npm: spec missing package name (npm:<package>)");
@@ -58,7 +59,7 @@ public final class NpmBackend implements InstallerBackend {
         Path srcBin = prefix.resolve("bin");
         if (!Files.isDirectory(srcBin)) {
             Log.warn("cli: npm install produced no bin dir at %s", srcBin);
-            return;
+            return InstallOutcome.INSTALLED;
         }
         Fs.ensureDir(store.cliBinDir());
         try (Stream<Path> entries = Files.list(srcBin)) {
@@ -77,5 +78,6 @@ public final class NpmBackend implements InstallerBackend {
             }
         }
         Log.ok("cli: installed npm %s → %s (linked into %s)", pkg, prefix, store.cliBinDir());
+        return InstallOutcome.INSTALLED;
     }
 }

@@ -29,21 +29,22 @@ public final class TarBackend implements InstallerBackend {
     @Override public boolean available() { return true; }
 
     @Override
-    public void install(CliDependency dep, SkillStore store, String skillName) throws IOException {
+    public InstallOutcome install(CliDependency dep, SkillStore store, String skillName)
+            throws IOException {
         if (dep.onPath() != null && isOnPath(dep.onPath())) {
-            Log.ok("cli: %s already on PATH", dep.onPath());
-            return;
+            Log.detail("✓ cli: %s already on PATH", dep.onPath());
+            return InstallOutcome.ALREADY_PRESENT;
         }
         Fs.ensureDir(store.cliBinDir());
         Path link = store.cliBinDir().resolve(dep.name());
         if (Files.exists(link)) {
-            Log.ok("cli: %s already installed", dep.name());
-            return;
+            Log.detail("✓ cli: %s already installed", dep.name());
+            return InstallOutcome.ALREADY_PRESENT;
         }
         CliDependency.InstallTarget target = pickTarget(dep);
         if (target == null || target.url() == null) {
             Log.warn("cli: no install target for %s on %s", dep.name(), Platform.currentKey());
-            return;
+            return InstallOutcome.SKIPPED;
         }
 
         Log.step("cli: downloading %s from %s", dep.name(), target.url());
@@ -59,13 +60,14 @@ public final class TarBackend implements InstallerBackend {
             Path binary = extractOrCopy(download, extractDir, target);
             if (binary == null) {
                 Log.warn("cli: could not locate binary for %s", dep.name());
-                return;
+                return InstallOutcome.SKIPPED;
             }
             Fs.makeExecutable(binary);
             if (Files.exists(link)) Files.delete(link);
             Files.copy(binary, link, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.COPY_ATTRIBUTES);
             Fs.makeExecutable(link);
             Log.ok("cli: installed %s -> %s", dep.name(), link);
+            return InstallOutcome.INSTALLED;
         } finally {
             Files.deleteIfExists(download);
         }

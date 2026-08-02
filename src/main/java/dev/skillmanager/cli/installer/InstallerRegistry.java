@@ -42,28 +42,30 @@ public final class InstallerRegistry {
         }
     }
 
-    public void installOne(CliDependency dep, SkillStore store, String skillName) throws IOException {
-        installOne(dep, store, skillName, false);
+    public InstallOutcome installOne(CliDependency dep, SkillStore store, String skillName)
+            throws IOException {
+        return installOne(dep, store, skillName, false);
     }
 
-    public void installOne(CliDependency dep, SkillStore store, String skillName,
-                           boolean force) throws IOException {
+    public InstallOutcome installOne(CliDependency dep, SkillStore store, String skillName,
+                                     boolean force) throws IOException {
         String id = dep.backend();
         InstallerBackend backend = backends.get(id);
         if (backend == null) {
             Log.warn("cli: unknown backend '%s' for %s (supported: %s)", id, dep.name(), backends.keySet());
-            return;
+            return InstallOutcome.SKIPPED;
         }
         if (!backend.available()) {
             Log.warn("cli: backend %s not available on this host; skipping %s", id, dep.name());
-            return;
+            return InstallOutcome.SKIPPED;
         }
-        backend.install(dep, store, skillName, force);
+        InstallOutcome outcome = backend.install(dep, store, skillName, force);
         // Backends we do not control write absolute symlinks into bin/cli:
         // `uv tool install` and `npm -g` both do, and neither has a flag for
         // it. An absolute link into the home is the one thing a copy of the
         // home cannot survive, so normalize after every install rather than
         // patching each backend and hoping the next one remembers.
         HomeLinks.relativizeShims(store);
+        return outcome == null ? InstallOutcome.INSTALLED : outcome;
     }
 }

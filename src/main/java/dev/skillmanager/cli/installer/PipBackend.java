@@ -25,10 +25,11 @@ public final class PipBackend implements InstallerBackend {
     @Override public boolean available() { return true; }
 
     @Override
-    public void install(CliDependency dep, SkillStore store, String skillName) throws IOException {
+    public InstallOutcome install(CliDependency dep, SkillStore store, String skillName)
+            throws IOException {
         if (dep.onPath() != null && isOnPath(dep.onPath())) {
-            Log.ok("cli: %s already on PATH", dep.onPath());
-            return;
+            Log.detail("✓ cli: %s already on PATH", dep.onPath());
+            return InstallOutcome.ALREADY_PRESENT;
         }
         String pkg = dep.packageRef();
         if (pkg == null || pkg.isBlank()) throw new IOException("pip: spec missing package name (pip:<package>)");
@@ -51,5 +52,6 @@ public final class PipBackend implements InstallerBackend {
         env.put("UV_TOOL_DIR", store.venvsDir().toString());
         Shell.mustWithEnv(List.of(uv, "tool", "install", "--force", pkg), env);
         Log.ok("cli: installed %s via uv tool (bin=%s)", pkg, store.cliBinDir());
+        return InstallOutcome.INSTALLED;
     }
 }

@@ -161,6 +161,170 @@ public final class QuietConsoleTest {
                             "leak-299 -> /elsewhere/299", "including the last one");
                 })
 
+                // ----------------------------------------------- provisioning
+
+                .test("30 provisioning items fit in 2 console lines AND state their split", () -> {
+                    // Measured on the operator's real 20-unit home:
+                    // `sync git-integration-repo -y` printed 4 tool lines and
+                    // 26 cli lines, of which 28 reported that NOTHING HAPPENED
+                    // — "already on PATH", "ready", "scripts unchanged since
+                    // last install". Those scale with what a home DECLARES, not
+                    // with what the run did, so they are the same class as the
+                    // per-(unit × agent) lines the first pass demoted.
+                    Capture c = renderProvisioning(false);
+
+                    // --- the budget half, stated two ways.
+                    // Not one no-op survives per item...
+                    List<String> noOps = c.lines().stream()
+                            .filter(l -> l.contains("already on PATH")
+                                    || l.contains("scripts unchanged"))
+                            .toList();
+                    assertTrue(noOps.isEmpty(),
+                            "no per-item 'nothing happened' line reaches the console; got "
+                                    + noOps);
+                    // ...and the whole provisioning surface is 2 rollups plus
+                    // the 3 events we deliberately keep.
+                    List<String> provisioning = c.lines().stream()
+                            .filter(l -> l.contains("cli:") || l.contains("tool"))
+                            .toList();
+                    assertTrue(provisioning.size() <= 5,
+                            "30 provisioning items reduce to 2 rollups + 3 events; got "
+                                    + provisioning.size() + ":\n"
+                                    + String.join("\n", provisioning));
+
+                    // --- the anti-vacuity half, in the SAME case. A rollup
+                    //     that silently dropped its counts satisfies the budget
+                    //     above; these are what make it evidence. Both
+                    //     categories, always: "2 installed" alone cannot
+                    //     distinguish a 26-dep home from a 2-dep one.
+                    assertContains(c.text(), "cli: 25 already present, 1 installed, 1 failed",
+                            "the cli rollup states every category — a reader has to be able "
+                                    + "to tell a run that installed nothing from one that "
+                                    + "installed everything, and to see the failure");
+                    assertContains(c.text(), "tools: 3 already present, 1 installed",
+                            "and so does the tools rollup");
+
+                    // --- the actionable cases stay per-item on the console
+                    assertContains(c.text(), "cli: dep-24 [tar] installed for unit-a",
+                            "an install is an EVENT and stays on the console");
+                    assertContains(c.text(), "cli: dep-99 install failed",
+                            "and so does a failure");
+
+                    // --- and the no-ops are written down, not dropped
+                    assertNotNull(c.log(), "the run log path is named");
+                    String body = Files.readString(c.log(), StandardCharsets.UTF_8);
+                    assertContains(body, "cli: dep-00 already on PATH",
+                            "the demoted no-op is in the log");
+                    assertContains(body, "tool: brew on PATH",
+                            "and so is the tool presence check");
+                })
+
+                .test("--verbose restores every provisioning line", () -> {
+                    Capture loud = renderProvisioning(true);
+                    assertContains(loud.text(), "cli: dep-00 already on PATH",
+                            "the demoted no-op is back on the console");
+                    assertContains(loud.text(), "tool: brew on PATH",
+                            "and the tool presence check with it");
+                    assertTrue(loud.lines().size() > 25,
+                            "verbose is the per-item output, not a slightly longer summary; got "
+                                    + loud.lines().size());
+                })
+
+                .test("the backend itself demotes the no-op — console silent, log has it", () -> {
+                    // THE PRINT SITE, not a stand-in for it. The rollup cases
+                    // above build their tally from facts, so a mutation that
+                    // put `Log.ok` back inside the backends left them green:
+                    // the fixture was emitting the lines, not the backend. This
+                    // case drives TarBackend directly.
+                    //
+                    // TarBackend is the one backend that reaches both branches
+                    // with no network: a dep whose binary is already in bin/cli
+                    // is ALREADY_PRESENT, and one with no install target for
+                    // this platform is SKIPPED.
+                    SkillStore store = tempStore("classify");
+                    java.nio.file.Files.createDirectories(store.cliBinDir());
+                    java.nio.file.Files.writeString(
+                            store.cliBinDir().resolve("already-there"), "#!/bin/sh\n");
+                    dev.skillmanager.cli.installer.TarBackend backend =
+                            new dev.skillmanager.cli.installer.TarBackend();
+
+                    dev.skillmanager.cli.installer.InstallOutcome[] outcome =
+                            new dev.skillmanager.cli.installer.InstallOutcome[3];
+                    Capture c = capture(() -> {
+                        outcome[0] = backend.install(dep("already-there"), store, "unit-a");
+                        outcome[1] = backend.install(dep("no-target-here"), store, "unit-a");
+                        // The OTHER no-op branch, and the one the real home hits
+                        // 18 times: a dep declaring an `on_path` binary that is
+                        // already there. `sh` is on PATH on every host this runs on.
+                        outcome[2] = backend.install(onPathDep("sh"), store, "unit-a");
+                    });
+
+                    // The classification.
+                    assertEquals(dev.skillmanager.cli.installer.InstallOutcome.ALREADY_PRESENT,
+                            outcome[0], "a binary already in bin/cli is a STATE, not an event");
+                    assertEquals(dev.skillmanager.cli.installer.InstallOutcome.SKIPPED,
+                            outcome[1], "and a dep with no install target is neither");
+                    assertEquals(dev.skillmanager.cli.installer.InstallOutcome.ALREADY_PRESENT,
+                            outcome[2], "and a declared on_path binary that is present is a state");
+
+                    // The routing. BOTH no-op branches are off the console —
+                    // these are the two lines that made up 18 of the 26 on the
+                    // real home, and each is asserted separately because a
+                    // mutation that reverts one leaves the other.
+                    assertFalse(c.text().contains("already installed"),
+                            "the already-installed line is off the console; got:\n" + c.text());
+                    assertFalse(c.text().contains("already on PATH"),
+                            "and so is the already-on-PATH line; got:\n" + c.text());
+                    // ...but the refusal, which the caller may have to act on, does print.
+                    assertContains(c.text(), "no install target for no-target-here",
+                            "while the refusal it cannot fix by itself still prints");
+                    // ...and both no-ops are written down rather than dropped.
+                    assertNotNull(c.log(), "a run log was written");
+                    String body = Files.readString(c.log(), StandardCharsets.UTF_8);
+                    assertContains(body, "cli: already-there already installed",
+                            "the demoted already-installed line is in the run log");
+                    assertContains(body, "cli: sh already on PATH",
+                            "and the demoted already-on-PATH line");
+                })
+
+                .test("ToolInstallRecorder demotes a presence check that passed", () -> {
+                    // The tool half of the same defect, at ITS print site: four
+                    // `✓ tool: … ready / on PATH` lines on the real home, one
+                    // per declared tool, on every run. Driven through the real
+                    // recorder with a real plan.
+                    SkillStore store = tempStore("tools");
+                    dev.skillmanager.plan.InstallPlan plan = new dev.skillmanager.plan.InstallPlan();
+                    // `sh` is on PATH on every host this runs on — the passing
+                    // presence check, which is the line being demoted.
+                    plan.add(new dev.skillmanager.plan.PlanAction.EnsureTool(
+                            external("sh", "install a shell"), false));
+                    // And one that is not there: the event that must survive.
+                    plan.add(new dev.skillmanager.plan.PlanAction.EnsureTool(
+                            external("definitely-not-a-real-tool", "install the ghost"), true));
+
+                    dev.skillmanager.cli.installer.ProvisionTally[] tally =
+                            new dev.skillmanager.cli.installer.ProvisionTally[1];
+                    Capture c = capture(() ->
+                            tally[0] = dev.skillmanager.tools.ToolInstallRecorder.run(plan, store));
+
+                    // The passing check is counted and demoted.
+                    assertEquals(1, tally[0].alreadyPresent(),
+                            "the tool that was already there is counted");
+                    assertFalse(c.text().contains("tool: sh on PATH"),
+                            "and its line is off the console; got:\n" + c.text());
+                    assertNotNull(c.log(), "a run log was written");
+                    assertContains(Files.readString(c.log(), StandardCharsets.UTF_8),
+                            "tool: sh on PATH", "and in the run log");
+
+                    // The missing one is an event the caller must act on, and
+                    // it still prints, with the hint the dependency declared.
+                    assertEquals(1, tally[0].missing(), "the missing tool is counted as missing");
+                    assertContains(c.text(), "definitely-not-a-real-tool missing on PATH",
+                            "and named on the console");
+                    assertContains(c.text(), "install the ghost",
+                            "with its remedy");
+                })
+
                 .test("a sync refusal still names the unit and the command that clears it", () -> {
                     SkillStore store = tempStore("refusal");
                     Capture c = capture(() -> {
@@ -333,6 +497,83 @@ public final class QuietConsoleTest {
                 EffectReceipt.ok(new SkillEffect.SyncGit("unit-00", null, null, false, false), git),
                 EffectReceipt.ok(new SkillEffect.SyncAgents(List.of(), null), agents),
                 EffectReceipt.ok(new SkillEffect.UpdateUnitsLock(null, null), tail));
+    }
+
+    /**
+     * The provisioning shape measured on the operator's real 20-unit home,
+     * with the two actionable cases planted so the "already present" counts
+     * cannot be the only thing under test: 25 CLI deps of which 24 were
+     * already there, one that installed and one that failed, plus 4 tools of
+     * which 3 were already there.
+     */
+    private static List<EffectReceipt> provisioningReceipts() {
+        dev.skillmanager.cli.installer.ProvisionTally cli =
+                dev.skillmanager.cli.installer.ProvisionTally.EMPTY;
+        for (int i = 0; i < 24; i++) {
+            // The line the console no longer carries. Emitted here the way the
+            // backends emit it, so the log assertion is about real output.
+            Log.detail("✓ cli: dep-%02d already on PATH", i);
+            cli = cli.plus(dev.skillmanager.cli.installer.InstallOutcome.ALREADY_PRESENT);
+        }
+        Log.detail("✓ cli: skill-script computeq — scripts unchanged since last install (skipping)");
+
+        dev.skillmanager.cli.installer.ProvisionTally tools =
+                dev.skillmanager.cli.installer.ProvisionTally.EMPTY;
+        for (String t : List.of("brew", "npm", "uv")) {
+            Log.detail("✓ tool: %s on PATH  → /opt/homebrew/bin/%s", t, t);
+            tools = tools.plus(dev.skillmanager.cli.installer.InstallOutcome.ALREADY_PRESENT);
+        }
+        Log.ok("tool: npx installed  → /home/pm/node/bin/npx");
+        tools = tools.plus(dev.skillmanager.cli.installer.InstallOutcome.INSTALLED);
+        // The 25th cli dep is the skipping skill-script counted above.
+        cli = cli.plus(dev.skillmanager.cli.installer.InstallOutcome.ALREADY_PRESENT);
+
+        return List.of(
+                EffectReceipt.ok(new SkillEffect.InstallTools(List.of()),
+                        List.of(new ContextFact.ToolsInstalledFor(20, tools))),
+                EffectReceipt.ok(new SkillEffect.InstallCli(List.of()),
+                        List.of(new ContextFact.CliInstalledFor(20, cli))),
+                // The two events, through the decomposed path's own facts, so
+                // the rollup is proven to merge both sources.
+                EffectReceipt.ok(new SkillEffect.RunCliInstall("unit-a", null, false),
+                        List.of(new ContextFact.CliInstalled("unit-a", "dep-24", "tar"))),
+                EffectReceipt.partial(new SkillEffect.RunCliInstall("unit-b", null, false),
+                        List.of(new ContextFact.CliInstallFailed(
+                                "unit-b", "dep-99", "exit 2")),
+                        "one cli dep failed"));
+    }
+
+    private static Capture renderProvisioning(boolean verbose) throws Exception {
+        SkillStore store = tempStore(verbose ? "prov-verbose" : "prov-quiet");
+        boolean was = Log.isVerbose();
+        try {
+            Log.setVerbose(verbose);
+            return capture(() -> {
+                ConsoleProgramRenderer r = new ConsoleProgramRenderer(store, gateway());
+                for (EffectReceipt receipt : provisioningReceipts()) r.onReceipt(receipt);
+                r.onComplete();
+            });
+        } finally {
+            Log.setVerbose(was);
+        }
+    }
+
+    /** A tar-backed dep whose binary is {@code name} and which has no targets. */
+    private static dev.skillmanager.model.CliDependency dep(String name) {
+        return new dev.skillmanager.model.CliDependency(
+                name, "tar:" + name, null, null, null, false, java.util.Map.of());
+    }
+
+    /** The same, declaring {@code onPath} as its already-satisfied binary. */
+    private static dev.skillmanager.model.CliDependency onPathDep(String onPath) {
+        return new dev.skillmanager.model.CliDependency(
+                onPath, "tar:" + onPath, null, null, onPath, false, java.util.Map.of());
+    }
+
+    /** An external tool dependency: realized by a presence check, never installed. */
+    private static dev.skillmanager.tools.ToolDependency external(String id, String hint) {
+        return new dev.skillmanager.tools.ToolDependency.External(
+                id, id, dev.skillmanager.pm.PackageManager.DOCKER, hint, java.util.Set.of());
     }
 
     private static Capture renderSync(boolean verbose) throws Exception {
