@@ -978,19 +978,34 @@ public final class LiveInterpreter implements ProgramInterpreter {
                     GitOps.isGitRepo(dir));
             case GATEWAY_UNAVAILABLE, AGENT_SYNC_FAILED,
                  MCP_REGISTRATION_FAILED, REGISTRY_UNAVAILABLE,
-                 AUTHENTICATION_NEEDED, PROJECT_SYNC_FAILED -> {
+                 AUTHENTICATION_NEEDED -> {
                 // No cheap "is it really fixed" probe — pinging the gateway
                 // tells us nothing about whether THIS skill's MCPs are
                 // registered, etc., and a registry-side auth-validity probe
                 // costs a real HTTP round-trip per unit. Handlers clear
                 // these on actual success (RegisterMcp / SyncAgents /
                 // SyncGit registry lookup → AUTHENTICATION_NEEDED clears
-                // the moment the next describeVersion succeeds;
-                // PROJECT_SYNC_FAILED clears when the next parent-home
-                // sync refreshes the claiming projects — re-running a
-                // project realization here would be a full sync, not a
-                // probe).
+                // the moment the next describeVersion succeeds).
                 yield false;
+            }
+            case PROJECT_SYNC_FAILED -> {
+                // The full probe is a project realization, which is a sync
+                // and not a probe, so the error still clears on the next
+                // sync that realizes the claiming project successfully.
+                //
+                // But there is a cheap half that was missing, and it is the
+                // half that had operators walled in: an error recorded FOR a
+                // project that no longer claims this unit describes nothing
+                // that can be fixed, and no sync will ever revisit it —
+                // `syncClaimingProjects` only touches units some project
+                // claims. Unregister the project, drop the unit from its
+                // manifest, or resolve it into a different one, and the
+                // record became unfalsifiable and permanent. It is stale by
+                // construction, the test is one lock-file read, and it is
+                // the only escape hatch that does not require the failing
+                // sync to first succeed. Issue #144.
+                yield clearIf(ctx, e.unitName(), e.kind(),
+                        noProjectClaims(ctx, e.unitName()));
             }
             case HARNESS_CLI_UNAVAILABLE -> {
                 // Probe is cheap: are both harness CLIs on PATH? Fully
@@ -1032,6 +1047,26 @@ public final class LiveInterpreter implements ProgramInterpreter {
                                    InstalledUnit.ErrorKind kind, boolean fixed) throws IOException {
         if (fixed) ctx.clearError(unitName, kind);
         return fixed;
+    }
+
+    /**
+     * True when no registered project's lock claims {@code unitName}.
+     *
+     * <p>Read from the same {@link dev.skillmanager.project.SkillProjectLockStore}
+     * that decides which units {@code syncClaimingProjects} stamps, so the
+     * clear and the record cannot disagree about who claims what.
+     *
+     * <p>Unreadable lock store → false. An error is only dropped on positive
+     * evidence that nothing can produce it again; not being able to tell is
+     * not that evidence.
+     */
+    private static boolean noProjectClaims(EffectContext ctx, String unitName) {
+        try {
+            return new dev.skillmanager.project.SkillProjectLockStore(ctx.store())
+                    .projectsClaiming(unitName).isEmpty();
+        } catch (IOException unreadable) {
+            return false;
+        }
     }
 
     private static String ownerOf(List<AgentUnit> units, String mcpServerId) {

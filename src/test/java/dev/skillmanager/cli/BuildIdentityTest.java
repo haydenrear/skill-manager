@@ -48,7 +48,13 @@ public final class BuildIdentityTest {
                     Path git = checkout("tagged");
                     branch(git, "refs/heads/main", SHA);
                     Files.createDirectories(git.resolve("refs/tags"));
-                    Files.writeString(git.resolve("refs/tags/v0.19.2"), SHA + "\n");
+                    // DERIVED, never literal. The assertion below compares against
+                    // BuildIdentity.RELEASE, which reads version.txt. A literal tag
+                    // here stops describing a released build the moment
+                    // release-please bumps the version, and the suite then fails for
+                    // a reason that has nothing to do with the code under test.
+                    // That is exactly what `chore(main): release 0.20.0` did.
+                    Files.writeString(git.resolve("refs/tags/" + BuildIdentity.releaseTag()), SHA + "\n");
 
                     assertEquals(BuildIdentity.RELEASE, BuildIdentity.releaseLine(git),
                             "a tagged build IS the release and must not look unreleased");
@@ -60,11 +66,13 @@ public final class BuildIdentityTest {
                     // released build would report itself as a working build.
                     Path git = checkout("annotated");
                     branch(git, "refs/heads/main", SHA);
+                    // Tag name derived from BuildIdentity.RELEASE for the same
+                    // reason as the case above.
                     Files.writeString(git.resolve("packed-refs"), """
                             # pack-refs with: peeled fully-peeled sorted
-                            aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa refs/tags/v0.19.2
+                            aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa refs/tags/%s
                             ^%s
-                            """.formatted(SHA));
+                            """.formatted(BuildIdentity.releaseTag(), SHA));
 
                     assertEquals(BuildIdentity.RELEASE, BuildIdentity.releaseLine(git),
                             "the peeled line is the commit the tag names");
