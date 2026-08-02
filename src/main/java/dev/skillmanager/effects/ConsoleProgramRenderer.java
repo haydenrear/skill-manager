@@ -28,6 +28,28 @@ import java.util.Map;
  * <p>{@link #onReceipt} renders per-fact output as effects complete (so
  * the user sees progress for long operations); {@link #onComplete}
  * emits the summaries that depend on cross-receipt aggregation.
+ *
+ * <h2>What reaches the console, and what only reaches the log</h2>
+ *
+ * <p>The facts here divide cleanly into two kinds, and until this split they
+ * were printed identically:
+ *
+ * <ul>
+ *   <li><b>Per-item successes</b> — "claude: synced acme-widgets", "cli: uv
+ *       installed for foo", "marketplace: wrote 4 plugin(s)". There is one per
+ *       (unit × agent), so a twenty-unit home across three agents produced
+ *       sixty lines carrying one fact: it worked. These go to {@link
+ *       Log#detail}: the run log always, the console only under
+ *       {@code --verbose}, and a ROLLUP with the counts takes their place.
+ *       The counts are the point — "20 unit(s) into claude, codex, gemini" is
+ *       checkable in a way that twenty sentences are not.</li>
+ *   <li><b>Verdicts, and anything a caller must act on</b> — the install
+ *       verdict, every warning, every error, the restart banner, the
+ *       violations block. These are unchanged, in every mode.</li>
+ * </ul>
+ *
+ * <p>{@code --json} is untouched: the JSON path returns before any of this and
+ * still carries every receipt and every fact.
  */
 public final class ConsoleProgramRenderer implements ProgramRenderer {
 
@@ -48,6 +70,23 @@ public final class ConsoleProgramRenderer implements ProgramRenderer {
     private final List<ContextFact.MarkdownImportViolation> markdownImportViolations = new ArrayList<>();
     private final Map<String, java.util.LinkedHashMap<InstalledUnit.ErrorKind, String>> outstandingErrors =
             new LinkedHashMap<>();
+
+    // ---- rollup counters: what replaces the demoted per-item lines ----
+    private final LinkedHashSet<String> syncedAgents = new LinkedHashSet<>();
+    private final LinkedHashSet<String> projectedUnits = new LinkedHashSet<>();
+    private final LinkedHashSet<String> unlinkedUnits = new LinkedHashSet<>();
+    // Name SETS, not counters: one unit can carry two sync facts (it merged
+    // AND its origin is local), and a sum over facts would report seven units
+    // synced in a six-unit home. The union is the number of units touched.
+    private final LinkedHashSet<String> gitMerged = new LinkedHashSet<>();
+    private final LinkedHashSet<String> gitCurrent = new LinkedHashSet<>();
+    private final LinkedHashSet<String> gitLocalOnly = new LinkedHashSet<>();
+    private int toolsReady;
+    private int cliInstalled;
+    private int mcpRegistered;
+    private int bindingsCreated;
+    private int bindingsRemoved;
+    private int projectionsMaterialized;
 
     public ConsoleProgramRenderer(SkillStore store, GatewayConfig gateway) {
         this(store, gateway, false);
@@ -93,7 +132,7 @@ public final class ConsoleProgramRenderer implements ProgramRenderer {
                 // (Log.error "✋ halted: ..."). The exit code is for the
                 // decoder; no extra user-visible line needed.
             }
-            case ContextFact.RegistryConfigured x -> Log.ok("registry: %s", x.url());
+            case ContextFact.RegistryConfigured x -> Log.detail("✓ registry: %s", x.url());
             case ContextFact.GatewayAlreadyRunning ignored -> { /* silent: not noteworthy */ }
             case ContextFact.GatewayStarted x -> Log.ok("gateway up at %s:%d", x.host(), x.port());
             case ContextFact.GatewayUnreachable x -> Log.warn(
@@ -106,7 +145,7 @@ public final class ConsoleProgramRenderer implements ProgramRenderer {
             case ContextFact.ProvenanceRecorded ignored -> { /* silent */ }
 
             // ---- onboard (reconciler) ----
-            case ContextFact.SkillOnboarded x -> Log.info("onboarded %s (kind=%s)", x.skillName(), x.kind());
+            case ContextFact.SkillOnboarded x -> Log.detail("onboarded %s (kind=%s)", x.skillName(), x.kind());
 
             // ---- transitives ----
             case ContextFact.TransitiveInstalled x -> Log.ok("transitive: installed %s", x.name());
@@ -122,11 +161,11 @@ public final class ConsoleProgramRenderer implements ProgramRenderer {
                 else Log.warn("resolve: %d unit(s) resolved, %d failure(s)", x.resolved(), x.failures());
             }
             case ContextFact.BundledSkillFound x ->
-                    Log.ok("bundled: %s — local source %s", x.publishedName(), x.sourcePath());
+                    Log.detail("✓ bundled: %s — local source %s", x.publishedName(), x.sourcePath());
             case ContextFact.BundledSkillFromGithub x ->
-                    Log.ok("bundled: %s — github %s", x.publishedName(), x.coord());
+                    Log.detail("✓ bundled: %s — github %s", x.publishedName(), x.coord());
             case ContextFact.BundledSkillAlreadyInstalled x ->
-                    Log.info("bundled: %s already installed at %s — skipping",
+                    Log.detail("bundled: %s already installed at %s — skipping",
                             x.publishedName(), x.storePath());
             case ContextFact.BundledSkillMissing x ->
                     Log.error("bundled: %s not found (expected %s)",
@@ -137,15 +176,18 @@ public final class ConsoleProgramRenderer implements ProgramRenderer {
             case ContextFact.CliInstalledFor ignored -> { /* silent: per-dep facts cover it */ }
 
             // ---- MCP gateway (bulk legacy + per-server new) ----
-            case ContextFact.McpRegistered x -> Log.ok("mcp: %s registered for %s", x.serverId(), x.skillName());
+            case ContextFact.McpRegistered x -> {
+                Log.detail("✓ mcp: %s registered for %s", x.serverId(), x.skillName());
+                mcpRegistered++;
+            }
             case ContextFact.McpRegistrationFailed x ->
                     Log.error("mcp: %s register failed for %s — %s", x.serverId(), x.skillName(), x.message());
             case ContextFact.OrphanUnregistered x -> {
-                Log.ok("gateway: unregistered orphan %s", x.serverId());
+                Log.detail("✓ gateway: unregistered orphan %s", x.serverId());
                 orphans.add(x.serverId());
             }
             case ContextFact.McpServerRegistered x -> {
-                Log.info("mcp: %s", x.result().message());
+                Log.detail("mcp: %s", x.result().message());
                 mcpResults.add(x.result());
             }
             case ContextFact.McpServerRegistrationFailed x -> {
@@ -155,7 +197,11 @@ public final class ConsoleProgramRenderer implements ProgramRenderer {
             }
 
             // ---- agents (per-(agent, skill)) ----
-            case ContextFact.AgentSkillSynced x -> Log.ok("%s: synced %s", x.agentId(), x.skillName());
+            case ContextFact.AgentSkillSynced x -> {
+                Log.detail("✓ %s: synced %s", x.agentId(), x.skillName());
+                syncedAgents.add(x.agentId());
+                projectedUnits.add(x.skillName());
+            }
             case ContextFact.AgentSkillSyncFailed x -> Log.warn(
                     "%s: skill sync failed for %s — %s", x.agentId(), x.skillName(), x.message());
             case ContextFact.AgentMcpConfigChanged x -> {
@@ -175,38 +221,51 @@ public final class ConsoleProgramRenderer implements ProgramRenderer {
                     Log.warn("project-sync %s failed — %s", x.projectName(), x.message());
 
             // ---- sync git ----
-            case ContextFact.SyncGitUpToDate x -> Log.ok("%s: already at %s", x.skillName(), x.label());
-            case ContextFact.SyncGitMerged x -> Log.ok("%s: merged %s",
-                    x.skillName(), shortHash(x.fetchedHash()));
+            case ContextFact.SyncGitUpToDate x -> {
+                Log.detail("✓ %s: already at %s", x.skillName(), x.label());
+                gitCurrent.add(x.skillName());
+            }
+            case ContextFact.SyncGitMerged x -> {
+                Log.detail("✓ %s: merged %s", x.skillName(), shortHash(x.fetchedHash()));
+                gitMerged.add(x.skillName());
+            }
             case ContextFact.SyncGitRefused x -> {
-                printMergeInstructions(x.skillName(), x.upstream(), x.gitLatest());
+                printMergeInstructions(x.skillName(), x.gitLatest());
                 refusedSkills.add(x.skillName());
             }
             case ContextFact.SyncGitConflicted x -> {
                 Path storeDir = store.skillDir(x.skillName());
                 Log.error("%s: merge conflict in %d file(s):",
                         x.skillName(), x.conflictedFiles().size());
-                for (String cf : x.conflictedFiles()) System.err.println("    " + cf);
-                System.err.println();
-                System.err.println("Resolve in " + storeDir + ", then `git add` + `git commit`.");
-                System.err.println("To back out: `git merge --abort` (or `git reset --hard HEAD` after a stash-pop conflict).");
-                System.err.println("If sync stashed local changes, they're preserved at `stash@{0}` — run `git stash pop`");
-                System.err.println("once the working tree is clean. Only run `git stash drop` if you want to discard them.");
+                Log.errorList("    ", x.conflictedFiles());
+                // One sentence per way out, not four with a blank line
+                // between. The stash clause is only printed when there IS a
+                // stash to speak about — it used to be said on every conflict,
+                // including the ones where nothing was stashed.
+                Log.error("  resolve in %s, then `git add` + `git commit`; back out with "
+                        + "`git merge --abort`. A stash, if sync made one, is at `stash@{0}` "
+                        + "(`git stash pop` once the tree is clean).", storeDir);
                 conflictedSkills.add(x.skillName());
             }
             case ContextFact.SyncGitFailed x ->
                     Log.error("%s: git sync failed — %s", x.skillName(), x.reason());
-            case ContextFact.SyncGitNotGitTracked x ->
-                    Log.warn("%s: not git-tracked — file/local installs do not sync; use github: or git+",
-                            x.skillName());
-            // A note about a choice, not a complaint about a fault: the
-            // operator asked for a local install and has one. Still said on
-            // every sync, so "this will not update" never becomes invisible.
-            case ContextFact.SyncGitLocalInstall x ->
-                    Log.info("%s: installed from a local path%s — nothing upstream to sync "
-                                    + "(reinstall from github: or git+ to track a remote)",
-                            x.skillName(),
-                            x.origin() == null || x.origin().isBlank() ? "" : " (" + x.origin() + ")");
+            // A state, not a fault (D14): the operator asked for a local
+            // install and has one. Said once per sync as a COUNT in the
+            // rollup rather than once per unit — twenty copies of "this will
+            // not update" is how the sentence became invisible, not how it
+            // stayed visible.
+            case ContextFact.SyncGitNotGitTracked x -> {
+                Log.detail("! %s: not git-tracked — file/local installs do not sync; "
+                        + "use github: or git+", x.skillName());
+                gitLocalOnly.add(x.skillName());
+            }
+            case ContextFact.SyncGitLocalInstall x -> {
+                Log.detail("%s: installed from a local path%s — nothing upstream to sync "
+                                + "(reinstall from github: or git+ to track a remote)",
+                        x.skillName(),
+                        x.origin() == null || x.origin().isBlank() ? "" : " (" + x.origin() + ")");
+                gitLocalOnly.add(x.skillName());
+            }
             case ContextFact.SyncGitNoOrigin x ->
                     Log.warn("%s: git-tracked but no origin remote configured", x.skillName());
             case ContextFact.SyncGitRegistryUnavailable x ->
@@ -214,14 +273,17 @@ public final class ConsoleProgramRenderer implements ProgramRenderer {
             case ContextFact.SyncGitAuthRequired x -> Log.warn(
                     "%s: registry refused cached credentials (%s) — run `skill-manager login` and re-sync",
                     x.skillName(), x.message());
-            case ContextFact.SyncGitNoUpgradeNeeded x ->
-                    Log.ok("%s: at %s (>= registry's latest) — no upgrade needed", x.skillName(), x.version());
+            case ContextFact.SyncGitNoUpgradeNeeded x -> {
+                Log.detail("✓ %s: at %s (>= registry's latest) — no upgrade needed",
+                        x.skillName(), x.version());
+                gitCurrent.add(x.skillName());
+            }
 
             // ---- error management ----
             case ContextFact.ErrorAdded ignored -> { /* silent: tracked on source record */ }
             case ContextFact.ErrorCleared ignored -> { /* silent */ }
             case ContextFact.ErrorValidated x -> {
-                if (x.cleared()) Log.ok("reconcile: %s cleared %s", x.skillName(), x.kind());
+                if (x.cleared()) Log.detail("✓ reconcile: %s cleared %s", x.skillName(), x.kind());
             }
             case ContextFact.OutstandingError x -> {
                 outstandingErrors
@@ -235,11 +297,15 @@ public final class ConsoleProgramRenderer implements ProgramRenderer {
 
             // ---- skill-store mutations ----
             case ContextFact.SkillRemovedFromStore x -> Log.ok("removed %s from store", x.name());
-            case ContextFact.AgentSkillUnlinked x -> Log.ok("%s: unlinked %s", x.agentId(), x.skillName());
+            case ContextFact.AgentSkillUnlinked x -> {
+                Log.detail("✓ %s: unlinked %s", x.agentId(), x.skillName());
+                syncedAgents.add(x.agentId());
+                unlinkedUnits.add(x.skillName());
+            }
             case ContextFact.AgentSkillUnlinkFailed x ->
                     Log.warn("%s: unlink %s failed — %s", x.agentId(), x.skillName(), x.message());
             case ContextFact.AgentMcpEntryRemoved x ->
-                    Log.ok("%s: removed virtual-mcp-gateway entry", x.agentId());
+                    Log.detail("✓ %s: removed virtual-mcp-gateway entry", x.agentId());
 
             // ---- gateway lifecycle ----
             case ContextFact.GatewayStopped ignored -> Log.ok("gateway stopped");
@@ -251,34 +317,41 @@ public final class ConsoleProgramRenderer implements ProgramRenderer {
 
             // ---- package-manager runtime ----
             case ContextFact.PackageManagerReady x -> {
-                if (x.wasMissing()) Log.ok("pm: %s@%s installed", x.pmId(), x.version());
+                if (x.wasMissing()) Log.detail("✓ pm: %s@%s installed", x.pmId(), x.version());
             }
             case ContextFact.PackageManagerUnavailable x ->
                     Log.warn("pm: %s unavailable — %s", x.pmId(), x.message());
             case ContextFact.PackageManagerInstalled x ->
-                    Log.ok("pm: installed %s@%s → %s", x.pmId(), x.version(), x.installPath());
+                    Log.detail("✓ pm: installed %s@%s → %s", x.pmId(), x.version(), x.installPath());
 
             // ---- decomposed plan-action effects ----
             case ContextFact.ToolEnsured x -> {
                 String hint = x.bundled() ? "bundled" : (x.missingOnPath() ? "missing" : "on PATH");
-                Log.ok("tool: %s ready (%s)", x.toolId(), hint);
+                Log.detail("✓ tool: %s ready (%s)", x.toolId(), hint);
+                toolsReady++;
             }
-            case ContextFact.CliInstalled x -> Log.ok("cli: %s [%s] installed for %s",
-                    x.depName(), x.backend(), x.skillName());
+            case ContextFact.CliInstalled x -> {
+                Log.detail("✓ cli: %s [%s] installed for %s",
+                        x.depName(), x.backend(), x.skillName());
+                cliInstalled++;
+            }
             case ContextFact.CliInstallFailed x -> Log.error(
                     "cli: %s install failed for %s — %s", x.depName(), x.skillName(), x.message());
+            // Kept on the console: it is the evidence that the run reached its
+            // lock write, which is what "the store and the lock agree" rests
+            // on, and it is one line however many units there are.
             case ContextFact.UnitsLockUpdated x -> Log.ok(
                     "units.lock.toml: wrote %d unit(s) → %s", x.unitCount(), x.path());
             case ContextFact.UnitsLockRestored x -> Log.warn(
                     "units.lock.toml: restored prior content at %s (rollback)", x.path());
 
             // ---- harness plugin marketplace + CLI ----
-            case ContextFact.PluginMarketplaceRegenerated x -> Log.ok(
-                    "marketplace: wrote %d plugin(s) → %s", x.pluginCount(), x.path());
+            case ContextFact.PluginMarketplaceRegenerated x -> Log.detail(
+                    "✓ marketplace: wrote %d plugin(s) → %s", x.pluginCount(), x.path());
             case ContextFact.HarnessPluginCli x -> {
                 if (x.ok()) {
-                    if (x.pluginName() == null) Log.ok("%s: %s", x.agentId(), x.op());
-                    else Log.ok("%s: %s %s", x.agentId(), x.op(), x.pluginName());
+                    if (x.pluginName() == null) Log.detail("✓ %s: %s", x.agentId(), x.op());
+                    else Log.detail("✓ %s: %s %s", x.agentId(), x.op(), x.pluginName());
                 } else {
                     if (x.pluginName() == null) Log.warn("%s: %s failed — %s",
                             x.agentId(), x.op(), x.message());
@@ -293,21 +366,27 @@ public final class ConsoleProgramRenderer implements ProgramRenderer {
             // ---- bindings (ticket 49) ----
             case ContextFact.BindingCreated x -> {
                 String sub = x.subElement() == null ? "" : " (" + x.subElement() + ")";
-                Log.ok("bound %s%s → %s [%s]", x.unitName(), sub, x.targetRoot(), x.bindingId());
+                Log.detail("✓ bound %s%s → %s [%s]",
+                        x.unitName(), sub, x.targetRoot(), x.bindingId());
+                bindingsCreated++;
             }
-            case ContextFact.BindingRemoved x ->
-                    Log.ok("unbound %s [%s]", x.unitName(), x.bindingId());
-            case ContextFact.ProjectionMaterialized x ->
-                    Log.info("projection: %s → %s", x.kind(), x.destPath());
+            case ContextFact.BindingRemoved x -> {
+                Log.detail("✓ unbound %s [%s]", x.unitName(), x.bindingId());
+                bindingsRemoved++;
+            }
+            case ContextFact.ProjectionMaterialized x -> {
+                Log.detail("projection: %s → %s", x.kind(), x.destPath());
+                projectionsMaterialized++;
+            }
             case ContextFact.ProjectionUnmaterialized x ->
-                    Log.info("projection: removed %s at %s", x.kind(), x.destPath());
+                    Log.detail("projection: removed %s at %s", x.kind(), x.destPath());
             case ContextFact.ProjectionSkippedConflict x ->
                     Log.warn("projection: %s already exists — skipped (policy=SKIP)", x.destPath());
             case ContextFact.DocBindingSynced x -> {
                 String sub = x.subElement() == null ? "" : "/" + x.subElement();
                 String prefix = x.unitName() + sub + " [" + shortBindingId(x.bindingId()) + "]";
                 switch (x.severity()) {
-                    case INFO -> Log.ok("doc-sync %s — %s", prefix, x.description());
+                    case INFO -> Log.detail("✓ doc-sync %s — %s", prefix, x.description());
                     case WARN -> Log.warn("doc-sync %s — %s", prefix, x.description());
                     case ERROR -> Log.error("doc-sync %s — %s", prefix, x.description());
                 }
@@ -315,9 +394,9 @@ public final class ConsoleProgramRenderer implements ProgramRenderer {
             case ContextFact.HarnessBindingSynced x -> {
                 String prefix = x.harnessName() + ":" + x.instanceId();
                 switch (x.action()) {
-                    case APPLIED -> Log.ok("harness-sync %s — applied %s", prefix, x.unitName());
-                    case UPGRADED -> Log.info("harness-sync %s — upgraded %s", prefix, x.unitName());
-                    case REMOVED -> Log.ok("harness-sync %s — removed %s (orphan)",
+                    case APPLIED -> Log.detail("✓ harness-sync %s — applied %s", prefix, x.unitName());
+                    case UPGRADED -> Log.detail("harness-sync %s — upgraded %s", prefix, x.unitName());
+                    case REMOVED -> Log.detail("✓ harness-sync %s — removed %s (orphan)",
                             prefix, x.unitName());
                     case FAILED -> Log.error("harness-sync %s — %s failed: %s",
                             prefix, x.unitName(), x.description());
@@ -338,6 +417,7 @@ public final class ConsoleProgramRenderer implements ProgramRenderer {
             return;
         }
         printMcpResultsBlock();
+        printRollups();
         printSyncSummary();
         // Violations before the agent-config summary, because that summary
         // ends in `ACTION_REQUIRED: Restart Claude / Codex …` — a line that
@@ -423,6 +503,55 @@ public final class ConsoleProgramRenderer implements ProgramRenderer {
 
     // ----------------------------------------------- summaries
 
+    /**
+     * The counted replacements for the per-item lines that moved to the log.
+     *
+     * <p>Each line is emitted only when its count is non-zero, and each states
+     * a number a caller can check against the disk — "N unit(s) into claude,
+     * codex, gemini" is falsifiable by counting links; "claude: synced foo"
+     * twenty times is not more evidence than once.
+     *
+     * <p>These are the ONLY lines added by the quieting. They are not printed
+     * under {@code --verbose}: there the per-item lines are already on the
+     * console, and a rollup over output the reader can see is noise.
+     */
+    private void printRollups() {
+        if (Log.isVerbose()) return;
+        LinkedHashSet<String> touched = new LinkedHashSet<>(gitMerged);
+        touched.addAll(gitCurrent);
+        touched.addAll(gitLocalOnly);
+        if (!touched.isEmpty()) {
+            List<String> parts = new ArrayList<>();
+            if (!gitMerged.isEmpty()) parts.add(gitMerged.size() + " merged");
+            if (!gitCurrent.isEmpty()) parts.add(gitCurrent.size() + " already current");
+            // Kept on the console rather than in the log: a local-only install
+            // is the state that silently never updates, and its count is the
+            // whole reason the category exists.
+            if (!gitLocalOnly.isEmpty()) {
+                parts.add(gitLocalOnly.size() + " local-only (no shared upstream)");
+            }
+            Log.ok("synced %d unit(s) — %s", touched.size(), String.join(", ", parts));
+        }
+        if (!projectedUnits.isEmpty()) {
+            Log.ok("agents: %d unit(s) linked into %s",
+                    projectedUnits.size(), String.join(", ", syncedAgents));
+        }
+        if (!unlinkedUnits.isEmpty()) {
+            Log.ok("agents: %d unit(s) unlinked from %s",
+                    unlinkedUnits.size(), String.join(", ", syncedAgents));
+        }
+        List<String> side = new ArrayList<>();
+        if (toolsReady > 0) side.add(toolsReady + " tool(s)");
+        if (cliInstalled > 0) side.add(cliInstalled + " cli dep(s)");
+        if (mcpRegistered > 0) side.add(mcpRegistered + " mcp server(s)");
+        if (bindingsCreated > 0) side.add(bindingsCreated + " binding(s) bound");
+        if (bindingsRemoved > 0) side.add(bindingsRemoved + " binding(s) unbound");
+        if (projectionsMaterialized > 0) {
+            side.add(projectionsMaterialized + " projection(s) materialized");
+        }
+        if (!side.isEmpty()) Log.ok("side effects: %s", String.join(", ", side));
+    }
+
     private void printMcpResultsBlock() {
         if (mcpResults.isEmpty()) return;
         try {
@@ -436,50 +565,79 @@ public final class ConsoleProgramRenderer implements ProgramRenderer {
 
     private void printSyncSummary() {
         if (refusedSkills.isEmpty() && conflictedSkills.isEmpty()) return;
-        System.err.println();
-        System.err.println("sync summary: " + (refusedSkills.size() + conflictedSkills.size())
-                + " skill(s) need attention");
+        Log.error("sync: %d unit(s) need attention",
+                refusedSkills.size() + conflictedSkills.size());
         if (!refusedSkills.isEmpty()) {
-            System.err.println();
-            System.err.println("  Extra local changes — re-run with --merge to bring upstream in:");
-            for (String n : refusedSkills) System.err.println("    skill-manager sync " + n + " --merge");
+            Log.error("  extra local changes — `skill-manager sync <name> --merge`: %s",
+                    joinBounded(refusedSkills));
         }
         if (!conflictedSkills.isEmpty()) {
-            System.err.println();
-            System.err.println("  Conflicted — resolve in the store dir, then `git commit` or `git merge --abort`:");
-            for (String n : conflictedSkills) System.err.println("    " + n);
+            Log.error("  conflicted — resolve in the store dir, then `git commit` or "
+                    + "`git merge --abort`: %s", joinBounded(conflictedSkills));
         }
-        System.err.println();
     }
 
+    /**
+     * Names on one line, bounded. A refusal list is a set of unit names; the
+     * command that clears each one is stated once above rather than repeated
+     * per name, which is what turned a five-unit refusal into seventy lines.
+     */
+    private static String joinBounded(List<String> names) {
+        if (names.size() <= Log.ERROR_SAMPLE) return String.join(", ", names);
+        return String.join(", ", names.subList(0, Log.ERROR_SAMPLE))
+                + ", … " + (names.size() - Log.ERROR_SAMPLE) + " more";
+    }
+
+    /**
+     * The gateway-entry block: eight lines with three blank ones, compressed to
+     * two.
+     *
+     * <p>{@code ACTION_REQUIRED} stays, on the console, in every mode, and
+     * still last — a restart the agent has to perform is the definition of
+     * "something the caller must act on", and its position after the
+     * markdown-import violations is asserted (both by
+     * {@code MarkdownImportValidatorTest} and by the onboarding graph's
+     * {@code import.violations.are.fatal} node) because a block printed under
+     * a terminal banner is a block nobody reads.
+     *
+     * <p>What moved to the log is the enumeration: which config file each agent
+     * writes is a fact about this machine's layout, identical on every run, and
+     * the counts plus the URL carry the claim. The words {@code ADDED} /
+     * {@code UPDATED} and the URL stay on the console line so a reader — and
+     * the onboarding graph's {@code claude.mcp.config.readable} node, which
+     * looks for exactly those — can still see that the tool claimed the write.
+     */
     private void printAgentConfigSummary() {
         var added = agentChanges.getOrDefault(McpWriter.ConfigChange.ADDED, List.of());
         var updated = agentChanges.getOrDefault(McpWriter.ConfigChange.UPDATED, List.of());
         if (added.isEmpty() && updated.isEmpty()) return;
         String mcpUrl = gateway == null ? "<gateway>" : gateway.mcpEndpoint().toString();
-        System.out.println();
-        System.out.println("agent MCP configs:");
-        for (String a : added) System.out.println("  ADDED    " + a + "  → " + mcpUrl);
-        for (String a : updated) System.out.println("  UPDATED  " + a + "  → " + mcpUrl);
-        System.out.println();
-        System.out.println("ACTION_REQUIRED: Restart Claude / Codex for the virtual-mcp-gateway entry");
-        System.out.println("to take effect — without a restart the agent will not see any MCP tools.");
-        System.out.println();
+        for (String a : added) Log.detail("  ADDED    " + a + "  → " + mcpUrl);
+        for (String a : updated) Log.detail("  UPDATED  " + a + "  → " + mcpUrl);
+        Log.info("agent MCP configs: ADDED %d, UPDATED %d → %s",
+                added.size(), updated.size(), mcpUrl);
+        String actionRequired = "ACTION_REQUIRED: restart Claude / Codex for the "
+                + "virtual-mcp-gateway entry to take effect — without a restart the agent "
+                + "will not see any MCP tools.";
+        System.out.println(actionRequired);
+        Log.record(actionRequired);
     }
 
     private void printMarkdownImportViolations() {
         if (markdownImportViolations.isEmpty()) return;
-        System.err.println();
-        System.err.println("markdown skill-import violations (" + markdownImportViolations.size()
-                + ") — fix these references:");
+        String header = "markdown skill-import violations (" + markdownImportViolations.size()
+                + ") — fix these references:";
+        System.err.println(header);
+        Log.record(header);
+        List<String> rows = new ArrayList<>();
         for (ContextFact.MarkdownImportViolation v : markdownImportViolations) {
             String kind = v.unitKind() == null || v.unitKind().isBlank()
                     ? ""
                     : " (" + v.unitKind() + ")";
-            System.err.println("  - " + v.unitName() + kind + ": " + v.file());
-            System.err.println("    " + v.message());
+            rows.add("- " + v.unitName() + kind + ": " + v.file());
+            rows.add("  " + v.message());
         }
-        System.err.println();
+        Log.errorList("  ", rows);
     }
 
     /**
@@ -495,22 +653,22 @@ public final class ConsoleProgramRenderer implements ProgramRenderer {
 
     // ----------------------------------------------- helpers
 
-    private void printMergeInstructions(String skillName, String upstream, boolean gitLatest) {
-        Log.error("%s has extra local changes (working tree edits or commits ahead of installed baseline).",
-                skillName);
-        System.err.println();
-        System.err.println("Sync would overwrite them. Re-run with --merge:");
-        System.err.println();
-        System.err.println("    skill-manager sync " + skillName
-                + (gitLatest ? " --git-latest" : "") + " --merge");
-        System.err.println();
-        Path storeDir = store.skillDir(skillName);
-        System.err.println("Or merge by hand:");
-        System.err.println();
-        System.err.println("    cd " + storeDir);
-        System.err.println("    git fetch " + (upstream == null ? "<origin>" : upstream) + " HEAD");
-        System.err.println("    git merge FETCH_HEAD");
-        System.err.println();
+    /**
+     * Fourteen lines (six of them blank) per refused unit, collapsed to two.
+     *
+     * <p>The by-hand recipe is deleted rather than demoted: it is three git
+     * commands any reader of the first line can write, it was printed once per
+     * refused unit so a five-unit refusal cost seventy lines, and the
+     * {@code --merge} spelling above it does the same thing correctly
+     * including the stash handling the by-hand version silently omits. The
+     * store directory is still named, which is the only part of it a reader
+     * could not have derived.
+     */
+    private void printMergeInstructions(String skillName, boolean gitLatest) {
+        Log.error("%s has extra local changes (working tree edits, or commits ahead of the "
+                + "installed baseline) — sync would overwrite them.", skillName);
+        Log.error("  re-run with: skill-manager sync %s%s --merge   (the unit is at %s)",
+                skillName, gitLatest ? " --git-latest" : "", store.skillDir(skillName));
     }
 
     private static String shortHash(String hash) {
