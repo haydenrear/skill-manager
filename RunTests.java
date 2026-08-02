@@ -53,6 +53,7 @@ import dev.skillmanager.command.CreatePluginScenarioTest;
 import dev.skillmanager.command.GatewayStatusCommandTest;
 import dev.skillmanager.command.ListShowsKindAndShaTest;
 import dev.skillmanager.commands.ProjectCommandTest;
+import dev.skillmanager.commands.RemediesAreRunnableTest;
 import dev.skillmanager.store.HomeVerifyDiagnosticTextTest;
 import dev.skillmanager.cli.installer.SkillScriptBackendTest;
 import dev.skillmanager.bindings.BindingsTest;
@@ -210,6 +211,7 @@ public class RunTests {
         failures += CliMetadataTest.run();
         failures += CommandKindCoverageTest.run();
         failures += ProjectCommandTest.run();
+        failures += RemediesAreRunnableTest.run();
         failures += CreatePluginScenarioTest.run();
         failures += GatewayStatusCommandTest.run();
         failures += ListShowsKindAndShaTest.run();

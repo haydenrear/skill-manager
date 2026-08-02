@@ -184,11 +184,22 @@ public final class HomeCommand {
          */
         private static final int TOLERATED_SAMPLE = 3;
 
-        @Option(names = "--home", required = true, description = "Home to check.")
+        /**
+         * {@code --root} is a synonym, not a second concept.
+         *
+         * <p>Every remedy that names this command names a home and nothing
+         * else, and {@code bootstrap-home.sh} — the script that prints most of
+         * them — spells its own home argument {@code --root}. An agent holding
+         * only the home path typed {@code home verify --root <home>} and got a
+         * usage error, which is the whole of D11.
+         */
+        @Option(names = {"--home", "--root"}, description = "Home to check.")
         Path home;
 
-        @Option(names = "--against", required = true,
-                description = "The home it must not reference — normally the one it was copied from.")
+        @Option(names = "--against",
+                description = "The home it must not reference — normally the one it was copied "
+                        + "from. Optional: without it the source-reference half of the check is "
+                        + "reported as NOT CHECKED and the rest still runs.")
         Path against;
 
         @Option(names = "--strict", description = "Also fail on authored unit content references.")
@@ -196,14 +207,35 @@ public final class HomeCommand {
 
         @Override
         public Integer call() throws Exception {
+            if (home == null) {
+                // Still required — but as a refusal that names the home it
+                // wants, not as picocli's "Missing required options" over two
+                // flags of which only one was ever knowable.
+                Log.error("home verify needs a home to check: "
+                        + "`skill-manager home verify --home <home>` "
+                        + "(or --root <home>). Add `--against <source home>` to also check that "
+                        + "no reference back to the home it was copied from survives.");
+                return 2;
+            }
             try {
                 NotAHomeException.require(home, "home verify --home");
-                NotAHomeException.require(against, "home verify --against");
+                if (against != null) NotAHomeException.require(against, "home verify --against");
             } catch (NotAHomeException notAHome) {
                 Log.error("%s", notAHome.getMessage());
                 return NotAHomeException.EXIT_CODE;
             }
-            HomeCloner.Verification result = HomeCloner.verify(against, home, strict);
+            HomeCloner.Verification result = against == null
+                    ? HomeCloner.verify(home, strict)
+                    : HomeCloner.verify(against, home, strict);
+            if (against == null) {
+                // Said BEFORE the findings, because a reader who stops at the
+                // verdict must not be able to hear a guarantee this run did not
+                // make. Same discipline as `home clone`'s "NOT checked:" clause.
+                Log.info("NOT CHECKED: whether a reference back to the home this one was copied "
+                        + "from survives — pass `--against <source home>` for that half. "
+                        + "Checked below: every link and generated script in %s resolves, and "
+                        + "no path in it reaches any other Skill Manager home.", home);
+            }
             // Tolerated references are still references. Reporting only the
             // leak list would let "0 leaks" read as "nothing survives" while
             // authored content still names the other home. Summarised, not
@@ -275,6 +307,16 @@ public final class HomeCommand {
                         toleratedPhrase, against, home);
             }
             if (!result.clean() || !unresolved.isEmpty()) return 1;
+            if (against == null) {
+                // The verdict states its own scope. Without --against this run
+                // cannot say "no reference to the source survives", and saying
+                // it anyway is how three earlier versions of this line came to
+                // be wrong.
+                Log.ok("every reference in %s resolves, and no path in it reaches any other "
+                        + "Skill Manager home (source-reference check not run — "
+                        + "see NOT CHECKED above)", home);
+                return 0;
+            }
             Log.ok("no %sreference to %s survives in %s, and no path in it reaches any "
                             + "other Skill Manager home",
                     mentions.isEmpty() && diagnostics.isEmpty() ? "" : "repairable ",

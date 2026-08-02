@@ -48,6 +48,27 @@ public final class UninstallCommand implements Callable<Integer> {
             description = "Print the effects the program would run without mutating filesystem or gateway.")
     boolean dryRun;
 
+    /**
+     * Accepted for symmetry with {@code install -y/--yes}.
+     *
+     * <p>{@code uninstall} has never prompted, so this changes nothing about
+     * what the command does. It exists because the asymmetry cost a round trip
+     * on every onboarding walk: an agent that had just run
+     * {@code install <x> --yes} ran {@code uninstall <x> --yes} and got exit 2,
+     * {@code Unknown option: '--yes'} — a usage error for a flag whose meaning
+     * was already satisfied. A flag present on one half of a pair and absent
+     * from the other is a fact about the CLI that can only be learned by
+     * failing.
+     *
+     * <p>Declared rather than silently swallowed, so {@code --help} says that
+     * it is a no-op here and nobody has to run it to find out.
+     */
+    @Option(names = {"-y", "--yes"},
+            description = "Accepted for symmetry with `install --yes`. Uninstall never prompts, "
+                    + "so this is a no-op; it is here so a caller that passes --yes to both "
+                    + "halves of an install/uninstall pair does not hit a usage error.")
+    boolean yes;
+
     @Override
     public Integer call() throws Exception {
         SkillStore store = SkillStore.defaultStore();

@@ -1116,9 +1116,40 @@ public final class HomeCloner {
                 dest.toAbsolutePath().normalize(), strict);
     }
 
+    /**
+     * The half of the check that needs only the home being checked.
+     *
+     * <h2>Why this overload exists</h2>
+     *
+     * <p>{@code home verify} used to require {@code --against}, and both
+     * {@code home clone} and {@code bootstrap-home.sh} print "{@code
+     * skill-manager home verify} refuses this home until you do" — naming no
+     * arguments, because the thing that refusal is about does not have a
+     * second home in it. An agent holding only the home path ran the sentence
+     * as printed and got exit 2, {@code Missing required options:
+     * '--home=<home>', '--against=<against>'}: a remedy that does not run is
+     * not a remedy, and the working spelling was discoverable only from
+     * {@code --help}.
+     *
+     * <p>Two of the three findings never needed a source at all —
+     * {@link Verification#unresolved()} (provisioning that never completed,
+     * which is exactly what that remedy repairs) and the {@code FOREIGN_HOME}
+     * / {@code FOREIGN_AGENT_HOME} leaks (a path in this home that resolves
+     * into <em>any</em> other one). Only "no reference back to the source
+     * survives" needs {@code --against}, and that one is reported as NOT
+     * CHECKED rather than silently skipped, because a check that quietly
+     * narrows its scope while keeping its verdict is the defect this whole
+     * epic keeps re-finding.
+     */
+    public static Verification verify(Path dest, boolean strict) throws IOException {
+        return verifyRoots(null, dest.toAbsolutePath().normalize(), strict);
+    }
+
     private static Verification verifyRoots(Path srcRoot, Path dstRoot, boolean strict)
             throws IOException {
-        byte[] needle = srcRoot.toString().getBytes(StandardCharsets.UTF_8);
+        byte[] needle = srcRoot == null
+                ? null
+                : srcRoot.toString().getBytes(StandardCharsets.UTF_8);
         // The source home's agent directories are part of the source home, and
         // until #145 nothing looked for them. The old check searched for the
         // STORE root only, so a ledger row naming <srcRoot>/../.claude/skills
@@ -1126,18 +1157,20 @@ public final class HomeCloner {
         // that "nothing in it resolves back to the source" while carrying three
         // live instructions to delete files in the source's agent directories.
         List<byte[]> agentNeedles = new ArrayList<>();
-        for (Path agentDir : AgentHomes.agentDirsUnder(AgentHomes.homeRootFor(srcRoot))) {
-            if (dstRoot.startsWith(agentDir)) continue;   // the copy lives there; not a leak
-            agentNeedles.add(agentDir.toString().getBytes(StandardCharsets.UTF_8));
+        if (srcRoot != null) {
+            for (Path agentDir : AgentHomes.agentDirsUnder(AgentHomes.homeRootFor(srcRoot))) {
+                if (dstRoot.startsWith(agentDir)) continue;   // the copy lives there; not a leak
+                agentNeedles.add(agentDir.toString().getBytes(StandardCharsets.UTF_8));
+            }
         }
-        HomePaths srcPaths = HomePaths.of(srcRoot);
+        HomePaths srcPaths = srcRoot == null ? null : HomePaths.of(srcRoot);
         Path dstReal = realOrSame(dstRoot);
         List<Leak> leaks = new ArrayList<>();
         List<String> contentReferences = new ArrayList<>();
         List<String> dangling = new ArrayList<>();
         List<String> unresolved = new ArrayList<>();
         List<String> diagnostics = new ArrayList<>();
-        String needleText = srcRoot.toString();
+        String needleText = srcRoot == null ? null : srcRoot.toString();
         Files.walkFileTree(dstRoot, new SimpleWalker((file, rel) -> {
             if (Files.isSymbolicLink(file)) {
                 Path target;
@@ -1146,7 +1179,7 @@ public final class HomeCloner {
                 } catch (IOException e) {
                     return;
                 }
-                if (target.isAbsolute() && srcPaths.isInsideHome(target)) {
+                if (target.isAbsolute() && srcPaths != null && srcPaths.isInsideHome(target)) {
                     leaks.add(new Leak(rel, "SYMLINK_TARGET", target.toString()));
                 } else if (!Files.exists(file)) {
                     dangling.add(rel + " -> " + target);
@@ -1178,7 +1211,10 @@ public final class HomeCloner {
                     unresolved.add(rel + " -> " + missing);
                 }
             }
-            boolean namesStore = containsBytes(file, needle);
+            // With no --against there is no needle: the source-reference half
+            // of the check is not narrowed here, it is skipped and REPORTED as
+            // skipped by the caller.
+            boolean namesStore = needle != null && containsBytes(file, needle);
             boolean namesAgentHome = false;
             for (byte[] agentNeedle : agentNeedles) {
                 if (containsBytes(file, agentNeedle)) { namesAgentHome = true; break; }
