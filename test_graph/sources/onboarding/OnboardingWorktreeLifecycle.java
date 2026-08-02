@@ -46,6 +46,28 @@ import java.util.List;
  *
  * <p>Between the blocked close and the forced one, nothing else runs: the gate
  * state is fragile and a stray sync would clear it.
+ *
+ * <h2>Where the worktree PATH comes from, and why it is not the summary line</h2>
+ *
+ * <p>{@code wt new} succeeds in ONE line now — {@code created worktree <path>}
+ * — and the keyed {@code WORKTREE} / {@code BRANCH} / {@code LAUNCH} /
+ * {@code IF-EXIT-8} / {@code CLOSE} set moved to {@code wt info <TICKET>}. This
+ * node reads the path from {@code wt info}, which is what {@code wt}'s own
+ * header tells a programmatic caller to do: the one-line summary is prose, and
+ * a node that scraped it would be the caller that "never could be relied on".
+ *
+ * <p>That is a change of source, so it is paid for downstream rather than
+ * assumed: {@code onboarding.wt.contract.lines} asserts the summary is exactly
+ * one line AND that the path on it is the same path {@code wt info} names. If
+ * sourcing the path from a second command had let the two drift, that assertion
+ * is where it shows up — the budget claim is not left resting on the fact that
+ * nothing here reads the summary any more.
+ *
+ * <p>{@code wt info} is also run once MORE, after the forced close, and must
+ * refuse over a worktree that is gone while leaving it gone. The verb's whole
+ * claim is that it "creates and removes nothing", and a read-only verb that
+ * silently re-created the worktree it was asked about would otherwise satisfy
+ * every other assertion here.
  */
 public class OnboardingWorktreeLifecycle {
 
@@ -56,10 +78,12 @@ public class OnboardingWorktreeLifecycle {
             .timeout("1800s")
             .output("dirtyNewLog", "string")
             .output("newLog", "string")
+            .output("infoLog", "string")
             .output("blockedCloseLog", "string")
             .output("forcedCloseLog", "string")
             .output("dirtyNewExit", "string")
             .output("newExit", "string")
+            .output("infoExit", "string")
             .output("blockedCloseExit", "string")
             .output("forcedCloseExit", "string")
             .output("worktree", "string")
@@ -107,9 +131,22 @@ public class OnboardingWorktreeLifecycle {
             ProcessRecord newRun = dirtyNew.exitCode() == 0 ? dirtyNew
                     : OnboardingSupport.script(ctx, "wt-new", proj, wt, ambient, "new", TICKET);
             String newLog = OnboardingSupport.log(ctx, newRun);
-            Path worktree = contractValue(newLog, "WORKTREE");
-            boolean theWorktreeWasCreated = newRun.exitCode() == 0 && worktree != null
-                    && Files.isDirectory(worktree);
+
+            // --- 2b. where the worktree IS ----------------------------------------
+            //
+            // From `wt info`, not from the summary line `wt new` printed. The
+            // success path is one line of prose now, and `wt`'s own header says
+            // a caller that parsed it "never could be relied on"; the keyed
+            // contract moved to this verb and this is the caller reading it.
+            // Both texts are published, and the contract node cross-checks that
+            // the summary names the same path — so the switch of source cannot
+            // quietly become the reason a drift went unnoticed.
+            ProcessRecord info = OnboardingSupport.script(ctx, "wt-info", proj, wt, ambient,
+                    "info", TICKET);
+            String infoLog = OnboardingSupport.log(ctx, info);
+            Path worktree = contractValue(infoLog, "WORKTREE");
+            boolean theWorktreeWasCreated = newRun.exitCode() == 0 && info.exitCode() == 0
+                    && worktree != null && Files.isDirectory(worktree);
 
             // --- 3. what an agent launched in that worktree would see --------------
             int wtServable = 0;
@@ -164,14 +201,38 @@ public class OnboardingWorktreeLifecycle {
                     wt, ambient, "close", TICKET);
             String blockedLog = OnboardingSupport.log(ctx, blockedClose);
             boolean theGateRefusedTheClose = blockedClose.exitCode() != 0;
-            boolean theGateNamedTheExactUnit = blockedLog.contains(blocker);
+            // FOLLOW THE LOG THE REFUSAL NAMES. `wt` no longer dumps the child's
+            // stderr on a refusal — it prints three lines and puts the reasoning
+            // in the file its `log:` line names. The blocker is in that file, so
+            // a search of the console alone reports "the gate did not name the
+            // unit" about a gate that named it perfectly. plusNamedLog THROWS if
+            // the named file is missing rather than returning "", because this
+            // assertion phrased over an empty string would read as a clean miss.
+            boolean theGateNamedTheExactUnit =
+                    OnboardingSupport.plusNamedLog(blockedLog).contains(blocker);
 
             // --- 6. the forced close --------------------------------------------------
             ProcessRecord forcedClose = OnboardingSupport.script(ctx, "wt-close-forced", proj,
                     wt, ambient, "close", TICKET, "--force");
             String forcedLog = OnboardingSupport.log(ctx, forcedClose);
             boolean theForcedCloseSucceeded = forcedClose.exitCode() == 0;
+
+            // --- 7. `wt info` over a worktree that is gone --------------------------
+            //
+            // The verb's whole claim is that it "creates and removes nothing",
+            // and this node now DEPENDS on it: the path every assertion above
+            // hangs off came out of it. A read-only verb that quietly ran
+            // new-change.sh's creating path would satisfy every one of them, so
+            // the claim is measured where it is falsifiable — asked about a
+            // worktree that no longer exists, it must refuse and leave it
+            // missing. The gone-ness check is taken AFTER this run for the same
+            // reason: it then covers "the forced close removed it" and "info did
+            // not put it back" in one statement.
+            ProcessRecord infoAfterClose = OnboardingSupport.script(ctx, "wt-info-after-close",
+                    proj, wt, ambient, "info", TICKET);
             boolean theWorktreeIsGone = worktree == null || !Files.exists(worktree);
+            boolean wtInfoRefusedOverAWorktreeItDidNotCreate =
+                    infoAfterClose.exitCode() != 0 && theWorktreeIsGone;
 
             // The worktree half of the projection defect. Asserted rather than
             // logged: this is where it bites hardest — every `wt new` launches
@@ -189,7 +250,8 @@ public class OnboardingWorktreeLifecycle {
                     && theWorktreeHomeHasAStore && everyUnitInTheWorktreeStoreIsServable
                     && projectingAWorktreeHomeDoesNotMakeItUnclosable
                     && theGateRefusedTheClose && theGateNamedTheExactUnit
-                    && theForcedCloseSucceeded && theWorktreeIsGone;
+                    && theForcedCloseSucceeded && theWorktreeIsGone
+                    && wtInfoRefusedOverAWorktreeItDidNotCreate;
 
             NodeResult result = pass
                     ? NodeResult.pass("onboarding.worktree.lifecycle")
@@ -197,14 +259,17 @@ public class OnboardingWorktreeLifecycle {
                             "treeDirtyBefore=" + theTreeWasDirtyWhenTheTicketWasOpened
                                     + " dirtyNewExit=" + dirtyNew.exitCode()
                                     + " newExit=" + newRun.exitCode()
+                                    + " infoExit=" + info.exitCode()
                                     + " worktree=" + worktree
                                     + " closableDryRunExit=" + closable.exitCode()
                                     + " blockerHeld=" + theWorktreeHoldsAUnitTheProjectHomeDoesNot
                                     + " blockedCloseExit=" + blockedClose.exitCode()
                                     + " gateNamedUnit=" + theGateNamedTheExactUnit
                                     + " forcedCloseExit=" + forcedClose.exitCode()
-                                    + " worktreeGone=" + theWorktreeIsGone);
-            result = result.process(dirtyNew).process(closable);
+                                    + " worktreeGone=" + theWorktreeIsGone
+                                    + " infoAfterCloseExit=" + infoAfterClose.exitCode());
+            result = result.process(dirtyNew).process(info).process(closable)
+                    .process(infoAfterClose);
             if (newRun != dirtyNew) result = result.process(newRun);
             if (installIntoWorktree != null) result = result.process(installIntoWorktree);
             return result.process(blockedClose).process(forcedClose)
@@ -225,6 +290,8 @@ public class OnboardingWorktreeLifecycle {
                             theGateNamedTheExactUnit)
                     .assertion("the_forced_close_succeeded", theForcedCloseSucceeded)
                     .assertion("the_worktree_directory_is_gone_afterwards", theWorktreeIsGone)
+                    .assertion("wt_info_refused_over_a_worktree_it_did_not_create",
+                            wtInfoRefusedOverAWorktreeItDidNotCreate)
                     .metric("worktreeStoreUnits", wtStore)
                     .metric("worktreeServableUnits", wtServable)
                     .metric("blockedCloseExit", blockedClose.exitCode())
@@ -234,10 +301,12 @@ public class OnboardingWorktreeLifecycle {
                             + " of the " + wtStore + " units its store holds")
                     .publish("dirtyNewLog", logPath(ctx, dirtyNew))
                     .publish("newLog", logPath(ctx, newRun))
+                    .publish("infoLog", logPath(ctx, info))
                     .publish("blockedCloseLog", logPath(ctx, blockedClose))
                     .publish("forcedCloseLog", logPath(ctx, forcedClose))
                     .publish("dirtyNewExit", String.valueOf(dirtyNew.exitCode()))
                     .publish("newExit", String.valueOf(newRun.exitCode()))
+                    .publish("infoExit", String.valueOf(info.exitCode()))
                     .publish("blockedCloseExit", String.valueOf(blockedClose.exitCode()))
                     .publish("forcedCloseExit", String.valueOf(forcedClose.exitCode()))
                     .publish("worktree", worktree == null ? "" : worktree.toString())

@@ -62,7 +62,8 @@ public class TicketLifecycleFixtureBuilt {
             .output("scriptsDir", "string")
             .output("sandboxGlobalHome", "string")
             .output("leakBaseline", "string")
-            .output("leakRoots", "string");
+            .output("leakRoots", "string")
+            .output("configBaseline", "string");
 
     public static void main(String[] args) {
         Node.run(args, SPEC, ctx -> {
@@ -178,7 +179,15 @@ public class TicketLifecycleFixtureBuilt {
             // that recomputed "which roots exist" would compare a home that
             // appeared during the run against nothing at all, and report the
             // most interesting possible finding as zero differences.
+            // A SECOND baseline, over the config registrations. The tree walk
+            // covers ~/.skill-manager and each agent home's skills/ projection
+            // surface; it does not reach ~/.claude.json, which is a SIBLING of
+            // those roots rather than a child of one and is the file this
+            // product writes Claude MCP registrations into. This graph had no
+            // such side at all, so a leak through the one file its walk
+            // structurally cannot see was invisible to it.
             Path leakBaseline = ctx.reportDir().resolve("ticket-lifecycle.leak-baseline.txt");
+            Path configBaseline = ctx.reportDir().resolve("ticket-lifecycle.config-baseline.txt");
             List<Path> leakRoots = new ArrayList<>();
             String leakBaselineError = null;
             try {
@@ -187,11 +196,15 @@ public class TicketLifecycleFixtureBuilt {
                 TripwireSupport.writeLines(leakBaseline,
                         TripwireSupport.collectAll(leakRoots, realHome,
                                 TripwireSupport.Fidelity.METADATA));
+                TripwireSupport.writeLines(configBaseline,
+                        TripwireSupport.ownedConfig(realHome));
             } catch (RuntimeException e) {
                 leakBaselineError = String.valueOf(e.getMessage());
             }
             boolean theLeakOracleIsArmed = leakBaselineError == null && !leakRoots.isEmpty()
-                    && Files.isRegularFile(leakBaseline);
+                    && Files.isRegularFile(leakBaseline)
+                    && TripwireSupport.readLines(configBaseline).stream()
+                            .anyMatch(l -> l.startsWith(TripwireSupport.CLAUDE_JSON_LABEL));
 
             boolean pass = installsExitedZero && rootHomeHasTheUnits && checkoutIsAGitRepo
                     && checkoutIsClean && projectHomeBootstrapped && projectHomeIsItsOwnCopy
@@ -238,6 +251,7 @@ public class TicketLifecycleFixtureBuilt {
                     .publish("scriptsDir", scripts.dir().toString())
                     .publish("sandboxGlobalHome", sandboxGlobalHome.toString())
                     .publish("leakBaseline", leakBaseline.toString())
+                    .publish("configBaseline", configBaseline.toString())
                     .publish("leakRoots", leakRoots.stream().map(Path::toString)
                             .reduce((a, b) -> a + java.io.File.pathSeparator + b).orElse(""));
         });
