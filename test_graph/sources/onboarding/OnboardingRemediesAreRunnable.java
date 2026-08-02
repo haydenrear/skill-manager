@@ -48,9 +48,22 @@ import java.util.List;
  *   <li><b>The extractor finds no remedy strings,</b> so "every remedy is
  *       runnable" is true over an empty set.
  *       <br><b>Companion:</b> the extracted set must be non-empty and must
- *       include the two known remedies — the {@code sync --force-scripts}
- *       spelling and the {@code home verify} sentence. If neither is found the
- *       extractor is broken and the node fails.</li>
+ *       include the two known remedies — the {@code home verify} sentence in
+ *       {@code bootstrap-home.sh}'s warning, and the re-provision remedy
+ *       ({@code sync --force-scripts}) as {@code home verify} itself prints it.
+ *       If neither is found the extractor is broken and the node fails.
+ *       <br><b>The second one moved, and its old spelling must not come back.</b>
+ *       {@code bootstrap-home.sh} and {@code home clone} both used to print
+ *       {@code SKILL_MANAGER_HOME=<home> skill-manager sync --force-scripts},
+ *       which pins the store axis and not the agent-config axis and therefore
+ *       writes the OPERATOR'S {@code ~/.claude.json} when run as printed
+ *       (skill-manager#145). Both paragraphs were deleted on purpose
+ *       (git-integration-repo@8efd2ae, skill-manager@2ec5bcf). So this node
+ *       asserts the property in the one place the remedy survives — {@code home
+ *       verify}, the command that enforces the gate, where it is spelled with
+ *       all four variables — and asserts its ABSENCE from the bootstrap output.
+ *       Those two are each other's companion: the absence cannot pass by the
+ *       search being broken, because the identical search finds the presence.</li>
  *   <li><b>"Parses" being satisfied by prose.</b> The failing case here IS a
  *       bare command name in a sentence, so a permissive predicate would call
  *       it fine.
@@ -69,6 +82,18 @@ import java.util.List;
  * <b>Vacuous-pass risk:</b> passing because there were no mentions at all.
  * <b>Companion:</b> the mention count must be ≥1 first, and the fixture plants
  * one.
+ *
+ * <p><b>Both halves of that companion were missing.</b> The fixture planted no
+ * mention — its units are authored by the fixture and none of them had any
+ * reason to name the home they would be installed into — and the "count ≥ 1"
+ * was not enforced: it lived only in a {@code !thereWereMentions ||} guard, so
+ * zero mentions made the tolerance TRUE instead of making the node fail. The
+ * count was reported as {@code mentions=0} in the failure message of an
+ * assertion that had passed. Both are fixed here: {@code ob-script} ships a
+ * references page naming the source home's absolute path (planted in the unit
+ * SOURCE, so the product's own install places it), the node asserts that page
+ * is present IN THE HOME IT VERIFIES before it looks at any count, and the
+ * count and the tolerance are separate assertions in the pass conjunction.
  */
 public class OnboardingRemediesAreRunnable {
 
@@ -89,20 +114,24 @@ public class OnboardingRemediesAreRunnable {
                 return NodeResult.fail("onboarding.remedies.are.runnable",
                         "missing upstream context");
             }
-            String bootstrapLog = OnboardingSupport.read(Path.of(bootstrapLogPath));
+            // The console the bootstrap printed PLUS the run log it named. The
+            // script demotes its transcript — including every byte the CLI
+            // children wrote — to that file, so an absence checked against the
+            // console alone would be an absence from the half the text moved out
+            // of — and an absence is the one assertion shape that passes over an
+            // empty string. `withNamedLog` throws if the footer names a file it
+            // cannot read, which is the only way this could have gone quiet.
+            String bootstrapLog = OnboardingSupport.withNamedLog(bootstrapLogPath);
 
             // --- the extractor's own floor -------------------------------------
             List<String> remedies = new ArrayList<>();
             for (String raw : bootstrapLog.split("\n", -1)) {
                 String line = raw.strip();
-                if (line.contains("skill-manager ") || line.contains("home verify")
-                        || line.contains("sync --force-scripts")) {
+                if (line.contains("skill-manager ") || line.contains("home verify")) {
                     remedies.add(line);
                 }
             }
             boolean theExtractorFoundRemedies = !remedies.isEmpty();
-            boolean theExtractorFoundTheKnownForceScriptsRemedy =
-                    bootstrapLog.contains("sync --force-scripts");
             boolean theExtractorFoundTheKnownHomeVerifySentence =
                     bootstrapLog.contains("home verify");
 
@@ -122,17 +151,73 @@ public class OnboardingRemediesAreRunnable {
             ProcessRecord working = OnboardingSupport.sm(ctx, "home-verify-working", home, proj,
                     "home", "verify", "--home", home.toString(),
                     "--against", srcHome.toString());
+            // The CONSOLE, deliberately, and not the run log behind it. The
+            // mention count and the first three entries under it are `Log.info`
+            // — console-and-log — because a tolerated category reported as a
+            // bare number is a number with nothing behind it. That is the
+            // product's contract, so this node holds it to the console; reading
+            // the run log too would make the node pass in the one case it exists
+            // to catch, a future edit that demotes the count to `Log.detail`.
             String workingLog = OnboardingSupport.log(ctx, working);
             boolean theWorkingSpellingParses = working.exitCode() != 2;
 
+            // --- the re-provision remedy, where it is now printed ------------------
+            //
+            // This replaces `bootstrapLog.contains("sync --force-scripts")`,
+            // which was the second half of the extractor's floor and is now
+            // unfindable there BY DESIGN. git-integration-repo@8efd2ae DELETED
+            // that paragraph from bootstrap-home.sh and skill-manager@2ec5bcf
+            // deleted it from `home clone`, because the spelling they printed —
+            // `SKILL_MANAGER_HOME=<home> skill-manager sync --force-scripts` —
+            // pins where the UNITS live and not where the AGENT CONFIGS live,
+            // and run as printed it writes the operator's own ~/.claude.json
+            // (skill-manager#145). Re-asserting the text would demand a remedy
+            // back whose whole defect is that it is not runnable as printed,
+            // which is the opposite of what this node is for.
+            //
+            // So the floor is kept as a PROPERTY, in the one place the remedy is
+            // now printed: `home verify`, the command that enforces the gate,
+            // spelling both axes so it is runnable as printed. The two
+            // assertions are each other's companion — the absence below cannot
+            // pass by the search being broken, because the identical search
+            // finds it here.
+            String reprovisionRemedy = remedyLineNaming(workingLog, "sync --force-scripts");
+            boolean theEnforcingCommandPrintsTheReprovisionRemedy = !reprovisionRemedy.isEmpty();
+            boolean theReprovisionRemedyPinsBothAxes =
+                    reprovisionRemedy.contains("SKILL_MANAGER_HOME=")
+                            && reprovisionRemedy.contains("CLAUDE_CONFIG_DIR=")
+                            && reprovisionRemedy.contains("CODEX_HOME=")
+                            && reprovisionRemedy.contains("GEMINI_HOME=");
+            boolean theDeletedHijackingRemedyStayedDeleted =
+                    !bootstrapLog.contains("sync --force-scripts");
+
             // --- historical path mentions are tolerated, not treated as leaks -----
+            //
+            // THE COMPANION IS ENFORCED HERE, WHICH IT WAS NOT BEFORE. It used
+            // to sit only in the `!thereWere… ||` guard of the tolerance
+            // predicate, so a home with no mentions made the tolerance TRUE
+            // rather than making the node fail — which is exactly what happened:
+            // the fixture never planted a mention, `mentions=0` was reported in
+            // the failure message of an assertion that had passed, and the
+            // eighth "assertion that only held while something else was broken"
+            // was one edit away from being permanent.
+            //
+            // Two steps now, in order. The plant must be IN the home being
+            // verified — asserted against the file, not inferred from the count
+            // the tolerance is about — and only then is the count required.
+            String mentionRel = ctx.get("onboarding.fixture.built", "mentionRel").orElse("");
+            boolean thePlantedMentionSurvivedIntoTheHomeUnderTest = !mentionRel.isEmpty()
+                    && OnboardingSupport.read(home.resolve(mentionRel))
+                            .contains(srcHome.toString());
+            String mentionLine = firstLineContaining(workingLog, " unit-content file(s) mention");
             int mentions = countMentions(workingLog);
-            boolean thereWereHistoricalMentionsToTolerate =
-                    workingLog.contains("mention") || mentions > 0;
+            boolean thereWereHistoricalMentionsToTolerate = mentions >= 1;
+            // The tolerance is read off the MENTION line, not off the whole
+            // output: the diagnostic-message line (#144) says "tolerated" too,
+            // and a whole-log substring match would let a home with no authored
+            // mention at all satisfy an assertion about authored mentions.
             boolean historicalMentionsAreReportedAsTolerated =
-                    !thereWereHistoricalMentionsToTolerate
-                            || workingLog.contains("tolerated")
-                            || workingLog.contains("--strict");
+                    mentionLine.contains("tolerated") && mentionLine.contains("--strict");
 
             // --- the --yes asymmetry ------------------------------------------------
             ProcessRecord uninstallYes = OnboardingSupport.sm(ctx, "uninstall-yes", home, proj,
@@ -143,10 +228,14 @@ public class OnboardingRemediesAreRunnable {
             boolean theTwoCommandsAgreeOnTheYesFlag = !uninstallRejectsTheFlagInstallAccepts;
 
             boolean pass = theExtractorFoundRemedies
-                    && theExtractorFoundTheKnownForceScriptsRemedy
                     && theExtractorFoundTheKnownHomeVerifySentence
+                    && theEnforcingCommandPrintsTheReprovisionRemedy
+                    && theReprovisionRemedyPinsBothAxes
+                    && theDeletedHijackingRemedyStayedDeleted
                     && thePrintedRemedyIsRunnableAsPrinted
                     && theWorkingSpellingParses
+                    && thePlantedMentionSurvivedIntoTheHomeUnderTest
+                    && thereWereHistoricalMentionsToTolerate
                     && historicalMentionsAreReportedAsTolerated
                     && theTwoCommandsAgreeOnTheYesFlag;
 
@@ -157,18 +246,30 @@ public class OnboardingRemediesAreRunnable {
                                     + " bareVerifyExit=" + bare.exitCode()
                                     + " workingVerifyExit=" + working.exitCode()
                                     + " uninstallYesExit=" + uninstallYes.exitCode()
-                                    + " mentions=" + mentions))
+                                    + " plantedMentionInHome="
+                                    + thePlantedMentionSurvivedIntoTheHomeUnderTest
+                                    + " mentions=" + mentions
+                                    + " mentionLine=" + mentionLine
+                                    + " reprovisionRemedy=" + reprovisionRemedy))
                     .process(bare).process(working).process(uninstallYes)
                     .assertion("the_remedy_extractor_found_at_least_one_remedy",
                             theExtractorFoundRemedies)
-                    .assertion("the_extractor_found_the_known_force_scripts_remedy",
-                            theExtractorFoundTheKnownForceScriptsRemedy)
                     .assertion("the_extractor_found_the_known_home_verify_sentence",
                             theExtractorFoundTheKnownHomeVerifySentence)
+                    .assertion("the_command_that_enforces_the_gate_prints_the_reprovision_remedy",
+                            theEnforcingCommandPrintsTheReprovisionRemedy)
+                    .assertion("the_reprovision_remedy_pins_the_store_and_all_three_agent_homes",
+                            theReprovisionRemedyPinsBothAxes)
+                    .assertion("the_bootstrap_did_not_reprint_the_remedy_that_hijacks_the_machine",
+                            theDeletedHijackingRemedyStayedDeleted)
                     .assertion("the_home_verify_remedy_is_runnable_as_printed",
                             thePrintedRemedyIsRunnableAsPrinted)
                     .assertion("the_spelling_found_only_in_help_at_least_parses",
                             theWorkingSpellingParses)
+                    .assertion("the_planted_content_mention_survived_into_the_home_verified",
+                            thePlantedMentionSurvivedIntoTheHomeUnderTest)
+                    .assertion("there_was_at_least_one_historical_mention_to_tolerate",
+                            thereWereHistoricalMentionsToTolerate)
                     .assertion("historical_path_mentions_are_reported_as_tolerated_not_as_leaks",
                             historicalMentionsAreReportedAsTolerated)
                     .assertion("install_and_uninstall_agree_on_the_yes_flag",
@@ -176,7 +277,11 @@ public class OnboardingRemediesAreRunnable {
                     .metric("remediesExtracted", remedies.size())
                     .metric("bareVerifyExit", bare.exitCode())
                     .metric("workingVerifyExit", working.exitCode())
+                    .metric("toleratedContentMentions", mentions)
                     .log("remedy lines: " + remedies)
+                    .log("the reprovision remedy, as printed by `home verify`: "
+                            + reprovisionRemedy)
+                    .log("tolerated-mention line: " + mentionLine)
                     .log("bare `home verify --root <home>` said: "
                             + firstLine(bareLog));
         });
@@ -184,18 +289,35 @@ public class OnboardingRemediesAreRunnable {
 
     /** {@code N unit-content file(s) mention <path>} */
     private static int countMentions(String log) {
-        for (String line : log.split("\n", -1)) {
-            String s = line.strip();
-            int i = s.indexOf(" unit-content file(s) mention");
-            if (i > 0) {
-                try {
-                    return Integer.parseInt(s.substring(0, i).trim().split("\\s+")[0]);
-                } catch (RuntimeException ignored) {
-                    return 0;
-                }
-            }
+        String s = firstLineContaining(log, " unit-content file(s) mention");
+        int i = s.indexOf(" unit-content file(s) mention");
+        if (i <= 0) return 0;
+        try {
+            return Integer.parseInt(s.substring(0, i).trim().split("\\s+")[0]);
+        } catch (RuntimeException ignored) {
+            return 0;
         }
-        return 0;
+    }
+
+    /** The first stripped line holding {@code needle}, or {@code ""}. */
+    private static String firstLineContaining(String text, String needle) {
+        for (String line : text.split("\n", -1)) {
+            String s = line.strip();
+            if (s.contains(needle)) return s;
+        }
+        return "";
+    }
+
+    /**
+     * The line on which {@code command} is offered as a remedy, or {@code ""}.
+     *
+     * <p>By line rather than by whole-text {@code contains}, because the
+     * question this node asks is whether that ONE line is runnable as printed:
+     * a spelling assembled from a command on one line and an environment prefix
+     * on another is not something a reader can copy.
+     */
+    private static String remedyLineNaming(String text, String command) {
+        return firstLineContaining(text, command);
     }
 
     private static String firstLine(String text) {

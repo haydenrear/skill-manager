@@ -28,6 +28,14 @@ import java.util.List;
  *       the {@code skill-script} backend and therefore lands a REGULAR FILE at
  *       {@code bin/cli/ob-script-shim}, plus a planted shim dangling into
  *       {@code venvs/} — a directory {@code home clone} deliberately skips.</li>
+ *   <li><b>An authored mention of the source home</b> — a references page in
+ *       {@code ob-script} that names {@code src-home}'s absolute path, written
+ *       into the unit SOURCE so the product's own {@code install} places it.
+ *       This is the shape {@code home verify} reports as "{@code N unit-content
+ *       file(s) mention <src> — historical records, tolerated}", and without it
+ *       {@code onboarding.remedies.are.runnable}'s tolerance assertion is true
+ *       of an empty set — which it was, from the day this graph was written
+ *       until the count was made a required companion.</li>
  *   <li><b>Inherited-state pollution</b> in that home: two binding-ledger
  *       records and two {@code child-homes/} records naming checkouts OUTSIDE
  *       it. Without these the "a clone drops foreign claims" assertion is about
@@ -77,6 +85,7 @@ public class OnboardingFixtureBuilt {
             .output("workspace", "string")
             .output("sourcesDir", "string")
             .output("srcHome", "string")
+            .output("mentionRel", "string")
             .output("srcAgents", "string")
             .output("foreignBase", "string")
             .output("emptyHome", "string")
@@ -186,6 +195,25 @@ public class OnboardingFixtureBuilt {
                             OnboardingSupport.entry(OnboardingSupport.ALPHA,
                                     "references/definitely-missing.md",
                                     "names a present unit and a missing path")));
+
+            // --- the authored mention of the source home ----------------------
+            //
+            // `home verify --against <src>` reports authored unit content that
+            // NAMES the source home as "N unit-content file(s) mention <src> —
+            // historical records, tolerated", and that tolerance is the subject
+            // of onboarding.remedies.are.runnable. Nothing here produced such a
+            // file: these units are authored by this fixture and none of them
+            // had any reason to name the home they would be installed into, so
+            // the count was zero and the tolerance was true of an empty set.
+            //
+            // It goes into the unit SOURCE, before install, so the product's own
+            // install places it and the home's drift baseline covers it — rather
+            // than being pasted into the store afterwards, which would be a
+            // second, invented state on top of the one under test.
+            Files.writeString(
+                    sources.resolve(OnboardingSupport.MENTION_UNIT)
+                            .resolve("references").resolve("source-home-history.md"),
+                    OnboardingSupport.mentionSourcePage(srcHome));
 
             // --- the source home, installed by the real CLI ------------------
             List<ProcessRecord> installs = new ArrayList<>();
@@ -364,6 +392,8 @@ public class OnboardingFixtureBuilt {
                             realism.foreignClaims())
                     .assertion("the_source_home_carries_two_units_with_no_provenance_record",
                             realism.provenancelessUnits() >= 2)
+                    .assertion("the_source_home_holds_authored_content_naming_its_own_path",
+                            realism.contentMention())
                     .assertion("the_source_home_carries_at_least_two_foreign_registrations",
                             srcRegistrations >= 2)
                     .assertion("the_checkout_is_a_clean_git_repository",
@@ -385,6 +415,11 @@ public class OnboardingFixtureBuilt {
                     .publish("workspace", workspace.toString())
                     .publish("sourcesDir", sources.toString())
                     .publish("srcHome", srcHome.toString())
+                    // The relative path of the authored mention, so a node that
+                    // asserts the tolerance can first assert the plant SURVIVED
+                    // into the home it is verifying, rather than inferring the
+                    // plant from the count it is about to check.
+                    .publish("mentionRel", OnboardingSupport.MENTION_REL)
                     .publish("srcAgents", srcAgents.toString())
                     .publish("foreignBase", foreign.toString())
                     .publish("emptyHome", emptyHome.toString())

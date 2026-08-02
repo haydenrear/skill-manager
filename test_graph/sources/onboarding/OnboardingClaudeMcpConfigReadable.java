@@ -140,10 +140,16 @@ public class OnboardingClaudeMcpConfigReadable {
             String remedyLog = ctx.get("onboarding.projections.materialized", "remedyLog")
                     .orElse("");
             String bootstrapLog = ctx.get("onboarding.bootstrapped", "bootstrapLog").orElse("");
+            // Each of these is a CAPTURED CONSOLE log, and the console is now a
+            // short contract plus a `log:` path — both the CLI and the scripts
+            // demote detail to a file. The `agent MCP configs / ADDED …` block is
+            // detail, so following the footer is not optional: without it this
+            // precondition reports "the tool never said it wrote anything" about
+            // a run in which it said exactly that, one file over.
             String sync = String.join("\n",
-                    syncLog.isEmpty() ? "" : OnboardingSupport.read(Path.of(syncLog)),
-                    remedyLog.isEmpty() ? "" : OnboardingSupport.read(Path.of(remedyLog)),
-                    bootstrapLog.isEmpty() ? "" : OnboardingSupport.read(Path.of(bootstrapLog)));
+                    OnboardingSupport.withNamedLog(syncLog),
+                    OnboardingSupport.withNamedLog(remedyLog),
+                    OnboardingSupport.withNamedLog(bootstrapLog));
             List<String> addedLines = new ArrayList<>();
             for (String line : sync.split("\n", -1)) {
                 if (line.contains("ADDED") && line.contains(GATEWAY.substring(0, 7))) {
