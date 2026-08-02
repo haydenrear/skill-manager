@@ -64,12 +64,20 @@ import java.util.regex.Pattern;
  * <p>A persisted error affecting N units must print ONCE, not per unit, and
  * removing the cause must remove it from the banner.
  *
- * <p><b>Vacuous-pass risk 1:</b> counting occurrences in a log too short to
- * contain a duplicate.
- * <br><b>Companion:</b> the banner's own {@code (N)} count must equal the
- * number of affected units and N must be ≥2, so a single-unit home cannot make
+ * <p><b>Vacuous-pass risk 1:</b> counting occurrences in a log that never
+ * printed the banner at all.
+ * <br><b>Companion:</b> the banner and its cause must each appear EXACTLY once
+ * — not "at most once" — and the banner's own {@code (N)} count must equal the
+ * number of affected units, with N ≥ 2, so a single-unit home cannot make
  * "printed once" true by arithmetic. Then the cause is removed and the banner
  * must shrink by exactly one.
+ *
+ * <p>This companion used to be a LINE COUNT on the sync log (≥ 40 lines), which
+ * measured how chatty the console was rather than whether the banner was
+ * printed. It went red the moment {@code sync}'s successful output was
+ * quietened from 42 lines to 5, while every fact it stood for still held. A
+ * guard whose subject is the volume of unrelated output is a guard that fires
+ * on unrelated changes and stays silent on the one it was built for.
  *
  * <p><b>Vacuous-pass risk 2 — the one this node was itself guilty of.</b>
  * Until the {@code file:} contract above was fixed, this guard got its "two
@@ -187,8 +195,26 @@ public class OnboardingErrorRecordsCoherent {
                     provenancelessCarryingTheCause >= 2;
             boolean theRecordPrintedOnceRatherThanPerUnit =
                     bannerOccurrences <= 1 && causeOccurrences <= 1;
-            boolean theLogWasLongEnoughToContainADuplicate =
-                    syncLog.split("\n", -1).length >= 40;
+            // The floor that keeps "printed once" from being true over a log
+            // that says nothing at all.
+            //
+            // It used to be a LINE COUNT (`syncLog >= 40 lines`), on the
+            // reasoning that a log too short cannot contain a duplicate. That
+            // proxy measured the CONSOLE'S VERBOSITY, not this property: a sync
+            // that prints one line per (unit × agent) is over forty lines
+            // whatever it says about error records, and a sync that sends its
+            // per-item detail to a run log is under ten whatever it says. When
+            // `sync`'s successful output went from 42 lines to 5, the proxy
+            // went red while every fact it stood for was still true — the
+            // banner was printed, once, over two affected units.
+            //
+            // The honest floor is what the assertion is actually about: the
+            // banner and its cause were PRINTED (so "≤ 1" is not "0"), and
+            // there were ≥ 2 affected units — asserted separately, above — so
+            // printing per unit would have produced a different number. Both
+            // halves are semantic now, and neither moves when the console does.
+            boolean theBannerWasPrintedSoPrintedOnceIsNotVacuous =
+                    bannerOccurrences == 1 && causeOccurrences == 1;
 
             // --- clear: removing the cause removes it from the banner -------------
             //
@@ -227,7 +253,7 @@ public class OnboardingErrorRecordsCoherent {
                     && atLeastTwoUnitsShareTheCause
                     && theCauseIsCarriedByUnitsThatCannotBeFixedByChoosingDifferently
                     && theVictimActuallyCarriesTheCause
-                    && theLogWasLongEnoughToContainADuplicate
+                    && theBannerWasPrintedSoPrintedOnceIsNotVacuous
                     && theRecordPrintedOnceRatherThanPerUnit
                     && theBannerShrankWhenTheCauseWasRemoved;
 
@@ -252,8 +278,8 @@ public class OnboardingErrorRecordsCoherent {
                             theCauseIsCarriedByUnitsThatCannotBeFixedByChoosingDifferently)
                     .assertion("the_unit_removed_by_the_clear_half_actually_carried_the_cause",
                             theVictimActuallyCarriesTheCause)
-                    .assertion("the_log_was_long_enough_to_contain_a_duplicate",
-                            theLogWasLongEnoughToContainADuplicate)
+                    .assertion("the_banner_was_printed_so_printed_once_is_not_vacuous",
+                            theBannerWasPrintedSoPrintedOnceIsNotVacuous)
                     .assertion("the_error_record_printed_once_rather_than_per_unit",
                             theRecordPrintedOnceRatherThanPerUnit)
                     .assertion("the_banner_shrank_by_one_when_one_cause_was_removed",
