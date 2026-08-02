@@ -52,6 +52,7 @@ import dev.skillmanager.command.CreatePluginScenarioTest;
 import dev.skillmanager.command.GatewayStatusCommandTest;
 import dev.skillmanager.command.ListShowsKindAndShaTest;
 import dev.skillmanager.commands.ProjectCommandTest;
+import dev.skillmanager.store.HomeVerifyDiagnosticTextTest;
 import dev.skillmanager.cli.installer.SkillScriptBackendTest;
 import dev.skillmanager.bindings.BindingsTest;
 import dev.skillmanager.command.SearchShowsKindTest;
@@ -221,6 +222,7 @@ public class RunTests {
         failures += dev.skillmanager.store.HomePathsTest.run();
         failures += dev.skillmanager.store.HomeCloneTest.run();
         failures += dev.skillmanager.commands.HomeVerifyReportTest.run();
+        failures += HomeVerifyDiagnosticTextTest.run();
         failures += dev.skillmanager.commands.HomeUnresolvedGateTest.run();
         failures += dev.skillmanager.cli.BuildIdentityTest.run();
         failures += dev.skillmanager.store.HomeDescriptorTest.run();

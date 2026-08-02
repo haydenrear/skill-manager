@@ -226,8 +226,35 @@ public final class HomeCloner {
          */
         public static final String CONTENT_REFERENCE = "CONTENT_REFERENCE";
 
-        /** True when this is an authored mention, not a path that resolves. */
-        public boolean tolerable() { return CONTENT_REFERENCE.equals(kind); }
+        /**
+         * A path that appears only inside a persisted error MESSAGE.
+         *
+         * <p>{@code installed/<unit>.json} carries an {@code errors[]} array,
+         * and a message is free text: "child home path already exists:
+         * /elsewhere/.skill-manager/bin/cli/computeq" holds an absolute path
+         * into another home because it is <em>describing</em> one. Nothing
+         * resolves through it, no code reads it as a path, and deleting that
+         * home would break nothing.
+         *
+         * <p>The byte scan cannot see the difference, so it filed ten of these
+         * under "paths that resolve into another Skill Manager home" — the
+         * category reserved for a live {@code SYMLINK_TARGET} — and an operator
+         * chasing an isolation problem was sent after a sentence. Same
+         * over-broad-oracle class as #143's {@code ~/.claude} finding. Issue
+         * #144.
+         *
+         * <p><b>Narrow on purpose.</b> Only occurrences ENTIRELY accounted for
+         * by {@code errors[].message} are downgraded. A home path in
+         * {@code origin}, or one extra occurrence anywhere else in the same
+         * record, is still {@code FILE_CONTENT}: a live reference field that
+         * happens to sit beside diagnostic text must not inherit its tolerance.
+         */
+        public static final String DIAGNOSTIC_TEXT = "DIAGNOSTIC_TEXT";
+
+        /** True when this is a mention — authored or diagnostic — not a path that resolves. */
+        public boolean tolerable() {
+            return CONTENT_REFERENCE.equals(kind) || DIAGNOSTIC_TEXT.equals(kind);
+        }
 
         @Override
         public String toString() {
@@ -850,13 +877,21 @@ public final class HomeCloner {
      */
     public record Verification(List<Leak> leaks, List<String> contentReferences,
                                List<String> danglingLinks,
-                               List<String> unresolvedReferences) {
+                               List<String> unresolvedReferences,
+                               List<String> diagnosticReferences) {
         public Verification {
             leaks = leaks == null ? List.of() : List.copyOf(leaks);
             contentReferences = contentReferences == null ? List.of() : List.copyOf(contentReferences);
             danglingLinks = danglingLinks == null ? List.of() : List.copyOf(danglingLinks);
             unresolvedReferences = unresolvedReferences == null
                     ? List.of() : List.copyOf(unresolvedReferences);
+            diagnosticReferences = diagnosticReferences == null
+                    ? List.of() : List.copyOf(diagnosticReferences);
+        }
+
+        public Verification(List<Leak> leaks, List<String> contentReferences,
+                            List<String> danglingLinks, List<String> unresolvedReferences) {
+            this(leaks, contentReferences, danglingLinks, unresolvedReferences, List.of());
         }
 
         public boolean clean() { return leaks.isEmpty(); }
@@ -908,6 +943,8 @@ public final class HomeCloner {
         List<String> contentReferences = new ArrayList<>();
         List<String> dangling = new ArrayList<>();
         List<String> unresolved = new ArrayList<>();
+        List<String> diagnostics = new ArrayList<>();
+        String needleText = srcRoot.toString();
         Files.walkFileTree(dstRoot, new SimpleWalker((file, rel) -> {
             if (Files.isSymbolicLink(file)) {
                 Path target;
@@ -945,6 +982,13 @@ public final class HomeCloner {
             if (surface == Surface.CONTENT) {
                 contentReferences.add(rel);
                 if (strict) leaks.add(new Leak(rel, Leak.CONTENT_REFERENCE, "authored unit content"));
+            } else if (mentionIsOnlyDiagnostic(file, rel, needleText)) {
+                // A sentence about another home, not a path into one. See
+                // Leak#DIAGNOSTIC_TEXT — and note this is the only branch that
+                // can downgrade a STATE finding, and it downgrades nothing it
+                // cannot account for byte by byte.
+                diagnostics.add(rel);
+                if (strict) leaks.add(new Leak(rel, Leak.DIAGNOSTIC_TEXT, "persisted error message"));
             } else {
                 leaks.add(new Leak(rel, "FILE_CONTENT", surface.name().toLowerCase()));
             }
@@ -953,7 +997,67 @@ public final class HomeCloner {
         contentReferences.sort(String::compareTo);
         dangling.sort(String::compareTo);
         unresolved.sort(String::compareTo);
-        return new Verification(leaks, contentReferences, dangling, unresolved);
+        diagnostics.sort(String::compareTo);
+        return new Verification(leaks, contentReferences, dangling, unresolved, diagnostics);
+    }
+
+    /**
+     * True when every mention of {@code needle} in this file sits inside an
+     * {@code errors[].message} — diagnostic prose, not a reference.
+     *
+     * <p>Restricted to {@code installed/<unit>.json} because that is the one
+     * record with a free-text field. {@code <unit>.projections.json} is
+     * excluded: it is the projection ledger, and every path in it is a live
+     * one.
+     *
+     * <p>The test is a count, not a predicate: the raw occurrences must be
+     * fully covered by the parsed message strings. One occurrence anywhere
+     * else — an {@code origin} that is a local path, a field a future version
+     * adds — leaves this false and the finding stays a hard leak. Anything
+     * unreadable or unparseable is likewise false; a downgrade needs positive
+     * evidence, and not being able to tell is not that.
+     */
+    private static boolean mentionIsOnlyDiagnostic(Path file, String rel, String needle) {
+        if (!isUnitRecord(rel)) return false;
+        try {
+            if (Files.size(file) > WHOLE_FILE_LIMIT) return false;
+            byte[] raw = Files.readAllBytes(file);
+            if (looksBinary(raw)) return false;
+            int total = countOccurrences(new String(raw, StandardCharsets.UTF_8), needle);
+            if (total == 0) return false;
+            com.fasterxml.jackson.databind.JsonNode root =
+                    new com.fasterxml.jackson.databind.ObjectMapper().readTree(raw);
+            com.fasterxml.jackson.databind.JsonNode errors = root.get("errors");
+            if (errors == null || !errors.isArray()) return false;
+            int inDiagnostics = 0;
+            for (com.fasterxml.jackson.databind.JsonNode error : errors) {
+                com.fasterxml.jackson.databind.JsonNode message = error.get("message");
+                if (message != null && message.isTextual()) {
+                    inDiagnostics += countOccurrences(message.asText(), needle);
+                }
+            }
+            return inDiagnostics >= total;
+        } catch (IOException | RuntimeException notAReadableRecord) {
+            return false;
+        }
+    }
+
+    /** {@code installed/<unit>.json}, excluding the projection ledger beside it. */
+    private static boolean isUnitRecord(String rel) {
+        String normalized = rel.replace(java.io.File.separatorChar, '/');
+        return normalized.startsWith("installed/")
+                && normalized.endsWith(".json")
+                && !normalized.endsWith(".projections.json");
+    }
+
+    private static int countOccurrences(String haystack, String needle) {
+        if (needle.isEmpty()) return 0;
+        int n = 0;
+        for (int at = haystack.indexOf(needle); at >= 0;
+             at = haystack.indexOf(needle, at + needle.length())) {
+            n++;
+        }
+        return n;
     }
 
     /** {@link #missingDestReferences} for a file that has not been read yet. */
