@@ -141,6 +141,9 @@ public final class SkillManagerCli implements Runnable {
             }
         } finally {
             observability.flushAndClose(CliObservability.DEFAULT_FLUSH_TIMEOUT_MILLIS);
+            // After the footer has been printed (completeExecution), and on
+            // every path including the ones that never reached it.
+            dev.skillmanager.util.RunLog.close();
         }
     }
 
@@ -158,6 +161,9 @@ public final class SkillManagerCli implements Runnable {
         cmd.setExecutionStrategy(pr -> {
             SkillManagerCli root = rootCommand(pr);
             if (root != null) Log.setVerbose(root.verbose);
+            // Armed as early as the parse allows, so the log holds everything
+            // from here on. Lazy: no file exists until something is written.
+            dev.skillmanager.util.RunLog.open(CliAgentContext.commandPath(pr));
             // Before anything can touch a store: state whether THIS
             // invocation is allowed to bring a home into existence. Nothing
             // below re-derives it. See CommandHomeAccess for the
@@ -322,7 +328,42 @@ public final class SkillManagerCli implements Runnable {
                     rc,
                     CliObservability.currentTraceId());
         }
+        nameTheLog(pr);
         return rc;
+    }
+
+    /**
+     * The one line the quiet console spends on the detail it withheld.
+     *
+     * <p>Printed only when something was actually demoted — a command with
+     * nothing behind its verdict advertises no file, because a path to an empty
+     * log is a line that costs and says nothing.
+     *
+     * <p><b>stderr, and never under {@code --json}.</b> This is metadata about
+     * the run, not part of its result. Every machine-readable surface this CLI
+     * has — {@code --json}, {@code exec --print-env}, the MCP results block —
+     * is on stdout, so keeping the footer off stdout means no consumer can be
+     * broken by it, including ones nobody re-audited. The {@code --json}
+     * suppression is belt and braces on top of that.
+     */
+    private static void nameTheLog(CommandLine.ParseResult pr) {
+        if (dev.skillmanager.util.RunLog.demoted() <= 0) return;
+        java.nio.file.Path log = dev.skillmanager.util.RunLog.path();
+        if (log == null) return;
+        if (jsonRequested(pr)) return;
+        System.err.println("  log: " + log);
+    }
+
+    /** Whether {@code --json} was matched anywhere in the parsed command chain. */
+    private static boolean jsonRequested(CommandLine.ParseResult pr) {
+        try {
+            for (CommandLine.ParseResult p = pr; p != null; p = p.subcommand()) {
+                if (p.hasMatchedOption("--json")) return true;
+            }
+        } catch (RuntimeException ignored) {
+            // A command with no --json option at all: not a JSON consumer.
+        }
+        return false;
     }
 
     private static SkillManagerCli rootCommand(CommandLine.ParseResult pr) {

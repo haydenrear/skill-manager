@@ -124,17 +124,10 @@ public final class PostUpdateUseCase {
         return snapshot;
     }
 
-    public static void printAgentConfigSummary(Report report, String mcpUrl) {
-        var added = report.agentConfigChanges.getOrDefault(McpWriter.ConfigChange.ADDED, List.of());
-        var updated = report.agentConfigChanges.getOrDefault(McpWriter.ConfigChange.UPDATED, List.of());
-        if (added.isEmpty() && updated.isEmpty()) return;
-        System.out.println();
-        System.out.println("agent MCP configs:");
-        for (String a : added) System.out.println("  ADDED    " + a + "  → " + mcpUrl);
-        for (String a : updated) System.out.println("  UPDATED  " + a + "  → " + mcpUrl);
-        System.out.println();
-        System.out.println("ACTION_REQUIRED: Restart Claude / Codex for the virtual-mcp-gateway entry");
-        System.out.println("to take effect — without a restart the agent will not see any MCP tools.");
-        System.out.println();
-    }
+    // The agent-MCP-config block used to be spelled a SECOND time here, as a
+    // public static printAgentConfigSummary(Report, String) that nothing
+    // called. DELETED rather than quieted: unreachable output cannot be made
+    // cheaper, and a duplicate renderer is how two copies of one report come to
+    // disagree — the same reason ReportUseCase.printOutstanding is the single
+    // definition of the remedy table. ConsoleProgramRenderer owns this block.
 }

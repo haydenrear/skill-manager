@@ -1295,8 +1295,13 @@ public final class LiveInterpreter implements ProgramInterpreter {
                 ? e.graph()
                 : ctx.resolvedGraph().orElse(null);
         if (graph == null) return EffectReceipt.skipped(e, "no resolved graph");
+        // Demoted, not deleted: this repeats the `✓ installed <name>` verdict
+        // the renderer already printed, adding only the store path — which
+        // `show` answers on demand and which is the same directory for every
+        // unit in a run. Nothing in this repository or its graphs parses the
+        // `INSTALLED:` prefix.
         for (var r : graph.resolved()) {
-            System.out.println("INSTALLED: " + r.name()
+            dev.skillmanager.util.Log.detail("INSTALLED: " + r.name()
                     + (r.version() == null ? "" : "@" + r.version())
                     + " -> " + ctx.store().unitDir(r.name(), r.unit().kind()));
         }

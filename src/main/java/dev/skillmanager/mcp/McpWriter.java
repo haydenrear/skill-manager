@@ -253,7 +253,7 @@ public final class McpWriter {
         entry.put("url", desiredUrl);
         servers.put(GATEWAY_ENTRY, entry);
         json.writeValue(file.toFile(), root);
-        Log.ok("claude: pointed %s → %s", GATEWAY_ENTRY, desiredUrl);
+        Log.detail("✓ claude: pointed %s → %s", GATEWAY_ENTRY, desiredUrl);
         return entryExisted ? ConfigChange.UPDATED : ConfigChange.ADDED;
     }
 
@@ -284,7 +284,7 @@ public final class McpWriter {
         entry.put("httpUrl", desiredUrl);
         servers.put(GATEWAY_ENTRY, entry);
         json.writeValue(file.toFile(), root);
-        Log.ok("gemini: pointed %s -> %s", GATEWAY_ENTRY, desiredUrl);
+        Log.detail("✓ gemini: pointed %s -> %s", GATEWAY_ENTRY, desiredUrl);
         return entryExisted ? ConfigChange.UPDATED : ConfigChange.ADDED;
     }
 
@@ -302,7 +302,7 @@ public final class McpWriter {
         String desiredTable = tableHeader + "\nurl = \"" + gateway.mcpEndpoint() + "\"\n";
         String rebuilt = replaceOrAppendTable(existing, tableHeader, desiredTable);
         Files.writeString(file, rebuilt);
-        Log.ok("codex: pointed %s → %s", GATEWAY_ENTRY, gateway.mcpEndpoint());
+        Log.detail("✓ codex: pointed %s → %s", GATEWAY_ENTRY, gateway.mcpEndpoint());
         return tableExisted ? ConfigChange.UPDATED : ConfigChange.ADDED;
     }
 

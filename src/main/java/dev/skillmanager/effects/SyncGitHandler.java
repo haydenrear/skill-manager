@@ -101,13 +101,39 @@ public final class SyncGitHandler {
                     new ContextFact.SyncGitNoOrigin(skillName));
         }
         ctx.clearError(skillName, InstalledUnit.ErrorKind.NO_GIT_REMOTE);
-        if (src != null
+        // A unit that HAS a git remote, but a local one. It syncs (from that
+        // local path) and it will never see anyone else's work.
+        //
+        // This used to be a Log.warn per unit per sync — twenty identical
+        // sentences on a twenty-unit home, every run, forever, which is how a
+        // true warning becomes wallpaper. It is now a typed fact: the sentence
+        // goes to the run log and the CONSOLE gets the count, in the same
+        // rollup line as the units that synced from a remote. A count is also
+        // the form in which it is checkable — "3 of 20 will never update" is
+        // actionable in a way that three sentences among twenty are not.
+        boolean localOrigin = src != null
                 && src.installSource() == InstalledUnit.InstallSource.LOCAL_FILE
-                && !looksLikeRemoteUrl(upstream)) {
-            Log.warn("%s: installed from file/local path — do not expect shared upstream sync; "
-                    + "reinstall with github: or git+ to track a GitHub remote", skillName);
-        }
+                && !looksLikeRemoteUrl(upstream);
+        EffectReceipt receipt = syncTracked(store, ctx, e, src, skillName, storeDir, upstream);
+        return localOrigin ? alsoLocalOrigin(receipt, skillName, upstream) : receipt;
+    }
 
+    /**
+     * Append a {@link ContextFact.SyncGitLocalInstall} to a receipt that
+     * already carries this unit's sync outcome, so the renderer can count the
+     * provenance without losing what the sync actually did.
+     */
+    private static EffectReceipt alsoLocalOrigin(EffectReceipt r, String skillName, String origin) {
+        List<ContextFact> facts = new java.util.ArrayList<>(r.facts());
+        facts.add(new ContextFact.SyncGitLocalInstall(skillName, origin));
+        return new EffectReceipt(r.effect(), r.status(), r.continuation(),
+                facts, r.errorMessage(), r.at());
+    }
+
+    private static EffectReceipt syncTracked(SkillStore store, EffectContext ctx,
+                                             SkillEffect.SyncGit e, InstalledUnit src,
+                                             String skillName, Path storeDir, String upstream)
+            throws IOException {
         // Dirty means either uncommitted changes or HEAD moved past the
         // source-record baseline. We still resolve the target before refusing:
         // a user may have already merged the upstream commit manually, leaving
