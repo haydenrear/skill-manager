@@ -58,8 +58,20 @@ public final class AgentHomes {
      */
     public static final String HOME = "HOME";
 
+    /**
+     * The variable naming the Skill Manager store. Not an agent root either,
+     * but the one that <em>decides</em> the agent roots when no agent-specific
+     * variable is set — see {@link #agentHomeRoot()}. Declared here rather than
+     * imported from {@code SkillStore.HOME_ENV} (which now delegates to it) so
+     * this package keeps no dependency on {@code store}.
+     */
+    public static final String SKILL_MANAGER_HOME = "SKILL_MANAGER_HOME";
+
     /** The directory name Claude Code keeps its config tree under. */
     public static final String CLAUDE_DIR_NAME = ".claude";
+
+    /** The conventional basename of a Skill Manager store inside its home. */
+    public static final String STORE_DIR_NAME = ".skill-manager";
 
     private static final ThreadLocal<Map<String, Path>> OVERRIDES =
             ThreadLocal.withInitial(HashMap::new);
@@ -151,6 +163,105 @@ public final class AgentHomes {
     }
 
     /**
+     * The home root the agent config directories belong to: the directory
+     * that holds {@code .claude/}, {@code .codex/} and {@code .gemini/}
+     * beside the active store.
+     *
+     * <p>By convention a store is {@code <root>/.skill-manager}, so the root is
+     * its parent — {@code ~} for {@code ~/.skill-manager}, {@code <repo>} for a
+     * per-project {@code <repo>/.skill-manager}. A store not named
+     * {@code .skill-manager} is its own root, because there is nothing else it
+     * could be. This is the one definition;
+     * {@code HomeDescriptor.homeRootFor} delegates to it, so the descriptor a
+     * launcher publishes and the directory skill-manager itself projects into
+     * are derived from the same rule rather than from two that agree today.
+     *
+     * <h2>Why the fallback base is this and not {@code $HOME}</h2>
+     *
+     * <p>This is issue #145, and its measured consequence. Every agent root
+     * used to fall back to {@code <user home>/.claude|.codex|.gemini} whenever
+     * the agent-specific variable was unset — <em>regardless of which home
+     * skill-manager was operating on</em>. So the documented remedy
+     *
+     * <pre>{@code SKILL_MANAGER_HOME=<fresh>/.skill-manager skill-manager sync --force-scripts}</pre>
+     *
+     * projected the fresh home's units into the <b>operator's global</b> agent
+     * directories, repointing 24 of their skill links at a throwaway project
+     * that was about to be deleted. Reproduced here against a fixture
+     * {@code $HOME}: the hijack happens with the cloned home's binding ledger
+     * <em>deleted</em>, so it was never the ledger that decided the
+     * destination — the destination was always re-derived from the ambient
+     * environment, and the ambient environment does not know which home it is
+     * talking about.
+     *
+     * <p>The same gap is the operator's original complaint from the other side:
+     * {@code bootstrap-home.sh} creates {@code <project>/.claude} and nothing
+     * ever populated it, so a markdown skill-import naming a unit in the home
+     * had nothing to resolve against, while {@code exec} pointed
+     * {@code CLAUDE_CONFIG_DIR} at that empty directory. One resolution rule
+     * fixes both directions: units land in the agent directories of the home
+     * they were installed into.
+     *
+     * <p>This is also the invariant
+     * {@code LaunchEnv#requireClaudeRedirected} already enforces on the launch
+     * side — "the Claude config dir must be inside this home's root, and for
+     * the global home that is exactly {@code ~/.claude}". A launcher refusing a
+     * configuration that skill-manager's own writer would happily produce is
+     * two rules where there should be one.
+     *
+     * <p>Behaviour for the global home is unchanged in every case:
+     * {@code $SKILL_MANAGER_HOME} unset resolves to {@code ~/.skill-manager}
+     * and hence {@code ~}, and an explicit {@code ~/.skill-manager} resolves to
+     * {@code ~} as well. What changes is only the case where the operator has
+     * pointed skill-manager at some other home, which is the case where the
+     * old answer was never right.
+     *
+     * <p>An explicit {@code CLAUDE_CONFIG_DIR} / {@code CLAUDE_HOME} /
+     * {@code CODEX_HOME} / {@code GEMINI_HOME} still wins, so an operator who
+     * genuinely wants a non-default store to project into {@code ~} says so and
+     * gets it.
+     */
+    public static Path agentHomeRoot() {
+        return agentHomeRoot(AgentHomes::resolve);
+    }
+
+    /** {@link #agentHomeRoot()} against an explicit lookup. */
+    private static Path agentHomeRoot(java.util.function.Function<String, Path> lookup) {
+        Path store = lookup.apply(SKILL_MANAGER_HOME);
+        return store == null ? userHome(lookup) : homeRootFor(store);
+    }
+
+    /**
+     * The home root enclosing {@code storeRoot}. See {@link #agentHomeRoot()}
+     * for the convention and for why there is one spelling of it.
+     *
+     * <p>The profile layout ({@code ProjectChildHomeScaffolder.layoutFor} with
+     * a named profile) puts its agent homes under {@code agents/} instead, so
+     * such callers pass their root explicitly rather than relying on this.
+     */
+    public static Path homeRootFor(Path storeRoot) {
+        Path abs = storeRoot.toAbsolutePath().normalize();
+        Path name = abs.getFileName();
+        if (name != null && STORE_DIR_NAME.equals(name.toString())) {
+            Path parent = abs.getParent();
+            if (parent != null) return parent;
+        }
+        return abs;
+    }
+
+    /**
+     * The three agent config directories that belong to the home rooted at
+     * {@code homeRoot}. One list, so a caller asking "is this path in some
+     * home's agent dirs" and a caller asking "where do I project" cannot
+     * disagree about what an agent home is.
+     */
+    public static java.util.List<Path> agentDirsUnder(Path homeRoot) {
+        Path root = homeRoot.toAbsolutePath().normalize();
+        return java.util.List.of(
+                root.resolve(CLAUDE_DIR_NAME), root.resolve(".codex"), root.resolve(".gemini"));
+    }
+
+    /**
      * The one Claude config location, in both of the spellings callers
      * need: {@code root} is the parent that holds {@code .claude/} and
      * {@code .claude.json}; {@code configDir} is the {@code .claude/}
@@ -187,9 +298,12 @@ public final class AgentHomes {
      *       different directories.</li>
      *   <li>{@code CLAUDE_HOME} (override, then env) — the parent;
      *       config dir is {@code <CLAUDE_HOME>/.claude}.</li>
-     *   <li>{@link #userHome()} — {@code $HOME}, then {@code user.home}.
-     *       Reading {@code user.home} directly here is what let issue #18
-     *       project skills into the operator's real {@code ~/.claude}.</li>
+     *   <li>{@link #agentHomeRoot()} — the root of the home skill-manager is
+     *       operating on, which is {@code $HOME} when that home is the global
+     *       one. Reading {@code user.home} directly here is what let issue #18
+     *       project skills into the operator's real {@code ~/.claude}; reading
+     *       {@code $HOME} <em>correctly</em> is what let issue #145 do the same
+     *       thing from a project home.</li>
      * </ol>
      *
      * <p>This precedence is also what makes it safe for a home descriptor
@@ -201,22 +315,43 @@ public final class AgentHomes {
      * a second {@code .claude} appended to it.
      */
     public static ClaudeHome claude() {
-        return claude(AgentHomes::resolve);
+        return claude(AgentHomes::resolve, agentHomeRoot(AgentHomes::resolve));
     }
 
     /**
-     * The same resolution applied to an explicit environment rather than the
+     * The same precedence applied to an explicit environment rather than the
      * ambient one — used when deciding where a launch <em>would</em> put
      * Claude before starting it (see
      * {@code dev.skillmanager.launch.LaunchEnv}).
      *
-     * <p>It delegates to the same private implementation as {@link #claude()}
-     * precisely so there is still exactly one place the
-     * {@code CLAUDE_CONFIG_DIR} → {@code CLAUDE_HOME} → {@code user.home}
-     * precedence is written down. A launcher that re-derived it could disagree
-     * with the reader, and then a launch could pass its own isolation check
-     * while skill-manager wrote skills somewhere else — the split brain this
-     * method's javadoc describes, reintroduced from the other side.
+     * <p>It shares {@link #claude(java.util.function.Function, Path)} with
+     * {@link #claude()} precisely so there is still exactly one place the
+     * {@code CLAUDE_CONFIG_DIR} → {@code CLAUDE_HOME} → fallback precedence is
+     * written down. A launcher that re-derived it could disagree with the
+     * reader, and then a launch could pass its own isolation check while
+     * skill-manager wrote skills somewhere else — the split brain
+     * {@link #claude()}'s javadoc describes, reintroduced from the other side.
+     *
+     * <h2>The one thing it does not share: the last-resort base</h2>
+     *
+     * <p>{@link #claude()} falls back to {@link #agentHomeRoot()}, which
+     * derives the root from {@code SKILL_MANAGER_HOME}. <b>This method must
+     * not</b>, and the reason is that the two methods answer questions about
+     * two different programs. {@link #claude()} answers "where will
+     * <em>skill-manager</em> write this unit", and skill-manager implements the
+     * {@code SKILL_MANAGER_HOME} rule. This one answers "where will the
+     * <em>Claude CLI</em> read its config once we hand it this environment",
+     * and the Claude CLI has never heard of {@code SKILL_MANAGER_HOME}: it
+     * reads {@code CLAUDE_CONFIG_DIR}, and failing that, {@code $HOME/.claude}.
+     *
+     * <p>Deriving the child's answer from {@code SKILL_MANAGER_HOME} would make
+     * this method predict a directory the child will never look in, and
+     * {@code LaunchEnv#requireClaudeRedirected} — whose whole job is to refuse
+     * a launch that would leave Claude reading the operator's real config —
+     * would be satisfied by an env block that does not actually redirect
+     * anything. The gate would go quiet in exactly the case it exists for. So
+     * the fallback is the launch env's own {@code HOME}, and a descriptor that
+     * declares no Claude variable is still refused.
      *
      * <p>A key absent from {@code env} is treated as unset, <em>not</em> as
      * "fall back to the ambient variable". A launch environment is the
@@ -226,20 +361,27 @@ public final class AgentHomes {
      */
     public static ClaudeHome claude(Map<String, String> env) {
         Map<String, String> source = env == null ? Map.of() : env;
-        return claude(key -> {
+        java.util.function.Function<String, Path> lookup = key -> {
             String value = source.get(key);
             return value == null || value.isBlank() ? null : Path.of(value);
-        });
+        };
+        return claude(lookup, userHome(lookup));
     }
 
-    private static ClaudeHome claude(java.util.function.Function<String, Path> lookup) {
+    /**
+     * The precedence itself, over a lookup and the caller's last-resort root.
+     * See {@link #claude(Map)} for why the root is the caller's and everything
+     * above it is not.
+     */
+    private static ClaudeHome claude(java.util.function.Function<String, Path> lookup,
+                                     Path fallbackRoot) {
         Path explicitConfigDir = lookup.apply(CLAUDE_CONFIG_DIR);
         if (explicitConfigDir != null) {
             Path parent = explicitConfigDir.getParent();
             return new ClaudeHome(parent != null ? parent : explicitConfigDir, explicitConfigDir);
         }
         Path root = lookup.apply(CLAUDE_HOME);
-        if (root == null) root = userHome(lookup);
+        if (root == null) root = fallbackRoot;
         return new ClaudeHome(root, root.resolve(CLAUDE_DIR_NAME));
     }
 

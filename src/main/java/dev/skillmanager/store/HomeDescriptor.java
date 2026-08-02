@@ -169,15 +169,17 @@ public record HomeDescriptor(
      * is that shape and puts its agent homes under {@code agents/}, so
      * such callers should pass the root explicitly rather than rely on
      * this derivation.
+     *
+     * <p>The rule itself lives in {@link AgentHomes#homeRootFor}, because
+     * skill-manager's own projector now derives its agent directories from
+     * exactly this question and the two answers have to be one answer. They
+     * were not: the descriptor published {@code <root>/.claude} while
+     * projection wrote into {@code ~/.claude}, so a per-project home
+     * advertised an agent directory nothing ever filled and filled one it had
+     * no business touching. Issue #145.
      */
     public static Path homeRootFor(Path storeRoot) {
-        Path abs = storeRoot.toAbsolutePath().normalize();
-        Path name = abs.getFileName();
-        if (name != null && ".skill-manager".equals(name.toString())) {
-            Path parent = abs.getParent();
-            if (parent != null) return parent;
-        }
-        return abs;
+        return AgentHomes.homeRootFor(storeRoot);
     }
 
     /**

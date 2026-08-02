@@ -459,8 +459,10 @@ public final class HarnessPluginCli {
         }
 
         /**
-         * Resolve {@code $CODEX_HOME/config.toml} (or {@code ~/.codex/config.toml}
-         * when the env var isn't set) — the file codex's CLI reads/writes
+         * Resolve {@code $CODEX_HOME/config.toml} (or, when the env var isn't
+         * set, {@code .codex/config.toml} under the active home's root — see
+         * {@link dev.skillmanager.agent.AgentHomes#agentHomeRoot}, which is
+         * {@code ~} for the global home) — the file codex's CLI reads/writes
          * when managing marketplaces. Routed through {@link
          * dev.skillmanager.agent.AgentHomes} so a test-harness override
          * pins this to a sandbox dir instead of the real {@code ~/.codex}.
@@ -472,7 +474,7 @@ public final class HarnessPluginCli {
         public static Path codexConfigPath() {
             Path root = dev.skillmanager.agent.AgentHomes.resolveOrDefault(
                     dev.skillmanager.agent.AgentHomes.CODEX_HOME,
-                    dev.skillmanager.agent.AgentHomes.userHome().resolve(".codex"));
+                    dev.skillmanager.agent.AgentHomes.agentHomeRoot().resolve(".codex"));
             return root.resolve("config.toml");
         }
 

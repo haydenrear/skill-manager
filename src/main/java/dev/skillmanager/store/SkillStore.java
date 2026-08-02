@@ -66,8 +66,15 @@ public final class SkillStore {
         this.installedDir = root.resolve("installed");
     }
 
-    /** The env var naming the home root. */
-    public static final String HOME_ENV = "SKILL_MANAGER_HOME";
+    /**
+     * The env var naming the home root. Aliased from
+     * {@link dev.skillmanager.agent.AgentHomes#SKILL_MANAGER_HOME}, which is
+     * where it has to be declared now that the agent roots are derived from
+     * this variable (issue #145) — otherwise the name that decides where a
+     * unit is stored and the name that decides where it is projected would be
+     * two independently maintained string literals.
+     */
+    public static final String HOME_ENV = dev.skillmanager.agent.AgentHomes.SKILL_MANAGER_HOME;
 
     /**
      * The ambient home: {@code $SKILL_MANAGER_HOME}, else
