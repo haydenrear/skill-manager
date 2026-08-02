@@ -467,48 +467,15 @@ public final class ConsoleProgramRenderer implements ProgramRenderer {
         System.err.println();
     }
 
+    /**
+     * Delegated to {@link dev.skillmanager.app.ReportUseCase#printOutstanding}
+     * — one banner, grouped by distinct cause, with a single copy of the
+     * remedy table. This method used to hold a verbatim duplicate of that
+     * table and printed one block per unit; see the delegate for why ten
+     * identical blocks was the wrong report. Issue #144.
+     */
     private void printOutstandingErrors() {
-        if (outstandingErrors.isEmpty()) return;
-        System.err.println();
-        System.err.println("⚠ skills with outstanding errors (" + outstandingErrors.size()
-                + ") — re-run after fixing:");
-        for (var entry : outstandingErrors.entrySet()) {
-            String skillName = entry.getKey();
-            Path dir = store.skillDir(skillName);
-            System.err.println();
-            System.err.println("  " + skillName + ":");
-            LinkedHashSet<InstalledUnit.ErrorKind> seen = new LinkedHashSet<>();
-            for (var err : entry.getValue().entrySet()) {
-                if (!seen.add(err.getKey())) continue;
-                System.err.println("    - " + err.getKey() + ": " + err.getValue());
-                System.err.println("      → " + outstandingHint(err.getKey(), skillName, dir));
-            }
-        }
-        System.err.println();
-    }
-
-    private static String outstandingHint(InstalledUnit.ErrorKind kind, String skillName, Path storeDir) {
-        return switch (kind) {
-            case GATEWAY_UNAVAILABLE -> "start the gateway: skill-manager gateway up";
-            case MCP_REGISTRATION_FAILED -> "retry: skill-manager sync " + skillName;
-            case MERGE_CONFLICT -> "resolve in " + storeDir + ", then `git add` + `git commit`";
-            case NO_GIT_REMOTE -> "set origin: cd " + storeDir + " && git remote add origin <url>";
-            case NEEDS_GIT_MIGRATION -> "file/local installs do not sync; reinstall from a git source: "
-                    + "skill-manager uninstall " + skillName
-                    + " && skill-manager install github:<owner>/<repo>";
-            case REGISTRY_UNAVAILABLE -> "ensure the registry is reachable, then re-run sync/upgrade "
-                    + "(or use --git-latest to bypass the registry for git-tracked skills)";
-            case AGENT_SYNC_FAILED -> "retry: skill-manager sync " + skillName
-                    + " (will re-attempt the agent symlink)";
-            case HARNESS_CLI_UNAVAILABLE -> "install the missing harness CLI, then re-run "
-                    + "skill-manager sync " + skillName;
-            case AUTHENTICATION_NEEDED -> "run `skill-manager login`, then re-run "
-                    + "`skill-manager sync " + skillName + "`";
-            case TRANSITIVE_RESOLVE_FAILED -> "fix the failing transitive (see the listed reason) "
-                    + "and re-run: skill-manager sync " + skillName;
-            case PROJECT_SYNC_FAILED -> "fix the listed project sync failure, then re-run: "
-                    + "skill-manager sync " + skillName;
-        };
+        dev.skillmanager.app.ReportUseCase.printOutstanding(outstandingErrors, store);
     }
 
     // ----------------------------------------------- helpers

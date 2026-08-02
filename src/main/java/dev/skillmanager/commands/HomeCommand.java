@@ -222,6 +222,26 @@ public final class HomeCommand {
                     Log.info("    … %d more", mentions.size() - TOLERATED_SAMPLE);
                 }
             }
+            // Persisted error MESSAGES that quote a path into the other home.
+            // Reported here, separately, and never in the isolation verdict:
+            // ten of these were filed as "paths that resolve into another
+            // Skill Manager home" and sent an operator chasing an isolation
+            // problem after a sentence. Issue #144.
+            List<String> diagnostics = result.diagnosticReferences();
+            if (!diagnostics.isEmpty()) {
+                Log.info("%d unit record(s) quote %s inside a persisted error message — a "
+                                + "description of that home, not a path into it; %s",
+                        diagnostics.size(), against,
+                        strict ? "counted as failures under --strict"
+                                : "tolerated; they go when the error does");
+                for (String ref : diagnostics.subList(
+                        0, Math.min(TOLERATED_SAMPLE, diagnostics.size()))) {
+                    Log.info("    %s", ref);
+                }
+                if (diagnostics.size() > TOLERATED_SAMPLE) {
+                    Log.info("    … %d more", diagnostics.size() - TOLERATED_SAMPLE);
+                }
+            }
             // Provisioning that never completed. A message printed once by the
             // clone was not enough: nobody ran the remedy, and nothing asked
             // again. This is the command that asks again — issue #133 item 2.
@@ -239,22 +259,38 @@ public final class HomeCommand {
             // another home is not a historical record under any reading.
             List<HomeCloner.Leak> isolation = result.isolationFailures();
             int tolerated = result.toleratedFailures().size();
+            // Split, because "authored" is a claim about unit content and a
+            // persisted error message is not that. Both are mentions; neither
+            // is a path that resolves.
+            String toleratedPhrase = toleratedPhrase(result);
             if (!isolation.isEmpty()) {
                 Log.error("%d path(s) in %s resolve into another Skill Manager home%s",
                         isolation.size(), home,
                         tolerated == 0 ? ""
-                                : " (plus " + tolerated
-                                        + " authored mention(s), fatal under --strict)");
+                                : " (plus " + toleratedPhrase + ", fatal under --strict)");
                 for (HomeCloner.Leak leak : isolation) Log.error("  %s", leak);
             } else if (tolerated > 0) {
-                Log.error("%d authored mention(s) of %s, fatal under --strict; no path in %s "
-                        + "resolves into another Skill Manager home", tolerated, against, home);
+                Log.error("%s of %s, fatal under --strict; no path in %s "
+                        + "resolves into another Skill Manager home",
+                        toleratedPhrase, against, home);
             }
             if (!result.clean() || !unresolved.isEmpty()) return 1;
             Log.ok("no %sreference to %s survives in %s, and no path in it reaches any "
                             + "other Skill Manager home",
-                    mentions.isEmpty() ? "" : "repairable ", against, home);
+                    mentions.isEmpty() && diagnostics.isEmpty() ? "" : "repairable ",
+                    against, home);
             return 0;
+        }
+
+        /** "40 authored mention(s)", "10 diagnostic message(s)", or both. */
+        private static String toleratedPhrase(HomeCloner.Verification result) {
+            long authored = result.toleratedFailures().stream()
+                    .filter(leak -> HomeCloner.Leak.CONTENT_REFERENCE.equals(leak.kind()))
+                    .count();
+            long diagnostic = result.toleratedFailures().size() - authored;
+            if (diagnostic == 0) return authored + " authored mention(s)";
+            if (authored == 0) return diagnostic + " diagnostic message(s)";
+            return authored + " authored mention(s) and " + diagnostic + " diagnostic message(s)";
         }
     }
 

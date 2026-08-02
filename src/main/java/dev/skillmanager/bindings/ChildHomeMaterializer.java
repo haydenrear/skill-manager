@@ -1563,6 +1563,47 @@ public final class ChildHomeMaterializer {
     // -------------------------------------------------------------- shims
 
     /**
+     * What {@link #mirrorExistingShim} did, so a caller can say so.
+     *
+     * <p>It used to be {@code void} and to signal the one interesting case by
+     * throwing. That is what made {@code project sync} non-idempotent: see
+     * {@link #KEPT_LOCAL}.
+     */
+    public enum ShimOutcome {
+        /** The parent store has no such entry; nothing to mirror. */
+        NO_SOURCE,
+        /** Degenerate layout — source and destination are the same entry. */
+        SAME_ENTRY,
+        /** The child now links at the parent's entry. */
+        MIRRORED,
+        /** The child already holds this exact shim; nothing to do. */
+        UNCHANGED,
+        /**
+         * The child home holds its own real file where the shim would go, and
+         * it is kept.
+         *
+         * <p>This is the state {@code sync --force-scripts} leaves in every
+         * home it runs in: a {@code skill-script} CLI dep is a generated shell
+         * script, a regular file, not a symlink. A child home is a home — an
+         * agent launches with it, {@code bootstrap-home.sh} tells the operator
+         * to re-provision its tools that way — so the shim it generated for
+         * itself is the normal content of {@code <child>/bin/cli/<dep>}, not
+         * an obstruction.
+         *
+         * <p>Replacing it would be wrong twice over: it deletes a working tool
+         * this home provisioned, and it puts a live symlink into the parent
+         * home in a directory that exists to reach no other home — the very
+         * thing {@code home verify} refuses. So it is kept, and reported.
+         * {@code project sync --rebuild} is the escape hatch for a shim that
+         * really is stale; it tears the child home down first.
+         */
+        KEPT_LOCAL;
+
+        /** True when the child home's own entry was kept over the parent's. */
+        public boolean keptLocal() { return this == KEPT_LOCAL; }
+    }
+
+    /**
      * Mirrors an existing parent {@code bin/} entry into the child home.
      *
      * <p>Always a symlink, independent of the unit materialization mode.
@@ -1572,16 +1613,45 @@ public final class ChildHomeMaterializer {
      * pin the child home to a toolchain the parent may later upgrade. Nothing
      * edits a shim through the child home, so they do not carry the
      * write-through hazard that motivates copying unit directories.
+     *
+     * <p><b>Never fails on an occupied destination.</b> {@link #linkPath}
+     * reconciles a symlink and a directory but throws on a regular file, and a
+     * regular file is exactly what a {@code skill-script} CLI dep is. One
+     * {@code project sync} into a home that had ever provisioned its own
+     * {@code computeq} therefore aborted the whole realization — and, because
+     * the failure is then stamped on every unit the project claims, it aborted
+     * it loudly and permanently. A projection whose destination may legitimately
+     * be occupied has to reconcile; issue #144.
      */
-    public void mirrorExistingShim(Path source, Path dest) throws IOException {
-        if (!Files.exists(source, LinkOption.NOFOLLOW_LINKS)) return;
+    public ShimOutcome mirrorExistingShim(Path source, Path dest) throws IOException {
+        if (!Files.exists(source, LinkOption.NOFOLLOW_LINKS)) return ShimOutcome.NO_SOURCE;
         Path from = source.toAbsolutePath().normalize();
         Path to = dest.toAbsolutePath().normalize();
         // Degenerate layout (child home == parent store): source and dest are
         // the same entry. Replacing it would delete the parent's shim and leave
         // a self-referential link behind.
-        if (from.equals(to) || sameRealPath(from, to)) return;
+        if (from.equals(to) || sameRealPath(from, to)) return ShimOutcome.SAME_ENTRY;
+        if (Files.exists(to, LinkOption.NOFOLLOW_LINKS)
+                && !Files.isSymbolicLink(to)
+                && !Files.isDirectory(to, LinkOption.NOFOLLOW_LINKS)) {
+            // Byte-identical means an earlier pass already put this shim here
+            // (linkPath falls back to a copy where symlinks are unavailable),
+            // so there is nothing to reconcile and nothing to report.
+            return sameContent(from, to) ? ShimOutcome.UNCHANGED : ShimOutcome.KEPT_LOCAL;
+        }
         linkPath(from, to);
+        return ShimOutcome.MIRRORED;
+    }
+
+    /** Byte equality of two regular files; false when either cannot be read. */
+    private static boolean sameContent(Path a, Path b) {
+        try {
+            if (!Files.isRegularFile(a, LinkOption.NOFOLLOW_LINKS)) return false;
+            if (Files.size(a) != Files.size(b)) return false;
+            return Files.mismatch(a, b) < 0;
+        } catch (IOException unreadable) {
+            return false;
+        }
     }
 
     // ------------------------------------------------------------ interns

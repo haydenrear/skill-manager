@@ -184,12 +184,18 @@ public final class ChildHomeHarnessInstaller {
             throws IOException {
         for (AgentUnit unit : childStore.listInstalledUnits().units()) {
             for (var dep : unit.cliDependencies()) {
-                materializer.mirrorExistingShim(parentStore.cliBinDir().resolve(dep.name()),
-                        childStore.cliBinDir().resolve(dep.name()));
+                java.nio.file.Path dest = childStore.cliBinDir().resolve(dep.name());
+                dev.skillmanager.project.ProjectChildHomeScaffolder.reportKeptShim(
+                        unit.name(), "cli", dep.name(), dest,
+                        materializer.mirrorExistingShim(
+                                parentStore.cliBinDir().resolve(dep.name()), dest));
             }
             for (var dep : unit.mcpDependencies()) {
-                materializer.mirrorExistingShim(parentStore.mcpBinDir().resolve(dep.name()),
-                        childStore.mcpBinDir().resolve(dep.name()));
+                java.nio.file.Path dest = childStore.mcpBinDir().resolve(dep.name());
+                dev.skillmanager.project.ProjectChildHomeScaffolder.reportKeptShim(
+                        unit.name(), "mcp", dep.name(), dest,
+                        materializer.mirrorExistingShim(
+                                parentStore.mcpBinDir().resolve(dep.name()), dest));
             }
         }
     }
