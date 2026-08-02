@@ -995,6 +995,16 @@ public final class HomeCommand {
                 String.join(", ", HomeCloner.SKIPPED_DIRS.stream().sorted().toList()));
         Log.info("  re-anchored: %d links relativized, %d records, %d provisioned files",
                 report.linksRelativized(), report.stateReanchored(), report.provisionedRewritten());
+        if (!report.droppedRegistrations().isEmpty()) {
+            // Named, not merely omitted. Dropping them is right (see
+            // HomeCloner.DROPPED_STATE_DIRS) and it is still a change to what
+            // the copy knows, so it is stated with the command that undoes it.
+            Log.info("  registrations: %d not inherited — a registration names a repository "
+                            + "this copy has not been asked to manage. Re-register with "
+                            + "`skill-manager project register --project-dir <path>`: %s",
+                    report.droppedRegistrations().size(),
+                    String.join(", ", report.droppedRegistrations()));
+        }
         if (!report.contentReferences().isEmpty()) {
             Log.info("  %d unit-content file(s) mention the source home — historical records, "
                     + "left as written", report.contentReferences().size());

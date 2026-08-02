@@ -48,9 +48,16 @@ public final class HomeCloneTest {
             assertEquals(dest.toString(),
                     new ChildHomeRegistry(cloned).read("project:demo").orElseThrow().parentHome(),
                     "parentHome follows the clone");
-            assertContains(Files.readString(dest.resolve("projects/demo/registration.toml")),
-                    "manifest_path = \"$SKILL_MANAGER_HOME/projects/demo/skill-project.toml\"",
-                    "registration stays tokenized");
+            // A registration is not a record about this home; it is a claim
+            // over a repository elsewhere on the machine, and a copy of a home
+            // is not a copy of that relationship. #145 item 3. It used to be
+            // copied with only its manifest_path re-anchored, leaving
+            // project_root naming the source's checkout — which is what made a
+            // worktree home resolve its "child home" to the parent checkout.
+            assertFalse(Files.exists(dest.resolve("projects/demo/registration.toml")),
+                    "the registration is not inherited");
+            assertEquals(List.of("demo"), report.droppedRegistrations(),
+                    "and it is named in the report rather than silently omitted");
         });
 
         suite.test("a legacy home full of absolute paths clones into a clean copy", () -> {
@@ -468,11 +475,16 @@ public final class HomeCloneTest {
         });
 
         suite.test("state the structured passes do not model is still re-anchored", () -> {
-            // project-lock.toml target_root/env_root, installed/<unit>.json
-            // origin, Projection.backupOf and the harness instance lock are
-            // all reachable home paths that no structured writer re-anchors.
+            // installed/<unit>.json origin, Projection.backupOf, the harness
+            // instance lock and the root-level project-lock.toml are all
+            // reachable home paths that no structured writer re-anchors.
+            //
+            // The projects/<name>/project-lock.toml this used to stage moved to
+            // the root spelling: projects/ is no longer copied at all (#145
+            // item 3), so a fixture under it would prove the catch-all works by
+            // staging a file the clone never sees.
             Path source = legacyHome();
-            Files.writeString(source.resolve("projects/legacy/project-lock.toml"),
+            Files.writeString(source.resolve("project-lock.toml"),
                     "version = 1\n[[bindings]]\ntarget_root = \"" + source + "/harnesses/x\"\n");
             Files.writeString(source.resolve("installed/legacy.json"),
                     "{\"name\":\"legacy\",\"origin\":\"" + source + "/skills/legacy\"}");
@@ -481,7 +493,7 @@ public final class HomeCloneTest {
             HomeCloner.Report report = HomeCloner.cloneHome(source, dest);
 
             assertTrue(report.clean(), "clone clean: " + report.leaks());
-            assertContains(Files.readString(dest.resolve("projects/legacy/project-lock.toml")),
+            assertContains(Files.readString(dest.resolve("project-lock.toml")),
                     dest + "/harnesses/x", "project-lock re-anchored");
             assertContains(Files.readString(dest.resolve("installed/legacy.json")),
                     dest + "/skills/legacy", "installed record re-anchored");

@@ -155,6 +155,65 @@ public final class HomeCloner {
     public static final Set<String> SKIPPED_ROOT_FILES =
             Set.of("audit.log", "gateway.log", "gateway.pid");
 
+    /**
+     * Directories a clone does not copy because their contents are
+     * <b>claims of stewardship over directories outside the home</b>, and a
+     * copy of a home is not a copy of those relationships.
+     *
+     * <h2>Why {@code projects/} is here (issue #145 item 3)</h2>
+     *
+     * <p>A registration records {@code project_root} — a repository elsewhere
+     * on this machine — and every operation that reads it is an operation that
+     * writes to it. Measured with the CLI: a clone inherited a registration
+     * verbatim, {@code project list} in the copy reported the source's project,
+     * and {@code project resolve} then materialized a child home plus
+     * {@code .claude}, {@code .codex} and {@code .gemini} inside a repository
+     * the copy had never been pointed at. That is the issue's "wrote into five
+     * unrelated repositories under ~/IdeaProjects".
+     *
+     * <p>It is also the sharper failure the worktree tier hits.
+     * {@code ProjectChildHomeScaffolder.layoutFor} resolves everything from
+     * {@code project.projectRoot()}, so a worktree home cloned from a project
+     * home resolves its "child home" to the ORIGINAL checkout's
+     * {@code .skill-manager} — the very home the worktree exists to stay out
+     * of. It also explains a failure message that names the parent home while
+     * the command ran in the worktree, which looks like cwd sensitivity and is
+     * not.
+     *
+     * <h2>Why dropping, rather than re-anchoring or tokenizing</h2>
+     *
+     * <p>Both alternatives were considered and both are guesses.
+     *
+     * <p><b>Tokenizing {@code project_root}</b> as {@code $SKILL_MANAGER_HOME/..},
+     * symmetric with the {@code manifest_path} beside it, is correct only for
+     * the self-registration case where the project root IS the home's own root.
+     * For the global home registering {@code ~/IdeaProjects/foo} it requires
+     * walking up and back down, which is exactly what {@link HomeDescriptor}'s
+     * storage mapper refuses to encode because it "would silently repoint an
+     * unrelated path at whatever sits at that offset from the copy". The
+     * asymmetry between the two fields is not an oversight — it is the one
+     * field that names something the home does not own.
+     *
+     * <p><b>Re-anchoring it</b> to the copy's root assumes the copy should now
+     * manage the copy's checkout. Often true, nowhere stated. A worktree home
+     * that silently adopts stewardship of the worktree is a better guess than
+     * the current one and is still a guess, and the cost of guessing wrong is
+     * writes into somebody's working tree.
+     *
+     * <p>Dropping is the only option with no offset to get wrong. Nothing is
+     * lost silently — the clone names every registration it dropped — and
+     * re-registering is one command that re-reads the project's OWN manifest
+     * rather than a snapshot taken by a different home.
+     *
+     * <p>{@code child-homes/} is deliberately NOT here despite being the same
+     * shape: its {@code childHome} field names a checkout and stays absolute
+     * too. Those records carry the teardown path for the worktree tier and
+     * several tests depend on them surviving a clone, so removing them is a
+     * larger change than this one. It is the next record of this kind to look
+     * at.
+     */
+    public static final Set<String> DROPPED_STATE_DIRS = Set.of("projects");
+
     /** Path segments that mark a subtree as machine-provisioned, not authored. */
     private static final Set<String> PROVISIONED_SEGMENTS = Set.of(
             ".venv", "venv", "site-packages", "node_modules", "__pycache__",
@@ -266,13 +325,23 @@ public final class HomeCloner {
             List<Leak> leaks,
             List<String> contentReferences,
             List<String> danglingLinks,
-            List<String> danglingReferences
+            List<String> danglingReferences,
+            /**
+             * Project registrations the copy deliberately did not inherit, by
+             * name. Reported rather than merely omitted: dropping them is the
+             * right default and it is still a change to what the copy knows,
+             * so the operator has to be able to see it and re-register.
+             * See {@link HomeCloner#DROPPED_STATE_DIRS}.
+             */
+            List<String> droppedRegistrations
     ) {
         public Report {
             leaks = leaks == null ? List.of() : List.copyOf(leaks);
             contentReferences = contentReferences == null ? List.of() : List.copyOf(contentReferences);
             danglingLinks = danglingLinks == null ? List.of() : List.copyOf(danglingLinks);
             danglingReferences = danglingReferences == null ? List.of() : List.copyOf(danglingReferences);
+            droppedRegistrations = droppedRegistrations == null
+                    ? List.of() : List.copyOf(droppedRegistrations);
         }
 
         /** True when nothing in the copy still points at the source home. */
@@ -324,6 +393,10 @@ public final class HomeCloner {
 
     private static Report build(Path src, Path dst, boolean strict, Counters counters)
             throws IOException {
+        // Enumerated from the SOURCE before the copy, because the copy is what
+        // omits them: after copyTree there is nothing left in the destination
+        // to enumerate, and a drop nobody can name is a drop nobody can undo.
+        List<String> droppedRegistrations = registrationsIn(src);
         copyTree(src, dst, counters);
 
         int stateReanchored = reanchorState(src, dst);
@@ -352,7 +425,25 @@ public final class HomeCloner {
                 counters.directories, counters.files, counters.symlinks, counters.bytes,
                 counters.linksRelativized, stateReanchored, provisionedRewritten,
                 leaks, verification.contentReferences(), verification.danglingLinks(),
-                danglingReferences);
+                danglingReferences, droppedRegistrations);
+    }
+
+    /** Registration names in {@code home}, for the report. */
+    private static List<String> registrationsIn(Path home) {
+        Path dir = home.resolve("projects");
+        if (!Files.isDirectory(dir)) return List.of();
+        List<String> names = new ArrayList<>();
+        try (var stream = Files.list(dir)) {
+            for (Path project : (Iterable<Path>) stream::iterator) {
+                if (Files.isRegularFile(project.resolve("registration.toml"))) {
+                    names.add(project.getFileName().toString());
+                }
+            }
+        } catch (IOException e) {
+            Log.warn("clone: could not list %s: %s", dir, e.getMessage());
+        }
+        names.sort(String::compareTo);
+        return names;
     }
 
     // --------------------------------------------------- the drift baseline
@@ -528,10 +619,20 @@ public final class HomeCloner {
         int rewritten = 0;
         rewritten += reanchorLedgers(srcRoot, dstRoot);
         rewritten += reanchorChildHomes(srcRoot, dstRoot);
-        rewritten += reanchorProjectRegistrations(srcRoot, dstRoot);
         rewritten += reanchorRemainingState(srcRoot, dstRoot);
         return rewritten;
     }
+
+    // There was a fourth pass here, rewriting projects/<name>/registration.toml's
+    // manifest_path. It is gone because projects/ is no longer copied at all
+    // ({@link #DROPPED_STATE_DIRS}), and deleting it rather than leaving it
+    // unreachable is deliberate: a projects/ directory that arrives in a copy by
+    // some other route — an rsync, a restored backup, an older skill-manager's
+    // clone — now FAILS verification as an un-re-anchored STATE file, instead of
+    // being quietly rewritten into something that looks repaired and still names
+    // another machine's checkout in project_root. That is this class's
+    // default-deny rule applied to the one record class that had an exemption
+    // from it. Issue #145 item 3.
 
     /**
      * Catch-all for state files the structured passes above do not model.
@@ -655,64 +756,6 @@ public final class HomeCloner {
             Log.warn("clone: could not list %s: %s", dir, e.getMessage());
         }
         return rewritten;
-    }
-
-    /**
-     * {@code registration.toml} is a small fixed template; only its
-     * {@code manifest_path} can be a self-reference. Rewriting that one
-     * assignment keeps every other recorded field (including
-     * {@code project_root}, which is deliberately external) byte-identical.
-     */
-    private static int reanchorProjectRegistrations(Path srcRoot, Path dstRoot) {
-        Path dir = dstRoot.resolve("projects");
-        if (!Files.isDirectory(dir)) return 0;
-        HomePaths dstPaths = HomePaths.of(dstRoot);
-        int rewritten = 0;
-        try (var stream = Files.list(dir)) {
-            for (Path project : (Iterable<Path>) stream::iterator) {
-                Path f = project.resolve("registration.toml");
-                if (!Files.isRegularFile(f)) continue;
-                try {
-                    List<String> lines = Files.readAllLines(f, StandardCharsets.UTF_8);
-                    boolean changed = false;
-                    for (int i = 0; i < lines.size(); i++) {
-                        String line = lines.get(i);
-                        String value = tomlStringValue(line, "manifest_path");
-                        if (value == null) continue;
-                        String resolved = HomePaths.isEncoded(value)
-                                ? dstPaths.decodeToString(value)
-                                : remapString(value, srcRoot, dstRoot);
-                        String encoded = dstPaths.encode(resolved);
-                        String next = "manifest_path = \"" + encoded.replace("\\", "\\\\")
-                                .replace("\"", "\\\"") + "\"";
-                        if (!next.equals(line)) {
-                            lines.set(i, next);
-                            changed = true;
-                        }
-                    }
-                    if (changed) {
-                        Files.writeString(f, String.join("\n", lines) + "\n", StandardCharsets.UTF_8);
-                        rewritten++;
-                    }
-                } catch (IOException e) {
-                    Log.warn("clone: could not re-anchor %s: %s", f, e.getMessage());
-                }
-            }
-        } catch (IOException e) {
-            Log.warn("clone: could not list %s: %s", dir, e.getMessage());
-        }
-        return rewritten;
-    }
-
-    /** The raw value of {@code key = "..."}, or null if this is another line. */
-    private static String tomlStringValue(String line, String key) {
-        String trimmed = line.trim();
-        if (!trimmed.startsWith(key)) return null;
-        int eq = trimmed.indexOf('=');
-        if (eq < 0 || !trimmed.substring(0, eq).trim().equals(key)) return null;
-        String rhs = trimmed.substring(eq + 1).trim();
-        if (rhs.length() < 2 || rhs.charAt(0) != '"' || !rhs.endsWith("\"")) return null;
-        return rhs.substring(1, rhs.length() - 1).replace("\\\"", "\"").replace("\\\\", "\\");
     }
 
     // ------------------------------------------ provisioned re-anchoring
@@ -1201,6 +1244,10 @@ public final class HomeCloner {
         int slash = normalized.indexOf('/');
         String top = slash < 0 ? normalized : normalized.substring(0, slash);
         if (SKIPPED_DIRS.contains(top)) return true;
+        // Not skipped for being transient or re-derivable, like everything
+        // above — dropped because a copy of a home does not inherit that home's
+        // claims over directories elsewhere on the machine. Issue #145 item 3.
+        if (DROPPED_STATE_DIRS.contains(top)) return true;
         // Segment-wise, and the .pyc / .pyo suffix rule with it, both from the
         // one definition shared with the reconcile.
         if (Rederivable.isCache(normalized)) return true;
