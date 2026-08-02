@@ -8,6 +8,15 @@ public final class Log {
 
     public static void setVerbose(boolean v) { verbose = v; }
 
+    /**
+     * Whether {@code --verbose} (or an embedding caller) asked for the
+     * diagnostic half of the output.
+     *
+     * <p>Read by the CLI's fall-through failure printer, which prints a
+     * refusal as a message and keeps the stack trace behind this flag.
+     */
+    public static boolean isVerbose() { return verbose; }
+
     public static void info(String msg, Object... args) {
         System.out.println(format(msg, args));
     }
