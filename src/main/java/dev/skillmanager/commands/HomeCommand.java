@@ -131,7 +131,9 @@ public final class HomeCommand {
                             .map(HomeDescriptor::envContributions)
                             .orElse(Map.of()));
             descriptor.write(cloned.root());
-            if (!json) Log.info("  descriptor:  %s", HomeDescriptor.file(cloned.root()));
+            // Always <dest>/home.runtime.json — derivable from the destination
+            // the verdict above already names.
+            if (!json) Log.detail("  descriptor:  %s", HomeDescriptor.file(cloned.root()));
             return 0;
         }
     }
@@ -247,12 +249,7 @@ public final class HomeCommand {
                         mentions.size(), against,
                         strict ? "counted as failures under --strict"
                                 : "tolerated; re-run with --strict to fail on them");
-                for (String ref : mentions.subList(0, Math.min(TOLERATED_SAMPLE, mentions.size()))) {
-                    Log.info("    %s", ref);
-                }
-                if (mentions.size() > TOLERATED_SAMPLE) {
-                    Log.info("    … %d more", mentions.size() - TOLERATED_SAMPLE);
-                }
+                sample(mentions);
             }
             // Persisted error MESSAGES that quote a path into the other home.
             // Reported here, separately, and never in the isolation verdict:
@@ -266,13 +263,7 @@ public final class HomeCommand {
                         diagnostics.size(), against,
                         strict ? "counted as failures under --strict"
                                 : "tolerated; they go when the error does");
-                for (String ref : diagnostics.subList(
-                        0, Math.min(TOLERATED_SAMPLE, diagnostics.size()))) {
-                    Log.info("    %s", ref);
-                }
-                if (diagnostics.size() > TOLERATED_SAMPLE) {
-                    Log.info("    … %d more", diagnostics.size() - TOLERATED_SAMPLE);
-                }
+                sample(diagnostics);
             }
             // Provisioning that never completed. A message printed once by the
             // clone was not enough: nobody ran the remedy, and nothing asked
@@ -282,9 +273,17 @@ public final class HomeCommand {
                 Log.error("%d reference(s) in %s do not resolve — provisioning was never "
                                 + "completed, so the tools they name will fail at exec time",
                         unresolved.size(), home);
-                for (String ref : unresolved) Log.error("    %s", ref);
-                Log.error("  complete it with `skill-manager sync --force-scripts` "
-                        + "(SKILL_MANAGER_HOME=%s), then re-run this check", home);
+                Log.errorList("    ", unresolved);
+                // BOTH axes, derived from this home. `SKILL_MANAGER_HOME=<home>
+                // skill-manager sync --force-scripts` — the spelling this line
+                // used to carry, and the one `home clone` printed too — pins
+                // where the units live and NOT where the agent configs live,
+                // so it reports `ADDED claude (~/.claude.json)` and writes the
+                // operator's global config instead of this home's
+                // (skill-manager#145). This is the one place the remedy is
+                // printed now, so it is printed runnable.
+                Log.error("  complete it with: %s sync --force-scripts, then re-run this check",
+                        homeEnvPrefix(home));
             }
             // Last, because it is the verdict, and because a terminal keeps
             // the tail. Never gated on --strict: a path that RESOLVES into
@@ -300,7 +299,9 @@ public final class HomeCommand {
                         isolation.size(), home,
                         tolerated == 0 ? ""
                                 : " (plus " + toleratedPhrase + ", fatal under --strict)");
-                for (HomeCloner.Leak leak : isolation) Log.error("  %s", leak);
+                List<String> rows = new java.util.ArrayList<>();
+                for (HomeCloner.Leak leak : isolation) rows.add(leak.toString());
+                Log.errorList("  ", rows);
             } else if (tolerated > 0) {
                 Log.error("%s of %s, fatal under --strict; no path in %s "
                         + "resolves into another Skill Manager home",
@@ -322,6 +323,57 @@ public final class HomeCommand {
                     mentions.isEmpty() && diagnostics.isEmpty() ? "" : "repairable ",
                     against, home);
             return 0;
+        }
+
+        /**
+         * The first {@link #TOLERATED_SAMPLE} entries on the console, the rest
+         * in the run log.
+         *
+         * <p>The sample is NOT demoted with the rest of the per-item output,
+         * and that is deliberate: these are the categories the verify report
+         * tolerates, so the count alone would be a number with nothing behind
+         * it. Three entries is what makes "163 history files mention the source
+         * home" checkable without becoming the 163 lines that buried the six
+         * findings underneath them.
+         */
+        private static void sample(List<String> refs) {
+            int shown = Math.min(TOLERATED_SAMPLE, refs.size());
+            for (int i = 0; i < shown; i++) Log.info("    %s", refs.get(i));
+            for (int i = shown; i < refs.size(); i++) Log.detail("    %s", refs.get(i));
+            if (refs.size() > shown) Log.info("    … %d more", refs.size() - shown);
+        }
+
+        /**
+         * A runnable {@code env ...} prefix for a command that writes
+         * {@code home}.
+         *
+         * <h2>Why the home path alone is not enough</h2>
+         *
+         * <p>{@code SKILL_MANAGER_HOME} says where the UNITS live.
+         * {@code CLAUDE_CONFIG_DIR} / {@code CODEX_HOME} / {@code GEMINI_HOME}
+         * say where the AGENT CONFIGS live, and they are a separate axis. A
+         * remedy that pins only the first resolves the agent half against the
+         * ambient environment — which is the operator's real
+         * {@code ~/.claude.json}, {@code ~/.codex/config.toml} and
+         * {@code ~/.gemini/settings.json}. Measured on the onboarding walk:
+         * {@code SKILL_MANAGER_HOME=<home> skill-manager sync --force-scripts}
+         * reported {@code ADDED claude (~/.claude.json)} — the global-binding
+         * hijack recorded as skill-manager#145. Every remedy this command
+         * prints for a home-mutating command goes through here.
+         */
+        private static String homeEnvPrefix(Path home) {
+            Path root = dev.skillmanager.agent.AgentHomes.homeRootFor(home);
+            StringBuilder out = new StringBuilder("env SKILL_MANAGER_HOME=").append(home);
+            for (Path dir : dev.skillmanager.agent.AgentHomes.agentDirsUnder(root)) {
+                String name = dir.getFileName().toString();
+                String var = switch (name) {
+                    case ".codex" -> "CODEX_HOME";
+                    case ".gemini" -> "GEMINI_HOME";
+                    default -> "CLAUDE_CONFIG_DIR";
+                };
+                out.append(' ').append(var).append('=').append(dir);
+            }
+            return out.append(" skill-manager").toString();
         }
 
         /** "40 authored mention(s)", "10 diagnostic message(s)", or both. */
@@ -546,7 +598,9 @@ public final class HomeCommand {
                 return 0;
             }
             Log.ok("wrote %d launcher(s) to %s", result.written().size(), result.dir());
-            for (Path shim : result.written()) Log.info("  %s", shim);
+            // The three filenames are claude/codex/gemini every time; the
+            // directory above names where they are.
+            for (Path shim : result.written()) Log.detail("  %s", shim);
             Log.info("  pinned CLI: %s", pin);
             Log.info("  put %s first on PATH to launch against this home by default", result.dir());
             return 0;
@@ -630,7 +684,9 @@ public final class HomeCommand {
                 }
                 Log.ok("acknowledged %d changed unit(s) in %s",
                         acked.report().units().size(), store.root());
-                for (String line : acked.report().render()) Log.info("  %s", line);
+                // The count is the verdict; the per-unit lines are already
+                // read by the time you acknowledge them.
+                for (String line : acked.report().render()) Log.detail("  %s", line);
                 return 0;
             }
             DriftGate pending = DriftGate.pending(store).orElse(null);
@@ -646,9 +702,13 @@ public final class HomeCommand {
                 Log.ok("no unread change in %s", store.root());
                 return 0;
             }
+            // A pending drift BLOCKS a launch, so this is the caller's whole
+            // reason for running the command: the list stays on the console,
+            // bounded, because a home with 200 changed units is still one
+            // decision and the first dozen make it.
             Log.warn("%d unit(s) changed in %s (%s) and have not been read:",
                     pending.report().units().size(), store.root(), pending.operation());
-            for (String line : pending.report().render()) Log.info("  %s", line);
+            Log.errorList("  ", pending.report().render());
             Log.warn("  run `skill-manager home drift --ack` once you have taken it in");
             return DriftGate.EXIT_CODE;
         }
@@ -799,11 +859,18 @@ public final class HomeCommand {
                 System.out.println(closeOutJson(verdict));
                 return verdict.exitCode();
             }
-            for (String line : HomeCloseOut.render(verdict)) Log.info("%s", line);
+            List<String> lines = HomeCloseOut.render(verdict);
             if (verdict.safe()) {
+                // Nothing to act on, so the per-unit walk is the log's job. The
+                // verdict is the whole answer a teardown script waits for.
+                for (String line : lines) Log.detail("%s", line);
                 Log.ok("%s holds nothing that removing it would destroy", verdict.home());
                 return 0;
             }
+            // Blocked: every line here names a unit and the command that clears
+            // it, which is exactly "what the caller must act on" — so it stays,
+            // bounded rather than unbounded.
+            Log.errorList("", lines);
             Log.error("%d unit(s) in %s would be lost if it were removed now",
                     verdict.blockers().size(), verdict.home());
             return verdict.exitCode();
@@ -813,7 +880,7 @@ public final class HomeCommand {
     // --------------------------------------------------------- home sync IO
 
     private static void renderSync(HomeSync.Report report) {
-        Log.info("  from:        %s", report.from());
+        Log.detail("  from:        %s", report.from());
         Log.info("  to:          %s%s", report.to(), report.dryRun() ? "  (dry run — nothing written)" : "");
         if (report.destinationFrozen()) {
             Log.warn("  the destination is frozen (%s declares policy = \"frozen\"), so this is "
@@ -826,8 +893,12 @@ public final class HomeCommand {
             // verdicts as a real one and used to print them in the same past
             // tense — see UnitSync#statusLabel and issue #133.
             String status = unit.statusLabel(!report.dryRun());
+            // UNCHANGED is the case that scales with the home and says nothing
+            // — on a twenty-unit reconcile where two units moved, eighteen of
+            // these lines bury the two. The counted summary below still states
+            // how many there were.
             if (unit.status() == ChildHomeMaterializer.SyncStatus.UNCHANGED) {
-                Log.info("  %-18s %s", status, unit.label());
+                Log.detail("  %-18s %s", status, unit.label());
                 continue;
             }
             Log.info("  %-18s %s — %s", status, unit.label(), unit.detail());
@@ -1070,8 +1141,11 @@ public final class HomeCommand {
                             report.droppedChildHomes().size(), report.clean()));
             return;
         }
-        Log.info("  source:      %s", report.source());
-        Log.info("  destination: %s", report.dest());
+        // Both restated verbatim by the verdict line at the bottom of this
+        // method, which names the destination and the source it was checked
+        // against. Kept in the log; not printed twice.
+        Log.detail("  source:      %s", report.source());
+        Log.detail("  destination: %s", report.dest());
         Log.info("  copied:      %d dirs, %d files, %d links (%d bytes; %s skipped)",
                 report.directories(), report.files(), report.symlinks(), report.bytes(),
                 String.join(", ", HomeCloner.SKIPPED_DIRS.stream().sorted().toList()));
@@ -1110,22 +1184,40 @@ public final class HomeCommand {
         }
         int unresolved = report.danglingLinks().size() + report.danglingReferences().size();
         if (unresolved > 0) {
-            // `skill-manager cli` has only read-only subcommands, so the old
-            // hint sent the reader somewhere that could not fix anything.
+            // THE REMEDY PARAGRAPH THAT USED TO BE HERE IS DELETED, NOT MOVED.
             //
-            // The remedy is still printed here, but it is no longer only
-            // printed: `home verify` re-derives this same set from the copy
-            // and refuses while it is non-empty (#133 item 2). A step named
-            // once, in the middle of a successful clone, across a 24-repo
-            // fan-out, is a step nobody performs — and the failure it prevents
-            // does not surface until some later tool execs a shim that points
-            // at nothing.
-            Log.warn("  %d reference(s) do not resolve in the copy (targets under a skipped "
-                    + "directory); re-provision with `SKILL_MANAGER_HOME=%s skill-manager sync "
-                    + "--force-scripts` — `home verify` refuses this home until you do",
+            // It read: "re-provision with `SKILL_MANAGER_HOME=<dest>
+            // skill-manager sync --force-scripts` — `home verify` refuses this
+            // home until you do", followed by one line per dangling link and
+            // one per dangling script reference. Three things were wrong with
+            // it, and none of them is fixed by putting it in a log:
+            //
+            //  1. THE COMMAND DAMAGES THE MACHINE AS SPELLED. SKILL_MANAGER_HOME
+            //     pins only one of the two axes an agent-writing command needs.
+            //     Measured (skill-manager#145, and recorded in
+            //     bootstrap-home.sh's own comment, which is why that script
+            //     stopped printing this verbatim): run as written it reports
+            //     `ADDED claude (~/.claude.json)` — it writes the OPERATOR'S
+            //     global agent configs, not this home's. A remedy that hijacks
+            //     the machine is not output to demote.
+            //  2. IT IS A SECOND COPY OF A GATE THAT ALREADY EXISTS. `home
+            //     verify` re-derives this identical set from the copy and
+            //     refuses while it is non-empty (#133 item 2). The remedy
+            //     belongs there, once, spelled correctly — which is where it
+            //     now is, with both axes named.
+            //  3. THE ENUMERATION SCALES WITH THE HOME. One line per dangling
+            //     link, in the middle of a SUCCESSFUL clone, is the "pages of
+            //     caveats" an agent pays for on every bootstrap.
+            //
+            // What is left is the count and the command that will enforce it,
+            // spelled with its argument so it is runnable as printed. The
+            // entries themselves are in the run log.
+            Log.warn("  %d reference(s) do not resolve in the copy (targets under a directory "
+                            + "the clone skips) — `skill-manager home verify --home %s` reports "
+                            + "each one and refuses the home until they are re-provisioned",
                     unresolved, report.dest());
-            for (String dangling : report.danglingLinks()) Log.warn("    link   %s", dangling);
-            for (String dangling : report.danglingReferences()) Log.warn("    script %s", dangling);
+            for (String dangling : report.danglingLinks()) Log.detail("    link   %s", dangling);
+            for (String dangling : report.danglingReferences()) Log.detail("    script %s", dangling);
         }
         if (report.clean()) {
             // Says what was actually checked — and this line has now been wrong
@@ -1166,7 +1258,9 @@ public final class HomeCommand {
         } else {
             Log.error("clone verification FAILED — %d path(s) reach outside this copy",
                     report.leaks().size());
-            for (HomeCloner.Leak leak : report.leaks()) Log.error("    %s", leak);
+            List<String> leaks = new java.util.ArrayList<>();
+            for (HomeCloner.Leak leak : report.leaks()) leaks.add(leak.toString());
+            Log.errorList("    ", leaks);
         }
     }
 

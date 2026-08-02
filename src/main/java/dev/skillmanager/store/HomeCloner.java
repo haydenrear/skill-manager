@@ -779,7 +779,14 @@ public final class HomeCloner {
             try {
                 Files.write(file, replaceAll(content, needle, replacement));
                 rewritten[0]++;
-                Log.warn("clone: re-anchored %s by substitution — it holds a home path no "
+                // Addressed to whoever maintains the WRITER of that file
+                // ("consider encoding it at write time"), not to the caller of
+                // this clone — and emitted once per such file, so it scaled
+                // with the home while telling the operator nothing they could
+                // act on. The count still reaches the console, in the report's
+                // `re-anchored: … N records` line; the filenames are in the
+                // run log, and under --verbose they are back on the console.
+                Log.detail("! clone: re-anchored %s by substitution — it holds a home path no "
                         + "structured writer models; consider encoding it at write time", rel);
             } catch (IOException e) {
                 Log.warn("clone: could not re-anchor %s: %s", file, e.getMessage());

@@ -230,19 +230,21 @@ public final class ConsoleProgramRenderer implements ProgramRenderer {
                 gitMerged.add(x.skillName());
             }
             case ContextFact.SyncGitRefused x -> {
-                printMergeInstructions(x.skillName(), x.upstream(), x.gitLatest());
+                printMergeInstructions(x.skillName(), x.gitLatest());
                 refusedSkills.add(x.skillName());
             }
             case ContextFact.SyncGitConflicted x -> {
                 Path storeDir = store.skillDir(x.skillName());
                 Log.error("%s: merge conflict in %d file(s):",
                         x.skillName(), x.conflictedFiles().size());
-                for (String cf : x.conflictedFiles()) System.err.println("    " + cf);
-                System.err.println();
-                System.err.println("Resolve in " + storeDir + ", then `git add` + `git commit`.");
-                System.err.println("To back out: `git merge --abort` (or `git reset --hard HEAD` after a stash-pop conflict).");
-                System.err.println("If sync stashed local changes, they're preserved at `stash@{0}` — run `git stash pop`");
-                System.err.println("once the working tree is clean. Only run `git stash drop` if you want to discard them.");
+                Log.errorList("    ", x.conflictedFiles());
+                // One sentence per way out, not four with a blank line
+                // between. The stash clause is only printed when there IS a
+                // stash to speak about — it used to be said on every conflict,
+                // including the ones where nothing was stashed.
+                Log.error("  resolve in %s, then `git add` + `git commit`; back out with "
+                        + "`git merge --abort`. A stash, if sync made one, is at `stash@{0}` "
+                        + "(`git stash pop` once the tree is clean).", storeDir);
                 conflictedSkills.add(x.skillName());
             }
             case ContextFact.SyncGitFailed x ->
@@ -563,20 +565,27 @@ public final class ConsoleProgramRenderer implements ProgramRenderer {
 
     private void printSyncSummary() {
         if (refusedSkills.isEmpty() && conflictedSkills.isEmpty()) return;
-        System.err.println();
-        System.err.println("sync summary: " + (refusedSkills.size() + conflictedSkills.size())
-                + " skill(s) need attention");
+        Log.error("sync: %d unit(s) need attention",
+                refusedSkills.size() + conflictedSkills.size());
         if (!refusedSkills.isEmpty()) {
-            System.err.println();
-            System.err.println("  Extra local changes — re-run with --merge to bring upstream in:");
-            for (String n : refusedSkills) System.err.println("    skill-manager sync " + n + " --merge");
+            Log.error("  extra local changes — `skill-manager sync <name> --merge`: %s",
+                    joinBounded(refusedSkills));
         }
         if (!conflictedSkills.isEmpty()) {
-            System.err.println();
-            System.err.println("  Conflicted — resolve in the store dir, then `git commit` or `git merge --abort`:");
-            for (String n : conflictedSkills) System.err.println("    " + n);
+            Log.error("  conflicted — resolve in the store dir, then `git commit` or "
+                    + "`git merge --abort`: %s", joinBounded(conflictedSkills));
         }
-        System.err.println();
+    }
+
+    /**
+     * Names on one line, bounded. A refusal list is a set of unit names; the
+     * command that clears each one is stated once above rather than repeated
+     * per name, which is what turned a five-unit refusal into seventy lines.
+     */
+    private static String joinBounded(List<String> names) {
+        if (names.size() <= Log.ERROR_SAMPLE) return String.join(", ", names);
+        return String.join(", ", names.subList(0, Log.ERROR_SAMPLE))
+                + ", … " + (names.size() - Log.ERROR_SAMPLE) + " more";
     }
 
     /**
@@ -616,17 +625,19 @@ public final class ConsoleProgramRenderer implements ProgramRenderer {
 
     private void printMarkdownImportViolations() {
         if (markdownImportViolations.isEmpty()) return;
-        System.err.println();
-        System.err.println("markdown skill-import violations (" + markdownImportViolations.size()
-                + ") — fix these references:");
+        String header = "markdown skill-import violations (" + markdownImportViolations.size()
+                + ") — fix these references:";
+        System.err.println(header);
+        Log.record(header);
+        List<String> rows = new ArrayList<>();
         for (ContextFact.MarkdownImportViolation v : markdownImportViolations) {
             String kind = v.unitKind() == null || v.unitKind().isBlank()
                     ? ""
                     : " (" + v.unitKind() + ")";
-            System.err.println("  - " + v.unitName() + kind + ": " + v.file());
-            System.err.println("    " + v.message());
+            rows.add("- " + v.unitName() + kind + ": " + v.file());
+            rows.add("  " + v.message());
         }
-        System.err.println();
+        Log.errorList("  ", rows);
     }
 
     /**
@@ -642,22 +653,22 @@ public final class ConsoleProgramRenderer implements ProgramRenderer {
 
     // ----------------------------------------------- helpers
 
-    private void printMergeInstructions(String skillName, String upstream, boolean gitLatest) {
-        Log.error("%s has extra local changes (working tree edits or commits ahead of installed baseline).",
-                skillName);
-        System.err.println();
-        System.err.println("Sync would overwrite them. Re-run with --merge:");
-        System.err.println();
-        System.err.println("    skill-manager sync " + skillName
-                + (gitLatest ? " --git-latest" : "") + " --merge");
-        System.err.println();
-        Path storeDir = store.skillDir(skillName);
-        System.err.println("Or merge by hand:");
-        System.err.println();
-        System.err.println("    cd " + storeDir);
-        System.err.println("    git fetch " + (upstream == null ? "<origin>" : upstream) + " HEAD");
-        System.err.println("    git merge FETCH_HEAD");
-        System.err.println();
+    /**
+     * Fourteen lines (six of them blank) per refused unit, collapsed to two.
+     *
+     * <p>The by-hand recipe is deleted rather than demoted: it is three git
+     * commands any reader of the first line can write, it was printed once per
+     * refused unit so a five-unit refusal cost seventy lines, and the
+     * {@code --merge} spelling above it does the same thing correctly
+     * including the stash handling the by-hand version silently omits. The
+     * store directory is still named, which is the only part of it a reader
+     * could not have derived.
+     */
+    private void printMergeInstructions(String skillName, boolean gitLatest) {
+        Log.error("%s has extra local changes (working tree edits, or commits ahead of the "
+                + "installed baseline) — sync would overwrite them.", skillName);
+        Log.error("  re-run with: skill-manager sync %s%s --merge   (the unit is at %s)",
+                skillName, gitLatest ? " --git-latest" : "", store.skillDir(skillName));
     }
 
     private static String shortHash(String hash) {

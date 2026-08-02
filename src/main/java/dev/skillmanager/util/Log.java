@@ -101,6 +101,42 @@ public final class Log {
         RunLog.mirror(line);
     }
 
+    /**
+     * <b>The bound on an enumerated failure.</b>
+     *
+     * <p>Twelve entries, then a count and the log path. An error that prints
+     * nothing and only names a file is worse than what we started with — the
+     * caller cannot tell a typo from a catastrophe without a second command —
+     * and an error that prints three hundred lines is what this change exists
+     * to fix. Twelve is chosen because the two readings a caller acts on
+     * differently are "one thing broke" and "everything broke", and both are
+     * distinguishable well inside a dozen entries; twelve also keeps one
+     * failing block inside a half screen, so a SECOND failing block in the same
+     * run is still visible without scrolling. Past that the list is something
+     * you grep rather than read, and the log is where you grep it.
+     *
+     * <p>Every entry reaches the run log regardless — this bounds the console,
+     * never the record.
+     *
+     * @param indent prefix for each entry, e.g. {@code "    "}
+     * @param items  the entries, in the order they should be read
+     */
+    public static void errorList(String indent, java.util.List<String> items) {
+        if (items == null || items.isEmpty()) return;
+        int shown = Math.min(ERROR_SAMPLE, items.size());
+        for (int i = 0; i < shown; i++) error("%s%s", indent, items.get(i));
+        if (items.size() <= shown) return;
+        java.nio.file.Path log = RunLog.path();
+        for (int i = shown; i < items.size(); i++) RunLog.demote(indent + items.get(i));
+        // Re-read: the demote() calls above may have created the file.
+        if (log == null) log = RunLog.path();
+        error("%s… %d more%s", indent, items.size() - shown,
+                log == null ? "" : " — all " + items.size() + " in " + log);
+    }
+
+    /** How many entries of an enumerated failure reach the console. */
+    public static final int ERROR_SAMPLE = 12;
+
     private static void console(String line) {
         System.out.println(line);
         RunLog.mirror(line);

@@ -40,6 +40,7 @@ import dev.skillmanager.model.SkillProjectParserTest;
 import dev.skillmanager.model.SkillUnitWrapsSkillTest;
 import dev.skillmanager.model.UnitReferenceFromTomlTest;
 import dev.skillmanager.observability.CliObservabilityTest;
+import dev.skillmanager.observability.QuietConsoleTest;
 import dev.skillmanager.plan.CycleDetectionTest;
 import dev.skillmanager.plan.MixedKindTopoOrderTest;
 import dev.skillmanager.cli.CliAgentContextExecutionTest;
@@ -206,6 +207,7 @@ public class RunTests {
         failures += LocalInstallIsNotAnErrorTest.run();
         failures += ScaffoldPluginTest.run();
         failures += CliObservabilityTest.run();
+        failures += QuietConsoleTest.run();
         failures += ServerObservabilityContractTest.run();
         failures += CliAgentContextExecutionTest.run();
         failures += CliRefusalsAreMessagesTest.run();

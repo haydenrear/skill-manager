@@ -104,19 +104,23 @@ public final class ReportUseCase {
         for (var byKind : bySkill.values()) {
             for (var err : byKind.entrySet()) causes.add(err.getKey() + ": " + err.getValue());
         }
-        System.err.println();
-        System.err.println("⚠ skills with outstanding errors (" + bySkill.size() + ") — "
-                + causes.size() + " distinct cause(s) — re-run after fixing:");
+        dev.skillmanager.util.Log.warn("skills with outstanding errors (%d) — %d distinct "
+                + "cause(s) — re-run after fixing:", bySkill.size(), causes.size());
+        // One block per distinct cause, and the whole thing bounded: this
+        // banner is appended by EVERY command (`ls`, `show`, `exec`,
+        // `--print-env`), so a home in a bad state paid for it on every
+        // invocation. The bound is on the console only — the run log carries
+        // every block.
+        List<String> rows = new java.util.ArrayList<>();
         for (var block : blocks.entrySet()) {
             List<String> units = block.getValue();
-            System.err.println();
-            System.err.println("  " + String.join(", ", units) + ":");
+            rows.add(String.join(", ", units) + ":");
             for (var err : block.getKey().entrySet()) {
-                System.err.println("    - " + err.getKey() + ": " + err.getValue());
-                System.err.println("      → " + hint(err.getKey(), units, store));
+                rows.add("  - " + err.getKey() + ": " + err.getValue());
+                rows.add("    → " + hint(err.getKey(), units, store));
             }
         }
-        System.err.println();
+        dev.skillmanager.util.Log.errorList("  ", rows);
     }
 
     /**
