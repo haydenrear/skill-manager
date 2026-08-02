@@ -11,7 +11,6 @@ import com.hayden.testgraphsdk.sdk.ProcessRecord;
 import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -66,14 +65,15 @@ import java.util.List;
  *
  * <h2>The isolation baseline covers the file the last eval's own filter missed</h2>
  *
- * <p>{@code TripwireSupport} watches {@code ~/.skill-manager}, {@code ~/.claude},
- * {@code ~/.codex} and {@code ~/.gemini}. It does not watch
+ * <p>{@code TripwireSupport}'s tree walk covers {@code ~/.skill-manager} and the
+ * {@code skills/} projection surface of each agent home. It does not reach
  * <b>{@code ~/.claude.json}</b>, which is a sibling of those roots rather than
  * a child of one — and that file is precisely where this product writes a
  * Claude MCP registration. The hand-run eval's first isolation filter excluded
  * it BY NAME and would have missed a write to it; that near-miss is preserved
- * here as a fixture requirement rather than as a footnote. So this node hashes
- * the four agent config files separately, and the closing node compares them.
+ * here as a fixture requirement rather than as a footnote. So this node also
+ * takes {@link TripwireSupport#ownedConfig}'s fingerprint of the registration
+ * blocks in the agent config files, and the closing node compares them.
  */
 public class OnboardingFixtureBuilt {
 
@@ -346,7 +346,8 @@ public class OnboardingFixtureBuilt {
                 TripwireSupport.writeLines(leakBaseline,
                         TripwireSupport.collectAll(leakRoots, realHome,
                                 TripwireSupport.Fidelity.METADATA));
-                TripwireSupport.writeLines(configBaseline, configHashes(realHome));
+                TripwireSupport.writeLines(configBaseline,
+                        TripwireSupport.ownedConfig(realHome));
             } catch (RuntimeException e) {
                 leakError = String.valueOf(e.getMessage());
             }
@@ -356,7 +357,8 @@ public class OnboardingFixtureBuilt {
             // filter would have missed. A hash list that does not name
             // ~/.claude.json cannot detect a write to ~/.claude.json.
             boolean theConfigBaselineCoversClaudeJson =
-                    OnboardingSupport.read(configBaseline).contains("/.claude.json\t");
+                    OnboardingSupport.read(configBaseline)
+                            .contains(TripwireSupport.CLAUDE_JSON_LABEL);
 
             boolean pass = theBuildUnderTestIsCompiledFromSource && everyInstallExitedZero
                     && realism.ok() && theCheckoutIsACleanGitRepo
@@ -506,35 +508,4 @@ public class OnboardingFixtureBuilt {
                 OnboardingSupport.LINT, sources.resolve(OnboardingSupport.LINT));
     }
 
-    /**
-     * SHA-256 of the four agent config files, by path.
-     *
-     * <p>Whole-file rather than "the mcpServers block": parsing them to compare
-     * one key means a parser bug can only ever make the check WEAKER, and these
-     * files are small. {@code ~/.claude.json} is first in the list because it is
-     * the one a root-scoped tree walk does not reach and the one this product
-     * writes MCP registrations into.
-     */
-    private static List<String> configHashes(Path realHome) {
-        List<String> out = new ArrayList<>();
-        for (String rel : List.of(".claude.json", ".codex/config.toml",
-                ".gemini/settings.json", ".claude/settings.json")) {
-            Path file = realHome.resolve(rel);
-            out.add("/" + rel + "\t" + digest(file));
-        }
-        return out;
-    }
-
-    private static String digest(Path file) {
-        try {
-            if (!Files.isRegularFile(file)) return "ABSENT";
-            MessageDigest md = MessageDigest.getInstance("SHA-256");
-            byte[] hash = md.digest(Files.readAllBytes(file));
-            StringBuilder sb = new StringBuilder();
-            for (byte b : hash) sb.append(String.format("%02x", b));
-            return sb.toString();
-        } catch (Exception e) {
-            return "UNREADABLE:" + e.getClass().getSimpleName();
-        }
-    }
 }

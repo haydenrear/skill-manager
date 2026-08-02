@@ -10,7 +10,6 @@ import com.hayden.testgraphsdk.sdk.NodeSpec;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -31,14 +30,14 @@ import java.util.List;
  *       exist. A POSITIVE statement about where the writes went.</li>
  *   <li><b>The four real roots did not move</b>, by metadata diff against the
  *       baseline the fixture took before any of the walk ran.</li>
- *   <li><b>The four agent CONFIG FILES are byte-identical.</b> This is the
+ *   <li><b>The agent CONFIG REGISTRATIONS are unchanged.</b> This is the
  *       side the tree walk cannot supply, and the reason it is here.</li>
  * </ol>
  *
  * <h2>Why the config files get their own check — a mistake, preserved</h2>
  *
- * <p>{@code TripwireSupport} watches {@code ~/.skill-manager}, {@code ~/.claude},
- * {@code ~/.codex} and {@code ~/.gemini}. <b>{@code ~/.claude.json} is a
+ * <p>{@code TripwireSupport}'s tree walk covers {@code ~/.skill-manager} and the
+ * {@code skills/} surface of each agent home. <b>{@code ~/.claude.json} is a
  * SIBLING of those roots, not a child of one</b>, so no walk rooted at them
  * reaches it — and it is exactly the file this product writes Claude MCP
  * registrations into. The hand-run eval's first isolation filter excluded it
@@ -47,9 +46,11 @@ import java.util.List;
  * {@code /tmp/} — filtering on target CONTENT, which would have hidden the
  * precise leak shape the tripwire exists to catch.
  *
- * <p>So the rule this node follows: <b>filter on path prefixes of known-volatile
- * directories only</b> — never on target content, and never on the agent config
- * files. Those are hashed instead.
+ * <p>So the rule this node follows: <b>never filter on target content, and
+ * never leave a surface skill-manager writes out of the watch.</b> What IS
+ * filtered is stated as a scope in {@link TripwireSupport} — the surfaces the
+ * product's own {@code Agent} contract declares — rather than as a growing list
+ * of directories a live session was observed churning.
  *
  * <h2>The sensitivity proof, without which every zero above is meaningless</h2>
  *
@@ -59,7 +60,23 @@ import java.util.List;
  * tree with writes planted in it, in the same run, and must report each one:
  * a new unit directory, a new symlink, and an in-place rewrite. An unmutated
  * control is asserted clean in the same run, so an over-eager oracle fails
- * here too. The config-hash half carries its own plant.
+ * here too.
+ *
+ * <h2>The narrowing is proved against the incident it must not hide</h2>
+ *
+ * <p>This oracle exists because a documented remedy, run in anger, repointed 24
+ * of the operator's {@code ~/.claude/skills/<unit>} links at a foreign store.
+ * Any narrowing of it therefore has to be shown incapable of hiding that, not
+ * merely argued to be. So the decoy carries an AGENT HOME as well as a store,
+ * and the retarget is planted in it: {@code .claude/skills/<unit>} is pointed
+ * somewhere else and the narrowed walk must still report it. If it ever does
+ * not, this node goes red and the narrowing is wrong.
+ *
+ * <p>The config half is proved the same way, and in both directions — every
+ * registration shape it claims to watch is planted and must be DETECTED, and a
+ * session counter beside them is moved and must NOT be. Either assertion alone
+ * is satisfiable by a broken oracle: hashing the whole file passes the first
+ * and fails the second, hashing nothing passes the second and fails the first.
  *
  * <p>{@code TripwireSupport} is reused rather than re-implemented: it is the
  * oracle {@code home-tripwire} already proves sensitive, and a second copy
@@ -117,9 +134,9 @@ public class OnboardingGlobalHomeUntouched {
                     theBaselineIsReadable && realDifferences.isEmpty();
             boolean theBaselineActuallyWatchedSomething = before.size() > 100;
 
-            // --- side three: the four config files, including the sibling ------
+            // --- side three: the config registrations, including the sibling ----
             List<String> configBefore = TripwireSupport.readLines(Path.of(configRaw));
-            List<String> configAfter = configHashes(realHome);
+            List<String> configAfter = TripwireSupport.ownedConfig(realHome);
             List<String> configChanges = new ArrayList<>();
             for (int i = 0; i < Math.min(configBefore.size(), configAfter.size()); i++) {
                 if (!configBefore.get(i).equals(configAfter.get(i))) {
@@ -128,11 +145,12 @@ public class OnboardingGlobalHomeUntouched {
             }
             boolean theAgentConfigFilesAreUnchanged =
                     configBefore.size() == configAfter.size() && configChanges.isEmpty();
-            // The floor: the hash list has to name the file a root-scoped walk
+            // The floor: the fingerprint has to name the file a root-scoped walk
             // cannot reach, or this side is watching only what side two already
             // covers.
             boolean theConfigCheckCoversTheSiblingClaudeJson =
-                    configBefore.stream().anyMatch(l -> l.startsWith("/.claude.json\t"));
+                    configBefore.stream()
+                            .anyMatch(l -> l.startsWith(TripwireSupport.CLAUDE_JSON_LABEL));
 
             // --- the sensitivity proof -----------------------------------------
             Path decoyRoot = Path.of(workspaceRaw).resolve("leak-decoy");
@@ -169,13 +187,88 @@ public class OnboardingGlobalHomeUntouched {
                     TripwireSupport.collect(decoyHome, decoyRoot,
                             TripwireSupport.Fidelity.METADATA)).isEmpty();
 
-            // The config-hash half's own plant: a decoy .claude.json, rewritten.
-            Path decoyConfig = decoyRoot.resolve(".claude.json");
-            Files.writeString(decoyConfig, "{\"mcpServers\":{}}\n");
-            String h1 = digest(decoyConfig);
-            Files.writeString(decoyConfig,
-                    "{\"mcpServers\":{\"planted\":{\"url\":\"http://x\"}}}\n");
-            boolean theConfigHashDetectsARewrite = !h1.equals(digest(decoyConfig));
+            // --- THE INCIDENT, planted -----------------------------------------
+            //
+            // The reason this oracle exists: a documented remedy, run in anger,
+            // repointed 24 of the operator's ~/.claude/skills/<unit> links at a
+            // foreign store. The tree walk is narrower than it used to be — it
+            // covers ~/.skill-manager whole and, inside an agent home, the
+            // skills/ projection surface — so "the narrowing cannot hide the
+            // incident" is a claim that has to be executed rather than argued.
+            // Here it is executed: a decoy AGENT home, a link into a store, the
+            // link retargeted, and the narrowed walk must still name it.
+            Path decoyAgent = decoyRoot.resolve(".claude");
+            Path decoyAgentSkills = decoyAgent.resolve("skills");
+            Files.createDirectories(decoyAgentSkills);
+            Path projected = decoyAgentSkills.resolve("ob-alpha");
+            Files.deleteIfExists(projected);
+            Files.createSymbolicLink(projected, decoySkills.resolve("existing"));
+            List<String> agentBefore = TripwireSupport.collect(decoyAgent, decoyRoot,
+                    TripwireSupport.Fidelity.METADATA);
+            // The control for THIS decoy, in its own right: the retarget below
+            // means nothing if the agent-home walk reports differences anyway.
+            boolean anUnchangedAgentHomeReportsClean = TripwireSupport.difference(agentBefore,
+                    TripwireSupport.collect(decoyAgent, decoyRoot,
+                            TripwireSupport.Fidelity.METADATA)).isEmpty();
+            Files.delete(projected);
+            Files.createSymbolicLink(projected, Path.of("/some/other/home/skills/ob-alpha"));
+            List<String> retargeted = TripwireSupport.difference(agentBefore,
+                    TripwireSupport.collect(decoyAgent, decoyRoot,
+                            TripwireSupport.Fidelity.METADATA));
+            boolean aRepointedAgentSkillLinkIsDetected = !retargeted.isEmpty();
+
+            // --- the config half's plants, in both directions --------------------
+            //
+            // The fingerprint reads the REGISTRATION BLOCKS rather than hashing
+            // whole files, so it has to be shown to see every shape a
+            // registration takes AND to ignore the counters that made the
+            // whole-file version flaky. Either half alone is satisfiable by a
+            // broken oracle: hashing everything passes the first and fails the
+            // second, hashing nothing passes the second and fails the first.
+            List<String> configPlantMisses = new ArrayList<>();
+            List<String> configBase = plantConfig(decoyRoot, CLAUDE_JSON, MARKETPLACES);
+            check(configPlantMisses, "a top-level mcpServers entry", true, configBase,
+                    plantConfig(decoyRoot,
+                            CLAUDE_JSON.replace("\"gateway\":{\"url\":\"http://127.0.0.1:1\"}",
+                                    "\"gateway\":{\"url\":\"http://127.0.0.1:1\"},"
+                                            + "\"planted\":{\"url\":\"http://x\"}"),
+                            MARKETPLACES));
+            check(configPlantMisses, "an extraKnownMarketplaces entry", true, configBase,
+                    plantConfig(decoyRoot,
+                            CLAUDE_JSON.replace("\"extraKnownMarketplaces\":{}",
+                                    "\"extraKnownMarketplaces\":{\"planted\":{\"source\":\"/x\"}}"),
+                            MARKETPLACES));
+            check(configPlantMisses, "a PROJECT-scoped mcpServers entry", true, configBase,
+                    plantConfig(decoyRoot,
+                            CLAUDE_JSON.replace("\"mcpServers\":{},\"lastCost\":1",
+                                    "\"mcpServers\":{\"planted\":{}},\"lastCost\":1"),
+                            MARKETPLACES));
+            check(configPlantMisses, "a plugin marketplace registration", true, configBase,
+                    plantConfig(decoyRoot, CLAUDE_JSON,
+                            MARKETPLACES.replace("{\"skill-manager\"",
+                                    "{\"planted\":{\"source\":{\"source\":\"directory\","
+                                            + "\"path\":\"/elsewhere\"}},\"skill-manager\"")));
+            // …and the churn that made the whole-file version flaky. Each of
+            // these is a write a live session makes to the SAME files while the
+            // graph runs, and each must be invisible.
+            check(configPlantMisses, "a session counter", false, configBase,
+                    plantConfig(decoyRoot,
+                            CLAUDE_JSON.replace("\"promptQueueUseCount\":40", "\"promptQueueUseCount\":41")
+                                    .replace("\"lastCost\":1", "\"lastCost\":2"),
+                            MARKETPLACES));
+            check(configPlantMisses, "a project opened for the first time", false, configBase,
+                    plantConfig(decoyRoot,
+                            CLAUDE_JSON.replace("\"projects\":{",
+                                    "\"projects\":{\"/newly-opened\":{\"lastCost\":3},"),
+                            MARKETPLACES));
+            check(configPlantMisses, "a marketplace lastUpdated stamp", false, configBase,
+                    plantConfig(decoyRoot, CLAUDE_JSON,
+                            MARKETPLACES.replace("2026-01-01T00:00:00.000Z",
+                                    "2026-08-02T20:35:01.047Z")));
+            check(configPlantMisses, "an unreadable .claude.json", true, configBase,
+                    plantConfig(decoyRoot, "{not json at all", MARKETPLACES));
+            boolean theConfigFingerprintSeesRegistrationsAndNotCounters =
+                    configPlantMisses.isEmpty();
 
             boolean pass = theSandboxGlobalHomeWasNeverCreated && theBaselineIsReadable
                     && theOperatorsRealHomesDidNotMove && theBaselineActuallyWatchedSomething
@@ -183,7 +276,8 @@ public class OnboardingGlobalHomeUntouched {
                     && theConfigCheckCoversTheSiblingClaudeJson
                     && anUnchangedTreeReportsClean && aPlantedUnitIsDetected
                     && aPlantedSymlinkIsDetected && anInPlaceRewriteIsDetected
-                    && theConfigHashDetectsARewrite;
+                    && anUnchangedAgentHomeReportsClean && aRepointedAgentSkillLinkIsDetected
+                    && theConfigFingerprintSeesRegistrationsAndNotCounters;
 
             return (pass
                     ? NodeResult.pass("onboarding.global.home.untouched")
@@ -197,7 +291,9 @@ public class OnboardingGlobalHomeUntouched {
                                     + " m1=" + aPlantedUnitIsDetected
                                     + " m2=" + aPlantedSymlinkIsDetected
                                     + " m3=" + anInPlaceRewriteIsDetected
-                                    + " m4=" + theConfigHashDetectsARewrite))
+                                    + " agentControl=" + anUnchangedAgentHomeReportsClean
+                                    + " m4=" + aRepointedAgentSkillLinkIsDetected
+                                    + " configPlantMisses=" + configPlantMisses))
                     .assertion("the_walk_never_created_a_global_home",
                             theSandboxGlobalHomeWasNeverCreated)
                     .assertion("the_leak_baseline_is_readable", theBaselineIsReadable)
@@ -207,7 +303,7 @@ public class OnboardingGlobalHomeUntouched {
                             theOperatorsRealHomesDidNotMove)
                     .assertion("the_config_check_covers_the_sibling_claude_json_file",
                             theConfigCheckCoversTheSiblingClaudeJson)
-                    .assertion("the_four_agent_config_files_are_byte_identical",
+                    .assertion("the_agent_config_registrations_are_unchanged",
                             theAgentConfigFilesAreUnchanged)
                     .assertion("an_unchanged_tree_reports_clean", anUnchangedTreeReportsClean)
                     .assertion("the_leak_oracle_detects_a_planted_unit_directory",
@@ -216,7 +312,12 @@ public class OnboardingGlobalHomeUntouched {
                             aPlantedSymlinkIsDetected)
                     .assertion("the_leak_oracle_detects_an_in_place_rewrite",
                             anInPlaceRewriteIsDetected)
-                    .assertion("the_config_hash_detects_a_rewrite", theConfigHashDetectsARewrite)
+                    .assertion("an_unchanged_agent_home_reports_clean",
+                            anUnchangedAgentHomeReportsClean)
+                    .assertion("the_leak_oracle_detects_a_repointed_agent_skill_link",
+                            aRepointedAgentSkillLinkIsDetected)
+                    .assertion("the_config_fingerprint_sees_registrations_and_not_counters",
+                            theConfigFingerprintSeesRegistrationsAndNotCounters)
                     .metric("baselineEntries", before.size())
                     .metric("differencesFound", realDifferences.size())
                     .metric("worktreeRegistrationChanges", worktreeNoise.size())
@@ -225,25 +326,51 @@ public class OnboardingGlobalHomeUntouched {
         });
     }
 
-    private static List<String> configHashes(Path realHome) {
-        List<String> out = new ArrayList<>();
-        for (String rel : List.of(".claude.json", ".codex/config.toml",
-                ".gemini/settings.json", ".claude/settings.json")) {
-            out.add("/" + rel + "\t" + digest(realHome.resolve(rel)));
-        }
-        return out;
+    /**
+     * A decoy {@code ~/.claude.json} in the shape the real one has: a
+     * registration block, a project map holding both a registration and the
+     * session bookkeeping that lives beside it, and a top-level counter.
+     *
+     * <p>The plants below mutate ONE thing in it at a time, so each says which
+     * of the two claims it is about — "this registration is seen" or "this
+     * counter is not" — rather than comparing two files that differ in several
+     * ways at once.
+     */
+    private static final String CLAUDE_JSON = "{"
+            + "\"promptQueueUseCount\":40,"
+            + "\"mcpServers\":{\"gateway\":{\"url\":\"http://127.0.0.1:1\"}},"
+            + "\"extraKnownMarketplaces\":{},"
+            + "\"projects\":{\"/w\":{\"mcpServers\":{},\"lastCost\":1}}"
+            + "}";
+
+    /** The same, for the plugin marketplace registration the harness stamps. */
+    private static final String MARKETPLACES = "{\"skill-manager\":{"
+            + "\"source\":{\"source\":\"directory\",\"path\":\"/p\"},"
+            + "\"lastUpdated\":\"2026-01-01T00:00:00.000Z\"}}";
+
+    /**
+     * Write a decoy {@code .claude.json} and plugin registration, and return
+     * {@link TripwireSupport#ownedConfig}'s reading of the decoy root.
+     *
+     * <p>Through the same function the real comparison uses, on a decoy shaped
+     * like a real home. A plant proved against a private copy of the logic would
+     * prove the copy.
+     */
+    private static List<String> plantConfig(Path decoyRoot, String claudeJson,
+                                            String knownMarketplaces) throws java.io.IOException {
+        Files.createDirectories(decoyRoot.resolve(".claude/plugins"));
+        Files.writeString(decoyRoot.resolve(".claude.json"), claudeJson);
+        Files.writeString(decoyRoot.resolve(".claude/plugins/known_marketplaces.json"),
+                knownMarketplaces);
+        return TripwireSupport.ownedConfig(decoyRoot);
     }
 
-    private static String digest(Path file) {
-        try {
-            if (!Files.isRegularFile(file)) return "ABSENT";
-            MessageDigest md = MessageDigest.getInstance("SHA-256");
-            byte[] hash = md.digest(Files.readAllBytes(file));
-            StringBuilder sb = new StringBuilder();
-            for (byte b : hash) sb.append(String.format("%02x", b));
-            return sb.toString();
-        } catch (Exception e) {
-            return "UNREADABLE:" + e.getClass().getSimpleName();
+    /** Record a plant whose detection did not match what was claimed for it. */
+    private static void check(List<String> misses, String what, boolean expectDetected,
+                              List<String> before, List<String> after) {
+        boolean detected = !before.equals(after);
+        if (detected != expectDetected) {
+            misses.add(what + (expectDetected ? " was NOT detected" : " WAS detected"));
         }
     }
 

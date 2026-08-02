@@ -16,7 +16,7 @@ import java.util.List;
  * <b>Step 9 — the global home is never written.</b> Epic #2's central
  * invariant, with a dedicated, always-on assertion rather than a hope.
  *
- * <h2>Two sides, because either alone is weak</h2>
+ * <h2>Three sides, because none of them alone is enough</h2>
  *
  * <ol>
  *   <li><b>The sandbox's global home never comes into existence.</b> Every
@@ -31,9 +31,15 @@ import java.util.List;
  *       workflow ran, compared against the same four roots now. This is the
  *       catch-all: it needs no theory about which fallback a defect would
  *       take.</li>
+ *   <li><b>The agent CONFIG REGISTRATIONS are unchanged.</b> The side the tree
+ *       walk structurally cannot supply: {@code ~/.claude.json} is a SIBLING of
+ *       the four roots, not a child of one, and it is the file this product
+ *       writes Claude MCP registrations into. This graph did not have this side
+ *       at all until the tree walk was narrowed, at which point running without
+ *       it would have been a net loss of coverage rather than a narrowing.</li>
  * </ol>
  *
- * <h2>The companion, without which neither means anything</h2>
+ * <h2>The companion, without which none of them means anything</h2>
  *
  * <p>A diff that comes back empty is indistinguishable from a diff that could
  * not look — and this epic has already been misled by a zero that meant "could
@@ -67,8 +73,10 @@ public class TicketLifecycleGlobalHomeUntouched {
             String rootsRaw = ctx.get("ticket.lifecycle.fixture.built", "leakRoots").orElse(null);
             String workspaceRaw = ctx.get("ticket.lifecycle.fixture.built", "workspace")
                     .orElse(null);
+            String configRaw = ctx.get("ticket.lifecycle.fixture.built", "configBaseline")
+                    .orElse(null);
             if (sandboxGlobal == null || baselineRaw == null || rootsRaw == null
-                    || workspaceRaw == null) {
+                    || workspaceRaw == null || configRaw == null) {
                 return NodeResult.fail("ticket.lifecycle.global.home.untouched",
                         "missing upstream context");
             }
@@ -105,6 +113,19 @@ public class TicketLifecycleGlobalHomeUntouched {
             // something. An empty baseline diffs clean against an empty
             // present, forever.
             boolean theBaselineActuallyWatchedSomething = before.size() > 100;
+
+            // --- side three: the config registrations the tree walk cannot see --
+            //
+            // ~/.claude.json is a SIBLING of the four watched roots rather than
+            // a child of one, so no walk rooted at them reaches it — and it is
+            // the file this product writes Claude MCP registrations into. This
+            // graph had no such side at all: a leak through the one file its
+            // walk structurally cannot see was invisible to it.
+            List<String> configBefore = TripwireSupport.readLines(Path.of(configRaw));
+            List<String> configAfter = TripwireSupport.ownedConfig(TripwireSupport.realHome());
+            boolean theAgentConfigRegistrationsAreUnchanged = configBefore.equals(configAfter);
+            boolean theConfigCheckCoversTheSiblingClaudeJson = configBefore.stream()
+                    .anyMatch(l -> l.startsWith(TripwireSupport.CLAUDE_JSON_LABEL));
 
             // --- the companion: the same oracle, on a planted write ------------
             Path decoyRoot = Path.of(workspaceRaw).resolve("leak-decoy");
@@ -145,10 +166,38 @@ public class TicketLifecycleGlobalHomeUntouched {
                     TripwireSupport.collect(decoyHome, decoyRoot,
                             TripwireSupport.Fidelity.METADATA)).isEmpty();
 
+            // M4 -- THE INCIDENT ITSELF, and the reason it is here rather than
+            // only in the onboarding graph: the tree walk is narrower than it
+            // used to be inside an agent home, covering the skills/ projection
+            // surface rather than the whole root. The incident that commissioned
+            // this oracle was a documented remedy repointing 24 of the
+            // operator's ~/.claude/skills/<unit> links at a foreign store, so
+            // "the narrowing cannot hide it" is executed here, on a decoy agent
+            // home, rather than argued. Its own control comes first: a retarget
+            // detected by a walk that reports differences anyway proves nothing.
+            Path decoyAgent = decoyRoot.resolve(".claude");
+            Path projected = decoyAgent.resolve("skills").resolve(TicketLifecycleSupport.SHARED);
+            Files.createDirectories(projected.getParent());
+            Files.deleteIfExists(projected);
+            Files.createSymbolicLink(projected, decoySkills.resolve("existing"));
+            List<String> agentBefore = TripwireSupport.collect(decoyAgent, decoyRoot,
+                    TripwireSupport.Fidelity.METADATA);
+            boolean anUnchangedAgentHomeReportsClean = TripwireSupport.difference(agentBefore,
+                    TripwireSupport.collect(decoyAgent, decoyRoot,
+                            TripwireSupport.Fidelity.METADATA)).isEmpty();
+            Files.delete(projected);
+            Files.createSymbolicLink(projected, Path.of("/some/other/home/skills/tl-shared"));
+            boolean aRepointedAgentSkillLinkIsDetected = !TripwireSupport.difference(agentBefore,
+                    TripwireSupport.collect(decoyAgent, decoyRoot,
+                            TripwireSupport.Fidelity.METADATA)).isEmpty();
+
             boolean pass = theSandboxGlobalHomeWasNeverCreated && theBaselineIsReadable
                     && theOperatorsRealHomesDidNotMove && theBaselineActuallyWatchedSomething
+                    && theAgentConfigRegistrationsAreUnchanged
+                    && theConfigCheckCoversTheSiblingClaudeJson
                     && anUnchangedTreeReportsClean && aPlantedUnitIsDetected
-                    && aPlantedSymlinkIsDetected && AnInPlaceRewriteIsDetected;
+                    && aPlantedSymlinkIsDetected && AnInPlaceRewriteIsDetected
+                    && anUnchangedAgentHomeReportsClean && aRepointedAgentSkillLinkIsDetected;
 
             return (pass
                     ? NodeResult.pass("ticket.lifecycle.global.home.untouched")
@@ -157,10 +206,13 @@ public class TicketLifecycleGlobalHomeUntouched {
                                     + " baselineEntries=" + before.size()
                                     + " differences=" + head(realDifferences)
                                     + " worktreeNoise=" + worktreeNoise.size()
+                                    + " configUnchanged=" + theAgentConfigRegistrationsAreUnchanged
                                     + " control=" + anUnchangedTreeReportsClean
                                     + " m1=" + aPlantedUnitIsDetected
                                     + " m2=" + aPlantedSymlinkIsDetected
-                                    + " m3=" + AnInPlaceRewriteIsDetected))
+                                    + " m3=" + AnInPlaceRewriteIsDetected
+                                    + " agentControl=" + anUnchangedAgentHomeReportsClean
+                                    + " m4=" + aRepointedAgentSkillLinkIsDetected))
                     .assertion("the_workflow_never_created_a_global_home",
                             theSandboxGlobalHomeWasNeverCreated)
                     .assertion("the_leak_baseline_is_readable", theBaselineIsReadable)
@@ -175,6 +227,14 @@ public class TicketLifecycleGlobalHomeUntouched {
                             aPlantedSymlinkIsDetected)
                     .assertion("the_leak_oracle_detects_an_in_place_rewrite",
                             AnInPlaceRewriteIsDetected)
+                    .assertion("the_config_check_covers_the_sibling_claude_json_file",
+                            theConfigCheckCoversTheSiblingClaudeJson)
+                    .assertion("the_agent_config_registrations_are_unchanged",
+                            theAgentConfigRegistrationsAreUnchanged)
+                    .assertion("an_unchanged_agent_home_reports_clean",
+                            anUnchangedAgentHomeReportsClean)
+                    .assertion("the_leak_oracle_detects_a_repointed_agent_skill_link",
+                            aRepointedAgentSkillLinkIsDetected)
                     .metric("baselineEntries", before.size())
                     .metric("differencesFound", realDifferences.size())
                     .metric("worktreeRegistrationChanges", worktreeNoise.size());
