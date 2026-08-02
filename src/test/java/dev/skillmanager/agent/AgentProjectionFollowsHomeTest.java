@@ -4,6 +4,7 @@ import dev.skillmanager._lib.test.Tests;
 import dev.skillmanager.model.AgentUnit;
 import dev.skillmanager.model.Skill;
 import dev.skillmanager.project.Projection;
+import dev.skillmanager.project.ProjectionOwnership;
 import dev.skillmanager.project.Projector;
 import dev.skillmanager.project.ProjectorRegistry;
 import dev.skillmanager.store.SkillStore;
@@ -189,6 +190,78 @@ public final class AgentProjectionFollowsHomeTest {
                 AgentHomes.setOverride(AgentHomes.CLAUDE_HOME, elsewhere);
                 assertEquals(elsewhere.resolve(".claude"), AgentHomes.claude().configDir(),
                         "explicit CLAUDE_HOME wins");
+            } finally {
+                AgentHomes.clearOverrides();
+            }
+        });
+
+        suite.test("undoing a COPIED default-agent row cannot delete another home's link", () -> {
+            // The state `home clone` now prevents, arriving by a route it does
+            // not control: an rsync, a restored backup, a container image. The
+            // row still names the other home's agent directory, and the undo
+            // path replays it verbatim.
+            //
+            // Measured with the CLI before this guard: `uninstall` in such a
+            // copy removed the other home's .claude, .codex and .gemini links,
+            // printed "checkmark unbound" three times, and exited 0. Nothing in
+            // the ownership check objected, and correctly so — every target was
+            // a symlink, which is exactly what isOurs calls disposable. The
+            // targets were fine. They were in the wrong home.
+            AgentHomes.clearOverrides();
+            Fixture fx = Fixture.create();
+            try {
+                AgentHomes.setOverride(AgentHomes.HOME, fx.operatorRoot);
+                AgentHomes.setOverride(AgentHomes.SKILL_MANAGER_HOME, fx.projectStore.root());
+
+                Path victim = fx.operatorRoot.resolve(".claude/skills").resolve(UNIT);
+                boolean cleared = ProjectionOwnership.clearRecorded(
+                        "unproject",
+                        dev.skillmanager.effects.LiveInterpreter.defaultBindingId("claude", UNIT),
+                        victim,
+                        fx.projectStore.root().resolve("skills").resolve(UNIT));
+
+                assertFalse(cleared, "the recorded removal is refused");
+                assertTrue(Files.isSymbolicLink(victim),
+                        "and the other home's link is still there: " + victim);
+            } finally {
+                AgentHomes.clearOverrides();
+            }
+        });
+
+        suite.test("the guard does not fire on this home, nor on managed child homes", () -> {
+            // Both bounds, and the second is the one that decides the shape of
+            // the whole guard. #145 proposes refusing any operation whose
+            // ledger names paths outside the home. That is not implementable: a
+            // home legitimately writes into OTHER homes' agent trees, because
+            // that is what `project resolve` and child homes ARE. Measured —
+            // the broad form broke ProjectDependencyResolverTest's
+            // "project remove clears registration child home and bindings",
+            // which removes <repo>/.claude/skills/<unit> where <repo> holds a
+            // child home. Those rows are BindingSource.PROFILE.
+            //
+            // So the guard is keyed to the one class that can never legitimately
+            // name another home: default-agent, which is derived from the active
+            // home's own agent roots and nowhere else.
+            AgentHomes.clearOverrides();
+            Fixture fx = Fixture.create();
+            try {
+                AgentHomes.setOverride(AgentHomes.HOME, fx.operatorRoot);
+                AgentHomes.setOverride(AgentHomes.SKILL_MANAGER_HOME, fx.projectStore.root());
+                Path own = fx.projectRoot.resolve(".claude/skills").resolve(UNIT);
+                Files.createSymbolicLink(own, fx.projectStore.root().resolve("skills").resolve(UNIT));
+
+                assertTrue(ProjectionOwnership.clearRecorded("unproject",
+                                dev.skillmanager.effects.LiveInterpreter
+                                        .defaultBindingId("claude", UNIT),
+                                own, fx.projectStore.root().resolve("skills").resolve(UNIT)),
+                        "this home's own agent tree is not foreign to it");
+
+                // A PROFILE row into the operator's home — the child-home shape.
+                Path managed = fx.operatorRoot.resolve(".claude/skills").resolve(UNIT);
+                assertTrue(ProjectionOwnership.clearRecorded("unproject",
+                                "project:demo:unit:" + UNIT, managed,
+                                fx.operatorStore.root().resolve("skills").resolve(UNIT)),
+                        "a project/harness row may manage another home's agent tree");
             } finally {
                 AgentHomes.clearOverrides();
             }

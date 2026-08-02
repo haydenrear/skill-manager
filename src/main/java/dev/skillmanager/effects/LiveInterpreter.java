@@ -1752,7 +1752,31 @@ public final class LiveInterpreter implements ProgramInterpreter {
      * the existing record instead of accumulating duplicates.
      */
     public static String defaultBindingId(String agentId, String unitName) {
-        return "default:" + agentId + ":" + unitName;
+        return DEFAULT_BINDING_PREFIX + agentId + ":" + unitName;
+    }
+
+    private static final String DEFAULT_BINDING_PREFIX = "default:";
+
+    /**
+     * Whether {@code bindingId} names a {@link BindingSource#DEFAULT_AGENT}
+     * row — the implicit projection {@code install} and {@code sync} derive
+     * from the ACTIVE home's own agent roots.
+     *
+     * <p>Read off the id rather than off a {@code Binding} because the undo
+     * path ({@code UnmaterializeProjection} → {@link #reverseProjection}) is
+     * handed a bare {@link Projection}, and the id is the only provenance a
+     * projection already carries. The format is not incidental — it is the
+     * deterministic id {@link #defaultBindingId} constructs so a re-run
+     * replaces a row rather than accumulating duplicates — but the literal now
+     * has one spelling instead of being re-derived by a caller that could
+     * drift from it.
+     *
+     * <p>The distinction is load-bearing: it separates the one row class that
+     * may never name another home from the classes that legitimately do. See
+     * {@code ProjectionOwnership.foreignAgentTree}.
+     */
+    public static boolean isDefaultAgentBindingId(String bindingId) {
+        return bindingId != null && bindingId.startsWith(DEFAULT_BINDING_PREFIX);
     }
 
     /**
@@ -2041,8 +2065,13 @@ public final class LiveInterpreter implements ProgramInterpreter {
                 // believing it was removing its own symlink. The rule is the
                 // same one the projectors apply on the way in — a symlink, or
                 // a tree the source still holds, and nothing else.
-                dev.skillmanager.project.ProjectionOwnership.clear(
-                        "unproject", p.destPath(), p.sourcePath());
+                // clearRecorded, not clear: this arm is replaying a stored row,
+                // which may have been written by another home and copied here.
+                // See ProjectionOwnership.foreignAgentTree — an uninstall in a
+                // copied home deleted three of the source home's global agent
+                // links through exactly this call. Issue #145.
+                dev.skillmanager.project.ProjectionOwnership.clearRecorded(
+                        "unproject", p.bindingId(), p.destPath(), p.sourcePath());
             }
             case RENAMED_ORIGINAL_BACKUP -> {
                 // Move the backup at destPath back to its original location (backupOf).
