@@ -94,9 +94,17 @@ public final class HomeDescriptorTest {
                         "Claude skills land in the home, with exactly one .claude segment");
                 assertEquals(homeRoot.resolve(".claude/plugins"), new ClaudeAgent().pluginsDir(),
                         "Claude plugins land in the home");
-                assertEquals(homeRoot.resolve(".claude.json"),
+                // This used to read "Claude MCP config sits beside .claude/,
+                // matching Claude's own layout". It matches Claude's layout
+                // only when CLAUDE_CONFIG_DIR is UNSET; the descriptor sets it,
+                // and Claude Code then reads $CLAUDE_CONFIG_DIR/.claude.json.
+                // The old answer put the gateway entry in a file the launched
+                // agent never opens — reported as ADDED — and left an untracked
+                // <project>/.claude.json that the documented `/.claude/`
+                // gitignore rule does not match.
+                assertEquals(homeRoot.resolve(".claude/.claude.json"),
                         new ClaudeAgent().mcpConfigPath(),
-                        "Claude MCP config sits beside .claude/, matching Claude's own layout");
+                        "Claude MCP config moves WITH the config dir the descriptor exports");
                 assertEquals(homeRoot.resolve(".codex/skills"), new CodexAgent().skillsDir(),
                         "Codex skills land in the home");
                 assertEquals(homeRoot.resolve(".gemini/skills"), new GeminiAgent().skillsDir(),

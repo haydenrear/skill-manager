@@ -331,8 +331,15 @@ public final class ConsoleProgramRenderer implements ProgramRenderer {
         }
         printMcpResultsBlock();
         printSyncSummary();
-        printAgentConfigSummary();
+        // Violations before the agent-config summary, because that summary
+        // ends in `ACTION_REQUIRED: Restart Claude / Codex …` — a line that
+        // reads as the last word on the run. Printing the violations after it
+        // put them past the point a reader stops, at the bottom of a long
+        // install, under a success banner. Order is not a substitute for the
+        // exit code (MarkdownImportValidator.EXIT_CODE is), but a report whose
+        // last line contradicts its own findings costs a round trip anyway.
         printMarkdownImportViolations();
+        printAgentConfigSummary();
         printOutstandingErrors();
     }
 

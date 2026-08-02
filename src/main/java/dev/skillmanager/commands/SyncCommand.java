@@ -192,7 +192,15 @@ public final class SyncCommand implements Callable<Integer> {
         // wouldn't otherwise surface as a non-zero exit.
         int worst = report.worstRc();
         if (worst != 0) return worst;
-        return report.errorCount() > 0 ? 1 : 0;
+        if (report.errorCount() > 0) return 1;
+        // Typed rather than folded into the generic 1, so a caller can tell
+        // this apart from a post-update tail failure. `sync` already exits
+        // non-zero for several unrelated reasons, which is exactly why the
+        // violations need their own code to be evidence of anything.
+        if (report.markdownImportViolations() > 0) {
+            return dev.skillmanager.validation.MarkdownImportValidator.EXIT_CODE;
+        }
+        return 0;
     }
 
     private record ResolvedTargets(List<SyncUseCase.Target> targets, List<UnitReadProblem> readProblems) {}

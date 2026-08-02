@@ -249,6 +249,23 @@ public final class LaunchEnv {
                 return activeStoreRoot == null || !parent.equals(activeStoreRoot);
             }
         }
+        // A home is its store AND its agent directories, and this walk only
+        // ever looked at the store half. `~/.claude` is not a store root — no
+        // descriptor, no installed/ + skills/ pair — so
+        // `~/.claude/plugins/cache/<marketplace>/<plugin>/<v>/bin` was invisible
+        // to the loop above and survived every launch, measured at PATH
+        // position 4, ahead of /usr/bin, with the foreign STORE bin beside it
+        // correctly stripped. Exactly the failure the comment above names, one
+        // predicate over: the structural test for the other half already exists
+        // as agentDirOwnedByAHome (#145) and simply was not called here.
+        Path agentDir = agentDirOwnedByAHome(entry);
+        if (agentDir != null) {
+            Path owner = agentDir.getParent();
+            if (owner == null) return false;
+            Path foreignStore = owner.resolve(AgentHomes.STORE_DIR_NAME)
+                    .toAbsolutePath().normalize();
+            return activeStoreRoot == null || !foreignStore.equals(activeStoreRoot);
+        }
         return false;
     }
 

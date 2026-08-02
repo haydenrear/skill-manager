@@ -134,6 +134,12 @@ public final class OnboardCommand implements Callable<Integer> {
             }
             if (report.exitCode() != 0) return report.exitCode();
             if (report.errorCount() > 0) rc = 1;
+            // A printed violation that does not reach an exit code is not a
+            // check. Same code as install/sync so one caller check covers the
+            // whole onboarding path.
+            else if (report.markdownImportViolations() > 0) {
+                rc = dev.skillmanager.validation.MarkdownImportValidator.EXIT_CODE;
+            }
         }
 
         System.out.println();
@@ -244,19 +250,22 @@ public final class OnboardCommand implements Callable<Integer> {
         int skipped = 0;
         int errorCount = 0;
         int exitCode = 0;
+        int importViolations = 0;
         for (EffectReceipt r : receipts) {
             if (r.status() == EffectStatus.FAILED || r.status() == EffectStatus.PARTIAL) errorCount++;
             for (ContextFact f : r.facts()) {
                 if (f instanceof ContextFact.SkillCommitted) committed++;
                 else if (f instanceof ContextFact.BundledSkillAlreadyInstalled) skipped++;
+                else if (f instanceof ContextFact.MarkdownImportViolation) importViolations++;
                 else if (f instanceof ContextFact.HaltWithExitCode h && exitCode == 0) exitCode = h.code();
             }
         }
-        return new OnboardReport(committed, skipped, errorCount, exitCode);
+        return new OnboardReport(committed, skipped, errorCount, exitCode, importViolations);
     }
 
     /** Decoded onboard report — installed count, already-installed skipped count, error count, and the typed exit code from HaltWithExitCode (0 = no halt). */
-    private record OnboardReport(int installed, int skipped, int errorCount, int exitCode) {}
+    private record OnboardReport(int installed, int skipped, int errorCount, int exitCode,
+                                 int markdownImportViolations) {}
 
     private static String gatewayStatus(SkillStore store) {
         try {

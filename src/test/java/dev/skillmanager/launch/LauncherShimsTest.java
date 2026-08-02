@@ -90,6 +90,77 @@ public final class LauncherShimsTest {
                     "unrelated PATH entries survive");
         });
 
+        suite.test("another home's AGENT-dir plugin bins are dropped from the launch PATH", () -> {
+            // D8. The walk looked for a STORE root above each PATH entry, and
+            // `<root>/.claude` is not one — no descriptor, no installed/ +
+            // skills/ pair — so a foreign home's
+            // `.claude/plugins/cache/<marketplace>/<plugin>/<v>/bin` survived
+            // every launch. Measured at PATH position 4, ahead of /usr/bin,
+            // with the foreign STORE bin beside it correctly stripped: the
+            // isolation this class exists to provide, silently half-absent.
+            //
+            // The predicate that decides it already existed
+            // (agentDirOwnedByAHome, written for #145) and was not called —
+            // which is the "enumeration correct for imagined shapes" failure
+            // LaunchEnv's own comment names.
+            Home foreign = Home.create("launch-agentbin-foreign-");
+            Home project = Home.create("launch-agentbin-project-");
+            Path foreignPluginBin = foreign.root.resolve(
+                    ".claude/plugins/cache/claude-plugins-official/jdtls-lsp/1.0.0/bin");
+            Fs.ensureDir(foreignPluginBin);
+            Path ownPluginBin = project.root.resolve(
+                    ".claude/plugins/cache/claude-plugins-official/jdtls-lsp/1.0.0/bin");
+            Fs.ensureDir(ownPluginBin);
+            String inherited = foreign.store.cliBinDir() + File.pathSeparator
+                    + foreignPluginBin + File.pathSeparator
+                    + ownPluginBin + File.pathSeparator + "/usr/bin";
+
+            // Companion 1, mandatory: the planted entries really are on the
+            // PATH handed to the sanitizer. Without this the assertion below
+            // measures nothing.
+            List<Path> inheritedEntries = new java.util.ArrayList<>();
+            for (String raw : inherited.split(File.pathSeparator, -1)) {
+                inheritedEntries.add(Path.of(raw).toAbsolutePath().normalize());
+            }
+            assertTrue(inheritedEntries.contains(foreignPluginBin.toAbsolutePath().normalize()),
+                    "precondition: the foreign agent-home plugin bin is on the inherited PATH");
+            assertTrue(inheritedEntries.contains(
+                            foreign.store.cliBinDir().toAbsolutePath().normalize()),
+                    "precondition: the foreign store bin is on it too");
+
+            LaunchEnv launch = LaunchEnv.of(project.store, null, inherited, false);
+            List<Path> entries = launch.pathEntries();
+
+            // Companion 2: the store-bin entry IS stripped in the same run.
+            // That proves the sanitizer ran and recognised the foreign home,
+            // which is what makes the agent-dir entry's survival meaningful.
+            assertFalse(entries.contains(foreign.store.cliBinDir().toAbsolutePath().normalize()),
+                    "the foreign home's store bin is stripped — the sanitizer ran");
+            assertFalse(entries.contains(foreignPluginBin.toAbsolutePath().normalize()),
+                    "and so is its agent-home plugin bin");
+            // The can-fail control: this home's OWN agent-dir plugin bin is not
+            // foreign and must survive, or the fix is just "strip .claude".
+            assertTrue(entries.contains(ownPluginBin.toAbsolutePath().normalize()),
+                    "the ACTIVE home's own agent-home plugin bin survives");
+            assertTrue(entries.contains(Path.of("/usr/bin")), "unrelated entries survive");
+        });
+
+        suite.test("a .claude no home owns is left on PATH", () -> {
+            // The negative half of the structural predicate, and the reason it
+            // is two conditions rather than a name test: there are many
+            // `.claude` directories on a machine and no home manages most of
+            // them. A rule that fires on those is a rule somebody switches off.
+            Home project = Home.create("launch-unowned-project-");
+            Path unowned = Files.createTempDirectory("launch-unowned-")
+                    .resolve(".claude/plugins/cache/x/y/1.0.0/bin");
+            Fs.ensureDir(unowned);
+
+            LaunchEnv launch = LaunchEnv.of(project.store, null, unowned.toString(), false);
+
+            assertTrue(launch.pathEntries().contains(unowned.toAbsolutePath().normalize()),
+                    "a .claude with no Skill Manager store beside it is not a foreign home");
+        });
+
         suite.test("a directory that is not a home's bin is left on PATH", () -> {
             Home home = Home.create("launch-notahome-");
             Path ordinary = Files.createTempDirectory("launch-ordinary-").resolve("bin/cli");

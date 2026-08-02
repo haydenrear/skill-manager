@@ -1015,13 +1015,17 @@ public final class HomeCommand {
                     {"source":"%s","dest":"%s","directories":%d,"files":%d,"symlinks":%d,\
                     "bytes":%d,"linksRelativized":%d,"stateReanchored":%d,\
                     "provisionedRewritten":%d,"leaks":%d,"contentReferences":%d,\
-                    "danglingLinks":%d,"danglingReferences":%d,"clean":%b}"""
+                    "danglingLinks":%d,"danglingReferences":%d,"droppedRegistrations":%d,\
+                    "droppedBindings":%d,"droppedChildHomes":%d,"clean":%b}"""
                     .formatted(esc(report.source().toString()), esc(report.dest().toString()),
                             report.directories(), report.files(), report.symlinks(),
                             report.bytes(), report.linksRelativized(), report.stateReanchored(),
                             report.provisionedRewritten(), report.leaks().size(),
                             report.contentReferences().size(), report.danglingLinks().size(),
-                            report.danglingReferences().size(), report.clean()));
+                            report.danglingReferences().size(),
+                            report.droppedRegistrations().size(),
+                            report.droppedBindings().size(),
+                            report.droppedChildHomes().size(), report.clean()));
             return;
         }
         Log.info("  source:      %s", report.source());
@@ -1040,6 +1044,23 @@ public final class HomeCommand {
                             + "`skill-manager project register --project-dir <path>`: %s",
                     report.droppedRegistrations().size(),
                     String.join(", ", report.droppedRegistrations()));
+        }
+        if (!report.droppedBindings().isEmpty()) {
+            // The half of the same claim that carries projection targets. A
+            // ledger row is the exact footprint `unbind`/`uninstall` will
+            // undo, so an inherited one is a live instruction to delete
+            // something in a checkout this copy was never pointed at.
+            Log.info("  bindings: %d not inherited — each named a path outside this home. "
+                            + "`skill-manager sync` re-derives this home's own projections: %s",
+                    report.droppedBindings().size(),
+                    String.join(", ", report.droppedBindings()));
+        }
+        if (!report.droppedChildHomes().isEmpty()) {
+            Log.info("  child homes: %d not inherited — each named a child home outside this "
+                            + "home. They are re-created by `skill-manager project resolve` in "
+                            + "the checkout that owns them: %s",
+                    report.droppedChildHomes().size(),
+                    String.join(", ", report.droppedChildHomes()));
         }
         if (!report.contentReferences().isEmpty()) {
             Log.info("  %d unit-content file(s) mention the source home — historical records, "
@@ -1084,11 +1105,22 @@ public final class HomeCommand {
             // what was not, and never generalise to "independent" or
             // "isolated". A reader who wants the general claim has to assemble
             // it from the list, which is the only form in which it is honest.
+            //
+            // D2: "NOT checked: ... project checkouts" was where the next
+            // defect lived, and the sentence was honest about it — 18 binding
+            // rows and four child-home records naming the operator's real
+            // repositories rode into a scratch home under that clause. Records
+            // are now filtered on "does it name anything outside this home",
+            // so the clause narrows to what it still covers: file CONTENT,
+            // which is not rewritten, and links that resolve nowhere in
+            // particular.
             Log.ok("cloned home to %s — checked: nothing in it resolves back to %s; no path in "
                     + "it reaches another Skill Manager home; no record or link in it names "
-                    + "another home's agent directories (.claude, .codex, .gemini). NOT checked: "
-                    + "paths outside all of those — toolchains, project checkouts, anything else "
-                    + "on this machine.", report.dest(), report.source());
+                    + "another home's agent directories (.claude, .codex, .gemini); no binding, "
+                    + "child-home record or registration in it claims a path outside this home. "
+                    + "NOT checked: mentions inside unit content, and anything reached by a "
+                    + "path this copy does not record — toolchains, caches, anything else on "
+                    + "this machine.", report.dest(), report.source());
         } else {
             Log.error("clone verification FAILED — %d path(s) reach outside this copy",
                     report.leaks().size());
