@@ -249,6 +249,56 @@ public final class QuietConsoleTest {
                                     + "— which is why RunLog.directory() is outside every home");
                 })
 
+                // ------------------------------------------- the deleted remedy
+
+                .test("no remedy pins SKILL_MANAGER_HOME without the agent-home variables", () -> {
+                    // The spelling that was deleted:
+                    //   SKILL_MANAGER_HOME=<home> skill-manager sync --force-scripts
+                    // pins where the UNITS live and not where the AGENT CONFIGS
+                    // live, so run as printed it reports
+                    // `ADDED claude (~/.claude.json)` and writes the operator's
+                    // global config — skill-manager#145, and the reason
+                    // bootstrap-home.sh stopped printing it verbatim. `home
+                    // clone` printed it too; `home verify` is the only place it
+                    // is printed now, and it is printed runnable.
+                    //
+                    // The REAL command is run, against the real defect it
+                    // reports on: a home holding a generated shim that points
+                    // into a directory a clone skips.
+                    Path root = Files.createTempDirectory("remedy-");
+                    Path home = newHome(root.resolve("home"));
+                    Path shim = Files.createDirectories(home.resolve("bin/cli"))
+                            .resolve("computeq");
+                    Files.writeString(shim,
+                            "#!/bin/sh\nexec " + home + "/cache/skill-script-x/venv/bin/computeq "
+                                    + "\"$@\"\n");
+                    shim.toFile().setExecutable(true);
+
+                    Capture c = capture(() -> new picocli.CommandLine(
+                            new dev.skillmanager.commands.HomeCommand.VerifyCmd())
+                            .execute("--home", home.toString()));
+
+                    // Preconditions: this run really did reach the branch that
+                    // prints the remedy. Without them the assertions below are
+                    // about an empty string.
+                    assertContains(c.text(), "do not resolve",
+                            "precondition: verify reported the unresolved reference");
+                    assertContains(c.text(), "sync --force-scripts",
+                            "precondition: and printed the remedy for it");
+
+                    assertContains(c.text(), "SKILL_MANAGER_HOME=" + home,
+                            "the remedy names the home");
+                    // The other axis, which is the whole of the defect.
+                    assertContains(c.text(), "CLAUDE_CONFIG_DIR=",
+                            "and where claude reads its config");
+                    assertContains(c.text(), "CODEX_HOME=", "and codex");
+                    assertContains(c.text(), "GEMINI_HOME=", "and gemini");
+                    assertFalse(c.text().contains("SKILL_MANAGER_HOME=" + home + " skill-manager")
+                                    || c.text().contains("(SKILL_MANAGER_HOME=" + home + ")"),
+                            "and never the one-axis spelling that hijacks the operator's "
+                                    + "global agent configs (skill-manager#145):\n" + c.text());
+                })
+
                 .runAll();
     }
 
