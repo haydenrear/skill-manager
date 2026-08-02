@@ -310,6 +310,43 @@ public final class SkillProjectParserTest {
                     assertSize(1, dev.skills(), "default skill inherited");
                     assertEquals("common", dev.skills().get(0).alias(), "common inherited");
                 })
+                .test("an array-of-tables `skills` section is refused by message, not by tomlj", () -> {
+                    // `[[skills]]` is the shape a hand-written manifest reaches
+                    // for first, and it is not one of the two supported ones.
+                    // It used to throw org.tomlj.TomlInvalidTypeException clean
+                    // out of the CLI: 18 stack frames, and not one mention of
+                    // the file being read.
+                    Path project = tmp.resolve("array-of-tables-project");
+                    Files.createDirectories(project);
+                    Files.writeString(project.resolve("skill-project.toml"), """
+                            [project]
+                            name = "bad"
+
+                            [[skills]]
+                            name = "x"
+                            source = "file:///nowhere"
+                            """);
+
+                    String message = null;
+                    try {
+                        SkillProjectParser.load(project);
+                    } catch (IOException refusal) {
+                        message = refusal.getMessage();
+                    } catch (RuntimeException leaked) {
+                        throw new AssertionError(
+                                "a manifest shape error escaped as an unchecked "
+                                        + leaked.getClass().getName()
+                                        + " — it reaches the operator as a stack trace",
+                                leaked);
+                    }
+                    assertTrue(message != null, "the wrong shape is refused at all");
+                    assertContains(message, "skill-project.toml",
+                            "the refusal names the file it was reading");
+                    assertContains(message, "[[skills]]",
+                            "the refusal names the shape that was written");
+                    assertContains(message, "[skills.<alias>]",
+                            "the refusal names a supported shape to write instead");
+                })
                 .runAll();
     }
 }

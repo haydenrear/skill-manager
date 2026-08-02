@@ -171,9 +171,10 @@ public final class SkillManagerCli implements Runnable {
         });
         // Surface auth-expiry + registry-unreachable as stable,
         // agent-parseable banners so the skill-manager-skill wrapper can
-        // relay them verbatim to the user. Anything else falls through
-        // to picocli's default handler (full stack trace), which is the
-        // right diagnostic for unexpected failures.
+        // relay them verbatim to the user. Anything that carries a message
+        // of its own is printed AS that message — see
+        // {@link #printFailure}; only a failure with nothing to say still
+        // prints a trace.
         cmd.setExecutionExceptionHandler(SkillManagerCli::handleExecutionException);
         try {
             return cmd.execute(args);
@@ -210,7 +211,104 @@ public final class SkillManagerCli implements Runnable {
         if (gitErr != null) {
             return completeExecution(rootCommand(pr), pr, printGitFetcherBanner(gitErr));
         }
-        throw ex;
+        // Everything else, which is where the REFUSALS live. This used to
+        // `throw ex` into picocli's default handler.
+        return completeExecution(rootCommand(pr), pr, printFailure(ex, c, pr));
+    }
+
+    /**
+     * The fall-through printer: <b>a refusal is a message, not a crash.</b>
+     *
+     * <h2>What this replaced, and why it was wrong</h2>
+     *
+     * <p>Every exception that was not one of the four banner types above used
+     * to be rethrown into picocli's default execution-exception handler, which
+     * prints the whole stack. Measured on the onboarding walk:
+     *
+     * <pre>
+     * $ skill-manager uninstall ob-alpha --dry-run
+     * java.io.IOException: unit ob-alpha is claimed by skill project(s): … (remove the project lock/binding first)
+     *     at dev.skillmanager.app.RemoveUseCase.buildProgram(RemoveUseCase.java:77)
+     *     at dev.skillmanager.commands.UninstallCommand.call(UninstallCommand.java:62)
+     *     … 13 more frames of picocli internals …
+     * </pre>
+     *
+     * <p>33 frames across two refusals in one graph run. The first line is a
+     * good refusal — it names the unit, the claimant and the remedy — and the
+     * fifteen lines under it are the reason nobody reads it. These are not
+     * crashes: the store was consulted, a rule said no, and the command
+     * declined. An onboarding agent hits the first of them within its first
+     * few commands.
+     *
+     * <h2>Why the fix is here rather than at the throw sites</h2>
+     *
+     * <p>A marker exception type would only cover the sites someone remembered
+     * to convert, and this project has now shipped four defects of the shape
+     * "an enumeration that was correct for the cases it imagined". It would
+     * also miss the third instance the walk found, which is not ours to mark:
+     * {@code project register} on a wrong-shaped {@code skill-project.toml}
+     * surfaces {@code org.tomlj.TomlInvalidTypeException}, 18 frames, thrown
+     * from a library. The structural property that separates the two kinds is
+     * not who threw — it is <b>whether the failure has anything to say</b>. A
+     * refusal carries a message written for a person; a genuine bug (NPE,
+     * IndexOutOfBounds, an assertion trip) carries none, and for those the
+     * trace is still the only diagnostic and is still printed unconditionally.
+     *
+     * <p>The trace is never lost either way: {@code --verbose} prints it, and
+     * the message says so.
+     *
+     * @return the subcommand's {@code exitCodeOnExecutionException} — 1 by
+     *         default, i.e. the same non-zero the trace path produced. This
+     *         changes what a refusal PRINTS, never what it returns.
+     */
+    static int printFailure(Exception ex, CommandLine c, CommandLine.ParseResult pr) {
+        int rc = c == null ? 1 : c.getCommandSpec().exitCodeOnExecutionException();
+        String message = describe(ex);
+        if (message == null) {
+            // Nothing to say: this is the shape where the trace IS the
+            // message. Printed whether or not --verbose was passed, because
+            // an operator who cannot see it has nothing at all.
+            Log.error("%s failed: %s", CliAgentContext.commandPath(pr), ex.getClass().getName());
+            ex.printStackTrace(System.err);
+            return rc;
+        }
+        Log.error("%s", message);
+        if (Log.isVerbose()) {
+            ex.printStackTrace(System.err);
+        } else {
+            System.err.println("  (re-run with --verbose for the stack trace)");
+        }
+        return rc;
+    }
+
+    /**
+     * The human half of a throwable chain, or {@code null} when it has none.
+     *
+     * <p>Walks causes because the message that names the actual problem is
+     * frequently one or two wraps down — an {@code UncheckedIOException} over
+     * the {@code IOException} that carries the refusal, a picocli
+     * {@code ExecutionException} over ours. Bounded at three links: past that
+     * the chain is describing plumbing rather than the failure, and an
+     * unbounded walk over a self-referential cause does not terminate.
+     *
+     * <p>A link whose message is already quoted by one above it is dropped, so
+     * the common wrap-with-the-same-text case reads as one sentence.
+     */
+    private static String describe(Throwable top) {
+        java.util.List<String> parts = new java.util.ArrayList<>();
+        Throwable seen = null;
+        for (Throwable t = top; t != null && t != seen && parts.size() < 3; t = t.getCause()) {
+            seen = t;
+            String m = t.getMessage();
+            if (m == null || m.isBlank()) continue;
+            m = m.strip();
+            boolean alreadySaid = false;
+            for (String p : parts) {
+                if (p.contains(m)) { alreadySaid = true; break; }
+            }
+            if (!alreadySaid) parts.add(m);
+        }
+        return parts.isEmpty() ? null : String.join(" — caused by: ", parts);
     }
 
     private static int completeExecution(SkillManagerCli root, CommandLine.ParseResult pr, int rc) {

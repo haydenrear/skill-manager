@@ -96,6 +96,89 @@ public final class MarkdownImportValidator {
         return validate(store, List.of(new UnitRoot(unit.name(), unit.kind(), unit.sourcePath())));
     }
 
+    /**
+     * Directory names never walked when validating a skill project's own
+     * markdown.
+     *
+     * <p>Everything hidden is skipped by {@link #isProjectOwnMarkdown} — that
+     * covers {@code .git} and, more importantly, {@code .skill-manager},
+     * {@code .claude}, {@code .codex} and {@code .gemini}, whose
+     * {@code skills/} directories are symlinks into the store. Walking those
+     * would re-validate every INSTALLED unit's imports under the project's
+     * name and report them as the project's problem.
+     *
+     * <p>{@code libs/} is a project's development checkouts of OTHER
+     * repositories, materialized by {@code project resolve --resolve-libs}.
+     * Their markdown is not this project's to answer for.
+     */
+    private static final java.util.Set<String> NOT_THE_PROJECTS_OWN_MARKDOWN =
+            java.util.Set.of("node_modules", "libs", "target", "build", "venv");
+
+    /**
+     * Validate the markdown a <em>skill project checkout</em> owns —
+     * {@code CLAUDE.md}, {@code AGENTS.md}, {@code docs/**}{@code .md},
+     * anything else the repository actually wrote.
+     *
+     * <h2>Why this exists</h2>
+     *
+     * <p>{@code ValidateMarkdownImports} was emitted only by
+     * {@code InstallUseCase}, {@code SyncUseCase}, {@code OnboardCommand} and
+     * {@code PublishCommand}, and {@link #validateInstalled} walks INSTALLED
+     * UNIT ROOTS. A skill project checkout is not a unit root, so a project
+     * whose own {@code CLAUDE.md} imported a skill was checked by nothing:
+     * measured, with that import broken to name both a missing unit and a
+     * missing path, {@code project resolve} exited 0 and a grep for "import"
+     * or "violation" over the whole log returned nothing. The frontmatter was
+     * inert — neither validated nor materialized — and the only signal an
+     * operator got was the file not doing anything.
+     *
+     * <p>The import semantics are identical to a unit's: the same
+     * {@code unit} / {@code path} / {@code reason} entries, resolved against
+     * the same installed units. Only the ROOT being walked differs, which is
+     * why this delegates to {@link #validateFile} rather than restating it.
+     *
+     * @param projectName the name violations are attributed to — the project,
+     *                    not a unit, so a reader can tell "my checkout names
+     *                    something that is not installed" from "an installed
+     *                    unit does"
+     */
+    public static List<Violation> validateProject(SkillStore store, String projectName,
+                                                  Path projectRoot) throws IOException {
+        if (projectRoot == null || !Files.isDirectory(projectRoot)) return List.of();
+        Path root = projectRoot.toAbsolutePath().normalize();
+        List<Violation> violations = new ArrayList<>();
+        UnitRoot as = new UnitRoot(projectName, null, root);
+        try (Stream<Path> files = Files.walk(root)) {
+            for (Path file : (Iterable<Path>) files
+                    .filter(Files::isRegularFile)
+                    .filter(MarkdownImportValidator::isMarkdown)
+                    .filter(f -> isProjectOwnMarkdown(root, f))::iterator) {
+                violations.addAll(validateFile(store, as, file));
+            }
+        }
+        return violations;
+    }
+
+    /**
+     * True when {@code file} is markdown the project checkout itself authored.
+     *
+     * <p>{@link Files#walk} does not follow symbolic links, so the agent
+     * directories' {@code skills/<unit>} links are never descended into — but
+     * this is asserted by NAME as well, because the property under test is
+     * "the project's own files" and leaning on a walk option for it is the
+     * kind of implicit guarantee that stops holding the day someone
+     * materializes a projection as a copy rather than a link.
+     */
+    private static boolean isProjectOwnMarkdown(Path root, Path file) {
+        Path rel = root.relativize(file);
+        for (int i = 0; i < rel.getNameCount() - 1; i++) {
+            String segment = rel.getName(i).toString();
+            if (segment.startsWith(".")) return false;
+            if (NOT_THE_PROJECTS_OWN_MARKDOWN.contains(segment)) return false;
+        }
+        return true;
+    }
+
     public static List<Violation> validate(SkillStore store, List<UnitRoot> roots)
             throws IOException {
         if (roots == null || roots.isEmpty()) return List.of();

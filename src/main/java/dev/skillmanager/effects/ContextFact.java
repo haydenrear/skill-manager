@@ -109,6 +109,19 @@ public sealed interface ContextFact {
     record SyncGitConflicted(String skillName, java.util.List<String> conflictedFiles) implements ContextFact {}
     record SyncGitFailed(String skillName, String reason) implements ContextFact {}
     record SyncGitNotGitTracked(String skillName) implements ContextFact {}
+    /**
+     * The unit was deliberately installed from a local path, so there is
+     * nothing upstream to sync.
+     *
+     * <p>Distinct from {@link SyncGitNotGitTracked}, which is the same
+     * on-disk shape arrived at by accident — a REGISTRY or GIT install whose
+     * {@code .git} is gone, or a directory found in the store with no
+     * provenance. The two used to share a fact AND a persisted error record,
+     * which is how a supported install mode came to append an outstanding
+     * error to every subsequent command, forever, with a remedy that undid
+     * the operator's own choice.
+     */
+    record SyncGitLocalInstall(String skillName, String origin) implements ContextFact {}
     record SyncGitNoOrigin(String skillName) implements ContextFact {}
     record SyncGitRegistryUnavailable(String skillName) implements ContextFact {}
     /** Registry rejected the cached bearer + couldn't refresh — user must {@code skill-manager login}. */

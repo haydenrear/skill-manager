@@ -103,7 +103,24 @@ public final class SkillProjectParser {
         }
         if (rawSection instanceof TomlArray array) {
             for (int i = 0; i < array.size(); i++) {
-                String raw = array.getString(i);
+                String raw;
+                try {
+                    raw = array.getString(i);
+                } catch (org.tomlj.TomlInvalidTypeException wrongShape) {
+                    // `[[skills]]` — an array OF TABLES — is the shape a
+                    // hand-written manifest reaches for first, and tomlj used
+                    // to throw `TomlInvalidTypeException` clean out of the CLI:
+                    // 18 frames of library and picocli internals, and not one
+                    // mention of the file it was reading. The two shapes that
+                    // ARE supported are named here, because this refusal is
+                    // the only thing the author of the manifest is looking at.
+                    throw new IOException("Unsupported `" + section + "` shape in " + manifestPath
+                            + ": " + section + "[" + i + "] is a table, and a `" + section
+                            + "` array holds coordinate strings. Write either `" + section
+                            + " = [\"github:owner/repo\"]` or a keyed table `[" + section
+                            + ".<alias>]` with `source = \"...\"` — not `[[" + section + "]]`.",
+                            wrongShape);
+                }
                 if (raw == null || raw.isBlank()) continue;
                 UnitReference ref = parseReference(raw, section + "[" + i + "]", manifestPath);
                 String alias = firstNonBlank(ref.name(), kind.name().toLowerCase() + "-" + i);
