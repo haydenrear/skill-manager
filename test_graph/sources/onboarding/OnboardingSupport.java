@@ -601,8 +601,92 @@ final class OnboardingSupport {
         return shim;
     }
 
+    // ------------------------------------------- the authored content mention
+
     /**
-     * The four §6.2 realism preconditions, each answered separately so a
+     * The unit whose authored content names the source home.
+     *
+     * <p>{@link #SCRIPT_UNIT} on purpose: it is neither declared by the project
+     * manifest (so {@code onboard} never re-installs over it) nor a member of
+     * {@link #PROVENANCELESS} (so the {@code uninstall} that
+     * {@code onboarding.error.records.coherent} performs, which picks its
+     * victim from that list, cannot take the plant with it). A plant that a
+     * later node deletes is a fixture that stops planting halfway through the
+     * walk, which is the same vacuity as never planting at all — only harder to
+     * see.
+     */
+    static final String MENTION_UNIT = SCRIPT_UNIT;
+
+    /** Where {@link #mentionSourcePage} lands inside a home. */
+    static final String MENTION_REL =
+            "skills/" + SCRIPT_UNIT + "/references/source-home-history.md";
+
+    /**
+     * An authored references page that names {@code srcHome}'s absolute path.
+     *
+     * <h2>What this is for</h2>
+     *
+     * <p>{@code home verify --against <src>} splits everything in a copy that
+     * still spells the source home into surfaces, and reports the
+     * {@code skills/ plugins/ docs/ harnesses/} ones — {@code Surface.CONTENT}
+     * in {@code HomeCloner} — as "{@code N unit-content file(s) mention <src>}
+     * — historical records, tolerated". That tolerance is the property
+     * {@code onboarding.remedies.are.runnable} asserts, and it is worth
+     * nothing over a home with no mentions.
+     *
+     * <p>Nothing in this fixture produced one. The units are authored here and
+     * none of them had any reason to name the home they would later be
+     * installed into, so the mention count was zero and the tolerance assertion
+     * was true of an empty set. It was never planted; issues #144 and #145 did
+     * not take it away. #144 narrowed the DIAGNOSTIC half (a path inside a
+     * persisted {@code errors[].message} in {@code installed/<unit>.json}) and
+     * #145 re-anchors more STATE — neither surface has ever been counted as a
+     * content mention, so neither could have supplied one.
+     *
+     * <p>So it is planted as the exact shape the assertion is about: authored
+     * unit content, written into the unit SOURCE before install, so the real
+     * {@code install} places it and the drift baseline covers it. Written
+     * afterwards, straight into the store, it would be content the home's own
+     * baseline does not know about — a second, invented failure mode.
+     *
+     * <h2>Both spellings, and why that is not belt-and-braces</h2>
+     *
+     * <p>The check is a byte scan for the needle {@code --against} was given,
+     * and on macOS the sandbox lives at {@code /var/folders/…}, a symlink to
+     * {@code /private/var/folders/…}. {@code bootstrap-home.sh} resolves its
+     * source and clones from the {@code /private} spelling; this graph's nodes
+     * pass the fixture's unresolved one. A page holding only one of them
+     * measures which caller happened to spell it that way, and would report
+     * zero mentions on a home that plainly has one.
+     */
+    static String mentionSourcePage(Path srcHome) {
+        List<String> spellings = new ArrayList<>();
+        spellings.add(srcHome.toAbsolutePath().normalize().toString());
+        // {@link #canonical}, not {@code toRealPath}: this page is written
+        // BEFORE the first install, so the source home does not exist yet and
+        // toRealPath throws — which silently left the page holding one spelling
+        // and the clone's own report counting zero mentions while `home verify`
+        // counted one. canonical resolves the deepest ancestor that does exist.
+        String real = canonical(srcHome).toString();
+        if (!spellings.contains(real)) spellings.add(real);
+        StringBuilder page = new StringBuilder("# where this unit came from\n\n"
+                + "A historical record, left as written — the kind of authored line a\n"
+                + "`home verify` must report as tolerated rather than as an isolation leak.\n"
+                + "It is prose: nothing resolves through it and deleting that home breaks\n"
+                + "nothing here.\n\n");
+        for (String spelling : spellings) {
+            page.append("- first installed from ").append(spelling).append('\n');
+        }
+        return page.toString();
+    }
+
+    /** Is the planted mention present in {@code home}, naming {@code needle}? */
+    static boolean mentionLanded(Path home, String needle) {
+        return read(home.resolve(MENTION_REL)).contains(needle);
+    }
+
+    /**
+     * The five §6.2 realism preconditions, each answered separately so a
      * failing fixture names WHICH one it failed.
      *
      * <p>These exist because the hand run used an 855 MB source home and this
@@ -612,10 +696,10 @@ final class OnboardingSupport {
      */
     record Realism(boolean transitivelyResolvedUnit, boolean regularFileCliShim,
                    boolean danglingShim, boolean foreignClaims, int foreignBindingRecords,
-                   int foreignChildHomes, int provenancelessUnits) {
+                   int foreignChildHomes, int provenancelessUnits, boolean contentMention) {
         boolean ok() {
             return transitivelyResolvedUnit && regularFileCliShim && danglingShim && foreignClaims
-                    && provenancelessUnits >= 2;
+                    && provenancelessUnits >= 2 && contentMention;
         }
     }
 
@@ -663,8 +747,13 @@ final class OnboardingSupport {
                 provenanceless++;
             }
         }
+        // The authored mention the tolerance guard is about. Checked against the
+        // home's OWN path so the check cannot be satisfied by the fixture merely
+        // having written a file — the bytes that matter are the ones the byte
+        // scan will look for.
+        boolean mention = mentionLanded(srcHome, srcHome.toAbsolutePath().normalize().toString());
         return new Realism(transitive, regularShim, dangling,
-                bindings >= 2 && children >= 2, bindings, children, provenanceless);
+                bindings >= 2 && children >= 2, bindings, children, provenanceless, mention);
     }
 
     /** Does {@code installed/<unit>.json} in {@code home} contain {@code needle}? */
@@ -911,6 +1000,62 @@ final class OnboardingSupport {
     }
 
     // --------------------------------------------------- a tiny path helper
+
+    /**
+     * The path a script's {@code log:} line names, or {@code ""}.
+     *
+     * <p>The scripts now print a short contract plus {@code log: <path>} and put
+     * the detail in that file. A node that asserts on text the CLI emits must
+     * follow it, or it silently asserts against a string the text was moved out
+     * of — which reads as "the clause is missing" when the clause is fine, and
+     * would read as "everything passes" for any assertion phrased as an absence.
+     */
+    static String namedLogPath(String text) {
+        String p = firstGroup(text, Pattern.compile("(?m)^\\s*log:\\s+(\\S+)"));
+        return p == null ? "" : p;
+    }
+
+    /**
+     * A captured console log, plus whatever file its {@code log:} line names.
+     *
+     * <p>Both the CLI and the scripts now print a short contract and demote the
+     * detail to a run log. Any node asserting on detail must read both, or it
+     * asserts against the half the detail was moved out of. Returns {@code ""}
+     * for an empty path so callers can join unconditionally.
+     */
+    static String withNamedLog(String consoleLogPath) {
+        if (consoleLogPath == null || consoleLogPath.isEmpty()) return "";
+        return plusNamedLog(read(Path.of(consoleLogPath)));
+    }
+
+    /**
+     * Console output, plus whatever file its own {@code log:} line names.
+     *
+     * <p>The content-level twin of {@link #withNamedLog(String)}, for callers
+     * that already hold the console text rather than a path to it.
+     *
+     * <p><b>A named log that is not there is a THROWN failure, never a silent
+     * "".</b> The whole point of following the footer is that the detail moved;
+     * if the file it moved to cannot be read, every assertion phrased as "the
+     * text is present" reports the clause missing when it is not, and — far
+     * worse — every assertion phrased as an absence passes over an empty
+     * string. Both readings are wrong in the direction that does not get
+     * noticed, so this is the one place that decides, and it decides loudly:
+     * {@code Node.run} turns the throw into an errored node naming the path.
+     */
+    static String plusNamedLog(String console) {
+        if (console == null || console.isEmpty()) return "";
+        String named = namedLogPath(console);
+        if (named.isEmpty()) return console;
+        String detail = read(Path.of(named));
+        if (detail.isEmpty()) {
+            throw new IllegalStateException(
+                    "output named a run log at " + named + " and it is empty or unreadable — "
+                            + "the demoted detail is gone, so nothing below this may be "
+                            + "believed either way");
+        }
+        return console + "\n" + detail;
+    }
 
     /** Read a file, or "" — a missing file is a finding for the caller, not here. */
     static String read(Path path) {

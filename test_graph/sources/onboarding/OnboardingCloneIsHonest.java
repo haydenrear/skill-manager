@@ -114,7 +114,22 @@ public class OnboardingCloneIsHonest {
             if (proj == null || srcHome == null || home == null || logPath.isEmpty()) {
                 return NodeResult.fail("onboarding.clone.is.honest", "missing upstream context");
             }
-            String log = OnboardingSupport.read(Path.of(logPath));
+            // The clone verdict is emitted by the CLI at Log.ok, so `home clone`
+            // run directly still prints it. But bootstrap-home.sh's contract is
+            // now six lines plus a `log:` path, and it captures the CLI's output
+            // into that file — so via the bootstrap the clauses live in the log,
+            // not in the captured stdout this node used to read.
+            //
+            // Read BOTH. The property under test is that the clone STATED what it
+            // checked and what it did not; which of the two sinks carries it is
+            // the script's presentation choice, not the clone's honesty.
+            //
+            // `withNamedLog` fails loudly rather than silently reading nothing:
+            // if the bootstrap named a log and it is not there, the evidence is
+            // gone and every clause below would "pass" by being absent from an
+            // empty string. That rule lives in the helper so every node that
+            // follows a footer inherits it.
+            String log = OnboardingSupport.withNamedLog(logPath);
 
             // --- 1. the message states what it checked and what it did not -----
             List<String> missingClauses = new ArrayList<>();
