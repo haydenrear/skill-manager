@@ -230,26 +230,48 @@ public final class QuietConsoleTest {
                                     + loud.lines().size());
                 })
 
-                .test("the backends classify: already-present is never reported as installed", () -> {
-                    // The counts above are only evidence if the backends
-                    // actually distinguish the two cases. TarBackend is the one
-                    // that can be driven both ways without a network: a dep
-                    // whose binary is already in bin/cli/ is ALREADY_PRESENT,
-                    // and one with no install target for this platform is
-                    // SKIPPED. Run for real, not asserted against a comment.
+                .test("the backend itself demotes the no-op — console silent, log has it", () -> {
+                    // THE PRINT SITE, not a stand-in for it. The rollup cases
+                    // above build their tally from facts, so a mutation that
+                    // put `Log.ok` back inside the backends left them green:
+                    // the fixture was emitting the lines, not the backend. This
+                    // case drives TarBackend directly.
+                    //
+                    // TarBackend is the one backend that reaches both branches
+                    // with no network: a dep whose binary is already in bin/cli
+                    // is ALREADY_PRESENT, and one with no install target for
+                    // this platform is SKIPPED.
                     SkillStore store = tempStore("classify");
                     java.nio.file.Files.createDirectories(store.cliBinDir());
                     java.nio.file.Files.writeString(
                             store.cliBinDir().resolve("already-there"), "#!/bin/sh\n");
-
                     dev.skillmanager.cli.installer.TarBackend backend =
                             new dev.skillmanager.cli.installer.TarBackend();
+
+                    dev.skillmanager.cli.installer.InstallOutcome[] outcome =
+                            new dev.skillmanager.cli.installer.InstallOutcome[2];
+                    Capture c = capture(() -> {
+                        outcome[0] = backend.install(dep("already-there"), store, "unit-a");
+                        outcome[1] = backend.install(dep("no-target-here"), store, "unit-a");
+                    });
+
+                    // The classification.
                     assertEquals(dev.skillmanager.cli.installer.InstallOutcome.ALREADY_PRESENT,
-                            backend.install(dep("already-there"), store, "unit-a"),
-                            "a binary already in bin/cli is a STATE, not an event");
+                            outcome[0], "a binary already in bin/cli is a STATE, not an event");
                     assertEquals(dev.skillmanager.cli.installer.InstallOutcome.SKIPPED,
-                            backend.install(dep("no-target-here"), store, "unit-a"),
-                            "and a dep with no install target is neither");
+                            outcome[1], "and a dep with no install target is neither");
+
+                    // The routing: the no-op does not reach the console...
+                    assertFalse(c.text().contains("already installed"),
+                            "the backend's own no-op line is off the console; got:\n" + c.text());
+                    // ...but the refusal, which the caller may have to act on, does.
+                    assertContains(c.text(), "no install target for no-target-here",
+                            "while the refusal it cannot fix by itself still prints");
+                    // ...and the no-op is written down rather than dropped.
+                    assertNotNull(c.log(), "a run log was written");
+                    assertContains(Files.readString(c.log(), StandardCharsets.UTF_8),
+                            "cli: already-there already installed",
+                            "the demoted backend line is in the run log");
                 })
 
                 .test("a sync refusal still names the unit and the command that clears it", () -> {
