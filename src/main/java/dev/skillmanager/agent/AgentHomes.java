@@ -262,14 +262,37 @@ public final class AgentHomes {
     }
 
     /**
-     * The one Claude config location, in both of the spellings callers
-     * need: {@code root} is the parent that holds {@code .claude/} and
-     * {@code .claude.json}; {@code configDir} is the {@code .claude/}
-     * directory itself.
+     * The one Claude config location, in the three spellings callers need:
+     * {@code root} is the parent directory, {@code configDir} is the
+     * {@code .claude/} tree, and {@code configFile} is the {@code .claude.json}
+     * the Claude CLI reads its {@code mcpServers} out of.
      *
-     * <p>They are two views of a single value, never two values.
+     * <p>They are three views of a single value, never three values.
+     *
+     * <h2>Why {@code configFile} is not {@code root.resolve(".claude.json")}</h2>
+     *
+     * <p>Because it is only that when {@code CLAUDE_CONFIG_DIR} is unset.
+     * Claude Code reads {@code $CLAUDE_CONFIG_DIR/.claude.json} when the
+     * variable is set and {@code ~/.claude.json} when it is not — the file
+     * moves <em>with the config dir</em>, it does not stay beside it. Deriving
+     * it from {@code root} was right for the global home and wrong for every
+     * per-checkout home, and the failure was silent in the worst way: {@code
+     * install} reported {@code ADDED claude (<project>/.claude.json)} while the
+     * launched agent, given {@code CLAUDE_CONFIG_DIR=<project>/.claude}, read
+     * {@code <project>/.claude/.claude.json} and saw no MCP tools at all.
+     *
+     * <p>Measured: the real {@code claude} binary, run by that same install's
+     * {@code marketplace-add} step under that same env, created
+     * {@code <project>/.claude/.claude.json} itself. Two files, one of them
+     * with {@code mcpServers} and one of them the one the agent reads, and
+     * they were not the same file. The stray {@code <project>/.claude.json}
+     * also fell outside the documented {@code /.claude/} gitignore rule, which
+     * is what then made {@code wt new} refuse on an unclean tree.
      */
-    public record ClaudeHome(Path root, Path configDir) {}
+    public record ClaudeHome(Path root, Path configDir, Path configFile) {}
+
+    /** The basename of Claude's JSON config file, in whichever directory it lives. */
+    public static final String CLAUDE_CONFIG_FILENAME = ".claude.json";
 
     /**
      * Resolve Claude's config location <em>once</em>, for every caller.
@@ -378,11 +401,18 @@ public final class AgentHomes {
         Path explicitConfigDir = lookup.apply(CLAUDE_CONFIG_DIR);
         if (explicitConfigDir != null) {
             Path parent = explicitConfigDir.getParent();
-            return new ClaudeHome(parent != null ? parent : explicitConfigDir, explicitConfigDir);
+            // CLAUDE_CONFIG_DIR set: the CLI relocates the whole config tree,
+            // .claude.json included. See ClaudeHome for the measurement.
+            return new ClaudeHome(parent != null ? parent : explicitConfigDir, explicitConfigDir,
+                    explicitConfigDir.resolve(CLAUDE_CONFIG_FILENAME));
         }
         Path root = lookup.apply(CLAUDE_HOME);
         if (root == null) root = fallbackRoot;
-        return new ClaudeHome(root, root.resolve(CLAUDE_DIR_NAME));
+        // CLAUDE_CONFIG_DIR unset: the CLI reads <home>/.claude.json, beside
+        // <home>/.claude and not inside it. For the global home that is
+        // ~/.claude.json, which is where the operator's own entries live.
+        return new ClaudeHome(root, root.resolve(CLAUDE_DIR_NAME),
+                root.resolve(CLAUDE_CONFIG_FILENAME));
     }
 
     /**
