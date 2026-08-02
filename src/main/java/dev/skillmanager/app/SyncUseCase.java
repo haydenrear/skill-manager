@@ -108,10 +108,16 @@ public final class SyncUseCase {
             List<String> conflicted,
             int errorCount,
             Map<McpWriter.ConfigChange, List<String>> agentConfigChanges,
-            List<String> orphansUnregistered) {
+            List<String> orphansUnregistered,
+            /**
+             * Markdown skill-import violations reported by this run. See
+             * {@link dev.skillmanager.validation.MarkdownImportValidator#EXIT_CODE}
+             * for why a printed violation has to reach an exit code.
+             */
+            int markdownImportViolations) {
 
         public static Report empty() {
-            return new Report(0, List.of(), List.of(), 0, Map.of(), List.of());
+            return new Report(0, List.of(), List.of(), 0, Map.of(), List.of(), 0);
         }
     }
 
@@ -383,6 +389,7 @@ public final class SyncUseCase {
         int errorCount = 0;
         Map<McpWriter.ConfigChange, List<String>> agentChanges = new LinkedHashMap<>();
         List<String> orphans = new ArrayList<>();
+        int importViolations = 0;
 
         for (EffectReceipt r : receipts) {
             // Each receipt counts at most once. PARTIAL counts on per-target
@@ -417,11 +424,13 @@ public final class SyncUseCase {
                             .computeIfAbsent(c.change(), k -> new ArrayList<>())
                             .add(c.agentId() + " (" + c.configPath() + ")");
                     case ContextFact.OrphanUnregistered o -> orphans.add(o.serverId());
+                    case ContextFact.MarkdownImportViolation ignored -> importViolations++;
                     default -> {}
                 }
             }
         }
-        return new Report(worstRc, refused, conflicted, errorCount, agentChanges, orphans);
+        return new Report(worstRc, refused, conflicted, errorCount, agentChanges, orphans,
+                importViolations);
     }
 
     public static void printSyncSummary(Report report) {

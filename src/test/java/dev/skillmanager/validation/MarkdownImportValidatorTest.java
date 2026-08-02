@@ -1,7 +1,11 @@
 package dev.skillmanager.validation;
 
+import dev.skillmanager._lib.harness.TestHarness;
 import dev.skillmanager._lib.test.Tests;
+import dev.skillmanager.app.InstallUseCase;
+import dev.skillmanager.effects.ConsoleProgramRenderer;
 import dev.skillmanager.effects.EffectContext;
+import dev.skillmanager.mcp.GatewayConfig;
 import dev.skillmanager.effects.EffectReceipt;
 import dev.skillmanager.effects.EffectStatus;
 import dev.skillmanager.effects.LiveInterpreter;
@@ -213,7 +217,175 @@ public final class MarkdownImportValidatorTest {
             assertSize(0, second.facts(), "second duplicate suppressed");
         });
 
+        // ------------------------------------------------------------- D6
+
+        suite.test("install exits non-zero when it reports skill-import violations", () -> {
+            // Measured: `skill-manager install file://…/acme-broken --yes`
+            // exited 0 while printing two violations — at the bottom of a long
+            // install, under the success banner and BELOW `ACTION_REQUIRED:
+            // Restart Claude / Codex`. An agent that reads the tail concludes
+            // success. A printed violation that does not reach an exit code is
+            // not a check, it is a comment.
+            try (TestHarness h = TestHarness.create()) {
+                SkillStore store = h.store();
+                installTargetSkill(store, "shared", "reference.md");
+
+                // Companion, mandatory: the home carries no persisted error
+                // record before the step, so a non-zero exit can have no other
+                // cause. This is the trap `sync` falls into — it exits 7 here
+                // for NEEDS_GIT_MIGRATION, so `sync`'s exit code cannot be
+                // used as evidence that violations are fatal.
+                assertSize(0, unitsWithErrors(store), "precondition: no outstanding error records");
+
+                Path units = Files.createTempDirectory("md-import-install-");
+                InstallUseCase.Report report = install(store, brokenUnit(units, "acme-broken"));
+
+                assertTrue(report.committed().contains("acme-broken"),
+                        "precondition: the unit did commit, so exit 4 is not what we are reading");
+                // The exact count, not a substring: an unrelated error
+                // record's remedy text also contains the word "violation".
+                assertEquals(2, report.markdownImportViolations(),
+                        "both violations counted — a missing unit and a missing path");
+                assertEquals(MarkdownImportValidator.EXIT_CODE, report.commandExitCode(),
+                        "and they reach the exit code");
+                assertTrue(MarkdownImportValidator.EXIT_CODE != 0, "which is not zero");
+
+                // The can-fail companion, inverted: a unit whose imports are
+                // valid installs in the same home and exits 0 with no
+                // violations. Without this the assertion above is satisfied by
+                // an implementation that fails every install.
+                InstallUseCase.Report clean = install(store, cleanUnit(units, "acme-lint"));
+                assertTrue(clean.committed().contains("acme-lint"), "the clean unit committed");
+                assertEquals(0, clean.markdownImportViolations(), "no violations for valid imports");
+                assertEquals(0, clean.commandExitCode(), "and it exits 0");
+            }
+        });
+
+        suite.test("violations are printed before the ACTION_REQUIRED restart banner", () -> {
+            // The other half of the same defect: the block landed after the
+            // line that reads as the last word on the run. Order is not a
+            // substitute for the exit code, but a report whose closing line
+            // contradicts its own findings costs a round trip anyway.
+            SkillStore store = store();
+            ConsoleProgramRenderer renderer = new ConsoleProgramRenderer(
+                    store, GatewayConfig.of(java.net.URI.create("http://127.0.0.1:51717")));
+            EffectReceipt receipt = EffectReceipt.partial(
+                    new SkillEffect.ValidateMarkdownImports(List.of("acme-broken")),
+                    List.of(
+                            new dev.skillmanager.effects.ContextFact.AgentMcpConfigChanged(
+                                    "claude", dev.skillmanager.mcp.McpWriter.ConfigChange.ADDED,
+                                    "/tmp/x/.claude/.claude.json"),
+                            new dev.skillmanager.effects.ContextFact.MarkdownImportViolation(
+                                    "acme-broken", "skill", "SKILL.md",
+                                    "skill-imports[0] references missing unit `no-such-unit`"),
+                            new dev.skillmanager.effects.ContextFact.MarkdownImportViolation(
+                                    "acme-broken", "skill", "SKILL.md",
+                                    "skill-imports[1] references missing path `absent.md`")),
+                    "2 markdown skill-import violation(s)");
+
+            String out = capture(() -> {
+                renderer.onReceipt(receipt);
+                renderer.onComplete();
+            });
+
+            int violations = out.indexOf("markdown skill-import violations (2)");
+            int actionRequired = out.indexOf("ACTION_REQUIRED");
+            assertTrue(violations >= 0, "the violation block is printed: " + out);
+            assertTrue(actionRequired >= 0,
+                    "precondition: the ACTION_REQUIRED banner is printed too, so the "
+                            + "ordering assertion is about two lines that both exist");
+            assertTrue(violations < actionRequired,
+                    "violations come first, not after the line that reads as the last word");
+            assertContains(out, "references missing unit `no-such-unit`", "first message named");
+            assertContains(out, "references missing path `absent.md`", "second message named");
+        });
+
         return suite.runAll();
+    }
+
+    /** Names of installed units carrying at least one persisted error record. */
+    private static List<String> unitsWithErrors(SkillStore store) throws Exception {
+        List<String> out = new java.util.ArrayList<>();
+        dev.skillmanager.source.UnitStore sources = new dev.skillmanager.source.UnitStore(store);
+        for (var unit : store.listInstalledUnits().units()) {
+            sources.read(unit.name()).ifPresent(src -> {
+                if (src.hasErrors()) out.add(unit.name());
+            });
+        }
+        return out;
+    }
+
+    /** A local unit with exactly two invalid imports: a missing unit and a missing path. */
+    private static Path brokenUnit(Path root, String name) throws Exception {
+        Path dir = root.resolve(name);
+        Files.createDirectories(dir);
+        Files.writeString(dir.resolve("SKILL.md"), """
+                ---
+                name: %s
+                description: %s — fixture with two bad imports
+                skill-imports:
+                  - unit: no-such-unit
+                    path: reference.md
+                    reason: Needed by tests.
+                  - unit: shared
+                    path: references/definitely-missing.md
+                    reason: Needed by tests.
+                ---
+                body
+                """.formatted(name, name));
+        Files.writeString(dir.resolve("skill-manager.toml"), """
+                [skill]
+                name = "%s"
+                version = "0.1.0"
+                description = "%s — fixture"
+                """.formatted(name, name));
+        return dir;
+    }
+
+    /** The control: same shape, one import that resolves. */
+    private static Path cleanUnit(Path root, String name) throws Exception {
+        Path dir = root.resolve(name);
+        Files.createDirectories(dir);
+        Files.writeString(dir.resolve("SKILL.md"), """
+                ---
+                name: %s
+                description: %s — fixture with a valid import
+                skill-imports:
+                  - unit: shared
+                    path: reference.md
+                    reason: Needed by tests.
+                ---
+                body
+                """.formatted(name, name));
+        Files.writeString(dir.resolve("skill-manager.toml"), """
+                [skill]
+                name = "%s"
+                version = "0.1.0"
+                description = "%s — fixture"
+                """.formatted(name, name));
+        return dir;
+    }
+
+    /** Run the real install program over a local directory, no gateway. */
+    private static InstallUseCase.Report install(SkillStore store, Path unitDir) {
+        var program = InstallUseCase.buildProgram(
+                store, null, null, unitDir.toString(), null, true, false, false, true);
+        return new dev.skillmanager.effects.Executor(store, null).runStaged(program).result();
+    }
+
+    private static String capture(Runnable body) {
+        java.io.ByteArrayOutputStream buf = new java.io.ByteArrayOutputStream();
+        java.io.PrintStream previousOut = System.out;
+        java.io.PrintStream previousErr = System.err;
+        try (java.io.PrintStream capture = new java.io.PrintStream(buf, true)) {
+            System.setOut(capture);
+            System.setErr(capture);
+            body.run();
+        } finally {
+            System.setOut(previousOut);
+            System.setErr(previousErr);
+        }
+        return buf.toString();
     }
 
     private static SkillStore store() throws Exception {

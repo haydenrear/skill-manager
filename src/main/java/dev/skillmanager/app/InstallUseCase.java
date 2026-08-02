@@ -51,9 +51,39 @@ public final class InstallUseCase {
             int exitCode,
             List<String> committed,
             Map<McpWriter.ConfigChange, List<String>> agentConfigChanges,
-            List<String> orphansUnregistered) {
+            List<String> orphansUnregistered,
+            /**
+             * Markdown skill-import violations reported by this run. Carried
+             * on the report rather than left in the printed output so the
+             * command can give them an exit code — see
+             * {@link dev.skillmanager.validation.MarkdownImportValidator#EXIT_CODE}.
+             */
+            int markdownImportViolations) {
 
-        public static Report empty() { return new Report(0, 0, List.of(), Map.of(), List.of()); }
+        public static Report empty() {
+            return new Report(0, 0, List.of(), Map.of(), List.of(), 0);
+        }
+
+        /**
+         * The exit code {@code install} reports for this run.
+         *
+         * <p>Here rather than inline in {@code InstallCommand} so the decision
+         * has one spelling and can be asserted without driving picocli. The
+         * order is the priority order: a typed halt (resolve failure, policy
+         * gate) outranks everything; "nothing committed" (4) outranks a
+         * content complaint, because a unit that did not land is a bigger fact
+         * than a bad reference inside one that did; and a printed skill-import
+         * violation reaches an exit code rather than being a comment under the
+         * success banner.
+         */
+        public int commandExitCode() {
+            if (exitCode != 0) return exitCode;
+            if (committed.isEmpty()) return 4;
+            if (markdownImportViolations > 0) {
+                return dev.skillmanager.validation.MarkdownImportValidator.EXIT_CODE;
+            }
+            return 0;
+        }
     }
 
     /**
@@ -277,6 +307,7 @@ public final class InstallUseCase {
         List<String> committed = new ArrayList<>();
         Map<McpWriter.ConfigChange, List<String>> agentChanges = new LinkedHashMap<>();
         List<String> orphans = new ArrayList<>();
+        int importViolations = 0;
         for (EffectReceipt r : receipts) {
             if (r.status() == EffectStatus.FAILED || r.status() == EffectStatus.PARTIAL) errorCount++;
             boolean commitFailed = r.status() == EffectStatus.FAILED
@@ -290,6 +321,7 @@ public final class InstallUseCase {
                             .computeIfAbsent(c.change(), k -> new ArrayList<>())
                             .add(c.agentId() + " (" + c.configPath() + ")");
                     case ContextFact.OrphanUnregistered o -> orphans.add(o.serverId());
+                    case ContextFact.MarkdownImportViolation ignored -> importViolations++;
                     case ContextFact.HaltWithExitCode h -> {
                         // The first non-zero exit code wins — typed
                         // halts (resolve failure, policy gate) take
@@ -301,6 +333,7 @@ public final class InstallUseCase {
                 }
             }
         }
-        return new Report(errorCount, exitCode, committed, agentChanges, orphans);
+        return new Report(errorCount, exitCode, committed, agentChanges, orphans,
+                importViolations);
     }
 }

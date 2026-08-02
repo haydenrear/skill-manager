@@ -172,14 +172,15 @@ public final class InstallCommand implements Callable<Integer> {
             Log.warn("install rolled back %d effect(s) — no partial state retained",
                     outcome.applied().size());
         }
-        if (report.exitCode() != 0) return report.exitCode();
         // Renderer printed every user-facing line; the only command-level
         // decision left is the exit code. Install succeeds when the skill
         // committed — post-commit failures (MCP register, transitive
         // install, agent sync) are tracked as outstanding errors on the
         // source record for the reconciler to retry. Exit 4 is reserved
         // for "nothing committed" (commit failed or program halted
-        // before commit).
-        return report.committed().isEmpty() ? 4 : 0;
+        // before commit), and MarkdownImportValidator.EXIT_CODE for a run
+        // that printed skill-import violations. The rule lives on the report
+        // so `dry-run` and the live path cannot drift apart.
+        return report.commandExitCode();
     }
 }

@@ -37,6 +37,31 @@ public final class MarkdownImportValidator {
 
     public static final String FRONTMATTER_KEY = "skill-imports";
 
+    /**
+     * Exit code for "the run printed skill-import violations".
+     *
+     * <h2>Why a violation needs an exit code at all</h2>
+     *
+     * <p>{@code install} used to print the violation block and exit 0. The
+     * block lands after the success banner and after {@code ACTION_REQUIRED},
+     * at the bottom of a long install, so an agent that reads the last lines
+     * or checks {@code $?} concludes success — and a printed violation that
+     * does not reach an exit code is not a check, it is a comment. Measured:
+     * installing a unit with two bad imports (one naming a missing unit, one
+     * naming a missing path in a present unit) exited 0 with both printed.
+     *
+     * <p>Distinct from the generic 1 so a caller can tell "your markdown names
+     * something that is not there" from "the install failed". The unit is
+     * still committed when this fires — the bytes are on disk and the
+     * references in them are wrong — which is why it is reported after the
+     * commit-failure code (4) rather than instead of it.
+     *
+     * <p>7, 8, 9 and 10 are taken (auth / unredirected launch; registry
+     * unavailable / drift; frozen home / gateway attached / clone auth; git
+     * fetch).
+     */
+    public static final int EXIT_CODE = 11;
+
     private MarkdownImportValidator() {}
 
     public record UnitRoot(String unitName, UnitKind kind, Path root) {}
