@@ -49,6 +49,7 @@ public class OnboardingBootstrapped {
             .output("projectHome", "string")
             .output("bootstrapLog", "string")
             .output("storeUnitCount", "string")
+            .output("bootstrapExit", "string")
             .output("sourceForeignLedger", "string")
             .output("cloneForeignLedger", "string")
             .output("sourceForeignChildHomes", "string")
@@ -138,6 +139,10 @@ public class OnboardingBootstrapped {
                     .publish("bootstrapLog", bootstrap.logPath() == null ? ""
                             : ctx.reportDir().resolve(bootstrap.logPath()).toString())
                     .publish("storeUnitCount", String.valueOf(storeUnits))
+                    // Published because the projection node needs it: a shortfall
+                    // now exits 6, so "did the tool's exit code agree with what it
+                    // actually projected" is checkable rather than inferred.
+                    .publish("bootstrapExit", String.valueOf(bootstrap.exitCode()))
                     .publish("sourceForeignLedger", String.join("\n", sourceForeign))
                     .publish("cloneForeignLedger", String.join("\n", cloneForeign))
                     .publish("sourceForeignChildHomes", String.join("\n", sourceChildHomes))

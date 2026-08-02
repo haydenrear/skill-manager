@@ -217,9 +217,19 @@ public class OnboardingCloneDropsForeignClaims {
                 : rows.subList(0, 10) + " (+" + (rows.size() - 10) + " more)";
     }
 
+    /**
+     * The first line that is actually the command's output.
+     *
+     * <p>A JVM launched with {@code JAVA_TOOL_OPTIONS} prints
+     * {@code Picked up JAVA_TOOL_OPTIONS: …} to stderr before anything else,
+     * and merged capture puts it first — so the evidence this node recorded for
+     * a refusal was the sandbox's own banner rather than the refusal.
+     */
     private static String firstLine(String text) {
         for (String line : text.split("\n", -1)) {
-            if (!line.isBlank()) return line.strip();
+            String s = line.strip();
+            if (s.isBlank() || s.startsWith("Picked up JAVA_TOOL_OPTIONS")) continue;
+            return s;
         }
         return "";
     }

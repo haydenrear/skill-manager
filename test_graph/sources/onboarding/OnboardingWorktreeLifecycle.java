@@ -65,7 +65,8 @@ public class OnboardingWorktreeLifecycle {
             .output("worktree", "string")
             .output("worktreeServable", "string")
             .output("worktreeStore", "string")
-            .output("blockerUnit", "string");
+            .output("blockerUnit", "string")
+            .output("closableDryRunExit", "string");
 
     static final String TICKET = "OB-1";
 
@@ -119,6 +120,32 @@ public class OnboardingWorktreeLifecycle {
                 wtServable = OnboardingSupport.servableUnits(wtHome, worktree).size();
             }
 
+            // --- 3b. a freshly projected worktree home is still CLOSABLE ------------
+            //
+            // THE COMPANION WITHOUT WHICH THE GATE ASSERTIONS BELOW MEAN
+            // NOTHING. This node deliberately makes the worktree unclosable in
+            // the next step, so "the gate refused" cannot on its own tell
+            // "refused because of the unit I planted" from "refused because
+            // creating the worktree already dirtied it". The dry run splits
+            // them: it is taken BEFORE anything is planted, and it must come
+            // back CLEAN.
+            //
+            // It is also the standing guard on how the missing projection gets
+            // repaired. `home close-out` counts skills/<u>/.git/index as unit
+            // work, and that file is stat-dependent rather than content — so a
+            // repair that touches unit content at all (`sync --skip-mcp` on a
+            // worktree home does) leaves `BLOCKED skill:<u> (merged) - 1
+            // file(s) come from the source` and a worktree nobody can tear
+            // down. A ledger-first repair, materializing projection records the
+            // clone already carries, does not. This assertion is what keeps the
+            // difference visible rather than a matter of opinion.
+            ProcessRecord closable = OnboardingSupport.script(ctx, "wt-close-dry-run", proj,
+                    wt, ambient, "close", TICKET, "--dry-run");
+            String closableLog = OnboardingSupport.log(ctx, closable);
+            boolean projectingAWorktreeHomeDoesNotMakeItUnclosable =
+                    theWorktreeWasCreated && closable.exitCode() == 0
+                            && OnboardingSupport.hasContractKey(closableLog, "CLEAN");
+
             // --- 4. put work in the worktree home the project home lacks -----------
             //
             // The smallest state in which the close-out gate has something to
@@ -160,6 +187,7 @@ public class OnboardingWorktreeLifecycle {
             boolean pass = theRefusalMatchedTheTreeState && theWorktreeWasCreated
                     && theWorktreeHoldsAUnitTheProjectHomeDoesNot
                     && theWorktreeHomeHasAStore && everyUnitInTheWorktreeStoreIsServable
+                    && projectingAWorktreeHomeDoesNotMakeItUnclosable
                     && theGateRefusedTheClose && theGateNamedTheExactUnit
                     && theForcedCloseSucceeded && theWorktreeIsGone;
 
@@ -170,12 +198,13 @@ public class OnboardingWorktreeLifecycle {
                                     + " dirtyNewExit=" + dirtyNew.exitCode()
                                     + " newExit=" + newRun.exitCode()
                                     + " worktree=" + worktree
+                                    + " closableDryRunExit=" + closable.exitCode()
                                     + " blockerHeld=" + theWorktreeHoldsAUnitTheProjectHomeDoesNot
                                     + " blockedCloseExit=" + blockedClose.exitCode()
                                     + " gateNamedUnit=" + theGateNamedTheExactUnit
                                     + " forcedCloseExit=" + forcedClose.exitCode()
                                     + " worktreeGone=" + theWorktreeIsGone);
-            result = result.process(dirtyNew);
+            result = result.process(dirtyNew).process(closable);
             if (newRun != dirtyNew) result = result.process(newRun);
             if (installIntoWorktree != null) result = result.process(installIntoWorktree);
             return result.process(blockedClose).process(forcedClose)
@@ -188,6 +217,8 @@ public class OnboardingWorktreeLifecycle {
                             theWorktreeHomeHasAStore)
                     .assertion("every_unit_in_the_worktree_store_is_servable_to_an_agent",
                             everyUnitInTheWorktreeStoreIsServable)
+                    .assertion("projecting_a_worktree_home_does_not_make_it_unclosable",
+                            projectingAWorktreeHomeDoesNotMakeItUnclosable)
                     .assertion("the_close_out_gate_refused_while_the_worktree_held_work",
                             theGateRefusedTheClose)
                     .assertion("the_gate_named_the_exact_unit_that_blocked_it",
@@ -212,7 +243,8 @@ public class OnboardingWorktreeLifecycle {
                     .publish("worktree", worktree == null ? "" : worktree.toString())
                     .publish("worktreeServable", String.valueOf(wtServable))
                     .publish("worktreeStore", String.valueOf(wtStore))
-                    .publish("blockerUnit", blocker);
+                    .publish("blockerUnit", blocker)
+                    .publish("closableDryRunExit", String.valueOf(closable.exitCode()));
         });
     }
 

@@ -151,10 +151,24 @@ public class OnboardingDocsAndScriptsStatic {
                     scriptsDir.toAbsolutePath().normalize()
                             .startsWith(skillRoot.toAbsolutePath().normalize())
                             && Files.isRegularFile(scriptsDir.resolve("bootstrap-home.sh"));
-            // And the outside copy, if any, is NOT counted as satisfying it.
+            // And the predicate is shown to be SENSITIVE, on a name that cannot
+            // exist. The previous form of this companion asserted that
+            // `agent-home.sh` was reported missing — which was true while the
+            // skill did not ship it and became false the moment it did, failing
+            // on the fix rather than on a defect. A companion whose truth
+            // depends on the bug still being there is not a companion; it is the
+            // bug, restated. This one holds in both worlds: a script the skill
+            // does not have must be reported missing, and a script it does have
+            // must not.
             Path parentCopy = outside == null ? null : outside.resolve("scripts/agent-home.sh");
-            boolean anOutsideCopyIsNotCounted = missing.contains("agent-home.sh")
-                    || !referenced.contains("agent-home.sh");
+            String impossible = "ob-no-such-script-" + Math.abs("ob".hashCode()) + ".sh";
+            boolean theExistenceCheckReportsAnAbsentScript =
+                    !Files.isRegularFile(scriptsDir.resolve(impossible));
+            boolean theExistenceCheckAcceptsAPresentScript =
+                    Files.isRegularFile(scriptsDir.resolve("bootstrap-home.sh"));
+            boolean theExistencePredicateDiscriminates =
+                    theExistenceCheckReportsAnAbsentScript
+                            && theExistenceCheckAcceptsAPresentScript;
 
             // --- property two: relative CLI resolution ------------------------
             List<String> relativeHits = new ArrayList<>();
@@ -179,7 +193,7 @@ public class OnboardingDocsAndScriptsStatic {
 
             boolean pass = theExtractorFoundSomething && theExtractorFoundTheKnownGoodScripts
                     && everyDocumentedScriptExists && theResolutionBaseIsTheSkillRoot
-                    && anOutsideCopyIsNotCounted
+                    && theExistencePredicateDiscriminates
                     && thePatternStillMatchesTheKnownWaivedLines
                     && noScriptOutsideTheWaiverResolvesACliRelatively;
 
@@ -199,8 +213,8 @@ public class OnboardingDocsAndScriptsStatic {
                             everyDocumentedScriptExists)
                     .assertion("the_resolution_base_is_the_skill_root_not_an_ancestor",
                             theResolutionBaseIsTheSkillRoot)
-                    .assertion("a_copy_outside_the_skill_does_not_satisfy_the_predicate",
-                            anOutsideCopyIsNotCounted)
+                    .assertion("the_existence_predicate_discriminates_present_from_absent",
+                            theExistencePredicateDiscriminates)
                     .assertion("the_relative_cli_pattern_still_matches_its_known_waived_lines",
                             thePatternStillMatchesTheKnownWaivedLines)
                     .assertion("no_script_outside_the_waiver_resolves_a_cli_by_relative_path",

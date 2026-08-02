@@ -510,14 +510,29 @@ final class OnboardingSupport {
 
             // The child-home half — the half whose "remove the child home
             // first" remedy, followed literally, points at someone else's repo.
-            Files.writeString(childHomes.resolve("project_" + other),
+            //
+            // The SHAPE is load-bearing and it is not obvious:
+            // ChildHomeRegistry stores child-homes/<id>/child-home.json — a
+            // DIRECTORY per child, holding a record file — with fields id /
+            // parentHome / childHome / harnessName / units / createdAt.
+            // Planted as a flat file with invented field names, the clone's
+            // re-anchor pass skips it (`child.resolve(FILENAME)` is not a
+            // regular file), it survives verbatim, and the node reports a
+            // product defect that is really the fixture being unreadable.
+            // Measured: it did exactly that, and the binding half beside it —
+            // which WAS in the right shape — correctly reported the fix.
+            Path record = childHomes.resolve("project_" + other);
+            Files.createDirectories(record);
+            Files.writeString(record.resolve(CHILD_HOME_FILENAME),
                     """
                     {
-                      "projectName" : "%s",
+                      "id" : "project_%s",
+                      "parentHome" : "%s",
                       "childHome" : "%s/.skill-manager",
-                      "units" : [ "%s" ]
+                      "units" : [ "%s" ],
+                      "createdAt" : "2026-01-01T00:00:00Z"
                     }
-                    """.formatted(other, checkout, unit));
+                    """.formatted(other, srcHome, checkout, unit));
         }
         return planted;
     }
@@ -635,9 +650,44 @@ final class OnboardingSupport {
      * state under test: immediately after the clone, before any command has run
      * against either home.
      */
+    /**
+     * Is {@code candidate} under {@code root}, comparing paths the FILESYSTEM
+     * agrees about rather than the strings two processes happened to hold?
+     *
+     * <p>On macOS the sandbox lives under {@code /var/folders/…}, a symlink to
+     * {@code /private/var/folders/…}. The CLI writes the resolved form into the
+     * ledger; the fixture holds the unresolved one. A {@code startsWith} of the
+     * two strings is FALSE for a record that is in fact inside the home — and
+     * once the clone started re-anchoring records correctly, that produced a
+     * node reporting every one of the copy's own bindings as a foreign claim.
+     * Green-looking code measuring the wrong thing in the other direction.
+     *
+     * <p>Neither path may be assumed to exist: a ledger names destinations that
+     * have not been created yet. So the deepest EXISTING ancestor is resolved
+     * and the remainder appended, which canonicalises the prefix without
+     * requiring the leaf.
+     */
+    static boolean underRoot(String candidate, Path root) {
+        return canonical(Path.of(candidate)).startsWith(canonical(root));
+    }
+
+    /** {@link #underRoot}'s normalisation: real path of the deepest existing ancestor. */
+    static Path canonical(Path path) {
+        Path abs = path.toAbsolutePath().normalize();
+        Path existing = abs;
+        while (existing != null && !Files.exists(existing)) existing = existing.getParent();
+        if (existing == null) return abs;
+        try {
+            Path real = existing.toRealPath();
+            Path rest = existing.relativize(abs);
+            return rest.toString().isEmpty() ? real : real.resolve(rest);
+        } catch (IOException e) {
+            return abs;
+        }
+    }
+
     static List<String> ledgerTargetsOutside(Path home, Path root) {
         List<String> out = new ArrayList<>();
-        Path base = root.toAbsolutePath().normalize();
         Path installed = home.resolve("installed");
         for (String name : names(installed)) {
             if (!name.endsWith(".projections.json")) continue;
@@ -645,24 +695,44 @@ final class OnboardingSupport {
             while (m.find()) {
                 String target = m.group(1);
                 if (!target.startsWith("/")) continue;
-                if (!Path.of(target).toAbsolutePath().normalize().startsWith(base)) {
-                    out.add(name + " -> " + target);
-                }
+                if (!underRoot(target, root)) out.add(name + " -> " + target);
             }
         }
         return out;
     }
 
     /** {@code child-homes/} records naming an absolute path outside {@code root}. */
+    /** {@code ChildHomeRegistry.FILENAME} — the record inside each child's directory. */
+    static final String CHILD_HOME_FILENAME = "child-home.json";
+
+    /** {@code "childHome" : "…"} — the field that carries the claim. */
+    private static final Pattern CHILD_HOME_FIELD =
+            Pattern.compile("\"childHome\"\\s*:\\s*\"([^\"]+)\"");
+
+    /**
+     * {@code child-homes/} records whose {@code childHome} lies outside
+     * {@code root}.
+     *
+     * <p>Keyed on that ONE field, not on every absolute path in the record.
+     * {@code parentHome} legitimately names the home the record was made
+     * under, and a scan of all tokens flagged it — so the node fired on a
+     * record whose claim was domestic, for a reason that is not the defect,
+     * and stopped firing when an unrelated re-anchor happened to rewrite that
+     * other field. {@code childHome} is the field the product's own drop
+     * predicate reads and the field whose "remove the child home first" remedy
+     * points somewhere.
+     */
     static List<String> childHomesOutside(Path home, Path root) {
         List<String> out = new ArrayList<>();
-        Path base = root.toAbsolutePath().normalize();
         Path dir = home.resolve("child-homes");
         for (String name : names(dir)) {
-            for (String token : read(dir.resolve(name)).split("[\"\\s,]+")) {
-                if (!token.startsWith("/")) continue;
-                if (!Path.of(token).toAbsolutePath().normalize().startsWith(base)) {
-                    out.add(name + " -> " + token);
+            Path entry = dir.resolve(name);
+            Path body = Files.isDirectory(entry) ? entry.resolve(CHILD_HOME_FILENAME) : entry;
+            Matcher m = CHILD_HOME_FIELD.matcher(read(body));
+            while (m.find()) {
+                String claim = m.group(1);
+                if (claim.startsWith("/") && !underRoot(claim, root)) {
+                    out.add(name + " -> " + claim);
                     break;
                 }
             }
@@ -711,10 +781,9 @@ final class OnboardingSupport {
 
     /** Rows whose TARGET is not under {@code root}, by real path, not by prefix string. */
     static List<Binding> foreignBindings(List<Binding> rows, Path root) {
-        Path base = root.toAbsolutePath().normalize();
         List<Binding> out = new ArrayList<>();
         for (Binding b : rows) {
-            if (!Path.of(b.target()).toAbsolutePath().normalize().startsWith(base)) out.add(b);
+            if (!underRoot(b.target(), root)) out.add(b);
         }
         return out;
     }

@@ -93,13 +93,43 @@ public class OnboardingLeavesWorkTreeClean {
             boolean theGitignoreIsStillExactlyTheDocumentedFour =
                     rules.equals(OnboardingSupport.DOCUMENTED_IGNORES);
 
-            // --- companion 2: the file the rules must cover DOES exist ---------
+            // --- companion 2: the onboarding sequence really ran ----------------
             //
-            // Without this, "clean" cannot be told apart from "the onboarding
-            // sequence never ran".
-            Path claudeJson = proj.resolve(".claude.json");
-            boolean theOnboardingSequenceActuallyCreatedTheFile =
-                    Files.isRegularFile(claudeJson);
+            // Without this, "clean" cannot be told apart from "nothing ever
+            // wrote anything".
+            //
+            // The proxy is the MCP registration landing where the agent reads
+            // it — <root>/.claude/.claude.json — NOT the existence of
+            // <root>/.claude.json. It used to be the latter, and that was a
+            // proxy for the sequence having run only for as long as the sequence
+            // put a file in the work tree. Writing the entry to the config
+            // directory instead fixed the untracked file AND made the old
+            // companion fail, on a run where the property under test had just
+            // become true. A precondition that only holds while the defect does
+            // is not measuring the precondition.
+            Path strayInWorkTree = proj.resolve(".claude.json");
+            Path whereTheAgentReads = proj.resolve(".claude").resolve(".claude.json");
+            boolean theOnboardingSequenceActuallyRan =
+                    Files.isRegularFile(whereTheAgentReads)
+                            || Files.isRegularFile(strayInWorkTree);
+
+            // --- which mechanism made it clean, if it is clean ------------------
+            //
+            // Worth naming, because the fix did NOT arrive where the spec
+            // expected it. `references/skill-homes.md` prescribes four
+            // .gitignore rules and the assertion was that they should cover the
+            // file; what actually landed is a `/.claude.json` line in
+            // .git/info/exclude, written per checkout. The work tree is clean
+            // either way, but only one of those is the documented contract, and
+            // a node that reported a bare green would let a reader conclude the
+            // docs were now correct. They are not: the tracked .gitignore still
+            // carries exactly the four rules, asserted above.
+            String ignoredBy = HomeSyncSupport.git(proj,
+                    "check-ignore", "-v", ".claude.json").trimmed();
+            String coveredBy = ignoredBy.isEmpty() ? "nothing"
+                    : ignoredBy.contains(".git/info/exclude") ? ".git/info/exclude (per checkout)"
+                            : ignoredBy.contains(".gitignore") ? "the tracked .gitignore"
+                                    : ignoredBy;
 
             // --- the assertion ------------------------------------------------
             String status = HomeSyncSupport.git(proj, "status", "--porcelain").trimmed();
@@ -111,30 +141,38 @@ public class OnboardingLeavesWorkTreeClean {
 
             // Which of the two ways it could be clean did this run take? Stated
             // as a metric rather than inferred by a reader from the pass/fail.
-            String route = !theOnboardingSequenceActuallyCreatedTheFile
-                    ? "the file was never created — this run did not measure the ignore rules"
-                    : theDocumentedSequenceLeftTheWorkTreeClean
-                            ? "the file exists AND is covered by the documented rules"
-                            : "the file exists and is NOT covered by the documented rules";
+            String route = !theOnboardingSequenceActuallyRan
+                    ? "no MCP registration anywhere — this run did not measure the ignore rules"
+                    : !Files.isRegularFile(strayInWorkTree)
+                            ? "the entry went to <root>/.claude/.claude.json, so nothing"
+                                    + " untracked was ever created in the work tree"
+                            : theDocumentedSequenceLeftTheWorkTreeClean
+                                    ? "a stray <root>/.claude.json exists AND is covered by the"
+                                            + " documented rules"
+                                    : "a stray <root>/.claude.json exists and the four documented"
+                                            + " rules do not cover it";
 
             boolean pass = theGitignoreIsStillExactlyTheDocumentedFour
-                    && theOnboardingSequenceActuallyCreatedTheFile
+                    && theOnboardingSequenceActuallyRan
                     && theDocumentedSequenceLeftTheWorkTreeClean;
 
             return (pass
                     ? NodeResult.pass("onboarding.leaves.work.tree.clean")
                     : NodeResult.fail("onboarding.leaves.work.tree.clean",
                             "gitignore=" + rules
-                                    + " claudeJsonExists=" + theOnboardingSequenceActuallyCreatedTheFile
+                                    + " sequenceRan=" + theOnboardingSequenceActuallyRan
+                                    + " strayInWorkTree=" + Files.isRegularFile(strayInWorkTree)
                                     + " untracked=" + untracked))
                     .assertion("the_gitignore_still_carries_exactly_the_four_documented_rules",
                             theGitignoreIsStillExactlyTheDocumentedFour)
-                    .assertion("the_onboarding_sequence_actually_created_the_file_under_test",
-                            theOnboardingSequenceActuallyCreatedTheFile)
+                    .assertion("the_onboarding_sequence_actually_ran",
+                            theOnboardingSequenceActuallyRan)
                     .assertion("the_documented_onboarding_sequence_left_the_work_tree_clean",
                             theDocumentedSequenceLeftTheWorkTreeClean)
                     .metric("untrackedEntries", untracked.size())
                     .log("route: " + route)
+                    .log("the stray path is covered by: " + coveredBy
+                            + (ignoredBy.isEmpty() ? "" : "  [" + ignoredBy + "]"))
                     .log("git status --porcelain: " + untracked)
                     .publish("untracked", String.join(";", untracked));
         });

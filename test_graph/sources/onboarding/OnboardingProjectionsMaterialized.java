@@ -83,6 +83,31 @@ import java.util.regex.Pattern;
  *       to the projected link count.</li>
  * </ol>
  *
+ * <h2>The remedy is run on a PROJECT home, and only on a project home</h2>
+ *
+ * <p>Deliberately. {@code sync --skip-mcp} is what the reconcile prints, and on
+ * a project home it is safe. On a WORKTREE home it is not, and a graph that
+ * asserted it there would be encoding the unsafe spelling as the contract:
+ *
+ * <ul>
+ *   <li>{@code home close-out} counts {@code skills/<u>/.git/index} as unit
+ *       work. Projecting a worktree home changed only that file — which is
+ *       stat-dependent and is not content — and close-out then refused with
+ *       {@code BLOCKED skill:<u> (merged) - 1 file(s) come from the source}.
+ *       The worktree becomes unclosable.</li>
+ *   <li>{@code sync} on a worktree home can INSTALL units the project home
+ *       lacks, and every such unit is a teardown blocker in its own right.</li>
+ * </ul>
+ *
+ * <p>The right fix is ledger-first — {@code home clone} already copies and
+ * re-anchors {@code installed/<u>.projections.json}, so the records are correct
+ * and only the symlinks are missing, and materializing records that already
+ * exist touches no unit content. That belongs in the product, not here. What
+ * belongs here is the guard that keeps this node from recommending the unsafe
+ * route by demonstration: {@code onboarding.worktree.lifecycle} asserts that a
+ * freshly projected worktree home is still CLOSABLE, before it plants anything
+ * that would legitimately block it.
+ *
  * <p>The companions run on a home this node repairs first. The order is:
  * observe the state {@code bootstrap} left, run the documented remedy, prove
  * the oracle discriminates on the repaired home, then restore it — so the
@@ -103,9 +128,23 @@ public class OnboardingProjectionsMaterialized {
     static final Pattern VERIFIED =
             Pattern.compile("^\\s*verified:\\s*(\\d+) skill\\(s\\) servable", Pattern.MULTILINE);
 
-    /** {@code skills:    N} */
+    /**
+     * {@code skills:    N} or its successor {@code projected: N of M into each
+     * of .claude .codex .gemini}.
+     *
+     * <p>Either satisfies "the run got far enough to report a count". Keyed on
+     * both because the line this precondition guards changed shape once already,
+     * and a precondition that silently stops matching turns the conditional it
+     * guards back into a vacuous truth — which is the whole thing it is for.
+     */
     static final Pattern SKILLS_LINE =
-            Pattern.compile("^\\s*skills:\\s*(\\d+)", Pattern.MULTILINE);
+            Pattern.compile("^\\s*(?:skills:\\s*(\\d+)|projected:\\s*(\\d+) of (\\d+))",
+                    Pattern.MULTILINE);
+
+    /** {@code projected: N of M into each of .claude .codex .gemini} */
+    static final Pattern PROJECTED =
+            Pattern.compile("^\\s*projected:\\s*(\\d+) of (\\d+) into each of",
+                    Pattern.MULTILINE);
 
     public static void main(String[] args) {
         Node.run(args, SPEC, ctx -> {
@@ -149,6 +188,25 @@ public class OnboardingProjectionsMaterialized {
             boolean theToolDidNotClaimVerifiedOverAnUnprojectedHome =
                     theBootstrapRanFarEnoughToReport && verifiedIsEarned;
 
+            // The stronger form of the same claim, and the one worth keeping:
+            // the EXIT CODE agrees with what was actually projected. A shortfall
+            // exits 6 with every missing link named and the word `verified`
+            // withheld, so an automated caller no longer has to parse prose to
+            // learn that the home it just made is unservable. "Did not print a
+            // word" was only ever the assertion available before there was a
+            // code to read.
+            int bootstrapExit = intOf(ctx, "onboarding.bootstrapped", "bootstrapExit");
+            boolean theExitCodeAgreesWithWhatWasProjected = bootstrapExit >= 0
+                    && (everyStoreUnitIsServableOnAllThreeAgents
+                            ? bootstrapExit == 0 : bootstrapExit != 0);
+
+            // And the count it reports is the count an agent can read, not the
+            // store's. `projected: N of M` is absent on older builds; when it is
+            // there, N must equal what this node measured through the links.
+            String projectedRaw = OnboardingSupport.firstGroup(bootstrapLog, PROJECTED);
+            boolean theProjectedCountMatchesTheLinksOnDisk = projectedRaw == null
+                    || Integer.parseInt(projectedRaw) == servableBefore.size();
+
             // --- the documented remedy, and the state it produces --------------
             //
             // Run whatever the state above was: the rest of the walk needs a
@@ -159,6 +217,19 @@ public class OnboardingProjectionsMaterialized {
             List<String> servableAfter = OnboardingSupport.servableUnits(home, proj);
             boolean theDocumentedRemedyProjectsEveryUnit =
                     servableAfter.size() == storeUnits.size() && !storeUnits.isEmpty();
+
+            // Is one pass enough? `sync` has been measured NOT to be a fixpoint
+            // across an install: one pass installed two units and then reported
+            // those same two as unprojected, and a second pass completed it. A
+            // node that ran one sync and asserted the result would be FLAKY
+            // rather than wrong, which is worse — it would pass on the runs
+            // where the ordering happened to work out. So the second pass is
+            // run and required to change nothing.
+            ProcessRecord secondPass = OnboardingSupport.sm(ctx, "sync-skip-mcp-again", home, proj,
+                    "sync", "--skip-mcp");
+            List<String> servableAfterSecondPass = OnboardingSupport.servableUnits(home, proj);
+            boolean oneSyncIsAFixpoint =
+                    servableAfterSecondPass.equals(servableAfter);
             List<String> escaping = OnboardingSupport.escapingLinks(proj);
             boolean noProjectedLinkEscapesTheCheckout = escaping.isEmpty();
 
@@ -195,7 +266,10 @@ public class OnboardingProjectionsMaterialized {
             boolean pass = theBootstrapRanFarEnoughToReport
                     && everyStoreUnitIsServableOnAllThreeAgents
                     && theToolDidNotClaimVerifiedOverAnUnprojectedHome
+                    && theExitCodeAgreesWithWhatWasProjected
+                    && theProjectedCountMatchesTheLinksOnDisk
                     && theDocumentedRemedyProjectsEveryUnit
+                    && oneSyncIsAFixpoint
                     && noProjectedLinkEscapesTheCheckout
                     && theOracleGoesRedWhenALinkIsDeleted
                     && theOracleGoesRedWhenALinkIsDangling
@@ -210,16 +284,26 @@ public class OnboardingProjectionsMaterialized {
                                     + " verifiedPrinted=" + verifiedN
                                     + " servableAfterRemedy=" + servableAfter.size()
                                     + " remedyExit=" + remedy.exitCode()
+                                    + " bootstrapExit=" + bootstrapExit
+                                    + " projectedLine=" + projectedRaw
+                                    + " servableAfterSecondPass="
+                                    + servableAfterSecondPass.size()
                                     + " escapingLinks=" + escaping))
-                    .process(remedy)
+                    .process(remedy).process(secondPass)
                     .assertion("the_bootstrap_ran_far_enough_to_report_a_skill_count",
                             theBootstrapRanFarEnoughToReport)
                     .assertion("every_unit_in_the_store_is_servable_on_all_three_agents",
                             everyStoreUnitIsServableOnAllThreeAgents)
                     .assertion("the_tool_did_not_claim_verified_over_an_unprojected_home",
                             theToolDidNotClaimVerifiedOverAnUnprojectedHome)
+                    .assertion("the_bootstrap_exit_code_agrees_with_what_it_projected",
+                            theExitCodeAgreesWithWhatWasProjected)
+                    .assertion("the_projected_count_matches_the_links_on_disk",
+                            theProjectedCountMatchesTheLinksOnDisk)
                     .assertion("the_documented_remedy_projects_every_unit",
                             theDocumentedRemedyProjectsEveryUnit)
+                    .assertion("a_second_sync_changes_nothing_ie_one_pass_is_a_fixpoint",
+                            oneSyncIsAFixpoint)
                     .assertion("no_projected_link_resolves_outside_the_checkout",
                             noProjectedLinkEscapesTheCheckout)
                     .assertion("the_projection_oracle_goes_red_when_a_link_is_deleted",
@@ -239,6 +323,14 @@ public class OnboardingProjectionsMaterialized {
                     .publish("remedyLog", remedy.logPath() == null ? ""
                             : ctx.reportDir().resolve(remedy.logPath()).toString());
         });
+    }
+
+    private static int intOf(NodeContext ctx, String node, String key) {
+        try {
+            return Integer.parseInt(ctx.get(node, key).orElse("-1"));
+        } catch (RuntimeException e) {
+            return -1;
+        }
     }
 
     private static Path path(NodeContext ctx, String node, String key) {

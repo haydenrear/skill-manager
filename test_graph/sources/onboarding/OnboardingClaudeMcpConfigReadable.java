@@ -128,11 +128,22 @@ public class OnboardingClaudeMcpConfigReadable {
             // later project-scoped sync reconciles the same state and does not
             // repeat the block, so reading only that one reports "the tool never
             // said it wrote anything" about a run that did.
+            // Three logs, because WHICH command registers the gateway is not
+            // part of the contract and has already moved once. It used to be
+            // the `sync --skip-mcp` that repaired the missing projection; with
+            // the projection materialized at clone time, the bootstrap does the
+            // agent-config work and neither sync mentions it. A node keyed to
+            // one command reported "the tool never said it wrote anything"
+            // about a run in which the entry was, in fact, correctly written.
+            // The assertion is about the FILE; this precondition only has to
+            // establish that some command in the walk claimed the write.
             String remedyLog = ctx.get("onboarding.projections.materialized", "remedyLog")
                     .orElse("");
-            String sync = (syncLog.isEmpty() ? "" : OnboardingSupport.read(Path.of(syncLog)))
-                    + "\n"
-                    + (remedyLog.isEmpty() ? "" : OnboardingSupport.read(Path.of(remedyLog)));
+            String bootstrapLog = ctx.get("onboarding.bootstrapped", "bootstrapLog").orElse("");
+            String sync = String.join("\n",
+                    syncLog.isEmpty() ? "" : OnboardingSupport.read(Path.of(syncLog)),
+                    remedyLog.isEmpty() ? "" : OnboardingSupport.read(Path.of(remedyLog)),
+                    bootstrapLog.isEmpty() ? "" : OnboardingSupport.read(Path.of(bootstrapLog)));
             List<String> addedLines = new ArrayList<>();
             for (String line : sync.split("\n", -1)) {
                 if (line.contains("ADDED") && line.contains(GATEWAY.substring(0, 7))) {
