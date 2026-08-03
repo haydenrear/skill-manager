@@ -408,11 +408,99 @@ public final class AgentHomes {
         }
         Path root = lookup.apply(CLAUDE_HOME);
         if (root == null) root = fallbackRoot;
-        // CLAUDE_CONFIG_DIR unset: the CLI reads <home>/.claude.json, beside
-        // <home>/.claude and not inside it. For the global home that is
-        // ~/.claude.json, which is where the operator's own entries live.
-        return new ClaudeHome(root, root.resolve(CLAUDE_DIR_NAME),
-                root.resolve(CLAUDE_CONFIG_FILENAME));
+        Path configDir = root.resolve(CLAUDE_DIR_NAME);
+        // CLAUDE_CONFIG_DIR unset: the CLI reads $HOME/.claude.json. That
+        // sentence is true of the home directory and of NOTHING ELSE, and this
+        // branch used to apply it to whatever root came out of the lookup. See
+        // #claudeConfigFileFor.
+        return new ClaudeHome(root, configDir, claudeConfigFileFor(root, configDir, lookup));
+    }
+
+    /**
+     * Where Claude Code actually reads its {@code mcpServers} from, for a home
+     * rooted at {@code root} with {@code CLAUDE_CONFIG_DIR} unset.
+     *
+     * <h2>The sentence that was true and the branch it was not true of</h2>
+     *
+     * <p>{@link ClaudeHome}'s javadoc already states the rule: "Claude Code
+     * reads {@code $CLAUDE_CONFIG_DIR/.claude.json} when the variable is set and
+     * {@code ~/.claude.json} when it is not — the file moves <em>with the config
+     * dir</em>, it does not stay beside it." Only the first half was
+     * implemented. The second was written as {@code root.resolve(".claude.json")}
+     * under the comment "for the global home that is {@code ~/.claude.json}" —
+     * which is exactly right, and is a statement about the global home rather
+     * than about {@code root}.
+     *
+     * <p>{@link #claude(Map)}'s javadoc makes the argument this method is:
+     * "<b>the Claude CLI has never heard of {@code SKILL_MANAGER_HOME}</b>: it
+     * reads {@code CLAUDE_CONFIG_DIR}, and failing that, {@code $HOME/.claude}."
+     * It was applied to the launch-env variant's fallback base and not to this
+     * branch, so with {@code SKILL_MANAGER_HOME} pointing at a project home and
+     * no Claude variable set, skill-manager derived {@code root} from
+     * {@code SKILL_MANAGER_HOME} — correctly, that IS where skill-manager writes
+     * — and then wrote the MCP entry to {@code <repo>/.claude.json}, a path
+     * nothing on the machine reads, while reporting {@code ADDED 1} and
+     * {@code ACTION_REQUIRED: restart Claude}. Measured on this repository:
+     * {@code <repo>/.claude.json} holds the virtual-mcp-gateway entry and
+     * {@code <repo>/.claude/.claude.json} does not exist.
+     *
+     * <h2>What it resolves to now</h2>
+     *
+     * <ul>
+     *   <li>{@code root} IS this environment's {@code $HOME} — the genuine
+     *       global home, and the only case where the CLI's unset-variable
+     *       default lands there — {@code $HOME/.claude.json}, unchanged. That
+     *       is where the operator's own entries live and moving it would be
+     *       this same defect pointed at them.</li>
+     *   <li>Anything else — {@code <root>/.claude/.claude.json}, which is
+     *       {@code <configDir>/.claude.json}: precisely where a launch through
+     *       this home lands, because {@link dev.skillmanager.store.HomeDescriptor}
+     *       exports {@code CLAUDE_CONFIG_DIR=<root>/.claude} and the branch
+     *       above then resolves the file inside it. The writer and the reader
+     *       agree by construction rather than by coincidence.</li>
+     * </ul>
+     *
+     * <p>Refusing instead was the alternative, and it is worse here: a home
+     * whose descriptor declares {@code CLAUDE_CONFIG_DIR} is the normal case, so
+     * the refusal would fire only for the operator who never launches through
+     * the shim — and there is a correct answer to give them, one that the shim
+     * will agree with the moment they do.
+     *
+     * <p>Compared by RESOLVED PHYSICAL PATH: {@code /var} vs {@code /private/var}
+     * has now defeated four checks in this codebase, and a fixture {@code HOME}
+     * under {@code /tmp} is exactly the shape that defeats them.
+     */
+    private static Path claudeConfigFileFor(Path root, Path configDir,
+                                            java.util.function.Function<String, Path> lookup) {
+        Path home = userHome(lookup);
+        boolean isTheHomeDirectory = home != null && sameDirectory(root, home);
+        return isTheHomeDirectory
+                ? root.resolve(CLAUDE_CONFIG_FILENAME)
+                : configDir.resolve(CLAUDE_CONFIG_FILENAME);
+    }
+
+    /**
+     * Whether two paths name one directory, symlinks resolved, whether or not
+     * either exists yet. Mirrors
+     * {@code ProjectChildHomeScaffolder#realOrNormalized} — a comparison that
+     * can be defeated by a spelling is a comparison that will be.
+     */
+    private static boolean sameDirectory(Path a, Path b) {
+        return realOrNormalized(a).equals(realOrNormalized(b));
+    }
+
+    private static Path realOrNormalized(Path path) {
+        Path normalized = path.toAbsolutePath().normalize();
+        for (Path existing = normalized; existing != null; existing = existing.getParent()) {
+            try {
+                Path real = existing.toRealPath();
+                Path tail = existing.relativize(normalized);
+                return tail.toString().isEmpty() ? real : real.resolve(tail);
+            } catch (java.io.IOException notThere) {
+                // keep walking up
+            }
+        }
+        return normalized;
     }
 
     /**

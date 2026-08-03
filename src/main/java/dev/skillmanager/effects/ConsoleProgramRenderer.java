@@ -662,20 +662,33 @@ public final class ConsoleProgramRenderer implements ProgramRenderer {
      * {@code import.violations.are.fatal} node) because a block printed under
      * a terminal banner is a block nobody reads.
      *
-     * <p>What moved to the log is the enumeration: which config file each agent
-     * writes is a fact about this machine's layout, identical on every run, and
-     * the counts plus the URL carry the claim. The words {@code ADDED} /
-     * {@code UPDATED} and the URL stay on the console line so a reader — and
-     * the onboarding graph's {@code claude.mcp.config.readable} node, which
-     * looks for exactly those — can still see that the tool claimed the write.
+     * <p>The enumeration was demoted to the log once, on the reasoning that
+     * "which config file each agent writes is a fact about this machine's
+     * layout, identical on every run, and the counts plus the URL carry the
+     * claim". <b>The counts do not carry the claim.</b> {@code ADDED 1} was
+     * printed by a run that had just written {@code <repo>/.claude.json}, a
+     * file no agent reads, because {@code CLAUDE_CONFIG_DIR} was unset and the
+     * resolver derived the root from {@code SKILL_MANAGER_HOME} — see
+     * {@code AgentHomes#claudeConfigFileFor}. Every word of that line was true
+     * and the write had gone nowhere, and there was nothing on the console a
+     * reader could have checked it against.
+     *
+     * <p>So the file names are back on the console, and the demotion's own
+     * argument is why that is affordable: this list is not the layout, it is
+     * the CHANGES. {@code UNCHANGED} is not in it, so the steady state prints
+     * nothing at all, and the ceiling is three lines — one per agent — on the
+     * runs where something was actually written. That is the opposite of the
+     * per-unit enumerations this renderer demotes, which scale with the home.
      */
     private void printAgentConfigSummary() {
         var added = agentChanges.getOrDefault(McpWriter.ConfigChange.ADDED, List.of());
         var updated = agentChanges.getOrDefault(McpWriter.ConfigChange.UPDATED, List.of());
         if (added.isEmpty() && updated.isEmpty()) return;
         String mcpUrl = gateway == null ? "<gateway>" : gateway.mcpEndpoint().toString();
-        for (String a : added) Log.detail("  ADDED    " + a + "  → " + mcpUrl);
-        for (String a : updated) Log.detail("  UPDATED  " + a + "  → " + mcpUrl);
+        // The fact already carried the path (ContextFact.AgentMcpConfigChanged);
+        // it simply was not being said out loud. `a` is "<agentId> (<file>)".
+        for (String a : added) Log.info("  ADDED    " + a + "  → " + mcpUrl);
+        for (String a : updated) Log.info("  UPDATED  " + a + "  → " + mcpUrl);
         Log.info("agent MCP configs: ADDED %d, UPDATED %d → %s",
                 added.size(), updated.size(), mcpUrl);
         String actionRequired = "ACTION_REQUIRED: restart Claude / Codex for the "
