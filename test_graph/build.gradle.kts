@@ -208,16 +208,54 @@ validationGraph {
      *   5. assert runpod MCP dep is registered with the gateway.
      *   6. teardown.
      *
-     * Kept off the default `smoke` graph because it pulls a remote
-     * source by default; opt in explicitly:
+     * This graph reaches THREE third-party services it does not control:
+     * github.com (the clone in hyper.checkout), npm (the runpod MCP server
+     * in hyper.installed), and the live RunPod API (hyper.runpod.*, which
+     * needs X_RUNPOD_KEY). None of them answer a question about
+     * skill-manager, so a failure here is not a release signal — and in
+     * practice it was one, repeatedly: hyper.checkout timed out against
+     * github during release validation for 0.21.0, and hyper.installed sits
+     * on its own timeout doing a cold npm install (#143).
      *
-     *   ./gradlew hyper-experiments
+     * The comment here has always said this graph is opt-in. Registration
+     * did not agree: `testGraph(...)` puts a task into `ext.graphs`, and
+     * `validationRunAll` fans out to every entry — so "run everything"
+     * could not pass without network, a RunPod key, and luck. The opt-in is
+     * now enforced rather than described.
+     *
+     * Opt in with either:
+     *
+     *   HYPER_EXPERIMENTS=1 ./gradlew hyper-experiments
      *   HYPER_LOCAL_DIR=/path/to/hyper-experiments-skill ./gradlew hyper-experiments
+     *
+     * HYPER_LOCAL_DIR also removes the github dependency, since
+     * hyper.checkout copies that tree instead of cloning.
      *
      * Documented as a case study in
      * skill-publisher-skill/references/runpod-mcp-onboarding.md.
      */
-    testGraph("hyper-experiments") {
+    val hyperOptIn = !System.getenv("HYPER_LOCAL_DIR").isNullOrBlank()
+            || System.getenv("HYPER_EXPERIMENTS") == "1"
+    if (!hyperOptIn) {
+        // Register a task under the same name so `./gradlew hyper-experiments`
+        // explains itself instead of failing with "task not found". This is
+        // deliberately NOT a `testGraph(...)` call: staying out of
+        // `ext.graphs` is the whole point, since that map is what
+        // `validationRunAll` walks.
+        tasks.register("hyper-experiments") {
+            group = "validation"
+            description = "Third-party onboarding round-trip (opt-in: needs github, npm, RunPod)."
+            doFirst {
+                throw GradleException(
+                    "hyper-experiments talks to github, npm and the live RunPod API, " +
+                    "so it is opt-in and excluded from validationRunAll.\n" +
+                    "  HYPER_EXPERIMENTS=1 ./gradlew hyper-experiments\n" +
+                    "  HYPER_LOCAL_DIR=<hyper-experiments-skill checkout> ./gradlew hyper-experiments  " +
+                    "(no github clone)"
+                )
+            }
+        }
+    } else testGraph("hyper-experiments") {
         node("sources/common/EnvPrepared.java")
         node("sources/common/PostgresUp.java")
         // Flips SKILL_REGISTRY_ALLOW_FILE_UPLOAD=false on the registry
