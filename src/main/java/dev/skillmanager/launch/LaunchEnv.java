@@ -211,6 +211,25 @@ public final class LaunchEnv {
     }
 
     /**
+     * True when {@code entry} is an executable directory belonging to
+     * <em>any</em> Skill Manager home, this one included.
+     *
+     * <p>The same structural question as {@link #isForeignHomeBin}, asked with
+     * no incumbent to exempt. {@code CliPresence} needs exactly this one: it
+     * asks PATH only about tools the operating system provides, because "does
+     * THIS home have it" is answered precisely, from this home's
+     * {@code bin/cli}, and must not be answered a second and vaguer time by a
+     * PATH entry that happens to be some home's.
+     *
+     * <p>Named rather than spelled {@code isForeignHomeBin(entry, null)} at the
+     * call site: "foreign" with nothing to be foreign to reads as a pun, and
+     * the next reader has to go and check which way the null falls.
+     */
+    public static boolean isAnyHomeBin(Path entry) {
+        return isForeignHomeBin(entry, null);
+    }
+
+    /**
      * True when {@code entry} is an executable directory belonging to some
      * Skill Manager home other than {@code activeStoreRoot}.
      *

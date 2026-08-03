@@ -31,16 +31,14 @@ public final class TarBackend implements InstallerBackend {
     @Override
     public InstallOutcome install(CliDependency dep, SkillStore store, String skillName)
             throws IOException {
-        if (dep.onPath() != null && isOnPath(dep.onPath())) {
-            Log.detail("✓ cli: %s already on PATH", dep.onPath());
-            return InstallOutcome.ALREADY_PRESENT;
-        }
+        // One question, not two. The second check here was already home-scoped
+        // — `Files.exists(bin/cli/<name>)` — and it was the correct half; the
+        // PATH check above it was not, and being first it decided. Both are now
+        // CliPresence, which asks the home-scoped question first and PATH only
+        // about directories no home owns.
+        if (alreadyProvided(dep, store)) return InstallOutcome.ALREADY_PRESENT;
         Fs.ensureDir(store.cliBinDir());
         Path link = store.cliBinDir().resolve(dep.name());
-        if (Files.exists(link)) {
-            Log.detail("✓ cli: %s already installed", dep.name());
-            return InstallOutcome.ALREADY_PRESENT;
-        }
         CliDependency.InstallTarget target = pickTarget(dep);
         if (target == null || target.url() == null) {
             Log.warn("cli: no install target for %s on %s", dep.name(), Platform.currentKey());
@@ -63,7 +61,12 @@ public final class TarBackend implements InstallerBackend {
                 return InstallOutcome.SKIPPED;
             }
             Fs.makeExecutable(binary);
-            if (Files.exists(link)) Files.delete(link);
+            // deleteIfExists rather than `if (Files.exists(link)) delete`:
+            // Files.exists FOLLOWS the link, so a dangling shim is invisible to
+            // it — and a dangling shim is now the main reason this backend
+            // reaches here at all. delete/deleteIfExists operate on the link
+            // itself, so the repair no longer trips over the thing it repairs.
+            Files.deleteIfExists(link);
             Files.copy(binary, link, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.COPY_ATTRIBUTES);
             Fs.makeExecutable(link);
             Log.ok("cli: installed %s -> %s", dep.name(), link);

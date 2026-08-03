@@ -25,19 +25,23 @@ public final class BrewBackend implements InstallerBackend {
     @Override
     public boolean available() {
         Platform.Os os = Platform.currentOs();
-        return (os == Platform.Os.DARWIN || os == Platform.Os.LINUX) && isOnPath("brew");
+        // The process's own PATH, deliberately: this asks whether `brew` can be
+        // run at all, not whether some dep is provisioned. See
+        // CliPresence#onProcessPath.
+        return (os == Platform.Os.DARWIN || os == Platform.Os.LINUX)
+                && CliPresence.onProcessPath("brew") != null;
     }
 
     @Override
     public InstallOutcome install(CliDependency dep, SkillStore store, String skillName)
             throws IOException {
-        if (dep.onPath() != null && isOnPath(dep.onPath())) {
-            // A state, not an event: nothing was done, and this is true on
-            // every run forever. The count reaches the console; the name
-            // reaches the run log. See InstallOutcome.
-            Log.detail("✓ cli: %s already on PATH", dep.onPath());
-            return InstallOutcome.ALREADY_PRESENT;
-        }
+        // A state, not an event: nothing was done, and this is true on every
+        // run forever. The count reaches the console; the name reaches the run
+        // log. See InstallOutcome. brew is the backend where the "the system
+        // may already provide this" reading of on_path is the common one — jq
+        // from the distro, git from Xcode — and CliPresence keeps answering it,
+        // from the directories that are not some Skill Manager home's.
+        if (alreadyProvided(dep, store)) return InstallOutcome.ALREADY_PRESENT;
         String pkg = dep.packageRef();
         if (pkg == null || pkg.isBlank()) throw new IOException("brew: spec missing package name (brew:<package>)");
 
