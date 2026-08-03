@@ -150,8 +150,22 @@ public final class CliMetadataTest {
                 + " — run the suite from the repository root");
     }
 
+    /**
+     * A quoted command, whose first token is either the literal
+     * {@code skill-manager} or the {@code %s} a refusal substitutes its
+     * resolved CLI path into.
+     *
+     * <p>The {@code %s} alternative is not a convenience. #142 routed every
+     * drift refusal's remedy through {@code HomeDescriptor.cliInvocation}, so a
+     * copy-pasted remedy runs the build that understands the home rather than
+     * whatever older release PATH finds first. That change deleted the literal
+     * {@code `skill-manager home drift --ack`} this scan had been finding — and
+     * the guard below caught it, correctly: the oracle had gone blind at
+     * precisely the sites it was written for. Matching both spellings keeps the
+     * fix and the check, instead of weakening the guard to accommodate it.
+     */
     private static final Pattern BACKTICKED =
-            Pattern.compile("`(skill-manager[ \\t][^`]*)`");
+            Pattern.compile("`((?:skill-manager|%s)[ \\t][^`]*)`");
 
     /**
      * Every distinct {@code `skill-manager …`} the sources quote, normalized.
@@ -180,12 +194,22 @@ public final class CliMetadataTest {
     }
 
     private static String clean(String raw) {
-        int cut = raw.length();
+        // A LEADING `%s` is the CLI itself, not an interpolated argument, so it
+        // is normalized to the literal before the `%` boundary rule below gets
+        // to it — otherwise every remedy #142 made resolvable would be cut to
+        // the empty string and silently dropped from the scan. A `%s` anywhere
+        // else is still a runtime value and still truncates: what this test
+        // checks is the spelling of subcommands and options, and an
+        // interpolated value has no spelling.
+        String normalized = raw.startsWith("%s ") || raw.startsWith("%s\t")
+                ? "skill-manager" + raw.substring(2)
+                : raw;
+        int cut = normalized.length();
         for (String boundary : List.of("\"", "%", "…", "<", "$")) {
-            int i = raw.indexOf(boundary);
+            int i = normalized.indexOf(boundary);
             if (i >= 0 && i < cut) cut = i;
         }
-        String cleaned = raw.substring(0, cut).trim();
+        String cleaned = normalized.substring(0, cut).trim();
         return cleaned.equals("skill-manager") ? null : cleaned;
     }
 

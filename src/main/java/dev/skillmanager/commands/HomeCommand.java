@@ -709,7 +709,8 @@ public final class HomeCommand {
             Log.warn("%d unit(s) changed in %s (%s) and have not been read:",
                     pending.report().units().size(), store.root(), pending.operation());
             Log.errorList("  ", pending.report().render());
-            Log.warn("  run `skill-manager home drift --ack` once you have taken it in");
+            Log.warn("  run `%s home drift --ack` once you have taken it in",
+                    HomeDescriptor.cliInvocation(store.root()));
             return DriftGate.EXIT_CODE;
         }
 

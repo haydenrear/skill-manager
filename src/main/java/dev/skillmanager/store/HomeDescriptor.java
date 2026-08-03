@@ -394,6 +394,41 @@ public record HomeDescriptor(
         return onPath("skill-manager");
     }
 
+    /**
+     * How to spell {@code skill-manager} inside a remedy this build prints, so
+     * that pasting the remedy runs the build that understands this home.
+     *
+     * <p>The bare token is not a safe default in a printed remedy. On a machine
+     * whose {@code PATH} {@code skill-manager} is an older release, that build
+     * answers an unknown subcommand with <em>top-level usage and exit 0</em>
+     * (#61) — so an operator who copy-pastes gets a command that looks like it
+     * worked and did nothing, and the gate refuses again with the same message.
+     * That is worse than an error, because nothing in the transcript says the
+     * remedy was a no-op.
+     *
+     * <p>Lives here rather than at each refusal because a guard at N call sites
+     * is N chances to miss one. {@code home close-out} learned that the
+     * expensive way: the fix went into {@code close-change.sh}, which corrected
+     * the {@code --json} consumer and left the human path printing the
+     * un-runnable spelling. The answer belongs where the string is built, and
+     * every refusal that prints a remedy should reach for this.
+     *
+     * <p>Falls back to the bare token when {@link #resolveCli} finds nothing.
+     * That is strictly better than an invented path: the operator sees the same
+     * string as before and can fix their {@code PATH}, whereas a
+     * plausible-looking wrong absolute path fails confusingly.
+     *
+     * @param storeRoot the home the remedy is about — {@code <home>/bin/cli/skill-manager}
+     *                  names the build that home was created with
+     */
+    public static String cliInvocation(Path storeRoot) {
+        Path cli = resolveCli(storeRoot);
+        if (cli == null) return "skill-manager";
+        String path = cli.toString();
+        // A path with a space in it has to survive being pasted into a shell.
+        return path.indexOf(' ') < 0 ? path : "'" + path.replace("'", "'\\''") + "'";
+    }
+
     private static boolean looksLikeSkillManagerLauncher(Path command) {
         Path name = command.getFileName();
         if (name == null) return false;
