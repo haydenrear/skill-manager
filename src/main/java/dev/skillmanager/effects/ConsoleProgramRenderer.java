@@ -5,10 +5,13 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 import dev.skillmanager.mcp.GatewayConfig;
 import dev.skillmanager.mcp.InstallResult;
 import dev.skillmanager.mcp.McpWriter;
+import dev.skillmanager.model.UnitKind;
 import dev.skillmanager.source.InstalledUnit;
+import dev.skillmanager.store.HomeDescriptor;
 import dev.skillmanager.store.SkillStore;
 import dev.skillmanager.util.Log;
 
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -250,7 +253,7 @@ public final class ConsoleProgramRenderer implements ProgramRenderer {
                 refusedSkills.add(x.skillName());
             }
             case ContextFact.SyncGitConflicted x -> {
-                Path storeDir = store.skillDir(x.skillName());
+                Path storeDir = unitDirFor(x.skillName());
                 Log.error("%s: merge conflict in %d file(s):",
                         x.skillName(), x.conflictedFiles().size());
                 Log.errorList("    ", x.conflictedFiles());
@@ -748,11 +751,34 @@ public final class ConsoleProgramRenderer implements ProgramRenderer {
         Log.error("%s has extra local changes (working tree edits, or commits ahead of the "
                 + "installed baseline) — sync would overwrite them.", skillName);
         String source = upstream == null || upstream.isBlank() ? "<origin>" : upstream;
-        Log.error("  re-run with: skill-manager sync %s%s%s --merge   (merges %s into %s)",
+        Log.error("  re-run with: %s sync %s%s%s --merge   (merges %s into %s)",
+                HomeDescriptor.cliInvocation(store.root()),
                 skillName,
                 gitLatest ? " --git-latest" : "",
                 fromDir ? " --from " + source : "",
-                source, store.skillDir(skillName));
+                source, unitDirFor(skillName));
+    }
+
+    /**
+     * Where {@code name} actually lives in the store, whatever kind it is.
+     *
+     * <p>{@code skillDir} hard-codes {@code skills/<name>}, so a refused sync of
+     * a PLUGIN named a directory that does not exist — in the one message whose
+     * entire job is to tell the reader where to go resolve the conflict. The
+     * sync facts carry no {@link UnitKind}, but a unit occupies exactly one
+     * kind's directory on disk, so the disk is the authority.
+     *
+     * <p>Falls back to {@code skills/<name>} when nothing exists, which is the
+     * previous behaviour and the right guess for the overwhelmingly common kind
+     * — better than printing nothing when the store is in a state this renderer
+     * cannot explain.
+     */
+    private Path unitDirFor(String name) {
+        for (UnitKind kind : UnitKind.values()) {
+            Path dir = store.unitDir(name, kind);
+            if (Files.isDirectory(dir)) return dir;
+        }
+        return store.skillDir(name);
     }
 
     private static String shortHash(String hash) {
