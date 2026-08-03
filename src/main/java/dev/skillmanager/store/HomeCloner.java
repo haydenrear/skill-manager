@@ -1320,8 +1320,28 @@ public final class HomeCloner {
         return n;
     }
 
-    /** {@link #missingDestReferences} for a file that has not been read yet. */
-    private static List<String> missingReferencesIn(Path file, Path dstRoot) {
+    /**
+     * {@link #missingDestReferences} for a file that has not been read yet:
+     * the paths inside {@code dstRoot} that {@code file} names and that do not
+     * exist.
+     *
+     * <h2>Public because the GATE and the REPAIR have to ask one question</h2>
+     *
+     * <p>This is what {@code home verify} refuses on, and until now nothing on
+     * the install side asked it — which is precisely why the remedy verify
+     * printed was not a fixpoint for a whole class of tool.
+     * {@code SkillScriptBackend} asked {@code Files.isExecutable} instead, and
+     * a re-anchored {@code bin/cli/computeq} wrapper is a perfectly fine
+     * executable that execs a path the copy does not hold. Measured on one
+     * clone: {@code skill-dev} (a symlink) self-healed and {@code computeq} (a
+     * wrapper) was skipped forever, same home, same sync.
+     *
+     * <p>So {@link dev.skillmanager.cli.installer.CliArtifact} calls this
+     * rather than growing a second scanner. A gate and a repair that derive
+     * "broken" independently will disagree, and the one that disagrees quietly
+     * is the repair.
+     */
+    public static List<String> missingReferencesIn(Path file, Path dstRoot) {
         try {
             if (Files.size(file) > WHOLE_FILE_LIMIT) return List.of();
             byte[] content = Files.readAllBytes(file);

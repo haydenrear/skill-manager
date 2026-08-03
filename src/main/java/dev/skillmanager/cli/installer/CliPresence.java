@@ -154,10 +154,12 @@ public final class CliPresence {
      * {@code dep}, or null.
      *
      * <p>{@code on_path} is the declared spelling and is tried for every
-     * backend. {@link Files#isExecutable} resolves the link, so a shim whose
-     * target a clone did not carry answers false. That is not incidental: it is
-     * the entire repair path, and it is why this is a filesystem question
-     * rather than a lock lookup.
+     * backend. The question asked of it is {@link CliArtifact#inHome} — "will
+     * this run from this home" — not "does a file exist". This used to be a
+     * bare {@link Files#isExecutable}, which answers correctly for a dangling
+     * symlink (it follows) and WRONGLY for a generated wrapper whose exec
+     * target the copy does not hold: the wrapper is a fine executable. See
+     * {@link CliArtifact} for the measurement and for what it does not cover.
      *
      * <h2>Why {@code dep.name()} is tried for {@code tar:} and nothing else</h2>
      *
@@ -188,11 +190,11 @@ public final class CliPresence {
      */
     public static Path providedByThisHome(CliDependency dep, SkillStore store) {
         if (dep == null || store == null) return null;
-        Path binDir = store.cliBinDir();
-        Path declared = executableAt(binDir, dep.onPath());
-        if (declared != null) return declared;
+        CliArtifact.Verdict declared = CliArtifact.inHome(store, dep.onPath());
+        if (declared.usable()) return declared.path();
         if (!"tar".equals(dep.backend())) return null;
-        return executableAt(binDir, dep.name());
+        CliArtifact.Verdict named = CliArtifact.inHome(store, dep.name());
+        return named.usable() ? named.path() : null;
     }
 
     /**
@@ -240,6 +242,17 @@ public final class CliPresence {
         return null;
     }
 
+    /**
+     * A plain executable test, for PATH entries only.
+     *
+     * <p><b>Not for artifacts in this home</b> — that is
+     * {@link CliArtifact#inHome}, which additionally rejects a generated
+     * wrapper whose exec target the home does not hold. The difference is
+     * deliberate rather than an oversight: a directory on PATH that belongs to
+     * no Skill Manager home is the operating system's business, this program
+     * did not generate what is in it, and "is it executable" is the whole of
+     * what can honestly be asked about somebody else's {@code /usr/local/bin}.
+     */
     private static Path executableAt(Path dir, String name) {
         if (name == null || name.isBlank()) return null;
         Path candidate = dir.resolve(name);

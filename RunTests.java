@@ -58,6 +58,7 @@ import dev.skillmanager.commands.RemediesAreRunnableTest;
 import dev.skillmanager.validation.ProjectMarkdownImportsTest;
 import dev.skillmanager.effects.LocalInstallIsNotAnErrorTest;
 import dev.skillmanager.store.HomeVerifyDiagnosticTextTest;
+import dev.skillmanager.cli.installer.CliArtifactMatrixTest;
 import dev.skillmanager.cli.installer.CliPresenceTest;
 import dev.skillmanager.cli.installer.SkillScriptBackendTest;
 import dev.skillmanager.bindings.BindingsTest;
@@ -166,6 +167,7 @@ public class RunTests {
         failures += PlanShapeInvariantTest.run();
         failures += SkillScriptBackendTest.run();
         failures += CliPresenceTest.run();
+        failures += CliArtifactMatrixTest.run();
         failures += CycleDetectionTest.run();
         failures += MixedKindTopoOrderTest.run();
         failures += PlanPolicyCategorizationTest.run();
