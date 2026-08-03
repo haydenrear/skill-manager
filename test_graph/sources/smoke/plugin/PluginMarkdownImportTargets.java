@@ -16,7 +16,23 @@ import java.util.List;
  * Plugin-level markdown can import files from doc-repos, harnesses,
  * and other plugins. The final plugin intentionally also imports a
  * missing plugin target so the graph proves plugin markdown is parsed
- * and advisory violations are rendered.
+ * and the violation is reported.
+ *
+ * <h2>The exit code is part of the report</h2>
+ *
+ * <p>This node used to assert every install exited 0, including the one that
+ * printed a violation — which was encoding the defect
+ * {@code MarkdownImportValidator.EXIT_CODE} exists to close: the block lands
+ * after the success banner, so a caller reading the tail or {@code $?}
+ * concluded success. It now pins the contract that replaced it: installs whose
+ * markdown references resolve exit 0, the one that reports a violation exits
+ * {@code 11}, and the unit is committed either way.
+ *
+ * <h2>Non-vacuity</h2>
+ *
+ * <p>The three target installs above — same node, same home, same binary —
+ * must exit 0. Without them "exits 11" would also hold for a build that failed
+ * every install, and {@code noPathFailures} would hold over an empty log.
  */
 public class PluginMarkdownImportTargets {
     static final NodeSpec SPEC = NodeSpec.of("plugin.markdown.import.targets")
@@ -24,6 +40,9 @@ public class PluginMarkdownImportTargets {
             .dependsOn("gateway.up")
             .tags("plugin", "markdown-imports", "doc-repo", "harness")
             .timeout("120s");
+
+    /** {@code dev.skillmanager.validation.MarkdownImportValidator.EXIT_CODE}. */
+    private static final int MARKDOWN_IMPORT_VIOLATION_EXIT = 11;
 
     public static void main(String[] args) {
         Node.run(args, SPEC, ctx -> {
@@ -68,25 +87,36 @@ public class PluginMarkdownImportTargets {
                 return NodeResult.error("plugin.markdown.import.targets", e);
             }
 
-            boolean allExitZero = procs.stream().allMatch(p -> p.exitCode() == 0);
             ProcessRecord sourceProc = procs.get(procs.size() - 1);
+            List<ProcessRecord> targets = procs.subList(0, procs.size() - 1);
+            boolean targetsExitZero = targets.stream().allMatch(p -> p.exitCode() == 0);
+            boolean sourceExitsViolationCode =
+                    sourceProc.exitCode() == MARKDOWN_IMPORT_VIOLATION_EXIT;
             String log = MarkdownImportFixture.logBody(ctx, sourceProc);
             boolean renderedMissingPlugin = log.contains("markdown skill-import violations (1)")
                     && log.contains("pm-source-plugin (plugin)")
                     && log.contains("references missing unit `pm-missing-plugin`");
             boolean noPathFailures = !log.contains("references missing path");
-            boolean pass = allExitZero && renderedMissingPlugin && noPathFailures;
+            // 11 reports the reference; it does not abandon the install.
+            boolean sourceCommitted = Files.isDirectory(Path.of(home, "plugins", "pm-source-plugin"));
+            boolean pass = targetsExitZero && sourceExitsViolationCode && renderedMissingPlugin
+                    && sourceCommitted && noPathFailures;
             NodeResult result = pass
                     ? NodeResult.pass("plugin.markdown.import.targets")
                     : NodeResult.fail("plugin.markdown.import.targets",
-                            "allExitZero=" + allExitZero
+                            "targetsExitZero=" + targetsExitZero
+                                    + " sourceRc=" + sourceProc.exitCode()
                                     + " renderedMissingPlugin=" + renderedMissingPlugin
+                                    + " sourceCommitted=" + sourceCommitted
                                     + " noPathFailures=" + noPathFailures);
             for (ProcessRecord p : procs) result = result.process(p);
             return result
-                    .assertion("all_installs_exit_zero", allExitZero)
+                    .assertion("resolved_import_installs_exit_zero", targetsExitZero)
+                    .assertion("unresolved_import_install_exits_eleven", sourceExitsViolationCode)
                     .assertion("missing_plugin_violation_rendered", renderedMissingPlugin)
-                    .assertion("installed_doc_harness_plugin_imports_resolved", noPathFailures);
+                    .assertion("unit_still_committed_under_violation_exit", sourceCommitted)
+                    .assertion("installed_doc_harness_plugin_imports_resolved", noPathFailures)
+                    .metric("sourceExitCode", sourceProc.exitCode());
         });
     }
 }

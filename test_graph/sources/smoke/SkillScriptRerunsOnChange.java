@@ -1,6 +1,7 @@
 ///usr/bin/env jbang "$0" "$@" ; exit $?
 //SOURCES ../../sdk/java/src/main/java/com/hayden/testgraphsdk/sdk/*.java
 //SOURCES ../lib/SmEnv.java
+//SOURCES ../lib/RunLogText.java
 
 import com.hayden.testgraphsdk.sdk.Node;
 import com.hayden.testgraphsdk.sdk.NodeResult;
@@ -26,7 +27,14 @@ import java.nio.file.attribute.BasicFileAttributes;
  *       initial sentinel was dropped.</li>
  *   <li>Run {@code skill-manager sync --from <copy>} with no changes,
  *       assert the script DID NOT run again (we look for the diagnostic
- *       "skipping" line and confirm the script log count did not grow).</li>
+ *       "skipping" line and confirm the script log count did not grow).
+ *       That diagnostic is a per-item line, so it is now {@code Log.detail}:
+ *       the run log always, the console only under {@code --verbose}. The
+ *       node follows the {@code log:} footer through
+ *       {@link RunLogText#plusNamedLog} rather than asserting against the
+ *       console half the sentence was moved out of — asserting on the
+ *       console alone reported the clause missing while the behaviour it
+ *       describes was correct.</li>
  *   <li>Edit the install.sh in the temp copy to touch a distinct
  *       sentinel, sync again, assert the new sentinel landed under
  *       bin/cli/. Proves a script edit re-fires the install even
@@ -93,7 +101,9 @@ public class SkillScriptRerunsOnChange {
                             "sync", "--from", fixtureCopy.toString(),
                             "skill-script-skill", "--yes"));
             int rc2 = proc2.exitCode();
-            String stdout2 = readLogTail(ctx.reportDir(), proc2);
+            // THROWS if the footer names a log that is not there, rather
+            // than quietly reading "" — see RunLogText.
+            String stdout2 = RunLogText.plusNamedLog(readLogTail(ctx.reportDir(), proc2));
             boolean noopSkipped = stdout2.contains("scripts unchanged since last install");
             int scriptRunsAfterNoop = countOccurrences(
                     readSkillScriptLogs(storeHome), "skill-script-skill: touched");

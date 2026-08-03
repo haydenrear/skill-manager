@@ -119,7 +119,29 @@ public sealed interface ContextFact {
     // ---- Sync git ----
     record SyncGitUpToDate(String skillName, String label) implements ContextFact {}
     record SyncGitMerged(String skillName, String fetchedHash) implements ContextFact {}
-    record SyncGitRefused(String skillName, String upstream, boolean gitLatest) implements ContextFact {}
+    /**
+     * The store has extra local changes, so sync refused rather than
+     * overwrite them.
+     *
+     * @param upstream the source this sync would have merged — the recorded
+     *                 origin for an implicit sync, the {@code --from}
+     *                 directory for an explicit one. It is carried on the
+     *                 fact because the refusal has to NAME it: the remedy the
+     *                 renderer prints is meant to be run as printed, and
+     *                 which source it pulls from is the one part of it a
+     *                 reader cannot derive from the unit's name.
+     * @param fromDir  whether {@code upstream} arrived via {@code --from}.
+     *                 Without it the renderer cannot tell the two apart, and
+     *                 it printed {@code sync <name> --merge} for both — which
+     *                 for a {@code --from} sync merges the RECORDED ORIGIN
+     *                 instead of the directory the caller asked for. For a
+     *                 unit installed from github and synced from a
+     *                 {@code skill-dev} worktree those are different trees,
+     *                 so the printed remedy did something other than the
+     *                 command it was offered as a fix for.
+     */
+    record SyncGitRefused(String skillName, String upstream, boolean gitLatest, boolean fromDir)
+            implements ContextFact {}
     record SyncGitConflicted(String skillName, java.util.List<String> conflictedFiles) implements ContextFact {}
     record SyncGitFailed(String skillName, String reason) implements ContextFact {}
     record SyncGitNotGitTracked(String skillName) implements ContextFact {}

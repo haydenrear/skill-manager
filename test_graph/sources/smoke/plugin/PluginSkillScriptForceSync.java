@@ -3,6 +3,7 @@
 //SOURCES ../../lib/TgFixture.java
 //SOURCES ../../lib/TgMcp.java
 //SOURCES ../../lib/SmEnv.java
+//SOURCES ../../lib/RunLogText.java
 
 import com.hayden.testgraphsdk.sdk.Node;
 import com.hayden.testgraphsdk.sdk.NodeResult;
@@ -73,7 +74,11 @@ public class PluginSkillScriptForceSync {
             ProcessRecord syncNoop = Procs.run(ctx, "sync_noop",
                     smProc(sm, repoRoot, home, claudeHome, codexHome, geminiHome,
                             "sync", "--from", pluginDir.toString(), PLUGIN, "--yes"));
-            String noopLog = readLog(ctx.reportDir(), syncNoop);
+            // The skip diagnostic is a per-item line, so it is now
+            // Log.detail: run log always, console only under --verbose.
+            // Follow the `log:` footer, and THROW if it names a file that
+            // is not there rather than reading "" — see RunLogText.
+            String noopLog = RunLogText.plusNamedLog(readLog(ctx.reportDir(), syncNoop));
             int countAfterNoop = readCount(home);
 
             ProcessRecord syncForce = Procs.run(ctx, "sync_force",

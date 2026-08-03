@@ -3,6 +3,7 @@ package dev.skillmanager.validation;
 import dev.skillmanager._lib.harness.TestHarness;
 import dev.skillmanager._lib.test.Tests;
 import dev.skillmanager.app.InstallUseCase;
+import dev.skillmanager.app.SyncUseCase;
 import dev.skillmanager.effects.ConsoleProgramRenderer;
 import dev.skillmanager.effects.EffectContext;
 import dev.skillmanager.mcp.GatewayConfig;
@@ -300,7 +301,72 @@ public final class MarkdownImportValidatorTest {
             assertContains(out, "references missing path `absent.md`", "second message named");
         });
 
+        suite.test("a named sync answers for the unit it synced, not the whole home", () -> {
+            // Measured, and the reason this case exists: `skill-dev sync
+            // <unit>` delegates to `skill-manager sync <unit> --from
+            // <worktree> --merge`. It printed `✓ synced 1 unit(s) — 1 merged`
+            // and then exited 11 for an unresolved import in
+            // `skill-dev-skill` — a DIFFERENT unit the command was never asked
+            // about. skill-dev reads that exit code, so the product's own
+            // documented edit loop failed on content it did not touch, and
+            // kept failing until an unrelated unit was fixed.
+            //
+            // An exit code is a verdict on the run. 11 is only evidence of
+            // anything if it is attributable, which is the same argument that
+            // gave the violations their own code rather than folding them
+            // into the generic 1.
+            try (TestHarness h = TestHarness.create()) {
+                SkillStore store = h.store();
+                installTargetSkill(store, "shared", "reference.md");
+
+                Path work = Files.createTempDirectory("md-import-sync-");
+                // The bystander: installed, broken, and not what we sync.
+                InstallUseCase.Report seeded = install(store, brokenUnit(work, "acme-broken"));
+                assertTrue(seeded.committed().contains("acme-broken"),
+                        "precondition: the bystander is installed");
+                assertEquals(MarkdownImportValidator.EXIT_CODE, seeded.commandExitCode(),
+                        "precondition: and its imports really are unresolved — the install "
+                                + "that put it there said so");
+
+                // The unit under sync, whose own imports resolve.
+                Path cleanDir = cleanUnit(work, "acme-lint");
+                assertTrue(install(store, cleanDir).committed().contains("acme-lint"),
+                        "precondition: the synced unit is installed");
+
+                SyncUseCase.Report named = sync(store,
+                        List.of(new SyncUseCase.Target.FromDir("acme-lint", cleanDir)));
+
+                assertEquals(0, named.markdownImportViolations(),
+                        "a sync of acme-lint reports no violations — acme-broken's reference "
+                                + "is not this run's verdict to give");
+
+                // THE COMPANION. Without it, "no violations" is exactly what a
+                // build that stopped validating anything would produce, and
+                // the case above would pass over a deleted check. A no-name
+                // sync targets every installed unit, and it must still find
+                // the bystander — both of its violations, counted exactly,
+                // because a substring match would also be satisfied by one.
+                SyncUseCase.Report wholeHome = sync(store, List.of(
+                        new SyncUseCase.Target.Git("acme-broken"),
+                        new SyncUseCase.Target.FromDir("acme-lint", cleanDir)));
+                assertEquals(2, wholeHome.markdownImportViolations(),
+                        "a sync whose targets include acme-broken still reports both of its "
+                                + "violations — the scope narrowed, the check did not");
+            }
+        });
+
         return suite.runAll();
+    }
+
+    /** Run the real sync program over the given targets, no gateway. */
+    private static SyncUseCase.Report sync(SkillStore store, List<SyncUseCase.Target> targets)
+            throws java.io.IOException {
+        return new dev.skillmanager.effects.Executor(store, null)
+                .runStaged(SyncUseCase.buildProgram(
+                        store, null,
+                        new SyncUseCase.Options(null, false, false, false, false, true),
+                        targets, List.of()))
+                .result();
     }
 
     /** Names of installed units carrying at least one persisted error record. */

@@ -246,7 +246,7 @@ public final class ConsoleProgramRenderer implements ProgramRenderer {
                 gitMerged.add(x.skillName());
             }
             case ContextFact.SyncGitRefused x -> {
-                printMergeInstructions(x.skillName(), x.gitLatest());
+                printMergeInstructions(x.skillName(), x.upstream(), x.gitLatest(), x.fromDir());
                 refusedSkills.add(x.skillName());
             }
             case ContextFact.SyncGitConflicted x -> {
@@ -719,15 +719,40 @@ public final class ConsoleProgramRenderer implements ProgramRenderer {
      * commands any reader of the first line can write, it was printed once per
      * refused unit so a five-unit refusal cost seventy lines, and the
      * {@code --merge} spelling above it does the same thing correctly
-     * including the stash handling the by-hand version silently omits. The
-     * store directory is still named, which is the only part of it a reader
-     * could not have derived.
+     * including the stash handling the by-hand version silently omits.
+     *
+     * <h2>What went with it, and had to come back</h2>
+     *
+     * <p>The deleted recipe read {@code git fetch <upstream> HEAD}, and it was
+     * the only place the run named <b>which source the merge would pull
+     * from</b>. Losing it left the refusal saying, for every shape of sync,
+     * {@code skill-manager sync <name> --merge} — and for a
+     * {@code sync <name> --from <dir>} that command is <em>not</em> the one
+     * that was refused: run as printed it merges the recorded origin instead
+     * of the directory the caller pointed at. A unit installed from github and
+     * synced from a {@code skill-dev} worktree — the flow
+     * {@code skill-dev-skill} documents — has two different trees there, so
+     * the remedy quietly did something else. Measured: with the upstream
+     * dropped, the URL appeared neither on the console nor in the run log,
+     * and the graph carried three separate nodes asserting the refusal names
+     * its source ({@code source.sync.refuses_on_dirty},
+     * {@code source.sync.refuses_without_from},
+     * {@code hyper.sync.refuses.on.local.commit}).
+     *
+     * <p>So the source is named again, and {@code --from} is preserved in the
+     * re-run — still one line, still no by-hand recipe. The store directory
+     * stays too: it is where the reader resolves the conflict.
      */
-    private void printMergeInstructions(String skillName, boolean gitLatest) {
+    private void printMergeInstructions(String skillName, String upstream, boolean gitLatest,
+                                        boolean fromDir) {
         Log.error("%s has extra local changes (working tree edits, or commits ahead of the "
                 + "installed baseline) — sync would overwrite them.", skillName);
-        Log.error("  re-run with: skill-manager sync %s%s --merge   (the unit is at %s)",
-                skillName, gitLatest ? " --git-latest" : "", store.skillDir(skillName));
+        String source = upstream == null || upstream.isBlank() ? "<origin>" : upstream;
+        Log.error("  re-run with: skill-manager sync %s%s%s --merge   (merges %s into %s)",
+                skillName,
+                gitLatest ? " --git-latest" : "",
+                fromDir ? " --from " + source : "",
+                source, store.skillDir(skillName));
     }
 
     private static String shortHash(String hash) {

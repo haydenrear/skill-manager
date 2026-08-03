@@ -243,7 +243,8 @@ public final class SyncUseCase {
         // install path's BuildResolveGraphFromSource preamble.
         effects.add(new SkillEffect.BuildResolveGraphFromUnmetReferences(liveSkills));
         effects.add(new SkillEffect.CommitUnitsToStore());
-        effects.add(new SkillEffect.ValidateMarkdownImports(unitNames(liveUnits)));
+        effects.add(new SkillEffect.ValidateMarkdownImports(
+                markdownValidationScope(targets, liveUnits)));
         effects.add(SkillEffect.ValidateMarkdownImports.resolvedGraph());
         List<String> forceScriptUnits = forceScriptUnitNames(targets);
         effects.add(new SkillEffect.BuildInstallPlan(
@@ -380,6 +381,48 @@ public final class SyncUseCase {
         List<String> out = new ArrayList<>();
         for (var u : units) out.add(u.name());
         return out;
+    }
+
+    /**
+     * The units whose markdown imports THIS sync answers for.
+     *
+     * <h2>Why it is the targets and not the whole home</h2>
+     *
+     * <p>This used to be every live unit, which made
+     * {@link dev.skillmanager.validation.MarkdownImportValidator#EXIT_CODE}
+     * report the wrong thing on a named sync. Measured: {@code skill-dev sync
+     * <unit>} — which delegates to {@code skill-manager sync <unit> --from
+     * <worktree> --merge} — synced that unit successfully
+     * ({@code ✓ synced 1 unit(s) — 1 merged}) and then exited 11 for an
+     * unresolved import in {@code skill-dev-skill}, a DIFFERENT unit the
+     * command was never asked about. {@code skill-dev}'s edit loop reads that
+     * exit code, so the product's own documented developer cycle failed on
+     * content it did not touch, and would keep failing until an unrelated
+     * unit's reference was fixed.
+     *
+     * <p>An exit code is a verdict on the run. A run that synced one unit
+     * cannot answer for every reference in the home, and 11 is only evidence
+     * of anything if it is attributable — which is the same argument that
+     * gave the violations their own code instead of folding them into 1.
+     *
+     * <p>A no-name {@code sync} still validates everything: its target list is
+     * built by walking every installed unit, so the scope is unchanged there.
+     * Newly-resolved transitives are validated by the separate
+     * {@code ValidateMarkdownImports.resolvedGraph()} effect, which is why
+     * scoping this one does not let a freshly-committed unit through.
+     *
+     * <p>Names are intersected with the live store so a target that is not
+     * installed (a harness template with no instances, a unit removed
+     * mid-run) does not reach the validator.
+     */
+    private static List<String> markdownValidationScope(
+            List<Target> targets, List<dev.skillmanager.model.AgentUnit> liveUnits) {
+        java.util.Set<String> live = new java.util.LinkedHashSet<>(unitNames(liveUnits));
+        java.util.LinkedHashSet<String> scope = new java.util.LinkedHashSet<>();
+        for (Target t : targets) {
+            if (t.skillName() != null && live.contains(t.skillName())) scope.add(t.skillName());
+        }
+        return new ArrayList<>(scope);
     }
 
     private static Report decode(List<EffectReceipt> receipts) {

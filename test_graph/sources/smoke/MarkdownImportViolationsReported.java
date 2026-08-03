@@ -15,9 +15,32 @@ import java.util.List;
 
 /**
  * Installs one throwaway unit of each kind with a broken markdown
- * skill-import. The install must still succeed, and the final console
- * renderer must report the advisory unit-reference violation for every
- * kind.
+ * skill-import. The install must still commit, the final console renderer
+ * must report the unit-reference violation for every kind, and the run must
+ * exit {@code MarkdownImportValidator.EXIT_CODE}.
+ *
+ * <h2>Why the exit code, and why this node changed</h2>
+ *
+ * <p>This node used to assert every one of these installs exited <b>0</b>. It
+ * was encoding the defect: the violation block is printed after the success
+ * banner and after {@code ACTION_REQUIRED}, at the bottom of a long install,
+ * so a caller that reads the tail or checks {@code $?} concluded success. A
+ * printed violation that does not reach an exit code is not a check, it is a
+ * comment. {@code 11} is distinct from the generic 1 so a caller can tell
+ * "your markdown names something that is not there" from "the install
+ * failed" — and the unit IS still committed when it fires, which the
+ * {@code committed} assertion below pins.
+ *
+ * <h2>Non-vacuity</h2>
+ *
+ * <p>"Every install exits 11" would also hold for a binary that failed every
+ * install for an unrelated reason, and "the violation was rendered" would
+ * hold over any log that happened to contain those words. So the same node,
+ * in the same home, through the same binary, finally installs a unit whose
+ * import RESOLVES — against one of the four units it just installed — and
+ * asserts that one exits 0 with no violation block. The graph carries a
+ * second, independent witness in {@code markdown.imports.cross_kind.targets},
+ * which installs four cross-kind units with valid imports and asserts exit 0.
  */
 public class MarkdownImportViolationsReported {
     static final NodeSpec SPEC = NodeSpec.of("markdown.import.violations.reported")
@@ -27,6 +50,9 @@ public class MarkdownImportViolationsReported {
             .timeout("120s");
 
     private static final String MISSING_UNIT = "missing-smoke-reference-unit";
+
+    /** {@code dev.skillmanager.validation.MarkdownImportValidator.EXIT_CODE}. */
+    private static final int MARKDOWN_IMPORT_VIOLATION_EXIT = 11;
 
     public static void main(String[] args) {
         Node.run(args, SPEC, ctx -> {
@@ -44,6 +70,8 @@ public class MarkdownImportViolationsReported {
             Path fixturesRoot = Path.of(home).resolve("markdown-import-violation-fixtures");
 
             List<InstallCheck> checks = new ArrayList<>();
+            ProcessRecord cleanProc;
+            String cleanLog;
             try {
                 Files.createDirectories(fixturesRoot);
                 checks.add(install(ctx, sm, repoRoot, home, claudeHome, codexHome, geminiHome,
@@ -58,27 +86,57 @@ public class MarkdownImportViolationsReported {
                 checks.add(install(ctx, sm, repoRoot, home, claudeHome, codexHome, geminiHome,
                         harnessFixture(fixturesRoot), "harness",
                         "markdown-import-broken-harness"));
+                // The discriminator: same home, same binary, an import that
+                // resolves against a unit installed two lines above.
+                cleanProc = installUnit(ctx, sm, repoRoot, home, claudeHome, codexHome, geminiHome,
+                        cleanFixture(fixturesRoot), "install-clean");
+                cleanLog = logBody(ctx, cleanProc);
             } catch (Exception e) {
                 return NodeResult.error("markdown.import.violations.reported", e);
             }
 
-            boolean allExitZero = checks.stream().allMatch(c -> c.process().exitCode() == 0);
+            boolean allExitViolationCode = checks.stream()
+                    .allMatch(c -> c.process().exitCode() == MARKDOWN_IMPORT_VIOLATION_EXIT);
             boolean allReported = checks.stream().allMatch(InstallCheck::reportedViolation);
-            boolean pass = allExitZero && allReported;
+            boolean allCommitted = checks.stream().allMatch(c -> committed(home, c));
+            boolean cleanExitsZero = cleanProc.exitCode() == 0;
+            boolean cleanReportsNoViolation =
+                    !cleanLog.contains("markdown skill-import violations");
+            boolean pass = allExitViolationCode && allReported && allCommitted
+                    && cleanExitsZero && cleanReportsNoViolation;
 
             NodeResult result = pass
                     ? NodeResult.pass("markdown.import.violations.reported")
                     : NodeResult.fail("markdown.import.violations.reported",
-                            "allExitZero=" + allExitZero + " allReported=" + allReported);
+                            "allExitViolationCode=" + allExitViolationCode
+                                    + " allReported=" + allReported
+                                    + " allCommitted=" + allCommitted
+                                    + " cleanRc=" + cleanProc.exitCode()
+                                    + " cleanReportsNoViolation=" + cleanReportsNoViolation);
             for (InstallCheck check : checks) result = result.process(check.process());
+            result = result.process(cleanProc);
             return result
-                    .assertion("skill_install_continues_and_reports", check(checks, "skill"))
-                    .assertion("plugin_install_continues_and_reports", check(checks, "plugin"))
-                    .assertion("doc_install_continues_and_reports", check(checks, "doc"))
-                    .assertion("harness_install_continues_and_reports", check(checks, "harness"))
-                    .assertion("all_installs_exit_zero", allExitZero)
-                    .assertion("all_violations_rendered", allReported);
+                    .assertion("skill_install_commits_and_reports", check(checks, "skill", home))
+                    .assertion("plugin_install_commits_and_reports", check(checks, "plugin", home))
+                    .assertion("doc_install_commits_and_reports", check(checks, "doc", home))
+                    .assertion("harness_install_commits_and_reports", check(checks, "harness", home))
+                    .assertion("all_installs_exit_import_violation_code", allExitViolationCode)
+                    .assertion("all_violations_rendered", allReported)
+                    .assertion("all_units_still_committed", allCommitted)
+                    .assertion("COMPANION_resolving_import_exits_zero", cleanExitsZero)
+                    .assertion("COMPANION_resolving_import_reports_nothing", cleanReportsNoViolation);
         });
+    }
+
+    /** The store directory each kind commits into. */
+    private static boolean committed(String home, InstallCheck c) {
+        String dir = switch (c.kind()) {
+            case "skill" -> "skills";
+            case "plugin" -> "plugins";
+            case "doc" -> "docs";
+            default -> "harnesses";
+        };
+        return Files.isDirectory(Path.of(home, dir, c.unitName()));
     }
 
     private static InstallCheck install(
@@ -92,10 +150,8 @@ public class MarkdownImportViolationsReported {
             Path unitDir,
             String kind,
             String unitName) throws Exception {
-        ProcessBuilder pb = new ProcessBuilder(
-                sm.toString(), "install", "file://" + unitDir.toAbsolutePath(), "--yes");
-        SmEnv.apply(ctx, pb, home);
-        ProcessRecord proc = Procs.run(ctx, "install-" + kind, pb);
+        ProcessRecord proc = installUnit(ctx, sm, repoRoot, home, claudeHome, codexHome, geminiHome,
+                unitDir, "install-" + kind);
         String log = logBody(ctx, proc);
         boolean rendered = log.contains("markdown skill-import violations")
                 && log.contains(unitName + " (" + kind + ")")
@@ -104,11 +160,29 @@ public class MarkdownImportViolationsReported {
         return new InstallCheck(kind, unitName, proc, rendered);
     }
 
-    private static boolean check(List<InstallCheck> checks, String kind) {
+    private static ProcessRecord installUnit(
+            com.hayden.testgraphsdk.sdk.NodeContext ctx,
+            Path sm,
+            Path repoRoot,
+            String home,
+            String claudeHome,
+            String codexHome,
+            String geminiHome,
+            Path unitDir,
+            String label) throws Exception {
+        ProcessBuilder pb = new ProcessBuilder(
+                sm.toString(), "install", "file://" + unitDir.toAbsolutePath(), "--yes");
+        SmEnv.apply(ctx, pb, home);
+        return Procs.run(ctx, label, pb);
+    }
+
+    private static boolean check(List<InstallCheck> checks, String kind, String home) {
         return checks.stream()
                 .filter(c -> c.kind().equals(kind))
                 .findFirst()
-                .map(c -> c.process().exitCode() == 0 && c.reportedViolation())
+                .map(c -> c.process().exitCode() == MARKDOWN_IMPORT_VIOLATION_EXIT
+                        && c.reportedViolation()
+                        && committed(home, c))
                 .orElse(false);
     }
 
@@ -189,6 +263,37 @@ public class MarkdownImportViolationsReported {
         Files.writeString(dir.resolve("README.md"), markdownWithBrokenImport(
                 "markdown-import-broken-harness",
                 "Harness fixture with an unresolved markdown skill-import."));
+        return dir;
+    }
+
+    /**
+     * The companion fixture: an import that RESOLVES, against the broken-skill
+     * unit installed earlier in this node (its {@code SKILL.md} is on disk in
+     * the store by then). Same kind, same home, same binary — the only
+     * difference is whether the reference is real.
+     */
+    private static Path cleanFixture(Path root) throws Exception {
+        Path dir = root.resolve("clean");
+        Files.createDirectories(dir);
+        Files.writeString(dir.resolve("SKILL.md"), """
+                ---
+                title: markdown-import-clean-skill
+                skill-imports:
+                  - unit: markdown-import-broken-skill
+                    path: SKILL.md
+                    reason: Companion proving a resolving import exits 0 in this same home.
+                ---
+
+                # markdown-import-clean-skill
+
+                Skill fixture whose markdown skill-import resolves.
+                """);
+        Files.writeString(dir.resolve("skill-manager.toml"), """
+                [skill]
+                name = "markdown-import-clean-skill"
+                version = "0.1.0"
+                description = "Skill fixture whose markdown skill-import resolves."
+                """);
         return dir;
     }
 

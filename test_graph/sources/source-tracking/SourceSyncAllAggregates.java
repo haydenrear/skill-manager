@@ -29,11 +29,22 @@ import java.nio.file.Path;
  * <p>Asserts:
  * <ul>
  *   <li>Exit {@code 7}.</li>
- *   <li>Output contains the structured "sync summary" header.</li>
+ *   <li>Output contains the aggregate follow-up header with a count.</li>
  *   <li>The fixture's name appears in the per-skill follow-up list,
  *       wrapped in the literal {@code skill-manager sync … --merge}
  *       recipe.</li>
  * </ul>
+ *
+ * <h2>The header this used to look for</h2>
+ *
+ * <p>{@code sync summary: N skill(s) need attention} was reworded to
+ * {@code sync: N unit(s) need attention} — "unit" because sync handles
+ * plugins, doc-repos and harnesses too, and a header that says "skill" over a
+ * refused plugin is wrong about what it is reporting. This node kept matching
+ * the old string, and did not surface it because the graph aborted at an
+ * earlier node. The count and the per-row recipe — the parts a caller acts on
+ * — are unchanged and are what is asserted; the recipe assertion is the
+ * companion that keeps "a header was printed" from being the whole claim.
  */
 public class SourceSyncAllAggregates {
     static final NodeSpec SPEC = NodeSpec.of("source.sync.all_aggregates")
@@ -108,8 +119,7 @@ public class SourceSyncAllAggregates {
             String body = out.toString();
 
             boolean exitedSeven = rc == 7;
-            boolean summaryHeader = body.contains("sync summary:")
-                    && body.contains("skill(s) need attention");
+            boolean summaryHeader = body.contains("sync: 1 unit(s) need attention");
             // Recipe should preserve the --git-latest flag we invoked sync
             // with — re-running the suggested command shouldn't silently
             // change which ref gets pulled.
