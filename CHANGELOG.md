@@ -1,5 +1,38 @@
 # Changelog
 
+## [0.21.0](https://github.com/haydenrear/skill-manager/compare/v0.20.0...v0.21.0) (2026-08-03)
+
+
+### Features
+
+* demote per-item detail to a run log, so an agent reading stdout does not pay for it ([3e0182a](https://github.com/haydenrear/skill-manager/commit/3e0182aa06a5963c5afecfef4074058a1a48b6f7))
+* **log:** a run log per invocation, and a quiet console by default ([df3cf26](https://github.com/haydenrear/skill-manager/commit/df3cf260f98959e4e8a9f1a17e21049e0bc51f13))
+* **project:** validate the project checkout's own markdown skill-imports (D7) ([54a3d05](https://github.com/haydenrear/skill-manager/commit/54a3d05f88032decd2d18cdf15ea068f75850acc))
+* **provision:** a tool already on PATH is a state, not an event ([29a1c5a](https://github.com/haydenrear/skill-manager/commit/29a1c5a6d4e3bd5c261ea811dfdccc061f882a19))
+* roll up tool and CLI-dep provisioning, so a no-op does not cost 22 lines ([36be4b2](https://github.com/haydenrear/skill-manager/commit/36be4b2ebbc379a7765e8c3b4974abd9f99ca43d))
+
+
+### Bug Fixes
+
+* a CLI projection that could not be repeated, one failure recorded ten times, and diagnostic text read as a leak ([281937f](https://github.com/haydenrear/skill-manager/commit/281937f143a1ac70e4a4817ad77787ac71ad0f5b))
+* a named sync answered for the whole home, and a refusal stopped naming its source ([48fc9bc](https://github.com/haydenrear/skill-manager/commit/48fc9bccfca43399ca7493a2cb7bf3e1a241fc65))
+* agent roots fell back to $HOME, so any home's sync wrote the operator's agent dirs ([68ce6ec](https://github.com/haydenrear/skill-manager/commit/68ce6ecff3107043406703985d2a02e3a7a4e4b0))
+* **cli:** a refusal is a message, not a stack trace (D9) ([e48293b](https://github.com/haydenrear/skill-manager/commit/e48293bcfd92a828ab36b82f7fa36dd8a321d428))
+* **drift:** a refusal's remedy names the build that understands the home ([af3601b](https://github.com/haydenrear/skill-manager/commit/af3601b2f703143c4103d3cf5b3801812cef2c72)), closes [#142](https://github.com/haydenrear/skill-manager/issues/142)
+* drop the pinned postgres container_name, which made the suite unable to run twice ([a434615](https://github.com/haydenrear/skill-manager/commit/a4346152b07e3f850597e07163b6043f0ef42b99))
+* drop the pinned postgres container_name, which made the suite unable to run twice ([01d34bb](https://github.com/haydenrear/skill-manager/commit/01d34bb1d150c63171e2d5e0b3bf2ca1c31d3755))
+* four onboarding defects — inherited claims, the Claude config location, unenforced import violations, and the PATH sanitizer ([49641fd](https://github.com/haydenrear/skill-manager/commit/49641fda42dd9a9445e2dc35f638f7359d5da786))
+* **home,uninstall:** make the printed remedies runnable as printed (D11, D15) ([2030cc0](https://github.com/haydenrear/skill-manager/commit/2030cc005e1cf0ad951695e7f70a6f162fe5caae))
+* **home:** a persisted error message is not an isolation leak ([6c1d889](https://github.com/haydenrear/skill-manager/commit/6c1d889100b1e01517be850d84ac9d28f2d9f23e)), closes [#144](https://github.com/haydenrear/skill-manager/issues/144)
+* **home:** bound every enumerated failure, and delete the remedy that hijacks ([2ec5bcf](https://github.com/haydenrear/skill-manager/commit/2ec5bcfb83b63ce54bbc93a9977d861f6074aead))
+* printed remedies name a CLI that runs and a directory that exists; take the third-party graph out of the release gate ([e30e765](https://github.com/haydenrear/skill-manager/commit/e30e765a35ab377db6627635786e05ea9d8235aa))
+* **project:** reconcile an occupied CLI shim instead of failing the sync ([6371866](https://github.com/haydenrear/skill-manager/commit/63718661b7957109945de7514d74d5cb0a728042)), closes [#144](https://github.com/haydenrear/skill-manager/issues/144)
+* **report:** one project-sync failure is one report entry, and it can clear ([e831e10](https://github.com/haydenrear/skill-manager/commit/e831e104070e05173477a6c5f80cc6fed33423bc)), closes [#144](https://github.com/haydenrear/skill-manager/issues/144)
+* **sync:** a deliberate file: install is a state, not an outstanding error (D14) ([fbbad20](https://github.com/haydenrear/skill-manager/commit/fbbad207dc62ba3dc727a8ddaf3166d835978b4c))
+* **sync:** a refusal names the source it would merge, and a named sync answers only for itself ([0946808](https://github.com/haydenrear/skill-manager/commit/0946808ee5078fcef13f9ea303e42bc767a1ad3f))
+* **sync:** a refused sync names where the unit actually lives, and a CLI that runs ([1758bfb](https://github.com/haydenrear/skill-manager/commit/1758bfb63b4e756be65e4e31afe8d3f3c7617100))
+* the last four onboarding defects — stack traces, unrunnable remedies, unvalidated project imports, and a permanent error record ([0fd28c5](https://github.com/haydenrear/skill-manager/commit/0fd28c570f931ab84f53cd5dd3a3032e7939de82))
+
 ## [0.20.0](https://github.com/haydenrear/skill-manager/compare/v0.19.2...v0.20.0) (2026-08-01)
 
 
