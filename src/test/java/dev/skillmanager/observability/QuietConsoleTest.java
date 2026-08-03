@@ -332,7 +332,7 @@ public final class QuietConsoleTest {
                         r.onReceipt(EffectReceipt.partial(
                                 new SkillEffect.SyncGit("acme-widgets", null, null, false, false),
                                 List.of(new ContextFact.SyncGitRefused(
-                                        "acme-widgets", "git@github.com:acme/widgets", false)),
+                                        "acme-widgets", "git@github.com:acme/widgets", false, false)),
                                 "extra local changes"));
                         r.onComplete();
                     });
@@ -340,9 +340,67 @@ public final class QuietConsoleTest {
                             "the refusal names the unit");
                     assertContains(c.text(), "skill-manager sync acme-widgets --merge",
                             "and the command that resolves it, runnable as printed");
+                    assertContains(c.text(), "git@github.com:acme/widgets",
+                            "and the source that command would merge — the one part of the "
+                                    + "recipe a reader cannot derive from the unit's name");
                     assertTrue(c.lines().size() <= 6,
                             "in a handful of lines, not fourteen: got " + c.lines().size()
                                     + "\n" + c.text());
+                })
+
+                .test("a --from refusal offers the SAME sync it refused, not a different one", () -> {
+                    // The regression this pins. `sync <name> --from <dir>` was
+                    // refused, and the printed remedy read
+                    // `skill-manager sync <name> --merge` — no `--from`. Run as
+                    // printed on a unit whose recorded origin is github, that
+                    // merges github, not the directory the caller named. It is
+                    // the shape skill-dev documents (`sync <unit> --from
+                    // skill-dev/<unit> --merge`), so the remedy for the exact
+                    // flow the product ships was a different operation.
+                    SkillStore store = tempStore("refusal-from");
+                    String from = "/tmp/skill-dev/acme-widgets";
+                    Capture c = capture(() -> {
+                        ConsoleProgramRenderer r = new ConsoleProgramRenderer(store, gateway());
+                        r.onReceipt(EffectReceipt.partial(
+                                new SkillEffect.SyncFromLocalDir(
+                                        "acme-widgets", Path.of(from), false, false),
+                                List.of(new ContextFact.SyncGitRefused(
+                                        "acme-widgets", from, false, true)),
+                                "extra local changes"));
+                        r.onComplete();
+                    });
+                    assertContains(c.text(), "skill-manager sync acme-widgets --from " + from
+                                    + " --merge",
+                            "the re-run keeps --from, so it merges what the refused command "
+                                    + "was going to merge");
+                    assertContains(c.text(), "merges " + from,
+                            "and states which tree that is");
+                    assertTrue(c.lines().size() <= 6,
+                            "still a handful of lines: got " + c.lines().size()
+                                    + "\n" + c.text());
+                })
+
+                .test("COMPANION: an implicit sync must NOT grow a --from it was never given", () -> {
+                    // Without this, "--from is printed" could be satisfied by
+                    // printing --from unconditionally, which would make the
+                    // implicit-origin remedy unrunnable in the other direction.
+                    SkillStore store = tempStore("refusal-implicit");
+                    Capture c = capture(() -> {
+                        ConsoleProgramRenderer r = new ConsoleProgramRenderer(store, gateway());
+                        r.onReceipt(EffectReceipt.partial(
+                                new SkillEffect.SyncGit("acme-widgets", null, null, true, false),
+                                List.of(new ContextFact.SyncGitRefused(
+                                        "acme-widgets", "https://github.com/acme/widgets.git",
+                                        true, false)),
+                                "extra local changes"));
+                        r.onComplete();
+                    });
+                    assertContains(c.text(), "skill-manager sync acme-widgets --git-latest --merge",
+                            "the implicit form keeps --git-latest and stays contiguous");
+                    assertFalse(c.text().contains("--from"),
+                            "and gains no --from it was never given:\n" + c.text());
+                    assertContains(c.text(), "https://github.com/acme/widgets.git",
+                            "while still naming the origin it would merge");
                 })
 
                 // ---------------------------------------------------- the JSON

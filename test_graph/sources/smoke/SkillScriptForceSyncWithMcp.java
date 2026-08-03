@@ -1,6 +1,7 @@
 ///usr/bin/env jbang "$0" "$@" ; exit $?
 //SOURCES ../../sdk/java/src/main/java/com/hayden/testgraphsdk/sdk/*.java
 //SOURCES ../lib/SmEnv.java
+//SOURCES ../lib/RunLogText.java
 
 import com.hayden.testgraphsdk.sdk.Node;
 import com.hayden.testgraphsdk.sdk.NodeResult;
@@ -67,17 +68,23 @@ public class SkillScriptForceSyncWithMcp {
 
             ProcessRecord install = Procs.run(ctx, "install",
                     smProc(sm, repoRoot, storeHome, privateClaude, privateCodex, privateGemini,
-                            "install", fixtureCopy.toString(), "--yes"));
+                            gatewayUrl, "install", fixtureCopy.toString(), "--yes"));
             int countAfterInstall = readCount(storeHome);
 
             ProcessRecord syncNoop = Procs.run(ctx, "sync_noop",
                     smProc(sm, repoRoot, storeHome, privateClaude, privateCodex, privateGemini,
+                            gatewayUrl,
                             "sync", "--from", fixtureCopy.toString(), SKILL, "--yes"));
-            String noopLog = readLog(ctx.reportDir(), syncNoop);
+            // The skip diagnostic is a per-item line, so it is now
+            // Log.detail: run log always, console only under --verbose.
+            // Follow the `log:` footer, and THROW if it names a file that
+            // is not there rather than reading "" — see RunLogText.
+            String noopLog = RunLogText.plusNamedLog(readLog(ctx.reportDir(), syncNoop));
             int countAfterNoop = readCount(storeHome);
 
             ProcessRecord syncForce = Procs.run(ctx, "sync_force",
                     smProc(sm, repoRoot, storeHome, privateClaude, privateCodex, privateGemini,
+                            gatewayUrl,
                             "sync", "--from", fixtureCopy.toString(), SKILL,
                             "--yes", "--force-scripts"));
             String forceLog = readLog(ctx.reportDir(), syncForce);
@@ -138,9 +145,28 @@ public class SkillScriptForceSyncWithMcp {
         });
     }
 
+    /**
+     * <b>{@code SKILL_MANAGER_GATEWAY_URL} is not optional here.</b>
+     *
+     * <p>This node runs against a PRIVATE {@code SKILL_MANAGER_HOME}, and a
+     * fresh home has no {@code gateway.properties}. Without the variable the
+     * CLI falls through to {@code GatewayConfig.DEFAULT_URL}
+     * ({@code http://127.0.0.1:51717}) — an endpoint this graph does not own
+     * and did not start. Measured: the node registered its fixture server
+     * {@code skill-script-force-sync-mcp} into a gateway belonging to an
+     * unrelated agent session's home, the deploy failed there, and the node
+     * reported {@code forceMcpDeployed=false} while the graph's own sandbox
+     * gateway logged no {@code POST /servers} at all. The node already read
+     * {@code gatewayUrl} from {@code gateway.up} and asserted it non-null; it
+     * simply never handed it to the child.
+     *
+     * <p>A sandboxed home is not sandboxed until every endpoint it resolves is
+     * one the sandbox created — the same rule the agent-home variables follow.
+     */
     private static ProcessBuilder smProc(Path sm, Path repoRoot, Path storeHome,
                                          Path privateClaude, Path privateCodex,
                                          Path privateGemini,
+                                         String gatewayUrl,
                                          String... cliArgs) {
         java.util.List<String> argv = new java.util.ArrayList<>();
         argv.add(sm.toString());
@@ -148,6 +174,7 @@ public class SkillScriptForceSyncWithMcp {
         ProcessBuilder pb = new ProcessBuilder(argv);
         SmEnv.apply(pb, storeHome.toString(),
                 SmEnv.sandbox(privateClaude, privateCodex, privateGemini));
+        pb.environment().put("SKILL_MANAGER_GATEWAY_URL", gatewayUrl);
         return pb;
     }
 

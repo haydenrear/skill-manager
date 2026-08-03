@@ -146,7 +146,7 @@ public final class SyncGitHandler {
         if (tr.fact != null) {
             if (dirty && !e.merge() && isRegistryLookupFailure(tr.fact)) {
                 return EffectReceipt.partial(e, "extra local changes — re-run with --merge",
-                        new ContextFact.SyncGitRefused(skillName, upstream, e.gitLatest()));
+                        new ContextFact.SyncGitRefused(skillName, upstream, e.gitLatest(), false));
             }
             return EffectReceipt.ok(e, tr.fact);
         }
@@ -158,7 +158,7 @@ public final class SyncGitHandler {
                 return EffectReceipt.ok(e, new ContextFact.SyncGitUpToDate(skillName, target.displayLabel()));
             }
             return EffectReceipt.partial(e, "extra local changes — re-run with --merge",
-                    new ContextFact.SyncGitRefused(skillName, upstream, e.gitLatest()));
+                    new ContextFact.SyncGitRefused(skillName, upstream, e.gitLatest(), false));
         }
 
         if (!dirty && target.sha != null && target.sha.equals(baseline)) {

@@ -16,15 +16,35 @@ import java.nio.file.StandardOpenOption;
  * Dirty-state guard for {@code skill-manager sync --from <dir>}: when
  * the installed copy is git-tracked AND has uncommitted edits or
  * commits ahead of the recorded baseline, sync must refuse to
- * overwrite, exit 7, and print actionable {@code git fetch}/{@code
- * git merge} instructions plus the equivalent {@code skill-manager
- * sync … --merge} invocation.
+ * overwrite, exit 7, and print a re-run recipe that is <b>runnable as
+ * printed and does what the refused command was going to do</b>.
+ *
+ * <h2>What "runnable as printed" means here, and why it is the assertion</h2>
+ *
+ * <p>This node used to assert the banner carried a by-hand
+ * {@code git fetch <upstream> HEAD} / {@code git merge FETCH_HEAD} recipe.
+ * That recipe was deliberately deleted — it is three commands any reader of
+ * the first line can write, it was printed once per refused unit so a
+ * five-unit refusal cost seventy lines, and {@code --merge} does the same
+ * thing correctly including the stash handling the by-hand version omitted.
+ *
+ * <p>What went with it, and should not have, was the only part of it a reader
+ * could NOT derive: <b>which source the merge would pull from</b>. For a
+ * {@code --from} sync that is the directory on the command line, and the
+ * printed remedy dropped it — {@code skill-manager sync <name> --merge}, run
+ * as printed, merges the RECORDED ORIGIN instead. For a unit installed from
+ * github and being synced from a {@code skill-dev} worktree — the flow
+ * {@code skill-dev-skill} documents — that is a different source and a
+ * different merge. So the assertion is now the property the deleted recipe
+ * was carrying: the re-run command names the {@code --from} directory, and
+ * the banner names the source it would merge.
  *
  * <p>This is the {@code rc=7} contract — automation reading the
  * {@code rc=7} banner needs the merge metadata to act on. The store's
  * dirty state is intentionally left in place; the next node
- * ({@code source.sync.merges.clean}) reuses it to exercise the
- * {@code --merge} happy path.
+ * ({@code source.sync.refuses_without_from}) reuses it to exercise the
+ * implicit-origin form of the same banner, where NO {@code --from} may
+ * appear and the recorded origin is named instead.
  */
 public class SourceSyncRefusesOnDirty {
     static final NodeSpec SPEC = NodeSpec.of("source.sync.refuses_on_dirty")
@@ -77,24 +97,38 @@ public class SourceSyncRefusesOnDirty {
             boolean exitedSeven = rc == 7;
             // The banner is structured so harnesses can match on it.
             boolean mentionsLocalChanges = body.contains("extra local changes");
-            boolean mentionsFetch = body.contains("git fetch") && body.contains("HEAD");
             boolean mentionsMergeFlag = body.contains("--merge");
+            // The whole recipe, contiguous: anything less would also be
+            // satisfied by the flag and the path appearing in unrelated
+            // lines of a long sync.
+            String expectedRecipe =
+                    "skill-manager sync " + skillName + " --from " + fixtureDir + " --merge";
+            boolean recipeKeepsFromDir = body.contains(expectedRecipe);
+            // ...and the source it would merge is named, not left implicit.
+            boolean bannerNamesTheSource = body.contains(fixtureDir);
+            // The store dir stays named too — it is where the reader resolves.
+            boolean bannerNamesTheStore = body.contains(storeDir);
             // Local edit must still be on disk — sync mustn't have clobbered it.
             String afterMd = Files.readString(skillMd);
             boolean editPreserved = afterMd.contains("local-edit-from-test-graph");
 
-            boolean pass = exitedSeven && mentionsLocalChanges && mentionsFetch
+            boolean pass = exitedSeven && mentionsLocalChanges && recipeKeepsFromDir
+                    && bannerNamesTheSource && bannerNamesTheStore
                     && mentionsMergeFlag && editPreserved;
             return (pass
                     ? NodeResult.pass("source.sync.refuses_on_dirty")
                     : NodeResult.fail("source.sync.refuses_on_dirty",
                             "rc=" + rc + " local=" + mentionsLocalChanges
-                                    + " fetch=" + mentionsFetch
+                                    + " recipeKeepsFrom=" + recipeKeepsFromDir
+                                    + " namesSource=" + bannerNamesTheSource
+                                    + " namesStore=" + bannerNamesTheStore
                                     + " mergeFlag=" + mentionsMergeFlag
                                     + " editPreserved=" + editPreserved))
                     .assertion("exited_with_rc_7", exitedSeven)
                     .assertion("banner_mentions_local_changes", mentionsLocalChanges)
-                    .assertion("banner_includes_git_fetch_recipe", mentionsFetch)
+                    .assertion("rerun_recipe_keeps_the_from_directory", recipeKeepsFromDir)
+                    .assertion("banner_names_the_source_it_would_merge", bannerNamesTheSource)
+                    .assertion("banner_names_the_store_directory", bannerNamesTheStore)
                     .assertion("banner_includes_merge_flag_recipe", mentionsMergeFlag)
                     .assertion("local_edit_preserved", editPreserved)
                     .publish("dirtyStoreDir", storeDir);

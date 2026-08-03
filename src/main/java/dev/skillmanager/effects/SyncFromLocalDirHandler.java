@@ -74,11 +74,11 @@ public final class SyncFromLocalDirHandler {
             boolean dirty = GitOps.isDirty(storeDir, baseline);
             if (dirty && !e.merge()) {
                 return EffectReceipt.partial(e, "extra local changes — re-run with --merge",
-                        new ContextFact.SyncGitRefused(skillName, src.toString(), false));
+                        new ContextFact.SyncGitRefused(skillName, src.toString(), false, true));
             }
             if (e.merge() && !srcIsGit && dirty) {
                 return EffectReceipt.partial(e, "source not git, store dirty",
-                        new ContextFact.SyncGitRefused(skillName, src.toString(), false));
+                        new ContextFact.SyncGitRefused(skillName, src.toString(), false, true));
             }
         }
 

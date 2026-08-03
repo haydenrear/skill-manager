@@ -1,6 +1,7 @@
 ///usr/bin/env jbang "$0" "$@" ; exit $?
 //SOURCES ../../sdk/java/src/main/java/com/hayden/testgraphsdk/sdk/*.java
 //SOURCES ../lib/SmEnv.java
+//SOURCES ../lib/RunLogText.java
 
 import com.hayden.testgraphsdk.sdk.Node;
 import com.hayden.testgraphsdk.sdk.NodeResult;
@@ -77,7 +78,11 @@ public class SkillScriptForceRerun {
                     smProc(sm, repoRoot, privateHome, privateClaude, privateCodex, privateGemini,
                             "sync", "--from", fixtureCopy.toString(),
                             "skill-script-skill", "--yes"));
-            String syncNoopLog = readLog(ctx.reportDir(), syncNoop);
+            // The skip diagnostic is a per-item line, so it is now
+            // Log.detail: run log always, console only under --verbose.
+            // Follow the `log:` footer, and THROW if it names a file that
+            // is not there rather than reading "" — see RunLogText.
+            String syncNoopLog = RunLogText.plusNamedLog(readLog(ctx.reportDir(), syncNoop));
             int scriptRunsAfterNoopSync = countOccurrences(
                     readSkillScriptLogs(storeHome), "skill-script-skill: touched");
 
