@@ -59,14 +59,20 @@ import java.util.Map;
  *       launch anyway.</li>
  * </ol>
  *
- * <p>The two are separate assertions on purpose, and the metric
- * {@code remedyIsAbsolutelyResolved} records which spelling the CLI used.
- * {@code HomeCloseOut} names its CLI absolutely (through
- * {@code HomeDescriptor.resolveCli}, which is what epic #2's fix added); the
- * drift refusal prints a bare {@code skill-manager}. On a machine whose PATH
- * carries an older release that is the difference between a remedy and a no-op,
- * and recording it here is what makes the difference visible if anyone decides
- * to close it.
+ * <p>The two are separate assertions on purpose, and a third now joins them:
+ * the remedy must name a <em>resolved</em> CLI. This started as the metric
+ * {@code remedyIsAbsolutelyResolved}, pinned at 0, recording that
+ * {@code HomeCloseOut} named its CLI absolutely (through
+ * {@code HomeDescriptor.resolveCli}) while the drift refusal printed a bare
+ * {@code skill-manager} — on a machine whose PATH carries an older release,
+ * the difference between a remedy and a no-op, because 0.19.2 answers an
+ * unknown subcommand with top-level usage and exit 0 (#61).
+ *
+ * <p>#142 closed that gap: both paths go through
+ * {@code HomeDescriptor.cliInvocation}. "Resolves and is executable" and
+ * "names the build that understands THIS home" are different claims — PATH can
+ * satisfy the first with a stale binary — so the stronger one is asserted
+ * rather than merely measured, and the metric stays as the number it moved.
  *
  * <h2>The shims resolve, without launching a model</h2>
  *
@@ -230,12 +236,17 @@ public class TicketLifecycleFirstLaunch {
                     .assertion("this_homes_own_cli_is_first_on_the_launch_path",
                             thisHomesBinIsFirstOnTheLaunchPath)
                     .assertion("all_three_launch_shims_are_executable", everyShimIsExecutable)
+                    // Was a metric pinned at 0 while the drift refusal printed a
+                    // bare `skill-manager` and only HomeCloseOut resolved its
+                    // own. #142 closed that: both now go through
+                    // HomeDescriptor.cliInvocation, so this is a contract every
+                    // refusal owes rather than a difference between two of them,
+                    // and it is asserted. `everyRemedyIsAbsolute` is false on an
+                    // empty remedy list, so a refusal that stops printing
+                    // remedies fails here instead of passing vacuously.
+                    .assertion("every_remedy_names_a_resolved_cli_not_a_bare_skill_manager",
+                            everyRemedyIsAbsolute)
                     .metric("remediesChecked", remedies.size())
-                    // 0 records that the drift refusal names a BARE
-                    // `skill-manager`, where HomeCloseOut names an absolute one.
-                    // Not an assertion, because it is a difference between two
-                    // commands rather than a broken contract — but a measured
-                    // one, so that closing the gap is a visible change here.
                     .metric("remedyIsAbsolutelyResolved", everyRemedyIsAbsolute ? 1 : 0)
                     .metric("freshDriftExit", freshDrift.exitCode())
                     .metric("refusedLaunchExit", refusedLaunch.exitCode());

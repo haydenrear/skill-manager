@@ -7,6 +7,7 @@ import dev.skillmanager.lifecycle.SkillReconciler;
 import dev.skillmanager.mcp.GatewayConfig;
 import dev.skillmanager.policy.HomePolicy;
 import dev.skillmanager.store.DriftGate;
+import dev.skillmanager.store.HomeDescriptor;
 import dev.skillmanager.store.NotAHomeException;
 import dev.skillmanager.store.SkillStore;
 import dev.skillmanager.util.Log;
@@ -162,8 +163,16 @@ public final class ExecCommand implements Callable<Integer> {
             // '--show'` with exit 2. A remedy printed by a refusal is the one
             // instruction its reader has, and one that does not parse turns a
             // one-command recovery into a hunt through --help.
-            Log.error("  Read it with `skill-manager home drift`, then clear the gate with");
-            Log.error("  `skill-manager home drift --ack` (or launch with --ack-drift).");
+            //
+            // A remedy that does not RUN is the same failure one step later. A
+            // bare `skill-manager` is resolved by PATH, which on a machine
+            // carrying an older release answers `home drift --ack` with
+            // top-level usage and exit 0 (#61): the operator sees success, the
+            // gate refuses again, and nothing in the transcript says the remedy
+            // was a no-op. Resolved against this home, same as close-out. #142.
+            String cli = HomeDescriptor.cliInvocation(store.root());
+            Log.error("  Read it with `%s home drift`, then clear the gate with", cli);
+            Log.error("  `%s home drift --ack` (or launch with --ack-drift).", cli);
             return DriftGate.EXIT_CODE;
         }
         if (drift != null) {

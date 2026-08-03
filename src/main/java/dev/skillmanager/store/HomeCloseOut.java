@@ -218,11 +218,11 @@ public final class HomeCloseOut {
      * null rather than a guess.
      */
     private static String cliInvocation(Path home) {
-        Path cli = HomeDescriptor.resolveCli(home);
-        if (cli == null) return "skill-manager";
-        String path = cli.toString();
-        // A path with a space in it has to survive being pasted into a shell.
-        return path.indexOf(' ') < 0 ? path : "'" + path.replace("'", "'\\''") + "'";
+        // Promoted to HomeDescriptor (#142) once the drift gate needed the same
+        // answer. Delegating rather than keeping a second copy: two spellings of
+        // "which build goes with this home" is exactly how the --json and human
+        // paths diverged the first time this was fixed.
+        return HomeDescriptor.cliInvocation(home);
     }
 
     /**
