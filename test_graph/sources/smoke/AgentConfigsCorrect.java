@@ -90,8 +90,9 @@ public class AgentConfigsCorrect {
             // fakeHome/.claude, per the comment above), and Claude Code reads
             // $CLAUDE_CONFIG_DIR/.claude.json when the variable is set. The
             // entry used to be written to the parent, which the agent never
-            // reads. The unset case still resolves to <root>/.claude.json and is
-            // not exercised here.
+            // reads. The unset case resolves to <root>/.claude.json only when
+            // <root> is $HOME (the global home); for any other root it now also
+            // resolves inside the config dir. Neither is exercised here.
             Path claudeJson = fakeHome.resolve(".claude").resolve(".claude.json");
             Path codexToml = fakeHome.resolve(".codex").resolve("config.toml");
             Path geminiSettings = fakeHome.resolve(".gemini").resolve("settings.json");

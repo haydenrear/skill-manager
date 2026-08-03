@@ -61,11 +61,15 @@ public final class TarBackend implements InstallerBackend {
                 return InstallOutcome.SKIPPED;
             }
             Fs.makeExecutable(binary);
-            // deleteIfExists rather than `if (Files.exists(link)) delete`:
-            // Files.exists FOLLOWS the link, so a dangling shim is invisible to
-            // it — and a dangling shim is now the main reason this backend
-            // reaches here at all. delete/deleteIfExists operate on the link
-            // itself, so the repair no longer trips over the thing it repairs.
+            // deleteIfExists rather than `if (Files.exists(link)) delete`,
+            // because Files.exists FOLLOWS the link and a dangling shim is now
+            // the main reason this backend reaches here at all.
+            //
+            // BELT AND BRACES, not a repair — do not read a fix into it. The
+            // REPLACE_EXISTING below already replaces a dangling link, and
+            // reverting this line leaves the whole suite green (measured). It
+            // stays because unlink-then-write is the order that reads correctly
+            // at a glance, not because the previous spelling lost anything.
             Files.deleteIfExists(link);
             Files.copy(binary, link, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.COPY_ATTRIBUTES);
             Fs.makeExecutable(link);

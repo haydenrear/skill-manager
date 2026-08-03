@@ -68,13 +68,31 @@ import java.nio.file.Path;
  * {@link dev.skillmanager.lock.CliInstallRecorder}: a content fingerprint, plus
  * "is the declared binary still where the script left it".
  *
- * <p>The second half of that pair is exactly {@link #providedByThisHome}, and it
- * is all these four backends need. A fingerprint exists because a skill-script's
- * INPUT can change under a fixed version; {@code pip:jinja2-cli[yaml]==0.8.2} is
- * pinned by its own spec, and {@link dev.skillmanager.lock.CliLock} already
- * re-fires on a version change. So no new lock column: the evidence is the
- * artifact on disk, re-derived from this home on every pass, which cannot go
- * stale and clears itself the moment the artifact is missing or broken.
+ * <p>The second half of that pair is exactly {@link #providedByThisHome}: the
+ * evidence is the artifact on disk, re-derived from this home on every pass,
+ * which cannot go stale and clears itself the moment the artifact is missing or
+ * broken. No new lock column is added here.
+ *
+ * <h2>What this does NOT fix, stated so nobody reads a guarantee into it</h2>
+ *
+ * <p>An earlier draft of this javadoc justified the absent fingerprint with
+ * "{@code CliLock} already re-fires on a version change". <b>That is false, and
+ * it was checked.</b> {@code PlanBuilder} consults the lock in exactly one
+ * place, to raise a {@code CliVersionConflict}, and that branch is guarded by
+ * {@code !existing.requestedBy().contains(u.name())} — so when the SAME unit
+ * bumps its own pin no conflict fires, {@code RunCliInstall} is emitted, and
+ * this presence check is the only gate left. A unit moving
+ * {@code pip:cowsay==6.1} to {@code ==7.0} therefore keeps the 6.1 binary for
+ * as long as {@code bin/cli/cowsay} is executable.
+ *
+ * <p>That gap is PRE-EXISTING and unchanged by this class: the old
+ * {@code isOnPath} check found the same binary — this home's own
+ * {@code bin/cli} being on PATH — and skipped just as hard. It is not repaired
+ * here because repairing it means recording the installed version per artifact
+ * and re-firing on a mismatch, which changes what {@code cli-lock.toml} means
+ * and what {@code CliDependencyCleaner} reads beside it. It is written down so
+ * the next reader does not re-derive "the lock handles it" from an empty
+ * {@code install_fingerprint} column.
  */
 public final class CliPresence {
 
@@ -135,25 +153,46 @@ public final class CliPresence {
      * The executable in <em>this</em> home's {@code bin/cli} that satisfies
      * {@code dep}, or null.
      *
-     * <p>Both declared spellings are tried — {@code on_path} and the dep's own
-     * name — because a manifest may give either and {@code CliDependencyCleaner}
-     * already treats both as filenames under {@code bin/cli}. The two halves of
-     * install and uninstall have to agree about which files are this dep's, or
-     * one of them leaks.
+     * <p>{@code on_path} is the declared spelling and is tried for every
+     * backend. {@link Files#isExecutable} resolves the link, so a shim whose
+     * target a clone did not carry answers false. That is not incidental: it is
+     * the entire repair path, and it is why this is a filesystem question
+     * rather than a lock lookup.
      *
-     * <p>{@link Files#isExecutable} resolves the link, so a shim whose target a
-     * clone did not carry answers false. That is not incidental: it is the
-     * entire repair path, and it is why this is a filesystem question rather
-     * than a lock lookup.
+     * <h2>Why {@code dep.name()} is tried for {@code tar:} and nothing else</h2>
+     *
+     * <p>Because for {@code tar:} it is the PRE-EXISTING check, and for the
+     * other three it would be a new one with a bad consequence.
+     * {@code TarBackend} always had a second gate,
+     * {@code Files.exists(bin/cli/<name>)}, which is this clause; folding it in
+     * here changed nothing about that backend. {@code pip}, {@code npm} and
+     * {@code brew} opened with {@code dep.onPath() != null && isOnPath(...)}, so
+     * a dep declaring NO {@code on_path} was never suppressed and reached the
+     * backend on every pass.
+     *
+     * <p>Applying the name fallback to those three took that away. Measured with
+     * {@code spec = "pip:cowsay==6.1"} and no {@code on_path}: uv was
+     * bootstrapped and then never invoked, because {@code bin/cli/cowsay} was
+     * executable — with no escape hatch, since the four-argument {@code install}
+     * default drops {@code force} and {@code PlanBuilder} sets it only for
+     * {@code skill-script:}. Combined with the {@code CliVersionConflict} gap in
+     * this class's header javadoc, that turns "no {@code on_path} declared" into
+     * "never reinstalled, ever" — strictly worse than the defect this class
+     * exists to fix, in a case the defect never touched.
+     *
+     * <p>So the fallback stays where it was earned. Widening it is a real
+     * question — a dep with no {@code on_path} re-runs its installer every pass,
+     * which for {@code pip} is a {@code uv tool install --force} on every sync —
+     * but the answer to that is idempotence in the backend or a per-artifact
+     * version record, not a presence check that can never be cleared.
      */
     public static Path providedByThisHome(CliDependency dep, SkillStore store) {
         if (dep == null || store == null) return null;
         Path binDir = store.cliBinDir();
-        for (String name : new String[]{dep.onPath(), dep.name()}) {
-            Path candidate = executableAt(binDir, name);
-            if (candidate != null) return candidate;
-        }
-        return null;
+        Path declared = executableAt(binDir, dep.onPath());
+        if (declared != null) return declared;
+        if (!"tar".equals(dep.backend())) return null;
+        return executableAt(binDir, dep.name());
     }
 
     /**

@@ -200,6 +200,37 @@ public final class McpWriterTest {
             }
         });
 
+        suite.test("CLAUDE_HOME pointing somewhere that is not $HOME follows the same rule",
+                () -> {
+            // Deliberate, not incidental. Applying the rule to the CLAUDE_HOME
+            // branch too moved `CLAUDE_HOME=X` (X != $HOME, CLAUDE_CONFIG_DIR
+            // unset) from X/.claude.json to X/.claude/.claude.json — and after
+            // the edit above, which sets HOME == CLAUDE_HOME so that case is
+            // genuinely the global home, nothing pinned this one any more.
+            //
+            // It follows the same argument as the project home below: the
+            // Claude CLI has never heard of CLAUDE_HOME either. With
+            // CLAUDE_CONFIG_DIR unset the CLI reads $HOME/.claude.json, so
+            // X/.claude.json is a file nobody opens and X/.claude/.claude.json
+            // is where a launch through X points it.
+            AgentHomes.clearOverrides();
+            Path operatorHome = Files.createTempDirectory("mcp-claude-home-operator-").toRealPath();
+            Path elsewhere = Files.createTempDirectory("mcp-claude-home-elsewhere-").toRealPath();
+            try {
+                AgentHomes.setOverride(AgentHomes.HOME, operatorHome);
+                AgentHomes.setOverride(AgentHomes.CLAUDE_HOME, elsewhere);
+
+                assertEquals(elsewhere.resolve(".claude").resolve(".claude.json"),
+                        new ClaudeAgent().mcpConfigPath(),
+                        "a CLAUDE_HOME that is not $HOME keeps its config file in the config dir");
+                assertEquals(elsewhere.resolve(".claude"), AgentHomes.claude().configDir(),
+                        "and the config dir is unchanged");
+                assertEquals(elsewhere, AgentHomes.claude().root(), "as is the root");
+            } finally {
+                AgentHomes.clearOverrides();
+            }
+        });
+
         suite.test("with CLAUDE_CONFIG_DIR unset a PROJECT home writes where a launch reads",
                 () -> {
             // Measured on the skill-manager integration repository:

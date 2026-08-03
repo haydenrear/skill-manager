@@ -58,9 +58,13 @@ public class OnboardAgentConfigsWritten {
             // `.claude.json` included, and this graph's onboard runs with that
             // variable set (SmEnv derives it as <agentRoot>/.claude). The entry
             // used to be written one level up, where the launched agent never
-            // read it. When CLAUDE_CONFIG_DIR is UNSET the file is still
-            // <root>/.claude.json — deliberately, since for the global home that
-            // is ~/.claude.json — but no path in this graph leaves it unset.
+            // read it. When CLAUDE_CONFIG_DIR is UNSET the file is
+            // <root>/.claude.json ONLY when <root> is $HOME — the global home,
+            // where the operator's own entries live. For any other root the
+            // unset case now also resolves inside the config dir, because the
+            // Claude CLI's "$HOME/.claude.json" default is true of the home
+            // directory and of nothing else (AgentHomes#claudeConfigFileFor).
+            // No path in this graph leaves the variable unset either way.
             ClaudeCheck claude = checkClaude(
                     agentRoot.resolve(".claude").resolve(".claude.json"), expectedUrl);
             CodexCheck codex = checkCodex(agentRoot.resolve(".codex").resolve("config.toml"), expectedUrl);

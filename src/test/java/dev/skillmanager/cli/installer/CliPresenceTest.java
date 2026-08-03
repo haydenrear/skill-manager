@@ -15,6 +15,7 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 
+import static dev.skillmanager._lib.test.Tests.assertContains;
 import static dev.skillmanager._lib.test.Tests.assertEquals;
 import static dev.skillmanager._lib.test.Tests.assertFalse;
 import static dev.skillmanager._lib.test.Tests.assertTrue;
@@ -80,6 +81,86 @@ public final class CliPresenceTest {
                 assertEquals(InstallOutcome.SKIPPED,
                         new InstallerRegistry().installOne(dep("jinja2"), store, "spec-doubles"),
                         "the backend proceeds to install instead of short-circuiting");
+            });
+        });
+
+        suite.test("and a SYMLINK to that foreign bin does not launder it", () -> {
+            // The first version of this filter walked the LEXICALLY normalized
+            // path's ancestors, so `ln -s <foreign>/.skill-manager/bin/cli
+            // /tmp/symlinked` had no home-shaped ancestor to find, and the
+            // filter reported that directory belonged to no home — the exact
+            // sentence the fix exists to stop being wrong, one layout over,
+            // still ending in a dangling shim and a refusal nothing can clear.
+            //
+            // The irony is why this case is here: THIS branch introduced
+            // Fs#realOrNormalized for the Claude-config fix, with a javadoc
+            // saying a comparison that can be defeated by a spelling is a
+            // comparison that will be — and did not apply it to the one
+            // comparison that had just been handed an INSTALL decision.
+            SkillStore store = newStore("cli-presence-symlink-");
+            Path foreignBin = foreignHomeBin("cli-presence-symlink-home-", "jinja2");
+            danglingShim(store, "jinja2");
+
+            Path laundered = Files.createTempDirectory("cli-presence-launder-")
+                    .resolve("symlinked");
+            Files.createSymbolicLink(laundered, foreignBin);
+
+            withPath(laundered, () -> {
+                assertTrue(Files.isSymbolicLink(laundered),
+                        "precondition: the PATH entry really is a link");
+                assertTrue(CliPresence.onProcessPath("jinja2") != null,
+                        "precondition: the laundered directory does answer for jinja2");
+                assertEquals(null, CliPresence.providedOutsideEveryHome("jinja2"),
+                        "a symlink to a home's bin/cli is still a home's bin/cli");
+                assertFalse(CliPresence.alreadyProvided(dep("jinja2"), store),
+                        "so it cannot answer the provisioning question either");
+                assertEquals(InstallOutcome.SKIPPED,
+                        new InstallerRegistry().installOne(dep("jinja2"), store, "spec-doubles"),
+                        "and the backend proceeds to install");
+            });
+        });
+
+        suite.test("the bin/cli/<name> fallback is tar's alone", () -> {
+            // Introduced-defect guard. TarBackend always had a second gate,
+            // Files.exists(bin/cli/<name>), so folding it into CliPresence
+            // changed nothing there. pip/npm/brew opened with
+            // `dep.onPath() != null && isOnPath(...)`, so a dep declaring NO
+            // on_path was handed to the backend on every pass. Applying the
+            // name fallback to them took that away: measured with
+            // `pip:cowsay==6.1` and no on_path, uv was bootstrapped and never
+            // invoked, with no escape hatch — the 4-arg install default drops
+            // `force` and PlanBuilder sets it only for skill-script. "Never
+            // reinstalled, ever" is worse than the defect this class fixes, in
+            // a case the defect never touched.
+            SkillStore store = newStore("cli-presence-scope-");
+            Files.createDirectories(store.cliBinDir());
+            executable(store.cliBinDir().resolve("cowsay"));
+
+            CliDependency tarDep = new CliDependency(
+                    "cowsay", "tar:cowsay", null, null, null, false, Map.of());
+            // Blank package ref on purpose: PipBackend throws on it BEFORE it
+            // bootstraps uv, so "the backend was entered" is observable with no
+            // network. Under the fallback it never got that far.
+            CliDependency pipDep = new CliDependency(
+                    "cowsay", "pip:", null, null, null, false, Map.of());
+
+            Path empty = Files.createTempDirectory("cli-presence-scope-empty-");
+            withPath(empty, () -> {
+                assertTrue(CliPresence.providedByThisHome(tarDep, store) != null,
+                        "tar keeps the pre-existing bin/cli/<name> gate");
+                assertEquals(null, CliPresence.providedByThisHome(pipDep, store),
+                        "pip with no on_path is NOT suppressed by a same-named file");
+
+                assertEquals(InstallOutcome.ALREADY_PRESENT,
+                        new InstallerRegistry().installOne(tarDep, store, "u"),
+                        "so tar still short-circuits");
+                try {
+                    new InstallerRegistry().installOne(pipDep, store, "u");
+                    throw new AssertionError("pip short-circuited instead of installing");
+                } catch (java.io.IOException entered) {
+                    assertContains(entered.getMessage(), "spec missing package name",
+                            "and pip is entered rather than skipped");
+                }
             });
         });
 
