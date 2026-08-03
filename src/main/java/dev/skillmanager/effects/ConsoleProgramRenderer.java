@@ -774,7 +774,13 @@ public final class ConsoleProgramRenderer implements ProgramRenderer {
      * cannot explain.
      */
     private Path unitDirFor(String name) {
-        for (UnitKind kind : UnitKind.values()) {
+        // SKILL first, explicitly rather than by relying on it being declared
+        // first in UnitKind: if a name somehow occupies two kinds' directories,
+        // this resolves the way it always did, so the fix cannot change an
+        // already-correct message. Reordering the enum then stays a harmless
+        // edit instead of a silent behaviour change here.
+        for (UnitKind kind : List.of(UnitKind.SKILL, UnitKind.PLUGIN, UnitKind.DOC,
+                UnitKind.HARNESS)) {
             Path dir = store.unitDir(name, kind);
             if (Files.isDirectory(dir)) return dir;
         }
