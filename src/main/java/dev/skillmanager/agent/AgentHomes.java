@@ -481,26 +481,20 @@ public final class AgentHomes {
 
     /**
      * Whether two paths name one directory, symlinks resolved, whether or not
-     * either exists yet. Mirrors
-     * {@code ProjectChildHomeScaffolder#realOrNormalized} — a comparison that
-     * can be defeated by a spelling is a comparison that will be.
+     * either exists yet — a comparison that can be defeated by a spelling is a
+     * comparison that will be.
+     *
+     * <p>This method briefly carried its own copy of the resolver. It is
+     * {@link dev.skillmanager.shared.util.Fs#realOrNormalized} now and the copy
+     * is gone, because the launch PATH sanitizer needed exactly the same
+     * resolution and did not have it — which is how a symlinked foreign-home
+     * bin came to decide an INSTALL. Two spellings of one rule is the failure
+     * this class's own {@link #userHome()} javadoc says it has already paid for
+     * three times.
      */
     private static boolean sameDirectory(Path a, Path b) {
-        return realOrNormalized(a).equals(realOrNormalized(b));
-    }
-
-    private static Path realOrNormalized(Path path) {
-        Path normalized = path.toAbsolutePath().normalize();
-        for (Path existing = normalized; existing != null; existing = existing.getParent()) {
-            try {
-                Path real = existing.toRealPath();
-                Path tail = existing.relativize(normalized);
-                return tail.toString().isEmpty() ? real : real.resolve(tail);
-            } catch (java.io.IOException notThere) {
-                // keep walking up
-            }
-        }
-        return normalized;
+        return dev.skillmanager.shared.util.Fs.realOrNormalized(a)
+                .equals(dev.skillmanager.shared.util.Fs.realOrNormalized(b));
     }
 
     /**

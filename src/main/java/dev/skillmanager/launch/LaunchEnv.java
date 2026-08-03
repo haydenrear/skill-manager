@@ -4,6 +4,7 @@ import dev.skillmanager.agent.AgentHomes;
 import dev.skillmanager.commands.HomeCommand;
 import dev.skillmanager.pm.PackageCaches;
 import dev.skillmanager.policy.HomePolicy;
+import dev.skillmanager.shared.util.Fs;
 import dev.skillmanager.store.HomeDescriptor;
 import dev.skillmanager.store.SkillStore;
 
@@ -242,6 +243,22 @@ public final class LaunchEnv {
      */
     static boolean isForeignHomeBin(Path entry, Path activeStoreRoot) {
         if (entry == null) return false;
+        // BOTH sides resolved, symlinks included. The walk below used to run
+        // over the LEXICALLY normalized path, so a foreign home's bin reached
+        // through a symlink had no home-shaped ancestor to find and was
+        // invisible: `ln -s <foreign>/.skill-manager/bin/cli /tmp/symlinked`
+        // put that home's tools on the launch PATH, and told CliPresence the
+        // directory belonged to no home — which skipped an install and left a
+        // clone's shim dangling with a remedy that could not clear it.
+        //
+        // The active root is resolved WITH it, and that symmetry is
+        // load-bearing: resolving only one side makes this home foreign to
+        // itself the moment either spelling differs, which is the /var vs
+        // /private/var shape. Measured — an asymmetric version of this fix
+        // drops the ACTIVE home's own agent-home plugin bin from its own PATH.
+        // See Fs#realOrNormalized.
+        Path resolved = Fs.realOrNormalized(entry);
+        Path active = activeStoreRoot == null ? null : Fs.realOrNormalized(activeStoreRoot);
         // This walk was bounded to three levels, on the reasoning that
         // <store>/bin and <store>/bin/{cli,mcp,launch} were "the whole shape".
         // They are not: <store>/plugin-marketplace/plugins/<name>/bin is four
@@ -263,9 +280,9 @@ public final class LaunchEnv {
         // ancestor is not mistaken for a home; and if some ancestor really does
         // carry a store's layout, treating its bin directories as foreign is
         // the correct answer, not a false positive.
-        for (Path parent = entry.getParent(); parent != null; parent = parent.getParent()) {
+        for (Path parent = resolved.getParent(); parent != null; parent = parent.getParent()) {
             if (looksLikeStoreRoot(parent)) {
-                return activeStoreRoot == null || !parent.equals(activeStoreRoot);
+                return active == null || !parent.equals(active);
             }
         }
         // A home is its store AND its agent directories, and this walk only
@@ -277,13 +294,12 @@ public final class LaunchEnv {
         // correctly stripped. Exactly the failure the comment above names, one
         // predicate over: the structural test for the other half already exists
         // as agentDirOwnedByAHome (#145) and simply was not called here.
-        Path agentDir = agentDirOwnedByAHome(entry);
+        Path agentDir = agentDirOwnedByAHome(resolved);
         if (agentDir != null) {
             Path owner = agentDir.getParent();
             if (owner == null) return false;
-            Path foreignStore = owner.resolve(AgentHomes.STORE_DIR_NAME)
-                    .toAbsolutePath().normalize();
-            return activeStoreRoot == null || !foreignStore.equals(activeStoreRoot);
+            Path foreignStore = Fs.realOrNormalized(owner.resolve(AgentHomes.STORE_DIR_NAME));
+            return active == null || !foreignStore.equals(active);
         }
         return false;
     }
