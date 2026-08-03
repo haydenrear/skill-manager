@@ -360,6 +360,22 @@ public final class HomeCommand {
          * reported {@code ADDED claude (~/.claude.json)} — the global-binding
          * hijack recorded as skill-manager#145. Every remedy this command
          * prints for a home-mutating command goes through here.
+         *
+         * <h2>And the command itself was a bare {@code skill-manager}</h2>
+         *
+         * <p>Which is #142, sitting in the remedy for a defect that is itself a
+         * remedy that did not work. This method is the single chokepoint its
+         * javadoc above says it is, and it ended with
+         * {@code out.append(" skill-manager")} — so on a machine whose PATH
+         * carries an older release, or none at all, the pasted line runs a
+         * different program than the one that printed it, or nothing.
+         * {@link HomeDescriptor#cliInvocation} resolves the CLI that IS running
+         * and falls back to the bare name only when it cannot; it is the same
+         * routing the drift gate, {@code close-out}, {@code exec} and the sync
+         * renderer already use.
+         *
+         * <p>Resolved against {@code home} rather than the ambient store: the
+         * remedy is for THAT home, and a home carries its own launcher.
          */
         private static String homeEnvPrefix(Path home) {
             Path root = dev.skillmanager.agent.AgentHomes.homeRootFor(home);
@@ -373,7 +389,7 @@ public final class HomeCommand {
                 };
                 out.append(' ').append(var).append('=').append(dir);
             }
-            return out.append(" skill-manager").toString();
+            return out.append(' ').append(HomeDescriptor.cliInvocation(home)).toString();
         }
 
         /** "40 authored mention(s)", "10 diagnostic message(s)", or both. */
