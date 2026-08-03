@@ -3,6 +3,12 @@
 //SOURCES ../../../src/main/java/dev/skillmanager/pm/PackageCaches.java
 //SOURCES ../../../src/main/java/dev/skillmanager/agent/AgentHomes.java
 //SOURCES ../../../src/main/java/dev/skillmanager/util/Platform.java
+// AgentHomes resolves a pair of paths through Fs#realOrNormalized rather than
+// carrying its own copy — the launch PATH sanitizer needs the same resolution,
+// and two spellings of that rule is how a symlinked foreign-home bin came to
+// decide an install. Listed because this node enumerates its compile set by
+// hand; the sibling home.clone.costs.far.less.than.a.copy already compiles Fs.
+//SOURCES ../../../src/main/java/dev/skillmanager/shared/util/Fs.java
 
 import com.hayden.testgraphsdk.sdk.Node;
 import com.hayden.testgraphsdk.sdk.NodeResult;
