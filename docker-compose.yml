@@ -1,7 +1,23 @@
 services:
   postgres:
     image: ${POSTGRES_IMAGE:-localhost:5005/postgres-pgvector}
-    container_name: skill-manager-postgres
+    # NO container_name, on purpose.
+    #
+    # A container name is GLOBALLY unique to the docker daemon, while a compose
+    # project is per-directory. Pinning the name meant a second checkout — a
+    # worktree, another clone, an agent's scratch tree — could not bring
+    # postgres up while the first one's container merely EXISTED, stopped or
+    # running: `up` refuses to reuse a name owned by another project.
+    #
+    # Measured: a full 26-graph sweep went 17 pass / 9 fail, every one of the
+    # nine on `postgres.up: docker compose up -d postgres exited 1`, caused by
+    # ONE stopped container left behind by a worktree. Each of the nine passed
+    # on its own once that container was removed by hand. So the suite could
+    # not certify itself, and one name presented as nine broken graphs.
+    #
+    # Without it, compose derives `<project>-postgres-1` from the directory and
+    # checkouts stop colliding. Nothing addresses this container by name —
+    # every caller goes through `docker compose ... postgres` or the port.
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
