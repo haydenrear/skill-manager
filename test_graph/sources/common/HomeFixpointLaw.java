@@ -86,7 +86,12 @@ public final class HomeFixpointLaw {
         Node.run(args, SPEC, ctx -> {
             Path cli = SmEnv.cli();
 
-            Set<Path> candidates = candidateHomes(ctx.context());
+            Set<Path> all = candidateHomes(ctx.context());
+            Set<Path> candidates = new LinkedHashSet<>();
+            List<String> outsideSandbox = new ArrayList<>();
+            for (Path c : all) {
+                if (insideSandbox(c)) candidates.add(c); else outsideSandbox.add(c.toString());
+            }
             List<String> checked = new ArrayList<>();
             List<String> repaired = new ArrayList<>();
             List<String> violations = new ArrayList<>();
@@ -110,7 +115,7 @@ public final class HomeFixpointLaw {
                 }
                 log.add("REFUSED " + candidate + "\n  remedy as printed: " + remedy);
 
-                Run fix = shell(cli, remedy);
+                Run fix = shell(cli, remedy, candidate);
                 Run second = verify(cli, candidate);
                 if (second.exit == 0) {
                     repaired.add(candidate.toString());
@@ -138,9 +143,13 @@ public final class HomeFixpointLaw {
                             violations.isEmpty())
                     .metric("homesChecked", checked.size())
                     .metric("homesRepaired", repaired.size())
+                    .metric("homesOutsideSandbox", outsideSandbox.size())
                     .publish("homesChecked", String.join(",", checked))
                     .publish("homesRepaired", String.join(",", repaired))
-                    .log(String.join("\n", log));
+                    .log(String.join("\n", log)
+                            + (outsideSandbox.isEmpty() ? ""
+                                    : "\nSKIPPED (outside the sandbox, never mutated): "
+                                            + String.join(", ", outsideSandbox)));
         });
     }
 
@@ -166,6 +175,31 @@ public final class HomeFixpointLaw {
             }
         }
         return out;
+    }
+
+    /**
+     * Whether a discovered home is one this graph OWNS.
+     *
+     * <p>Measured, and it is why this exists: on the onboarding graph the scan
+     * found {@code …/skill-manager-integration-repository/constituents/
+     * git-integration-repo/.skill-manager} — one of the OPERATOR'S REAL HOMES,
+     * published by a node that names a real checkout. It only got verified,
+     * which is read-only, so nothing was harmed. But had verify refused, this
+     * node would have run {@code sync --force-scripts} against a home no test
+     * created, which is precisely the global-home hijack (#145) that half this
+     * epic is about, reintroduced by the check written to prevent it.
+     *
+     * <p>So the law acts only on homes under the JVM's temp root, where every
+     * graph builds its fixtures. Anything else is skipped, COUNTED and NAMED —
+     * silently ignoring it would trade one blind spot for another.
+     */
+    private static boolean insideSandbox(Path home) {
+        try {
+            Path tmp = Path.of(System.getProperty("java.io.tmpdir")).toRealPath();
+            return home.startsWith(tmp);
+        } catch (IOException | RuntimeException e) {
+            return false;
+        }
     }
 
     private static void add(Set<Path> out, Path p) {
@@ -209,26 +243,33 @@ public final class HomeFixpointLaw {
     }
 
     private static Run verify(Path cli, Path home) {
-        return exec(List.of(cli.toString(), "home", "verify", "--home", home.toString()), cli);
+        return exec(List.of(cli.toString(), "home", "verify", "--home", home.toString()), cli, home);
     }
 
-    private static Run shell(Path cli, String command) {
-        return exec(List.of("/bin/sh", "-c", command), cli);
+    private static Run shell(Path cli, String command, Path home) {
+        return exec(List.of("/bin/sh", "-c", command), cli, home);
     }
 
-    private static Run exec(List<String> command, Path cli) {
+    private static Run exec(List<String> command, Path cli, Path home) {
         try {
             ProcessBuilder pb = new ProcessBuilder(command);
-            Map<String, String> env = pb.environment();
-            // Pin WHICH BUILD the law is about. Without this,
-            // HomeDescriptor.resolveCli falls through to a PATH walk, and on a
-            // developer machine that finds an older released skill-manager —
-            // so the printed remedy would name a different program than the one
-            // under test and no-op. That is a real defect (filed separately);
-            // it is not the property this node measures, and letting it decide
-            // the outcome would make the law a test of the host's PATH.
-            env.put("SKILL_MANAGER_CLI", cli.toString());
-            env.put(SmEnv.SKILL_MANAGER_INSTALL_DIR, SmEnv.repoRoot().toString());
+            // Sandboxed through SmEnv, like every other node that spawns the
+            // CLI — `sandbox.env.contract` is the tripwire that says so, and it
+            // caught this node writing the managed variables itself. It is the
+            // right rule: a node that shells skill-manager without the four
+            // agent roots pinned resolves them against the ambient environment,
+            // which is the operator's real ~/.claude. The remedy string carries
+            // its own `env ...` prefix and overrides these, which is the point
+            // of homeEnvPrefix; this is the floor underneath it.
+            SmEnv.apply(pb, home.toString(), SmEnv.sandboxUnder(home.resolve("agent-home")));
+            // Pin WHICH BUILD the law is about. Not a managed variable, so it
+            // stays here. Without it, HomeDescriptor.resolveCli falls through to
+            // a PATH walk, and on a developer machine that finds an older
+            // released skill-manager — so the printed remedy would name a
+            // different program than the one under test and no-op. That is a
+            // real defect (reported separately); letting it decide the outcome
+            // would make this a test of the host's PATH.
+            pb.environment().put("SKILL_MANAGER_CLI", cli.toString());
             pb.redirectErrorStream(false);
             Process p = pb.start();
             String out = new String(p.getInputStream().readAllBytes());
