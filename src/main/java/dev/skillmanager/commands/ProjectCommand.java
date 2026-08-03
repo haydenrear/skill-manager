@@ -131,13 +131,17 @@ public final class ProjectCommand {
         // ProjectChildHomeScaffolder#reportSameHome, which warns and proceeds.
         // A --help that documents a refusal the code no longer performs is the
         // same fail-open as a check that cannot see: the operator reads a
-        // guarantee, gets none, and has no way to tell.
+        // guarantee, gets none, and has no way to tell. The replacement text
+        // then carried "no separate child home is created" over verbatim from
+        // the warning, and the resolve writes one — self-referential, and read
+        // by `project remove`. Same defect, one file over.
         @Option(names = "--allow-same-home",
                 description = "Accepted and no longer consulted. SKILL_MANAGER_HOME already "
                         + "BEING this project's own .skill-manager home is the per-checkout "
-                        + "layout, not an error: units resolve in place, no separate child home "
-                        + "is created, and resolve says so and proceeds. Kept so existing "
-                        + "invocations and scripts do not break.")
+                        + "layout, not an error: units resolve in place rather than being "
+                        + "copied into a separate home, the child-home record names this home "
+                        + "as its own parent, and resolve says so and proceeds. Kept so "
+                        + "existing invocations and scripts do not break.")
         boolean allowSameHome;
 
         @Override
