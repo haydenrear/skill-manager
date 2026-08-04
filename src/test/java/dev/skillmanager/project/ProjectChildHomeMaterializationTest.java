@@ -93,6 +93,55 @@ public final class ProjectChildHomeMaterializationTest {
                     }
                 })
 
+                .test("and what it says about the child home is what it then does", () -> {
+                    // The message read "units resolve in place and NO SEPARATE
+                    // CHILD HOME IS CREATED", and reportSameHome's boolean was
+                    // discarded by its caller: scaffold ran on to childStore
+                    // .init(), the claim set, and a child-homes record naming
+                    // this home as its own parent. A warning that denies the
+                    // state it is announcing is worse than no warning — the
+                    // operator who reads it will not go looking for the record,
+                    // and `project remove` is what unwinds it.
+                    //
+                    // Asserted as an agreement between the sentence and the
+                    // filesystem, in one case, so neither side can be corrected
+                    // alone: the sentence must not deny a record, and the record
+                    // must be there for it to stop denying.
+                    try (TestHarness h = TestHarness.create()) {
+                        Path repoRoot = Files.createTempDirectory("same-home-says-");
+                        SkillStore sameHome = new SkillStore(repoRoot.resolve(".skill-manager"));
+                        SkillProject project = project(repoRoot, """
+                                [project]
+                                name = "same-home-says-project"
+                                """);
+
+                        java.io.PrintStream realErr = System.err;
+                        java.io.ByteArrayOutputStream captured =
+                                new java.io.ByteArrayOutputStream();
+                        String said;
+                        try {
+                            System.setErr(new java.io.PrintStream(captured, true));
+                            ProjectChildHomeScaffolder.reportSameHome(
+                                    sameHome.root(), ProjectChildHomeScaffolder
+                                            .layoutFor(project).childSkillManagerHome());
+                        } finally {
+                            System.setErr(realErr);
+                            said = captured.toString();
+                        }
+
+                        assertFalse(said.contains("no separate child home is created"),
+                                "the warning does not deny the record the resolve writes: " + said);
+                        assertTrue(said.contains("child-home record"),
+                                "it names the record instead: " + said);
+
+                        ProjectChildHomeScaffolder.Result result =
+                                new ProjectChildHomeScaffolder(sameHome)
+                                        .scaffold(project, List.of());
+                        assertTrue(new dev.skillmanager.bindings.ChildHomeRegistry(sameHome)
+                                        .exists(result.id()),
+                                "and the record it names is really written");
+                    }
+                })
 
                 .test("default project resolve copies units into the child home", () -> {
                     try (TestHarness h = TestHarness.create()) {

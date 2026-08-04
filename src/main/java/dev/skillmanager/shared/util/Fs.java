@@ -136,6 +136,57 @@ public final class Fs {
         if (!Files.exists(p)) Files.createDirectories(p);
     }
 
+    /**
+     * {@code path} with every symlink in it resolved, whether or not the leaf
+     * exists yet.
+     *
+     * <h2>Why this is here rather than spelled again at each call site</h2>
+     *
+     * <p>Because a comparison that can be defeated by a spelling is a
+     * comparison that will be, and this codebase has now been defeated by one
+     * five times: the {@code [[vendored]]} validator, {@link
+     * dev.skillmanager.store.HomePaths}, the clone independence check, the
+     * project same-home guard, and — the reason this method exists — the launch
+     * PATH sanitizer, where the spelling was a SYMLINK rather than {@code /var}
+     * vs {@code /private/var}.
+     *
+     * <p>{@code LaunchEnv.isForeignHomeBin} walked the lexically normalized
+     * path's ancestors, so a foreign home's {@code bin/cli} reached through a
+     * symlink had no home-shaped ancestor to find and was invisible to it.
+     * Measured: {@code ln -s <foreign>/.skill-manager/bin/cli /tmp/symlinked},
+     * then {@code PATH=/tmp/symlinked:… sync} reported "already provided by the
+     * system (/tmp/symlinked/hello), outside any Skill Manager home" about a
+     * directory that IS a home's {@code bin/cli} — so the install was skipped,
+     * the shim stayed dangling, and {@code home verify}'s remedy again could not
+     * clear what it named. The same entry survived launch PATH sanitizing, which
+     * put a foreign home's tools ahead of the active home's.
+     *
+     * <p>A plain {@link Path#toRealPath()} throws when the leaf does not exist,
+     * which is the normal case for a PATH entry naming a directory nobody
+     * created and for a child home on its first resolve. So: resolve the deepest
+     * ancestor that does exist and re-append the rest.
+     *
+     * <p>Two private copies of this predate the method and are deliberately left
+     * alone — {@code ProjectChildHomeScaffolder} and
+     * {@code ChildHomeMaterializer}. Both are load-bearing for the child-home
+     * graphs and neither is implicated in anything here; folding them in is a
+     * separate change with its own blast radius.
+     */
+    public static Path realOrNormalized(Path path) {
+        if (path == null) return null;
+        Path normalized = path.toAbsolutePath().normalize();
+        for (Path existing = normalized; existing != null; existing = existing.getParent()) {
+            try {
+                Path real = existing.toRealPath();
+                Path tail = existing.relativize(normalized);
+                return tail.toString().isEmpty() ? real : real.resolve(tail);
+            } catch (IOException notThere) {
+                // keep walking up
+            }
+        }
+        return normalized;
+    }
+
     public static void makeExecutable(Path p) throws IOException {
         try {
             Set<PosixFilePermission> perms = Files.getPosixFilePermissions(p);

@@ -173,21 +173,115 @@ public final class McpWriterTest {
             }
         });
 
-        suite.test("with CLAUDE_CONFIG_DIR unset the entry stays at <home>/.claude.json", () -> {
-            // The can-fail companion for the test above, and the reason the
-            // fix is not "always put it inside the config dir": when
+        suite.test("with CLAUDE_CONFIG_DIR unset the GLOBAL home's entry stays at "
+                + "$HOME/.claude.json", () -> {
+            // The can-fail companion for the test above, and the reason the fix
+            // below is not "always put it inside the config dir": when
             // CLAUDE_CONFIG_DIR is unset the Claude CLI reads
-            // <home>/.claude.json — for the global home, ~/.claude.json, where
-            // the operator's own entries live. Moving that one would be the
-            // same defect pointed at the operator.
+            // $HOME/.claude.json — where the operator's own entries live.
+            // Moving that one would be the same defect pointed at the operator.
+            //
+            // $HOME is overridden to the fixture, and that is the point of the
+            // edit: this case used to assert the same thing about a root that
+            // was NOT $HOME, i.e. it asserted the defect the case below names.
+            // AgentHomes.userHome() is the single place $HOME is read, so one
+            // override makes the fixture genuinely the global home.
             AgentHomes.clearOverrides();
             Path homeRoot = Files.createTempDirectory("mcp-agent-read-default-").toRealPath();
             try {
+                AgentHomes.setOverride(AgentHomes.HOME, homeRoot);
                 AgentHomes.setOverride(AgentHomes.CLAUDE_HOME, homeRoot);
                 assertEquals(homeRoot.resolve(".claude.json"), new ClaudeAgent().mcpConfigPath(),
-                        "unset CLAUDE_CONFIG_DIR keeps the file beside the config dir");
+                        "the home directory's config file stays beside the config dir");
                 assertEquals(homeRoot.resolve(".claude"), AgentHomes.claude().configDir(),
                         "and the config dir is still <home>/.claude");
+            } finally {
+                AgentHomes.clearOverrides();
+            }
+        });
+
+        suite.test("CLAUDE_HOME pointing somewhere that is not $HOME follows the same rule",
+                () -> {
+            // Deliberate, not incidental. Applying the rule to the CLAUDE_HOME
+            // branch too moved `CLAUDE_HOME=X` (X != $HOME, CLAUDE_CONFIG_DIR
+            // unset) from X/.claude.json to X/.claude/.claude.json — and after
+            // the edit above, which sets HOME == CLAUDE_HOME so that case is
+            // genuinely the global home, nothing pinned this one any more.
+            //
+            // It follows the same argument as the project home below: the
+            // Claude CLI has never heard of CLAUDE_HOME either. With
+            // CLAUDE_CONFIG_DIR unset the CLI reads $HOME/.claude.json, so
+            // X/.claude.json is a file nobody opens and X/.claude/.claude.json
+            // is where a launch through X points it.
+            AgentHomes.clearOverrides();
+            Path operatorHome = Files.createTempDirectory("mcp-claude-home-operator-").toRealPath();
+            Path elsewhere = Files.createTempDirectory("mcp-claude-home-elsewhere-").toRealPath();
+            try {
+                AgentHomes.setOverride(AgentHomes.HOME, operatorHome);
+                AgentHomes.setOverride(AgentHomes.CLAUDE_HOME, elsewhere);
+
+                assertEquals(elsewhere.resolve(".claude").resolve(".claude.json"),
+                        new ClaudeAgent().mcpConfigPath(),
+                        "a CLAUDE_HOME that is not $HOME keeps its config file in the config dir");
+                assertEquals(elsewhere.resolve(".claude"), AgentHomes.claude().configDir(),
+                        "and the config dir is unchanged");
+                assertEquals(elsewhere, AgentHomes.claude().root(), "as is the root");
+            } finally {
+                AgentHomes.clearOverrides();
+            }
+        });
+
+        suite.test("with CLAUDE_CONFIG_DIR unset a PROJECT home writes where a launch reads",
+                () -> {
+            // Measured on the skill-manager integration repository:
+            // <repo>/.claude.json existed and held the virtual-mcp-gateway
+            // entry, while <repo>/.claude/.claude.json — the file the launch
+            // shim's CLAUDE_CONFIG_DIR points the agent at — did not exist at
+            // all. install/sync reported `agent MCP configs: ADDED 1` and
+            // `ACTION_REQUIRED: restart Claude`, and the restart would have
+            // changed nothing: the entry was in a file nothing reads.
+            //
+            // One branch caused it. With CLAUDE_CONFIG_DIR unset,
+            // AgentHomes.claude() derives the root from SKILL_MANAGER_HOME —
+            // correctly, that IS where skill-manager writes — and then applied
+            // the CLI's "$HOME/.claude.json" default to it. The Claude CLI has
+            // never heard of SKILL_MANAGER_HOME; that default is true of the
+            // home directory and of nothing else. AgentHomes.claude(Map)'s own
+            // javadoc already makes this argument, for the other variant.
+            AgentHomes.clearOverrides();
+            Path operatorHome = Files.createTempDirectory("mcp-project-operator-").toRealPath();
+            Path repo = Files.createTempDirectory("mcp-project-repo-").toRealPath();
+            try {
+                // The operator's real $HOME, and a project home somewhere else.
+                // Neither CLAUDE_CONFIG_DIR nor CLAUDE_HOME set — that is the
+                // case, and it is the ordinary one for anybody who exports
+                // SKILL_MANAGER_HOME by hand rather than launching through a
+                // shim.
+                AgentHomes.setOverride(AgentHomes.HOME, operatorHome);
+                AgentHomes.setOverride(AgentHomes.SKILL_MANAGER_HOME,
+                        repo.resolve(".skill-manager"));
+
+                // Derived from the launch contract, never spelled here: the
+                // defect is a disagreement between what is exported and what is
+                // addressed, so a test that wrote the path itself would agree
+                // with whichever side it copied.
+                Map<String, String> exported =
+                        HomeDescriptor.envFor(repo, repo.resolve(".skill-manager")).asMap();
+                Path whereALaunchReads = Path.of(exported.get(AgentHomes.CLAUDE_CONFIG_DIR))
+                        .resolve(".claude.json");
+
+                assertEquals(whereALaunchReads, new ClaudeAgent().mcpConfigPath(),
+                        "the write lands where a launch through this home will read");
+
+                new McpWriter(GatewayConfig.of(URI.create("http://127.0.0.1:51718")))
+                        .writeAgentEntry(new ClaudeAgent());
+                assertContains(Files.readString(whereALaunchReads), "http://127.0.0.1:51718/mcp",
+                        "and the gateway entry is really in that file");
+
+                assertFalse(Files.exists(repo.resolve(".claude.json")),
+                        "nothing lands in <repo>/.claude.json, which no agent reads");
+                assertFalse(Files.exists(operatorHome.resolve(".claude.json")),
+                        "and the operator's own config is not touched either");
             } finally {
                 AgentHomes.clearOverrides();
             }

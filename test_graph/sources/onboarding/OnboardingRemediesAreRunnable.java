@@ -148,9 +148,31 @@ public class OnboardingRemediesAreRunnable {
                     !theSpellingThePrintedRemedyImpliesIsAUsageError;
 
             // --- the working spelling, found only in --help -----------------------
+            //
+            // THE REFUSAL IS PLANTED HERE, NOT INHERITED FROM UPSTREAM, and that
+            // is a correction to this node rather than a workaround.
+            //
+            // The assertion below is about what `home verify` PRINTS when it
+            // refuses. It used to reach that state by leaning on
+            // `bin/cli/ob-dangling` — an orphan the fixture plants at step 3 and
+            // which NOTHING could clear, because no unit declares it and sync
+            // therefore had nothing to re-install over it. So the assertion held
+            // only while that defect did. `sync` prunes an undeclared broken
+            // shim now, `onboarding.synced` runs one at step 9, and the home
+            // arrives here clean: measured, `reprovisionRemedy=` empty and this
+            // node red on a home that is in exactly the state it should be in.
+            //
+            // So it makes its own subject one line above the assertion and takes
+            // it away again immediately afterwards, leaving the home as the rest
+            // of the walk expects. An assertion whose precondition is supplied by
+            // an unrepaired defect elsewhere in the pipeline is the shape this
+            // file's own javadoc counts eight of.
+            java.nio.file.Path probe =
+                    OnboardingSupport.plantUnresolvedShim(home, "ob-remedy-probe");
             ProcessRecord working = OnboardingSupport.sm(ctx, "home-verify-working", home, proj,
                     "home", "verify", "--home", home.toString(),
                     "--against", srcHome.toString());
+            java.nio.file.Files.deleteIfExists(probe);
             // The CONSOLE, deliberately, and not the run log behind it. The
             // mention count and the first three entries under it are `Log.info`
             // — console-and-log — because a tolerated category reported as a

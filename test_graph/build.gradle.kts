@@ -136,6 +136,15 @@ validationGraph {
         node("sources/smoke/SmokeReport.java")
         node("sources/common/ServersDown.java").dependsOn("smoke.report")
         node("sources/common/PostgresDown.java").dependsOn("servers.down")
+        // THE FIXPOINT LAW. One shared post-condition, not a bespoke
+        // check per graph: every home this graph produced must satisfy
+        // `home verify`, and where it refuses, the remedy IT PRINTED must
+        // clear it. Six defects of that shape were each found by hand on
+        // one home; the graph that would have caught them was always the
+        // one nobody had added a check to. Depends on this graph's last
+        // node so it runs last, and FAILS if it finds no home — a law
+        // that quietly checks nothing is the failure mode being closed.
+        node("sources/common/HomeFixpointLaw.java").dependsOn("postgres.down")
     }
 
     /*
@@ -350,6 +359,15 @@ validationGraph {
                 .dependsOn("onboard.skills.installed", "onboard.gateway.healthy",
                         "onboard.agent.configs.written")
         node("sources/common/PostgresDown.java").dependsOn("servers.down")
+        // THE FIXPOINT LAW. One shared post-condition, not a bespoke
+        // check per graph: every home this graph produced must satisfy
+        // `home verify`, and where it refuses, the remedy IT PRINTED must
+        // clear it. Six defects of that shape were each found by hand on
+        // one home; the graph that would have caught them was always the
+        // one nobody had added a check to. Depends on this graph's last
+        // node so it runs last, and FAILS if it finds no home — a law
+        // that quietly checks nothing is the failure mode being closed.
+        node("sources/common/HomeFixpointLaw.java").dependsOn("postgres.down")
     }
 
     testGraph("sponsored") {
@@ -424,6 +442,15 @@ validationGraph {
 
         node("sources/common/ServersDown.java")
                 .dependsOn("source.sync.clears_stale_transitive_error")
+        // THE FIXPOINT LAW. One shared post-condition, not a bespoke
+        // check per graph: every home this graph produced must satisfy
+        // `home verify`, and where it refuses, the remedy IT PRINTED must
+        // clear it. Six defects of that shape were each found by hand on
+        // one home; the graph that would have caught them was always the
+        // one nobody had added a check to. Depends on this graph's last
+        // node so it runs last, and FAILS if it finds no home — a law
+        // that quietly checks nothing is the failure mode being closed.
+        node("sources/common/HomeFixpointLaw.java").dependsOn("servers.down")
     }
 
     /*
@@ -461,6 +488,15 @@ validationGraph {
 
         node("sources/common/ServersDown.java")
                 .dependsOn("gls.conflict")
+        // THE FIXPOINT LAW. One shared post-condition, not a bespoke
+        // check per graph: every home this graph produced must satisfy
+        // `home verify`, and where it refuses, the remedy IT PRINTED must
+        // clear it. Six defects of that shape were each found by hand on
+        // one home; the graph that would have caught them was always the
+        // one nobody had added a check to. Depends on this graph's last
+        // node so it runs last, and FAILS if it finds no home — a law
+        // that quietly checks nothing is the failure mode being closed.
+        node("sources/common/HomeFixpointLaw.java").dependsOn("servers.down")
     }
 
     /**
@@ -531,6 +567,15 @@ validationGraph {
                         "plugin.uninstalled.mixed.orphans",
                         "plugin.skill_script.force.sync")
         node("sources/common/PostgresDown.java").dependsOn("servers.down")
+        // THE FIXPOINT LAW. One shared post-condition, not a bespoke
+        // check per graph: every home this graph produced must satisfy
+        // `home verify`, and where it refuses, the remedy IT PRINTED must
+        // clear it. Six defects of that shape were each found by hand on
+        // one home; the graph that would have caught them was always the
+        // one nobody had added a check to. Depends on this graph's last
+        // node so it runs last, and FAILS if it finds no home — a law
+        // that quietly checks nothing is the failure mode being closed.
+        node("sources/common/HomeFixpointLaw.java").dependsOn("postgres.down")
     }
 
     // -------------------------------------------------------- doc-smoke
@@ -562,6 +607,15 @@ validationGraph {
         node("sources/smoke/harness/HarnessTemplateUninstalled.java")
         node("sources/common/ServersDown.java")
                 .dependsOn("harness.template.uninstalled")
+        // THE FIXPOINT LAW. One shared post-condition, not a bespoke
+        // check per graph: every home this graph produced must satisfy
+        // `home verify`, and where it refuses, the remedy IT PRINTED must
+        // clear it. Six defects of that shape were each found by hand on
+        // one home; the graph that would have caught them was always the
+        // one nobody had added a check to. Depends on this graph's last
+        // node so it runs last, and FAILS if it finds no home — a law
+        // that quietly checks nothing is the failure mode being closed.
+        node("sources/common/HomeFixpointLaw.java").dependsOn("servers.down")
     }
 
     testGraph("doc-smoke") {
@@ -594,16 +648,43 @@ validationGraph {
         node("sources/smoke/doc/DocRebindAfterAllRemoved.java")
         node("sources/smoke/doc/DocCommandCoverage.java")
         node("sources/smoke/doc/DocRepoUninstalled.java")
+        // THE FIXPOINT LAW. One shared post-condition, not a bespoke
+        // check per graph: every home this graph produced must satisfy
+        // `home verify`, and where it refuses, the remedy IT PRINTED must
+        // clear it. Six defects of that shape were each found by hand on
+        // one home; the graph that would have caught them was always the
+        // one nobody had added a check to. Depends on this graph's last
+        // node so it runs last, and FAILS if it finds no home — a law
+        // that quietly checks nothing is the failure mode being closed.
+        node("sources/common/HomeFixpointLaw.java").dependsOn("doc.repo.uninstalled")
     }
 
     testGraph("project-manifest") {
         node("sources/common/EnvPrepared.java")
         node("sources/project/ProjectManifestRegistered.java")
+        // THE FIXPOINT LAW. One shared post-condition, not a bespoke
+        // check per graph: every home this graph produced must satisfy
+        // `home verify`, and where it refuses, the remedy IT PRINTED must
+        // clear it. Six defects of that shape were each found by hand on
+        // one home; the graph that would have caught them was always the
+        // one nobody had added a check to. Depends on this graph's last
+        // node so it runs last, and FAILS if it finds no home — a law
+        // that quietly checks nothing is the failure mode being closed.
+        node("sources/common/HomeFixpointLaw.java").dependsOn("project.manifest.registered")
     }
 
     testGraph("project-resolve") {
         node("sources/common/EnvPrepared.java")
         node("sources/project/ProjectDependenciesResolved.java")
+        // THE FIXPOINT LAW. One shared post-condition, not a bespoke
+        // check per graph: every home this graph produced must satisfy
+        // `home verify`, and where it refuses, the remedy IT PRINTED must
+        // clear it. Six defects of that shape were each found by hand on
+        // one home; the graph that would have caught them was always the
+        // one nobody had added a check to. Depends on this graph's last
+        // node so it runs last, and FAILS if it finds no home — a law
+        // that quietly checks nothing is the failure mode being closed.
+        node("sources/common/HomeFixpointLaw.java").dependsOn("project.dependencies.resolved")
     }
 
     testGraph("project-smoke") {
@@ -612,6 +693,15 @@ validationGraph {
         node("sources/project/ProjectDependenciesResolved.java")
         node("sources/project/ProjectGlobalSyncCliRefresh.java")
         node("sources/project/ProjectLocalSyncCliRefresh.java")
+        // THE FIXPOINT LAW. One shared post-condition, not a bespoke
+        // check per graph: every home this graph produced must satisfy
+        // `home verify`, and where it refuses, the remedy IT PRINTED must
+        // clear it. Six defects of that shape were each found by hand on
+        // one home; the graph that would have caught them was always the
+        // one nobody had added a check to. Depends on this graph's last
+        // node so it runs last, and FAILS if it finds no home — a law
+        // that quietly checks nothing is the failure mode being closed.
+        node("sources/common/HomeFixpointLaw.java").dependsOn("project.local.sync.cli.refresh")
     }
 
     // Child-home materialization contract, driven end to end through the real
@@ -640,6 +730,15 @@ validationGraph {
         node("sources/child-home/ChildHomePrunePreservesEdits.java")
         node("sources/child-home/ChildHomeConvergesOnSource.java")
         node("sources/child-home/ChildHomeMaterializationAtomic.java")
+        // THE FIXPOINT LAW. One shared post-condition, not a bespoke
+        // check per graph: every home this graph produced must satisfy
+        // `home verify`, and where it refuses, the remedy IT PRINTED must
+        // clear it. Six defects of that shape were each found by hand on
+        // one home; the graph that would have caught them was always the
+        // one nobody had added a check to. Depends on this graph's last
+        // node so it runs last, and FAILS if it finds no home — a law
+        // that quietly checks nothing is the failure mode being closed.
+        node("sources/common/HomeFixpointLaw.java").dependsOn("child.home.materialization.atomic")
     }
 
     // ---------------------------------------------------------------------
@@ -734,6 +833,15 @@ validationGraph {
         // drives them from tables, needs no uv and no network, and so keeps
         // its meaning in exactly the environments where the cost node skips.
         node("sources/home-clone/ExtentProbeIsSound.java")
+        // THE FIXPOINT LAW. One shared post-condition, not a bespoke
+        // check per graph: every home this graph produced must satisfy
+        // `home verify`, and where it refuses, the remedy IT PRINTED must
+        // clear it. Six defects of that shape were each found by hand on
+        // one home; the graph that would have caught them was always the
+        // one nobody had added a check to. Depends on this graph's last
+        // node so it runs last, and FAILS if it finds no home — a law
+        // that quietly checks nothing is the failure mode being closed.
+        node("sources/common/HomeFixpointLaw.java").dependsOn("extent.probe.is.sound")
     }
 
     /**
@@ -771,6 +879,15 @@ validationGraph {
         node("sources/tripwire/HomeTripwireArmed.java").dependsOn("env.prepared")
         node("sources/tripwire/HomeTripwireWorkload.java")
         node("sources/tripwire/HomeTripwireChecked.java")
+        // THE FIXPOINT LAW. One shared post-condition, not a bespoke
+        // check per graph: every home this graph produced must satisfy
+        // `home verify`, and where it refuses, the remedy IT PRINTED must
+        // clear it. Six defects of that shape were each found by hand on
+        // one home; the graph that would have caught them was always the
+        // one nobody had added a check to. Depends on this graph's last
+        // node so it runs last, and FAILS if it finds no home — a law
+        // that quietly checks nothing is the failure mode being closed.
+        node("sources/common/HomeFixpointLaw.java").dependsOn("home.tripwire.checked")
     }
 
     /**
@@ -789,6 +906,15 @@ validationGraph {
         node("sources/checkout-home/CheckoutHomeProvisioned.java")
         node("sources/checkout-home/CheckoutHomeContract.java")
         node("sources/checkout-home/CheckoutHomeLaunchIsolated.java")
+        // THE FIXPOINT LAW. One shared post-condition, not a bespoke
+        // check per graph: every home this graph produced must satisfy
+        // `home verify`, and where it refuses, the remedy IT PRINTED must
+        // clear it. Six defects of that shape were each found by hand on
+        // one home; the graph that would have caught them was always the
+        // one nobody had added a check to. Depends on this graph's last
+        // node so it runs last, and FAILS if it finds no home — a law
+        // that quietly checks nothing is the failure mode being closed.
+        node("sources/common/HomeFixpointLaw.java").dependsOn("checkout.home.launch.isolated")
     }
 
     /**
@@ -888,6 +1014,15 @@ validationGraph {
         // bytes in a home".
         node("sources/home-sync/HomeSyncProjectSeam.java")
         node("sources/home-sync/HomeSyncAuthoredAgentTree.java")
+        // THE FIXPOINT LAW. One shared post-condition, not a bespoke
+        // check per graph: every home this graph produced must satisfy
+        // `home verify`, and where it refuses, the remedy IT PRINTED must
+        // clear it. Six defects of that shape were each found by hand on
+        // one home; the graph that would have caught them was always the
+        // one nobody had added a check to. Depends on this graph's last
+        // node so it runs last, and FAILS if it finds no home — a law
+        // that quietly checks nothing is the failure mode being closed.
+        node("sources/common/HomeFixpointLaw.java").dependsOn("home.sync.authored.agent.tree")
     }
 
     /**
@@ -963,21 +1098,57 @@ validationGraph {
         // did in between. It carries its own sensitivity proof, so it keeps its
         // meaning even if a node above it is skipped.
         node("sources/ticket-lifecycle/TicketLifecycleGlobalHomeUntouched.java")
+        // THE FIXPOINT LAW. One shared post-condition, not a bespoke
+        // check per graph: every home this graph produced must satisfy
+        // `home verify`, and where it refuses, the remedy IT PRINTED must
+        // clear it. Six defects of that shape were each found by hand on
+        // one home; the graph that would have caught them was always the
+        // one nobody had added a check to. Depends on this graph's last
+        // node so it runs last, and FAILS if it finds no home — a law
+        // that quietly checks nothing is the failure mode being closed.
+        node("sources/common/HomeFixpointLaw.java").dependsOn("ticket.lifecycle.global.home.untouched")
     }
 
     testGraph("project-env") {
         node("sources/common/EnvPrepared.java")
         node("sources/project/ProjectEnvMaterialized.java")
+        // THE FIXPOINT LAW. One shared post-condition, not a bespoke
+        // check per graph: every home this graph produced must satisfy
+        // `home verify`, and where it refuses, the remedy IT PRINTED must
+        // clear it. Six defects of that shape were each found by hand on
+        // one home; the graph that would have caught them was always the
+        // one nobody had added a check to. Depends on this graph's last
+        // node so it runs last, and FAILS if it finds no home — a law
+        // that quietly checks nothing is the failure mode being closed.
+        node("sources/common/HomeFixpointLaw.java").dependsOn("project.env.materialized")
     }
 
     testGraph("project-libs") {
         node("sources/common/EnvPrepared.java")
         node("sources/project/ProjectLibsResolved.java")
+        // THE FIXPOINT LAW. One shared post-condition, not a bespoke
+        // check per graph: every home this graph produced must satisfy
+        // `home verify`, and where it refuses, the remedy IT PRINTED must
+        // clear it. Six defects of that shape were each found by hand on
+        // one home; the graph that would have caught them was always the
+        // one nobody had added a check to. Depends on this graph's last
+        // node so it runs last, and FAILS if it finds no home — a law
+        // that quietly checks nothing is the failure mode being closed.
+        node("sources/common/HomeFixpointLaw.java").dependsOn("project.libs.resolved")
     }
 
     testGraph("project-profiles") {
         node("sources/common/EnvPrepared.java")
         node("sources/project/ProjectProfilesResolved.java")
+        // THE FIXPOINT LAW. One shared post-condition, not a bespoke
+        // check per graph: every home this graph produced must satisfy
+        // `home verify`, and where it refuses, the remedy IT PRINTED must
+        // clear it. Six defects of that shape were each found by hand on
+        // one home; the graph that would have caught them was always the
+        // one nobody had added a check to. Depends on this graph's last
+        // node so it runs last, and FAILS if it finds no home — a law
+        // that quietly checks nothing is the failure mode being closed.
+        node("sources/common/HomeFixpointLaw.java").dependsOn("project.profiles.resolved")
     }
 
     testGraph("skill-dev-smoke") {
@@ -1003,6 +1174,15 @@ validationGraph {
                         "skill-dev.edit.harness",
                         "skill-dev.conflict.resolved")
         node("sources/common/PostgresDown.java").dependsOn("servers.down")
+        // THE FIXPOINT LAW. One shared post-condition, not a bespoke
+        // check per graph: every home this graph produced must satisfy
+        // `home verify`, and where it refuses, the remedy IT PRINTED must
+        // clear it. Six defects of that shape were each found by hand on
+        // one home; the graph that would have caught them was always the
+        // one nobody had added a check to. Depends on this graph's last
+        // node so it runs last, and FAILS if it finds no home — a law
+        // that quietly checks nothing is the failure mode being closed.
+        node("sources/common/HomeFixpointLaw.java").dependsOn("postgres.down")
     }
 
     /*
@@ -1108,5 +1288,14 @@ validationGraph {
         // sensitivity proof, so it keeps its meaning even if a node above it
         // failed.
         node("sources/onboarding/OnboardingGlobalHomeUntouched.java")
+        // THE FIXPOINT LAW. One shared post-condition, not a bespoke
+        // check per graph: every home this graph produced must satisfy
+        // `home verify`, and where it refuses, the remedy IT PRINTED must
+        // clear it. Six defects of that shape were each found by hand on
+        // one home; the graph that would have caught them was always the
+        // one nobody had added a check to. Depends on this graph's last
+        // node so it runs last, and FAILS if it finds no home — a law
+        // that quietly checks nothing is the failure mode being closed.
+        node("sources/common/HomeFixpointLaw.java").dependsOn("onboarding.global.home.untouched")
     }
 }

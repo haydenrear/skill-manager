@@ -27,10 +27,7 @@ public final class PipBackend implements InstallerBackend {
     @Override
     public InstallOutcome install(CliDependency dep, SkillStore store, String skillName)
             throws IOException {
-        if (dep.onPath() != null && isOnPath(dep.onPath())) {
-            Log.detail("✓ cli: %s already on PATH", dep.onPath());
-            return InstallOutcome.ALREADY_PRESENT;
-        }
+        if (alreadyProvided(dep, store)) return InstallOutcome.ALREADY_PRESENT;
         String pkg = dep.packageRef();
         if (pkg == null || pkg.isBlank()) throw new IOException("pip: spec missing package name (pip:<package>)");
         Fs.ensureDir(store.cliBinDir());

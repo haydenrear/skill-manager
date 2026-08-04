@@ -243,8 +243,17 @@ public final class QuietConsoleTest {
                     // this platform is SKIPPED.
                     SkillStore store = tempStore("classify");
                     java.nio.file.Files.createDirectories(store.cliBinDir());
-                    java.nio.file.Files.writeString(
-                            store.cliBinDir().resolve("already-there"), "#!/bin/sh\n");
+                    java.nio.file.Path alreadyThere = store.cliBinDir().resolve("already-there");
+                    java.nio.file.Files.writeString(alreadyThere, "#!/bin/sh\n");
+                    // Executable, which this fixture omitted while the presence
+                    // check was Files.exists. It is Files.isExecutable now
+                    // (CliPresence), because a file in bin/cli that cannot be
+                    // run is not a provisioned tool — it is the same
+                    // "present but broken" state a dangling shim is, and the
+                    // backend must reinstall over it rather than report it as
+                    // provisioning. "A binary already in bin/cli", which is
+                    // what this case says it is asserting, is an executable one.
+                    alreadyThere.toFile().setExecutable(true, false);
                     dev.skillmanager.cli.installer.TarBackend backend =
                             new dev.skillmanager.cli.installer.TarBackend();
 
@@ -271,20 +280,27 @@ public final class QuietConsoleTest {
                     // these are the two lines that made up 18 of the 26 on the
                     // real home, and each is asserted separately because a
                     // mutation that reverts one leaves the other.
-                    assertFalse(c.text().contains("already installed"),
-                            "the already-installed line is off the console; got:\n" + c.text());
-                    assertFalse(c.text().contains("already on PATH"),
-                            "and so is the already-on-PATH line; got:\n" + c.text());
+                    //
+                    // The two lines are worded differently since CliPresence
+                    // split the one question the backends used to ask ("is it
+                    // anywhere on PATH") into the two it actually meant: "this
+                    // home already provisioned it" and "the system provides it,
+                    // do not install over it". Both are still states, both are
+                    // still demoted, and they are still asserted separately.
+                    assertFalse(c.text().contains("already provisioned in this home"),
+                            "the already-provisioned line is off the console; got:\n" + c.text());
+                    assertFalse(c.text().contains("already provided by the system"),
+                            "and so is the system-provides line; got:\n" + c.text());
                     // ...but the refusal, which the caller may have to act on, does print.
                     assertContains(c.text(), "no install target for no-target-here",
                             "while the refusal it cannot fix by itself still prints");
                     // ...and both no-ops are written down rather than dropped.
                     assertNotNull(c.log(), "a run log was written");
                     String body = Files.readString(c.log(), StandardCharsets.UTF_8);
-                    assertContains(body, "cli: already-there already installed",
-                            "the demoted already-installed line is in the run log");
-                    assertContains(body, "cli: sh already on PATH",
-                            "and the demoted already-on-PATH line");
+                    assertContains(body, "cli: already-there already provisioned in this home",
+                            "the demoted already-provisioned line is in the run log");
+                    assertContains(body, "cli: sh already provided by the system",
+                            "and the demoted system-provides line");
                 })
 
                 .test("ToolInstallRecorder demotes a presence check that passed", () -> {

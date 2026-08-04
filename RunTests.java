@@ -58,6 +58,8 @@ import dev.skillmanager.commands.RemediesAreRunnableTest;
 import dev.skillmanager.validation.ProjectMarkdownImportsTest;
 import dev.skillmanager.effects.LocalInstallIsNotAnErrorTest;
 import dev.skillmanager.store.HomeVerifyDiagnosticTextTest;
+import dev.skillmanager.cli.installer.CliArtifactMatrixTest;
+import dev.skillmanager.cli.installer.CliPresenceTest;
 import dev.skillmanager.cli.installer.SkillScriptBackendTest;
 import dev.skillmanager.bindings.BindingsTest;
 import dev.skillmanager.command.SearchShowsKindTest;
@@ -164,6 +166,8 @@ public class RunTests {
         failures += ResolverCycleTest.run();
         failures += PlanShapeInvariantTest.run();
         failures += SkillScriptBackendTest.run();
+        failures += CliPresenceTest.run();
+        failures += CliArtifactMatrixTest.run();
         failures += CycleDetectionTest.run();
         failures += MixedKindTopoOrderTest.run();
         failures += PlanPolicyCategorizationTest.run();
@@ -235,6 +239,8 @@ public class RunTests {
         failures += dev.skillmanager.commands.HomeVerifyReportTest.run();
         failures += HomeVerifyDiagnosticTextTest.run();
         failures += dev.skillmanager.commands.HomeUnresolvedGateTest.run();
+        failures += dev.skillmanager.store.ChildHomeShimIsolationTest.run();
+        failures += dev.skillmanager.cli.installer.CliShimPrunerTest.run();
         failures += dev.skillmanager.cli.BuildIdentityTest.run();
         failures += dev.skillmanager.store.HomeDescriptorTest.run();
         failures += dev.skillmanager.policy.HomePolicyTest.run();

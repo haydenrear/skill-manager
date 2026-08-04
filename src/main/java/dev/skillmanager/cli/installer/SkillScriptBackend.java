@@ -289,6 +289,30 @@ public final class SkillScriptBackend implements InstallerBackend {
         }
     }
 
+    /**
+     * Whether the binary this script declares is still USABLE from this home —
+     * not merely still a file.
+     *
+     * <p>This was {@code Files.isExecutable(bin/cli/<binary>)}, and that is the
+     * fifth instance of the proxy-check defect, failing on the artifact's
+     * SHAPE. A clone skips {@code cache/}, so:
+     *
+     * <ul>
+     *   <li>{@code skill-dev}, a SYMLINK into {@code cache/uv-tools/…},
+     *       dangles; {@code isExecutable} follows and answers false; the script
+     *       reran and the tool healed.</li>
+     *   <li>{@code computeq}, a generated bash WRAPPER whose body execs
+     *       {@code <home>/cache/skill-script-deploy-helm-computeq/venv/bin/computeq},
+     *       is itself a perfectly fine executable; {@code isExecutable}
+     *       answered true and the script was skipped forever.</li>
+     * </ul>
+     *
+     * <p>Same home, same sync, opposite outcomes, decided by nothing but which
+     * shape the installer happened to produce — and seven of ten shims in a
+     * real home are wrappers. {@link CliArtifact} is the one predicate now, and
+     * it asks the question {@code home verify} already refuses on. See that
+     * class for what it does not cover.
+     */
     private static boolean declaredBinaryStillPresent(CliDependency.InstallTarget target,
                                                       SkillStore store) {
         if (target.binary() == null || target.binary().isBlank()) {
@@ -296,7 +320,7 @@ public final class SkillScriptBackend implements InstallerBackend {
             // alone decides re-run.
             return true;
         }
-        return Files.isExecutable(store.cliBinDir().resolve(target.binary()));
+        return CliArtifact.usableInHome(store, target.binary());
     }
 
     private record ResolvedScript(Path script, Path skillRoot, Path scriptsDir) {}

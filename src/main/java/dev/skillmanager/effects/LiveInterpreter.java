@@ -549,6 +549,14 @@ public final class LiveInterpreter implements ProgramInterpreter {
 
     private EffectReceipt installCli(SkillEffect.InstallCli e) throws IOException {
         List<AgentUnit> units = freshen(e.units());
+        // BEFORE the plan is built, because the plan's presence gate reads
+        // bin/cli: a shim resolving into another home is executable, so
+        // CliPresence calls it provisioned and the install pass walks straight
+        // past the thing `home verify` refuses. Pruning first is what makes
+        // `sync --force-scripts` a repair for it — and for the orphan shim,
+        // which nothing declares and nothing could re-install over. What it
+        // will not touch is enumerated on CliShimPruner.
+        dev.skillmanager.cli.installer.CliShimPruner.prune(store);
         InstallPlan plan = buildPlan(units, e.forceScripts(), e.forceScriptUnitNames());
         return EffectReceipt.ok(e, new ContextFact.CliInstalledFor(
                 units.size(), CliInstallRecorder.run(plan, store)));

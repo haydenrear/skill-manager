@@ -28,10 +28,7 @@ public final class NpmBackend implements InstallerBackend {
     @Override
     public InstallOutcome install(CliDependency dep, SkillStore store, String skillName)
             throws IOException {
-        if (dep.onPath() != null && isOnPath(dep.onPath())) {
-            Log.detail("✓ cli: %s already on PATH", dep.onPath());
-            return InstallOutcome.ALREADY_PRESENT;
-        }
+        if (alreadyProvided(dep, store)) return InstallOutcome.ALREADY_PRESENT;
         String pkg = dep.packageRef();
         if (pkg == null || pkg.isBlank()) throw new IOException("npm: spec missing package name (npm:<package>)");
 

@@ -35,14 +35,19 @@ public interface InstallerBackend {
         return install(dep, store, skillName);
     }
 
-    default boolean isOnPath(String executable) {
-        if (executable == null) return false;
-        String path = System.getenv("PATH");
-        if (path == null) return false;
-        for (String part : path.split(java.io.File.pathSeparator)) {
-            java.nio.file.Path candidate = java.nio.file.Path.of(part, executable);
-            if (java.nio.file.Files.isExecutable(candidate)) return true;
-        }
-        return false;
+    /**
+     * Whether {@code dep} is already satisfied for the home rooted at
+     * {@code store}, so this backend has nothing to do.
+     *
+     * <p>Delegates to {@link CliPresence}; see that class for why "is it on
+     * PATH" was the wrong question and what replaced it. There used to be an
+     * {@code isOnPath(String)} default here and every backend opened with it —
+     * which is how one shorthand became four copies of the same defect. It is
+     * gone rather than sharpened: a method on the interface every backend
+     * implements, named for the check they must not perform, is how this
+     * recurs.
+     */
+    default boolean alreadyProvided(CliDependency dep, SkillStore store) {
+        return CliPresence.alreadyProvided(dep, store);
     }
 }

@@ -222,6 +222,30 @@ public final class ProjectChildHomeScaffolder {
      * direction. That escape hatch turned out to be needed on the <em>normal</em>
      * path, which is what made the refusal wrong; see the top of this javadoc.
      *
+     * <h2>The message said one thing and the code did another</h2>
+     *
+     * <p>It read "units resolve in place and <b>no separate child home is
+     * created</b>", and the second clause was not true of what happened next.
+     * The boolean below is the only signal this method produces and
+     * {@link #scaffold} discarded it: execution continued unconditionally into
+     * {@code childStore.init()}, materialization, the claim set, and a
+     * {@link ChildHomeRegistry} record whose {@code parentHome} and
+     * {@code childHome} are the same directory. The sixteen self-referential
+     * {@code child-homes/project_<name>} records this javadoc cites above as
+     * evidence for the layout are the same records the message denied writing.
+     *
+     * <p><b>The wording changed and the behaviour did not</b>, and only after
+     * establishing that the record is read. Three call sites read it:
+     * {@link dev.skillmanager.app.RemoveUseCase} refuses to uninstall a unit a
+     * child home claims, {@code ProjectRealizationSnapshot} captures the record
+     * file so a failed {@code project sync} can roll back to it, and
+     * {@code ProjectRemoveUseCase} deletes it as part of unwinding the resolve.
+     * Skipping the write in the same-home case would silently change what
+     * {@code project remove} unwinds and what a rollback restores — a behaviour
+     * change smuggled in under a message fix, which is the shape of defect this
+     * epic keeps finding. What was left to fix was the sentence, and the
+     * sentence is what was wrong.
+     *
      * @return true when the two are the same home, so a caller can report which
      *         layout it produced. Never throws for this condition.
      */
@@ -230,8 +254,10 @@ public final class ProjectChildHomeScaffolder {
         Path child = realOrNormalized(childHome);
         if (!parent.equals(child)) return false;
         Log.warn("this project's home IS the parent home (%s) — a per-checkout layout: units "
-                + "resolve in place and no separate child home is created. That is the intended "
-                + "shape for a repository-local home. If you meant to materialize a child home "
+                + "resolve in place rather than being copied into a separate home, and the "
+                + "child-home record this resolve writes names this home as its own parent. "
+                + "That is the intended shape for a repository-local home, and that record is "
+                + "what `project remove` unwinds. If you meant to materialize a child home "
                 + "from a DIFFERENT parent, point SKILL_MANAGER_HOME at that one first.", child);
         return true;
     }
