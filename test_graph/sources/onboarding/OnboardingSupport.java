@@ -601,6 +601,25 @@ final class OnboardingSupport {
         return shim;
     }
 
+    /**
+     * A shim in {@code home} that resolves to nothing, so {@code home verify}
+     * refuses that home and prints its re-provision remedy.
+     *
+     * <p>Distinct from {@link #plantDanglingShim}, which plants into the SOURCE
+     * home a shim that dangles only once the clone has skipped {@code venvs/}.
+     * This one is planted directly into the home under test, by the node that
+     * needs the refusal, immediately before it asks for it — see
+     * {@code OnboardingRemediesAreRunnable} for why a node must not borrow its
+     * precondition from an orphan the product now repairs.
+     */
+    static Path plantUnresolvedShim(Path home, String name) throws IOException {
+        Path shim = home.resolve("bin").resolve("cli").resolve(name);
+        Files.createDirectories(shim.getParent());
+        Files.deleteIfExists(shim);
+        Files.createSymbolicLink(shim, Path.of("../../venvs/" + name + "/bin/" + name));
+        return shim;
+    }
+
     // ------------------------------------------- the authored content mention
 
     /**
