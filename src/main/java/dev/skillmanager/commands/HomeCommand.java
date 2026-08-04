@@ -265,6 +265,29 @@ public final class HomeCommand {
                                 : "tolerated; they go when the error does");
                 sample(diagnostics);
             }
+            // Sanctioned links at a PARENT store — reported, never counted.
+            //
+            // A child home's bin/cli entry is a symlink at its parent's entry
+            // on purpose (ChildHomeMaterializer.mirrorExistingShim), so the
+            // child shares the toolchain the parent provisioned instead of
+            // installing a second copy of it. The isolation rule predates child
+            // homes and refused every one of them: measured on harness-smoke,
+            // `✗ FOREIGN_HOME bin/cli/pycowsay … resolves into the home at
+            // <parent>`, with project-child-home passing only because its
+            // fixtures declare no CLI deps.
+            //
+            // Not folded into the tolerated categories, which are fatal under
+            // --strict: this is not a defect at any strictness. Printed anyway,
+            // because a home that is not self-contained is a fact a reader
+            // deciding whether to move or delete something needs.
+            List<String> parentShims = result.parentStoreShims();
+            if (!parentShims.isEmpty()) {
+                Log.info("%d shim(s) in %s link at its parent store — a child home shares the "
+                                + "parent's provisioned tools by design; the parent must outlive "
+                                + "this home",
+                        parentShims.size(), home);
+                sample(parentShims);
+            }
             // Provisioning that never completed. A message printed once by the
             // clone was not enough: nobody ran the remedy, and nothing asked
             // again. This is the command that asks again — issue #133 item 2.
@@ -302,27 +325,96 @@ public final class HomeCommand {
                 List<String> rows = new java.util.ArrayList<>();
                 for (HomeCloner.Leak leak : isolation) rows.add(leak.toString());
                 Log.errorList("  ", rows);
+                // A refusal with no remedy is the #142 class this release
+                // exists to close, and until now this — the branch that carries
+                // the VERDICT — was the one refusal in this command that
+                // printed none. The reader was told which paths leak and
+                // nothing about how to stop them leaking.
+                Log.error("  %s", isolationRemedy(isolation, home));
             } else if (tolerated > 0) {
                 Log.error("%s of %s, fatal under --strict; no path in %s "
                         + "resolves into another Skill Manager home",
                         toleratedPhrase, against, home);
+                // The one refusal in this command with no command behind it,
+                // and it says so rather than staying silent. There is nothing
+                // to run: an authored references page that quotes another home,
+                // and a persisted error message that describes one, are TEXT
+                // inside content this program does not author. Naming a command
+                // here would be inventing a remedy, which is the failure mode
+                // one worse than having none. So it names the two real exits
+                // instead, and both of them work.
+                Log.error("  no command clears these: they are authored unit content and "
+                        + "persisted error text, not paths. Edit the unit content (listed above) "
+                        + "and re-run, or drop --strict — without it this home passes.");
             }
             if (!result.clean() || !unresolved.isEmpty()) return 1;
+            // "no path reaches any other home" is FALSE of a child home, and a
+            // verdict that says it anyway is the same defect as the three
+            // earlier versions of this line: a guarantee wider than the run.
+            // The exception is named in the verdict, not left in a line above
+            // it that a reader who stops at the ✓ never sees.
+            String except = parentShims.isEmpty() ? ""
+                    : " except the " + parentShims.size() + " sanctioned parent-store shim(s) above";
             if (against == null) {
                 // The verdict states its own scope. Without --against this run
                 // cannot say "no reference to the source survives", and saying
                 // it anyway is how three earlier versions of this line came to
                 // be wrong.
                 Log.ok("every reference in %s resolves, and no path in it reaches any other "
-                        + "Skill Manager home (source-reference check not run — "
-                        + "see NOT CHECKED above)", home);
+                        + "Skill Manager home%s (source-reference check not run — "
+                        + "see NOT CHECKED above)", home, except);
                 return 0;
             }
             Log.ok("no %sreference to %s survives in %s, and no path in it reaches any "
-                            + "other Skill Manager home",
+                            + "other Skill Manager home%s",
                     mentions.isEmpty() && diagnostics.isEmpty() ? "" : "repairable ",
-                    against, home);
+                    against, home, except);
             return 0;
+        }
+
+        /**
+         * The remedy line for the isolation verdict, in the one spelling every
+         * caller of this command parses ({@code complete it with: <cmd>, then
+         * re-run this check}).
+         *
+         * <h2>Why {@code sync --force-scripts} repairs an isolation leak</h2>
+         *
+         * <p>Because {@code CliShimPruner} now runs at the head of the CLI
+         * install pass and removes exactly what this check refuses: a
+         * {@code bin/cli} entry resolving into another home that is not this
+         * home's parent store. Removing it is also what lets the SAME sync
+         * re-provision it here — before, {@code CliPresence} called a foreign
+         * link "already provisioned in this home", because it resolves and it
+         * is executable, so the install pass skipped it forever.
+         *
+         * <h2>And why the launcher pin gets a different command</h2>
+         *
+         * <p>{@code bin/cli/skill-manager} and {@code bin/launch/*} are written
+         * by {@code home shims} and by nothing else; {@code sync} does not
+         * touch them, and {@code CliShimPruner} deliberately leaves the pin
+         * alone (a stale pin failing loudly is {@code LauncherShims}' stated
+         * tradeoff). Printing the sync line for that path would be a remedy
+         * that runs and repairs nothing, which is the defect, not the fix. When
+         * a home has both kinds the two commands are chained, so the single
+         * line stays runnable as printed.
+         */
+        private static String isolationRemedy(List<HomeCloner.Leak> isolation, Path home) {
+            boolean launcher = false;
+            boolean other = false;
+            for (HomeCloner.Leak leak : isolation) {
+                String rel = leak.path().replace(java.io.File.separatorChar, '/');
+                if (rel.equals("bin/cli/skill-manager") || rel.startsWith("bin/launch/")) {
+                    launcher = true;
+                } else {
+                    other = true;
+                }
+            }
+            String prefix = homeEnvPrefix(home);
+            List<String> commands = new java.util.ArrayList<>();
+            if (launcher) commands.add(prefix + " home shims --home " + home);
+            if (other || commands.isEmpty()) commands.add(prefix + " sync --force-scripts");
+            return "complete it with: " + String.join(" && ", commands)
+                    + ", then re-run this check";
         }
 
         /**

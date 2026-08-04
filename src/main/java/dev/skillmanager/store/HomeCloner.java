@@ -1067,7 +1067,8 @@ public final class HomeCloner {
     public record Verification(List<Leak> leaks, List<String> contentReferences,
                                List<String> danglingLinks,
                                List<String> unresolvedReferences,
-                               List<String> diagnosticReferences) {
+                               List<String> diagnosticReferences,
+                               List<String> parentStoreShims) {
         public Verification {
             leaks = leaks == null ? List.of() : List.copyOf(leaks);
             contentReferences = contentReferences == null ? List.of() : List.copyOf(contentReferences);
@@ -1076,11 +1077,19 @@ public final class HomeCloner {
                     ? List.of() : List.copyOf(unresolvedReferences);
             diagnosticReferences = diagnosticReferences == null
                     ? List.of() : List.copyOf(diagnosticReferences);
+            parentStoreShims = parentStoreShims == null ? List.of() : List.copyOf(parentStoreShims);
+        }
+
+        public Verification(List<Leak> leaks, List<String> contentReferences,
+                            List<String> danglingLinks, List<String> unresolvedReferences,
+                            List<String> diagnosticReferences) {
+            this(leaks, contentReferences, danglingLinks, unresolvedReferences,
+                    diagnosticReferences, List.of());
         }
 
         public Verification(List<Leak> leaks, List<String> contentReferences,
                             List<String> danglingLinks, List<String> unresolvedReferences) {
-            this(leaks, contentReferences, danglingLinks, unresolvedReferences, List.of());
+            this(leaks, contentReferences, danglingLinks, unresolvedReferences, List.of(), List.of());
         }
 
         public boolean clean() { return leaks.isEmpty(); }
@@ -1177,6 +1186,11 @@ public final class HomeCloner {
         List<String> dangling = new ArrayList<>();
         List<String> unresolved = new ArrayList<>();
         List<String> diagnostics = new ArrayList<>();
+        List<String> parentShims = new ArrayList<>();
+        // One answer per foreign home rather than one per shim: `isChildOf`
+        // lists two directories, and a child home mirroring twenty CLI deps
+        // would otherwise ask the identical question twenty times.
+        java.util.Map<Path, Boolean> childOf = new java.util.HashMap<>();
         String needleText = srcRoot == null ? null : srcRoot.toString();
         Files.walkFileTree(dstRoot, new SimpleWalker((file, rel) -> {
             if (Files.isSymbolicLink(file)) {
@@ -1193,8 +1207,12 @@ public final class HomeCloner {
                 } else {
                     Path foreign = foreignHomeReachedBy(file, dstReal);
                     if (foreign != null) {
-                        leaks.add(new Leak(rel, "FOREIGN_HOME",
-                                target + " resolves into the home at " + foreign));
+                        if (sanctionedParentShim(rel, file, foreign, dstRoot, childOf)) {
+                            parentShims.add(rel + " -> " + foreign);
+                        } else {
+                            leaks.add(new Leak(rel, "FOREIGN_HOME",
+                                    target + " resolves into the home at " + foreign));
+                        }
                     } else {
                         Path foreignAgent = foreignAgentHomeReachedBy(file, dstReal);
                         if (foreignAgent != null) {
@@ -1258,7 +1276,85 @@ public final class HomeCloner {
         dangling.sort(String::compareTo);
         unresolved.sort(String::compareTo);
         diagnostics.sort(String::compareTo);
-        return new Verification(leaks, contentReferences, dangling, unresolved, diagnostics);
+        parentShims.sort(String::compareTo);
+        return new Verification(leaks, contentReferences, dangling, unresolved, diagnostics,
+                parentShims);
+    }
+
+    /**
+     * The two shim directories a child home is allowed to mirror from its
+     * parent store, in the {@code <rel>} spelling {@link SimpleWalker} reports.
+     */
+    private static final List<String> SHIM_DIRS = List.of("bin/cli/", "bin/mcp/");
+
+    /**
+     * True when this link is a child home's <em>sanctioned</em> mirror of an
+     * entry in its own parent store, rather than a path leaking into a home
+     * that has nothing to do with this one.
+     *
+     * <h2>Three conditions, all required</h2>
+     *
+     * <ol>
+     *   <li><b>It is a shim entry.</b> {@code bin/cli/<name>} or
+     *       {@code bin/mcp/<name>}, one segment deep — the only two places
+     *       {@link dev.skillmanager.bindings.ChildHomeMaterializer#mirrorExistingShim}
+     *       ever writes. A link anywhere else in the home is not something that
+     *       mechanism produced, so nothing about it is sanctioned by this.</li>
+     *   <li><b>It names the SAME entry in the other home.</b> The parent's
+     *       {@code bin/cli/<name>} and the child's must resolve to one
+     *       artifact. A shim pointing at some other file that merely happens to
+     *       live in another home is not a mirror of anything.</li>
+     *   <li><b>That home is this home's parent.</b>
+     *       {@link dev.skillmanager.bindings.ChildHomeLink#isChildOf} — evidence
+     *       on disk, from the parent's registry or the child's own
+     *       materialization records. Without this, the first two conditions
+     *       describe a shape that a stale copied link has too.</li>
+     * </ol>
+     *
+     * <p>The result is NOT a tolerated leak. A tolerated leak is fatal under
+     * {@code --strict}, and this is not a defect at any strictness: sharing the
+     * parent's provisioned toolchain is what a child home is <em>for</em>. See
+     * {@code ChildHomeLink} for why the alternative — child homes stop
+     * mirroring — was rejected.
+     */
+    /**
+     * The other Skill Manager home {@code link} resolves into and is NOT
+     * sanctioned to, or null.
+     *
+     * <p>The public form of the isolation rule, so the repair asks the gate
+     * rather than re-deriving "is this a leak" beside it. {@code CliArtifact}
+     * makes the same argument for the same reason: a gate and a repair that
+     * derive brokenness independently disagree, and the one that disagrees
+     * quietly is the repair.
+     *
+     * @param rel  this path's location inside {@code homeRoot}, {@code /}- or
+     *             platform-separated — it decides whether the sanctioned
+     *             child-home shim exception can apply at all
+     */
+    public static Path unsanctionedForeignHome(String rel, Path link, Path homeRoot) {
+        if (rel == null || link == null || homeRoot == null) return null;
+        Path root = homeRoot.toAbsolutePath().normalize();
+        Path foreign = foreignHomeReachedBy(link, realOrSame(root));
+        if (foreign == null) return null;
+        return sanctionedParentShim(rel, link, foreign, root, new java.util.HashMap<>())
+                ? null : foreign;
+    }
+
+    private static boolean sanctionedParentShim(String rel, Path link, Path foreign, Path dstRoot,
+                                                java.util.Map<Path, Boolean> childOf) {
+        String normalized = rel.replace(java.io.File.separatorChar, '/');
+        String dir = null;
+        for (String candidate : SHIM_DIRS) {
+            if (normalized.startsWith(candidate)) { dir = candidate; break; }
+        }
+        if (dir == null) return false;
+        String name = normalized.substring(dir.length());
+        if (name.isEmpty() || name.contains("/")) return false;
+        Path parentEntry = foreign.resolve(dir + name);
+        if (!Files.exists(parentEntry, java.nio.file.LinkOption.NOFOLLOW_LINKS)) return false;
+        if (!realOrSame(link).equals(realOrSame(parentEntry))) return false;
+        return childOf.computeIfAbsent(foreign,
+                home -> dev.skillmanager.bindings.ChildHomeLink.isChildOf(dstRoot, home));
     }
 
     /**
