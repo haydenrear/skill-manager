@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.21.1](https://github.com/haydenrear/skill-manager/compare/v0.21.0...v0.21.1) (2026-08-04)
+
+
+### Bug Fixes
+
+* **agent:** a project home's MCP entry goes where the agent reads, and the line says which file ([3cd45a9](https://github.com/haydenrear/skill-manager/commit/3cd45a99694b0807ba03f7899b5a3ad359cb553f))
+* **cli:** "is this tool usable from THIS home" is one predicate, and it is the gate's own question ([fcc73f4](https://github.com/haydenrear/skill-manager/commit/fcc73f4aa0e42cac595102acb946c2402145aaab))
+* **cli:** provisioning is a question about THIS home, not about PATH ([b00a396](https://github.com/haydenrear/skill-manager/commit/b00a39604b4cf7f26fbdddf95046d63f1d6e6432))
+* **cli:** sync prunes the bin/cli shims a home could never get out of ([54b99d5](https://github.com/haydenrear/skill-manager/commit/54b99d53326408b76a3e00ba84110a3498d0946f))
+* **cli:** the bin/cli/&lt;name&gt; fallback is tar's alone, and the lock does not re-fire ([e67df33](https://github.com/haydenrear/skill-manager/commit/e67df335289d80c4eea4e0bd0c61c04b3905ef18))
+* **graph:** the fixpoint law stays inside the sandbox and routes its env through SmEnv ([bd79eac](https://github.com/haydenrear/skill-manager/commit/bd79eac45cd4feeae76090151717e9093bcfc087))
+* **home:** a child home's link at its own parent's store is not a foreign-home leak ([b4aeca9](https://github.com/haydenrear/skill-manager/commit/b4aeca9c3fe23552882b528cfe48858c1e28a0b2))
+* **home:** the remedy `home verify` prints names the CLI that printed it ([b99a4e7](https://github.com/haydenrear/skill-manager/commit/b99a4e7da5d5f29926fa8f7b1c9f2a7119678b48))
+* **launch:** a symlinked PATH entry is not a laundry for a foreign home ([8af2df1](https://github.com/haydenrear/skill-manager/commit/8af2df1afbdedba1094aa5868d936ad14dd5f0ad))
+* **project:** `resolve` stops denying the child-home record it writes ([94b4925](https://github.com/haydenrear/skill-manager/commit/94b49252f5ef9cd616d3e0774c43c9f0608ee9a8))
+* provisioning asks about THIS home, remedies run as printed, and a refused home can always be repaired ([05b9331](https://github.com/haydenrear/skill-manager/commit/05b9331da6b3f59992e9592eae07b6f05d77cbc4))
+* **test-graph:** shared.package.cache node compiles the Fs it now transitively needs ([1695220](https://github.com/haydenrear/skill-manager/commit/16952207ade2cba334baf6de9d4b9be6bf7d439c))
+
 ## [0.21.0](https://github.com/haydenrear/skill-manager/compare/v0.20.0...v0.21.0) (2026-08-03)
 
 
