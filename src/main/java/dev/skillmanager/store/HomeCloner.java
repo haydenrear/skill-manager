@@ -1288,6 +1288,29 @@ public final class HomeCloner {
     private static final List<String> SHIM_DIRS = List.of("bin/cli/", "bin/mcp/");
 
     /**
+     * The other Skill Manager home {@code link} resolves into and is NOT
+     * sanctioned to, or null.
+     *
+     * <p>The public form of the isolation rule, so the repair asks the gate
+     * rather than re-deriving "is this a leak" beside it. {@code CliArtifact}
+     * makes the same argument for the same reason: a gate and a repair that
+     * derive brokenness independently disagree, and the one that disagrees
+     * quietly is the repair.
+     *
+     * @param rel  this path's location inside {@code homeRoot}, {@code /}- or
+     *             platform-separated — it decides whether the sanctioned
+     *             child-home shim exception can apply at all
+     */
+    public static Path unsanctionedForeignHome(String rel, Path link, Path homeRoot) {
+        if (rel == null || link == null || homeRoot == null) return null;
+        Path root = homeRoot.toAbsolutePath().normalize();
+        Path foreign = foreignHomeReachedBy(link, realOrSame(root));
+        if (foreign == null) return null;
+        return sanctionedParentShim(rel, link, foreign, root, new java.util.HashMap<>())
+                ? null : foreign;
+    }
+
+    /**
      * True when this link is a child home's <em>sanctioned</em> mirror of an
      * entry in its own parent store, rather than a path leaking into a home
      * that has nothing to do with this one.
@@ -1317,29 +1340,6 @@ public final class HomeCloner {
      * {@code ChildHomeLink} for why the alternative — child homes stop
      * mirroring — was rejected.
      */
-    /**
-     * The other Skill Manager home {@code link} resolves into and is NOT
-     * sanctioned to, or null.
-     *
-     * <p>The public form of the isolation rule, so the repair asks the gate
-     * rather than re-deriving "is this a leak" beside it. {@code CliArtifact}
-     * makes the same argument for the same reason: a gate and a repair that
-     * derive brokenness independently disagree, and the one that disagrees
-     * quietly is the repair.
-     *
-     * @param rel  this path's location inside {@code homeRoot}, {@code /}- or
-     *             platform-separated — it decides whether the sanctioned
-     *             child-home shim exception can apply at all
-     */
-    public static Path unsanctionedForeignHome(String rel, Path link, Path homeRoot) {
-        if (rel == null || link == null || homeRoot == null) return null;
-        Path root = homeRoot.toAbsolutePath().normalize();
-        Path foreign = foreignHomeReachedBy(link, realOrSame(root));
-        if (foreign == null) return null;
-        return sanctionedParentShim(rel, link, foreign, root, new java.util.HashMap<>())
-                ? null : foreign;
-    }
-
     private static boolean sanctionedParentShim(String rel, Path link, Path foreign, Path dstRoot,
                                                 java.util.Map<Path, Boolean> childOf) {
         String normalized = rel.replace(java.io.File.separatorChar, '/');
