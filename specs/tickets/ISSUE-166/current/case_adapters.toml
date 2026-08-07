@@ -1,0 +1,28 @@
+# Map generated program-model action labels to production adapters.
+
+[adapters.RenderProgressiveRootHelp]
+adapter = "specs.program_model.production_adapters:CliHelpAdapter"
+
+[adapters.RenderInstallCommandHelp]
+adapter = "specs.program_model.production_adapters:CliHelpAdapter"
+
+[adapters.RenderSyncCommandHelp]
+adapter = "specs.program_model.production_adapters:CliHelpAdapter"
+
+[adapters.RenderProjectProfilesListHelp]
+adapter = "specs.program_model.production_adapters:CliHelpAdapter"
+
+[adapters.ExposeInstallLocalUnitWorkflowDocs]
+adapter = "specs.program_model.production_adapters:CliSkillDocsAdapter"
+
+[adapters.ExposeSkillScriptsWorkflowDocs]
+adapter = "specs.program_model.production_adapters:CliSkillDocsAdapter"
+
+[adapters.ExposeProjectEnvWorkflowDocs]
+adapter = "specs.program_model.production_adapters:CliSkillDocsAdapter"
+
+[adapters.EmitSyncOneUnitAgentContext]
+adapter = "specs.program_model.production_adapters:CliAgentContextAdapter"
+
+[adapters.EmitProjectEnvAgentContext]
+adapter = "specs.program_model.production_adapters:CliAgentContextAdapter"

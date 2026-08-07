@@ -1661,6 +1661,46 @@ tickets:
         - No .git path is ever named to a human as a file to resolve.
         - A worktree holding a commit the destination lacks is still refused, whichever route is chosen.
 
+  - id: ISSUE-166
+    title: "Preserve pinned revisions during claiming-project refresh"
+    phase: CHM
+    status: open
+    github_issue: https://github.com/haydenrear/skill-manager/issues/166
+    objective: >
+      A public named sync selects one immutable unit revision and automatic
+      claiming-project refresh reconciles registrations, project locks, child
+      units, CLI/MCP projections, and error state from those already-selected
+      parent-home bytes. The automatic refresh must not perform a second trunk
+      pull that can advance a pinned unit to a different revision. An explicit
+      `project sync` retains its documented trunk-pull behavior.
+    model:
+      internal:
+        - Automatic claimant refresh consumes the selected parent-home revision and never performs independent source selection.
+      external:
+        - A successful public named sync leaves installed provenance, units.lock, project registration, and child realization coherent at one selected revision.
+        - A pinned A remains A when the upstream trunk has already advanced to B.
+    acceptance:
+      assertions:
+        - An offline real-git A/B regression proves checkout HEAD, installed gitHash, units.lock resolved SHA, registered revision, and child realization all agree with A.
+        - The project lock retains its expected source and directness metadata.
+        - Automatic claimant refresh performs no fetch or merge of B and emits no partial or error receipt.
+        - Unrelated installed records, unit trees, locks, and CLI shims remain byte-identical and every involved git tree is clean.
+        - Existing local and global claimant CLI refresh tests remain green.
+        - Explicit project sync still pulls the upstream trunk.
+    validation:
+      unit:
+        - jbang RunTests.java
+      focused:
+        - jbang RunTests.java ProjectDependencyResolverTest
+        - jbang RunTests.java ProjectTrunkSyncTest
+      formal:
+        - bash specs/tickets/ISSUE-166/current/run_tlc.sh specs/tickets/ISSUE-166/current/Internal.tla specs/tickets/ISSUE-166/current/Internal_claimant_refresh.cfg
+        - bash specs/tickets/ISSUE-166/current/run_tlc.sh specs/tickets/ISSUE-166/current/External.tla specs/tickets/ISSUE-166/current/External_named_sync.cfg
+        - tla-spec-dev --spec-root specs run spec-unit-tests --ticket ISSUE-166
+      graph:
+        - project-smoke
+        - spec-conformance
+
   - id: CHM-22
     title: "RECORD_SCHEMA_VERSION was not bumped when the digest scope changed, so a stale record held a unit back with no cause an operator could act on"
     phase: CHM
