@@ -1,0 +1,102 @@
+# Complexity ledger input -- MF-019 standing objective.
+#
+# `close ticket` refuses until this is filled in. That refusal is the mechanism:
+# the standing objective is a required close-out step, not a stance.
+#
+# The delta is computed for you from `analyze complexity` and the TLC report.
+# What you supply is the part a tool cannot know: whether behavior was retained,
+# what the refinement search found, and why any increase is essential.
+
+# Validated-refactor basis -- CD-09 (owner-approved 2026-07-22). This is what
+# LICENSES a complexity DECREASE: TLC green on the model before AND after the
+# change, behavior tests green, and the before/after descriptor comparison
+# recorded. Absent, unknown, or degraded evidence REJECTS a decrease: an
+# unmeasured constraint cannot witness retention. (The fourth obligation, the
+# inspected transition-level diff, is `transition_diff:` below and is demanded
+# whenever the MF-020 red flag fires.)
+#
+#   tlc_before:            green | fail        -- TLC on the pre-change model
+#   tlc_after:             green | fail        -- TLC on the post-change model
+#   behavior_tests:        pass | fail         -- the repository behavior tests
+#   descriptor_comparison: recorded            -- before/after descriptor doc
+validated_refactor:
+  tlc_before:
+    status: "TODO"
+    evidence: "TODO -- path to the pre-change TLC output"
+  tlc_after:
+    status: "TODO"
+    evidence: "TODO -- path to the post-change TLC output"
+  behavior_tests:
+    status: "TODO"
+    evidence: "TODO -- path to the behavior-test output"
+  descriptor_comparison:
+    status: "TODO"
+    evidence: "TODO -- path to the before/after descriptor comparison"
+
+# Fuzzing-era retention members -- RECORDED at every close, non-gating since
+# CD-09. Demoted to EXPERIMENTAL by the 2026-07-21 pivot (MF-038: kill 0.31 vs
+# floor 0.8, 0/9 content bugs caught). `not_run` is the honest value; fill in a
+# measured verdict only when one of them actually ran.
+#
+#   kill_rate:           pass | below_floor | incomplete_catalog | not_run   (MF-016)
+#   effect_conformance:  clean | gaps | dead_surface | unobservable | not_run (MF-013/MF-027)
+#   external_coverage:   pass | gaps | incomplete | not_run                  (MF-015)
+#
+# NOTE: `unobservable` IS NOT `clean`. MF-027 made the effect oracle refuse
+# targets it cannot see; the record keeps that distinction even though the
+# member no longer gates.
+retention:
+  kill_rate:
+    status: "not_run"
+    evidence: ""
+  effect_conformance:
+    status: "not_run"
+    evidence: ""
+  external_coverage:
+    status: "not_run"
+    evidence: ""
+
+# Coverage audit -- MF-026. The completeness REVIEW, distinct from the three
+# retention members above, which are all FIDELITY measures bounded to what is
+# already modeled. Unmodeled surface is invisible to every one of them, and this
+# is the only sweep that looks at it.
+#
+#   status: pass | fail | incomplete | not_run
+#
+# RECORDED, NEVER REFUSING (2026-08-04, owner direction). It was a hard gate at
+# workflow close with no override; it is now an optional agent-run review whose
+# verdict is written down and read by a person. `incomplete` IS STILL NOT
+# `pass`, because a sweep that did not walk the surface says nothing about it --
+# what was withdrawn is the refusal, not the distinction.
+#
+# Procedure: prompts/coverage_audit.md   Doctrine: references/coverage_audit.md
+coverage_audit:
+  status: "not_run"
+  report: ""          # path to the filled templates/coverage_audit_report.md
+  in_scope_gaps: null # count; in-scope gaps are HARD -- model it or change the program
+  scope_source: ""    # plan file:lines the declared scope was READ from, never chosen
+
+# Required if complexity INCREASED. Name the new essential behavior the added
+# representation carries. This documents real behavior; it does not waive the
+# increase, which is recorded and reported either way.
+justification: ""
+
+# The recursive refinement loop -- REQUIRED at every close.
+# Either an approved recommendation with evidence, or "searched, found none".
+# Recommendations are advisory and user-approved, never auto-applied.
+refinement:
+  searched: false
+  outcome: "TODO -- found | none"
+  detail: ""
+  measured: false      # true only if a real TLC run produced the figure
+  applied: false       # if true, approved_by is required
+  approved_by: ""
+
+# Required only if a generated-states drop at constant distinct states is
+# detected. That is a RED FLAG (deleted self-loop, MF-020), not a win -- record
+# the inspected transition-level diff here to accept it.
+transition_diff: ""
+
+# REQUIRED. The narrative ledger: reasoning, measured alternatives, findings the
+# machine-checked core above cannot express. Path to a document, or prose.
+narrative: "TODO"
