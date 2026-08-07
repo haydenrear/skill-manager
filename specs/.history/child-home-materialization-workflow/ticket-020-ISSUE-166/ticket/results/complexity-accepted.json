@@ -1,0 +1,591 @@
+{
+  "module": "SkillManager",
+  "spec": "specs/tickets/ISSUE-166/desired/SkillManager.tla",
+  "cfg": "specs/tickets/ISSUE-166/desired/MC.cfg",
+  "manifest": "specs/tickets/ISSUE-166/desired/spec_manifest.yaml",
+  "measured": {
+    "dimensions": [
+      {
+        "variable": "cli_store_units",
+        "domain": null,
+        "cardinality": null,
+        "source": null,
+        "note": "unconstrained by the configured invariants (resolved transitively) -- excluded from the bound"
+      },
+      {
+        "variable": "cli_doc_repos",
+        "domain": null,
+        "cardinality": null,
+        "source": null,
+        "note": "unconstrained by the configured invariants (resolved transitively) -- excluded from the bound"
+      },
+      {
+        "variable": "cli_harness_templates",
+        "domain": null,
+        "cardinality": null,
+        "source": null,
+        "note": "unconstrained by the configured invariants (resolved transitively) -- excluded from the bound"
+      },
+      {
+        "variable": "cli_harness_instances",
+        "domain": null,
+        "cardinality": null,
+        "source": null,
+        "note": "unconstrained by the configured invariants (resolved transitively) -- excluded from the bound"
+      },
+      {
+        "variable": "cli_installed_records",
+        "domain": null,
+        "cardinality": null,
+        "source": null,
+        "note": "unconstrained by the configured invariants (resolved transitively) -- excluded from the bound"
+      },
+      {
+        "variable": "cli_lock_units",
+        "domain": null,
+        "cardinality": null,
+        "source": null,
+        "note": "unconstrained by the configured invariants (resolved transitively) -- excluded from the bound"
+      },
+      {
+        "variable": "cli_agent_projections",
+        "domain": null,
+        "cardinality": null,
+        "source": null,
+        "note": "unconstrained by the configured invariants (resolved transitively) -- excluded from the bound"
+      },
+      {
+        "variable": "cli_bindings",
+        "domain": null,
+        "cardinality": null,
+        "source": null,
+        "note": "unconstrained by the configured invariants (resolved transitively) -- excluded from the bound"
+      },
+      {
+        "variable": "cli_projection_rows",
+        "domain": null,
+        "cardinality": null,
+        "source": null,
+        "note": "unconstrained by the configured invariants (resolved transitively) -- excluded from the bound"
+      },
+      {
+        "variable": "cli_managed_copies",
+        "domain": null,
+        "cardinality": null,
+        "source": null,
+        "note": "unconstrained by the configured invariants (resolved transitively) -- excluded from the bound"
+      },
+      {
+        "variable": "cli_import_directives",
+        "domain": null,
+        "cardinality": null,
+        "source": null,
+        "note": "unconstrained by the configured invariants (resolved transitively) -- excluded from the bound"
+      },
+      {
+        "variable": "cli_projection_conflicts",
+        "domain": null,
+        "cardinality": null,
+        "source": null,
+        "note": "unconstrained by the configured invariants (resolved transitively) -- excluded from the bound"
+      },
+      {
+        "variable": "cli_tool_records",
+        "domain": null,
+        "cardinality": null,
+        "source": null,
+        "note": "unconstrained by the configured invariants (resolved transitively) -- excluded from the bound"
+      },
+      {
+        "variable": "cli_cli_lock",
+        "domain": null,
+        "cardinality": null,
+        "source": null,
+        "note": "unconstrained by the configured invariants (resolved transitively) -- excluded from the bound"
+      },
+      {
+        "variable": "cli_skill_scripts_run",
+        "domain": null,
+        "cardinality": null,
+        "source": null,
+        "note": "unconstrained by the configured invariants (resolved transitively) -- excluded from the bound"
+      },
+      {
+        "variable": "cli_errors",
+        "domain": null,
+        "cardinality": null,
+        "source": null,
+        "note": "unconstrained by the configured invariants (resolved transitively) -- excluded from the bound"
+      },
+      {
+        "variable": "cli_gateway_url_configured",
+        "domain": null,
+        "cardinality": null,
+        "source": null,
+        "note": "unconstrained by the configured invariants (resolved transitively) -- excluded from the bound"
+      },
+      {
+        "variable": "cli_registry_url_configured",
+        "domain": null,
+        "cardinality": null,
+        "source": null,
+        "note": "unconstrained by the configured invariants (resolved transitively) -- excluded from the bound"
+      },
+      {
+        "variable": "cli_gateway_mcp_snapshot",
+        "domain": null,
+        "cardinality": null,
+        "source": null,
+        "note": "unconstrained by the configured invariants (resolved transitively) -- excluded from the bound"
+      },
+      {
+        "variable": "effect_status",
+        "domain": null,
+        "cardinality": null,
+        "source": null,
+        "note": "unconstrained by the configured invariants (resolved transitively) -- excluded from the bound"
+      },
+      {
+        "variable": "effect_continuation",
+        "domain": null,
+        "cardinality": null,
+        "source": null,
+        "note": "unconstrained by the configured invariants (resolved transitively) -- excluded from the bound"
+      },
+      {
+        "variable": "program_halted",
+        "domain": null,
+        "cardinality": null,
+        "source": null,
+        "note": "unconstrained by the configured invariants (resolved transitively) -- excluded from the bound"
+      },
+      {
+        "variable": "always_after_ran",
+        "domain": null,
+        "cardinality": null,
+        "source": null,
+        "note": "unconstrained by the configured invariants (resolved transitively) -- excluded from the bound"
+      },
+      {
+        "variable": "rollback_journal",
+        "domain": null,
+        "cardinality": null,
+        "source": null,
+        "note": "unconstrained by the configured invariants (resolved transitively) -- excluded from the bound"
+      },
+      {
+        "variable": "gateway_catalog",
+        "domain": null,
+        "cardinality": null,
+        "source": null,
+        "note": "unconstrained by the configured invariants (resolved transitively) -- excluded from the bound"
+      },
+      {
+        "variable": "gateway_dynamic_servers",
+        "domain": null,
+        "cardinality": null,
+        "source": null,
+        "note": "unconstrained by the configured invariants (resolved transitively) -- excluded from the bound"
+      },
+      {
+        "variable": "gateway_global_deployments",
+        "domain": null,
+        "cardinality": null,
+        "source": null,
+        "note": "unconstrained by the configured invariants (resolved transitively) -- excluded from the bound"
+      },
+      {
+        "variable": "gateway_session_deployments",
+        "domain": null,
+        "cardinality": null,
+        "source": null,
+        "note": "unconstrained by the configured invariants (resolved transitively) -- excluded from the bound"
+      },
+      {
+        "variable": "gateway_tools",
+        "domain": null,
+        "cardinality": null,
+        "source": null,
+        "note": "unconstrained by the configured invariants (resolved transitively) -- excluded from the bound"
+      },
+      {
+        "variable": "gateway_disclosures",
+        "domain": null,
+        "cardinality": null,
+        "source": null,
+        "note": "unconstrained by the configured invariants (resolved transitively) -- excluded from the bound"
+      },
+      {
+        "variable": "gateway_errors",
+        "domain": null,
+        "cardinality": null,
+        "source": null,
+        "note": "unconstrained by the configured invariants (resolved transitively) -- excluded from the bound"
+      },
+      {
+        "variable": "gateway_last_init",
+        "domain": null,
+        "cardinality": null,
+        "source": null,
+        "note": "unconstrained by the configured invariants (resolved transitively) -- excluded from the bound"
+      },
+      {
+        "variable": "server_registry_units",
+        "domain": null,
+        "cardinality": null,
+        "source": null,
+        "note": "unconstrained by the configured invariants (resolved transitively) -- excluded from the bound"
+      },
+      {
+        "variable": "server_versions",
+        "domain": null,
+        "cardinality": null,
+        "source": null,
+        "note": "unconstrained by the configured invariants (resolved transitively) -- excluded from the bound"
+      },
+      {
+        "variable": "server_packages",
+        "domain": null,
+        "cardinality": null,
+        "source": null,
+        "note": "unconstrained by the configured invariants (resolved transitively) -- excluded from the bound"
+      },
+      {
+        "variable": "server_authenticated_users",
+        "domain": null,
+        "cardinality": null,
+        "source": null,
+        "note": "unconstrained by the configured invariants (resolved transitively) -- excluded from the bound"
+      },
+      {
+        "variable": "project_model",
+        "domain": null,
+        "cardinality": null,
+        "source": null,
+        "note": "unconstrained by the configured invariants (resolved transitively) -- excluded from the bound"
+      },
+      {
+        "variable": "result",
+        "domain": null,
+        "cardinality": null,
+        "source": null,
+        "note": "unconstrained by the configured invariants (resolved transitively) -- excluded from the bound"
+      }
+    ],
+    "state_space_upper_bound": null,
+    "state_space_bound_known": false,
+    "state_space_bound_source": null,
+    "state_space_bound_complete": false,
+    "state_space_bound_resolved_variables": 0,
+    "state_space_bound_total_variables": 38,
+    "state_space_bound_caveat": "no variable domain resolved, so there is no bound to compare",
+    "state_space_bound_within_cap": null,
+    "unbounded_variables": [
+      "cli_store_units",
+      "cli_doc_repos",
+      "cli_harness_templates",
+      "cli_harness_instances",
+      "cli_installed_records",
+      "cli_lock_units",
+      "cli_agent_projections",
+      "cli_bindings",
+      "cli_projection_rows",
+      "cli_managed_copies",
+      "cli_import_directives",
+      "cli_projection_conflicts",
+      "cli_tool_records",
+      "cli_cli_lock",
+      "cli_skill_scripts_run",
+      "cli_errors",
+      "cli_gateway_url_configured",
+      "cli_registry_url_configured",
+      "cli_gateway_mcp_snapshot",
+      "effect_status",
+      "effect_continuation",
+      "program_halted",
+      "always_after_ran",
+      "rollback_journal",
+      "gateway_catalog",
+      "gateway_dynamic_servers",
+      "gateway_global_deployments",
+      "gateway_session_deployments",
+      "gateway_tools",
+      "gateway_disclosures",
+      "gateway_errors",
+      "gateway_last_init",
+      "server_registry_units",
+      "server_versions",
+      "server_packages",
+      "server_authenticated_users",
+      "project_model",
+      "result"
+    ],
+    "actions": [
+      {
+        "name": "RenderProgressiveRootHelp",
+        "reads": [
+          "project_model"
+        ],
+        "writes": [
+          "result"
+        ]
+      },
+      {
+        "name": "RenderInstallCommandHelp",
+        "reads": [
+          "project_model"
+        ],
+        "writes": [
+          "result"
+        ]
+      },
+      {
+        "name": "RenderSyncCommandHelp",
+        "reads": [
+          "project_model"
+        ],
+        "writes": [
+          "result"
+        ]
+      },
+      {
+        "name": "RenderProjectProfilesListHelp",
+        "reads": [
+          "project_model"
+        ],
+        "writes": [
+          "result"
+        ]
+      },
+      {
+        "name": "ExposeInstallLocalUnitWorkflowDocs",
+        "reads": [
+          "project_model"
+        ],
+        "writes": [
+          "result"
+        ]
+      },
+      {
+        "name": "ExposeSkillScriptsWorkflowDocs",
+        "reads": [
+          "project_model"
+        ],
+        "writes": [
+          "result"
+        ]
+      },
+      {
+        "name": "ExposeProjectEnvWorkflowDocs",
+        "reads": [
+          "project_model"
+        ],
+        "writes": [
+          "result"
+        ]
+      },
+      {
+        "name": "EmitSyncOneUnitAgentContext",
+        "reads": [
+          "project_model"
+        ],
+        "writes": [
+          "result"
+        ]
+      },
+      {
+        "name": "EmitProjectEnvAgentContext",
+        "reads": [
+          "project_model"
+        ],
+        "writes": [
+          "result"
+        ]
+      }
+    ],
+    "action_attribution": "top-level disjuncts of the next-state relation CliDisclosureNext, called-operator bodies expanded transitively; helpers are not actions",
+    "modularity": 0.0,
+    "components": [
+      [
+        "project_model",
+        "result"
+      ],
+      [
+        "always_after_ran"
+      ],
+      [
+        "cli_agent_projections"
+      ],
+      [
+        "cli_bindings"
+      ],
+      [
+        "cli_cli_lock"
+      ],
+      [
+        "cli_doc_repos"
+      ],
+      [
+        "cli_errors"
+      ],
+      [
+        "cli_gateway_mcp_snapshot"
+      ],
+      [
+        "cli_gateway_url_configured"
+      ],
+      [
+        "cli_harness_instances"
+      ],
+      [
+        "cli_harness_templates"
+      ],
+      [
+        "cli_import_directives"
+      ],
+      [
+        "cli_installed_records"
+      ],
+      [
+        "cli_lock_units"
+      ],
+      [
+        "cli_managed_copies"
+      ],
+      [
+        "cli_projection_conflicts"
+      ],
+      [
+        "cli_projection_rows"
+      ],
+      [
+        "cli_registry_url_configured"
+      ],
+      [
+        "cli_skill_scripts_run"
+      ],
+      [
+        "cli_store_units"
+      ],
+      [
+        "cli_tool_records"
+      ],
+      [
+        "effect_continuation"
+      ],
+      [
+        "effect_status"
+      ],
+      [
+        "gateway_catalog"
+      ],
+      [
+        "gateway_disclosures"
+      ],
+      [
+        "gateway_dynamic_servers"
+      ],
+      [
+        "gateway_errors"
+      ],
+      [
+        "gateway_global_deployments"
+      ],
+      [
+        "gateway_last_init"
+      ],
+      [
+        "gateway_session_deployments"
+      ],
+      [
+        "gateway_tools"
+      ],
+      [
+        "program_halted"
+      ],
+      [
+        "rollback_journal"
+      ],
+      [
+        "server_authenticated_users"
+      ],
+      [
+        "server_packages"
+      ],
+      [
+        "server_registry_units"
+      ],
+      [
+        "server_versions"
+      ]
+    ],
+    "port_crossing_actions": {},
+    "dense_rows": {
+      "project_model": 9,
+      "result": 9
+    },
+    "dense_columns": [],
+    "unread_by_invariant": [
+      "cli_store_units",
+      "cli_doc_repos",
+      "cli_harness_templates",
+      "cli_harness_instances",
+      "cli_installed_records",
+      "cli_lock_units",
+      "cli_agent_projections",
+      "cli_bindings",
+      "cli_projection_rows",
+      "cli_managed_copies",
+      "cli_import_directives",
+      "cli_projection_conflicts",
+      "cli_tool_records",
+      "cli_cli_lock",
+      "cli_skill_scripts_run",
+      "cli_errors",
+      "cli_gateway_url_configured",
+      "cli_registry_url_configured",
+      "cli_gateway_mcp_snapshot",
+      "effect_status",
+      "effect_continuation",
+      "program_halted",
+      "always_after_ran",
+      "rollback_journal",
+      "gateway_catalog",
+      "gateway_dynamic_servers",
+      "gateway_global_deployments",
+      "gateway_session_deployments",
+      "gateway_tools",
+      "gateway_disclosures",
+      "gateway_errors",
+      "gateway_last_init",
+      "server_registry_units",
+      "server_versions",
+      "server_packages",
+      "server_authenticated_users",
+      "result"
+    ],
+    "unjustified_variables": null,
+    "tlc_findings": []
+  },
+  "budgets": {
+    "max_state_space_bound": 1000000,
+    "max_distinct_states": 50000,
+    "max_component_variables": 6,
+    "max_component_actions": 8
+  },
+  "advisory": {
+    "blocks_promotion": false,
+    "clean": false,
+    "warnings": [
+      {
+        "kind": "state_space_bound_unknown",
+        "finding": "state-space upper bound UNKNOWN: no variable domain could be resolved from a TypeInvariant/TypeOK or from the configured invariants, so the bound cannot be compared against max_state_space_bound"
+      },
+      {
+        "kind": "component_actions",
+        "finding": "component C1 is touched by 9 actions (RenderProgressiveRootHelp, RenderInstallCommandHelp, RenderSyncCommandHelp, RenderProjectProfilesListHelp, ExposeInstallLocalUnitWorkflowDocs, ExposeSkillScriptsWorkflowDocs, ExposeProjectEnvWorkflowDocs, EmitSyncOneUnitAgentContext, EmitProjectEnvAgentContext), exceeding max_component_actions 8"
+      }
+    ]
+  },
+  "fitness": null
+}

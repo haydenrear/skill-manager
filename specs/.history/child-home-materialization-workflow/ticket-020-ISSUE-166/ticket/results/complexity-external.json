@@ -1,0 +1,144 @@
+{
+  "module": "ClaimantRefreshExternal",
+  "spec": "specs/tickets/ISSUE-166/desired/ClaimantRefreshExternal.tla",
+  "cfg": "specs/tickets/ISSUE-166/desired/ClaimantRefreshExternal.cfg",
+  "manifest": "specs/tickets/ISSUE-166/desired/spec_manifest.yaml",
+  "measured": {
+    "dimensions": [
+      {
+        "variable": "named_selected_revision",
+        "domain": "NamedSyncRevisions",
+        "cardinality": 2,
+        "source": "TypeOK",
+        "note": ""
+      },
+      {
+        "variable": "named_checkout_revision",
+        "domain": "NamedSyncRevisions",
+        "cardinality": 2,
+        "source": "TypeOK",
+        "note": ""
+      },
+      {
+        "variable": "named_installed_revision",
+        "domain": "NamedSyncRevisions",
+        "cardinality": 2,
+        "source": "TypeOK",
+        "note": ""
+      },
+      {
+        "variable": "named_units_lock_revision",
+        "domain": "NamedSyncRevisions",
+        "cardinality": 2,
+        "source": "TypeOK",
+        "note": ""
+      },
+      {
+        "variable": "named_registration_revision",
+        "domain": "NamedSyncRevisions",
+        "cardinality": 2,
+        "source": "TypeOK",
+        "note": ""
+      },
+      {
+        "variable": "named_child_revision",
+        "domain": "NamedSyncRevisions",
+        "cardinality": 2,
+        "source": "TypeOK",
+        "note": ""
+      },
+      {
+        "variable": "named_trunk_revision",
+        "domain": "NamedSyncRevisions",
+        "cardinality": 2,
+        "source": "TypeOK",
+        "note": ""
+      },
+      {
+        "variable": "named_fetches",
+        "domain": "0..1",
+        "cardinality": 2,
+        "source": "TypeOK",
+        "note": ""
+      },
+      {
+        "variable": "named_receipt",
+        "domain": "NamedSyncReceipts",
+        "cardinality": 3,
+        "source": "TypeOK",
+        "note": ""
+      }
+    ],
+    "state_space_upper_bound": 768,
+    "state_space_bound_known": true,
+    "state_space_bound_source": "TypeOK",
+    "state_space_bound_complete": true,
+    "state_space_bound_resolved_variables": 9,
+    "state_space_bound_total_variables": 9,
+    "state_space_bound_caveat": null,
+    "state_space_bound_within_cap": true,
+    "unbounded_variables": [],
+    "actions": [
+      {
+        "name": "PublicNamedSyncPinnedRevision",
+        "reads": [
+          "named_checkout_revision",
+          "named_receipt"
+        ],
+        "writes": [
+          "named_child_revision",
+          "named_receipt"
+        ]
+      }
+    ],
+    "action_attribution": "top-level disjuncts of the next-state relation NamedSyncNext, called-operator bodies expanded transitively; helpers are not actions",
+    "modularity": 0.0,
+    "components": [
+      [
+        "named_checkout_revision",
+        "named_child_revision",
+        "named_receipt"
+      ],
+      [
+        "named_fetches"
+      ],
+      [
+        "named_installed_revision"
+      ],
+      [
+        "named_registration_revision"
+      ],
+      [
+        "named_selected_revision"
+      ],
+      [
+        "named_trunk_revision"
+      ],
+      [
+        "named_units_lock_revision"
+      ]
+    ],
+    "port_crossing_actions": {},
+    "dense_rows": {
+      "named_checkout_revision": 1,
+      "named_child_revision": 1,
+      "named_receipt": 1
+    },
+    "dense_columns": [],
+    "unread_by_invariant": [],
+    "unjustified_variables": null,
+    "tlc_findings": []
+  },
+  "budgets": {
+    "max_state_space_bound": 1000000,
+    "max_distinct_states": 50000,
+    "max_component_variables": 6,
+    "max_component_actions": 8
+  },
+  "advisory": {
+    "blocks_promotion": false,
+    "clean": true,
+    "warnings": []
+  },
+  "fitness": null
+}

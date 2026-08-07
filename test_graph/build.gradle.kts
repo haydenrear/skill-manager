@@ -693,6 +693,7 @@ validationGraph {
         node("sources/project/ProjectDependenciesResolved.java")
         node("sources/project/ProjectGlobalSyncCliRefresh.java")
         node("sources/project/ProjectLocalSyncCliRefresh.java")
+        node("sources/project/ProjectPinnedSyncRevisionCoherent.java")
         // THE FIXPOINT LAW. One shared post-condition, not a bespoke
         // check per graph: every home this graph produced must satisfy
         // `home verify`, and where it refuses, the remedy IT PRINTED must
@@ -701,7 +702,19 @@ validationGraph {
         // one nobody had added a check to. Depends on this graph's last
         // node so it runs last, and FAILS if it finds no home — a law
         // that quietly checks nothing is the failure mode being closed.
-        node("sources/common/HomeFixpointLaw.java").dependsOn("project.local.sync.cli.refresh")
+        node("sources/common/HomeFixpointLaw.java").dependsOn(
+            "project.local.sync.cli.refresh",
+            "project.pinned.sync.revision.coherent",
+        )
+    }
+
+    // Public CLI adapter for the bounded External model's named-sync action.
+    // Formal TLC and spec-unit validation remain outside Test Graph; this graph
+    // owns only the production A/B behavior and its durable provenance.
+    testGraph("spec-conformance") {
+        node("sources/common/EnvPrepared.java")
+        node("sources/project/ProjectPinnedSyncRevisionCoherent.java")
+        node("sources/common/HomeFixpointLaw.java").dependsOn("project.pinned.sync.revision.coherent")
     }
 
     // Child-home materialization contract, driven end to end through the real

@@ -74,6 +74,11 @@ public final class ProjectSyncUseCase {
             return new Options(true, false, UnitTrunkPull.Options.defaults());
         }
 
+        /** Reconcile from the parent store's already-selected bytes without pulling a trunk. */
+        public static Options reconcileOnly() {
+            return new Options(false, false, UnitTrunkPull.Options.defaults());
+        }
+
         /** The pre-#8 behaviour, for a realization that needs rebuilding. */
         public static Options rebuildOnly() {
             return new Options(false, true, UnitTrunkPull.Options.defaults());
