@@ -1,0 +1,13 @@
+{
+  "actions": {
+    "ReconcileClaimingProjectFromSelectedParent": 1
+  },
+  "case_module": null,
+  "cases": 1,
+  "declared_view_actions": [
+    "ReconcileClaimingProjectFromSelectedParent"
+  ],
+  "module": "ClaimantRefreshInternal",
+  "source": "specs/tickets/ISSUE-166/desired/generated/spec-unit/claimant_refresh_cases",
+  "view": "internal"
+}

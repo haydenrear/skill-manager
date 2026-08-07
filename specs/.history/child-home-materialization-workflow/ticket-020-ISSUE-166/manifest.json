@@ -1,0 +1,534 @@
+{
+  "accept_new": false,
+  "accept_new_promotion": null,
+  "active_ticket_dir": "specs/tickets/ISSUE-166",
+  "commit_recommendation": {
+    "git_add": "git add specs/.history/child-home-materialization-workflow/ticket-020-ISSUE-166 specs/current specs/results/skill_feedback.md specs/results/complexity_ledger.json",
+    "git_commit": "git commit -m 'record spec history for ISSUE-166'",
+    "message": "It is recommended to commit this history directory now: specs/.history/child-home-materialization-workflow/ticket-020-ISSUE-166"
+  },
+  "complexity_delta": {
+    "direction": "baseline",
+    "metrics": {},
+    "note": "no previous ledger entry; this entry establishes the baseline",
+    "previous_scope_id": null
+  },
+  "complexity_ledger": {
+    "coverage_audit": {
+      "in_scope_gaps": null,
+      "passing": false,
+      "report": "",
+      "scope_source": "specs/desired_program_model/ticket_plan.yaml:1664-1707",
+      "status": "not_run"
+    },
+    "delta": {
+      "direction": "baseline",
+      "metrics": {},
+      "note": "no previous ledger entry; this entry establishes the baseline",
+      "previous_scope_id": null
+    },
+    "errors": [],
+    "input_path": "specs/tickets/ISSUE-166/results/complexity_ledger.yaml",
+    "justification": "The accepted SkillManager model is byte-identical before and after, so its complexity did not increase. The additive external view has nine total observable variables but a largest connected component of three, within the six-variable component budget. Separate checkout, installed, units-lock, registration, child, selected, trunk, fetch, and receipt observations are essential to make cross-surface disagreement and independent source selection expressible.",
+    "ledger_path": "specs/results/complexity_ledger.json",
+    "metrics": {
+      "action_attribution": "top-level disjuncts of the next-state relation CliDisclosureNext, called-operator bodies expanded transitively; helpers are not actions",
+      "actions": 9,
+      "actions_from_fallback_heuristic": false,
+      "bound": null,
+      "bound_complete": false,
+      "bound_resolved_variables": 0,
+      "bound_unresolved_variables": [
+        "cli_store_units",
+        "cli_doc_repos",
+        "cli_harness_templates",
+        "cli_harness_instances",
+        "cli_installed_records",
+        "cli_lock_units",
+        "cli_agent_projections",
+        "cli_bindings",
+        "cli_projection_rows",
+        "cli_managed_copies",
+        "cli_import_directives",
+        "cli_projection_conflicts",
+        "cli_tool_records",
+        "cli_cli_lock",
+        "cli_skill_scripts_run",
+        "cli_errors",
+        "cli_gateway_url_configured",
+        "cli_registry_url_configured",
+        "cli_gateway_mcp_snapshot",
+        "effect_status",
+        "effect_continuation",
+        "program_halted",
+        "always_after_ran",
+        "rollback_journal",
+        "gateway_catalog",
+        "gateway_dynamic_servers",
+        "gateway_global_deployments",
+        "gateway_session_deployments",
+        "gateway_tools",
+        "gateway_disclosures",
+        "gateway_errors",
+        "gateway_last_init",
+        "server_registry_units",
+        "server_versions",
+        "server_packages",
+        "server_authenticated_users",
+        "project_model",
+        "result"
+      ],
+      "budget_utilization": {},
+      "depth": null,
+      "distinct_states": null,
+      "gate_passed": false,
+      "gate_violations": [
+        "state-space upper bound UNKNOWN: no variable domain could be resolved from a TypeInvariant/TypeOK or from the configured invariants, so the bound cannot be compared against max_state_space_bound",
+        "component C1 is touched by 9 actions (RenderProgressiveRootHelp, RenderInstallCommandHelp, RenderSyncCommandHelp, RenderProjectProfilesListHelp, ExposeInstallLocalUnitWorkflowDocs, ExposeSkillScriptsWorkflowDocs, ExposeProjectEnvWorkflowDocs, EmitSyncOneUnitAgentContext, EmitProjectEnvAgentContext), exceeding max_component_actions 8"
+      ],
+      "generated_states": null,
+      "modularity": 0.0,
+      "variables": 38
+    },
+    "narrative": "specs/tickets/ISSUE-166/results/model-descriptors-2026-08-07.md",
+    "notes": [
+      "NOTE: TLC reports incomplete; comparison skipped.",
+      "coverage audit (MF-026) is `not_run`: audit has not been run for this scope. RECORDED, NOT REFUSED (2026-08-04). The four oracles check fidelity of what is modeled and are bounded to it; unmodeled surface is invisible to all of them while they report green, and this is the only sweep that looks at it. Run `prompts/coverage_audit.md` if you want that read on this scope."
+    ],
+    "recorded_at_utc": "2026-08-07T23:23:56.544393+00:00",
+    "refinement": {
+      "applied": false,
+      "approved_by": "",
+      "detail": "Considered collapsing revision observations, but that makes disagreement among checkout, installed provenance, units.lock, registration, and child realization inexpressible. No smaller faithful claimant slice was found.\n",
+      "measured": false,
+      "outcome": "none",
+      "searched": true
+    },
+    "retention": {
+      "effect_conformance": {
+        "classification": "unverified",
+        "evidence": "",
+        "status": "not_run",
+        "value": null
+      },
+      "external_coverage": {
+        "classification": "unverified",
+        "evidence": "",
+        "status": "not_run",
+        "value": null
+      },
+      "kill_rate": {
+        "classification": "unverified",
+        "evidence": "",
+        "status": "not_run",
+        "value": null
+      }
+    },
+    "retention_summary": [
+      "kill_rate=not_run (UNVERIFIED)",
+      "effect_conformance=not_run (UNVERIFIED)",
+      "external_coverage=not_run (UNVERIFIED)"
+    ],
+    "schema_version": 1,
+    "scope": "ticket",
+    "scope_id": "ISSUE-166",
+    "tlc_findings": [
+      {
+        "level": "NOTE",
+        "message": "TLC reports incomplete; comparison skipped."
+      }
+    ],
+    "transition_diff": "Not required: the accepted model and its TLC generated/distinct-state counts are unchanged, so no generated-state drop occurred.",
+    "validated_refactor": {
+      "behavior_tests": {
+        "classification": "retained",
+        "evidence": "specs/tickets/ISSUE-166/results/validation-2026-08-07.md#jvm-behavior-validation",
+        "status": "pass",
+        "value": null
+      },
+      "descriptor_comparison": {
+        "classification": "retained",
+        "evidence": "specs/tickets/ISSUE-166/results/model-descriptors-2026-08-07.md",
+        "status": "recorded",
+        "value": null
+      },
+      "tlc_after": {
+        "classification": "retained",
+        "evidence": "specs/tickets/ISSUE-166/results/validation-2026-08-07.md#formal-validation",
+        "status": "green",
+        "value": null
+      },
+      "tlc_before": {
+        "classification": "retained",
+        "evidence": "specs/tickets/ISSUE-166/results/validation-2026-08-07.md#formal-validation",
+        "status": "green",
+        "value": null
+      }
+    },
+    "validated_refactor_summary": [
+      "tlc_before=green (retained)",
+      "tlc_after=green (retained)",
+      "behavior_tests=pass (retained)",
+      "descriptor_comparison=recorded (retained)"
+    ],
+    "verdict": "recorded",
+    "workflow": "child-home-materialization-workflow"
+  },
+  "created_at_utc": "2026-08-07T23:23:56.608275+00:00",
+  "entry_name": "ticket-020-ISSUE-166",
+  "feedback_filed": false,
+  "feedback_filed_where": [],
+  "git": {
+    "branch": "feature/166-claiming-project-pin",
+    "commit": "86165bc",
+    "inside_work_tree": "true"
+  },
+  "guard_weakening": {
+    "bypassed": [],
+    "flags": [],
+    "model_action": "CloseTicket",
+    "note": "RC-01: a close taken under a guard-weakening flag is a different modeled state from one taken under the guard. Recorded, never refused.",
+    "weakened": false
+  },
+  "history_policy": "append-only by convention; existing entries are not overwritten and filesystem permissions remain git-friendly",
+  "kind": "ticket",
+  "promotion": {
+    "destination": "specs",
+    "merged": [
+      {
+        "destination": "specs/current",
+        "files": [
+          {
+            "destination": "specs/current/ClaimantRefreshExternal.cfg",
+            "relative": "ClaimantRefreshExternal.cfg",
+            "source": "specs/tickets/ISSUE-166/desired/ClaimantRefreshExternal.cfg"
+          },
+          {
+            "destination": "specs/current/ClaimantRefreshExternal.tla",
+            "relative": "ClaimantRefreshExternal.tla",
+            "source": "specs/tickets/ISSUE-166/desired/ClaimantRefreshExternal.tla"
+          },
+          {
+            "destination": "specs/current/ClaimantRefreshExternal_regression.cfg",
+            "relative": "ClaimantRefreshExternal_regression.cfg",
+            "source": "specs/tickets/ISSUE-166/desired/ClaimantRefreshExternal_regression.cfg"
+          },
+          {
+            "destination": "specs/current/ClaimantRefreshInternal.cfg",
+            "relative": "ClaimantRefreshInternal.cfg",
+            "source": "specs/tickets/ISSUE-166/desired/ClaimantRefreshInternal.cfg"
+          },
+          {
+            "destination": "specs/current/ClaimantRefreshInternal.tla",
+            "relative": "ClaimantRefreshInternal.tla",
+            "source": "specs/tickets/ISSUE-166/desired/ClaimantRefreshInternal.tla"
+          },
+          {
+            "destination": "specs/current/ClaimantRefreshInternal_regression.cfg",
+            "relative": "ClaimantRefreshInternal_regression.cfg",
+            "source": "specs/tickets/ISSUE-166/desired/ClaimantRefreshInternal_regression.cfg"
+          },
+          {
+            "destination": "specs/current/MC.cfg",
+            "relative": "MC.cfg",
+            "source": "specs/tickets/ISSUE-166/desired/MC.cfg"
+          },
+          {
+            "destination": "specs/current/MC_program_promotion.cfg",
+            "relative": "MC_program_promotion.cfg",
+            "source": "specs/tickets/ISSUE-166/desired/MC_program_promotion.cfg"
+          },
+          {
+            "destination": "specs/current/README.md",
+            "relative": "README.md",
+            "source": "specs/tickets/ISSUE-166/desired/README.md"
+          },
+          {
+            "destination": "specs/current/SkillManager.tla",
+            "relative": "SkillManager.tla",
+            "source": "specs/tickets/ISSUE-166/desired/SkillManager.tla"
+          },
+          {
+            "destination": "specs/current/case_adapters.toml",
+            "relative": "case_adapters.toml",
+            "source": "specs/tickets/ISSUE-166/desired/case_adapters.toml"
+          },
+          {
+            "destination": "specs/current/claimant_refresh_actions.yml",
+            "relative": "claimant_refresh_actions.yml",
+            "source": "specs/tickets/ISSUE-166/desired/claimant_refresh_actions.yml"
+          },
+          {
+            "destination": "specs/current/extract_manifest.sh",
+            "relative": "extract_manifest.sh",
+            "source": "specs/tickets/ISSUE-166/desired/extract_manifest.sh"
+          },
+          {
+            "destination": "specs/current/generated/spec-unit/ClaimantRefreshInternal.dot",
+            "relative": "generated/spec-unit/ClaimantRefreshInternal.dot",
+            "source": "specs/tickets/ISSUE-166/desired/generated/spec-unit/ClaimantRefreshInternal.dot"
+          },
+          {
+            "destination": "specs/current/generated/spec-unit/claimant_refresh_cases/__init__.py",
+            "relative": "generated/spec-unit/claimant_refresh_cases/__init__.py",
+            "source": "specs/tickets/ISSUE-166/desired/generated/spec-unit/claimant_refresh_cases/__init__.py"
+          },
+          {
+            "destination": "specs/current/generated/spec-unit/claimant_refresh_cases/case_coverage.json",
+            "relative": "generated/spec-unit/claimant_refresh_cases/case_coverage.json",
+            "source": "specs/tickets/ISSUE-166/desired/generated/spec-unit/claimant_refresh_cases/case_coverage.json"
+          },
+          {
+            "destination": "specs/current/generated/spec-unit/claimant_refresh_cases/cases.py",
+            "relative": "generated/spec-unit/claimant_refresh_cases/cases.py",
+            "source": "specs/tickets/ISSUE-166/desired/generated/spec-unit/claimant_refresh_cases/cases.py"
+          },
+          {
+            "destination": "specs/current/generated/spec-unit/claimant_refresh_cases/docs.md",
+            "relative": "generated/spec-unit/claimant_refresh_cases/docs.md",
+            "source": "specs/tickets/ISSUE-166/desired/generated/spec-unit/claimant_refresh_cases/docs.md"
+          },
+          {
+            "destination": "specs/current/generated/spec-unit/claimant_refresh_cases/doubles.py",
+            "relative": "generated/spec-unit/claimant_refresh_cases/doubles.py",
+            "source": "specs/tickets/ISSUE-166/desired/generated/spec-unit/claimant_refresh_cases/doubles.py"
+          },
+          {
+            "destination": "specs/current/generated/spec-unit/claimant_refresh_cases/param_recovery_audit.md",
+            "relative": "generated/spec-unit/claimant_refresh_cases/param_recovery_audit.md",
+            "source": "specs/tickets/ISSUE-166/desired/generated/spec-unit/claimant_refresh_cases/param_recovery_audit.md"
+          },
+          {
+            "destination": "specs/current/generated/spec-unit/claimant_refresh_cases/types.py",
+            "relative": "generated/spec-unit/claimant_refresh_cases/types.py",
+            "source": "specs/tickets/ISSUE-166/desired/generated/spec-unit/claimant_refresh_cases/types.py"
+          },
+          {
+            "destination": "specs/current/generated/spec-unit/claimant_refresh_cases/validators.py",
+            "relative": "generated/spec-unit/claimant_refresh_cases/validators.py",
+            "source": "specs/tickets/ISSUE-166/desired/generated/spec-unit/claimant_refresh_cases/validators.py"
+          },
+          {
+            "destination": "specs/current/production_adapters.py",
+            "relative": "production_adapters.py",
+            "source": "specs/tickets/ISSUE-166/desired/production_adapters.py"
+          },
+          {
+            "destination": "specs/current/run_tlc.sh",
+            "relative": "run_tlc.sh",
+            "source": "specs/tickets/ISSUE-166/desired/run_tlc.sh"
+          },
+          {
+            "destination": "specs/current/spec_manifest.yaml",
+            "relative": "spec_manifest.yaml",
+            "source": "specs/tickets/ISSUE-166/desired/spec_manifest.yaml"
+          },
+          {
+            "destination": "specs/current/testgraph_bindings.yml",
+            "relative": "testgraph_bindings.yml",
+            "source": "specs/tickets/ISSUE-166/desired/testgraph_bindings.yml"
+          },
+          {
+            "destination": "specs/current/tests/test_claimant_refresh_program_model.py",
+            "relative": "tests/test_claimant_refresh_program_model.py",
+            "source": "specs/tickets/ISSUE-166/desired/tests/test_claimant_refresh_program_model.py"
+          },
+          {
+            "destination": "specs/current/tests/test_cli_agent_context_program_model.py",
+            "relative": "tests/test_cli_agent_context_program_model.py",
+            "source": "specs/tickets/ISSUE-166/desired/tests/test_cli_agent_context_program_model.py"
+          },
+          {
+            "destination": "specs/current/tests/test_cli_help_program_model.py",
+            "relative": "tests/test_cli_help_program_model.py",
+            "source": "specs/tickets/ISSUE-166/desired/tests/test_cli_help_program_model.py"
+          },
+          {
+            "destination": "specs/current/tests/test_cli_metadata_program_model.py",
+            "relative": "tests/test_cli_metadata_program_model.py",
+            "source": "specs/tickets/ISSUE-166/desired/tests/test_cli_metadata_program_model.py"
+          },
+          {
+            "destination": "specs/current/tests/test_cli_skill_docs_program_model.py",
+            "relative": "tests/test_cli_skill_docs_program_model.py",
+            "source": "specs/tickets/ISSUE-166/desired/tests/test_cli_skill_docs_program_model.py"
+          },
+          {
+            "destination": "specs/current/tests/test_program_model_contract.py",
+            "relative": "tests/test_program_model_contract.py",
+            "source": "specs/tickets/ISSUE-166/desired/tests/test_program_model_contract.py"
+          }
+        ],
+        "operation": "promote ticket desired onto project current, preserving unseeded current-only paths",
+        "preserved": [
+          "tests/test_current_ticket_workflow.py"
+        ],
+        "removed": [],
+        "role": "current",
+        "seed_basis": "seed manifest recorded at open; removing only seeded paths the ticket dropped",
+        "seed_recorded": true,
+        "source": "specs/tickets/ISSUE-166/desired"
+      }
+    ],
+    "operation": "replace project current with ticket desired and merge ticket artifacts into project specs",
+    "source": "specs/tickets/ISSUE-166"
+  },
+  "refinement_record": {
+    "applied": false,
+    "approved_by": "",
+    "detail": "Considered collapsing revision observations, but that makes disagreement among checkout, installed provenance, units.lock, registration, and child realization inexpressible. No smaller faithful claimant slice was found.\n",
+    "measured": false,
+    "outcome": "none",
+    "searched": true
+  },
+  "results": [],
+  "retention_evidence": {
+    "effect_conformance": {
+      "classification": "unverified",
+      "evidence": "",
+      "status": "not_run",
+      "value": null
+    },
+    "external_coverage": {
+      "classification": "unverified",
+      "evidence": "",
+      "status": "not_run",
+      "value": null
+    },
+    "kill_rate": {
+      "classification": "unverified",
+      "evidence": "",
+      "status": "not_run",
+      "value": null
+    }
+  },
+  "schema_version": 1,
+  "skill_feedback": {
+    "close_out_entries": 1,
+    "close_out_entry": "Close-out ticket ISSUE-166",
+    "declared_status": "unreviewed",
+    "deferred_validation": [],
+    "feedback_repository": "spec-double-compiler / tla-spec-dev",
+    "filed": false,
+    "filed_where": [],
+    "findings": [],
+    "findings_filed": 0,
+    "findings_total": 0,
+    "findings_unfiled": [],
+    "path": "/private/tmp/cdc-mvp-skill-manager-discovery-166-claiming-project-pin/specs/results/skill_feedback.md",
+    "prompt_sections": [
+      "surviving-mutants",
+      "unmodelable-effects",
+      "budget-and-metric",
+      "profile-schema-cli"
+    ],
+    "resolved": false,
+    "role": "skill_feedback",
+    "template_emitted": true
+  },
+  "snapshots": [
+    {
+      "exists": true,
+      "role": "program_model",
+      "snapshot": "specs/.history/child-home-materialization-workflow/ticket-020-ISSUE-166/snapshots/program_model",
+      "source": "specs/program_model"
+    },
+    {
+      "exists": true,
+      "role": "desired_program_model",
+      "snapshot": "specs/.history/child-home-materialization-workflow/ticket-020-ISSUE-166/snapshots/desired_program_model",
+      "source": "specs/desired_program_model"
+    },
+    {
+      "exists": true,
+      "role": "current",
+      "snapshot": "specs/.history/child-home-materialization-workflow/ticket-020-ISSUE-166/snapshots/current",
+      "source": "specs/current"
+    },
+    {
+      "exists": true,
+      "moved": true,
+      "role": "ticket_workdir",
+      "snapshot": "specs/.history/child-home-materialization-workflow/ticket-020-ISSUE-166/ticket",
+      "source": "specs/tickets/ISSUE-166"
+    }
+  ],
+  "spec_root": "specs",
+  "summary": "",
+  "ticket": {
+    "acceptance": {
+      "assertions": [
+        "An offline real-git A/B regression proves checkout HEAD, installed gitHash, units.lock resolved SHA, registered revision, and child realization all agree with A.",
+        "The project lock retains its expected source and directness metadata.",
+        "Automatic claimant refresh performs no fetch or merge of B and emits no partial or error receipt.",
+        "The unrelated installed record, parent and child unit trees, units-lock and cli-lock rows, and executable parent and child CLI shims are proven present before the sync; those records, trees, locks, and shims then remain byte-identical and every involved git tree is clean.",
+        "Existing local and global claimant CLI refresh tests remain green.",
+        "Explicit project sync still pulls the upstream trunk."
+      ]
+    },
+    "closed": "2026-08-07",
+    "evidence": {
+      "descriptors": "specs/tickets/ISSUE-166/results/model-descriptors-2026-08-07.md",
+      "project_smoke": {
+        "run_id": "20260807-231027",
+        "trace_id": "a3a7907e10f25532c5c264ab3d0b3ea6"
+      },
+      "spec_conformance": {
+        "run_id": "20260807-231142",
+        "trace_id": "6c26be721db82991b8e5f93c97aaa412"
+      },
+      "validation": "specs/tickets/ISSUE-166/results/validation-2026-08-07.md"
+    },
+    "github_issue": "https://github.com/haydenrear/skill-manager/issues/166",
+    "id": "ISSUE-166",
+    "model": {
+      "external": [
+        "A successful public named sync leaves installed provenance, units.lock, project registration, and child realization coherent at one selected revision.",
+        "A pinned A remains A when the upstream trunk has already advanced to B."
+      ],
+      "internal": [
+        "Automatic claimant refresh consumes the selected parent-home revision and never performs independent source selection."
+      ]
+    },
+    "objective": "A public named sync selects one immutable unit revision and automatic claiming-project refresh reconciles registrations, project locks, child units, CLI/MCP projections, and error state from those already-selected parent-home bytes. The automatic refresh must not perform a second trunk pull that can advance a pinned unit to a different revision. An explicit `project sync` retains its documented trunk-pull behavior.\n",
+    "phase": "CHM",
+    "resolution": "Automatic claimant refresh now reconciles from the already selected parent-home bytes without independently pulling trunk. Public named sync is proven revision-coherent across checkout, installed provenance, units.lock, registration, and child realization; explicit project sync retains its trunk-pull behavior.\n",
+    "status": "closed",
+    "title": "Preserve pinned revisions during claiming-project refresh",
+    "validation": {
+      "focused": [
+        "jbang RunTests.java ProjectDependencyResolverTest",
+        "jbang RunTests.java ProjectTrunkSyncTest"
+      ],
+      "formal": [
+        "bash specs/desired_program_model/run_tlc.sh specs/desired_program_model/Internal.tla specs/desired_program_model/Internal.cfg",
+        "bash specs/desired_program_model/run_tlc.sh specs/desired_program_model/External.tla specs/desired_program_model/External.cfg",
+        "bash specs/tickets/ISSUE-166/current/run_tlc.sh specs/tickets/ISSUE-166/current/SkillManager.tla specs/tickets/ISSUE-166/current/MC.cfg",
+        "bash specs/tickets/ISSUE-166/current/run_tlc.sh specs/tickets/ISSUE-166/current/ClaimantRefreshInternal.tla specs/tickets/ISSUE-166/current/ClaimantRefreshInternal.cfg",
+        "bash specs/tickets/ISSUE-166/current/run_tlc.sh specs/tickets/ISSUE-166/current/ClaimantRefreshInternal.tla specs/tickets/ISSUE-166/current/ClaimantRefreshInternal_regression.cfg",
+        "bash specs/tickets/ISSUE-166/current/run_tlc.sh specs/tickets/ISSUE-166/current/ClaimantRefreshExternal.tla specs/tickets/ISSUE-166/current/ClaimantRefreshExternal.cfg",
+        "bash specs/tickets/ISSUE-166/current/run_tlc.sh specs/tickets/ISSUE-166/current/ClaimantRefreshExternal.tla specs/tickets/ISSUE-166/current/ClaimantRefreshExternal_regression.cfg",
+        "tla-spec-dev --spec-root specs run spec-unit-tests --target specs/tickets/ISSUE-166/current --cases-dir specs/tickets/ISSUE-166/current/generated/spec-unit/claimant_refresh_cases --validate-capabilities"
+      ],
+      "graph": [
+        "project-smoke",
+        "spec-conformance"
+      ],
+      "unit": [
+        "jbang RunTests.java"
+      ]
+    }
+  },
+  "ticket_id": "ISSUE-166",
+  "ticket_index": 20,
+  "ticket_plan": "specs/desired_program_model/ticket_plan.yaml",
+  "ticket_status": "closed",
+  "ticket_workdir": {
+    "exists": true,
+    "moved": true,
+    "role": "ticket_workdir",
+    "snapshot": "specs/.history/child-home-materialization-workflow/ticket-020-ISSUE-166/ticket",
+    "source": "specs/tickets/ISSUE-166"
+  },
+  "workflow_name": "child-home-materialization-workflow"
+}

@@ -290,7 +290,8 @@ public final class LiveInterpreter implements ProgramInterpreter {
                 dev.skillmanager.project.ProjectSyncUseCase.Result result =
                         new dev.skillmanager.project.ProjectSyncUseCase(ctx.store(), e.gateway())
                                 .sync(project, new dev.skillmanager.project.ProjectDependencyResolver.Options(
-                                        true, e.withGateway()));
+                                                true, e.withGateway()),
+                                        dev.skillmanager.project.ProjectSyncUseCase.Options.reconcileOnly());
                 refreshedClaimers.addAll(projectLockUnitNames(result.resolved().lock()));
                 unitsToClear.addAll(refreshedClaimers);
                 facts.add(new ContextFact.ProjectSynced(

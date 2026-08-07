@@ -15,12 +15,14 @@ import dev.skillmanager.effects.EffectContext;
 import dev.skillmanager.effects.EffectStatus;
 import dev.skillmanager.effects.Executor;
 import dev.skillmanager.effects.SkillEffect;
+import dev.skillmanager.lock.CliLock;
 import dev.skillmanager.lock.UnitsLockReader;
 import dev.skillmanager.mcp.GatewayConfig;
 import dev.skillmanager.model.SkillProject;
 import dev.skillmanager.model.SkillProjectParser;
 import dev.skillmanager.model.UnitKind;
 import dev.skillmanager.source.InstalledUnit;
+import dev.skillmanager.source.UnitStore;
 
 import java.net.URI;
 import java.nio.file.Files;
@@ -692,6 +694,200 @@ public final class ProjectDependencyResolverTest {
                                 "claiming project child home mirrors new CLI shim");
                     }
                 })
+                .test("named sync from detached pinned revision keeps claiming project coherent", () -> {
+                    try (TestHarness h = TestHarness.create()) {
+                        String selectedName = "pinned-claimant-skill";
+                        String unrelatedName = "unrelated-claimant-skill";
+                        Path fixtureRoot = Files.createTempDirectory("project-pinned-claimant-");
+                        Path upstream = UnitFixtures.scaffoldSkill(
+                                fixtureRoot.resolve("upstream"), selectedName, DepSpec.empty()).sourcePath();
+                        Files.writeString(upstream.resolve("revision.txt"), "selected-a\n");
+                        gitInitCommit(upstream);
+                        String revisionA = gitOutput(upstream, "rev-parse", "HEAD");
+
+                        // Clone while A is the only revision, then detach. If B appears in this
+                        // checkout or in the installed checkout after the sync, the product fetched
+                        // it; the fixture did not make B reachable there up front.
+                        Path selectedA = fixtureRoot.resolve("selected-a");
+                        gitClone(upstream, selectedA);
+                        git(selectedA, "checkout", "--detach", revisionA);
+
+                        Path unrelated = UnitFixtures.scaffoldSkill(
+                                fixtureRoot.resolve("unrelated"), unrelatedName, DepSpec.empty()).sourcePath();
+                        addSkillScriptCli(unrelated, "unrelated-claimant-cli");
+                        Path projectRoot = fixtureRoot.resolve("consumer");
+                        Files.createDirectories(projectRoot);
+                        SkillProject project = project(projectRoot, """
+                                [project]
+                                name = "pinned-claimant-project"
+
+                                [skills.selected]
+                                source = "git+file://%s"
+                                revision = "%s"
+
+                                [skills.unrelated]
+                                source = "%s"
+                                """.formatted(upstream, revisionA, unrelated));
+                        resolver(h).resolve(project, new ProjectDependencyResolver.Options(true, false));
+                        SyncCommand lockRefresh = new SyncCommand(h.store());
+                        lockRefresh.refresh = true;
+                        assertEquals(0, lockRefresh.call(),
+                                "public lock refresh captures installed revision provenance");
+
+                        Path installed = h.store().skillDir(selectedName);
+                        Path childSelected = projectRoot.resolve(
+                                ".skill-manager/skills/" + selectedName);
+                        Path childUnrelated = projectRoot.resolve(
+                                ".skill-manager/skills/" + unrelatedName);
+                        Path unitsLockPath = UnitsLockReader.defaultPath(h.store());
+                        Path unrelatedRecord = h.store().installedDir()
+                                .resolve(unrelatedName + ".json");
+                        Path cliLockPath = h.store().root().resolve(CliLock.FILENAME);
+                        Path unrelatedParentShim = h.store().cliBinDir()
+                                .resolve("unrelated-claimant-cli");
+                        Path unrelatedChildShim = projectRoot.resolve(
+                                ".skill-manager/bin/cli/unrelated-claimant-cli");
+                        Path projectSnapshot = h.store().projectsDir()
+                                .resolve("pinned-claimant-project/skill-project.toml");
+
+                        assertEquals(revisionA, gitOutput(installed, "rev-parse", "HEAD"),
+                                "initial installed checkout is selected A");
+                        assertEquals("selected-a\n", Files.readString(childSelected.resolve("revision.txt")),
+                                "initial child realization is selected A");
+                        var unitsLockBefore = UnitsLockReader.read(unitsLockPath);
+                        assertTrue(Files.isRegularFile(unrelatedRecord),
+                                "fixture has an unrelated installed record before named sync");
+                        assertTrue(treeHasMaterial(h.store().skillDir(unrelatedName)),
+                                "fixture has a nonempty unrelated parent unit tree before named sync");
+                        assertTrue(treeHasMaterial(childUnrelated),
+                                "fixture has a nonempty unrelated child unit tree before named sync");
+                        assertTrue(unitsLockBefore.get(unrelatedName).isPresent(),
+                                "fixture has an unrelated units-lock row before named sync");
+                        var unrelatedCliEntryBefore = CliLock.load(h.store())
+                                .get("skill-script", "unrelated-claimant-cli");
+                        assertTrue(unrelatedCliEntryBefore != null
+                                        && unrelatedCliEntryBefore.requestedBy().contains(unrelatedName),
+                                "fixture has an unrelated cli-lock row before named sync");
+                        assertTrue(Files.isExecutable(unrelatedParentShim),
+                                "fixture has an executable unrelated parent CLI shim before named sync");
+                        assertTrue(Files.isExecutable(unrelatedChildShim),
+                                "fixture has an executable unrelated child CLI shim before named sync");
+                        var selectedLockBefore = unitsLockBefore.get(selectedName).orElseThrow();
+                        var unrelatedLockBefore = unitsLockBefore.get(unrelatedName).orElseThrow();
+                        assertEquals(revisionA, selectedLockBefore.resolvedSha(),
+                                "initial units lock pins selected A");
+                        SkillProjectLock projectLockBefore = new SkillProjectLockStore(h.store())
+                                .read("pinned-claimant-project").orElseThrow();
+                        SkillProjectLock.ResolvedUnit selectedProjectRowBefore = projectLockBefore
+                                .resolvedUnits().stream()
+                                .filter(unit -> unit.name().equals(selectedName))
+                                .findFirst().orElseThrow();
+                        assertTrue(UnitStore.sameOrigin(
+                                        upstream.toUri().toString(), selectedProjectRowBefore.source()),
+                                "initial project lock retains the expected selected source");
+                        assertTrue(selectedProjectRowBefore.direct(),
+                                "initial project lock marks the selected dependency direct");
+                        SkillProjectLock.ResolvedUnit unrelatedProjectRowBefore = projectLockBefore
+                                .resolvedUnits().stream()
+                                .filter(unit -> unit.name().equals(unrelatedName))
+                                .findFirst().orElseThrow();
+                        byte[] unrelatedRecordBefore = Files.readAllBytes(unrelatedRecord);
+                        Map<String, String> unrelatedTreeBefore = snapshotTree(
+                                h.store().skillDir(unrelatedName));
+                        Map<String, String> unrelatedChildBefore = snapshotTree(childUnrelated);
+                        byte[] unrelatedCliLockBefore = Files.readAllBytes(cliLockPath);
+                        Map<String, String> unrelatedParentShimBefore = snapshotTree(unrelatedParentShim);
+                        Map<String, String> unrelatedChildShimBefore = snapshotTree(unrelatedChildShim);
+                        byte[] projectSnapshotBefore = Files.readAllBytes(projectSnapshot);
+
+                        Files.writeString(upstream.resolve("revision.txt"), "trunk-b\n");
+                        git(upstream, "add", "revision.txt");
+                        git(upstream, "-c", "user.email=test@example.com",
+                                "-c", "user.name=Test", "commit", "-m", "advance trunk to B");
+                        String revisionB = gitOutput(upstream, "rev-parse", "HEAD");
+                        assertFalse(gitHasObject(selectedA, revisionB),
+                                "detached A source does not already contain B");
+                        assertFalse(gitHasObject(installed, revisionB),
+                                "installed A checkout does not already contain B");
+
+                        SyncCommand command = new SyncCommand(h.store());
+                        command.name = selectedName;
+                        command.fromDir = selectedA;
+                        command.yes = true;
+                        command.skipMcp = true;
+                        command.skipAgents = true;
+                        int rc = command.call();
+
+                        assertEquals(0, rc,
+                                "public named sync has no failed or partial claimant receipt");
+                        InstalledUnit selectedRecord = h.sourceOf(selectedName).orElseThrow();
+                        assertEquals(revisionA, gitOutput(installed, "rev-parse", "HEAD"),
+                                "installed checkout remains selected A");
+                        assertEquals(revisionA, selectedRecord.gitHash(),
+                                "installed record remains selected A");
+                        assertTrue(selectedRecord.errors().isEmpty(),
+                                "named sync records no claimant-refresh error");
+                        var unitsLockAfter = UnitsLockReader.read(unitsLockPath);
+                        assertEquals(revisionA, unitsLockAfter.get(selectedName)
+                                        .orElseThrow().resolvedSha(),
+                                "units lock remains selected A");
+                        SkillProject registered = new SkillProjectRegistry(h.store())
+                                .loadSnapshot("pinned-claimant-project").orElseThrow();
+                        assertEquals(revisionA, registered.skills().stream()
+                                        .filter(ref -> ref.alias().equals("selected"))
+                                        .findFirst().orElseThrow().revision(),
+                                "registered project snapshot remains pinned to A");
+                        assertEquals("selected-a\n", Files.readString(
+                                        childSelected.resolve("revision.txt")),
+                                "project child realization remains selected A");
+                        assertFalse(gitHasObject(installed, revisionB),
+                                "automatic claimant refresh does not fetch or merge B");
+
+                        SkillProjectLock projectLockAfter = new SkillProjectLockStore(h.store())
+                                .read("pinned-claimant-project").orElseThrow();
+                        SkillProjectLock.ResolvedUnit selectedProjectRowAfter = projectLockAfter
+                                .resolvedUnits().stream()
+                                .filter(unit -> unit.name().equals(selectedName))
+                                .findFirst().orElseThrow();
+                        SkillProjectLock.ResolvedUnit unrelatedProjectRowAfter = projectLockAfter
+                                .resolvedUnits().stream()
+                                .filter(unit -> unit.name().equals(unrelatedName))
+                                .findFirst().orElseThrow();
+                        assertEquals(selectedProjectRowBefore, selectedProjectRowAfter,
+                                "project lock preserves selected source and directness");
+                        assertEquals(unrelatedProjectRowBefore, unrelatedProjectRowAfter,
+                                "project lock preserves unrelated source and directness");
+                        assertEquals(unrelatedLockBefore, unitsLockAfter.get(unrelatedName).orElseThrow(),
+                                "unrelated units-lock row is logically identical");
+                        assertTrue(java.util.Arrays.equals(
+                                        unrelatedRecordBefore, Files.readAllBytes(unrelatedRecord)),
+                                "unrelated installed record is byte-identical");
+                        assertEquals(unrelatedTreeBefore, snapshotTree(h.store().skillDir(unrelatedName)),
+                                "unrelated installed tree is byte-identical");
+                        assertEquals(unrelatedChildBefore, snapshotTree(childUnrelated),
+                                "unrelated child realization is byte-identical");
+                        assertTrue(java.util.Arrays.equals(
+                                        unrelatedCliLockBefore, Files.readAllBytes(cliLockPath)),
+                                "unrelated CLI lock is byte-identical");
+                        assertEquals(unrelatedParentShimBefore, snapshotTree(unrelatedParentShim),
+                                "unrelated parent CLI shim is byte-identical");
+                        assertEquals(unrelatedChildShimBefore, snapshotTree(unrelatedChildShim),
+                                "unrelated child CLI shim is byte-identical");
+                        assertTrue(Files.isExecutable(unrelatedParentShim),
+                                "unrelated parent CLI shim remains executable");
+                        assertTrue(Files.isExecutable(unrelatedChildShim),
+                                "unrelated child CLI shim remains executable");
+                        assertTrue(java.util.Arrays.equals(
+                                        projectSnapshotBefore, Files.readAllBytes(projectSnapshot)),
+                                "registered manifest snapshot is byte-identical");
+                        assertEquals("", gitOutput(upstream, "status", "--porcelain"),
+                                "upstream B worktree is clean");
+                        assertEquals("", gitOutput(selectedA, "status", "--porcelain"),
+                                "detached A source worktree is clean");
+                        assertEquals("", gitOutput(installed, "status", "--porcelain"),
+                                "installed A worktree is clean");
+                    }
+                })
                 .test("global sync refreshes claiming project child homes when CLI deps change", () -> {
                     try (TestHarness h = TestHarness.create()) {
                         Path repoRoot = Files.createTempDirectory("project-global-sync-claiming-cli-");
@@ -1312,6 +1508,13 @@ public final class ProjectDependencyResolverTest {
         return snapshot;
     }
 
+    private static boolean treeHasMaterial(Path root) throws Exception {
+        if (!Files.isDirectory(root, LinkOption.NOFOLLOW_LINKS)) return false;
+        try (var paths = Files.walk(root)) {
+            return paths.anyMatch(path -> !root.equals(path));
+        }
+    }
+
     private static void addSkillScriptCli(Path skillDir, String toolName) throws Exception {
         Files.writeString(skillDir.resolve("skill-manager.toml"), Files.readString(skillDir.resolve("skill-manager.toml"))
                 + """
@@ -1346,6 +1549,10 @@ public final class ProjectDependencyResolverTest {
     }
 
     private static void git(Path repo, String... args) throws Exception {
+        gitOutput(repo, args);
+    }
+
+    private static String gitOutput(Path repo, String... args) throws Exception {
         String[] command = new String[args.length + 3];
         command[0] = "git";
         command[1] = "-C";
@@ -1358,5 +1565,27 @@ public final class ProjectDependencyResolverTest {
             throw new java.io.IOException("git " + String.join(" ", args)
                     + " failed with " + rc + ": " + output);
         }
+        return output.trim();
+    }
+
+    private static void gitClone(Path source, Path target) throws Exception {
+        Process p = new ProcessBuilder(
+                "git", "clone", "--quiet", "--no-local", source.toString(), target.toString())
+                .redirectErrorStream(true)
+                .start();
+        String output = new String(p.getInputStream().readAllBytes());
+        int rc = p.waitFor();
+        if (rc != 0) {
+            throw new java.io.IOException("git clone failed with " + rc + ": " + output);
+        }
+    }
+
+    private static boolean gitHasObject(Path repo, String object) throws Exception {
+        Process p = new ProcessBuilder(
+                "git", "-C", repo.toString(), "cat-file", "-e", object + "^{commit}")
+                .redirectErrorStream(true)
+                .start();
+        p.getInputStream().readAllBytes();
+        return p.waitFor() == 0;
     }
 }
