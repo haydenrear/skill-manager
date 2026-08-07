@@ -251,20 +251,20 @@ public final class RefreshHarnessPluginsTest {
         @Override public String binary() { return agentId; }
         @Override public String installHint() { return installHint; }
         @Override public boolean available() { return available; }
-        @Override public HarnessPluginCli.Result ensureMarketplaceAdded(Path marketplaceRoot) {
+        @Override public HarnessPluginCli.Result ensureMarketplaceAdded(Path marketplaceRoot, String marketplaceName) {
             return new HarnessPluginCli.Result(0, "added", "");
         }
-        @Override public HarnessPluginCli.Result refreshMarketplace(Path marketplaceRoot) {
+        @Override public HarnessPluginCli.Result refreshMarketplace(Path marketplaceRoot, String marketplaceName) {
             return new HarnessPluginCli.Result(0, "updated", "");
         }
-        @Override public HarnessPluginCli.Result reinstallPlugin(String pluginName) throws IOException {
+        @Override public HarnessPluginCli.Result reinstallPlugin(String pluginName, String marketplaceName) throws IOException {
             reinstalls.add(pluginName);
             if (failReinstall) {
                 return new HarnessPluginCli.Result(1, "", agentId + " install failed");
             }
             return new HarnessPluginCli.Result(0, agentId + " installed " + pluginName, "");
         }
-        @Override public HarnessPluginCli.Result uninstallPlugin(String pluginName) {
+        @Override public HarnessPluginCli.Result uninstallPlugin(String pluginName, String marketplaceName) {
             return new HarnessPluginCli.Result(0, "uninstalled", "");
         }
     }

@@ -3,6 +3,7 @@ package dev.skillmanager.agent;
 import dev.skillmanager._lib.harness.TestHarness;
 import dev.skillmanager._lib.test.Tests;
 import dev.skillmanager.project.HarnessPluginCli;
+import dev.skillmanager.project.PluginMarketplace;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -227,7 +228,7 @@ public final class AgentHomesTest {
                 runner.script.add(new HarnessPluginCli.Result(0, "added", ""));
                 HarnessPluginCli.Claude driver = new HarnessPluginCli.Claude(runner);
 
-                driver.ensureMarketplaceAdded(Path.of("/tmp/some-marketplace"));
+                driver.ensureMarketplaceAdded(Path.of("/tmp/some-marketplace"), PluginMarketplace.NAME);
 
                 Map<String, String> env = runner.calls.get(0).env();
                 String configDir = env.get(AgentHomes.CLAUDE_CONFIG_DIR);
@@ -250,7 +251,7 @@ public final class AgentHomesTest {
                 runner.script.add(new HarnessPluginCli.Result(0, "added", ""));
                 HarnessPluginCli.Claude driver = new HarnessPluginCli.Claude(runner);
 
-                driver.ensureMarketplaceAdded(Path.of("/tmp/mp"));
+                driver.ensureMarketplaceAdded(Path.of("/tmp/mp"), PluginMarketplace.NAME);
 
                 Map<String, String> env = runner.calls.get(0).env();
                 assertEquals(bespokeConfigDir.toString(),

@@ -121,7 +121,7 @@ public final class HarnessPluginCli {
          * Idempotent: a second call after success is a no-op or a
          * harness-side warning that callers ignore.
          */
-        Result ensureMarketplaceAdded(Path marketplaceRoot) throws IOException;
+        Result ensureMarketplaceAdded(Path marketplaceRoot, String marketplaceName) throws IOException;
 
         /**
          * Tell the harness to re-read the marketplace catalog. Run after
@@ -132,23 +132,27 @@ public final class HarnessPluginCli {
          *     {@code marketplace add <root>} — which is idempotent for
          *     local paths and serves the same "harness, re-read your
          *     copy of this catalog" purpose.
+         * @param marketplaceName the per-home identity from
+         *     {@link PluginMarketplace#name()}; harness CLIs key
+         *     marketplaces globally by name, so two homes must never
+         *     present the same one.
          */
-        Result refreshMarketplace(Path marketplaceRoot) throws IOException;
+        Result refreshMarketplace(Path marketplaceRoot, String marketplaceName) throws IOException;
 
         /**
          * Uninstall + reinstall the plugin so newly-bundled hooks /
          * commands / agents pick up. The user explicitly asked for this
          * over update-in-place — local-path sources don't always rebuild
          * cleanly through {@code update}. Codex maps this to its
-         * idempotent {@code plugin add <name>@skill-manager} path.
+         * idempotent {@code plugin add <name>@<marketplace>} path.
          */
-        Result reinstallPlugin(String pluginName) throws IOException;
+        Result reinstallPlugin(String pluginName, String marketplaceName) throws IOException;
 
         /**
          * Drop the plugin from the harness's installed set. Codex's
          * driver no-ops as above.
          */
-        Result uninstallPlugin(String pluginName) throws IOException;
+        Result uninstallPlugin(String pluginName, String marketplaceName) throws IOException;
     }
 
     /** Drivers shipped with skill-manager (Claude + Codex). */
@@ -218,16 +222,16 @@ public final class HarnessPluginCli {
         @Override public String binary() { return agentId; }
         @Override public String installHint() { return hint; }
         @Override public boolean available() { return false; }
-        @Override public Result ensureMarketplaceAdded(Path root) throws IOException {
+        @Override public Result ensureMarketplaceAdded(Path root, String marketplaceName) throws IOException {
             throw new IOException(agentId + " disabled (test sandbox)");
         }
-        @Override public Result refreshMarketplace(Path root) throws IOException {
+        @Override public Result refreshMarketplace(Path root, String marketplaceName) throws IOException {
             throw new IOException(agentId + " disabled (test sandbox)");
         }
-        @Override public Result reinstallPlugin(String name) throws IOException {
+        @Override public Result reinstallPlugin(String name, String marketplaceName) throws IOException {
             throw new IOException(agentId + " disabled (test sandbox)");
         }
-        @Override public Result uninstallPlugin(String name) throws IOException {
+        @Override public Result uninstallPlugin(String name, String marketplaceName) throws IOException {
             throw new IOException(agentId + " disabled (test sandbox)");
         }
     }
@@ -268,7 +272,8 @@ public final class HarnessPluginCli {
         @Override public boolean available() { return onPath(binary()); }
 
         @Override
-        public Result ensureMarketplaceAdded(Path marketplaceRoot) throws IOException {
+        public Result ensureMarketplaceAdded(Path marketplaceRoot, String marketplaceName)
+                throws IOException {
             // `claude plugin marketplace add` is idempotent in practice
             // — a second add of the same name surfaces a warning the
             // caller can ignore. We always try add; a non-zero exit
@@ -276,7 +281,7 @@ public final class HarnessPluginCli {
             Result list = runner.run(
                     List.of(binary(), "plugin", "marketplace", "list"),
                     claudeEnv());
-            if (list.ok() && list.stdout().contains(PluginMarketplace.NAME)) {
+            if (list.ok() && list.stdout().contains(marketplaceName)) {
                 return new Result(0, "already-added", "");
             }
             return runner.run(
@@ -286,34 +291,35 @@ public final class HarnessPluginCli {
         }
 
         @Override
-        public Result refreshMarketplace(Path marketplaceRoot) throws IOException {
+        public Result refreshMarketplace(Path marketplaceRoot, String marketplaceName)
+                throws IOException {
             return runner.run(
-                    List.of(binary(), "plugin", "marketplace", "update", PluginMarketplace.NAME),
+                    List.of(binary(), "plugin", "marketplace", "update", marketplaceName),
                     claudeEnv());
         }
 
         @Override
-        public Result reinstallPlugin(String pluginName) throws IOException {
+        public Result reinstallPlugin(String pluginName, String marketplaceName) throws IOException {
             // Uninstall first so the harness drops cached hook /
             // command / agent state from the previous bytes; ignore
             // failure (the plugin may not be installed yet — that's
             // the install-from-fresh case). Then install.
             runner.run(
                     List.of(binary(), "plugin", "uninstall",
-                            pluginName + "@" + PluginMarketplace.NAME),
+                            pluginName + "@" + marketplaceName),
                     claudeEnv());
             return runner.run(
                     List.of(binary(), "plugin", "install",
-                            pluginName + "@" + PluginMarketplace.NAME,
+                            pluginName + "@" + marketplaceName,
                             "--scope", "user"),
                     claudeEnv());
         }
 
         @Override
-        public Result uninstallPlugin(String pluginName) throws IOException {
+        public Result uninstallPlugin(String pluginName, String marketplaceName) throws IOException {
             return runner.run(
                     List.of(binary(), "plugin", "uninstall",
-                            pluginName + "@" + PluginMarketplace.NAME),
+                            pluginName + "@" + marketplaceName),
                     claudeEnv());
         }
 
@@ -371,25 +377,27 @@ public final class HarnessPluginCli {
         @Override public boolean available() { return onPath(binary()); }
 
         @Override
-        public Result ensureMarketplaceAdded(Path marketplaceRoot) throws IOException {
-            return ensureRegisteredAt(marketplaceRoot);
+        public Result ensureMarketplaceAdded(Path marketplaceRoot, String marketplaceName)
+                throws IOException {
+            return ensureRegisteredAt(marketplaceRoot, marketplaceName);
         }
 
         @Override
-        public Result refreshMarketplace(Path marketplaceRoot) throws IOException {
+        public Result refreshMarketplace(Path marketplaceRoot, String marketplaceName)
+                throws IOException {
             // codex's `marketplace upgrade <name>` only works for
             // git-backed sources — local-path marketplaces error with
             // "not configured as a Git marketplace". Re-running
             // `marketplace add` is idempotent for the same source path
             // (codex prints "already added" and exits 0), but it errors
             // with "already added from a different source" if the path
-            // changed (e.g. a new $SKILL_MANAGER_HOME, or a stale
-            // registration left behind by a prior install). We resolve
-            // both shapes via the shared {@link #ensureRegisteredAt}
-            // path: same path → no-op, mismatched path → remove +
-            // re-add (skill-manager owns this marketplace name), absent
-            // → add.
-            return ensureRegisteredAt(marketplaceRoot);
+            // changed (e.g. a moved home, or a stale registration left
+            // behind by a prior install). We resolve both shapes via the
+            // shared {@link #ensureRegisteredAt} path: same path → no-op,
+            // mismatched path → remove + re-add (the name is per-home —
+            // see PluginMarketplace#name() — so a mismatch is THIS home's
+            // stale record, never another home's live one), absent → add.
+            return ensureRegisteredAt(marketplaceRoot, marketplaceName);
         }
 
         /**
@@ -407,11 +415,12 @@ public final class HarnessPluginCli {
          *   <li>Not registered → run {@code add}.</li>
          * </ul>
          */
-        private Result ensureRegisteredAt(Path marketplaceRoot) throws IOException {
+        private Result ensureRegisteredAt(Path marketplaceRoot, String marketplaceName)
+                throws IOException {
             String desired = marketplaceRoot.toAbsolutePath().toString();
             Optional<String> existing = readMarketplaceSource(
                     configPathOverride != null ? configPathOverride : codexConfigPath(),
-                    PluginMarketplace.NAME);
+                    marketplaceName);
             if (existing.isPresent()) {
                 String existingPath = existing.get();
                 if (sameSource(existingPath, desired)) {
@@ -419,15 +428,16 @@ public final class HarnessPluginCli {
                             "already added at " + existingPath,
                             "");
                 }
-                // Stale registration at a different path. Remove first;
-                // ignore non-zero exits (the registration may have been
-                // partially torn down already). Then re-add.
+                // Stale registration at a different path. With per-home
+                // names this can only be THIS home's own stale record (a
+                // moved store), never a sibling home's live registration.
+                // Remove first; ignore non-zero exits. Then re-add.
                 Result removed = runner.run(
-                        List.of(binary(), "plugin", "marketplace", "remove", PluginMarketplace.NAME),
-                        Map.of());
+                        List.of(binary(), "plugin", "marketplace", "remove", marketplaceName),
+                        codexEnv());
                 Result added = runner.run(
                         List.of(binary(), "plugin", "marketplace", "add", desired),
-                        Map.of());
+                        codexEnv());
                 String msg = "stale registration at " + existingPath
                         + " replaced with " + desired
                         + (removed.ok() ? "" : " (remove rc=" + removed.exitCode() + ")");
@@ -435,22 +445,39 @@ public final class HarnessPluginCli {
             }
             return runner.run(
                     List.of(binary(), "plugin", "marketplace", "add", desired),
-                    Map.of());
+                    codexEnv());
         }
 
         @Override
-        public Result reinstallPlugin(String pluginName) throws IOException {
+        public Result reinstallPlugin(String pluginName, String marketplaceName) throws IOException {
             Result added = runner.run(
                     List.of(binary(), "plugin", "add",
-                            pluginName + "@" + PluginMarketplace.NAME),
-                    Map.of());
+                            pluginName + "@" + marketplaceName),
+                    codexEnv());
             if (added.ok() || alreadyAdded(added)) return new Result(0, added.stdout(), added.stderr());
             return added;
         }
 
         @Override
-        public Result uninstallPlugin(String pluginName) {
+        public Result uninstallPlugin(String pluginName, String marketplaceName) {
             return new Result(0, "[codex: uninstall via /plugins UI]", "");
+        }
+
+        /**
+         * Export {@code CODEX_HOME} explicitly so the codex CLI writes the
+         * same {@code config.toml} that {@link #readMarketplaceSource}
+         * reads. Passing no env (the previous behavior) let the CLI follow
+         * whatever the inherited environment pointed at while our read
+         * side resolved through {@link
+         * dev.skillmanager.agent.AgentHomes#resolveOrDefault} — two
+         * different answers whenever the launch contract redirected one
+         * but not the other.
+         */
+        private Map<String, String> codexEnv() {
+            Path configDir = (configPathOverride != null
+                    ? configPathOverride
+                    : codexConfigPath()).getParent();
+            return Map.of(dev.skillmanager.agent.AgentHomes.CODEX_HOME, configDir.toString());
         }
 
         private static boolean alreadyAdded(Result result) {

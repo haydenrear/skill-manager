@@ -2,6 +2,7 @@ package dev.skillmanager.project;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
+import dev.skillmanager.agent.AgentHomes;
 import dev.skillmanager.model.AgentUnit;
 import dev.skillmanager.model.UnitKind;
 import dev.skillmanager.shared.util.Fs;
@@ -42,7 +43,14 @@ import java.util.Map;
  */
 public final class PluginMarketplace {
 
-    /** Marketplace identifier seen by harness CLIs (plugin@<this>). */
+    /**
+     * Marketplace identifier for the OPERATOR ROOT home only. Harness CLIs
+     * (codex in particular) key marketplaces globally by name, so every
+     * other home derives a per-home name via {@link #name()} — two
+     * per-checkout homes registering under one shared name fight over a
+     * single config slot, and the loser's plugins become uninstallable
+     * ("plugin X was not found in marketplace skill-manager").
+     */
     public static final String NAME = "skill-manager";
 
     private static final String DESCRIPTION =
@@ -55,6 +63,55 @@ public final class PluginMarketplace {
 
     public PluginMarketplace(SkillStore store) {
         this.store = store;
+    }
+
+    /**
+     * The identity this home's marketplace registers under. The operator
+     * root home keeps the bare {@link #NAME} (existing operator setups and
+     * assertions depend on it); every other home appends a stable
+     * fingerprint of its store root, so concurrent per-checkout homes get
+     * disjoint config slots instead of destructively re-pointing one.
+     */
+    public String name() {
+        Path root = store.root();
+        // Anchor on the literal user home, NOT agentHomeRoot(): the latter
+        // follows SKILL_MANAGER_HOME, under which every per-checkout home
+        // would consider itself "the root" and take the shared name back.
+        Path operatorRoot = Path.of(System.getProperty("user.home"))
+                .resolve(AgentHomes.STORE_DIR_NAME);
+        try {
+            if (Files.exists(root) && Files.exists(operatorRoot)
+                    && Files.isSameFile(root, operatorRoot)) {
+                return NAME;
+            }
+        } catch (IOException ignored) {
+            // fall through to path comparison
+        }
+        if (root.toAbsolutePath().normalize().equals(operatorRoot.toAbsolutePath().normalize())) {
+            return NAME;
+        }
+        return NAME + "-" + storeFingerprint(root);
+    }
+
+    /** Stable 8-hex fingerprint of a store root path (identity, not content). */
+    public static String storeFingerprint(Path storeRoot) {
+        String canonical;
+        try {
+            canonical = storeRoot.toRealPath().toString();
+        } catch (IOException e) {
+            canonical = storeRoot.toAbsolutePath().normalize().toString();
+        }
+        try {
+            var digest = java.security.MessageDigest.getInstance("SHA-256")
+                    .digest(canonical.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            StringBuilder hex = new StringBuilder();
+            for (int i = 0; i < 4; i++) {
+                hex.append(String.format("%02x", digest[i]));
+            }
+            return hex.toString();
+        } catch (java.security.NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 unavailable", e);
+        }
     }
 
     public record RegenerateResult(List<String> pluginNames, List<UnitReadProblem> problems) {
@@ -136,10 +193,10 @@ public final class PluginMarketplace {
         // CLIs accept.
         Map<String, Object> manifest = new LinkedHashMap<>();
         manifest.put("$schema", "https://anthropic.com/claude-code/marketplace.schema.json");
-        manifest.put("name", NAME);
+        manifest.put("name", name());
         manifest.put("description", DESCRIPTION);
         Map<String, Object> owner = new LinkedHashMap<>();
-        owner.put("name", "skill-manager");
+        owner.put("name", NAME);
         manifest.put("owner", owner);
         List<Map<String, Object>> plugins = new ArrayList<>();
         for (String name : names) {

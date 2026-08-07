@@ -40,7 +40,9 @@ public final class PluginMarketplaceTest {
             assertTrue(Files.isRegularFile(mp.manifestPath()), "manifest written");
             assertTrue(Files.isDirectory(mp.pluginsLinkDir()), "plugins/ dir created");
             JsonNode manifest = readManifest(mp.manifestPath());
-            assertEquals(PluginMarketplace.NAME, manifest.get("name").asText(), "marketplace name");
+            assertEquals(mp.name(), manifest.get("name").asText(), "marketplace name");
+            assertTrue(manifest.get("name").asText().startsWith(PluginMarketplace.NAME),
+                    "per-home name keeps the skill-manager prefix");
             assertEquals(0, manifest.get("plugins").size(), "plugins[] empty");
         });
 
@@ -147,6 +149,25 @@ public final class PluginMarketplaceTest {
                     "skill-manager-managed plug-b removed");
             assertTrue(Files.exists(agentDir.resolve("third-party"), LinkOption.NOFOLLOW_LINKS),
                     "harness-installed third-party untouched");
+        });
+
+        suite.test("per-home marketplace identity: non-root store gets a suffixed, stable name", () -> {
+            TestHarness h = TestHarness.create();
+            PluginMarketplace mp = new PluginMarketplace(h.store());
+            String name = mp.name();
+            assertTrue(name.startsWith(PluginMarketplace.NAME + "-"),
+                    "fixture store is not the operator root, so the name is suffixed: " + name);
+            assertEquals(name, new PluginMarketplace(h.store()).name(), "stable across instances");
+        });
+
+        suite.test("per-home marketplace identity: two stores never share a name", () -> {
+            TestHarness h1 = TestHarness.create();
+            TestHarness h2 = TestHarness.create();
+            String n1 = new PluginMarketplace(h1.store()).name();
+            String n2 = new PluginMarketplace(h2.store()).name();
+            assertTrue(!n1.equals(n2),
+                    "two homes registering under one name is the codex collision this fixes: "
+                    + n1 + " vs " + n2);
         });
 
         return suite.runAll();

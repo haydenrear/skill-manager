@@ -89,7 +89,7 @@ public class HelloPluginRegisteredWithHarness {
                 try {
                     body = Files.readString(codexConfig);
                 } catch (Exception ignored) { }
-                boolean marketplaceRegistered = body.contains("[marketplaces.skill-manager]")
+                boolean marketplaceRegistered = body.contains("[marketplaces.skill-manager")
                         && body.contains("source_type = \"local\"");
                 result.assertion("codex_config_lists_skill_manager_marketplace_local",
                         marketplaceRegistered);
