@@ -215,7 +215,7 @@ public class AgentConfigsCorrect {
 
     private static boolean hasLocalMarketplace(String config, String expectedSource) {
         return !expectedSource.isBlank()
-                && config.contains("[marketplaces.skill-manager]")
+                && config.contains("[marketplaces.skill-manager")
                 && config.contains("source_type = \"local\"")
                 && config.contains("source = \"" + expectedSource + "\"");
     }

@@ -884,10 +884,11 @@ public final class LiveInterpreter implements ProgramInterpreter {
         // recorded by a real driver (Claude) earlier in the same loop.
         java.util.Set<String> reinstallFailures = new java.util.HashSet<>();
 
+        String marketplaceName = mp.name();
         for (var driver : available) {
             try {
                 dev.skillmanager.project.HarnessPluginCli.Result added =
-                        driver.ensureMarketplaceAdded(mp.root());
+                        driver.ensureMarketplaceAdded(mp.root(), marketplaceName);
                 facts.add(new ContextFact.HarnessPluginCli(
                         driver.agentId(), null, "marketplace-add", added.ok(),
                         added.ok() ? null : truncate(added.stderr().isBlank() ? added.stdout() : added.stderr())));
@@ -895,7 +896,7 @@ public final class LiveInterpreter implements ProgramInterpreter {
 
                 if (added.ok()) {
                     dev.skillmanager.project.HarnessPluginCli.Result updated =
-                            driver.refreshMarketplace(mp.root());
+                            driver.refreshMarketplace(mp.root(), marketplaceName);
                     facts.add(new ContextFact.HarnessPluginCli(
                             driver.agentId(), null, "marketplace-update", updated.ok(),
                             updated.ok() ? null : truncate(updated.stderr())));
@@ -903,7 +904,8 @@ public final class LiveInterpreter implements ProgramInterpreter {
                 }
 
                 for (String name : reinstall) {
-                    dev.skillmanager.project.HarnessPluginCli.Result r = driver.reinstallPlugin(name);
+                    dev.skillmanager.project.HarnessPluginCli.Result r =
+                            driver.reinstallPlugin(name, marketplaceName);
                     facts.add(new ContextFact.HarnessPluginCli(
                             driver.agentId(), name, "install", r.ok(),
                             r.ok() ? null : truncate(r.stderr())));
@@ -915,7 +917,8 @@ public final class LiveInterpreter implements ProgramInterpreter {
                     }
                 }
                 for (String name : uninstall) {
-                    dev.skillmanager.project.HarnessPluginCli.Result r = driver.uninstallPlugin(name);
+                    dev.skillmanager.project.HarnessPluginCli.Result r =
+                            driver.uninstallPlugin(name, marketplaceName);
                     facts.add(new ContextFact.HarnessPluginCli(
                             driver.agentId(), name, "uninstall", r.ok(),
                             r.ok() ? null : truncate(r.stderr())));

@@ -34,7 +34,7 @@ public final class HarnessPluginCliTest {
                     "Configured marketplaces:\n  ❯ skill-manager\n", ""));
             HarnessPluginCli.Claude driver = new HarnessPluginCli.Claude(runner);
 
-            HarnessPluginCli.Result r = driver.ensureMarketplaceAdded(Path.of("/tmp/mp"));
+            HarnessPluginCli.Result r = driver.ensureMarketplaceAdded(Path.of("/tmp/mp"), PluginMarketplace.NAME);
 
             assertTrue(r.ok(), "treated as success");
             assertEquals("already-added", r.stdout(), "marker stdout");
@@ -53,7 +53,7 @@ public final class HarnessPluginCliTest {
             runner.script.add(new HarnessPluginCli.Result(0, "marketplace added", ""));
             HarnessPluginCli.Claude driver = new HarnessPluginCli.Claude(runner);
 
-            HarnessPluginCli.Result r = driver.ensureMarketplaceAdded(Path.of("/tmp/mp"));
+            HarnessPluginCli.Result r = driver.ensureMarketplaceAdded(Path.of("/tmp/mp"), PluginMarketplace.NAME);
 
             assertTrue(r.ok(), "ok");
             assertEquals(2, runner.calls.size(), "list + add");
@@ -68,7 +68,7 @@ public final class HarnessPluginCliTest {
             runner.script.add(new HarnessPluginCli.Result(0, "updated", ""));
             HarnessPluginCli.Claude driver = new HarnessPluginCli.Claude(runner);
 
-            driver.refreshMarketplace(Path.of("/tmp/mp"));
+            driver.refreshMarketplace(Path.of("/tmp/mp"), PluginMarketplace.NAME);
 
             List<String> cmd = runner.calls.get(0).cmd();
             assertEquals("update", cmd.get(3), "update verb");
@@ -83,7 +83,7 @@ public final class HarnessPluginCliTest {
             runner.script.add(new HarnessPluginCli.Result(0, "installed", ""));
             HarnessPluginCli.Claude driver = new HarnessPluginCli.Claude(runner);
 
-            HarnessPluginCli.Result r = driver.reinstallPlugin("repo-intel");
+            HarnessPluginCli.Result r = driver.reinstallPlugin("repo-intel", PluginMarketplace.NAME);
 
             assertTrue(r.ok(), "install succeeded");
             assertEquals(2, runner.calls.size(), "uninstall + install");
@@ -99,7 +99,7 @@ public final class HarnessPluginCliTest {
             runner.script.add(new HarnessPluginCli.Result(0, "skill-manager", ""));
             HarnessPluginCli.Claude driver = new HarnessPluginCli.Claude(runner);
 
-            driver.ensureMarketplaceAdded(Path.of("/tmp/mp"));
+            driver.ensureMarketplaceAdded(Path.of("/tmp/mp"), PluginMarketplace.NAME);
 
             Map<String, String> env = runner.calls.get(0).env();
             String configDir = env.get("CLAUDE_CONFIG_DIR");
@@ -115,7 +115,7 @@ public final class HarnessPluginCliTest {
                     java.nio.file.Files.createTempDirectory("codex-cfg-")
                             .resolve("does-not-exist.toml"));
 
-            driver.ensureMarketplaceAdded(Path.of("/tmp/mp"));
+            driver.ensureMarketplaceAdded(Path.of("/tmp/mp"), PluginMarketplace.NAME);
 
             List<String> cmd = runner.calls.get(0).cmd();
             assertEquals("codex", cmd.get(0), "codex binary");
@@ -130,7 +130,7 @@ public final class HarnessPluginCliTest {
                     java.nio.file.Files.createTempDirectory("codex-cfg-")
                             .resolve("does-not-exist.toml"));
 
-            driver.refreshMarketplace(Path.of("/tmp/mp"));
+            driver.refreshMarketplace(Path.of("/tmp/mp"), PluginMarketplace.NAME);
 
             List<String> cmd = runner.calls.get(0).cmd();
             // codex's `marketplace upgrade` only handles git-backed
@@ -156,7 +156,7 @@ public final class HarnessPluginCliTest {
             CapturingRunner runner = new CapturingRunner();
             HarnessPluginCli.Codex driver = new HarnessPluginCli.Codex(runner, cfg);
 
-            HarnessPluginCli.Result r = driver.ensureMarketplaceAdded(desired);
+            HarnessPluginCli.Result r = driver.ensureMarketplaceAdded(desired, PluginMarketplace.NAME);
 
             assertTrue(r.ok(), "driver reports ok");
             assertEquals(0, runner.calls.size(),
@@ -187,7 +187,7 @@ public final class HarnessPluginCliTest {
             HarnessPluginCli.Codex driver = new HarnessPluginCli.Codex(runner, cfg);
             java.nio.file.Path desired = java.nio.file.Files.createTempDirectory("new-mp-");
 
-            HarnessPluginCli.Result r = driver.ensureMarketplaceAdded(desired);
+            HarnessPluginCli.Result r = driver.ensureMarketplaceAdded(desired, PluginMarketplace.NAME);
 
             assertTrue(r.ok(), "ok overall (add succeeded after remove cleared the stale entry)");
             assertEquals(2, runner.calls.size(),
@@ -220,7 +220,7 @@ public final class HarnessPluginCliTest {
             HarnessPluginCli.Codex driver = new HarnessPluginCli.Codex(runner, cfg);
             java.nio.file.Path desired = java.nio.file.Files.createTempDirectory("new-mp-");
 
-            HarnessPluginCli.Result r = driver.ensureMarketplaceAdded(desired);
+            HarnessPluginCli.Result r = driver.ensureMarketplaceAdded(desired, PluginMarketplace.NAME);
 
             assertTrue(r.ok(), "ok when add succeeds — remove failure tolerated");
             assertEquals(2, runner.calls.size(), "still tries both remove and add");
@@ -253,7 +253,7 @@ public final class HarnessPluginCliTest {
             runner.script.add(new HarnessPluginCli.Result(0, "added", ""));
             HarnessPluginCli.Codex driver = new HarnessPluginCli.Codex(runner);
 
-            HarnessPluginCli.Result r1 = driver.reinstallPlugin("anything");
+            HarnessPluginCli.Result r1 = driver.reinstallPlugin("anything", PluginMarketplace.NAME);
 
             assertTrue(r1.ok(), "plugin add reports ok");
             assertEquals(1, runner.calls.size(), "one subprocess invocation");
@@ -269,7 +269,7 @@ public final class HarnessPluginCliTest {
             runner.script.add(new HarnessPluginCli.Result(1, "", "Plugin already added"));
             HarnessPluginCli.Codex driver = new HarnessPluginCli.Codex(runner);
 
-            HarnessPluginCli.Result r = driver.reinstallPlugin("anything");
+            HarnessPluginCli.Result r = driver.reinstallPlugin("anything", PluginMarketplace.NAME);
 
             assertTrue(r.ok(), "already-added output is idempotent success");
             assertEquals(1, runner.calls.size(), "still invoked codex plugin add");
@@ -279,7 +279,7 @@ public final class HarnessPluginCliTest {
             CapturingRunner runner = new CapturingRunner();
             HarnessPluginCli.Codex driver = new HarnessPluginCli.Codex(runner);
 
-            HarnessPluginCli.Result r = driver.uninstallPlugin("anything");
+            HarnessPluginCli.Result r = driver.uninstallPlugin("anything", PluginMarketplace.NAME);
 
             assertTrue(r.ok(), "reports ok");
             assertEquals(0, runner.calls.size(), "no subprocess invocations");
@@ -327,10 +327,10 @@ public final class HarnessPluginCliTest {
         @Override public String binary() { return agentId; }
         @Override public String installHint() { return "n/a"; }
         @Override public boolean available() { return true; }
-        @Override public HarnessPluginCli.Result ensureMarketplaceAdded(Path root) { return ok(); }
-        @Override public HarnessPluginCli.Result refreshMarketplace(Path root) { return ok(); }
-        @Override public HarnessPluginCli.Result reinstallPlugin(String name) { return ok(); }
-        @Override public HarnessPluginCli.Result uninstallPlugin(String name) { return ok(); }
+        @Override public HarnessPluginCli.Result ensureMarketplaceAdded(Path root, String marketplaceName) { return ok(); }
+        @Override public HarnessPluginCli.Result refreshMarketplace(Path root, String marketplaceName) { return ok(); }
+        @Override public HarnessPluginCli.Result reinstallPlugin(String name, String marketplaceName) { return ok(); }
+        @Override public HarnessPluginCli.Result uninstallPlugin(String name, String marketplaceName) { return ok(); }
         private static HarnessPluginCli.Result ok() { return new HarnessPluginCli.Result(0, "", ""); }
     }
 
@@ -342,16 +342,16 @@ public final class HarnessPluginCliTest {
         @Override public String binary() { return agentId; }
         @Override public String installHint() { return hint; }
         @Override public boolean available() { return false; }
-        @Override public HarnessPluginCli.Result ensureMarketplaceAdded(Path root) throws IOException {
+        @Override public HarnessPluginCli.Result ensureMarketplaceAdded(Path root, String marketplaceName) throws IOException {
             throw new IOException("not on path");
         }
-        @Override public HarnessPluginCli.Result refreshMarketplace(Path root) throws IOException {
+        @Override public HarnessPluginCli.Result refreshMarketplace(Path root, String marketplaceName) throws IOException {
             throw new IOException("not on path");
         }
-        @Override public HarnessPluginCli.Result reinstallPlugin(String name) throws IOException {
+        @Override public HarnessPluginCli.Result reinstallPlugin(String name, String marketplaceName) throws IOException {
             throw new IOException("not on path");
         }
-        @Override public HarnessPluginCli.Result uninstallPlugin(String name) throws IOException {
+        @Override public HarnessPluginCli.Result uninstallPlugin(String name, String marketplaceName) throws IOException {
             throw new IOException("not on path");
         }
     }
