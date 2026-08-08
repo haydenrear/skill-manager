@@ -42,7 +42,8 @@ import java.util.concurrent.Callable;
                 HomeCommand.ShimsCmd.class,
                 HomeCommand.DriftCmd.class,
                 HomeCommand.SyncCmd.class,
-                HomeCommand.CloseOutCmd.class
+                HomeCommand.CloseOutCmd.class,
+                HomeCommand.RefreshPluginsCmd.class
         })
 public final class HomeCommand {
 
@@ -1370,6 +1371,113 @@ public final class HomeCommand {
             List<String> leaks = new java.util.ArrayList<>();
             for (HomeCloner.Leak leak : report.leaks()) leaks.add(leak.toString());
             Log.errorList("    ", leaks);
+        }
+    }
+
+    /**
+     * Re-establish the harness-side plugin surface for THIS home: regenerate
+     * the plugin marketplace under the home's own per-home name, then
+     * (best-effort) register it and reinstall each plugin with every harness
+     * CLI on PATH.
+     *
+     * <p>Exists because a home CLONE carries plugin <i>bytes</i> but no
+     * harness <i>registration</i>: projectors emit no PLUGIN projections, so
+     * no ledger records them, and {@code claude plugin install} is a CLI side
+     * effect that copying files never re-runs. Without this, a fresh worktree
+     * home's hooks/commands never load. Content is untouched — running this
+     * never syncs unit bytes, so it cannot reintroduce the close-out
+     * {@code .git/index} drift that a full {@code sync} causes (issue #50).
+     */
+    @Command(name = "refresh-plugins",
+            description = "Regenerate this home's plugin marketplace and re-register its "
+                    + "plugins with the harness CLIs. No unit content is synced.")
+    public static final class RefreshPluginsCmd implements Callable<Integer> {
+
+        @Option(names = "--home",
+                description = "Skill Manager home. Defaults to $SKILL_MANAGER_HOME.")
+        Path home;
+
+        @Option(names = "--json", description = "Emit machine-readable JSON.")
+        boolean json;
+
+        private final SkillStore injectedStore;
+
+        public RefreshPluginsCmd() { this(null); }
+
+        public RefreshPluginsCmd(SkillStore injectedStore) { this.injectedStore = injectedStore; }
+
+        @Override
+        public Integer call() throws Exception {
+            SkillStore store;
+            try {
+                store = requireHome(injectedStore, home, false,
+                        home != null
+                                ? "home refresh-plugins --home"
+                                : "home refresh-plugins (no --home; home taken from $"
+                                        + SkillStore.HOME_ENV + ")",
+                        null);
+            } catch (NotAHomeException notAHome) {
+                if (json) System.out.println(errorJson(notAHome));
+                Log.error("%s", notAHome.getMessage());
+                return NotAHomeException.EXIT_CODE;
+            }
+            var mp = new dev.skillmanager.project.PluginMarketplace(store);
+            dev.skillmanager.project.PluginMarketplace.RegenerateResult regen;
+            try {
+                regen = mp.regenerate();
+            } catch (IOException e) {
+                Log.error("refresh-plugins: marketplace regeneration failed — %s", e.getMessage());
+                return 1;
+            }
+            String marketplaceName = mp.name();
+            List<String> plugins = regen.pluginNames();
+            int registered = 0;
+            int attempted = 0;
+            List<String> notes = new ArrayList<>();
+            for (var driver : dev.skillmanager.project.HarnessPluginCli.defaultDrivers()) {
+                if (!driver.available()) {
+                    notes.add(driver.agentId() + ": CLI not on PATH (" + driver.installHint()
+                            + ") — registration skipped, non-fatal");
+                    continue;
+                }
+                attempted++;
+                try {
+                    var added = driver.ensureMarketplaceAdded(mp.root(), marketplaceName);
+                    if (!added.ok()) {
+                        notes.add(driver.agentId() + ": marketplace-add failed — "
+                                + (added.stderr().isBlank() ? added.stdout() : added.stderr()));
+                        continue;
+                    }
+                    driver.refreshMarketplace(mp.root(), marketplaceName);
+                    boolean allOk = true;
+                    for (String plugin : plugins) {
+                        var r = driver.reinstallPlugin(plugin, marketplaceName);
+                        if (!r.ok()) {
+                            allOk = false;
+                            notes.add(driver.agentId() + ": install " + plugin + " failed — "
+                                    + r.stderr());
+                        }
+                    }
+                    if (allOk) registered++;
+                } catch (Exception ex) {
+                    notes.add(driver.agentId() + ": " + ex.getMessage());
+                }
+            }
+            if (json) {
+                System.out.println("""
+                        {"marketplace":"%s","plugins":%d,"driversRegistered":%d,"driversAttempted":%d,"notes":[%s]}"""
+                        .formatted(esc(marketplaceName), plugins.size(), registered, attempted,
+                                notes.stream().map(n -> "\"" + esc(n) + "\"")
+                                        .collect(java.util.stream.Collectors.joining(","))));
+            } else {
+                Log.ok("marketplace '%s' regenerated with %d plugin(s); %d/%d harness driver(s) registered",
+                        marketplaceName, plugins.size(), registered, attempted);
+                for (String note : notes) Log.warn("%s", note);
+            }
+            // Missing/failed harness CLIs are non-fatal by design (matching the
+            // RefreshHarnessPlugins effect): the marketplace on disk is the
+            // durable outcome; registration is re-attemptable.
+            return 0;
         }
     }
 

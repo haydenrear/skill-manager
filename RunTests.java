@@ -85,6 +85,7 @@ import dev.skillmanager.lock.LockSchemaVersionTest;
 import dev.skillmanager.project.ClaudeProjectorTest;
 import dev.skillmanager.project.CodexProjectorTest;
 import dev.skillmanager.project.GeminiProjectorTest;
+import dev.skillmanager.commands.HomeRefreshPluginsTest;
 import dev.skillmanager.project.HarnessPluginCliTest;
 import dev.skillmanager.project.PluginMarketplaceTest;
 import dev.skillmanager.project.ProjectChildHomeMaterializationTest;
@@ -203,6 +204,7 @@ public class RunTests {
         failures += ProjectVendoredResolverTest.run();
         failures += PluginMarketplaceTest.run();
         failures += HarnessPluginCliTest.run();
+        failures += HomeRefreshPluginsTest.run();
         failures += RefreshHarnessPluginsTest.run();
         failures += PublishDetectsPluginTest.run();
         failures += PublishDetectsSkillTest.run();
