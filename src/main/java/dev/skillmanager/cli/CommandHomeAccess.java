@@ -220,6 +220,7 @@ public final class CommandHomeAccess {
         m.put("home shims", WRITE);
         m.put("home drift", WRITE);
         m.put("home sync", WRITE);
+        m.put("home refresh-plugins", WRITE);
         m.put("home close-out", WRITE);
         m.put("install", WRITE);
         // `login` bare is the browser OAuth flow, not a usage print: it
