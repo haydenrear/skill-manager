@@ -28,7 +28,11 @@ import java.util.List;
  *       {@code onboarding.leaves.work.tree.clean} measured — the untracked
  *       {@code .claude.json} the documented ignore rules do not cover. This
  *       node does NOT pre-clean: whether the refusal happens is the finding,
- *       and it records which of the two it saw.</li>
+ *       and it records which of the two it saw. It keys that finding on the
+ *       {@code FAILED} REASON and not on a non-zero exit, because {@code wt
+ *       new} has more than one gate — it also refuses a base branch that is
+ *       behind its remote (exit 7) — and "something refused" would record the
+ *       wrong one as this property passing.</li>
  *   <li><b>The clone a worktree gets has empty agent homes.</b> The same
  *       defect {@code onboarding.projections.materialized} asserts for the
  *       project home, at the point where it bites hardest: every
@@ -114,11 +118,36 @@ public class OnboardingWorktreeLifecycle {
                     ambient, "new", TICKET);
             String dirtyNewLog = OnboardingSupport.log(ctx, dirtyNew);
             boolean theTreeWasDirtyWhenTheTicketWasOpened = !statusBefore.isEmpty();
+            // WHICH GATE REFUSED, not merely THAT something did.
+            //
+            // This read `dirtyNew.exitCode() != 0` and nothing else, which was
+            // sound only while a dirty tree was the single way `wt new` could
+            // refuse. It is not: git-issue-workflow now also refuses a base
+            // branch that is BEHIND its remote counterpart (exit 7). Against a
+            // fixture whose base ever gains a tracking branch, that refusal
+            // would have satisfied this equivalence and been recorded as the
+            // dirty-tree gate working — a false green, and the recovery below
+            // would then have "cleaned" a tree that was never the problem and
+            // re-run into the same refusal.
+            //
+            // So the finding is keyed on the FAILED line, which says which gate
+            // it was. Exit code alone is not enough either: 1 is this script's
+            // code for every usage-or-setup refusal, so it is the reason text
+            // that distinguishes them.
+            String dirtyNewReason = contractLine(dirtyNewLog, "FAILED");
+            boolean theRefusalWasTheDirtyTreeGate =
+                    dirtyNew.exitCode() != 0 && dirtyNewReason.contains("working tree is not clean");
             boolean theRefusalMatchedTheTreeState =
-                    theTreeWasDirtyWhenTheTicketWasOpened == (dirtyNew.exitCode() != 0);
+                    theTreeWasDirtyWhenTheTicketWasOpened == theRefusalWasTheDirtyTreeGate;
+            // A refusal that is neither "clean" nor the dirty-tree gate is a
+            // finding in its own right rather than something to absorb: it means
+            // this node's fixture tripped a gate it does not model, and every
+            // property below it would be measuring the wrong sequence.
+            boolean wtNewRefusedForAReasonThisNodeDoesNotModel =
+                    dirtyNew.exitCode() != 0 && !theRefusalWasTheDirtyTreeGate;
 
             // --- 2. clean the tree the way the workaround does, then wt new -------
-            if (dirtyNew.exitCode() != 0 && theTreeWasDirtyWhenTheTicketWasOpened) {
+            if (theRefusalWasTheDirtyTreeGate && theTreeWasDirtyWhenTheTicketWasOpened) {
                 // The documented ignore rules plus the rule they are missing.
                 Files.writeString(proj.resolve(".gitignore"),
                         String.join("\n", OnboardingSupport.DOCUMENTED_IGNORES)
@@ -245,7 +274,9 @@ public class OnboardingWorktreeLifecycle {
             boolean everyUnitInTheWorktreeStoreIsServable =
                     theWorktreeHomeHasAStore && wtServable == wtStore;
 
-            boolean pass = theRefusalMatchedTheTreeState && theWorktreeWasCreated
+            boolean pass = theRefusalMatchedTheTreeState
+                    && !wtNewRefusedForAReasonThisNodeDoesNotModel
+                    && theWorktreeWasCreated
                     && theWorktreeHoldsAUnitTheProjectHomeDoesNot
                     && theWorktreeHomeHasAStore && everyUnitInTheWorktreeStoreIsServable
                     && projectingAWorktreeHomeDoesNotMakeItUnclosable
@@ -258,6 +289,7 @@ public class OnboardingWorktreeLifecycle {
                     : NodeResult.fail("onboarding.worktree.lifecycle",
                             "treeDirtyBefore=" + theTreeWasDirtyWhenTheTicketWasOpened
                                     + " dirtyNewExit=" + dirtyNew.exitCode()
+                                    + " dirtyNewReason=" + dirtyNewReason
                                     + " newExit=" + newRun.exitCode()
                                     + " infoExit=" + info.exitCode()
                                     + " worktree=" + worktree
@@ -275,6 +307,13 @@ public class OnboardingWorktreeLifecycle {
             return result.process(blockedClose).process(forcedClose)
                     .assertion("the_wt_new_refusal_matched_the_work_tree_state",
                             theRefusalMatchedTheTreeState)
+                    .assertion("wt_new_refused_only_for_a_reason_this_node_models",
+                            !wtNewRefusedForAReasonThisNodeDoesNotModel)
+                    // The reason as TEXT, so an unmodelled refusal is readable
+                    // without opening the log. A boolean says this node's
+                    // fixture tripped a gate it does not model; only the
+                    // sentence says which one.
+                    .publish("wtNewFirstRefusal", dirtyNewReason)
                     .assertion("a_worktree_was_created", theWorktreeWasCreated)
                     .assertion("the_worktree_home_holds_a_unit_the_project_home_does_not",
                             theWorktreeHoldsAUnitTheProjectHomeDoesNot)
@@ -318,6 +357,24 @@ public class OnboardingWorktreeLifecycle {
     }
 
     /** The value of an anchored {@code KEY   <value>} contract line. */
+    /**
+     * The WHOLE value of an anchored {@code KEY   <value>} contract line.
+     *
+     * <p>Distinct from {@link #contractValue}, which takes the first token
+     * because its callers want a path. {@code FAILED} is a sentence, and the
+     * thing that distinguishes one refusal from another is in the middle of it.
+     */
+    static String contractLine(String log, String key) {
+        for (String raw : log.split("\n", -1)) {
+            if (!raw.startsWith(key)) continue;
+            String rest = raw.substring(key.length());
+            if (rest.isEmpty() || !Character.isWhitespace(rest.charAt(0))) continue;
+            String value = rest.strip();
+            if (!value.isEmpty()) return value;
+        }
+        return "";
+    }
+
     static Path contractValue(String log, String key) {
         for (String raw : log.split("\n", -1)) {
             if (!raw.startsWith(key)) continue;
