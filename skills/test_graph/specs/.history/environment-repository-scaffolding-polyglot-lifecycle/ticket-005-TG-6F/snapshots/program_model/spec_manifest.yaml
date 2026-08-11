@@ -1,0 +1,197 @@
+module: TestGraph
+package: testgraph_program_cases
+
+status:
+  workflow: closed
+  workflow_name: branch_environment_repository_workflow
+  initial_ticket: TG-5
+  initial_ticket_title: "Branch-scoped environment repository deployments"
+  closed_history: ../.history/branch-environment-repository-workflow/closed-snapshot
+  relation_to_program_model: accepted_program_model
+  relation_to_current: converged_and_promoted
+  current_model_rule: whole_program_working_copy_not_ticket_projection
+  test_modeling_rule: do_not_model_tests_or_validation_harnesses_as_program_behavior
+  updated: "2026-06-21"
+  summary:
+    desired_model_scaffolded: true
+    ticket_plan_scaffolded: true
+    current_model_scaffolded: true
+    generated_cases: pending
+    adapters: documented_boundaries_only
+  done:
+    - TG-5A through TG-5G implemented branch-scoped environment repository deployments and deploy-cdc follow-up issue creation.
+    - Converged desired/current model promoted back into specs/program_model.
+  accepted_slice:
+    name: TG-5
+    status: closed
+    implemented_actions:
+      - ConfigureSideEffectRuntime
+      - ConfigureProvisioningState
+      - ProvisionBranchEnvironment
+      - ResetBranchEnvironment
+      - RequestMergedBranchDestroy
+      - DestroyMergedBranchEnvironment
+      - RegisterFeatureBranch
+      - ConfigureEnvironmentRepository
+      - DeclareBranchEnvironment
+      - ReuseBranchEnvironment
+      - DeployApplicationToBranchEnvironment
+      - PropagateEnvironmentContext
+    validation:
+      unit:
+        - ./gradlew --console=plain :build-logic:test
+        - pytest specs/current/tests
+      tlc:
+        - cd specs/current && tlc2 -config MC.cfg TestGraph.tla
+      graph:
+        - ./scripts/run.py branchEnvironmentWorkflow --test-graph-root test_graph
+        - ./scripts/run.py generatedEnvironmentRepositoryFixture --test-graph-root test_graph
+        - ./scripts/run.py environmentRepositoryContract --test-graph-root test_graph
+        - ./scripts/run.py branchEnvironmentReset --test-graph-root test_graph
+        - TESTGRAPH_DESTROY_BRANCH_ENVIRONMENT=1 ./scripts/run.py branchEnvironmentMergeDestroy --test-graph-root test_graph
+        - ./scripts/run.py deployCdcIssueContract --test-graph-root test_graph
+        - ./scripts/run.py --all --test-graph-root test_graph
+      issue:
+        - gh issue create --repo haydenrear/deploy-cdc --title "Add deploy-helm environment repository templates for test graph branch environments" --body-file references/tickets/tg5-deploy-cdc-environment-repository-issue.md
+        - https://github.com/haydenrear/deploy-cdc/issues/6
+      evidence:
+        - SDK side effects are parsed as typed metadata before node execution.
+        - Provisioning side effects write branch-scoped marker files only after successful node execution.
+        - Reset marker state is separate from destroy and leaves the provisioned marker intact.
+        - Destroy is rejected unless TEST_GRAPH_DESTROY_BRANCH_ENVIRONMENT is explicitly true.
+        - Environment repository metadata is parsed as a provider-neutral Git repository contract.
+        - The contract supports ordinary Git URLs and local repository paths, not tarball-primary fixtures.
+        - The local fixture source is versioned as ordinary files without a checked-in nested Git repository.
+        - The generated fixture graph creates a report-local Git repository with an initial commit.
+        - The generated repository exposes the minimal local-preview OpenTofu template and required output keys.
+        - The environment repository runtime clones or reuses a generated Git repository outside the application source tree.
+        - The runtime runs the standard init/apply/output OpenTofu flow, publishes required outputs, and reuses an existing branch environment without reapplying.
+        - env:[KEY] and env:[*] project published context keys into downstream node environments.
+        - AWS target/backend selection fails fast unless AWS_PROFILE, AWS_ACCESS_KEY_ID, or AWS_WEB_IDENTITY_TOKEN_FILE is present.
+        - Deploy nodes reuse the existing branch environment outputs and record deployed marker state.
+        - Reset re-runs the environment repository apply flow, clears deployed/application state, and keeps the provisioned marker.
+        - Merge destroy is guarded by TEST_GRAPH_DESTROY_BRANCH_ENVIRONMENT or TESTGRAPH_DESTROY_BRANCH_ENVIRONMENT and removes provisioned/deployed state only after destroy succeeds.
+        - Normal validation runs do not request merge destroy and therefore keep branch environments for reuse.
+        - TG-5G created the deploy-cdc implementation issue from a tracked issue body artifact after the SDK contract and local Git fixture lifecycle were complete.
+  pending:
+    - Add executable adapter mappings for branch environment repository boundaries in a future workflow.
+
+source_model:
+  program_model_manifest: spec_manifest.yaml
+  program_model_module: TestGraph.tla
+  baseline_package: testgraph_program_cases
+  issue_source: https://github.com/haydenrear/test_graph_skill/issues/5
+
+case_codegen:
+  style: explicit_transition_cases
+  generation_status: planned
+
+state_fields:
+  - name: input_contexts
+    purpose: Nodes whose input context snapshot exists in the build directory.
+  - name: rerunnable_nodes
+    purpose: Source nodes whose described metadata allows resume/run-only guidance.
+  - name: rerun_guidance
+    purpose: Failed nodes for which the executor/report should print a concrete rerun command.
+  - name: resumed_nodes
+    purpose: Nodes used as entrypoints for continuing a graph from an existing build directory.
+  - name: single_node_reruns
+    purpose: Nodes executed in isolation from saved build-directory input context.
+  - name: side_effect_runtime_configured
+    purpose: Graphs whose SDK side-effect metadata validation is available.
+  - name: provisioning_state_configured
+    purpose: Graphs whose branch environment marker lifecycle is available.
+  - name: feature_branches
+    purpose: Feature branch ids known for branch-scoped environment naming.
+  - name: environment_repo_configured
+    purpose: Graphs configured with a provider-neutral Git environment repository contract source.
+  - name: branch_environment_specs
+    purpose: Declared branch/target/backend environment intents.
+  - name: provisioned_branch_environments
+    purpose: Branch environment ids with active provisioned markers.
+  - name: reused_branch_environments
+    purpose: Branch environment ids where an existing provisioned marker caused repository execution to reuse instead of reapply.
+  - name: reset_branch_environments
+    purpose: Branch environment ids reset for redeploy without cluster destruction.
+  - name: deployed_branch_environments
+    purpose: Branch environment ids with application deployment state.
+  - name: propagated_environment_contexts
+    purpose: Branch environment ids whose required repository outputs are available for downstream env projection.
+  - name: environment_context_keys
+    purpose: Structured context keys returned by environment repository execution for a branch environment.
+  - name: merge_destroy_requested
+    purpose: Branch environment ids with explicit merge-time destroy intent.
+  - name: destroy_authorized_environments
+    purpose: Audit set proving destroy was authorized before deletion.
+  - name: destroyed_branch_environments
+    purpose: Branch environment ids whose provisioned marker was removed after authorized destroy.
+actions:
+  - ConfigureSideEffectRuntime
+  - ConfigureProvisioningState
+  - RegisterFeatureBranch
+  - ConfigureEnvironmentRepository
+  - DeclareBranchEnvironment
+  - ProvisionBranchEnvironment
+  - ReuseBranchEnvironment
+  - DeployApplicationToBranchEnvironment
+  - PropagateEnvironmentContext
+  - ResetBranchEnvironment
+  - RequestMergedBranchDestroy
+  - DestroyMergedBranchEnvironment
+ports:
+  TestGraphProgramPort:
+    new_methods:
+      configure_side_effect_runtime:
+        command: ConfigureSideEffectRuntime
+        result: WorkflowResult
+      configure_provisioning_state:
+        command: ConfigureProvisioningState
+        result: WorkflowResult
+      register_feature_branch:
+        command: RegisterFeatureBranch
+        result: WorkflowResult
+      configure_environment_repository:
+        command: ConfigureEnvironmentRepository
+        result: WorkflowResult
+      declare_branch_environment:
+        command: DeclareBranchEnvironment
+        result: WorkflowResult
+      provision_branch_environment:
+        command: ProvisionBranchEnvironment
+        result: WorkflowResult
+      reuse_branch_environment:
+        command: ReuseBranchEnvironment
+        result: WorkflowResult
+      deploy_application_to_branch_environment:
+        command: DeployApplicationToBranchEnvironment
+        result: WorkflowResult
+      propagate_environment_context:
+        command: PropagateEnvironmentContext
+        result: WorkflowResult
+      reset_branch_environment:
+        command: ResetBranchEnvironment
+        result: WorkflowResult
+      request_merged_branch_destroy:
+        command: RequestMergedBranchDestroy
+        result: WorkflowResult
+      destroy_merged_branch_environment:
+        command: DestroyMergedBranchEnvironment
+        result: WorkflowResult
+adapters: case_adapters.toml
+adapter_plan:
+  desired_adapters:
+    - InputContextSnapshotAdapter
+    - ResumeRunFromBuildAdapter
+    - RunOnlyNodeFromBuildAdapter
+    - RerunGuidanceAdapter
+    - SideEffectRuntimeAdapter
+    - ProvisioningStateFileAdapter
+    - EnvironmentRepositoryContractAdapter
+    - GeneratedGitEnvironmentRepositoryFixtureAdapter
+    - EnvironmentRepositoryAdapter
+    - OpenTofuCommandAdapter
+    - DownstreamEnvProjectionAdapter
+    - BranchEnvironmentLifecycleAdapter
+  current_status: documented_boundaries_only
+notes:
+  package_from_program_model: testgraph_program_cases

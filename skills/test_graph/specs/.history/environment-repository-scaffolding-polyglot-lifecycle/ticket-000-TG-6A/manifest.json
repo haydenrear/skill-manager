@@ -1,0 +1,103 @@
+{
+  "commit_recommendation": {
+    "git_add": "git add specs/.history/environment-repository-scaffolding-polyglot-lifecycle/ticket-000-TG-6A",
+    "git_commit": "git commit -m 'record spec history for TG-6A'",
+    "message": "It is recommended to commit this history directory now: specs/.history/environment-repository-scaffolding-polyglot-lifecycle/ticket-000-TG-6A"
+  },
+  "created_at_utc": "2026-06-28T15:48:24.535299+00:00",
+  "entry_name": "ticket-000-TG-6A",
+  "git": {
+    "branch": "feature/tg-5-branch-environment-repositories",
+    "commit": "972dbcc",
+    "inside_work_tree": "true"
+  },
+  "history_policy": "append-only by convention; existing entries are not overwritten and filesystem permissions remain git-friendly",
+  "kind": "ticket",
+  "results": [
+    {
+      "exists": true,
+      "role": "result",
+      "snapshot": "specs/.history/environment-repository-scaffolding-polyglot-lifecycle/ticket-000-TG-6A/results/report.md",
+      "source": "test_graph/build/validation-reports/20260628-154618/report.md"
+    }
+  ],
+  "schema_version": 1,
+  "snapshots": [
+    {
+      "exists": true,
+      "role": "program_model",
+      "snapshot": "specs/.history/environment-repository-scaffolding-polyglot-lifecycle/ticket-000-TG-6A/snapshots/program_model",
+      "source": "specs/program_model"
+    },
+    {
+      "exists": true,
+      "role": "desired_program_model",
+      "snapshot": "specs/.history/environment-repository-scaffolding-polyglot-lifecycle/ticket-000-TG-6A/snapshots/desired_program_model",
+      "source": "specs/desired_program_model"
+    },
+    {
+      "exists": true,
+      "role": "current",
+      "snapshot": "specs/.history/environment-repository-scaffolding-polyglot-lifecycle/ticket-000-TG-6A/snapshots/current",
+      "source": "specs/current"
+    }
+  ],
+  "spec_root": "specs",
+  "summary": "Documented the environment repository contract, local k3d setup, Git fixture policy, scaffold script expectations, and required local/GitHub Actions/AWS graph coverage.",
+  "ticket": {
+    "acceptance": {
+      "assertions": [
+        "SKILL.md links to references/environment-repositories.md.",
+        "The reference defines required files, required outputs, supported sources, target/backend selection, branch scoping, reset, destroy, skip-destroy, and local k3d setup.",
+        "Existing TG-5 contract text in references/reference.md and references/workflows.md points to the dedicated reference instead of becoming stale duplicate source material.",
+        "The documentation graph fails if functionality tickets can add scripts/scaffolds/lifecycle behavior without test graph coverage."
+      ],
+      "commands": [
+        "pytest specs/current/tests",
+        "./scripts/run.py environmentRepositoryDocumentation --test-graph-root test_graph"
+      ],
+      "evidence": [
+        "references/environment-repositories.md documents the provider-neutral Git environment repository contract, local k3d setup, and local/GitHub Actions/AWS graph coverage matrix.",
+        "SKILL.md, references/reference.md, and references/workflows.md route to the dedicated environment repository reference.",
+        "test_graph/sources/Tg6EnvironmentRepositoryDocumentation.py and environmentRepositoryDocumentation validate the documentation contract.",
+        "pytest --import-mode=importlib specs/current/tests specs/desired_program_model/tests passed with 27 tests on 2026-06-28.",
+        "cd specs/current && tlc2 -config MC.cfg TestGraph.tla passed on 2026-06-28.",
+        "cd specs/desired_program_model && tlc2 -config MC.cfg TestGraph.tla passed on 2026-06-28.",
+        "./scripts/discover.py environmentRepositoryDocumentation --test-graph-root test_graph passed on 2026-06-28.",
+        "./scripts/run.py environmentRepositoryDocumentation --test-graph-root test_graph passed with report test_graph/build/validation-reports/20260628-154618."
+      ]
+    },
+    "current_increment": {
+      "adapters": [
+        "EnvironmentRepositoryReferenceAdapter"
+      ],
+      "graph_after_unit_pass": [
+        "Add an assertion node that proves SKILL.md routes to the env-repos reference.",
+        "Add an assertion node that proves local k3d contract details are present.",
+        "Add an assertion node that proves the reference requires local, GitHub Actions, and AWS graph coverage for functionality tickets."
+      ],
+      "model_actions": [],
+      "model_state": [],
+      "unit_tests": [
+        "pytest specs/current/tests"
+      ]
+    },
+    "depends_on": [],
+    "desired_actions": [],
+    "id": "TG-6A",
+    "implementation_scope": [
+      "SKILL.md",
+      "references/environment-repositories.md",
+      "references/reference.md",
+      "references/workflows.md"
+    ],
+    "objective": "Make environment repositories a first-class documented skill surface with a dedicated reference, expected repository shape, execution contract, target/backend semantics, lifecycle behavior, and a local k3d setup path.\n",
+    "status": "done",
+    "title": "Document the environment repository contract and local k3d setup"
+  },
+  "ticket_id": "TG-6A",
+  "ticket_index": 0,
+  "ticket_plan": "specs/desired_program_model/ticket_plan.yaml",
+  "ticket_status": "done",
+  "workflow_name": "environment-repository-scaffolding-polyglot-lifecycle"
+}

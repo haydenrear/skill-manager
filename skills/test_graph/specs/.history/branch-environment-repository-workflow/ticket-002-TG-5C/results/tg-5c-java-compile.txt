@@ -1,0 +1,12 @@
+Starting a Gradle Daemon, 1 busy and 7 stopped Daemons could not be reused, use --status for details
+> Task :build-logic:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :build-logic:compileKotlin UP-TO-DATE
+> Task :build-logic:compileJava NO-SOURCE
+> Task :build-logic:pluginDescriptors UP-TO-DATE
+> Task :build-logic:processResources UP-TO-DATE
+> Task :build-logic:classes UP-TO-DATE
+> Task :build-logic:jar UP-TO-DATE
+> Task :sdk:java:compileJava UP-TO-DATE
+
+BUILD SUCCESSFUL in 6s
+5 actionable tasks: 5 up-to-date

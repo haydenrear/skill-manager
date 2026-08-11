@@ -1,0 +1,196 @@
+{
+  "commit_recommendation": {
+    "git_add": "git add specs/.history/tg-3-resumable-build-workflow/ticket-003-TG-3D",
+    "git_commit": "git commit -m 'record spec history for TG-3D'",
+    "message": "It is recommended to commit this history directory now: specs/.history/tg-3-resumable-build-workflow/ticket-003-TG-3D"
+  },
+  "created_at_utc": "2026-06-12T18:25:18.309642+00:00",
+  "entry_name": "ticket-003-TG-3D",
+  "git": {
+    "branch": "main",
+    "commit": "02c589e",
+    "inside_work_tree": "true"
+  },
+  "history_policy": "append-only by convention; existing entries are not overwritten and filesystem permissions remain git-friendly",
+  "kind": "ticket",
+  "results": [
+    {
+      "exists": true,
+      "role": "result",
+      "snapshot": "specs/.history/tg-3-resumable-build-workflow/ticket-003-TG-3D/results/self-validation-summary.json",
+      "source": "test_graph/build/validation-reports/20260612-180955/summary.json"
+    },
+    {
+      "exists": true,
+      "role": "result",
+      "snapshot": "specs/.history/tg-3-resumable-build-workflow/ticket-003-TG-3D/results/project-smoke-summary.json",
+      "source": "project_sdk_sources/build/validation-reports/20260612-180823/summary.json"
+    }
+  ],
+  "schema_version": 1,
+  "snapshots": [
+    {
+      "exists": true,
+      "role": "program_model",
+      "snapshot": "specs/.history/tg-3-resumable-build-workflow/ticket-003-TG-3D/snapshots/program_model",
+      "source": "specs/program_model"
+    },
+    {
+      "exists": true,
+      "role": "desired_program_model",
+      "snapshot": "specs/.history/tg-3-resumable-build-workflow/ticket-003-TG-3D/snapshots/desired_program_model",
+      "source": "specs/desired_program_model"
+    },
+    {
+      "exists": true,
+      "role": "current",
+      "snapshot": "specs/.history/tg-3-resumable-build-workflow/ticket-003-TG-3D/snapshots/current",
+      "source": "specs/current"
+    }
+  ],
+  "spec_root": "specs",
+  "summary": "Implemented run-only node replay from saved build context, including uv and JBang validation and rerun=false rejection.",
+  "ticket": {
+    "acceptance": {
+      "assertions": [
+        "Run-only requires a saved input context for the selected node.",
+        "Run-only respects rerun=false metadata.",
+        "Run-only does not mark downstream graph nodes as executed.",
+        "The generated command works for both uv and JBang node runtimes."
+      ],
+      "commands": [
+        "cd specs/current && tlc2 -config MC.cfg TestGraph.tla",
+        "pytest specs/current/tests specs/desired_program_model/tests",
+        "./gradlew --console=plain :build-logic:test",
+        "python scripts/run.py --all --test-graph-root project_sdk_sources",
+        "python scripts/run.py smoke --test-graph-root project_sdk_sources --resume-from-build project_sdk_sources/build/validation-reports/<runId> --run-only-node login.smoke",
+        "python scripts/run.py smoke --test-graph-root project_sdk_sources --resume-from-build project_sdk_sources/build/validation-reports/<runId> --run-only-node context.snapshots.present",
+        "python scripts/run.py --all --test-graph-root test_graph"
+      ],
+      "evidence": [
+        {
+          "command": "pytest specs/current/tests specs/desired_program_model/tests",
+          "last_run": "2026-06-12",
+          "status": "passed",
+          "tests": 17
+        },
+        {
+          "command": "cd specs/current && tlc2 -config MC.cfg TestGraph.tla",
+          "depth": 36,
+          "distinct_states": 8347200,
+          "last_run": "2026-06-12",
+          "states_generated": 108679356,
+          "status": "passed"
+        },
+        {
+          "command": "cd specs/desired_program_model && tlc2 -config MC.cfg TestGraph.tla",
+          "depth": 22,
+          "distinct_states": 6300,
+          "last_run": "2026-06-12",
+          "states_generated": 56387,
+          "status": "passed"
+        },
+        {
+          "command": "./gradlew --console=plain :build-logic:test",
+          "last_run": "2026-06-12",
+          "status": "passed"
+        },
+        {
+          "command": "./scripts/run.py --all --test-graph-root project_sdk_sources",
+          "graphs": {
+            "rerunSmokeJava": "20260612-180833",
+            "rerunSmokeUv": "20260612-180829",
+            "smoke": "20260612-180823"
+          },
+          "last_run": "2026-06-12",
+          "status": "passed"
+        },
+        {
+          "command": "./scripts/run.py smoke --test-graph-root project_sdk_sources --resume-from-build project_sdk_sources/build/validation-reports/20260612-180823 --run-only-node login.smoke",
+          "executor_steps": 1,
+          "last_run": "2026-06-12",
+          "runtime": "jbang",
+          "status": "passed"
+        },
+        {
+          "command": "./scripts/run.py smoke --test-graph-root project_sdk_sources --resume-from-build project_sdk_sources/build/validation-reports/20260612-180823 --run-only-node context.snapshots.present",
+          "executor_steps": 1,
+          "last_run": "2026-06-12",
+          "runtime": "uv",
+          "status": "passed"
+        },
+        {
+          "command": "./scripts/run.py smoke --test-graph-root project_sdk_sources --resume-from-build project_sdk_sources/build/validation-reports/20260612-180823 --run-only-node rerun.disabled.probe",
+          "last_run": "2026-06-12",
+          "reason": "node metadata has rerun=false",
+          "status": "rejected_as_expected"
+        },
+        {
+          "assertions": [
+            "run_only_login_jbang_passed",
+            "run_only_context_uv_passed",
+            "run_only_does_not_continue_downstream",
+            "run_only_rerun_false_rejected"
+          ],
+          "command": "./scripts/run.py --all --test-graph-root test_graph",
+          "last_run": "2026-06-12",
+          "run_id": "20260612-180955",
+          "status": "passed"
+        }
+      ]
+    },
+    "current_increment": {
+      "adapters": [
+        "RunOnlyNodeFromBuildAdapter"
+      ],
+      "graph_after_unit_pass": [
+        "python scripts/run.py --all --test-graph-root project_sdk_sources",
+        "python scripts/run.py smoke --test-graph-root project_sdk_sources --resume-from-build project_sdk_sources/build/validation-reports/<runId> --run-only-node login.smoke",
+        "python scripts/run.py smoke --test-graph-root project_sdk_sources --resume-from-build project_sdk_sources/build/validation-reports/<runId> --run-only-node context.snapshots.present",
+        "python scripts/run.py --all --test-graph-root test_graph"
+      ],
+      "model_actions": [
+        "RunOnlyNodeFromBuild writes an envelope for the selected node from saved input context."
+      ],
+      "model_state": [
+        "single_node_reruns"
+      ],
+      "unit_tests": [
+        "pytest specs/current/tests specs/desired_program_model/tests",
+        "cd specs/current && tlc2 -config MC.cfg TestGraph.tla"
+      ]
+    },
+    "depends_on": [
+      "TG-3A",
+      "TG-3B"
+    ],
+    "desired_actions": [
+      "RunOnlyNodeFromBuild"
+    ],
+    "desired_invariants": [
+      "ResumptionsUseSavedInputContext",
+      "BuildRerunsRespectDependencies"
+    ],
+    "desired_state": [
+      "single_node_reruns",
+      "envelopes"
+    ],
+    "id": "TG-3D",
+    "implementation_scope": [
+      "scripts/run.py",
+      "project_sdk_sources/build-logic/src/main/kotlin/com/hayden/testgraphsdk/tasks/RunTestGraphTask.kt",
+      "project_sdk_sources/build-logic/src/main/kotlin/com/hayden/testgraphsdk/exec/PlanExecutor.kt",
+      "project_sdk_sources/build-logic/src/main/kotlin/com/hayden/testgraphsdk/exec/Executors.kt",
+      "references/workflows.md",
+      "references/reference.md"
+    ],
+    "objective": "Add a debugging surface that points at a build directory and node id, loads that node's saved input context, runs only that node, and writes node evidence without replaying or continuing the graph.\n",
+    "status": "done",
+    "title": "Run only one node from saved build context"
+  },
+  "ticket_id": "TG-3D",
+  "ticket_index": 3,
+  "ticket_plan": "specs/desired_program_model/ticket_plan.yaml",
+  "ticket_status": "done",
+  "workflow_name": "tg-3-resumable-build-workflow"
+}

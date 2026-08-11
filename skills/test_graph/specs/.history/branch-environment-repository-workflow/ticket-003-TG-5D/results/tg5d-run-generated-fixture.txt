@@ -1,0 +1,29 @@
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.14.3/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build
+> Task :build-logic:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :build-logic:compileKotlin UP-TO-DATE
+> Task :build-logic:compileJava NO-SOURCE
+> Task :build-logic:pluginDescriptors UP-TO-DATE
+> Task :build-logic:processResources UP-TO-DATE
+> Task :build-logic:classes UP-TO-DATE
+> Task :build-logic:jar UP-TO-DATE
+
+> Task :generatedEnvironmentRepositoryFixture
+[toolchain] jbang=0.137.0 (path: /opt/homebrew/bin/jbang)
+[toolchain] uv=0.11.19 (path: /opt/homebrew/bin/uv)
+testGraph 'generatedEnvironmentRepositoryFixture' run=20260613-221258 steps=1
+  plan[1/1] tg5.environment.repository.fixture.generated  [fixture, uv]  sources/Tg5GeneratedEnvironmentRepositoryFixture.py
+  [1/1] tg5.environment.repository.fixture.generated (uv)
+wrote /Users/hayde/IdeaProjects/test_graph/test_graph/build/validation-reports/20260613-221258/summary.json + /Users/hayde/IdeaProjects/test_graph/test_graph/build/validation-reports/20260613-221258/report.md
+testGraph 'generatedEnvironmentRepositoryFixture' done. reports: /Users/hayde/IdeaProjects/test_graph/test_graph/build/validation-reports/20260613-221258
+
+[Incubating] Problems report is available at: file:///Users/hayde/IdeaProjects/test_graph/test_graph/build/reports/problems/problems-report.html
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 9.0.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/8.14.3/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUILD SUCCESSFUL in 5s
+5 actionable tasks: 1 executed, 4 up-to-date

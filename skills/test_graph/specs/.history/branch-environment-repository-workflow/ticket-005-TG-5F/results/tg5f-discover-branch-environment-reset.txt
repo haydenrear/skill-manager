@@ -1,0 +1,18 @@
+plan for test graph 'branchEnvironmentReset' (5 steps):
+  #   id                                         kind        rt      entry
+  1.  tg5.environment.repository.fixture.stable  fixture     uv      sources/Tg5StableEnvironmentRepositoryFixture.py
+  2.  tg5.environment.repository.provision       testbed     uv      sources/Tg5EnvironmentRepositoryProvision.py
+  3.  tg5.environment.repository.deploy          action      uv      sources/Tg5EnvironmentRepositoryDeploy.py
+  4.  tg5.environment.repository.reset           action      uv      sources/Tg5EnvironmentRepositoryReset.py
+  5.  tg5.environment.repository.reset.markers   assertion   uv      sources/Tg5BranchEnvironmentResetMarkers.py
+
+dependencies:
+  tg5.environment.repository.fixture.stable  (root)
+  tg5.environment.repository.provision       <- tg5.environment.repository.fixture.stable
+  tg5.environment.repository.deploy          <- tg5.environment.repository.provision
+  tg5.environment.repository.reset           <- tg5.environment.repository.deploy
+  tg5.environment.repository.reset.markers   <- tg5.environment.repository.reset
+
+dependency graph:
+  see it here: docs/branchEnvironmentReset.png
+  (DOT source: docs/branchEnvironmentReset.dot)

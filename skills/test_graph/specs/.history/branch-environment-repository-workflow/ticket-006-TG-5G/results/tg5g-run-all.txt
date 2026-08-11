@@ -1,0 +1,135 @@
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.14.3/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+> Task :build-logic:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :build-logic:compileKotlin UP-TO-DATE
+> Task :build-logic:compileJava NO-SOURCE
+> Task :build-logic:pluginDescriptors UP-TO-DATE
+> Task :build-logic:processResources UP-TO-DATE
+> Task :build-logic:classes UP-TO-DATE
+> Task :build-logic:jar UP-TO-DATE
+
+> Task :rerunGraphJbang
+[toolchain] jbang=0.137.0 (path: /opt/homebrew/bin/jbang)
+[toolchain] uv=0.11.19 (path: /opt/homebrew/bin/uv)
+testGraph 'rerunGraphJbang' run=20260621-193445 steps=1
+  plan[1/1] self.rerun.graph.jbang  [assertion, uv]  sources/RerunGraphJbang.py
+  [1/1] self.rerun.graph.jbang (uv)
+wrote /Users/hayde/IdeaProjects/test_graph/test_graph/build/validation-reports/20260621-193445/summary.json + /Users/hayde/IdeaProjects/test_graph/test_graph/build/validation-reports/20260621-193445/report.md
+testGraph 'rerunGraphJbang' done. reports: /Users/hayde/IdeaProjects/test_graph/test_graph/build/validation-reports/20260621-193445
+
+> Task :rerunGraphUv
+[toolchain] jbang=0.137.0 (path: /opt/homebrew/bin/jbang)
+[toolchain] uv=0.11.19 (path: /opt/homebrew/bin/uv)
+testGraph 'rerunGraphUv' run=20260621-193509 steps=1
+  plan[1/1] self.rerun.graph.uv  [assertion, uv]  sources/RerunGraphUv.py
+  [1/1] self.rerun.graph.uv (uv)
+wrote /Users/hayde/IdeaProjects/test_graph/test_graph/build/validation-reports/20260621-193509/summary.json + /Users/hayde/IdeaProjects/test_graph/test_graph/build/validation-reports/20260621-193509/report.md
+testGraph 'rerunGraphUv' done. reports: /Users/hayde/IdeaProjects/test_graph/test_graph/build/validation-reports/20260621-193509
+
+> Task :runOnlyJbang
+[toolchain] jbang=0.137.0 (path: /opt/homebrew/bin/jbang)
+[toolchain] uv=0.11.19 (path: /opt/homebrew/bin/uv)
+testGraph 'runOnlyJbang' run=20260621-193543 steps=1
+  plan[1/1] self.run.only.jbang  [assertion, uv]  sources/RunOnlyJbang.py
+  [1/1] self.run.only.jbang (uv)
+wrote /Users/hayde/IdeaProjects/test_graph/test_graph/build/validation-reports/20260621-193543/summary.json + /Users/hayde/IdeaProjects/test_graph/test_graph/build/validation-reports/20260621-193543/report.md
+testGraph 'runOnlyJbang' done. reports: /Users/hayde/IdeaProjects/test_graph/test_graph/build/validation-reports/20260621-193543
+
+> Task :runOnlyUv
+[toolchain] jbang=0.137.0 (path: /opt/homebrew/bin/jbang)
+[toolchain] uv=0.11.19 (path: /opt/homebrew/bin/uv)
+testGraph 'runOnlyUv' run=20260621-193607 steps=1
+  plan[1/1] self.run.only.uv  [assertion, uv]  sources/RunOnlyUv.py
+  [1/1] self.run.only.uv (uv)
+wrote /Users/hayde/IdeaProjects/test_graph/test_graph/build/validation-reports/20260621-193607/summary.json + /Users/hayde/IdeaProjects/test_graph/test_graph/build/validation-reports/20260621-193607/report.md
+testGraph 'runOnlyUv' done. reports: /Users/hayde/IdeaProjects/test_graph/test_graph/build/validation-reports/20260621-193607
+
+> Task :branchEnvironmentWorkflow
+[toolchain] jbang=0.137.0 (path: /opt/homebrew/bin/jbang)
+[toolchain] uv=0.11.19 (path: /opt/homebrew/bin/uv)
+testGraph 'branchEnvironmentWorkflow' run=20260621-193637 steps=5
+  plan[1/5] tg5.environment.provision  [action, uv]  sources/BranchEnvironmentProvision.py
+  plan[2/5] tg5.environment.reset  [action, uv]  sources/BranchEnvironmentReset.py
+  plan[3/5] tg5.environment.markers.present  [assertion, uv]  sources/BranchEnvironmentMarkersPresent.py
+  plan[4/5] tg5.environment.repository.contract  [assertion, uv]  sources/Tg5EnvironmentRepositoryContract.py
+  plan[5/5] tg5.future.workflow.plan  [evidence, uv]  sources/Tg5FutureWorkflowPlan.py
+  [1/5] tg5.environment.provision (uv)
+  [2/5] tg5.environment.reset (uv)
+  [3/5] tg5.environment.markers.present (uv)
+  [4/5] tg5.environment.repository.contract (uv)
+  [5/5] tg5.future.workflow.plan (uv)
+wrote /Users/hayde/IdeaProjects/test_graph/test_graph/build/validation-reports/20260621-193637/summary.json + /Users/hayde/IdeaProjects/test_graph/test_graph/build/validation-reports/20260621-193637/report.md
+testGraph 'branchEnvironmentWorkflow' done. reports: /Users/hayde/IdeaProjects/test_graph/test_graph/build/validation-reports/20260621-193637
+
+> Task :generatedEnvironmentRepositoryFixture
+[toolchain] jbang=0.137.0 (path: /opt/homebrew/bin/jbang)
+[toolchain] uv=0.11.19 (path: /opt/homebrew/bin/uv)
+testGraph 'generatedEnvironmentRepositoryFixture' run=20260621-193639 steps=1
+  plan[1/1] tg5.environment.repository.fixture.generated  [fixture, uv]  sources/Tg5GeneratedEnvironmentRepositoryFixture.py
+  [1/1] tg5.environment.repository.fixture.generated (uv)
+wrote /Users/hayde/IdeaProjects/test_graph/test_graph/build/validation-reports/20260621-193639/summary.json + /Users/hayde/IdeaProjects/test_graph/test_graph/build/validation-reports/20260621-193639/report.md
+testGraph 'generatedEnvironmentRepositoryFixture' done. reports: /Users/hayde/IdeaProjects/test_graph/test_graph/build/validation-reports/20260621-193639
+
+> Task :environmentRepositoryContract
+[toolchain] jbang=0.137.0 (path: /opt/homebrew/bin/jbang)
+[toolchain] uv=0.11.19 (path: /opt/homebrew/bin/uv)
+testGraph 'environmentRepositoryContract' run=20260621-193641 steps=5
+  plan[1/5] tg5.environment.repository.fixture.stable  [fixture, uv]  sources/Tg5StableEnvironmentRepositoryFixture.py
+  plan[2/5] tg5.environment.repository.provision  [testbed, uv]  sources/Tg5EnvironmentRepositoryProvision.py
+  plan[3/5] tg5.environment.context.env-key  [assertion, uv]  sources/Tg5EnvironmentContextEnvKey.py
+  plan[4/5] tg5.environment.context.env-all  [assertion, uv]  sources/Tg5EnvironmentContextEnvAll.py
+  plan[5/5] tg5.environment.repository.reuse  [testbed, uv]  sources/Tg5EnvironmentRepositoryReuse.py
+  [1/5] tg5.environment.repository.fixture.stable (uv)
+  [2/5] tg5.environment.repository.provision (uv)
+  [3/5] tg5.environment.context.env-key (uv)
+  [4/5] tg5.environment.context.env-all (uv)
+  [5/5] tg5.environment.repository.reuse (uv)
+wrote /Users/hayde/IdeaProjects/test_graph/test_graph/build/validation-reports/20260621-193641/summary.json + /Users/hayde/IdeaProjects/test_graph/test_graph/build/validation-reports/20260621-193641/report.md
+testGraph 'environmentRepositoryContract' done. reports: /Users/hayde/IdeaProjects/test_graph/test_graph/build/validation-reports/20260621-193641
+
+> Task :branchEnvironmentReset
+[toolchain] jbang=0.137.0 (path: /opt/homebrew/bin/jbang)
+[toolchain] uv=0.11.19 (path: /opt/homebrew/bin/uv)
+testGraph 'branchEnvironmentReset' run=20260621-193643 steps=5
+  plan[1/5] tg5.environment.repository.fixture.stable  [fixture, uv]  sources/Tg5StableEnvironmentRepositoryFixture.py
+  plan[2/5] tg5.environment.repository.provision  [testbed, uv]  sources/Tg5EnvironmentRepositoryProvision.py
+  plan[3/5] tg5.environment.repository.deploy  [action, uv]  sources/Tg5EnvironmentRepositoryDeploy.py
+  plan[4/5] tg5.environment.repository.reset  [action, uv]  sources/Tg5EnvironmentRepositoryReset.py
+  plan[5/5] tg5.environment.repository.reset.markers  [assertion, uv]  sources/Tg5BranchEnvironmentResetMarkers.py
+  [1/5] tg5.environment.repository.fixture.stable (uv)
+  [2/5] tg5.environment.repository.provision (uv)
+  [3/5] tg5.environment.repository.deploy (uv)
+  [4/5] tg5.environment.repository.reset (uv)
+  [5/5] tg5.environment.repository.reset.markers (uv)
+wrote /Users/hayde/IdeaProjects/test_graph/test_graph/build/validation-reports/20260621-193643/summary.json + /Users/hayde/IdeaProjects/test_graph/test_graph/build/validation-reports/20260621-193643/report.md
+testGraph 'branchEnvironmentReset' done. reports: /Users/hayde/IdeaProjects/test_graph/test_graph/build/validation-reports/20260621-193643
+
+> Task :branchEnvironmentMergeDestroy
+[toolchain] jbang=0.137.0 (path: /opt/homebrew/bin/jbang)
+[toolchain] uv=0.11.19 (path: /opt/homebrew/bin/uv)
+testGraph 'branchEnvironmentMergeDestroy' run=20260621-193645 steps=5
+  plan[1/5] tg5.environment.repository.fixture.stable  [fixture, uv]  sources/Tg5StableEnvironmentRepositoryFixture.py
+  plan[2/5] tg5.environment.repository.provision  [testbed, uv]  sources/Tg5EnvironmentRepositoryProvision.py
+  plan[3/5] tg5.environment.repository.deploy  [action, uv]  sources/Tg5EnvironmentRepositoryDeploy.py
+  plan[4/5] tg5.environment.repository.destroy  [action, uv]  sources/Tg5EnvironmentRepositoryDestroy.py
+  plan[5/5] tg5.environment.repository.destroy.markers  [assertion, uv]  sources/Tg5BranchEnvironmentDestroyMarkers.py
+  [1/5] tg5.environment.repository.fixture.stable (uv)
+  [2/5] tg5.environment.repository.provision (uv)
+  [3/5] tg5.environment.repository.deploy (uv)
+  [4/5] tg5.environment.repository.destroy (uv)
+  [5/5] tg5.environment.repository.destroy.markers (uv)
+wrote /Users/hayde/IdeaProjects/test_graph/test_graph/build/validation-reports/20260621-193645/summary.json + /Users/hayde/IdeaProjects/test_graph/test_graph/build/validation-reports/20260621-193645/report.md
+testGraph 'branchEnvironmentMergeDestroy' done. reports: /Users/hayde/IdeaProjects/test_graph/test_graph/build/validation-reports/20260621-193645
+
+> Task :validationRunAll
+
+[Incubating] Problems report is available at: file:///Users/hayde/IdeaProjects/test_graph/test_graph/build/reports/problems/problems-report.html
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 9.0.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/8.14.3/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUILD SUCCESSFUL in 2m 6s
+13 actionable tasks: 9 executed, 4 up-to-date

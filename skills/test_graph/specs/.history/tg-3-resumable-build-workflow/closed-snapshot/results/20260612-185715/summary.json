@@ -1,0 +1,15 @@
+{"runId":"20260612-185715","nodes":[{
+  "nodeId": "rerun.disabled.probe",
+  "status": "failed",
+  "startedAt": "2026-06-12T18:57:15.524345Z",
+  "endedAt": "2026-06-12T18:57:15.524603Z",
+  "assertions": [],
+  "artifacts": [],
+  "processes": [],
+  "metrics": {
+    "durationMs": 0
+  },
+  "logs": [],
+  "published": {},
+  "failureMessage": "forced rerun-disabled failure"
+,"executorStartedAt":"2026-06-12T18:57:15.478900Z","executorEndedAt":"2026-06-12T18:57:15.531353Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/rerun.disabled.probe.stdout.log","inputContextFile":"context/rerun.disabled.probe.input.json"}]}

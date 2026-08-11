@@ -1,0 +1,48 @@
+{
+  "nodeId": "tg5.environment.markers.present",
+  "status": "passed",
+  "startedAt": "2026-06-13T21:54:41.696669Z",
+  "endedAt": "2026-06-13T21:54:41.697142Z",
+  "assertions": [
+    {
+      "name": "environment_id_available_from_context",
+      "status": "passed"
+    },
+    {
+      "name": "provisioned_marker_exists_after_provision",
+      "status": "passed"
+    },
+    {
+      "name": "reset_marker_exists_after_reset",
+      "status": "passed"
+    },
+    {
+      "name": "reset_kept_provisioned_marker",
+      "status": "passed"
+    },
+    {
+      "name": "marker_environment_id_matches_context",
+      "status": "passed"
+    },
+    {
+      "name": "provisioned_marker_is_from_this_run",
+      "status": "passed"
+    }
+  ],
+  "artifacts": [
+    {
+      "type": "provisioned-marker",
+      "path": "/Users/hayde/IdeaProjects/test_graph/test_graph/build/testgraph-provisioning-state/provisioned/branchEnvironmentWorkflow__local__local-preview__local.json"
+    },
+    {
+      "type": "reset-marker",
+      "path": "/Users/hayde/IdeaProjects/test_graph/test_graph/build/testgraph-provisioning-state/reset/branchEnvironmentWorkflow__local__local-preview__local__20260613-215441__tg5.environment.reset.json"
+    }
+  ],
+  "processes": [],
+  "metrics": {
+    "durationMs": 0
+  },
+  "logs": [],
+  "published": {}
+,"executorStartedAt":"2026-06-13T21:54:41.654816Z","executorEndedAt":"2026-06-13T21:54:41.702861Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/tg5.environment.markers.present.stdout.log","inputContextFile":"context/tg5.environment.markers.present.input.json"}

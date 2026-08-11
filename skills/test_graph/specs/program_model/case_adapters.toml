@@ -1,0 +1,34 @@
+# Map generated program-model action labels to repository adapters when case
+# generation is enabled. Legacy adapters remain documented boundaries. Fresh
+# replay currently has a production batch evidence gate, not a per-transition
+# state projection, so its TLA actions are intentionally not mapped here.
+
+[adapters.ScaffoldProject]
+adapter = "specs.program_model.production_adapters:ScaffoldProjectAdapter"
+
+[adapters.PlanGraph]
+adapter = "specs.program_model.production_adapters:GraphPlanningAdapter"
+
+[adapters.RunNodePass]
+adapter = "specs.program_model.production_adapters:GraphRunAdapter"
+
+[adapters.RunNodeTerminal]
+adapter = "specs.program_model.production_adapters:GraphRunAdapter"
+
+[adapters.WriteInlineReport]
+adapter = "specs.program_model.production_adapters:ReportAdapter"
+
+[adapters.RebuildReport]
+adapter = "specs.program_model.production_adapters:ReportAdapter"
+
+[adapters.SetNodeRerunDisabled]
+adapter = "specs.program_model.production_adapters:RerunMetadataAdapter"
+
+[adapters.ResumeRunFromBuild]
+adapter = "specs.program_model.production_adapters:ResumeRunFromBuildAdapter"
+
+[adapters.RunOnlyNodeFromBuild]
+adapter = "specs.program_model.production_adapters:RunOnlyNodeFromBuildAdapter"
+
+[adapters.RerunGuidance]
+adapter = "specs.program_model.production_adapters:RerunGuidanceAdapter"

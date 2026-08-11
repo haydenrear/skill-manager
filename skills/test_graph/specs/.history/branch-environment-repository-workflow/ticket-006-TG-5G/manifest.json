@@ -1,0 +1,111 @@
+{
+  "commit_recommendation": {
+    "git_add": "git add specs/.history/branch-environment-repository-workflow/ticket-006-TG-5G",
+    "git_commit": "git commit -m 'record spec history for TG-5G'",
+    "message": "It is recommended to commit this history directory now: specs/.history/branch-environment-repository-workflow/ticket-006-TG-5G"
+  },
+  "created_at_utc": "2026-06-21T19:37:41.486667+00:00",
+  "entry_name": "ticket-006-TG-5G",
+  "git": {
+    "branch": "feature/tg-5-branch-environment-repositories",
+    "commit": "ba9c3de",
+    "inside_work_tree": "true"
+  },
+  "history_policy": "append-only by convention; existing entries are not overwritten and filesystem permissions remain git-friendly",
+  "kind": "ticket",
+  "results": [
+    {
+      "exists": true,
+      "role": "result",
+      "snapshot": "specs/.history/branch-environment-repository-workflow/ticket-006-TG-5G/results/tg5g-tlc.txt",
+      "source": "specs/results/tg5g-tlc.txt"
+    },
+    {
+      "exists": true,
+      "role": "result",
+      "snapshot": "specs/.history/branch-environment-repository-workflow/ticket-006-TG-5G/results/tg5g-pytest.txt",
+      "source": "specs/results/tg5g-pytest.txt"
+    },
+    {
+      "exists": true,
+      "role": "result",
+      "snapshot": "specs/.history/branch-environment-repository-workflow/ticket-006-TG-5G/results/tg5g-build-logic-test.txt",
+      "source": "specs/results/tg5g-build-logic-test.txt"
+    },
+    {
+      "exists": true,
+      "role": "result",
+      "snapshot": "specs/.history/branch-environment-repository-workflow/ticket-006-TG-5G/results/tg5g-run-all.txt",
+      "source": "specs/results/tg5g-run-all.txt"
+    }
+  ],
+  "schema_version": 1,
+  "snapshots": [
+    {
+      "exists": true,
+      "role": "program_model",
+      "snapshot": "specs/.history/branch-environment-repository-workflow/ticket-006-TG-5G/snapshots/program_model",
+      "source": "specs/program_model"
+    },
+    {
+      "exists": true,
+      "role": "desired_program_model",
+      "snapshot": "specs/.history/branch-environment-repository-workflow/ticket-006-TG-5G/snapshots/desired_program_model",
+      "source": "specs/desired_program_model"
+    },
+    {
+      "exists": true,
+      "role": "current",
+      "snapshot": "specs/.history/branch-environment-repository-workflow/ticket-006-TG-5G/snapshots/current",
+      "source": "specs/current"
+    }
+  ],
+  "spec_root": "specs",
+  "summary": "Created the deploy-cdc implementation issue from the finalized SDK environment repository contract.",
+  "ticket": {
+    "acceptance": {
+      "assertions": [
+        "The deploy-helm issue is not created until the SDK implementation and local generated Git fixture contract are complete.",
+        "The issue includes the finalized Git environment repository contract and required outputs.",
+        "The issue includes deploy-helm skill context, including k3d/k3s, registry, Helm chart, Kueue, and OpenTofu/CompuTeQ surfaces.",
+        "The issue asks deploy-helm to add local and AWS templates plus its own validation workflow, but the SDK remains coupled only to the Git repository contract."
+      ],
+      "commands": [
+        "gh issue create --repo haydenrear/deploy-cdc --title \"Add deploy-helm environment repository templates for test graph branch environments\" --body-file specs/desired_program_model/deploy_cdc_environment_repository_issue.md"
+      ],
+      "evidence": [
+        "specs/desired_program_model/deploy_cdc_environment_repository_issue.md",
+        "https://github.com/haydenrear/deploy-cdc/issues/6",
+        "cd specs/current && tlc2 -config MC.cfg TestGraph.tla",
+        "pytest specs/program_model/tests specs/current/tests specs/desired_program_model/tests",
+        "cd project_sdk_sources && ./gradlew --console=plain :build-logic:test",
+        "./scripts/run.py --all --test-graph-root test_graph"
+      ]
+    },
+    "current_increment": {
+      "adapters": [],
+      "graph_after_unit_pass": [],
+      "model_actions": [],
+      "model_state": [],
+      "unit_tests": []
+    },
+    "depends_on": [
+      "TG-5F"
+    ],
+    "desired_actions": [],
+    "id": "TG-5G",
+    "implementation_scope": [
+      "specs/desired_program_model/ticket_plan.yaml",
+      "specs/desired_program_model/deploy_cdc_environment_repository_issue.md",
+      "deploy-helm/deploy-cdc GitHub issue body, created only after TG-5F is done"
+    ],
+    "objective": "After the SDK implementation and generated Git fixture have proven the contract, create the deploy-helm/deploy-cdc repository issue that asks that repository to implement local and AWS environment repository templates. The issue should contain the finalized contract, command expectations, required outputs, reset/destroy semantics, and deploy-helm skill context learned during TG-5A through TG-5F.\n",
+    "status": "done",
+    "title": "Create the deploy-helm repository implementation ticket"
+  },
+  "ticket_id": "TG-5G",
+  "ticket_index": 6,
+  "ticket_plan": "specs/desired_program_model/ticket_plan.yaml",
+  "ticket_status": "done",
+  "workflow_name": "branch-environment-repository-workflow"
+}

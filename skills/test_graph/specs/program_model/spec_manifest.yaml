@@ -1,0 +1,399 @@
+module: TestGraph
+package: testgraph_program_cases
+
+status:
+  workflow: closed
+  workflow_name: environment-repository-scaffolding-polyglot-lifecycle
+  initial_ticket: TG-6
+  initial_ticket_title: "Environment repository scaffolding and polyglot lifecycle validation"
+  closed_history: ../.history/environment-repository-scaffolding-polyglot-lifecycle/closed-snapshot
+  relation_to_program_model: accepted_program_model
+  relation_to_current: converged_and_promoted
+  current_model_rule: whole_program_working_copy_not_ticket_projection
+  test_modeling_rule: do_not_model_tests_or_validation_harnesses_as_program_behavior
+  updated: "2026-07-22"
+  summary:
+    desired_model_scaffolded: true
+    ticket_plan_scaffolded: true
+    current_model_scaffolded: true
+    generated_cases: bounded_replay_configuration_ready
+    adapters: closed_fresh_replay_batch_evidence_gate_plus_documented_legacy_boundaries
+  done:
+    - Baseline full test graph passed before opening TG-6.
+    - Gaps identified: env-repo graph coverage is uv/Python only, SKILL.md lacks env-repo routing, no dedicated env-repos reference exists, and scaffold-tf-env.py/scaffold-env.py do not exist yet.
+    - TG-6A documented the environment repository contract, local k3d setup, Git fixture policy, scaffold script expectations, and required local/GitHub Actions/AWS graph coverage.
+    - TG-6B added scaffold-tf-env.py, scaffold-env.py, target/backend OpenTofu variable propagation, and local/GitHub Actions/AWS scaffold graphs.
+    - TG-6C added shared lifecycle node helpers/templates for Python and Java with uv/JBang test graph coverage.
+    - TG-6D added Java/JBang environment repository provision and context projection parity graph coverage.
+    - TG-6E added local lifecycle validation graphs for missing provision, existing deploy reuse, reset, skip-destroy, and explicit destroy.
+    - TG-6F added GitHub Actions and guarded AWS lifecycle validation graphs with uv and JBang assertions for missing provision, reuse, reset, skip-destroy, explicit destroy, and no-cloud AWS guard behavior.
+    - TG-6 desired/current model converged and was promoted into specs/program_model.
+    - Fresh full, resume-tail, and run-only attempts now have identities distinct from graph identity and never reuse the source report directory.
+    - Replay attempts preserve an immutable source-attempt relation and use one verified in-memory source snapshot while emitting attempt-local evidence; downstream execution and reporting never reopen source evidence paths.
+    - Inline and manual reports derive completeness from each attempt's immutable expected scope, observed envelopes, canonical saved input contexts, and a closure-v2 match against current evidence, so missing, stale, or partial evidence cannot regenerate green.
+    - Replay selection requires closure-v2 terminal evidence bound to the raw scope, raw W3C carrier, and exact present context/envelope path-to-SHA-256 maps; active, changed, added, removed, or symlinked evidence fails closed before acquisition.
+    - Contextual-gold validation reconstructs each node's exact ordered published-data prefix and compares replay selection with the captured source snapshot in raw, digest, and strict semantic form; replay sources must be full non-replay attempts with an exact full-plan match.
+    - Closure v2 detects accidental and protocol-level source mutation under an application-owned closure trust boundary. It does not authenticate against an adversarial filesystem owner able to rewrite both evidence and closure; that requires an external signature, MAC, or WORM anchor.
+    - The fresh-replay production adapter and node-runtime launchers use macOS/Linux process groups plus bounded ProcessHandle observation to reap surviving descendants on timeout, interruption, or nominal launcher exit. Reaped-orphan exit 125 is typed closable ERRORED evidence; exit 124 or inventory overflow withholds closure. Perl core POSIX and Time::HiRes are required.
+    - Report parsing streams closure acquisition, caps aggregate envelope and context bytes at 16 MiB each, and caps the aggregate JSON inventory at 500,000 structural tokens.
+  completed_slices:
+    - tg6a_environment_repository_reference_landed
+    - tg6b_environment_repository_scaffolding_landed
+    - tg6c_lifecycle_node_templates_landed
+    - tg6d_jbang_environment_context_landed
+    - tg6e_local_lifecycle_validation_landed
+    - tg6f_guarded_lifecycle_validation_landed
+    - fresh_replay_attempt_semantics_modeled
+    - fresh_replay_production_batch_evidence_gate_enabled
+    - report_context_completeness_refinement_satisfied
+    - replay_source_closure_v2_focused_validation_passed
+    - report_context_provenance_refinement_satisfied
+    - production_process_tree_reaping_refinement_satisfied
+  accepted_baseline:
+    workflow_name: branch_environment_repository_workflow
+    initial_ticket: TG-5
+    issue: https://github.com/haydenrear/deploy-cdc/issues/6
+    carried_forward_state_fields:
+      - input_contexts
+      - rerunnable_nodes
+      - rerun_guidance
+      - resumed_nodes
+      - single_node_reruns
+      - side_effect_runtime_configured
+      - provisioning_state_configured
+      - feature_branches
+      - environment_repo_configured
+      - branch_environment_specs
+      - provisioned_branch_environments
+      - reused_branch_environments
+      - reset_branch_environments
+      - deployed_branch_environments
+      - propagated_environment_contexts
+      - environment_context_keys
+      - merge_destroy_requested
+      - destroy_authorized_environments
+      - destroyed_branch_environments
+    carried_forward_adapters:
+      - RerunGuidanceAdapter
+      - EnvironmentRepositoryContractAdapter
+      - GeneratedGitEnvironmentRepositoryFixtureAdapter
+      - EnvironmentRepositoryAdapter
+      - BranchEnvironmentLifecycleAdapter
+    carried_forward_validation:
+      - deployCdcIssueContract
+  pending:
+    - Add executable adapter mappings for the remaining environment repository scaffolding and lifecycle boundaries in a future workflow.
+    - Expose a transition-specific production state projection before mapping fresh replay TLA actions as executable refinement adapters; the current Kotlin suite is a batch evidence gate only.
+  baseline_validation:
+    graph:
+      - ./scripts/run.py --all --test-graph-root test_graph
+      - ./scripts/run.py environmentRepositoryDocumentation --test-graph-root test_graph
+      - ./scripts/run.py environmentRepositoryScaffoldLocal --test-graph-root test_graph
+      - ./scripts/run.py environmentRepositoryScaffoldGithubAction --test-graph-root test_graph
+      - ./scripts/run.py environmentRepositoryScaffoldAws --test-graph-root test_graph
+    evidence:
+      - "BUILD SUCCESSFUL in 2m 16s on 2026-06-27."
+      - "All current environment repository lifecycle nodes in test_graph/build.gradle.kts are uv/Python nodes."
+
+source_model:
+  program_model_manifest: ../program_model/spec_manifest.yaml
+  program_model_module: ../program_model/TestGraph.tla
+  baseline_package: testgraph_program_cases
+
+case_codegen:
+  style: explicit_transition_cases
+  generation_status: replay_configuration_validated
+  bounded_configuration: Replay.cfg
+
+state_fields:
+  - name: environment_repository_scaffolded
+    purpose: Whether a starter environment repository can be generated as a Git-ready OpenTofu contract.
+  - name: scaffolded_environment_templates
+    purpose: Local, AWS, and GitHub Actions target/backend templates added to an environment repository.
+  - name: scaffolded_lifecycle_node_templates
+    purpose: Deploy, reset, and delete cluster node templates generated for Python and Java runtimes.
+  - name: runtime_environment_context_verified
+    purpose: Node runtimes proven to receive environment repository context and projected env vars.
+  - name: aws_execution_guarded
+    purpose: AWS branch environments whose execution was explicitly selected and credential-gated.
+  - name: skipped_reset_environments
+    purpose: Environments where reset skipped because the cluster was newly provisioned or already reset.
+  - name: skipped_destroy_environments
+    purpose: Environments intentionally kept alive for branch reuse instead of being destroyed.
+  - name: allocated_attempts
+    purpose: Bounded run-attempt identities allocated independently of graph identity.
+  - name: attempt_source
+    purpose: Immutable source-attempt relation for replay provenance; full attempts use NoAttempt.
+  - name: attempt_mode
+    purpose: Full, selected-tail resume, or selected-singleton run-only execution mode.
+  - name: attempt_plan
+    purpose: Immutable expected execution sequence for one attempt.
+  - name: attempt_input_context
+    purpose: Per-attempt, per-node saved input context represented as an exact ordered sequence of contextual-gold item fingerprints, with replay seeded from one acquired source snapshot.
+  - name: attempt_envelopes
+    purpose: Canonical evidence emitted only inside one attempt's execution scope.
+  - name: attempt_trace
+    purpose: Attempt trace identity; replay attempts continue their source trace and carrier.
+  - name: attempt_report_complete
+    purpose: Truthful completeness derived from expected scope, envelopes, and saved contexts.
+  - name: attempt_closure_fingerprint
+    purpose: Closure-v2 fingerprint binding exact scope, carrier, and present context/envelope evidence maps for a closed attempt.
+  - name: attempt_evidence_tampered
+    purpose: Abstract external content/add/remove mutation after closure, used to prove acquisition fails when the current evidence no longer matches the closure.
+  - name: acquired_replay_context
+    purpose: Immutable exact ordered contextual-gold value captured once after successful closure validation and used without later source-path reads.
+
+actions:
+  - ScaffoldEnvironmentRepository
+  - ScaffoldEnvironmentTemplate
+  - ScaffoldLifecycleNodeTemplate
+  - VerifyEnvironmentContextRuntime
+  - GuardAwsBranchEnvironment
+  - SkipBranchEnvironmentReset
+  - SkipBranchEnvironmentDestroy
+  - ProvisionBranchEnvironment
+  - ReuseBranchEnvironment
+  - ResetBranchEnvironment
+  - RequestMergedBranchDestroy
+  - DestroyMergedBranchEnvironment
+  - PrepareReplayGraph
+  - StartFullAttempt
+  - StartReplayAttempt
+  - RunAttemptNodePass
+  - RunAttemptNodeTerminal
+  - FinishAttemptSuccess
+  - PublishAttemptClosure
+  - AcquireReplaySource
+  - TamperClosedAttemptEvidence
+  - RejectTamperedReplaySource
+  - WriteInlineAttemptReport
+  - RegenerateAttemptReport
+
+invariants:
+  - EnvironmentTemplatesRequireRepositoryScaffold
+  - LifecycleNodeTemplatesRequireRepositoryScaffold
+  - AwsProvisioningRequiresExplicitGuard
+  - SkippedResetEnvironmentsRemainProvisioned
+  - SkippedDestroyEnvironmentsRemainActive
+  - RuntimeContextVerificationIsTyped
+  - AttemptIdentityIsGraphScoped
+  - ReplayScopeMatchesMode
+  - ReplaySourceAttemptsAreClosed
+  - ReplayTraceCarrierContinuity
+  - CarrierIdentifiesOneTrace
+  - FullAttemptsMintIndependentTraceCarriers
+  - AttemptEvidenceIsScoped
+  - AttemptContextIsAttemptLocal
+  - AttemptClosuresBindExactEvidence
+  - TamperedUnacquiredSourcesFailValidation
+  - AcquiredReplaySnapshotsAreClosureBound
+  - AttemptEnvelopeTraceContinuity
+  - AttemptReportsAreTruthful
+  - IncompleteAttemptReportsNeverPass
+  - ClosedEvidenceBindingsAndAcquiredSnapshotsAreImmutable
+
+ports:
+  TestGraphProgramPort:
+    new_methods:
+      scaffold_environment_repository:
+        command: ScaffoldEnvironmentRepository
+        result: WorkflowResult
+      scaffold_environment_template:
+        command: ScaffoldEnvironmentTemplate
+        result: WorkflowResult
+      scaffold_lifecycle_node_template:
+        command: ScaffoldLifecycleNodeTemplate
+        result: WorkflowResult
+      verify_environment_context_runtime:
+        command: VerifyEnvironmentContextRuntime
+        result: WorkflowResult
+      guard_aws_branch_environment:
+        command: GuardAwsBranchEnvironment
+        result: WorkflowResult
+      skip_branch_environment_reset:
+        command: SkipBranchEnvironmentReset
+        result: WorkflowResult
+      skip_branch_environment_destroy:
+        command: SkipBranchEnvironmentDestroy
+        result: WorkflowResult
+      start_full_attempt:
+        command: StartFullAttempt
+        result: WorkflowResult
+      start_replay_attempt:
+        command: StartReplayAttempt
+        result: WorkflowResult
+      run_attempt_node_pass:
+        command: RunAttemptNodePass
+        result: NodeRunResult
+      run_attempt_node_terminal:
+        command: RunAttemptNodeTerminal
+        result: NodeRunResult
+      finish_attempt_success:
+        command: FinishAttemptSuccess
+        result: WorkflowResult
+      publish_attempt_closure:
+        command: PublishAttemptClosure
+        result: WorkflowResult
+      acquire_replay_source:
+        command: AcquireReplaySource
+        result: WorkflowResult
+      tamper_closed_attempt_evidence:
+        command: TamperClosedAttemptEvidence
+        result: WorkflowResult
+      reject_tampered_replay_source:
+        command: RejectTamperedReplaySource
+        result: WorkflowResult
+      write_inline_attempt_report:
+        command: WriteInlineAttemptReport
+        result: WorkflowResult
+      regenerate_attempt_report:
+        command: RegenerateAttemptReport
+        result: WorkflowResult
+
+adapters: case_adapters.toml
+adapter_plan:
+  desired_adapters:
+    - EnvironmentRepositoryReferenceAdapter
+    - EnvironmentRepositoryScaffoldAdapter
+    - EnvironmentTemplateScaffoldAdapter
+    - ClusterLifecycleNodeTemplateAdapter
+    - JBangEnvironmentContextProjectionAdapter
+    - LocalLifecycleGraphAdapter
+    - AwsLifecycleGraphAdapter
+    - FreshReplayTransitionAdapter
+  executable_adapters: []
+  validation_evidence_adapters:
+    - FreshReplayEvidenceGateAdapter
+  current_status: fresh_replay_production_batch_evidence_gate_enabled
+  conformance_status: transition_refinement_pending
+
+refinement_evidence:
+  report_context_completeness:
+    status: implementation_complete_full_validation_passed
+    model_contract: >
+      A complete attempt report has exactly one saved input-context snapshot
+      for every expected node envelope. This is contextual-gold evidence, not
+      optional report decoration.
+    production_refinement: >
+      RunReportWriter closure v2 binds the raw execution scope, raw trace
+      carrier, and exact sorted present context/<nodeId>.input.json and
+      envelope/<nodeId>.json path-to-SHA-256 maps.
+      Envelope bytes must also satisfy the closed canonical v1 schema through
+      one shared validator at executor publication, closure publication/source
+      acquisition, and report regeneration. Unknown extensions, wrong nested
+      types or pointers, and passed envelopes with failed assertions fail
+      closed instead of becoming replay or green-report evidence.
+      Every regenerated report revalidates closure v2 against current scope,
+      carrier, context, and envelope evidence; a missing or mismatched closure
+      is diagnostic ERRORED. Replay acquisition accepts only full non-replay
+      sources whose complete ordered plan matches the current plan and whose
+      selected context is the exact ordered current-plan prefix.
+      Replay acquisition performs bounded no-follow reads once, rejects digest
+      or exact-file-set mismatches, retains only the selected ordered context
+      and carrier, and threads that immutable value through observability,
+      execution, and reporting. Target execution scope v3 records the source
+      closure and selected-context digests so manual report regeneration never
+      reopens the source. This integrity claim assumes the application-owned
+      closure is trusted; an adversarial filesystem owner who can rewrite both
+      evidence and closure is outside the boundary absent an external anchor.
+      Closed-evidence acquisition is streaming and retains only the selected
+      replay context plus digest inventories. Report retention is capped at 16
+      MiB each for aggregate envelope/context bytes and 500,000 aggregate JSON
+      structural tokens.
+    runtime_requirements:
+      platforms: [macOS, Linux]
+      commands: [perl]
+      perl_core_modules: [POSIX, "Time::HiRes"]
+    planned_runtime_test_selectors:
+      - com.hayden.testgraphsdk.exec.ContextSerdeTest
+      - com.hayden.testgraphsdk.exec.PlanExecutorResultIntegrityTest
+      - com.hayden.testgraphsdk.exec.PlanExecutorResumeHarnessTest
+      - com.hayden.testgraphsdk.exec.GraphObservabilityTest
+      - com.hayden.testgraphsdk.exec.ExecutorsProcessTreeTest
+      - com.hayden.testgraphsdk.tasks.RunReportWriterTraceTest
+    focused_runtime_validation: >
+      Fresh 2026-07-22 bounded full Gradle run passed 124/124 tests with one
+      worker, -Xmx768m, and 384 MiB metaspace. This includes the six listed
+      selectors plus supervisor-status, report pair-publication, replay-root,
+      and JVM-option-file regressions. Machine-readable evidence:
+      project_sdk_sources/build-logic/build/test-results/test/.
+    focused_python_validation: >
+      Fresh full locked-environment pytest run passed 54 tests and 44 subtests
+      covering replay model structure, production adapter cleanup, replay
+      harness process ownership, resumable workflow, and CLI common helpers.
+    focused_model_validation: >
+      MC.cfg and Replay.cfg completed breadth-first TLC exploration with one
+      worker and a 768 MiB heap. MC.cfg generated 6,653,769 states / 472,400
+      distinct at depth 36; Replay.cfg generated 12,700 / 3,748 at depth 19.
+      Both finished with zero states left and no errors.
+    test_graph_contract:
+      node_ids:
+        - self.rerun.graph.jbang
+        - self.rerun.graph.uv
+        - self.run.only.jbang
+        - self.run.only.uv
+      lifecycle_tests: passed fresh post-hardening execution
+      authorized_canary:
+        rerunGraphJbang: 20260722-121446
+        rerunGraphUv: 20260722-121552
+        runOnlyJbang: 20260722-121714
+        runOnlyUv: 20260722-121815
+
+validation_plan:
+  unit:
+    - ./gradlew --console=plain :build-logic:test
+    - pytest --import-mode=importlib specs/program_model/tests
+  tlc:
+    - cd specs/program_model && tlc2 -workers 1 -config MC.cfg TestGraph.tla
+    - cd specs/program_model && tlc2 -workers 1 -config Replay.cfg TestGraph.tla
+  graph:
+    - ./scripts/run.py environmentRepositoryDocumentation --test-graph-root test_graph
+    - ./scripts/run.py environmentRepositoryScaffoldLocal --test-graph-root test_graph
+    - ./scripts/run.py environmentRepositoryScaffoldGithubAction --test-graph-root test_graph
+    - ./scripts/run.py environmentRepositoryScaffoldAws --test-graph-root test_graph
+    - ./scripts/run.py environmentLifecycleNodeTemplates --test-graph-root test_graph
+    - ./scripts/run.py environmentRepositoryContractJbang --test-graph-root test_graph
+    - ./scripts/run.py environmentRepositoryLocalLifecycle --test-graph-root test_graph
+    - ./scripts/run.py environmentRepositoryLocalLifecycleDestroy --test-graph-root test_graph
+    - TEST_GRAPH_DESTROY_BRANCH_ENVIRONMENT=true ./scripts/run.py environmentRepositoryLocalLifecycleDestroy --test-graph-root test_graph
+    - ./scripts/run.py environmentRepositoryGithubActionLifecycle --test-graph-root test_graph
+    - ./scripts/run.py environmentRepositoryGithubActionLifecycleDestroy --test-graph-root test_graph
+    - TEST_GRAPH_DESTROY_BRANCH_ENVIRONMENT=true ./scripts/run.py environmentRepositoryGithubActionLifecycleDestroy --test-graph-root test_graph
+    - ./scripts/run.py environmentRepositoryAwsLifecycle --test-graph-root test_graph
+    - ./scripts/run.py environmentRepositoryAwsLifecycleDestroy --test-graph-root test_graph
+    - TEST_GRAPH_RUN_AWS_LIFECYCLE=true AWS_PROFILE=test ./scripts/run.py environmentRepositoryAwsLifecycle --test-graph-root test_graph
+    - TEST_GRAPH_RUN_AWS_LIFECYCLE=true AWS_PROFILE=test TEST_GRAPH_DESTROY_BRANCH_ENVIRONMENT=true ./scripts/run.py environmentRepositoryAwsLifecycleDestroy --test-graph-root test_graph
+    - ./scripts/run.py rerunGraphJbang --test-graph-root test_graph
+    - ./scripts/run.py rerunGraphUv --test-graph-root test_graph
+    - ./scripts/run.py runOnlyJbang --test-graph-root test_graph
+    - ./scripts/run.py runOnlyUv --test-graph-root test_graph
+    - ./scripts/run.py --all --test-graph-root test_graph
+
+notes:
+  package_from_program_model: testgraph_program_cases
+  finite_model_scope: >
+    The desired MC.cfg uses a single aws-preview target for TLC tractability
+    and to exercise explicit AWS guard semantics. Local and GitHub Actions
+    targets remain part of the implementation contract and graph acceptance
+    criteria.
+  replay_finite_model_scope: >
+    Replay.cfg uses one graph with an ordered three-node plan, two bounded
+    attempt identities, and one carrier/trace lineage. It focuses replay on
+    the middle node so both resume-tail and run-only scopes remain reachable,
+    restricts replay sources to full attempts, while allowing either report
+    writer to emit a diagnostic ERRORED view before closure. PASS and complete
+    remain closure-gated. It models ordered
+    contextual-gold item fingerprints, closure-v2 exact evidence maps,
+    successful one-time acquisition, pre-acquisition tamper rejection, and
+    post-acquisition snapshot stability without multiplying the legacy
+    environment lifecycle state space.
+  replay_source_integrity_scope: >
+    ClosedEvidenceBindingsAndAcquiredSnapshotsAreImmutable covers the closure
+    fingerprint and captured context/carrier values. External raw evidence
+    mutation is representable and prevents a new acquisition, while an already
+    acquired snapshot remains stable. Closure authenticity against an owner
+    capable of rewriting the closure itself requires an external trust anchor.
+  deployment_targets:
+    local: Local k3d-compatible OpenTofu template and local execution.
+    github_action: GitHub Actions oriented local-preview template and workflow credentials/context projection.
+    aws: AWS-preview template guarded by explicit selection and credentials.

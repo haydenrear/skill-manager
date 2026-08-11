@@ -15,3 +15,34 @@ project_sdk_sources/sdk/python/**/*.egg-info/
 project_sdk_sources/sdk/python/dist/
 project_sdk_sources/sdk/python/build/
 **/__pycache__/**
+
+# TLA+/TLC model-checker runtime state.
+specs/**/states/
+states/
+*.st
+*.fp
+*.chkpt
+*.chkpt.*
+
+# Local infrastructure state.
+**/.terraform/
+*.tfstate
+*.tfstate.*
+
+# This checkout's own Skill Manager home and the three agent homes beside it.
+#
+# Created by git-integration-repo's scripts/bootstrap-home.sh, never committed:
+# a home is machine-local state (absolute paths in home.runtime.json, a pinned
+# CLI, installed unit trees), and committing one would hand every other checkout
+# this machine's paths.
+#
+# These live in the CONSTITUENT rather than in the integration parent's root
+# .gitignore because they are this repository's own concern: `test-graph` is a
+# standalone repo with its own remote, and an agent that clones it directly
+# still needs `bootstrap-home.sh --root .` to be safe. INTEGRATION.md rule 2
+# forbids the reverse — putting a PARENT-only concern inside a constituent —
+# which is not what these are.
+.skill-manager/
+.claude/
+.codex/
+.gemini/

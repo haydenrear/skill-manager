@@ -1,0 +1,1 @@
+{"items":[{"nodeId":"tg5.environment.provision","data":{"environmentId":"branchEnvironmentWorkflow__local__local-preview__local","stateDir":"/Users/hayde/IdeaProjects/test_graph/test_graph/build/testgraph-provisioning-state"}},{"nodeId":"tg5.environment.reset","data":{}},{"nodeId":"tg5.environment.markers.present","data":{}}]}

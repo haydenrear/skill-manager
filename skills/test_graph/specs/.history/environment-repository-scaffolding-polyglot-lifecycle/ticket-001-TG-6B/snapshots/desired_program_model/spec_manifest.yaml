@@ -1,0 +1,188 @@
+module: TestGraph
+package: desired_program_cases
+
+status:
+  workflow: ticket
+  workflow_name: environment-repository-scaffolding-polyglot-lifecycle
+  initial_ticket: TG-6
+  initial_ticket_title: "Environment repository scaffolding and polyglot lifecycle validation"
+  ticket_plan: ticket_plan.yaml
+  relation_to_program_model: desired_successor_of_accepted_program_model
+  relation_to_current: target_state_for_specs_current_to_converge_to
+  current_model_rule: whole_program_working_copy_not_ticket_projection
+  test_modeling_rule: do_not_model_tests_or_validation_harnesses_as_program_behavior
+  updated: "2026-06-28"
+  summary:
+    desired_model_scaffolded: true
+    ticket_plan_scaffolded: true
+    current_model_scaffolded: true
+    generated_cases: pending
+    adapters: documented_boundaries_only
+  done:
+    - Baseline full test graph passed before opening TG-6.
+    - Gaps identified: env-repo graph coverage is uv/Python only, SKILL.md lacks env-repo routing, no dedicated env-repos reference exists, and scaffold-tf-env.py/scaffold-env.py do not exist yet.
+    - TG-6A documented the environment repository contract, local k3d setup, Git fixture policy, scaffold script expectations, and required local/GitHub Actions/AWS graph coverage.
+    - TG-6B added scaffold-tf-env.py, scaffold-env.py, target/backend OpenTofu variable propagation, and local/GitHub Actions/AWS scaffold graphs.
+  accepted_baseline:
+    workflow_name: branch_environment_repository_workflow
+    initial_ticket: TG-5
+    issue: https://github.com/haydenrear/deploy-cdc/issues/6
+    carried_forward_state_fields:
+      - input_contexts
+      - rerunnable_nodes
+      - rerun_guidance
+      - resumed_nodes
+      - single_node_reruns
+      - side_effect_runtime_configured
+      - provisioning_state_configured
+      - feature_branches
+      - environment_repo_configured
+      - branch_environment_specs
+      - provisioned_branch_environments
+      - reused_branch_environments
+      - reset_branch_environments
+      - deployed_branch_environments
+      - propagated_environment_contexts
+      - environment_context_keys
+      - merge_destroy_requested
+      - destroy_authorized_environments
+      - destroyed_branch_environments
+    carried_forward_adapters:
+      - RerunGuidanceAdapter
+      - EnvironmentRepositoryContractAdapter
+      - GeneratedGitEnvironmentRepositoryFixtureAdapter
+      - EnvironmentRepositoryAdapter
+      - BranchEnvironmentLifecycleAdapter
+    carried_forward_validation:
+      - deployCdcIssueContract
+  pending:
+    - TG-6C add shared lifecycle node templates for Python and Java.
+    - TG-6D add Java/JBang environment repository context parity graph.
+    - TG-6E add local lifecycle validation graph.
+    - TG-6F add guarded GitHub Actions and AWS lifecycle validation graphs.
+    - Close each ticket with spec-double-compiler history as it lands; after the final ticket makes current equal desired, close/promote the whole workflow as part of that final ticket closeout.
+  baseline_validation:
+    graph:
+      - ./scripts/run.py --all --test-graph-root test_graph
+      - ./scripts/run.py environmentRepositoryDocumentation --test-graph-root test_graph
+      - ./scripts/run.py environmentRepositoryScaffoldLocal --test-graph-root test_graph
+      - ./scripts/run.py environmentRepositoryScaffoldGithubAction --test-graph-root test_graph
+      - ./scripts/run.py environmentRepositoryScaffoldAws --test-graph-root test_graph
+    evidence:
+      - "BUILD SUCCESSFUL in 2m 16s on 2026-06-27."
+      - "All current environment repository lifecycle nodes in test_graph/build.gradle.kts are uv/Python nodes."
+
+source_model:
+  program_model_manifest: ../program_model/spec_manifest.yaml
+  program_model_module: ../program_model/TestGraph.tla
+  baseline_package: testgraph_program_cases
+
+case_codegen:
+  style: explicit_transition_cases
+  generation_status: planned
+
+state_fields:
+  - name: environment_repository_scaffolded
+    purpose: Whether a starter environment repository can be generated as a Git-ready OpenTofu contract.
+  - name: scaffolded_environment_templates
+    purpose: Local, AWS, and GitHub Actions target/backend templates added to an environment repository.
+  - name: scaffolded_lifecycle_node_templates
+    purpose: Deploy, reset, and delete cluster node templates generated for Python and Java runtimes.
+  - name: runtime_environment_context_verified
+    purpose: Node runtimes proven to receive environment repository context and projected env vars.
+  - name: aws_execution_guarded
+    purpose: AWS branch environments whose execution was explicitly selected and credential-gated.
+  - name: skipped_reset_environments
+    purpose: Environments where reset skipped because the cluster was newly provisioned or already reset.
+  - name: skipped_destroy_environments
+    purpose: Environments intentionally kept alive for branch reuse instead of being destroyed.
+
+actions:
+  - ScaffoldEnvironmentRepository
+  - ScaffoldEnvironmentTemplate
+  - ScaffoldLifecycleNodeTemplate
+  - VerifyEnvironmentContextRuntime
+  - GuardAwsBranchEnvironment
+  - SkipBranchEnvironmentReset
+  - SkipBranchEnvironmentDestroy
+  - ProvisionBranchEnvironment
+  - ReuseBranchEnvironment
+  - ResetBranchEnvironment
+  - RequestMergedBranchDestroy
+  - DestroyMergedBranchEnvironment
+
+invariants:
+  - EnvironmentTemplatesRequireRepositoryScaffold
+  - LifecycleNodeTemplatesRequireRepositoryScaffold
+  - AwsProvisioningRequiresExplicitGuard
+  - SkippedResetEnvironmentsRemainProvisioned
+  - SkippedDestroyEnvironmentsRemainActive
+  - RuntimeContextVerificationIsTyped
+
+ports:
+  TestGraphProgramPort:
+    new_methods:
+      scaffold_environment_repository:
+        command: ScaffoldEnvironmentRepository
+        result: WorkflowResult
+      scaffold_environment_template:
+        command: ScaffoldEnvironmentTemplate
+        result: WorkflowResult
+      scaffold_lifecycle_node_template:
+        command: ScaffoldLifecycleNodeTemplate
+        result: WorkflowResult
+      verify_environment_context_runtime:
+        command: VerifyEnvironmentContextRuntime
+        result: WorkflowResult
+      guard_aws_branch_environment:
+        command: GuardAwsBranchEnvironment
+        result: WorkflowResult
+      skip_branch_environment_reset:
+        command: SkipBranchEnvironmentReset
+        result: WorkflowResult
+      skip_branch_environment_destroy:
+        command: SkipBranchEnvironmentDestroy
+        result: WorkflowResult
+
+adapters: case_adapters.toml
+adapter_plan:
+  desired_adapters:
+    - EnvironmentRepositoryReferenceAdapter
+    - EnvironmentRepositoryScaffoldAdapter
+    - EnvironmentTemplateScaffoldAdapter
+    - ClusterLifecycleNodeTemplateAdapter
+    - JBangEnvironmentContextProjectionAdapter
+    - LocalLifecycleGraphAdapter
+    - AwsLifecycleGraphAdapter
+  current_status: documented_boundaries_only
+
+validation_plan:
+  unit:
+    - ./gradlew --console=plain :build-logic:test
+    - pytest --import-mode=importlib specs/current/tests specs/desired_program_model/tests
+  tlc:
+    - cd specs/current && tlc2 -config MC.cfg TestGraph.tla
+    - cd specs/desired_program_model && tlc2 -config MC.cfg TestGraph.tla
+  graph:
+    - ./scripts/run.py environmentRepositoryDocumentation --test-graph-root test_graph
+    - ./scripts/run.py environmentRepositoryScaffoldLocal --test-graph-root test_graph
+    - ./scripts/run.py environmentRepositoryScaffoldGithubAction --test-graph-root test_graph
+    - ./scripts/run.py environmentRepositoryScaffoldAws --test-graph-root test_graph
+    - ./scripts/run.py environmentLifecycleNodeTemplates --test-graph-root test_graph
+    - ./scripts/run.py environmentRepositoryContractJbang --test-graph-root test_graph
+    - ./scripts/run.py environmentRepositoryLocalLifecycle --test-graph-root test_graph
+    - ./scripts/run.py environmentRepositoryGithubActionLifecycle --test-graph-root test_graph
+    - ./scripts/run.py environmentRepositoryAwsLifecycle --test-graph-root test_graph
+    - ./scripts/run.py --all --test-graph-root test_graph
+
+notes:
+  package_from_program_model: testgraph_program_cases
+  finite_model_scope: >
+    The desired MC.cfg uses a single aws-preview target for TLC tractability
+    and to exercise explicit AWS guard semantics. Local and GitHub Actions
+    targets remain part of the implementation contract and graph acceptance
+    criteria.
+  deployment_targets:
+    local: Local k3d-compatible OpenTofu template and local execution.
+    github_action: GitHub Actions oriented local-preview template and workflow credentials/context projection.
+    aws: AWS-preview template guarded by explicit selection and credentials.

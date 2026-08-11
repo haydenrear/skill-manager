@@ -1,0 +1,107 @@
+module: TestGraph
+package: current_program_cases
+
+status:
+  workflow: ticket
+  active_ticket: TG-6B
+  active_ticket_title: "Add environment repository scaffolding CLIs"
+  relation_to_program_model: starts_equivalent_then_advances_as_slices_land
+  relation_to_desired_program_model: implemented_prefix_of_desired_ticket_plan
+  current_model_rule: whole_program_working_copy_not_ticket_projection
+  test_modeling_rule: do_not_model_tests_or_validation_harnesses_as_program_behavior
+  updated: "2026-06-28"
+  current_slice:
+    name: TG-6B
+    status: scaffold_scripts_landed
+    refines:
+      - specs/program_model
+    implemented_actions:
+      - ScaffoldEnvironmentRepository
+      - ScaffoldEnvironmentTemplate
+    validation:
+      unit:
+        - pytest --import-mode=importlib specs/current/tests specs/desired_program_model/tests
+        - cd project_sdk_sources && ./gradlew --console=plain :build-logic:test
+      tlc:
+        - cd specs/current && tlc2 -config MC.cfg TestGraph.tla
+      graph:
+        - ./scripts/run.py environmentRepositoryDocumentation --test-graph-root test_graph
+        - ./scripts/run.py environmentRepositoryScaffoldLocal --test-graph-root test_graph
+        - ./scripts/run.py environmentRepositoryScaffoldGithubAction --test-graph-root test_graph
+        - ./scripts/run.py environmentRepositoryScaffoldAws --test-graph-root test_graph
+      evidence:
+        - references/environment-repositories.md is the authoritative environment repository contract reference.
+        - environmentRepositoryDocumentation validates SKILL routing, local k3d setup, Git fixture policy, scaffold script expectations, and required local/GitHub Actions/AWS graph coverage.
+        - TG-6B adds scaffold-tf-env.py and scaffold-env.py with local, local-github-action, and aws-preview target support.
+        - TG-6B current TLA adds ScaffoldEnvironmentRepository, ScaffoldEnvironmentTemplate, and EnvironmentTemplatesRequireRepositoryScaffold.
+        - TG-6B local scaffold graph consumes the newly scaffolded repository through the environment repository runtime.
+        - python -m py_compile passed for scaffold scripts, scaffold graph nodes, and branch_environment_harness.py on 2026-06-28.
+        - pytest --import-mode=importlib specs/current/tests specs/desired_program_model/tests passed with 30 tests on 2026-06-28.
+        - cd project_sdk_sources && ./gradlew --console=plain :build-logic:test passed on 2026-06-28.
+        - cd specs/current && tlc2 -config MC.cfg TestGraph.tla passed on 2026-06-28.
+        - cd specs/desired_program_model && tlc2 -config MC.cfg TestGraph.tla passed on 2026-06-28.
+        - ./scripts/discover.py environmentRepositoryScaffoldLocal --test-graph-root test_graph passed on 2026-06-28.
+        - ./scripts/discover.py environmentRepositoryScaffoldGithubAction --test-graph-root test_graph passed on 2026-06-28.
+        - ./scripts/discover.py environmentRepositoryScaffoldAws --test-graph-root test_graph passed on 2026-06-28.
+        - ./scripts/run.py environmentRepositoryDocumentation --test-graph-root test_graph passed with report test_graph/build/validation-reports/20260628-160846.
+        - ./scripts/run.py environmentRepositoryScaffoldLocal --test-graph-root test_graph passed with report test_graph/build/validation-reports/20260628-160658.
+        - ./scripts/run.py environmentRepositoryScaffoldGithubAction --test-graph-root test_graph passed with report test_graph/build/validation-reports/20260628-160719.
+        - ./scripts/run.py environmentRepositoryScaffoldAws --test-graph-root test_graph passed with report test_graph/build/validation-reports/20260628-160736.
+  next:
+    - Implement TG-6C shared lifecycle node templates for Python and Java.
+    - Preserve all existing specs/program_model state/actions unless production behavior changes them.
+    - Run TLC and adapter/unit tests before adding graph execution coverage.
+  accepted_baseline:
+    workflow_name: branch_environment_repository_workflow
+    initial_ticket: TG-5
+    issue: https://github.com/haydenrear/deploy-cdc/issues/6
+    carried_forward_state_fields:
+      - input_contexts
+      - rerunnable_nodes
+      - rerun_guidance
+      - resumed_nodes
+      - single_node_reruns
+      - side_effect_runtime_configured
+      - provisioning_state_configured
+      - feature_branches
+      - environment_repo_configured
+      - branch_environment_specs
+      - provisioned_branch_environments
+      - reused_branch_environments
+      - reset_branch_environments
+      - deployed_branch_environments
+      - propagated_environment_contexts
+      - environment_context_keys
+      - merge_destroy_requested
+      - destroy_authorized_environments
+      - destroyed_branch_environments
+    carried_forward_adapters:
+      - RerunGuidanceAdapter
+      - EnvironmentRepositoryContractAdapter
+      - GeneratedGitEnvironmentRepositoryFixtureAdapter
+      - EnvironmentRepositoryAdapter
+      - BranchEnvironmentLifecycleAdapter
+    carried_forward_validation:
+      - deployCdcIssueContract
+
+source_model:
+  program_model_manifest: ../program_model/spec_manifest.yaml
+  program_model_module: ../program_model/TestGraph.tla
+  desired_ticket_plan: ../desired_program_model/ticket_plan.yaml
+
+case_codegen:
+  style: explicit_transition_cases
+  generation_status: planned
+
+state_fields:
+  - name: environment_repository_scaffolded
+    purpose: Whether a starter environment repository can be generated as a Git-ready OpenTofu contract.
+  - name: scaffolded_environment_templates
+    purpose: Local, AWS, and GitHub Actions target/backend templates added to an environment repository.
+actions:
+  - ScaffoldEnvironmentRepository
+  - ScaffoldEnvironmentTemplate
+ports: {}
+adapters: case_adapters.toml
+notes:
+  package_from_program_model: testgraph_program_cases

@@ -1,0 +1,170 @@
+{
+  "commit_recommendation": {
+    "git_add": "git add specs/.history/tg-3-resumable-build-workflow/ticket-001-TG-3B",
+    "git_commit": "git commit -m 'record spec history for TG-3B'",
+    "message": "It is recommended to commit this history directory now: specs/.history/tg-3-resumable-build-workflow/ticket-001-TG-3B"
+  },
+  "created_at_utc": "2026-06-10T19:16:30.980898+00:00",
+  "entry_name": "ticket-001-TG-3B",
+  "git": {
+    "branch": "main",
+    "commit": "6b744d3",
+    "inside_work_tree": "true"
+  },
+  "history_policy": "append-only by convention; existing entries are not overwritten and filesystem permissions remain git-friendly",
+  "kind": "ticket",
+  "results": [
+    {
+      "exists": true,
+      "role": "result",
+      "snapshot": "specs/.history/tg-3-resumable-build-workflow/ticket-001-TG-3B/results/report.md",
+      "source": "project_sdk_sources/build/validation-reports/20260610-191451/report.md"
+    },
+    {
+      "exists": true,
+      "role": "result",
+      "snapshot": "specs/.history/tg-3-resumable-build-workflow/ticket-001-TG-3B/results/summary.json",
+      "source": "project_sdk_sources/build/validation-reports/20260610-191451/summary.json"
+    }
+  ],
+  "schema_version": 1,
+  "snapshots": [
+    {
+      "exists": true,
+      "role": "program_model",
+      "snapshot": "specs/.history/tg-3-resumable-build-workflow/ticket-001-TG-3B/snapshots/program_model",
+      "source": "specs/program_model"
+    },
+    {
+      "exists": true,
+      "role": "desired_program_model",
+      "snapshot": "specs/.history/tg-3-resumable-build-workflow/ticket-001-TG-3B/snapshots/desired_program_model",
+      "source": "specs/desired_program_model"
+    },
+    {
+      "exists": true,
+      "role": "current",
+      "snapshot": "specs/.history/tg-3-resumable-build-workflow/ticket-001-TG-3B/snapshots/current",
+      "source": "specs/current"
+    }
+  ],
+  "spec_root": "specs",
+  "summary": "Implemented rerun metadata defaults and opt-out describe coverage for TG-3B.",
+  "ticket": {
+    "acceptance": {
+      "assertions": [
+        "Describe output includes rerun metadata for Java and Python nodes.",
+        "Nodes default to rerun=true when the author does not specify the setting.",
+        "Documentation distinguishes rerun(true|false) from timeout retries."
+      ],
+      "commands": [
+        "cd specs/current && tlc2 -config MC.cfg TestGraph.tla",
+        "pytest specs/current/tests specs/desired_program_model/tests",
+        "./gradlew --console=plain :build-logic:compileKotlin",
+        "python scripts/discover.py --test-graph-root project_sdk_sources",
+        "python scripts/discover.py smoke --test-graph-root project_sdk_sources",
+        "python scripts/run.py --all --test-graph-root project_sdk_sources"
+      ],
+      "evidence": [
+        {
+          "command": "pytest specs/current/tests specs/desired_program_model/tests",
+          "last_run": "2026-06-10",
+          "status": "passed",
+          "tests": 9
+        },
+        {
+          "command": "cd specs/current && tlc2 -config MC.cfg TestGraph.tla",
+          "depth": 27,
+          "distinct_states": 1876369,
+          "last_run": "2026-06-10",
+          "states_generated": 35286803,
+          "status": "passed"
+        },
+        {
+          "command": "cd specs/desired_program_model && tlc2 -config MC.cfg TestGraph.tla",
+          "depth": 22,
+          "distinct_states": 6300,
+          "last_run": "2026-06-10",
+          "states_generated": 56387,
+          "status": "passed"
+        },
+        {
+          "command": "./gradlew --console=plain :build-logic:compileKotlin",
+          "last_run": "2026-06-10",
+          "status": "passed"
+        },
+        {
+          "command": "./scripts/discover.py --test-graph-root project_sdk_sources",
+          "graphs": [
+            "smoke"
+          ],
+          "last_run": "2026-06-10",
+          "status": "passed"
+        },
+        {
+          "command": "./scripts/discover.py smoke --test-graph-root project_sdk_sources",
+          "last_run": "2026-06-10",
+          "plan_steps": 6,
+          "status": "passed"
+        },
+        {
+          "command": "./scripts/run.py --all --test-graph-root project_sdk_sources",
+          "last_run": "2026-06-10",
+          "report": "project_sdk_sources/build/validation-reports/20260610-191451/report.md",
+          "run_id": "20260610-191451",
+          "status": "passed"
+        }
+      ]
+    },
+    "current_increment": {
+      "adapters": [
+        "RerunMetadataAdapter"
+      ],
+      "graph_after_unit_pass": [
+        "python scripts/discover.py --test-graph-root project_sdk_sources",
+        "python scripts/discover.py smoke --test-graph-root project_sdk_sources",
+        "python scripts/run.py --all --test-graph-root project_sdk_sources"
+      ],
+      "model_actions": [
+        "SetNodeRerunDisabled removes a node from rerunnable_nodes before describe."
+      ],
+      "model_state": [
+        "rerunnable_nodes defaults to SourceNodes."
+      ],
+      "unit_tests": [
+        "pytest specs/current/tests",
+        "cd specs/current && tlc2 -config MC.cfg TestGraph.tla"
+      ]
+    },
+    "depends_on": [
+      "TG-3A"
+    ],
+    "desired_actions": [
+      "SetNodeRerunDisabled"
+    ],
+    "desired_invariants": [
+      "RerunGuidanceOnlyForRerunnableFailures"
+    ],
+    "desired_state": [
+      "rerunnable_nodes"
+    ],
+    "id": "TG-3B",
+    "implementation_scope": [
+      "project_sdk_sources/sdk/java/src/main/java/com/hayden/testgraphsdk/sdk/NodeSpec.java",
+      "project_sdk_sources/sdk/python/src/testgraphsdk/node_spec.py",
+      "project_sdk_sources/build-logic/src/main/kotlin/com/hayden/testgraphsdk/ValidationNodeSpec.kt",
+      "project_sdk_sources/build-logic/src/main/kotlin/com/hayden/testgraphsdk/NodeDescribeLoader.kt",
+      "references/reference.md",
+      "templates/jbang-node.java.template",
+      "templates/uv-node.py.template"
+    ],
+    "objective": "Add NodeSpec.rerun(boolean) metadata, defaulting to true, and propagate it through describe output into ValidationNodeSpec.\n",
+    "status": "done",
+    "title": "Add node rerun metadata"
+  },
+  "ticket_id": "TG-3B",
+  "ticket_index": 1,
+  "ticket_plan": "specs/desired_program_model/ticket_plan.yaml",
+  "ticket_status": "done",
+  "workflow_name": "tg-3-resumable-build-workflow"
+}

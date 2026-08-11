@@ -1,0 +1,17 @@
+{"runId":"20260610-194751","nodes":[{
+  "nodeId" : "rerun.java.probe",
+  "status" : "passed",
+  "startedAt" : "2026-06-10T19:47:51.916524Z",
+  "endedAt" : "2026-06-10T19:47:51.916847Z",
+  "assertions" : [ ],
+  "artifacts" : [ ],
+  "processes" : [ ],
+  "metrics" : {
+    "durationMs" : 0
+  },
+  "logs" : [ ],
+  "published" : {
+    "rerun" : "false",
+    "runtime" : "java"
+  }
+,"executorStartedAt":"2026-06-10T19:47:51.430802Z","executorEndedAt":"2026-06-10T19:47:52.035716Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/rerun.java.probe.stdout.log","inputContextFile":"context/rerun.java.probe.input.json"}]}

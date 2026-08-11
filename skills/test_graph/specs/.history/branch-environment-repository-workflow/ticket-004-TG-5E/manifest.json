@@ -1,0 +1,167 @@
+{
+  "commit_recommendation": {
+    "git_add": "git add specs/.history/branch-environment-repository-workflow/ticket-004-TG-5E",
+    "git_commit": "git commit -m 'record spec history for TG-5E'",
+    "message": "It is recommended to commit this history directory now: specs/.history/branch-environment-repository-workflow/ticket-004-TG-5E"
+  },
+  "created_at_utc": "2026-06-21T18:46:55.231959+00:00",
+  "entry_name": "ticket-004-TG-5E",
+  "git": {
+    "branch": "feature/tg-5-branch-environment-repositories",
+    "commit": "29a7be3",
+    "inside_work_tree": "true"
+  },
+  "history_policy": "append-only by convention; existing entries are not overwritten and filesystem permissions remain git-friendly",
+  "kind": "ticket",
+  "results": [
+    {
+      "exists": true,
+      "role": "result",
+      "snapshot": "specs/.history/branch-environment-repository-workflow/ticket-004-TG-5E/results/tg5e-tlc.txt",
+      "source": "specs/results/tg5e-tlc.txt"
+    },
+    {
+      "exists": true,
+      "role": "result",
+      "snapshot": "specs/.history/branch-environment-repository-workflow/ticket-004-TG-5E/results/tg5e-pytest.txt",
+      "source": "specs/results/tg5e-pytest.txt"
+    },
+    {
+      "exists": true,
+      "role": "result",
+      "snapshot": "specs/.history/branch-environment-repository-workflow/ticket-004-TG-5E/results/tg5e-build-logic-test.txt",
+      "source": "specs/results/tg5e-build-logic-test.txt"
+    },
+    {
+      "exists": true,
+      "role": "result",
+      "snapshot": "specs/.history/branch-environment-repository-workflow/ticket-004-TG-5E/results/tg5e-py-compile.txt",
+      "source": "specs/results/tg5e-py-compile.txt"
+    },
+    {
+      "exists": true,
+      "role": "result",
+      "snapshot": "specs/.history/branch-environment-repository-workflow/ticket-004-TG-5E/results/tg5e-discover-environment-repository-contract.txt",
+      "source": "specs/results/tg5e-discover-environment-repository-contract.txt"
+    },
+    {
+      "exists": true,
+      "role": "result",
+      "snapshot": "specs/.history/branch-environment-repository-workflow/ticket-004-TG-5E/results/tg5e-run-environment-repository-contract.txt",
+      "source": "specs/results/tg5e-run-environment-repository-contract.txt"
+    },
+    {
+      "exists": true,
+      "role": "result",
+      "snapshot": "specs/.history/branch-environment-repository-workflow/ticket-004-TG-5E/results/tg5e-discover-all.txt",
+      "source": "specs/results/tg5e-discover-all.txt"
+    },
+    {
+      "exists": true,
+      "role": "result",
+      "snapshot": "specs/.history/branch-environment-repository-workflow/ticket-004-TG-5E/results/tg5e-run-all.txt",
+      "source": "specs/results/tg5e-run-all.txt"
+    }
+  ],
+  "schema_version": 1,
+  "snapshots": [
+    {
+      "exists": true,
+      "role": "program_model",
+      "snapshot": "specs/.history/branch-environment-repository-workflow/ticket-004-TG-5E/snapshots/program_model",
+      "source": "specs/program_model"
+    },
+    {
+      "exists": true,
+      "role": "desired_program_model",
+      "snapshot": "specs/.history/branch-environment-repository-workflow/ticket-004-TG-5E/snapshots/desired_program_model",
+      "source": "specs/desired_program_model"
+    },
+    {
+      "exists": true,
+      "role": "current",
+      "snapshot": "specs/.history/branch-environment-repository-workflow/ticket-004-TG-5E/snapshots/current",
+      "source": "specs/current"
+    }
+  ],
+  "spec_root": "specs",
+  "summary": "Implemented branch-scoped environment repository execution, reuse, and env context propagation for test graph deployments.",
+  "ticket": {
+    "acceptance": {
+      "assertions": [
+        "A feature branch gets one reusable branch environment id per selected target/backend.",
+        "If the branch environment already exists, the SDK reuses it instead of reprovisioning.",
+        "env:[key] propagates exactly the selected context key.",
+        "env:[*] propagates all eligible returned context keys.",
+        "Kubernetes/Helm nodes receive KUBECONFIG and KUBECONTEXT from provisioning context unless explicitly opted out.",
+        "GitHub Actions defaults to the local target/backend.",
+        "AWS selection is explicit and fails fast when required credentials or inputs are missing."
+      ],
+      "commands": [
+        "cd specs/current && tlc2 -config MC.cfg TestGraph.tla",
+        "pytest specs/current/tests",
+        "./scripts/run.py environmentRepositoryContract --test-graph-root test_graph"
+      ],
+      "evidence": [
+        "cd specs/current && tlc2 -config MC.cfg TestGraph.tla",
+        "pytest specs/program_model/tests specs/current/tests specs/desired_program_model/tests",
+        "cd project_sdk_sources && ./gradlew --console=plain :build-logic:test",
+        "python -m py_compile test_graph/support/branch_environment_harness.py test_graph/sources/Tg5StableEnvironmentRepositoryFixture.py test_graph/sources/Tg5EnvironmentRepositoryProvision.py test_graph/sources/Tg5EnvironmentRepositoryReuse.py test_graph/sources/Tg5EnvironmentContextEnvKey.py test_graph/sources/Tg5EnvironmentContextEnvAll.py",
+        "./scripts/discover.py environmentRepositoryContract --test-graph-root test_graph",
+        "./scripts/run.py environmentRepositoryContract --test-graph-root test_graph"
+      ]
+    },
+    "current_increment": {
+      "adapters": [
+        "EnvironmentRepositoryAdapter",
+        "OpenTofuCommandAdapter",
+        "DownstreamEnvProjectionAdapter"
+      ],
+      "graph_after_unit_pass": [
+        "test_graph environmentRepositoryContract"
+      ],
+      "model_actions": [
+        "ProvisionBranchEnvironment",
+        "ReuseBranchEnvironment",
+        "PropagateEnvironmentContext"
+      ],
+      "model_state": [
+        "provisioned_branch_environments",
+        "reused_branch_environments",
+        "propagated_environment_contexts",
+        "environment_context_keys"
+      ],
+      "unit_tests": [
+        "pytest specs/current/tests",
+        "./gradlew --console=plain :build-logic:test"
+      ]
+    },
+    "depends_on": [
+      "TG-5D"
+    ],
+    "desired_actions": [
+      "ProvisionBranchEnvironment",
+      "ReuseBranchEnvironment",
+      "PropagateEnvironmentContext"
+    ],
+    "id": "TG-5E",
+    "implementation_scope": [
+      "project_sdk_sources/build-logic/src/main/kotlin/com/hayden/testgraphsdk/exec/PlanExecutor.kt",
+      "project_sdk_sources/build-logic/src/main/kotlin/com/hayden/testgraphsdk/exec/Context.kt",
+      "project_sdk_sources/build-logic/src/main/kotlin/com/hayden/testgraphsdk/tasks/RunTestGraphTask.kt",
+      "scripts/run.py",
+      "test_graph/environment-repository-source/",
+      "test_graph/sources/",
+      "references/reference.md",
+      "references/workflows.md"
+    ],
+    "objective": "Implement SDK execution against the generated Git environment repository: clone/reuse the repository, select the template, run the standard OpenTofu flow, publish structured outputs, and propagate selected context through env:[key] and env:[*].\n",
+    "status": "done",
+    "title": "Implement environment repository execution and env propagation"
+  },
+  "ticket_id": "TG-5E",
+  "ticket_index": 4,
+  "ticket_plan": "specs/desired_program_model/ticket_plan.yaml",
+  "ticket_status": "done",
+  "workflow_name": "branch-environment-repository-workflow"
+}

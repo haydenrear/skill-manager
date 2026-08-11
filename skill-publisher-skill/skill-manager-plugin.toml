@@ -1,0 +1,19 @@
+# skill-manager sidecar for the skt plugin. The harness reads
+# .claude-plugin/plugin.json; skill-manager reads this. Name and version
+# MUST agree between the two.
+
+references = [
+]
+
+[[cli_dependencies]]
+spec = "skill-script:skt"
+on_path = "skt"
+
+[cli_dependencies.install.any]
+script = "install-skt.sh"
+binary = "skt"
+
+[plugin]
+name = "skt"
+version = "0.2.0"
+description = "Skill-lifecycle CLI and startup disclosure: reports loaded skills/plugins, home tier, epic/ticket state; notifies on new unit versions; drives worktree change management."

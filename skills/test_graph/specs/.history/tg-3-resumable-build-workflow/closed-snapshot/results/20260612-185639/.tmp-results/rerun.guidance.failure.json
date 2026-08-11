@@ -1,0 +1,15 @@
+{
+  "nodeId": "rerun.guidance.failure",
+  "status": "failed",
+  "startedAt": "2026-06-12T18:56:39.566913Z",
+  "endedAt": "2026-06-12T18:56:39.567153Z",
+  "assertions": [],
+  "artifacts": [],
+  "processes": [],
+  "metrics": {
+    "durationMs": 0
+  },
+  "logs": [],
+  "published": {},
+  "failureMessage": "forced failure for rerun guidance"
+}

@@ -1,0 +1,217 @@
+module: TestGraph
+package: desired_program_cases
+
+status:
+  workflow: ticket
+  initial_ticket: TG-5
+  initial_ticket_title: "Branch-scoped environment repository deployments"
+  ticket_plan: ticket_plan.yaml
+  relation_to_program_model: desired_successor_of_accepted_program_model
+  relation_to_current: target_state_for_specs_current_to_converge_to
+  updated: "2026-06-13"
+  summary:
+    desired_model_scaffolded: true
+    ticket_plan_scaffolded: true
+    current_model_scaffolded: true
+    generated_cases: pending
+    adapters: planned
+  done:
+    - Desired TLA+ model extended for SDK side-effect runtime, provisioning state, branch-scoped environment repositories, env propagation, reset, and merge destroy semantics.
+    - Ticket plan split into TG-5A through TG-5G so the Git environment repository contract is implemented and proven before a deploy-helm repository issue is created.
+    - Desired TLC model checked with a representative local environment bound.
+    - TG-5C Git environment repository contract implemented as provider-neutral SDK metadata and current-model semantics.
+    - TG-5D generated local Git environment repository fixture implemented as versioned source files plus report-local git init/add/commit graph validation.
+  pending:
+    - Implement TG-5E environment repository execution and env propagation.
+    - Add executable adapter mappings as each ticket slice lands.
+    - Promote converged desired/current model back into specs/program_model after TG-5F or the selected workflow boundary is complete.
+
+source_model:
+  program_model_manifest: ../program_model/spec_manifest.yaml
+  program_model_module: ../program_model/TestGraph.tla
+  baseline_package: testgraph_program_cases
+  issue_source: https://github.com/haydenrear/test_graph_skill/issues/5
+
+case_codegen:
+  style: explicit_transition_cases
+  generation_status: planned
+
+finite_model:
+  note: >
+    The desired model uses a representative local environment bound for TLC
+    because the full target/backend cross product grows quickly. The ticket
+    plan still covers local developer, GitHub Actions, and AWS-backed variants.
+  Graphs:
+    values:
+      - GraphA
+  Nodes:
+    values:
+      - NodeA
+      - NodeB
+  Branches:
+    values:
+      - FeatureA
+  EnvironmentTargets:
+    values:
+      - LocalDev
+  EnvironmentBackends:
+    values:
+      - LocalOpenTofu
+  ContextKeys:
+    values:
+      - KUBECONFIG
+      - KUBECONTEXT
+      - EnvironmentId
+
+state_fields:
+  - name: side_effect_runtime_configured
+    purpose: Graphs whose SDK side-effect metadata/runtime support is available.
+  - name: provisioning_state_configured
+    purpose: Graphs whose framework-managed provisioning marker lifecycle is available.
+  - name: feature_branches
+    purpose: Feature branch ids known for branch-scoped environment naming.
+  - name: environment_repo_configured
+    purpose: Graphs configured with an environment repository contract source.
+  - name: branch_environment_specs
+    purpose: Declared branch/target/backend environment intents.
+  - name: provisioned_branch_environments
+    purpose: Branch environments with an active provisioned cluster.
+  - name: reused_branch_environments
+    purpose: Provisioned branch environments reused by later runs.
+  - name: reset_branch_environments
+    purpose: Branch environments reset for redeploy without cluster destruction.
+  - name: deployed_branch_environments
+    purpose: Branch environments with application deployment state.
+  - name: propagated_environment_contexts
+    purpose: Provisioning outputs made available to downstream nodes through env side effects.
+  - name: merge_destroy_requested
+    purpose: Active merge-triggered destroy intent.
+  - name: destroy_authorized_environments
+    purpose: Audit trail proving destroyed environments had explicit destroy intent.
+  - name: destroyed_branch_environments
+    purpose: Branch environments destroyed through the merge-time OpenTofu destroy flow.
+  - name: environment_context_keys
+    purpose: Structured outputs from environment repositories, including Kubernetes context keys.
+
+actions:
+  - ConfigureSideEffectRuntime
+  - ConfigureProvisioningState
+  - RegisterFeatureBranch
+  - ConfigureEnvironmentRepository
+  - DeclareBranchEnvironment
+  - ProvisionBranchEnvironment
+  - ReuseBranchEnvironment
+  - DeployApplicationToBranchEnvironment
+  - PropagateEnvironmentContext
+  - ResetBranchEnvironment
+  - RequestMergedBranchDestroy
+  - DestroyMergedBranchEnvironment
+
+ports:
+  TestGraphProgramPort:
+    new_methods:
+      configure_side_effect_runtime:
+        command: ConfigureSideEffectRuntime
+        result: WorkflowResult
+      configure_provisioning_state:
+        command: ConfigureProvisioningState
+        result: WorkflowResult
+      register_feature_branch:
+        command: RegisterFeatureBranch
+        result: WorkflowResult
+      configure_environment_repository:
+        command: ConfigureEnvironmentRepository
+        result: WorkflowResult
+      declare_branch_environment:
+        command: DeclareBranchEnvironment
+        result: WorkflowResult
+      provision_branch_environment:
+        command: ProvisionBranchEnvironment
+        result: WorkflowResult
+      reuse_branch_environment:
+        command: ReuseBranchEnvironment
+        result: WorkflowResult
+      deploy_application_to_branch_environment:
+        command: DeployApplicationToBranchEnvironment
+        result: WorkflowResult
+      propagate_environment_context:
+        command: PropagateEnvironmentContext
+        result: WorkflowResult
+      reset_branch_environment:
+        command: ResetBranchEnvironment
+        result: WorkflowResult
+      request_merged_branch_destroy:
+        command: RequestMergedBranchDestroy
+        result: WorkflowResult
+      destroy_merged_branch_environment:
+        command: DestroyMergedBranchEnvironment
+        result: WorkflowResult
+
+invariants:
+  inherited:
+    - TypeInvariant
+    - ExplicitNodesAreAvailable
+    - ScriptSpecsAreSourceOfTruth
+    - DependencyConstantsAreIndexed
+    - DslOverlaysOnlyAddDependencies
+    - PlannedGraphsAreDependencyClosed
+    - PlannedGraphsAreAcyclic
+    - RunsRespectDependencies
+    - ContextContainsOnlyPassedPublishedData
+    - EveryAttemptGetsOneEnvelope
+    - EveryAttemptHasSavedInputContext
+    - RerunGuidanceOnlyForRerunnableFailures
+    - ResumptionsUseSavedInputContext
+    - BuildRerunsRespectDependencies
+    - ReportsHaveEnvelopeEvidence
+    - PackageCatalogIsCompleteAfterScaffold
+  added:
+    - ProvisioningStateRequiresSideEffectRuntime
+    - EnvironmentRepositoryRequiresProvisioningState
+    - BranchEnvironmentsAreDeclaredForFeatureBranches
+    - ProvisionedEnvironmentsAreDeclared
+    - ReusedEnvironmentsAreProvisioned
+    - ResetKeepsBranchEnvironmentProvisioned
+    - DeployedEnvironmentsHaveRequiredContext
+    - PropagatedEnvironmentContextRequiresProvisionedContext
+    - MergeDestroyRequiresExplicitIntent
+    - DestroyedEnvironmentsAreNotActive
+
+program_context:
+  issue_5_target: >
+    A feature branch gets a reusable branch-scoped environment from an
+    environment repository. The SDK provisions if absent, reuses if present,
+    resets the branch environment for redeploys, propagates structured
+    outputs such as KUBECONFIG/KUBECONTEXT to downstream nodes, and destroys
+    only when merge-time destroy intent is present.
+  non_goal:
+    - Do not import deploy-helm into SDK contract tests.
+    - Do not check in a nested Git repository or use a tarball as the primary environment repository fixture.
+    - Do not destroy branch clusters after normal validation runs.
+    - Do not model test graph nodes or CI workflow mechanics as TLA+ state.
+
+adapter_plan:
+  desired_adapters:
+    - SideEffectRuntimeAdapter
+    - ProvisioningStateFileAdapter
+    - EnvironmentRepositoryContractAdapter
+    - GeneratedGitEnvironmentRepositoryFixtureAdapter
+    - EnvironmentRepositoryAdapter
+    - OpenTofuCommandAdapter
+    - DownstreamEnvProjectionAdapter
+    - BranchEnvironmentLifecycleAdapter
+  current_status: planned
+
+validation:
+  desired_tlc:
+    command: cd specs/desired_program_model && tlc2 -config MC.cfg TestGraph.tla
+    status: passed
+    last_run: "2026-06-13"
+    states_generated: 3776862
+    distinct_states: 286875
+    depth: 34
+  workflow_tests:
+    command: pytest specs/current/tests specs/desired_program_model/tests
+    status: passed
+    last_run: "2026-06-13"
+    tests: 4

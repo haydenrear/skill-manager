@@ -1,0 +1,15 @@
+{
+  "nodeId": "rerun.guidance.failure",
+  "status": "failed",
+  "startedAt": "2026-06-12T18:56:39.566913Z",
+  "endedAt": "2026-06-12T18:56:39.567153Z",
+  "assertions": [],
+  "artifacts": [],
+  "processes": [],
+  "metrics": {
+    "durationMs": 0
+  },
+  "logs": [],
+  "published": {},
+  "failureMessage": "forced failure for rerun guidance"
+,"executorStartedAt":"2026-06-12T18:56:39.521628Z","executorEndedAt":"2026-06-12T18:56:39.574410Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/rerun.guidance.failure.stdout.log","inputContextFile":"context/rerun.guidance.failure.input.json","rerunGuidance":{"resumeGraphCommand":"./gradlew 'rerunGuidance' --resume-from-build '/Users/hayde/IdeaProjects/test_graph/project_sdk_sources/build/validation-reports/20260612-185639' --resume-from-node 'rerun.guidance.failure'","runOnlyCommand":"./gradlew 'rerunGuidance' --resume-from-build '/Users/hayde/IdeaProjects/test_graph/project_sdk_sources/build/validation-reports/20260612-185639' --run-only-node 'rerun.guidance.failure'","inputContextFile":"context/rerun.guidance.failure.input.json"}}

@@ -72,3 +72,18 @@ test_graph/.bin
 ### docker-compose-ghcr.yml self-host data ###
 /data/
 test_graph/docs
+
+### This checkout's own Skill Manager home ###
+#
+# The home and the three agent homes beside it, created by
+# git-integration-repo's scripts/bootstrap-home.sh. Never committed: a home is
+# machine-local state (absolute paths in home.runtime.json, a pinned CLI,
+# installed unit trees), and committing one would hand every other checkout
+# this machine's paths.
+#
+# `.claude/settings.local.json` above is now subsumed by `.claude/`; it is left
+# in place because it documents a narrower intent that predates the home model.
+.skill-manager/
+.claude/
+.codex/
+.gemini/

@@ -1,0 +1,122 @@
+module: TestGraph
+package: current_program_cases
+
+status:
+  workflow: ticket
+  active_ticket: TG-5
+  active_ticket_title: "Branch-scoped environment repository deployments"
+  relation_to_program_model: starts_equivalent_then_advances_as_slices_land
+  relation_to_desired_program_model: implemented_prefix_of_desired_ticket_plan
+  current_model_rule: whole_program_working_copy_not_ticket_projection
+  test_modeling_rule: do_not_model_tests_or_validation_harnesses_as_program_behavior
+  updated: "2026-06-13"
+  current_slice:
+    name: TG-5C
+    status: done
+    refines:
+      - ../program_model/spec_manifest.yaml
+    implemented_actions:
+      - ConfigureSideEffectRuntime
+      - ConfigureProvisioningState
+      - ProvisionBranchEnvironment
+      - ResetBranchEnvironment
+      - RequestMergedBranchDestroy
+      - DestroyMergedBranchEnvironment
+      - RegisterFeatureBranch
+      - ConfigureEnvironmentRepository
+      - DeclareBranchEnvironment
+    validation:
+      unit:
+        - ./gradlew --console=plain :build-logic:test
+        - pytest specs/current/tests
+      tlc:
+        - cd specs/current && tlc2 -config MC.cfg TestGraph.tla
+      graph:
+        - ./scripts/run.py branchEnvironmentWorkflow --test-graph-root test_graph
+        - ./scripts/run.py --all --test-graph-root test_graph
+      evidence:
+        - SDK side effects are parsed as typed metadata before node execution.
+        - Provisioning side effects write branch-scoped marker files only after successful node execution.
+        - Reset marker state is separate from destroy and leaves the provisioned marker intact.
+        - Destroy is rejected unless TEST_GRAPH_DESTROY_BRANCH_ENVIRONMENT is explicitly true.
+        - Environment repository metadata is parsed as a provider-neutral Git repository contract.
+        - The contract supports ordinary Git URLs and local repository paths, not tarball-primary fixtures.
+        - No Git clone, OpenTofu command, deploy-helm import, or environment repository execution is implemented in TG-5C.
+  next:
+    - Implement TG-5D generated local Git environment repository fixture.
+    - Preserve all existing specs/program_model state/actions unless production behavior changes them.
+    - Run TLC and adapter/unit tests before adding graph execution coverage.
+
+source_model:
+  program_model_manifest: ../program_model/spec_manifest.yaml
+  program_model_module: ../program_model/TestGraph.tla
+  desired_ticket_plan: ../desired_program_model/ticket_plan.yaml
+
+case_codegen:
+  style: explicit_transition_cases
+  generation_status: planned
+
+state_fields:
+  - name: side_effect_runtime_configured
+    purpose: Graphs whose SDK side-effect metadata validation is available.
+  - name: provisioning_state_configured
+    purpose: Graphs whose branch environment marker lifecycle is available.
+  - name: feature_branches
+    purpose: Feature branch ids known for branch-scoped environment naming.
+  - name: environment_repo_configured
+    purpose: Graphs configured with a provider-neutral Git environment repository contract source.
+  - name: branch_environment_specs
+    purpose: Declared branch/target/backend environment intents.
+  - name: provisioned_branch_environments
+    purpose: Branch environment ids with active provisioned markers.
+  - name: reset_branch_environments
+    purpose: Branch environment ids reset for redeploy without cluster destruction.
+  - name: merge_destroy_requested
+    purpose: Branch environment ids with explicit merge-time destroy intent.
+  - name: destroy_authorized_environments
+    purpose: Audit set proving destroy was authorized before deletion.
+  - name: destroyed_branch_environments
+    purpose: Branch environment ids whose provisioned marker was removed after authorized destroy.
+actions:
+  - ConfigureSideEffectRuntime
+  - ConfigureProvisioningState
+  - RegisterFeatureBranch
+  - ConfigureEnvironmentRepository
+  - DeclareBranchEnvironment
+  - ProvisionBranchEnvironment
+  - ResetBranchEnvironment
+  - RequestMergedBranchDestroy
+  - DestroyMergedBranchEnvironment
+ports:
+  TestGraphProgramPort:
+    new_methods:
+      configure_side_effect_runtime:
+        command: ConfigureSideEffectRuntime
+        result: WorkflowResult
+      configure_provisioning_state:
+        command: ConfigureProvisioningState
+        result: WorkflowResult
+      register_feature_branch:
+        command: RegisterFeatureBranch
+        result: WorkflowResult
+      configure_environment_repository:
+        command: ConfigureEnvironmentRepository
+        result: WorkflowResult
+      declare_branch_environment:
+        command: DeclareBranchEnvironment
+        result: WorkflowResult
+      provision_branch_environment:
+        command: ProvisionBranchEnvironment
+        result: WorkflowResult
+      reset_branch_environment:
+        command: ResetBranchEnvironment
+        result: WorkflowResult
+      request_merged_branch_destroy:
+        command: RequestMergedBranchDestroy
+        result: WorkflowResult
+      destroy_merged_branch_environment:
+        command: DestroyMergedBranchEnvironment
+        result: WorkflowResult
+adapters: case_adapters.toml
+notes:
+  package_from_program_model: testgraph_program_cases

@@ -1,0 +1,123 @@
+module: TestGraph
+package: current_program_cases
+
+status:
+  workflow: ticket
+  active_ticket: TG-6E
+  active_ticket_title: "Add local lifecycle validation graph"
+  relation_to_program_model: starts_equivalent_then_advances_as_slices_land
+  relation_to_desired_program_model: implemented_prefix_of_desired_ticket_plan
+  current_model_rule: whole_program_working_copy_not_ticket_projection
+  test_modeling_rule: do_not_model_tests_or_validation_harnesses_as_program_behavior
+  updated: "2026-06-28"
+  current_slice:
+    name: TG-6E
+    status: local_lifecycle_validation_landed
+    refines:
+      - specs/program_model
+    implemented_actions:
+      - ScaffoldEnvironmentRepository
+      - ScaffoldEnvironmentTemplate
+      - ScaffoldLifecycleNodeTemplate
+      - VerifyEnvironmentContextRuntime
+      - ProvisionBranchEnvironment
+      - ReuseBranchEnvironment
+      - ResetBranchEnvironment
+      - RequestMergedBranchDestroy
+      - DestroyMergedBranchEnvironment
+      - SkipBranchEnvironmentReset
+      - SkipBranchEnvironmentDestroy
+    validation:
+      unit:
+        - pytest --import-mode=importlib specs/current/tests specs/desired_program_model/tests
+        - cd project_sdk_sources && ./gradlew --console=plain :build-logic:test
+      tlc:
+        - cd specs/current && tlc2 -config MC.cfg TestGraph.tla
+      graph:
+        - ./scripts/run.py environmentRepositoryLocalLifecycle --test-graph-root test_graph
+        - ./scripts/run.py environmentRepositoryLocalLifecycleDestroy --test-graph-root test_graph
+        - TEST_GRAPH_DESTROY_BRANCH_ENVIRONMENT=true ./scripts/run.py environmentRepositoryLocalLifecycleDestroy --test-graph-root test_graph
+      evidence:
+        - TG-6E adds environmentRepositoryLocalLifecycle for missing local provision, deploy/reuse without recreate, reset, and skip-destroy keep-alive behavior.
+        - TG-6E adds environmentRepositoryLocalLifecycleDestroy for guarded local destroy validation, including an explicit destroy run with TEST_GRAPH_DESTROY_BRANCH_ENVIRONMENT=true.
+        - Local lifecycle assertions inspect provisioning markers, environment repository execution command labels, kubeconfig/application marker files, and destroy marker files.
+        - ./scripts/discover.py environmentRepositoryLocalLifecycle --test-graph-root test_graph passed on 2026-06-28.
+        - ./scripts/discover.py environmentRepositoryLocalLifecycleDestroy --test-graph-root test_graph passed on 2026-06-28.
+        - ./scripts/run.py environmentRepositoryLocalLifecycle --test-graph-root test_graph passed with report test_graph/build/validation-reports/20260628-172952.
+        - ./scripts/run.py environmentRepositoryLocalLifecycleDestroy --test-graph-root test_graph passed without destroy intent with report test_graph/build/validation-reports/20260628-173011.
+        - TEST_GRAPH_DESTROY_BRANCH_ENVIRONMENT=true ./scripts/run.py environmentRepositoryLocalLifecycleDestroy --test-graph-root test_graph passed with report test_graph/build/validation-reports/20260628-173030.
+        - python -m py_compile passed for TG-6E scaffold/harness/local lifecycle sources on 2026-06-28.
+        - cd specs/current && tlc2 -config MC.cfg TestGraph.tla passed with 468796 distinct states on 2026-06-28.
+        - cd specs/desired_program_model && tlc2 -config MC.cfg TestGraph.tla passed with 472400 distinct states on 2026-06-28.
+        - pytest --import-mode=importlib specs/current/tests specs/desired_program_model/tests passed with 41 tests on 2026-06-28.
+        - cd project_sdk_sources && ./gradlew --console=plain :build-logic:test passed on 2026-06-28.
+  next:
+    - Implement TG-6F GitHub Actions and AWS lifecycle validation graphs.
+    - Preserve all existing specs/program_model state/actions unless production behavior changes them.
+    - Run TLC and adapter/unit tests before adding graph execution coverage.
+  accepted_baseline:
+    workflow_name: branch_environment_repository_workflow
+    initial_ticket: TG-5
+    issue: https://github.com/haydenrear/deploy-cdc/issues/6
+    carried_forward_state_fields:
+      - input_contexts
+      - rerunnable_nodes
+      - rerun_guidance
+      - resumed_nodes
+      - single_node_reruns
+      - side_effect_runtime_configured
+      - provisioning_state_configured
+      - feature_branches
+      - environment_repo_configured
+      - branch_environment_specs
+      - provisioned_branch_environments
+      - reused_branch_environments
+      - reset_branch_environments
+      - deployed_branch_environments
+      - propagated_environment_contexts
+      - environment_context_keys
+      - merge_destroy_requested
+      - destroy_authorized_environments
+      - destroyed_branch_environments
+    carried_forward_adapters:
+      - RerunGuidanceAdapter
+      - EnvironmentRepositoryContractAdapter
+      - GeneratedGitEnvironmentRepositoryFixtureAdapter
+      - EnvironmentRepositoryAdapter
+      - BranchEnvironmentLifecycleAdapter
+    carried_forward_validation:
+      - deployCdcIssueContract
+
+source_model:
+  program_model_manifest: ../program_model/spec_manifest.yaml
+  program_model_module: ../program_model/TestGraph.tla
+  desired_ticket_plan: ../desired_program_model/ticket_plan.yaml
+
+case_codegen:
+  style: explicit_transition_cases
+  generation_status: planned
+
+state_fields:
+  - name: environment_repository_scaffolded
+    purpose: Whether a starter environment repository can be generated as a Git-ready OpenTofu contract.
+  - name: scaffolded_environment_templates
+    purpose: Local, AWS, and GitHub Actions target/backend templates added to an environment repository.
+  - name: scaffolded_lifecycle_node_templates
+    purpose: Deploy, reset, and delete cluster node templates generated for Python and Java runtimes.
+  - name: runtime_environment_context_verified
+    purpose: Node runtimes proven to receive environment repository context and projected env vars.
+  - name: skipped_reset_environments
+    purpose: Environments where reset skipped because the cluster was newly provisioned or already reset.
+  - name: skipped_destroy_environments
+    purpose: Environments intentionally kept alive for branch reuse instead of being destroyed.
+actions:
+  - ScaffoldEnvironmentRepository
+  - ScaffoldEnvironmentTemplate
+  - ScaffoldLifecycleNodeTemplate
+  - VerifyEnvironmentContextRuntime
+  - SkipBranchEnvironmentReset
+  - SkipBranchEnvironmentDestroy
+ports: {}
+adapters: case_adapters.toml
+notes:
+  package_from_program_model: testgraph_program_cases

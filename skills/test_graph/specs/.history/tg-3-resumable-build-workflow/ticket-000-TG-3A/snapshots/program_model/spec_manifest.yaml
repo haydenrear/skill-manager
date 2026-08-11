@@ -1,0 +1,423 @@
+module: TestGraph
+package: testgraph_program_cases
+
+status:
+  workflow: project_onboarding
+  model_role: accepted_program_model
+  relation_to_current: none_until_ticket_workflow_starts
+  relation_to_desired_program_model: none_until_ticket_workflow_starts
+  updated: 2026-06-05
+  onboarding:
+    status: initialized
+    next:
+      - Keep this accepted baseline in specs/program_model until a ticket workflow starts.
+      - Use specs/current and specs/desired_program_model only for later ticketed behavior changes.
+      - Regenerate transition cases when adapter coverage is added for production boundaries.
+      - Treat this manifest as the package map and retrieval index for agents.
+
+state:
+  TestGraphState:
+    fields:
+      scaffolded:
+        type: bool
+        tla: scaffolded
+      declared_graphs:
+        type: frozenset[GraphId]
+        tla: declared_graphs
+      explicit_nodes:
+        type: dict[GraphId, frozenset[NodeId]]
+        tla: explicit_nodes
+      script_deps:
+        type: dict[NodeId, frozenset[NodeId]]
+        tla: script_deps
+      described_nodes:
+        type: frozenset[NodeId]
+        tla: described_nodes
+      dsl_deps:
+        type: dict[GraphId, dict[NodeId, frozenset[NodeId]]]
+        tla: dsl_deps
+      overlays:
+        type: dict[GraphId, frozenset[NodeId]]
+        tla: overlays
+      resolved_nodes:
+        type: dict[GraphId, frozenset[NodeId]]
+        tla: resolved_nodes
+      planned_graphs:
+        type: frozenset[GraphId]
+        tla: planned_graphs
+      plan_docs:
+        type: frozenset[GraphId]
+        tla: plan_docs
+      active_graphs:
+        type: frozenset[GraphId]
+        tla: active_graphs
+      passed_nodes:
+        type: dict[GraphId, frozenset[NodeId]]
+        tla: passed_nodes
+      terminal_nodes:
+        type: dict[GraphId, frozenset[NodeId]]
+        tla: terminal_nodes
+      envelopes:
+        type: dict[GraphId, frozenset[NodeId]]
+        tla: envelopes
+      context_items:
+        type: dict[GraphId, frozenset[NodeId]]
+        tla: context_items
+      run_reports:
+        type: frozenset[GraphId]
+        tla: run_reports
+      package_catalog:
+        type: frozenset[PackageId]
+        tla: package_catalog
+
+types:
+  GraphId:
+    python: str
+    source: Graphs
+  NodeId:
+    python: str
+    source: Nodes
+  PackageId:
+    python: str
+    source: Packages
+
+commands:
+  ScaffoldProject:
+    action: ScaffoldProject
+    fields: {}
+  RegisterGraph:
+    action: RegisterGraph
+    fields:
+      graph_id:
+        type: GraphId
+        tla: g
+  AddExplicitNode:
+    action: AddExplicitNode
+    fields:
+      graph_id:
+        type: GraphId
+        tla: g
+      node_id:
+        type: NodeId
+        tla: n
+  AddScriptDependency:
+    action: AddScriptDependency
+    fields:
+      node_id:
+        type: NodeId
+        tla: n
+      dependency_node_id:
+        type: NodeId
+        tla: d
+  DescribeNode:
+    action: DescribeNode
+    fields:
+      node_id:
+        type: NodeId
+        tla: n
+  ApplyDslOverlay:
+    action: ApplyDslOverlay
+    fields:
+      graph_id:
+        type: GraphId
+        tla: g
+      node_id:
+        type: NodeId
+        tla: n
+      dependency_node_id:
+        type: NodeId
+        tla: d
+  ResolveNode:
+    action: ResolveNode
+    fields:
+      graph_id:
+        type: GraphId
+        tla: g
+      node_id:
+        type: NodeId
+        tla: n
+  PlanGraph:
+    action: PlanGraph
+    fields:
+      graph_id:
+        type: GraphId
+        tla: g
+  StartRun:
+    action: StartRun
+    fields:
+      graph_id:
+        type: GraphId
+        tla: g
+  RunNodePass:
+    action: RunNodePass
+    result: NodeRunResult
+    fields:
+      graph_id:
+        type: GraphId
+        tla: g
+      node_id:
+        type: NodeId
+        tla: n
+  RunNodeTerminal:
+    action: RunNodeTerminal
+    result: NodeRunResult
+    fields:
+      graph_id:
+        type: GraphId
+        tla: g
+      node_id:
+        type: NodeId
+        tla: n
+  WriteInlineReport:
+    action: WriteInlineReport
+    fields:
+      graph_id:
+        type: GraphId
+        tla: g
+  RebuildReport:
+    action: RebuildReport
+    fields:
+      graph_id:
+        type: GraphId
+        tla: g
+  CleanBuild:
+    action: CleanBuild
+    fields: {}
+
+results:
+  WorkflowResult:
+    fields:
+      accepted:
+        type: bool
+      reason:
+        type: str | None
+        default: None
+  NodeRunResult:
+    fields:
+      accepted:
+        type: bool
+      reason:
+        type: str | None
+        default: None
+      envelope_written:
+        type: bool
+        default: true
+      context_published:
+        type: bool
+        default: false
+
+ports:
+  TestGraphProgramPort:
+    methods:
+      scaffold_project:
+        command: ScaffoldProject
+        result: WorkflowResult
+      register_graph:
+        command: RegisterGraph
+        result: WorkflowResult
+      add_explicit_node:
+        command: AddExplicitNode
+        result: WorkflowResult
+      add_script_dependency:
+        command: AddScriptDependency
+        result: WorkflowResult
+      describe_node:
+        command: DescribeNode
+        result: WorkflowResult
+      apply_dsl_overlay:
+        command: ApplyDslOverlay
+        result: WorkflowResult
+      resolve_node:
+        command: ResolveNode
+        result: WorkflowResult
+      plan_graph:
+        command: PlanGraph
+        result: WorkflowResult
+      start_run:
+        command: StartRun
+        result: WorkflowResult
+      run_node_pass:
+        command: RunNodePass
+        result: NodeRunResult
+      run_node_terminal:
+        command: RunNodeTerminal
+        result: NodeRunResult
+      write_inline_report:
+        command: WriteInlineReport
+        result: WorkflowResult
+      rebuild_report:
+        command: RebuildReport
+        result: WorkflowResult
+      clean_build:
+        command: CleanBuild
+        result: WorkflowResult
+      snapshot:
+        result: TestGraphState
+
+invariants:
+  - TypeInvariant
+  - ExplicitNodesAreAvailable
+  - ScriptSpecsAreSourceOfTruth
+  - DependencyConstantsAreIndexed
+  - DslOverlaysOnlyAddDependencies
+  - PlannedGraphsAreDependencyClosed
+  - PlannedGraphsAreAcyclic
+  - RunsRespectDependencies
+  - ContextContainsOnlyPassedPublishedData
+  - EveryAttemptGetsOneEnvelope
+  - ReportsHaveEnvelopeEvidence
+  - PackageCatalogIsCompleteAfterScaffold
+
+finite_model:
+  Graphs:
+    values:
+      - GraphA
+  Nodes:
+    values:
+      - NodeA
+      - NodeB
+      - NodeC
+  Packages:
+    values:
+      - SkillEntrypoint
+      - SkillScripts
+      - NodeTemplates
+      - WorkflowReferences
+      - GradlePlugin
+      - JavaSdk
+      - PythonSdk
+      - ExampleNodes
+      - SkillManifest
+  SourceNodes:
+    values:
+      - NodeA
+      - NodeB
+      - NodeC
+  dependency_shape:
+    values: explored_by_AddScriptDependency_and_ApplyDslOverlay
+
+program_context:
+  summary: >
+    test-graph is a polyglot validation DAG scaffold. Node scripts
+    self-describe NodeSpec metadata, Gradle DSL overlays add constraints,
+    the plugin resolves transitive dependencies from sourcesDir, executes
+    nodes in dependency order, forwards only published context, and emits
+    one canonical envelope per attempted node plus run reports.
+  first_onboarding_rule: specs/program_model is the accepted baseline; do not
+    create specs/current or specs/desired_program_model until a ticketed
+    behavior change starts.
+  semantic_boundaries:
+    - name: scaffold_project
+      files:
+        - scripts/scaffold.py
+        - project_sdk_sources/
+      notes: Creates the consumer test_graph project; sdk and build-logic are symlinked by default.
+    - name: graph_definition
+      files:
+        - project_sdk_sources/build.gradle.kts
+        - project_sdk_sources/build-logic/src/main/kotlin/com/hayden/testgraphsdk/ValidationGraphExtension.kt
+        - project_sdk_sources/build-logic/src/main/kotlin/com/hayden/testgraphsdk/TestGraphSpec.kt
+      notes: testGraph(name) registers a Gradle task; node(path) attaches additive overlays.
+    - name: node_describe
+      files:
+        - project_sdk_sources/build-logic/src/main/kotlin/com/hayden/testgraphsdk/NodeDescribeLoader.kt
+        - project_sdk_sources/sdk/java/src/main/java/com/hayden/testgraphsdk/sdk/NodeSpec.java
+        - project_sdk_sources/sdk/python/src/testgraphsdk/node_spec.py
+      notes: Scripts emit metadata through --describe-out without running the node body.
+    - name: graph_assembly
+      files:
+        - project_sdk_sources/build-logic/src/main/kotlin/com/hayden/testgraphsdk/GraphAssembler.kt
+        - project_sdk_sources/build-logic/src/main/kotlin/com/hayden/testgraphsdk/GraphModel.kt
+      notes: Explicit nodes plus transitive dependencies form a dependency-closed acyclic plan.
+    - name: run_execution
+      files:
+        - project_sdk_sources/build-logic/src/main/kotlin/com/hayden/testgraphsdk/tasks/RunTestGraphTask.kt
+        - project_sdk_sources/build-logic/src/main/kotlin/com/hayden/testgraphsdk/exec/PlanExecutor.kt
+      notes: Node attempts produce canonical envelopes; only passed node published maps become downstream context.
+    - name: reports
+      files:
+        - project_sdk_sources/build-logic/src/main/kotlin/com/hayden/testgraphsdk/tasks/RunReportWriter.kt
+        - project_sdk_sources/build-logic/src/main/kotlin/com/hayden/testgraphsdk/tasks/ValidationReportTask.kt
+      notes: Successful graph runs write summary.json and report.md inline; validationReport can rebuild from envelopes.
+
+package_metadata:
+  skill_entrypoint:
+    path: SKILL.md
+    purpose: Agent-facing routing, mental model, and operating rules.
+  skill_scripts:
+    path: scripts/
+    purpose: Scaffold, discover, run, clean, create nodes, and generate GitHub Actions.
+    primary_files:
+      - scripts/scaffold.py
+      - scripts/discover.py
+      - scripts/run.py
+      - scripts/clean.py
+      - scripts/new-jbang-node.py
+      - scripts/new-uv-node.py
+      - scripts/github-action.py
+  node_templates:
+    path: templates/
+    purpose: JBang and uv node templates used by node generators.
+  workflow_references:
+    path: references/
+    purpose: Durable docs for workflows, DSL/API reference, CI, and environment debugging.
+    primary_files:
+      - references/workflows.md
+      - references/reference.md
+      - references/github-actions.md
+      - references/debug-python-uv-env.md
+  gradle_plugin:
+    path: project_sdk_sources/build-logic/src/main/kotlin/com/hayden/testgraphsdk/
+    purpose: Gradle DSL, graph assembly, task registration, toolchain resolution, execution, and reports.
+  java_sdk:
+    path: project_sdk_sources/sdk/java/src/main/java/com/hayden/testgraphsdk/sdk/
+    purpose: Java/JBang NodeSpec, NodeResult, NodeContext, process helpers, and JSON wire types.
+  python_sdk:
+    path: project_sdk_sources/sdk/python/src/testgraphsdk/
+    purpose: Python/uv NodeSpec, NodeResult, NodeContext, runner decorator, and process helpers.
+  example_nodes:
+    path: project_sdk_sources/sources/
+    purpose: Example smoke graph nodes showing testbed, fixture, evidence, assertion, and context flow.
+  skill_manifest:
+    path: skill-manager.toml
+    purpose: Installable skill metadata; runtime tool requirements are intentionally documented, not bundled.
+
+agent_retrieval:
+  start_here:
+    - specs/program_model/TestGraph.tla
+    - specs/program_model/spec_manifest.yaml
+    - SKILL.md
+  then_open_by_task:
+    scaffold: scripts/scaffold.py
+    discover_or_plan:
+      - scripts/discover.py
+      - project_sdk_sources/build-logic/src/main/kotlin/com/hayden/testgraphsdk/GraphAssembler.kt
+      - project_sdk_sources/build-logic/src/main/kotlin/com/hayden/testgraphsdk/GraphModel.kt
+    run_or_report:
+      - scripts/run.py
+      - project_sdk_sources/build-logic/src/main/kotlin/com/hayden/testgraphsdk/exec/PlanExecutor.kt
+      - project_sdk_sources/build-logic/src/main/kotlin/com/hayden/testgraphsdk/tasks/RunReportWriter.kt
+    node_authoring:
+      - references/workflows.md
+      - references/reference.md
+      - templates/jbang-node.java.template
+      - templates/uv-node.py.template
+
+validation:
+  tlc:
+    command: cd specs/program_model && tlc2 -config MC.cfg TestGraph.tla
+    status: passed
+    last_run: 2026-06-05
+    states_generated: 4194481
+    distinct_states: 234547
+    depth: 24
+  scaffold_tests:
+    command: pytest specs/program_model/tests
+    status: passed
+    last_run: 2026-06-05
+    tests: 3
+
+case_codegen:
+  style: explicit_transition_cases
+  generation_status: planned
+  note: Generate TLC state-graph cases after repository-local adapters are selected.

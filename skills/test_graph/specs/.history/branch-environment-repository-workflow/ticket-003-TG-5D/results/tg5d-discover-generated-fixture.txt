@@ -1,0 +1,10 @@
+plan for test graph 'generatedEnvironmentRepositoryFixture' (1 step):
+  #   id                                            kind        rt      entry
+  1.  tg5.environment.repository.fixture.generated  fixture     uv      sources/Tg5GeneratedEnvironmentRepositoryFixture.py
+
+dependencies:
+  tg5.environment.repository.fixture.generated  (root)
+
+dependency graph:
+  see it here: docs/generatedEnvironmentRepositoryFixture.png
+  (DOT source: docs/generatedEnvironmentRepositoryFixture.dot)

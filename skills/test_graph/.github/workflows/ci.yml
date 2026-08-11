@@ -1,0 +1,128 @@
+name: CI
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - ".github/workflows/ci.yml"
+      - "SKILL.md"
+      - "project_sdk_sources/**"
+      - "references/**"
+      - "scripts/**"
+      - "specs/**"
+      - "templates/**"
+      - "test_graph/**"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/ci.yml"
+      - "SKILL.md"
+      - "project_sdk_sources/**"
+      - "references/**"
+      - "scripts/**"
+      - "specs/**"
+      - "templates/**"
+      - "test_graph/**"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Unit, Spec, And Test Graph
+    runs-on: macos-latest
+    timeout-minutes: 90
+
+    env:
+      TLA2TOOLS_VERSION: "v1.7.4"
+      TLA2TOOLS_JAR: "${{ github.workspace }}/.tools/tla2tools.jar"
+      TEST_GRAPH_ROOT: "${{ github.workspace }}/test_graph"
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Restore build caches
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+            ~/.jbang
+            ~/.cache/uv
+            ~/Library/Caches/uv
+            .tools
+          key: ${{ runner.os }}-ci-${{ hashFiles('project_sdk_sources/gradle/wrapper/gradle-wrapper.properties', 'project_sdk_sources/**/*.gradle.kts', 'test_graph/**/*.gradle.kts') }}-${{ env.TLA2TOOLS_VERSION }}
+          restore-keys: |
+            ${{ runner.os }}-ci-
+
+      - name: Install runtime tools
+        run: |
+          brew update
+          brew list jbang >/dev/null 2>&1 || brew install jbang
+          brew list uv >/dev/null 2>&1 || brew install uv
+          brew list graphviz >/dev/null 2>&1 || brew install graphviz
+          python -m pip install --upgrade pip pytest
+          jbang --version
+          uv --version
+          python --version
+
+      - name: Install TLA+ tools
+        run: |
+          mkdir -p "$(dirname "$TLA2TOOLS_JAR")"
+          if [ ! -f "$TLA2TOOLS_JAR" ]; then
+            curl -fsSL \
+              "https://github.com/tlaplus/tlaplus/releases/download/${TLA2TOOLS_VERSION}/tla2tools.jar" \
+              -o "$TLA2TOOLS_JAR"
+          fi
+          jar tf "$TLA2TOOLS_JAR" | grep -q 'tlc2/TLC.class'
+
+      - name: Run unit tests
+        working-directory: project_sdk_sources
+        run: ./gradlew --console=plain :build-logic:test
+
+      - name: Run script unit tests
+        run: python -m unittest discover -s scripts/tests -v
+
+      - name: Run spec pytest suite
+        run: pytest specs/program_model/tests
+
+      - name: Model check accepted program spec
+        working-directory: specs/program_model
+        run: java -cp "$TLA2TOOLS_JAR" tlc2.TLC -config MC.cfg TestGraph.tla
+
+      - name: Discover nested test graph
+        run: |
+          ./scripts/discover.py --test-graph-root test_graph
+          ./scripts/discover.py rerunGraphJbang --test-graph-root test_graph
+          ./scripts/discover.py rerunGraphUv --test-graph-root test_graph
+          ./scripts/discover.py runOnlyJbang --test-graph-root test_graph
+          ./scripts/discover.py runOnlyUv --test-graph-root test_graph
+
+      - name: Run nested test graph
+        run: ./scripts/run.py --all --test-graph-root test_graph
+
+      - name: Upload validation reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: validation-reports
+          path: |
+            test_graph/build/validation-reports/
+            project_sdk_sources/build/validation-reports/
+          if-no-files-found: warn

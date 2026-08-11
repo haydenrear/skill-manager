@@ -1,0 +1,224 @@
+{
+  "commit_recommendation": {
+    "git_add": "git add specs/.history/tg-3-resumable-build-workflow/ticket-004-TG-3E",
+    "git_commit": "git commit -m 'record spec history for TG-3E'",
+    "message": "It is recommended to commit this history directory now: specs/.history/tg-3-resumable-build-workflow/ticket-004-TG-3E"
+  },
+  "created_at_utc": "2026-06-12T19:06:06.047868+00:00",
+  "entry_name": "ticket-004-TG-3E",
+  "git": {
+    "branch": "main",
+    "commit": "30ce192",
+    "inside_work_tree": "true"
+  },
+  "history_policy": "append-only by convention; existing entries are not overwritten and filesystem permissions remain git-friendly",
+  "kind": "ticket",
+  "results": [
+    {
+      "exists": true,
+      "role": "result",
+      "snapshot": "specs/.history/tg-3-resumable-build-workflow/ticket-004-TG-3E/results/20260612-185639",
+      "source": "project_sdk_sources/build/validation-reports/20260612-185639"
+    },
+    {
+      "exists": true,
+      "role": "result",
+      "snapshot": "specs/.history/tg-3-resumable-build-workflow/ticket-004-TG-3E/results/20260612-185715",
+      "source": "project_sdk_sources/build/validation-reports/20260612-185715"
+    },
+    {
+      "exists": true,
+      "role": "result",
+      "snapshot": "specs/.history/tg-3-resumable-build-workflow/ticket-004-TG-3E/results/20260612-185951",
+      "source": "test_graph/build/validation-reports/20260612-185951"
+    },
+    {
+      "exists": true,
+      "role": "result",
+      "snapshot": "specs/.history/tg-3-resumable-build-workflow/ticket-004-TG-3E/results/20260612-190014",
+      "source": "test_graph/build/validation-reports/20260612-190014"
+    },
+    {
+      "exists": true,
+      "role": "result",
+      "snapshot": "specs/.history/tg-3-resumable-build-workflow/ticket-004-TG-3E/results/20260612-190047",
+      "source": "test_graph/build/validation-reports/20260612-190047"
+    },
+    {
+      "exists": true,
+      "role": "result",
+      "snapshot": "specs/.history/tg-3-resumable-build-workflow/ticket-004-TG-3E/results/20260612-190111",
+      "source": "test_graph/build/validation-reports/20260612-190111"
+    }
+  ],
+  "schema_version": 1,
+  "snapshots": [
+    {
+      "exists": true,
+      "role": "program_model",
+      "snapshot": "specs/.history/tg-3-resumable-build-workflow/ticket-004-TG-3E/snapshots/program_model",
+      "source": "specs/program_model"
+    },
+    {
+      "exists": true,
+      "role": "desired_program_model",
+      "snapshot": "specs/.history/tg-3-resumable-build-workflow/ticket-004-TG-3E/snapshots/desired_program_model",
+      "source": "specs/desired_program_model"
+    },
+    {
+      "exists": true,
+      "role": "current",
+      "snapshot": "specs/.history/tg-3-resumable-build-workflow/ticket-004-TG-3E/snapshots/current",
+      "source": "specs/current"
+    }
+  ],
+  "spec_root": "specs",
+  "summary": "Completed TG-3E: rerunnable failures now emit resume/run-only guidance, rerun=false failures suppress guidance, all four nested rerun/run-only graphs pass, and the converged model is ready for promotion.",
+  "ticket": {
+    "acceptance": {
+      "assertions": [
+        "Failed rerunnable nodes print a concrete resume/run-only command that points at the saved input context.",
+        "Failed rerun=false nodes do not print that command.",
+        "specs/current semantically equals specs/desired_program_model before promotion.",
+        "specs/program_model is updated with the converged model and workflow history is recorded."
+      ],
+      "commands": [
+        "cd specs/current && tlc2 -config MC.cfg TestGraph.tla",
+        "pytest specs/current/tests specs/desired_program_model/tests",
+        "./gradlew --console=plain :build-logic:test",
+        "python scripts/run.py --all --test-graph-root project_sdk_sources",
+        "TESTGRAPH_FORCE_GUIDANCE_FAILURE=1 python scripts/run.py rerunGuidance --test-graph-root project_sdk_sources",
+        "TESTGRAPH_FORCE_RERUN_DISABLED_FAILURE=1 python scripts/run.py rerunSmokeUv --test-graph-root project_sdk_sources",
+        "python scripts/run.py --all --test-graph-root test_graph",
+        "python /Users/hayde/.skill-manager/skills/spec-double-compiler/scripts/close_tickets.py --repo-root ."
+      ],
+      "evidence": [
+        {
+          "command": "pytest specs/current/tests specs/desired_program_model/tests",
+          "last_run": "2026-06-12",
+          "status": "passed",
+          "tests": 20
+        },
+        {
+          "command": "cd specs/current && tlc2 -config MC.cfg TestGraph.tla",
+          "depth": 22,
+          "distinct_states": 6300,
+          "last_run": "2026-06-12",
+          "states_generated": 56387,
+          "status": "passed"
+        },
+        {
+          "command": "cd specs/desired_program_model && tlc2 -config MC.cfg TestGraph.tla",
+          "depth": 22,
+          "distinct_states": 6300,
+          "last_run": "2026-06-12",
+          "states_generated": 56387,
+          "status": "passed"
+        },
+        {
+          "command": "./gradlew --console=plain :build-logic:test",
+          "last_run": "2026-06-12",
+          "status": "passed"
+        },
+        {
+          "command": "./scripts/run.py --all --test-graph-root project_sdk_sources",
+          "graphs": {
+            "rerunGuidance": "20260612-185809",
+            "rerunSmokeJava": "20260612-185805",
+            "rerunSmokeUv": "20260612-185802",
+            "smoke": "20260612-185755"
+          },
+          "last_run": "2026-06-12",
+          "status": "passed"
+        },
+        {
+          "assertion": "rerunnable failure emitted resume and run-only commands.",
+          "command": "TESTGRAPH_FORCE_GUIDANCE_FAILURE=1 ./scripts/run.py rerunGuidance --test-graph-root project_sdk_sources",
+          "last_run": "2026-06-12",
+          "report": "project_sdk_sources/build/validation-reports/20260612-185639/report.md",
+          "run_id": "20260612-185639",
+          "status": "failed_as_expected"
+        },
+        {
+          "assertion": "rerun=false failure did not emit rerun guidance.",
+          "command": "TESTGRAPH_FORCE_RERUN_DISABLED_FAILURE=1 ./scripts/run.py rerunSmokeUv --test-graph-root project_sdk_sources",
+          "last_run": "2026-06-12",
+          "report": "project_sdk_sources/build/validation-reports/20260612-185715/report.md",
+          "run_id": "20260612-185715",
+          "status": "failed_as_expected"
+        },
+        {
+          "assertions": [
+            "rerun_graph_jbang_passed",
+            "rerun_graph_uv_passed",
+            "run_only_jbang_passed",
+            "run_only_uv_passed"
+          ],
+          "command": "./scripts/run.py --all --test-graph-root test_graph",
+          "graphs": {
+            "rerunGraphJbang": "20260612-185951",
+            "rerunGraphUv": "20260612-190014",
+            "runOnlyJbang": "20260612-190047",
+            "runOnlyUv": "20260612-190111"
+          },
+          "last_run": "2026-06-12",
+          "status": "passed"
+        }
+      ]
+    },
+    "current_increment": {
+      "adapters": [
+        "RerunGuidanceAdapter"
+      ],
+      "model_actions": [
+        "RunNodeTerminal records rerun guidance only for rerunnable nodes.",
+        "RebuildReport preserves failed-node rerun evidence."
+      ],
+      "model_state": [
+        "rerun_guidance"
+      ],
+      "unit_tests": [
+        "pytest specs/current/tests",
+        "cd specs/current && tlc2 -config MC.cfg TestGraph.tla"
+      ]
+    },
+    "depends_on": [
+      "TG-3C",
+      "TG-3D"
+    ],
+    "desired_actions": [
+      "RunNodeTerminal",
+      "RebuildReport"
+    ],
+    "desired_invariants": [
+      "RerunGuidanceOnlyForRerunnableFailures",
+      "ReportsHaveEnvelopeEvidence"
+    ],
+    "desired_state": [
+      "rerun_guidance",
+      "run_reports"
+    ],
+    "graph_after_unit_pass": [
+      "python scripts/run.py --all --test-graph-root project_sdk_sources",
+      "python scripts/run.py --all --test-graph-root test_graph"
+    ],
+    "id": "TG-3E",
+    "implementation_scope": [
+      "project_sdk_sources/build-logic/src/main/kotlin/com/hayden/testgraphsdk/exec/PlanExecutor.kt",
+      "project_sdk_sources/build-logic/src/main/kotlin/com/hayden/testgraphsdk/tasks/RunReportWriter.kt",
+      "references/workflows.md",
+      "references/reference.md",
+      "SKILL.md",
+      "specs/current",
+      "specs/program_model"
+    ],
+    "objective": "Print a concrete rerun command when a rerunnable node fails, suppress that line for rerun=false nodes, update docs, add adapter evidence, and promote the converged current model into the accepted program model.\n",
+    "status": "done",
+    "title": "Emit rerun guidance and close model workflow"
+  },
+  "ticket_id": "TG-3E",
+  "ticket_index": 4,
+  "ticket_plan": "specs/desired_program_model/ticket_plan.yaml",
+  "ticket_status": "done",
+  "workflow_name": "tg-3-resumable-build-workflow"
+}

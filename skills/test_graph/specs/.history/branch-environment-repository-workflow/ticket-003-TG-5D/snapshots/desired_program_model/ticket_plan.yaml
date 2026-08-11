@@ -1,0 +1,397 @@
+version: 1
+name: branch-environment-repository-workflow
+updated: "2026-06-13"
+purpose: >
+  Break GitHub issue #5 into model-backed implementation tickets for
+  branch-scoped environment repository deployments. The SDK owns the generic
+  side-effect, provisioning-state, Git environment-repository, and context/env
+  propagation semantics. Concrete environment repositories, including
+  deploy-helm, are adapters to that contract.
+
+planning_rules:
+  current_model_rule: Update specs/current after each production slice lands as a whole-program working copy of specs/program_model, not a ticket projection.
+  unit_validation_rule: Run current-model TLC and adapter/unit tests before adding graph execution.
+  graph_rule: Add graph or integration nodes only after current-model validation passes.
+  semantic_model_rule: Do not add test graph nodes, pytest jobs, CI workflow steps, integration harnesses, or validation scripts as TLA+ program state/actions.
+  evidence_rule: Record tests and graph runs as evidence for semantic program actions in manifests or ticket status.
+  desired_sync_rule: Update this file and spec_manifest.yaml whenever scope, order, acceptance checks, or status changes.
+  promotion_rule: When specs/current equals specs/desired_program_model, promote the converged model to specs/program_model.
+
+status:
+  workflow: ticket
+  active_ticket: TG-5
+  active_ticket_title: "Branch-scoped environment repository deployments"
+  github_issue: https://github.com/haydenrear/test_graph_skill/issues/5
+  desired_module: TestGraph
+  phase: planning
+
+service_catalog:
+  existing_boundaries:
+    - graph_definition
+    - dependency_resolution
+    - node_execution
+    - build_directory_resumption
+    - published_context
+  desired_boundaries:
+    - sdk_side_effect_runtime
+    - provisioning_state_markers
+    - git_environment_repository_contract
+    - generated_git_environment_repository_fixture
+    - opentofu_environment_execution
+    - downstream_env_propagation
+    - branch_environment_reset
+    - merge_event_destroy
+    - deploy_helm_issue_creation
+  adapter_boundaries:
+    - side_effect_metadata_adapter
+    - provisioning_state_file_adapter
+    - environment_repository_contract_adapter
+    - generated_git_environment_repository_fixture_adapter
+    - opentofu_command_adapter
+    - downstream_env_projection_adapter
+    - branch_environment_lifecycle_adapter
+  known_gaps:
+    - AWS provisioning is credential-gated and planned, but the first executable contract fixture is local.
+    - The fixture source is versioned as ordinary files; tests generate a real temporary Git repository with an initial commit.
+    - deploy-helm should not be imported by SDK contract tests; a later ticket creates the deploy-helm repo issue after the SDK contract is implemented.
+
+tickets:
+  - id: TG-5A
+    title: "Add SDK side-effect runtime foundation"
+    status: done
+    depends_on: []
+    objective: >
+      Add typed SDK handling for node side effects so preview/environment
+      operations are explicit, auditable graph behavior rather than ad hoc
+      scripts. This blocks all later environment tickets.
+    desired_actions:
+      - ConfigureSideEffectRuntime
+    implementation_scope:
+      - project_sdk_sources/sdk/java/src/main/java/com/hayden/testgraphsdk/sdk/NodeSpec.java
+      - project_sdk_sources/sdk/python/src/testgraphsdk/node_spec.py
+      - project_sdk_sources/build-logic/src/main/kotlin/com/hayden/testgraphsdk/NodeDescribeLoader.kt
+      - project_sdk_sources/build-logic/src/main/kotlin/com/hayden/testgraphsdk/exec/PlanExecutor.kt
+      - references/reference.md
+      - references/workflows.md
+    current_increment:
+      model_state:
+        - side_effect_runtime_configured
+      model_actions:
+        - ConfigureSideEffectRuntime
+      adapters:
+        - SideEffectRuntimeAdapter
+      unit_tests:
+        - pytest specs/current/tests
+        - ./gradlew --console=plain :build-logic:test
+      graph_after_unit_pass:
+        - test_graph branchEnvironmentWorkflow
+    acceptance:
+      commands:
+        - cd specs/current && tlc2 -config MC.cfg TestGraph.tla
+        - pytest specs/current/tests
+        - ./gradlew --console=plain :build-logic:test
+      assertions:
+        - Side effects are represented as typed metadata and loaded into the execution plan.
+        - Unsupported or malformed side effects fail before execution side effects occur.
+        - No environment repository or OpenTofu behavior is implemented in this ticket.
+      evidence:
+        - cd specs/current && tlc2 -config MC.cfg TestGraph.tla
+        - pytest specs/current/tests specs/desired_program_model/tests
+        - cd project_sdk_sources && ./gradlew --console=plain :build-logic:test
+        - cd project_sdk_sources && ./gradlew --console=plain :sdk:java:compileJava
+
+  - id: TG-5B
+    title: "Add provisioning state markers and lifecycle guardrails"
+    status: done
+    depends_on:
+      - TG-5A
+    objective: >
+      Add the framework-managed provisioning state boundary before environment
+      repository execution: unique environment ids, provisioned marker files,
+      reset intent, and merge-triggered destroy intent. This establishes
+      cleanup visibility before env propagation or OpenTofu adapters exist.
+    desired_actions:
+      - ConfigureProvisioningState
+      - ProvisionBranchEnvironment
+      - ResetBranchEnvironment
+      - RequestMergedBranchDestroy
+      - DestroyMergedBranchEnvironment
+    implementation_scope:
+      - project_sdk_sources/build-logic/src/main/kotlin/com/hayden/testgraphsdk/exec/PlanExecutor.kt
+      - project_sdk_sources/build-logic/src/main/kotlin/com/hayden/testgraphsdk/exec/Context.kt
+      - project_sdk_sources/build-logic/src/main/kotlin/com/hayden/testgraphsdk/tasks/RunReportWriter.kt
+      - references/workflows.md
+    current_increment:
+      model_state:
+        - provisioning_state_configured
+        - provisioned_branch_environments
+        - reset_branch_environments
+        - merge_destroy_requested
+        - destroy_authorized_environments
+        - destroyed_branch_environments
+      model_actions:
+        - ConfigureProvisioningState
+        - ProvisionBranchEnvironment
+        - ResetBranchEnvironment
+        - RequestMergedBranchDestroy
+        - DestroyMergedBranchEnvironment
+      adapters:
+        - ProvisioningStateFileAdapter
+      unit_tests:
+        - pytest specs/current/tests
+        - ./gradlew --console=plain :build-logic:test
+      graph_after_unit_pass: []
+    acceptance:
+      commands:
+        - cd specs/current && tlc2 -config MC.cfg TestGraph.tla
+        - pytest specs/current/tests
+        - ./gradlew --console=plain :build-logic:test
+      assertions:
+        - Successful provisioning records a unique branch environment id under provisioned/...
+        - Failed, skipped, or partial deprovision leaves the marker in place.
+        - Destroy requires explicit merge/destroy intent, modeled as an environment variable or event input.
+        - Reset is represented separately from destroy and does not remove the provisioned cluster marker.
+      evidence:
+        - cd specs/current && tlc2 -config MC.cfg TestGraph.tla
+        - pytest specs/current/tests specs/desired_program_model/tests
+        - cd project_sdk_sources && ./gradlew --console=plain :build-logic:test
+        - cd project_sdk_sources && ./gradlew --console=plain :sdk:java:compileJava
+        - ./scripts/discover.py branchEnvironmentWorkflow --test-graph-root test_graph
+        - ./scripts/run.py branchEnvironmentWorkflow --test-graph-root test_graph
+        - ./scripts/run.py --all --test-graph-root test_graph
+
+  - id: TG-5C
+    title: "Define the Git environment repository contract"
+    status: done
+    depends_on:
+      - TG-5A
+      - TG-5B
+    objective: >
+      Define the provider-neutral Git repository contract before building a
+      fixture or execution adapter. The SDK should interact with an ordinary
+      Git repository URL/path, not a checked-in nested .git directory, tarball,
+      or deploy-helm-specific implementation.
+    desired_actions:
+      - RegisterFeatureBranch
+      - ConfigureEnvironmentRepository
+      - DeclareBranchEnvironment
+    implementation_scope:
+      - references/reference.md
+      - references/workflows.md
+      - project_sdk_sources/sdk/java/src/main/java/com/hayden/testgraphsdk/sdk/NodeSpec.java
+      - project_sdk_sources/sdk/python/src/testgraphsdk/node_spec.py
+    current_increment:
+      model_state:
+        - feature_branches
+        - environment_repo_configured
+        - branch_environment_specs
+      model_actions:
+        - RegisterFeatureBranch
+        - ConfigureEnvironmentRepository
+        - DeclareBranchEnvironment
+      adapters:
+        - EnvironmentRepositoryContractAdapter
+      unit_tests:
+        - pytest specs/current/tests
+        - ./gradlew --console=plain :build-logic:test
+      graph_after_unit_pass: []
+    acceptance:
+      commands:
+        - cd specs/current && tlc2 -config MC.cfg TestGraph.tla
+        - pytest specs/current/tests
+        - ./gradlew --console=plain :build-logic:test
+      assertions:
+        - The contract names the required repository layout, template selection, OpenTofu command sequence, and structured outputs.
+        - The contract supports ordinary Git URLs and local Git repository paths.
+        - The contract explicitly rejects a checked-in nested .git directory and tarball-based fixture as the primary test approach.
+        - The contract remains deploy-helm neutral.
+      evidence:
+        - cd specs/current && tlc2 -config MC.cfg TestGraph.tla
+        - pytest specs/current/tests specs/desired_program_model/tests
+        - cd project_sdk_sources && ./gradlew --console=plain :build-logic:test
+        - cd project_sdk_sources && ./gradlew --console=plain :sdk:java:compileJava
+        - python -m py_compile project_sdk_sources/sdk/python/src/testgraphsdk/node_spec.py project_sdk_sources/sdk/python/src/testgraphsdk/__init__.py test_graph/sources/Tg5EnvironmentRepositoryContract.py
+        - ./scripts/discover.py branchEnvironmentWorkflow --test-graph-root test_graph
+        - ./scripts/run.py branchEnvironmentWorkflow --test-graph-root test_graph
+
+  - id: TG-5D
+    title: "Generate a local Git environment repository fixture"
+    status: done
+    depends_on:
+      - TG-5C
+    objective: >
+      Build the SDK contract fixture as a temporary Git repository during the
+      test graph run. Version the source/template files in this repository, then
+      have the test node copy them into a temp directory, run git init/add/commit,
+      and pass that local Git repository path or file URL to the SDK.
+    desired_actions: []
+    implementation_scope:
+      - test_graph/environment-repository-source/
+      - test_graph/sources/
+      - test_graph/build.gradle.kts
+      - references/workflows.md
+    current_increment:
+      model_state: []
+      model_actions: []
+      adapters:
+        - GeneratedGitEnvironmentRepositoryFixtureAdapter
+      unit_tests:
+        - pytest specs/current/tests
+      graph_after_unit_pass:
+        - test_graph generatedEnvironmentRepositoryFixture
+    acceptance:
+      commands:
+        - pytest specs/current/tests
+        - ./scripts/discover.py --test-graph-root test_graph
+        - ./scripts/run.py generatedEnvironmentRepositoryFixture --test-graph-root test_graph
+      assertions:
+        - The fixture source is versioned as normal files, not as a nested checked-in Git repository.
+        - The test creates a real temporary Git repository with an initial commit before the SDK consumes it.
+        - The generated repository exposes the minimal local OpenTofu template and deterministic output contract.
+        - The fixture is self-contained and does not import deploy-helm.
+      evidence:
+        - pytest specs/current/tests
+        - python -m py_compile test_graph/support/branch_environment_harness.py test_graph/sources/Tg5GeneratedEnvironmentRepositoryFixture.py
+        - ./scripts/discover.py generatedEnvironmentRepositoryFixture --test-graph-root test_graph
+        - ./scripts/run.py generatedEnvironmentRepositoryFixture --test-graph-root test_graph
+
+  - id: TG-5E
+    title: "Implement environment repository execution and env propagation"
+    status: next
+    depends_on:
+      - TG-5D
+    objective: >
+      Implement SDK execution against the generated Git environment repository:
+      clone/reuse the repository, select the template, run the standard OpenTofu
+      flow, publish structured outputs, and propagate selected context through
+      env:[key] and env:[*].
+    desired_actions:
+      - ProvisionBranchEnvironment
+      - ReuseBranchEnvironment
+      - PropagateEnvironmentContext
+    implementation_scope:
+      - project_sdk_sources/build-logic/src/main/kotlin/com/hayden/testgraphsdk/exec/PlanExecutor.kt
+      - project_sdk_sources/build-logic/src/main/kotlin/com/hayden/testgraphsdk/exec/Context.kt
+      - project_sdk_sources/build-logic/src/main/kotlin/com/hayden/testgraphsdk/tasks/RunTestGraphTask.kt
+      - scripts/run.py
+      - test_graph/environment-repository-source/
+      - test_graph/sources/
+      - references/reference.md
+      - references/workflows.md
+    current_increment:
+      model_state:
+        - provisioned_branch_environments
+        - reused_branch_environments
+        - propagated_environment_contexts
+        - environment_context_keys
+      model_actions:
+        - ProvisionBranchEnvironment
+        - ReuseBranchEnvironment
+        - PropagateEnvironmentContext
+      adapters:
+        - EnvironmentRepositoryAdapter
+        - OpenTofuCommandAdapter
+        - DownstreamEnvProjectionAdapter
+      unit_tests:
+        - pytest specs/current/tests
+        - ./gradlew --console=plain :build-logic:test
+      graph_after_unit_pass:
+        - test_graph environmentRepositoryContract
+    acceptance:
+      commands:
+        - cd specs/current && tlc2 -config MC.cfg TestGraph.tla
+        - pytest specs/current/tests
+        - ./scripts/run.py environmentRepositoryContract --test-graph-root test_graph
+      assertions:
+        - A feature branch gets one reusable branch environment id per selected target/backend.
+        - If the branch environment already exists, the SDK reuses it instead of reprovisioning.
+        - env:[key] propagates exactly the selected context key.
+        - env:[*] propagates all eligible returned context keys.
+        - Kubernetes/Helm nodes receive KUBECONFIG and KUBECONTEXT from provisioning context unless explicitly opted out.
+        - GitHub Actions defaults to the local target/backend.
+        - AWS selection is explicit and fails fast when required credentials or inputs are missing.
+      evidence: []
+
+  - id: TG-5F
+    title: "Wire deploy, reset, and merge destroy into the branch environment flow"
+    status: pending
+    depends_on:
+      - TG-5E
+    objective: >
+      Complete the branch-scoped lifecycle against the generated Git fixture:
+      deploy the application into the branch environment, reset the existing
+      branch environment for redeploys, and destroy it only when merge-time
+      destroy intent is present.
+    desired_actions:
+      - DeployApplicationToBranchEnvironment
+      - ResetBranchEnvironment
+      - RequestMergedBranchDestroy
+      - DestroyMergedBranchEnvironment
+    implementation_scope:
+      - project_sdk_sources/build-logic/src/main/kotlin/com/hayden/testgraphsdk/exec/PlanExecutor.kt
+      - project_sdk_sources/build-logic/src/main/kotlin/com/hayden/testgraphsdk/tasks/RunTestGraphTask.kt
+      - scripts/run.py
+      - test_graph/environment-repository-source/
+      - test_graph/sources/
+    current_increment:
+      model_state:
+        - reset_branch_environments
+        - deployed_branch_environments
+      model_actions:
+        - DeployApplicationToBranchEnvironment
+        - ResetBranchEnvironment
+        - RequestMergedBranchDestroy
+        - DestroyMergedBranchEnvironment
+      adapters:
+        - BranchEnvironmentLifecycleAdapter
+      unit_tests:
+        - pytest specs/current/tests
+        - ./gradlew --console=plain :build-logic:test
+      graph_after_unit_pass:
+        - test_graph environmentRepositoryContract
+        - test_graph branchEnvironmentReset
+        - test_graph branchEnvironmentMergeDestroy
+    acceptance:
+      commands:
+        - cd specs/current && tlc2 -config MC.cfg TestGraph.tla
+        - pytest specs/current/tests
+        - ./scripts/run.py environmentRepositoryContract --test-graph-root test_graph
+        - ./scripts/run.py branchEnvironmentReset --test-graph-root test_graph
+        - TESTGRAPH_DESTROY_BRANCH_ENVIRONMENT=1 ./scripts/run.py branchEnvironmentMergeDestroy --test-graph-root test_graph
+      assertions:
+        - Normal feature branch runs keep the cluster for reuse.
+        - Reset clears application/deploy state without destroying the branch cluster.
+        - Merge destroy removes the provisioned marker only after OpenTofu destroy succeeds.
+      evidence: []
+
+  - id: TG-5G
+    title: "Create the deploy-helm repository implementation ticket"
+    status: final_ticket
+    depends_on:
+      - TG-5F
+    objective: >
+      After the SDK implementation and generated Git fixture have proven the
+      contract, create the deploy-helm/deploy-cdc repository issue that asks
+      that repository to implement local and AWS environment repository
+      templates. The issue should contain the finalized contract, command
+      expectations, required outputs, reset/destroy semantics, and deploy-helm
+      skill context learned during TG-5A through TG-5F.
+    desired_actions: []
+    implementation_scope:
+      - specs/desired_program_model/ticket_plan.yaml
+      - deploy-helm/deploy-cdc GitHub issue body, created only after TG-5F is done
+    current_increment:
+      model_state: []
+      model_actions: []
+      adapters: []
+      unit_tests: []
+      graph_after_unit_pass: []
+    acceptance:
+      commands:
+        - gh issue create --repo haydenrear/deploy-cdc --title "Add deploy-helm environment repository templates for test graph branch environments" --body-file <generated-from-final-contract>
+      assertions:
+        - The deploy-helm issue is not created until the SDK implementation and local generated Git fixture contract are complete.
+        - The issue includes the finalized Git environment repository contract and required outputs.
+        - The issue includes deploy-helm skill context, including k3d/k3s, registry, Helm chart, Kueue, and OpenTofu/CompuTeQ surfaces.
+        - The issue asks deploy-helm to add local and AWS templates plus its own validation workflow, but the SDK remains coupled only to the Git repository contract.
+      evidence: []

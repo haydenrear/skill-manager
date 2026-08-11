@@ -1,0 +1,30 @@
+# Map generated desired-model action labels to repository adapters when case
+# generation is enabled. These adapters document TG-3 target boundaries until
+# specs/current advances and executable refinement mappings are wired.
+
+[adapters.ScaffoldProject]
+adapter = "specs.desired_program_model.production_adapters:ScaffoldProjectAdapter"
+
+[adapters.PlanGraph]
+adapter = "specs.desired_program_model.production_adapters:GraphPlanningAdapter"
+
+[adapters.RunNodePass]
+adapter = "specs.desired_program_model.production_adapters:GraphRunAdapter"
+
+[adapters.RunNodeTerminal]
+adapter = "specs.desired_program_model.production_adapters:GraphRunAdapter"
+
+[adapters.WriteInlineReport]
+adapter = "specs.desired_program_model.production_adapters:ReportAdapter"
+
+[adapters.RebuildReport]
+adapter = "specs.desired_program_model.production_adapters:ReportAdapter"
+
+[adapters.SetNodeRerunDisabled]
+adapter = "specs.desired_program_model.production_adapters:RerunMetadataAdapter"
+
+[adapters.ResumeRunFromBuild]
+adapter = "specs.desired_program_model.production_adapters:ResumeRunFromBuildAdapter"
+
+[adapters.RunOnlyNodeFromBuild]
+adapter = "specs.desired_program_model.production_adapters:RunOnlyNodeFromBuildAdapter"

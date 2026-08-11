@@ -1,0 +1,181 @@
+{
+  "commit_recommendation": {
+    "git_add": "git add specs/.history/branch-environment-repository-workflow/ticket-002-TG-5C",
+    "git_commit": "git commit -m 'record spec history for TG-5C'",
+    "message": "It is recommended to commit this history directory now: specs/.history/branch-environment-repository-workflow/ticket-002-TG-5C"
+  },
+  "created_at_utc": "2026-06-13T21:57:03.628818+00:00",
+  "entry_name": "ticket-002-TG-5C",
+  "git": {
+    "branch": "feature/tg-5-branch-environment-repositories",
+    "commit": "e085267",
+    "inside_work_tree": "true"
+  },
+  "history_policy": "append-only by convention; existing entries are not overwritten and filesystem permissions remain git-friendly",
+  "kind": "ticket",
+  "results": [
+    {
+      "exists": true,
+      "role": "result",
+      "snapshot": "specs/.history/branch-environment-repository-workflow/ticket-002-TG-5C/results/tg-5c-current-tlc.txt",
+      "source": "specs/results/tg-5c-current-tlc.txt"
+    },
+    {
+      "exists": true,
+      "role": "result",
+      "snapshot": "specs/.history/branch-environment-repository-workflow/ticket-002-TG-5C/results/tg-5c-spec-pytest.txt",
+      "source": "specs/results/tg-5c-spec-pytest.txt"
+    },
+    {
+      "exists": true,
+      "role": "result",
+      "snapshot": "specs/.history/branch-environment-repository-workflow/ticket-002-TG-5C/results/tg-5c-build-logic-test.txt",
+      "source": "specs/results/tg-5c-build-logic-test.txt"
+    },
+    {
+      "exists": true,
+      "role": "result",
+      "snapshot": "specs/.history/branch-environment-repository-workflow/ticket-002-TG-5C/results/tg-5c-java-compile.txt",
+      "source": "specs/results/tg-5c-java-compile.txt"
+    },
+    {
+      "exists": true,
+      "role": "result",
+      "snapshot": "specs/.history/branch-environment-repository-workflow/ticket-002-TG-5C/results/tg-5c-python-compile.txt",
+      "source": "specs/results/tg-5c-python-compile.txt"
+    },
+    {
+      "exists": true,
+      "role": "result",
+      "snapshot": "specs/.history/branch-environment-repository-workflow/ticket-002-TG-5C/results/tg-5c-branch-environment-discover.txt",
+      "source": "specs/results/tg-5c-branch-environment-discover.txt"
+    },
+    {
+      "exists": true,
+      "role": "result",
+      "snapshot": "specs/.history/branch-environment-repository-workflow/ticket-002-TG-5C/results/20260613-215243",
+      "source": "test_graph/build/validation-reports/20260613-215243"
+    },
+    {
+      "exists": true,
+      "role": "result",
+      "snapshot": "specs/.history/branch-environment-repository-workflow/ticket-002-TG-5C/results/20260613-215257",
+      "source": "test_graph/build/validation-reports/20260613-215257"
+    },
+    {
+      "exists": true,
+      "role": "result",
+      "snapshot": "specs/.history/branch-environment-repository-workflow/ticket-002-TG-5C/results/20260613-215322",
+      "source": "test_graph/build/validation-reports/20260613-215322"
+    },
+    {
+      "exists": true,
+      "role": "result",
+      "snapshot": "specs/.history/branch-environment-repository-workflow/ticket-002-TG-5C/results/20260613-215351",
+      "source": "test_graph/build/validation-reports/20260613-215351"
+    },
+    {
+      "exists": true,
+      "role": "result",
+      "snapshot": "specs/.history/branch-environment-repository-workflow/ticket-002-TG-5C/results/20260613-215413",
+      "source": "test_graph/build/validation-reports/20260613-215413"
+    },
+    {
+      "exists": true,
+      "role": "result",
+      "snapshot": "specs/.history/branch-environment-repository-workflow/ticket-002-TG-5C/results/20260613-215441",
+      "source": "test_graph/build/validation-reports/20260613-215441"
+    }
+  ],
+  "schema_version": 1,
+  "snapshots": [
+    {
+      "exists": true,
+      "role": "program_model",
+      "snapshot": "specs/.history/branch-environment-repository-workflow/ticket-002-TG-5C/snapshots/program_model",
+      "source": "specs/program_model"
+    },
+    {
+      "exists": true,
+      "role": "desired_program_model",
+      "snapshot": "specs/.history/branch-environment-repository-workflow/ticket-002-TG-5C/snapshots/desired_program_model",
+      "source": "specs/desired_program_model"
+    },
+    {
+      "exists": true,
+      "role": "current",
+      "snapshot": "specs/.history/branch-environment-repository-workflow/ticket-002-TG-5C/snapshots/current",
+      "source": "specs/current"
+    }
+  ],
+  "spec_root": "specs",
+  "summary": "Closed TG-5C after implementing provider-neutral Git environment repository contract metadata in the SDK, current-model branch environment declaration semantics, docs, unit tests, and branchEnvironmentWorkflow contract graph coverage.",
+  "ticket": {
+    "acceptance": {
+      "assertions": [
+        "The contract names the required repository layout, template selection, OpenTofu command sequence, and structured outputs.",
+        "The contract supports ordinary Git URLs and local Git repository paths.",
+        "The contract explicitly rejects a checked-in nested .git directory and tarball-based fixture as the primary test approach.",
+        "The contract remains deploy-helm neutral."
+      ],
+      "commands": [
+        "cd specs/current && tlc2 -config MC.cfg TestGraph.tla",
+        "pytest specs/current/tests",
+        "./gradlew --console=plain :build-logic:test"
+      ],
+      "evidence": [
+        "cd specs/current && tlc2 -config MC.cfg TestGraph.tla",
+        "pytest specs/current/tests specs/desired_program_model/tests",
+        "cd project_sdk_sources && ./gradlew --console=plain :build-logic:test",
+        "cd project_sdk_sources && ./gradlew --console=plain :sdk:java:compileJava",
+        "python -m py_compile project_sdk_sources/sdk/python/src/testgraphsdk/node_spec.py project_sdk_sources/sdk/python/src/testgraphsdk/__init__.py test_graph/sources/Tg5EnvironmentRepositoryContract.py",
+        "./scripts/discover.py branchEnvironmentWorkflow --test-graph-root test_graph",
+        "./scripts/run.py branchEnvironmentWorkflow --test-graph-root test_graph"
+      ]
+    },
+    "current_increment": {
+      "adapters": [
+        "EnvironmentRepositoryContractAdapter"
+      ],
+      "graph_after_unit_pass": [],
+      "model_actions": [
+        "RegisterFeatureBranch",
+        "ConfigureEnvironmentRepository",
+        "DeclareBranchEnvironment"
+      ],
+      "model_state": [
+        "feature_branches",
+        "environment_repo_configured",
+        "branch_environment_specs"
+      ],
+      "unit_tests": [
+        "pytest specs/current/tests",
+        "./gradlew --console=plain :build-logic:test"
+      ]
+    },
+    "depends_on": [
+      "TG-5A",
+      "TG-5B"
+    ],
+    "desired_actions": [
+      "RegisterFeatureBranch",
+      "ConfigureEnvironmentRepository",
+      "DeclareBranchEnvironment"
+    ],
+    "id": "TG-5C",
+    "implementation_scope": [
+      "references/reference.md",
+      "references/workflows.md",
+      "project_sdk_sources/sdk/java/src/main/java/com/hayden/testgraphsdk/sdk/NodeSpec.java",
+      "project_sdk_sources/sdk/python/src/testgraphsdk/node_spec.py"
+    ],
+    "objective": "Define the provider-neutral Git repository contract before building a fixture or execution adapter. The SDK should interact with an ordinary Git repository URL/path, not a checked-in nested .git directory, tarball, or deploy-helm-specific implementation.\n",
+    "status": "done",
+    "title": "Define the Git environment repository contract"
+  },
+  "ticket_id": "TG-5C",
+  "ticket_index": 2,
+  "ticket_plan": "specs/desired_program_model/ticket_plan.yaml",
+  "ticket_status": "done",
+  "workflow_name": "branch-environment-repository-workflow"
+}
