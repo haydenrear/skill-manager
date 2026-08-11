@@ -13,6 +13,12 @@ import java.util.Set;
  * <p>Names match {@code [skill].name} from the manifest (the directory
  * is {@code skill-manager-skill/}, but the published name is
  * {@code skill-manager}).
+ *
+ * <p>{@code skill-publisher} was replaced by the {@code skt} PLUGIN, which
+ * its repo now ships (skill-manager-plugin.toml + contained skills). The
+ * bundled entry is the plugin unit itself — the repo-root remote is the
+ * correct upstream for a plugin, while a contained skill must never carry
+ * it (a later sync would pull plugin-root content into a skill dir).
  */
 public final class BundledSkills {
 
@@ -20,7 +26,7 @@ public final class BundledSkills {
 
     private static final Map<String, String> GITHUB_COORDS = Map.of(
             "skill-manager", "github:haydenrear/skill-manager-skill",
-            "skill-publisher", "github:haydenrear/skill-publisher-skill",
+            "skt", "github:haydenrear/skill-publisher-skill",
             "skill-dev-skill", "github:haydenrear/skill-dev-skill"
     );
 

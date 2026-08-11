@@ -58,10 +58,13 @@ public final class OnboardCommand implements Callable<Integer> {
      */
     private record BundledSkill(String dirName, String skillName, String githubCoord) {}
 
+    // skill-publisher-skill ships the skt PLUGIN now; the resolver
+    // auto-detects the plugin shape and the install pipeline routes it to
+    // plugins/<name> with its CLI deps and marketplace registration.
     private static final List<BundledSkill> BUNDLED_SKILLS = List.of(
             new BundledSkill("skill-manager-skill", "skill-manager",
                     "github:haydenrear/skill-manager-skill"),
-            new BundledSkill("skill-publisher-skill", "skill-publisher",
+            new BundledSkill("skill-publisher-skill", "skt",
                     "github:haydenrear/skill-publisher-skill"),
             new BundledSkill("skill-dev-skill", "skill-dev-skill",
                     "github:haydenrear/skill-dev-skill")
@@ -111,8 +114,8 @@ public final class OnboardCommand implements Callable<Integer> {
         for (BundledSkill bundled : BUNDLED_SKILLS) {
             if (root != null) {
                 Path skillDir = root.resolve(bundled.dirName());
-                if (!Files.isDirectory(skillDir) || !Files.isRegularFile(skillDir.resolve("SKILL.md"))) {
-                    Log.error("bundled skill %s not found at %s", bundled.dirName(), skillDir);
+                if (!Files.isDirectory(skillDir) || !hasUnitShape(skillDir)) {
+                    Log.error("bundled unit %s not found at %s", bundled.dirName(), skillDir);
                     return 2;
                 }
             }
@@ -306,10 +309,20 @@ public final class OnboardCommand implements Callable<Integer> {
 
     private static boolean hasBundledSkills(Path candidate) {
         for (BundledSkill bundled : BUNDLED_SKILLS) {
-            if (!Files.isRegularFile(candidate.resolve(bundled.dirName()).resolve("SKILL.md"))) {
+            if (!hasUnitShape(candidate.resolve(bundled.dirName()))) {
                 return false;
             }
         }
         return true;
+    }
+
+    /**
+     * A bundled entry is either a skill (top-level SKILL.md) or a plugin
+     * (skill-manager-plugin.toml) — skill-publisher-skill became the skt
+     * plugin, so a SKILL.md-only probe would reject every install root.
+     */
+    private static boolean hasUnitShape(Path unitDir) {
+        return Files.isRegularFile(unitDir.resolve("SKILL.md"))
+                || Files.isRegularFile(unitDir.resolve("skill-manager-plugin.toml"));
     }
 }

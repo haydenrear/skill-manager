@@ -31,62 +31,61 @@ public class OnboardSkillsInstalled {
             if (home == null) {
                 return NodeResult.fail("onboard.skills.installed", "missing env.prepared context");
             }
+            // skill-publisher's repo ships the skt PLUGIN now: it installs
+            // to plugins/skt (plugin manifest + contained skills), while
+            // skill-manager and skill-dev-skill stay bundled skills.
             Path skillsDir = Path.of(home).resolve("skills");
             Path manager = skillsDir.resolve("skill-manager");
-            Path publisher = skillsDir.resolve("skill-publisher");
             Path dev = skillsDir.resolve("skill-dev-skill");
+            Path skt = Path.of(home).resolve("plugins").resolve("skt");
             Path installedDir = Path.of(home).resolve("installed");
 
             boolean managerDirOk = Files.isDirectory(manager);
             boolean managerMdOk = Files.isRegularFile(manager.resolve("SKILL.md"));
-            boolean publisherDirOk = Files.isDirectory(publisher);
-            boolean publisherMdOk = Files.isRegularFile(publisher.resolve("SKILL.md"));
             boolean devDirOk = Files.isDirectory(dev);
             boolean devMdOk = Files.isRegularFile(dev.resolve("SKILL.md"));
+            boolean sktDirOk = Files.isDirectory(skt);
+            boolean sktManifestOk = Files.isRegularFile(skt.resolve("skill-manager-plugin.toml"));
+            boolean sktContainedOk = Files.isRegularFile(
+                    skt.resolve("skills").resolve("skt").resolve("SKILL.md"));
             boolean managerGitOk = Files.exists(manager.resolve(".git"));
-            boolean publisherGitOk = Files.exists(publisher.resolve(".git"));
             boolean devGitOk = Files.exists(dev.resolve(".git"));
             String managerRecord = read(installedDir.resolve("skill-manager.json"));
-            String publisherRecord = read(installedDir.resolve("skill-publisher.json"));
             String devRecord = read(installedDir.resolve("skill-dev-skill.json"));
             String managerGithub = "https://github.com/haydenrear/skill-manager-skill.git";
-            String publisherGithub = "https://github.com/haydenrear/skill-publisher-skill.git";
             String devGithub = "https://github.com/haydenrear/skill-dev-skill.git";
             boolean managerRemoteOk = managerRecord.contains(managerGithub)
                     && managerGithub.equals(gitRemote(manager));
-            boolean publisherRemoteOk = publisherRecord.contains(publisherGithub)
-                    && publisherGithub.equals(gitRemote(publisher));
             boolean devRemoteOk = devRecord.contains(devGithub)
                     && devGithub.equals(gitRemote(dev));
 
             boolean pass = managerDirOk && managerMdOk
-                    && publisherDirOk && publisherMdOk
                     && devDirOk && devMdOk
-                    && managerGitOk && publisherGitOk && devGitOk
-                    && managerRemoteOk && publisherRemoteOk && devRemoteOk;
+                    && sktDirOk && sktManifestOk && sktContainedOk
+                    && managerGitOk && devGitOk
+                    && managerRemoteOk && devRemoteOk;
             return (pass
                     ? NodeResult.pass("onboard.skills.installed")
                     : NodeResult.fail("onboard.skills.installed",
                             "managerDir=" + managerDirOk + " managerMd=" + managerMdOk
-                                    + " publisherDir=" + publisherDirOk + " publisherMd=" + publisherMdOk
                                     + " devDir=" + devDirOk + " devMd=" + devMdOk
+                                    + " sktDir=" + sktDirOk
+                                    + " sktManifest=" + sktManifestOk
+                                    + " sktContained=" + sktContainedOk
                                     + " managerGit=" + managerGitOk
-                                    + " publisherGit=" + publisherGitOk
                                     + " devGit=" + devGitOk
                                     + " managerRemote=" + managerRemoteOk
-                                    + " publisherRemote=" + publisherRemoteOk
                                     + " devRemote=" + devRemoteOk))
                     .assertion("skill_manager_dir_present", managerDirOk)
                     .assertion("skill_manager_md_present", managerMdOk)
-                    .assertion("skill_publisher_dir_present", publisherDirOk)
-                    .assertion("skill_publisher_md_present", publisherMdOk)
                     .assertion("skill_dev_dir_present", devDirOk)
                     .assertion("skill_dev_md_present", devMdOk)
+                    .assertion("skt_plugin_dir_present", sktDirOk)
+                    .assertion("skt_plugin_manifest_present", sktManifestOk)
+                    .assertion("skt_contained_skill_present", sktContainedOk)
                     .assertion("skill_manager_git_metadata_present", managerGitOk)
-                    .assertion("skill_publisher_git_metadata_present", publisherGitOk)
                     .assertion("skill_dev_git_metadata_present", devGitOk)
                     .assertion("skill_manager_origin_points_to_github", managerRemoteOk)
-                    .assertion("skill_publisher_origin_points_to_github", publisherRemoteOk)
                     .assertion("skill_dev_origin_points_to_github", devRemoteOk);
         });
     }

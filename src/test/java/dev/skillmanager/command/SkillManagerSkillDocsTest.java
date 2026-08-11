@@ -24,7 +24,8 @@ public final class SkillManagerSkillDocsTest {
                     String projects = Files.readString(root.resolve("references/projects.md"));
                     String cli = Files.readString(root.resolve("references/cli.md"));
                     String toml = Files.readString(root.resolve("skill-manager.toml"));
-                    String publisher = Files.readString(Path.of("skill-publisher-skill/SKILL.md"));
+                    String publisher = Files.readString(
+                            Path.of("skill-publisher-skill/skills/unit-authoring/SKILL.md"));
                     String skillScripts = Files.readString(
                             Path.of("skill-publisher-skill/references/skill-scripts.md"));
                     String pluginDocs = Files.readString(
