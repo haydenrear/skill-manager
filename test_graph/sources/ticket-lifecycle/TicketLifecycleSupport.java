@@ -132,24 +132,41 @@ final class TicketLifecycleSupport {
                 String.valueOf(ctx == null ? "" : ctx.get("env.prepared", "home").orElse("")),
                 System.getProperty("user.home", "") + "/.skill-manager")) {
             if (homeRaw == null || homeRaw.isBlank()) continue;
-            Path candidate = Path.of(homeRaw).resolve("skills")
-                    .resolve("git-integration-repo").resolve("scripts");
-            if (isScriptsDir(candidate)) {
-                return new Scripts(candidate, "the git-integration-repo skill installed in "
-                        + homeRaw);
+            for (String unit : SCRIPT_UNITS) {
+                Path candidate = Path.of(homeRaw).resolve("skills")
+                        .resolve(unit).resolve("scripts");
+                if (isScriptsDir(candidate)) {
+                    return new Scripts(candidate, "the " + unit + " skill installed in "
+                            + homeRaw);
+                }
             }
         }
         return new Scripts(null, "no integration.toml above " + repo + " (or its git common dir)"
-                + " and no git-integration-repo skill in any home on this machine");
+                + " and no " + String.join("/", SCRIPT_UNITS)
+                + " skill in any home on this machine");
     }
+
+    /**
+     * Units that may carry the worktree scripts, most-specific first. The
+     * mechanism (wt/new-change.sh/close-change.sh/bootstrap-home.sh) lives in
+     * git-issue-workflow — a home and a worktree are facts about any checkout;
+     * git-integration-repo is the constituent-aware specialization and kept
+     * only as a fallback for pre-move installs.
+     */
+    private static final List<String> SCRIPT_UNITS =
+            List.of("git-issue-workflow", "git-integration-repo");
 
     private static Scripts fromIntegrationAbove(Path start, String how) {
         Path dir = start.toAbsolutePath().normalize();
         while (dir != null) {
             if (Files.isRegularFile(dir.resolve("integration.toml"))) {
-                Path candidate = dir.resolve("constituents")
-                        .resolve("git-integration-repo").resolve("scripts");
-                if (isScriptsDir(candidate)) return new Scripts(candidate, how + " (" + dir + ")");
+                for (String unit : SCRIPT_UNITS) {
+                    Path candidate = dir.resolve("constituents")
+                            .resolve(unit).resolve("scripts");
+                    if (isScriptsDir(candidate)) {
+                        return new Scripts(candidate, how + " (" + dir + ")");
+                    }
+                }
             }
             dir = dir.getParent();
         }
