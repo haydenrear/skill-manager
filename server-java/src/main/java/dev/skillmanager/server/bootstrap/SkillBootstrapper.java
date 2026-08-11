@@ -24,12 +24,13 @@ import java.util.stream.Stream;
 import java.util.zip.GZIPOutputStream;
 
 /**
- * Seeds the registry with the skills the CLI's {@code onboard} command
- * pulls in: {@code skill-manager-skill} (CLI wrapper),
- * {@code skill-publisher-skill} (authoring guide), and
- * {@code skill-dev-skill} (development worktree CLI). Runs once at server
- * startup so a freshly-provisioned registry has them available without any
- * manual publish step.
+ * Seeds the registry with the bundled skill surfaces:
+ * {@code skill-manager-skill} (CLI wrapper), {@code skill-dev-skill}
+ * (development worktree CLI), and the contained skills of the skt plugin
+ * shipped by {@code skill-publisher-skill} ({@code skt},
+ * {@code unit-authoring}). Runs once at server startup so a
+ * freshly-provisioned registry has them available without any manual
+ * publish step.
  *
  * <p>Source-of-truth is the on-disk skill directories under the install
  * root — typically the repo checkout the JBang launcher was started from.
@@ -90,8 +91,8 @@ public final class SkillBootstrapper {
             return;
         }
         log.info("SkillBootstrapper: seeding bundled skills from {}", root);
-        for (String name : BUNDLED_SKILLS) {
-            Path skillDir = root.resolve(name);
+        for (Path skillDir : seedableSkillDirs(root)) {
+            String name = skillDir.getFileName().toString();
             long startedAt = System.nanoTime();
             String status = "ok";
             ServerObservability.Operation operation =
@@ -171,13 +172,49 @@ public final class SkillBootstrapper {
         return null;
     }
 
+    /**
+     * A bundled entry contributes either itself (skill shape: top-level
+     * {@code skill-manager.toml}) or its contained skills (plugin shape:
+     * top-level {@code skill-manager-plugin.toml} with
+     * {@code skills/<name>/skill-manager.toml}). skill-publisher-skill
+     * became the skt plugin, so requiring a top-level skill manifest in
+     * every entry would fail root detection wholesale and seed nothing.
+     */
     private static boolean hasBundledSkills(Path candidate) {
         for (String name : BUNDLED_SKILLS) {
-            if (!Files.isRegularFile(candidate.resolve(name).resolve("skill-manager.toml"))) {
-                return false;
+            if (!seedableDirsOf(candidate.resolve(name)).isEmpty()) {
+                return true;
             }
         }
-        return true;
+        return false;
+    }
+
+    private static List<Path> seedableSkillDirs(Path root) {
+        List<Path> dirs = new java.util.ArrayList<>();
+        for (String name : BUNDLED_SKILLS) {
+            dirs.addAll(seedableDirsOf(root.resolve(name)));
+        }
+        return dirs;
+    }
+
+    private static List<Path> seedableDirsOf(Path entry) {
+        if (Files.isRegularFile(entry.resolve("skill-manager.toml"))) {
+            return List.of(entry);
+        }
+        if (Files.isRegularFile(entry.resolve("skill-manager-plugin.toml"))) {
+            Path contained = entry.resolve("skills");
+            try (var children = Files.list(contained)) {
+                return children
+                        .filter(d -> Files.isRegularFile(d.resolve("skill-manager.toml")))
+                        .sorted()
+                        .toList();
+            } catch (IOException e) {
+                log.warn("SkillBootstrapper: cannot list contained skills of {}: {}",
+                        entry, e.getMessage());
+                return List.of();
+            }
+        }
+        return List.of();
     }
 
     /**

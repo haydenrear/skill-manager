@@ -42,16 +42,21 @@ public class OnboardSeededByServer {
                     .build();
             String body = fetch(http, registryUrl + "/skills");
             boolean managerSeen = body != null && body.contains("\"skill-manager\"");
-            boolean publisherSeen = body != null && body.contains("\"skill-publisher\"");
+            // skill-publisher-skill ships the skt plugin now; the server
+            // seeds the plugin's CONTAINED skills (skt, unit-authoring).
+            boolean sktSeen = body != null && body.contains("\"skt\"");
+            boolean authoringSeen = body != null && body.contains("\"unit-authoring\"");
             boolean devSeen = body != null && body.contains("\"skill-dev-skill\"");
-            return (managerSeen && publisherSeen && devSeen
+            return (managerSeen && sktSeen && authoringSeen && devSeen
                     ? NodeResult.pass("onboard.seeded.by.server")
                     : NodeResult.fail("onboard.seeded.by.server",
                             "missing seeded skills — manager=" + managerSeen
-                                    + " publisher=" + publisherSeen
+                                    + " skt=" + sktSeen
+                                    + " unitAuthoring=" + authoringSeen
                                     + " skillDev=" + devSeen))
                     .assertion("skill_manager_seeded", managerSeen)
-                    .assertion("skill_publisher_seeded", publisherSeen)
+                    .assertion("skt_seeded", sktSeen)
+                    .assertion("unit_authoring_seeded", authoringSeen)
                     .assertion("skill_dev_seeded", devSeen);
         });
     }

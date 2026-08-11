@@ -1,5 +1,6 @@
 package dev.skillmanager.effects;
 
+import dev.skillmanager.model.PluginParser;
 import dev.skillmanager.model.Skill;
 import dev.skillmanager.model.UnitReference;
 import dev.skillmanager.resolve.ResolvedGraph;
@@ -83,8 +84,12 @@ final class ResolveGraphHandlers {
             String coord;
             if (e.installRoot() != null) {
                 Path skillDir = e.installRoot().resolve(spec.dirName());
+                // A bundled entry is a skill (SKILL.md) or a plugin —
+                // skill-publisher-skill ships the skt plugin, and the
+                // resolver auto-detects the plugin shape from the dir.
                 if (!Files.isDirectory(skillDir)
-                        || !Files.isRegularFile(skillDir.resolve("SKILL.md"))) {
+                        || !(Files.isRegularFile(skillDir.resolve("SKILL.md"))
+                                || PluginParser.looksLikePlugin(skillDir))) {
                     discoveryFacts.add(new ContextFact.BundledSkillMissing(
                             spec.publishedName(), skillDir.toString()));
                     missingCount++;
@@ -104,6 +109,12 @@ final class ResolveGraphHandlers {
             if (store.contains(publishedName)) {
                 discoveryFacts.add(new ContextFact.BundledSkillAlreadyInstalled(
                         publishedName, store.skillDir(publishedName).toString()));
+                continue;
+            }
+            if (store.containsPlugin(publishedName)) {
+                discoveryFacts.add(new ContextFact.BundledSkillAlreadyInstalled(
+                        publishedName,
+                        store.pluginsDir().resolve(publishedName).toString()));
                 continue;
             }
             toResolve.add(new Resolver.Coord(coord, null));
