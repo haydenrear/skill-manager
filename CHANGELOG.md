@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.22.1](https://github.com/haydenrear/skill-manager/compare/v0.22.0...v0.22.1) (2026-08-11)
+
+
+### Bug Fixes
+
+* **sync:** doc units pull their checkout and refresh their record under --git-latest ([415ca6d](https://github.com/haydenrear/skill-manager/commit/415ca6d57ee80e1373324c8a4e42884a235dd36b))
+
 ## [0.22.0](https://github.com/haydenrear/skill-manager/compare/v0.21.1...v0.22.0) (2026-08-11)
 
 
