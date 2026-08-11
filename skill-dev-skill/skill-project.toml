@@ -1,0 +1,84 @@
+# Skill project manifest for skill-dev-skill.
+#
+# What this declares: the units an agent working IN THIS CHECKOUT needs.
+# This repository IS a skill unit, and `skill-manager` is a genuine dependency
+# rather than a courtesy: this skill's entire subject is driving skill-manager's
+# worktree and sync surfaces, and its SKILL.md `skill-imports` names
+# `skill-manager` references/cli.md (section: runtime) for the definitions of
+# `sync --from`, force-scripts replay, and managed CLI cleanup. It also ships a
+# `[[cli_dependencies]]` skill-script installer for the `skill-dev` binary, plus
+# a src/ + tests/ Python package with its own pyproject.toml and uv.lock.
+#
+# It deliberately does NOT declare `skill-dev-skill` itself. This repository IS that
+# unit's source of truth; installing it into its own home would give an agent two
+# copies of one unit with no rule about which one it is editing, and would make
+# the checkout's own edits invisible until a publish round trip.
+#
+# How the home is produced — read this before running `project resolve`
+# ---------------------------------------------------------------------
+# `project resolve` writes into whatever `SKILL_MANAGER_HOME` names. Run it
+# before this checkout has its own home and it mutates the operator's global
+# ~/.skill-manager. Create the local home first, point `SKILL_MANAGER_HOME` at
+# it, and only then resolve:
+#
+#   mkdir -p .skill-manager/skills
+#   SKILL_MANAGER_CLI=<epic skill-manager> \
+#     bash <git-integration-repo>/scripts/bootstrap-home.sh --root "$PWD" --force
+#   export SKILL_MANAGER_HOME="$PWD/.skill-manager"
+#   export CLAUDE_CONFIG_DIR="$PWD/.claude"  CLAUDE_HOME="$PWD/.claude"
+#   export CODEX_HOME="$PWD/.codex"          GEMINI_HOME="$PWD/.gemini"
+#   skill-manager project resolve --project-dir "$PWD" --skip-gateway \
+#     --allow-same-home
+#
+# Two things in that sequence are not optional, and each was a real failure:
+#
+#   * The four agent-home vars. `SKILL_MANAGER_HOME` alone does NOT redirect the
+#     agent-home projections — set only that and `resolve` symlinks this
+#     project's units into the operator's real ~/.claude, ~/.codex and ~/.gemini.
+#     These are the paths `home describe --json`'s `env` block names and the
+#     launch shims under `.skill-manager/bin/launch/` export for you, which is
+#     why launching through a shim is the supported way in.
+#
+#   * `--allow-same-home`. This project's home IS its own parent home — there is
+#     no tier between ~/.skill-manager and here — and `project resolve` refuses
+#     that layout by default (skill-manager #32) because it "isolates nothing".
+#     The refusal is a doctrine guard, not a data-loss guard: ChildHomeMaterializer's
+#     three degenerate-layout guards already decline a same-tree materialization.
+#     The only alternative is to point SKILL_MANAGER_HOME at the operator's
+#     global home, which would write it, and that is forbidden.
+#
+# Expect `resolve` to need SEVERAL passes: it validates markdown `skill-imports`
+# against INSTALLED units, not declared ones, so a unit whose imports name a unit
+# installed later in the same run fails the first pass and succeeds on the next.
+#
+# Coords are git-only (no registry is configured) and they name the REPO, not the
+# installed unit — see skill-publisher's references/coords-and-distribution.md.
+# The table key is the installed unit name, which is what
+# `.skill-manager/skills/<name>` uses.
+
+[project]
+name = "skill-dev-skill"
+version = "0.1.0"
+description = "Installs the skill-dev CLI for editing installed skills and plugins in project-local worktrees, then syncing those edits back through skill-manager."
+
+# --- subject matter AND a declared markdown import. SKILL.md's `skill-imports`
+#     names skill-manager references/cli.md, and `project resolve` validates
+#     markdown imports against INSTALLED units, so this must be declared or the
+#     whole resolve fails with "references missing unit". It is also the surface
+#     this skill's own CLI drives, so an agent changing skill-dev's behavior is
+#     reading skill-manager's contract while doing it ---
+
+[skills.skill-manager]
+source = "github:haydenrear/skill-manager-skill"
+
+# --- authoring: every tracked file here is unit content — SKILL.md, skill-manager.toml's [[cli_dependencies]], and the skill-scripts/ installer.
+#     skill-publisher is the authority on all of it, and on the
+#     install/bind/sync round trip that ships an edit into a store ---
+
+[skills.skill-publisher]
+source = "github:haydenrear/skill-publisher-skill"
+
+# --- no [[vendored]] block: this repo tracks no symlinks and has no test_graph,
+#     so no path in the working tree holds content owned by another unit.
+#     Verified with `git ls-files -s | grep ^120000` -> 0 entries, before and
+#     after onboarding. Nothing to migrate, nothing to validate.

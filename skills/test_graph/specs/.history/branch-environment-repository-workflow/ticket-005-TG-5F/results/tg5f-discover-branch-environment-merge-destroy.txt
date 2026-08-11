@@ -1,0 +1,18 @@
+plan for test graph 'branchEnvironmentMergeDestroy' (5 steps):
+  #   id                                          kind        rt      entry
+  1.  tg5.environment.repository.fixture.stable   fixture     uv      sources/Tg5StableEnvironmentRepositoryFixture.py
+  2.  tg5.environment.repository.provision        testbed     uv      sources/Tg5EnvironmentRepositoryProvision.py
+  3.  tg5.environment.repository.deploy           action      uv      sources/Tg5EnvironmentRepositoryDeploy.py
+  4.  tg5.environment.repository.destroy          action      uv      sources/Tg5EnvironmentRepositoryDestroy.py
+  5.  tg5.environment.repository.destroy.markers  assertion   uv      sources/Tg5BranchEnvironmentDestroyMarkers.py
+
+dependencies:
+  tg5.environment.repository.fixture.stable   (root)
+  tg5.environment.repository.provision        <- tg5.environment.repository.fixture.stable
+  tg5.environment.repository.deploy           <- tg5.environment.repository.provision
+  tg5.environment.repository.destroy          <- tg5.environment.repository.deploy
+  tg5.environment.repository.destroy.markers  <- tg5.environment.repository.destroy
+
+dependency graph:
+  see it here: docs/branchEnvironmentMergeDestroy.png
+  (DOT source: docs/branchEnvironmentMergeDestroy.dot)

@@ -1,0 +1,23 @@
+{
+  "nodeId": "tg5.environment.reset",
+  "status": "passed",
+  "startedAt": "2026-06-13T21:54:41.647190Z",
+  "endedAt": "2026-06-13T21:54:41.647372Z",
+  "assertions": [
+    {
+      "name": "environment_id_was_assigned",
+      "status": "passed"
+    },
+    {
+      "name": "reset_targets_same_environment",
+      "status": "passed"
+    }
+  ],
+  "artifacts": [],
+  "processes": [],
+  "metrics": {
+    "durationMs": 0
+  },
+  "logs": [],
+  "published": {}
+}

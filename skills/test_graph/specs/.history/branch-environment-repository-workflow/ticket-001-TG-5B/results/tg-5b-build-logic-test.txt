@@ -1,0 +1,16 @@
+> Task :build-logic:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :build-logic:compileKotlin UP-TO-DATE
+> Task :build-logic:compileJava NO-SOURCE
+> Task :build-logic:pluginDescriptors UP-TO-DATE
+> Task :build-logic:processResources UP-TO-DATE
+> Task :build-logic:classes UP-TO-DATE
+> Task :build-logic:jar UP-TO-DATE
+> Task :build-logic:compileTestKotlin UP-TO-DATE
+> Task :build-logic:compileTestJava NO-SOURCE
+> Task :build-logic:pluginUnderTestMetadata UP-TO-DATE
+> Task :build-logic:processTestResources NO-SOURCE
+> Task :build-logic:testClasses UP-TO-DATE
+> Task :build-logic:test UP-TO-DATE
+
+BUILD SUCCESSFUL in 774ms
+7 actionable tasks: 7 up-to-date

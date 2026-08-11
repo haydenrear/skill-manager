@@ -1,0 +1,93 @@
+{"runId":"20260612-180955","nodes":[{
+  "nodeId": "self.rerun.build.flow",
+  "status": "passed",
+  "startedAt": "2026-06-12T18:09:56.063187Z",
+  "endedAt": "2026-06-12T18:11:11.634709Z",
+  "assertions": [
+    {
+      "name": "run_all_project_graphs_passed",
+      "status": "passed"
+    },
+    {
+      "name": "smoke_run_id_found",
+      "status": "passed"
+    },
+    {
+      "name": "rerun_smoke_uv_run_id_found",
+      "status": "passed"
+    },
+    {
+      "name": "rerun_smoke_java_run_id_found",
+      "status": "passed"
+    },
+    {
+      "name": "smoke_build_dir_exists",
+      "status": "passed"
+    },
+    {
+      "name": "resume_login_continued_downstream",
+      "status": "passed"
+    },
+    {
+      "name": "resume_context_final_node_passed",
+      "status": "passed"
+    },
+    {
+      "name": "run_only_login_jbang_passed",
+      "status": "passed"
+    },
+    {
+      "name": "run_only_context_uv_passed",
+      "status": "passed"
+    },
+    {
+      "name": "run_only_does_not_continue_downstream",
+      "status": "passed"
+    },
+    {
+      "name": "run_only_context_was_single_step",
+      "status": "passed"
+    },
+    {
+      "name": "rerun_false_selection_rejected",
+      "status": "passed"
+    },
+    {
+      "name": "rerun_false_rejection_explained",
+      "status": "passed"
+    },
+    {
+      "name": "run_only_rerun_false_rejected",
+      "status": "passed"
+    },
+    {
+      "name": "run_only_rerun_false_rejection_explained",
+      "status": "passed"
+    }
+  ],
+  "artifacts": [
+    {
+      "type": "project-smoke-report",
+      "path": "/Users/hayde/IdeaProjects/test_graph/project_sdk_sources/build/validation-reports/20260612-181004/report.md"
+    }
+  ],
+  "processes": [],
+  "metrics": {
+    "projectGraphCount": 3,
+    "durationMs": 75571
+  },
+  "logs": [
+    "run_all exited 0\n  [1/1] rerun.disabled.probe (uv)\nwrote /Users/hayde/IdeaProjects/test_graph/project_sdk_sources/build/validation-reports/20260612-181011/summary.json + /Users/hayde/IdeaProjects/test_graph/project_sdk_sources/build/validation-reports/20260612-181011/report.md\ntestGraph 'rerunSmokeUv' done. reports: /Users/hayde/IdeaProjects/test_graph/project_sdk_sources/build/validation-reports/20260612-181011\n\n> Task :rerunSmokeJava\n[toolchain] jbang=0.137.0 (path: /opt/homebrew/bin/jbang)\n[toolchain] uv=0.11.19 (path: /opt/homebrew/bin/uv)\ntestGraph 'rerunSmokeJava' run=20260612-181014 steps=1\n  plan[1/1] rerun.java.probe  [evidence, jbang]  sources/RerunJavaProbe.java\n  [1/1] rerun.java.probe (jbang)\nwrote /Users/hayde/IdeaProjects/test_graph/project_sdk_sources/build/validation-reports/20260612-181014/summary.json + /Users/hayde/IdeaProjects/test_graph/project_sdk_sources/build/validation-reports/20260612-181014/report.md\ntestGraph 'rerunSmokeJava' done. reports: /Users/hayde/IdeaProjects/test_graph/project_sdk_sources/build/validation-reports/20260612-181014\n\n> Task :validationRunAll\n\n[Incubating] Problems report is available at: file:///Users/hayde/IdeaProjects/test_graph/project_sdk_sources/build/reports/problems/problems-report.html\n\nDeprecated Gradle features were used in this build, making it incompatible with Gradle 9.0.\n\nYou can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.\n\nFor more on this, please refer to https://docs.gradle.org/8.14.3/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.\n\nBUILD SUCCESSFUL in 19s\n7 actionable tasks: 3 executed, 4 up-to-date",
+    "resume_login exited 0\n[toolchain] uv=0.11.19 (path: /opt/homebrew/bin/uv)\ntestGraph 'smoke' run=20260612-181004 steps=6\n  plan[1/6] app.running  [testbed, jbang]  sources/AppRunning.java\n  plan[2/6] user.seeded  [fixture, uv]  sources/user_seeded.py\n  plan[3/6] network.pingable  [evidence, jbang]  sources/NetworkPingable.java\n  plan[4/6] login.smoke  [assertion, jbang]  sources/LoginSmoke.java\n  plan[5/6] rerun.disabled.probe  [evidence, uv]  sources/RerunDisabledProbe.py\n  plan[6/6] context.snapshots.present  [assertion, uv]  sources/ContextSnapshotsPresent.py\nresuming 'login.smoke' from /Users/hayde/IdeaProjects/test_graph/project_sdk_sources/build/validation-reports/20260612-181004; skipping 3 already-passed dependency step(s)\n  [1/3] login.smoke (jbang)\n  [2/3] rerun.disabled.probe (uv)\n  [3/3] context.snapshots.present (uv)\nwrote /Users/hayde/IdeaProjects/test_graph/project_sdk_sources/build/validation-reports/20260612-181004/summary.json + /Users/hayde/IdeaProjects/test_graph/project_sdk_sources/build/validation-reports/20260612-181004/report.md\ntestGraph 'smoke' done. reports: /Users/hayde/IdeaProjects/test_graph/project_sdk_sources/build/validation-reports/20260612-181004\n\n[Incubating] Problems report is available at: file:///Users/hayde/IdeaProjects/test_graph/project_sdk_sources/build/reports/problems/problems-report.html\n\nDeprecated Gradle features were used in this build, making it incompatible with Gradle 9.0.\n\nYou can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.\n\nFor more on this, please refer to https://docs.gradle.org/8.14.3/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.\n\nBUILD SUCCESSFUL in 10s\n5 actionable tasks: 1 executed, 4 up-to-date",
+    "resume_context exited 0\n> Task :smoke\n[toolchain] jbang=0.137.0 (path: /opt/homebrew/bin/jbang)\n[toolchain] uv=0.11.19 (path: /opt/homebrew/bin/uv)\ntestGraph 'smoke' run=20260612-181004 steps=6\n  plan[1/6] app.running  [testbed, jbang]  sources/AppRunning.java\n  plan[2/6] user.seeded  [fixture, uv]  sources/user_seeded.py\n  plan[3/6] network.pingable  [evidence, jbang]  sources/NetworkPingable.java\n  plan[4/6] login.smoke  [assertion, jbang]  sources/LoginSmoke.java\n  plan[5/6] rerun.disabled.probe  [evidence, uv]  sources/RerunDisabledProbe.py\n  plan[6/6] context.snapshots.present  [assertion, uv]  sources/ContextSnapshotsPresent.py\nresuming 'context.snapshots.present' from /Users/hayde/IdeaProjects/test_graph/project_sdk_sources/build/validation-reports/20260612-181004; skipping 5 already-passed dependency step(s)\n  [1/1] context.snapshots.present (uv)\nwrote /Users/hayde/IdeaProjects/test_graph/project_sdk_sources/build/validation-reports/20260612-181004/summary.json + /Users/hayde/IdeaProjects/test_graph/project_sdk_sources/build/validation-reports/20260612-181004/report.md\ntestGraph 'smoke' done. reports: /Users/hayde/IdeaProjects/test_graph/project_sdk_sources/build/validation-reports/20260612-181004\n\n[Incubating] Problems report is available at: file:///Users/hayde/IdeaProjects/test_graph/project_sdk_sources/build/reports/problems/problems-report.html\n\nDeprecated Gradle features were used in this build, making it incompatible with Gradle 9.0.\n\nYou can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.\n\nFor more on this, please refer to https://docs.gradle.org/8.14.3/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.\n\nBUILD SUCCESSFUL in 8s\n5 actionable tasks: 1 executed, 4 up-to-date",
+    "run_only_login exited 0\n> Task :smoke\n[toolchain] jbang=0.137.0 (path: /opt/homebrew/bin/jbang)\n[toolchain] uv=0.11.19 (path: /opt/homebrew/bin/uv)\ntestGraph 'smoke' run=20260612-181004 steps=6\n  plan[1/6] app.running  [testbed, jbang]  sources/AppRunning.java\n  plan[2/6] user.seeded  [fixture, uv]  sources/user_seeded.py\n  plan[3/6] network.pingable  [evidence, jbang]  sources/NetworkPingable.java\n  plan[4/6] login.smoke  [assertion, jbang]  sources/LoginSmoke.java\n  plan[5/6] rerun.disabled.probe  [evidence, uv]  sources/RerunDisabledProbe.py\n  plan[6/6] context.snapshots.present  [assertion, uv]  sources/ContextSnapshotsPresent.py\nrunning only 'login.smoke' from /Users/hayde/IdeaProjects/test_graph/project_sdk_sources/build/validation-reports/20260612-181004; not continuing downstream graph nodes\n  [1/1] login.smoke (jbang)\nwrote /Users/hayde/IdeaProjects/test_graph/project_sdk_sources/build/validation-reports/20260612-181004/summary.json + /Users/hayde/IdeaProjects/test_graph/project_sdk_sources/build/validation-reports/20260612-181004/report.md\ntestGraph 'smoke' done. reports: /Users/hayde/IdeaProjects/test_graph/project_sdk_sources/build/validation-reports/20260612-181004\n\n[Incubating] Problems report is available at: file:///Users/hayde/IdeaProjects/test_graph/project_sdk_sources/build/reports/problems/problems-report.html\n\nDeprecated Gradle features were used in this build, making it incompatible with Gradle 9.0.\n\nYou can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.\n\nFor more on this, please refer to https://docs.gradle.org/8.14.3/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.\n\nBUILD SUCCESSFUL in 9s\n5 actionable tasks: 1 executed, 4 up-to-date",
+    "run_only_context exited 0\n> Task :smoke\n[toolchain] jbang=0.137.0 (path: /opt/homebrew/bin/jbang)\n[toolchain] uv=0.11.19 (path: /opt/homebrew/bin/uv)\ntestGraph 'smoke' run=20260612-181004 steps=6\n  plan[1/6] app.running  [testbed, jbang]  sources/AppRunning.java\n  plan[2/6] user.seeded  [fixture, uv]  sources/user_seeded.py\n  plan[3/6] network.pingable  [evidence, jbang]  sources/NetworkPingable.java\n  plan[4/6] login.smoke  [assertion, jbang]  sources/LoginSmoke.java\n  plan[5/6] rerun.disabled.probe  [evidence, uv]  sources/RerunDisabledProbe.py\n  plan[6/6] context.snapshots.present  [assertion, uv]  sources/ContextSnapshotsPresent.py\nrunning only 'context.snapshots.present' from /Users/hayde/IdeaProjects/test_graph/project_sdk_sources/build/validation-reports/20260612-181004; not continuing downstream graph nodes\n  [1/1] context.snapshots.present (uv)\nwrote /Users/hayde/IdeaProjects/test_graph/project_sdk_sources/build/validation-reports/20260612-181004/summary.json + /Users/hayde/IdeaProjects/test_graph/project_sdk_sources/build/validation-reports/20260612-181004/report.md\ntestGraph 'smoke' done. reports: /Users/hayde/IdeaProjects/test_graph/project_sdk_sources/build/validation-reports/20260612-181004\n\n[Incubating] Problems report is available at: file:///Users/hayde/IdeaProjects/test_graph/project_sdk_sources/build/reports/problems/problems-report.html\n\nDeprecated Gradle features were used in this build, making it incompatible with Gradle 9.0.\n\nYou can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.\n\nFor more on this, please refer to https://docs.gradle.org/8.14.3/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.\n\nBUILD SUCCESSFUL in 8s\n5 actionable tasks: 1 executed, 4 up-to-date",
+    "resume_disabled exited 1\n> Task :smoke FAILED\n\n[Incubating] Problems report is available at: file:///Users/hayde/IdeaProjects/test_graph/project_sdk_sources/build/reports/problems/problems-report.html\n\nDeprecated Gradle features were used in this build, making it incompatible with Gradle 9.0.\n\nYou can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.\n\nFor more on this, please refer to https://docs.gradle.org/8.14.3/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.\n5 actionable tasks: 1 executed, 4 up-to-date\n\n\nFAILURE: Build failed with an exception.\n\n* What went wrong:\nExecution failed for task ':smoke'.\n> cannot resume from node 'rerun.disabled.probe': node metadata has rerun=false\n\n* Try:\n> Run with --stacktrace option to get the stack trace.\n> Run with --info or --debug option to get more log output.\n> Run with --scan to get full insights.\n> Get more help at https://help.gradle.org.\n\nBUILD FAILED in 8s",
+    "run_only_disabled exited 1\n> Task :smoke FAILED\n\n[Incubating] Problems report is available at: file:///Users/hayde/IdeaProjects/test_graph/project_sdk_sources/build/reports/problems/problems-report.html\n\nDeprecated Gradle features were used in this build, making it incompatible with Gradle 9.0.\n\nYou can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.\n\nFor more on this, please refer to https://docs.gradle.org/8.14.3/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.\n5 actionable tasks: 1 executed, 4 up-to-date\n\n\nFAILURE: Build failed with an exception.\n\n* What went wrong:\nExecution failed for task ':smoke'.\n> cannot resume from node 'rerun.disabled.probe': node metadata has rerun=false\n\n* Try:\n> Run with --stacktrace option to get the stack trace.\n> Run with --info or --debug option to get more log output.\n> Run with --scan to get full insights.\n> Get more help at https://help.gradle.org.\n\nBUILD FAILED in 8s"
+  ],
+  "published": {
+    "smokeRunId": "20260612-181004",
+    "rerunSmokeUvRunId": "20260612-181011",
+    "rerunSmokeJavaRunId": "20260612-181014"
+  }
+,"executorStartedAt":"2026-06-12T18:09:56.005331Z","executorEndedAt":"2026-06-12T18:11:11.644026Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/self.rerun.build.flow.stdout.log","inputContextFile":"context/self.rerun.build.flow.input.json"}]}

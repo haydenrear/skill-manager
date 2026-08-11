@@ -1,0 +1,255 @@
+module: TestGraph
+package: testgraph_program_cases
+
+status:
+  workflow: closed
+  initial_ticket: TG-3
+  initial_ticket_title: "Resumption from any Build in Build Directory"
+  closed_history: ../.history/tg-3-resumable-build-workflow/closed-snapshot
+  relation_to_program_model: accepted_program_model
+  relation_to_current: converged_and_promoted
+  updated: "2026-06-12"
+  summary:
+    desired_model_scaffolded: true
+    ticket_plan_scaffolded: true
+    current_model_scaffolded: true
+    generated_cases: pending
+    adapters: documented_boundaries_only
+  done:
+    - Desired TLA+ model extended for saved input context, resume, single-node rerun, and rerun guidance semantics.
+    - TG-3A implemented in the accepted model and production code: every node attempt writes an input context snapshot.
+    - TG-3B implemented in the accepted model and production code: NodeSpec.rerun(boolean) metadata defaults true and propagates through describe output.
+    - TG-3C implemented in the accepted model and production code: graph execution can resume from a saved build directory and node id.
+    - TG-3D implemented in the accepted model and production code: one node can run from a saved build directory without continuing downstream graph nodes.
+    - TG-3E implemented in the accepted model and production code: failed rerunnable nodes emit resume/run-only guidance.
+    - Converged desired/current model promoted back into specs/program_model.
+  pending:
+    - Add executable adapter mappings for the run/resume boundaries in a future workflow.
+
+source_model:
+  program_model_manifest: spec_manifest.yaml
+  program_model_module: TestGraph.tla
+  baseline_package: testgraph_program_cases
+  issue_source: https://github.com/haydenrear/test_graph_skill/issues/3
+
+case_codegen:
+  style: explicit_transition_cases
+  generation_status: planned
+  note: Generate transition cases after the current model advances and adapters are executable.
+
+finite_model:
+  note: >
+    The desired workflow uses a smaller two-node TLC bound than the accepted
+    three-node baseline because resume/run-only histories expand the state
+    space. This is a workflow practicality bound, not a semantic restriction.
+  Graphs:
+    values:
+      - GraphA
+  Nodes:
+    values:
+      - NodeA
+      - NodeB
+  SourceNodes:
+    values:
+      - NodeA
+      - NodeB
+
+state:
+  TestGraphState:
+    added_fields:
+      input_contexts:
+        type: dict[GraphId, frozenset[NodeId]]
+        tla: input_contexts
+        purpose: Nodes whose input context snapshot exists in the build directory.
+      rerunnable_nodes:
+        type: frozenset[NodeId]
+        tla: rerunnable_nodes
+        purpose: Source nodes whose described metadata allows resume/run-only guidance; defaults to all source nodes.
+      rerun_guidance:
+        type: dict[GraphId, frozenset[NodeId]]
+        tla: rerun_guidance
+        purpose: Failed nodes for which the executor/report should print a concrete rerun command.
+      resumed_nodes:
+        type: dict[GraphId, frozenset[NodeId]]
+        tla: resumed_nodes
+        purpose: Nodes used as entrypoints for continuing a graph from an existing build directory.
+      single_node_reruns:
+        type: dict[GraphId, frozenset[NodeId]]
+        tla: single_node_reruns
+        purpose: Nodes executed in isolation from saved build-directory input context.
+
+commands:
+  SetNodeRerunDisabled:
+    action: SetNodeRerunDisabled
+    result: WorkflowResult
+    fields:
+      node_id:
+        type: NodeId
+        tla: n
+  ResumeRunFromBuild:
+    action: ResumeRunFromBuild
+    result: WorkflowResult
+    fields:
+      graph_id:
+        type: GraphId
+        tla: g
+      node_id:
+        type: NodeId
+        tla: n
+  RunOnlyNodeFromBuild:
+    action: RunOnlyNodeFromBuild
+    result: NodeRunResult
+    fields:
+      graph_id:
+        type: GraphId
+        tla: g
+      node_id:
+        type: NodeId
+        tla: n
+
+ports:
+  TestGraphProgramPort:
+    new_methods:
+      set_node_rerun_disabled:
+        command: SetNodeRerunDisabled
+        result: WorkflowResult
+      resume_run_from_build:
+        command: ResumeRunFromBuild
+        result: WorkflowResult
+      run_only_node_from_build:
+        command: RunOnlyNodeFromBuild
+        result: NodeRunResult
+
+invariants:
+  inherited:
+    - TypeInvariant
+    - ExplicitNodesAreAvailable
+    - ScriptSpecsAreSourceOfTruth
+    - DependencyConstantsAreIndexed
+    - DslOverlaysOnlyAddDependencies
+    - PlannedGraphsAreDependencyClosed
+    - PlannedGraphsAreAcyclic
+    - RunsRespectDependencies
+    - ContextContainsOnlyPassedPublishedData
+    - EveryAttemptGetsOneEnvelope
+    - ReportsHaveEnvelopeEvidence
+    - PackageCatalogIsCompleteAfterScaffold
+  added:
+    - EveryAttemptHasSavedInputContext
+    - RerunGuidanceOnlyForRerunnableFailures
+    - ResumptionsUseSavedInputContext
+    - BuildRerunsRespectDependencies
+
+program_context:
+  issue_3_target: >
+    Every node attempt writes its input context into the build directory.
+    A graph can resume from a saved build directory at a specific node by
+    loading that node's saved context, and a user can run only that node
+    against the same saved context. Failed-node rerun instructions are emitted
+    only when the node's metadata allows rerun; rerun defaults to true.
+  semantic_boundaries:
+    - name: input_context_snapshots
+      files:
+        - project_sdk_sources/build-logic/src/main/kotlin/com/hayden/testgraphsdk/exec/Context.kt
+        - project_sdk_sources/build-logic/src/main/kotlin/com/hayden/testgraphsdk/exec/PlanExecutor.kt
+      notes: Persist the exact Context[] payload for every node before execution, including small/root contexts.
+    - name: rerun_metadata
+      files:
+        - project_sdk_sources/sdk/java/src/main/java/com/hayden/testgraphsdk/sdk/NodeSpec.java
+        - project_sdk_sources/sdk/python/src/testgraphsdk/node_spec.py
+        - project_sdk_sources/build-logic/src/main/kotlin/com/hayden/testgraphsdk/ValidationNodeSpec.kt
+        - project_sdk_sources/build-logic/src/main/kotlin/com/hayden/testgraphsdk/NodeDescribeLoader.kt
+      notes: Add rerun(true|false) metadata, default true, distinct from timeout retries.
+    - name: build_resume_surface
+      files:
+        - scripts/run.py
+        - project_sdk_sources/build-logic/src/main/kotlin/com/hayden/testgraphsdk/tasks/RunTestGraphTask.kt
+        - project_sdk_sources/build-logic/src/main/kotlin/com/hayden/testgraphsdk/exec/PlanExecutor.kt
+      notes: Add graph resume and run-only-node surfaces that consume saved input context from an existing build directory.
+    - name: rerun_guidance
+      files:
+        - project_sdk_sources/build-logic/src/main/kotlin/com/hayden/testgraphsdk/exec/PlanExecutor.kt
+        - project_sdk_sources/build-logic/src/main/kotlin/com/hayden/testgraphsdk/tasks/RunReportWriter.kt
+        - references/workflows.md
+        - references/reference.md
+      notes: Print a concrete rerun command for rerunnable failed nodes and document rerun(false).
+
+adapter_plan:
+  desired_adapters:
+    - InputContextSnapshotAdapter
+    - ResumeRunFromBuildAdapter
+    - RunOnlyNodeFromBuildAdapter
+    - RerunGuidanceAdapter
+  current_status: documented_boundaries_only
+
+validation:
+  program_tlc:
+    command: cd specs/program_model && tlc2 -config MC.cfg TestGraph.tla
+    status: passed
+    last_run: "2026-06-12"
+    states_generated: 56387
+    distinct_states: 6300
+    depth: 22
+  program_spec_tests:
+    command: pytest specs/program_model/tests
+    status: passed
+    last_run: "2026-06-12"
+    tests: 6
+  production_checks:
+    - command: ./gradlew --console=plain :build-logic:test
+      status: passed
+      last_run: "2026-06-12"
+    - command: ./scripts/discover.py --test-graph-root project_sdk_sources
+      status: passed
+      last_run: "2026-06-12"
+      graphs:
+        - smoke
+        - rerunSmokeUv
+        - rerunSmokeJava
+        - rerunGuidance
+    - command: ./scripts/discover.py smoke --test-graph-root project_sdk_sources
+      status: passed
+      last_run: "2026-06-12"
+      plan_steps: 6
+    - command: ./scripts/discover.py rerunSmokeUv --test-graph-root project_sdk_sources
+      status: passed
+      last_run: "2026-06-12"
+      plan_steps: 1
+    - command: ./scripts/discover.py rerunSmokeJava --test-graph-root project_sdk_sources
+      status: passed
+      last_run: "2026-06-12"
+      plan_steps: 1
+    - command: ./scripts/discover.py rerunGuidance --test-graph-root project_sdk_sources
+      status: passed
+      last_run: "2026-06-12"
+      plan_steps: 1
+    - command: ./scripts/run.py --all --test-graph-root project_sdk_sources
+      status: passed
+      last_run: "2026-06-12"
+      graphs:
+        smoke: 20260612-185755
+        rerunSmokeUv: 20260612-185802
+        rerunSmokeJava: 20260612-185805
+        rerunGuidance: 20260612-185809
+      report: project_sdk_sources/build/validation-reports/20260612-185755/report.md
+    - command: TESTGRAPH_FORCE_GUIDANCE_FAILURE=1 ./scripts/run.py rerunGuidance --test-graph-root project_sdk_sources
+      status: failed_as_expected
+      last_run: "2026-06-12"
+      run_id: 20260612-185639
+      assertion: rerunnable failure emitted resume and run-only guidance.
+      report: project_sdk_sources/build/validation-reports/20260612-185639/report.md
+    - command: TESTGRAPH_FORCE_RERUN_DISABLED_FAILURE=1 ./scripts/run.py rerunSmokeUv --test-graph-root project_sdk_sources
+      status: failed_as_expected
+      last_run: "2026-06-12"
+      run_id: 20260612-185715
+      assertion: rerun=false failure suppressed rerun guidance.
+      report: project_sdk_sources/build/validation-reports/20260612-185715/report.md
+    - command: ./scripts/run.py --all --test-graph-root test_graph
+      status: passed
+      last_run: "2026-06-12"
+      graphs:
+        rerunGraphJbang: 20260612-190757
+        rerunGraphUv: 20260612-190821
+        runOnlyJbang: 20260612-190854
+        runOnlyUv: 20260612-190919
+      report: test_graph/build/validation-reports/20260612-190919/report.md

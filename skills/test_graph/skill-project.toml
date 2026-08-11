@@ -1,0 +1,107 @@
+# Skill project manifest for test-graph.
+#
+# What this declares: the units an agent working IN THIS CHECKOUT needs.
+#
+# This repo installs the unit named `test-graph`, so it deliberately does NOT
+# declare `test-graph`. A repo is its own source of truth; installing it into
+# its own home would give an agent two copies of the same skill — one tracked
+# and being edited, one fetched from origin/main — with no rule about which one
+# a change reaches. Here that is not a doctrine point but a mechanical one: the
+# working tree's own test_graph/ project is composed from
+# project_sdk_sources/, and an installed copy under
+# .skill-manager/skills/test-graph would be a second, stale SDK for the same
+# build to pick up. See the vendored note at the bottom.
+#
+# How the home is produced — read this before running `project resolve`
+# ---------------------------------------------------------------------
+# `project resolve` writes into whatever `SKILL_MANAGER_HOME` names. Run it
+# before this checkout has its own home and it mutates the operator's global
+# ~/.skill-manager. Create the local home first, point `SKILL_MANAGER_HOME` at
+# it, and only then resolve:
+#
+#   mkdir -p .skill-manager/skills
+#   SKILL_MANAGER_CLI=<epic skill-manager> \
+#     bash <git-integration-repo>/scripts/bootstrap-home.sh --root "$PWD" --force
+#   export SKILL_MANAGER_HOME="$PWD/.skill-manager"
+#   skill-manager project resolve --project-dir "$PWD" --skip-gateway
+#
+# `SKILL_MANAGER_HOME` alone does not redirect the agent-home projections;
+# export `CLAUDE_CONFIG_DIR`, `CLAUDE_HOME`, `CODEX_HOME` and `GEMINI_HOME` at
+# this checkout's own `.claude/`, `.codex/` and `.gemini/` as well.
+#
+# `--allow-same-home` is NOT needed. This project's home IS its own parent home,
+# and `project resolve` used to refuse that layout (skill-manager #32). The
+# refusal was wrong and has been replaced by a warning; the flag is still
+# accepted and does nothing.
+#
+# Coords are git-only (no registry is configured) and they name the REPO, not
+# the installed unit — see skill-publisher's references/coords-and-distribution.md.
+
+[project]
+name = "test-graph"
+version = "0.2.1"
+description = "Scaffold a portable test_graph project, manage provider bindings, add JBang/uv validation nodes, compose graphs, run them, and aggregate reports."
+
+# --- authoring: the tracked content here is a skill unit — SKILL.md, its
+#     frontmatter and description, references/, templates/, scripts/,
+#     skill-manager.toml. skill-publisher is the authority on all of it and on
+#     the install/bind/sync round trip that ships an edit into a store ---
+
+[skills.skill-publisher]
+source = "github:haydenrear/skill-publisher-skill"
+
+# --- required BY skill-publisher, not chosen here: its SKILL.md `skill-imports`
+#     names `skill-manager` (references/skill-imports.md), and `project resolve`
+#     refuses the whole resolve with "references missing unit" until the
+#     imported unit is declared. Unit `skill_references` are followed
+#     automatically; markdown `skill-imports` are not. It is also the surface
+#     scripts/prepare-bindings.py and scripts/migrate-bindings.py write against
+#     (`.skill-manager/skills/<name>` provider paths), so it is substantive here
+#     rather than only transitive ---
+
+[skills.skill-manager]
+source = "github:haydenrear/skill-manager-skill"
+
+# --- REPO-SPECIFIC DECISION: deploy-helm is deliberately NOT declared, even
+#     though this unit's own skill-manager.toml lists
+#     `github:haydenrear/deploy-cdc` as a hard `skill_reference` "installs the
+#     deploy-helm skill and its monitoring CLI".
+#
+#     That reference exists so that a repo which INSTALLS test-graph and runs
+#     the shipped monitoring standard nodes
+#     (project_sdk_sources/standard-nodes/monitoring_cluster_*.py) gets the
+#     launcher those nodes invoke. It is not what an agent editing this repo
+#     needs, and this repo's own validation says so out loud: the
+#     `deployCdcIssueContract` graph runs
+#     test_graph/sources/Tg5DeployCdcNoSdkCoupling.py, whose assertion is
+#     `sdk_has_no_deploy_cdc_or_deploy_helm_coupling` over the SDK runtime
+#     source. Installing deploy-helm to work on a repo whose own graph asserts
+#     it is decoupled from deploy-helm would be backwards.
+#
+#     The cost is also the largest in the fan-out: deploy-helm's three
+#     skill-script CLI dependencies each build a full ~555 MB venv, and every
+#     onboarded home that pulls it is ~1.8 GB against under 1 MB for every home
+#     that does not. This one is ~692 KB.
+
+# --- NO [[vendored]] BLOCK, and this is the one repo in the fan-out where that
+#     needs saying, because it is the only one with tracked symlinks:
+#
+#       test_graph/build-logic    -> ../project_sdk_sources/build-logic
+#       test_graph/sdk            -> ../project_sdk_sources/sdk
+#       test_graph/standard-nodes -> ../project_sdk_sources/standard-nodes
+#
+#     All three are RELATIVE and resolve inside this working tree, to
+#     project_sdk_sources/, which is the authored source of the SDK they point
+#     at. `home verify` confirms none of them reaches any Skill Manager home.
+#     They are not the shape [[vendored]] exists for: that block declares paths
+#     whose content is owned by ANOTHER unit and validates, by resolved physical
+#     path, that each one lands in this project's own .skill-manager home. Here
+#     the owning unit is this repo, and the correct target is the working tree,
+#     not the home.
+#
+#     Consequently: do NOT run scripts/migrate-bindings.py against
+#     test_graph/ in THIS repo. It would re-point the provider at
+#     `../.skill-manager/skills/test-graph` — an installed copy of the very
+#     repository being edited — and the build would compile the copy instead of
+#     the source. It is the right tool for every consumer repo and the wrong
+#     tool for the provider.

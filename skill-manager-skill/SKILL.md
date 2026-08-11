@@ -1,6 +1,6 @@
 ---
 name: skill-manager
-description: 'Search, install, bind, sync, and remove skill-manager-managed units: skills, plugins, doc-repos, and harnesses; manage skill projects, project child homes, CLI tools, and MCP tools. Use when the user asks to find, add, remove, inspect, bind, unbind, instantiate, sync, upgrade, or resolve one of those surfaces. CLI syntax is authoritative in `skill-manager --help`; project workflows live in `references/projects.md`; gateway operations are authoritative in `references/virtual-mcp-gateway.md`; agent workflow routing lives in `references/workflows.md`.'
+description: 'Search, install, bind, sync, and remove skill-manager-managed units: skills, plugins, doc-repos, and harnesses; manage skill projects, project child homes, CLI tools, and MCP tools. Use when the user asks to find, add, remove, inspect, bind, unbind, instantiate, sync, upgrade, or resolve one of those surfaces. For day-to-day lifecycle questions — what is loaded, is anything stale, update a unit, publish a home-edited skill — prefer the skt CLI front door when present (`skt status|check|sync|publish`); this skill is the plumbing underneath. CLI syntax is authoritative in `skill-manager --help`; project workflows live in `references/projects.md`; gateway operations are authoritative in `references/virtual-mcp-gateway.md`; agent workflow routing lives in `references/workflows.md`.'
 ---
 
 # skill-manager

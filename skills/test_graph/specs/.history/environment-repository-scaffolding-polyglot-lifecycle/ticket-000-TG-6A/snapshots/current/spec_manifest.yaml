@@ -1,0 +1,86 @@
+module: TestGraph
+package: current_program_cases
+
+status:
+  workflow: ticket
+  active_ticket: TG-6A
+  active_ticket_title: "Document the environment repository contract and local k3d setup"
+  relation_to_program_model: starts_equivalent_then_advances_as_slices_land
+  relation_to_desired_program_model: implemented_prefix_of_desired_ticket_plan
+  current_model_rule: whole_program_working_copy_not_ticket_projection
+  test_modeling_rule: do_not_model_tests_or_validation_harnesses_as_program_behavior
+  updated: "2026-06-28"
+  current_slice:
+    name: TG-6A
+    status: documentation_slice_landed
+    refines:
+      - specs/program_model
+    implemented_actions: []
+    validation:
+      unit:
+        - pytest --import-mode=importlib specs/current/tests specs/desired_program_model/tests
+      tlc:
+        - cd specs/current && tlc2 -config MC.cfg TestGraph.tla
+      graph:
+        - ./scripts/run.py environmentRepositoryDocumentation --test-graph-root test_graph
+      evidence:
+        - TG-6A adds no semantic TLA actions; specs/current/TestGraph.tla remains equal to specs/program_model/TestGraph.tla.
+        - references/environment-repositories.md is the authoritative environment repository contract reference.
+        - environmentRepositoryDocumentation validates SKILL routing, local k3d setup, Git fixture policy, scaffold script expectations, and required local/GitHub Actions/AWS graph coverage.
+        - pytest --import-mode=importlib specs/current/tests specs/desired_program_model/tests passed with 27 tests on 2026-06-28.
+        - cd specs/current && tlc2 -config MC.cfg TestGraph.tla passed on 2026-06-28.
+        - cd specs/desired_program_model && tlc2 -config MC.cfg TestGraph.tla passed on 2026-06-28.
+        - ./scripts/discover.py environmentRepositoryDocumentation --test-graph-root test_graph passed on 2026-06-28.
+        - ./scripts/run.py environmentRepositoryDocumentation --test-graph-root test_graph passed with report test_graph/build/validation-reports/20260628-154618.
+  next:
+    - Implement TG-6B environment repository scaffolding CLIs and add scaffold graphs for local, GitHub Actions, and AWS.
+    - Preserve all existing specs/program_model state/actions unless production behavior changes them.
+    - Run TLC and adapter/unit tests before adding graph execution coverage.
+  accepted_baseline:
+    workflow_name: branch_environment_repository_workflow
+    initial_ticket: TG-5
+    issue: https://github.com/haydenrear/deploy-cdc/issues/6
+    carried_forward_state_fields:
+      - input_contexts
+      - rerunnable_nodes
+      - rerun_guidance
+      - resumed_nodes
+      - single_node_reruns
+      - side_effect_runtime_configured
+      - provisioning_state_configured
+      - feature_branches
+      - environment_repo_configured
+      - branch_environment_specs
+      - provisioned_branch_environments
+      - reused_branch_environments
+      - reset_branch_environments
+      - deployed_branch_environments
+      - propagated_environment_contexts
+      - environment_context_keys
+      - merge_destroy_requested
+      - destroy_authorized_environments
+      - destroyed_branch_environments
+    carried_forward_adapters:
+      - RerunGuidanceAdapter
+      - EnvironmentRepositoryContractAdapter
+      - GeneratedGitEnvironmentRepositoryFixtureAdapter
+      - EnvironmentRepositoryAdapter
+      - BranchEnvironmentLifecycleAdapter
+    carried_forward_validation:
+      - deployCdcIssueContract
+
+source_model:
+  program_model_manifest: ../program_model/spec_manifest.yaml
+  program_model_module: ../program_model/TestGraph.tla
+  desired_ticket_plan: ../desired_program_model/ticket_plan.yaml
+
+case_codegen:
+  style: explicit_transition_cases
+  generation_status: planned
+
+state_fields: []
+actions: []
+ports: {}
+adapters: case_adapters.toml
+notes:
+  package_from_program_model: testgraph_program_cases

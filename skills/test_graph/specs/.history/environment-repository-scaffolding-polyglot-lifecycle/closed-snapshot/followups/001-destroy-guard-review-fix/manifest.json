@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "kind": "post-close-review-fix",
+  "entry_name": "001-destroy-guard-review-fix",
+  "created_at_utc": "2026-06-29T00:08:00Z",
+  "workflow_name": "environment-repository-scaffolding-polyglot-lifecycle",
+  "review": {
+    "source": "codex",
+    "review_id": 4588305068,
+    "comments": [
+      3488760180,
+      3488760184
+    ]
+  },
+  "summary": "Captured the scaffolded delete-node destroy guard in closed history and made TG-6 destroy graph assertions treat false-like environment variable values as no destroy intent.",
+  "changes": [
+    "Updated closed-snapshot program_model/current test copies with the final delete-template destroy guard assertions.",
+    "Updated local, GitHub Actions, and AWS TG-6 destroy nodes so false-like destroy environment variable values do not fail skip-destroy validation."
+  ],
+  "validation": [
+    "python -m py_compile test_graph/support/tg6_lifecycle_support.py test_graph/sources/Tg6LocalLifecycleDestroy.py test_graph/sources/Tg6GithubActionLifecycleDestroy.py test_graph/sources/Tg6AwsLifecycleDestroy.py",
+    "pytest --import-mode=importlib specs/program_model/tests",
+    "TEST_GRAPH_DESTROY_BRANCH_ENVIRONMENT=false ./scripts/run.py environmentRepositoryLocalLifecycleDestroy --test-graph-root test_graph",
+    "TEST_GRAPH_DESTROY_BRANCH_ENVIRONMENT=false ./scripts/run.py environmentRepositoryGithubActionLifecycleDestroy --test-graph-root test_graph",
+    "TEST_GRAPH_DESTROY_BRANCH_ENVIRONMENT=false ./scripts/run.py environmentRepositoryAwsLifecycleDestroy --test-graph-root test_graph"
+  ]
+}

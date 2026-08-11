@@ -1,0 +1,11 @@
+# Tooling metadata for the unit-authoring contained skill (formerly the
+# standalone skill-publisher skill). Pure documentation — the skt
+# plugin's CLI dependency is declared at plugin level, not here.
+
+skill_references = [
+]
+
+[skill]
+name = "unit-authoring"
+version = "0.1.0"
+description = "Author and maintain installable skills, plugins, doc-repos, and harnesses for skill-manager; edit unit files, declare deps, write skill-script installers, validate install/bind/sync/instantiate round-trips, and ship edits into the store via commit, push, and sync."

@@ -1,0 +1,81 @@
+# Skill project manifest for skill-manager-skill.
+#
+# What this declares: the units an agent working IN THIS CHECKOUT needs. Every
+# tracked file here — SKILL.md, its frontmatter and description, references/,
+# scripts/env.{py,sh}, skill-manager.toml — is skill-unit content, so the work
+# done here is unit authoring and the declared units are the authorities for
+# that work.
+#
+# This repo installs the unit named `skill-manager`, so it deliberately does NOT
+# declare `skill-manager`. A repo is its own source of truth; installing it into
+# its own home would give an agent two copies of the same skill — one tracked
+# and being edited, one fetched from origin/main — with no rule about which one
+# a change reaches. It is the mirror image of the skill-publisher repo, which
+# declares `skill-manager` and not itself.
+#
+# The manifest is therefore a single entry, and that is the whole of it.
+#
+# A note on the resolve, because the exit code is not evidence here
+# ----------------------------------------------------------------
+# skill-publisher's SKILL.md `skill-imports` names `skill-manager`
+# (references/skill-imports.md), and on the pass that installs skill-publisher
+# `project resolve` reports
+#
+#   skill-imports[0] references missing unit `skill-manager`
+#
+# and exits 1. On the next pass it exits 0 — and `skill-manager` is still not
+# installed. Measured here, three ways: a third resolve also exits 0 with the
+# unit absent; deleting .skill-manager/installed and resolving again brings the
+# error back (9 occurrences, exit 1); resolving once more clears it again. The
+# validation runs only on the pass that INSTALLS a unit, so re-running until
+# exit 0 silences the check rather than satisfying it.
+#
+# For this repo that happens to land on the right answer for the wrong reason:
+# the imported unit IS this checkout, sitting in the working tree, so an agent
+# here really does have skill-manager's content. Do not read the clean exit as
+# confirmation of that — it would be equally clean if the import were bogus.
+#
+# How the home is produced — read this before running `project resolve`
+# ---------------------------------------------------------------------
+# `project resolve` writes into whatever `SKILL_MANAGER_HOME` names. Run it
+# before this checkout has its own home and it mutates the operator's global
+# ~/.skill-manager. Create the local home first, point `SKILL_MANAGER_HOME` at
+# it, and only then resolve:
+#
+#   mkdir -p .skill-manager/skills
+#   SKILL_MANAGER_CLI=<epic skill-manager> \
+#     bash <git-integration-repo>/scripts/bootstrap-home.sh --root "$PWD" --force
+#   export SKILL_MANAGER_HOME="$PWD/.skill-manager"
+#   skill-manager project resolve --project-dir "$PWD" --skip-gateway
+#
+# `SKILL_MANAGER_HOME` alone does not redirect the agent-home projections;
+# export `CLAUDE_CONFIG_DIR`, `CLAUDE_HOME`, `CODEX_HOME` and `GEMINI_HOME` at
+# this checkout's own `.claude/`, `.codex/` and `.gemini/` as well.
+#
+# `--allow-same-home` is NOT needed. This project's home IS its own parent home,
+# and `project resolve` used to refuse that layout (skill-manager #32). The
+# refusal was wrong and has been replaced by a warning; the flag is still
+# accepted and does nothing.
+#
+# Coords are git-only (no registry is configured) and they name the REPO, not
+# the installed unit — see skill-publisher's references/coords-and-distribution.md.
+
+[project]
+name = "skill-manager"
+version = "0.1.1"
+description = "Search, install, bind, sync, and remove skills, plugins, doc-repos, harnesses, and skill projects; manage project child homes, CLI tool deps, and gateway-registered MCP tools."
+
+# --- authoring, and the only declared unit. skill-publisher is the authority on
+#     SKILL.md frontmatter, the description field, skill-manager.toml,
+#     references/ pages, and on the install/bind/sync round trip that ships an
+#     edit into a store. skill-manager.toml here declares `skill_references = []`
+#     and no CLI or MCP dependencies — this skill is a thin window onto the
+#     skill-manager binary, which is not a unit — so there is nothing else to
+#     follow ---
+
+[skills.skill-publisher]
+source = "github:haydenrear/skill-publisher-skill"
+
+# --- no [[vendored]] block: this repo tracks no symlinks and has no test_graph,
+#     so no path in the working tree holds content owned by another unit.
+#     Verified with `git ls-files -s | grep ^120000` -> 0 entries.

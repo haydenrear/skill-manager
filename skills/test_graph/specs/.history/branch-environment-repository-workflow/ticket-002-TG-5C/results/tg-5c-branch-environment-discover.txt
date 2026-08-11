@@ -1,0 +1,18 @@
+plan for test graph 'branchEnvironmentWorkflow' (5 steps):
+  #   id                                   kind        rt      entry
+  1.  tg5.environment.provision            action      uv      sources/BranchEnvironmentProvision.py
+  2.  tg5.environment.reset                action      uv      sources/BranchEnvironmentReset.py
+  3.  tg5.environment.markers.present      assertion   uv      sources/BranchEnvironmentMarkersPresent.py
+  4.  tg5.environment.repository.contract  assertion   uv      sources/Tg5EnvironmentRepositoryContract.py
+  5.  tg5.future.workflow.plan             evidence    uv      sources/Tg5FutureWorkflowPlan.py
+
+dependencies:
+  tg5.environment.provision            (root)
+  tg5.environment.reset                <- tg5.environment.provision
+  tg5.environment.markers.present      <- tg5.environment.reset
+  tg5.environment.repository.contract  <- tg5.environment.markers.present
+  tg5.future.workflow.plan             <- tg5.environment.repository.contract
+
+dependency graph:
+  see it here: docs/branchEnvironmentWorkflow.png
+  (DOT source: docs/branchEnvironmentWorkflow.dot)

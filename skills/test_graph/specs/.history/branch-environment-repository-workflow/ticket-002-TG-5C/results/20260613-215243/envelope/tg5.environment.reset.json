@@ -1,0 +1,23 @@
+{
+  "nodeId": "tg5.environment.reset",
+  "status": "passed",
+  "startedAt": "2026-06-13T21:52:43.609241Z",
+  "endedAt": "2026-06-13T21:52:43.609483Z",
+  "assertions": [
+    {
+      "name": "environment_id_was_assigned",
+      "status": "passed"
+    },
+    {
+      "name": "reset_targets_same_environment",
+      "status": "passed"
+    }
+  ],
+  "artifacts": [],
+  "processes": [],
+  "metrics": {
+    "durationMs": 0
+  },
+  "logs": [],
+  "published": {}
+,"executorStartedAt":"2026-06-13T21:52:43.565787Z","executorEndedAt":"2026-06-13T21:52:43.615742Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/tg5.environment.reset.stdout.log","inputContextFile":"context/tg5.environment.reset.input.json","provisioningState":{"environmentId":"branchEnvironmentWorkflow__local__local-preview__local","branch":"local","target":"local-preview","backend":"local","actions":["reset"],"resetMarker":"../../testgraph-provisioning-state/reset/branchEnvironmentWorkflow__local__local-preview__local__20260613-215243__tg5.environment.reset.json"}}

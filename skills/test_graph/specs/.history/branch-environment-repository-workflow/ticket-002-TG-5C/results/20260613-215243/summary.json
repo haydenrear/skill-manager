@@ -1,0 +1,175 @@
+{"runId":"20260613-215243","nodes":[{
+  "nodeId": "tg5.environment.markers.present",
+  "status": "passed",
+  "startedAt": "2026-06-13T21:52:43.660370Z",
+  "endedAt": "2026-06-13T21:52:43.660929Z",
+  "assertions": [
+    {
+      "name": "environment_id_available_from_context",
+      "status": "passed"
+    },
+    {
+      "name": "provisioned_marker_exists_after_provision",
+      "status": "passed"
+    },
+    {
+      "name": "reset_marker_exists_after_reset",
+      "status": "passed"
+    },
+    {
+      "name": "reset_kept_provisioned_marker",
+      "status": "passed"
+    },
+    {
+      "name": "marker_environment_id_matches_context",
+      "status": "passed"
+    },
+    {
+      "name": "provisioned_marker_is_from_this_run",
+      "status": "passed"
+    }
+  ],
+  "artifacts": [
+    {
+      "type": "provisioned-marker",
+      "path": "/Users/hayde/IdeaProjects/test_graph/test_graph/build/testgraph-provisioning-state/provisioned/branchEnvironmentWorkflow__local__local-preview__local.json"
+    },
+    {
+      "type": "reset-marker",
+      "path": "/Users/hayde/IdeaProjects/test_graph/test_graph/build/testgraph-provisioning-state/reset/branchEnvironmentWorkflow__local__local-preview__local__20260613-215243__tg5.environment.reset.json"
+    }
+  ],
+  "processes": [],
+  "metrics": {
+    "durationMs": 0
+  },
+  "logs": [],
+  "published": {}
+,"executorStartedAt":"2026-06-13T21:52:43.617109Z","executorEndedAt":"2026-06-13T21:52:43.666903Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/tg5.environment.markers.present.stdout.log","inputContextFile":"context/tg5.environment.markers.present.input.json"},{
+  "nodeId": "tg5.environment.provision",
+  "status": "passed",
+  "startedAt": "2026-06-13T21:52:43.554582Z",
+  "endedAt": "2026-06-13T21:52:43.556622Z",
+  "assertions": [
+    {
+      "name": "environment_id_was_assigned",
+      "status": "passed"
+    },
+    {
+      "name": "state_dir_was_assigned",
+      "status": "passed"
+    }
+  ],
+  "artifacts": [],
+  "processes": [],
+  "metrics": {
+    "durationMs": 2
+  },
+  "logs": [],
+  "published": {
+    "environmentId": "branchEnvironmentWorkflow__local__local-preview__local",
+    "stateDir": "/Users/hayde/IdeaProjects/test_graph/test_graph/build/testgraph-provisioning-state"
+  }
+,"executorStartedAt":"2026-06-13T21:52:43.510101Z","executorEndedAt":"2026-06-13T21:52:43.563116Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/tg5.environment.provision.stdout.log","inputContextFile":"context/tg5.environment.provision.input.json","provisioningState":{"environmentId":"branchEnvironmentWorkflow__local__local-preview__local","branch":"local","target":"local-preview","backend":"local","actions":["provision"],"provisionedMarker":"../../testgraph-provisioning-state/provisioned/branchEnvironmentWorkflow__local__local-preview__local.json"}},{
+  "nodeId": "tg5.environment.repository.contract",
+  "status": "passed",
+  "startedAt": "2026-06-13T21:52:43.713817Z",
+  "endedAt": "2026-06-13T21:52:43.714444Z",
+  "assertions": [
+    {
+      "name": "contract_serializes_git_source",
+      "status": "passed"
+    },
+    {
+      "name": "contract_uses_repository_template_path",
+      "status": "passed"
+    },
+    {
+      "name": "contract_names_local_target_backend",
+      "status": "passed"
+    },
+    {
+      "name": "contract_declares_feature_branch_scope",
+      "status": "passed"
+    },
+    {
+      "name": "contract_includes_kubernetes_outputs",
+      "status": "passed"
+    },
+    {
+      "name": "contract_rejects_tarball_primary_fixture_in_plan",
+      "status": "passed"
+    },
+    {
+      "name": "contract_stays_deploy_helm_neutral",
+      "status": "passed"
+    }
+  ],
+  "artifacts": [],
+  "processes": [],
+  "metrics": {
+    "durationMs": 0
+  },
+  "logs": [],
+  "published": {
+    "environmentRepositorySource": "https://github.com/example/test-graph-environments.git"
+  }
+,"executorStartedAt":"2026-06-13T21:52:43.667796Z","executorEndedAt":"2026-06-13T21:52:43.720815Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/tg5.environment.repository.contract.stdout.log","inputContextFile":"context/tg5.environment.repository.contract.input.json"},{
+  "nodeId": "tg5.environment.reset",
+  "status": "passed",
+  "startedAt": "2026-06-13T21:52:43.609241Z",
+  "endedAt": "2026-06-13T21:52:43.609483Z",
+  "assertions": [
+    {
+      "name": "environment_id_was_assigned",
+      "status": "passed"
+    },
+    {
+      "name": "reset_targets_same_environment",
+      "status": "passed"
+    }
+  ],
+  "artifacts": [],
+  "processes": [],
+  "metrics": {
+    "durationMs": 0
+  },
+  "logs": [],
+  "published": {}
+,"executorStartedAt":"2026-06-13T21:52:43.565787Z","executorEndedAt":"2026-06-13T21:52:43.615742Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/tg5.environment.reset.stdout.log","inputContextFile":"context/tg5.environment.reset.input.json","provisioningState":{"environmentId":"branchEnvironmentWorkflow__local__local-preview__local","branch":"local","target":"local-preview","backend":"local","actions":["reset"],"resetMarker":"../../testgraph-provisioning-state/reset/branchEnvironmentWorkflow__local__local-preview__local__20260613-215243__tg5.environment.reset.json"}},{
+  "nodeId": "tg5.future.workflow.plan",
+  "status": "passed",
+  "startedAt": "2026-06-13T21:52:43.767819Z",
+  "endedAt": "2026-06-13T21:52:43.768141Z",
+  "assertions": [
+    {
+      "name": "TG-5C_is_planned",
+      "status": "passed"
+    },
+    {
+      "name": "TG-5D_is_planned",
+      "status": "passed"
+    },
+    {
+      "name": "TG-5E_is_planned",
+      "status": "passed"
+    },
+    {
+      "name": "TG-5F_is_planned",
+      "status": "passed"
+    },
+    {
+      "name": "TG-5G_is_planned",
+      "status": "passed"
+    }
+  ],
+  "artifacts": [],
+  "processes": [],
+  "metrics": {
+    "durationMs": 0
+  },
+  "logs": [
+    "Future TG-5 nodes are represented by the ticket plan and will be strengthened as each slice lands."
+  ],
+  "published": {}
+,"executorStartedAt":"2026-06-13T21:52:43.721895Z","executorEndedAt":"2026-06-13T21:52:43.774115Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/tg5.future.workflow.plan.stdout.log","inputContextFile":"context/tg5.future.workflow.plan.input.json"}]}

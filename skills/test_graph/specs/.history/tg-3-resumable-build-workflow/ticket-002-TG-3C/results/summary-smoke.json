@@ -1,0 +1,223 @@
+{"runId":"20260610-194741","nodes":[{
+  "nodeId" : "app.running",
+  "status" : "passed",
+  "startedAt" : "2026-06-10T19:47:42.430386Z",
+  "endedAt" : "2026-06-10T19:47:42.609111Z",
+  "assertions" : [ {
+    "name" : "ready",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ ],
+  "metrics" : {
+    "statusCode" : 200,
+    "durationMs" : 179
+  },
+  "logs" : [ ],
+  "published" : {
+    "baseUrl" : "http://localhost:8080"
+  }
+,"executorStartedAt":"2026-06-10T19:47:41.932719Z","executorEndedAt":"2026-06-10T19:47:43.096762Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/app.running.stdout.log","inputContextFile":"context/app.running.input.json"},{
+  "nodeId": "context.snapshots.present",
+  "status": "passed",
+  "startedAt": "2026-06-10T19:48:21.068959Z",
+  "endedAt": "2026-06-10T19:48:21.069952Z",
+  "assertions": [
+    {
+      "name": "app.running.input_context_snapshot_exists",
+      "status": "passed"
+    },
+    {
+      "name": "app.running.input_context_snapshot_has_items_array",
+      "status": "passed"
+    },
+    {
+      "name": "user.seeded.input_context_snapshot_exists",
+      "status": "passed"
+    },
+    {
+      "name": "user.seeded.input_context_snapshot_has_items_array",
+      "status": "passed"
+    },
+    {
+      "name": "network.pingable.input_context_snapshot_exists",
+      "status": "passed"
+    },
+    {
+      "name": "network.pingable.input_context_snapshot_has_items_array",
+      "status": "passed"
+    },
+    {
+      "name": "login.smoke.input_context_snapshot_exists",
+      "status": "passed"
+    },
+    {
+      "name": "login.smoke.input_context_snapshot_has_items_array",
+      "status": "passed"
+    },
+    {
+      "name": "rerun.disabled.probe.input_context_snapshot_exists",
+      "status": "passed"
+    },
+    {
+      "name": "rerun.disabled.probe.input_context_snapshot_has_items_array",
+      "status": "passed"
+    },
+    {
+      "name": "context.snapshots.present.input_context_snapshot_exists",
+      "status": "passed"
+    },
+    {
+      "name": "context.snapshots.present.input_context_snapshot_has_items_array",
+      "status": "passed"
+    },
+    {
+      "name": "self_snapshot_contains_upstream_context",
+      "status": "passed"
+    },
+    {
+      "name": "app.running.envelope_has_input_context_file",
+      "status": "passed"
+    },
+    {
+      "name": "app.running.envelope_input_context_file_exists",
+      "status": "passed"
+    },
+    {
+      "name": "user.seeded.envelope_has_input_context_file",
+      "status": "passed"
+    },
+    {
+      "name": "user.seeded.envelope_input_context_file_exists",
+      "status": "passed"
+    },
+    {
+      "name": "network.pingable.envelope_has_input_context_file",
+      "status": "passed"
+    },
+    {
+      "name": "network.pingable.envelope_input_context_file_exists",
+      "status": "passed"
+    },
+    {
+      "name": "login.smoke.envelope_has_input_context_file",
+      "status": "passed"
+    },
+    {
+      "name": "login.smoke.envelope_input_context_file_exists",
+      "status": "passed"
+    },
+    {
+      "name": "rerun.disabled.probe.envelope_has_input_context_file",
+      "status": "passed"
+    },
+    {
+      "name": "rerun.disabled.probe.envelope_input_context_file_exists",
+      "status": "passed"
+    }
+  ],
+  "artifacts": [
+    {
+      "type": "input-context-dir",
+      "path": "/Users/hayde/IdeaProjects/test_graph/project_sdk_sources/build/validation-reports/20260610-194741/context"
+    }
+  ],
+  "processes": [],
+  "metrics": {
+    "snapshotCount": 6,
+    "durationMs": 0
+  },
+  "logs": [],
+  "published": {
+    "snapshotCount": "6"
+  }
+,"executorStartedAt":"2026-06-10T19:48:21.022677Z","executorEndedAt":"2026-06-10T19:48:21.077133Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/context.snapshots.present.stdout.log","inputContextFile":"context/context.snapshots.present.input.json"},{
+  "nodeId" : "login.smoke",
+  "status" : "passed",
+  "startedAt" : "2026-06-10T19:48:07.333853Z",
+  "endedAt" : "2026-06-10T19:48:07.515579Z",
+  "assertions" : [ {
+    "name" : "login_endpoint_reachable",
+    "status" : "passed"
+  }, {
+    "name" : "redirected_to_dashboard",
+    "status" : "passed"
+  }, {
+    "name" : "saw_all_upstreams",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ ],
+  "metrics" : {
+    "statusCode" : 302,
+    "upstreamCount" : 3,
+    "durationMs" : 182
+  },
+  "logs" : [ ],
+  "published" : {
+    "baseUrl" : "http://localhost:8080",
+    "attemptedAs" : "u-e4e4519c",
+    "upstreamIds" : "app.running,user.seeded,network.pingable",
+    "upstreamShape" : "app.running{baseUrl};user.seeded{userId,username};network.pingable{sawBaseUrl}"
+  }
+,"executorStartedAt":"2026-06-10T19:48:06.854042Z","executorEndedAt":"2026-06-10T19:48:08.004688Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/login.smoke.stdout.log","inputContextFile":"context/login.smoke.input.json"},{
+  "nodeId" : "network.pingable",
+  "status" : "passed",
+  "startedAt" : "2026-06-10T19:47:43.629291Z",
+  "endedAt" : "2026-06-10T19:47:43.629699Z",
+  "assertions" : [ {
+    "name" : "ran_after_app_running",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ ],
+  "metrics" : {
+    "durationMs" : 0
+  },
+  "logs" : [ ],
+  "published" : {
+    "sawBaseUrl" : "http://localhost:8080"
+  }
+,"executorStartedAt":"2026-06-10T19:47:43.152593Z","executorEndedAt":"2026-06-10T19:47:43.745423Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/network.pingable.stdout.log","inputContextFile":"context/network.pingable.input.json"},{
+  "nodeId": "rerun.disabled.probe",
+  "status": "passed",
+  "startedAt": "2026-06-10T19:48:08.053267Z",
+  "endedAt": "2026-06-10T19:48:08.053505Z",
+  "assertions": [],
+  "artifacts": [],
+  "processes": [],
+  "metrics": {
+    "durationMs": 0
+  },
+  "logs": [],
+  "published": {
+    "rerun": "false"
+  }
+,"executorStartedAt":"2026-06-10T19:48:08.007075Z","executorEndedAt":"2026-06-10T19:48:08.059575Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/rerun.disabled.probe.stdout.log","inputContextFile":"context/rerun.disabled.probe.input.json"},{
+  "nodeId": "user.seeded",
+  "status": "passed",
+  "startedAt": "2026-06-10T19:47:43.143933Z",
+  "endedAt": "2026-06-10T19:47:43.144523Z",
+  "assertions": [
+    {
+      "name": "record_written",
+      "status": "passed"
+    }
+  ],
+  "artifacts": [
+    {
+      "type": "seed-record",
+      "path": "/Users/hayde/IdeaProjects/test_graph/project_sdk_sources/build/validation-reports/20260610-194741/fixtures/u-e4e4519c.json"
+    }
+  ],
+  "processes": [],
+  "metrics": {
+    "created_users": 1,
+    "durationMs": 0
+  },
+  "logs": [],
+  "published": {
+    "userId": "u-e4e4519c",
+    "username": "smoke-user"
+  }
+,"executorStartedAt":"2026-06-10T19:47:43.098347Z","executorEndedAt":"2026-06-10T19:47:43.151637Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/user.seeded.stdout.log","inputContextFile":"context/user.seeded.input.json"}]}

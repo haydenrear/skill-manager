@@ -1,0 +1,101 @@
+version: 1
+name: desired-program-model
+canonical_tla_module: TestGraph
+canonical_tla_file: TestGraph.tla
+bounded_model_config: MC.cfg
+manifest: spec_manifest.yaml
+ticket_plan: ticket_plan.yaml
+
+relationship:
+  extends_current_program_model: ../program_model/TestGraph.tla
+  purpose: desired whole-program model for TG-6 environment repository scaffolding and lifecycle validation
+  generation_status: planned
+
+implementation_status:
+  updated: "2026-06-28"
+  policy: specs/current is the executable state of landed work; this file summarizes the desired destination.
+  active_ticket: TG-6F
+  active_ticket_title: "Add guarded GitHub Actions and AWS lifecycle validation graphs"
+  summary:
+    desired_model_scaffolded: true
+    ticket_breakdown: prepared
+    current_model: tg6f_guarded_lifecycle_validation_landed
+    generated_desired_cases: pending
+    adapters: documented_boundaries_only
+    completed_slices:
+      - tg6e_local_lifecycle_validation_landed
+      - tg6f_guarded_lifecycle_validation_landed
+
+modeled_boundary_status:
+  ticket_plan:
+    status: implementation_tickets_closed
+    artifact: ticket_plan.yaml
+    next_ticket: workflow-closeout-review
+  tla:
+    status: desired_actions_added
+    actions:
+      - ScaffoldEnvironmentRepository
+      - ScaffoldEnvironmentTemplate
+      - ScaffoldLifecycleNodeTemplate
+      - VerifyEnvironmentContextRuntime
+      - GuardAwsBranchEnvironment
+      - SkipBranchEnvironmentReset
+      - SkipBranchEnvironmentDestroy
+    invariants:
+      - EnvironmentTemplatesRequireRepositoryScaffold
+      - LifecycleNodeTemplatesRequireRepositoryScaffold
+      - AwsProvisioningRequiresExplicitGuard
+      - SkippedResetEnvironmentsRemainProvisioned
+      - SkippedDestroyEnvironmentsRemainActive
+      - RuntimeContextVerificationIsTyped
+
+program_domains:
+  - environment_repository_contract
+  - environment_repository_scaffolding
+  - environment_template_scaffolding
+  - cluster_lifecycle_node_templates
+  - polyglot_environment_context_projection
+  - local_lifecycle_validation
+  - github_action_lifecycle_validation
+  - guarded_aws_lifecycle_validation
+
+implementation_sources:
+  documentation:
+    - SKILL.md
+    - references/environment-repositories.md
+    - references/reference.md
+    - references/workflows.md
+  scripts:
+    - scripts/scaffold-tf-env.py
+    - scripts/scaffold-env.py
+  sdk:
+    - project_sdk_sources/sdk/python/src/testgraphsdk/
+    - project_sdk_sources/sdk/java/src/main/java/com/hayden/testgraphsdk/sdk/
+  test_graph:
+    - test_graph/build.gradle.kts
+    - test_graph/sources/
+
+adapter_plan:
+  desired_new_ports:
+    - scaffold_environment_repository
+    - scaffold_environment_template
+    - scaffold_lifecycle_node_template
+    - verify_environment_context_runtime
+    - guard_aws_branch_environment
+    - skip_branch_environment_reset
+    - skip_branch_environment_destroy
+  desired_adapters:
+    - EnvironmentRepositoryReferenceAdapter
+    - EnvironmentRepositoryScaffoldAdapter
+    - EnvironmentTemplateScaffoldAdapter
+    - ClusterLifecycleNodeTemplateAdapter
+    - JBangEnvironmentContextProjectionAdapter
+    - LocalLifecycleGraphAdapter
+    - AwsLifecycleGraphAdapter
+
+guardrails:
+  git_fixture_policy: Tests must initialize a temporary Git repository during execution; do not check in nested Git repositories or tarball fixtures as the primary contract.
+  aws_execution_policy: AWS lifecycle validation must require explicit graph selection plus AWS credentials and explicit destroy intent for deletion.
+  exhaustive_graph_policy: Functionality tickets must add or update test graph coverage, and environment repository lifecycle behavior must be represented across local, GitHub Actions, and AWS graphs for deploy-missing, deploy-existing/reuse, reset, explicit destroy, and skip-destroy where safe for the target.
+  validation_policy: Every production slice updates specs/current, runs unit/spec validation, then adds or updates behavior-level test graph nodes.
+  per_ticket_closeout_policy: Every completed ticket updates specs/current, updates ticket_plan/status/evidence, closes a spec-double-compiler ticket history entry, and commits those changes before moving on.

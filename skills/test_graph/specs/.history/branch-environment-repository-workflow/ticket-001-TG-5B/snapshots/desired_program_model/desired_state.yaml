@@ -1,0 +1,112 @@
+version: 1
+name: desired-program-model
+canonical_tla_module: TestGraph
+canonical_tla_file: TestGraph.tla
+bounded_model_config: MC.cfg
+manifest: spec_manifest.yaml
+ticket_plan: ticket_plan.yaml
+
+relationship:
+  extends_current_program_model: ../program_model/TestGraph.tla
+  purpose: desired whole-program model for branch-scoped environment repository deployments
+  generation_status: planned
+
+implementation_status:
+  updated: "2026-06-13"
+  policy: specs/current is the executable state of landed work; this file summarizes the desired destination.
+  active_ticket: TG-5
+  active_ticket_title: "Branch-scoped environment repository deployments"
+  summary:
+    desired_model_scaffolded: true
+    ticket_breakdown: TG-5A through TG-5G
+    current_model: scaffolded_baseline
+    generated_desired_cases: pending
+    adapters: planned
+    deploy_helm_issue: final_ticket_after_sdk_contract
+
+modeled_boundary_status:
+  side_effect_runtime:
+    status: desired
+    ticket: TG-5A
+    actions:
+      - ConfigureSideEffectRuntime
+  provisioning_state:
+    status: desired
+    ticket: TG-5B
+    actions:
+      - ConfigureProvisioningState
+      - RequestMergedBranchDestroy
+      - DestroyMergedBranchEnvironment
+  git_environment_repository_contract:
+    status: desired
+    ticket: TG-5C
+    note: Define the ordinary Git repository contract before creating a fixture or execution adapter.
+  generated_git_environment_repository_fixture:
+    status: desired_validation_fixture
+    ticket: TG-5D
+    note: Version source files, then generate a temporary Git repository with git init/add/commit during tests.
+  environment_repository_execution:
+    status: desired
+    ticket: TG-5E
+    actions:
+      - ProvisionBranchEnvironment
+      - ReuseBranchEnvironment
+  env_propagation:
+    status: desired
+    ticket: TG-5E
+    actions:
+      - PropagateEnvironmentContext
+  branch_lifecycle:
+    status: desired
+    ticket: TG-5F
+    actions:
+      - DeployApplicationToBranchEnvironment
+      - ResetBranchEnvironment
+      - RequestMergedBranchDestroy
+      - DestroyMergedBranchEnvironment
+  deploy_helm_issue_creation:
+    status: final_ticket
+    ticket: TG-5G
+    note: Create the deploy-helm/deploy-cdc implementation issue only after TG-5F proves the SDK contract.
+
+program_domains:
+  - side_effects
+  - provisioning_state
+  - environment_repositories
+  - branch_scoped_kubernetes_environments
+  - downstream_environment_context
+
+implementation_sources:
+  sdk_runtime:
+    - project_sdk_sources/build-logic/src/main/kotlin/com/hayden/testgraphsdk/exec/PlanExecutor.kt
+    - project_sdk_sources/build-logic/src/main/kotlin/com/hayden/testgraphsdk/exec/Context.kt
+    - project_sdk_sources/sdk/java/src/main/java/com/hayden/testgraphsdk/sdk/NodeSpec.java
+    - project_sdk_sources/sdk/python/src/testgraphsdk/node_spec.py
+  local_contract_fixture:
+    - test_graph/test_graph/environment-repository-source/
+    - test_graph/sources/
+  docs:
+    - references/reference.md
+    - references/workflows.md
+
+adapter_plan:
+  desired_new_ports:
+    - configure_side_effect_runtime
+    - configure_provisioning_state
+    - register_feature_branch
+    - configure_environment_repository
+    - declare_branch_environment
+    - provision_branch_environment
+    - reuse_branch_environment
+    - deploy_application_to_branch_environment
+    - propagate_environment_context
+    - reset_branch_environment
+    - request_merged_branch_destroy
+    - destroy_merged_branch_environment
+
+guardrails:
+  deploy_helm_dependency: deploy-helm is not a dependency of TG-5C through TG-5F.
+  git_fixture: fixture tests generate a temporary Git repository from versioned source files; no checked-in nested .git and no tarball-first workflow.
+  normal_run_cleanup: normal validation runs do not destroy the branch cluster.
+  merge_destroy: destroy requires explicit merge-time destroy intent.
+  reset: reset clears deployment state for redeploy but preserves the provisioned cluster.

@@ -78,3 +78,10 @@ test_graph/docs
 *.py[cod]
 .pytest_cache/
 *.egg-info/
+
+# Per-checkout skill-manager home and the agent homes it materializes.
+# This checkout must never run against the operator's global ~/.skill-manager.
+.skill-manager/
+.claude/
+.codex/
+.gemini/

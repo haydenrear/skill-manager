@@ -1,0 +1,18 @@
+plan for test graph 'environmentRepositoryContract' (5 steps):
+  #   id                                         kind        rt      entry
+  1.  tg5.environment.repository.fixture.stable  fixture     uv      sources/Tg5StableEnvironmentRepositoryFixture.py
+  2.  tg5.environment.repository.provision       testbed     uv      sources/Tg5EnvironmentRepositoryProvision.py
+  3.  tg5.environment.context.env-key            assertion   uv      sources/Tg5EnvironmentContextEnvKey.py
+  4.  tg5.environment.context.env-all            assertion   uv      sources/Tg5EnvironmentContextEnvAll.py
+  5.  tg5.environment.repository.reuse           testbed     uv      sources/Tg5EnvironmentRepositoryReuse.py
+
+dependencies:
+  tg5.environment.repository.fixture.stable  (root)
+  tg5.environment.repository.provision       <- tg5.environment.repository.fixture.stable
+  tg5.environment.context.env-key            <- tg5.environment.repository.provision
+  tg5.environment.context.env-all            <- tg5.environment.repository.provision
+  tg5.environment.repository.reuse           <- tg5.environment.repository.provision
+
+dependency graph:
+  see it here: docs/environmentRepositoryContract.png
+  (DOT source: docs/environmentRepositoryContract.dot)

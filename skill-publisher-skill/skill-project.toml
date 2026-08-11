@@ -1,0 +1,75 @@
+# Skill project manifest for skill-publisher.
+#
+# What this declares: the units an agent working IN THIS CHECKOUT needs.
+# This repository IS the authoring authority itself, which makes its manifest the
+# shortest of the fleet: there is no separate unit to consult about how to write a
+# SKILL.md, because that is what the tracked files here ARE. The working tree is
+# the authority, and the one unit it genuinely needs is the one it documents.
+#
+# It deliberately does NOT declare `skill-publisher` itself. This repository IS that
+# unit's source of truth; installing it into its own home would give an agent two
+# copies of one unit with no rule about which one it is editing, and would make
+# the checkout's own edits invisible until a publish round trip.
+#
+# How the home is produced — read this before running `project resolve`
+# ---------------------------------------------------------------------
+# `project resolve` writes into whatever `SKILL_MANAGER_HOME` names. Run it
+# before this checkout has its own home and it mutates the operator's global
+# ~/.skill-manager. Create the local home first, point `SKILL_MANAGER_HOME` at
+# it, and only then resolve:
+#
+#   mkdir -p .skill-manager/skills
+#   SKILL_MANAGER_CLI=<epic skill-manager> \
+#     bash <git-integration-repo>/scripts/bootstrap-home.sh --root "$PWD" --force
+#   export SKILL_MANAGER_HOME="$PWD/.skill-manager"
+#   export CLAUDE_CONFIG_DIR="$PWD/.claude"  CLAUDE_HOME="$PWD/.claude"
+#   export CODEX_HOME="$PWD/.codex"          GEMINI_HOME="$PWD/.gemini"
+#   skill-manager project resolve --project-dir "$PWD" --skip-gateway \
+#     --allow-same-home
+#
+# Two things in that sequence are not optional, and each was a real failure:
+#
+#   * The four agent-home vars. `SKILL_MANAGER_HOME` alone does NOT redirect the
+#     agent-home projections — set only that and `resolve` symlinks this
+#     project's units into the operator's real ~/.claude, ~/.codex and ~/.gemini.
+#     These are the paths `home describe --json`'s `env` block names and the
+#     launch shims under `.skill-manager/bin/launch/` export for you, which is
+#     why launching through a shim is the supported way in.
+#
+#   * `--allow-same-home`. This project's home IS its own parent home — there is
+#     no tier between ~/.skill-manager and here — and `project resolve` refuses
+#     that layout by default (skill-manager #32) because it "isolates nothing".
+#     The refusal is a doctrine guard, not a data-loss guard: ChildHomeMaterializer's
+#     three degenerate-layout guards already decline a same-tree materialization.
+#     The only alternative is to point SKILL_MANAGER_HOME at the operator's
+#     global home, which would write it, and that is forbidden.
+#
+# Expect `resolve` to need SEVERAL passes: it validates markdown `skill-imports`
+# against INSTALLED units, not declared ones, so a unit whose imports name a unit
+# installed later in the same run fails the first pass and succeeds on the next.
+#
+# Coords are git-only (no registry is configured) and they name the REPO, not the
+# installed unit — see skill-publisher's references/coords-and-distribution.md.
+# The table key is the installed unit name, which is what
+# `.skill-manager/skills/<name>` uses.
+
+[project]
+name = "skill-publisher"
+version = "0.1.0"
+description = "Author and maintain installable skill-manager units: skills, plugins, doc-repos and harnesses, and ship edits into a store via commit, push and sync."
+
+# --- subject matter AND a declared markdown import. This unit's SKILL.md
+#     `skill-imports` names skill-manager references/skill-imports.md, and
+#     `project resolve` validates markdown imports against INSTALLED units, so
+#     leaving it undeclared fails the whole resolve with "references missing
+#     unit". Substantively: every claim this skill makes about install, bind,
+#     sync, instantiate, coords, CLI deps and MCP deps is a claim about
+#     skill-manager's behavior, so it is the thing to check a change against ---
+
+[skills.skill-manager]
+source = "github:haydenrear/skill-manager-skill"
+
+# --- no [[vendored]] block: this repo tracks no symlinks and has no test_graph,
+#     so no path in the working tree holds content owned by another unit.
+#     Verified with `git ls-files -s | grep ^120000` -> 0 entries, before and
+#     after onboarding. Nothing to migrate, nothing to validate.

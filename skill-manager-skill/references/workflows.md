@@ -25,6 +25,26 @@ option" banner. Treat the usage text as authoritative.
 
 ## Choose the workflow
 
+**Lifecycle questions route through skt first.** When the home carries
+the `skt` plugin (on PATH as `skt`), these day-to-day questions have a
+dedicated front door and this skill stays the plumbing underneath:
+
+- "what is loaded / where am I standing" → `skt status` (units, plugins,
+  home tier, ticket/epic state — the same report the session-start hook
+  injects);
+- "is anything stale / how do I update" → `skt check`, then
+  `skt sync <unit>` (wraps `skill-manager sync --git-latest` and makes
+  the silent-no-op sync trap loud);
+- "I edited a skill in my home; make it survive" → `skt publish`
+  (home sync one tier up, then unit publish — in that order);
+- ticket worktrees → `skt ticket new|close`.
+
+Raw `skill-manager` remains authoritative for install / bind / project /
+home plumbing below. The three-tier home model itself (root → project →
+worktree, copies not links, one-tier sync, publish for cross-machine) is
+stated once in git-issue-workflow's `references/skill-homes.md` and
+summarized live by `skt status` — point there, do not re-derive it.
+
 - Install only when the user wants bytes in the skill-manager store and
   default agent exposure is enough.
 - Bind when installed bytes need to be projected into a specific root.

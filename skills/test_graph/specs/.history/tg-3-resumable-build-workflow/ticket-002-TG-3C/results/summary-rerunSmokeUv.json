@@ -1,0 +1,16 @@
+{"runId":"20260610-194747","nodes":[{
+  "nodeId": "rerun.disabled.probe",
+  "status": "passed",
+  "startedAt": "2026-06-10T19:47:47.978956Z",
+  "endedAt": "2026-06-10T19:47:47.979178Z",
+  "assertions": [],
+  "artifacts": [],
+  "processes": [],
+  "metrics": {
+    "durationMs": 0
+  },
+  "logs": [],
+  "published": {
+    "rerun": "false"
+  }
+,"executorStartedAt":"2026-06-10T19:47:47.933422Z","executorEndedAt":"2026-06-10T19:47:47.985207Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/rerun.disabled.probe.stdout.log","inputContextFile":"context/rerun.disabled.probe.input.json"}]}

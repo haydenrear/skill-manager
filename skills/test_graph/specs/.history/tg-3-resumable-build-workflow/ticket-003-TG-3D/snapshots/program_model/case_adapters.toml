@@ -1,0 +1,22 @@
+# Map generated program-model action labels to repository adapters when case
+# generation is enabled. The first onboarding baseline intentionally leaves
+# execution adapters conservative: they document the real boundaries but report
+# can_run=false until a future ticket wires executable refinement mappings.
+
+[adapters.ScaffoldProject]
+adapter = "specs.program_model.production_adapters:ScaffoldProjectAdapter"
+
+[adapters.PlanGraph]
+adapter = "specs.program_model.production_adapters:GraphPlanningAdapter"
+
+[adapters.RunNodePass]
+adapter = "specs.program_model.production_adapters:GraphRunAdapter"
+
+[adapters.RunNodeTerminal]
+adapter = "specs.program_model.production_adapters:GraphRunAdapter"
+
+[adapters.WriteInlineReport]
+adapter = "specs.program_model.production_adapters:ReportAdapter"
+
+[adapters.RebuildReport]
+adapter = "specs.program_model.production_adapters:ReportAdapter"

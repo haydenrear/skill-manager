@@ -1,0 +1,116 @@
+{
+  "commit_recommendation": {
+    "git_add": "git add specs/.history/environment-repository-scaffolding-polyglot-lifecycle/ticket-003-TG-6D",
+    "git_commit": "git commit -m 'record spec history for TG-6D'",
+    "message": "It is recommended to commit this history directory now: specs/.history/environment-repository-scaffolding-polyglot-lifecycle/ticket-003-TG-6D"
+  },
+  "created_at_utc": "2026-06-28T17:18:35.571571+00:00",
+  "entry_name": "ticket-003-TG-6D",
+  "git": {
+    "branch": "feature/tg-5-branch-environment-repositories",
+    "commit": "002235a",
+    "inside_work_tree": "true"
+  },
+  "history_policy": "append-only by convention; existing entries are not overwritten and filesystem permissions remain git-friendly",
+  "kind": "ticket",
+  "results": [
+    {
+      "exists": true,
+      "role": "result",
+      "snapshot": "specs/.history/environment-repository-scaffolding-polyglot-lifecycle/ticket-003-TG-6D/results/report.md",
+      "source": "test_graph/build/validation-reports/20260628-170851/report.md"
+    }
+  ],
+  "schema_version": 1,
+  "snapshots": [
+    {
+      "exists": true,
+      "role": "program_model",
+      "snapshot": "specs/.history/environment-repository-scaffolding-polyglot-lifecycle/ticket-003-TG-6D/snapshots/program_model",
+      "source": "specs/program_model"
+    },
+    {
+      "exists": true,
+      "role": "desired_program_model",
+      "snapshot": "specs/.history/environment-repository-scaffolding-polyglot-lifecycle/ticket-003-TG-6D/snapshots/desired_program_model",
+      "source": "specs/desired_program_model"
+    },
+    {
+      "exists": true,
+      "role": "current",
+      "snapshot": "specs/.history/environment-repository-scaffolding-polyglot-lifecycle/ticket-003-TG-6D/snapshots/current",
+      "source": "specs/current"
+    }
+  ],
+  "spec_root": "specs",
+  "summary": "Recorded TG-6D Java/JBang environment repository context parity validation",
+  "ticket": {
+    "acceptance": {
+      "assertions": [
+        "Java NodeSpec can declare EnvironmentRepository metadata.",
+        "Java nodes see EnvironmentId, KUBECONFIG, KUBECONTEXT, TEST_GRAPH_ENVIRONMENT_REUSED, and repository/template directory env vars.",
+        "Java downstream nodes using env:[KEY] and env:[*] receive context projected from upstream output.",
+        "The graph uses real JBang runtime nodes, not Python nodes with JBang names."
+      ],
+      "commands": [
+        "./gradlew --console=plain :build-logic:test",
+        "pytest specs/current/tests",
+        "./scripts/run.py environmentRepositoryContractJbang --test-graph-root test_graph"
+      ],
+      "evidence": [
+        "test_graph/sources/Tg6EnvironmentRepositoryProvisionJbang.java declares Java EnvironmentRepository metadata and environment:provision side effects.",
+        "test_graph/sources/Tg6EnvironmentContextEnvKeyJbang.java validates env:[KEY] projection in JBang.",
+        "test_graph/sources/Tg6EnvironmentContextEnvAllJbang.java validates env:[*] projection in JBang.",
+        "environmentRepositoryContractJbang runs the scaffolded local environment repository fixture through real JBang nodes.",
+        "./scripts/discover.py environmentRepositoryContractJbang --test-graph-root test_graph passed on 2026-06-28.",
+        "./scripts/run.py environmentRepositoryContractJbang --test-graph-root test_graph passed with report test_graph/build/validation-reports/20260628-170851.",
+        "cd specs/current && tlc2 -config MC.cfg TestGraph.tla passed with 468796 distinct states on 2026-06-28.",
+        "cd specs/desired_program_model && tlc2 -config MC.cfg TestGraph.tla passed with 472400 distinct states on 2026-06-28.",
+        "pytest --import-mode=importlib specs/current/tests specs/desired_program_model/tests passed with 38 tests on 2026-06-28.",
+        "cd project_sdk_sources && ./gradlew --console=plain :build-logic:test passed on 2026-06-28."
+      ]
+    },
+    "current_increment": {
+      "adapters": [
+        "JBangEnvironmentContextProjectionAdapter"
+      ],
+      "graph_after_unit_pass": [
+        "environmentRepositoryContractJbang",
+        "Add this JBang graph as parity coverage alongside the existing uv environmentRepositoryContract graph."
+      ],
+      "model_actions": [
+        "VerifyEnvironmentContextRuntime"
+      ],
+      "model_state": [
+        "runtime_environment_context_verified"
+      ],
+      "unit_tests": [
+        "./gradlew --console=plain :build-logic:test",
+        "pytest specs/current/tests"
+      ]
+    },
+    "depends_on": [
+      "TG-6B"
+    ],
+    "desired_actions": [
+      "VerifyEnvironmentContextRuntime",
+      "PropagateEnvironmentContext"
+    ],
+    "id": "TG-6D",
+    "implementation_scope": [
+      "test_graph/sources/Tg6EnvironmentRepositoryProvisionJbang.java",
+      "test_graph/sources/Tg6EnvironmentContextEnvAllJbang.java",
+      "test_graph/sources/Tg6EnvironmentContextEnvKeyJbang.java",
+      "test_graph/build.gradle.kts",
+      "project_sdk_sources/sdk/java/src/main/java/com/hayden/testgraphsdk/sdk/"
+    ],
+    "objective": "Prove that Java/JBang nodes receive environment repository context and projected environment variables with the same semantics as uv nodes.\n",
+    "status": "done",
+    "title": "Add Java/JBang environment repository context parity graph"
+  },
+  "ticket_id": "TG-6D",
+  "ticket_index": 3,
+  "ticket_plan": "specs/desired_program_model/ticket_plan.yaml",
+  "ticket_status": "done",
+  "workflow_name": "environment-repository-scaffolding-polyglot-lifecycle"
+}

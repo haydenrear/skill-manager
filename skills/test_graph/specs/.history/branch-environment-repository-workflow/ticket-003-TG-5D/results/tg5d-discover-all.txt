@@ -1,0 +1,14 @@
+graph: rerunGraphJbang
+  - /Users/hayde/IdeaProjects/test_graph/test_graph/sources/RerunGraphJbang.py
+graph: rerunGraphUv
+  - /Users/hayde/IdeaProjects/test_graph/test_graph/sources/RerunGraphUv.py
+graph: runOnlyJbang
+  - /Users/hayde/IdeaProjects/test_graph/test_graph/sources/RunOnlyJbang.py
+graph: runOnlyUv
+  - /Users/hayde/IdeaProjects/test_graph/test_graph/sources/RunOnlyUv.py
+graph: branchEnvironmentWorkflow
+  - /Users/hayde/IdeaProjects/test_graph/test_graph/sources/BranchEnvironmentMarkersPresent.py
+  - /Users/hayde/IdeaProjects/test_graph/test_graph/sources/Tg5EnvironmentRepositoryContract.py
+  - /Users/hayde/IdeaProjects/test_graph/test_graph/sources/Tg5FutureWorkflowPlan.py
+graph: generatedEnvironmentRepositoryFixture
+  - /Users/hayde/IdeaProjects/test_graph/test_graph/sources/Tg5GeneratedEnvironmentRepositoryFixture.py

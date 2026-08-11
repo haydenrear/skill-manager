@@ -1,0 +1,26 @@
+{
+  "nodeId": "tg5.environment.provision",
+  "status": "passed",
+  "startedAt": "2026-06-13T21:54:41.598043Z",
+  "endedAt": "2026-06-13T21:54:41.598228Z",
+  "assertions": [
+    {
+      "name": "environment_id_was_assigned",
+      "status": "passed"
+    },
+    {
+      "name": "state_dir_was_assigned",
+      "status": "passed"
+    }
+  ],
+  "artifacts": [],
+  "processes": [],
+  "metrics": {
+    "durationMs": 0
+  },
+  "logs": [],
+  "published": {
+    "environmentId": "branchEnvironmentWorkflow__local__local-preview__local",
+    "stateDir": "/Users/hayde/IdeaProjects/test_graph/test_graph/build/testgraph-provisioning-state"
+  }
+}

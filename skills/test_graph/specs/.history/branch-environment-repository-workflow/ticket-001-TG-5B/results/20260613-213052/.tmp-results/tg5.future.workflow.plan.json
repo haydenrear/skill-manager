@@ -1,0 +1,37 @@
+{
+  "nodeId": "tg5.future.workflow.plan",
+  "status": "passed",
+  "startedAt": "2026-06-13T21:30:53.032707Z",
+  "endedAt": "2026-06-13T21:30:53.032964Z",
+  "assertions": [
+    {
+      "name": "TG-5C_is_planned",
+      "status": "passed"
+    },
+    {
+      "name": "TG-5D_is_planned",
+      "status": "passed"
+    },
+    {
+      "name": "TG-5E_is_planned",
+      "status": "passed"
+    },
+    {
+      "name": "TG-5F_is_planned",
+      "status": "passed"
+    },
+    {
+      "name": "TG-5G_is_planned",
+      "status": "passed"
+    }
+  ],
+  "artifacts": [],
+  "processes": [],
+  "metrics": {
+    "durationMs": 0
+  },
+  "logs": [
+    "Future TG-5 nodes are represented by the ticket plan and will be strengthened as each slice lands."
+  ],
+  "published": {}
+}

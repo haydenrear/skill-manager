@@ -1,0 +1,148 @@
+{
+  "commit_recommendation": {
+    "git_add": "git add specs/.history/environment-repository-scaffolding-polyglot-lifecycle/ticket-005-TG-6F",
+    "git_commit": "git commit -m 'record spec history for TG-6F'",
+    "message": "It is recommended to commit this history directory now: specs/.history/environment-repository-scaffolding-polyglot-lifecycle/ticket-005-TG-6F"
+  },
+  "created_at_utc": "2026-06-28T19:35:53.530700+00:00",
+  "entry_name": "ticket-005-TG-6F",
+  "git": {
+    "branch": "feature/tg-5-branch-environment-repositories",
+    "commit": "bfc4245",
+    "inside_work_tree": "true"
+  },
+  "history_policy": "append-only by convention; existing entries are not overwritten and filesystem permissions remain git-friendly",
+  "kind": "ticket",
+  "results": [
+    {
+      "exists": true,
+      "role": "result",
+      "snapshot": "specs/.history/environment-repository-scaffolding-polyglot-lifecycle/ticket-005-TG-6F/results/report.md",
+      "source": "test_graph/build/validation-reports/20260628-193335/report.md"
+    }
+  ],
+  "schema_version": 1,
+  "snapshots": [
+    {
+      "exists": true,
+      "role": "program_model",
+      "snapshot": "specs/.history/environment-repository-scaffolding-polyglot-lifecycle/ticket-005-TG-6F/snapshots/program_model",
+      "source": "specs/program_model"
+    },
+    {
+      "exists": true,
+      "role": "desired_program_model",
+      "snapshot": "specs/.history/environment-repository-scaffolding-polyglot-lifecycle/ticket-005-TG-6F/snapshots/desired_program_model",
+      "source": "specs/desired_program_model"
+    },
+    {
+      "exists": true,
+      "role": "current",
+      "snapshot": "specs/.history/environment-repository-scaffolding-polyglot-lifecycle/ticket-005-TG-6F/snapshots/current",
+      "source": "specs/current"
+    }
+  ],
+  "spec_root": "specs",
+  "summary": "Recorded TG-6F guarded GitHub Actions and AWS lifecycle validation",
+  "ticket": {
+    "acceptance": {
+      "assertions": [
+        "GitHub Actions lifecycle graph is discoverable in normal runs and validates the local-github-action scaffold without requiring cloud infrastructure.",
+        "GitHub Actions graph covers first deploy, existing deploy reuse, reset, explicit destroy guard behavior, and skip-destroy/keep-alive behavior using CI-safe markers and context projection.",
+        "AWS lifecycle graph is discoverable in normal runs.",
+        "Without explicit selection and credentials, AWS graph records a guarded skip/fail-fast result and creates no cloud resources.",
+        "With explicit selection and AWS credentials, the graph covers first deploy, existing deploy reuse, reset, explicit destroy, and skip-destroy.",
+        "Destroy requires TEST_GRAPH_DESTROY_BRANCH_ENVIRONMENT or TESTGRAPH_DESTROY_BRANCH_ENVIRONMENT in addition to AWS selection.",
+        {
+          "Local, GitHub Actions, and AWS lifecycle graphs together cover the full deployment matrix": "missing cluster deploy, existing cluster reuse without recreation, reset, explicit teardown, and skip teardown."
+        }
+      ],
+      "commands": [
+        "pytest specs/current/tests",
+        "./scripts/run.py environmentRepositoryGithubActionLifecycle --test-graph-root test_graph",
+        "./scripts/run.py environmentRepositoryGithubActionLifecycleDestroy --test-graph-root test_graph",
+        "TEST_GRAPH_DESTROY_BRANCH_ENVIRONMENT=true ./scripts/run.py environmentRepositoryGithubActionLifecycleDestroy --test-graph-root test_graph",
+        "./scripts/run.py environmentRepositoryAwsLifecycle --test-graph-root test_graph",
+        "./scripts/run.py environmentRepositoryAwsLifecycleDestroy --test-graph-root test_graph",
+        "TEST_GRAPH_RUN_AWS_LIFECYCLE=true AWS_PROFILE=test ./scripts/run.py environmentRepositoryAwsLifecycle --test-graph-root test_graph",
+        "TEST_GRAPH_RUN_AWS_LIFECYCLE=true AWS_PROFILE=test TEST_GRAPH_DESTROY_BRANCH_ENVIRONMENT=true ./scripts/run.py environmentRepositoryAwsLifecycleDestroy --test-graph-root test_graph"
+      ],
+      "evidence": [
+        "test_graph/support/tg6_lifecycle_support.py centralizes local-github-action/AWS target/backend metadata, AWS opt-in checks, credential checks, and destroy intent checks.",
+        "test_graph/sources/Tg6GithubActionLifecycle*.py validates local-github-action missing provision, existing deploy reuse, marker evidence, reset, skip-destroy, guarded destroy, and explicit destroy.",
+        "test_graph/sources/Tg6GithubActionLifecycleContextJbang.java validates JBang env:[*] context projection for the GitHub Actions lifecycle provision output.",
+        "test_graph/sources/Tg6AwsLifecycle*.py validates default guarded AWS no-op behavior, explicit selected AWS provision/deploy/reset/skip-destroy, and destroy requiring both AWS selection/credentials and destroy intent.",
+        "test_graph/sources/Tg6AwsLifecycleContextJbang.java validates JBang context projection for both guarded AWS context and selected AWS environment outputs.",
+        "references/environment-repositories.md and references/github-actions.md document the new graph names, AWS opt-in variable, credential guard, and destroy guard.",
+        "./scripts/discover.py environmentRepositoryGithubActionLifecycle --test-graph-root test_graph passed on 2026-06-28.",
+        "./scripts/discover.py environmentRepositoryGithubActionLifecycleDestroy --test-graph-root test_graph passed on 2026-06-28.",
+        "./scripts/discover.py environmentRepositoryAwsLifecycle --test-graph-root test_graph passed on 2026-06-28.",
+        "./scripts/discover.py environmentRepositoryAwsLifecycleDestroy --test-graph-root test_graph passed on 2026-06-28.",
+        "./scripts/run.py environmentRepositoryGithubActionLifecycle --test-graph-root test_graph passed with report test_graph/build/validation-reports/20260628-192248.",
+        "./scripts/run.py environmentRepositoryGithubActionLifecycleDestroy --test-graph-root test_graph passed without destroy intent with report test_graph/build/validation-reports/20260628-192312.",
+        "TEST_GRAPH_DESTROY_BRANCH_ENVIRONMENT=true ./scripts/run.py environmentRepositoryGithubActionLifecycleDestroy --test-graph-root test_graph passed with report test_graph/build/validation-reports/20260628-192334.",
+        "./scripts/run.py environmentRepositoryAwsLifecycle --test-graph-root test_graph passed guarded/no-cloud with report test_graph/build/validation-reports/20260628-192356.",
+        "./scripts/run.py environmentRepositoryAwsLifecycleDestroy --test-graph-root test_graph passed guarded/no-cloud with report test_graph/build/validation-reports/20260628-192421.",
+        "TEST_GRAPH_RUN_AWS_LIFECYCLE=true AWS_PROFILE=test ./scripts/run.py environmentRepositoryAwsLifecycle --test-graph-root test_graph passed selected AWS lifecycle against the scaffolded shim with report test_graph/build/validation-reports/20260628-192445.",
+        "TEST_GRAPH_RUN_AWS_LIFECYCLE=true AWS_PROFILE=test TEST_GRAPH_DESTROY_BRANCH_ENVIRONMENT=true ./scripts/run.py environmentRepositoryAwsLifecycleDestroy --test-graph-root test_graph passed selected AWS destroy against the scaffolded shim with report test_graph/build/validation-reports/20260628-192511.",
+        "./scripts/run.py --all --test-graph-root test_graph passed on 2026-06-28; default TG-6F graph reports included test_graph/build/validation-reports/20260628-193301, 20260628-193313, 20260628-193324, and 20260628-193335.",
+        "cd specs/current && tlc2 -config MC.cfg TestGraph.tla passed with 472400 distinct states on 2026-06-28.",
+        "cd specs/desired_program_model && tlc2 -config MC.cfg TestGraph.tla passed with 472400 distinct states on 2026-06-28.",
+        "pytest --import-mode=importlib specs/current/tests specs/desired_program_model/tests passed with 46 tests on 2026-06-28.",
+        "cd project_sdk_sources && ./gradlew --console=plain :build-logic:test passed on 2026-06-28."
+      ]
+    },
+    "current_increment": {
+      "adapters": [
+        "AwsLifecycleGraphAdapter"
+      ],
+      "graph_after_unit_pass": [
+        "environmentRepositoryGithubActionLifecycle",
+        "environmentRepositoryGithubActionLifecycleDestroy",
+        "environmentRepositoryAwsLifecycle",
+        "environmentRepositoryAwsLifecycleDestroy"
+      ],
+      "model_actions": [
+        "GuardAwsBranchEnvironment"
+      ],
+      "model_state": [
+        "aws_execution_guarded"
+      ],
+      "unit_tests": [
+        "pytest specs/current/tests"
+      ]
+    },
+    "depends_on": [
+      "TG-6B",
+      "TG-6C",
+      "TG-6D",
+      "TG-6E"
+    ],
+    "desired_actions": [
+      "GuardAwsBranchEnvironment",
+      "ProvisionBranchEnvironment",
+      "ReuseBranchEnvironment",
+      "ResetBranchEnvironment",
+      "SkipBranchEnvironmentDestroy",
+      "DestroyMergedBranchEnvironment"
+    ],
+    "id": "TG-6F",
+    "implementation_scope": [
+      "test_graph/sources/Tg6GithubActionLifecycle*.py",
+      "test_graph/sources/Tg6GithubActionLifecycle*.java",
+      "test_graph/sources/Tg6AwsLifecycle*.py",
+      "test_graph/sources/Tg6AwsLifecycle*.java",
+      "test_graph/build.gradle.kts",
+      "references/environment-repositories.md",
+      "references/github-actions.md"
+    ],
+    "objective": "Add GitHub Actions and AWS lifecycle graph coverage with explicit selection and credential guards so normal CI cannot accidentally create or delete cloud resources.\n",
+    "status": "done",
+    "title": "Add guarded GitHub Actions and AWS lifecycle validation graphs"
+  },
+  "ticket_id": "TG-6F",
+  "ticket_index": 5,
+  "ticket_plan": "specs/desired_program_model/ticket_plan.yaml",
+  "ticket_status": "done",
+  "workflow_name": "environment-repository-scaffolding-polyglot-lifecycle"
+}

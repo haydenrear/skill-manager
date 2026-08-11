@@ -1,0 +1,34 @@
+# Map generated program-model action labels to repository adapters when case
+# generation is enabled. These adapters document the accepted semantic
+# boundaries and stay non-executable until a future workflow wires refinement
+# execution against generated cases.
+
+[adapters.ScaffoldProject]
+adapter = "specs.program_model.production_adapters:ScaffoldProjectAdapter"
+
+[adapters.PlanGraph]
+adapter = "specs.program_model.production_adapters:GraphPlanningAdapter"
+
+[adapters.RunNodePass]
+adapter = "specs.program_model.production_adapters:GraphRunAdapter"
+
+[adapters.RunNodeTerminal]
+adapter = "specs.program_model.production_adapters:GraphRunAdapter"
+
+[adapters.WriteInlineReport]
+adapter = "specs.program_model.production_adapters:ReportAdapter"
+
+[adapters.RebuildReport]
+adapter = "specs.program_model.production_adapters:ReportAdapter"
+
+[adapters.SetNodeRerunDisabled]
+adapter = "specs.program_model.production_adapters:RerunMetadataAdapter"
+
+[adapters.ResumeRunFromBuild]
+adapter = "specs.program_model.production_adapters:ResumeRunFromBuildAdapter"
+
+[adapters.RunOnlyNodeFromBuild]
+adapter = "specs.program_model.production_adapters:RunOnlyNodeFromBuildAdapter"
+
+[adapters.RerunGuidance]
+adapter = "specs.program_model.production_adapters:RerunGuidanceAdapter"

@@ -1,0 +1,142 @@
+{
+  "commit_recommendation": {
+    "git_add": "git add specs/.history/branch-environment-repository-workflow/ticket-003-TG-5D",
+    "git_commit": "git commit -m 'record spec history for TG-5D'",
+    "message": "It is recommended to commit this history directory now: specs/.history/branch-environment-repository-workflow/ticket-003-TG-5D"
+  },
+  "created_at_utc": "2026-06-13T22:15:31.976386+00:00",
+  "entry_name": "ticket-003-TG-5D",
+  "git": {
+    "branch": "feature/tg-5-branch-environment-repositories",
+    "commit": "65b215a",
+    "inside_work_tree": "true"
+  },
+  "history_policy": "append-only by convention; existing entries are not overwritten and filesystem permissions remain git-friendly",
+  "kind": "ticket",
+  "results": [
+    {
+      "exists": true,
+      "role": "result",
+      "snapshot": "specs/.history/branch-environment-repository-workflow/ticket-003-TG-5D/results/tg5d-tlc-current.txt",
+      "source": "specs/results/tg5d-tlc-current.txt"
+    },
+    {
+      "exists": true,
+      "role": "result",
+      "snapshot": "specs/.history/branch-environment-repository-workflow/ticket-003-TG-5D/results/tg5d-pytest-specs.txt",
+      "source": "specs/results/tg5d-pytest-specs.txt"
+    },
+    {
+      "exists": true,
+      "role": "result",
+      "snapshot": "specs/.history/branch-environment-repository-workflow/ticket-003-TG-5D/results/tg5d-build-logic-test.txt",
+      "source": "specs/results/tg5d-build-logic-test.txt"
+    },
+    {
+      "exists": true,
+      "role": "result",
+      "snapshot": "specs/.history/branch-environment-repository-workflow/ticket-003-TG-5D/results/tg5d-py-compile.txt",
+      "source": "specs/results/tg5d-py-compile.txt"
+    },
+    {
+      "exists": true,
+      "role": "result",
+      "snapshot": "specs/.history/branch-environment-repository-workflow/ticket-003-TG-5D/results/tg5d-discover-all.txt",
+      "source": "specs/results/tg5d-discover-all.txt"
+    },
+    {
+      "exists": true,
+      "role": "result",
+      "snapshot": "specs/.history/branch-environment-repository-workflow/ticket-003-TG-5D/results/tg5d-discover-generated-fixture.txt",
+      "source": "specs/results/tg5d-discover-generated-fixture.txt"
+    },
+    {
+      "exists": true,
+      "role": "result",
+      "snapshot": "specs/.history/branch-environment-repository-workflow/ticket-003-TG-5D/results/tg5d-run-generated-fixture.txt",
+      "source": "specs/results/tg5d-run-generated-fixture.txt"
+    },
+    {
+      "exists": true,
+      "role": "result",
+      "snapshot": "specs/.history/branch-environment-repository-workflow/ticket-003-TG-5D/results/tg5d-run-all.txt",
+      "source": "specs/results/tg5d-run-all.txt"
+    }
+  ],
+  "schema_version": 1,
+  "snapshots": [
+    {
+      "exists": true,
+      "role": "program_model",
+      "snapshot": "specs/.history/branch-environment-repository-workflow/ticket-003-TG-5D/snapshots/program_model",
+      "source": "specs/program_model"
+    },
+    {
+      "exists": true,
+      "role": "desired_program_model",
+      "snapshot": "specs/.history/branch-environment-repository-workflow/ticket-003-TG-5D/snapshots/desired_program_model",
+      "source": "specs/desired_program_model"
+    },
+    {
+      "exists": true,
+      "role": "current",
+      "snapshot": "specs/.history/branch-environment-repository-workflow/ticket-003-TG-5D/snapshots/current",
+      "source": "specs/current"
+    }
+  ],
+  "spec_root": "specs",
+  "summary": "Closed TG-5D by adding a generated local Git environment repository fixture. The source stays as ordinary versioned files under test_graph/environment-repository-source, and the generatedEnvironmentRepositoryFixture graph copies it into a report-local Git repository, commits it, validates the local-preview OpenTofu template and output keys, and publishes the repository path/file URL for later execution tickets.",
+  "ticket": {
+    "acceptance": {
+      "assertions": [
+        "The fixture source is versioned as normal files, not as a nested checked-in Git repository.",
+        "The test creates a real temporary Git repository with an initial commit before the SDK consumes it.",
+        "The generated repository exposes the minimal local OpenTofu template and deterministic output contract.",
+        "The fixture is self-contained and does not import deploy-helm."
+      ],
+      "commands": [
+        "pytest specs/current/tests",
+        "./scripts/discover.py --test-graph-root test_graph",
+        "./scripts/run.py generatedEnvironmentRepositoryFixture --test-graph-root test_graph"
+      ],
+      "evidence": [
+        "pytest specs/current/tests",
+        "python -m py_compile test_graph/support/branch_environment_harness.py test_graph/sources/Tg5GeneratedEnvironmentRepositoryFixture.py",
+        "./scripts/discover.py generatedEnvironmentRepositoryFixture --test-graph-root test_graph",
+        "./scripts/run.py generatedEnvironmentRepositoryFixture --test-graph-root test_graph"
+      ]
+    },
+    "current_increment": {
+      "adapters": [
+        "GeneratedGitEnvironmentRepositoryFixtureAdapter"
+      ],
+      "graph_after_unit_pass": [
+        "test_graph generatedEnvironmentRepositoryFixture"
+      ],
+      "model_actions": [],
+      "model_state": [],
+      "unit_tests": [
+        "pytest specs/current/tests"
+      ]
+    },
+    "depends_on": [
+      "TG-5C"
+    ],
+    "desired_actions": [],
+    "id": "TG-5D",
+    "implementation_scope": [
+      "test_graph/environment-repository-source/",
+      "test_graph/sources/",
+      "test_graph/build.gradle.kts",
+      "references/workflows.md"
+    ],
+    "objective": "Build the SDK contract fixture as a temporary Git repository during the test graph run. Version the source/template files in this repository, then have the test node copy them into a temp directory, run git init/add/commit, and pass that local Git repository path or file URL to the SDK.\n",
+    "status": "done",
+    "title": "Generate a local Git environment repository fixture"
+  },
+  "ticket_id": "TG-5D",
+  "ticket_index": 3,
+  "ticket_plan": "specs/desired_program_model/ticket_plan.yaml",
+  "ticket_status": "done",
+  "workflow_name": "branch-environment-repository-workflow"
+}

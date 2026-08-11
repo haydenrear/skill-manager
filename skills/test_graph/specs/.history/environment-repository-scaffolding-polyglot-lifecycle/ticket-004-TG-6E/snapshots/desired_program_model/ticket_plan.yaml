@@ -1,0 +1,439 @@
+version: 1
+name: environment-repository-scaffolding-polyglot-lifecycle
+updated: "2026-06-28"
+purpose: >
+  Plan the TG-6 workflow for first-class environment repository scaffolding,
+  local/AWS/GitHub Actions lifecycle nodes, Java/JBang parity coverage, and
+  local/AWS validation graphs.
+
+planning_rules:
+  current_model_rule: Update specs/current after each production slice lands as a whole-program working copy of specs/program_model, not a ticket projection.
+  unit_validation_rule: Run current-model TLC and adapter/unit tests before broad graph execution.
+  graph_rule: Add graph or integration nodes after the corresponding current-model validation passes.
+  functionality_graph_rule: Every ticket that adds functionality, scripts, scaffolds, SDK behavior, generated node templates, or deployment lifecycle behavior must add a new test graph or add explicit nodes/assertions to an existing graph in the same ticket.
+  exhaustive_environment_graph_rule: Environment repository scaffolding and deployment lifecycle behavior must be covered through test graphs for local, GitHub Actions, and AWS targets/backends, with deployment cases for missing cluster, existing cluster reuse, reset, explicit destroy, and skip-destroy/keep-alive behavior where that target can exercise them safely.
+  semantic_model_rule: Do not add test graph nodes, pytest jobs, CI workflow steps, integration harnesses, or validation scripts as TLA+ program state/actions.
+  evidence_rule: Record tests and graph runs as evidence for semantic program actions in manifests or ticket status.
+  desired_sync_rule: Update this file and spec_manifest.yaml whenever scope, order, acceptance checks, or status changes.
+  per_ticket_closeout_rule: After every completed ticket, update specs/current to the landed behavior, update this ticket plan and spec manifests with status/evidence, close the ticket with spec-double-compiler history, and commit that ticket separately.
+  promotion_rule: When the final ticket closeout makes specs/current equal specs/desired_program_model, promote the converged model to specs/program_model and close the workflow history as part of that final ticket's closeout.
+
+per_ticket_closeout:
+  required_after_each_ticket:
+    - Update specs/current as a whole-program working copy of the landed behavior.
+    - Update specs/desired_program_model/ticket_plan.yaml with ticket status, evidence, and next active ticket.
+    - Update specs/current/spec_manifest.yaml and specs/desired_program_model/spec_manifest.yaml with implemented actions, validations, and evidence.
+    - Run the ticket's unit/spec validation and its targeted test graph.
+    - Close the ticket with the spec-double-compiler close-ticket workflow and attach evidence.
+    - Commit the implementation, spec updates, graph updates, and close record as one ticket-scoped commit.
+  final_ticket_extra:
+    - After the last implementation ticket is closed and specs/current equals specs/desired_program_model, run the whole-workflow close/promote command instead of creating a separate closeout ticket.
+
+status:
+  workflow: ticket
+  active_ticket: TG-6F
+  active_ticket_title: "Add guarded GitHub Actions and AWS lifecycle validation graphs"
+  desired_module: TestGraph
+  phase: implementation
+  baseline_evidence:
+    - "./scripts/run.py --all --test-graph-root test_graph passed on 2026-06-27."
+    - "Current env-repo lifecycle graph coverage is uv/Python only; no Java/JBang env-repo context propagation graph exists yet."
+    - "SKILL.md lacks a direct environment-repositories routing entry."
+    - "references/reference.md contains TG-5 contract details, but there is no dedicated references/environment-repositories.md."
+    - "scripts/scaffold-tf-env.py and scripts/scaffold-env.py do not exist yet."
+
+service_catalog:
+  existing_boundaries:
+    - EnvironmentRepository metadata in Python and Java SDK NodeSpec.
+    - OpenTofu-backed branch environment runtime in build-logic.
+    - Provisioning marker state for provision, reuse, reset, destroy, deployed, and destroy-requested markers.
+    - Downstream env:[KEY] and env:[*] context projection.
+  desired_boundaries:
+    - Dedicated environment repository reference documentation and SKILL.md routing.
+    - Environment repository scaffolding CLI for a new Git repository with starter OpenTofu templates.
+    - Environment template scaffolding CLI for adding local, AWS, and GitHub Actions environments to an existing environment repo.
+    - Shared lifecycle node template library for Python and Java deploy/reset/delete cluster nodes.
+    - Java/JBang env-repo context propagation graph parity with uv.
+    - Local lifecycle graph covering first deploy, existing deploy reuse, reset, explicit destroy, and skip-destroy.
+    - GitHub Actions lifecycle graph covering scaffolded local-github-action environment behavior and CI-safe keep-alive/destroy guard semantics.
+    - AWS lifecycle graph covering first deploy, existing deploy reuse, reset, explicit destroy, and skip-destroy with explicit selection and credential guards.
+  adapter_boundaries:
+    - EnvironmentRepositoryScaffoldAdapter
+    - EnvironmentTemplateScaffoldAdapter
+    - ClusterLifecycleNodeTemplateAdapter
+    - JBangEnvironmentContextProjectionAdapter
+    - LocalLifecycleGraphAdapter
+    - AwsLifecycleGraphAdapter
+  known_gaps:
+    - No dedicated env-repos reference file.
+    - No local k3d setup guide tied to the env repo contract.
+    - No scaffold-tf-env.py or scaffold-env.py scripts.
+    - No generated deploy_cluster/reset_node/delete_cluster node templates.
+    - No Java/JBang env-repo lifecycle or context projection validation node.
+    - No GitHub Actions target/backend lifecycle graph.
+    - AWS validation is currently only a fail-fast metadata guard, not a lifecycle graph.
+
+tickets:
+  - id: TG-6A
+    title: "Document the environment repository contract and local k3d setup"
+    status: done
+    depends_on: []
+    objective: >
+      Make environment repositories a first-class documented skill surface with
+      a dedicated reference, expected repository shape, execution contract,
+      target/backend semantics, lifecycle behavior, and a local k3d setup path.
+    desired_actions: []
+    implementation_scope:
+      - SKILL.md
+      - references/environment-repositories.md
+      - references/reference.md
+      - references/workflows.md
+    current_increment:
+      model_state: []
+      model_actions: []
+      adapters:
+        - EnvironmentRepositoryReferenceAdapter
+      unit_tests:
+        - pytest specs/current/tests
+      graph_after_unit_pass:
+        - Add an assertion node that proves SKILL.md routes to the env-repos reference.
+        - Add an assertion node that proves local k3d contract details are present.
+        - Add an assertion node that proves the reference requires local, GitHub Actions, and AWS graph coverage for functionality tickets.
+    acceptance:
+      commands:
+        - pytest specs/current/tests
+        - ./scripts/run.py environmentRepositoryDocumentation --test-graph-root test_graph
+      assertions:
+        - SKILL.md links to references/environment-repositories.md.
+        - The reference defines required files, required outputs, supported sources, target/backend selection, branch scoping, reset, destroy, skip-destroy, and local k3d setup.
+        - Existing TG-5 contract text in references/reference.md and references/workflows.md points to the dedicated reference instead of becoming stale duplicate source material.
+        - The documentation graph fails if functionality tickets can add scripts/scaffolds/lifecycle behavior without test graph coverage.
+      evidence:
+        - references/environment-repositories.md documents the provider-neutral Git environment repository contract, local k3d setup, and local/GitHub Actions/AWS graph coverage matrix.
+        - SKILL.md, references/reference.md, and references/workflows.md route to the dedicated environment repository reference.
+        - test_graph/sources/Tg6EnvironmentRepositoryDocumentation.py and environmentRepositoryDocumentation validate the documentation contract.
+        - pytest --import-mode=importlib specs/current/tests specs/desired_program_model/tests passed with 27 tests on 2026-06-28.
+        - cd specs/current && tlc2 -config MC.cfg TestGraph.tla passed on 2026-06-28.
+        - cd specs/desired_program_model && tlc2 -config MC.cfg TestGraph.tla passed on 2026-06-28.
+        - ./scripts/discover.py environmentRepositoryDocumentation --test-graph-root test_graph passed on 2026-06-28.
+        - ./scripts/run.py environmentRepositoryDocumentation --test-graph-root test_graph passed with report test_graph/build/validation-reports/20260628-154618.
+
+  - id: TG-6B
+    title: "Add environment repository scaffolding CLIs"
+    status: done
+    depends_on:
+      - TG-6A
+    objective: >
+      Add scripts that generate a new environment repository and add local,
+      AWS, or GitHub Actions environment templates to an existing environment
+      repository without relying on checked-in nested Git repositories.
+    desired_actions:
+      - ScaffoldEnvironmentRepository
+      - ScaffoldEnvironmentTemplate
+    implementation_scope:
+      - scripts/scaffold-tf-env.py
+      - scripts/scaffold-env.py
+      - references/environment-repositories.md
+      - test_graph/sources/Tg6EnvironmentRepositoryScaffold*.py
+    current_increment:
+      model_state:
+        - environment_repository_scaffolded
+        - scaffolded_environment_templates
+      model_actions:
+        - ScaffoldEnvironmentRepository
+        - ScaffoldEnvironmentTemplate
+      adapters:
+        - EnvironmentRepositoryScaffoldAdapter
+        - EnvironmentTemplateScaffoldAdapter
+      unit_tests:
+        - pytest specs/current/tests
+        - pytest tests for scaffold scripts when a tests/ surface exists
+      graph_after_unit_pass:
+        - environmentRepositoryScaffoldLocal
+        - environmentRepositoryScaffoldGithubAction
+        - environmentRepositoryScaffoldAws
+        - Add nodes to the scaffold graphs that use the newly scaffolded environment repository as the fixture source instead of the older TG-5 hand-written fixture.
+    acceptance:
+      commands:
+        - pytest specs/current/tests
+        - ./scripts/run.py environmentRepositoryScaffoldLocal --test-graph-root test_graph
+        - ./scripts/run.py environmentRepositoryScaffoldGithubAction --test-graph-root test_graph
+        - ./scripts/run.py environmentRepositoryScaffoldAws --test-graph-root test_graph
+      assertions:
+        - scaffold-tf-env.py creates a starter environment repo that can be initialized as Git during tests.
+        - scaffold-env.py can add local.tf, aws.tf, and local-github-action.tf style templates to one repository without clobbering existing environments.
+        - Generated templates expose EnvironmentId, KUBECONFIG, and KUBECONTEXT outputs.
+        - Tests create a temporary Git repository with git init/add/commit instead of checking in a nested repository or tarball fixture.
+        - The test graph validates the generated environment repository contract for local, GitHub Actions, and AWS templates.
+        - The existing environmentRepositoryContract graph is updated or extended to consume the newly scaffolded environment repository path, so scaffold output becomes the primary fixture for later lifecycle graphs.
+      evidence:
+        - scripts/scaffold-tf-env.py and scripts/scaffold-env.py create Git-ready OpenTofu environment repositories and target templates.
+        - project_sdk_sources/build-logic exports TF_VAR_target and TF_VAR_backend to environment repository commands.
+        - environmentRepositoryScaffoldLocal consumes the scaffolded repository as the local runtime fixture.
+        - environmentRepositoryScaffoldGithubAction and environmentRepositoryScaffoldAws validate target-specific scaffold structure and metadata without provisioning cloud resources.
+        - python -m py_compile passed for scaffold scripts, scaffold graph nodes, and branch_environment_harness.py on 2026-06-28.
+        - pytest --import-mode=importlib specs/current/tests specs/desired_program_model/tests passed with 30 tests on 2026-06-28.
+        - cd project_sdk_sources && ./gradlew --console=plain :build-logic:test passed on 2026-06-28.
+        - cd specs/current && tlc2 -config MC.cfg TestGraph.tla passed on 2026-06-28.
+        - cd specs/desired_program_model && tlc2 -config MC.cfg TestGraph.tla passed on 2026-06-28.
+        - ./scripts/discover.py environmentRepositoryScaffoldLocal --test-graph-root test_graph passed on 2026-06-28.
+        - ./scripts/discover.py environmentRepositoryScaffoldGithubAction --test-graph-root test_graph passed on 2026-06-28.
+        - ./scripts/discover.py environmentRepositoryScaffoldAws --test-graph-root test_graph passed on 2026-06-28.
+        - ./scripts/run.py environmentRepositoryDocumentation --test-graph-root test_graph passed with report test_graph/build/validation-reports/20260628-160846.
+        - ./scripts/run.py environmentRepositoryScaffoldLocal --test-graph-root test_graph passed with report test_graph/build/validation-reports/20260628-160658.
+        - ./scripts/run.py environmentRepositoryScaffoldGithubAction --test-graph-root test_graph passed with report test_graph/build/validation-reports/20260628-160719.
+        - ./scripts/run.py environmentRepositoryScaffoldAws --test-graph-root test_graph passed with report test_graph/build/validation-reports/20260628-160736.
+
+  - id: TG-6C
+    title: "Add shared lifecycle node templates for Python and Java"
+    status: done
+    depends_on:
+      - TG-6B
+    objective: >
+      Scaffold deploy/reset/delete cluster node templates for uv and JBang
+      while keeping target/backend dispatch in shared library code instead of
+      duplicating behavior in every generated node.
+    desired_actions:
+      - ScaffoldLifecycleNodeTemplate
+      - ResetBranchEnvironment
+      - SkipBranchEnvironmentReset
+      - RequestMergedBranchDestroy
+      - SkipBranchEnvironmentDestroy
+      - DestroyMergedBranchEnvironment
+    implementation_scope:
+      - scripts/scaffold-env.py
+      - project_sdk_sources/sdk/python/src/testgraphsdk/
+      - project_sdk_sources/sdk/java/src/main/java/com/hayden/testgraphsdk/sdk/
+      - test_graph/sources/DeployCluster.java
+      - test_graph/sources/ResetNode.java
+      - test_graph/sources/DeleteCluster.java
+      - test_graph/sources/deploy_cluster.py
+      - test_graph/sources/reset_node.py
+      - test_graph/sources/delete_cluster.py
+    current_increment:
+      model_state:
+        - scaffolded_lifecycle_node_templates
+        - skipped_reset_environments
+        - skipped_destroy_environments
+      model_actions:
+        - ScaffoldLifecycleNodeTemplate
+        - SkipBranchEnvironmentReset
+        - SkipBranchEnvironmentDestroy
+      adapters:
+        - ClusterLifecycleNodeTemplateAdapter
+      unit_tests:
+        - ./gradlew --console=plain :build-logic:test
+        - pytest specs/current/tests
+      graph_after_unit_pass:
+        - environmentLifecycleNodeTemplates
+        - Add Python and Java assertion nodes that instantiate the generated deploy/reset/delete templates and verify target/backend dispatch metadata for local, github-action, and aws.
+    acceptance:
+      commands:
+        - ./gradlew --console=plain :build-logic:test
+        - pytest specs/current/tests
+        - ./scripts/run.py environmentLifecycleNodeTemplates --test-graph-root test_graph
+      assertions:
+        - Python and Java templates expose deploy_cluster, reset_node, and delete_cluster behavior.
+        - Templates accept local, github-action, and aws target/backend options.
+        - Reset skips when the environment was just provisioned or is already reset.
+        - Delete only destroys when explicit destroy intent is present; skip-destroy keeps the cluster active.
+        - Shared helper code owns target dispatch and command selection.
+        - The test graph proves every generated lifecycle template has both uv and JBang coverage or records an explicit unsupported-runtime reason.
+      evidence:
+        - project_sdk_sources/sdk/python/src/testgraphsdk/lifecycle.py adds shared deploy_cluster, reset_node, delete_cluster lifecycle dispatch plans.
+        - project_sdk_sources/sdk/java/src/main/java/com/hayden/testgraphsdk/sdk/ClusterLifecycle.java and ClusterLifecyclePlan.java add matching JBang lifecycle dispatch support.
+        - scripts/scaffold-env.py can scaffold uv and JBang deploy/reset/delete lifecycle node starter templates.
+        - test_graph/sources/deploy_cluster.py, reset_node.py, delete_cluster.py, DeployCluster.java, ResetNode.java, and DeleteCluster.java validate lifecycle template behavior.
+        - environmentLifecycleNodeTemplates covers uv and JBang deploy/reset/delete templates for local-preview/local, local-github-action/github-action, and aws-preview/aws metadata.
+        - python -m py_compile passed for lifecycle helper scripts and node templates on 2026-06-28.
+        - cd project_sdk_sources && ./gradlew --console=plain :sdk:java:compileJava passed on 2026-06-28.
+        - ./scripts/discover.py environmentLifecycleNodeTemplates --test-graph-root test_graph passed on 2026-06-28.
+        - ./scripts/run.py environmentLifecycleNodeTemplates --test-graph-root test_graph passed with report test_graph/build/validation-reports/20260628-164659.
+        - cd specs/current && tlc2 -config MC.cfg TestGraph.tla passed with 117199 distinct states on 2026-06-28.
+        - cd specs/desired_program_model && tlc2 -config MC.cfg TestGraph.tla passed with 472400 distinct states on 2026-06-28.
+        - pytest --import-mode=importlib specs/current/tests specs/desired_program_model/tests passed with 35 tests on 2026-06-28.
+        - cd project_sdk_sources && ./gradlew --console=plain :build-logic:test passed on 2026-06-28.
+
+  - id: TG-6D
+    title: "Add Java/JBang environment repository context parity graph"
+    status: done
+    depends_on:
+      - TG-6B
+    objective: >
+      Prove that Java/JBang nodes receive environment repository context and
+      projected environment variables with the same semantics as uv nodes.
+    desired_actions:
+      - VerifyEnvironmentContextRuntime
+      - PropagateEnvironmentContext
+    implementation_scope:
+      - test_graph/sources/Tg6EnvironmentRepositoryProvisionJbang.java
+      - test_graph/sources/Tg6EnvironmentContextEnvAllJbang.java
+      - test_graph/sources/Tg6EnvironmentContextEnvKeyJbang.java
+      - test_graph/build.gradle.kts
+      - project_sdk_sources/sdk/java/src/main/java/com/hayden/testgraphsdk/sdk/
+    current_increment:
+      model_state:
+        - runtime_environment_context_verified
+      model_actions:
+        - VerifyEnvironmentContextRuntime
+      adapters:
+        - JBangEnvironmentContextProjectionAdapter
+      unit_tests:
+        - ./gradlew --console=plain :build-logic:test
+        - pytest specs/current/tests
+      graph_after_unit_pass:
+        - environmentRepositoryContractJbang
+        - Add this JBang graph as parity coverage alongside the existing uv environmentRepositoryContract graph.
+    acceptance:
+      commands:
+        - ./gradlew --console=plain :build-logic:test
+        - pytest specs/current/tests
+        - ./scripts/run.py environmentRepositoryContractJbang --test-graph-root test_graph
+      assertions:
+        - Java NodeSpec can declare EnvironmentRepository metadata.
+        - Java nodes see EnvironmentId, KUBECONFIG, KUBECONTEXT, TEST_GRAPH_ENVIRONMENT_REUSED, and repository/template directory env vars.
+        - Java downstream nodes using env:[KEY] and env:[*] receive context projected from upstream output.
+        - The graph uses real JBang runtime nodes, not Python nodes with JBang names.
+      evidence:
+        - test_graph/sources/Tg6EnvironmentRepositoryProvisionJbang.java declares Java EnvironmentRepository metadata and environment:provision side effects.
+        - test_graph/sources/Tg6EnvironmentContextEnvKeyJbang.java validates env:[KEY] projection in JBang.
+        - test_graph/sources/Tg6EnvironmentContextEnvAllJbang.java validates env:[*] projection in JBang.
+        - environmentRepositoryContractJbang runs the scaffolded local environment repository fixture through real JBang nodes.
+        - ./scripts/discover.py environmentRepositoryContractJbang --test-graph-root test_graph passed on 2026-06-28.
+        - ./scripts/run.py environmentRepositoryContractJbang --test-graph-root test_graph passed with report test_graph/build/validation-reports/20260628-170851.
+        - cd specs/current && tlc2 -config MC.cfg TestGraph.tla passed with 468796 distinct states on 2026-06-28.
+        - cd specs/desired_program_model && tlc2 -config MC.cfg TestGraph.tla passed with 472400 distinct states on 2026-06-28.
+        - pytest --import-mode=importlib specs/current/tests specs/desired_program_model/tests passed with 38 tests on 2026-06-28.
+        - cd project_sdk_sources && ./gradlew --console=plain :build-logic:test passed on 2026-06-28.
+
+  - id: TG-6E
+    title: "Add local lifecycle validation graph"
+    status: done
+    depends_on:
+      - TG-6B
+      - TG-6C
+      - TG-6D
+    objective: >
+      Validate the local environment lifecycle end to end using a generated
+      environment repository and local k3d-compatible templates.
+    desired_actions:
+      - ProvisionBranchEnvironment
+      - ReuseBranchEnvironment
+      - ResetBranchEnvironment
+      - SkipBranchEnvironmentReset
+      - RequestMergedBranchDestroy
+      - SkipBranchEnvironmentDestroy
+      - DestroyMergedBranchEnvironment
+    implementation_scope:
+      - test_graph/sources/Tg6LocalLifecycle*.py
+      - test_graph/sources/Tg6LocalLifecycle*.java
+      - test_graph/build.gradle.kts
+      - references/environment-repositories.md
+    current_increment:
+      model_state:
+        - provisioned_branch_environments
+        - reused_branch_environments
+        - reset_branch_environments
+        - skipped_reset_environments
+        - skipped_destroy_environments
+        - destroyed_branch_environments
+      model_actions:
+        - ProvisionBranchEnvironment
+        - ReuseBranchEnvironment
+        - ResetBranchEnvironment
+        - SkipBranchEnvironmentReset
+        - RequestMergedBranchDestroy
+        - SkipBranchEnvironmentDestroy
+        - DestroyMergedBranchEnvironment
+      adapters:
+        - LocalLifecycleGraphAdapter
+      unit_tests:
+        - pytest specs/current/tests
+      graph_after_unit_pass:
+        - environmentRepositoryLocalLifecycle
+        - environmentRepositoryLocalLifecycleDestroy
+        - Add explicit local lifecycle nodes for deploy missing, deploy existing/reuse, reset, explicit destroy, and skip-destroy.
+    acceptance:
+      commands:
+        - pytest specs/current/tests
+        - ./scripts/run.py environmentRepositoryLocalLifecycle --test-graph-root test_graph
+        - ./scripts/run.py environmentRepositoryLocalLifecycleDestroy --test-graph-root test_graph
+        - TEST_GRAPH_DESTROY_BRANCH_ENVIRONMENT=true ./scripts/run.py environmentRepositoryLocalLifecycleDestroy --test-graph-root test_graph
+      assertions:
+        - First local lifecycle run provisions a missing environment.
+        - Second local lifecycle deploy detects the existing environment and does not recreate it.
+        - Reset clears application/deployed state without deleting the cluster.
+        - Delete spins down the environment only when explicit destroy intent is set.
+        - Skip-destroy leaves the environment active for branch reuse.
+        - The graph asserts external lifecycle evidence through provisioning markers, scaffolded repo outputs, and downstream env context instead of relying only on node exit codes.
+      evidence:
+        - test_graph/sources/Tg6LocalLifecycleProvisionMissing.py provisions a missing local-preview environment through the scaffolded environment repository.
+        - test_graph/sources/Tg6LocalLifecycleDeployExisting.py deploys an application marker into the existing local environment and asserts reuse.
+        - test_graph/sources/Tg6LocalLifecycleDeployMarkers.py asserts provisioned/deployed markers and proves deploy reuse skipped tofu apply.
+        - test_graph/sources/Tg6LocalLifecycleReset.py and Tg6LocalLifecycleResetMarkers.py assert reset reapplies, clears application state, keeps provisioned state, and clears deployed state.
+        - test_graph/sources/Tg6LocalLifecycleSkipDestroy.py asserts skip-destroy keeps the environment active.
+        - test_graph/sources/Tg6LocalLifecycleDestroy.py and Tg6LocalLifecycleDestroyMarkers.py validate guarded destroy behavior and explicit destroy marker cleanup.
+        - ./scripts/discover.py environmentRepositoryLocalLifecycle --test-graph-root test_graph passed on 2026-06-28.
+        - ./scripts/discover.py environmentRepositoryLocalLifecycleDestroy --test-graph-root test_graph passed on 2026-06-28.
+        - ./scripts/run.py environmentRepositoryLocalLifecycle --test-graph-root test_graph passed with report test_graph/build/validation-reports/20260628-172952.
+        - ./scripts/run.py environmentRepositoryLocalLifecycleDestroy --test-graph-root test_graph passed without destroy intent with report test_graph/build/validation-reports/20260628-173011.
+        - TEST_GRAPH_DESTROY_BRANCH_ENVIRONMENT=true ./scripts/run.py environmentRepositoryLocalLifecycleDestroy --test-graph-root test_graph passed with report test_graph/build/validation-reports/20260628-173030.
+        - python -m py_compile passed for TG-6E scaffold/harness/local lifecycle sources on 2026-06-28.
+        - cd specs/current && tlc2 -config MC.cfg TestGraph.tla passed with 468796 distinct states on 2026-06-28.
+        - cd specs/desired_program_model && tlc2 -config MC.cfg TestGraph.tla passed with 472400 distinct states on 2026-06-28.
+        - pytest --import-mode=importlib specs/current/tests specs/desired_program_model/tests passed with 41 tests on 2026-06-28.
+        - cd project_sdk_sources && ./gradlew --console=plain :build-logic:test passed on 2026-06-28.
+
+  - id: TG-6F
+    title: "Add guarded GitHub Actions and AWS lifecycle validation graphs"
+    status: next
+    depends_on:
+      - TG-6B
+      - TG-6C
+      - TG-6D
+      - TG-6E
+    objective: >
+      Add GitHub Actions and AWS lifecycle graph coverage with explicit
+      selection and credential guards so normal CI cannot accidentally create
+      or delete cloud resources.
+    desired_actions:
+      - GuardAwsBranchEnvironment
+      - ProvisionBranchEnvironment
+      - ReuseBranchEnvironment
+      - ResetBranchEnvironment
+      - SkipBranchEnvironmentDestroy
+      - DestroyMergedBranchEnvironment
+    implementation_scope:
+      - test_graph/sources/Tg6GithubActionLifecycle*.py
+      - test_graph/sources/Tg6GithubActionLifecycle*.java
+      - test_graph/sources/Tg6AwsLifecycle*.py
+      - test_graph/sources/Tg6AwsLifecycle*.java
+      - test_graph/build.gradle.kts
+      - references/environment-repositories.md
+      - references/github-actions.md
+    current_increment:
+      model_state:
+        - aws_execution_guarded
+      model_actions:
+        - GuardAwsBranchEnvironment
+      adapters:
+        - AwsLifecycleGraphAdapter
+      unit_tests:
+        - pytest specs/current/tests
+      graph_after_unit_pass:
+        - environmentRepositoryGithubActionLifecycle
+        - environmentRepositoryAwsLifecycle
+    acceptance:
+      commands:
+        - pytest specs/current/tests
+        - ./scripts/run.py environmentRepositoryGithubActionLifecycle --test-graph-root test_graph
+        - ./scripts/run.py environmentRepositoryAwsLifecycle --test-graph-root test_graph
+      assertions:
+        - GitHub Actions lifecycle graph is discoverable in normal runs and validates the local-github-action scaffold without requiring cloud infrastructure.
+        - GitHub Actions graph covers first deploy, existing deploy reuse, reset, explicit destroy guard behavior, and skip-destroy/keep-alive behavior using CI-safe markers and context projection.
+        - AWS lifecycle graph is discoverable in normal runs.
+        - Without explicit selection and credentials, AWS graph records a guarded skip/fail-fast result and creates no cloud resources.
+        - With explicit selection and AWS credentials, the graph covers first deploy, existing deploy reuse, reset, explicit destroy, and skip-destroy.
+        - Destroy requires TEST_GRAPH_DESTROY_BRANCH_ENVIRONMENT or TESTGRAPH_DESTROY_BRANCH_ENVIRONMENT in addition to AWS selection.
+        - Local, GitHub Actions, and AWS lifecycle graphs together cover the full deployment matrix: missing cluster deploy, existing cluster reuse without recreation, reset, explicit teardown, and skip teardown.
+      evidence: []

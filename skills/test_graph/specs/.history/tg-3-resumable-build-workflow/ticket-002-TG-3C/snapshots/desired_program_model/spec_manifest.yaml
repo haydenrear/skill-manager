@@ -1,0 +1,247 @@
+module: TestGraph
+package: desired_program_cases
+
+status:
+  workflow: ticket
+  initial_ticket: TG-3
+  initial_ticket_title: "Resumption from any Build in Build Directory"
+  ticket_plan: ticket_plan.yaml
+  relation_to_program_model: desired_successor_of_accepted_program_model
+  relation_to_current: target_state_for_specs_current_to_converge_to
+  updated: "2026-06-10"
+  summary:
+    desired_model_scaffolded: true
+    ticket_plan_scaffolded: true
+    current_model_scaffolded: true
+    generated_cases: pending
+    adapters: pending
+  done:
+    - Desired TLA+ model extended for saved input context, resume, single-node rerun, and rerun guidance semantics.
+    - TG-3A implemented in specs/current and production code: every node attempt writes an input context snapshot.
+    - TG-3B implemented in specs/current and production code: NodeSpec.rerun(boolean) metadata defaults true and propagates through describe output.
+    - TG-3C implemented in specs/current and production code: graph execution can resume from a saved build directory and node id.
+  pending:
+    - Implement remaining production slices TG-3D and TG-3E in ticket_plan.yaml.
+    - Advance specs/current after each landed slice.
+    - Add executable adapter mappings for the run/resume boundaries.
+    - Promote converged desired/current model back into specs/program_model.
+
+source_model:
+  program_model_manifest: ../program_model/spec_manifest.yaml
+  program_model_module: ../program_model/TestGraph.tla
+  baseline_package: testgraph_program_cases
+  issue_source: https://github.com/haydenrear/test_graph_skill/issues/3
+
+case_codegen:
+  style: explicit_transition_cases
+  generation_status: planned
+  note: Generate transition cases after the current model advances and adapters are executable.
+
+finite_model:
+  note: >
+    The desired workflow uses a smaller two-node TLC bound than the accepted
+    three-node baseline because resume/run-only histories expand the state
+    space. This is a workflow practicality bound, not a semantic restriction.
+  Graphs:
+    values:
+      - GraphA
+  Nodes:
+    values:
+      - NodeA
+      - NodeB
+  SourceNodes:
+    values:
+      - NodeA
+      - NodeB
+
+state:
+  TestGraphState:
+    added_fields:
+      input_contexts:
+        type: dict[GraphId, frozenset[NodeId]]
+        tla: input_contexts
+        purpose: Nodes whose input context snapshot exists in the build directory.
+      rerunnable_nodes:
+        type: frozenset[NodeId]
+        tla: rerunnable_nodes
+        purpose: Source nodes whose described metadata allows resume/run-only guidance; defaults to all source nodes.
+      rerun_guidance:
+        type: dict[GraphId, frozenset[NodeId]]
+        tla: rerun_guidance
+        purpose: Failed nodes for which the executor/report should print a concrete rerun command.
+      resumed_nodes:
+        type: dict[GraphId, frozenset[NodeId]]
+        tla: resumed_nodes
+        purpose: Nodes used as entrypoints for continuing a graph from an existing build directory.
+      single_node_reruns:
+        type: dict[GraphId, frozenset[NodeId]]
+        tla: single_node_reruns
+        purpose: Nodes executed in isolation from saved build-directory input context.
+
+commands:
+  SetNodeRerunDisabled:
+    action: SetNodeRerunDisabled
+    result: WorkflowResult
+    fields:
+      node_id:
+        type: NodeId
+        tla: n
+  ResumeRunFromBuild:
+    action: ResumeRunFromBuild
+    result: WorkflowResult
+    fields:
+      graph_id:
+        type: GraphId
+        tla: g
+      node_id:
+        type: NodeId
+        tla: n
+  RunOnlyNodeFromBuild:
+    action: RunOnlyNodeFromBuild
+    result: NodeRunResult
+    fields:
+      graph_id:
+        type: GraphId
+        tla: g
+      node_id:
+        type: NodeId
+        tla: n
+
+ports:
+  TestGraphProgramPort:
+    new_methods:
+      set_node_rerun_disabled:
+        command: SetNodeRerunDisabled
+        result: WorkflowResult
+      resume_run_from_build:
+        command: ResumeRunFromBuild
+        result: WorkflowResult
+      run_only_node_from_build:
+        command: RunOnlyNodeFromBuild
+        result: NodeRunResult
+
+invariants:
+  inherited:
+    - TypeInvariant
+    - ExplicitNodesAreAvailable
+    - ScriptSpecsAreSourceOfTruth
+    - DependencyConstantsAreIndexed
+    - DslOverlaysOnlyAddDependencies
+    - PlannedGraphsAreDependencyClosed
+    - PlannedGraphsAreAcyclic
+    - RunsRespectDependencies
+    - ContextContainsOnlyPassedPublishedData
+    - EveryAttemptGetsOneEnvelope
+    - ReportsHaveEnvelopeEvidence
+    - PackageCatalogIsCompleteAfterScaffold
+  added:
+    - EveryAttemptHasSavedInputContext
+    - RerunGuidanceOnlyForRerunnableFailures
+    - ResumptionsUseSavedInputContext
+    - BuildRerunsRespectDependencies
+
+program_context:
+  issue_3_target: >
+    Every node attempt writes its input context into the build directory.
+    A graph can resume from a saved build directory at a specific node by
+    loading that node's saved context, and a user can run only that node
+    against the same saved context. Failed-node rerun instructions are emitted
+    only when the node's metadata allows rerun; rerun defaults to true.
+  semantic_boundaries:
+    - name: input_context_snapshots
+      files:
+        - project_sdk_sources/build-logic/src/main/kotlin/com/hayden/testgraphsdk/exec/Context.kt
+        - project_sdk_sources/build-logic/src/main/kotlin/com/hayden/testgraphsdk/exec/PlanExecutor.kt
+      notes: Persist the exact Context[] payload for every node before execution, including small/root contexts.
+    - name: rerun_metadata
+      files:
+        - project_sdk_sources/sdk/java/src/main/java/com/hayden/testgraphsdk/sdk/NodeSpec.java
+        - project_sdk_sources/sdk/python/src/testgraphsdk/node_spec.py
+        - project_sdk_sources/build-logic/src/main/kotlin/com/hayden/testgraphsdk/ValidationNodeSpec.kt
+        - project_sdk_sources/build-logic/src/main/kotlin/com/hayden/testgraphsdk/NodeDescribeLoader.kt
+      notes: Add rerun(true|false) metadata, default true, distinct from timeout retries.
+    - name: build_resume_surface
+      files:
+        - scripts/run.py
+        - project_sdk_sources/build-logic/src/main/kotlin/com/hayden/testgraphsdk/tasks/RunTestGraphTask.kt
+        - project_sdk_sources/build-logic/src/main/kotlin/com/hayden/testgraphsdk/exec/PlanExecutor.kt
+      notes: Add graph resume and run-only-node surfaces that consume saved input context from an existing build directory.
+    - name: rerun_guidance
+      files:
+        - project_sdk_sources/build-logic/src/main/kotlin/com/hayden/testgraphsdk/exec/PlanExecutor.kt
+        - project_sdk_sources/build-logic/src/main/kotlin/com/hayden/testgraphsdk/tasks/RunReportWriter.kt
+        - references/workflows.md
+        - references/reference.md
+      notes: Print a concrete rerun command for rerunnable failed nodes and document rerun(false).
+
+adapter_plan:
+  desired_adapters:
+    - InputContextSnapshotAdapter
+    - ResumeRunFromBuildAdapter
+    - RunOnlyNodeFromBuildAdapter
+    - RerunGuidanceAdapter
+  current_status: documented_boundaries_only
+
+validation:
+  desired_tlc:
+    command: cd specs/desired_program_model && tlc2 -config MC.cfg TestGraph.tla
+    status: passed
+    last_run: "2026-06-10"
+    states_generated: 56387
+    distinct_states: 6300
+    depth: 22
+  current_scaffold_tests:
+    command: pytest specs/current/tests specs/desired_program_model/tests
+    status: passed
+    last_run: "2026-06-10"
+    tests: 13
+  current_tlc:
+    command: cd specs/current && tlc2 -config MC.cfg TestGraph.tla
+    status: passed
+    last_run: "2026-06-10"
+    states_generated: 52745959
+    distinct_states: 3691427
+    depth: 35
+  production_checks:
+    - command: ./gradlew --console=plain :build-logic:test
+      status: passed
+      last_run: "2026-06-10"
+    - command: ./scripts/discover.py --test-graph-root project_sdk_sources
+      status: passed
+      last_run: "2026-06-10"
+      graphs:
+        - smoke
+        - rerunSmokeUv
+        - rerunSmokeJava
+    - command: ./scripts/discover.py smoke --test-graph-root project_sdk_sources
+      status: passed
+      last_run: "2026-06-10"
+      plan_steps: 6
+    - command: ./scripts/discover.py rerunSmokeUv --test-graph-root project_sdk_sources
+      status: passed
+      last_run: "2026-06-10"
+      plan_steps: 1
+    - command: ./scripts/discover.py rerunSmokeJava --test-graph-root project_sdk_sources
+      status: passed
+      last_run: "2026-06-10"
+      plan_steps: 1
+    - command: ./scripts/run.py --all --test-graph-root project_sdk_sources
+      status: passed
+      last_run: "2026-06-10"
+      graphs:
+        smoke: 20260610-194741
+        rerunSmokeUv: 20260610-194747
+        rerunSmokeJava: 20260610-194751
+      report: project_sdk_sources/build/validation-reports/20260610-194741/report.md
+    - command: ./scripts/run.py smoke --test-graph-root project_sdk_sources --resume-from-build project_sdk_sources/build/validation-reports/20260610-194741 --resume-from-node login.smoke
+      status: passed
+      last_run: "2026-06-10"
+      skipped_dependency_steps: 3
+    - command: ./scripts/run.py smoke --test-graph-root project_sdk_sources --resume-from-build project_sdk_sources/build/validation-reports/20260610-194741 --resume-from-node context.snapshots.present
+      status: passed
+      last_run: "2026-06-10"
+      skipped_dependency_steps: 5
+    - command: ./scripts/run.py smoke --test-graph-root project_sdk_sources --resume-from-build project_sdk_sources/build/validation-reports/20260610-194741 --resume-from-node rerun.disabled.probe
+      status: rejected_as_expected
+      last_run: "2026-06-10"
+      reason: "node metadata has rerun=false"

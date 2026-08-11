@@ -1,0 +1,33 @@
+# Map generated current-model action labels to repository adapters when case
+# generation is enabled. The workflow starts from the accepted baseline and
+# keeps adapters conservative until each TG-3 slice wires executable mappings.
+
+[adapters.ScaffoldProject]
+adapter = "specs.current.production_adapters:ScaffoldProjectAdapter"
+
+[adapters.PlanGraph]
+adapter = "specs.current.production_adapters:GraphPlanningAdapter"
+
+[adapters.RunNodePass]
+adapter = "specs.current.production_adapters:GraphRunAdapter"
+
+[adapters.RunNodeTerminal]
+adapter = "specs.current.production_adapters:GraphRunAdapter"
+
+[adapters.SetNodeRerunDisabled]
+adapter = "specs.current.production_adapters:RerunMetadataAdapter"
+
+[adapters.ResumeRunFromBuild]
+adapter = "specs.current.production_adapters:ResumeRunFromBuildAdapter"
+
+[adapters.RunOnlyNodeFromBuild]
+adapter = "specs.current.production_adapters:RunOnlyNodeFromBuildAdapter"
+
+[adapters.RerunGuidance]
+adapter = "specs.current.production_adapters:RerunGuidanceAdapter"
+
+[adapters.WriteInlineReport]
+adapter = "specs.current.production_adapters:ReportAdapter"
+
+[adapters.RebuildReport]
+adapter = "specs.current.production_adapters:ReportAdapter"

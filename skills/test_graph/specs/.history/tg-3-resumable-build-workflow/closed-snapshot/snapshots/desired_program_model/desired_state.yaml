@@ -1,0 +1,124 @@
+version: 1
+name: desired-program-model
+canonical_tla_module: TestGraph
+canonical_tla_file: TestGraph.tla
+bounded_model_config: MC.cfg
+manifest: spec_manifest.yaml
+ticket_plan: ticket_plan.yaml
+
+relationship:
+  extends_current_program_model: ../program_model/TestGraph.tla
+  purpose: desired whole-program model for TG-3 resumable build execution
+  generation_status: planned
+
+implementation_status:
+  updated: "2026-06-12"
+  policy: specs/current is the executable state of landed work; this file summarizes the desired destination.
+  active_ticket: TG-3
+  active_ticket_title: "Resumption from any Build in Build Directory"
+  summary:
+    desired_model_scaffolded: true
+    ticket_breakdown: issue_specific
+    current_model: TG-3E_rerun_guidance
+    generated_desired_cases: pending
+    adapters: documented_boundaries_only
+
+modeled_boundary_status:
+  input_context_snapshots:
+    status: implemented_in_current
+    tla_state:
+      - input_contexts
+    tla_actions:
+      - RunNodePass
+      - RunNodeTerminal
+    acceptance: every envelope has saved input context evidence
+    evidence:
+      - project_sdk_sources/build/validation-reports/20260610-183929/report.md
+  rerun_metadata:
+    status: implemented_in_current
+    tla_state:
+      - rerunnable_nodes
+    tla_actions:
+      - SetNodeRerunDisabled
+    acceptance: rerun defaults true and rerun(false) is present in describe metadata
+    evidence:
+      - project_sdk_sources/build/validation-reports/20260610-191451/report.md
+  resume_from_build:
+    status: implemented_in_current
+    tla_state:
+      - resumed_nodes
+    tla_actions:
+      - ResumeRunFromBuild
+    acceptance: resume requires saved context and dependency-satisfied prior build state
+    evidence:
+      - project_sdk_sources/build/validation-reports/20260610-194741/report.md
+  run_only_node_from_build:
+    status: implemented_in_current
+    tla_state:
+      - single_node_reruns
+    tla_actions:
+      - RunOnlyNodeFromBuild
+    acceptance: selected node can run from saved context without continuing the graph
+    evidence:
+      - project_sdk_sources/build/validation-reports/20260612-181004/report.md
+      - test_graph/build/validation-reports/20260612-180955/report.md
+  rerun_guidance:
+    status: implemented_in_current
+    tla_state:
+      - rerun_guidance
+    tla_actions:
+      - RunNodeTerminal
+      - RebuildReport
+    acceptance: guidance is present only for rerunnable terminal nodes
+    evidence:
+      - project_sdk_sources/build/validation-reports/20260612-185639/report.md
+      - project_sdk_sources/build/validation-reports/20260612-185715/report.md
+  ticket_plan:
+    status: TG-3E_done
+    artifact: ticket_plan.yaml
+    next_ticket: null
+
+program_domains:
+  - graph_definition
+  - graph_planning
+  - node_execution
+  - context_flow
+  - build_directory_resume
+  - report_emission
+
+implementation_sources:
+  context_snapshots:
+    - project_sdk_sources/build-logic/src/main/kotlin/com/hayden/testgraphsdk/exec/Context.kt
+    - project_sdk_sources/build-logic/src/main/kotlin/com/hayden/testgraphsdk/exec/PlanExecutor.kt
+  rerun_metadata:
+    - project_sdk_sources/sdk/java/src/main/java/com/hayden/testgraphsdk/sdk/NodeSpec.java
+    - project_sdk_sources/sdk/python/src/testgraphsdk/node_spec.py
+    - project_sdk_sources/build-logic/src/main/kotlin/com/hayden/testgraphsdk/ValidationNodeSpec.kt
+    - project_sdk_sources/build-logic/src/main/kotlin/com/hayden/testgraphsdk/NodeDescribeLoader.kt
+  run_surfaces:
+    - scripts/run.py
+    - project_sdk_sources/build-logic/src/main/kotlin/com/hayden/testgraphsdk/tasks/RunTestGraphTask.kt
+    - project_sdk_sources/build-logic/src/main/kotlin/com/hayden/testgraphsdk/exec/PlanExecutor.kt
+  docs:
+    - SKILL.md
+    - references/workflows.md
+    - references/reference.md
+
+adapter_plan:
+  desired_new_ports:
+    - set_node_rerun_disabled
+    - resume_run_from_build
+    - run_only_node_from_build
+  desired_adapters:
+    - InputContextSnapshotAdapter
+    - RerunMetadataAdapter
+    - ResumeRunFromBuildAdapter
+    - RunOnlyNodeFromBuildAdapter
+    - RerunGuidanceAdapter
+
+guardrails:
+  no_test_harness_state_in_tla: true
+  timeout_retries_are_not_rerun_permission: true
+  resume_requires_saved_context: true
+  resume_requires_dependency_satisfied_build_state: true
+  clean_build_removes_resume_evidence: true

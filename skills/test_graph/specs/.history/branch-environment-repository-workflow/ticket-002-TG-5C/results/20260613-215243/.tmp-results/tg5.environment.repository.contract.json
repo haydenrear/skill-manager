@@ -1,0 +1,45 @@
+{
+  "nodeId": "tg5.environment.repository.contract",
+  "status": "passed",
+  "startedAt": "2026-06-13T21:52:43.713817Z",
+  "endedAt": "2026-06-13T21:52:43.714444Z",
+  "assertions": [
+    {
+      "name": "contract_serializes_git_source",
+      "status": "passed"
+    },
+    {
+      "name": "contract_uses_repository_template_path",
+      "status": "passed"
+    },
+    {
+      "name": "contract_names_local_target_backend",
+      "status": "passed"
+    },
+    {
+      "name": "contract_declares_feature_branch_scope",
+      "status": "passed"
+    },
+    {
+      "name": "contract_includes_kubernetes_outputs",
+      "status": "passed"
+    },
+    {
+      "name": "contract_rejects_tarball_primary_fixture_in_plan",
+      "status": "passed"
+    },
+    {
+      "name": "contract_stays_deploy_helm_neutral",
+      "status": "passed"
+    }
+  ],
+  "artifacts": [],
+  "processes": [],
+  "metrics": {
+    "durationMs": 0
+  },
+  "logs": [],
+  "published": {
+    "environmentRepositorySource": "https://github.com/example/test-graph-environments.git"
+  }
+}

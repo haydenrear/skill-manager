@@ -1,6 +1,6 @@
 ---
 name: skill-dev-skill
-description: Use when developing or iterating on installed skill-manager skills and plugins through project-local worktrees and the skill-dev CLI.
+description: 'Use for DELIBERATE, iterative development of one installed skill-manager unit through a project-local `skill-dev/<unit>` worktree and the skill-dev CLI (open/sync/close --merge) — a long-lived editing session against the store copy. NOT the front door for "I edited a skill during a ticket and it must survive": that is `skt publish` (home sync one tier up, then unit publish), and ticket worktrees themselves are `skt ticket` / git-issue-workflow''s `wt`, not skill-dev.'
 skill-imports:
   - unit: skill-manager
     path: references/cli.md
@@ -12,6 +12,22 @@ skill-imports:
 
 Use `skill-dev` when a user wants to edit an installed skill-manager skill
 or plugin without directly modifying the installed store copy.
+
+## Where this sits next to skt
+
+Two flows overlap here; the split is by intent, decided at the skt epic
+(haydenrear/skill-manager-integration-repository#74):
+
+- **Incidental edit during a ticket** — you improved a skill inside a
+  ticket worktree's home and the edit must survive teardown: `skt publish`
+  owns that (home sync one tier up, then `unit publish` to the skill's own
+  repo). Do not open a skill-dev worktree for it.
+- **Deliberate development session** — the unit itself is the work: THIS
+  skill. `skill-dev open <unit>` gives a long-lived project-local worktree
+  with merge-back semantics `skt publish` does not provide.
+
+`skt status` reports which units are installed and change-managed; start
+there when unsure which flow applies.
 
 The CLI creates a project-local worktree under `skill-dev/<unit>`, keeps
 that root ignored by the project's git repository, and delegates merge-back
