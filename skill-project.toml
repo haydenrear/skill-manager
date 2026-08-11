@@ -68,18 +68,21 @@ source = "github:haydenrear/tla-spec-dev"
 # --- authoring: this repo carries four leaf skill units as tracked directories
 #     (skill-dev-skill/, skill-manager-skill/, skill-publisher-skill/,
 #     skills/test_graph/), and refreshing or merging any of them is unit work.
-#     skill-publisher is the authority on SKILL.md frontmatter, descriptions,
-#     skill-manager.toml, references/ pages and the install/bind/sync round
-#     trip.
+#     The skt plugin (shipped by the skill-publisher-skill repo; its
+#     unit-authoring contained skill) is the authority on SKILL.md
+#     frontmatter, descriptions, skill-manager.toml, references/ pages and
+#     the install/bind/sync round trip.
 #
 #     Read CLAUDE.md before editing any of those four: they are duplicated leaf
 #     constituents and a change must start in the top-level leaf repository and
 #     be merged UP into this snapshot, never the other way round ---
 
-[skills.skill-publisher]
+# The tracked DIRECTORY stays skill-publisher-skill/; only the installed
+# unit renamed. Migration: references/migration.md in the plugin.
+[plugins.skt]
 source = "github:haydenrear/skill-publisher-skill"
 
-# --- required BY skill-publisher and by spec-double-compiler, not chosen here:
+# --- required BY the skt plugin and by spec-double-compiler, not chosen here:
 #     both name `skill-manager` in their SKILL.md `skill-imports`, and
 #     `project resolve` refuses the whole resolve with "references missing
 #     unit" until the imported unit is declared. Unit `skill_references` are
