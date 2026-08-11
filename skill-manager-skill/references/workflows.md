@@ -1,10 +1,10 @@
 ---
 skill-imports:
-  - unit: skill-publisher
+  - unit: skt
     path: references/coords-and-distribution.md
     reason: Install-source and reference coords follow one rule (git coords only, no registry configured); stated once there.
     section: coord-forms
-  - unit: skill-publisher
+  - unit: skt
     path: references/coords-and-distribution.md
     reason: Canonical distribution default — push to a GitHub repo with a license and install from the git source, not from a file.
     section: source-of-truth
@@ -267,12 +267,13 @@ Favor a durable git-backed install: create a GitHub repo with a
 `LICENSE`, push the unit, and install from `github:owner/repo`. A
 `file://` install is for local validation only; do not leave it as the
 published result unless the user explicitly asks for a local-only
-install. The default publishing model is authoritative in skill-publisher
+install. The default publishing model is authoritative in the skt plugin's
 `references/coords-and-distribution.md`.
 
 Before publishing:
 
-1. Use the `skill-publisher` skill for manifest anatomy and examples.
+1. Use the skt plugin's `unit-authoring` skill for manifest anatomy
+   and examples.
 2. Ensure the unit root is a git repo and contains the correct marker
    file for exactly one top-level unit.
 3. Run the publish dry run.

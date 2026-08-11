@@ -1,6 +1,6 @@
 ---
 skill-imports:
-  - unit: skill-publisher
+  - unit: skt
     path: references/coords-and-distribution.md
     reason: Project-manifest unit refs use the same coord grammar as skill_references; the git-coord-only rule (no registry configured) is stated once there.
     section: coord-forms
@@ -25,7 +25,7 @@ are resolved transitively at `project resolve` time, exactly like
 `git+…`, `file:…`); registry-name coords such as `skill:name` cannot
 resolve because no registry is configured, and the coord names the repo,
 not the installed unit — find it with `gh repo list <owner>`. The rule
-and rationale live once in skill-publisher's
+and rationale live once in the skt plugin's
 `references/coords-and-distribution.md` (imported above); do not restate
 it here.
 

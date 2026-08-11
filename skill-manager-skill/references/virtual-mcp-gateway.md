@@ -142,8 +142,8 @@ Do not start downstream MCP servers manually from the agent with
 as an `[[mcp_dependencies]]` entry, then install or sync that unit.
 
 That keeps runtime selection, transitive ownership, init schema, gateway
-registration, and later cleanup in one place. Use the `skill-publisher`
-skill for manifest examples and supported load types.
+registration, and later cleanup in one place. Use the skt plugin's
+`unit-authoring` skill for manifest examples and supported load types.
 
 ## Verification
 
@@ -183,5 +183,5 @@ then redeploy if appropriate.
   authoritative.
 - `workflows.md` - agent decision flows that combine CLI state and
   gateway operations.
-- `skill-publisher` skill - how to author MCP dependencies in skills and
-  plugins.
+- the skt plugin's `unit-authoring` skill - how to author MCP
+  dependencies in skills and plugins.

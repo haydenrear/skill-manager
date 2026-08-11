@@ -102,7 +102,7 @@ relationship, the tier model and both upward paths, `[[vendored]]`
 declarations, env docs, and cleanup rules.
 
 For authoring unit manifests, scaffolding, TOML anatomy, and examples,
-use the `skill-publisher` skill rather than this one.
+use the skt plugin's `unit-authoring` skill rather than this one.
 
 ## References
 
