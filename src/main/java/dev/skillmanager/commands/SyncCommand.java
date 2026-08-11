@@ -224,7 +224,15 @@ public final class SyncCommand implements Callable<Integer> {
                 return new ResolvedTargets(targets, List.of());
             }
             if (kind == dev.skillmanager.model.UnitKind.DOC) {
-                return new ResolvedTargets(List.of(new SyncUseCase.Target.DocRepo(name, force)), List.of());
+                // Git pull FIRST, then the four-state binding matrix — a
+                // doc unit that only re-applied bindings never moved its
+                // checkout or its installed record, so `--git-latest`
+                // reported success while the record kept the stale sha
+                // and every version check nagged forever (#173).
+                // SyncGitHandler no-ops gracefully for non-git installs.
+                return new ResolvedTargets(List.of(
+                        new SyncUseCase.Target.Git(name),
+                        new SyncUseCase.Target.DocRepo(name, force)), List.of());
             }
             if (kind == dev.skillmanager.model.UnitKind.HARNESS) {
                 return new ResolvedTargets(harnessInstanceTargets(store, name), List.of());
@@ -238,7 +246,11 @@ public final class SyncCommand implements Callable<Integer> {
         var listed = store.listInstalledUnits();
         for (var u : listed.units()) {
             switch (u.kind()) {
-                case DOC -> out.add(new SyncUseCase.Target.DocRepo(u.name(), force));
+                case DOC -> {
+                    // Same order as the named-DOC case: pull, then matrix.
+                    out.add(new SyncUseCase.Target.Git(u.name()));
+                    out.add(new SyncUseCase.Target.DocRepo(u.name(), force));
+                }
                 case HARNESS -> out.addAll(harnessInstanceTargets(store, u.name()));
                 case SKILL, PLUGIN -> out.add(new SyncUseCase.Target.Git(u.name()));
             }
