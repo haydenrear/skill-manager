@@ -56,3 +56,91 @@ Every doc that leads with an skt command keeps its resolved-path or
 hand-run fallback **verbatim**. A home without skt is a supported state,
 not a broken one — the eval suite's migration matrix (W4) holds the docs
 to that.
+
+## Migrating an existing project home (the measured sequence)
+
+Nothing migrates a home automatically: copies flow down at **creation**
+time only, so an existing project home keeps the legacy unit until
+someone runs this. New worktrees are the exception — they clone the
+project home, so once the project home carries skt, every `wt new` /
+`skt ticket new` after that is done for free.
+
+**First**, if the repo's manifest declares the legacy unit, rename it —
+this is a normal leaf commit, and resolve deadlocks without it:
+
+```toml
+# skill-project.toml:  [skills.skill-publisher]  becomes
+[plugins.skt]
+source = "github:haydenrear/skill-publisher-skill"
+```
+
+**Then**, in the home (order matters; each step's reason is a refusal
+you will otherwise meet — the claim/duplicate-origin deadlock is
+skill-manager#175, the validate-before-plugin ordering is #174):
+
+```bash
+export SKILL_MANAGER_HOME=<repo>/.skill-manager
+
+# 1. If a project registration claims the legacy unit, unregister first —
+#    uninstall refuses while the claim exists, and resolve refuses while
+#    two installed units share the origin.
+skill-manager project remove <project-name>       # only if registered
+
+# 2. Retire the legacy unit (no-op if project remove already took it).
+skill-manager uninstall skill-publisher
+
+# 3. Install the plugin BEFORE resolving — resolve validates markdown
+#    imports (unit: skt) before it installs declared plugins.
+skill-manager install github:haydenrear/skill-publisher-skill
+
+# 4. Re-resolve the project realization. --repair-vendored re-points
+#    vendored symlinks (test_graph/sdk and friends) at this home.
+skill-manager project resolve --project-dir <repo> --repair-vendored
+```
+
+**Marketplace seam** (homes registered before per-home marketplace
+names): if plugin installs fail with `not found in marketplace
+skill-manager-<fp8>`, the agent config still holds the old bare-name
+record. Replace it once:
+
+```bash
+CLAUDE_CONFIG_DIR=<repo>/.claude claude plugin marketplace remove skill-manager
+skill-manager home refresh-plugins
+CLAUDE_CONFIG_DIR=<repo>/.claude claude plugin install skt@skill-manager-<fp8>
+```
+
+## Validating a home before continuing work
+
+Cheap, read-only, safe mid-session:
+
+```bash
+skt status     # tier, policy, drift state, units, plugins — is skt live here
+skt check      # staleness + unpublished-work notifications, with remedies
+skill-manager list                       # skt appears as one plugin row
+CLAUDE_CONFIG_DIR=<repo>/.claude claude plugin list   # skt@… enabled
+```
+
+Green looks like: `skt status` names the home with `policy: live` and no
+`DRIFT PENDING`, `skt check` reports nothing (or only notifications you
+recognize), and the plugin list shows `skt@skill-manager-<fp8>` enabled.
+
+**Mid-session agents do not need to stop.** The migration matrix (W4)
+measured all four transition states: a home with neither unit, legacy
+only, or both installed carries the full ticket flow on the documented
+fallbacks. Migrate at the next natural stopping point — after a close,
+before a new ticket — never mid-edit. A session that was launched before
+the migration only picks up the SessionStart hook on its next launch.
+
+## Hand this to an agent
+
+A paste-ready work order for migrating one repository:
+
+> Migrate this repository's skill-manager project home from the retired
+> `skill-publisher` skill to the `skt` plugin. Read
+> `$SKILL_MANAGER_HOME/plugins/skt/references/migration.md` (or the same
+> file in any home that already has skt) and follow "Migrating an
+> existing project home" exactly — the step order avoids two known
+> refusals. If `skill-project.toml` declares `[skills.skill-publisher]`,
+> rename it to `[plugins.skt]` as a normal reviewed commit first. Finish
+> by running the validation block and reporting its output. Do not touch
+> the operator's root `~/.skill-manager`.
