@@ -98,6 +98,7 @@ import dev.skillmanager.project.ProjectorRegistryTest;
 import dev.skillmanager.project.SkillProjectRegistryTest;
 import dev.skillmanager.effects.RefreshHarnessPluginsTest;
 import dev.skillmanager.effects.ResolveGraphDirectGitSyncTest;
+import dev.skillmanager.effects.SyncGitDocRepoTest;
 import dev.skillmanager.effects.HandlerSubstitutabilityTest;
 import dev.skillmanager.effects.KindAwareDispatchTest;
 import dev.skillmanager.effects.ListTypedHandlerSubstitutabilityTest;
@@ -178,6 +179,7 @@ public class RunTests {
         failures += dev.skillmanager.source.GitOpsRepoBoundaryTest.run();
         failures += SourceProvenanceRecorderTest.run();
         failures += ResolveGraphDirectGitSyncTest.run();
+        failures += SyncGitDocRepoTest.run();
         failures += KindAwareDispatchTest.run();
         failures += CompensationLogicTest.run();
         failures += ProjectSyncErrorReportingTest.run();
