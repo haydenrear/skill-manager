@@ -118,7 +118,8 @@ public class OnboardingDocsAndScriptsStatic {
             if (Files.isRegularFile(skillRoot.resolve("SKILL.md"))) {
                 docs.add(skillRoot.resolve("SKILL.md"));
             }
-            for (Path doc : docs) collect(referenced, Files.readString(doc));
+            String ownName = skillRoot.getFileName().toString();
+            for (Path doc : docs) collect(referenced, Files.readString(doc), ownName);
             // The scripts' own remedy strings. close-change.sh:341 offers
             // agent-home.sh as a FIX, and a remedy naming a file that is not
             // there is the same defect in a place a reader reaches at runtime
@@ -128,7 +129,7 @@ public class OnboardingDocsAndScriptsStatic {
                 Path p = scriptsDir.resolve(name);
                 if (Files.isRegularFile(p) && (name.endsWith(".sh") || name.equals("wt"))) {
                     shellFiles.add(p);
-                    collectFromRemedies(referenced, Files.readString(p));
+                    collectFromRemedies(referenced, Files.readString(p), ownName);
                 }
             }
 
@@ -233,14 +234,50 @@ public class OnboardingDocsAndScriptsStatic {
     }
 
     /** Every {@code scripts/<name>} in a markdown body. */
-    private static void collect(Set<String> out, String text) {
+    /**
+     * Generic placeholders that qualify the CURRENT checkout's scripts dir.
+     * Anything else before {@code /scripts/} is another unit's path — the
+     * docs richly cross-reference sibling skills
+     * ({@code <tla-spec-dev>/scripts/close_tickets.py},
+     * {@code skills/git-epic-workflow/scripts/validate_epic_plan.py}) and
+     * those are not claims about THIS unit's scripts dir.
+     */
+    private static final Set<String> OWN_QUALIFIERS =
+            Set.of("path", "checkout", "repo", "wt", "worktree", "proj", "project", "skill");
+
+    private static void collect(Set<String> out, String text, String ownName) {
         Matcher m = SCRIPT_REF.matcher(text);
         while (m.find()) {
             String name = m.group(1);
             // `scripts/` alone, or a directory reference, is not a file claim.
             if (name.isEmpty() || name.equals("sh")) continue;
+            if (!claimsOwnScriptsDir(text, m.start(), ownName)) continue;
             out.add(name);
         }
+    }
+
+    /**
+     * True when the {@code scripts/} at {@code start} refers to this unit's
+     * own scripts dir: unqualified, or qualified by the unit's own name or a
+     * unit-agnostic placeholder. Qualified by any OTHER unit's name → a
+     * cross-unit reference, resolved in that unit's checkout, not here.
+     */
+    static boolean claimsOwnScriptsDir(String text, int start, String ownName) {
+        if (start == 0 || text.charAt(start - 1) != '/') return true;
+        int end = start - 1;
+        int i = end;
+        while (i > 0 && "`'\" \t\n(|=".indexOf(text.charAt(i - 1)) < 0
+                && text.charAt(i - 1) != '/') {
+            i--;
+        }
+        String qualifier = text.substring(i, end)
+                .replaceAll("[<>${}]", "");
+        if (qualifier.isEmpty()) return true;
+        if (qualifier.equals(ownName) || qualifier.endsWith(ownName)
+                || ownName.endsWith(qualifier)) {
+            return true;
+        }
+        return OWN_QUALIFIERS.contains(qualifier.toLowerCase());
     }
 
     /**
@@ -249,7 +286,7 @@ public class OnboardingDocsAndScriptsStatic {
      * marker. Comments are skipped: a comment is a note to a maintainer, not an
      * instruction to a reader at runtime.
      */
-    private static void collectFromRemedies(Set<String> out, String text) {
+    private static void collectFromRemedies(Set<String> out, String text, String ownName) {
         for (String raw : text.split("\n", -1)) {
             String line = raw.strip();
             if (line.startsWith("#")) continue;
@@ -259,7 +296,7 @@ public class OnboardingDocsAndScriptsStatic {
                     || line.contains("Run it here")
                     || line.contains("complete it with");
             if (!looksLikeRemedy) continue;
-            collect(out, line);
+            collect(out, line, ownName);
         }
     }
 }
