@@ -1434,7 +1434,7 @@ wheels = [
 
 [[package]]
 name = "virtual-mcp-gateway"
-version = "0.21.1"
+version = "0.22.0"
 source = { editable = "." }
 dependencies = [
     { name = "fastapi" },

@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.22.0](https://github.com/haydenrear/skill-manager/compare/v0.21.1...v0.22.0) (2026-08-11)
+
+
+### Features
+
+* **cli:** per-home plugin marketplaces — harness registrations no longer collide across homes ([#165](https://github.com/haydenrear/skill-manager/pull/165))
+* **home:** `home refresh-plugins` re-establishes a cloned home's harness plugin surface without a content sync ([#170](https://github.com/haydenrear/skill-manager/pull/170))
+* **onboard:** the skt plugin onboards as a bundled unit and seeds the registry ([b6e9a70](https://github.com/haydenrear/skill-manager/commit/b6e9a70fdb46d6e22fe391193489ea5e99a25c87))
+
+
+### Bug Fixes
+
+* **test-graph:** the docs-vs-scripts check distinguishes own scripts from cross-unit references ([e6d76ed](https://github.com/haydenrear/skill-manager/commit/e6d76ed666ada59d1501eacc0bdee019f5839e97))
+* **test-graph:** ticket-lifecycle finds the worktree scripts where they live now ([e5da1ff](https://github.com/haydenrear/skill-manager/commit/e5da1ff3eb18628f421c9bfdc7bdc7308d7622cd))
+* **wt:** stale-base gate refusals name their reason and remedy ([#169](https://github.com/haydenrear/skill-manager/pull/169))
+
 ## [0.21.1](https://github.com/haydenrear/skill-manager/compare/v0.21.0...v0.21.1) (2026-08-04)
 
 
