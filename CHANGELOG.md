@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.23.0](https://github.com/haydenrear/skill-manager/compare/v0.22.1...v0.23.0) (2026-08-12)
+
+
+### Features
+
+* **sync:** gateway/MCP work is opt-in — a content sync cannot be rolled back by a gateway that isn't there ([7fce8ed](https://github.com/haydenrear/skill-manager/commit/7fce8edac9d5ebf9a1f198f8e993903e962953eb))
+
+
+### Bug Fixes
+
+* **project:** resolve stages the declared closure and validates imports against it ([93ed6e8](https://github.com/haydenrear/skill-manager/commit/93ed6e84df455e5341c8c697b1eea1d7368c395c))
+
 ## [0.22.1](https://github.com/haydenrear/skill-manager/compare/v0.22.0...v0.22.1) (2026-08-11)
 
 
