@@ -157,10 +157,23 @@ public final class ProjectCommand {
                     : SkillProjectParser.loadManifest(resolveManifestPath(root, manifest), root);
             project = project.withProfile(profile);
             GatewayConfig gw = skipGateway ? null : GatewayConfig.resolve(store, null);
-            ProjectDependencyResolver.Result result = new ProjectDependencyResolver(store, gw)
-                    .resolve(project, new ProjectDependencyResolver.Options(
-                            true, !skipGateway, java.util.Set.of(), repairVendored,
-                            allowSameHome));
+            ProjectDependencyResolver.Result result;
+            try {
+                result = new ProjectDependencyResolver(store, gw)
+                        .resolve(project, new ProjectDependencyResolver.Options(
+                                true, !skipGateway, java.util.Set.of(), repairVendored,
+                                allowSameHome));
+            } catch (dev.skillmanager.project.ProjectImportViolationException imports) {
+                // Typed refusal (issue #168): the declared closure's markdown
+                // names units that are in neither the staged closure nor the
+                // store. Validation ran BEFORE any commit, so nothing was
+                // installed, no lock written, no child home realized, no
+                // projection materialized. Same exit code as install's "your
+                // markdown names something that is not there" — a caller that
+                // handles 11 from install should not learn a second number —
+                // but with resolve's atomic no-partial-state guarantee.
+                return reportClosureImportViolations(imports, json);
+            }
             ProjectLibResolver.Result libResult = resolveLibs
                     ? new ProjectLibResolver(store).resolve(project)
                     : null;
@@ -237,6 +250,44 @@ public final class ProjectCommand {
      * which is the same call {@code install} makes when a committed unit
      * carries a bad reference.
      */
+    /**
+     * Print the STAGED CLOSURE's markdown skill-import violations — the
+     * atomic-resolve refusal of issue #168 — and give them the same exit code
+     * install already uses for "your markdown names something that is not
+     * there" ({@link MarkdownImportValidator#EXIT_CODE}).
+     *
+     * <p>Distinct from {@link #reportProjectImportViolations} in exactly one
+     * way that matters to an operator: THAT one reports the checkout's own
+     * prose after a resolve that stands; THIS one reports a resolve that was
+     * refused before committing anything. The message says so.
+     */
+    private static int reportClosureImportViolations(
+            dev.skillmanager.project.ProjectImportViolationException imports, boolean json) {
+        List<MarkdownImportValidator.Violation> violations = imports.violations();
+        if (json) {
+            StringBuilder sb = new StringBuilder();
+            for (MarkdownImportValidator.Violation v : violations) {
+                if (sb.length() > 0) sb.append(',');
+                sb.append("""
+                        {"unit":"%s","file":"%s","message":"%s"}"""
+                        .formatted(esc(v.unitName()), esc(v.file().toString()), esc(v.message())));
+            }
+            System.out.println("""
+                    {"resolved":false,"reason":"closure-import-violations","installed":0,\
+                    "closureImportViolations":[%s]}""".formatted(sb));
+        } else {
+            System.err.println();
+            System.err.println("project resolve refused — declared closure has " + violations.size()
+                    + " unresolved markdown skill-import(s); nothing was installed:");
+            for (MarkdownImportValidator.Violation v : violations) {
+                System.err.println("  - " + v.render());
+            }
+            System.err.println("declare the missing unit in skill-project.toml or fix the import");
+            System.err.println();
+        }
+        return MarkdownImportValidator.EXIT_CODE;
+    }
+
     private static int reportProjectImportViolations(
             List<MarkdownImportValidator.Violation> violations, boolean json) {
         if (violations.isEmpty()) return 0;

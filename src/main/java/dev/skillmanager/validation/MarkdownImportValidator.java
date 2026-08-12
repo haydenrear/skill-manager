@@ -181,7 +181,37 @@ public final class MarkdownImportValidator {
 
     public static List<Violation> validate(SkillStore store, List<UnitRoot> roots)
             throws IOException {
+        return validate(store, roots, Map.of());
+    }
+
+    /**
+     * Validate {@code roots} against the installed store PLUS a candidate
+     * closure of units that are staged but not yet installed.
+     *
+     * <h2>Why targets can be uninstalled</h2>
+     *
+     * <p>{@code project resolve} into a clean home must validate the whole
+     * declared closure BEFORE committing any of it (issue #168): for units A
+     * and B with reciprocal {@code skill-imports}, validating A after
+     * installing only A reports B as missing whichever is installed first, and
+     * every clean resolve advances one unit per invocation. The candidate map
+     * lets an import target resolve to a staged source root — the same
+     * {@link UnitRoot} shape {@link #validateSource} already uses for the
+     * SOURCE side — so the closure is judged as the set it will be once
+     * published, not as the incomplete store mid-publish.
+     *
+     * <p>Candidates win over the installed store deliberately: a staged unit
+     * that replaces an installed copy should be validated against the bytes
+     * about to land, not the ones about to be overwritten.
+     *
+     * @param candidates staged-unit roots keyed by unit name; consulted before
+     *                   the installed store when resolving an import target
+     */
+    public static List<Violation> validate(SkillStore store, List<UnitRoot> roots,
+                                           Map<String, UnitRoot> candidates)
+            throws IOException {
         if (roots == null || roots.isEmpty()) return List.of();
+        Map<String, UnitRoot> candidateRoots = candidates == null ? Map.of() : candidates;
         List<Violation> violations = new ArrayList<>();
         for (UnitRoot root : roots) {
             if (root.root() == null || !Files.isDirectory(root.root())) {
@@ -193,7 +223,7 @@ public final class MarkdownImportValidator {
                 for (Path file : (Iterable<Path>) files
                         .filter(Files::isRegularFile)
                         .filter(MarkdownImportValidator::isMarkdown)::iterator) {
-                    violations.addAll(validateFile(store, root, file));
+                    violations.addAll(validateFile(store, candidateRoots, root, file));
                 }
             }
         }
@@ -209,6 +239,11 @@ public final class MarkdownImportValidator {
     }
 
     private static List<Violation> validateFile(SkillStore store, UnitRoot root, Path file) {
+        return validateFile(store, Map.of(), root, file);
+    }
+
+    private static List<Violation> validateFile(SkillStore store, Map<String, UnitRoot> candidates,
+                                                UnitRoot root, Path file) {
         List<Violation> violations = new ArrayList<>();
         String content;
         try {
@@ -239,12 +274,13 @@ public final class MarkdownImportValidator {
                         FRONTMATTER_KEY + "[" + i + "] must be a mapping with unit/path/reason"));
                 continue;
             }
-            validateImport(store, root, file, i, copyMap(map), violations);
+            validateImport(store, candidates, root, file, i, copyMap(map), violations);
         }
         return violations;
     }
 
-    private static void validateImport(SkillStore store, UnitRoot root, Path file, int index,
+    private static void validateImport(SkillStore store, Map<String, UnitRoot> candidates,
+                                       UnitRoot root, Path file, int index,
                                        Map<String, Object> entry, List<Violation> violations) {
         String prefix = FRONTMATTER_KEY + "[" + index + "]";
         String unit = firstNonBlank(asString(entry.get("unit")), asString(entry.get("skill")));
@@ -265,7 +301,10 @@ public final class MarkdownImportValidator {
         }
         if (unit == null || unit.isBlank() || path == null || path.isBlank()) return;
 
-        Optional<UnitRoot> targetRoot = installedRoot(store, unit);
+        UnitRoot candidate = candidates.get(unit);
+        Optional<UnitRoot> targetRoot = candidate != null && candidate.root() != null
+                ? Optional.of(candidate)
+                : installedRoot(store, unit);
         if (targetRoot.isEmpty()) {
             violations.add(violation(root, file, prefix + " references missing unit `" + unit
                     + "`; install it or fix the `unit` value"));
