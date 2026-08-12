@@ -77,7 +77,7 @@ public final class BindingBackfill {
                             allPresent = false;
                             Log.warn("reconcile: no skill-manager projection for %s on %s at %s. "
                                             + "In order to create all symlinks missing, please run: "
-                                            + "skill-manager sync --skip-mcp",
+                                            + "skill-manager sync",
                                     rec.name(), proj.agentId(), e.target());
                             break;
                         }

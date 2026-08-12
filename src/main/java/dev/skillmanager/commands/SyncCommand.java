@@ -90,8 +90,15 @@ public final class SyncCommand implements Callable<Integer> {
             description = "Don't refresh agent symlinks or MCP-config entries.")
     public boolean skipAgents;
 
+    @Option(names = "--include-mcp",
+            description = "Also re-register MCP servers with the gateway. Gateway work is "
+                    + "OPT-IN for sync: a content refresh at a project or worktree home "
+                    + "must not be rolled back by a gateway that isn't running there.")
+    public boolean includeMcp;
+
     @Option(names = "--skip-mcp",
-            description = "Don't re-register MCP servers with the gateway.")
+            description = "Compatibility no-op: MCP registration is already skipped by "
+                    + "default. Overrides --include-mcp when both are given.")
     public boolean skipMcp;
 
     @Option(names = "--dry-run",
@@ -171,7 +178,7 @@ public final class SyncCommand implements Callable<Integer> {
         }
 
         SyncUseCase.Options opts = new SyncUseCase.Options(
-                registryUrl, gitLatest, merge, !skipMcp, !skipAgents, yes, forceScripts);
+                registryUrl, gitLatest, merge, includeMcp && !skipMcp, !skipAgents, yes, forceScripts);
         dev.skillmanager.effects.StagedProgram<SyncUseCase.Report> program =
                 SyncUseCase.buildProgram(store, gw, opts, resolved.targets(), resolved.readProblems());
         SyncUseCase.Report report;
@@ -384,7 +391,7 @@ public final class SyncCommand implements Callable<Integer> {
         List<SyncUseCase.Target> targets = new ArrayList<>();
         for (var b : diff.bumped()) targets.add(new SyncUseCase.Target.Git(b.before().name()));
         SyncUseCase.Options opts = new SyncUseCase.Options(
-                registryUrl, /*gitLatest=*/false, merge, !skipMcp, !skipAgents, yes, forceScripts);
+                registryUrl, /*gitLatest=*/false, merge, includeMcp && !skipMcp, !skipAgents, yes, forceScripts);
         dev.skillmanager.effects.StagedProgram<SyncUseCase.Report> program =
                 SyncUseCase.buildProgram(store, gw, opts, targets, liveState.problems());
         SyncUseCase.Report report;
