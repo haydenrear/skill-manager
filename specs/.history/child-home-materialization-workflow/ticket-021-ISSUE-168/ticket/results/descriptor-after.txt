@@ -1,0 +1,228 @@
+analyze complexity -- SkillManager (complexity descriptor)
+  spec:     /Users/hayde/IdeaProjects/wt-sm-168/specs/tickets/ISSUE-168/current/SkillManager.tla
+  config:   /Users/hayde/IdeaProjects/wt-sm-168/specs/tickets/ISSUE-168/current/MC.cfg
+  manifest: /Users/hayde/IdeaProjects/wt-sm-168/specs/tickets/ISSUE-168/current/spec_manifest.yaml
+
+This is a DESCRIPTOR: every figure below is [MEASURED] -- parsed from this
+spec + cfg. It states facts about the model and makes no suggestions.
+
+[MEASURED] Dimension table
+variable                     domain           cardinality  source  note
+---------------------------  ---------------  -----------  ------  ---------------------------------------------------------------------------------------------
+cli_store_units              (unconstrained)  unknown      -       unconstrained by the configured invariants (resolved transitively) -- excluded from the bound
+cli_doc_repos                (unconstrained)  unknown      -       unconstrained by the configured invariants (resolved transitively) -- excluded from the bound
+cli_harness_templates        (unconstrained)  unknown      -       unconstrained by the configured invariants (resolved transitively) -- excluded from the bound
+cli_harness_instances        (unconstrained)  unknown      -       unconstrained by the configured invariants (resolved transitively) -- excluded from the bound
+cli_installed_records        (unconstrained)  unknown      -       unconstrained by the configured invariants (resolved transitively) -- excluded from the bound
+cli_lock_units               (unconstrained)  unknown      -       unconstrained by the configured invariants (resolved transitively) -- excluded from the bound
+cli_agent_projections        (unconstrained)  unknown      -       unconstrained by the configured invariants (resolved transitively) -- excluded from the bound
+cli_bindings                 (unconstrained)  unknown      -       unconstrained by the configured invariants (resolved transitively) -- excluded from the bound
+cli_projection_rows          (unconstrained)  unknown      -       unconstrained by the configured invariants (resolved transitively) -- excluded from the bound
+cli_managed_copies           (unconstrained)  unknown      -       unconstrained by the configured invariants (resolved transitively) -- excluded from the bound
+cli_import_directives        (unconstrained)  unknown      -       unconstrained by the configured invariants (resolved transitively) -- excluded from the bound
+cli_projection_conflicts     (unconstrained)  unknown      -       unconstrained by the configured invariants (resolved transitively) -- excluded from the bound
+cli_tool_records             (unconstrained)  unknown      -       unconstrained by the configured invariants (resolved transitively) -- excluded from the bound
+cli_cli_lock                 (unconstrained)  unknown      -       unconstrained by the configured invariants (resolved transitively) -- excluded from the bound
+cli_skill_scripts_run        (unconstrained)  unknown      -       unconstrained by the configured invariants (resolved transitively) -- excluded from the bound
+cli_errors                   (unconstrained)  unknown      -       unconstrained by the configured invariants (resolved transitively) -- excluded from the bound
+cli_gateway_url_configured   (unconstrained)  unknown      -       unconstrained by the configured invariants (resolved transitively) -- excluded from the bound
+cli_registry_url_configured  (unconstrained)  unknown      -       unconstrained by the configured invariants (resolved transitively) -- excluded from the bound
+cli_gateway_mcp_snapshot     (unconstrained)  unknown      -       unconstrained by the configured invariants (resolved transitively) -- excluded from the bound
+effect_status                (unconstrained)  unknown      -       unconstrained by the configured invariants (resolved transitively) -- excluded from the bound
+effect_continuation          (unconstrained)  unknown      -       unconstrained by the configured invariants (resolved transitively) -- excluded from the bound
+program_halted               (unconstrained)  unknown      -       unconstrained by the configured invariants (resolved transitively) -- excluded from the bound
+always_after_ran             (unconstrained)  unknown      -       unconstrained by the configured invariants (resolved transitively) -- excluded from the bound
+rollback_journal             (unconstrained)  unknown      -       unconstrained by the configured invariants (resolved transitively) -- excluded from the bound
+gateway_catalog              (unconstrained)  unknown      -       unconstrained by the configured invariants (resolved transitively) -- excluded from the bound
+gateway_dynamic_servers      (unconstrained)  unknown      -       unconstrained by the configured invariants (resolved transitively) -- excluded from the bound
+gateway_global_deployments   (unconstrained)  unknown      -       unconstrained by the configured invariants (resolved transitively) -- excluded from the bound
+gateway_session_deployments  (unconstrained)  unknown      -       unconstrained by the configured invariants (resolved transitively) -- excluded from the bound
+gateway_tools                (unconstrained)  unknown      -       unconstrained by the configured invariants (resolved transitively) -- excluded from the bound
+gateway_disclosures          (unconstrained)  unknown      -       unconstrained by the configured invariants (resolved transitively) -- excluded from the bound
+gateway_errors               (unconstrained)  unknown      -       unconstrained by the configured invariants (resolved transitively) -- excluded from the bound
+gateway_last_init            (unconstrained)  unknown      -       unconstrained by the configured invariants (resolved transitively) -- excluded from the bound
+server_registry_units        (unconstrained)  unknown      -       unconstrained by the configured invariants (resolved transitively) -- excluded from the bound
+server_versions              (unconstrained)  unknown      -       unconstrained by the configured invariants (resolved transitively) -- excluded from the bound
+server_packages              (unconstrained)  unknown      -       unconstrained by the configured invariants (resolved transitively) -- excluded from the bound
+server_authenticated_users   (unconstrained)  unknown      -       unconstrained by the configured invariants (resolved transitively) -- excluded from the bound
+project_model                (unconstrained)  unknown      -       unconstrained by the configured invariants (resolved transitively) -- excluded from the bound
+result                       (unconstrained)  unknown      -       unconstrained by the configured invariants (resolved transitively) -- excluded from the bound
+  (domain sources merge per-variable: TypeInvariant, then TypeOK, then the
+  configured invariants -- first source that resolves wins. What the resolver
+  can and cannot see: references/architecture_tractability.md,
+  'What The Domain Resolver Can And Cannot See'.)
+
+[MEASURED] State-space upper bound
+  bound = UNKNOWN -- no variable domain could be resolved from a
+  TypeInvariant/TypeOK or from the configured invariants. This is an
+  explicit unknown, not a small model. (Resolver coverage:
+  references/architecture_tractability.md, 'What The Domain Resolver
+  Can And Cannot See'.)
+  excluded (no resolvable domain): cli_store_units, cli_doc_repos, cli_harness_templates, cli_harness_instances, cli_installed_records, cli_lock_units, cli_agent_projections, cli_bindings, cli_projection_rows, cli_managed_copies, cli_import_directives, cli_projection_conflicts, cli_tool_records, cli_cli_lock, cli_skill_scripts_run, cli_errors, cli_gateway_url_configured, cli_registry_url_configured, cli_gateway_mcp_snapshot, effect_status, effect_continuation, program_halted, always_after_ran, rollback_journal, gateway_catalog, gateway_dynamic_servers, gateway_global_deployments, gateway_session_deployments, gateway_tools, gateway_disclosures, gateway_errors, gateway_last_init, server_registry_units, server_versions, server_packages, server_authenticated_users, project_model, result
+
+[MEASURED] Variables x actions read/write matrix
+  (actions = top-level disjuncts of the next-state relation CliDisclosureNext, called-operator bodies expanded transitively; helpers are not actions)
+variable                     RenderProgressiveRootHelp  RenderInstallCommandHelp  RenderSyncCommandHelp  RenderProjectProfilesListHelp  ExposeInstallLocalUnitWorkflowDocs  ExposeSkillScriptsWorkflowDocs  ExposeProjectEnvWorkflowDocs  EmitSyncOneUnitAgentContext  EmitProjectEnvAgentContext
+---------------------------  -------------------------  ------------------------  ---------------------  -----------------------------  ----------------------------------  ------------------------------  ----------------------------  ---------------------------  --------------------------
+cli_store_units              .                          .                         .                      .                              .                                   .                               .                             .                            .
+cli_doc_repos                .                          .                         .                      .                              .                                   .                               .                             .                            .
+cli_harness_templates        .                          .                         .                      .                              .                                   .                               .                             .                            .
+cli_harness_instances        .                          .                         .                      .                              .                                   .                               .                             .                            .
+cli_installed_records        .                          .                         .                      .                              .                                   .                               .                             .                            .
+cli_lock_units               .                          .                         .                      .                              .                                   .                               .                             .                            .
+cli_agent_projections        .                          .                         .                      .                              .                                   .                               .                             .                            .
+cli_bindings                 .                          .                         .                      .                              .                                   .                               .                             .                            .
+cli_projection_rows          .                          .                         .                      .                              .                                   .                               .                             .                            .
+cli_managed_copies           .                          .                         .                      .                              .                                   .                               .                             .                            .
+cli_import_directives        .                          .                         .                      .                              .                                   .                               .                             .                            .
+cli_projection_conflicts     .                          .                         .                      .                              .                                   .                               .                             .                            .
+cli_tool_records             .                          .                         .                      .                              .                                   .                               .                             .                            .
+cli_cli_lock                 .                          .                         .                      .                              .                                   .                               .                             .                            .
+cli_skill_scripts_run        .                          .                         .                      .                              .                                   .                               .                             .                            .
+cli_errors                   .                          .                         .                      .                              .                                   .                               .                             .                            .
+cli_gateway_url_configured   .                          .                         .                      .                              .                                   .                               .                             .                            .
+cli_registry_url_configured  .                          .                         .                      .                              .                                   .                               .                             .                            .
+cli_gateway_mcp_snapshot     .                          .                         .                      .                              .                                   .                               .                             .                            .
+effect_status                .                          .                         .                      .                              .                                   .                               .                             .                            .
+effect_continuation          .                          .                         .                      .                              .                                   .                               .                             .                            .
+program_halted               .                          .                         .                      .                              .                                   .                               .                             .                            .
+always_after_ran             .                          .                         .                      .                              .                                   .                               .                             .                            .
+rollback_journal             .                          .                         .                      .                              .                                   .                               .                             .                            .
+gateway_catalog              .                          .                         .                      .                              .                                   .                               .                             .                            .
+gateway_dynamic_servers      .                          .                         .                      .                              .                                   .                               .                             .                            .
+gateway_global_deployments   .                          .                         .                      .                              .                                   .                               .                             .                            .
+gateway_session_deployments  .                          .                         .                      .                              .                                   .                               .                             .                            .
+gateway_tools                .                          .                         .                      .                              .                                   .                               .                             .                            .
+gateway_disclosures          .                          .                         .                      .                              .                                   .                               .                             .                            .
+gateway_errors               .                          .                         .                      .                              .                                   .                               .                             .                            .
+gateway_last_init            .                          .                         .                      .                              .                                   .                               .                             .                            .
+server_registry_units        .                          .                         .                      .                              .                                   .                               .                             .                            .
+server_versions              .                          .                         .                      .                              .                                   .                               .                             .                            .
+server_packages              .                          .                         .                      .                              .                                   .                               .                             .                            .
+server_authenticated_users   .                          .                         .                      .                              .                                   .                               .                             .                            .
+project_model                r                          r                         r                      r                              r                                   r                               r                             r                            r
+result                       w                          w                         w                      w                              w                                   w                               w                             w                            w
+
+[MEASURED] Near-decomposability
+  graph modularity Q = 0.000 over the variable interaction graph
+  (weight of an edge = number of actions touching both variables)
+  C1: project_model, result  (2 variables, 9 actions)
+  C2: always_after_ran  (1 variables, 0 actions)
+  C3: cli_agent_projections  (1 variables, 0 actions)
+  C4: cli_bindings  (1 variables, 0 actions)
+  C5: cli_cli_lock  (1 variables, 0 actions)
+  C6: cli_doc_repos  (1 variables, 0 actions)
+  C7: cli_errors  (1 variables, 0 actions)
+  C8: cli_gateway_mcp_snapshot  (1 variables, 0 actions)
+  C9: cli_gateway_url_configured  (1 variables, 0 actions)
+  C10: cli_harness_instances  (1 variables, 0 actions)
+  C11: cli_harness_templates  (1 variables, 0 actions)
+  C12: cli_import_directives  (1 variables, 0 actions)
+  C13: cli_installed_records  (1 variables, 0 actions)
+  C14: cli_lock_units  (1 variables, 0 actions)
+  C15: cli_managed_copies  (1 variables, 0 actions)
+  C16: cli_projection_conflicts  (1 variables, 0 actions)
+  C17: cli_projection_rows  (1 variables, 0 actions)
+  C18: cli_registry_url_configured  (1 variables, 0 actions)
+  C19: cli_skill_scripts_run  (1 variables, 0 actions)
+  C20: cli_store_units  (1 variables, 0 actions)
+  C21: cli_tool_records  (1 variables, 0 actions)
+  C22: effect_continuation  (1 variables, 0 actions)
+  C23: effect_status  (1 variables, 0 actions)
+  C24: gateway_catalog  (1 variables, 0 actions)
+  C25: gateway_disclosures  (1 variables, 0 actions)
+  C26: gateway_dynamic_servers  (1 variables, 0 actions)
+  C27: gateway_errors  (1 variables, 0 actions)
+  C28: gateway_global_deployments  (1 variables, 0 actions)
+  C29: gateway_last_init  (1 variables, 0 actions)
+  C30: gateway_session_deployments  (1 variables, 0 actions)
+  C31: gateway_tools  (1 variables, 0 actions)
+  C32: program_halted  (1 variables, 0 actions)
+  C33: rollback_journal  (1 variables, 0 actions)
+  C34: server_authenticated_users  (1 variables, 0 actions)
+  C35: server_packages  (1 variables, 0 actions)
+  C36: server_registry_units  (1 variables, 0 actions)
+  C37: server_versions  (1 variables, 0 actions)
+  no port-crossing actions (single component, or fully independent components)
+
+[MEASURED] Dense rows and columns of the R/W matrix
+  dense rows (god-state signature -- variable touched by more than half the actions):
+    project_model touched by 9/9 actions
+    result touched by 9/9 actions
+  no dense columns (no action touches more than half the variables)
+
+[MEASURED] Invariant coverage (aliased/composed invariants resolved transitively)
+  variables no configured invariant reads:
+    cli_store_units
+    cli_doc_repos
+    cli_harness_templates
+    cli_harness_instances
+    cli_installed_records
+    cli_lock_units
+    cli_agent_projections
+    cli_bindings
+    cli_projection_rows
+    cli_managed_copies
+    cli_import_directives
+    cli_projection_conflicts
+    cli_tool_records
+    cli_cli_lock
+    cli_skill_scripts_run
+    cli_errors
+    cli_gateway_url_configured
+    cli_registry_url_configured
+    cli_gateway_mcp_snapshot
+    effect_status
+    effect_continuation
+    program_halted
+    always_after_ran
+    rollback_journal
+    gateway_catalog
+    gateway_dynamic_servers
+    gateway_global_deployments
+    gateway_session_deployments
+    gateway_tools
+    gateway_disclosures
+    gateway_errors
+    gateway_last_init
+    server_registry_units
+    server_versions
+    server_packages
+    server_authenticated_users
+    result
+
+[MEASURED] Justification linkage
+  no justification: table in the manifest -- dead-weight analysis skipped.
+  Add one to make every variable's right to exist auditable
+  (references/architecture_tractability.md, 'Grow The Model By Evidence').
+
+  A poor score is not a verdict. Some components score badly and still need to
+  exist in that form -- performance paths, protocol-mandated shapes, irreducible
+  domain complexity. This output is evidence for the owner, not a decision.
+  Before recording ANY complexity reduction as a result: read the transition-level
+  diff. A generated-states drop at constant distinct states is a RED FLAG (a
+  deleted self-loop), not a win -- the distinct-state gate cannot see it.
+
+[MEASURED] Complexity thresholds (advisory -- warnings only)
+  source: /Users/hayde/IdeaProjects/wt-sm-168/specs/tickets/ISSUE-168/current/spec_manifest.yaml
+    max_state_space_bound: 1,000,000
+    max_distinct_states: 50,000
+    max_component_variables: 6
+    max_component_actions: 8
+  max_state_space_bound compares against the STATIC declared-representation bound above.
+  max_distinct_states compares against ACTUAL reachable states and is checked only once
+  TLC has measured them (--tlc-report); the two are not interchangeable.
+
+  COMPLEXITY WARNINGS -- these are FINDINGS. They do NOT block promotion,
+  do NOT refuse case generation, and do NOT change the exit code. Complexity is a
+  scanner, not a gate (references/architecture_tractability.md, 'Advisory, Not
+  Blocking'). The owner decides, with the user, whether to act on each one.
+
+  WARNING: state-space upper bound UNKNOWN: no variable domain could be resolved from a TypeInvariant/TypeOK or from the configured invariants, so the bound cannot be compared against max_state_space_bound
+
+  WARNING: component C1 is touched by 9 actions (RenderProgressiveRootHelp, RenderInstallCommandHelp, RenderSyncCommandHelp, RenderProjectProfilesListHelp, ExposeInstallLocalUnitWorkflowDocs, ExposeSkillScriptsWorkflowDocs, ExposeProjectEnvWorkflowDocs, EmitSyncOneUnitAgentContext, EmitProjectEnvAgentContext), exceeding max_component_actions 8
+
+  `analyze complexity` exits 0 whenever it can analyze the model -- a complex model
+  is a finding, not a failure. It exits nonzero ONLY when the model cannot be
+  analyzed at all (e.g. an unresolved module hierarchy); that is 'I could not
+  measure this', which is distinct from 'this is complex'.

@@ -1,0 +1,605 @@
+{
+  "accept_new": false,
+  "accept_new_promotion": null,
+  "active_ticket_dir": "specs/tickets/ISSUE-168",
+  "commit_recommendation": {
+    "git_add": "git add specs/.history/child-home-materialization-workflow/ticket-021-ISSUE-168 specs/current specs/results/skill_feedback.md specs/results/complexity_ledger.json",
+    "git_commit": "git commit -m 'record spec history for ISSUE-168'",
+    "message": "It is recommended to commit this history directory now: specs/.history/child-home-materialization-workflow/ticket-021-ISSUE-168"
+  },
+  "complexity_delta": {
+    "direction": "zero",
+    "metrics": {
+      "actions": {
+        "after": 9,
+        "before": 9,
+        "delta": 0,
+        "percent": 0.0
+      },
+      "bound": {
+        "after": null,
+        "before": null,
+        "delta": null
+      },
+      "depth": {
+        "after": null,
+        "before": null,
+        "delta": null
+      },
+      "distinct_states": {
+        "after": null,
+        "before": null,
+        "delta": null
+      },
+      "generated_states": {
+        "after": null,
+        "before": null,
+        "delta": null
+      },
+      "variables": {
+        "after": 38,
+        "before": 38,
+        "delta": 0,
+        "percent": 0.0
+      }
+    },
+    "previous_scope_id": "ISSUE-166"
+  },
+  "complexity_ledger": {
+    "coverage_audit": {
+      "in_scope_gaps": null,
+      "passing": false,
+      "report": "",
+      "scope_source": "",
+      "status": "not_run"
+    },
+    "delta": {
+      "direction": "zero",
+      "metrics": {
+        "actions": {
+          "after": 9,
+          "before": 9,
+          "delta": 0,
+          "percent": 0.0
+        },
+        "bound": {
+          "after": null,
+          "before": null,
+          "delta": null
+        },
+        "depth": {
+          "after": null,
+          "before": null,
+          "delta": null
+        },
+        "distinct_states": {
+          "after": null,
+          "before": null,
+          "delta": null
+        },
+        "generated_states": {
+          "after": null,
+          "before": null,
+          "delta": null
+        },
+        "variables": {
+          "after": 38,
+          "before": 38,
+          "delta": 0,
+          "percent": 0.0
+        }
+      },
+      "previous_scope_id": "ISSUE-166"
+    },
+    "errors": [],
+    "input_path": "specs/tickets/ISSUE-168/results/complexity_ledger.yaml",
+    "justification": "",
+    "ledger_path": "specs/results/complexity_ledger.json",
+    "metrics": {
+      "action_attribution": "top-level disjuncts of the next-state relation CliDisclosureNext, called-operator bodies expanded transitively; helpers are not actions",
+      "actions": 9,
+      "actions_from_fallback_heuristic": false,
+      "bound": null,
+      "bound_complete": false,
+      "bound_resolved_variables": 0,
+      "bound_unresolved_variables": [
+        "cli_store_units",
+        "cli_doc_repos",
+        "cli_harness_templates",
+        "cli_harness_instances",
+        "cli_installed_records",
+        "cli_lock_units",
+        "cli_agent_projections",
+        "cli_bindings",
+        "cli_projection_rows",
+        "cli_managed_copies",
+        "cli_import_directives",
+        "cli_projection_conflicts",
+        "cli_tool_records",
+        "cli_cli_lock",
+        "cli_skill_scripts_run",
+        "cli_errors",
+        "cli_gateway_url_configured",
+        "cli_registry_url_configured",
+        "cli_gateway_mcp_snapshot",
+        "effect_status",
+        "effect_continuation",
+        "program_halted",
+        "always_after_ran",
+        "rollback_journal",
+        "gateway_catalog",
+        "gateway_dynamic_servers",
+        "gateway_global_deployments",
+        "gateway_session_deployments",
+        "gateway_tools",
+        "gateway_disclosures",
+        "gateway_errors",
+        "gateway_last_init",
+        "server_registry_units",
+        "server_versions",
+        "server_packages",
+        "server_authenticated_users",
+        "project_model",
+        "result"
+      ],
+      "budget_utilization": {},
+      "depth": null,
+      "distinct_states": null,
+      "gate_passed": false,
+      "gate_violations": [
+        "state-space upper bound UNKNOWN: no variable domain could be resolved from a TypeInvariant/TypeOK or from the configured invariants, so the bound cannot be compared against max_state_space_bound",
+        "component C1 is touched by 9 actions (RenderProgressiveRootHelp, RenderInstallCommandHelp, RenderSyncCommandHelp, RenderProjectProfilesListHelp, ExposeInstallLocalUnitWorkflowDocs, ExposeSkillScriptsWorkflowDocs, ExposeProjectEnvWorkflowDocs, EmitSyncOneUnitAgentContext, EmitProjectEnvAgentContext), exceeding max_component_actions 8"
+      ],
+      "generated_states": null,
+      "modularity": 0.0,
+      "variables": 38
+    },
+    "narrative": "ISSUE-168 makes the model say what the implementation now does: a clean-home project resolve validates markdown skill-imports ONCE against the candidate closure (everything about to publish plus everything installed) and publishes atomically, and a genuinely missing import is a typed PROJECT_IMPORT_MISSING reject with UNCHANGED state. The monolith action was already atomic -- the defect was the implementation validating per-unit against the incomplete store -- so the model change is the validation semantics made explicit, not a behavior rewrite. Alternatives measured: a CONSTANT import relation (rejected: TLC cfgs cannot assign tuple sets without an MC wrapper module, and the repo runs run_tlc.sh directly) and a reachable-reject bounded model (rejected: ProjectA declares every unit-kind constant, so any missing target would either be permanently missing -- making the publish branch and everything downstream of it unreachable -- or never missing; the reject branch's witnesses are ProjectResolveAtomicClosureTest's planted ghost import and the end-to-end exit-11 negative case recorded in validation-2026-08-12.md). Finding the machine core cannot express: MC_program_promotion.cfg exceeds the 120 s cap on the UNMODIFIED baseline with the same progress profile and no violation in either bounded probe -- a pre-existing bound, recorded in the validation evidence rather than silently skipped.",
+    "notes": [
+      "NOTE: TLC reports incomplete; comparison skipped.",
+      "coverage audit (MF-026) is `not_run`: audit has not been run for this scope. RECORDED, NOT REFUSED (2026-08-04). The four oracles check fidelity of what is modeled and are bounded to it; unmodeled surface is invisible to all of them while they report green, and this is the only sweep that looks at it. Run `prompts/coverage_audit.md` if you want that read on this scope."
+    ],
+    "recorded_at_utc": "2026-08-12T22:17:04.911165+00:00",
+    "refinement": {
+      "applied": false,
+      "approved_by": "",
+      "detail": "Searched the slice for a complexity reduction: the staged-closure validation is expressed as three pure operators over EXISTING constants and state (UnitMarkdownImportEdges, ProjectImportCandidates, ProjectMissingMarkdownImports) plus one guarded reject branch. No state variable, action, or config was added; before/after descriptors are identical (descriptor-comparison.md), so there is no representation to shrink without deleting the newly stated behavior.\n",
+      "measured": true,
+      "outcome": "none",
+      "searched": true
+    },
+    "retention": {
+      "effect_conformance": {
+        "classification": "unverified",
+        "evidence": "",
+        "status": "not_run",
+        "value": null
+      },
+      "external_coverage": {
+        "classification": "unverified",
+        "evidence": "",
+        "status": "not_run",
+        "value": null
+      },
+      "kill_rate": {
+        "classification": "unverified",
+        "evidence": "",
+        "status": "not_run",
+        "value": null
+      }
+    },
+    "retention_summary": [
+      "kill_rate=not_run (UNVERIFIED)",
+      "effect_conformance=not_run (UNVERIFIED)",
+      "external_coverage=not_run (UNVERIFIED)"
+    ],
+    "schema_version": 1,
+    "scope": "ticket",
+    "scope_id": "ISSUE-168",
+    "tlc_findings": [
+      {
+        "level": "NOTE",
+        "message": "TLC reports incomplete; comparison skipped."
+      }
+    ],
+    "transition_diff": "",
+    "validated_refactor": {
+      "behavior_tests": {
+        "classification": "retained",
+        "evidence": "jbang RunTests.java -- ALL PASSED (includes new ProjectResolveAtomicClosureTest); see validation-2026-08-12.md",
+        "status": "pass",
+        "value": null
+      },
+      "descriptor_comparison": {
+        "classification": "retained",
+        "evidence": "specs/tickets/ISSUE-168/results/descriptor-comparison.md",
+        "status": "recorded",
+        "value": null
+      },
+      "tlc_after": {
+        "classification": "retained",
+        "evidence": "specs/tickets/ISSUE-168/results/tlc-after-MC.log",
+        "status": "green",
+        "value": null
+      },
+      "tlc_before": {
+        "classification": "retained",
+        "evidence": "specs/tickets/ISSUE-168/results/tlc-before-MC.log",
+        "status": "green",
+        "value": null
+      }
+    },
+    "validated_refactor_summary": [
+      "tlc_before=green (retained)",
+      "tlc_after=green (retained)",
+      "behavior_tests=pass (retained)",
+      "descriptor_comparison=recorded (retained)"
+    ],
+    "verdict": "recorded",
+    "workflow": "child-home-materialization-workflow"
+  },
+  "created_at_utc": "2026-08-12T22:17:04.985829+00:00",
+  "entry_name": "ticket-021-ISSUE-168",
+  "feedback_filed": true,
+  "feedback_filed_where": [
+    "https://github.com/haydenrear/tla-spec-dev/issues/193"
+  ],
+  "git": {
+    "branch": "feature/168-atomic-project-resolve",
+    "commit": "84bc58a",
+    "inside_work_tree": "true"
+  },
+  "guard_weakening": {
+    "bypassed": [],
+    "flags": [],
+    "model_action": "CloseTicket",
+    "note": "RC-01: a close taken under a guard-weakening flag is a different modeled state from one taken under the guard. Recorded, never refused.",
+    "weakened": false
+  },
+  "history_policy": "append-only by convention; existing entries are not overwritten and filesystem permissions remain git-friendly",
+  "kind": "ticket",
+  "promotion": {
+    "destination": "specs",
+    "merged": [
+      {
+        "destination": "specs/current",
+        "files": [
+          {
+            "destination": "specs/current/ClaimantRefreshExternal.cfg",
+            "relative": "ClaimantRefreshExternal.cfg",
+            "source": "specs/tickets/ISSUE-168/desired/ClaimantRefreshExternal.cfg"
+          },
+          {
+            "destination": "specs/current/ClaimantRefreshExternal.tla",
+            "relative": "ClaimantRefreshExternal.tla",
+            "source": "specs/tickets/ISSUE-168/desired/ClaimantRefreshExternal.tla"
+          },
+          {
+            "destination": "specs/current/ClaimantRefreshExternal_regression.cfg",
+            "relative": "ClaimantRefreshExternal_regression.cfg",
+            "source": "specs/tickets/ISSUE-168/desired/ClaimantRefreshExternal_regression.cfg"
+          },
+          {
+            "destination": "specs/current/ClaimantRefreshInternal.cfg",
+            "relative": "ClaimantRefreshInternal.cfg",
+            "source": "specs/tickets/ISSUE-168/desired/ClaimantRefreshInternal.cfg"
+          },
+          {
+            "destination": "specs/current/ClaimantRefreshInternal.tla",
+            "relative": "ClaimantRefreshInternal.tla",
+            "source": "specs/tickets/ISSUE-168/desired/ClaimantRefreshInternal.tla"
+          },
+          {
+            "destination": "specs/current/ClaimantRefreshInternal_regression.cfg",
+            "relative": "ClaimantRefreshInternal_regression.cfg",
+            "source": "specs/tickets/ISSUE-168/desired/ClaimantRefreshInternal_regression.cfg"
+          },
+          {
+            "destination": "specs/current/MC.cfg",
+            "relative": "MC.cfg",
+            "source": "specs/tickets/ISSUE-168/desired/MC.cfg"
+          },
+          {
+            "destination": "specs/current/MC_program_promotion.cfg",
+            "relative": "MC_program_promotion.cfg",
+            "source": "specs/tickets/ISSUE-168/desired/MC_program_promotion.cfg"
+          },
+          {
+            "destination": "specs/current/README.md",
+            "relative": "README.md",
+            "source": "specs/tickets/ISSUE-168/desired/README.md"
+          },
+          {
+            "destination": "specs/current/SkillManager.tla",
+            "relative": "SkillManager.tla",
+            "source": "specs/tickets/ISSUE-168/desired/SkillManager.tla"
+          },
+          {
+            "destination": "specs/current/case_adapters.toml",
+            "relative": "case_adapters.toml",
+            "source": "specs/tickets/ISSUE-168/desired/case_adapters.toml"
+          },
+          {
+            "destination": "specs/current/claimant_refresh_actions.yml",
+            "relative": "claimant_refresh_actions.yml",
+            "source": "specs/tickets/ISSUE-168/desired/claimant_refresh_actions.yml"
+          },
+          {
+            "destination": "specs/current/extract_manifest.sh",
+            "relative": "extract_manifest.sh",
+            "source": "specs/tickets/ISSUE-168/desired/extract_manifest.sh"
+          },
+          {
+            "destination": "specs/current/generated/spec-unit/ClaimantRefreshInternal.dot",
+            "relative": "generated/spec-unit/ClaimantRefreshInternal.dot",
+            "source": "specs/tickets/ISSUE-168/desired/generated/spec-unit/ClaimantRefreshInternal.dot"
+          },
+          {
+            "destination": "specs/current/generated/spec-unit/claimant_refresh_cases/__init__.py",
+            "relative": "generated/spec-unit/claimant_refresh_cases/__init__.py",
+            "source": "specs/tickets/ISSUE-168/desired/generated/spec-unit/claimant_refresh_cases/__init__.py"
+          },
+          {
+            "destination": "specs/current/generated/spec-unit/claimant_refresh_cases/case_coverage.json",
+            "relative": "generated/spec-unit/claimant_refresh_cases/case_coverage.json",
+            "source": "specs/tickets/ISSUE-168/desired/generated/spec-unit/claimant_refresh_cases/case_coverage.json"
+          },
+          {
+            "destination": "specs/current/generated/spec-unit/claimant_refresh_cases/cases.py",
+            "relative": "generated/spec-unit/claimant_refresh_cases/cases.py",
+            "source": "specs/tickets/ISSUE-168/desired/generated/spec-unit/claimant_refresh_cases/cases.py"
+          },
+          {
+            "destination": "specs/current/generated/spec-unit/claimant_refresh_cases/docs.md",
+            "relative": "generated/spec-unit/claimant_refresh_cases/docs.md",
+            "source": "specs/tickets/ISSUE-168/desired/generated/spec-unit/claimant_refresh_cases/docs.md"
+          },
+          {
+            "destination": "specs/current/generated/spec-unit/claimant_refresh_cases/doubles.py",
+            "relative": "generated/spec-unit/claimant_refresh_cases/doubles.py",
+            "source": "specs/tickets/ISSUE-168/desired/generated/spec-unit/claimant_refresh_cases/doubles.py"
+          },
+          {
+            "destination": "specs/current/generated/spec-unit/claimant_refresh_cases/param_recovery_audit.md",
+            "relative": "generated/spec-unit/claimant_refresh_cases/param_recovery_audit.md",
+            "source": "specs/tickets/ISSUE-168/desired/generated/spec-unit/claimant_refresh_cases/param_recovery_audit.md"
+          },
+          {
+            "destination": "specs/current/generated/spec-unit/claimant_refresh_cases/types.py",
+            "relative": "generated/spec-unit/claimant_refresh_cases/types.py",
+            "source": "specs/tickets/ISSUE-168/desired/generated/spec-unit/claimant_refresh_cases/types.py"
+          },
+          {
+            "destination": "specs/current/generated/spec-unit/claimant_refresh_cases/validators.py",
+            "relative": "generated/spec-unit/claimant_refresh_cases/validators.py",
+            "source": "specs/tickets/ISSUE-168/desired/generated/spec-unit/claimant_refresh_cases/validators.py"
+          },
+          {
+            "destination": "specs/current/production_adapters.py",
+            "relative": "production_adapters.py",
+            "source": "specs/tickets/ISSUE-168/desired/production_adapters.py"
+          },
+          {
+            "destination": "specs/current/run_tlc.sh",
+            "relative": "run_tlc.sh",
+            "source": "specs/tickets/ISSUE-168/desired/run_tlc.sh"
+          },
+          {
+            "destination": "specs/current/spec_manifest.yaml",
+            "relative": "spec_manifest.yaml",
+            "source": "specs/tickets/ISSUE-168/desired/spec_manifest.yaml"
+          },
+          {
+            "destination": "specs/current/testgraph_bindings.yml",
+            "relative": "testgraph_bindings.yml",
+            "source": "specs/tickets/ISSUE-168/desired/testgraph_bindings.yml"
+          },
+          {
+            "destination": "specs/current/tests/test_claimant_refresh_program_model.py",
+            "relative": "tests/test_claimant_refresh_program_model.py",
+            "source": "specs/tickets/ISSUE-168/desired/tests/test_claimant_refresh_program_model.py"
+          },
+          {
+            "destination": "specs/current/tests/test_cli_agent_context_program_model.py",
+            "relative": "tests/test_cli_agent_context_program_model.py",
+            "source": "specs/tickets/ISSUE-168/desired/tests/test_cli_agent_context_program_model.py"
+          },
+          {
+            "destination": "specs/current/tests/test_cli_help_program_model.py",
+            "relative": "tests/test_cli_help_program_model.py",
+            "source": "specs/tickets/ISSUE-168/desired/tests/test_cli_help_program_model.py"
+          },
+          {
+            "destination": "specs/current/tests/test_cli_metadata_program_model.py",
+            "relative": "tests/test_cli_metadata_program_model.py",
+            "source": "specs/tickets/ISSUE-168/desired/tests/test_cli_metadata_program_model.py"
+          },
+          {
+            "destination": "specs/current/tests/test_cli_skill_docs_program_model.py",
+            "relative": "tests/test_cli_skill_docs_program_model.py",
+            "source": "specs/tickets/ISSUE-168/desired/tests/test_cli_skill_docs_program_model.py"
+          },
+          {
+            "destination": "specs/current/tests/test_program_model_contract.py",
+            "relative": "tests/test_program_model_contract.py",
+            "source": "specs/tickets/ISSUE-168/desired/tests/test_program_model_contract.py"
+          }
+        ],
+        "operation": "promote ticket desired onto project current, preserving unseeded current-only paths",
+        "preserved": [
+          "tests/test_current_ticket_workflow.py"
+        ],
+        "removed": [],
+        "role": "current",
+        "seed_basis": "seed manifest recorded at open; removing only seeded paths the ticket dropped",
+        "seed_recorded": true,
+        "source": "specs/tickets/ISSUE-168/desired"
+      }
+    ],
+    "operation": "replace project current with ticket desired and merge ticket artifacts into project specs",
+    "source": "specs/tickets/ISSUE-168"
+  },
+  "refinement_record": {
+    "applied": false,
+    "approved_by": "",
+    "detail": "Searched the slice for a complexity reduction: the staged-closure validation is expressed as three pure operators over EXISTING constants and state (UnitMarkdownImportEdges, ProjectImportCandidates, ProjectMissingMarkdownImports) plus one guarded reject branch. No state variable, action, or config was added; before/after descriptors are identical (descriptor-comparison.md), so there is no representation to shrink without deleting the newly stated behavior.\n",
+    "measured": true,
+    "outcome": "none",
+    "searched": true
+  },
+  "results": [
+    {
+      "exists": true,
+      "role": "result",
+      "snapshot": "specs/.history/child-home-materialization-workflow/ticket-021-ISSUE-168/results/validation-2026-08-12.md",
+      "source": "specs/tickets/ISSUE-168/results/validation-2026-08-12.md"
+    }
+  ],
+  "retention_evidence": {
+    "effect_conformance": {
+      "classification": "unverified",
+      "evidence": "",
+      "status": "not_run",
+      "value": null
+    },
+    "external_coverage": {
+      "classification": "unverified",
+      "evidence": "",
+      "status": "not_run",
+      "value": null
+    },
+    "kill_rate": {
+      "classification": "unverified",
+      "evidence": "",
+      "status": "not_run",
+      "value": null
+    }
+  },
+  "schema_version": 1,
+  "skill_feedback": {
+    "close_out_entries": 2,
+    "close_out_entry": "Close-out ticket ISSUE-168",
+    "declared_status": "unreviewed",
+    "deferred_validation": [],
+    "feedback_repository": "spec-double-compiler / tla-spec-dev",
+    "filed": true,
+    "filed_where": [
+      "https://github.com/haydenrear/tla-spec-dev/issues/193"
+    ],
+    "findings": [
+      {
+        "category": "profile-schema-cli",
+        "evidence": "specs/.history/child-home-materialization-workflow/ticket-020-ISSUE-166/manifest.json",
+        "filed": true,
+        "id": "SF-001",
+        "observed_on": "haydenrear/skill-manager ISSUE-166 normal ticket close",
+        "recommendation": "ticket https://github.com/haydenrear/tla-spec-dev/issues/193",
+        "reference": "https://github.com/haydenrear/tla-spec-dev/issues/193",
+        "root_cause": "tool",
+        "severity": "wrong-result",
+        "status": "filed",
+        "target": "scripts/spec_evolution.py \u2014 close-ticket manifest serialization of skill_feedback.path",
+        "title": "Close manifest records an absolute skill-feedback path"
+      }
+    ],
+    "findings_filed": 1,
+    "findings_total": 1,
+    "findings_unfiled": [],
+    "path": "/Users/hayde/IdeaProjects/wt-sm-168/specs/results/skill_feedback.md",
+    "prompt_sections": [
+      "surviving-mutants",
+      "unmodelable-effects",
+      "budget-and-metric",
+      "profile-schema-cli"
+    ],
+    "resolved": true,
+    "role": "skill_feedback",
+    "template_emitted": false
+  },
+  "snapshots": [
+    {
+      "exists": true,
+      "role": "program_model",
+      "snapshot": "specs/.history/child-home-materialization-workflow/ticket-021-ISSUE-168/snapshots/program_model",
+      "source": "specs/program_model"
+    },
+    {
+      "exists": true,
+      "role": "desired_program_model",
+      "snapshot": "specs/.history/child-home-materialization-workflow/ticket-021-ISSUE-168/snapshots/desired_program_model",
+      "source": "specs/desired_program_model"
+    },
+    {
+      "exists": true,
+      "role": "current",
+      "snapshot": "specs/.history/child-home-materialization-workflow/ticket-021-ISSUE-168/snapshots/current",
+      "source": "specs/current"
+    },
+    {
+      "exists": true,
+      "moved": true,
+      "role": "ticket_workdir",
+      "snapshot": "specs/.history/child-home-materialization-workflow/ticket-021-ISSUE-168/ticket",
+      "source": "specs/tickets/ISSUE-168"
+    }
+  ],
+  "spec_root": "specs",
+  "summary": "ISSUE-168: ResolveProjectDependencies gains staged-closure markdown-import validation and a typed PROJECT_IMPORT_MISSING reject with UNCHANGED state; publish remains one atomic step over the whole declared closure. TLC MC.cfg gate green, 14 spec-unit tests green, RunTests ALL PASSED, project-resolve/project-smoke/onboarding/spec-conformance graphs green.",
+  "ticket": {
+    "acceptance": {
+      "assertions": [
+        "Offline fixture with reciprocal valid skill-imports resolves from a brand-new isolated home in one `project resolve --skip-gateway` invocation; declaration order reversed yields the identical result and closure.",
+        "A planted genuinely-missing third import fails with typed, attributable evidence (unit, file, missing target) and leaves no newly installed units, no resolved lock, no child home, no projections; the home outside the registration is byte-identical.",
+        "Direct `install` of a unit with an undeclared missing import still commits the unit and exits typed code 11 (SkillDevInstalled contract)."
+      ]
+    },
+    "closed": "2026-08-12",
+    "github_issue": "https://github.com/haydenrear/skill-manager/issues/168",
+    "id": "ISSUE-168",
+    "model": {
+      "external": [
+        "A clean home declaring two units with reciprocal skill-imports resolves both in ONE public `project resolve` invocation, in either declaration order, with identical resulting closure.",
+        "Plugins (and docs/harnesses) declared in the manifest are part of the closure the validation sees, fixing the issue-174 ordering symptom."
+      ],
+      "internal": [
+        "ResolveProjectDependencies validates markdown import targets against the candidate closure (staged units plus installed store), not against the incomplete store mid-publish.",
+        "A closure whose imports resolve publishes store units, installed records, lock rows, bindings, and projections in one action; a closure with a missing import rejects typed with all state UNCHANGED."
+      ]
+    },
+    "objective": "One public `project resolve` into a clean home stages the COMPLETE declared unit closure, validates cross-unit markdown skill-imports once against that candidate closure, and publishes installed units, project lock, child home, and projections together. A genuinely missing import is a typed refusal BEFORE any commit: no newly installed partial units, no resolved lock, no child-home realization, no projections; the registration may retain declared intent. The direct `install` contract for an undeclared missing import (commit + typed exit 11) is preserved.\n",
+    "phase": "CHM",
+    "status": "closed",
+    "title": "Make clean-home project resolution atomic across mutually importing units",
+    "validation": {
+      "focused": [
+        "jbang RunTests.java ProjectResolveAtomicClosureTest",
+        "jbang RunTests.java ProjectDependencyResolverTest"
+      ],
+      "formal": [
+        "bash specs/tickets/ISSUE-168/current/run_tlc.sh specs/tickets/ISSUE-168/current/SkillManager.tla specs/tickets/ISSUE-168/current/MC.cfg",
+        "uv run --with pytest --with pyyaml pytest specs/tickets/ISSUE-168/current/tests"
+      ],
+      "graph": [
+        "project-resolve",
+        "project-smoke",
+        "onboarding",
+        "spec-conformance"
+      ],
+      "unit": [
+        "jbang RunTests.java"
+      ]
+    }
+  },
+  "ticket_id": "ISSUE-168",
+  "ticket_index": 21,
+  "ticket_plan": "specs/desired_program_model/ticket_plan.yaml",
+  "ticket_status": "closed",
+  "ticket_workdir": {
+    "exists": true,
+    "moved": true,
+    "role": "ticket_workdir",
+    "snapshot": "specs/.history/child-home-materialization-workflow/ticket-021-ISSUE-168/ticket",
+    "source": "specs/tickets/ISSUE-168"
+  },
+  "workflow_name": "child-home-materialization-workflow"
+}

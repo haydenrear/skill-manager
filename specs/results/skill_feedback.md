@@ -165,3 +165,15 @@ Every finding must become a ticket or PR against spec-double-compiler / tla-spec
 - workaround_applied: none
 - recommendation: ticket https://github.com/haydenrear/tla-spec-dev/issues/193
 - status: filed
+
+## Close-out ticket ISSUE-168
+
+- close_scope: ticket
+- close_id: ISSUE-168
+- workflow: child-home-materialization-workflow
+- closed_at: 2026-08-12T22:17:04+00:00
+- summary: ISSUE-168: ResolveProjectDependencies gains staged-closure markdown-import validation and a typed PROJECT_IMPORT_MISSING reject with UNCHANGED state; publish remains one atomic step over the whole declared closure. TLC MC.cfg gate green, 14 spec-unit tests green, RunTests ALL PASSED, project-resolve/project-smoke/onboarding/spec-conformance graphs green.
+- feedback_status: unreviewed
+
+Set `feedback_status` to `none-found` or `items-recorded`, then record findings as `### SF-NNN` blocks below using the field list above.
+Every finding must become a ticket or PR against spec-double-compiler / tla-spec-dev; put its URL in `recommendation:` and set `status: filed`.
