@@ -1,10 +1,17 @@
 #!/usr/bin/env bash
-# PostToolUse hook: throttled staleness check for long-running sessions.
+# PostToolUse hook: surface the last check RESULT — never perform one.
 #
-# `skt check --cached` reads a state file and touches the network only
-# after the TTL (default 15 min) expires, so this is cheap on every tool
-# call and pays one real check per window. Exit 10 from skt means
-# notifications exist; they are surfaced via hookSpecificOutput
+# Contract: `skt check --cached` is cache-only in EVERY cache state. A
+# fresh cache exits 0/10 as usual; `cache_state` missing/expired exits 0
+# with no top-level notifications (stale content is labeled, never
+# injected as current), so a cold or expired home costs one state-file
+# read per tool call and can never stall a session on git or network.
+# The cache is populated elsewhere — the SessionStart hook's bounded
+# live refresh, or an operator's explicit `skt check` — which is why
+# hooks.json gives this hook only 2 seconds: ample for a path that
+# spawns no git, and a hard stop for any regression that reintroduces
+# one. Exit 10 from skt means notifications exist; they are surfaced
+# via hookSpecificOutput
 # additionalContext (harnesses that predate that field ignore it — the
 # SessionStart injection remains the primary disclosure). NEVER exits
 # non-zero, and logs to the hook.log contract only when a notification

@@ -154,7 +154,7 @@ def test_ls_remotes_run_in_parallel(tmp_path, monkeypatch):
         units[f"unit{i}"] = unit_record(bare, tip)
     make_home(repo, units=units)
 
-    def slow_tip(origin, ref):
+    def slow_tip(origin, ref, **_kw):  # accepts the live path's deadline kwarg
         time.sleep(0.3)
         return "0" * 40
 

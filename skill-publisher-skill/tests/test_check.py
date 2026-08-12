@@ -129,21 +129,24 @@ def test_cached_path_avoids_network(tmp_path, monkeypatch):
     def boom(*a, **k):
         raise AssertionError("network hit on cached path")
     monkeypatch.setattr(check_mod, "_remote_tip", boom)
-    cached = check_mod._read_cache(home, ttl=900)
-    assert cached is not None and cached["from_cache"] is True
+    cached = check_mod.cached_report(home, ttl=900)
+    assert cached["from_cache"] is True and cached["cache_state"] == "fresh"
     t0 = time.monotonic()
-    check_mod._read_cache(home, ttl=900)
+    check_mod.cached_report(home, ttl=900)
     assert time.monotonic() - t0 < 0.05
 
 
-def test_expired_cache_is_ignored(tmp_path):
+def test_expired_cache_is_not_served_as_current(tmp_path):
     repo = make_repo(tmp_path / "repo")
     bare, tip = make_unit_upstream(tmp_path, "alpha")
     home = make_home(repo, units={"alpha": unit_record(bare, tip)})
     report = check_mod.collect(repo)
     report["checked_at"] = time.time() - 10_000
     check_mod._write_cache(report)
-    assert check_mod._read_cache(home, ttl=900) is None
+    cached = check_mod.cached_report(home, ttl=900)
+    assert cached["cache_state"] == "expired"
+    assert cached["notifications"] == []
+    assert cached["stale"]["checked_units"] == ["alpha"]
 
 
 def test_exit_codes_distinguish_notify(tmp_path, capsys):
