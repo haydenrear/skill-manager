@@ -1,6 +1,6 @@
 [project]
 name = "skt"
-version = "0.2.0"
+version = "0.3.0"
 description = "Skill-lifecycle CLI: startup disclosure, version/sync notifications, and worktree change management for skill-manager homes."
 requires-python = ">=3.11"
 dependencies = []

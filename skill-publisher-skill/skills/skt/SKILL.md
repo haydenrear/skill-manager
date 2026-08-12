@@ -24,9 +24,11 @@ skt publish [<unit>]  # a home-edited skill -> up one tier -> its own git repo
 ## Startup disclosure
 
 In Claude Code this plugin's `SessionStart` hook injects `skt status`
-into every session automatically, and a `PostToolUse` hook surfaces
-"new version available" notifications when the throttled check fires
-(every hook injection appends a line to `<home>/logs/skt/hook.log`).
+into every session automatically and performs the one bounded live
+refresh of the check cache; the `PostToolUse` hook is cache-only — it
+surfaces "new version available" notifications from that cached result
+and never runs a check itself (every hook injection appends a line to
+`<home>/logs/skt/hook.log`).
 Harnesses without a hook runtime (codex, gemini) get the projected skt
 skill plus an instruction snippet instead — the honest per-harness
 matrix is `../../references/harness-capabilities.md`.

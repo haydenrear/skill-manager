@@ -6,5 +6,5 @@ skill_references = [
 
 [skill]
 name = "skt"
-version = "0.2.0"
+version = "0.3.0"
 description = "Session-start skill/plugin disclosure, home-tier and epic/ticket orientation, new-version and sync-with-root notifications, and worktree change management via the skt CLI."

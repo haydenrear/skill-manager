@@ -29,7 +29,7 @@ def test_help_runs_clean():
 def test_version():
     result = run("--version")
     assert result.returncode == 0
-    assert result.stdout.strip() == "skt 0.2.0"
+    assert result.stdout.strip() == "skt 0.3.0"
 
 
 def test_no_args_prints_help():

@@ -48,8 +48,20 @@ SKT_CMD="$(resolve_skt)" || { log_line "skt-unresolvable"; exit 0; }
 REPORT="$($SKT_CMD status 2>/dev/null)" || { log_line "status-failed"; exit 0; }
 log_line "status-injected"
 printf '%s\n' "$REPORT"
-CHECK="$($SKT_CMD check --cached 2>/dev/null)"
-rc=$?
+# `check --cached` is contract-cache-only: it reports a typed
+# cache_state and never refreshes. SessionStart is the one hook allowed
+# a live refresh — check.py enforces the 15s wall budget at process
+# level (children run in their own groups and are killed at the
+# deadline), which fits under this hook's 30s — so a cold home pays one
+# bounded refresh here and every PostToolUse stays cache-only.
+STATE="$($SKT_CMD check --cached --json 2>/dev/null | sed -n 's/.*"cache_state": *"\([a-z]*\)".*/\1/p' | head -n 1)"
+if [ "$STATE" = "fresh" ]; then
+  CHECK="$($SKT_CMD check --cached 2>/dev/null)"
+  rc=$?
+else
+  CHECK="$($SKT_CMD check 2>/dev/null)"
+  rc=$?
+fi
 if [ "$rc" -eq 10 ]; then
   log_line "check-notified"
   printf '\n%s\n' "$CHECK"

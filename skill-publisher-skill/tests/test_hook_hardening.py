@@ -14,7 +14,7 @@ from skt import check as check_mod  # noqa: E402
 from skt import ticket as ticket_mod  # noqa: E402
 
 from test_check import advance_upstream, make_unit_upstream, unit_record  # noqa: E402
-from test_hooks import HOOKS  # noqa: E402
+from test_hooks import HOOKS, seed_cache  # noqa: E402
 from test_status import make_home, make_repo  # noqa: E402
 from test_ticket_publish import fake_giw  # noqa: E402
 
@@ -44,6 +44,7 @@ def test_post_tool_notifies_once_per_check_result(tmp_path):
     bare, tip = make_unit_upstream(tmp_path, "alpha")
     home = make_home(repo, units={"alpha": unit_record(bare, tip)})
     advance_upstream(bare, tmp_path)
+    seed_cache(home, repo)
     first = run_post_tool(home, repo)
     assert first.returncode == 0
     assert "new version available" in json.loads(first.stdout)["hookSpecificOutput"]["additionalContext"]
@@ -54,6 +55,26 @@ def test_post_tool_notifies_once_per_check_result(tmp_path):
     assert log.count("check-notified") == 1
 
 
+def test_post_tool_cold_home_is_cache_only_and_fast(tmp_path):
+    """Issue #19: a home cloned without cache/ must not turn PostToolUse
+    into a live check — the hook stays under 1s and NEVER repairs the
+    cache itself, so the second call is exactly as cheap as the first."""
+    import time
+
+    repo = make_repo(tmp_path / "repo")
+    bare, tip = make_unit_upstream(tmp_path, "alpha")
+    home = make_home(repo, units={"alpha": unit_record(bare, tip)})
+    advance_upstream(bare, tmp_path)  # a pending notification the hook must NOT go fetch
+    for attempt in ("cold", "still-cold"):
+        t0 = time.monotonic()
+        proc = run_post_tool(home, repo)
+        elapsed = time.monotonic() - t0
+        assert proc.returncode == 0
+        assert proc.stdout.strip() == "", f"{attempt}: stale state must not be injected as current"
+        assert elapsed < 1.0, f"{attempt}: cache-only hook took {elapsed:.2f}s"
+    assert not (home / "cache" / "skt-check.json").exists(), "the hook path must not write the cache"
+
+
 def test_network_budget_yields_unverifiable_not_late(tmp_path, monkeypatch):
     repo = make_repo(tmp_path / "repo")
     units = {}
@@ -62,7 +83,7 @@ def test_network_budget_yields_unverifiable_not_late(tmp_path, monkeypatch):
         units[f"unit{i}"] = unit_record(bare, tip)
     make_home(repo, units=units)
 
-    def slow_tip(origin, ref):
+    def slow_tip(origin, ref, **_kw):  # accepts the live path's deadline kwarg
         import time
 
         time.sleep(0.5)

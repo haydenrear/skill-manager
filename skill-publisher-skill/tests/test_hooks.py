@@ -28,6 +28,20 @@ def run_hook(script: str, home: Path, cwd: Path) -> subprocess.CompletedProcess:
     )
 
 
+def seed_cache(home: Path, cwd: Path) -> None:
+    """One explicit live check, as SessionStart's bounded refresh would run.
+
+    PostToolUse is contract-cache-only: without this seed it reports
+    cache_state=missing and stays silent.
+    """
+    subprocess.run(
+        [sys.executable, str(PLUGIN_ROOT / "src" / "skt" / "cli.py"), "check"],
+        capture_output=True, text=True, cwd=cwd,
+        env={"PATH": "/usr/bin:/bin", "SKILL_MANAGER_HOME": str(home)},
+        check=False,
+    )
+
+
 def test_hooks_json_references_existing_executables():
     config = json.loads((HOOKS / "hooks.json").read_text())
     events = config["hooks"]
@@ -70,6 +84,7 @@ def test_post_tool_silent_when_current(tmp_path):
     repo = make_repo(tmp_path / "repo")
     bare, tip = make_unit_upstream(tmp_path, "alpha")
     home = make_home(repo, units={"alpha": unit_record(bare, tip)})
+    seed_cache(home, repo)
     proc = run_hook("skt-post-tool.sh", home, repo)
     assert proc.returncode == 0
     assert proc.stdout.strip() == ""
@@ -80,6 +95,7 @@ def test_post_tool_notifies_on_stale_unit(tmp_path):
     bare, tip = make_unit_upstream(tmp_path, "alpha")
     home = make_home(repo, units={"alpha": unit_record(bare, tip)})
     advance_upstream(bare, tmp_path)
+    seed_cache(home, repo)
     proc = run_hook("skt-post-tool.sh", home, repo)
     assert proc.returncode == 0
     payload = json.loads(proc.stdout)

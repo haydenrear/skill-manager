@@ -15,9 +15,18 @@ from .homes import root_home
 
 
 def _git(*args: str, cwd: str | Path | None = None) -> str:
-    proc = subprocess.run(
-        ["git", *args], cwd=str(cwd) if cwd else None, capture_output=True, text=True
-    )
+    # Bounded: this runs on hook paths (status/check), where a hung local
+    # git call must degrade to "unknown", never stall an agent session.
+    try:
+        proc = subprocess.run(
+            ["git", *args],
+            cwd=str(cwd) if cwd else None,
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+    except subprocess.TimeoutExpired:
+        return ""
     return proc.stdout.strip() if proc.returncode == 0 else ""
 
 
