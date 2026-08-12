@@ -159,6 +159,391 @@
       ],
       "errors": [],
       "verdict": "recorded"
+    },
+    {
+      "schema_version": 1,
+      "scope": "ticket",
+      "scope_id": "ISSUE-168",
+      "workflow": "child-home-materialization-workflow",
+      "recorded_at_utc": "2026-08-12T22:15:18.682747+00:00",
+      "metrics": {
+        "variables": 38,
+        "actions": 9,
+        "action_attribution": "top-level disjuncts of the next-state relation CliDisclosureNext, called-operator bodies expanded transitively; helpers are not actions",
+        "actions_from_fallback_heuristic": false,
+        "bound": null,
+        "bound_complete": false,
+        "bound_resolved_variables": 0,
+        "bound_unresolved_variables": [
+          "cli_store_units",
+          "cli_doc_repos",
+          "cli_harness_templates",
+          "cli_harness_instances",
+          "cli_installed_records",
+          "cli_lock_units",
+          "cli_agent_projections",
+          "cli_bindings",
+          "cli_projection_rows",
+          "cli_managed_copies",
+          "cli_import_directives",
+          "cli_projection_conflicts",
+          "cli_tool_records",
+          "cli_cli_lock",
+          "cli_skill_scripts_run",
+          "cli_errors",
+          "cli_gateway_url_configured",
+          "cli_registry_url_configured",
+          "cli_gateway_mcp_snapshot",
+          "effect_status",
+          "effect_continuation",
+          "program_halted",
+          "always_after_ran",
+          "rollback_journal",
+          "gateway_catalog",
+          "gateway_dynamic_servers",
+          "gateway_global_deployments",
+          "gateway_session_deployments",
+          "gateway_tools",
+          "gateway_disclosures",
+          "gateway_errors",
+          "gateway_last_init",
+          "server_registry_units",
+          "server_versions",
+          "server_packages",
+          "server_authenticated_users",
+          "project_model",
+          "result"
+        ],
+        "modularity": 0.0,
+        "distinct_states": null,
+        "generated_states": null,
+        "depth": null,
+        "gate_passed": false,
+        "gate_violations": [
+          "state-space upper bound UNKNOWN: no variable domain could be resolved from a TypeInvariant/TypeOK or from the configured invariants, so the bound cannot be compared against max_state_space_bound",
+          "component C1 is touched by 9 actions (RenderProgressiveRootHelp, RenderInstallCommandHelp, RenderSyncCommandHelp, RenderProjectProfilesListHelp, ExposeInstallLocalUnitWorkflowDocs, ExposeSkillScriptsWorkflowDocs, ExposeProjectEnvWorkflowDocs, EmitSyncOneUnitAgentContext, EmitProjectEnvAgentContext), exceeding max_component_actions 8"
+        ],
+        "budget_utilization": {}
+      },
+      "delta": {
+        "previous_scope_id": "ISSUE-166",
+        "metrics": {
+          "variables": {
+            "before": 38,
+            "after": 38,
+            "delta": 0,
+            "percent": 0.0
+          },
+          "actions": {
+            "before": 9,
+            "after": 9,
+            "delta": 0,
+            "percent": 0.0
+          },
+          "bound": {
+            "before": null,
+            "after": null,
+            "delta": null
+          },
+          "distinct_states": {
+            "before": null,
+            "after": null,
+            "delta": null
+          },
+          "generated_states": {
+            "before": null,
+            "after": null,
+            "delta": null
+          },
+          "depth": {
+            "before": null,
+            "after": null,
+            "delta": null
+          }
+        },
+        "direction": "zero"
+      },
+      "justification": "",
+      "retention": {
+        "kill_rate": {
+          "status": "not_run",
+          "classification": "unverified",
+          "evidence": "",
+          "value": null
+        },
+        "effect_conformance": {
+          "status": "not_run",
+          "classification": "unverified",
+          "evidence": "",
+          "value": null
+        },
+        "external_coverage": {
+          "status": "not_run",
+          "classification": "unverified",
+          "evidence": "",
+          "value": null
+        }
+      },
+      "retention_summary": [
+        "kill_rate=not_run (UNVERIFIED)",
+        "effect_conformance=not_run (UNVERIFIED)",
+        "external_coverage=not_run (UNVERIFIED)"
+      ],
+      "validated_refactor": {
+        "tlc_before": {
+          "status": "",
+          "classification": "unverified",
+          "evidence": "TODO -- path to the pre-change TLC output",
+          "value": null
+        },
+        "tlc_after": {
+          "status": "",
+          "classification": "unverified",
+          "evidence": "TODO -- path to the post-change TLC output",
+          "value": null
+        },
+        "behavior_tests": {
+          "status": "",
+          "classification": "unverified",
+          "evidence": "TODO -- path to the behavior-test output",
+          "value": null
+        },
+        "descriptor_comparison": {
+          "status": "",
+          "classification": "unverified",
+          "evidence": "TODO -- path to the before/after descriptor comparison",
+          "value": null
+        }
+      },
+      "validated_refactor_summary": [
+        "tlc_before=(absent) (UNVERIFIED)",
+        "tlc_after=(absent) (UNVERIFIED)",
+        "behavior_tests=(absent) (UNVERIFIED)",
+        "descriptor_comparison=(absent) (UNVERIFIED)"
+      ],
+      "refinement": {
+        "searched": false,
+        "outcome": "",
+        "detail": "",
+        "measured": false,
+        "applied": false,
+        "approved_by": ""
+      },
+      "coverage_audit": {
+        "status": "not_run",
+        "passing": false,
+        "report": "",
+        "in_scope_gaps": null,
+        "scope_source": ""
+      },
+      "transition_diff": "",
+      "narrative": "",
+      "tlc_findings": [
+        {
+          "level": "NOTE",
+          "message": "TLC reports incomplete; comparison skipped."
+        }
+      ],
+      "notes": [
+        "NOTE: TLC reports incomplete; comparison skipped.",
+        "coverage audit (MF-026) is `not_run`: audit has not been run for this scope. RECORDED, NOT REFUSED (2026-08-04). The four oracles check fidelity of what is modeled and are bounded to it; unmodeled surface is invisible to all of them while they report green, and this is the only sweep that looks at it. Run `prompts/coverage_audit.md` if you want that read on this scope."
+      ],
+      "errors": [
+        "REJECTED -- no recursive refinement record. Every close carries either an approved recommendation with evidence, or an explicit 'searched, found none'. Set `refinement.searched: true` and record the outcome.",
+        "REJECTED -- no `narrative:` recorded. The ledger's machine-checked core is deliberately narrow; the narrative carries the reasoning, the measured alternatives, and any finding the core cannot express."
+      ],
+      "verdict": "rejected"
+    },
+    {
+      "schema_version": 1,
+      "scope": "ticket",
+      "scope_id": "ISSUE-168",
+      "workflow": "child-home-materialization-workflow",
+      "recorded_at_utc": "2026-08-12T22:17:04.911165+00:00",
+      "metrics": {
+        "variables": 38,
+        "actions": 9,
+        "action_attribution": "top-level disjuncts of the next-state relation CliDisclosureNext, called-operator bodies expanded transitively; helpers are not actions",
+        "actions_from_fallback_heuristic": false,
+        "bound": null,
+        "bound_complete": false,
+        "bound_resolved_variables": 0,
+        "bound_unresolved_variables": [
+          "cli_store_units",
+          "cli_doc_repos",
+          "cli_harness_templates",
+          "cli_harness_instances",
+          "cli_installed_records",
+          "cli_lock_units",
+          "cli_agent_projections",
+          "cli_bindings",
+          "cli_projection_rows",
+          "cli_managed_copies",
+          "cli_import_directives",
+          "cli_projection_conflicts",
+          "cli_tool_records",
+          "cli_cli_lock",
+          "cli_skill_scripts_run",
+          "cli_errors",
+          "cli_gateway_url_configured",
+          "cli_registry_url_configured",
+          "cli_gateway_mcp_snapshot",
+          "effect_status",
+          "effect_continuation",
+          "program_halted",
+          "always_after_ran",
+          "rollback_journal",
+          "gateway_catalog",
+          "gateway_dynamic_servers",
+          "gateway_global_deployments",
+          "gateway_session_deployments",
+          "gateway_tools",
+          "gateway_disclosures",
+          "gateway_errors",
+          "gateway_last_init",
+          "server_registry_units",
+          "server_versions",
+          "server_packages",
+          "server_authenticated_users",
+          "project_model",
+          "result"
+        ],
+        "modularity": 0.0,
+        "distinct_states": null,
+        "generated_states": null,
+        "depth": null,
+        "gate_passed": false,
+        "gate_violations": [
+          "state-space upper bound UNKNOWN: no variable domain could be resolved from a TypeInvariant/TypeOK or from the configured invariants, so the bound cannot be compared against max_state_space_bound",
+          "component C1 is touched by 9 actions (RenderProgressiveRootHelp, RenderInstallCommandHelp, RenderSyncCommandHelp, RenderProjectProfilesListHelp, ExposeInstallLocalUnitWorkflowDocs, ExposeSkillScriptsWorkflowDocs, ExposeProjectEnvWorkflowDocs, EmitSyncOneUnitAgentContext, EmitProjectEnvAgentContext), exceeding max_component_actions 8"
+        ],
+        "budget_utilization": {}
+      },
+      "delta": {
+        "previous_scope_id": "ISSUE-166",
+        "metrics": {
+          "variables": {
+            "before": 38,
+            "after": 38,
+            "delta": 0,
+            "percent": 0.0
+          },
+          "actions": {
+            "before": 9,
+            "after": 9,
+            "delta": 0,
+            "percent": 0.0
+          },
+          "bound": {
+            "before": null,
+            "after": null,
+            "delta": null
+          },
+          "distinct_states": {
+            "before": null,
+            "after": null,
+            "delta": null
+          },
+          "generated_states": {
+            "before": null,
+            "after": null,
+            "delta": null
+          },
+          "depth": {
+            "before": null,
+            "after": null,
+            "delta": null
+          }
+        },
+        "direction": "zero"
+      },
+      "justification": "",
+      "retention": {
+        "kill_rate": {
+          "status": "not_run",
+          "classification": "unverified",
+          "evidence": "",
+          "value": null
+        },
+        "effect_conformance": {
+          "status": "not_run",
+          "classification": "unverified",
+          "evidence": "",
+          "value": null
+        },
+        "external_coverage": {
+          "status": "not_run",
+          "classification": "unverified",
+          "evidence": "",
+          "value": null
+        }
+      },
+      "retention_summary": [
+        "kill_rate=not_run (UNVERIFIED)",
+        "effect_conformance=not_run (UNVERIFIED)",
+        "external_coverage=not_run (UNVERIFIED)"
+      ],
+      "validated_refactor": {
+        "tlc_before": {
+          "status": "green",
+          "classification": "retained",
+          "evidence": "specs/tickets/ISSUE-168/results/tlc-before-MC.log",
+          "value": null
+        },
+        "tlc_after": {
+          "status": "green",
+          "classification": "retained",
+          "evidence": "specs/tickets/ISSUE-168/results/tlc-after-MC.log",
+          "value": null
+        },
+        "behavior_tests": {
+          "status": "pass",
+          "classification": "retained",
+          "evidence": "jbang RunTests.java -- ALL PASSED (includes new ProjectResolveAtomicClosureTest); see validation-2026-08-12.md",
+          "value": null
+        },
+        "descriptor_comparison": {
+          "status": "recorded",
+          "classification": "retained",
+          "evidence": "specs/tickets/ISSUE-168/results/descriptor-comparison.md",
+          "value": null
+        }
+      },
+      "validated_refactor_summary": [
+        "tlc_before=green (retained)",
+        "tlc_after=green (retained)",
+        "behavior_tests=pass (retained)",
+        "descriptor_comparison=recorded (retained)"
+      ],
+      "refinement": {
+        "searched": true,
+        "outcome": "none",
+        "detail": "Searched the slice for a complexity reduction: the staged-closure validation is expressed as three pure operators over EXISTING constants and state (UnitMarkdownImportEdges, ProjectImportCandidates, ProjectMissingMarkdownImports) plus one guarded reject branch. No state variable, action, or config was added; before/after descriptors are identical (descriptor-comparison.md), so there is no representation to shrink without deleting the newly stated behavior.\n",
+        "measured": true,
+        "applied": false,
+        "approved_by": ""
+      },
+      "coverage_audit": {
+        "status": "not_run",
+        "passing": false,
+        "report": "",
+        "in_scope_gaps": null,
+        "scope_source": ""
+      },
+      "transition_diff": "",
+      "narrative": "ISSUE-168 makes the model say what the implementation now does: a clean-home project resolve validates markdown skill-imports ONCE against the candidate closure (everything about to publish plus everything installed) and publishes atomically, and a genuinely missing import is a typed PROJECT_IMPORT_MISSING reject with UNCHANGED state. The monolith action was already atomic -- the defect was the implementation validating per-unit against the incomplete store -- so the model change is the validation semantics made explicit, not a behavior rewrite. Alternatives measured: a CONSTANT import relation (rejected: TLC cfgs cannot assign tuple sets without an MC wrapper module, and the repo runs run_tlc.sh directly) and a reachable-reject bounded model (rejected: ProjectA declares every unit-kind constant, so any missing target would either be permanently missing -- making the publish branch and everything downstream of it unreachable -- or never missing; the reject branch's witnesses are ProjectResolveAtomicClosureTest's planted ghost import and the end-to-end exit-11 negative case recorded in validation-2026-08-12.md). Finding the machine core cannot express: MC_program_promotion.cfg exceeds the 120 s cap on the UNMODIFIED baseline with the same progress profile and no violation in either bounded probe -- a pre-existing bound, recorded in the validation evidence rather than silently skipped.",
+      "tlc_findings": [
+        {
+          "level": "NOTE",
+          "message": "TLC reports incomplete; comparison skipped."
+        }
+      ],
+      "notes": [
+        "NOTE: TLC reports incomplete; comparison skipped.",
+        "coverage audit (MF-026) is `not_run`: audit has not been run for this scope. RECORDED, NOT REFUSED (2026-08-04). The four oracles check fidelity of what is modeled and are bounded to it; unmodeled surface is invisible to all of them while they report green, and this is the only sweep that looks at it. Run `prompts/coverage_audit.md` if you want that read on this scope."
+      ],
+      "errors": [],
+      "verdict": "recorded"
     }
   ]
 }

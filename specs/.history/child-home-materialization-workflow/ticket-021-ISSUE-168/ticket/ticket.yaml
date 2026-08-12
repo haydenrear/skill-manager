@@ -1,0 +1,105 @@
+{
+  "current_dir": "current",
+  "desired_dir": "desired",
+  "promotion": {
+    "close_command": "tla-spec-dev --spec-root specs close ticket ISSUE-168",
+    "on_close": "promote ticket desired/ onto project current/ (removing only seeded paths this ticket dropped, preserving unseeded current-only paths) and merge Test Graph artifacts into project specs/",
+    "worktree": "deferred"
+  },
+  "results_dir": "results",
+  "schema_version": "tla-spec-dev.ticket-workflow.v1",
+  "seed_manifest": {
+    "desired": [
+      "ClaimantRefreshExternal.cfg",
+      "ClaimantRefreshExternal.tla",
+      "ClaimantRefreshExternal_regression.cfg",
+      "ClaimantRefreshInternal.cfg",
+      "ClaimantRefreshInternal.tla",
+      "ClaimantRefreshInternal_regression.cfg",
+      "MC.cfg",
+      "MC_program_promotion.cfg",
+      "README.md",
+      "SkillManager.tla",
+      "case_adapters.toml",
+      "claimant_refresh_actions.yml",
+      "extract_manifest.sh",
+      "generated/spec-unit/ClaimantRefreshInternal.dot",
+      "generated/spec-unit/claimant_refresh_cases/__init__.py",
+      "generated/spec-unit/claimant_refresh_cases/case_coverage.json",
+      "generated/spec-unit/claimant_refresh_cases/cases.py",
+      "generated/spec-unit/claimant_refresh_cases/docs.md",
+      "generated/spec-unit/claimant_refresh_cases/doubles.py",
+      "generated/spec-unit/claimant_refresh_cases/param_recovery_audit.md",
+      "generated/spec-unit/claimant_refresh_cases/types.py",
+      "generated/spec-unit/claimant_refresh_cases/validators.py",
+      "production_adapters.py",
+      "run_tlc.sh",
+      "spec_manifest.yaml",
+      "testgraph_bindings.yml",
+      "tests/test_claimant_refresh_program_model.py",
+      "tests/test_cli_agent_context_program_model.py",
+      "tests/test_cli_help_program_model.py",
+      "tests/test_cli_metadata_program_model.py",
+      "tests/test_cli_skill_docs_program_model.py",
+      "tests/test_program_model_contract.py"
+    ],
+    "excluded": [
+      "tests/test_current_ticket_workflow.py"
+    ],
+    "note": "Paths seeded from project current/ into this ticket workspace. Promotion may remove a project current/ path only if it appears here and the ticket dropped it; paths absent from this list were never offered to the ticket and are preserved.",
+    "source": "/Users/hayde/IdeaProjects/wt-sm-168/specs/current"
+  },
+  "source_current": "/Users/hayde/IdeaProjects/wt-sm-168/specs/current",
+  "source_project_desired": "/Users/hayde/IdeaProjects/wt-sm-168/specs/desired_program_model",
+  "status": "active",
+  "testgraph_dir": "testgraph",
+  "ticket": {
+    "acceptance": {
+      "assertions": [
+        "Offline fixture with reciprocal valid skill-imports resolves from a brand-new isolated home in one `project resolve --skip-gateway` invocation; declaration order reversed yields the identical result and closure.",
+        "A planted genuinely-missing third import fails with typed, attributable evidence (unit, file, missing target) and leaves no newly installed units, no resolved lock, no child home, no projections; the home outside the registration is byte-identical.",
+        "Direct `install` of a unit with an undeclared missing import still commits the unit and exits typed code 11 (SkillDevInstalled contract)."
+      ]
+    },
+    "github_issue": "https://github.com/haydenrear/skill-manager/issues/168",
+    "id": "ISSUE-168",
+    "model": {
+      "external": [
+        "A clean home declaring two units with reciprocal skill-imports resolves both in ONE public `project resolve` invocation, in either declaration order, with identical resulting closure.",
+        "Plugins (and docs/harnesses) declared in the manifest are part of the closure the validation sees, fixing the issue-174 ordering symptom."
+      ],
+      "internal": [
+        "ResolveProjectDependencies validates markdown import targets against the candidate closure (staged units plus installed store), not against the incomplete store mid-publish.",
+        "A closure whose imports resolve publishes store units, installed records, lock rows, bindings, and projections in one action; a closure with a missing import rejects typed with all state UNCHANGED."
+      ]
+    },
+    "objective": "One public `project resolve` into a clean home stages the COMPLETE declared unit closure, validates cross-unit markdown skill-imports once against that candidate closure, and publishes installed units, project lock, child home, and projections together. A genuinely missing import is a typed refusal BEFORE any commit: no newly installed partial units, no resolved lock, no child-home realization, no projections; the registration may retain declared intent. The direct `install` contract for an undeclared missing import (commit + typed exit 11) is preserved.\n",
+    "phase": "CHM",
+    "status": "open",
+    "title": "Make clean-home project resolution atomic across mutually importing units",
+    "validation": {
+      "focused": [
+        "jbang RunTests.java ProjectResolveAtomicClosureTest",
+        "jbang RunTests.java ProjectDependencyResolverTest"
+      ],
+      "formal": [
+        "bash specs/tickets/ISSUE-168/current/run_tlc.sh specs/tickets/ISSUE-168/current/SkillManager.tla specs/tickets/ISSUE-168/current/MC.cfg",
+        "uv run --with pytest --with pyyaml pytest specs/tickets/ISSUE-168/current/tests"
+      ],
+      "graph": [
+        "project-resolve",
+        "project-smoke",
+        "onboarding",
+        "spec-conformance"
+      ],
+      "unit": [
+        "jbang RunTests.java"
+      ]
+    }
+  },
+  "ticket_dir": "/Users/hayde/IdeaProjects/wt-sm-168/specs/tickets/ISSUE-168",
+  "ticket_id": "ISSUE-168",
+  "ticket_index": 21,
+  "ticket_plan": "/Users/hayde/IdeaProjects/wt-sm-168/specs/desired_program_model/ticket_plan.yaml",
+  "ticket_root": "/Users/hayde/IdeaProjects/wt-sm-168/specs/tickets"
+}
