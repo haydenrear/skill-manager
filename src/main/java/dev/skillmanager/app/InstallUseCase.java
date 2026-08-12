@@ -245,6 +245,78 @@ public final class InstallUseCase {
     }
 
     /**
+     * Publish a PRE-RESOLVED graph: the same commit / plan / policy-gate /
+     * post-update shape as {@link #buildProgram}, minus the resolve (the
+     * caller already staged the closure) and minus the per-unit
+     * post-commit markdown-import validation.
+     *
+     * <h2>Why validation is the caller's job here</h2>
+     *
+     * <p>This exists for {@code project resolve} (issue #168): it stages the
+     * COMPLETE declared closure with one
+     * {@link dev.skillmanager.resolve.Resolver#resolveAll} call, validates
+     * cross-unit markdown imports ONCE against that candidate closure via
+     * {@link dev.skillmanager.validation.MarkdownImportValidator}, and only
+     * then runs this program. Re-validating per-unit after commit is exactly
+     * the defect being removed — with mutually importing units it reports the
+     * not-yet-committed half as missing and turns every clean resolve into
+     * one-unit-per-invocation. The direct {@code install} contract
+     * (commit, then validate, exit
+     * {@link dev.skillmanager.validation.MarkdownImportValidator#EXIT_CODE}
+     * on an undeclared missing import) lives in {@link #buildProgram} and is
+     * untouched.
+     *
+     * <p>All commits ride ONE program, so one journal: a failed effect walks
+     * back every unit this publish committed, not just the failing one —
+     * the no-partial-state guarantee reuses the executor's compensation
+     * machinery instead of a resolver-local transaction layer.
+     *
+     * <p>{@code CleanupResolvedGraph} runs {@code alwaysAfter}, so the staged
+     * temp dirs are removed once the program has run, whatever the outcome;
+     * the caller only cleans up when it fails BEFORE running the program.
+     */
+    public static StagedProgram<Report> buildProgramForStagedGraph(SkillStore store,
+                                                                   GatewayConfig gw,
+                                                                   ResolvedGraph graph,
+                                                                   boolean yes,
+                                                                   boolean withGateway,
+                                                                   boolean bindDefault) {
+        String operationId = "install-staged-" + UUID.randomUUID();
+
+        List<SkillEffect> stage1Effects = new ArrayList<>(
+                ResolveContextUseCase.preflight(gw, null, withGateway));
+        stage1Effects.add(new SkillEffect.SnapshotMcpDeps());
+        stage1Effects.add(new SkillEffect.BuildInstallPlan(graph, false, List.of(), withGateway));
+        stage1Effects.add(new SkillEffect.CheckInstallPolicyGate(yes));
+        stage1Effects.add(new SkillEffect.CommitUnitsToStore(graph));
+        stage1Effects.add(new SkillEffect.RecordAuditPlan("install"));
+        stage1Effects.add(new SkillEffect.RecordSourceProvenance(graph));
+        stage1Effects.add(new SkillEffect.PrintInstalledSummary(graph));
+        stage1Effects.add(new SkillEffect.RunInstallPlan(gw));
+
+        Program<?> stage1 = new Program<>(operationId + "-stage1", stage1Effects, receipts -> null)
+                .withFinally(new SkillEffect.CleanupResolvedGraph(graph));
+
+        java.util.function.Function<EffectContext, Program<?>> stage2Builder = ctx -> {
+            List<dev.skillmanager.model.AgentUnit> tailUnits = graph.units();
+            List<SkillEffect> stage2Effects = new ArrayList<>();
+            if (bindDefault && withGateway) {
+                stage2Effects.add(new SkillEffect.SyncAgents(tailUnits, gw));
+            }
+            if (bindDefault) {
+                stage2Effects.add(SkillEffect.RefreshHarnessPlugins.reinstallAll(pluginNames(tailUnits)));
+            }
+            if (withGateway) {
+                stage2Effects.add(new SkillEffect.UnregisterMcpOrphans(gw));
+            }
+            stage2Effects.add(buildLockUpdate(store, graph));
+            return new Program<>(operationId + "-stage2", stage2Effects, receipts -> null);
+        };
+
+        return new StagedProgram<>(operationId, stage1, stage2Builder, InstallUseCase::decode);
+    }
+
+    /**
      * Compute the post-install lock by upserting one {@link dev.skillmanager.lock.LockedUnit}
      * per resolved unit on top of the current lock. The resolved-sha
      * comes from the resolver's {@code Resolved} record; for non-git

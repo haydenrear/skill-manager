@@ -193,9 +193,39 @@ public final class ProjectDependencyResolver {
 
     private record InstalledProjectUnits(List<String> installed, List<String> directNames) {}
 
+    private record MissingRef(SkillProject.ProjectUnitRef ref, String expectedName) {}
+
+    /**
+     * Install the declared units the store is missing — atomically across the
+     * whole declared closure (issue #168).
+     *
+     * <h2>Stage, validate once, publish together</h2>
+     *
+     * <p>The old shape ran one complete {@link InstallUseCase} per declared
+     * ref, and each install validated markdown imports against only the
+     * currently installed store. Units with reciprocal {@code skill-imports}
+     * could therefore never resolve into a clean home in one pass — whichever
+     * installed first reported the other missing — and in general EVERY clean
+     * resolve advanced one unit per invocation, committing it and then
+     * aborting on the next declared-but-absent import target (including
+     * plugins declared later in the manifest, issue #174).
+     *
+     * <p>Now: one {@link Resolver#resolveAll} stages every missing declared
+     * ref plus transitives into a single candidate graph; markdown imports
+     * are validated ONCE against that candidate closure (staged roots first,
+     * installed store as fallback); only then does one
+     * {@link InstallUseCase#buildProgramForStagedGraph} program publish the
+     * commits, plan actions and units-lock together. A genuinely missing
+     * import throws {@link ProjectImportViolationException} BEFORE anything
+     * is committed — no partial units, and the caller's lock / child-home /
+     * projection phases never run. A failure inside the publish program rolls
+     * back every commit through the executor's compensation journal.
+     */
     private InstalledProjectUnits installMissing(SkillProject project, Options options) throws IOException {
         List<String> installed = new ArrayList<>();
         List<String> directNames = new ArrayList<>();
+        List<MissingRef> missing = new ArrayList<>();
+        List<Resolver.Coord> coords = new ArrayList<>();
         for (SkillProject.ProjectUnitRef ref : installableRefs(project)) {
             String expectedName = unitName(ref.reference(), project.projectRoot()).orElse(null);
             if (expectedName == null) {
@@ -211,33 +241,76 @@ public final class ProjectDependencyResolver {
                 validateExpectedKind(ref, expectedName);
                 continue;
             }
-
+            missing.add(new MissingRef(ref, expectedName));
             InstallSource source = installSource(ref, project.projectRoot());
-            var program = InstallUseCase.buildProgram(
-                    store,
-                    gateway,
-                    null,
-                    source.source(),
-                    source.version(),
-                    options.yes(),
-                    false,
-                    options.withGateway(),
-                    false);
-            Executor.Outcome<InstallUseCase.Report> outcome = new Executor(store, gateway).runStaged(program);
-            InstallUseCase.Report report = outcome.result();
-            if (report.exitCode() != 0 || report.errorCount() != 0) {
-                throw new IOException("project dependency resolve failed for "
-                        + ref.alias() + " (" + ref.source() + "), exit=" + report.exitCode()
-                        + ", errors=" + report.errorCount());
+            coords.add(new Resolver.Coord(source.source(), source.version()));
+        }
+        if (missing.isEmpty()) {
+            return new InstalledProjectUnits(List.copyOf(installed), List.copyOf(directNames));
+        }
+
+        Resolver.ResolveOutcome outcome = new Resolver(store).resolveAll(coords);
+        boolean published = false;
+        try {
+            if (!outcome.failures().isEmpty()) {
+                int code = TransitiveFailures.exitCodeFor(outcome.failures());
+                throw new IOException("project dependency resolve failed, exit=" + code
+                        + ", errors=" + outcome.failures().size()
+                        + ": " + outcome.failures().get(0).reason());
+            }
+            validateStagedClosureImports(outcome.graph());
+            var program = InstallUseCase.buildProgramForStagedGraph(
+                    store, gateway, outcome.graph(),
+                    options.yes(), options.withGateway(), false);
+            // The program's alwaysAfter cleanup owns the staged temp dirs
+            // from here, run or rolled back.
+            published = true;
+            Executor.Outcome<InstallUseCase.Report> result =
+                    new Executor(store, gateway).runStaged(program);
+            InstallUseCase.Report report = result.result();
+            if (report.exitCode() != 0 || report.errorCount() != 0 || result.rolledBack()) {
+                throw new IOException("project dependency resolve failed publishing declared units"
+                        + (result.rolledBack() ? " (rolled back)" : "")
+                        + ", exit=" + report.exitCode() + ", errors=" + report.errorCount());
             }
             installed.addAll(report.committed());
-            if (expectedName != null && !store.containsUnit(expectedName)) {
-                throw new IOException("project dependency " + ref.alias()
-                        + " did not install expected unit " + expectedName);
+        } finally {
+            if (!published) outcome.graph().cleanup();
+        }
+
+        for (MissingRef m : missing) {
+            if (m.expectedName() != null && !store.containsUnit(m.expectedName())) {
+                throw new IOException("project dependency " + m.ref().alias()
+                        + " did not install expected unit " + m.expectedName());
             }
-            validateExpectedKind(ref, expectedName);
+            validateExpectedKind(m.ref(), m.expectedName());
         }
         return new InstalledProjectUnits(List.copyOf(installed), List.copyOf(directNames));
+    }
+
+    /**
+     * Validate every staged unit's markdown imports against the candidate
+     * closure the publish is about to produce: the staged roots themselves
+     * plus whatever is already installed. Runs BEFORE any commit so a
+     * violation leaves the store byte-identical.
+     */
+    private void validateStagedClosureImports(
+            dev.skillmanager.resolve.ResolvedGraph graph) throws IOException {
+        List<dev.skillmanager.validation.MarkdownImportValidator.UnitRoot> stagedRoots =
+                new ArrayList<>();
+        Map<String, dev.skillmanager.validation.MarkdownImportValidator.UnitRoot> candidates =
+                new LinkedHashMap<>();
+        for (var resolved : graph.resolved()) {
+            var root = new dev.skillmanager.validation.MarkdownImportValidator.UnitRoot(
+                    resolved.name(), resolved.unit().kind(), resolved.unit().sourcePath());
+            stagedRoots.add(root);
+            candidates.put(resolved.name(), root);
+        }
+        var violations = dev.skillmanager.validation.MarkdownImportValidator
+                .validate(store, stagedRoots, candidates);
+        if (!violations.isEmpty()) {
+            throw new ProjectImportViolationException(violations);
+        }
     }
 
     private List<SkillProjectLock.ProjectBinding> materializeProjectBindings(

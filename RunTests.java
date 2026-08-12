@@ -91,6 +91,7 @@ import dev.skillmanager.project.PluginMarketplaceTest;
 import dev.skillmanager.project.ProjectChildHomeMaterializationTest;
 import dev.skillmanager.project.ProjectSyncIdempotencyTest;
 import dev.skillmanager.project.ProjectDependencyResolverTest;
+import dev.skillmanager.project.ProjectResolveAtomicClosureTest;
 import dev.skillmanager.project.ProjectEnvMaterializerTest;
 import dev.skillmanager.project.ProjectLibResolverTest;
 import dev.skillmanager.project.ProjectVendoredResolverTest;
@@ -199,6 +200,7 @@ public class RunTests {
         failures += ProjectorRegistryTest.run();
         failures += SkillProjectRegistryTest.run();
         failures += ProjectDependencyResolverTest.run();
+        failures += ProjectResolveAtomicClosureTest.run();
         failures += ProjectChildHomeMaterializationTest.run();
         failures += ProjectSyncIdempotencyTest.run();
         failures += ProjectEnvMaterializerTest.run();
