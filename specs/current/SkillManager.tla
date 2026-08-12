@@ -1243,9 +1243,13 @@ ResolveProjectDependencies(project) ==
     \* project_model.manifests retains declared intent; nothing claims
     \* successful resolution. In this bounded model every markdown
     \* import's target belongs to ProjectA's own declared closure, so
-    \* this branch has no reachable witness here; its witnesses are
-    \* ProjectResolveAtomicClosureTest's planted ghost import and the
-    \* project-resolve graph's negative case.
+    \* this branch has no reachable witness here; its automated
+    \* witnesses are ProjectResolveAtomicClosureTest's planted ghost
+    \* import (unit suite) and the e2e CLI negative run recorded in the
+    \* ISSUE-168 ticket results — the project-resolve graph has no
+    \* negative-import node today. A ghost-edge model variant would
+    \* make the branch reachable here; until then this comment is the
+    \* honest record of where the behavior is actually proven.
     /\ result' = Reject("PROJECT_IMPORT_MISSING")
     /\ project_model' = project_model
     /\ UNCHANGED state_vars

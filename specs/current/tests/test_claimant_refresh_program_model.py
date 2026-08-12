@@ -51,10 +51,19 @@ def test_claimant_views_are_additive_to_the_accepted_monolith() -> None:
         assert marker in tla
         assert marker not in accepted_tla
     # The slice is purely additive at line granularity: every line of the
-    # accepted monolith survives verbatim in the working copy.
-    working_lines = set(tla.splitlines())
+    # accepted monolith survives verbatim, IN ORDER AND MULTIPLICITY, as
+    # a subsequence of the working copy. A set-membership check would
+    # accept a rearrangement of accepted lines into different actions —
+    # a semantics change this guard exists to catch (review of PR #184).
+    working_lines = tla.splitlines()
+    cursor = 0
     for line in accepted_tla.splitlines():
-        assert line in working_lines, f"accepted line lost: {line!r}"
+        while cursor < len(working_lines) and working_lines[cursor] != line:
+            cursor += 1
+        assert cursor < len(working_lines), (
+            f"accepted line lost or reordered: {line!r}"
+        )
+        cursor += 1
     assert read(MODEL_ROOT / "MC.cfg") == read(accepted / "MC.cfg")
     assert not (MODEL_ROOT / "Internal.tla").exists()
     assert not (MODEL_ROOT / "External.tla").exists()
