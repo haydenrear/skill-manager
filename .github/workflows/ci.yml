@@ -40,10 +40,35 @@ env:
 
 jobs:
   unit-tests:
-    name: skill-manager unit tests (RunTests.java)
+    name: skill-manager unit tests (RunTests.java + spec models)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+
+      # The accepted-baseline (specs/program_model) and working-model
+      # (specs/current) contract suites. Neither was in any workflow before
+      # ARTI-02 (#103), which is how
+      # test_program_model_accepts_bounded_cli_disclosure_case_surface stayed
+      # red on main across two releases: the check existed, nothing ran it.
+      #
+      # Runs before the JBang suite deliberately — both suites finish in well
+      # under a second, so a broken spec model is reported before the runner
+      # spends minutes resolving Maven artifacts.
+      #
+      # specs/pytest.ini supplies --import-mode=importlib; the two directories
+      # carry five identically named test modules and cannot be collected
+      # together without it.
+      - name: Run spec-model suites
+        run: uv run --with pytest pytest specs/program_model/tests specs/current/tests -q
 
       - name: Set up JDK 21
         uses: actions/setup-java@v4
