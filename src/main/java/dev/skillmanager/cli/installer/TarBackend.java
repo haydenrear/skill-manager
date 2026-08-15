@@ -1,5 +1,7 @@
 package dev.skillmanager.cli.installer;
 
+import dev.skillmanager.lock.Fingerprint;
+import dev.skillmanager.lock.Fingerprints;
 import dev.skillmanager.model.CliDependency;
 import dev.skillmanager.store.SkillStore;
 import dev.skillmanager.shared.util.Archives;
@@ -18,6 +20,7 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.security.MessageDigest;
 import java.util.HexFormat;
+import java.util.Map;
 
 /** Download + extract a tarball/zip/raw binary into {@code bin/cli/<name>}. */
 public final class TarBackend implements InstallerBackend {
@@ -80,15 +83,71 @@ public final class TarBackend implements InstallerBackend {
         }
     }
 
+    /**
+     * The declared download, hashed: {@code tar-v1} over the platform key that
+     * selected the target, the URL, the archive kind, the declared binary name,
+     * the extract list and the declared {@code sha256}.
+     *
+     * <p>{@code sha256} is the strongest input a tar dep has — it names the
+     * exact bytes — and when it is declared this fingerprint is a genuine
+     * content fingerprint of the remote artifact. When it is not, the digest
+     * still covers every other declared input, and the {@link Fingerprint#basis}
+     * says what that costs: a maintainer re-publishing different bytes at the
+     * same URL is invisible to it. The two cases are recorded differently
+     * because a reader has to be able to tell them apart; folding them together
+     * would be the presence check wearing a fingerprint's clothes again.
+     *
+     * <p>The platform key is part of the digest because the artifact genuinely
+     * differs per platform. Two homes on the same machine therefore agree; two
+     * homes on different architectures deliberately do not, and comparing them
+     * is not a question this scheme answers.
+     */
+    @Override
+    public Fingerprint fingerprint(CliDependency dep, SkillStore store, String unitName) {
+        Map.Entry<String, CliDependency.InstallTarget> chosen = pickTargetEntry(dep);
+        if (chosen == null || chosen.getValue() == null) {
+            return Fingerprint.gap("tar " + dep.name() + " declares no install target for "
+                    + Platform.currentKey() + " (and no 'any'), so nothing describes what "
+                    + "would be downloaded");
+        }
+        CliDependency.InstallTarget target = chosen.getValue();
+        if (target.url() == null || target.url().isBlank()) {
+            return Fingerprint.gap("tar " + dep.name() + "'s " + chosen.getKey()
+                    + " install target declares no url");
+        }
+        String digest = Fingerprints.scheme("tar-v1")
+                .field("platform", chosen.getKey())
+                .field("url", target.url())
+                .field("archive", target.archive())
+                .field("binary", target.binary())
+                .fields("extract", target.extract())
+                .field("sha256", target.sha256())
+                .hex();
+        return Fingerprint.over(digest, target.sha256() != null
+                ? "declared url + declared sha256 of the downloaded bytes"
+                : "declared url only — no sha256 is declared, so a re-publish of "
+                        + "different bytes at the same url is not detectable");
+    }
+
     private CliDependency.InstallTarget pickTarget(CliDependency dep) {
+        Map.Entry<String, CliDependency.InstallTarget> chosen = pickTargetEntry(dep);
+        return chosen == null ? null : chosen.getValue();
+    }
+
+    /**
+     * {@link #pickTarget} keeping the platform key that selected the target.
+     * The key is not recoverable from the value and the fingerprint needs it.
+     */
+    private Map.Entry<String, CliDependency.InstallTarget> pickTargetEntry(CliDependency dep) {
         if (dep.platformIndependent() && dep.install().containsKey("any")) {
-            return dep.install().get("any");
+            return Map.entry("any", dep.install().get("any"));
         }
         for (var e : dep.install().entrySet()) {
             if ("any".equals(e.getKey())) continue;
-            if (Platform.matches(e.getKey())) return e.getValue();
+            if (Platform.matches(e.getKey())) return e;
         }
-        return dep.install().get("any");
+        CliDependency.InstallTarget any = dep.install().get("any");
+        return any == null ? null : Map.entry("any", any);
     }
 
     private String suffix(CliDependency.InstallTarget t) {

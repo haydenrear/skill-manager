@@ -39,14 +39,12 @@ public final class SkillScriptBackendTest {
 
             Files.writeString(store.cliBinDir().resolve("force-script-bin"), "#!/bin/sh\n");
             store.cliBinDir().resolve("force-script-bin").toFile().setExecutable(true, false);
-            String fingerprint = SkillScriptBackend.fingerprintFor(store, unitName, dep);
-            CliLock lock = CliLock.load(store);
-            RequestedVersion.Requested req = RequestedVersion.of(dep);
-            lock.recordInstall(dep.backend(), req.tool(), req.version(),
-                    dep.spec(), null, unitName, fingerprint);
-            lock.save(store);
-
+            // Through the production recorder, which is now the only thing
+            // that knows how to turn a dep into a row.
             InstallerRegistry registry = new InstallerRegistry();
+            CliLock lock = CliLock.load(store);
+            dev.skillmanager.lock.CliInstallRecorder.record(lock, registry, dep, store, unitName);
+            lock.save(store);
             registry.installOne(dep, store, unitName);
             assertFalse(Files.exists(store.cliBinDir().resolve("run.log")),
                     "matching fingerprint skips without force");

@@ -283,10 +283,8 @@ public final class CommandKindCoverageTest {
         new InstallerRegistry().installOne(dep, store, name);
 
         CliLock lock = CliLock.load(store);
-        RequestedVersion.Requested req = RequestedVersion.of(dep);
-        lock.recordInstall(dep.backend(), req.tool(), req.version(),
-                dep.spec(), null, name,
-                SkillScriptBackend.fingerprintFor(store, name, dep));
+        dev.skillmanager.lock.CliInstallRecorder.record(
+                lock, new InstallerRegistry(), dep, store, name);
         lock.save(store);
         return source;
     }

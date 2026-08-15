@@ -1,5 +1,6 @@
 package dev.skillmanager.cli.installer;
 
+import dev.skillmanager.lock.Fingerprint;
 import dev.skillmanager.model.CliDependency;
 import dev.skillmanager.store.SkillStore;
 
@@ -50,4 +51,62 @@ public interface InstallerBackend {
     default boolean alreadyProvided(CliDependency dep, SkillStore store) {
         return CliPresence.alreadyProvided(dep, store);
     }
+
+    /**
+     * A digest over this backend's declared INPUTS to {@code dep}'s artifact,
+     * so a later pass can decide staleness by comparing inputs rather than by
+     * checking whether a file exists.
+     *
+     * <h2>Why this is on the interface and has no default</h2>
+     *
+     * <p>It used to live nowhere. {@code CliInstallRecorder} carried
+     * {@code "skill-script".equals(dep.backend()) ? SkillScriptBackend.fingerprintFor(…) : null}
+     * — the recorder reaching past the interface it holds to a static on one
+     * concrete adapter — and {@code LiveInterpreter.runCliInstall} carried a
+     * second, independently maintained copy of the same branch. Measured on the
+     * project home before this change: 9 of 9 {@code skill-script} rows carried
+     * {@code install_fingerprint} and <b>0 of 16</b> brew/npm/pip/tar rows did,
+     * so four backends out of five answered "am I stale" with
+     * {@link #alreadyProvided}, which answers a different question.
+     *
+     * <p>No default implementation, deliberately. A default returning
+     * {@link Fingerprint#gap} would let a new backend inherit exactly the state
+     * this method exists to remove, silently, at the moment it is added — and
+     * "adding a backend means editing a hardcoded branch in a class that should
+     * not know your name" is the finding this replaces. A new backend now
+     * declares its scheme or declares its gap, in its own file, and the
+     * registry no longer has a name-shaped hole for it.
+     *
+     * <p>This is NOT the check {@link #alreadyProvided} forbids, and the
+     * distinction is the whole ticket: {@code alreadyProvided} asks the disk
+     * about an OUTPUT, this asks the declaration about an INPUT. Nothing here
+     * may probe {@code bin/cli} to decide the digest — reading what was
+     * RESOLVED into a provisioned tree ({@code venvs/<tool>}'s dist-info, an
+     * npm prefix's {@code package.json}, a brew cellar's version directory) is
+     * reading the identity of the thing installed, which is an input to the
+     * next comparison, not a presence proxy for this one.
+     *
+     * <h2>Contract</h2>
+     *
+     * <ul>
+     *   <li>Build the digest with {@link dev.skillmanager.lock.Fingerprints},
+     *       which forces a versioned domain-separation prefix. Every scheme is
+     *       {@code <backend>-vN}; changing what a scheme covers means a new
+     *       {@code N}, because an in-place edit invalidates every fingerprint
+     *       already written to every home's {@code cli-lock.toml}.</li>
+     *   <li>Be deterministic and home-independent. Two homes that installed the
+     *       same dep from the same declaration must agree, or the digest cannot
+     *       cross a tier and ARTI-07 has nothing to compare a clone against.
+     *       No absolute paths, no timestamps.</li>
+     *   <li>Never throw. An input this backend cannot read is a
+     *       {@link Fingerprint#gap} with a sentence saying so.</li>
+     * </ul>
+     *
+     * <p>Recording is universal from this ticket; GATING on the result is not.
+     * {@code skill-script} compares the digest to decide whether to re-run its
+     * script, because re-running one is expensive and arbitrary. The other four
+     * only record, and their install decision is unchanged — turning a recorded
+     * digest into a rebuild trigger is the {@code build} verb's job.
+     */
+    Fingerprint fingerprint(CliDependency dep, SkillStore store, String unitName);
 }
