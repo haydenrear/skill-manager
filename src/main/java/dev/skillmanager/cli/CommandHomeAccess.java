@@ -164,6 +164,7 @@ public final class CommandHomeAccess {
         m.put("artifacts", READ);        // parent; `artifacts record` writes
         m.put("artifacts list", READ);
         m.put("artifacts show", READ);
+        m.put("artifacts stale", READ);
         m.put("bindings", READ);
         m.put("bindings list", READ);
         m.put("bindings show", READ);

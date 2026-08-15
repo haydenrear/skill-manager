@@ -62,8 +62,15 @@ public record ArtifactReport(
     @JsonPropertyOrder({"path", "scope", "presence"})
     public record OutputView(String path, String scope, String presence) {}
 
+    /**
+     * {@code observed_inputs} is separate from {@code inputs} in the JSON for
+     * the reason it is separate in the model: a consumer has to be able to tell
+     * a reference a RECORD declares from one this pass read off the disk,
+     * because only the first survives into {@code artifacts.lock.toml} and only
+     * the second is guaranteed to describe the home as it is right now.
+     */
     @JsonPropertyOrder({"id", "kind", "owner", "materialization", "agreement", "origin",
-            "inputs", "outputs", "source", "recorded", "actual"})
+            "inputs", "observed_inputs", "outputs", "source", "recorded", "actual"})
     public record ArtifactView(
             String id,
             String kind,
@@ -72,6 +79,7 @@ public record ArtifactReport(
             String agreement,
             String origin,
             List<String> inputs,
+            @JsonProperty("observed_inputs") List<String> observedInputs,
             List<OutputView> outputs,
             String source,
             Map<String, String> recorded,
@@ -99,6 +107,7 @@ public record ArtifactReport(
                 token(artifact.agreement()),
                 token(artifact.origin()),
                 artifact.inputs(),
+                artifact.observedInputs(),
                 outputs,
                 artifact.source(),
                 artifact.recorded(),

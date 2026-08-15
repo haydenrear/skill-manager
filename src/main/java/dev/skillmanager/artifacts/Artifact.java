@@ -41,6 +41,18 @@ import java.util.Map;
  *
  * <h2>Where the facts live</h2>
  *
+ * <p><b>Declared versus observed inputs.</b> {@link #inputs()} is what a RECORD
+ * declares — a manifest's {@code spec}, a lock row's {@code requested_by}, a
+ * binding's unit — and it is what {@link ArtifactLedger} persists, because a
+ * clone needs to know a tree is supposed to exist before it can build one.
+ * {@link #observedInputs()} is what this pass READ OFF THE DISK: the tree a
+ * generated shim execs into, recovered from the shim's own bytes on every read.
+ * It is never persisted, and that separation is the whole rule ARTI-03's author
+ * set for this ticket — an edge stamped into {@code artifacts.lock.toml} is a
+ * fact that can disagree with the disk, which is the failure the ledger was
+ * shaped to avoid. Both halves resolve to edges the same way; only one of them
+ * is remembered.
+ *
  * <p>Every fact in {@link #recorded()} already has an owner —
  * {@code installed/<u>.json}'s {@code gitHash}, {@code cli-lock.toml}'s
  * {@code install_fingerprint}, a projection's {@code boundHash},
@@ -65,7 +77,12 @@ public record Artifact(
         /** What the disk says, where asking is cheap enough to ask on a read. */
         Map<String, String> actual,
         Agreement agreement,
-        Origin origin
+        Origin origin,
+        /**
+         * Input references READ OFF THIS HOME'S DISK on this pass, and never
+         * written to {@link ArtifactLedger}. See {@link #observedInputs()}.
+         */
+        List<String> observedInputs
 ) {
 
     public Artifact {
@@ -73,8 +90,21 @@ public record Artifact(
         outputs = outputs == null ? List.of() : List.copyOf(outputs);
         recorded = recorded == null ? Map.of() : Map.copyOf(recorded);
         actual = actual == null ? Map.of() : Map.copyOf(actual);
+        observedInputs = observedInputs == null ? List.of() : List.copyOf(observedInputs);
         if (agreement == null) agreement = Agreement.UNRECORDED;
         if (origin == null) origin = Origin.HOME;
+    }
+
+    /**
+     * Everything but the observed inputs — the shape every caller before
+     * ARTI-05 constructs, so adding the eleventh component renamed nothing and
+     * migrated nothing.
+     */
+    public Artifact(String id, ArtifactKind kind, String owner, List<String> inputs,
+                    List<Output> outputs, String source, Map<String, String> recorded,
+                    Map<String, String> actual, Agreement agreement, Origin origin) {
+        this(id, kind, owner, inputs, outputs, source, recorded, actual, agreement, origin,
+                List.of());
     }
 
     /**
@@ -207,13 +237,27 @@ public record Artifact(
     /** This artifact with its outputs replaced (used by the ledger overlay). */
     public Artifact withOutputs(List<Output> next) {
         return new Artifact(id, kind, owner, inputs, next, source,
-                recorded, actual, agreement, origin);
+                recorded, actual, agreement, origin, observedInputs);
     }
 
     /** This artifact restamped with a different {@link Origin}. */
     public Artifact withOrigin(Origin next) {
         return new Artifact(id, kind, owner, inputs, outputs, source,
-                recorded, actual, agreement, next);
+                recorded, actual, agreement, next, observedInputs);
+    }
+
+    /**
+     * The declared inputs and the observed ones, in that order, de-duplicated.
+     * What {@link ArtifactGraph} resolves edges from — an edge exists whether
+     * the reference was declared in a manifest or read out of the artifact.
+     */
+    public List<String> allInputs() {
+        if (observedInputs.isEmpty()) return inputs;
+        List<String> all = new java.util.ArrayList<>(inputs);
+        for (String observed : observedInputs) {
+            if (!all.contains(observed)) all.add(observed);
+        }
+        return List.copyOf(all);
     }
 
     /** Lowercase-hyphen enum rendering, shared by the JSON view and the ledger. */
