@@ -239,16 +239,22 @@ jobs:
   # gone and the list is bounded instead — the 8-graph core set on push and PR,
   # the 23-graph full set nightly and on demand.
   #
-  # BUDGET, stated rather than assumed. Hosted minutes scale with the number of
-  # graphs, so `max-parallel` buys wall clock, not budget. Measured locally on
-  # an M-series laptop the core set is roughly 25 minutes of work end to end,
-  # with `smoke` alone at 4m19s and 52 of the 152 nodes; a 2-core hosted runner
-  # is materially slower, so `timeout-minutes: 45` is the per-job ceiling and
-  # `max-parallel: 4` puts the eight graphs in two waves. Four cold JBang/Maven
-  # resolutions at once is the trade being made for that: caches only save at
-  # job end, so parallel cells all miss on a cold key. The previous value of 2
-  # existed for exactly that reason and is a fallback if Maven Central starts
-  # rate-limiting the runner.
+  # BUDGET, measured rather than assumed. Hosted minutes scale with the number
+  # of graphs, so `max-parallel` buys wall clock, not budget. Per-graph wall
+  # clock for the core set, run individually on an M-series laptop at 5f3eeb0:
+  #
+  #   smoke 259s | home-sync 312s | ticket-lifecycle 221s | plugin-smoke 98s
+  #   home-clone 96s | checkout-home 65s | onboard 62s | project-child-home 60s
+  #                                                   = 1173s ≈ 19.5 min serial
+  #
+  # A 2-core hosted runner is materially slower and adds toolchain setup per
+  # cell, so `timeout-minutes: 45` is the per-job ceiling — roughly 8x the
+  # slowest observed graph, which is headroom rather than a threshold anything
+  # is expected to approach. `max-parallel: 4` puts the eight cells in two
+  # waves. Four cold JBang/Maven resolutions at once is the trade for that:
+  # caches only save at job end, so parallel cells all miss on a cold key. The
+  # previous value of 2 existed for exactly that reason and is the fallback if
+  # Maven Central starts rate-limiting the runner.
   # ---------------------------------------------------------------------------
   test-graph:
     needs: graph-set
@@ -406,35 +412,35 @@ jobs:
       # https://github.com/haydenrear/skill-manager/actions/runs/31899858877:
       # all eight core graphs failed here, before executing a single node.
       #
-      # Two things follow, and both are deliberate:
+      # IT GROUNDS EVERY GRAPH, not only the ones with a gateway node. The
+      # obvious refinement — skip this step for the five core graphs that
+      # declare none — was tried, and it is wrong: `InstallCommand` runs
+      # `EnsureGateway`, which shells out to its own `uv sync`. Measured on run
+      # 31900307288, `checkout-home` (no gateway node among its seven) failed at
+      # `home.clone.fixture.built` with
+      # `EnsureGateway: failed to start gateway: uv sync exited with status 1`
+      # and the same "could not read Username" underneath. So the step is
+      # unconditional: pre-warming is cheap and fails in about a second, while
+      # skipping it only moves the identical failure inside a node that has a
+      # timeout on it. The selector still reports which graphs declare gateway
+      # nodes, as information rather than as a condition.
       #
-      #  1. ONLY THE GRAPHS THAT NEED IT PAY. Five of the eight core graphs
-      #     (home-clone, home-sync, checkout-home, project-child-home,
-      #     ticket-lifecycle) declare no gateway node, and the selector derives
-      #     that from the build file rather than a second hand-kept list.
-      #  2. A FAILURE HERE DOES NOT SKIP THE GRAPH. `continue-on-error` so the
-      #     graph still runs and still reports; it will go red at its gateway
-      #     node with a real message instead of vanishing from the tally as a
-      #     skipped step. A graph that did not run is worse than a graph that
-      #     ran and failed — that distinction is the whole subject of #113.
+      # `continue-on-error` so a failure here DOES NOT SKIP THE GRAPH. It runs,
+      # and goes red with a real message, instead of vanishing from the tally as
+      # a skipped step. A graph that did not run is worse than a graph that ran
+      # and failed — that distinction is the whole subject of #113.
       #
       # THE FIX IS THE OWNER'S CALL, and there are two: provision a
       # `PRIVATE_DEPS_TOKEN` secret with read access to haydenrear/tracing_skill,
       # or make `tracing-skill-observability` an optional extra in
-      # virtual-mcp-gateway/pyproject.toml. Either turns three red graphs green.
-      # `|| '[]'` is not decoration. An `outputs:` entry that a job forgot to
-      # declare arrives as the empty string, and `fromJSON('')` fails the whole
-      # template — "The template is not valid" — which kills the job before any
-      # step runs and skips the Run graph step, i.e. exactly the invisible
-      # zero-execution outcome this ticket is about. Measured on run
-      # 31900204909. The default keeps a missing output degrading to "no graph
-      # needs the gateway" instead of to nothing running at all.
+      # virtual-mcp-gateway/pyproject.toml. Until one of them happens the matrix
+      # executes and reports but cannot go green on a hosted runner — which is
+      # itself the most useful thing re-enabling it has produced.
       - name: Install gateway Python deps
-        if: contains(fromJSON(needs.graph-set.outputs.gateway_graphs || '[]'), matrix.graph)
         continue-on-error: true
         run: |
           if ! uv sync --all-extras; then
-            echo "::error title=gateway venv unavailable::${{ matrix.graph }} needs virtual-mcp-gateway's venv, and uv sync failed. The likely cause is the private tracing_skill dependency: set a PRIVATE_DEPS_TOKEN secret or make it an optional extra. The graph will run and report its own failure rather than be skipped."
+            echo "::error title=gateway venv unavailable::virtual-mcp-gateway's venv could not be built, so every node that runs skill-manager install will fail inside EnsureGateway. The cause is almost certainly the private tracing_skill dependency: provision a PRIVATE_DEPS_TOKEN secret or make it an optional extra. The graph still runs and reports rather than being skipped."
           fi
         working-directory: virtual-mcp-gateway
 

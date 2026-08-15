@@ -11,9 +11,18 @@ rather than vanishing from the tally. A metric that only counts green runs
 measures optimism.
 
 Node counts are best-effort. ``run.py`` prints ``  [i/N] <node> (<runner>)``
-per node, so the highest ``i`` seen is how far the graph got and ``N`` is how
-many it declared. If the log is missing or the format changes, the counts come
-back null and the graph-level verdict is unaffected.
+per node, so ``N`` is how many the graph declared.
+
+``nodes_attempted`` is NOT the highest ``i`` seen — that reads as progress and
+is not. When a node fails, ``run.py`` still enumerates every remaining node,
+each suffixed ``skipped after earlier failure``; a `smoke` run that died at
+node 23 of 52 still prints ``[52/52]``. The first version of this script took
+the maximum and reported 52 of 52 for a graph that ran 23, which is the same
+species of comfortable-looking number this whole ticket is about. Lines
+carrying that suffix are excluded.
+
+If the log is missing or the format changes, the counts come back null and the
+graph-level verdict is unaffected.
 
 Usage:
     graph-record.py --graph smoke --outcome success \
@@ -28,24 +37,28 @@ import re
 from pathlib import Path
 
 _NODE_RE = re.compile(r"^\s*\[(\d+)/(\d+)\]\s")
+_SKIPPED = "skipped after earlier failure"
 
 
 def node_counts(log: Path) -> tuple[int | None, int | None]:
     if not log.is_file():
         return None, None
-    reached = declared = 0
+    attempted = 0
+    declared = 0
     try:
         text = log.read_text(encoding="utf-8", errors="replace")
     except OSError:
         return None, None
     for line in text.splitlines():
         m = _NODE_RE.match(line)
-        if m:
-            reached = max(reached, int(m.group(1)))
-            declared = max(declared, int(m.group(2)))
+        if not m:
+            continue
+        declared = max(declared, int(m.group(2)))
+        if _SKIPPED not in line:
+            attempted += 1
     if declared == 0:
         return None, None
-    return reached, declared
+    return attempted, declared
 
 
 def main() -> int:
@@ -57,7 +70,7 @@ def main() -> int:
     ap.add_argument("--out", required=True)
     args = ap.parse_args()
 
-    reached, declared = node_counts(Path(args.log))
+    attempted, declared = node_counts(Path(args.log))
 
     # "executed" means the graph task actually ran, whatever its verdict.
     # A skipped or cancelled matrix cell did not execute and must not be
@@ -70,7 +83,7 @@ def main() -> int:
         "executed": executed,
         "passed": args.outcome == "success",
         "nodes_declared": declared,
-        "nodes_reached": reached,
+        "nodes_attempted": attempted,
         "job_url": (
             f"{os.environ.get('GITHUB_SERVER_URL', '')}/"
             f"{os.environ.get('GITHUB_REPOSITORY', '')}/actions/runs/"
