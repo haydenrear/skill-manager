@@ -161,6 +161,9 @@ public final class CommandHomeAccess {
         m.put("skill-manager", READ);       // bare invocation prints usage
         m.put("ads", READ);
         m.put("ads list", READ);
+        m.put("artifacts", READ);        // parent; `artifacts record` writes
+        m.put("artifacts list", READ);
+        m.put("artifacts show", READ);
         m.put("bindings", READ);
         m.put("bindings list", READ);
         m.put("bindings show", READ);
@@ -199,6 +202,7 @@ public final class CommandHomeAccess {
         // ----------------------------------------------------------- writes home
         m.put("ads create", WRITE);
         m.put("ads delete", WRITE);
+        m.put("artifacts record", WRITE);
         m.put("bind", WRITE);
         m.put("create", WRITE);
         m.put("create-account", WRITE);
