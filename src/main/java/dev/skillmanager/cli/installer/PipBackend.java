@@ -95,11 +95,12 @@ public final class PipBackend implements InstallerBackend {
                 .field("package", pkg)
                 .field("resolved", resolved)
                 .hex();
-        return Fingerprint.over(digest, resolved != null
-                ? "declared spec + version " + resolved + " resolved into venvs/"
-                        + distributionName(pkg)
-                : "declared spec only — this home holds no venvs/" + distributionName(pkg)
-                        + ", so the installed version is not observable here");
+        return resolved != null
+                ? Fingerprint.resolved(digest, "declared spec + version " + resolved
+                        + " resolved into venvs/" + distributionName(pkg))
+                : Fingerprint.declared(digest, "declared spec only — this home holds no venvs/"
+                        + distributionName(pkg) + ", so the installed version is not "
+                        + "observable here");
     }
 
     /**

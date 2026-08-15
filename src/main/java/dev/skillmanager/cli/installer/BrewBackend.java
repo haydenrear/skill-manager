@@ -120,28 +120,46 @@ public final class BrewBackend implements InstallerBackend {
                 .field("formula", pkg)
                 .field("resolved", resolved)
                 .hex();
-        return Fingerprint.over(digest, resolved != null
-                ? "declared formula + version " + resolved + " brew resolved it to"
-                : "declared formula only — brew on this host holds no cellar entry for "
+        return resolved != null
+                ? Fingerprint.resolved(digest,
+                        "declared formula + version " + resolved + " brew resolved it to")
+                : Fingerprint.declared(digest,
+                        "declared formula only — brew on this host holds no cellar entry for "
                         + pkg + ", so the installed version is not observable; a brew spec "
                         + "declares no version of its own, so this digest cannot move");
+    }
+
+    /** {@link #versionInPrefix} against the brew this process can see. */
+    private static String resolvedVersion(String formula) {
+        Path brew = CliPresence.onProcessPath("brew");
+        if (brew == null) return null;
+        Path bin = brew.toAbsolutePath().normalize().getParent();          // <prefix>/bin
+        Path prefix = bin == null ? null : bin.getParent();
+        return prefix == null ? null : versionInPrefix(prefix, formula);
     }
 
     /**
      * The version segment of {@code <prefix>/opt/<formula>}'s cellar target, or
      * of the single {@code Caskroom/<formula>/<version>} entry for a cask.
+     *
+     * <p>Split out from {@link #resolvedVersion} so it can be driven against a
+     * synthetic prefix. It is the only load-bearing code in this backend's
+     * fingerprint — a brew spec declares no version of its own, so this is the
+     * ONLY thing that can ever move a {@code brew-v1} digest — and testing it
+     * through the process PATH would mean testing whatever brew the host
+     * happens to have, which is a fact about the machine and not about this.
+     *
+     * <p>Returns null on an ambiguous cask (more than one version directory)
+     * deliberately: two answers is not an answer, and a
+     * {@link Fingerprint.Kind#DECLARED} digest that says so beats a
+     * {@link Fingerprint.Kind#RESOLVED} one built on a coin flip.
      */
-    private static String resolvedVersion(String formula) {
-        Path brew = CliPresence.onProcessPath("brew");
-        if (brew == null) return null;
-        Path prefix = brew.toAbsolutePath().normalize().getParent();      // <prefix>/bin
-        if (prefix == null || (prefix = prefix.getParent()) == null) return null;
-
+    static String versionInPrefix(Path prefix, String formula) {
+        if (prefix == null || formula == null || formula.isBlank()) return null;
         Path opt = prefix.resolve("opt").resolve(formula);
         if (Files.isSymbolicLink(opt)) {
             try {
-                Path target = Files.readSymbolicLink(opt);
-                Path leaf = target.getFileName();
+                Path leaf = Files.readSymbolicLink(opt).getFileName();
                 if (leaf != null && !leaf.toString().isBlank()) return leaf.toString();
             } catch (IOException unreadable) {
                 // fall through to the cask layout
@@ -151,7 +169,6 @@ public final class BrewBackend implements InstallerBackend {
         if (Files.isDirectory(cask)) {
             try (Stream<Path> versions = Files.list(cask)) {
                 List<Path> dirs = versions.filter(Files::isDirectory).sorted().toList();
-                // Exactly one, or the answer is ambiguous and null is honest.
                 if (dirs.size() == 1) return dirs.get(0).getFileName().toString();
             } catch (IOException unreadable) {
                 return null;

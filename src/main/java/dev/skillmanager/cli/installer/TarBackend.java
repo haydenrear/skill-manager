@@ -123,8 +123,15 @@ public final class TarBackend implements InstallerBackend {
                 .fields("extract", target.extract())
                 .field("sha256", target.sha256())
                 .hex();
-        return Fingerprint.over(digest, target.sha256() != null
-                ? "declared url + declared sha256 of the downloaded bytes"
+        // DECLARED, always. A declared sha256 names the bytes this dep INTENDS
+        // to fetch, which is a strong declaration and still a declaration: this
+        // backend never hashes what it actually wrote to bin/cli, so nothing
+        // here can move when the artifact does. Grading it RESOLVED because the
+        // input happens to be a hash would be the strongest-looking version of
+        // exactly the confusion this field exists to prevent.
+        return Fingerprint.declared(digest, target.sha256() != null
+                ? "declared url + declared sha256 of the bytes to be downloaded "
+                        + "(the installed file is never hashed)"
                 : "declared url only — no sha256 is declared, so a re-publish of "
                         + "different bytes at the same url is not detectable");
     }
@@ -139,14 +146,16 @@ public final class TarBackend implements InstallerBackend {
      * The key is not recoverable from the value and the fingerprint needs it.
      */
     private Map.Entry<String, CliDependency.InstallTarget> pickTargetEntry(CliDependency dep) {
-        if (dep.platformIndependent() && dep.install().containsKey("any")) {
-            return Map.entry("any", dep.install().get("any"));
-        }
+        // Fetch-then-test rather than containsKey-then-fetch: the install map
+        // is a LinkedHashMap and so may hold a null VALUE under a present key,
+        // where the old pickTarget returned null and Map.entry would throw.
+        CliDependency.InstallTarget any = dep.install().get("any");
+        if (dep.platformIndependent() && any != null) return Map.entry("any", any);
         for (var e : dep.install().entrySet()) {
             if ("any".equals(e.getKey())) continue;
+            if (e.getValue() == null) continue;
             if (Platform.matches(e.getKey())) return e;
         }
-        CliDependency.InstallTarget any = dep.install().get("any");
         return any == null ? null : Map.entry("any", any);
     }
 

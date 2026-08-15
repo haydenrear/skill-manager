@@ -248,7 +248,10 @@ public final class SkillScriptBackend implements InstallerBackend {
         }
         try {
             ResolvedScript resolved = resolveScript(store, unitName, target.script());
-            return Fingerprint.over(
+            // RESOLVED: this is the one scheme whose digest is over bytes read
+            // off this home's disk, so it moves when the artifact moves even
+            // though the declaration did not.
+            return Fingerprint.resolved(
                     fingerprintScripts(resolved.scriptsDir, target.script(), target.args()),
                     "skill-scripts/ tree bytes + script path + declared args");
         } catch (IOException e) {

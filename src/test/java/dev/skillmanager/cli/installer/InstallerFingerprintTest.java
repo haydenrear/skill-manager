@@ -57,6 +57,19 @@ public final class InstallerFingerprintTest {
     private static final String SKILL_SCRIPT_V1_GOLDEN =
             "ba46c0377d006af6a9c8caeb817b98614c84cac4c588a8226b54319080917a96";
 
+    /**
+     * The same tree with {@code args=[""]} — one EMPTY arg, which the encoder
+     * writes as {@code arg:\0} — and with {@code args=[]}. Two vectors, because
+     * a first pass at {@code Fingerprints.field} skipped empty values as well as
+     * null ones and collapsed these two inputs onto one digest, moving a scheme
+     * {@code SkillScriptBackend} gates on. The golden vector above could not
+     * catch it: its args are non-empty.
+     */
+    private static final String SKILL_SCRIPT_V1_EMPTY_ARG =
+            "92062451a21dc12172c507d67fd769a145e2a337af91abf63756ce343354f97c";
+    private static final String SKILL_SCRIPT_V1_NO_ARGS =
+            "bb3e3f59e46271408d9a998bf2b3795dff82da22f8190c0094b387ca69e8103f";
+
     public static int run() throws Exception {
         Tests.Suite suite = Tests.suite("InstallerFingerprintTest");
 
@@ -67,6 +80,20 @@ public final class InstallerFingerprintTest {
                     SkillScriptBackend.fingerprintScripts(
                             scripts, "install.sh", List.of("--prefix", "$BIN_DIR")),
                     "no home's recorded skill-script fingerprint moves, so nothing re-fires");
+        });
+
+        suite.test("an empty arg is encoded, and does not collide with no args at all", () -> {
+            Path scripts = Files.createTempDirectory("fp-empty-arg-");
+            Files.writeString(scripts.resolve("install.sh"), "#!/bin/sh\necho hi\n");
+            String emptyArg = SkillScriptBackend.fingerprintScripts(
+                    scripts, "install.sh", List.of(""));
+            String noArgs = SkillScriptBackend.fingerprintScripts(
+                    scripts, "install.sh", List.of());
+            assertEquals(SKILL_SCRIPT_V1_EMPTY_ARG, emptyArg,
+                    "args=[\"\"] hashes as the pre-ARTI-04 encoder did");
+            assertEquals(SKILL_SCRIPT_V1_NO_ARGS, noArgs, "args=[] is its own vector");
+            assertFalse(emptyArg.equals(noArgs),
+                    "two different declarations must not produce one digest");
         });
 
         suite.test("every registered backend answers, and none throws", () -> {
@@ -84,7 +111,50 @@ public final class InstallerFingerprintTest {
                 assertTrue(fp.present(), backend + " fingerprints a well-formed dep: "
                         + fp.gap());
                 assertNotNull(fp.basis(), backend + " says what its digest covers");
+                assertNotNull(fp.kind(), backend + " asserts a grade rather than leaving it "
+                        + "to a reader to infer from the prose");
             }
+        });
+
+        suite.test("each backend asserts the grade its evidence actually supports", () -> {
+            SkillStore store = newStore("fp-kinds-");
+            plantSkillScript(store, "fp-unit", "install-skt.sh");
+            InstallerRegistry registry = new InstallerRegistry();
+            Map<String, CliDependency> deps = representativeDeps();
+
+            // Hashes bytes read off this home's disk.
+            assertEquals(Fingerprint.Kind.RESOLVED,
+                    registry.fingerprintFor(deps.get("skill-script"), store, "fp-unit").kind(),
+                    "skill-script hashes the scripts tree itself");
+            // Never looks at what it wrote; a declared sha256 is still a declaration.
+            assertEquals(Fingerprint.Kind.DECLARED,
+                    registry.fingerprintFor(deps.get("tar"), store, "fp-unit").kind(),
+                    "tar's strongest input is still the manifest's");
+            // Nothing installed in this home yet.
+            for (String backend : List.of("pip", "npm")) {
+                assertEquals(Fingerprint.Kind.DECLARED,
+                        registry.fingerprintFor(deps.get(backend), store, "fp-unit").kind(),
+                        backend + " has nothing installed here to observe");
+            }
+            // brew deliberately asks the HOST, not the store — brew owns its own
+            // prefix and there is no per-home copy to consult — so its grade is
+            // a property of this machine and the store cannot stage it. Asserted
+            // against a formula no host has; the resolver itself is driven
+            // directly against a synthetic prefix two cases below.
+            CliDependency absent = new CliDependency("nope", "brew:arti04-no-such-formula",
+                    null, null, "nope", true, Map.of());
+            assertEquals(Fingerprint.Kind.DECLARED,
+                    registry.fingerprintFor(absent, store, "fp-unit").kind(),
+                    "brew holds no cellar entry for a formula that does not exist");
+            // Now it is.
+            plantDistInfo(store, "jinja2-cli", "jinja2_cli", "0.8.2");
+            plantNpmPackage(store, "fp-unit", "@google/gemini-cli", "0.4.1");
+            assertEquals(Fingerprint.Kind.RESOLVED,
+                    registry.fingerprintFor(deps.get("pip"), store, "fp-unit").kind(),
+                    "pip found the dist-info");
+            assertEquals(Fingerprint.Kind.RESOLVED,
+                    registry.fingerprintFor(deps.get("npm"), store, "fp-unit").kind(),
+                    "npm read the installed package.json");
         });
 
         suite.test("the four backends that recorded nothing now record a digest", () -> {
@@ -238,9 +308,13 @@ public final class InstallerFingerprintTest {
         });
 
         suite.test("a Fingerprint cannot be both a digest and a gap, or neither", () -> {
-            assertTrue(refuses(() -> new Fingerprint(null, null, null)), "neither is refused");
-            assertTrue(refuses(() -> new Fingerprint("abc", "basis", "gap")), "both is refused");
-            assertTrue(refuses(() -> new Fingerprint("abc", null, null)),
+            assertTrue(refuses(() -> new Fingerprint(null, null, null, null)),
+                    "neither is refused");
+            assertTrue(refuses(() -> new Fingerprint(
+                            "abc", Fingerprint.Kind.DECLARED, "basis", "gap")),
+                    "both is refused");
+            assertTrue(refuses(() -> new Fingerprint(
+                            "abc", Fingerprint.Kind.DECLARED, null, null)),
                     "a digest with no basis is refused");
         });
 
@@ -295,6 +369,130 @@ public final class InstallerFingerprintTest {
             assertEquals(null, row.binary(), "a row from before cannot name its artifact");
         });
 
+        suite.test("brew: the cellar symlink is the only thing that can move this digest", () -> {
+            Path prefix = Files.createTempDirectory("fp-brew-prefix-");
+            Path opt = prefix.resolve("opt");
+            Files.createDirectories(opt);
+            Files.createDirectories(prefix.resolve("Cellar/helm/3.19.0"));
+            Files.createSymbolicLink(opt.resolve("helm"), Path.of("../Cellar/helm/3.19.0"));
+            assertEquals("3.19.0", BrewBackend.versionInPrefix(prefix, "helm"),
+                    "the version segment of the opt symlink's target");
+
+            // The upgrade this scheme exists to catch: a brew spec declares no
+            // version, so re-pointing the symlink is the entire signal.
+            Files.delete(opt.resolve("helm"));
+            Files.createDirectories(prefix.resolve("Cellar/helm/3.20.1"));
+            Files.createSymbolicLink(opt.resolve("helm"), Path.of("../Cellar/helm/3.20.1"));
+            assertEquals("3.20.1", BrewBackend.versionInPrefix(prefix, "helm"), "after upgrade");
+
+            assertEquals(null, BrewBackend.versionInPrefix(prefix, "not-installed"),
+                    "a formula brew does not hold is not observable");
+            assertEquals(null, BrewBackend.versionInPrefix(null, "helm"), "no prefix, no answer");
+        });
+
+        suite.test("brew: a cask resolves, and an ambiguous one refuses to guess", () -> {
+            Path prefix = Files.createTempDirectory("fp-brew-cask-");
+            Files.createDirectories(prefix.resolve("Caskroom/claude/1.2.3"));
+            assertEquals("1.2.3", BrewBackend.versionInPrefix(prefix, "claude"),
+                    "a single cask version directory is the version");
+
+            Files.createDirectories(prefix.resolve("Caskroom/claude/1.3.0"));
+            assertEquals(null, BrewBackend.versionInPrefix(prefix, "claude"),
+                    "two answers is not an answer — a DECLARED digest beats a guessed "
+                            + "RESOLVED one");
+        });
+
+        suite.test("tar: a null install target under a present key does not throw", () -> {
+            SkillStore store = newStore("fp-tar-null-");
+            // A LinkedHashMap can hold a null value where Map.of cannot, and
+            // containsKey-then-Map.entry threw on exactly that shape.
+            Map<String, CliDependency.InstallTarget> targets = new LinkedHashMap<>();
+            targets.put("any", null);
+            CliDependency dep = new CliDependency("ghost", "tar:ghost", null, null,
+                    "ghost", true, targets);
+            Fingerprint fp = new TarBackend().fingerprint(dep, store, "fp-unit");
+            assertFalse(fp.present(), "nothing declares what would be downloaded");
+        });
+
+        suite.test("an empty digest is refused, not written", () -> {
+            assertTrue(refuses(() -> Fingerprint.resolved("", "covers nothing")),
+                    "\"\" is the no-fingerprint case wearing a fingerprint's shape");
+            assertTrue(refuses(() -> Fingerprint.declared("   ", "covers nothing")),
+                    "blank too");
+            assertTrue(refuses(() -> new Fingerprint("abc", null, "basis", null)),
+                    "a digest with no grade is refused");
+        });
+
+        suite.test("an ungraded legacy row is never read as resolved", () -> {
+            SkillStore store = newStore("fp-legacy-kind-");
+            Files.writeString(store.root().resolve(CliLock.FILENAME), """
+                    ["skill-script"."legacy"]
+                    spec = "skill-script:legacy"
+                    requested_by = ["old-unit"]
+                    install_fingerprint = "4a1caec7af0a7a5944c6aef053d46a26ab88b7fa56ba6900b55e0163fc253126"
+                    """);
+            assertEquals(Fingerprint.Kind.UNKNOWN,
+                    CliLock.load(store).get("skill-script", "legacy").fingerprint().kind(),
+                    "a digest whose grade nobody recorded does not get a passing one");
+
+            // An unrecognized token is the same answer, not a crash.
+            Files.writeString(store.root().resolve(CliLock.FILENAME), """
+                    ["skill-script"."legacy"]
+                    spec = "skill-script:legacy"
+                    requested_by = ["old-unit"]
+                    install_fingerprint = "4a1caec7af0a7a5944c6aef053d46a26ab88b7fa56ba6900b55e0163fc253126"
+                    install_fingerprint_kind = "from-the-future"
+                    """);
+            assertEquals(Fingerprint.Kind.UNKNOWN,
+                    CliLock.load(store).get("skill-script", "legacy").fingerprint().kind(),
+                    "an unreadable grade is unknown, not assumed");
+        });
+
+        suite.test("the kind round-trips through the lock file", () -> {
+            SkillStore store = newStore("fp-kind-roundtrip-");
+            CliDependency dep = new CliDependency("jinja2-cli", "pip:jinja2-cli[yaml]==0.8.2",
+                    null, null, "jinja2", true, Map.of());
+            plantDistInfo(store, "jinja2-cli", "jinja2_cli", "0.8.2");
+            CliLock lock = CliLock.load(store);
+            CliInstallRecorder.record(lock, new InstallerRegistry(), dep, store, "fp-unit");
+            lock.save(store);
+            assertContains(Files.readString(store.root().resolve(CliLock.FILENAME)),
+                    "install_fingerprint_kind = \"resolved\"",
+                    "the grade reaches the file as a token, not as prose to be matched");
+            assertEquals(Fingerprint.Kind.RESOLVED,
+                    CliLock.load(store).get("pip", "jinja2-cli[yaml]").fingerprint().kind(),
+                    "and reads back");
+        });
+
+        suite.test("the effects path records the same row as the bulk path", () -> {
+            // LiveInterpreter.runCliInstall carried its own copy of the
+            // "skill-script".equals(backend) branch. It is the line that
+            // changed, so it is driven here rather than trusted.
+            SkillStore store = newStore("fp-live-");
+            CliDependency dep = new CliDependency("jinja2-cli", "pip:jinja2-cli[yaml]==0.8.2",
+                    null, null, "jinja2", true, Map.of());
+            plantDistInfo(store, "jinja2-cli", "jinja2_cli", "0.8.2");
+            // Satisfied by this home already, so the effect records without
+            // shelling out to uv: the recording is what is under test, not the
+            // install. This is the ALREADY_PRESENT path that used to write a
+            // null fingerprint on every sync of every home.
+            plantUsableShim(store, "jinja2");
+
+            new dev.skillmanager.effects.LiveInterpreter(store).run(
+                    new dev.skillmanager.effects.Program<>(
+                            "fp-live",
+                            List.of(new dev.skillmanager.effects.SkillEffect.RunCliInstall(
+                                    "fp-unit", dep, false)),
+                            receipts -> null));
+
+            CliLock.Entry row = CliLock.load(store).get("pip", "jinja2-cli[yaml]");
+            assertNotNull(row, "the effects path wrote the row");
+            assertNotNull(row.installFingerprint(),
+                    "with a fingerprint — this path recorded null for four backends");
+            assertEquals(Fingerprint.Kind.RESOLVED, row.fingerprint().kind(), "graded");
+            assertEquals("jinja2", row.binary(), "and naming the artifact it produced");
+        });
+
         return suite.runAll();
     }
 
@@ -333,6 +531,14 @@ public final class InstallerFingerprintTest {
         Path sitePackages = store.venvsDir().resolve(dist)
                 .resolve("lib").resolve("python3.13").resolve("site-packages");
         Files.createDirectories(sitePackages.resolve(escaped + "-" + version + ".dist-info"));
+    }
+
+    /** An executable in {@code bin/cli/} with no references out of the home. */
+    private static void plantUsableShim(SkillStore store, String name) throws Exception {
+        Files.createDirectories(store.cliBinDir());
+        Path shim = store.cliBinDir().resolve(name);
+        Files.writeString(shim, "#!/bin/sh\necho stub\n");
+        shim.toFile().setExecutable(true, false);
     }
 
     /** {@code skills/<unit>/skill-scripts/<script>}. */
