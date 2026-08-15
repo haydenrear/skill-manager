@@ -88,8 +88,25 @@ public final class ArtifactBackfill {
         return List.copyOf(byId.values());
     }
 
+    /**
+     * Merge one kind's artifacts in, keeping the first of any duplicate id and
+     * SAYING SO.
+     *
+     * <p>This was a bare {@code putIfAbsent}. Dropping an artifact because
+     * something else already claimed its id is precisely the failure an id
+     * scheme exists to prevent, and it is not something a listing may do
+     * quietly — a home would simply report fewer artifacts than it holds, with
+     * nothing anywhere saying which one lost.
+     */
     private static void add(Map<String, Artifact> into, List<Artifact> artifacts) {
-        for (Artifact artifact : artifacts) into.putIfAbsent(artifact.id(), artifact);
+        for (Artifact artifact : artifacts) {
+            Artifact existing = into.putIfAbsent(artifact.id(), artifact);
+            if (existing != null) {
+                Log.warn("artifacts: dropping a %s artifact whose id %s is already held by a %s "
+                        + "artifact — one of the two is not being listed",
+                        artifact.kind().id(), artifact.id(), existing.kind().id());
+            }
+        }
     }
 
     // ------------------------------------------------------------ unit store
@@ -109,12 +126,17 @@ public final class ArtifactBackfill {
 
             List<String> inputs = new ArrayList<>();
             String origin = unit.origin();
-            // A local-directory origin is a claim over a checkout elsewhere on
-            // this machine, so it is referenced through the record that already
-            // owns it rather than copied into a second place. See
-            // ArtifactLedger for why that rule is not cosmetic.
-            if (origin != null && !origin.isBlank() && !origin.startsWith("/") && !origin.startsWith("~")) {
-                inputs.add(ArtifactIds.gitInput(origin, unit.gitRef()));
+            // A local origin is a claim over a checkout elsewhere on this
+            // machine, so it is referenced through the record that already owns
+            // it rather than copied into a second place. The test is
+            // ArtifactLedger's own, not a second spelling of it: a
+            // `startsWith("/")` guard passes `file:///Users/somebody/checkout`,
+            // which is a first-class install coordinate, and the copy's ledger
+            // would go on naming that checkout.
+            String candidate = origin == null || origin.isBlank() ? null
+                    : ArtifactIds.gitInput(origin, unit.gitRef());
+            if (candidate != null && ArtifactLedger.unsafeReason(candidate, root.toString()) == null) {
+                inputs.add(candidate);
             } else {
                 inputs.add(ArtifactIds.recordInput("installed/" + name + ".json"));
             }
@@ -315,13 +337,21 @@ public final class ArtifactBackfill {
                 String kind = projection.kind() == null ? "UNKNOWN" : projection.kind().name();
                 Path dest = projection.destPath();
                 String id = ArtifactIds.projection(binding.bindingId(), kind,
-                        ArtifactIds.destKey(binding.targetRoot(), dest));
+                        ArtifactIds.destKey(root, binding.targetRoot(), dest));
                 // Last-resort disambiguation, in ledger order. It is order
-                // dependent and therefore weaker than the key above, which is
-                // why the key does the work: this only fires for two rows of
-                // the same kind landing on the same path under one binding.
+                // dependent and therefore strictly weaker than the key above,
+                // which is why the key does the work and why reaching this is
+                // WARNED about rather than absorbed: an order-dependent id is
+                // not stable across homes, so a silent fallback would hand
+                // ARTI-07 a comparison that quietly stops meaning anything.
                 int repeat = seen.merge(id, 1, Integer::sum);
-                if (repeat > 1) id = id + "~" + repeat;
+                if (repeat > 1) {
+                    Log.warn("artifacts: id collision on %s (occurrence %d, dest %s) — the "
+                            + "disambiguating suffix is order-dependent and not stable across "
+                            + "homes; ArtifactIds.destKey needs a rule for this shape",
+                            id, repeat, dest);
+                    id = id + "~" + repeat;
+                }
 
                 List<String> inputs = new ArrayList<>();
                 inputs.add(ArtifactIds.unitInput(binding.unitName()));

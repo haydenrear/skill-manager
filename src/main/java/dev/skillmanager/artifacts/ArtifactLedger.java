@@ -239,28 +239,82 @@ public final class ArtifactLedger {
     // ------------------------------------------------------------------ utils
 
     /**
-     * The check that enforces this class's contract.
+     * Why {@code value} may not be written to this ledger, or null when it may.
      *
-     * <p>Three shapes are refused, and the second is the one a naive
-     * "does it start with a slash" test misses: an absolute path EMBEDDED in a
-     * typed reference. {@code installed/<u>.json}'s {@code origin} is usually a
-     * git URL and may be a local directory, so {@code git:/Users/…/checkout} is
-     * a reachable value and is a claim over a checkout elsewhere on the
-     * machine. {@code https://host/path} is not — the {@code //} after the
-     * scheme separates a URL authority from a filesystem root, and that is the
-     * distinction the second test makes.
+     * <h2>Scheme-stripping, because the {@code //} heuristic was not enough</h2>
+     *
+     * <p>The first version tested for {@code :/} not followed by {@code /},
+     * reasoning that the {@code //} after a scheme separates a URL authority
+     * from a filesystem root. {@code file://} is precisely the scheme that
+     * breaks it: its authority is EMPTY, so a local coordinate reaches this
+     * check as {@code git:file:///Users/somebody/checkout}, the {@code //} test
+     * passes it, and the copy's ledger goes on naming a checkout the copy does
+     * not own. That is not hypothetical — {@code file:/abs/path} is a
+     * first-class install coordinate ({@code Coord}, and {@code SyncGitHandler}
+     * documents {@code source = "file:///abs/path"}) — and it defeats
+     * consequence 4 of this class's contract while leaving the other three
+     * intact, which is the worst way for it to fail: the clone still verifies
+     * clean and the file is still byte-identical.
+     *
+     * <p>So the test is structural rather than a pattern. Leading
+     * {@code <scheme>:} tokens are stripped — repeatedly, because
+     * {@code git:file://…} carries two — and then what is left has to not be a
+     * filesystem path:
+     *
+     * <ul>
+     *   <li>{@code //host/path} is a URL authority and is allowed;</li>
+     *   <li>{@code ///path} is an EMPTY authority followed by a root, which is
+     *       a filesystem path wearing a URL's clothes, and is refused;</li>
+     *   <li>a remaining leading {@code /}, {@code ~} or {@code <drive>:\} is
+     *       refused;</li>
+     *   <li>any {@code ..} segment is refused, at any depth. A relative path
+     *       that climbs out of the home ({@code store:../../../etc}) names
+     *       somewhere else just as surely as an absolute one does, and it also
+     *       survives a clone unchanged — pointing at a different place.</li>
+     * </ul>
+     *
+     * <p>Public because {@link ArtifactBackfill} asks the same question before
+     * it MINTS a value, so an unsafe origin becomes a {@code record:} reference
+     * to the file that owns it rather than a copy of the claim. One predicate,
+     * checked at both ends: the backfill keeps the throw below unreachable in
+     * practice, and the throw stops anything else from making it reachable.
      */
-    private static String relative(Row row, String value, String homeRoot) throws IOException {
+    public static String unsafeReason(String value, String homeRoot) {
         if (value == null) return null;
-        String reason = null;
-        if (value.startsWith("/") || value.startsWith("~")
-                || value.matches("^[A-Za-z]:[\\\\/].*")) {
-            reason = "it is an absolute path";
-        } else if (value.matches(".*:/(?!/).*")) {
-            reason = "it embeds an absolute path after a scheme";
-        } else if (homeRoot != null && !homeRoot.isBlank() && value.contains(homeRoot)) {
-            reason = "it names this home's own root";
+        String normalized = value.replace('\\', '/');
+        for (String segment : normalized.split("/")) {
+            if ("..".equals(segment)) {
+                return "it contains a \"..\" segment, which points outside this home";
+            }
         }
+        if (homeRoot != null && !homeRoot.isBlank() && value.contains(homeRoot)) {
+            return "it names this home's own root";
+        }
+        if (normalized.startsWith("/") || normalized.startsWith("~")
+                || normalized.matches("^[A-Za-z]:/.*")) {
+            return "it is an absolute path";
+        }
+        // Bounded: `git:file://…` is two schemes and nothing legitimate has more.
+        String remainder = normalized;
+        for (int i = 0; i < 4; i++) {
+            String stripped = remainder.replaceFirst("^[A-Za-z][A-Za-z0-9+.\\-]*:", "");
+            if (stripped.equals(remainder)) break;
+            remainder = stripped;
+        }
+        if (remainder.startsWith("//")) {
+            // An empty authority means the rest is a filesystem root.
+            return remainder.length() > 2 && remainder.charAt(2) == '/'
+                    ? "it embeds an absolute path after a scheme with an empty authority"
+                    : null;
+        }
+        if (remainder.startsWith("/")) return "it embeds an absolute path after a scheme";
+        if (remainder.startsWith("~")) return "it names a user home directory";
+        return null;
+    }
+
+    /** The check that enforces this class's contract at write time. */
+    private static String relative(Row row, String value, String homeRoot) throws IOException {
+        String reason = unsafeReason(value, homeRoot);
         if (reason == null) return value;
         throw new IOException(FILENAME + ": refusing to write \"" + value + "\" for artifact "
                 + row.id() + " — " + reason + ", and this ledger holds home-relative values"
