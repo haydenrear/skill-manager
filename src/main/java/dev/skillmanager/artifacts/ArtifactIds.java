@@ -103,20 +103,75 @@ public final class ArtifactIds {
     }
 
     /**
-     * The home-stable key for a projection's destination: its offset from the
-     * binding's target root, falling back to the leaf name when the row does
-     * not sit under it.
+     * The home-stable key for a projection's destination.
+     *
+     * <h2>Why this is a cascade and not one rule</h2>
+     *
+     * <p>The first version keyed on the destination's offset from
+     * {@code binding.targetRoot()} and fell back to the leaf name. That fixes
+     * project bindings and <b>silently collides on harness ones</b>:
+     * {@code HarnessInstantiator.plan} emits ONE binding per unit with THREE
+     * {@code SYMLINK} projections into {@code claudeConfigDir},
+     * {@code codexHome} and {@code geminiHome} while setting
+     * {@code targetRoot = projectDir} — and says so itself, "targetRoot is
+     * informational; the projection destPaths carry the actual on-disk
+     * locations". When those three agent directories are not under
+     * {@code projectDir} — the normal case, since {@code HarnessCommand}
+     * resolves each from {@code CLAUDE_CONFIG_DIR} / {@code CODEX_HOME} /
+     * {@code GEMINI_HOME} while {@code projectDir} falls back to the instance
+     * sandbox — none of the three is under the target root, all three take the
+     * leaf-name fallback, and all three produce
+     * {@code projection:harness:<id>:<unit>#SYMLINK/<unit>}. Three artifacts,
+     * one id, separated only by an order-dependent {@code ~2}/{@code ~3}
+     * suffix: exactly the defect this class exists to remove.
+     *
+     * <p>So the key is decided by the first rule that yields something
+     * home-stable, and every rule names itself so two rules can never collide
+     * with each other:
+     *
+     * <ol>
+     *   <li>{@code home/<path relative to the home root>} — a clone re-anchors
+     *       everything under the home, so this offset is identical on both
+     *       sides. Tried FIRST because it is the strongest: it separates the
+     *       three harness agent directories in their default layout
+     *       ({@code harnesses/instances/<id>/{claude,codex,gemini}}), which the
+     *       target-root rule cannot.</li>
+     *   <li>{@code target/<path relative to the binding's target root>} — for
+     *       destinations outside the home, such as the three agent directories
+     *       of a project binding inside somebody's checkout.</li>
+     *   <li>{@code ext/<12 hex>} — a digest of the absolute destination, for a
+     *       row under neither. Stable because a path outside the home is not
+     *       rewritten by a clone, and a digest rather than the path itself
+     *       because an id must not carry the name of a directory this home does
+     *       not own — the rule {@link ArtifactLedger} enforces at write time.
+     *       Hashing a PATH is not what this model forbids: what is forbidden is
+     *       hashing CONTENT, because content is the part allowed to go stale.</li>
+     * </ol>
+     *
+     * <p>Rule 2 keeps its {@code !equals(root)} guard and rule 3 is now what
+     * catches that case. A destination that IS the target root used to fall
+     * through to the target root's own directory name, which both collided with
+     * a sibling of the same name and leaked an outside-the-home name into an id.
      */
-    public static String destKey(Path targetRoot, Path dest) {
+    public static String destKey(Path homeRoot, Path targetRoot, Path dest) {
         if (dest == null) return "?";
+        Path target = dest.toAbsolutePath().normalize();
+        String inHome = homeRelative(homeRoot, target);
+        if (inHome != null && !".".equals(inHome)) return "home/" + inHome;
         if (targetRoot != null) {
             Path root = targetRoot.toAbsolutePath().normalize();
-            Path target = dest.toAbsolutePath().normalize();
             if (target.startsWith(root) && !target.equals(root)) {
-                return root.relativize(target).toString().replace('\\', '/');
+                return "target/" + root.relativize(target).toString().replace('\\', '/');
             }
         }
-        return dest.getFileName().toString();
+        return "ext/" + shortDigest(target.toString());
+    }
+
+    /** First 12 hex characters of the SHA-256 of {@code value}. */
+    private static String shortDigest(String value) {
+        String hex = dev.skillmanager.bindings.Sha256.hashBytes(
+                value.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        return hex.length() <= 12 ? hex : hex.substring(0, 12);
     }
 
     public static String marketplaceEntry(String pluginName) {
