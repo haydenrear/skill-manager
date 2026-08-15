@@ -105,18 +105,20 @@ _TESTGRAPH_RE = re.compile(r'(?<![\w.])testGraph\("([^"]+)"\)')
 _TESTGRAPH_OPEN_RE = re.compile(r'(?<![\w.])testGraph\("([^"]+)"\)\s*\{')
 _NODE_RE = re.compile(r'node\("([^"]+)"\)')
 
-# A graph "needs the gateway" if it declares any node whose source name
-# mentions Gateway. In practice that is `common/GatewayPythonVenvReady.java` —
-# the node that materializes virtual-mcp-gateway's venv, and the one every
-# gateway-using graph declares first — plus `smoke/GatewayUp.java` and
-# `onboard/OnboardGatewayHealthy.java`. The check is a substring rather than a
-# fixed list so a gateway node added later is picked up without a second
-# hand-kept list going stale, which is the failure mode this whole script
-# exists to remove.
+# A graph "declares a gateway node" if any node source name mentions Gateway:
+# `common/GatewayPythonVenvReady.java`, `smoke/GatewayUp.java`,
+# `onboard/OnboardGatewayHealthy.java`. A substring rather than a fixed list, so
+# a gateway node added later is picked up without a second hand-kept list going
+# stale — the failure mode this whole script exists to remove.
 #
-# It matters because that venv resolves a dependency from a PRIVATE repository
-# (see the gateway-deps step in ci.yml). Five of the eight core graphs declare
-# no gateway node and must not pay for it.
+# THIS IS REPORTING, NOT A CONDITION, and the difference cost a commit to learn.
+# The venv resolves a dependency from a PRIVATE repository, so the obvious move
+# was to skip building it for graphs declaring no gateway node. That is wrong:
+# `InstallCommand` runs `EnsureGateway`, which shells out to its own `uv sync`,
+# so a graph with no gateway node still needs the venv the moment it installs
+# anything — measured on run 31900307288, where `checkout-home` (no gateway node
+# among its seven) died in `EnsureGateway`. `ci.yml` therefore builds the venv
+# unconditionally. This list only says which graphs boot a gateway *explicitly*.
 _GATEWAY_MARKER = "Gateway"
 
 
@@ -236,16 +238,20 @@ def main() -> int:
         "`test-graph-browser` job on schedule and dispatch only."
     )
     lines.append("")
-    if needs_gateway:
-        lines.append(
-            "Needs the virtual-mcp-gateway venv (and therefore the PRIVATE "
-            "`haydenrear/tracing_skill` dependency): "
+    lines.append(
+        "**Every selected graph needs the virtual-mcp-gateway venv, and "
+        "therefore the PRIVATE `haydenrear/tracing_skill` dependency** — "
+        "`skill-manager install` runs `EnsureGateway`, which builds it. "
+        + (
+            "Booting a gateway explicitly: "
             + ", ".join(f"`{g}`" for g in needs_gateway)
-            + f" — {len(selected) - len(needs_gateway)} of {len(selected)} "
-            "selected graphs do not, and no longer pay for it."
+            + f" ({len(needs_gateway)} of {len(selected)}); the rest reach it "
+            "through `install`."
+            if needs_gateway
+            else "No selected graph boots a gateway explicitly; they reach it "
+            "through `install`."
         )
-    else:
-        lines.append("No selected graph needs the virtual-mcp-gateway venv.")
+    )
     summary = "\n".join(lines)
 
     print(summary)

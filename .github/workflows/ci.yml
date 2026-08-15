@@ -2,36 +2,43 @@ name: CI
 
 on:
   push:
-    # `epic/**` is here deliberately, and it is not free. See ARTI-12 (#113).
+    # `main` ONLY, deliberately, and this is narrower than ARTI-12 (#113) first
+    # made it. The `pull_request` trigger below covers `epic/**`; `push` does
+    # not, and the reasoning is a budget argument that survives scrutiny:
     #
-    # An epic branch is an integration branch: a dozen-plus ticket PRs merge
-    # into it over weeks and only then does one PR carry the lot into main.
-    # With `branches: [main]` alone, the first CI signal for all of that work
-    # arrives at the final epic PR — the point where a red is most expensive to
-    # bisect and least possible to attribute. The artifact-DAG epic changes home
-    # provisioning, cloning and teardown, which is precisely what the graphs
-    # under `test-graph` verify, so "validate at the end" means validating the
-    # riskiest change set exactly once, late.
+    # Every ticket in an epic lands as a PR into the epic branch, so adding
+    # `push: epic/**` runs the matrix twice per ticket — once on the PR, once on
+    # the merge commit — for a dozen-plus tickets. The obvious defence is that a
+    # rebase-merge produces a tree no PR run tested. True, but the gap closes
+    # one ticket later: promotion into this epic is serialized, so ticket N+1's
+    # PR rebases onto N's merge and its `pull_request` run tests exactly that
+    # integrated tree. The only state never covered is the LAST merge, and the
+    # epic PR into `main` covers that under the `main` trigger. So the second
+    # run per ticket buys a signal that arrives anyway, and it is the first
+    # thing to cut when the budget is the constraint.
     #
-    # The cost is real: pushes to an epic branch and PRs into it now consume
-    # hosted minutes they did not before. It is bounded on purpose — the
-    # automatic matrix is the 8-graph core set (see .github/scripts/
-    # select-graph-set.py), not the 23-graph full set, and paths-ignore still
-    # short-circuits documentation-only pushes.
+    # What that leaves uncovered, stated rather than glossed: a direct push to
+    # an epic branch, bypassing a PR, runs nothing until the next PR. That is
+    # accepted — this epic promotes through PRs by construction.
     branches:
       - main
-      - "epic/**"
     # Skip the test-graph matrix when a push only touches files that don't
     # affect tested code (release-please's bookkeeping, brew formula, docs,
     # server Dockerfile). The release.yml workflow still runs on those pushes;
     # only this CI workflow short-circuits.
     #
-    # `.github/workflows/**` used to be on this list. It was removed by ARTI-12:
-    # it made a CI-configuration change the one change CI would never execute,
-    # which is how `vars.ENABLE_TEST_GRAPH` could gate the entire graph matrix
-    # off and stay that way across two releases with every run green. A workflow
-    # edit is now self-testing.
+    # `.github/workflows/**` used to be on this list, as a blanket. ARTI-12
+    # replaced it with the two workflow files that genuinely do not affect what
+    # this workflow tests. The blanket made a CI-CONFIGURATION change the one
+    # change CI would never execute, which is how `vars.ENABLE_TEST_GRAPH` could
+    # gate the entire graph matrix off and stay that way across two releases
+    # with every run green. Naming the other two keeps that property for
+    # `ci.yml` without making a release-please or PR-title-lint edit pay for an
+    # 8-graph matrix — which is what removing the whole line did, and is wider
+    # than the argument for removing it.
     paths-ignore:
+      - ".github/workflows/release.yml"
+      - ".github/workflows/lint-pr-title.yml"
       - "CHANGELOG.md"
       - "version.txt"
       - ".release-please-manifest.json"
@@ -42,10 +49,24 @@ on:
       - "docker-compose-ghcr.yml"
       - "*.md"
   pull_request:
+    # `epic/**` is here deliberately, and it is not free. An epic branch is an
+    # integration branch: a dozen-plus ticket PRs merge into it over weeks and
+    # only then does one PR carry the lot into main. With `branches: [main]`
+    # alone, the first CI signal for all of that work arrives at the final epic
+    # PR — the point where a red is most expensive to bisect and least possible
+    # to attribute. This epic changes home provisioning, cloning and teardown,
+    # which is precisely what the graphs under `test-graph` verify.
+    #
+    # Bounded on purpose: the automatic matrix is the 8-graph core set (see
+    # .github/scripts/select-graph-set.py), not the 23-graph full set;
+    # paths-ignore still short-circuits documentation-only changes; and the
+    # `concurrency` group below supersedes queued runs on non-main refs.
     branches:
       - main
       - "epic/**"
     paths-ignore:
+      - ".github/workflows/release.yml"
+      - ".github/workflows/lint-pr-title.yml"
       - "CHANGELOG.md"
       - "version.txt"
       - ".release-please-manifest.json"
@@ -204,10 +225,19 @@ jobs:
     # dependency cannot be fetched by a hosted runner at all, which no amount of
     # matrix trimming fixes. Left gated, and named as still-gated rather than
     # left to be rediscovered.
+    #
+    # It DOES get the `PRIVATE_DEPS_TOKEN` plumbing, so that provisioning that
+    # one secret is sufficient for every job in this file rather than for the
+    # graph matrix alone. Review of #190 caught the asymmetry: the plumbing was
+    # on `test-graph` only, while this job and `test-graph-browser` ran a bare
+    # `uv sync --all-extras`, so "one secret away from green" would have been
+    # true of one job in three.
     if: ${{ vars.ENABLE_PRIVATE_TRACING_CI == 'true' }}
     name: virtual-mcp-gateway pytest
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    env:
+      PRIVATE_DEPS_TOKEN: ${{ secrets.PRIVATE_DEPS_TOKEN }}
     defaults:
       run:
         working-directory: virtual-mcp-gateway
@@ -222,6 +252,11 @@ jobs:
         uses: astral-sh/setup-uv@v3
         with:
           enable-cache: true
+
+      - name: Authorize private Python dependencies
+        if: env.PRIVATE_DEPS_TOKEN != ''
+        working-directory: .
+        run: bash .github/scripts/authorize-private-deps.sh
 
       - name: Sync dependencies (with dev extras)
         run: uv sync --all-extras
@@ -391,10 +426,7 @@ jobs:
       # Absent, this is a no-op and the next step reports what that costs.
       - name: Authorize private Python dependencies
         if: env.PRIVATE_DEPS_TOKEN != ''
-        run: |
-          git config --global \
-            url."https://x-access-token:${PRIVATE_DEPS_TOKEN}@github.com/".insteadOf \
-            "https://github.com/"
+        run: bash .github/scripts/authorize-private-deps.sh
 
       # GatewayRuntime.pythonExecutable() auto-picks virtual-mcp-gateway/.venv/bin/python
       # when it exists; `uv sync` materializes the venv with fastapi/uvicorn/mcp/etc.
@@ -436,6 +468,13 @@ jobs:
       # virtual-mcp-gateway/pyproject.toml. Until one of them happens the matrix
       # executes and reports but cannot go green on a hosted runner — which is
       # itself the most useful thing re-enabling it has produced.
+      #
+      # The secret covers ALL THREE jobs in this file that build that venv:
+      # `test-graph`, `test-graph-browser` and `gateway-tests` each carry the
+      # `Authorize private Python dependencies` step. Review of #190 found the
+      # plumbing on `test-graph` only, which would have made "one secret away
+      # from green" true of one job in three — the nightly Selenium job and the
+      # gateway pytest job would still have been broken by the same cause.
       - name: Install gateway Python deps
         continue-on-error: true
         run: |
@@ -619,6 +658,10 @@ jobs:
       fail-fast: false
       matrix:
         graph: [browser-auth, password-reset]
+    # Same reason as `test-graph`: job level, because a step's own `env:` block
+    # is not reliably visible to that step's `if:`.
+    env:
+      PRIVATE_DEPS_TOKEN: ${{ secrets.PRIVATE_DEPS_TOKEN }}
     steps:
       - uses: actions/checkout@v4
 
@@ -668,6 +711,10 @@ jobs:
       # Same private-dependency caveat as the test-graph job above; see the
       # long comment there. Non-fatal for the same reason: a browser graph that
       # ran and went red is information, a skipped one is not.
+      - name: Authorize private Python dependencies
+        if: env.PRIVATE_DEPS_TOKEN != ''
+        run: bash .github/scripts/authorize-private-deps.sh
+
       - name: Install gateway Python deps
         continue-on-error: true
         run: uv sync --all-extras
