@@ -64,6 +64,8 @@ import dev.skillmanager.cli.installer.InstallerFingerprintTest;
 import dev.skillmanager.cli.installer.SkillScriptBackendTest;
 import dev.skillmanager.artifacts.ArtifactBackfillTest;
 import dev.skillmanager.artifacts.ArtifactHomeStabilityTest;
+import dev.skillmanager.artifacts.ArtifactGraphTest;
+import dev.skillmanager.artifacts.ArtifactStalenessTest;
 import dev.skillmanager.bindings.BindingsTest;
 import dev.skillmanager.command.SearchShowsKindTest;
 import dev.skillmanager.command.ShowNonSkillUnitsTest;
@@ -268,6 +270,8 @@ public class RunTests {
         failures += dev.skillmanager.project.GeminiHomeParityTest.run();
         failures += ArtifactBackfillTest.run();
         failures += ArtifactHomeStabilityTest.run();
+        failures += ArtifactGraphTest.run();
+        failures += ArtifactStalenessTest.run();
         failures += BindingsTest.run();
         failures += dev.skillmanager.bindings.DocRepoTest.run();
         failures += dev.skillmanager.bindings.HarnessTest.run();

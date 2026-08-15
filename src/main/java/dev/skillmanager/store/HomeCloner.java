@@ -998,9 +998,34 @@ public final class HomeCloner {
      * and a gate that always fires is a gate somebody turns off.
      */
     private static List<String> missingDestReferences(byte[] content, Path dstRoot) {
+        List<String> missing = new ArrayList<>();
+        for (String candidate : destReferences(content, dstRoot)) {
+            if (!Files.exists(Path.of(candidate))) missing.add(candidate);
+        }
+        return missing;
+    }
+
+    /**
+     * Every path under a {@link #PROVISIONABLE_ROOTS} root of {@code dstRoot}
+     * that {@code content} names — present or missing.
+     *
+     * <h2>Why the scan and the existence test are now two things</h2>
+     *
+     * <p>{@link #missingDestReferences} is the CLONE's question ("what did this
+     * copy not carry"), and it is a filter over this one. ARTI-05 needs the
+     * other half: which provisioned tree a generated shim RUNS OUT OF, in a home
+     * where the tree is present and everything is healthy. Reading that off the
+     * missing list would produce a dependency graph with edges only in broken
+     * homes, which is the one home where the graph is least useful.
+     *
+     * <p>One scanner, two filters, for the reason {@link #missingReferencesIn}'s
+     * javadoc already gives: a gate and a reader that recover "which tree is
+     * this" independently will disagree, and nothing will say which is right.
+     */
+    private static List<String> destReferences(byte[] content, Path dstRoot) {
         String text = new String(content, StandardCharsets.UTF_8);
         String root = dstRoot.toString();
-        List<String> missing = new ArrayList<>();
+        List<String> found = new ArrayList<>();
         int from = 0;
         while (true) {
             int at = text.indexOf(root, from);
@@ -1015,11 +1040,9 @@ public final class HomeCloner {
             }
             if (candidate.length() <= root.length()) continue;
             if (!underProvisionableRoot(candidate, root)) continue;
-            if (!Files.exists(Path.of(candidate)) && !missing.contains(candidate)) {
-                missing.add(candidate);
-            }
+            if (!found.contains(candidate)) found.add(candidate);
         }
-        return missing;
+        return found;
     }
 
     /**
@@ -1443,6 +1466,53 @@ public final class HomeCloner {
             byte[] content = Files.readAllBytes(file);
             if (looksBinary(content)) return List.of();
             return missingDestReferences(content, dstRoot);
+        } catch (IOException e) {
+            return List.of();
+        }
+    }
+
+    /**
+     * Every path under a re-provisionable root of {@code dstRoot} that
+     * {@code file} reaches — whether or not it exists.
+     *
+     * <p>{@link #missingReferencesIn} answers "what is broken"; this answers
+     * "what does this file RUN OUT OF", which is the edge ARTI-05 derives the
+     * artifact graph from. A generated {@code bin/cli/computeq} wrapper naming
+     * {@code <home>/cache/skill-script-deploy-helm-computeq/venv/bin/computeq}
+     * declares a dependency on that tree in a healthy home exactly as much as in
+     * a broken one; the missing-only list is silent in the healthy case.
+     *
+     * <h2>Symlinks are read as links, not followed</h2>
+     *
+     * <p>{@code missingReferencesIn} reads bytes, and reading the bytes of
+     * {@code bin/cli/jinja2 -> ../../venvs/jinja2-cli/bin/jinja2} gives the
+     * bytes of the PYTHON SCRIPT at the far end, whose own text mentions no
+     * home path. The reference is the link target, so the link target is what
+     * is read — which is how the two shim shapes a home actually holds (a
+     * generated wrapper and a relative symlink) are both covered by one call.
+     *
+     * <p>Returns absolute path strings, matching {@link #missingReferencesIn}.
+     * The caller makes them home-relative, because only the caller knows
+     * whether it is allowed to write one down.
+     */
+    public static List<String> referencesIn(Path file, Path dstRoot) {
+        if (file == null || dstRoot == null) return List.of();
+        try {
+            if (Files.isSymbolicLink(file)) {
+                Path target = Files.readSymbolicLink(file);
+                Path resolved = (target.isAbsolute() ? target
+                        : file.toAbsolutePath().getParent().resolve(target)).normalize();
+                String root = dstRoot.toAbsolutePath().normalize().toString();
+                String candidate = resolved.toString();
+                return candidate.startsWith(root) && candidate.length() > root.length()
+                        && underProvisionableRoot(candidate, root)
+                        ? List.of(candidate) : List.of();
+            }
+            if (!Files.isRegularFile(file)) return List.of();
+            if (Files.size(file) > WHOLE_FILE_LIMIT) return List.of();
+            byte[] content = Files.readAllBytes(file);
+            if (looksBinary(content)) return List.of();
+            return destReferences(content, dstRoot.toAbsolutePath().normalize());
         } catch (IOException e) {
             return List.of();
         }

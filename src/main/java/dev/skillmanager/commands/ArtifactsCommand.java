@@ -1,10 +1,14 @@
 package dev.skillmanager.commands;
 
 import dev.skillmanager.artifacts.Artifact;
+import dev.skillmanager.artifacts.ArtifactCycleException;
+import dev.skillmanager.artifacts.ArtifactFreshness;
+import dev.skillmanager.artifacts.ArtifactGraph;
 import dev.skillmanager.artifacts.ArtifactIndex;
 import dev.skillmanager.artifacts.ArtifactKind;
 import dev.skillmanager.artifacts.ArtifactLedger;
 import dev.skillmanager.artifacts.ArtifactReport;
+import dev.skillmanager.artifacts.StaleReport;
 import dev.skillmanager.store.NotAHomeException;
 import dev.skillmanager.store.SkillStore;
 import dev.skillmanager.util.Log;
@@ -37,6 +41,7 @@ import java.util.concurrent.Callable;
         subcommands = {
                 ArtifactsCommand.ListArtifacts.class,
                 ArtifactsCommand.ShowArtifact.class,
+                ArtifactsCommand.StaleArtifacts.class,
                 ArtifactsCommand.RecordLedger.class
         })
 public final class ArtifactsCommand implements Callable<Integer> {
@@ -174,6 +179,12 @@ public final class ArtifactsCommand implements Callable<Integer> {
             System.out.println("inputs:");
             if (artifact.inputs().isEmpty()) System.out.println("  (none declared)");
             for (String input : artifact.inputs()) System.out.println("  " + input);
+            if (!artifact.observedInputs().isEmpty()) {
+                // Printed apart from the declared ones, and labelled, because
+                // these are re-read on every pass and never written down.
+                System.out.println("observed inputs (read off disk, never recorded):");
+                for (String input : artifact.observedInputs()) System.out.println("  " + input);
+            }
             System.out.println("outputs:");
             if (artifact.outputs().isEmpty()) System.out.println("  (none — the source record is the artifact)");
             for (Artifact.Output output : artifact.outputs()) {
@@ -189,6 +200,134 @@ public final class ArtifactsCommand implements Callable<Integer> {
                 artifact.actual().forEach((k, v) -> System.out.println("  " + k + " = " + v));
             }
             return 0;
+        }
+    }
+
+    // ----------------------------------------------------------------- stale
+
+    /**
+     * {@code skill-manager artifacts stale} — what a moved unit made stale.
+     *
+     * <p>The question the whole epic exists for, and the one a home could not
+     * answer: not "does a file exist there" but "does what is on disk still
+     * describe the inputs it was built from". A verdict is reached by
+     * RE-DERIVING each artifact's input fingerprint now and comparing it with
+     * what its producer recorded, then by propagating along
+     * {@link ArtifactGraph}'s edges — so a unit moving names its shims, the
+     * trees they run out of, and everything downstream of those.
+     *
+     * <p><b>Read-only, and it prescribes nothing.</b> No install, no rebuild,
+     * no repair, and no ledger write. Turning a verdict into a rebuild is the
+     * {@code build} verb's job.
+     *
+     * <p><b>Exit code 0 whatever it finds.</b> A read command that exits
+     * non-zero on drift is a read command that gets wrapped in {@code || true}
+     * by the first script that calls it, and the finding then goes to nobody.
+     * The counts are in the summary and in the JSON.
+     */
+    @Command(name = "stale",
+            description = "Name every artifact whose inputs no longer match what was recorded.")
+    public static final class StaleArtifacts implements Callable<Integer> {
+
+        @Option(names = "--json", description = "Emit machine-readable JSON.")
+        boolean json;
+
+        @Option(names = "--kind", paramLabel = "<kind>",
+                description = "Only this kind, e.g. cli-shim, provisioned-tree.")
+        String kind;
+
+        @Option(names = "--unverifiable",
+                description = "Also print the artifacts that could not be decided, and why. "
+                        + "Always present in --json.")
+        boolean unverifiable;
+
+        @Override
+        public Integer call() throws IOException {
+            SkillStore store = requireHome();
+            if (store == null) return NotAHomeException.EXIT_CODE;
+
+            ArtifactKind wanted = null;
+            if (kind != null && !kind.isBlank()) {
+                wanted = ArtifactKind.fromId(kind);
+                if (wanted == null) {
+                    Log.error("unknown artifact kind: %s (known: %s)", kind, knownKinds());
+                    return 2;
+                }
+            }
+
+            ArtifactIndex index = ArtifactIndex.of(store);
+            ArtifactFreshness freshness;
+            try {
+                freshness = ArtifactFreshness.of(index, store);
+            } catch (ArtifactCycleException cycle) {
+                // A plan error, not a stack overflow: the chain is named and
+                // the command refuses rather than reporting a partial graph.
+                Log.error("%s", cycle.getMessage());
+                return 2;
+            }
+
+            // `wanted` reaches BOTH renderings. It used to reach only the human
+            // one, so `--json --kind cli-shim` silently emitted every kind: a
+            // filter that validates its argument, prints no error and is then
+            // discarded is worse than one that does not exist.
+            if (json) {
+                return JsonOutput.print(
+                        StaleReport.of(index.home().toString(), freshness, wanted)) ? 0 : 2;
+            }
+            render(index, freshness, wanted, unverifiable);
+            return 0;
+        }
+
+        /**
+         * Every line here is scoped by {@code wanted}, counts included.
+         * Printing a filtered list above unfiltered totals produced an all-clear
+         * ("nothing … disagrees with its inputs") directly above "49 stale" in
+         * the same output.
+         */
+        private static void render(ArtifactIndex index, ArtifactFreshness freshness,
+                                   ArtifactKind wanted, boolean withUnverifiable) {
+            System.out.println("stale artifacts — " + index.home()
+                    + (wanted == null ? "" : " (kind " + wanted.id() + ")"));
+            System.out.println();
+            List<ArtifactFreshness.Verdict> stale =
+                    freshness.withFreshness(ArtifactFreshness.Freshness.STALE, wanted);
+            printGroup(stale, freshness);
+            if (stale.isEmpty()) {
+                System.out.println("  nothing "
+                        + (wanted == null ? "recorded in this home" : "of that kind")
+                        + " disagrees with its inputs.");
+            }
+            List<ArtifactFreshness.Verdict> undecided =
+                    freshness.withFreshness(ArtifactFreshness.Freshness.UNVERIFIABLE, wanted);
+            if (withUnverifiable && !undecided.isEmpty()) {
+                System.out.println();
+                System.out.println("could not be decided:");
+                printGroup(undecided, freshness);
+            }
+            System.out.println();
+            System.out.printf("%d stale, %d unverifiable, %d current, of %d artifact(s)%n",
+                    stale.size(),
+                    undecided.size(),
+                    freshness.count(ArtifactFreshness.Freshness.CURRENT, wanted),
+                    freshness.total(wanted));
+            if (!withUnverifiable && !undecided.isEmpty()) {
+                System.out.println("  (--unverifiable names the ones nothing in this home could "
+                        + "decide; an undecided artifact is not a current one)");
+            }
+        }
+
+        private static void printGroup(List<ArtifactFreshness.Verdict> verdicts,
+                                       ArtifactFreshness freshness) {
+            for (ArtifactFreshness.Verdict verdict : verdicts) {
+                System.out.printf("  %s%s%n", verdict.id(),
+                        verdict.owner() == null ? "" : "  (" + verdict.owner() + ")");
+                System.out.println("      " + verdict.reason());
+                List<String> downstream = new ArrayList<>(
+                        freshness.graph().downstreamOf(verdict.id()));
+                if (!downstream.isEmpty()) {
+                    System.out.println("      feeds: " + String.join(", ", downstream));
+                }
+            }
         }
     }
 

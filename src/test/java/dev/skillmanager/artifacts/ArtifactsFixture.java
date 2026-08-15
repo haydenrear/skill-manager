@@ -78,6 +78,16 @@ final class ArtifactsFixture {
                 name = "alpha-script"
                 spec = "skill-script:alpha-script"
                 on_path = "alpha-script"
+
+                # ARTI-05 needs the dep to be FINGERPRINTABLE, which means it
+                # has to name the script whose tree the digest is over. Without
+                # an install target `SkillScriptBackend.fingerprint` returns a
+                # gap, and a gap is the one thing this fixture must not silently
+                # be — a staleness test that passes because nothing could be
+                # computed proves nothing about staleness.
+                [cli_dependencies.install.any]
+                script = "install.sh"
+                binary = "alpha-script"
                 """);
         new UnitStore(store).write(new InstalledUnit("alpha", "0.1.0",
                 InstalledUnit.Kind.LOCAL_DIR, InstalledUnit.InstallSource.LOCAL_FILE,
@@ -97,7 +107,21 @@ final class ArtifactsFixture {
         // operator's home are this shape, and it is the one every presence
         // check called healthy — the wrapper is a fine executable whatever
         // happened to the tree it execs into.
-        Path provisioned = home.resolve("cache/uv-tools/alpha/bin");
+        //
+        // The wrapper's target is under its OWN tree and RESOLVES; the dangling
+        // symlink beside it points into a DIFFERENT tree and does not. That is
+        // the real home's shape (`cache/skill-script-deploy-helm-computeq` per
+        // skill-script dep, `cache/uv-tools` shared by the uv-installed tools)
+        // and both halves are load-bearing for ARTI-05:
+        //
+        //   - `cache/skill-script-alpha-alpha-script` is credited to the
+        //     skill-script row, so a skill-scripts/ edit reaches it;
+        //   - `cache/uv-tools` is credited to NOBODY, because the only shim
+        //     naming it does so through a broken link, and a broken link is no
+        //     evidence about which install wrote a directory. If it were
+        //     credited, a shared uv root would inherit the pip row's
+        //     fingerprint and a `stale` verdict would name the wrong unit.
+        Path provisioned = home.resolve("cache/skill-script-alpha-alpha-script/venv/bin");
         Files.createDirectories(provisioned);
         Files.writeString(provisioned.resolve("alpha-script"), "#!/bin/sh\necho ok\n");
         provisioned.resolve("alpha-script").toFile().setExecutable(true);
@@ -105,6 +129,7 @@ final class ArtifactsFixture {
                 "#!/bin/sh\nexec \"" + provisioned.resolve("alpha-script") + "\" \"$@\"\n");
         bin.resolve("alpha-script").toFile().setExecutable(true);
         // And the symlink shape beside it, dangling from the start.
+        Files.createDirectories(home.resolve("cache/uv-tools"));
         Files.createSymbolicLink(bin.resolve("dangler"),
                 Path.of("../../cache/uv-tools/alpha/bin/dangler"));
 
@@ -125,6 +150,17 @@ final class ArtifactsFixture {
         // --- marketplace ---------------------------------------------------
         Path plugins = home.resolve("plugins/beta");
         Files.createDirectories(plugins);
+        // ARTI-05 compares the generated manifest against the INSTALLED plugin
+        // set, so the plugin has to be installed rather than merely present as
+        // a directory — otherwise the fixture models a home in which every
+        // marketplace row is orphaned.
+        Files.createDirectories(plugins.resolve(".claude-plugin"));
+        Files.writeString(plugins.resolve(".claude-plugin/plugin.json"), """
+                {"name": "beta", "version": "0.1.0", "description": "beta fixture"}
+                """);
+        new UnitStore(store).write(new InstalledUnit("beta", "0.1.0",
+                InstalledUnit.Kind.LOCAL_DIR, InstalledUnit.InstallSource.LOCAL_FILE,
+                null, null, null, "2026-01-01T00:00:00Z", List.of(), UnitKind.PLUGIN));
         Files.createDirectories(home.resolve("plugin-marketplace/.claude-plugin"));
         Files.createDirectories(home.resolve("plugin-marketplace/plugins"));
         Files.writeString(home.resolve("plugin-marketplace/.claude-plugin/marketplace.json"), """
@@ -162,10 +198,59 @@ final class ArtifactsFixture {
                                 ProjectionKind.MANAGED_COPY, null, Sha256.hashFile(copy)))))));
 
         // --- digest ------------------------------------------------------------
+        // Both installed units that a clone's own `home drift --record` would
+        // digest. `beta` is here because it is an installed PLUGIN, and a
+        // fixture whose digest names fewer units than the home holds makes the
+        // clone-stability comparison fail on the fixture's omission rather than
+        // on anything about ids.
         new HomeDigest(HomeDigest.SCHEMA_VERSION, "2026-01-01T00:00:00Z", "root-digest",
                 List.of(new HomeDigest.UnitDigest("alpha", "SKILL", "digest-alpha",
-                        Map.of("SKILL.md", "hash-1")))).write(store);
+                                Map.of("SKILL.md", "hash-1")),
+                        new HomeDigest.UnitDigest("beta", "PLUGIN", "digest-beta",
+                                Map.of(".claude-plugin/plugin.json", "hash-2")))).write(store);
 
+        return store;
+    }
+
+    /**
+     * Add a unit declaring two MCP servers — one the fixture's
+     * {@code gateway-config.json} already registers and one nothing registered.
+     *
+     * <p>The second is the shape a home synced without {@code --include-mcp} is
+     * in, and before ARTI-05 nothing in the home said so: an MCP registration
+     * was a name in a JSON file with no owner and no input, so a declaration
+     * with no registration was not merely undecided — it was invisible.
+     */
+    static SkillStore withMcpUnit(SkillStore store) throws Exception {
+        Path unit = store.root().resolve("skills/mcp-alpha");
+        Files.createDirectories(unit);
+        Files.writeString(unit.resolve("SKILL.md"),
+                "---\nname: mcp-alpha\ndescription: fixture\n---\nbody\n");
+        Files.writeString(unit.resolve("skill-manager.toml"), """
+                [skill]
+                name = "mcp-alpha"
+                version = "0.1.0"
+                description = "mcp fixture"
+
+                [[mcp_dependencies]]
+                name = "demo-mcp"
+                display_name = "Demo"
+                description = "registered in gateway-config.json"
+                [mcp_dependencies.load]
+                type = "docker"
+                image = "example/demo:1"
+
+                [[mcp_dependencies]]
+                name = "demo-unregistered"
+                display_name = "Declared only"
+                description = "declared by this unit and registered nowhere"
+                [mcp_dependencies.load]
+                type = "docker"
+                image = "example/ghost:1"
+                """);
+        new UnitStore(store).write(new InstalledUnit("mcp-alpha", "0.1.0",
+                InstalledUnit.Kind.LOCAL_DIR, InstalledUnit.InstallSource.LOCAL_FILE,
+                null, null, null, "2026-01-01T00:00:00Z", List.of(), UnitKind.SKILL));
         return store;
     }
 

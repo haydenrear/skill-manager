@@ -12,10 +12,12 @@ import dev.skillmanager.cli.installer.CliArtifact;
 import dev.skillmanager.lock.CliLock;
 import dev.skillmanager.model.AgentUnit;
 import dev.skillmanager.model.CliDependency;
+import dev.skillmanager.model.McpDependency;
 import dev.skillmanager.model.UnitKind;
 import dev.skillmanager.source.GitOps;
 import dev.skillmanager.source.InstalledUnit;
 import dev.skillmanager.source.UnitStore;
+import dev.skillmanager.store.HomeCloner;
 import dev.skillmanager.store.HomeDigest;
 import dev.skillmanager.store.SkillStore;
 import dev.skillmanager.util.Log;
@@ -76,9 +78,12 @@ public final class ArtifactBackfill {
     /** Every artifact this home can currently see, ordered by kind then id. */
     public List<Artifact> collect() {
         Map<String, Artifact> byId = new LinkedHashMap<>();
+        List<Artifact> shims = cliShims();
         add(byId, unitStores());
-        add(byId, cliShims());
-        add(byId, provisionedTrees());
+        add(byId, shims);
+        // After the shims, and given them: a provisioned tree's only
+        // declaration in a home is the lock row whose shim runs out of it.
+        add(byId, provisionedTrees(shims));
         add(byId, projections());
         add(byId, marketplaceEntries());
         add(byId, harnessInstances());
@@ -237,6 +242,7 @@ public final class ArtifactBackfill {
             if (binary == null && nameIsTheArtifact) binary = entry.tool();
 
             List<Artifact.Output> outputs;
+            List<String> observed = List.of();
             Map<String, String> actual = Map.of();
             if (binary == null) {
                 outputs = List.of(new Artifact.Output("bin/cli/<unknown>",
@@ -253,6 +259,7 @@ public final class ArtifactBackfill {
                                                              : Artifact.Presence.DANGLING);
                 outputs = List.of(Artifact.Output.inHome("bin/cli/" + binary, presence));
                 if (!verdict.usable()) actual = Artifact.facts("unusable_because", verdict.reason());
+                observed = referencedTreePaths(shim);
             }
 
             out.add(new Artifact(
@@ -262,7 +269,9 @@ public final class ArtifactBackfill {
                     inputs,
                     outputs,
                     "cli-lock.toml",
-                    Artifact.facts("version", entry.version(), "sha256", entry.sha256(),
+                    Artifact.facts("backend", entry.backend(), "tool", entry.tool(),
+                            "spec", entry.spec(),
+                            "version", entry.version(), "sha256", entry.sha256(),
                             "binary", entry.binary(),
                             "install_fingerprint", entry.installFingerprint(),
                             "install_fingerprint_kind",
@@ -280,7 +289,35 @@ public final class ArtifactBackfill {
                     // a fingerprint's clothes a second time.
                     entry.installFingerprint() == null ? Artifact.Agreement.UNRECORDED
                                                        : Artifact.Agreement.UNVERIFIABLE,
-                    Artifact.Origin.HOME));
+                    Artifact.Origin.HOME,
+                    observed));
+        }
+        return out;
+    }
+
+    /**
+     * The provisioned-tree paths {@code shim} actually runs out of, home-relative.
+     *
+     * <p>This is the edge the ticket exists to draw, and it is
+     * {@link HomeCloner#referencesIn} rather than a name convention: a shim's
+     * TREE is not recoverable from its name ({@code bin/cli/computeq} does not
+     * say {@code cache/skill-script-deploy-helm-computeq}) and the two shim
+     * shapes a home holds recover it two different ways — a generated wrapper
+     * names the path in its body, a {@code uv}/{@code npm} shim names it as a
+     * symlink target. One call covers both because that scanner already had to.
+     *
+     * <p>Returned as {@link Artifact#observedInputs()} and never as
+     * {@link Artifact#inputs()}: this was read off the disk on this pass, and a
+     * disk observation written into {@code artifacts.lock.toml} would be a
+     * remembered edge that can disagree with the disk it was read from.
+     */
+    private List<String> referencedTreePaths(Path shim) {
+        List<String> out = new ArrayList<>();
+        for (String absolute : HomeCloner.referencesIn(shim, root)) {
+            String relative = ArtifactIds.homeRelative(root, Path.of(absolute));
+            if (relative == null) continue;
+            String reference = ArtifactIds.storeInput(relative);
+            if (!out.contains(reference)) out.add(reference);
         }
         return out;
     }
@@ -306,17 +343,40 @@ public final class ArtifactBackfill {
     // ---------------------------------------------------- provisioned trees
 
     /**
-     * The classes with no declaration at all: a tree exists because some
-     * installer wrote it, and nothing in the home says it should.
+     * The trees {@code cache/}, {@code venvs/}, {@code tools/}, {@code npm/}
+     * and {@code pm/} hold — ten of them in the project home, and before
+     * ARTI-05 none had an owner, an input or a source record.
      *
-     * <p>They are therefore emitted with no inputs and no source record, which
-     * is not an omission — it is the finding, stated in the model. Once
-     * {@code artifacts record} has run, the ledger supplies the declaration a
-     * clone needs, and the same tree in a home that skipped it lists as
-     * {@link Artifact.Materialization#DECLARED_ONLY}.
+     * <h2>They are declared after all, one record over</h2>
+     *
+     * <p>Nothing writes "this tree exists because of X". What a home DOES hold
+     * is the shim the same install produced, and that shim names its tree —
+     * {@code bin/cli/computeq} execs
+     * {@code cache/skill-script-deploy-helm-computeq/venv/bin/computeq}, and
+     * {@code bin/cli/jinja2} is a symlink into {@code venvs/jinja2-cli}. So a
+     * tree is credited to the {@code cli-lock.toml} row whose shim runs out of
+     * it, and inherits that row's declaration: the unit that asked for it, the
+     * spec that describes it, and the fingerprint the backend recorded over the
+     * inputs it was built from.
+     *
+     * <p>The association is made with the same prefix-containment rule
+     * {@link ArtifactGraph} resolves edges by — a shim references a path INSIDE
+     * a tree and the tree artifact's output is its ROOT — rather than by
+     * reading a naming convention out of the directory name. The convention is
+     * real ({@code cache/skill-script-<unit>-<dep>}) and it is the SCRIPT's,
+     * not skill-manager's: parsing it would make this listing wrong for every
+     * installer that names its own directory, which is all of the ones under
+     * {@code venvs/}, {@code tools/} and {@code npm/}.
+     *
+     * <p>A tree no shim references — {@code pm/uv}, {@code pm/node}, the shared
+     * package-manager roots — keeps the old shape: no owner, no inputs, and a
+     * verdict of {@code unverifiable} rather than a guess. That is still the
+     * finding, now stated about two trees instead of about all of them.
      */
-    List<Artifact> provisionedTrees() {
+    List<Artifact> provisionedTrees(List<Artifact> shims) {
         List<Artifact> out = new ArrayList<>();
+        List<String> treePaths = new ArrayList<>();
+        Map<String, Path> directories = new LinkedHashMap<>();
         for (String name : PROVISIONED_ROOTS) {
             Path directory = root.resolve(name);
             if (!Files.isDirectory(directory)) continue;
@@ -327,21 +387,96 @@ public final class ArtifactBackfill {
                 }
                 sorted.sort(String::compareTo);
                 for (String child : sorted) {
-                    out.add(new Artifact(
-                            ArtifactIds.provisionedTree(name, child),
-                            ArtifactKind.PROVISIONED_TREE,
-                            null,
-                            List.of(),
-                            List.of(Artifact.Output.inHome(name + "/" + child,
-                                    presenceOf(directory.resolve(child)))),
-                            null,
-                            Map.of(), Map.of(),
-                            Artifact.Agreement.UNRECORDED,
-                            Artifact.Origin.HOME));
+                    treePaths.add(name + "/" + child);
+                    directories.put(name + "/" + child, directory.resolve(child));
                 }
             } catch (IOException e) {
                 Log.warn("artifacts: could not list %s: %s", directory, e.getMessage());
             }
+        }
+
+        Map<String, Artifact> producerByTree = producersOf(treePaths, shims);
+        for (String treePath : treePaths) {
+            Artifact shim = producerByTree.get(treePath);
+            int slash = treePath.indexOf('/');
+            String id = ArtifactIds.provisionedTree(treePath.substring(0, slash),
+                    treePath.substring(slash + 1));
+            List<String> inputs = new ArrayList<>();
+            Map<String, String> recorded = Map.of();
+            String owner = null;
+            String source = null;
+            if (shim != null) {
+                owner = shim.owner();
+                source = shim.source();
+                if (owner != null) inputs.add(ArtifactIds.unitInput(owner));
+                String spec = shim.recorded().get("spec");
+                if (spec != null) inputs.add(ArtifactIds.specInput(spec));
+                recorded = shim.recorded();
+            }
+            out.add(new Artifact(id, ArtifactKind.PROVISIONED_TREE, owner, inputs,
+                    List.of(Artifact.Output.inHome(treePath, presenceOf(directories.get(treePath)))),
+                    source, recorded, Map.of(),
+                    recorded.get("install_fingerprint") == null ? Artifact.Agreement.UNRECORDED
+                                                                : Artifact.Agreement.UNVERIFIABLE,
+                    Artifact.Origin.HOME));
+        }
+        return out;
+    }
+
+    /**
+     * Tree path to the shim artifact that runs out of it.
+     *
+     * <p>The containment test is {@link ArtifactGraph}'s, stated once here for
+     * the association and once there for the edge because they are asked at
+     * different times — the association has to exist before the tree artifact
+     * does, and the edge is resolved after every artifact exists. Same rule,
+     * and the tests pin both against the same fixture.
+     *
+     * <h2>What this can still get wrong, stated rather than implied</h2>
+     *
+     * <p>Two guards below narrow it — the reference has to RESOLVE, and the
+     * tree has to have exactly one claimant — and neither makes the inference
+     * sound. A shared installer root with a single consumer in this home
+     * ({@code cache/uv-tools} in a home holding one uv tool) is still credited
+     * to that consumer, and the tree then inherits that dep's fingerprint. No
+     * record in a home says which installer created a directory, so the shim
+     * that demonstrably runs out of it is the strongest available evidence and
+     * not proof. It is at least ACTIONABLE evidence: if that dep's inputs
+     * moved, rebuilding it is what rewrites that tree.
+     */
+    private Map<String, Artifact> producersOf(List<String> treePaths, List<Artifact> shims) {
+        Map<String, List<Artifact>> claimants = new LinkedHashMap<>();
+        for (Artifact shim : shims) {
+            for (String observed : shim.observedInputs()) {
+                if (!observed.startsWith("store:")) continue;
+                String path = observed.substring("store:".length());
+                // A reference that resolves to NOTHING is no evidence about who
+                // wrote the tree it points into. A dangling
+                // `bin/cli/dangler -> cache/uv-tools/…/dangler` would otherwise
+                // make its lock row the sole claimant of a shared uv root and
+                // hand that root one dep's fingerprint on a broken link.
+                if (!Files.exists(root.resolve(path))) continue;
+                String best = null;
+                for (String treePath : treePaths) {
+                    if (!path.equals(treePath) && !path.startsWith(treePath + "/")) continue;
+                    if (best == null || treePath.length() > best.length()) best = treePath;
+                }
+                if (best == null) continue;
+                List<Artifact> holders = claimants.computeIfAbsent(best, k -> new ArrayList<>());
+                if (!holders.contains(shim)) holders.add(shim);
+            }
+        }
+        Map<String, Artifact> out = new LinkedHashMap<>();
+        for (Map.Entry<String, List<Artifact>> entry : claimants.entrySet()) {
+            // EXACTLY ONE, and this is the honest half of the rule. A tree that
+            // several shims run out of — `cache/uv-tools` holds every
+            // uv-installed tool in a real home — was not produced by one lock
+            // row, so no row's fingerprint describes it. Crediting it to
+            // whichever shim the lock listed first would attribute one dep's
+            // recorded inputs to another dep's artifact, and the resulting
+            // "stale" would name the wrong unit. Ambiguous stays unowned, and
+            // ArtifactFreshness reports it as unverifiable rather than guessing.
+            if (entry.getValue().size() == 1) out.put(entry.getKey(), entry.getValue().get(0));
         }
         return out;
     }
@@ -411,16 +546,62 @@ public final class ArtifactBackfill {
 
     // ---------------------------------------------------------- marketplace
 
-    /** One artifact per plugin row in the generated marketplace manifest. */
+    /**
+     * One artifact per plugin the marketplace should hold — asking, for the
+     * first time, whether it does.
+     *
+     * <h2>The generated set and the set it is generated FROM</h2>
+     *
+     * <p>{@code RefreshHarnessPlugins} rewrites the manifest and the symlink
+     * tree unconditionally on every pass, which is what the census's
+     * {@code PRESENCE} verdict records: nothing ever compares the generated
+     * output with the installed plugin set, so "did anything change" is a
+     * question the home does not ask. It is a cheap question with an exact
+     * answer, and both sides of it are already on disk — so it is asked here.
+     *
+     * <p>Three states, each recorded as {@code marketplace_state} so the
+     * verdict is decided by a fact rather than by re-deriving the comparison
+     * downstream:
+     *
+     * <ul>
+     *   <li>{@code listed} — the manifest names it and it is installed;</li>
+     *   <li>{@code orphaned} — the manifest names it and it is NOT installed,
+     *       so the generated tree describes a home that no longer exists;</li>
+     *   <li>{@code unlisted} — it is installed and the manifest does not name
+     *       it, which is the manifest having fallen behind. The artifact is
+     *       still emitted, because "the artifact that should exist and does
+     *       not" is the row a demand-driven build needs and the row a listing
+     *       keyed on the manifest can never produce.</li>
+     * </ul>
+     */
     List<Artifact> marketplaceEntries() {
         Path manifest = root.resolve("plugin-marketplace")
                 .resolve(".claude-plugin").resolve("marketplace.json");
         JsonNode node = readJson(manifest);
+        List<String> installedPlugins = installedPluginNames();
+        List<String> listed = new ArrayList<>();
+        if (node != null && node.path("plugins").isArray()) {
+            for (JsonNode plugin : node.path("plugins")) {
+                String name = plugin.path("name").asText(null);
+                if (name != null && !name.isBlank() && !listed.contains(name)) listed.add(name);
+            }
+        }
+        // Nothing generated and nothing to generate: no artifacts, rather than
+        // an "unlisted" row per plugin in a home with no marketplace at all.
+        if (node == null && installedPlugins.isEmpty()) return List.of();
+
+        List<String> names = new ArrayList<>(listed);
+        for (String installed : installedPlugins) {
+            if (!names.contains(installed)) names.add(installed);
+        }
+        names.sort(String::compareTo);
+
         List<Artifact> out = new ArrayList<>();
-        if (node == null || !node.path("plugins").isArray()) return out;
-        for (JsonNode plugin : node.path("plugins")) {
-            String name = plugin.path("name").asText(null);
-            if (name == null || name.isBlank()) continue;
+        for (String name : names) {
+            boolean isListed = listed.contains(name);
+            boolean isInstalled = installedPlugins.contains(name);
+            String state = isListed && isInstalled ? "listed"
+                    : (isListed ? "orphaned" : "unlisted");
             Path link = root.resolve("plugin-marketplace").resolve("plugins").resolve(name);
             out.add(new Artifact(
                     ArtifactIds.marketplaceEntry(name),
@@ -431,13 +612,31 @@ public final class ArtifactBackfill {
                     List.of(Artifact.Output.inHome("plugin-marketplace/plugins/" + name,
                             presenceOf(link))),
                     "plugin-marketplace/.claude-plugin/marketplace.json",
-                    Map.of(), Map.of(),
-                    // RefreshHarnessPlugins regenerates the manifest and the
-                    // link tree unconditionally on every pass, so there is no
-                    // input record for the comparison to be made against.
+                    Artifact.facts("marketplace_state", state),
+                    Artifact.facts("marketplace_state", state),
+                    // Still UNRECORDED as an AGREEMENT: no input fingerprint is
+                    // written at generation, and the state above is a set
+                    // comparison rather than a recorded claim about content.
                     Artifact.Agreement.UNRECORDED,
                     Artifact.Origin.HOME));
         }
+        return out;
+    }
+
+    /** Names of installed units of kind {@code PLUGIN}, sorted. */
+    private List<String> installedPluginNames() {
+        List<String> out = new ArrayList<>();
+        try {
+            for (AgentUnit unit : store.listInstalledUnits().units()) {
+                if (unit.kind() == UnitKind.PLUGIN && !out.contains(unit.name())) {
+                    out.add(unit.name());
+                }
+            }
+        } catch (IOException e) {
+            Log.warn("artifacts: could not read installed units for the marketplace: %s",
+                    e.getMessage());
+        }
+        out.sort(String::compareTo);
         return out;
     }
 
@@ -484,10 +683,36 @@ public final class ArtifactBackfill {
     // ------------------------------------------------------ MCP registrations
 
     /**
-     * One artifact per registered MCP server — the statically configured ones
-     * in {@code gateway-config.json} and the deployed ones the gateway persists
-     * in {@code gateway-data/dynamic-servers.json}, keyed by server id so a
-     * server present in both is one artifact and not two.
+     * One artifact per MCP server this home is supposed to have registered —
+     * the statically configured ones in {@code gateway-config.json}, the
+     * deployed ones the gateway persists in
+     * {@code gateway-data/dynamic-servers.json}, and <b>the ones a unit
+     * declares and nothing registered</b>. Keyed by server id, so a server in
+     * more than one of those is one artifact and not three.
+     *
+     * <h2>The declaring unit is the input, and it was not being read</h2>
+     *
+     * <p>Before ARTI-05 a registration had no owner and no inputs: it was a
+     * name in a JSON file with nothing on the other end of it. Every one of
+     * them is derived from a unit's {@code mcp_dependencies}, which the home
+     * already parses — so that unit is the input, and the edge to its store
+     * bytes is what makes "deploy-helm moved" reach the servers it declares.
+     *
+     * <p>The two states are recorded as {@code registration_state}:
+     * {@code registered}, and {@code declared-only} for a dependency a unit
+     * declares that this home has no registration for. The second is the
+     * shape of an existing defect rather than a hypothetical — {@code sync}
+     * performs no MCP registration since gateway work became opt-in, so a home
+     * synced without {@code --include-mcp} is in exactly this state and nothing
+     * in it said so.
+     *
+     * <p>What is NOT claimed: whether a REGISTERED server still matches its
+     * declaration. The gateway persists its own normalized {@code load_spec}
+     * rather than the payload skill-manager posted, so the two cannot be
+     * digested against each other from this home's files.
+     * {@link ArtifactFreshness} reports that as {@code unverifiable} with the
+     * reason, which is the honest answer and not a missing feature dressed up
+     * as a passing one.
      */
     List<Artifact> mcpRegistrations() {
         Map<String, String> sources = new LinkedHashMap<>();
@@ -512,16 +737,48 @@ public final class ArtifactBackfill {
                 if (id != null) sources.putIfAbsent(id, "gateway-data/dynamic-servers.json");
             }
         }
+
+        Map<String, String> declaringUnit = new LinkedHashMap<>();
+        try {
+            for (AgentUnit unit : store.listInstalledUnits().units()) {
+                for (McpDependency dep : unit.mcpDependencies()) {
+                    if (dep.name() != null) declaringUnit.putIfAbsent(dep.name(), unit.name());
+                }
+            }
+        } catch (IOException e) {
+            Log.warn("artifacts: could not read installed units for MCP declarations: %s",
+                    e.getMessage());
+        }
+
+        List<String> ids = new ArrayList<>(sources.keySet());
+        for (String declared : declaringUnit.keySet()) {
+            if (!ids.contains(declared)) ids.add(declared);
+        }
+        ids.sort(String::compareTo);
+
         List<Artifact> out = new ArrayList<>();
-        for (Map.Entry<String, String> entry : sources.entrySet()) {
+        for (String id : ids) {
+            String owner = declaringUnit.get(id);
+            String source = sources.get(id);
+            String state = source != null ? "registered" : "declared-only";
+            List<String> inputs = new ArrayList<>();
+            if (owner != null) {
+                inputs.add(ArtifactIds.unitInput(owner));
+                inputs.add(ArtifactIds.storeInput(unitStorePath(owner)));
+            }
             out.add(new Artifact(
-                    ArtifactIds.mcpRegistration(entry.getKey()),
+                    ArtifactIds.mcpRegistration(id),
                     ArtifactKind.MCP_REGISTRATION,
-                    null,
+                    owner,
+                    inputs,
                     List.of(),
-                    List.of(),
-                    entry.getValue(),
-                    Map.of(), Map.of(),
+                    // A declared-only server has no record of its own; naming
+                    // the unit record it comes FROM keeps `source` meaning "the
+                    // home-relative record that declares this artifact".
+                    source != null ? source
+                            : (owner == null ? null : "installed/" + owner + ".json"),
+                    Artifact.facts("registration_state", state),
+                    Artifact.facts("registration_state", state),
                     // Provisioning short-circuits on a content-independent
                     // marker, which is why an upgraded server keeps the old
                     // binary (skill-manager#103). Nothing here to compare.
@@ -529,6 +786,16 @@ public final class ArtifactBackfill {
                     Artifact.Origin.HOME));
         }
         return out;
+    }
+
+    /** Where {@code unit}'s bytes live in this home, or its skill path by default. */
+    private String unitStorePath(String unit) {
+        for (UnitKind kind : UnitKind.values()) {
+            Path candidate = store.unitDir(unit, kind);
+            String relative = ArtifactIds.homeRelative(root, candidate);
+            if (relative != null && Files.isDirectory(candidate)) return relative;
+        }
+        return "skills/" + unit;
     }
 
     // ---------------------------------------------------------- doc imports

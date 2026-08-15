@@ -44,6 +44,7 @@ public final class CliMetadata {
             command("artifacts"),
             command("artifacts list"),
             command("artifacts show"),
+            command("artifacts stale"),
             command("artifacts record"),
             command("bind"),
             command("bindings"),

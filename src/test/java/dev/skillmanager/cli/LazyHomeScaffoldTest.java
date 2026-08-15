@@ -369,6 +369,7 @@ public final class LazyHomeScaffoldTest {
         m.put("artifacts", new String[]{"artifacts"});
         m.put("artifacts list", new String[]{"artifacts", "list"});
         m.put("artifacts show", new String[]{"artifacts", "show", "no-such-artifact"});
+        m.put("artifacts stale", new String[]{"artifacts", "stale"});
         m.put("bindings", new String[]{"bindings"});
         m.put("bindings list", new String[]{"bindings", "list"});
         m.put("bindings show", new String[]{"bindings", "show", "no-such-binding"});

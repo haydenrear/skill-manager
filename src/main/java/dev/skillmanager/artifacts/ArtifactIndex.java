@@ -83,7 +83,10 @@ public final class ArtifactIndex {
         String source = live.source() != null ? live.source() : row.source();
         return new Artifact(live.id(), live.kind(), live.owner() != null ? live.owner() : row.owner(),
                 inputs, live.outputs(), source, live.recorded(), live.actual(),
-                live.agreement(), Artifact.Origin.LEDGER_AND_HOME);
+                live.agreement(), Artifact.Origin.LEDGER_AND_HOME,
+                // Kept, and never taken from the row: the ledger has no
+                // observed inputs to contribute because it is never given any.
+                live.observedInputs());
     }
 
     /** An artifact the ledger declares and the home can no longer see. */
