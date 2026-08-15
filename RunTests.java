@@ -61,6 +61,8 @@ import dev.skillmanager.store.HomeVerifyDiagnosticTextTest;
 import dev.skillmanager.cli.installer.CliArtifactMatrixTest;
 import dev.skillmanager.cli.installer.CliPresenceTest;
 import dev.skillmanager.cli.installer.SkillScriptBackendTest;
+import dev.skillmanager.artifacts.ArtifactBackfillTest;
+import dev.skillmanager.artifacts.ArtifactHomeStabilityTest;
 import dev.skillmanager.bindings.BindingsTest;
 import dev.skillmanager.command.SearchShowsKindTest;
 import dev.skillmanager.command.ShowNonSkillUnitsTest;
@@ -260,6 +262,8 @@ public class RunTests {
         failures += dev.skillmanager.plan.AuditTrailTest.run();
         failures += dev.skillmanager.mcp.SharedGatewayTest.run();
         failures += dev.skillmanager.project.GeminiHomeParityTest.run();
+        failures += ArtifactBackfillTest.run();
+        failures += ArtifactHomeStabilityTest.run();
         failures += BindingsTest.run();
         failures += dev.skillmanager.bindings.DocRepoTest.run();
         failures += dev.skillmanager.bindings.HarnessTest.run();

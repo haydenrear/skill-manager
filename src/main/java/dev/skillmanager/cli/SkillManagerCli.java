@@ -1,6 +1,7 @@
 package dev.skillmanager.cli;
 
 import dev.skillmanager.commands.AdsCommand;
+import dev.skillmanager.commands.ArtifactsCommand;
 import dev.skillmanager.commands.BindCommand;
 import dev.skillmanager.commands.BindingsCommand;
 import dev.skillmanager.commands.CliCommand;
@@ -57,6 +58,7 @@ import picocli.CommandLine.Option;
         description = "Build tool for agent skills: CLI deps, skill references, MCP servers.",
         subcommands = {
                 ListCommand.class,
+                ArtifactsCommand.class,
                 LockCommand.class,
                 InstallCommand.class,
                 UninstallCommand.class,

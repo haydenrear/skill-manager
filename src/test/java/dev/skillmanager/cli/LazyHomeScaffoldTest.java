@@ -366,6 +366,9 @@ public final class LazyHomeScaffoldTest {
         m.put("skill-manager", new String[]{});
         m.put("ads", new String[]{"ads"});
         m.put("ads list", new String[]{"ads", "list"});
+        m.put("artifacts", new String[]{"artifacts"});
+        m.put("artifacts list", new String[]{"artifacts", "list"});
+        m.put("artifacts show", new String[]{"artifacts", "show", "no-such-artifact"});
         m.put("bindings", new String[]{"bindings"});
         m.put("bindings list", new String[]{"bindings", "list"});
         m.put("bindings show", new String[]{"bindings", "show", "no-such-binding"});
