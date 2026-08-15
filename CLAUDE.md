@@ -58,3 +58,40 @@ failing task so later graphs in the sweep don't run.
   `skills/<contained>/SKILL.md` instead of detecting the plugin
   layout. Check `Resolver.resolveAll` and `Fetcher.locateSkillRoot`
   for plugin-aware probes (`PluginParser.looksLikePlugin`).
+
+### What CI runs, and how to know
+
+Do not read the matrix out of `ci.yml` — it is computed, not typed.
+`.github/scripts/select-graph-set.py` is the single source:
+
+| event | graph set |
+| --- | --- |
+| `push` / `pull_request` on `main` or `epic/**` | **core** — 8 graphs, 152 nodes |
+| `schedule` (07:00 UTC) | **full** — every registered graph bar the named exclusions, plus the Selenium job |
+| `workflow_dispatch` | `graph_set: core\|full`, `run_browser_graphs: true\|false` |
+
+Print either set without a runner:
+
+```
+python3 .github/scripts/select-graph-set.py --scope core --print
+python3 .github/scripts/select-graph-set.py --scope full --print
+```
+
+The selector fails if a name in `CORE` or `EXCLUDED` no longer exists in
+`test_graph/build.gradle.kts`, so renaming a graph breaks the selector
+loudly instead of shrinking the matrix silently. **Two graphs are excluded
+from every automatic set** — `refresh-flow` (integration-repo #53, ~1-in-4
+flake by construction) and `hyper-experiments` (#143, three third-party
+services) — and the reason is printed into the job summary of every run.
+
+**How many graphs did a run actually execute?** Read it, do not infer it:
+
+```
+gh run download <run-id> -R haydenrear/skill-manager -n graphs-executed
+jq .graphs_executed graphs-executed.json
+```
+
+`graphs_executed` counts graphs whose task ran, red or green;
+`graphs_passed` is the separate question. The whole matrix used to sit
+behind `vars.ENABLE_TEST_GRAPH`, which was never set — twelve graphs
+declared, zero executed, every run green.

@@ -2,13 +2,36 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    # `epic/**` is here deliberately, and it is not free. See ARTI-12 (#113).
+    #
+    # An epic branch is an integration branch: a dozen-plus ticket PRs merge
+    # into it over weeks and only then does one PR carry the lot into main.
+    # With `branches: [main]` alone, the first CI signal for all of that work
+    # arrives at the final epic PR — the point where a red is most expensive to
+    # bisect and least possible to attribute. The artifact-DAG epic changes home
+    # provisioning, cloning and teardown, which is precisely what the graphs
+    # under `test-graph` verify, so "validate at the end" means validating the
+    # riskiest change set exactly once, late.
+    #
+    # The cost is real: pushes to an epic branch and PRs into it now consume
+    # hosted minutes they did not before. It is bounded on purpose — the
+    # automatic matrix is the 8-graph core set (see .github/scripts/
+    # select-graph-set.py), not the 23-graph full set, and paths-ignore still
+    # short-circuits documentation-only pushes.
+    branches:
+      - main
+      - "epic/**"
     # Skip the test-graph matrix when a push only touches files that don't
     # affect tested code (release-please's bookkeeping, brew formula, docs,
-    # workflow YAML, server Dockerfile). The release.yml workflow still runs
-    # on those pushes; only this CI workflow short-circuits.
+    # server Dockerfile). The release.yml workflow still runs on those pushes;
+    # only this CI workflow short-circuits.
+    #
+    # `.github/workflows/**` used to be on this list. It was removed by ARTI-12:
+    # it made a CI-configuration change the one change CI would never execute,
+    # which is how `vars.ENABLE_TEST_GRAPH` could gate the entire graph matrix
+    # off and stay that way across two releases with every run green. A workflow
+    # edit is now self-testing.
     paths-ignore:
-      - ".github/workflows/**"
       - "CHANGELOG.md"
       - "version.txt"
       - ".release-please-manifest.json"
@@ -19,9 +42,10 @@ on:
       - "docker-compose-ghcr.yml"
       - "*.md"
   pull_request:
-    branches: [main]
+    branches:
+      - main
+      - "epic/**"
     paths-ignore:
-      - ".github/workflows/**"
       - "CHANGELOG.md"
       - "version.txt"
       - ".release-please-manifest.json"
@@ -31,7 +55,34 @@ on:
       - "Dockerfile.server"
       - "docker-compose-ghcr.yml"
       - "*.md"
+  schedule:
+    # Nightly full sweep, 07:00 UTC. This is where the graphs that are not in
+    # the core set are actually run — they are deferred to a schedule, not
+    # dropped, and `graph-set` names every one of them in the job summary of
+    # every run so the deferral stays visible.
+    - cron: "0 7 * * *"
   workflow_dispatch:
+    inputs:
+      graph_set:
+        description: "Which test graphs to run"
+        type: choice
+        default: core
+        options:
+          - core
+          - full
+      run_browser_graphs:
+        description: "Also run the Selenium graphs (browser-auth, password-reset)"
+        type: boolean
+        default: false
+
+# A second push to the same branch supersedes the first. Without this, an epic
+# branch taking several ticket merges an hour queues graph matrices behind each
+# other and spends the budget this workflow is trying to respect. `main` is
+# exempt: every commit that reaches it is a release candidate and gets its own
+# complete record.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 # Public pgvector image substituted for the local-registry one used in dev.
 # docker-compose.yml reads ${POSTGRES_IMAGE} with a fallback to the local tag.
@@ -39,9 +90,57 @@ env:
   POSTGRES_IMAGE: pgvector/pgvector:pg16
 
 jobs:
+  # ---------------------------------------------------------------------------
+  # Which graphs run, decided once, from the build file.
+  #
+  # The matrix used to be twelve names typed into this file while the repository
+  # declared twenty-seven. Nothing reconciled them, so fifteen graphs were not
+  # excluded from CI, they were merely absent — and absence leaves no record to
+  # notice. This job computes the set instead, fails if a name in it no longer
+  # exists, and prints every graph it is NOT running, with the reason for the
+  # two that are excluded outright. Roughly 10 seconds; it gates the matrix so
+  # that a stale graph name is a red selector rather than a quietly smaller run.
+  # ---------------------------------------------------------------------------
+  graph-set:
+    name: select graph set
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      scope: ${{ steps.pick.outputs.scope }}
+      graphs: ${{ steps.pick.outputs.graphs }}
+      count: ${{ steps.pick.outputs.count }}
+      deferred: ${{ steps.pick.outputs.deferred }}
+      registered: ${{ steps.pick.outputs.registered }}
+      browser: ${{ steps.browser.outputs.browser }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select graphs
+        id: pick
+        env:
+          # push / pull_request run the bounded core set. schedule runs
+          # everything. workflow_dispatch does what it was asked.
+          GRAPH_SCOPE: ${{ github.event_name == 'schedule' && 'full' || github.event.inputs.graph_set || 'core' }}
+        run: python3 .github/scripts/select-graph-set.py
+
+      - name: Decide browser graphs
+        id: browser
+        run: |
+          # Selenium graphs never run on a push or a PR: refresh-flow is
+          # excluded outright (#53) and the other two boot chromedriver, which
+          # is the most expensive and least stable thing in the suite. Schedule
+          # and explicit dispatch only.
+          if [ "${{ github.event_name }}" = "schedule" ] \
+             || [ "${{ github.event.inputs.run_browser_graphs }}" = "true" ]; then
+            echo "browser=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "browser=false" >> "$GITHUB_OUTPUT"
+          fi
+
   unit-tests:
     name: skill-manager unit tests (RunTests.java + spec models)
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
 
@@ -95,12 +194,19 @@ jobs:
         run: jbang RunTests.java
 
   gateway-tests:
-    # Temporarily opt-in while tracing-skill-observability is resolved from a
-    # private repository. Re-enable only after bounded Actions read access or a
+    # Opt-in while tracing-skill-observability is resolved from a private
+    # repository. Re-enable only after bounded Actions read access or a
     # released package artifact is available.
+    #
+    # ARTI-12 (#113) deliberately did NOT re-enable this one. Unlike
+    # ENABLE_TEST_GRAPH, the blocker here is not budget — it is that the
+    # dependency cannot be fetched by a hosted runner at all, which no amount of
+    # matrix trimming fixes. Left gated, and named as still-gated rather than
+    # left to be rediscovered.
     if: ${{ vars.ENABLE_PRIVATE_TRACING_CI == 'true' }}
     name: virtual-mcp-gateway pytest
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     defaults:
       run:
         working-directory: virtual-mcp-gateway
@@ -122,48 +228,37 @@ jobs:
       - name: Run pytest
         run: uv run --all-extras pytest -v
 
+  # ---------------------------------------------------------------------------
+  # The graph matrix. Re-enabled by ARTI-12 (#113).
+  #
+  # It was switched off behind `vars.ENABLE_TEST_GRAPH` because "the graph
+  # matrix consumes too many hosted-runner resources". That was true. What made
+  # it costly was not the mechanism but the size of the list: twelve graphs on
+  # every push, several of which reach third-party services. So the gate is
+  # gone and the list is bounded instead — the 8-graph core set on push and PR,
+  # the 23-graph full set nightly and on demand.
+  #
+  # BUDGET, stated rather than assumed. Hosted minutes scale with the number of
+  # graphs, so `max-parallel` buys wall clock, not budget. Measured locally on
+  # an M-series laptop the core set is roughly 25 minutes of work end to end,
+  # with `smoke` alone at 4m19s and 52 of the 152 nodes; a 2-core hosted runner
+  # is materially slower, so `timeout-minutes: 45` is the per-job ceiling and
+  # `max-parallel: 4` puts the eight graphs in two waves. Four cold JBang/Maven
+  # resolutions at once is the trade being made for that: caches only save at
+  # job end, so parallel cells all miss on a cold key. The previous value of 2
+  # existed for exactly that reason and is a fallback if Maven Central starts
+  # rate-limiting the runner.
+  # ---------------------------------------------------------------------------
   test-graph:
-    # Temporarily disabled: the graph matrix consumes too many hosted-runner
-    # resources. Keep the job definition intact so it can be re-enabled later.
-    if: ${{ vars.ENABLE_TEST_GRAPH == 'true' }}
+    needs: graph-set
     name: "test-graph: ${{ matrix.graph }}"
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     strategy:
       fail-fast: false
-      # Keep enough serialization to avoid a cold-cache stampede on Maven
-      # Central, but allow two graphs at a time so the matrix is not fully
-      # sequential once the first cache restore warms JBang/Gradle.
-      max-parallel: 2
+      max-parallel: 4
       matrix:
-        # `hyper-experiments` exercises the install-time env-init path:
-        # X_RUNPOD_KEY (provisioned from secrets at the job level below)
-        # is mapped to RUNPOD_API_KEY in HyperInstalled before the
-        # install subprocess runs, which auto-deploys runpod-mcp and
-        # lets the downstream nodes invoke list-gpu-types.
-        #
-        # `plugin-smoke` covers the plugin layout publish/install path
-        # (.claude-plugin/plugin.json detection, contained-skill addressing).
-        # `source-tracking` + `git-latest-source-tracking` exercise the
-        # sync-from-source flows (local dir, git pin, fast-forward, merge,
-        # conflict) — these regressed silently during the policy-gate
-        # calibration in ticket 12 and only got caught locally.
-        graph:
-          - smoke
-          - onboard
-          - project-manifest
-          - project-smoke
-          - project-env
-          - project-libs
-          - hyper-experiments
-          - plugin-smoke
-          - doc-smoke
-          - harness-smoke
-          - source-tracking
-          - git-latest-source-tracking
-    env:
-      # Set on every matrix job — only hyper-experiments actually uses it,
-      # but it's harmless for the others (they never read it).
-      X_RUNPOD_KEY: ${{ secrets.X_RUNPOD_KEY }}
+        graph: ${{ fromJSON(needs.graph-set.outputs.graphs) }}
     steps:
       - uses: actions/checkout@v4
 
@@ -306,19 +401,7 @@ jobs:
           echo "claude → $(command -v claude || echo 'not on PATH')"
           echo "codex  → $(command -v codex || echo 'not on PATH')"
 
-      # hyper-experiments asserts a real runpod deploy + tool invoke;
-      # without X_RUNPOD_KEY the deploy step fails. Forks don't get
-      # repository secrets, so secrets.X_RUNPOD_KEY is empty there and
-      # we'd fail every external PR regardless of what changed. Skip
-      # the plan + run when the secret isn't available; smoke and
-      # sponsored carry the PR.
-      - name: Skip hyper-experiments without RunPod secret
-        if: matrix.graph == 'hyper-experiments' && env.X_RUNPOD_KEY == ''
-        run: |
-          echo "::warning::Skipping hyper-experiments graph: secrets.X_RUNPOD_KEY not available (likely a fork PR). Run locally with X_RUNPOD_KEY exported to exercise this graph."
-
       - name: Plan graph
-        if: matrix.graph != 'hyper-experiments' || env.X_RUNPOD_KEY != ''
         run: |
           mkdir -p ci-logs
           set -o pipefail
@@ -330,12 +413,34 @@ jobs:
       # stream so the real error is recoverable from the uploaded artifact
       # even after the live log scrolls / the run ages out.
       - name: Run graph
-        if: matrix.graph != 'hyper-experiments' || env.X_RUNPOD_KEY != ''
+        id: run_graph
         run: |
           mkdir -p ci-logs
           set -o pipefail
           python skills/test_graph/scripts/run.py "${{ matrix.graph }}" --test-graph-root test_graph \
             2>&1 | tee ci-logs/run.log
+
+      # `if: always()` is the whole point: a graph that ran and failed must be
+      # counted as executed. The tally GOAL-validation-floor reads measures
+      # whether the floor runs, which is not the same question as whether it is
+      # green, and a counter that only survives success answers neither.
+      - name: Record graph outcome
+        if: always()
+        run: |
+          python3 .github/scripts/graph-record.py \
+            --graph "${{ matrix.graph }}" \
+            --outcome "${{ steps.run_graph.outcome }}" \
+            --log ci-logs/run.log \
+            --out "graph-records/${{ matrix.graph }}.json"
+
+      - name: Upload graph record
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: graph-record-${{ matrix.graph }}
+          path: graph-records/
+          if-no-files-found: warn
+          retention-days: 30
 
       - name: Collect diagnostics
         if: always()
@@ -349,16 +454,91 @@ jobs:
           path: ci-diagnostics/
           if-no-files-found: ignore
 
+  # ---------------------------------------------------------------------------
+  # The count, as a build artifact.
+  #
+  # GOAL-validation-floor metric (a) is "graphs executed per CI run". Before
+  # this ticket the only way to answer it was to read this file and believe it,
+  # and this file said twelve while the runner executed zero. ARTI-16 (#117)
+  # reads the artifact instead:
+  #
+  #   gh run download <run-id> -R haydenrear/skill-manager -n graphs-executed
+  #   jq .graphs_executed graphs-executed.json
+  #
+  # `if: always()` so the count survives a red matrix — see graph-record.py.
+  # ---------------------------------------------------------------------------
+  graph-count:
+    name: graphs executed
+    needs: [graph-set, test-graph]
+    if: ${{ !cancelled() && needs.graph-set.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download graph records
+        uses: actions/download-artifact@v4
+        with:
+          pattern: graph-record-*
+          path: graph-records
+          merge-multiple: false
+
+      - name: Aggregate
+        id: report
+        run: |
+          python3 .github/scripts/graph-execution-report.py \
+            --records graph-records \
+            --scope '${{ needs.graph-set.outputs.scope }}' \
+            --registered '${{ needs.graph-set.outputs.registered }}' \
+            --selected '${{ needs.graph-set.outputs.count }}' \
+            --deferred '${{ needs.graph-set.outputs.deferred }}' \
+            --out graphs-executed.json
+
+      - name: Upload graphs-executed
+        uses: actions/upload-artifact@v4
+        with:
+          name: graphs-executed
+          path: graphs-executed.json
+          if-no-files-found: error
+          retention-days: 90
+
+      # The count is a measurement, not a gate — but a run that executed fewer
+      # graphs than it selected has lost cells silently, which is the exact
+      # failure this ticket exists to end. Fail on that, not on redness: the
+      # matrix already reports its own reds.
+      - name: Fail on unaccounted graphs
+        run: |
+          unaccounted=$(python3 -c "import json;print(json.load(open('graphs-executed.json'))['graphs_unaccounted'])")
+          if [ "$unaccounted" != "0" ]; then
+            echo "::error::${unaccounted} selected graph(s) produced no execution record."
+            exit 1
+          fi
+
   test-graph-browser:
-    # Heavier graphs that boot Selenium + chromedriver. SKILL.md flags these
-    # as run-on-demand. Temporarily disabled with the rest of test-graph CI.
-    if: ${{ vars.ENABLE_TEST_GRAPH == 'true' }}
+    # Selenium + chromedriver. Kept off push and pull_request on purpose, and
+    # the reason is named rather than implied:
+    #
+    #   * `refresh-flow` is EXCLUDED outright — see
+    #     skill-manager-integration-repository#53. Its access token has a 3s TTL
+    #     with CLOCK_SKEW_SECONDS=0 and the helper verifies the login with a
+    #     live /auth/me inside that window, after a driver.quit() that stalls
+    #     7.6-8.6s against a ~2.0s norm. It flakes ~1 in 4, identically on
+    #     pre-epic code, so it is neither an epic regression nor fixable from a
+    #     CI ticket. `.github/scripts/select-graph-set.py` carries the same
+    #     reason in EXCLUDED and prints it into every run's job summary, so the
+    #     quarantine is visible from any run rather than only from this file.
+    #   * `browser-auth` and `password-reset` are not flaky, but they boot a
+    #     real browser and are the most expensive cells in the suite. Schedule
+    #     and explicit dispatch.
+    needs: graph-set
+    if: ${{ needs.graph-set.outputs.browser == 'true' }}
     name: "test-graph (selenium): ${{ matrix.graph }}"
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
-        graph: [browser-auth, password-reset, refresh-flow]
+        graph: [browser-auth, password-reset]
     steps:
       - uses: actions/checkout@v4
 
