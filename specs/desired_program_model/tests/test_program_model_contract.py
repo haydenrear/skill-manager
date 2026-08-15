@@ -1,8 +1,31 @@
+import importlib.util
 from pathlib import Path
+from types import ModuleType
 
 
 ROOT = Path(__file__).resolve().parents[3]
 MODEL = ROOT / "specs/program_model"
+
+
+def _load_ci_graph_selector() -> ModuleType:
+    """Import CI's graph-set selector as a module.
+
+    The CI matrix is computed from ``test_graph/build.gradle.kts`` by
+    ``.github/scripts/select-graph-set.py``, not typed into ``ci.yml``
+    (ARTI-12, #113). "Is this graph wired into CI?" is therefore a question for
+    the selector, and asking it there is a stronger check than the substring
+    match on the workflow text this file used to do: ``"smoke" in ci`` was also
+    satisfied by the word appearing inside ``plugin-smoke``, inside a comment,
+    or inside a matrix that a job-level ``if:`` was skipping entirely — which
+    is exactly what happened while ``vars.ENABLE_TEST_GRAPH`` was unset.
+    """
+    path = ROOT / ".github/scripts/select-graph-set.py"
+    assert path.is_file(), f"CI graph selector missing at {path}"
+    spec = importlib.util.spec_from_file_location("_ci_select_graph_set", path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 
 def test_program_model_preserves_project_child_home_and_force_script_boundaries() -> None:
@@ -45,10 +68,38 @@ def test_program_model_accepts_bounded_cli_disclosure_case_surface() -> None:
 
 def test_program_model_validation_surfaces_remain_registered() -> None:
     graph = (ROOT / "test_graph/build.gradle.kts").read_text(encoding="utf-8")
-    ci = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
 
     for graph_name in ("smoke", "doc-smoke", "plugin-smoke", "skill-dev-smoke"):
         assert f'testGraph("{graph_name}")' in graph
 
-    for graph_name in ("smoke", "doc-smoke", "plugin-smoke"):
-        assert graph_name in ci
+    selector = _load_ci_graph_selector()
+    registered = selector.discover_all(ROOT)
+    core, _ = selector.select("core", registered)
+    full, _ = selector.select("full", registered)
+
+    # On every push and pull request.
+    for graph_name in ("smoke", "plugin-smoke"):
+        assert graph_name in core, f"{graph_name} left CI's core set"
+
+    # At minimum nightly. `doc-smoke` and `skill-dev-smoke` are budgeted to the
+    # schedule, not dropped — the distinction is the whole point of #113.
+    for graph_name in ("smoke", "doc-smoke", "plugin-smoke", "skill-dev-smoke"):
+        assert graph_name in full, f"{graph_name} is in no CI graph set"
+
+
+def test_ci_does_not_gate_the_graph_matrix_off_again() -> None:
+    """The matrix ran zero graphs for two releases and every run was green.
+
+    `vars.ENABLE_TEST_GRAPH` was a job-level `if:` that no repository variable
+    satisfied, so `test-graph` and `test-graph-browser` were skipped on every
+    push while the workflow still listed twelve graph names. Nothing failed,
+    because a skipped job is not a red one. Re-introducing a repository-variable
+    gate on the matrix is therefore a silent regression by construction, and
+    this is the check that makes it loud.
+    """
+    ci = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
+    for job in ("test-graph:", "test-graph-browser:"):
+        assert job in ci
+    assert "if: ${{ vars.ENABLE_TEST_GRAPH == 'true' }}" not in ci
+    assert "select-graph-set.py" in ci
+    assert "graphs-executed" in ci
