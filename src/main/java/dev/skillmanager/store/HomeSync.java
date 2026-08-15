@@ -91,8 +91,35 @@ public final class HomeSync {
      * report success for work that did not happen.
      */
     public static final class UnknownUnitException extends IOException {
-        /** Deliberately {@link NotAHomeException#EXIT_CODE}: the same category of fault. */
-        public static final int EXIT_CODE = NotAHomeException.EXIT_CODE;
+        /**
+         * Its own code, and NOT {@link NotAHomeException#EXIT_CODE}.
+         *
+         * <p>That was the first choice, on the reasoning that a name nothing
+         * holds is the same category of fault as a path that is not a home.
+         * The reasoning was fine and the number was wrong: 2 is also
+         * <em>picocli's</em> usage code, so a CLI that predates {@code --unit}
+         * returns 2 for the unknown option and this returns 2 for an unknown
+         * unit. Measured:
+         *
+         * <pre>
+         * $ &lt;pre-#182 CLI&gt; home sync ... --unit alpha
+         * exit=2
+         * Unknown options: '--unit', 'alpha'
+         *
+         * $ &lt;#182 CLI&gt;     home sync ... --unit alpha
+         * exit=2
+         * ✗ home sync --unit alpha: no unit named 'alpha' in either home (...)
+         * </pre>
+         *
+         * <p>Same number, opposite meanings, and the caller that has to tell
+         * them apart is exactly the one this flag was added for: {@code skt
+         * publish} feature-detects the flag so an older pin degrades to a
+         * whole-home sync instead of hard-failing. If it read 2 as "old CLI"
+         * it would answer a typo'd unit name by silently running the
+         * whole-home sync this flag exists to avoid — worse than failing.
+         * A distinct code lets that decision be made on the code alone.
+         */
+        public static final int EXIT_CODE = 12;
 
         private final String unit;
 
