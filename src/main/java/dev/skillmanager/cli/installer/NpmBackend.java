@@ -113,10 +113,12 @@ public final class NpmBackend implements InstallerBackend {
                 .field("package", pkg)
                 .field("resolved", resolved)
                 .hex();
-        return Fingerprint.over(digest, resolved != null
-                ? "declared spec + version " + resolved + " installed into npm/" + unitName
-                : "declared spec only — this home holds no npm/" + unitName + " prefix for "
-                        + packageName(pkg) + ", so the installed version is not observable here");
+        return resolved != null
+                ? Fingerprint.resolved(digest, "declared spec + version " + resolved
+                        + " installed into npm/" + unitName)
+                : Fingerprint.declared(digest, "declared spec only — this home holds no npm/"
+                        + unitName + " prefix for " + packageName(pkg) + ", so the installed "
+                        + "version is not observable here");
     }
 
     /** The {@code version} in {@code npm/<unit>/lib/node_modules/<pkg>/package.json}. */

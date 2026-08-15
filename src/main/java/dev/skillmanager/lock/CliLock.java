@@ -93,8 +93,8 @@ public final class CliLock {
                      String sha256, List<String> requestedBy, String installedAt,
                      String installFingerprint) {
             this(backend, tool, version, spec, sha256, requestedBy, installedAt, null,
-                    installFingerprint == null ? null
-                            : Fingerprint.over(installFingerprint, LEGACY_BASIS));
+                    installFingerprint == null || installFingerprint.isBlank() ? null
+                            : Fingerprint.ungraded(installFingerprint, LEGACY_BASIS));
         }
 
         /** The digest alone, for readers that only compare values. */
@@ -204,6 +204,12 @@ public final class CliLock {
                 Fingerprint fp = e.fingerprint();
                 if (fp != null && fp.present()) {
                     sb.append("install_fingerprint = ").append(tomlString(fp.value())).append('\n');
+                    // The grade the BACKEND asserted, beside the prose. A
+                    // consumer reads this; recovering it by matching words in
+                    // the basis would be a proxy check in the instrument that
+                    // measures proxy checks.
+                    sb.append("install_fingerprint_kind = ")
+                            .append(tomlString(fp.kind().token())).append('\n');
                     sb.append("install_fingerprint_basis = ").append(tomlString(fp.basis())).append('\n');
                 } else if (fp != null) {
                     // Written, not dropped. A row with no fingerprint and no
@@ -283,7 +289,8 @@ public final class CliLock {
     public Entry recordInstall(String backend, String tool, String version, String spec,
                                String sha256, String requester, String fingerprint) {
         return recordInstall(backend, tool, version, spec, sha256, requester,
-                fingerprint == null ? null : Fingerprint.over(fingerprint, LEGACY_BASIS),
+                fingerprint == null || fingerprint.isBlank() ? null
+                        : Fingerprint.ungraded(fingerprint, LEGACY_BASIS),
                 null);
     }
 
@@ -299,7 +306,15 @@ public final class CliLock {
         String value = t.getString("install_fingerprint");
         if (value != null && !value.isBlank()) {
             String basis = t.getString("install_fingerprint_basis");
-            return Fingerprint.over(value, basis == null || basis.isBlank() ? LEGACY_BASIS : basis);
+            if (basis == null || basis.isBlank()) basis = LEGACY_BASIS;
+            // An unrecognized or absent grade is UNKNOWN, never RESOLVED. A row
+            // written before the field existed carries a digest whose strength
+            // nobody recorded, and guessing it upward is the one reading this
+            // field exists to prevent.
+            Fingerprint.Kind kind = Fingerprint.Kind.fromToken(
+                    t.getString("install_fingerprint_kind"));
+            return kind == null ? Fingerprint.ungraded(value, basis)
+                                : new Fingerprint(value, kind, basis, null);
         }
         String gap = t.getString("install_fingerprint_gap");
         return gap == null || gap.isBlank() ? null : Fingerprint.gap(gap);

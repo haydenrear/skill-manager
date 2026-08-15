@@ -265,6 +265,9 @@ public final class ArtifactBackfill {
                     Artifact.facts("version", entry.version(), "sha256", entry.sha256(),
                             "binary", entry.binary(),
                             "install_fingerprint", entry.installFingerprint(),
+                            "install_fingerprint_kind",
+                            entry.fingerprint() == null || entry.fingerprint().kind() == null
+                                    ? null : entry.fingerprint().kind().token(),
                             "install_fingerprint_basis",
                             entry.fingerprint() == null ? null : entry.fingerprint().basis(),
                             "install_fingerprint_gap",

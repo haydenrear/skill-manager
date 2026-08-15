@@ -37,10 +37,11 @@ import java.util.HexFormat;
  *
  * <p>{@code <scheme>\0} followed, in the order the caller adds them, by
  * {@code <key>:<value>\0} for each field and {@code <key>:<relpath>\0} +
- * {@code <bytes>} + {@code \0} for each file. Null values are skipped: a fact
- * nobody has is absent, exactly as {@link dev.skillmanager.artifacts.Artifact}
- * treats it, and the fingerprint's {@link Fingerprint#basis()} is what records
- * which facts were present.
+ * {@code <bytes>} + {@code \0} for each file. Null values are skipped and empty
+ * ones are not — see {@link #field}, where that distinction is a collision and
+ * not a nicety. The fingerprint's {@link Fingerprint#kind()} records which
+ * grade of facts were present and its {@link Fingerprint#basis()} records which
+ * facts they were.
  */
 public final class Fingerprints {
 
@@ -66,9 +67,24 @@ public final class Fingerprints {
         return new Fingerprints(scheme);
     }
 
-    /** Add {@code key:value}; a null or blank value is skipped. */
+    /**
+     * Add {@code key:value}. A NULL value is skipped — a fact nobody has is
+     * absent, exactly as {@link dev.skillmanager.artifacts.Artifact} treats it.
+     *
+     * <p><b>An EMPTY value is not skipped</b>, and the distinction is
+     * load-bearing rather than pedantic. "This field does not apply here" and
+     * "this field is the empty string" are different declarations, and
+     * collapsing them makes two different inputs produce one digest — the one
+     * property this class exists to guarantee. It would also have silently
+     * revised an existing scheme: the pre-ARTI-04 encoder wrote {@code arg:\0}
+     * for an empty-string arg, so skipping it made {@code args=[""]} collide
+     * with {@code args=[]} and moved a digest {@code SkillScriptBackend} GATES
+     * on. Latent — no manifest in either live home declares an empty arg — and
+     * pinned by a golden vector regardless, because "nothing does that yet" is
+     * not a property of an encoding.
+     */
     public Fingerprints field(String key, String value) {
-        if (value == null || value.isEmpty()) return this;
+        if (value == null) return this;
         digest.update((key + ":" + value + "\0").getBytes(StandardCharsets.UTF_8));
         return this;
     }
