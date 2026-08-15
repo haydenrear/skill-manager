@@ -66,9 +66,16 @@ Do not read the matrix out of `ci.yml` — it is computed, not typed.
 
 | event | graph set |
 | --- | --- |
-| `push` / `pull_request` on `main` or `epic/**` | **core** — 8 graphs, 152 nodes |
+| `push` on `main`; `pull_request` into `main` or `epic/**` | **core** — 8 graphs, 152 nodes |
 | `schedule` (07:00 UTC) | **full** — every registered graph bar the named exclusions, plus the Selenium job |
 | `workflow_dispatch` | `graph_set: core\|full`, `run_browser_graphs: true\|false` |
+
+There is deliberately no `push: epic/**`: every ticket lands as a PR into
+the epic branch, and promotion is serialized, so ticket N+1's PR rebases
+onto N's merge and tests that integrated tree anyway. Adding it would run
+the matrix twice per ticket for a signal that arrives one ticket later
+regardless. **A direct push to an epic branch runs nothing** until the
+next PR — accepted, because this epic promotes through PRs.
 
 Print either set without a runner:
 

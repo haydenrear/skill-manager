@@ -96,6 +96,26 @@ def test_program_model_validation_surfaces_remain_registered() -> None:
         assert graph_name in full, f"{graph_name} is in no CI graph set"
 
 
+def _job_body(ci: str, job: str) -> list[str]:
+    """Lines of one job block in ci.yml, by indentation.
+
+    Jobs are at two spaces, their keys at four. Good enough for this file and it
+    needs no YAML parser, which the spec suites deliberately do not depend on.
+    """
+    lines = ci.splitlines()
+    start = next(
+        (i for i, l in enumerate(lines) if l == f"  {job}:"),
+        None,
+    )
+    assert start is not None, f"job {job!r} is not in ci.yml"
+    body = []
+    for line in lines[start + 1:]:
+        if line.strip() and not line.startswith("    "):
+            break
+        body.append(line)
+    return body
+
+
 def test_ci_does_not_gate_the_graph_matrix_off_again() -> None:
     """The matrix ran zero graphs for two releases and every run was green.
 
@@ -103,12 +123,32 @@ def test_ci_does_not_gate_the_graph_matrix_off_again() -> None:
     satisfied, so `test-graph` and `test-graph-browser` were skipped on every
     push while the workflow still listed twelve graph names. Nothing failed,
     because a skipped job is not a red one. Re-introducing a repository-variable
-    gate on the matrix is therefore a silent regression by construction, and
-    this is the check that makes it loud.
+    gate on the matrix is therefore a silent regression by construction.
+
+    This checks the SHAPE of the gate, not one spelling of it. An earlier
+    version matched the exact string `if: ${{ vars.ENABLE_TEST_GRAPH == 'true' }}`,
+    which a rename to `vars.RUN_GRAPHS`, a different quote style or a stray
+    space would have walked straight past — a tripwire that only catches the
+    intruder who comes back through the same window. Any job-level `if:` on
+    either graph job that consults the `vars` context now fails this.
+
+    It remains a tripwire and not a proof: the load-bearing check is
+    `test_program_model_validation_surfaces_remain_registered`, which asks the
+    selector for set membership. A matrix can still be emptied by editing CORE.
     """
     ci = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
-    for job in ("test-graph:", "test-graph-browser:"):
-        assert job in ci
-    assert "if: ${{ vars.ENABLE_TEST_GRAPH == 'true' }}" not in ci
+
+    for job in ("test-graph", "test-graph-browser"):
+        for line in _job_body(ci, job):
+            stripped = line.strip()
+            if stripped.startswith("#") or not stripped.startswith("if:"):
+                continue
+            assert "vars." not in stripped, (
+                f"{job} carries a repository-variable gate: {stripped!r}. "
+                "That is how the matrix executed 0 of 27 graphs while every "
+                "run stayed green."
+            )
+
+    # The two mechanisms the count depends on, by name.
     assert "select-graph-set.py" in ci
     assert "graphs-executed" in ci
