@@ -61,7 +61,8 @@ public final class CliDependencyCleaner {
                         existing.sha256(),
                         survivorClaimers,
                         existing.installedAt(),
-                        existing.installFingerprint()));
+                        existing.binary(),
+                        existing.fingerprint()));
                 lockUpdated = true;
             } else {
                 lock.remove(backend, tool);

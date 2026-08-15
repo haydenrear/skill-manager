@@ -182,13 +182,22 @@ public final class ArtifactBackfill {
      * <p>A row is keyed by the PACKAGE — {@code ["brew"."opentofu"]},
      * {@code ["npm"."@google/gemini-cli"]}, {@code ["pip"."jinja2-cli[yaml]"]} —
      * and the shim those installs actually wrote is {@code bin/cli/tofu},
-     * {@code bin/cli/gemini} and {@code bin/cli/jinja2}. The binary name lives
-     * in the declaring unit's {@code on_path}, which the lock does not record.
-     * So the mapping is rebuilt here from the installed units, and where no
-     * installed unit declares the row any more — an uninstalled unit leaves its
-     * lock row behind — the output path is genuinely unknown and is reported
-     * as {@link Artifact.Presence#UNKNOWN} rather than guessed at and reported
+     * {@code bin/cli/gemini} and {@code bin/cli/jinja2}. The binary name lived
+     * only in the declaring unit's {@code on_path}. So the mapping is rebuilt
+     * here from the installed units, and where no installed unit declares the
+     * row any more — an uninstalled unit leaves its lock row behind — the output
+     * path is genuinely unknown and is reported as
+     * {@link Artifact.Presence#UNKNOWN} rather than guessed at and reported
      * missing.
+     *
+     * <p>ARTI-04 closes that hole going forward rather than retroactively: the
+     * recorder now writes {@code binary} into the row itself, so a row installed
+     * from this version on still names its artifact after its declaring unit is
+     * gone. Rows written before it cannot be repaired from anything the home
+     * still holds — three in the project home are in exactly that state — so the
+     * unit map is consulted first and the row's own {@code binary} is the
+     * fallback, which is the order that lets a manifest that renamed its
+     * {@code on_path} win over the name recorded at install time.
      *
      * <p>{@code tar:} and {@code skill-script:} are the exception, and the
      * fallback is right for them rather than merely convenient:
@@ -221,6 +230,8 @@ public final class ArtifactBackfill {
             for (String requester : entry.requestedBy()) inputs.add(ArtifactIds.unitInput(requester));
 
             String binary = declaredBinary.get(entry.backend() + " " + entry.tool());
+            // Then the row's own record, for a row whose declaring unit is gone.
+            if (binary == null) binary = entry.binary();
             boolean nameIsTheArtifact =
                     "tar".equals(entry.backend()) || "skill-script".equals(entry.backend());
             if (binary == null && nameIsTheArtifact) binary = entry.tool();
@@ -232,7 +243,8 @@ public final class ArtifactBackfill {
                         Artifact.Scope.HOME, Artifact.Presence.UNKNOWN));
                 actual = Artifact.facts("shim_name",
                         "unknown — no installed unit declares an on_path for "
-                                + entry.backend() + ":" + entry.tool());
+                                + entry.backend() + ":" + entry.tool()
+                                + ", and the row predates the recorder writing one");
             } else {
                 Path shim = store.cliBinDir().resolve(binary);
                 CliArtifact.Verdict verdict = CliArtifact.inspect(shim, root);
@@ -251,7 +263,12 @@ public final class ArtifactBackfill {
                     outputs,
                     "cli-lock.toml",
                     Artifact.facts("version", entry.version(), "sha256", entry.sha256(),
-                            "install_fingerprint", entry.installFingerprint()),
+                            "binary", entry.binary(),
+                            "install_fingerprint", entry.installFingerprint(),
+                            "install_fingerprint_basis",
+                            entry.fingerprint() == null ? null : entry.fingerprint().basis(),
+                            "install_fingerprint_gap",
+                            entry.fingerprint() == null ? null : entry.fingerprint().gap()),
                     actual,
                     // The fingerprint is over the artifact's declared INPUTS,
                     // so re-deriving it is the backend's job and not a read

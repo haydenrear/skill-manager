@@ -1416,23 +1416,14 @@ public final class LiveInterpreter implements ProgramInterpreter {
             registry.installOne(e.dep(), store, e.unitName(), e.forceScripts());
             try {
                 CliLock lock = CliLock.load(store);
-                var req = dev.skillmanager.lock.RequestedVersion.of(e.dep());
-                String sha = null;
-                for (var t : e.dep().install().values()) {
-                    if (t.sha256() != null) { sha = t.sha256(); break; }
-                }
-                // Record the post-install scripts-tree fingerprint for
-                // skill-script deps so the next install / sync /
-                // upgrade pass can detect "scripts edited" and re-fire
-                // — see SkillScriptBackend's javadoc on rerun
-                // semantics. Other backends pass null (they don't
-                // currently use the fingerprint column).
-                String fingerprint = "skill-script".equals(e.dep().backend())
-                        ? dev.skillmanager.cli.installer.SkillScriptBackend
-                                .fingerprintFor(store, e.unitName(), e.dep())
-                        : null;
-                lock.recordInstall(e.dep().backend(), req.tool(), req.version(),
-                        e.dep().spec(), sha, e.unitName(), fingerprint);
+                // One recorder, one row shape, one place that asks a backend
+                // what its artifact was derived from. This used to be a second
+                // hand-maintained copy of CliInstallRecorder's row-writing,
+                // including its own `"skill-script".equals(backend)` branch, so
+                // the four other backends recorded no fingerprint down BOTH
+                // install paths.
+                dev.skillmanager.lock.CliInstallRecorder.record(
+                        lock, registry, e.dep(), store, e.unitName());
                 lock.save(store);
             } catch (Exception lockErr) {
                 Log.warn("cli: %s installed but lock-record failed: %s",

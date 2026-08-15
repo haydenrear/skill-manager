@@ -1,6 +1,8 @@
 package dev.skillmanager.cli.installer;
 
 import dev.skillmanager.lock.CliLock;
+import dev.skillmanager.lock.Fingerprint;
+import dev.skillmanager.lock.Fingerprints;
 import dev.skillmanager.model.CliDependency;
 import dev.skillmanager.shared.util.Fs;
 import dev.skillmanager.store.SkillStore;
@@ -9,18 +11,15 @@ import dev.skillmanager.util.Platform;
 
 import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.security.MessageDigest;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
-import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -219,29 +218,44 @@ public final class SkillScriptBackend implements InstallerBackend {
     }
 
     /**
-     * SHA-256 over the entire {@code skill-scripts/} tree of the unit,
-     * the script's path-under-scriptsDir, and its arg list. Stable
-     * across re-runs as long as no byte under the dir changes.
+     * SHA-256 over the entire {@code skill-scripts/} tree of the unit, the
+     * script's path-under-scriptsDir, and its arg list — the
+     * {@code skill-script-v1} scheme, unchanged byte for byte by ARTI-04.
      *
-     * <p>Public so {@link dev.skillmanager.lock.CliInstallRecorder} can
-     * compute the same value after a successful install and stamp it
-     * into the lock — keeping the "skip iff fingerprint matches"
-     * decision in this class while keeping the persistence in the
-     * recorder.
+     * <p>This was a {@code public static fingerprintFor} that
+     * {@code CliInstallRecorder} and {@code LiveInterpreter} each reached for
+     * from behind their own {@code "skill-script".equals(backend)} branch. It
+     * is now the {@link InstallerBackend#fingerprint} implementation, and
+     * nothing outside this class names it.
      *
-     * <p>If the unit isn't installed yet (no scripts dir on disk),
-     * returns {@code null} — the caller should treat that as "no prior
-     * fingerprint" and run unconditionally.
+     * <p><b>The digest is deliberately identical to what it was.</b> Every
+     * {@code install_fingerprint} already written to every home came from this
+     * scheme, and this backend GATES on it — a changed digest re-runs an
+     * arbitrary installer script, on every home on the machine, at the next
+     * sync. Re-expressing the encoding through {@link Fingerprints} therefore
+     * had to be a refactor and not a revision, which is what
+     * {@code InstallerFingerprintTest}'s golden vector pins: a hex constant
+     * computed independently from the documented encoding rather than read back
+     * out of this method. It is also this change's entire answer to "does the
+     * ledger need a migration" — no recorded value moves, so it does not.
      */
-    public static String fingerprintFor(SkillStore store, String unitName,
-                                        CliDependency dep) {
+    @Override
+    public Fingerprint fingerprint(CliDependency dep, SkillStore store, String unitName) {
         CliDependency.InstallTarget target = pickTarget(dep);
-        if (target == null || target.script() == null || target.script().isBlank()) return null;
+        if (target == null || target.script() == null || target.script().isBlank()) {
+            return Fingerprint.gap("skill-script " + dep.name() + " declares no 'script' under "
+                    + "[cli_dependencies.install.<platform>], so there is no scripts tree to hash");
+        }
         try {
             ResolvedScript resolved = resolveScript(store, unitName, target.script());
-            return fingerprintScripts(resolved.scriptsDir, target.script(), target.args());
+            return Fingerprint.over(
+                    fingerprintScripts(resolved.scriptsDir, target.script(), target.args()),
+                    "skill-scripts/ tree bytes + script path + declared args");
         } catch (IOException e) {
-            return null;
+            // The unit's bytes are not in this store (first install, or a home
+            // that never committed the unit). Not "current" — unknown, said so.
+            return Fingerprint.gap("cannot read " + unitName + "'s " + SCRIPTS_DIRNAME
+                    + "/ in this home: " + e.getMessage());
         }
     }
 
@@ -253,40 +267,20 @@ public final class SkillScriptBackend implements InstallerBackend {
      */
     static String fingerprintScripts(Path scriptsDir, String scriptRel, List<String> args)
             throws IOException {
-        try {
-            MessageDigest md = MessageDigest.getInstance("SHA-256");
-            // Domain-separation prefix so a future caller hashing
-            // differently structured input can't collide with this scheme.
-            md.update("skill-script-v1\0".getBytes(java.nio.charset.StandardCharsets.UTF_8));
-            md.update(("script:" + scriptRel + "\0")
-                    .getBytes(java.nio.charset.StandardCharsets.UTF_8));
-            if (args != null) {
-                for (String a : args) {
-                    md.update(("arg:" + a + "\0")
-                            .getBytes(java.nio.charset.StandardCharsets.UTF_8));
-                }
+        Fingerprints fp = Fingerprints.scheme("skill-script-v1")
+                .field("script", scriptRel)
+                .fields("arg", args);
+        if (Files.isDirectory(scriptsDir)) {
+            List<Path> files;
+            try (var s = Files.walk(scriptsDir)) {
+                files = s.filter(Files::isRegularFile).sorted().toList();
             }
-            if (Files.isDirectory(scriptsDir)) {
-                List<Path> files;
-                try (var s = Files.walk(scriptsDir)) {
-                    files = s.filter(Files::isRegularFile).sorted().toList();
-                }
-                for (Path f : files) {
-                    String rel = scriptsDir.relativize(f).toString().replace('\\', '/');
-                    md.update(("file:" + rel + "\0")
-                            .getBytes(java.nio.charset.StandardCharsets.UTF_8));
-                    try (InputStream in = Files.newInputStream(f)) {
-                        byte[] buf = new byte[8192];
-                        int n;
-                        while ((n = in.read(buf)) > 0) md.update(buf, 0, n);
-                    }
-                    md.update((byte) 0);
-                }
+            for (Path f : files) {
+                String rel = scriptsDir.relativize(f).toString().replace('\\', '/');
+                fp.file("file", rel, f);
             }
-            return HexFormat.of().formatHex(md.digest());
-        } catch (java.security.NoSuchAlgorithmException e) {
-            throw new IOException("SHA-256 unavailable", e);
         }
+        return fp.hex();
     }
 
     /**
