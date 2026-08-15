@@ -26,10 +26,11 @@ exits non-zero. A graph renamed in the build file breaks the selector loudly
 instead of quietly shrinking the matrix.
 
 Outputs (GITHUB_OUTPUT, all JSON-safe):
-    scope    core | full
-    graphs   JSON array of graph names for the matrix
-    count    number of graphs in that array
-    deferred JSON array of graphs in ALL but not in the selected set
+    scope         core | full
+    graphs        JSON array of graph names for the matrix
+    count         number of graphs in that array
+    deferred      JSON array of graphs in ALL but not in the selected set
+    gateway_graphs JSON array of selected graphs that boot virtual-mcp-gateway
 
 Usage:
     select-graph-set.py [--scope core|full] [--repo-root DIR] [--print]
@@ -101,6 +102,48 @@ BROWSER: list[str] = ["browser-auth", "password-reset", "refresh-flow"]
 # registered still has to be visible to this script so its exclusion can be
 # stated rather than inferred from its absence.
 _TESTGRAPH_RE = re.compile(r'(?<![\w.])testGraph\("([^"]+)"\)')
+_TESTGRAPH_OPEN_RE = re.compile(r'(?<![\w.])testGraph\("([^"]+)"\)\s*\{')
+_NODE_RE = re.compile(r'node\("([^"]+)"\)')
+
+# A graph "needs the gateway" if it declares any of these nodes. They are the
+# ones that require virtual-mcp-gateway's Python venv to exist, which on a
+# hosted runner means resolving a dependency from a PRIVATE repository — see
+# the gateway-deps step in ci.yml. Five of the eight core graphs declare none
+# of them and must not pay for that dependency.
+_GATEWAY_NODES = (
+    "GatewayPythonVenvReady.java",
+    "GatewayUp.java",
+    "OnboardGatewayHealthy.java",
+)
+
+
+def _graph_nodes(repo_root: Path) -> dict[str, list[str]]:
+    """Map each registered graph to the node sources it declares.
+
+    A brace-depth walk rather than a parser: the build file is Kotlin DSL and
+    each `testGraph("name") { ... }` block is balanced, which is enough.
+    """
+    build_file = repo_root / "test_graph" / "build.gradle.kts"
+    if not build_file.is_file():
+        sys.exit(f"select-graph-set: no build file at {build_file}")
+    out: dict[str, list[str]] = {}
+    current: str | None = None
+    depth = 0
+    nodes: list[str] = []
+    for line in build_file.read_text(encoding="utf-8").splitlines():
+        if current is None:
+            m = _TESTGRAPH_OPEN_RE.search(line)
+            if m:
+                current = m.group(1)
+                depth = line.count("{") - line.count("}")
+                nodes = []
+            continue
+        nodes.extend(_NODE_RE.findall(line))
+        depth += line.count("{") - line.count("}")
+        if depth <= 0:
+            out.setdefault(current, nodes)
+            current = None
+    return out
 
 
 def discover_all(repo_root: Path) -> list[str]:
@@ -115,6 +158,14 @@ def discover_all(repo_root: Path) -> list[str]:
     for n in names:
         seen.setdefault(n, None)
     return list(seen)
+
+
+def gateway_graphs(repo_root: Path, selected: list[str]) -> list[str]:
+    nodes = _graph_nodes(repo_root)
+    return [
+        g for g in selected
+        if any(n.endswith(_GATEWAY_NODES) for n in nodes.get(g, []))
+    ]
 
 
 def select(scope: str, all_graphs: list[str]) -> tuple[list[str], list[str]]:
@@ -158,6 +209,7 @@ def main() -> int:
     repo_root = Path(args.repo_root).resolve()
     all_graphs = discover_all(repo_root)
     selected, deferred = select(args.scope, all_graphs)
+    needs_gateway = gateway_graphs(repo_root, selected)
 
     lines = [
         f"scope: **{args.scope}**",
@@ -180,6 +232,17 @@ def main() -> int:
         "Browser graphs (`" + "`, `".join(BROWSER) + "`) run in the "
         "`test-graph-browser` job on schedule and dispatch only."
     )
+    lines.append("")
+    if needs_gateway:
+        lines.append(
+            "Needs the virtual-mcp-gateway venv (and therefore the PRIVATE "
+            "`haydenrear/tracing_skill` dependency): "
+            + ", ".join(f"`{g}`" for g in needs_gateway)
+            + f" — {len(selected) - len(needs_gateway)} of {len(selected)} "
+            "selected graphs do not, and no longer pay for it."
+        )
+    else:
+        lines.append("No selected graph needs the virtual-mcp-gateway venv.")
     summary = "\n".join(lines)
 
     print(summary)
@@ -195,6 +258,7 @@ def main() -> int:
             fh.write(f"count={len(selected)}\n")
             fh.write(f"deferred={json.dumps(deferred)}\n")
             fh.write(f"registered={len(all_graphs)}\n")
+            fh.write(f"gateway_graphs={json.dumps(needs_gateway)}\n")
 
     step_summary = os.environ.get("GITHUB_STEP_SUMMARY")
     if step_summary:

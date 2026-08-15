@@ -259,6 +259,10 @@ jobs:
       max-parallel: 4
       matrix:
         graph: ${{ fromJSON(needs.graph-set.outputs.graphs) }}
+    # Job level, not step level: a step's own `env:` block is not reliably
+    # visible to that step's `if:`.
+    env:
+      PRIVATE_DEPS_TOKEN: ${{ secrets.PRIVATE_DEPS_TOKEN }}
     steps:
       - uses: actions/checkout@v4
 
@@ -376,12 +380,54 @@ jobs:
       - name: Pre-pull postgres image
         run: docker pull "$POSTGRES_IMAGE"
 
+      # If a token for the private dependency below is provisioned, use it.
+      # Absent, this is a no-op and the next step reports what that costs.
+      - name: Authorize private Python dependencies
+        if: env.PRIVATE_DEPS_TOKEN != ''
+        run: |
+          git config --global \
+            url."https://x-access-token:${PRIVATE_DEPS_TOKEN}@github.com/".insteadOf \
+            "https://github.com/"
+
       # GatewayRuntime.pythonExecutable() auto-picks virtual-mcp-gateway/.venv/bin/python
       # when it exists; `uv sync` materializes the venv with fastapi/uvicorn/mcp/etc.
       # Without this step `skill-manager gateway up` spawns bare python3 and the
       # gateway subprocess dies with ModuleNotFoundError before binding its port.
+      #
+      # THIS STEP CANNOT SUCCEED ON A HOSTED RUNNER TODAY, and finding that out
+      # is the first thing re-enabling the matrix bought. `virtual-mcp-gateway`
+      # takes a hard, non-optional dependency on
+      # `tracing-skill-observability @ git+https://github.com/haydenrear/tracing_skill`,
+      # which is private, so `uv sync` dies with
+      # "could not read Username for 'https://github.com'". That is the same
+      # blocker `gateway-tests` is gated on — but it was never known to reach
+      # the whole graph matrix, because the matrix never ran. Measured on
+      # https://github.com/haydenrear/skill-manager/actions/runs/31899858877:
+      # all eight core graphs failed here, before executing a single node.
+      #
+      # Two things follow, and both are deliberate:
+      #
+      #  1. ONLY THE GRAPHS THAT NEED IT PAY. Five of the eight core graphs
+      #     (home-clone, home-sync, checkout-home, project-child-home,
+      #     ticket-lifecycle) declare no gateway node, and the selector derives
+      #     that from the build file rather than a second hand-kept list.
+      #  2. A FAILURE HERE DOES NOT SKIP THE GRAPH. `continue-on-error` so the
+      #     graph still runs and still reports; it will go red at its gateway
+      #     node with a real message instead of vanishing from the tally as a
+      #     skipped step. A graph that did not run is worse than a graph that
+      #     ran and failed — that distinction is the whole subject of #113.
+      #
+      # THE FIX IS THE OWNER'S CALL, and there are two: provision a
+      # `PRIVATE_DEPS_TOKEN` secret with read access to haydenrear/tracing_skill,
+      # or make `tracing-skill-observability` an optional extra in
+      # virtual-mcp-gateway/pyproject.toml. Either turns three red graphs green.
       - name: Install gateway Python deps
-        run: uv sync --all-extras
+        if: contains(fromJSON(needs.graph-set.outputs.gateway_graphs), matrix.graph)
+        continue-on-error: true
+        run: |
+          if ! uv sync --all-extras; then
+            echo "::error title=gateway venv unavailable::${{ matrix.graph }} needs virtual-mcp-gateway's venv, and uv sync failed. The likely cause is the private tracing_skill dependency: set a PRIVATE_DEPS_TOKEN secret or make it an optional extra. The graph will run and report its own failure rather than be skipped."
+          fi
         working-directory: virtual-mcp-gateway
 
       # plugin-smoke needs the Claude + Codex harness CLIs on PATH so
@@ -502,17 +548,37 @@ jobs:
           if-no-files-found: error
           retention-days: 90
 
-      # The count is a measurement, not a gate — but a run that executed fewer
-      # graphs than it selected has lost cells silently, which is the exact
-      # failure this ticket exists to end. Fail on that, not on redness: the
-      # matrix already reports its own reds.
-      - name: Fail on unaccounted graphs
+      # The count is a measurement, not a pass/fail judgement of the code — but
+      # a run that executed FEWER graphs than it selected has lost cells, and
+      # losing cells quietly is the exact failure this ticket exists to end.
+      #
+      # The first version of this gate only checked `graphs_unaccounted`, and
+      # run 31899858877 walked straight through it: all eight cells produced a
+      # record, every record said `outcome: skipped` because a setup step had
+      # failed, and the job reported success on `graphs_executed: 0`. A gate
+      # that green-lights zero executions is the switched-off matrix wearing a
+      # different hat. The gate is on `executed < selected`.
+      #
+      # Redness is NOT gated here — the matrix reports its own reds, and
+      # conflating "ran" with "passed" is what makes a suite worth switching
+      # off.
+      - name: Fail if fewer graphs executed than were selected
         run: |
-          unaccounted=$(python3 -c "import json;print(json.load(open('graphs-executed.json'))['graphs_unaccounted'])")
-          if [ "$unaccounted" != "0" ]; then
-            echo "::error::${unaccounted} selected graph(s) produced no execution record."
-            exit 1
-          fi
+          python3 - <<'PY'
+          import json, sys
+          r = json.load(open("graphs-executed.json"))
+          executed, selected = r["graphs_executed"], r["graphs_selected"]
+          if executed < selected:
+              names = ", ".join(
+                  g["graph"] for g in r["graphs"] if not g.get("executed")
+              ) or "(no records)"
+              print(
+                  f"::error title=validation floor not reached::{executed} of "
+                  f"{selected} selected graphs executed. Did not run: {names}."
+              )
+              sys.exit(1)
+          print(f"{executed} of {selected} selected graphs executed.")
+          PY
 
   test-graph-browser:
     # Selenium + chromedriver. Kept off push and pull_request on purpose, and
@@ -585,7 +651,11 @@ jobs:
       - name: Pre-pull postgres image
         run: docker pull "$POSTGRES_IMAGE"
 
+      # Same private-dependency caveat as the test-graph job above; see the
+      # long comment there. Non-fatal for the same reason: a browser graph that
+      # ran and went red is information, a skipped one is not.
       - name: Install gateway Python deps
+        continue-on-error: true
         run: uv sync --all-extras
         working-directory: virtual-mcp-gateway
 
