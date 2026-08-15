@@ -111,6 +111,7 @@ jobs:
       count: ${{ steps.pick.outputs.count }}
       deferred: ${{ steps.pick.outputs.deferred }}
       registered: ${{ steps.pick.outputs.registered }}
+      gateway_graphs: ${{ steps.pick.outputs.gateway_graphs }}
       browser: ${{ steps.browser.outputs.browser }}
     steps:
       - uses: actions/checkout@v4
@@ -421,8 +422,15 @@ jobs:
       # `PRIVATE_DEPS_TOKEN` secret with read access to haydenrear/tracing_skill,
       # or make `tracing-skill-observability` an optional extra in
       # virtual-mcp-gateway/pyproject.toml. Either turns three red graphs green.
+      # `|| '[]'` is not decoration. An `outputs:` entry that a job forgot to
+      # declare arrives as the empty string, and `fromJSON('')` fails the whole
+      # template — "The template is not valid" — which kills the job before any
+      # step runs and skips the Run graph step, i.e. exactly the invisible
+      # zero-execution outcome this ticket is about. Measured on run
+      # 31900204909. The default keeps a missing output degrading to "no graph
+      # needs the gateway" instead of to nothing running at all.
       - name: Install gateway Python deps
-        if: contains(fromJSON(needs.graph-set.outputs.gateway_graphs), matrix.graph)
+        if: contains(fromJSON(needs.graph-set.outputs.gateway_graphs || '[]'), matrix.graph)
         continue-on-error: true
         run: |
           if ! uv sync --all-extras; then
