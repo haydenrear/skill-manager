@@ -105,16 +105,19 @@ _TESTGRAPH_RE = re.compile(r'(?<![\w.])testGraph\("([^"]+)"\)')
 _TESTGRAPH_OPEN_RE = re.compile(r'(?<![\w.])testGraph\("([^"]+)"\)\s*\{')
 _NODE_RE = re.compile(r'node\("([^"]+)"\)')
 
-# A graph "needs the gateway" if it declares any of these nodes. They are the
-# ones that require virtual-mcp-gateway's Python venv to exist, which on a
-# hosted runner means resolving a dependency from a PRIVATE repository — see
-# the gateway-deps step in ci.yml. Five of the eight core graphs declare none
-# of them and must not pay for that dependency.
-_GATEWAY_NODES = (
-    "GatewayPythonVenvReady.java",
-    "GatewayUp.java",
-    "OnboardGatewayHealthy.java",
-)
+# A graph "needs the gateway" if it declares any node whose source name
+# mentions Gateway. In practice that is `common/GatewayPythonVenvReady.java` —
+# the node that materializes virtual-mcp-gateway's venv, and the one every
+# gateway-using graph declares first — plus `smoke/GatewayUp.java` and
+# `onboard/OnboardGatewayHealthy.java`. The check is a substring rather than a
+# fixed list so a gateway node added later is picked up without a second
+# hand-kept list going stale, which is the failure mode this whole script
+# exists to remove.
+#
+# It matters because that venv resolves a dependency from a PRIVATE repository
+# (see the gateway-deps step in ci.yml). Five of the eight core graphs declare
+# no gateway node and must not pay for it.
+_GATEWAY_MARKER = "Gateway"
 
 
 def _graph_nodes(repo_root: Path) -> dict[str, list[str]]:
@@ -164,7 +167,7 @@ def gateway_graphs(repo_root: Path, selected: list[str]) -> list[str]:
     nodes = _graph_nodes(repo_root)
     return [
         g for g in selected
-        if any(n.endswith(_GATEWAY_NODES) for n in nodes.get(g, []))
+        if any(_GATEWAY_MARKER in n for n in nodes.get(g, []))
     ]
 
 

@@ -106,7 +106,7 @@ def main() -> int:
         # cancelled, or its artifact upload failed. Named so the gap is a
         # finding rather than a smaller number.
         "graphs_unaccounted": max(missing, 0),
-        "nodes_reached": sum(r.get("nodes_reached") or 0 for r in records),
+        "nodes_attempted": sum(r.get("nodes_attempted") or 0 for r in records),
         "nodes_declared": sum(r.get("nodes_declared") or 0 for r in records),
         "deferred": json.loads(args.deferred),
         "graphs": records,
@@ -127,14 +127,14 @@ def main() -> int:
         f"{report['graphs_executed']} | {report['graphs_passed']} | "
         f"{report['graphs_failed']} | {report['graphs_unaccounted']} |",
         "",
-        f"nodes reached {report['nodes_reached']} of {report['nodes_declared']} declared",
+        f"nodes attempted {report['nodes_attempted']} of {report['nodes_declared']} declared",
         "",
         "| graph | outcome | nodes |",
         "| --- | --- | --- |",
     ]
     for r in records:
         nodes = (
-            f"{r.get('nodes_reached')}/{r.get('nodes_declared')}"
+            f"{r.get('nodes_attempted')}/{r.get('nodes_declared')}"
             if r.get("nodes_declared") else "-"
         )
         lines.append(f"| `{r['graph']}` | {r.get('outcome')} | {nodes} |")
