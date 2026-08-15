@@ -148,10 +148,25 @@ jobs:
       - name: Decide browser graphs
         id: browser
         run: |
-          # Selenium graphs never run on a push or a PR: refresh-flow is
-          # excluded outright (#53) and the other two boot chromedriver, which
-          # is the most expensive and least stable thing in the suite. Schedule
-          # and explicit dispatch only.
+          # Selenium graphs never run on a push or a PR. Reviewed again on
+          # 2026-08-15 when the private-dependency wall came down, and the
+          # answer did not change — because the dependency was never the reason:
+          #
+          #   * `refresh-flow` is excluded outright (#53): a 3s token TTL with
+          #     CLOCK_SKEW_SECONDS=0 verified by a live /auth/me after a
+          #     driver.quit() measured at 7.6-8.6s. ~1 in 4, by construction.
+          #   * `browser-auth` and `password-reset` boot chromedriver and a real
+          #     browser — the most expensive cells in the suite, and the budget
+          #     argument for the core set is unaffected by what is public.
+          #   * Neither has been OBSERVED to execute in this epic. Putting a set
+          #     of graphs on every PR without one observed run is the same
+          #     unvalidated-config move that left `ENABLE_TEST_GRAPH` set to
+          #     nothing for two releases.
+          #
+          # First real evidence arrives from the nightly full sweep once this
+          # reaches main. If browser-auth is green on two consecutive nightlies,
+          # promoting it into CORE is a one-line change in select-graph-set.py.
+          # Schedule and explicit dispatch only until then.
           if [ "${{ github.event_name }}" = "schedule" ] \
              || [ "${{ github.event.inputs.run_browser_graphs }}" = "true" ]; then
             echo "browser=true" >> "$GITHUB_OUTPUT"
@@ -216,28 +231,28 @@ jobs:
         run: jbang RunTests.java
 
   gateway-tests:
-    # Opt-in while tracing-skill-observability is resolved from a private
-    # repository. Re-enable only after bounded Actions read access or a
-    # released package artifact is available.
+    # UNGATED. This job spent months behind `vars.ENABLE_PRIVATE_TRACING_CI`
+    # because `tracing-skill-observability` was resolved from a private
+    # repository that a hosted runner could not clone. **That repository is
+    # public as of 2026-08-15**, verified by an anonymous shallow clone and a
+    # 200 from the API, and by run 31908719744 in which graphs installed units
+    # and two went green — which they cannot do without the gateway venv, since
+    # `install` runs `EnsureGateway`.
     #
-    # ARTI-12 (#113) deliberately did NOT re-enable this one. Unlike
-    # ENABLE_TEST_GRAPH, the blocker here is not budget — it is that the
-    # dependency cannot be fetched by a hosted runner at all, which no amount of
-    # matrix trimming fixes. Left gated, and named as still-gated rather than
-    # left to be rediscovered.
+    # The gate and its variable are removed rather than flipped. A repository
+    # variable that suppresses a whole test job and no longer describes anything
+    # true is `ENABLE_TEST_GRAPH` again — the exact defect this ticket exists to
+    # undo — and a dead switch is worse than no switch, because the next reader
+    # has to disprove it. `ENABLE_PRIVATE_TRACING_CI` should now be deleted from
+    # the repository's variables; nothing in this file reads it.
     #
-    # It DOES get the `PRIVATE_DEPS_TOKEN` plumbing, so that provisioning that
-    # one secret is sufficient for every job in this file rather than for the
-    # graph matrix alone. Review of #190 caught the asymmetry: the plumbing was
-    # on `test-graph` only, while this job and `test-graph-browser` ran a bare
-    # `uv sync --all-extras`, so "one secret away from green" would have been
-    # true of one job in three.
-    if: ${{ vars.ENABLE_PRIVATE_TRACING_CI == 'true' }}
+    # The `PRIVATE_DEPS_TOKEN` plumbing added earlier in ARTI-12 goes with it,
+    # from all three jobs. Its entire justification was this one private
+    # dependency. Keeping credential-handling code that no dependency needs is
+    # dead weight on the same argument, and `uv sync` now resolves anonymously.
     name: virtual-mcp-gateway pytest
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    env:
-      PRIVATE_DEPS_TOKEN: ${{ secrets.PRIVATE_DEPS_TOKEN }}
     defaults:
       run:
         working-directory: virtual-mcp-gateway
@@ -252,11 +267,6 @@ jobs:
         uses: astral-sh/setup-uv@v3
         with:
           enable-cache: true
-
-      - name: Authorize private Python dependencies
-        if: env.PRIVATE_DEPS_TOKEN != ''
-        working-directory: .
-        run: bash .github/scripts/authorize-private-deps.sh
 
       - name: Sync dependencies (with dev extras)
         run: uv sync --all-extras
@@ -301,10 +311,6 @@ jobs:
       max-parallel: 4
       matrix:
         graph: ${{ fromJSON(needs.graph-set.outputs.graphs) }}
-    # Job level, not step level: a step's own `env:` block is not reliably
-    # visible to that step's `if:`.
-    env:
-      PRIVATE_DEPS_TOKEN: ${{ secrets.PRIVATE_DEPS_TOKEN }}
     steps:
       - uses: actions/checkout@v4
 
@@ -422,64 +428,42 @@ jobs:
       - name: Pre-pull postgres image
         run: docker pull "$POSTGRES_IMAGE"
 
-      # If a token for the private dependency below is provisioned, use it.
-      # Absent, this is a no-op and the next step reports what that costs.
-      - name: Authorize private Python dependencies
-        if: env.PRIVATE_DEPS_TOKEN != ''
-        run: bash .github/scripts/authorize-private-deps.sh
-
       # GatewayRuntime.pythonExecutable() auto-picks virtual-mcp-gateway/.venv/bin/python
       # when it exists; `uv sync` materializes the venv with fastapi/uvicorn/mcp/etc.
       # Without this step `skill-manager gateway up` spawns bare python3 and the
       # gateway subprocess dies with ModuleNotFoundError before binding its port.
       #
-      # THIS STEP CANNOT SUCCEED ON A HOSTED RUNNER TODAY, and finding that out
-      # is the first thing re-enabling the matrix bought. `virtual-mcp-gateway`
-      # takes a hard, non-optional dependency on
-      # `tracing-skill-observability @ git+https://github.com/haydenrear/tracing_skill`,
-      # which is private, so `uv sync` dies with
-      # "could not read Username for 'https://github.com'". That is the same
-      # blocker `gateway-tests` is gated on — but it was never known to reach
-      # the whole graph matrix, because the matrix never ran. Measured on
-      # https://github.com/haydenrear/skill-manager/actions/runs/31899858877:
-      # all eight core graphs failed here, before executing a single node.
-      #
-      # IT GROUNDS EVERY GRAPH, not only the ones with a gateway node. The
-      # obvious refinement — skip this step for the five core graphs that
+      # IT IS NEEDED BY EVERY GRAPH, not only the ones with a gateway node.
+      # The obvious refinement — skip this step for the five core graphs that
       # declare none — was tried, and it is wrong: `InstallCommand` runs
       # `EnsureGateway`, which shells out to its own `uv sync`. Measured on run
-      # 31900307288, `checkout-home` (no gateway node among its seven) failed at
-      # `home.clone.fixture.built` with
-      # `EnsureGateway: failed to start gateway: uv sync exited with status 1`
-      # and the same "could not read Username" underneath. So the step is
-      # unconditional: pre-warming is cheap and fails in about a second, while
-      # skipping it only moves the identical failure inside a node that has a
-      # timeout on it. The selector still reports which graphs declare gateway
-      # nodes, as information rather than as a condition.
+      # 31900307288, `checkout-home` (no gateway node among its seven) failed in
+      # `EnsureGateway`. So the step is unconditional; pre-warming it here means
+      # the cost is paid once per job with a visible name, rather than inside a
+      # node that has a timeout on it. The selector still reports which graphs
+      # declare gateway nodes, as information rather than as a condition.
       #
-      # `continue-on-error` so a failure here DOES NOT SKIP THE GRAPH. It runs,
-      # and goes red with a real message, instead of vanishing from the tally as
-      # a skipped step. A graph that did not run is worse than a graph that ran
-      # and failed — that distinction is the whole subject of #113.
+      # THE DEPENDENCY WALL IS DOWN. This step could not succeed on a hosted
+      # runner at all until 2026-08-15: `virtual-mcp-gateway` depends on
+      # `tracing-skill-observability @ git+https://github.com/haydenrear/tracing_skill`,
+      # which was PRIVATE, so `uv sync` died with "could not read Username for
+      # 'https://github.com'" and all eight core graphs failed here before
+      # executing a node (run 31899858877). The owner made that repository
+      # public; run 31908719744 installed units and took two graphs green, which
+      # is only possible once this succeeds. The `PRIVATE_DEPS_TOKEN` plumbing
+      # ARTI-12 added for the workaround has been removed with the wall.
       #
-      # THE FIX IS THE OWNER'S CALL, and there are two: provision a
-      # `PRIVATE_DEPS_TOKEN` secret with read access to haydenrear/tracing_skill,
-      # or make `tracing-skill-observability` an optional extra in
-      # virtual-mcp-gateway/pyproject.toml. Until one of them happens the matrix
-      # executes and reports but cannot go green on a hosted runner — which is
-      # itself the most useful thing re-enabling it has produced.
-      #
-      # The secret covers ALL THREE jobs in this file that build that venv:
-      # `test-graph`, `test-graph-browser` and `gateway-tests` each carry the
-      # `Authorize private Python dependencies` step. Review of #190 found the
-      # plumbing on `test-graph` only, which would have made "one secret away
-      # from green" true of one job in three — the nightly Selenium job and the
-      # gateway pytest job would still have been broken by the same cause.
+      # `continue-on-error` STAYS, and not out of habit. If this step ever
+      # breaks again, the graph must still run and go red at a node with a real
+      # message, rather than vanishing from the tally as a skipped step — a
+      # graph that did not run is worse than a graph that ran and failed, which
+      # is the whole subject of #113. The `::error::` annotation below keeps the
+      # failure visible in the run's summary rather than silent.
       - name: Install gateway Python deps
         continue-on-error: true
         run: |
           if ! uv sync --all-extras; then
-            echo "::error title=gateway venv unavailable::virtual-mcp-gateway's venv could not be built, so every node that runs skill-manager install will fail inside EnsureGateway. The cause is almost certainly the private tracing_skill dependency: provision a PRIVATE_DEPS_TOKEN secret or make it an optional extra. The graph still runs and reports rather than being skipped."
+            echo "::error title=gateway venv unavailable::virtual-mcp-gateway's venv could not be built, so every node that runs skill-manager install will fail inside EnsureGateway. This resolved anonymously as of 2026-08-15, so a failure here is a real regression, not the old private-dependency wall. The graph still runs and reports rather than being skipped."
           fi
         working-directory: virtual-mcp-gateway
 
@@ -658,10 +642,6 @@ jobs:
       fail-fast: false
       matrix:
         graph: [browser-auth, password-reset]
-    # Same reason as `test-graph`: job level, because a step's own `env:` block
-    # is not reliably visible to that step's `if:`.
-    env:
-      PRIVATE_DEPS_TOKEN: ${{ secrets.PRIVATE_DEPS_TOKEN }}
     steps:
       - uses: actions/checkout@v4
 
@@ -708,13 +688,9 @@ jobs:
       - name: Pre-pull postgres image
         run: docker pull "$POSTGRES_IMAGE"
 
-      # Same private-dependency caveat as the test-graph job above; see the
-      # long comment there. Non-fatal for the same reason: a browser graph that
-      # ran and went red is information, a skipped one is not.
-      - name: Authorize private Python dependencies
-        if: env.PRIVATE_DEPS_TOKEN != ''
-        run: bash .github/scripts/authorize-private-deps.sh
-
+      # `continue-on-error` for the same reason as the test-graph job above: a
+      # browser graph that ran and went red is information, a skipped one is
+      # not. The private-dependency wall that used to make this fail is gone.
       - name: Install gateway Python deps
         continue-on-error: true
         run: uv sync --all-extras
