@@ -113,6 +113,36 @@ public final class SyncMcpSplitTest {
                     "nor unregistered");
         });
 
+        suite.test("a claiming-project sync still does no gateway work unless asked", () -> {
+            SkillStore store = seededHome("sync-mcp-project-");
+            GatewayConfig gw = GatewayConfig.resolve(store, "http://127.0.0.1:59999");
+
+            // SyncClaimingProjects' gateway argument reaches a CHILD project's
+            // own install program via ProjectDependencyResolver ->
+            // InstallUseCase.buildProgramForStagedGraph, where ONE boolean
+            // still gates both the EnsureGateway preflight and the MCP work.
+            // Handing it `withMcp` would put an EnsureGateway back into a
+            // project resolve — the exact rollback 7fce8ed fixed, at the exact
+            // home tier it was reported at. It gets `startGateway`.
+            var program = SyncUseCase.buildProgram(store, gw,
+                    new SyncUseCase.Options(null, false, false, /*withMcp=*/true, true, false,
+                            false, /*startGateway=*/false),
+                    List.of(new SyncUseCase.Target.Git("alpha")), List.of());
+
+            SkillEffect.SyncClaimingProjects projects =
+                    program.stage2().apply(new EffectContext(store, gw)).effects().stream()
+                            .filter(SkillEffect.SyncClaimingProjects.class::isInstance)
+                            .map(SkillEffect.SyncClaimingProjects.class::cast)
+                            .findFirst().orElse(null);
+            if (projects != null) {
+                assertFalse(projects.withGateway(),
+                        "registration at THIS home must not drag a gateway preflight into a "
+                                + "child project's install");
+                Tests.assertEquals(null, projects.gateway(),
+                        "and it is handed no gateway to start one with");
+            }
+        });
+
         suite.test("upgrade and sync plan the same MCP work — they disagreed before", () -> {
             SkillStore store = seededHome("sync-mcp-upgrade-");
             GatewayConfig gw = GatewayConfig.resolve(store, "http://127.0.0.1:59999");
