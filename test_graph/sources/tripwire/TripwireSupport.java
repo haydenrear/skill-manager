@@ -265,6 +265,13 @@ final class TripwireSupport {
      *       Nothing skill-manager writes anywhere is a sqlite file, so the
      *       general rule is the honest one and the prefixes were an
      *       accident of which database happened to be open that day.</li>
+     *   <li><b>{@code .skill-manager/gateway.log}</b> — the operator's own
+     *       virtual-mcp-gateway daemon appends to it for as long as it runs,
+     *       and with the local OTLP collector down it logs an export failure
+     *       every few seconds. Measured: {@code ticket.lifecycle.global.home.untouched}
+     *       red with {@code differences=[-F gateway.log 6235561, +F gateway.log 6273325]}
+     *       and every substantive oracle green. A daemon's log is churned by
+     *       the daemon, not projected into by anything this graph runs.</li>
      * </ul>
      *
      * <p>The remaining entries are the agent-session state the old broad walk
@@ -278,6 +285,7 @@ final class TripwireSupport {
         if (name.equals("__pycache__") || name.equals(".gradle")) return true;
         if (name.contains(".sqlite")) return true;
         if (name.equals("models_cache.json") || name.equals("history.jsonl")) return true;
+        if (path.equals(home.resolve(STORE_ROOT).resolve("gateway.log"))) return true;
         if (name.equals("cache") && path.getParent() != null
                 && ROOTS.contains(path.getParent().getFileName().toString())) {
             return true;
