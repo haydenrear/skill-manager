@@ -289,6 +289,16 @@ skill-manager home close-out --home <worktree>/.skill-manager \
 - A `LINKED` unit **blocks**. The gate cannot say whose bytes a symlink's target
   is — it may point inside the worktree or outside it — and "cannot tell" has to
   block rather than clear. Resolve the link, then re-run.
+- A **git-backed** unit (a store copy carrying its own `.git`) is judged by git
+  before any record: a worktree home whose working tree is clean and whose every
+  ref the project home already reaches holds nothing — including a home that is
+  merely *behind* because the project home pulled a newer upstream since the
+  worktree was cloned. `.git` is one thing in the verdict, never a list of index
+  and reflog files; a history that neither side contains is reported as the
+  single conflict entry `.git (history)`, and its detail names the fix — bring
+  the project home up to date (`skill-manager sync <unit>` there) when the
+  worktree only pulled further, `unit publish` when the worktree committed
+  something of its own.
 - `--json` gives `.blockers[]` with `unit`, `status`, `conflicts[]` and `remedy`.
 
 There is **no `--force` on this command**, deliberately: the CLI owns the verdict.
