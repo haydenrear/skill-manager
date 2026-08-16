@@ -125,7 +125,7 @@ public class HomeIntegrityFixture {
                             .allMatch(r -> HomeIntegrity.text(r, "gitHash") != null);
             boolean bothHaveStores = bothRecorded
                     && records.keySet().stream()
-                            .allMatch(u -> HomeIntegrity.storeOf(home, u, "SKILL") != null);
+                            .allMatch(u -> HomeIntegrity.storeOf(home, u) != null);
 
             Path shim = home.resolve("bin").resolve("cli").resolve(HomeIntegritySupport.TOOL);
             boolean shimBuilt = Files.isExecutable(shim);
