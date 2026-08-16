@@ -1,9 +1,12 @@
 package dev.skillmanager.bindings;
 
+import dev.skillmanager.lock.Fingerprint;
+import dev.skillmanager.lock.Fingerprints;
 import dev.skillmanager.model.AgentUnit;
 import dev.skillmanager.model.Coord;
 import dev.skillmanager.model.DocRepoParser;
 import dev.skillmanager.model.DocUnit;
+import dev.skillmanager.model.HarnessParser;
 import dev.skillmanager.model.HarnessUnit;
 import dev.skillmanager.model.UnitKind;
 import dev.skillmanager.model.UnitReference;
@@ -12,6 +15,7 @@ import dev.skillmanager.source.UnitStore;
 import dev.skillmanager.store.SkillStore;
 
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
@@ -52,8 +56,34 @@ public final class HarnessInstantiator {
 
     private HarnessInstantiator() {}
 
-    public record Plan(List<Binding> bindings) {
+    /** Versioned per {@link Fingerprints}: changing what it covers means a new suffix. */
+    public static final String FINGERPRINT_SCHEME = "harness-template-v1";
+
+    /**
+     * The bindings a template produces, and a graded digest of the template
+     * they were produced from.
+     *
+     * <p>{@code SyncHarness} re-instantiates against the template with
+     * {@link ConflictPolicy#OVERWRITE} on every pass. Nothing recorded what the
+     * template looked like when the instance was made, so re-running it was the
+     * only way to learn whether it had moved — the artifact was regenerated in
+     * order to answer a question that a recorded fingerprint answers without
+     * touching the disk. {@link #templateFingerprint()} is that fingerprint;
+     * {@link HarnessInstanceLock} is where it is kept.
+     */
+    public record Plan(List<Binding> bindings, Fingerprint templateFingerprint) {
         public Plan { bindings = List.copyOf(bindings); }
+
+        /**
+         * The shape callers written before the fingerprint existed use. The
+         * fingerprint is a recorded GAP rather than null: "nobody computed one"
+         * and "one could not be computed" are different claims, and
+         * {@link Fingerprint} refuses to let them share a spelling.
+         */
+        public Plan(List<Binding> bindings) {
+            this(bindings, Fingerprint.gap(
+                    "this plan was built without digesting its template"));
+        }
     }
 
     /**
@@ -157,7 +187,83 @@ public final class HarnessInstantiator {
             all.addAll(plan.bindings());
         }
 
-        return new Plan(all);
+        return new Plan(all, fingerprintOf(harness, store));
+    }
+
+    /**
+     * A graded digest of the template an instance is derived from.
+     *
+     * <h2>What it covers</h2>
+     *
+     * <ul>
+     *   <li>the harness name and version;</li>
+     *   <li><b>every byte of the installed {@code harness.toml}</b>, read off
+     *       this home's disk;</li>
+     *   <li>what each of its unit and doc coords RESOLVES TO in this home —
+     *       {@code <kind>:<name>}, or {@code unresolved:<coord>} when nothing
+     *       installed answers to it.</li>
+     * </ul>
+     *
+     * <p>The manifest's own bytes are hashed, so anything the template declares
+     * — {@code [[mcp_tools]]} rows included — is covered without being restated
+     * here. What the bytes cannot say is which installed unit a coord landed on,
+     * and that is a fact about this home rather than about the file, so it is
+     * added explicitly.
+     *
+     * <h2>Why {@link Fingerprint.Kind#RESOLVED}</h2>
+     *
+     * <p>These are bytes and resolutions READ OFF THIS HOME on this pass, not a
+     * declaration copied out of some other manifest. When the harness unit is
+     * updated in the store the digest moves; when a unit it references is
+     * removed the digest moves. That is what {@code resolved} asserts, and it is
+     * the claim {@code SyncHarness} could not make before — it re-instantiated
+     * with {@link ConflictPolicy#OVERWRITE} on every pass because re-running was
+     * the only way to learn whether the template had moved.
+     *
+     * <p>What it deliberately does NOT cover: the CONTENTS of the units the
+     * template references. Those are projected as symlinks into the store, so a
+     * referenced skill gaining a file does not make the instance stale — its
+     * link already points at the new bytes. Folding them in would make the
+     * digest move for a reason that is not this artifact's, and a signal that
+     * fires when nothing is wrong is the one that gets ignored.
+     *
+     * <p>What it also does not cover: the instance's target directories. Those
+     * are recorded verbatim as fields of {@link HarnessInstanceLock} and they
+     * differ between homes; digesting them would make a clone of a home report
+     * every instance as stale.
+     */
+    public static Fingerprint fingerprintOf(HarnessUnit harness, SkillStore store) {
+        Path source = harness.sourcePath();
+        Path template = source == null ? null : source.resolve(HarnessParser.TOML_FILENAME);
+        if (template == null || !Files.isRegularFile(template)) {
+            return Fingerprint.gap("this home has no installed " + HarnessParser.TOML_FILENAME
+                    + " for harness " + harness.name() + ", so the template these bindings were "
+                    + "instantiated from could not be read");
+        }
+        Fingerprints digest = Fingerprints.scheme(FINGERPRINT_SCHEME)
+                .field("harness", harness.name())
+                .field("version", harness.version());
+        try {
+            digest.file("template", HarnessParser.TOML_FILENAME, template);
+        } catch (IOException e) {
+            return Fingerprint.gap("the installed " + HarnessParser.TOML_FILENAME
+                    + " could not be read: " + e.getMessage());
+        }
+        for (UnitReference ref : harness.units()) {
+            digest.field("unit", resolveReference(ref, store, source)
+                    .map(nk -> nk.kind() + ":" + nk.name())
+                    .orElse("unresolved:" + ref.coord().raw()));
+        }
+        for (UnitReference ref : harness.docs()) {
+            digest.field("doc", resolveDocReference(ref, store, source)
+                    .map(d -> d.sourceId() == null ? d.repoName()
+                            : d.repoName() + "/" + d.sourceId())
+                    .orElse("unresolved:" + ref.coord().raw()));
+        }
+        return Fingerprint.resolved(digest.hex(),
+                "every byte of the installed " + HarnessParser.TOML_FILENAME + " for "
+                        + harness.name() + ", plus the kind and name each of its unit and doc "
+                        + "coords resolves to in this home");
     }
 
     /**

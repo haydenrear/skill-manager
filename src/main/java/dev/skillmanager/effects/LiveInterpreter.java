@@ -201,7 +201,7 @@ public final class LiveInterpreter implements ProgramInterpreter {
             case SkillEffect.EnsureTool e -> ensureTool(e);
             case SkillEffect.RunCliInstall e -> runCliInstall(e, ctx);
             case SkillEffect.RegisterMcpServer e -> registerMcpServer(e, ctx);
-            case SkillEffect.UnregisterMcpOrphan e -> unregisterOrphan(e);
+            case SkillEffect.UnregisterMcpOrphan e -> unregisterOrphan(e, ctx);
             case SkillEffect.UnregisterMcpOrphans e -> unregisterOrphans(e, ctx);
             case SkillEffect.SyncAgents e -> syncAgents(e, ctx);
             case SkillEffect.RefreshHarnessPlugins e -> refreshHarnessPlugins(e, ctx);
@@ -630,7 +630,9 @@ public final class LiveInterpreter implements ProgramInterpreter {
         // McpWriter widening lands in ticket 11.
         List<Skill> mcpCarriers = new ArrayList<>(units.size());
         for (AgentUnit u : units) mcpCarriers.add(asMcpCarrier(u));
-        McpWriter writer = new McpWriter(e.gateway());
+        // The store form: this writer registers, so it also records what it
+        // registered into <home>/mcp-lock.json.
+        McpWriter writer = new McpWriter(e.gateway(), ctx.store());
         List<InstallResult> results = writer.registerAll(mcpCarriers);
 
         for (AgentUnit u : units) {
@@ -682,6 +684,7 @@ public final class LiveInterpreter implements ProgramInterpreter {
             for (String id : orphans) {
                 try {
                     if (client.unregister(id)) {
+                        forgetMcpRecord(ctx.store().root(), id);
                         facts.add(new ContextFact.OrphanUnregistered(id));
                     }
                 } catch (Exception ex) {
@@ -697,16 +700,40 @@ public final class LiveInterpreter implements ProgramInterpreter {
         }
     }
 
-    private EffectReceipt unregisterOrphan(SkillEffect.UnregisterMcpOrphan e) {
+    private EffectReceipt unregisterOrphan(SkillEffect.UnregisterMcpOrphan e, EffectContext ctx) {
         GatewayClient client = new GatewayClient(e.gateway());
         if (!client.ping()) return EffectReceipt.skipped(e, "gateway unreachable");
         try {
             if (client.unregister(e.serverId())) {
+                forgetMcpRecord(ctx.store().root(), e.serverId());
                 return EffectReceipt.ok(e, new ContextFact.OrphanUnregistered(e.serverId()));
             }
             return EffectReceipt.skipped(e, "not registered");
         } catch (Exception ex) {
             return EffectReceipt.failed(e, ex.getMessage());
+        }
+    }
+
+    /**
+     * Drop {@code serverId}'s row from {@code mcp-lock.json} once the gateway
+     * has actually let go of it.
+     *
+     * <p>Paired with the write in {@code McpWriter} on purpose: a row that
+     * outlives its registration is a record claiming a registration this home
+     * does not have, which is the "a second copy that can disagree with the
+     * disk" failure the artifact model exists to avoid. Called only after
+     * {@code unregister} returned true, so the row is removed because the
+     * registration is gone and not because a call was attempted.
+     */
+    private void forgetMcpRecord(java.nio.file.Path homeRoot, String serverId) {
+        try {
+            dev.skillmanager.mcp.McpRegistrationLock lock =
+                    dev.skillmanager.mcp.McpRegistrationLock.read(homeRoot);
+            if (lock.server(serverId).isEmpty()) return;
+            lock.without(serverId).write(homeRoot);
+        } catch (IOException io) {
+            Log.warn("could not drop %s from %s: %s", serverId,
+                    dev.skillmanager.mcp.McpRegistrationLock.FILENAME, io.getMessage());
         }
     }
 
@@ -1601,7 +1628,7 @@ public final class LiveInterpreter implements ProgramInterpreter {
             return EffectReceipt.skipped(e, "gateway unreachable");
         }
         try {
-            McpWriter writer = new McpWriter(e.gateway());
+            McpWriter writer = new McpWriter(e.gateway(), ctx.store());
             // Synthesize a single-dep skill so registerAll has exactly one
             // server to register. No on-disk unit lookup — works the same
             // whether unitName names a skill (skills/<n>) or a plugin
@@ -2140,9 +2167,62 @@ public final class LiveInterpreter implements ProgramInterpreter {
                         existing.unitName(), ContextFact.HarnessBindingSynced.Action.REMOVED,
                         "no longer referenced by template"));
             }
+
+            // 3) Record the template this pass instantiated against.
+            //
+            // This is the write the whole "re-running is the only way to learn
+            // whether the template moved" problem turns on. The projections
+            // above were just rewritten with OVERWRITE regardless of whether
+            // anything changed; from here on the instance CARRIES the digest of
+            // what it was made from, so the question can be asked instead of
+            // re-answered by doing the work. An instance that predates the
+            // field gets its first real fingerprint here rather than a guessed
+            // grade.
+            recordHarnessTemplateFingerprint(sandboxRoot, e, lock, plan.templateFingerprint(),
+                    claudeConfigDir, codexHome, geminiHome, projectDir, ctx.store().root());
+
             return EffectReceipt.ok(e, facts);
         } catch (IOException io) {
             return EffectReceipt.failed(e, facts, "sync-harness failed: " + io.getMessage());
+        }
+    }
+
+    /**
+     * Write the instance lock back with the template fingerprint this sync
+     * planned against, keeping every path and the original {@code createdAt}.
+     *
+     * <p>Reconstructing the lock rather than editing one is deliberate for the
+     * instances that have none: an instance created before the lock file
+     * existed still has a sandbox dir and still gets synced, and it should come
+     * out of this pass with the same record a fresh instantiation writes. The
+     * paths used are the ones the plan actually ran with — the resolved values
+     * above, which fall back to the sandbox defaults exactly as the planner
+     * did, so the record and the plan can never describe different layouts.
+     *
+     * <p>Failure is a warning, never an error: this file is evidence about the
+     * instance, not an input to materializing it, and a sync that projected
+     * every binding correctly must not report failure because a record could
+     * not be updated.
+     */
+    private void recordHarnessTemplateFingerprint(
+            java.nio.file.Path sandboxRoot, SkillEffect.SyncHarness e,
+            java.util.Optional<dev.skillmanager.bindings.HarnessInstanceLock> previous,
+            dev.skillmanager.lock.Fingerprint fingerprint,
+            java.nio.file.Path claudeConfigDir, java.nio.file.Path codexHome,
+            java.nio.file.Path geminiHome, java.nio.file.Path projectDir,
+            java.nio.file.Path homeRoot) {
+        try {
+            String createdAt = previous
+                    .map(dev.skillmanager.bindings.HarnessInstanceLock::createdAt)
+                    .orElseGet(dev.skillmanager.bindings.BindingStore::nowIso);
+            new dev.skillmanager.bindings.HarnessInstanceLock(
+                    e.harnessName(), e.instanceId(),
+                    claudeConfigDir, codexHome, geminiHome, projectDir, createdAt)
+                    .withTemplateFingerprint(fingerprint)
+                    .write(sandboxRoot, homeRoot);
+        } catch (IOException io) {
+            Log.warn("could not record the template fingerprint for harness instance %s: %s",
+                    e.instanceId(), io.getMessage());
         }
     }
 

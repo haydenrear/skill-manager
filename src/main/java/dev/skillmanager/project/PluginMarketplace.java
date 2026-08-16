@@ -40,6 +40,17 @@ import java.util.Map;
  * up consistent: stale symlinks pruned, manifest rewritten, missing
  * symlinks recreated. Skills are ignored — the harness CLIs only deal
  * with plugins.
+ *
+ * <p><b>Idempotent is not the same as knowing.</b> This regenerates the
+ * manifest and the whole symlink tree on every pass precisely because nothing
+ * recorded what the last pass generated them from, so "did the installed plugin
+ * set change" could not be asked. {@link #regenerate()} now writes
+ * {@link MarketplaceInputs} beside the tree — one graded input fingerprint per
+ * entry, over the entry's identity and the plugin's bytes in the store — which
+ * is what makes the question answerable at all. It does not yet SKIP the
+ * regeneration on a match: doing so is a behaviour change with its own
+ * failure modes (a hand-edited manifest would stop being repaired), and this
+ * records the fact a later short-circuit needs rather than assuming it.
  */
 public final class PluginMarketplace {
 
@@ -166,6 +177,11 @@ public final class PluginMarketplace {
                 }
             }
         }
+        // The stored link target per plugin, kept so the input record below can
+        // digest the same string that was written into the tree rather than
+        // re-deriving it — two derivations of one fact are two facts that can
+        // disagree.
+        Map<String, String> storedTargets = new LinkedHashMap<>();
         for (String name : names) {
             Path link = pluginsLinkDir().resolve(name);
             Path target = store.unitDir(name, UnitKind.PLUGIN);
@@ -173,14 +189,20 @@ public final class PluginMarketplace {
                     || Files.isSymbolicLink(link)) {
                 Fs.deleteRecursive(link);
             }
+            Path stored = dev.skillmanager.store.HomeLinks.storedTarget(store.root(), link, target);
             try {
                 // Both ends live in this home, so the link is stored
                 // relative — an absolute one would make a copy of the home
                 // reach back into the original.
-                Files.createSymbolicLink(link,
-                        dev.skillmanager.store.HomeLinks.storedTarget(store.root(), link, target));
+                Files.createSymbolicLink(link, stored);
+                storedTargets.put(name, stored.toString());
             } catch (UnsupportedOperationException | IOException fallback) {
                 Fs.copyRecursive(target, link);
+                // A copy has no link target. Recording the symlink's would be a
+                // claim about a link that is not there — the entry's identity
+                // half is one field short, and the digest says so by covering
+                // a null the encoder skips rather than a string it invents.
+                storedTargets.put(name, null);
             }
         }
 
@@ -199,14 +221,27 @@ public final class PluginMarketplace {
         owner.put("name", NAME);
         manifest.put("owner", owner);
         List<Map<String, Object>> plugins = new ArrayList<>();
+        List<MarketplaceInputs.Entry> inputs = new ArrayList<>();
         for (String name : names) {
+            String source = "./plugins/" + name;
             Map<String, Object> entry = new LinkedHashMap<>();
             entry.put("name", name);
-            entry.put("source", "./plugins/" + name);
+            entry.put("source", source);
             plugins.add(entry);
+            // What this pass generated the entry FROM, digested at generation
+            // time. Before this, the manifest carried name and source and
+            // nothing else, so "did the installed plugin set change" was never
+            // asked and regeneration ran wholesale on every pass because there
+            // was no way to ask it. See MarketplaceInputs for the scheme and
+            // for why the record is a sidecar rather than a field here.
+            String target = storedTargets.get(name);
+            inputs.add(MarketplaceInputs.Entry.of(name, source, target,
+                    MarketplaceInputs.fingerprintOf(name, source, target,
+                            store.unitDir(name, UnitKind.PLUGIN))));
         }
         manifest.put("plugins", plugins);
         Files.writeString(manifestPath(), json.writeValueAsString(manifest) + "\n");
+        MarketplaceInputs.of(name(), inputs).write(root());
 
         return new RegenerateResult(names, listed.problems());
     }

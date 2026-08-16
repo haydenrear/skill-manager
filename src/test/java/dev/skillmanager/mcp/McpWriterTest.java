@@ -1,14 +1,22 @@
 package dev.skillmanager.mcp;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.sun.net.httpserver.HttpExchange;
+import com.sun.net.httpserver.HttpServer;
 import dev.skillmanager._lib.test.Tests;
 import dev.skillmanager.agent.AgentHomes;
 import dev.skillmanager.agent.ClaudeAgent;
 import dev.skillmanager.agent.CodexAgent;
 import dev.skillmanager.agent.GeminiAgent;
+import dev.skillmanager.lock.Fingerprint;
+import dev.skillmanager.model.McpDependency;
+import dev.skillmanager.model.Skill;
 import dev.skillmanager.store.HomeDescriptor;
 
+import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
@@ -287,6 +295,103 @@ public final class McpWriterTest {
             }
         });
 
+        // ------------------------------------------------------------- ARTI-17
+
+        suite.test("registering records the spec digest it already computed", () -> {
+            // `installOne` computed specDigest(registerPayload(...)) on every
+            // pass, compared it against the gateway's, and threw it away —
+            // which is why the class scored PRESENCE: a name in the gateway's
+            // own file was the only evidence a registration had happened. This
+            // is the write, and its GRADE, which is `declared` and says so.
+            Path home = Files.createTempDirectory("mcp-lock-").toRealPath();
+            HttpServer gateway = stubGateway();
+            try {
+                McpDependency dep = fixtureDep();
+                Skill declaring = new Skill("deploy-helm", "fixture", "0.1.0",
+                        List.of(), List.of(), List.of(dep), Map.of(), "", null);
+                URI base = URI.create("http://127.0.0.1:" + gateway.getAddress().getPort());
+
+                List<InstallResult> results =
+                        new McpWriter(GatewayConfig.of(base), home).registerAll(List.of(declaring));
+                assertEquals(1, results.size(), "one server registered");
+
+                McpRegistrationLock.Entry row = McpRegistrationLock.read(home).server("runpod")
+                        .orElseThrow(() -> new AssertionError(
+                                "no row for runpod in " + McpRegistrationLock.FILENAME));
+                assertEquals("deploy-helm", row.declaredBy(),
+                        "the row names the declaration it was built from — without it, "
+                                + "'recompute the payload and compare' has nowhere to start");
+                assertNotNull(row.specDigest(), "a digest is recorded");
+                assertEquals(McpRegistrationLock.SCHEME, row.specDigestScheme(), "scheme named");
+                assertEquals(Fingerprint.Kind.DECLARED, row.fingerprint().orElseThrow().kind(),
+                        "the payload does not observe the server the gateway resolved and ran, "
+                                + "so `declared` is the honest grade and `resolved` would be a "
+                                + "number moved rather than measured");
+
+                // The SAME digest the idempotency check compares against, not a
+                // second computation free to drift from it.
+                assertEquals(GatewayClient.specDigest(
+                                new GatewayClient(GatewayConfig.of(base))
+                                        .registerPayload(dep, true, Map.of())),
+                        row.specDigest(), "the recorded digest is the register payload's");
+            } finally {
+                gateway.stop(0);
+            }
+        });
+
+        suite.test("no home, no record — and registering still works", () -> {
+            // The agent-config half of this writer needs no home, so a writer
+            // built without one must not be forced to invent a place to write.
+            HttpServer gateway = stubGateway();
+            try {
+                List<InstallResult> results = new McpWriter(GatewayConfig.of(
+                        URI.create("http://127.0.0.1:" + gateway.getAddress().getPort())))
+                        .registerAll(List.of(new Skill("deploy-helm", "fixture", "0.1.0",
+                                List.of(), List.of(), List.of(fixtureDep()), Map.of(), "", null)));
+                assertEquals(1, results.size(), "registration is unaffected by having no home");
+            } finally {
+                gateway.stop(0);
+            }
+        });
+
         return suite.runAll();
+    }
+
+    private static McpDependency fixtureDep() {
+        return new McpDependency("runpod", "RunPod", "Manage RunPod pods.",
+                new McpDependency.DockerLoad("ghcr.io/example/runpod:latest", true, null,
+                        List.of(), List.of(), Map.of(), List.of(), null, null),
+                List.of(), Map.of(), List.of(), null, McpDependency.SCOPE_GLOBAL);
+    }
+
+    /**
+     * The endpoints {@code registerAll} touches: {@code /health},
+     * {@code GET /servers/<id>} (404 — nothing registered yet) and
+     * {@code POST /servers}. Deliberately does NOT echo a {@code spec_digest}:
+     * the record under test is this end's own, and a stub that handed one back
+     * would let the assertion pass on the gateway's value instead.
+     */
+    private static HttpServer stubGateway() throws Exception {
+        HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        server.createContext("/health", exchange -> respond(exchange, 200, "{\"ok\":true}"));
+        server.createContext("/servers", exchange -> {
+            if ("POST".equals(exchange.getRequestMethod())) {
+                respond(exchange, 200,
+                        "{\"server_id\":\"runpod\",\"registered\":true,\"deployed\":true}");
+            } else {
+                respond(exchange, 404, "{}");
+            }
+        });
+        server.start();
+        return server;
+    }
+
+    private static void respond(HttpExchange exchange, int status, String body) throws IOException {
+        byte[] bytes = body.getBytes(StandardCharsets.UTF_8);
+        exchange.getResponseHeaders().add("Content-Type", "application/json");
+        exchange.sendResponseHeaders(status, bytes.length);
+        try (java.io.OutputStream out = exchange.getResponseBody()) {
+            out.write(bytes);
+        }
     }
 }
