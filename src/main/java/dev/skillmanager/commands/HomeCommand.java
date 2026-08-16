@@ -306,7 +306,18 @@ public final class HomeCommand {
                 // operator's global config instead of this home's
                 // (skill-manager#145). This is the one place the remedy is
                 // printed now, so it is printed runnable.
-                Log.error("  complete it with: %s sync --force-scripts, then re-run this check",
+                //
+                // ARTI-06: and the VERB is now `build --stale`, not
+                // `sync --force-scripts`. The diagnosis above is per instance;
+                // the remedy was total — every skill-script in the home rerun,
+                // three deploy-helm venvs at ~530 MB each, to repair one shim.
+                // `build` re-derives exactly the artifacts that are stale, and
+                // a reference that does not resolve is stale under ARTI-06's
+                // composition (an artifact declared and not usable on disk is
+                // not current, whatever its inputs hash to) — which is what
+                // makes this the SAME set the block above just printed rather
+                // than a narrower command that happens to be nearby.
+                Log.error("  complete it with: %s build --stale, then re-run this check",
                         homeEnvPrefix(home));
             }
             // Last, because it is the verdict, and because a terminal keeps
@@ -377,6 +388,18 @@ public final class HomeCommand {
          * The remedy line for the isolation verdict, in the one spelling every
          * caller of this command parses ({@code complete it with: <cmd>, then
          * re-run this check}).
+         *
+         * <h2>Why this one did NOT become {@code build --stale} in ARTI-06</h2>
+         *
+         * <p>The unresolved-reference remedy above did, because that block names
+         * artifacts that are stale and {@code build} rebuilds artifacts. This
+         * block names paths that RESOLVE — into another home — and the repair is
+         * {@code CliShimPruner} removing them so something can be provisioned
+         * here instead. {@code build} does not prune, and a foreign link is not
+         * stale: {@code CliPresence} calls it "already provisioned in this
+         * home", so a per-artifact rebuild would skip it forever. Pointing this
+         * line at {@code build} would be a remedy that runs and repairs nothing,
+         * which is the defect one worse than having none.
          *
          * <h2>Why {@code sync --force-scripts} repairs an isolation leak</h2>
          *

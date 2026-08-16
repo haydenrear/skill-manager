@@ -205,6 +205,11 @@ public final class CommandHomeAccess {
         m.put("ads delete", WRITE);
         m.put("artifacts record", WRITE);
         m.put("bind", WRITE);
+        // `build` re-derives artifacts into the home; --dry-run does not make
+        // it READ_ONLY, for the reason the `home` family is classified as a
+        // family — access is the permission the command needs, not the bytes
+        // one invocation of it happened to write.
+        m.put("build", WRITE);
         m.put("create", WRITE);
         m.put("create-account", WRITE);
         m.put("env sync", WRITE);

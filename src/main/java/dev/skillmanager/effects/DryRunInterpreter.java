@@ -278,6 +278,16 @@ public final class DryRunInterpreter implements ProgramInterpreter {
                     Log.step("[%d] reject if top-level resolved unit already installed", n);
             case SkillEffect.CheckInstallPolicyGate e ->
                     Log.step("[%d] check install policy gate (yes=%s)", n, e.yes());
+            case SkillEffect.CheckBuildPolicyGate e ->
+                    Log.step("[%d] check build policy gate over %d dep(s) (yes=%s)",
+                            n, e.deps().size(), e.yes());
+            // Names the ARTIFACT first: a dry run of `build` is read by somebody
+            // deciding whether the plan covers the thing they asked about, and
+            // "[pip] pytest" does not say `cli-shim:pip/pytest` to that reader.
+            case SkillEffect.RebuildCliArtifact e ->
+                    Log.step("[%d] rebuild %s via [%s] %s declared by %s%s", n,
+                            e.artifactId(), e.dep().backend(), e.dep().name(), e.unitName(),
+                            e.force() ? " (force)" : "");
             case SkillEffect.BuildInstallPlan e ->
                     Log.step("[%d] build install plan over %s skill(s)%s", n,
                             e.graph() == null ? "resolved" : Integer.toString(e.graph().resolved().size()),

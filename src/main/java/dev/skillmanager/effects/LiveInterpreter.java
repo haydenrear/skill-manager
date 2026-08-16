@@ -228,6 +228,8 @@ public final class LiveInterpreter implements ProgramInterpreter {
             case SkillEffect.UnmaterializeProjection e -> unmaterializeProjection(e);
             case SkillEffect.SyncDocRepo e -> syncDocRepo(e, ctx);
             case SkillEffect.SyncHarness e -> syncHarness(e, ctx);
+            case SkillEffect.CheckBuildPolicyGate e -> checkBuildPolicyGate(e, ctx);
+            case SkillEffect.RebuildCliArtifact e -> rebuildCliArtifact(e);
         };
     }
 
@@ -1435,6 +1437,111 @@ public final class LiveInterpreter implements ProgramInterpreter {
             return EffectReceipt.failed(e,
                     List.of(new ContextFact.CliInstallFailed(e.unitName(), e.dep().name(), ex.getMessage())),
                     ex.getMessage());
+        }
+    }
+
+    /**
+     * ARTI-06: re-derive one artifact through the backend that declared it.
+     *
+     * <p>The install half is deliberately identical to
+     * {@link #runCliInstall} — same {@code InstallerRegistry.installOne}, same
+     * {@code CliInstallRecorder.record}, same lock save — because a rebuilt
+     * artifact must be indistinguishable from an installed one. If {@code build}
+     * wrote a row a different way, {@code artifacts stale} would start reporting
+     * on which verb last touched an artifact, which is the class of second
+     * source of truth this epic exists to remove.
+     *
+     * <p>What differs is entirely outside the handler: no compensation (see the
+     * effect's javadoc), and the receipt carries the artifact id so the command
+     * can join it back without re-deriving the lock key.
+     */
+    private EffectReceipt rebuildCliArtifact(SkillEffect.RebuildCliArtifact e) {
+        try {
+            dev.skillmanager.cli.installer.InstallerRegistry registry =
+                    new dev.skillmanager.cli.installer.InstallerRegistry();
+            registry.installOne(e.dep(), store, e.unitName(), e.force());
+            try {
+                CliLock lock = CliLock.load(store);
+                dev.skillmanager.lock.CliInstallRecorder.record(
+                        lock, registry, e.dep(), store, e.unitName());
+                lock.save(store);
+            } catch (Exception lockErr) {
+                // Loud, and NOT swallowed into an ok receipt: an artifact whose
+                // row did not get rewritten is one this home cannot decide next
+                // time, which is the state `build` exists to leave behind.
+                return EffectReceipt.partial(e,
+                        List.of(new ContextFact.CliInstalled(e.unitName(), e.dep().name(),
+                                e.dep().backend())),
+                        e.artifactId() + " rebuilt, but its lock row was not rewritten: "
+                                + lockErr.getMessage());
+            }
+            return EffectReceipt.ok(e,
+                    new ContextFact.CliInstalled(e.unitName(), e.dep().name(), e.dep().backend()));
+        } catch (Exception ex) {
+            return EffectReceipt.failed(e,
+                    List.of(new ContextFact.CliInstallFailed(e.unitName(), e.dep().name(),
+                            ex.getMessage())),
+                    ex.getMessage());
+        }
+    }
+
+    /**
+     * ARTI-06: {@code build}'s policy gate. Same {@link PolicyGate} decision as
+     * {@link #checkInstallPolicyGate}, taken from the selected dependencies
+     * because {@code build} has neither a resolved graph nor an install plan —
+     * see {@link SkillEffect.CheckBuildPolicyGate} for why reusing that handler
+     * would have produced a gate that always reported {@code skipped}.
+     */
+    private EffectReceipt checkBuildPolicyGate(SkillEffect.CheckBuildPolicyGate e,
+                                               EffectContext ctx) {
+        if (e.deps().isEmpty()) return EffectReceipt.skipped(e, "nothing to build");
+        try {
+            Policy policy = Policy.load(ctx.store());
+            // The one categorization line a CLI rebuild produces, spelled the
+            // way PlanBuilder.categorize spells it so PolicyGate sees the
+            // identical input it sees on an install.
+            List<String> categorization = List.of("! CLI");
+            List<dev.skillmanager.policy.PolicyGate.Category> violations =
+                    dev.skillmanager.policy.PolicyGate.violations(categorization,
+                            policy.install());
+            if (violations.isEmpty()) return EffectReceipt.ok(e);
+
+            String msg = dev.skillmanager.policy.PolicyGate.formatViolationMessage(violations);
+            if (e.yes()) {
+                Log.error("%s", msg);
+                return EffectReceipt.okAndHalt(e, msg,
+                        new ContextFact.HaltWithExitCode(5, "policy.install gate rejected --yes"));
+            }
+            if (System.console() == null) {
+                Log.error("build needs interactive confirmation but no TTY is attached");
+                Log.error("%s", msg);
+                return EffectReceipt.okAndHalt(e, "no TTY for policy confirmation",
+                        new ContextFact.HaltWithExitCode(5, "policy.install gate without TTY"));
+            }
+            System.out.println();
+            System.out.println("build will rerun installs in these gated categories:");
+            for (var c : violations) System.out.println("  ! " + c.name());
+            // Named, because "! CLI" does not say that a skill-script install is
+            // arbitrary shell from the unit — which is what the operator is
+            // being asked about.
+            for (dev.skillmanager.model.CliDependency dep : e.deps()) {
+                System.out.println("    [" + dep.backend() + "] " + dep.name()
+                        + ("skill-script".equals(dep.backend())
+                                ? "  — runs shell shipped by the unit" : ""));
+            }
+            System.out.println();
+            System.out.print("proceed? [y/N] ");
+            java.io.BufferedReader r = new java.io.BufferedReader(
+                    new java.io.InputStreamReader(System.in));
+            String line = r.readLine();
+            if (line == null || !line.trim().equalsIgnoreCase("y")) {
+                Log.warn("build aborted at policy gate");
+                return EffectReceipt.okAndHalt(e, "user rejected at policy gate",
+                        new ContextFact.HaltWithExitCode(6, "user said no at prompt"));
+            }
+            return EffectReceipt.ok(e);
+        } catch (Exception ex) {
+            return EffectReceipt.failed(e, ex.getMessage());
         }
     }
 

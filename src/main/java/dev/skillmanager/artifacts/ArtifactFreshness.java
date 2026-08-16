@@ -58,12 +58,58 @@ import java.util.Set;
  * <p>The same ordering {@link Artifact#materialization()} uses one field over,
  * for the same reason.
  *
+ * <h2>Presence may DEMOTE a verdict, and may never promote one (ARTI-06)</h2>
+ *
+ * <p>Through ARTI-05 this class read {@link Artifact#outputs()} in exactly one
+ * place — {@link #byMarketplace} — so for {@code CLI_SHIM} and
+ * {@code PROVISIONED_TREE} the verdict was a pure input comparison. Measured on
+ * a real project home before this change:
+ *
+ * <pre>
+ * $ mv bin/cli/skt bin/cli/.hidden
+ * cli-shim:skill-script/skt
+ *   materialization = declared-only   outputs = [{path: bin/cli/skt, presence: missing}]
+ *   freshness       = CURRENT  "its inputs still hash to the fingerprint recorded at install"
+ * </pre>
+ *
+ * <p>That is the case the whole epic exists for — a cloned home that skipped
+ * {@code cache/} and shipped dangling shims reads as entirely current, so a
+ * {@code build --stale} over it would rebuild <b>nothing</b>. Keeping the two
+ * axes apart was defensible while nothing acted on the verdict; it stopped
+ * being defensible the moment {@code build} did. And {@link StaleReport} has no
+ * presence field, so a consumer of {@code stale --json} alone could not recover
+ * the missing half and re-join it either.
+ *
+ * <p>So {@link #combine} folds {@link Artifact#materialization()} in, under one
+ * rule stated in both directions:
+ *
+ * <ul>
+ *   <li><b>Demote only.</b> A present output earns an artifact nothing. Whether
+ *       it is CURRENT is still decided by re-deriving its inputs, exactly as
+ *       before — which is what keeps this from being the presence proxy this
+ *       epic exists to remove.</li>
+ *   <li>{@code declared-only} / {@code partial} — this pass positively probed an
+ *       output and it is not usable, so the artifact must be rebuilt: STALE. Not
+ *       a new rule, a generalised one. {@link #byMarketplace} already returned
+ *       STALE for a listed entry whose link was missing; that one kind's special
+ *       case is now every kind's rule and has been deleted from there.</li>
+ *   <li>{@code unknown} materialization — an output that could not be probed at
+ *       all ({@code cli-lock.toml} keys a row by PACKAGE while the shim is named
+ *       for the BINARY, and the row does not record the second) is "I did not
+ *       look", so it may not report CURRENT. UNVERIFIABLE, the same ordering
+ *       {@link Artifact#materialization()} uses one field over.</li>
+ * </ul>
+ *
+ * <p>"Its inputs hash to what was recorded" and "there is nothing at the path"
+ * are both true of a hidden shim. CURRENT claims the artifact still describes
+ * its inputs; an artifact with no usable output describes nothing.
+ *
  * <h2>What this does not do</h2>
  *
  * <p>It never installs, rebuilds, prunes or repairs, and it writes nothing —
- * not even the ledger. Turning a verdict into a rebuild is the {@code build}
- * verb's job; a read command that prescribed one would be the presence-proxy
- * mistake in a new place.
+ * not even the ledger. Turning a verdict into a rebuild is
+ * {@link dev.skillmanager.commands.BuildCommand}'s job; a read command that
+ * prescribed one would be the presence-proxy mistake in a new place.
  */
 public final class ArtifactFreshness {
 
@@ -90,11 +136,23 @@ public final class ArtifactFreshness {
      *        artifact decided itself. What lets a report say "stale BECAUSE
      *        cli-shim:skill-script/computeq is" rather than repeating a reason
      *        the reader then has to trace by hand.
+     * @param materialization the OTHER axis, carried on the verdict rather than
+     *        left for a consumer to re-derive. ARTI-05's review found that a
+     *        reader of {@code stale --json} could not tell a stale-because-its-
+     *        inputs-moved artifact from a stale-because-it-is-not-there one,
+     *        and could not recover the second fact from that document at all.
      */
     public record Verdict(String id, ArtifactKind kind, String owner, Freshness freshness,
-                          String reason, List<String> because) {
+                          String reason, List<String> because,
+                          Artifact.Materialization materialization) {
         public Verdict {
             because = because == null ? List.of() : List.copyOf(because);
+            if (materialization == null) materialization = Artifact.Materialization.UNKNOWN;
+        }
+
+        public Verdict(String id, ArtifactKind kind, String owner, Freshness freshness,
+                       String reason, List<String> because) {
+            this(id, kind, owner, freshness, reason, because, Artifact.Materialization.UNKNOWN);
         }
     }
 
@@ -137,8 +195,7 @@ public final class ArtifactFreshness {
      */
     public static ArtifactFreshness of(ArtifactIndex index, SkillStore store) {
         ArtifactGraph graph = ArtifactGraph.of(index);
-        Map<String, CliDependency> deps = declaredCliDeps(store);
-        Map<String, String> declaringUnit = declaringUnits(store);
+        Map<String, CliProducer> producers = cliProducers(store);
         InstallerRegistry registry = new InstallerRegistry();
         Path root = store.root().toAbsolutePath().normalize();
 
@@ -147,7 +204,7 @@ public final class ArtifactFreshness {
         for (String id : graph.topological()) {
             Artifact artifact = graph.byId(id);
             if (artifact == null) continue;
-            Local own = ownVerdict(artifact, store, root, registry, deps, declaringUnit);
+            Local own = ownVerdict(artifact, store, root, registry, producers);
             out.put(id, combine(artifact, own, graph, out, root));
         }
         return new ArtifactFreshness(graph, out);
@@ -157,11 +214,10 @@ public final class ArtifactFreshness {
 
     private static Local ownVerdict(Artifact artifact, SkillStore store, Path root,
                                     InstallerRegistry registry,
-                                    Map<String, CliDependency> deps,
-                                    Map<String, String> declaringUnit) {
+                                    Map<String, CliProducer> producers) {
         return switch (artifact.kind()) {
             case CLI_SHIM, PROVISIONED_TREE ->
-                    byInstallFingerprint(artifact, store, registry, deps, declaringUnit);
+                    byInstallFingerprint(artifact, store, registry, producers);
             case UNIT_STORE, PROJECTION, DOC_IMPORT -> byAgreement(artifact);
             case MARKETPLACE_ENTRY -> byMarketplace(artifact, root);
             case MCP_REGISTRATION -> byMcpRegistration(artifact);
@@ -187,8 +243,7 @@ public final class ArtifactFreshness {
      */
     private static Local byInstallFingerprint(Artifact artifact, SkillStore store,
                                               InstallerRegistry registry,
-                                              Map<String, CliDependency> deps,
-                                              Map<String, String> declaringUnit) {
+                                              Map<String, CliProducer> producers) {
         String recorded = artifact.recorded().get("install_fingerprint");
         String backend = artifact.recorded().get("backend");
         String tool = artifact.recorded().get("tool");
@@ -203,8 +258,9 @@ public final class ArtifactFreshness {
                     "its lock row records no install fingerprint, so there is nothing to "
                             + "compare this home's inputs against (one `sync` records one)");
         }
-        CliDependency dep = deps.get(lockKey);
-        String unitName = declaringUnit.get(lockKey);
+        CliProducer producer = producers.get(lockKey);
+        CliDependency dep = producer == null ? null : producer.dep();
+        String unitName = producer == null ? null : producer.unitName();
         if (dep == null || unitName == null) {
             return verdict(artifact, Freshness.UNVERIFIABLE,
                     "no installed unit declares " + backend + ":" + tool
@@ -274,13 +330,11 @@ public final class ArtifactFreshness {
             return verdict(artifact, Freshness.STALE,
                     "this plugin is installed and the generated manifest does not list it");
         }
-        for (Artifact.Output output : artifact.outputs()) {
-            if (output.presence() != Artifact.Presence.PRESENT) {
-                return verdict(artifact, Freshness.STALE,
-                        "its marketplace entry is listed and " + output.path()
-                                + " is " + output.presence().name().toLowerCase(Locale.ROOT));
-            }
-        }
+        // The output loop that used to live here — "listed, and its link is
+        // missing" → STALE — is GONE, not moved by accident. It was the one
+        // place in this class that read outputs(), and ARTI-06 made it every
+        // kind's rule in combine(). Two spellings of one fact is how the two
+        // axes came to disagree in the first place.
         return verdict(artifact, Freshness.CURRENT,
                 "the generated manifest and its link tree match the installed plugin set");
     }
@@ -372,37 +426,93 @@ public final class ArtifactFreshness {
             reason = "its own inputs agree, but " + unknown.iterator().next()
                     + " could not be decided, and an undecided input is not a clean one";
         }
+
+        // The OTHER axis, folded in last and here rather than in each kind's
+        // own verdict so that no kind can forget it — the same argument the
+        // unresolved-input check above makes. See the class javadoc: this may
+        // only demote. A present output earns nothing.
+        Artifact.Materialization materialization = artifact.materialization();
+        switch (materialization) {
+            case MATERIALIZED -> { }
+            case DECLARED_ONLY, PARTIAL -> {
+                String absence = describeAbsence(artifact, materialization);
+                reason = freshness == Freshness.STALE ? reason + "; and " + absence : absence;
+                freshness = Freshness.STALE;
+            }
+            case UNKNOWN -> {
+                if (freshness == Freshness.CURRENT) {
+                    freshness = Freshness.UNVERIFIABLE;
+                    reason = "its inputs agree, but this home cannot say where it landed, so "
+                            + "whether the artifact is there was never asked"
+                            + (artifact.actual().get("shim_name") == null ? ""
+                                    : " (" + artifact.actual().get("shim_name") + ")");
+                }
+            }
+        }
         return new Verdict(artifact.id(), artifact.kind(), artifact.owner(), freshness, reason,
-                because);
+                because, materialization);
+    }
+
+    /**
+     * Why an artifact with no usable output is not current, naming the first
+     * output that is not there and how it is not there.
+     *
+     * <p>{@link Artifact.Presence#DANGLING} is spelled out rather than folded
+     * into "missing": a shim whose target was never provisioned IS on disk and
+     * IS executable, which is exactly how it passed every presence check in the
+     * system while failing at exec time.
+     */
+    private static String describeAbsence(Artifact artifact,
+                                          Artifact.Materialization materialization) {
+        for (Artifact.Output output : artifact.outputs()) {
+            if (output.presence() == Artifact.Presence.PRESENT) continue;
+            String how = switch (output.presence()) {
+                case DANGLING -> "is a link whose target this home does not hold";
+                case MISSING -> "is not there";
+                default -> "could not be probed";
+            };
+            return "its output " + output.path() + " " + how
+                    + (materialization == Artifact.Materialization.PARTIAL
+                            ? " (some of its outputs are)" : "")
+                    + " — a declared artifact with nothing usable at its path does not describe "
+                    + "its inputs, whatever they hash to";
+        }
+        // No outputs at all and origin LEDGER: the row says this home is
+        // supposed to hold it and the home cannot produce it on this pass.
+        return "this home records that it holds this artifact and cannot produce it now";
     }
 
     // ----------------------------------------------------------------- lookups
 
     /**
-     * {@code <backend>\0<lock tool>} to the dependency that declares it.
+     * The install a lock row came from: the unit that declares it and the
+     * dependency it declared.
+     *
+     * <p>One record rather than the two parallel maps this class carried
+     * through ARTI-05 ({@code declaredCliDeps} and {@code declaringUnits}, both
+     * walking the same units and both keyed the same way). They could not
+     * disagree, but nothing said so, and ARTI-06 needs the pair as a unit
+     * anyway — {@code build} has to hand a backend BOTH halves.
+     */
+    public record CliProducer(String unitName, CliDependency dep) {}
+
+    /**
+     * {@code <backend>\0<lock tool>} to the install that declares it.
      *
      * <p>Keyed exactly the way {@link CliLock} is —
      * {@code (dep.backend(), RequestedVersion.of(dep).tool())}, which is what
      * {@code CliInstallRecorder.record} writes — so a row and its declaration
      * are joined on the key that produced the row rather than on a second
-     * spelling of it.
+     * spelling of it. Public because {@code build} resolves an artifact to its
+     * producer through the SAME join that decided the artifact was stale; a
+     * second spelling of it is a second thing that can disagree.
      */
-    private static Map<String, CliDependency> declaredCliDeps(SkillStore store) {
-        Map<String, CliDependency> out = new LinkedHashMap<>();
-        for (AgentUnit unit : installedUnits(store)) {
-            for (CliDependency dep : unit.cliDependencies()) {
-                out.putIfAbsent(lockKey(dep.backend(), RequestedVersion.of(dep).tool()), dep);
-            }
-        }
-        return out;
-    }
-
-    private static Map<String, String> declaringUnits(SkillStore store) {
-        Map<String, String> out = new LinkedHashMap<>();
+    public static Map<String, CliProducer> cliProducers(SkillStore store) {
+        Map<String, CliProducer> out = new LinkedHashMap<>();
         for (AgentUnit unit : installedUnits(store)) {
             for (CliDependency dep : unit.cliDependencies()) {
                 out.putIfAbsent(lockKey(dep.backend(), RequestedVersion.of(dep).tool()),
-                        unit.name());
+                        new CliProducer(unit.name(), dep));
             }
         }
         return out;

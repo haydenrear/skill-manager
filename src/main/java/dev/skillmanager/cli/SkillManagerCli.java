@@ -3,6 +3,7 @@ package dev.skillmanager.cli;
 import dev.skillmanager.commands.AdsCommand;
 import dev.skillmanager.commands.ArtifactsCommand;
 import dev.skillmanager.commands.BindCommand;
+import dev.skillmanager.commands.BuildCommand;
 import dev.skillmanager.commands.BindingsCommand;
 import dev.skillmanager.commands.CliCommand;
 import dev.skillmanager.commands.HarnessCommand;
@@ -59,6 +60,7 @@ import picocli.CommandLine.Option;
         subcommands = {
                 ListCommand.class,
                 ArtifactsCommand.class,
+                BuildCommand.class,
                 LockCommand.class,
                 InstallCommand.class,
                 UninstallCommand.class,
