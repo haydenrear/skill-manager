@@ -4,6 +4,7 @@ import dev.skillmanager._lib.test.Tests;
 import dev.skillmanager.cli.installer.InstallerRegistry;
 import dev.skillmanager.lock.CliLock;
 import dev.skillmanager.model.CliDependency;
+import dev.skillmanager.pm.PackageManager;
 import dev.skillmanager.store.SkillStore;
 
 import java.nio.file.Files;
@@ -183,6 +184,45 @@ public final class ArtifactStalenessTest {
             assertTrue(report.stale().stream()
                             .anyMatch(v -> v.kind().equals(ArtifactKind.PROVISIONED_TREE.id())),
                     "a provisioned tree is in the stale list, which is new in ARTI-05");
+        });
+
+        // ARTI-20 (#122): the payoff for recording pm/ rather than excluding it.
+        // A bundled package manager IS a derived artifact that goes stale —
+        // PackageManagerRuntime.ensureBundled returns on ANY bundled copy, so
+        // a defaultVersion bump never reaches a home that already has one — and
+        // before this it was reported `unclaimed`, which is indistinguishable
+        // from fine.
+        suite.test("a bundled package manager behind its pin is STALE, and names both versions",
+                () -> {
+            SkillStore store = fingerprinted();
+            Path uv = store.root().resolve("pm/uv");
+            Files.createDirectories(uv.resolve("0.0.1-ancient/bin"));
+            Files.writeString(uv.resolve("0.0.1-ancient/bin/uv"), "#!/bin/sh\n");
+            Files.createSymbolicLink(uv.resolve("current"), Path.of("0.0.1-ancient"));
+
+            ArtifactFreshness.Verdict verdict = ArtifactFreshness.of(ArtifactIndex.of(store), store)
+                    .of(ArtifactIds.provisionedTree("pm", "uv"));
+            assertEquals(ArtifactFreshness.Freshness.STALE, verdict.freshness(),
+                    "the pinned version and the installed one are compared, not assumed");
+            assertContains(verdict.reason(), "0.0.1-ancient",
+                    "the verdict names the version this home is actually running");
+            assertContains(verdict.reason(), "pinned",
+                    "and says the other end is a pin, so the remedy is derivable");
+        });
+
+        suite.test("a bundled package manager at its pin is CURRENT, not merely present", () -> {
+            SkillStore store = fingerprinted();
+            Path uv = store.root().resolve("pm/uv");
+            Files.createDirectories(uv.resolve(PackageManager.UV.defaultVersion + "/bin"));
+            Files.writeString(uv.resolve(PackageManager.UV.defaultVersion + "/bin/uv"),
+                    "#!/bin/sh\n");
+            Files.createSymbolicLink(uv.resolve("current"),
+                    Path.of(PackageManager.UV.defaultVersion));
+
+            assertEquals(ArtifactFreshness.Freshness.CURRENT,
+                    ArtifactFreshness.of(ArtifactIndex.of(store), store)
+                            .of(ArtifactIds.provisionedTree("pm", "uv")).freshness(),
+                    "a tree with no cli-lock row can still be DECIDED, which is the point");
         });
 
         suite.test("a tree named only through a BROKEN link is credited to nobody", () -> {

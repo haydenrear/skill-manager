@@ -304,19 +304,26 @@ public final class ArtifactBuild {
                     + artifact.recorded().getOrDefault("tool", "?")
                     + " any more, so there is no install to rerun — `skill-manager install <unit>` "
                     + "brings the declaration back, `skill-manager sync` prunes the row";
-            // Two different states, and they had one sentence between them.
+            // Three states, and they had one sentence between them.
             // A tree WITH a (containment-inferred) owner is reached by building
-            // the artifact that runs out of it. A tree with NO owner is reached
-            // by nothing, and telling its operator to "build the artifact that
-            // runs out of it" is an instruction with no referent — a dead end
-            // dressed as a remedy, which is the #142 class this epic keeps
-            // closing rather than opening.
+            // the artifact that runs out of it. A bundled package-manager root
+            // has no owner but DOES record what it was derived from (ARTI-20),
+            // so its remedy is a real command rather than a dead end. A tree
+            // with neither is reached by nothing, and telling its operator to
+            // "build the artifact that runs out of it" is an instruction with no
+            // referent — the #142 class this epic keeps closing.
             case PROVISIONED_TREE -> artifact.owner() == null
-                    ? "nothing in this home claims to have produced it: no record says which "
+                    ? (artifact.recorded().get("pinned_version") != null
+                    ? "it is a bundled package manager, not a unit's install: `build` has no "
+                    + "per-tree producer for it, and re-pinning it means deleting pm/"
+                    + artifact.recorded().getOrDefault("tool", "<tool>")
+                    + " so the next install re-downloads the pinned version. Its record does "
+                    + "name what it was derived from, so a stale one is REPORTED rather than "
+                    + "silent (#122)"
+                    : "nothing in this home claims to have produced it: no record says which "
                     + "installer wrote it and no artifact names it as an input, so there is no "
-                    + "install to rerun and `build` has nothing to offer. The shared "
-                    + "package-manager roots are in this state by construction (#122); a tree "
-                    + "under a unit's own name is usually re-created by reinstalling that unit"
+                    + "install to rerun and `build` has nothing to offer. A tree under a unit's "
+                    + "own name is usually re-created by reinstalling that unit")
                     : "no install records that it wrote this tree; the owner shown for it was "
                     + "inferred from the shim that runs out of it, and an inference at the wrong "
                     + "granularity would mark a shared root rebuilt (ARTI-05 review). Build the "

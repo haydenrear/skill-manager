@@ -159,15 +159,40 @@ public final class PackageManagerRuntime {
         return Files.isExecutable(bin) ? bin : null;
     }
 
+    /**
+     * The version {@code pm/<id>/current} points at, or null when this home
+     * holds none.
+     *
+     * <p>Reads BOTH spellings {@link #setCurrent} can write — the symlink and
+     * the pointer file it falls back to on a filesystem without symlinks —
+     * because a reader that knows only the first reports "no current version"
+     * on exactly the homes the fallback exists for. {@link #resolveCurrentBinary}
+     * already handled both and {@link #list} did not; this is the one place
+     * that answers it, and both now go through it.
+     */
+    public String currentVersion(PackageManager pm) {
+        Path link = currentLink(pm);
+        if (!Files.exists(link, LinkOption.NOFOLLOW_LINKS)) return null;
+        try {
+            if (Files.isSymbolicLink(link)) {
+                Path target = Files.readSymbolicLink(link);
+                Path name = target.getFileName();
+                return name == null ? null : name.toString();
+            }
+            String pointer = Files.readString(link).trim();
+            return pointer.isEmpty() ? null : pointer;
+        } catch (IOException unreadable) {
+            return null;
+        }
+    }
+
     public List<Installed> list() throws IOException {
         List<Installed> out = new ArrayList<>();
         if (!Files.isDirectory(pmDir())) return out;
         for (PackageManager pm : PackageManager.values()) {
             Path td = toolDir(pm);
             if (!Files.isDirectory(td)) continue;
-            String current = null;
-            Path link = currentLink(pm);
-            if (Files.isSymbolicLink(link)) current = Files.readSymbolicLink(link).getFileName().toString();
+            String current = currentVersion(pm);
             List<String> versions = new ArrayList<>();
             try (Stream<Path> s = Files.list(td)) {
                 for (Path p : (Iterable<Path>) s::iterator) {

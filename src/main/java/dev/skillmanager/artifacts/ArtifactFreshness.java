@@ -216,8 +216,21 @@ public final class ArtifactFreshness {
                                     InstallerRegistry registry,
                                     Map<String, CliProducer> producers) {
         return switch (artifact.kind()) {
-            case CLI_SHIM, PROVISIONED_TREE ->
-                    byInstallFingerprint(artifact, store, registry, producers);
+            case CLI_SHIM -> byInstallFingerprint(artifact, store, registry, producers);
+            // A tree credited to a cli-lock row is decided by that row's
+            // fingerprint, and `backend` in its record is what marks it as one.
+            // ARTI-20 (#122) gave the bundled package-manager roots a record
+            // with no such row: their declaration is the version this codebase
+            // PINS and their observation is the `current` pointer, already
+            // compared into an Agreement by ArtifactBackfill. So they are
+            // decided by the rule UNIT_STORE and DOC_IMPORT use. Sending them
+            // through byInstallFingerprint would report "nothing in this home
+            // says which install produced it" about a record that says exactly
+            // that. A tree with neither is still UNRECORDED and still
+            // unverifiable, which is the state this arm always left it in.
+            case PROVISIONED_TREE -> artifact.recorded().get("backend") != null
+                    ? byInstallFingerprint(artifact, store, registry, producers)
+                    : byAgreement(artifact);
             case PROJECTION -> byProjection(artifact);
             case UNIT_STORE, DOC_IMPORT -> byAgreement(artifact);
             case MARKETPLACE_ENTRY -> byMarketplace(artifact, root);
@@ -435,8 +448,19 @@ public final class ArtifactFreshness {
     private static String describeDisagreement(Artifact artifact) {
         String recorded = artifact.recorded().get("git_hash");
         String actual = artifact.actual().get("git_hash");
-        if (recorded == null || actual == null) return "";
-        return " (records " + shortDigest(recorded) + ", store is at " + shortDigest(actual) + ")";
+        if (recorded != null && actual != null) {
+            return " (records " + shortDigest(recorded) + ", store is at "
+                    + shortDigest(actual) + ")";
+        }
+        // ARTI-20: a bundled package manager disagrees by VERSION, and naming
+        // both ends is the whole value of the verdict — "the bytes on disk do
+        // not match" is true and tells nobody which uv they are running.
+        String pinned = artifact.recorded().get("pinned_version");
+        String installed = artifact.actual().get("installed_version");
+        if (pinned != null && installed != null) {
+            return " (this home has " + installed + "; " + pinned + " is pinned)";
+        }
+        return "";
     }
 
     /**
