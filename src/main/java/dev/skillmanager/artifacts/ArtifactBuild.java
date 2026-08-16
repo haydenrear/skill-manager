@@ -323,7 +323,22 @@ public final class ArtifactBuild {
                     + "artifact that runs out of it — its install is what rewrites this tree";
             case UNIT_STORE -> "a unit's store bytes come from its source, not from a local "
                     + "producer — `skill-manager sync " + nameOr(artifact, "<unit>") + "`";
-            case PROJECTION -> "a projection is re-derived by its binding — "
+            // ARTI-18 review: the default remedy is DANGEROUS on one shape, so
+            // that shape is named before the remedy is offered. A home copied
+            // without re-anchoring holds bindings whose destPath is absolute
+            // into the ORIGINAL home's checkout, so `sync` and `rebind` would
+            // rewrite that checkout's agent links from a home that does not own
+            // them. The condition is one fact about the home
+            // (ArtifactBackfill's `foreign-home` link state) and the repair is
+            // to re-create the home, not to re-derive N bindings.
+            case PROJECTION -> "foreign-home".equals(artifact.actual().get("link_state"))
+                    ? "this home is a copy of "
+                    + artifact.actual().getOrDefault("copied_from_home", "another home")
+                    + " that was never re-anchored, so its bindings' destinations are in THAT "
+                    + "home's checkout — `sync` or `rebind` here would rewrite another "
+                    + "checkout's agent links. Re-create this home with `skill-manager home "
+                    + "clone`; nothing about this projection alone needs rebuilding"
+                    : "a projection is re-derived by its binding — "
                     + "`skill-manager sync` (or `skill-manager rebind "
                     + nameOr(artifact, "<unit>") + "`)";
             case MARKETPLACE_ENTRY -> "the marketplace is regenerated whole, not per entry, so "

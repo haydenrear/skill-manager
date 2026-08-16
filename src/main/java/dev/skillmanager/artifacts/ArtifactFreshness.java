@@ -348,6 +348,40 @@ public final class ArtifactFreshness {
      * made — {@code copied}, {@code unreadable} — stays undecided, and
      * {@link #combine}'s materialization fold is untouched: a present link
      * still earns nothing.
+     *
+     * <h2>A link that is right over a source this graph never checked</h2>
+     *
+     * <p>{@code resolves} and {@code resolves-outside} are the same successful
+     * link comparison over two different amounts of composition, and they get
+     * different verdicts on purpose. A {@code project:} binding declares its
+     * source in ANOTHER home, so {@link ArtifactBackfill#projections} adds no
+     * {@code store:} edge for it and the only composed input left is
+     * {@code unit:<name>} — this home's copy of the unit, not the bytes the
+     * link actually serves. Measured on the operator's project home: 33 of 75
+     * otherwise-promotable rows, and the error runs both ways (a foreign home
+     * holding different bytes reads {@code current}; this home's unrelated copy
+     * going stale reads {@code stale}).
+     *
+     * <p>So they are {@code unverifiable}, and the argument is the one the rest
+     * of this class already makes rather than a new one: {@code CURRENT}
+     * requires every input decided, and the bytes served by that link are an
+     * input nothing here decided. Reporting them {@code current} beside 42 rows
+     * whose sources ARE composed would make one word mean two strengths of
+     * claim in a single report — which is the failure the epic's whole
+     * {@code unverifiable} verdict exists to prevent. The reason says exactly
+     * what was checked and what was not.
+     *
+     * <h2>{@code foreign-home} is a fact about the HOME</h2>
+     *
+     * <p>A link pointing at the same relative place inside a different home is
+     * not a repointed link, and the difference is not stylistic: the remedy for
+     * a repointed link is {@code sync} / {@code rebind}, and on this shape
+     * those would rewrite the OTHER checkout's agent links, because these
+     * bindings' {@code destPath} are absolute into it. The verdict stays
+     * {@code STALE} — the detection is right — and only the sentence changes,
+     * to the home-level condition and the remedy that repairs it
+     * ({@code home clone}). {@code ArtifactBuild.whyNotBuildable} carries the
+     * same split, so the two do not disagree.
      */
     private static Local byProjection(Artifact artifact) {
         String state = artifact.actual().get("link_state");
@@ -356,9 +390,30 @@ public final class ArtifactFreshness {
         if (state == null) return byAgreement(artifact);
         String declared = artifact.recorded().get("source_path");
         String found = artifact.actual().get("link_target");
+        // The prose is what people read. Whenever the link literally holds a
+        // different string from the declared path — an aliasing ancestor
+        // symlink makes two names for one directory — say so, rather than
+        // leaving a reader to notice that `link_target` disagrees with a
+        // sentence claiming the link "resolves to" the declared path.
+        String via = declared == null || declared.equals(found) ? "" : " (through " + found + ")";
         return switch (state) {
             case "resolves" -> verdict(artifact, Freshness.CURRENT,
-                    "its link resolves to " + declared + ", the source its binding declares");
+                    "its link resolves to " + declared + via
+                            + ", the source its binding declares");
+            case "resolves-outside" -> verdict(artifact, Freshness.UNVERIFIABLE,
+                    "its link resolves to " + declared + via + ", the source its binding "
+                            + "declares — but that source is in ANOTHER Skill Manager home, so "
+                            + "no artifact here describes the bytes it serves and nothing in "
+                            + "this home can say whether they moved. The link was checked; its "
+                            + "source is not this home's to decide");
+            case "foreign-home" -> verdict(artifact, Freshness.STALE,
+                    "this home is a copy of " + artifact.actual().get("copied_from_home")
+                            + " that was never re-anchored: its links still serve THAT home "
+                            + "(declared " + declared + ", the link points at the same place "
+                            + "under it). One fact about this home, not one about this link — "
+                            + "re-create it with `skill-manager home clone`, and do NOT run "
+                            + "`sync` or `rebind` here: these bindings' destinations are in the "
+                            + "other home's checkout and would be rewritten");
             case "repointed" -> verdict(artifact, Freshness.STALE,
                     "its link does not point at the source its binding declares: declared "
                             + declared + ", points at " + found);
