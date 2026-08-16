@@ -64,6 +64,7 @@ CORE: list[str] = [
     "ticket-lifecycle",    # 13 — wt/skt ticket new + close
     "plugin-smoke",        # 23 — plugin layout + harness registration
     "onboard",             # 14 — onboarding a unit end to end
+    "home-integrity",      # 12 — what a healthy home IS (#124); docker- and network-free
 ]
 
 # ---------------------------------------------------------------------------
