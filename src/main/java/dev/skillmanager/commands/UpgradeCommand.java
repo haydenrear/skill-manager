@@ -154,8 +154,22 @@ public final class UpgradeCommand implements Callable<Integer> {
 
         GatewayConfig gw = GatewayConfig.resolve(store, null);
 
+        // RECONCILED WITH `sync` (ARTI-21, #123). This read `withMcp=true`,
+        // which after 7fce8ed meant `upgrade` and `sync` disagreed about the
+        // same work — and the disagreement was not merely cosmetic: `withMcp`
+        // also gated the EnsureGateway preflight, so `upgrade` at a project or
+        // worktree home still tried to build a gateway venv and START a
+        // gateway, and still rolled the whole program back when it did not come
+        // up. That is the exact defect 7fce8ed fixed for `sync` and left here.
+        //
+        // Both commands are now the same program with the same defaults:
+        // register MCP servers (the handler pings and skips when none answers),
+        // and do not start a gateway. `sync --include-mcp` is the way to ask
+        // for one; `upgrade` deliberately grows no flag of its own rather than
+        // adding a second spelling of the same switch.
         SyncUseCase.Options opts = new SyncUseCase.Options(
-                registryUrl, /*gitLatest=*/false, merge, true, true, /*yes=*/false);
+                registryUrl, /*gitLatest=*/false, merge, /*withMcp=*/true, /*withAgents=*/true,
+                /*yesForFromDir=*/false, /*forceScripts=*/false, /*startGateway=*/false);
         dev.skillmanager.effects.StagedProgram<SyncUseCase.Report> program =
                 SyncUseCase.buildProgram(store, gw, opts, targetList, initialReadProblems);
         SyncUseCase.Report report;

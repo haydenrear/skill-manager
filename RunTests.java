@@ -272,6 +272,7 @@ public class RunTests {
         failures += dev.skillmanager.commands.HomeSyncUnitCliTest.run();
         failures += dev.skillmanager.plan.AuditTrailTest.run();
         failures += dev.skillmanager.mcp.SharedGatewayTest.run();
+        failures += dev.skillmanager.app.SyncMcpSplitTest.run();
         failures += dev.skillmanager.project.GeminiHomeParityTest.run();
         failures += ArtifactBackfillTest.run();
         failures += ArtifactHomeStabilityTest.run();
