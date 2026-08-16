@@ -246,8 +246,21 @@ public final class PluginMarketplace {
         // turn a marketplace that regenerated correctly into a failed effect and
         // an exit 1. The same rule the two other producers in this ticket
         // follow, and it was missing here.
+        //
+        // And it is written only when its CONTENT changed. `generatedAt` is a
+        // wall clock, so writing unconditionally made this file differ on every
+        // pass even when the plugin set and every digest in it were identical —
+        // in a file whose whole purpose is answering "did anything change".
+        // That is this ticket's own defect reproduced in its own record: the
+        // class is documented idempotent and its idempotency test only ever
+        // compared the manifest. Skipping the no-op write also keeps
+        // `generatedAt` meaning "when this content was generated" rather than
+        // "when we last ran".
         try {
-            MarketplaceInputs.of(name(), inputs).write(root());
+            MarketplaceInputs next = MarketplaceInputs.of(name(), inputs);
+            if (!next.describesSameAs(MarketplaceInputs.read(root()).orElse(null))) {
+                next.write(root());
+            }
         } catch (IOException e) {
             dev.skillmanager.util.Log.warn(
                     "marketplace: could not record generation inputs in %s: %s",

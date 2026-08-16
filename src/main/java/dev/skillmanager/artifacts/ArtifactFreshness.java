@@ -372,19 +372,33 @@ public final class ArtifactFreshness {
      *
      * <p>{@link ArtifactBackfill} does the comparing — it holds both halves —
      * and stamps the answer as an {@link Artifact.Agreement}. This maps that to
-     * a verdict with the kind's own words, and marks the positive answers
-     * DIRECT: they rest on bytes re-read off this home's disk, which is the
-     * strongest evidence available about an input and must not be dragged down
-     * by an undecided record ABOUT those same bytes.
+     * a verdict with the kind's own words, and marks it DIRECT only when the
+     * producer graded its digest {@link Fingerprint.Kind#RESOLVED}: that grade
+     * means bytes re-read off this home's disk, which is the strongest evidence
+     * available about an input and must not be dragged down by an undecided
+     * record ABOUT those same bytes. A {@code declared} digest gets no such
+     * privilege, on the same rule {@link #byInstallFingerprint} applies.
      */
     private static Local byInputFingerprint(Artifact artifact, String key,
                                             String unrecorded, String current, String stale) {
+        // DIRECT is read off the GRADE the producer asserted, exactly as
+        // byInstallFingerprint reads it off `now.isResolved()`. Setting it
+        // unconditionally — which this method did at first — would let a
+        // `declared` digest outrank an undecided record about the very thing it
+        // describes, which is the privilege ARTI-05 granted only to a hash of
+        // bytes re-read off this home's disk. It matters here and not in theory:
+        // the MCP digest is graded `declared`, its owning unit's store row is
+        // frequently UNVERIFIABLE (8 of 28 units at root carry no gitHash), and
+        // the difference is whether that pair reports CURRENT or UNVERIFIABLE.
+        // The CLI rows would report UNVERIFIABLE; one bar, not two.
+        boolean direct = Fingerprint.Kind.RESOLVED
+                == Fingerprint.Kind.fromToken(artifact.recorded().get(key + "_kind"));
         return switch (artifact.agreement()) {
             case UNRECORDED -> verdict(artifact, Freshness.UNVERIFIABLE, unrecorded);
-            case AGREES -> verdict(artifact, Freshness.CURRENT, current, true);
+            case AGREES -> verdict(artifact, Freshness.CURRENT, current, direct);
             case DISAGREES -> verdict(artifact, Freshness.STALE,
                     stale + " (recorded " + shortDigest(artifact.recorded().get(key))
-                            + ", now " + shortDigest(artifact.actual().get(key)) + ")", true);
+                            + ", now " + shortDigest(artifact.actual().get(key)) + ")", direct);
             case UNVERIFIABLE -> verdict(artifact, Freshness.UNVERIFIABLE,
                     "its inputs could not be re-read: "
                             + artifact.actual().getOrDefault(key + "_gap", "no reason recorded"));

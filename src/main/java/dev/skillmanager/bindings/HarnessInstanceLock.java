@@ -86,14 +86,24 @@ public record HarnessInstanceLock(
      */
     public HarnessInstanceLock withTemplateFingerprint(Fingerprint fingerprint) {
         if (fingerprint == null) return this;
+        String kind = fingerprint.kind() == null ? null : fingerprint.kind().token();
+        // `templateFingerprintAt` says when this DIGEST was computed, so a sync
+        // that re-derives the same digest keeps the stamp it already carries.
+        // Restamping unconditionally made every `sync harness:<n>` rewrite the
+        // instance record whether or not the template had moved — churn in the
+        // one file whose job is to say whether it moved.
+        boolean unchanged = templateFingerprintAt != null
+                && java.util.Objects.equals(templateFingerprint, fingerprint.value())
+                && java.util.Objects.equals(templateFingerprintKind, kind)
+                && java.util.Objects.equals(templateFingerprintGap, fingerprint.gap());
         return new HarnessInstanceLock(harnessName, instanceId, claudeConfigDir, codexHome,
                 geminiHome, projectDir, createdAt,
                 fingerprint.present() ? HarnessInstantiator.FINGERPRINT_SCHEME : null,
                 fingerprint.value(),
-                fingerprint.kind() == null ? null : fingerprint.kind().token(),
+                kind,
                 fingerprint.basis(),
                 fingerprint.gap(),
-                Instant.now().toString());
+                unchanged ? templateFingerprintAt : Instant.now().toString());
     }
 
     /** The recorded fingerprint, or empty when this lock records neither a digest nor a gap. */

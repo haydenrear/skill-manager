@@ -312,21 +312,48 @@ public final class ArtifactStalenessTest {
             SkillStore store = ArtifactsFixture.withMcpUnit(ArtifactsFixture.seed());
             recordMcpDigest(store, "demo-mcp");
 
-            var before = ArtifactFreshness.of(ArtifactIndex.of(store), store)
-                    .of(ArtifactIds.mcpRegistration("demo-mcp"));
-            assertEquals(ArtifactFreshness.Freshness.CURRENT, before.freshness(),
-                    "an untouched declaration matches its recorded digest: " + before.reason());
+            // Decidability is an AGREEMENT, which is what ArtifactBackfill
+            // computes and what this ticket added. Asserted on that axis rather
+            // than on the folded verdict: the fold also carries this artifact's
+            // UPSTREAM, and in this fixture `unit-store:mcp-alpha` is
+            // undecidable (no git checkout behind it), which correctly holds the
+            // final verdict at UNVERIFIABLE for a `declared` digest. Asserting
+            // CURRENT here would have been asserting that the upstream rule does
+            // not apply — see the next case.
+            assertEquals(Artifact.Agreement.AGREES,
+                    agreementOf(store, ArtifactIds.mcpRegistration("demo-mcp")),
+                    "an untouched declaration matches its recorded digest — a real comparison, "
+                            + "not an UNRECORDED shrug");
 
             // Bump the image the dep declares — a real manifest edit.
             Path toml = store.root().resolve("skills/mcp-alpha/skill-manager.toml");
             Files.writeString(toml, Files.readString(toml)
                     .replace("image = \"example/demo:1\"", "image = \"example/demo:2\""));
 
+            assertEquals(Artifact.Agreement.DISAGREES,
+                    agreementOf(store, ArtifactIds.mcpRegistration("demo-mcp")),
+                    "and the comparison notices");
             var after = ArtifactFreshness.of(ArtifactIndex.of(store), store)
                     .of(ArtifactIds.mcpRegistration("demo-mcp"));
             assertEquals(ArtifactFreshness.Freshness.STALE, after.freshness(),
                     "editing the declared mcp spec makes the registration stale, with no "
                             + "gateway anywhere: " + after.reason());
+        });
+
+        suite.test("a `declared` digest does not outrank an undecided record about it", () -> {
+            // ARTI-05 granted "direct" evidence — a verdict that survives an
+            // UNVERIFIABLE upstream — only to a hash of bytes re-read off this
+            // home's disk, and byInstallFingerprint gates it on
+            // `now.isResolved()`. The MCP digest is graded `declared`, so it
+            // must not get that privilege; the CLI rows would not. One bar, not
+            // two, and this method set the flag unconditionally at first.
+            SkillStore store = ArtifactsFixture.withMcpUnit(ArtifactsFixture.seed());
+            recordMcpDigest(store, "demo-mcp");
+            var verdict = ArtifactFreshness.of(ArtifactIndex.of(store), store)
+                    .of(ArtifactIds.mcpRegistration("demo-mcp"));
+            assertEquals(ArtifactFreshness.Freshness.UNVERIFIABLE, verdict.freshness(),
+                    "a declared digest that agrees does not clear an undecided input: "
+                            + verdict.reason());
         });
 
         suite.test("the MCP digest does not cover init VALUES, which keeps a secret out", () -> {

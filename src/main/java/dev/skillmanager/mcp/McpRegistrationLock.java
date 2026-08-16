@@ -170,6 +170,23 @@ public record McpRegistrationLock(int schemaVersion, String updatedAt, List<Entr
                     ? Optional.empty() : Optional.of(Fingerprint.gap(specDigestGap));
         }
 
+        /**
+         * Whether {@code other} asserts the same registration — everything this
+         * row claims except {@code recordedAt}, which is a wall clock and not a
+         * fact about the server.
+         */
+        public boolean describesSameAs(Entry other) {
+            return other != null
+                    && java.util.Objects.equals(serverId, other.serverId())
+                    && java.util.Objects.equals(declaredBy, other.declaredBy())
+                    && java.util.Objects.equals(scope, other.scope())
+                    && java.util.Objects.equals(specDigestScheme, other.specDigestScheme())
+                    && java.util.Objects.equals(specDigest, other.specDigest())
+                    && java.util.Objects.equals(specDigestKind, other.specDigestKind())
+                    && java.util.Objects.equals(specDigestBasis, other.specDigestBasis())
+                    && java.util.Objects.equals(specDigestGap, other.specDigestGap());
+        }
+
         public static Entry of(String serverId, String declaredBy, String scope,
                                Fingerprint fingerprint) {
             return new Entry(serverId, declaredBy, scope, Instant.now().toString(),
@@ -208,8 +225,20 @@ public record McpRegistrationLock(int schemaVersion, String updatedAt, List<Entr
         return servers.stream().filter(s -> s.serverId().equals(serverId)).findFirst();
     }
 
-    /** This lock with {@code entry} replacing any row for the same server id. */
+    /**
+     * This lock with {@code entry} replacing any row for the same server id —
+     * or {@code this}, unchanged, when the row it would replace already says
+     * the same thing.
+     *
+     * <p>The early return is what keeps a re-registration that changed nothing
+     * from rewriting this file. {@link Entry#of} stamps {@code recordedAt} from
+     * the wall clock, so without it every {@code sync --include-mcp} produced a
+     * different file for an identical registration — in a record that exists to
+     * answer "did the declaration move". A record that changes when its subject
+     * did not is this epic's own defect one layer down.
+     */
     public McpRegistrationLock with(Entry entry) {
+        if (server(entry.serverId()).map(entry::describesSameAs).orElse(false)) return this;
         Map<String, Entry> by = new LinkedHashMap<>();
         for (Entry existing : servers) by.put(existing.serverId(), existing);
         by.put(entry.serverId(), entry);
