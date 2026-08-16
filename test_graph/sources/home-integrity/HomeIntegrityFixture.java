@@ -35,9 +35,15 @@ import java.nio.file.Path;
  * remote. That is required, not decorative: {@code RecordAgreesWithStore} and
  * {@code UpstreamTracksWhatSyncFetched} relate an {@code installed/<u>.json}
  * record to a real checkout and a real tracking ref, and a unit installed from
- * a plain directory has neither. Keeping the remote local also keeps the whole
- * graph network-free — #113 established that a hosted runner reaching the
- * network is not something this repo may assume.
+ * a plain directory has neither.
+ *
+ * <p>Keeping the remotes local means nothing this graph <em>declares</em> has
+ * to be fetched. It does <b>not</b> make the graph network-free end to end,
+ * and overstating that would be the kind of comfortable claim this epic keeps
+ * having to retract: {@code install} runs {@code EnsureGateway}, which builds
+ * the virtual-mcp-gateway venv, so on a cold runner this node reaches the
+ * network exactly as every other install-carrying graph does. #113's
+ * dependency wall was that same call.
  *
  * <p>The unit that declares a CLI dependency declares a {@code skill-script}
  * one. It is the only backend that installs into the home unconditionally;

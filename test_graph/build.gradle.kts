@@ -1344,10 +1344,14 @@ validationGraph {
      * expected to go RED when #120 lands. That is deliberate; read the class
      * comment on DeclaredCliIsAttributed before changing it.
      *
-     * DOCKER-FREE AND NETWORK-FREE. The fixture installs two units from local
-     * git repositories with local bare remotes, so this graph runs anywhere —
-     * #113 established that a hosted runner reaching the network is not
-     * something this repo may assume.
+     * DOCKER-FREE, and it adds no network dependency of its own: the fixture
+     * installs two units from local git repositories with local bare remotes,
+     * so nothing this graph declares has to be fetched. It is NOT network-free
+     * end to end, and the distinction matters — `skill-manager install` runs
+     * EnsureGateway, which builds the virtual-mcp-gateway venv, so on a cold
+     * runner this graph reaches the network exactly as the other eight core
+     * graphs do (#113's dependency wall was that same call). No postgres, no
+     * docker compose, no registry.
      */
     testGraph("home-integrity") {
         node("sources/common/EnvPrepared.java")
