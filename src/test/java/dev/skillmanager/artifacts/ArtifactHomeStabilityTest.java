@@ -42,16 +42,26 @@ public final class ArtifactHomeStabilityTest {
     public static int run() throws Exception {
         Tests.Suite suite = Tests.suite("ArtifactHomeStabilityTest");
 
-        // ARTI-07 changed what this asserts, and the change is worth stating
-        // rather than hiding behind a renamed case. The ledger still holds no
-        // absolute path, so the cloner's substitution pass still has no needle
-        // to find and the file still crosses the copy untouched — that is
-        // ArtifactLedger's whole contract and it is checked below. What is no
-        // longer true is BYTE-IDENTITY of the final file, because the clone now
-        // finishes by RE-RECORDING the ledger: a copy has to declare the
+        // ARTI-07 changed what this asserts twice, and both changes are worth
+        // stating rather than hiding behind a renamed case.
+        //
+        // First: BYTE-IDENTITY of the final file is gone, because the clone now
+        // finishes by RE-RECORDING the ledger — a copy has to declare the
         // artifacts it deliberately did not carry, and a file copied verbatim
-        // from a home that never recorded one would declare nothing.
-        suite.test("the ledger crosses a clone with every id intact and no absolute path", () -> {
+        // from a home that never recorded one would declare nothing. The
+        // ledger still holds no absolute path, which is ArtifactLedger's whole
+        // contract and is checked below.
+        //
+        // Second, and this one was a defect: SUPERSET is the wrong direction
+        // and asserting it is how the ledger restriction went untested. The
+        // copy carries the source's artifacts.lock.toml verbatim, so the
+        // copy's index re-admitted every id the source ever declared —
+        // INCLUDING the projections of a binding the clone had just dropped
+        // for naming another checkout. A superset assertion cannot fail on
+        // that; it is what "resurrected through the ledger" looks like from
+        // the inside. The relation is a RESTRICTION plus what the copy
+        // deferred, and that is what is asserted now.
+        suite.test("the copy's ledger restricts the source's, and holds no absolute path", () -> {
             SkillStore source = ArtifactsFixture.seed();
             ArtifactLedger.of(ArtifactIndex.of(source).artifacts()).save(source);
             List<String> before = new java.util.ArrayList<>();
@@ -61,9 +71,19 @@ public final class ArtifactHomeStabilityTest {
 
             List<String> after = new java.util.ArrayList<>();
             for (ArtifactLedger.Row row : ArtifactLedger.load(clone).rows()) after.add(row.id());
-            assertTrue(after.containsAll(before),
-                    "every id the source declared is still declared in the copy — the copy's"
-                            + " ledger is a superset, never a replacement");
+            List<String> gone = new java.util.ArrayList<>(before);
+            gone.removeAll(after);
+            assertEquals(List.of("projection:owner:consumer:page:bind"
+                            + "#MANAGED_COPY/target/docs/agents/page.md"), gone,
+                    "exactly one id is dropped, and it is the projection of the binding the"
+                            + " clone dropped for reaching into another checkout — a row"
+                            + " declaring it would be a claim over that checkout wearing a new"
+                            + " file name");
+            for (String id : before) {
+                if (gone.contains(id)) continue;
+                assertTrue(after.contains(id),
+                        "everything else the source declared is still declared: " + id);
+            }
             String text = Files.readString(ArtifactLedger.file(clone));
             assertFalse(text.contains(source.root().toString()),
                     "and it names the source home nowhere, which is why the substitution"
@@ -72,15 +92,29 @@ public final class ArtifactHomeStabilityTest {
                     "nor the copy's own root: home-relative only, so a further clone is free");
         });
 
-        suite.test("every id survives the clone unchanged", () -> {
+        suite.test("every id the copy still holds survives the clone unchanged", () -> {
             SkillStore source = ArtifactsFixture.seed();
             ArtifactIndex before = ArtifactIndex.of(source);
             ArtifactLedger.of(before.artifacts()).save(source);
 
             ArtifactIndex after = ArtifactIndex.of(cloneOf(source));
 
-            assertEquals(ids(before.artifacts()), ids(after.artifacts()),
-                    "the id set is a property of the artifacts, not of the root they sit under");
+            // ARTI-03's property is that an id is a name for an ARTIFACT and
+            // not for a root — so it is asserted over the artifacts the copy
+            // still has. The clone is deliberately lossy in one direction
+            // (a binding into another checkout is not the copy's to hold),
+            // and the case above pins exactly which id that costs; conflating
+            // the two would let a silent drop hide inside an id test.
+            java.util.Set<String> lost = new TreeSet<>(ids(before.artifacts()));
+            lost.removeAll(ids(after.artifacts()));
+            assertEquals(new TreeSet<>(List.of("projection:owner:consumer:page:bind"
+                            + "#MANAGED_COPY/target/docs/agents/page.md")), lost,
+                    "the copy loses only the dropped binding's projection");
+            java.util.Set<String> gained = new TreeSet<>(ids(after.artifacts()));
+            gained.removeAll(ids(before.artifacts()));
+            assertTrue(gained.isEmpty(),
+                    "and invents nothing: an id is a property of the artifact, not of the"
+                            + " root it sits under — " + gained);
         });
 
         suite.test("what a clone skips is DECLARED and not materialized", () -> {
