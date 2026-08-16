@@ -46,7 +46,22 @@ import java.nio.file.Path;
  *       anything; the kernel gets there first. That is precisely why the
  *       dangling-symlink form was invisible for so long — every presence check
  *       in the system passed on it.</li>
- *   <li><b>It holds no absolute path.</b> The home root is derived from the
+ *   <li><b>It holds no absolute path, and cannot acquire one.</b> Holding none
+ *       statically is not enough, and the first version of this class proved
+ *       it. The reason text is {@code HomeCloner.insideHomeText}'s output,
+ *       which tokenizes the home root as the literal string
+ *       {@code $SKILL_MANAGER_HOME} — and when that went into a double-quoted
+ *       {@code echo}, <b>bash expanded it at run time</b>. Five of the seven
+ *       cold shims in a real clone carried the token; with the variable unset
+ *       one printed {@code it runs out of /cache/skill-script-…/venv/bin/computeq},
+ *       and with an unrelated home exported it named that home instead. The
+ *       file passed {@code home verify} throughout, because verification reads
+ *       bytes and the leak was in what bash does with them. So every literal
+ *       the message carries is emitted through {@code printf '%s\n'} with a
+ *       SINGLE-QUOTED operand ({@link ArtifactBuild#shellWord}): no parameter
+ *       expansion, no command substitution, no arithmetic, nothing the
+ *       environment can reach. The one expansion left is {@code $home}, which
+ *       the script computed itself two lines earlier. The home root is derived from the
  *       script's own location, exactly as the launcher pin does, so the file
  *       crosses a further clone unchanged and
  *       {@link dev.skillmanager.store.HomeCloner#verify} can never find a
@@ -96,6 +111,12 @@ public final class ColdArtifactShim {
     public static void write(Path entry, String artifactId, String why) throws IOException {
         String name = entry.getFileName().toString();
         String word = ArtifactBuild.shellWord(artifactId);
+        // Every one of these is DATA — a filename, a reason produced by
+        // HomeCloner.insideHomeText, an artifact id — and none of it is under
+        // this class's control. `why` routinely carries `$SKILL_MANAGER_HOME`
+        // by construction. Quoting each composed line as one shell word is
+        // what makes the file print what it says; see the class javadoc for
+        // what happened when it did not.
         String body = """
                 #!/usr/bin/env bash
                 %s
@@ -104,14 +125,32 @@ public final class ColdArtifactShim {
                 self_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
                 home="$(cd -- "$self_dir/../.." && pwd -P)"
                 {
-                  echo "skill-manager: '%s' is declared in this home and has not been built."
-                  echo "  reason:  %s"
-                  echo "  home:    $home"
-                  echo "  build it:  skill-manager build %s"
-                  echo "        or:  skt build %s"
+                  printf '%%s\\n' %s
+                  printf '%%s\\n' %s
+                  printf '%%s\\n' "  home:    $home"
+                  printf '%%s\\n' %s
+                  printf '%%s\\n' %s
+                  printf '%%s\\n' %s
                 } >&2
                 exit %d
-                """.formatted(MARKER, name, why, word, word, EXIT_CODE);
+                """.formatted(
+                        MARKER,
+                        ArtifactBuild.shellWord(
+                                "skill-manager: '" + name
+                                        + "' is declared in this home and has not been built."),
+                        ArtifactBuild.shellWord("  reason:  " + why),
+                        ArtifactBuild.shellWord("  build it:  skill-manager build " + word),
+                        ArtifactBuild.shellWord("        or:  skt build " + word),
+                        // ARTI-06's open defect, said here rather than left for
+                        // the next agent to rediscover: `build <id>` selects the
+                        // id's stale prerequisites and exits 1 after building
+                        // exactly what this line asked for, so a caller that
+                        // branches on status reads success as failure.
+                        ArtifactBuild.shellWord(
+                                "  note:    that command exits 1 even when it built what you"
+                                        + " asked for (ARTI-06); re-run this entry point rather"
+                                        + " than trusting its status."),
+                        EXIT_CODE);
         Fs.ensureDir(entry.getParent());
         Files.deleteIfExists(entry);
         Files.writeString(entry, body, StandardCharsets.UTF_8);
