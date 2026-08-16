@@ -569,10 +569,19 @@ public final class ArtifactBackfill {
                                                                : Artifact.Agreement.DISAGREES);
                 }
 
-                // The link half. Only for SYMLINK: MANAGED_COPY keeps being
-                // decided by its hash, and the two never overwrite each other
-                // because no row carries both.
-                LinkProbe link = projection.kind() == ProjectionKind.SYMLINK
+                // The link half, for SYMLINK rows that carry NO recorded hash.
+                //
+                // The second half of that guard is not decoration. Today only
+                // `DocRepoBinder` writes a boundHash and only onto
+                // MANAGED_COPY, so no SYMLINK row has one and the condition is
+                // unreachable — but the two checks answer different questions
+                // and the hash answers the stricter one. Without the guard, a
+                // writer that ever recorded a hash on a symlink would have its
+                // tampering check silently outranked by the link check, and a
+                // tampered copy under a resolving link would read `current`.
+                // Where both facts exist, the hash decides, exactly as before.
+                boolean hashed = recordedHash != null && !recordedHash.isBlank();
+                LinkProbe link = projection.kind() == ProjectionKind.SYMLINK && !hashed
                         ? probeLink(projection.sourcePath(), dest) : null;
                 if (link != null) agreement = link.agreement();
 
@@ -584,7 +593,8 @@ public final class ArtifactBackfill {
                                 "source_path", link == null ? null : link.declared()),
                         Artifact.facts("bound_hash", actualHash,
                                 "link_state", link == null ? null : link.state(),
-                                "link_target", link == null ? null : link.found()),
+                                "link_target", link == null ? null : link.found(),
+                                "copied_from_home", link == null ? null : link.otherHome()),
                         agreement, Artifact.Origin.HOME));
             }
         }
@@ -597,14 +607,25 @@ public final class ArtifactBackfill {
      * @param state the token recorded as {@code link_state}; the fact the
      *        verdict is decided by, so that the comparison lives here — where
      *        the disk is read — and is not re-derived downstream. The set is
-     *        closed: {@code resolves}, {@code repointed}, {@code dangling},
+     *        closed: {@code resolves}, {@code resolves-outside},
+     *        {@code repointed}, {@code foreign-home}, {@code dangling},
      *        {@code copied}, {@code absent}, {@code unreadable},
      *        {@code undeclared}.
      * @param declared the source the binding ledger claims, home-relative
      * @param found where the link actually points, or null when there was no
      *        link to read
+     * @param otherHome for {@code foreign-home} only — the root of the Skill
+     *        Manager home this one was copied from, recorded as
+     *        {@code copied_from_home}. The condition is one fact about the
+     *        HOME, so the fact that names it belongs on the row rather than
+     *        being re-derived by every reader from a path.
      */
-    record LinkProbe(String state, Artifact.Agreement agreement, String declared, String found) {}
+    record LinkProbe(String state, Artifact.Agreement agreement, String declared, String found,
+                     String otherHome) {
+        LinkProbe(String state, Artifact.Agreement agreement, String declared, String found) {
+            this(state, agreement, declared, found, null);
+        }
+    }
 
     /**
      * Does this link point at the source its binding declared, and is that
@@ -639,14 +660,40 @@ public final class ArtifactBackfill {
      * the second. Without them a correct projection reads {@code repointed},
      * and a false definite negative costs more trust than the undecided
      * verdict this replaces.
+     *
+     * <h2>Two states that are NOT "this link is wrong" (review of ARTI-18)</h2>
+     *
+     * <p><b>{@code resolves-outside}.</b> A {@code project:} binding declares a
+     * source in ANOTHER Skill Manager home, so {@code ArtifactIds.homeRelative}
+     * returns null, {@link #projections} adds no {@code store:} edge, and the
+     * only composed input left is {@code unit:<name>} — <i>this</i> home's copy
+     * of the unit, not the bytes actually served. Measured: 33 of the operator's
+     * project home's projections are in that shape. Reporting them
+     * {@code current} would be a clean pass over an input this graph never
+     * looked at, which is the one thing {@link ArtifactFreshness#UNVERIFIABLE}
+     * exists to prevent. The link is checked and reported; the source is not
+     * this home's to decide.
+     *
+     * <p><b>{@code foreign-home}.</b> A link pointing at the SAME relative
+     * location inside a DIFFERENT Skill Manager home is not a repointed link.
+     * It is one fact about the HOME: it was copied without re-anchoring, and
+     * its agent links still serve the home it was copied from. The distinction
+     * is load-bearing rather than cosmetic — the remedy for a repointed link
+     * ({@code sync} / {@code rebind}) would, on this shape, rewrite the OTHER
+     * checkout's agent links, because these bindings' {@code destPath} are
+     * absolute into it. The remedy is {@code home clone}. See
+     * {@link #copiedHomeRoot} for why the test is anchored rather than greedy.
      */
     private LinkProbe probeLink(Path source, Path dest) {
-        String declared = source == null ? null : display(source);
+        if (source == null) {
+            // Asked FIRST: "its ledger row records no source" is a fact about
+            // the ROW and is true whatever is at the path, so answering
+            // `absent` for it would name the wrong half of the pair.
+            return new LinkProbe("undeclared", Artifact.Agreement.UNVERIFIABLE, null, null);
+        }
+        String declared = display(source);
         if (dest == null || !Files.exists(dest, LinkOption.NOFOLLOW_LINKS)) {
             return new LinkProbe("absent", Artifact.Agreement.UNVERIFIABLE, declared, null);
-        }
-        if (source == null) {
-            return new LinkProbe("undeclared", Artifact.Agreement.UNVERIFIABLE, null, null);
         }
         if (!Files.isSymbolicLink(dest)) {
             return new LinkProbe("copied", Artifact.Agreement.UNVERIFIABLE, declared, null);
@@ -659,14 +706,53 @@ public final class ArtifactBackfill {
         }
         Path parent = dest.getParent();
         Path target = (raw.isAbsolute() || parent == null ? raw : parent.resolve(raw)).normalize();
+        Path declaredAbs = source.toAbsolutePath().normalize();
         String found = display(target);
-        if (!sameTarget(target, source.toAbsolutePath().normalize())) {
-            return new LinkProbe("repointed", Artifact.Agreement.DISAGREES, declared, found);
+        if (!sameTarget(target, declaredAbs)) {
+            Path other = copiedHomeRoot(declaredAbs, target);
+            return other != null
+                    ? new LinkProbe("foreign-home", Artifact.Agreement.DISAGREES, declared, found,
+                            other.toString())
+                    : new LinkProbe("repointed", Artifact.Agreement.DISAGREES, declared, found);
         }
         if (!Files.exists(target)) {
             return new LinkProbe("dangling", Artifact.Agreement.DISAGREES, declared, found);
         }
-        return new LinkProbe("resolves", Artifact.Agreement.AGREES, declared, found);
+        // The link is right. Whether the SOURCE is this graph's to decide is a
+        // separate question, and it is answered here rather than downstream
+        // because this is the only place that knows where the source lives.
+        return ArtifactIds.homeRelative(root, declaredAbs) == null
+                ? new LinkProbe("resolves-outside", Artifact.Agreement.UNVERIFIABLE, declared, found)
+                : new LinkProbe("resolves", Artifact.Agreement.AGREES, declared, found);
+    }
+
+    /**
+     * The home this one was copied from, when the link's target is the same
+     * home-relative location inside a different Skill Manager home.
+     *
+     * <p><b>Anchored, not greedy.</b> Peeling matching trailing names off both
+     * paths until they differ looks equivalent and is not: two homes both named
+     * {@code .skill-manager} under different checkouts would peel that segment
+     * too, leaving the two CHECKOUT roots, and the {@code installed/} test would
+     * then fail on a directory that is not a home — reporting the copied home as
+     * a merely repointed link, which is the reading whose remedy is dangerous.
+     * So the suffix is taken from THIS home ({@code homeRelative}) and the
+     * target is required to end with exactly it.
+     *
+     * @return the other home's root, or null when this is not that shape
+     */
+    private Path copiedHomeRoot(Path declared, Path target) {
+        String suffix = ArtifactIds.homeRelative(root, declared);
+        if (suffix == null) return null;
+        Path relative = Path.of(suffix);
+        if (!target.endsWith(relative)) return null;
+        Path other = target;
+        for (int i = relative.getNameCount(); i > 0 && other != null; i--) other = other.getParent();
+        if (other == null || other.equals(root)) return null;
+        // A directory holding `installed/` is a Skill Manager home; a directory
+        // that merely shares a suffix is not, and calling one a home would turn
+        // an ordinary repointed link into a "your home is a copy" story.
+        return Files.isDirectory(other.resolve("installed")) ? other : null;
     }
 
     /** Equal as paths, or the same directory reached by two names. */

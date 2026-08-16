@@ -255,6 +255,59 @@ final class ArtifactsFixture {
     }
 
     /**
+     * Replace {@code alpha}'s projection ledger with ONE {@code SYMLINK} row of
+     * the caller's choosing, leaving what is on disk to the caller.
+     *
+     * <p>The point is that most of ARTI-18's link states need no git: only
+     * "a correct link over a CURRENT unit" does, because only a git checkout
+     * can make a unit-store artifact agree. Every other state
+     * ({@code repointed}, {@code dangling}, {@code copied}, {@code absent},
+     * {@code undeclared}, {@code resolves-outside}, {@code foreign-home}) is
+     * decided by the link comparison or by materialization, both of which
+     * dominate whatever the unit-store's own verdict is — so they are asserted
+     * here on the git-free seeded home and cannot become a case that "passes"
+     * on a machine with no git while asserting nothing.
+     *
+     * @param source what the ledger DECLARES; null models a row with no source
+     */
+    static void reprojectAlpha(SkillStore store, Path source, Path dest) throws Exception {
+        String bindingId = "default:claude:alpha";
+        new BindingStore(store).write(new dev.skillmanager.bindings.ProjectionLedger("alpha",
+                List.of(new Binding(bindingId, "alpha", UnitKind.SKILL, null, dest.getParent(),
+                        ConflictPolicy.ERROR, "2026-01-01T00:00:00Z", BindingSource.DEFAULT_AGENT,
+                        List.of(new Projection(bindingId, source, dest,
+                                ProjectionKind.SYMLINK, null))))));
+    }
+
+    /** As {@link #reprojectAlpha}, with a {@code boundHash} recorded on the row. */
+    static void reprojectAlphaWithHash(SkillStore store, Path source, Path dest, String hash)
+            throws Exception {
+        String bindingId = "default:claude:alpha";
+        new BindingStore(store).write(new dev.skillmanager.bindings.ProjectionLedger("alpha",
+                List.of(new Binding(bindingId, "alpha", UnitKind.SKILL, null, dest.getParent(),
+                        ConflictPolicy.ERROR, "2026-01-01T00:00:00Z", BindingSource.DEFAULT_AGENT,
+                        List.of(new Projection(bindingId, source, dest,
+                                ProjectionKind.SYMLINK, null, hash))))));
+    }
+
+    /**
+     * A directory that IS a Skill Manager home as far as the copied-home
+     * detector is concerned — it holds {@code installed/} — carrying its own
+     * copy of {@code skills/<unit>} at the same relative place.
+     *
+     * <p>What an un-re-anchored copy of a home points back at.
+     */
+    static Path otherHomeHolding(String unit) throws IOException {
+        Path other = newDir("artifacts-other-home-");
+        Files.createDirectories(other.resolve("installed"));
+        Path skill = other.resolve("skills").resolve(unit);
+        Files.createDirectories(skill);
+        Files.writeString(skill.resolve("SKILL.md"),
+                "---\nname: " + unit + "\ndescription: the OTHER home's copy\n---\nbody\n");
+        return other;
+    }
+
+    /**
      * A git-backed unit plus one {@link ProjectionKind#SYMLINK} projection of
      * its store directory — the shape ARTI-18 decides, and the one the seeded
      * home cannot express on its own.

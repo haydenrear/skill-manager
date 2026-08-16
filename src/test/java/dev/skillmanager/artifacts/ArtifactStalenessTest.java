@@ -13,6 +13,7 @@ import java.util.List;
 import static dev.skillmanager._lib.test.Tests.assertContains;
 import static dev.skillmanager._lib.test.Tests.assertEquals;
 import static dev.skillmanager._lib.test.Tests.assertFalse;
+import static dev.skillmanager._lib.test.Tests.assertNotNull;
 import static dev.skillmanager._lib.test.Tests.assertTrue;
 
 /**
@@ -383,13 +384,21 @@ public final class ArtifactStalenessTest {
         // that decided the kind (`boundHash`) describes a DIFFERENT kind. A
         // symlink copies no bytes, so it never has one; reading where it points
         // is the question it can actually answer.
+        //
+        // Everything below except the two arms that need a CURRENT or a STALE
+        // unit-store runs on the git-free seeded home, deliberately: a case
+        // that returns passing when its precondition is unavailable has
+        // asserted nothing, and a suite that reports ALL PASSED over such cases
+        // is the vacuous-check shape this repo has already been bitten by. The
+        // two that genuinely cannot be built without git FAIL rather than skip.
 
         suite.test("ARTI-18: a link that resolves to its declared source is current", () -> {
             SkillStore store = ArtifactsFixture.seed();
-            if (ArtifactsFixture.withProjectedGitUnit(store, "delta", null) == null) {
-                skipped("git is unavailable, so there is no current unit to project");
-                return;
-            }
+            Path dest = ArtifactsFixture.withProjectedGitUnit(store, "delta", null);
+            assertNotNull(dest, "git is REQUIRED to build a unit-store that agrees, and this "
+                    + "case is the only evidence that the resolves arm reaches CURRENT — a run "
+                    + "that cannot build it must fail, not report a pass having asserted nothing");
+
             ArtifactFreshness freshness = ArtifactFreshness.of(ArtifactIndex.of(store), store);
             assertEquals(ArtifactFreshness.Freshness.CURRENT,
                     freshness.of(ArtifactIds.unitStore("delta")).freshness(),
@@ -402,74 +411,6 @@ public final class ArtifactStalenessTest {
                     "and the reason names the source it resolves to");
         });
 
-        suite.test("ARTI-18: a repointed link is a definite negative, not unverifiable", () -> {
-            SkillStore store = ArtifactsFixture.seed();
-            Path dest = ArtifactsFixture.withProjectedGitUnit(store, "delta", null);
-            if (dest == null) {
-                skipped("git is unavailable");
-                return;
-            }
-            // No install, no sync — one link, pointed somewhere else.
-            Files.delete(dest);
-            Files.createSymbolicLink(dest, store.root().resolve("skills/alpha"));
-
-            var projection = onlyProjectionOf(
-                    ArtifactFreshness.of(ArtifactIndex.of(store), store), "delta");
-            assertEquals(ArtifactFreshness.Freshness.STALE, projection.freshness(),
-                    "reporting `I cannot tell` about a link this pass just read is the "
-                            + "over-generous oracle the epic removes: " + projection.reason());
-            assertContains(projection.reason(), "skills/delta",
-                    "the reason names what was declared");
-            assertContains(projection.reason(), "skills/alpha",
-                    "and what it found instead");
-            // THE ARTI-06 invariant, from the other side: the link is on disk
-            // and it resolves, so every presence check in the system passes.
-            assertEquals(Artifact.Materialization.MATERIALIZED, projection.materialization(),
-                    "presence contributed nothing — the verdict is the link comparison");
-        });
-
-        suite.test("ARTI-18: a dangling link says which source this home does not hold", () -> {
-            SkillStore store = ArtifactsFixture.seed();
-            Path dest = ArtifactsFixture.withProjectedGitUnit(store, "delta", null);
-            if (dest == null) {
-                skipped("git is unavailable");
-                return;
-            }
-            // The link still names the declared source; the source is gone.
-            deleteRecursive(store.root().resolve("skills/delta"));
-
-            var projection = onlyProjectionOf(
-                    ArtifactFreshness.of(ArtifactIndex.of(store), store), "delta");
-            assertEquals(ArtifactFreshness.Freshness.STALE, projection.freshness(),
-                    "not `unverifiable`: " + projection.reason());
-            assertContains(projection.reason(), "does not hold it",
-                    "and it says which of the two negatives this is");
-        });
-
-        suite.test("ARTI-18: the copy fallback is undecided rather than wrong", () -> {
-            SkillStore store = ArtifactsFixture.seed();
-            Path dest = ArtifactsFixture.withProjectedGitUnit(store, "delta", null);
-            if (dest == null) {
-                skipped("git is unavailable");
-                return;
-            }
-            // MaterializeProjection falls back to Fs.copyRecursive where a
-            // filesystem refuses symlinks, so a row recorded SYMLINK is
-            // legitimately a real tree. Calling that `repointed` would report a
-            // correct projection broken; calling it current would credit a copy
-            // nothing compared.
-            Files.delete(dest);
-            Files.createDirectories(dest);
-            Files.writeString(dest.resolve("SKILL.md"), "---\nname: delta\n---\n");
-
-            var projection = onlyProjectionOf(
-                    ArtifactFreshness.of(ArtifactIndex.of(store), store), "delta");
-            assertEquals(ArtifactFreshness.Freshness.UNVERIFIABLE, projection.freshness(),
-                    "there is no pointer to compare: " + projection.reason());
-            assertContains(projection.reason(), "copy fallback",
-                    "and the reason says why, rather than crashing or guessing");
-        });
-
         suite.test("ARTI-18: presence may DEMOTE a projection and may never promote one", () -> {
             // The companion to the ARTI-06 case above, in the class that newly
             // reaches CURRENT. The link is perfect and its file is on disk; the
@@ -479,10 +420,8 @@ public final class ArtifactStalenessTest {
             SkillStore store = ArtifactsFixture.seed();
             Path dest = ArtifactsFixture.withProjectedGitUnit(store, "delta",
                     "419d73886012b3472759763d928590417824ca1b");
-            if (dest == null) {
-                skipped("git is unavailable");
-                return;
-            }
+            assertNotNull(dest, "git is REQUIRED to build a unit-store that DISAGREES; see above");
+
             ArtifactFreshness freshness = ArtifactFreshness.of(ArtifactIndex.of(store), store);
             assertEquals(ArtifactFreshness.Freshness.STALE,
                     freshness.of(ArtifactIds.unitStore("delta")).freshness(),
@@ -495,6 +434,178 @@ public final class ArtifactStalenessTest {
                     "with the link present and resolving the whole time");
             assertTrue(projection.because().contains(ArtifactIds.unitStore("delta")),
                     "and it names the unit that decided it: " + projection.because());
+        });
+
+        suite.test("ARTI-18: a repointed link is a definite negative, not unverifiable", () -> {
+            SkillStore store = ArtifactsFixture.seed();
+            Path dest = alphaLink(store);
+            // No install, no sync — one link, pointed somewhere else.
+            Files.delete(dest);
+            Files.createSymbolicLink(dest, store.root().resolve("plugins/beta"));
+
+            var projection = alphaProjection(store);
+            assertEquals("repointed", linkState(store), "the probe read the link");
+            assertEquals(ArtifactFreshness.Freshness.STALE, projection.freshness(),
+                    "reporting `I cannot tell` about a link this pass just read is the "
+                            + "over-generous oracle the epic removes: " + projection.reason());
+            assertContains(projection.reason(), "skills/alpha",
+                    "the reason names what was declared");
+            assertContains(projection.reason(), "plugins/beta", "and what it found instead");
+            // THE ARTI-06 invariant, from the other side: the link is on disk
+            // and it resolves, so every presence check in the system passes.
+            assertEquals(Artifact.Materialization.MATERIALIZED, projection.materialization(),
+                    "presence contributed nothing — the verdict is the link comparison");
+        });
+
+        suite.test("ARTI-18: a dangling link says which source this home does not hold", () -> {
+            SkillStore store = ArtifactsFixture.seed();
+            Path dest = alphaLink(store);
+            // The link still names the declared source; the source is gone.
+            deleteRecursive(store.root().resolve("skills/alpha"));
+
+            assertEquals("dangling", linkState(store), "read as its own state, not as missing");
+            var projection = alphaProjection(store);
+            assertEquals(ArtifactFreshness.Freshness.STALE, projection.freshness(),
+                    "not `unverifiable`: " + projection.reason());
+            assertContains(projection.reason(), "does not hold it",
+                    "and it says which of the two negatives this is");
+            assertTrue(Files.isSymbolicLink(dest), "the link itself is untouched");
+        });
+
+        suite.test("ARTI-18: the copy fallback is undecided rather than wrong", () -> {
+            SkillStore store = ArtifactsFixture.seed();
+            Path dest = alphaLink(store);
+            // MaterializeProjection falls back to Fs.copyRecursive where a
+            // filesystem refuses symlinks, so a row recorded SYMLINK is
+            // legitimately a real tree. Calling that `repointed` would report a
+            // correct projection broken; calling it current would credit a copy
+            // nothing compared.
+            Files.delete(dest);
+            Files.createDirectories(dest);
+            Files.writeString(dest.resolve("SKILL.md"), "---\nname: alpha\n---\n");
+
+            assertEquals("copied", linkState(store), "there is no pointer to read");
+            var projection = alphaProjection(store);
+            assertEquals(ArtifactFreshness.Freshness.UNVERIFIABLE, projection.freshness(),
+                    "there is no pointer to compare: " + projection.reason());
+            assertContains(projection.reason(), "copy fallback",
+                    "and the reason says why, rather than crashing or guessing");
+        });
+
+        suite.test("ARTI-18: nothing at the path is `absent`, and still a definite negative",
+                () -> {
+                    SkillStore store = ArtifactsFixture.seed();
+                    Files.delete(alphaLink(store));
+
+                    assertEquals("absent", linkState(store), "no link was read");
+                    var projection = alphaProjection(store);
+                    // Local verdict is undecided — there was nothing to read —
+                    // and ARTI-06's presence fold decides it, unchanged.
+                    assertEquals(ArtifactFreshness.Freshness.STALE, projection.freshness(),
+                            "presence still demotes it: " + projection.reason());
+                });
+
+        suite.test("ARTI-18: a row with no declared source is `undeclared`, not `absent`", () -> {
+            SkillStore store = ArtifactsFixture.seed();
+            // Both halves are true at once — no source recorded AND a link on
+            // disk — and the answer must name the half that is the row's own.
+            ArtifactsFixture.reprojectAlpha(store, null, alphaLink(store));
+
+            assertEquals("undeclared", linkState(store),
+                    "the row's own gap is reported, not the state of the path");
+            assertContains(alphaProjection(store).reason(), "records no source path",
+                    "and the reason says so");
+        });
+
+        suite.test("ARTI-18: a link into ANOTHER home is unverifiable, never current", () -> {
+            // The review's F1. A `project:` binding declares its source in a
+            // different home, so no `store:` edge is created and the only
+            // composed input left is THIS home's copy of the unit — not the
+            // bytes the link serves. The link comparison succeeds; the source
+            // is not this graph's to decide, and saying `current` would make
+            // one word mean two strengths of claim in one report.
+            SkillStore store = ArtifactsFixture.seed();
+            Path other = ArtifactsFixture.otherHomeHolding("alpha");
+            Path foreignSource = other.resolve("skills/alpha");
+            Path dest = alphaLink(store);
+            Files.delete(dest);
+            Files.createSymbolicLink(dest, foreignSource);
+            ArtifactsFixture.reprojectAlpha(store, foreignSource, dest);
+
+            assertEquals("resolves-outside", linkState(store),
+                    "the link is right AND its source is outside this home");
+            var projection = alphaProjection(store);
+            assertEquals(ArtifactFreshness.Freshness.UNVERIFIABLE, projection.freshness(),
+                    "a clean pass over an input nothing here looked at is the one thing "
+                            + "`unverifiable` exists to prevent: " + projection.reason());
+            assertContains(projection.reason(), "ANOTHER Skill Manager home",
+                    "and the reason says what was checked and what was not");
+            assertContains(projection.reason(), "The link was checked",
+                    "including the half that DID succeed");
+        });
+
+        suite.test("ARTI-18: a home copied without re-anchoring is reported as ONE home fact",
+                () -> {
+                    // The review's F2, and the reason it matters: the default
+                    // projection remedy (`sync` / `rebind`) would, on this
+                    // shape, rewrite the OTHER checkout's agent links.
+                    SkillStore store = ArtifactsFixture.seed();
+                    Path other = ArtifactsFixture.otherHomeHolding("alpha");
+                    Path dest = alphaLink(store);
+                    Files.delete(dest);
+                    // The ledger still declares THIS home's skills/alpha; the
+                    // link serves the same relative place in the other home.
+                    Files.createSymbolicLink(dest, other.resolve("skills/alpha"));
+
+                    assertEquals("foreign-home", linkState(store),
+                            "not `repointed` — the two have different remedies");
+                    var projection = alphaProjection(store);
+                    assertEquals(ArtifactFreshness.Freshness.STALE, projection.freshness(),
+                            "the detection is unchanged; only the sentence is: "
+                                    + projection.reason());
+                    assertContains(projection.reason(), "home clone",
+                            "the remedy repairs the home");
+                    assertContains(projection.reason(), "do NOT run `sync` or `rebind`",
+                            "and it refuses the remedy that would damage another checkout");
+
+                    // And `build` must not contradict it one command over —
+                    // this is the finding: the printed remedy was `sync` /
+                    // `rebind`, whose destinations are in the OTHER checkout.
+                    ArtifactIndex index = ArtifactIndex.of(store);
+                    ArtifactBuild.Plan plan = ArtifactBuild.of(index,
+                            ArtifactFreshness.of(index, store), store,
+                            ArtifactBuild.Scope.NAMED, List.of(projection.id()), false);
+                    String printed = plan.notBuildable().stream()
+                            .map(ArtifactBuild.Step::reason).reduce("", (a, b) -> a + " " + b);
+                    assertContains(printed, "home clone",
+                            "`build` prescribes the same repair: " + printed);
+                    // The dangerous prescription is the imperative form. The
+                    // words may still appear — the remedy has to say which
+                    // command NOT to run — but neither may be handed over as
+                    // something to type.
+                    assertFalse(printed.contains("`skill-manager rebind")
+                                    || printed.contains("`skill-manager sync`"),
+                            "and never hands over the one that writes another checkout: "
+                                    + printed);
+                });
+
+        suite.test("ARTI-18: a recorded hash outranks the link check, never the other way", () -> {
+            // The review's F4. Unreachable today — only DocRepoBinder writes a
+            // boundHash and only onto MANAGED_COPY — but the two checks answer
+            // different questions and the hash answers the stricter one. If a
+            // writer ever recorded one on a SYMLINK, a tampered copy under a
+            // perfectly resolving link must not read `current`.
+            SkillStore store = ArtifactsFixture.seed();
+            Path dest = alphaLink(store);
+            ArtifactsFixture.reprojectAlphaWithHash(store, store.root().resolve("skills/alpha"),
+                    dest, "0000000000000000000000000000000000000000000000000000000000000000");
+
+            assertTrue(linkState(store) == null,
+                    "no link was probed at all, so nothing can overwrite the hash's answer");
+            var projection = alphaProjection(store);
+            assertFalse(projection.freshness() == ArtifactFreshness.Freshness.CURRENT,
+                    "and the row is not current on the strength of its link: "
+                            + projection.reason());
         });
 
         suite.test("ARTI-18: boundHash keeps deciding the kind that carries one", () -> {
@@ -573,8 +684,25 @@ public final class ArtifactStalenessTest {
         return found.get(0);
     }
 
-    private static void skipped(String why) {
-        System.out.println("  [SKIP] ARTI-18: " + why);
+    /** The seeded home's one {@code alpha} projection link: {@code .claude/skills/alpha}. */
+    private static Path alphaLink(SkillStore store) {
+        return store.root().resolve(".claude/skills/alpha");
+    }
+
+    private static ArtifactFreshness.Verdict alphaProjection(SkillStore store)
+            throws Exception {
+        return onlyProjectionOf(ArtifactFreshness.of(ArtifactIndex.of(store), store), "alpha");
+    }
+
+    /**
+     * The {@code link_state} the backfill recorded for {@code alpha}'s
+     * projection — asserted directly, so a case proves the state it is named
+     * for rather than only the verdict several states share.
+     */
+    private static String linkState(SkillStore store) throws Exception {
+        return ArtifactIndex.of(store).artifacts().stream()
+                .filter(a -> a.kind() == ArtifactKind.PROJECTION && "alpha".equals(a.owner()))
+                .findFirst().orElseThrow().actual().get("link_state");
     }
 
     /**
