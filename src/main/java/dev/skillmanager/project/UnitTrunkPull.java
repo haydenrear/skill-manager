@@ -196,9 +196,12 @@ public final class UnitTrunkPull {
         }
 
         String before = GitOps.headHash(repo);
+        SyncGitHandler.BaselineWatch watch =
+                SyncGitHandler.BaselineWatch.before(store, unit.name(), unit.kind());
         SyncGitHandler.MergeResult result =
                 SyncGitHandler.runMerge(ctx, repo, upstream, ref, unit.name());
         String after = GitOps.headHash(repo);
+        if (result.rc() == 0 && before != null && !before.equals(after)) watch.afterUpstreamMove();
         return switch (result.rc()) {
             case 0 -> {
                 boolean moved = before != null && !before.equals(after);

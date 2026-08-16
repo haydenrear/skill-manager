@@ -748,9 +748,14 @@ GitAgree(from, to) ==
 \* This is how a commit travels UPWARD, and it is not a nicety -- without it
 \* CommittedWorkIsNeverDestroyed would be unsatisfiable rather than true, and the
 \* model would be describing a mechanism that holds back forever instead of one
-\* that returns the work. In the code it falls out of the same mergePlan every
-\* other path goes through, because .git's entries ARE in entryDigests: only the
-\* DISPOSAL question splits the tree at .git, never the copy.
+\* that returns the work. In the code (since #210) .git is decided as ONE thing
+\* by ancestry -- ChildHomeMaterializer.gitDestIsBehind / gitHistoryMerge -- and
+\* the per-path algebra sees only the worktree: a destination whose every ref
+\* the source reaches, and whose worktree is clean, is fast-forwarded wholesale;
+\* .git's own files (index, reflogs) are never compared path by path, which is
+\* what turned a `git status` on each side into a "changed on both sides"
+\* conflict no operator could resolve. "AllRefs(to) = git_base" below is the
+\* record's spelling of what the code now asks git directly.
 GitTakeAllowed(from, to) ==
   /\ HasGitBackedUnits
   /\ AllRefs(from) # AllRefs(to)
