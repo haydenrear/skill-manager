@@ -67,7 +67,7 @@ public class UpstreamTracksWhatSyncFetched {
             }
 
             boolean freshHolds = fresh.holdsNonVacuously();
-            boolean aheadTolerated = !ahead.caught();
+            boolean aheadTolerated = ahead.tolerated();
 
             boolean pass = freshHolds && behind.caught() && behind.repaired() && aheadTolerated;
 

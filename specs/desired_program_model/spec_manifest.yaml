@@ -105,6 +105,23 @@ modules:
     generates: testgraph
     adapter_mapping: testgraph_bindings.yml
     status: validated_tlc_and_graph_green
+  arti_22_home_integrity_internal:
+    module: HomeIntegrityInternal.tla
+    config: HomeIntegrityInternal.cfg
+    regression_configs:
+      - HomeIntegrityInternal_regression_silentdrift.cfg
+      - HomeIntegrityInternal_regression_staleack.cfg
+      - HomeIntegrityInternal_regression_selfrepend.cfg
+      - HomeIntegrityInternal_regression_foreignprojection.cfg
+      - HomeIntegrityInternal_regression_narrowprojection.cfg
+    role: >
+      bounded semantic view of home integrity -- the record/store, drift/digest
+      and projection-source relations a healthy home holds
+    refines:
+      - SkillManager.SyncUnit
+      - SkillManager.RecordHomeDrift
+    generates: none
+    status: validated_tlc_green_five_expected_violations
 
 ticket_slices:
   ISSUE-166:
@@ -142,6 +159,64 @@ ticket_slices:
             adapter: specs.claimant_refresh_adapter:ClaimantRefreshPolicyAdapter
       external:
         module_ref: issue_166_claimant_refresh_external
+  ARTI-22:
+    issue: skill-manager-integration-repository#124
+    scope: home_integrity_invariants
+    non_replacement: true
+    complexity_ledger_model:
+      module: SkillManager.tla
+      config: MC.cfg
+      identity: SkillManager
+    views:
+      internal:
+        module_ref: arti_22_home_integrity_internal
+        case_codegen:
+          generation_status: not_generated
+          reason: >
+            A view over relations a home holds AT REST, not over a command
+            surface. It generates no spec-unit or Test Graph cases; the
+            executable counterpart is the `home-integrity` test graph, which
+            checks the same relations against a real provisioned home and
+            against deliberately damaged copies of it.
+        state_fields:
+          - hi_record_revision
+          - hi_store_revision
+          - hi_record_error
+          - hi_home_digest
+          - hi_ack_baseline
+          - hi_acknowledged
+          - hi_projection_target
+          - hi_child_registered
+          - hi_ack_own_writes
+          - hi_phase
+        actions:
+          - SyncAdvancesStoreAndRecord
+          - SyncConflictsAndRecordsTheError
+          - MaterializeIntoRegisteredChild
+          - AcknowledgeCurrentDigest
+        invariants:
+          - RecordDescribesItsStoreOrSaysWhy
+          - AckIsNotStaleOnArrival
+          - AckWritesFallInsideItsBaseline
+          - ProjectionSourceIsDecidable
+        expected_violations:
+          HomeIntegrityInternal_regression_silentdrift.cfg: RecordDescribesItsStoreOrSaysWhy
+          HomeIntegrityInternal_regression_staleack.cfg: AckIsNotStaleOnArrival
+          HomeIntegrityInternal_regression_selfrepend.cfg: AckWritesFallInsideItsBaseline
+          HomeIntegrityInternal_regression_foreignprojection.cfg: ProjectionSourceIsDecidable
+          HomeIntegrityInternal_regression_narrowprojection.cfg: ProjectionResolvesInsideThisHome
+        narrow_projection_note: >
+          The last row is not a defect in the product: it runs the CORRECT
+          specification -- a healthy home -- against #124's narrower wording of
+          invariant 9, and that wording fails. Reading its violation as a defect
+          is what produced "51 of 106 projections serve bytes from another
+          home". The configuration exists so the correction cannot be
+          re-derived wrongly later.
+        declared_here_because: >
+          Five .tla/.cfg copies landed in this directory undeclared in the first
+          version of this ticket. A review caught it, and it is the shape #103
+          spent a whole ticket repairing -- a manifest that does not describe
+          the modules beside it.
 
 # Each of Internal.tla and External.tla now carries TWO specs over disjoint
 # variable sets, and the reason is measured rather than stylistic.

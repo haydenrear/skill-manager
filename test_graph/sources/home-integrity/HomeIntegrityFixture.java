@@ -82,6 +82,7 @@ public class HomeIntegrityFixture {
 
             ProcessRecord installA;
             ProcessRecord installB;
+            ProcessRecord installC;
             try {
                 Files.createDirectories(unitsDir);
                 Files.createDirectories(home);
@@ -108,11 +109,15 @@ public class HomeIntegrityFixture {
                         unitsDir, HomeIntegritySupport.UNIT, true);
                 Path unitB = HomeIntegritySupport.scaffoldGitUnit(
                         unitsDir, HomeIntegritySupport.UNIT_B, false);
+                Path unitC = HomeIntegritySupport.scaffoldGitUnit(
+                        unitsDir, HomeIntegritySupport.UNIT_C, false, true);
 
                 installA = HomeIntegritySupport.sm(ctx, "install-a", home,
                         "install", unitA.toString(), "--yes");
                 installB = HomeIntegritySupport.sm(ctx, "install-b", home,
                         "install", unitB.toString(), "--yes");
+                installC = HomeIntegritySupport.sm(ctx, "install-c", home,
+                        "install", unitC.toString(), "--yes");
             } catch (IOException e) {
                 return NodeResult.error("home.integrity.fixture", e)
                         .assertion("both_fixture_units_installed", false)
@@ -121,7 +126,17 @@ public class HomeIntegrityFixture {
                         .assertion("the_lock_row_carries_an_install_fingerprint", false);
             }
 
-            boolean installsOk = installA.exitCode() == 0 && installB.exitCode() == 0;
+            boolean installsOk = installA.exitCode() == 0 && installB.exitCode() == 0
+                    && installC.exitCode() == 0;
+
+            // The externally-satisfied dependency: the install must have
+            // declined to write a shim (that is the state under test) while
+            // still recording a row. If the runner somehow HAS no `sh`, this
+            // stops being the fixture it claims to be, and says so rather than
+            // quietly testing something else.
+            boolean externalDepWasNotMaterialized = !Files.exists(
+                    home.resolve("bin").resolve("cli")
+                            .resolve(HomeIntegritySupport.EXTERNAL_TOOL));
 
             var records = HomeIntegrity.installedRecords(home);
             boolean bothRecorded = records.containsKey(HomeIntegritySupport.UNIT)
@@ -142,7 +157,7 @@ public class HomeIntegrityFixture {
                             .path("install_fingerprint").isTextual();
 
             boolean pass = installsOk && bothRecorded && bothGitBacked && bothHaveStores
-                    && shimBuilt && fingerprinted;
+                    && shimBuilt && fingerprinted && externalDepWasNotMaterialized;
 
             NodeResult result = pass
                     ? NodeResult.pass("home.integrity.fixture")
@@ -153,15 +168,19 @@ public class HomeIntegrityFixture {
                                     + " bothHaveStores=" + bothHaveStores
                                     + " shimBuilt=" + shimBuilt
                                     + " fingerprinted=" + fingerprinted
+                                    + " externalDepWasNotMaterialized="
+                                    + externalDepWasNotMaterialized
                                     + " units=" + records.keySet());
 
             return result
-                    .process(installA).process(installB)
+                    .process(installA).process(installB).process(installC)
                     .assertion("both_fixture_units_installed", installsOk && bothRecorded)
                     .assertion("the_home_records_a_git_hash_for_each_unit", bothGitBacked)
                     .assertion("each_unit_has_a_real_store_checkout", bothHaveStores)
                     .assertion("the_declared_cli_dependency_produced_a_shim", shimBuilt)
                     .assertion("the_lock_row_carries_an_install_fingerprint", fingerprinted)
+                    .assertion("a_dependency_the_machine_already_had_produced_no_shim",
+                            externalDepWasNotMaterialized)
                     .metric("unitsInstalled", records.size())
                     .log(HomeIntegrity.describe(HomeIntegrity.all(home)))
                     .publish("integrityHome", home.toString())

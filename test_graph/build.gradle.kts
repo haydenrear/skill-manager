@@ -1323,13 +1323,21 @@ validationGraph {
      * noticed once and would have recurred silently. ARTI-22 (#124) is that
      * statement, written so it executes.
      *
-     * THE DAMAGED FIXTURES ARE THE POINT. Every node here plants the defect its
-     * invariant is drawn from, confirms the check catches it, repairs it, and
-     * confirms the check passes again. A detector that cannot fail and a
-     * detector that cannot pass are both worthless, and this epic has already
-     * found one oracle that passed vacuously and one metric that only ever
-     * moved in the flattering direction. Control, mutant, repair — all three in
-     * the same run.
+     * THE DAMAGED FIXTURES ARE THE POINT. Where an invariant is checkable
+     * against a home at rest, the node plants the defect it is drawn from,
+     * confirms the check catches it, repairs it, and confirms the check passes
+     * again. A detector that cannot fail and a detector that cannot pass are
+     * both worthless, and this epic has already found one oracle that passed
+     * vacuously and one metric that only ever moved in the flattering
+     * direction.
+     *
+     * EIGHT OF THE TWELVE NODES DO THAT; the other four cannot and say so,
+     * which an earlier version of this comment glossed over by claiming all of
+     * them did. env.prepared and the fixture provision rather than assert;
+     * home.fixpoint.law is the shared post-condition; and
+     * bootstrap.projects.target plants nothing at all, because its subject is a
+     * COMMAND's behaviour rather than a home's state — it pins the two halves of
+     * defect 10's contract instead.
      *
      * SEVERAL NODES ALSO ASSERT A NON-DETECTION, and those are not padding.
      * Three of #124's nine candidate invariants were false as written — a

@@ -56,11 +56,13 @@ VARIABLES
   hi_acknowledged,         \* home.drift.json's acknowledged flag
   hi_projection_target,    \* where a recorded projection resolves
   hi_child_registered,     \* is that target a child home THIS home registered
+  hi_ack_own_writes,       \* did the acking operation itself write after its baseline
   hi_phase
 
 vars == << hi_record_revision, hi_store_revision, hi_record_error,
            hi_home_digest, hi_ack_baseline, hi_acknowledged,
-           hi_projection_target, hi_child_registered, hi_phase >>
+           hi_projection_target, hi_child_registered, hi_ack_own_writes,
+           hi_phase >>
 
 HiRevisions == {"A", "B"}
 HiTargets == {"self", "child", "foreign"}
@@ -75,6 +77,7 @@ Init ==
   /\ hi_acknowledged = TRUE
   /\ hi_projection_target = "self"
   /\ hi_child_registered = FALSE
+  /\ hi_ack_own_writes = FALSE
   /\ hi_phase = "provisioned"
 
 \* @invariant TypeOK
@@ -87,6 +90,7 @@ TypeOK ==
   /\ hi_acknowledged \in BOOLEAN
   /\ hi_projection_target \in HiTargets
   /\ hi_child_registered \in BOOLEAN
+  /\ hi_ack_own_writes \in BOOLEAN
   /\ hi_phase \in HiPhases
 
 ------------------------------------------------------------------------------
@@ -106,7 +110,8 @@ SyncAdvancesStoreAndRecord ==
   /\ hi_home_digest' = "B"
   /\ hi_acknowledged' = FALSE
   /\ hi_phase' = "changed"
-  /\ UNCHANGED << hi_ack_baseline, hi_projection_target, hi_child_registered >>
+  /\ UNCHANGED << hi_ack_baseline, hi_projection_target, hi_child_registered,
+                  hi_ack_own_writes >>
 
 \* A sync whose merge conflicted: the store moved, the record could not follow,
 \* and the record SAYS SO. This is the state three units are in on the
@@ -125,7 +130,8 @@ SyncConflictsAndRecordsTheError ==
   /\ hi_home_digest' = "B"
   /\ hi_acknowledged' = FALSE
   /\ hi_phase' = "changed"
-  /\ UNCHANGED << hi_ack_baseline, hi_projection_target, hi_child_registered >>
+  /\ UNCHANGED << hi_ack_baseline, hi_projection_target, hi_child_registered,
+                  hi_ack_own_writes >>
 
 \* Materialize a unit into a child home this home registered. The projection
 \* leaves this home and is entirely accountable, because child-homes/ records
@@ -138,7 +144,8 @@ MaterializeIntoRegisteredChild ==
   /\ hi_projection_target' = "child"
   /\ hi_child_registered' = TRUE
   /\ UNCHANGED << hi_record_revision, hi_store_revision, hi_record_error,
-                  hi_home_digest, hi_ack_baseline, hi_acknowledged, hi_phase >>
+                  hi_home_digest, hi_ack_baseline, hi_acknowledged,
+                  hi_ack_own_writes, hi_phase >>
 
 \* Acknowledge the pending change, receipting the digest the home is on NOW.
 \* DriftGate.recordSince writes the pending gate and then refreshes the
@@ -155,6 +162,7 @@ AcknowledgeCurrentDigest ==
   /\ hi_phase' = "acknowledged"
   /\ UNCHANGED << hi_record_revision, hi_store_revision, hi_record_error,
                   hi_home_digest, hi_projection_target, hi_child_registered >>
+  /\ hi_ack_own_writes' = FALSE
 
 ------------------------------------------------------------------------------
 \* The regression behaviours. Each is a thing the product must NOT do, kept
@@ -176,7 +184,24 @@ SyncLeavesTheRecordBehindSilently ==
   /\ hi_home_digest' = "B"
   /\ hi_acknowledged' = FALSE
   /\ hi_phase' = "changed"
-  /\ UNCHANGED << hi_ack_baseline, hi_projection_target, hi_child_registered >>
+  /\ UNCHANGED << hi_ack_baseline, hi_projection_target, hi_child_registered,
+                  hi_ack_own_writes >>
+
+\* Materialize a unit into a home this home never registered as a child. The
+\* projection leaves this home and NOTHING here can say whose bytes it serves:
+\* no child-homes/ record names the target, so the home cannot distinguish it
+\* from a stale link into a directory that used to be something. This is the
+\* state #124's invariant 9 was reaching for, and it is genuinely undecidable.
+\* @command MaterializeUnitIntoUnregisteredHome
+\* @result HomeIntegrityOutcome
+\* @port SkillManagerCli.project_resolve_regression
+MaterializeIntoUnregisteredHome ==
+  /\ hi_phase = "provisioned"
+  /\ hi_projection_target' = "foreign"
+  /\ hi_child_registered' = FALSE
+  /\ UNCHANGED << hi_record_revision, hi_store_revision, hi_record_error,
+                  hi_home_digest, hi_ack_baseline, hi_acknowledged,
+                  hi_ack_own_writes, hi_phase >>
 
 \* An acknowledgement that receipts the digest observed when the change was
 \* DETECTED rather than the digest the home is on. The ack is then a receipt
@@ -191,6 +216,27 @@ AcknowledgeDetectionDigest ==
   /\ hi_phase = "changed"
   /\ hi_acknowledged' = TRUE
   /\ hi_ack_baseline' = "A"
+  /\ hi_ack_own_writes' = FALSE
+  /\ hi_phase' = "acknowledged"
+  /\ UNCHANGED << hi_record_revision, hi_store_revision, hi_record_error,
+                  hi_home_digest, hi_projection_target, hi_child_registered >>
+  /\ hi_ack_own_writes' = FALSE
+
+\* An acknowledging operation that performs its OWN content writes after
+\* computing the baseline it acknowledges. This is #124's defect 4, in the only
+\* form that is assertable without demanding the gate fail open: ARTI-00 acked
+\* project-tier drift and the SAME operation's syncs then changed three units,
+\* leaving the home DRIFT PENDING again with nothing the operator did in
+\* between. Re-pending after a change is correct; a command that re-pends
+\* itself is a transaction-boundary defect in that command.
+\* @command AcknowledgeDriftThenWriteWithinTheSameOperation
+\* @result HomeIntegrityOutcome
+\* @port SkillManagerCli.home_drift_ack_regression
+AcknowledgeThenWriteWithinTheSameOperation ==
+  /\ hi_phase = "changed"
+  /\ hi_acknowledged' = TRUE
+  /\ hi_ack_baseline' = hi_home_digest
+  /\ hi_ack_own_writes' = TRUE
   /\ hi_phase' = "acknowledged"
   /\ UNCHANGED << hi_record_revision, hi_store_revision, hi_record_error,
                   hi_home_digest, hi_projection_target, hi_child_registered >>
@@ -211,9 +257,19 @@ StaleAckNext ==
   \/ SyncAdvancesStoreAndRecord
   \/ AcknowledgeDetectionDigest
 
+SelfRePendingAckNext ==
+  \/ SyncAdvancesStoreAndRecord
+  \/ AcknowledgeThenWriteWithinTheSameOperation
+
+ForeignProjectionNext ==
+  \/ MaterializeIntoUnregisteredHome
+  \/ MaterializeIntoRegisteredChild
+
 HomeIntegritySpec == Init /\ [][HomeIntegrityNext]_vars
 SilentDriftSpec   == Init /\ [][SilentDriftNext]_vars
 StaleAckSpec      == Init /\ [][StaleAckNext]_vars
+ForeignProjectionSpec == Init /\ [][ForeignProjectionNext]_vars
+SelfRePendingAckSpec  == Init /\ [][SelfRePendingAckNext]_vars
 
 ------------------------------------------------------------------------------
 \* The invariants.
@@ -237,9 +293,30 @@ RecordDescribesItsStoreOrSaysWhy ==
 AckIsNotStaleOnArrival ==
   hi_acknowledged => (hi_ack_baseline = hi_home_digest)
 
+\* #124's defect 4, in the form that survives. Dropping AckIsStable's second
+\* clause was right -- "an operation that changes content and then acks must not
+\* leave a fresh unacked record" demands the gate fail open -- but it was the
+\* ONLY statement forbidding a self-inflicted re-pend, and dropping it left
+\* defect 4 asserted by nothing at all. A review pointed that out and proposed
+\* this, which is a property of the acknowledging COMMAND's transaction
+\* boundary rather than of the gate: whatever an ack writes must fall inside
+\* the baseline it acknowledges. The gate stays fail-closed; the command stops
+\* invalidating its own receipt.
+\* @invariant AckWritesFallInsideItsBaseline
+AckWritesFallInsideItsBaseline == ~hi_ack_own_writes
+
 \* #124's invariant 9, RESTATED with the clause that makes it true: a
 \* projection is decidable when it resolves inside this home, or inside a child
 \* home this home registered.
+\* Reachability note, because this invariant nearly shipped unfalsifiable.
+\* With only MaterializeIntoRegisteredChild in the model, "foreign" was never
+\* assigned and "child" was only ever set together with hi_child_registered =
+\* TRUE -- so TLC could not distinguish ProjectionSourceIsDecidable from TRUE,
+\* and it had no expected-violation configuration, against this repository's
+\* regression_config_rule. The correction this ticket is proudest of was the
+\* one invariant here with no executable refutation. A review caught it;
+\* MaterializeIntoUnregisteredHome and the ...regression_foreignprojection.cfg
+\* configuration are the repair.
 \* @invariant ProjectionSourceIsDecidable
 ProjectionSourceIsDecidable ==
   \/ hi_projection_target = "self"

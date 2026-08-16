@@ -94,7 +94,8 @@ status:
       That baseline is indeed repaired. It was NOT scaffolded, because
       specs/current and specs/desired_program_model are occupied by a live,
       unpromoted workflow -- child-home-materialization-workflow, active ticket
-      CHM-1, with 16 of 36 tickets not closed. tla-spec-dev's scaffold writes
+      CHM-1, with 17 of 34 tickets not closed (1 next, 7 planned, 6 open, 2
+      blocked_on_owner, 1 blocked_on_prerequisite). tla-spec-dev's scaffold writes
       if-missing, so a scaffold would have silently no-opped on all seven
       template files while appearing to succeed; with --force it would have
       clobbered that 36-ticket plan, which is the exact class of damage ARTI-02
@@ -107,6 +108,26 @@ status:
       - SyncConflictsAndRecordsTheError
       - MaterializeIntoRegisteredChild
       - AcknowledgeCurrentDigest
+    corrections_after_review: >
+      Four numbers in the first version of this slice were wrong and are
+      corrected here rather than quietly edited. (1) The CHM plan has 34
+      tickets with 17 not closed; I wrote "16 of 36". The premise -- that the
+      slots are occupied by a live workflow -- is unaffected and load-bearing,
+      but the count is in a durable artifact and was also in a commit body.
+      (2) "Would forbid the brew, npm and pip backends" is wrong by two: only
+      BrewBackend links outside the home; NpmBackend, PipBackend and TarBackend
+      all write into store.cliBinDir(). Brew alone makes #124's wording false,
+      which is all an invariant needs. (3) "27 of 27" mixed two denominators --
+      27 declaration rows across 22 distinct on_path binaries; the check
+      iterates the 22. (4) ProjectionSourceIsDecidable had no expected-violation
+      configuration and none was constructible, because "foreign" was never
+      assigned -- TLC could not distinguish it from TRUE. That was this
+      ticket's headline correction sitting on the one invariant with no
+      executable refutation, against this repo's own regression_config_rule.
+      MaterializeIntoUnregisteredHome and ..._regression_foreignprojection.cfg
+      are the repair. AckWritesFallInsideItsBaseline was added at the same time,
+      because dropping AckIsStable's second clause was right but left #124's
+      defect 4 asserted by nothing.
     dropped_from_the_proposed_invariants: >
       #124 proposed nine candidate invariants and said the list was a starting
       point rather than a specification. Three did not survive the argument in
@@ -124,8 +145,8 @@ status:
       tlc:
         status: passed
         views: 1
-        configurations: 4
-        expected_violations: 3
+        configurations: 6
+        expected_violations: 5
         commands:
           - bash run_tlc.sh HomeIntegrityInternal.tla HomeIntegrityInternal.cfg
           - bash run_tlc.sh HomeIntegrityInternal.tla HomeIntegrityInternal_regression_silentdrift.cfg
