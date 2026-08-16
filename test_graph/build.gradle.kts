@@ -1164,6 +1164,63 @@ validationGraph {
         node("sources/common/HomeFixpointLaw.java").dependsOn("project.profiles.resolved")
     }
 
+    /*
+     * artifact-dag: the derived-artifact DAG (#100), end to end on real homes.
+     *
+     * One node per claim the epic makes, ARTI-03 through ARTI-08: a home can
+     * NAME what it derived without deriving it; every installer records what it
+     * built from; one moved input marks the two artifacts that share it and
+     * nothing else; `build <one>` repairs that one and leaves its siblings
+     * alone; a lazy clone declares what it did not copy; a cold artifact refuses
+     * with the way out; and an uninstall takes its owner's subgraph with it.
+     *
+     * DOCKER-FREE AND NETWORK-FREE, on purpose — it is in the CI core set, and
+     * a core graph that needs postgres or the internet fails for reasons that
+     * are not about skill-manager. Every node depends only on env.prepared and
+     * builds its own home under env.prepared's temp root, so no node reads lock
+     * state another wrote and HomeFixpointLaw can find every home they made.
+     *
+     * The fixture is a skill-script CLI dep whose installer writes
+     * cache/skill-script-<unit>-<tool>/ and a bin/cli wrapper that execs into
+     * it by absolute path. That is the only backend that installs INTO a home
+     * from bytes the graph itself wrote, and it is the shim/tree pair the DAG's
+     * interesting edge runs between. See ArtifactDagSupport's javadoc for what
+     * that costs in coverage, stated rather than hidden.
+     *
+     * RUNNING IT WHILE IT IS RED. Three assertions describe ARTI-07 (#108) and
+     * ARTI-08 (#109), which are not merged into this branch: a lazy clone still
+     * refuses `home verify`, a cold shim still fails with a raw shell error
+     * naming no build, and an uninstall still leaves the removed unit's cache
+     * tree on disk. Each is measured, documented in its node's javadoc, and
+     * left asserted — a graph that dropped them would report those tickets
+     * done. A plain run therefore stops at the first one; for the whole sweep:
+     *
+     *   TESTGRAPH_CONTINUE_AFTER_FAILURE=1 \
+     *     python3 skills/test_graph/scripts/run.py artifact-dag
+     *
+     * Every node then executes against its own home, each reports its own
+     * status, and the run still fails.
+     */
+    testGraph("artifact-dag") {
+        node("sources/common/EnvPrepared.java")
+        node("sources/artifact-dag/ArtifactsEnumerated.java")
+        node("sources/artifact-dag/EveryBackendFingerprinted.java")
+        node("sources/artifact-dag/EditedInputMarksDependentsStale.java")
+        node("sources/artifact-dag/BuildRepairsOneArtifact.java")
+        node("sources/artifact-dag/LazyCloneDeclaresWithoutBuilding.java")
+        node("sources/artifact-dag/ColdArtifactRefusalNamesBuild.java")
+        node("sources/artifact-dag/UninstallPrunesTheSubgraph.java")
+        // THE FIXPOINT LAW. One shared post-condition, not a bespoke
+        // check per graph: every home this graph produced must satisfy
+        // `home verify`, and where it refuses, the remedy IT PRINTED must
+        // clear it. Six defects of that shape were each found by hand on
+        // one home; the graph that would have caught them was always the
+        // one nobody had added a check to. Depends on this graph's last
+        // node so it runs last, and FAILS if it finds no home — a law
+        // that quietly checks nothing is the failure mode being closed.
+        node("sources/common/HomeFixpointLaw.java").dependsOn("uninstall.prunes.the.subgraph")
+    }
+
     testGraph("skill-dev-smoke") {
         node("sources/common/EnvPrepared.java")
         node("sources/resolve/ResolverCyclesVerified.java")

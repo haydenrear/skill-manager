@@ -65,6 +65,12 @@ CORE: list[str] = [
     "plugin-smoke",        # 23 — plugin layout + harness registration
     "onboard",             # 14 — onboarding a unit end to end
     "home-integrity",      # 12 — what a healthy home IS (#124); no docker, no postgres
+    # 9 nodes — the derived-artifact DAG itself (ARTI-03..08), docker-free.
+    # RED ON PURPOSE while ARTI-07 (#108) and ARTI-08 (#109) are unmerged:
+    # three of its assertions state those tickets' outcomes and fail. See the
+    # graph's comment in test_graph/build.gradle.kts before quarantining it —
+    # dropping the assertions would report those tickets done.
+    "artifact-dag",
 ]
 
 # ---------------------------------------------------------------------------
