@@ -217,6 +217,21 @@ jobs:
         with:
           enable-cache: true
 
+      # Every hand-authored YAML in the tree, parsed, plus the shape checks on
+      # the spec manifests among them (ARTI-25, #127). FIRST in this job: it
+      # costs about a second, needs nothing but uv, and each of the three
+      # defects it exists for was found by whoever next needed the file to be
+      # true rather than by CI — `specs/desired_program_model/spec_manifest.yaml`
+      # was unreadable by any YAML parser on this branch while describing an
+      # in-flight 17-ticket workflow, and `specs/program_model/spec_manifest.yaml`
+      # named three TLA+ modules that do not exist for two whole releases (#103).
+      #
+      # On `unit-tests` and NOT on the schedule, deliberately: a manifest is
+      # broken by a commit, and a nightly check reports it to whoever pushes
+      # next instead of to whoever broke it.
+      - name: Check hand-authored YAML and spec manifests
+        run: uv run .github/scripts/check_yaml.py
+
       # The accepted-baseline (specs/program_model) and working-model
       # (specs/current) contract suites. Neither was in any workflow before
       # ARTI-02 (#103), which is how
