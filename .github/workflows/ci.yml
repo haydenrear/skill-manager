@@ -121,9 +121,26 @@ jobs:
   # exists, and prints every graph it is NOT running, with the reason for the
   # two that are excluded outright. Roughly 10 seconds; it gates the matrix so
   # that a stale graph name is a red selector rather than a quietly smaller run.
+  #
+  # SUSPENDED ON push AND pull_request, 2026-08-16, at the owner's instruction:
+  # "go ahead and disable the graphs and just run them locally for now." This
+  # `if` is the whole of that change — the matrix is unreachable on push and PR
+  # because everything downstream `needs: graph-set`, and it is untouched on
+  # `schedule` (07:00 UTC) and `workflow_dispatch`, which is where the graphs
+  # keep running unattended. "For now" is why the triggers were not deleted.
+  #
+  # THE COST, stated rather than glossed: GOAL-validation-floor metric (a) is
+  # "test_graph graphs executed per CI run", target >= 8, and it is met at 8
+  # today. With this merged it is 8 nightly and 0 on push and PR — so a ticket
+  # PR into the epic branch no longer carries a graph signal, and the first
+  # automatic run over a merged ticket is the next 07:00 UTC sweep. The terminal
+  # evaluation ticket has to decide whether the goal is met on the nightly
+  # figure or missed on the per-run one; that is the owner's call, not this
+  # change's, and it is recorded here so the decision is made in daylight.
   # ---------------------------------------------------------------------------
   graph-set:
     name: select graph set
+    if: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     outputs:
