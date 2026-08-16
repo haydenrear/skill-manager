@@ -70,7 +70,7 @@ public class RecordAgreesWithStore {
             }
 
             // The excused mutation must NOT be caught: it is the disjunct.
-            boolean disjunctHonoured = !excused.caught();
+            boolean disjunctHonoured = excused.tolerated();
             boolean freshHolds = fresh.holdsNonVacuously();
 
             boolean pass = freshHolds && silent.caught() && silent.repaired() && disjunctHonoured;

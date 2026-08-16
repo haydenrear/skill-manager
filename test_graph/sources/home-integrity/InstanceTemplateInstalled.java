@@ -80,7 +80,7 @@ public class InstanceTemplateInstalled {
             }
 
             boolean freshHolds = fresh.holds();
-            boolean validAccepted = !valid.caught();
+            boolean validAccepted = valid.tolerated();
 
             boolean pass = freshHolds && validAccepted
                     && orphaned.caught() && orphaned.repaired()

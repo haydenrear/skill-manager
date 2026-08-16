@@ -191,7 +191,7 @@ final class HomeIntegrity {
                 continue;
             }
             if (head.equals(recorded)) continue;
-            if (hasErrors(rec)) continue;                           // the disjunct
+            if (explainsAHashGap(rec)) continue;                    // the disjunct
             out.add(new Finding("RecordAgreesWithStore", unit,
                     "record says " + shortHash(recorded) + ", store HEAD is " + shortHash(head)
                             + ", and the record carries no error explaining the gap"));
@@ -325,8 +325,14 @@ final class HomeIntegrity {
         }
         boolean acked = drift.path("acknowledged").asBoolean(false);
         if (!acked) {
-            // Pending drift is a normal state. Nothing to say about stability.
-            return new Report("AckIsStable", 1, out);
+            // Pending drift is a normal state, and this invariant is about what
+            // an ACK leaves behind — so there is nothing here to be right or
+            // wrong about. ZERO subjects, not one: reporting 1 examined / 0
+            // violations would make holdsNonVacuously() true having checked
+            // nothing, and the operator's project home is in exactly this state
+            // right now, so a caller asserting non-vacuity there would have been
+            // asserting a check that never ran. Caught by review.
+            return new Report("AckIsStable", 0, out);
         }
         if (drift.path("acknowledgedAt").isMissingNode() || text(drift, "acknowledgedAt") == null) {
             out.add(new Finding("AckIsStable", "home.drift.json",
@@ -474,34 +480,55 @@ final class HomeIntegrity {
      * design</b>. {@code CliPresence.alreadyProvided} counts a binary already on
      * the system {@code PATH} as satisfying a CLI dep, so {@code BrewBackend},
      * {@code PipBackend} and {@code NpmBackend} return {@code ALREADY_PRESENT}
-     * and write nothing into the home. Measured: the project home declares 27
-     * CLI dependencies across its installed units; 16 of those declarations (11
-     * distinct lock rows) have no {@code bin/cli/<on_path>} — and <b>every one
-     * of the 16 is present on the system PATH</b> ({@code helm},
-     * {@code kubectl}, {@code k3d}, {@code docker}, {@code gh}, {@code gemini},
-     * {@code claude}, {@code codex}, {@code ollama}, {@code pytest},
-     * {@code tb-query}). Those 11 rows are ARTI-06's 11, name for name. The home
-     * is not broken; it correctly declined to install eleven tools the machine
-     * already had.
+     * and write nothing into the home. Measured on the operator's project home:
+     * <b>27 declaration rows across 22 distinct {@code on_path} names</b>; 16 of
+     * the 27 rows (11 distinct lock rows, 11 distinct binaries) have no
+     * {@code bin/cli/<on_path>} — and <b>every one of the 11 is present on the
+     * system PATH</b> ({@code helm}, {@code kubectl}, {@code k3d},
+     * {@code docker}, {@code gh}, {@code gemini}, {@code claude}, {@code codex},
+     * {@code ollama}, {@code pytest}, {@code tb-query}). Those 11 are ARTI-06's
+     * 11, name for name. The home is not broken; it correctly declined to
+     * install eleven tools the machine already had.
      *
-     * <p>So the first conjunct here — <em>satisfied</em> — holds 27 of 27, and
-     * asserting #124's version would have this check fail on a perfectly healthy
-     * machine and pass on a machine that happened to have nothing installed.
-     * That is the modelling error the ticket warned about, in its sharpest form.
+     * <p>So the first conjunct here — <em>satisfied</em> — holds over all 22
+     * distinct binaries, and asserting #124's version would have this check fail
+     * on a perfectly healthy machine and pass on a machine that happened to have
+     * nothing installed. That is the modelling error the ticket warned about, in
+     * its sharpest form.
      *
-     * <p><b>The second conjunct is the real defect and it does not hold.</b>
-     * Nothing in {@code cli-lock.toml} distinguishes "this home built a shim"
+     * <p><i>Denominators, because there are two and a review caught me sliding
+     * between them: 27 counts declaration rows (units declare the same tool
+     * more than once — three units declare {@code brew:gh}), 22 counts distinct
+     * {@code on_path} binaries, and this check iterates the 22.</i>
+     *
+     * <h3>The second conjunct is the real defect, and how this check stays
+     * sensitive to it</h3>
+     *
+     * <p>Nothing in {@code cli-lock.toml} distinguishes "this home built a shim"
      * from "the machine already had it". ARTI-06 measured the consequence and
      * deferred it with two candidate fixes — record the output at
      * {@code Scope.EXTERNAL} pointing at the accepted system path, or stop
      * recording a {@code binary} the install did not produce — and called it the
-     * owner's decision. It is a design change, not a line, so this check reports
-     * it and the node that runs it pins it as a known defect against <b>#120</b>,
-     * which owns the producers that are not CLI installers.
+     * owner's decision.
+     *
+     * <p><b>An earlier version of this check could not observe that fix, and the
+     * review was right to refuse it.</b> It asked only two questions — does
+     * {@code bin/cli/<on_path>} exist, and is {@code <on_path>} on {@code PATH}
+     * — and neither answer changes when the product starts recording provenance.
+     * So the defect pinned on it was unfalsifiable by any product change and
+     * could only ever be retired by editing this file, which is precisely the
+     * "lie with a ticket number attached" the node's own comment warns about.
+     *
+     * <p>It now reads the lock row and asks whether the row <b>says</b> the
+     * dependency was satisfied from outside this home, via
+     * {@link #recordsExternalProvenance}. Writing any of those fields turns this
+     * check green and the pinned assertion red, which is the sensitivity the pin
+     * needs to be worth having.
      */
     static Report declaredCliIsSatisfiedAndAttributed(Path home) {
         List<Finding> out = new ArrayList<>();
         int examined = 0;
+        Map<String, JsonNode> rowsByTool = lockRowsByTool(home);
         for (Map.Entry<String, Set<String>> dep : declaredOnPath(home).entrySet()) {
             String onPath = dep.getKey();
             examined++;
@@ -515,12 +542,82 @@ final class HomeIntegrity {
                                 + " is simply unsatisfied"));
                 continue;
             }
+            if (recordsExternalProvenance(rowsByTool.get(onPath))) continue;
             out.add(new Finding("DeclaredCliIsSatisfiedAndAttributed", onPath,
-                    "satisfied externally by " + external + " and the home records nothing"
-                            + " about it — 'declared and not materialized here' and"
-                            + " 'satisfied by the machine' are indistinguishable (#120)"));
+                    "satisfied externally by " + external + " and no lock row says so —"
+                            + " 'declared and not materialized here' and 'satisfied by the"
+                            + " machine' are indistinguishable in the ledger (#122)"));
         }
         return new Report("DeclaredCliIsSatisfiedAndAttributed", examined, out);
+    }
+
+    /**
+     * The field names that would constitute "the home records that this
+     * dependency was satisfied from outside itself".
+     *
+     * <p>None of them exists today — that is the defect. They are enumerated
+     * rather than guessed at one name, because ARTI-06 left the choice open
+     * between two shapes (an {@code EXTERNAL}-scoped output naming the accepted
+     * system path, or a flag saying the install produced nothing), and this
+     * check should go green on <em>either</em> rather than dictate which the
+     * fix must be. Whoever closes it should not also have to negotiate with a
+     * test about the field's spelling.
+     */
+    static final List<String> EXTERNAL_PROVENANCE_FIELDS =
+            List.of("install_scope", "scope", "external_path", "provided_by",
+                    "provided_outside_home", "binary_scope");
+
+    /** Whether {@code row} states that this dependency is satisfied externally. */
+    static boolean recordsExternalProvenance(JsonNode row) {
+        if (row == null) return false;
+        for (String field : EXTERNAL_PROVENANCE_FIELDS) {
+            JsonNode v = row.path(field);
+            if (v.isMissingNode() || v.isNull()) continue;
+            if (v.isBoolean()) return v.asBoolean();
+            String s = v.asText("");
+            if (!s.isBlank()) return true;
+        }
+        return false;
+    }
+
+    /**
+     * Every {@code cli-lock.toml} row keyed by the BINARY it declares rather
+     * than by the package it installs.
+     *
+     * <p>The row is keyed by package ({@code ["npm"."@google/gemini-cli"]}) and
+     * the binary lives in the declaring unit's {@code on_path}
+     * ({@code gemini}), so the two have to be joined through the manifests —
+     * ARTI-03 recorded that the mapping is unrecoverable once the declaring unit
+     * is gone. Rows this home can still attribute are matched here; the rest are
+     * simply absent from the map, which reads as "records no provenance" and is
+     * the correct answer for them.
+     */
+    static Map<String, JsonNode> lockRowsByTool(Path home) {
+        Map<String, JsonNode> out = new LinkedHashMap<>();
+        JsonNode doc = readToml(home.resolve("cli-lock.toml"));
+        if (doc == null) return out;
+        Map<String, String> specToOnPath = new LinkedHashMap<>();
+        forEachDeclaredDep(home, (unit, dep) -> {
+            String spec = dep.path("spec").asText(null);
+            String onPath = dep.path("on_path").asText(null);
+            if (spec != null && onPath != null && !onPath.isBlank()) {
+                specToOnPath.put(spec, onPath);
+            }
+        });
+        for (java.util.Iterator<String> backends = doc.fieldNames(); backends.hasNext(); ) {
+            String backend = backends.next();
+            JsonNode tools = doc.get(backend);
+            if (tools == null || !tools.isObject()) continue;
+            for (java.util.Iterator<String> names = tools.fieldNames(); names.hasNext(); ) {
+                String tool = names.next();
+                JsonNode row = tools.get(tool);
+                if (row == null || !row.isObject()) continue;
+                String spec = row.path("spec").asText(backend + ":" + tool);
+                String onPath = specToOnPath.get(spec);
+                if (onPath != null) out.put(onPath, row);
+            }
+        }
+        return out;
     }
 
     /**
@@ -951,6 +1048,49 @@ final class HomeIntegrity {
     static boolean hasErrors(JsonNode record) {
         JsonNode errors = record.path("errors");
         return errors.isArray() && errors.size() > 0;
+    }
+
+    /**
+     * The error kinds that can explain a recorded hash disagreeing with its
+     * store — the disjunct in {@link #recordAgreesWithStore}, narrowed.
+     *
+     * <p>These are the states in which the store was deliberately left at a
+     * revision the record does not name: a merge that conflicted and stashed
+     * (the three live cases in the operator's project home), a checkout that
+     * could not be completed, a fetch that failed. Each is a reason the two
+     * legitimately differ.
+     */
+    static final Set<String> HASH_GAP_EXPLAINING_ERROR_KINDS = Set.of(
+            "MERGE_CONFLICT", "CHECKOUT_FAILED", "FETCH_FAILED", "SYNC_FAILED",
+            "STASH_CONFLICT", "DIRTY_WORKTREE");
+
+    /**
+     * Whether {@code record}'s errors explain a hash gap.
+     *
+     * <p><b>Narrowed after review, and the review was right.</b> This used to be
+     * {@link #hasErrors} — <em>any</em> error of <em>any</em> kind excused
+     * <em>any</em> divergence, indefinitely. That is a hole straight through an
+     * invariant whose name is {@code RecordDescribesItsStoreOrSaysWhy} and whose
+     * whole regression case is "a record that says NOTHING about why": a unit
+     * carrying one unrelated warning from months ago could then drift
+     * arbitrarily and this check would keep passing. The disjunct is meant to
+     * admit "the store is somewhere else and here is the reason", not "this unit
+     * has had a bad day at some point".
+     *
+     * <p>So the error has to be of a kind that actually bears on the gap. An
+     * unrecognised kind is <b>not</b> accepted: the permissive direction is the
+     * silent one, and a new error kind that legitimately explains a gap should
+     * arrive here as a one-line addition with a name, rather than being waved
+     * through by a check that stopped looking.
+     */
+    static boolean explainsAHashGap(JsonNode record) {
+        JsonNode errors = record.path("errors");
+        if (!errors.isArray()) return false;
+        for (JsonNode e : errors) {
+            String kind = e.path("kind").asText("");
+            if (HASH_GAP_EXPLAINING_ERROR_KINDS.contains(kind)) return true;
+        }
+        return false;
     }
 
     static String readLink(Path p) {

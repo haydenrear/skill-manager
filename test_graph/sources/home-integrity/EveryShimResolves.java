@@ -19,9 +19,19 @@ import java.nio.file.Path;
  * {@link HomeIntegrity#everyShimResolves} carries the argument: a
  * {@code brew}-backed shim legitimately points at {@code /opt/homebrew}, so
  * "resolves inside this home or a sanctioned parent store" is false of a
- * healthy home and would forbid three of the four CLI backends from ever
- * succeeding. What survives is the part with teeth — a shim that does not run
- * is broken wherever it points.
+ * healthy home. What survives is the part with teeth — a shim that does not
+ * run is broken wherever it points.
+ *
+ * <p><b>Exactly one backend links outside the home, and it is enough.</b> An
+ * earlier version of this comment said the wording "would forbid the brew, npm
+ * and pip backends from ever succeeding". That is wrong by two, and a review
+ * caught it: {@code NpmBackend:68} links into {@code store.cliBinDir()},
+ * {@code PipBackend:53} sets {@code UV_TOOL_BIN_DIR} to the same directory, and
+ * {@code TarBackend:44} copies into it — all three land inside the home.
+ * {@code BrewBackend} alone symlinks {@code $(brew --prefix <pkg>)/bin/*} into
+ * {@code bin/cli}, so brew alone is what makes #124's wording false. One
+ * counterexample is all an invariant needs, and overstating the count made the
+ * argument sound stronger while making it checkably wrong.
  *
  * <h2>The three mutations, and why the third one exists</h2>
  *
@@ -80,7 +90,7 @@ public class EveryShimResolves {
 
             boolean freshHolds = fresh.holdsNonVacuously();
             // The third mutation must NOT be caught — that is its whole point.
-            boolean externalTolerated = !outsideHome.caught();
+            boolean externalTolerated = outsideHome.tolerated();
 
             boolean pass = freshHolds
                     && dangling.caught() && dangling.repaired()
@@ -149,17 +159,40 @@ public class EveryShimResolves {
 
         @Override
         public void plant(Path home) throws IOException {
-            String target = HomeIntegrity.onSystemPath("sh");
-            if (target == null) target = "/bin/sh";
+            Path target = cellarBinary(home);
+            Files.createDirectories(target.getParent());
+            Files.writeString(target, "#!/usr/bin/env bash\necho '" + NAME + " ok'\n");
+            target.toFile().setExecutable(true);
+
             Path shim = home.resolve("bin").resolve("cli").resolve(NAME);
             Files.createDirectories(shim.getParent());
             Files.deleteIfExists(shim);
-            Files.createSymbolicLink(shim, Path.of(target));
+            Files.createSymbolicLink(shim, target);
         }
 
         @Override
         public void repair(Path home) throws IOException {
             Files.deleteIfExists(home.resolve("bin").resolve("cli").resolve(NAME));
+            HomeIntegritySupport.deleteRecursively(home.getParent().resolve("hi-brew-prefix"));
+        }
+
+        /**
+         * A Cellar-shaped path under the run's own scratch space.
+         *
+         * <p>An earlier version linked at whatever {@code sh} resolved to, on
+         * the reasoning that a POSIX runner always has one. That is portable and
+         * it makes the assertion weaker than it looks: a future "tightening" of
+         * this check that whitelisted {@code /bin} and {@code /usr/bin} — the
+         * two directories a shim has least business pointing at — would still
+         * pass here while breaking every real brew shim. The non-detection this
+         * node asserts is specifically about the <b>brew Cellar</b>, so the
+         * fixture is spelled like one. Built rather than located, so it does not
+         * require Homebrew on the runner. Caught by review.
+         */
+        private static Path cellarBinary(Path home) {
+            return home.getParent().resolve("hi-brew-prefix")
+                    .resolve("Cellar").resolve("hi-formula").resolve("1.0.0")
+                    .resolve("bin").resolve(NAME);
         }
     }
 

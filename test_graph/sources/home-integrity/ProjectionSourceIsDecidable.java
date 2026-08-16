@@ -88,7 +88,7 @@ public class ProjectionSourceIsDecidable {
             }
 
             boolean freshHolds = fresh.holdsNonVacuously();
-            boolean childTolerated = !registeredChild.caught();
+            boolean childTolerated = registeredChild.tolerated();
 
             boolean pass = freshHolds
                     && missing.caught() && missing.repaired()

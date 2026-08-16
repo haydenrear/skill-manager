@@ -81,7 +81,7 @@ public class EveryLockRowHasAClaimant {
             }
 
             boolean freshHolds = fresh.holdsNonVacuously();
-            boolean pluginRowTolerated = !pluginDeclared.caught();
+            boolean pluginRowTolerated = pluginDeclared.tolerated();
 
             boolean pass = freshHolds
                     && unclaimed.caught() && unclaimed.repaired()
