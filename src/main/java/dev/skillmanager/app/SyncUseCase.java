@@ -40,7 +40,53 @@ public final class SyncUseCase {
 
     private SyncUseCase() {}
 
-    /** All non-target sync flags as one record so the buildProgram signature stays small. */
+    /**
+     * All non-target sync flags as one record so the buildProgram signature
+     * stays small.
+     *
+     * <h2>{@code withMcp} and {@code startGateway} are two fields because they
+     * are two concerns (ARTI-21, #123)</h2>
+     *
+     * <p>They were one, and that one flag turned off four effects to fix a
+     * defect caused by exactly one of them.
+     *
+     * <p>{@code 7fce8ed} made MCP work opt-in because a content sync at a
+     * project or worktree home was being <b>rolled back</b> by the gateway
+     * preflight. That was a real defect and its reasoning still holds — but the
+     * preflight is {@code SkillEffect.EnsureGateway}, which builds a Python
+     * venv and STARTS a gateway process, and returns {@code failed} when it
+     * does not come up healthy. A {@code failed} receipt rolls the whole staged
+     * program back. <b>That is gateway provisioning, and it is the only MCP
+     * effect on the sync path that can do it.</b>
+     *
+     * <p>Every other MCP effect already tolerates an absent gateway — read out
+     * of the handlers rather than assumed:
+     *
+     * <ul>
+     *   <li>{@code RegisterMcp} pings first and returns
+     *       {@code skipped("gateway unreachable")};</li>
+     *   <li>{@code UnregisterMcpOrphans} does the same;</li>
+     *   <li>{@code SnapshotMcpDeps} is a read of the installed units and never
+     *       touches a gateway at all;</li>
+     *   <li>the {@code withMcp} arm of {@code PlanBuilder.addToolEnsures} emits
+     *       {@code EnsureTool}, which installs only BUNDLED tools and reports
+     *       an external one (docker) as {@code missingOnPath} rather than
+     *       failing.</li>
+     * </ul>
+     *
+     * <p>So the opt-in was on the wrong half. It suppressed a registration path
+     * that was already safe, and the cost was not theoretical: {@code sync}
+     * stopped re-registering MCP servers for real users — a moved
+     * {@code mcp_dependencies} declaration stayed unapplied until an explicit
+     * command — and two test-graph nodes went red for three days with nobody
+     * seeing it, because the graphs were not running.
+     *
+     * <p>Split: {@code startGateway} carries {@code 7fce8ed}'s opt-in and gates
+     * the preflight ONLY; {@code withMcp} goes back to gating registration,
+     * which is what it always described. A home with a gateway already up
+     * registers on every sync, as it did before; a home without one skips
+     * cleanly and says so, which is what the rollback was really asking for.
+     */
     public record Options(
             String registryOverride,
             boolean gitLatest,
@@ -48,14 +94,31 @@ public final class SyncUseCase {
             boolean withMcp,
             boolean withAgents,
             boolean yesForFromDir,
-            boolean forceScripts) {
+            boolean forceScripts,
+            /**
+             * Ensure a gateway is RUNNING before the sync, starting one if it
+             * is not — the half {@code 7fce8ed} was right to make opt-in.
+             */
+            boolean startGateway) {
+        public Options(String registryOverride,
+                       boolean gitLatest,
+                       boolean merge,
+                       boolean withMcp,
+                       boolean withAgents,
+                       boolean yesForFromDir,
+                       boolean forceScripts) {
+            this(registryOverride, gitLatest, merge, withMcp, withAgents, yesForFromDir,
+                    forceScripts, false);
+        }
+
         public Options(String registryOverride,
                        boolean gitLatest,
                        boolean merge,
                        boolean withMcp,
                        boolean withAgents,
                        boolean yesForFromDir) {
-            this(registryOverride, gitLatest, merge, withMcp, withAgents, yesForFromDir, false);
+            this(registryOverride, gitLatest, merge, withMcp, withAgents, yesForFromDir,
+                    false, false);
         }
     }
 
@@ -159,7 +222,12 @@ public final class SyncUseCase {
                                           List<UnitReadProblem> initialReadProblems) throws IOException {
         UnitStore sources = new UnitStore(store);
         List<SkillEffect> effects = new ArrayList<>(
-                ResolveContextUseCase.preflight(gw, options.registryOverride(), options.withMcp()));
+                // startGateway, NOT withMcp: this preflight is the one effect
+                // on the sync path that can start a process and fail the whole
+                // program. Registration below is gateway-tolerant by its own
+                // handler and does not belong behind the same switch (#123).
+                ResolveContextUseCase.preflight(gw, options.registryOverride(),
+                        options.startGateway()));
         if (initialReadProblems != null && !initialReadProblems.isEmpty()) {
             effects.add(new SkillEffect.ReportUnitReadProblems(initialReadProblems));
         }
