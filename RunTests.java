@@ -67,6 +67,7 @@ import dev.skillmanager.artifacts.ArtifactHomeStabilityTest;
 import dev.skillmanager.artifacts.ArtifactGraphTest;
 import dev.skillmanager.artifacts.ArtifactStalenessTest;
 import dev.skillmanager.artifacts.ArtifactBuildTest;
+import dev.skillmanager.artifacts.LazyArtifactHomeTest;
 import dev.skillmanager.bindings.BindingsTest;
 import dev.skillmanager.command.SearchShowsKindTest;
 import dev.skillmanager.command.ShowNonSkillUnitsTest;
@@ -277,6 +278,7 @@ public class RunTests {
         failures += ArtifactGraphTest.run();
         failures += ArtifactStalenessTest.run();
         failures += ArtifactBuildTest.run();
+        failures += LazyArtifactHomeTest.run();
         failures += BindingsTest.run();
         failures += dev.skillmanager.bindings.DocRepoTest.run();
         failures += dev.skillmanager.bindings.HarnessTest.run();

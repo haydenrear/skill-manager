@@ -81,10 +81,18 @@ public final class HomeCommand {
                         + "Off by default: two homes cannot both own one port.")
         boolean ownGateway;
 
+        @Option(names = "--lazy-artifacts", arity = "1", paramLabel = "true|false",
+                description = "Whether the copy declares its artifacts and builds them on "
+                        + "demand. Default: true unless the destination IS the operator root "
+                        + "home. The decision is written into the copy's home.policy.toml.")
+        Boolean lazyArtifacts;
+
         @Override
         public Integer call() throws Exception {
             Path source = from != null ? from : SkillStore.defaultStore().root();
-            HomeCloner.Report report = HomeCloner.cloneHome(source, to, strict);
+            HomeCloner.Report report = HomeCloner.cloneHome(source, to, strict,
+                    lazyArtifacts != null ? lazyArtifacts
+                            : HomePolicy.lazyArtifactsDefault(new SkillStore(to)));
             print(report, json);
             if (!report.clean()) return 1;
             SkillStore cloned = new SkillStore(report.dest());
@@ -289,6 +297,21 @@ public final class HomeCommand {
                                 + "this home",
                         parentShims.size(), home);
                 sample(parentShims);
+            }
+            // ARTI-07: the THIRD state, and the reason this section is above
+            // the failure section rather than inside it. A home that declares
+            // its artifacts and builds them on demand ships these on purpose —
+            // every clone does — so reporting them as failures would make this
+            // command exit 1 on every fresh worktree, and what happens next is
+            // not that somebody fixes an artifact. It is that somebody stops
+            // running the check. Reported, never counted.
+            List<String> declared = result.declaredNotBuilt();
+            if (!declared.isEmpty()) {
+                Log.info("%d entry point(s) in %s are DECLARED and not built — normal in a home "
+                                + "with `%s = true`, and not a failure. Each one names the command "
+                                + "that builds it when it is run.",
+                        declared.size(), home, HomePolicy.LAZY_ARTIFACTS_KEY);
+                sample(declared);
             }
             // Provisioning that never completed. A message printed once by the
             // clone was not enough: nobody ran the remedy, and nothing asked
@@ -657,6 +680,18 @@ public final class HomeCommand {
                         + "path that is not a home is refused rather than created.")
         boolean init;
 
+        /**
+         * Declare {@code lazy_artifacts}. A {@link Boolean} rather than a
+         * {@code boolean} so that "not passed" is a third value: this command's
+         * other half rewrites the file, and a primitive would make every
+         * {@code home policy live} silently declare eagerness.
+         */
+        @Option(names = "--lazy-artifacts", arity = "1", paramLabel = "true|false",
+                description = "Declare whether this home builds its artifacts on demand. "
+                        + "Default: true for a project or worktree home, false for the operator "
+                        + "root. May be given with or without a policy word.")
+        Boolean lazyArtifacts;
+
         private final SkillStore injectedStore;
 
         public PolicyCmd() { this(null); }
@@ -677,9 +712,18 @@ public final class HomeCommand {
                 Log.error("%s", notAHome.getMessage());
                 return NotAHomeException.EXIT_CODE;
             }
+            if (lazyArtifacts != null) HomePolicy.writeLazyArtifacts(store, lazyArtifacts);
             if (policy == null || policy.isBlank()) {
                 HomePolicy current = HomePolicy.load(store);
                 System.out.println("policy: " + current.wire());
+                // Declared and effective, in those words. They differ for every
+                // home that has not said anything, which is most of them, and a
+                // reader who cannot tell them apart writes the default back
+                // into the file as though somebody had chosen it.
+                Boolean declared = HomePolicy.declaredLazyArtifacts(store);
+                System.out.println("lazy_artifacts: " + HomePolicy.lazyArtifacts(store)
+                        + (declared == null
+                            ? "  (not declared — default for this tier)" : "  (declared)"));
                 System.out.println("file:   " + HomePolicy.file(store)
                         + (java.nio.file.Files.isRegularFile(HomePolicy.file(store))
                             ? "" : "  (absent — live by default)"));
@@ -1427,6 +1471,20 @@ public final class HomeCommand {
                     unresolved, report.dest());
             for (String dangling : report.danglingLinks()) Log.detail("    link   %s", dangling);
             for (String dangling : report.danglingReferences()) Log.detail("    script %s", dangling);
+        }
+        // ARTI-07, and deliberately ONE line each. The clone's report is paid
+        // for on every bootstrap; the entries are in the run log and in
+        // `skill-manager artifacts list`, which is the command that owns them.
+        if (!report.coldShims().isEmpty()) {
+            Log.info("  declared:    %d entry point(s) name `skill-manager build <id>` instead "
+                            + "of failing in the kernel's words — they were shims into a tree "
+                            + "this copy does not carry: %s",
+                    report.coldShims().size(), String.join(", ", report.coldShims()));
+        }
+        if (!report.deferredTrees().isEmpty()) {
+            Log.info("  deferred:    %d virtualenv(s) inside units are declared, not copied — "
+                            + "`uv` rebuilds each from the lockfile beside it on first use: %s",
+                    report.deferredTrees().size(), String.join(", ", report.deferredTrees()));
         }
         if (report.clean()) {
             // Says what was actually checked — and this line has now been wrong
