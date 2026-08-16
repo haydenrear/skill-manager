@@ -284,6 +284,33 @@ public final class PluginMarketplaceTest {
             assertFalse(fp.present(), "no digest when the link does not resolve");
         });
 
+        suite.test("a no-op regeneration leaves the INPUTS RECORD byte-identical too", () -> {
+            // The idempotency case above asserts the MANIFEST is byte-identical
+            // across two regenerations — and it passed while the sidecar changed
+            // on every pass, because `generatedAt` is a wall clock. A record
+            // whose whole purpose is answering "did anything change" must not
+            // change every time it is asked; that is this epic's own defect
+            // reproduced inside its fix. Asserted on BYTES rather than through a
+            // comparison method, so it holds against what the file really says.
+            TestHarness h = TestHarness.create();
+            h.scaffoldUnitDir("a", UnitKind.PLUGIN);
+            h.scaffoldUnitDir("b", UnitKind.PLUGIN);
+            PluginMarketplace mp = new PluginMarketplace(h.store());
+            mp.regenerate();
+            Path sidecar = MarketplaceInputs.file(mp.root());
+            String first = Files.readString(sidecar);
+
+            mp.regenerate();
+            assertEquals(first, Files.readString(sidecar),
+                    "a regeneration that changed nothing must not rewrite the record");
+
+            // ...and a real change still lands.
+            Files.writeString(h.store().unitDir("a", UnitKind.PLUGIN).resolve("NEW.md"), "x\n");
+            mp.regenerate();
+            assertFalse(first.equals(Files.readString(sidecar)),
+                    "but a moved plugin must still be recorded");
+        });
+
         suite.test("recording the inputs cannot fail the regeneration it describes", () -> {
             // Evidence about an operation must not be able to fail that
             // operation. A directory where the file goes makes the write throw

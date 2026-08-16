@@ -227,6 +227,24 @@ public record MarketplaceInputs(
         return plugins.stream().filter(p -> p.name().equals(name)).findFirst();
     }
 
+    /**
+     * Whether {@code other} records the same marketplace and the same rows —
+     * everything this file asserts, ignoring {@link #generatedAt}.
+     *
+     * <p>Exists so a regeneration that changed nothing can leave the file
+     * alone. A wall clock is not an input to anything, and rewriting it every
+     * pass makes the one record that answers "did anything change" change every
+     * time it is asked. {@link Entry} is a record, so this is structural
+     * equality over the digests and their grades — exactly the comparison a
+     * later short-circuit would make.
+     */
+    public boolean describesSameAs(MarketplaceInputs other) {
+        return other != null
+                && schemaVersion == other.schemaVersion()
+                && java.util.Objects.equals(marketplaceName, other.marketplaceName())
+                && plugins.equals(other.plugins());
+    }
+
     public static MarketplaceInputs of(String marketplaceName, List<Entry> entries) {
         List<Entry> sorted = new ArrayList<>(entries);
         sorted.sort((a, b) -> a.name().compareTo(b.name()));
