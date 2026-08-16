@@ -98,6 +98,49 @@ public final class ChildHomeRegistry {
         return Files.isRegularFile(file(id));
     }
 
+    /**
+     * Every child home this home has registered, decoded.
+     *
+     * <p>{@link #childHomesClaiming} already opens this directory and reads the
+     * same files, and returns only ids — enough to REFUSE a removal, and not
+     * enough to answer the question a teardown has to ask instead: which of
+     * <em>this</em> home's own files a child home is depending on. A child's
+     * {@code bin/cli} entry is a symlink at the parent's by design
+     * ({@code ChildHomeMaterializer.mirrorExistingShim}), so pruning in the
+     * parent without reading the children breaks a home whose name appears
+     * nowhere in the parent's installed set.
+     *
+     * <p>Records are {@link #decode}d, unlike {@link #childHomesClaiming},
+     * which reads them raw and leaves {@code parentHome} token-encoded — that
+     * is invisible while only {@code units()} is read and wrong the moment a
+     * caller looks at a path.
+     *
+     * <p>Never throws. A registry that cannot be read is reported and treated
+     * as empty by the caller, which is the conservative direction for a reader
+     * and the dangerous one for a deleter — so the deleter
+     * ({@link dev.skillmanager.artifacts.ArtifactPrune}) handles its own
+     * failure rather than inferring it from an empty list.
+     */
+    public List<ChildHomeRecord> list() {
+        Path root = root();
+        if (!Files.isDirectory(root)) return List.of();
+        List<ChildHomeRecord> out = new ArrayList<>();
+        try (var stream = Files.list(root)) {
+            for (Path dir : (Iterable<Path>) stream::iterator) {
+                Path file = dir.resolve(FILENAME);
+                if (!Files.isRegularFile(file)) continue;
+                try {
+                    out.add(decode(BindingJson.MAPPER.readValue(file.toFile(),
+                            ChildHomeRecord.class)));
+                } catch (IOException ignored) {}
+            }
+        } catch (IOException ignored) {
+            return List.copyOf(out);
+        }
+        out.sort((a, b) -> String.CASE_INSENSITIVE_ORDER.compare(a.id(), b.id()));
+        return List.copyOf(out);
+    }
+
     public List<String> childHomesClaiming(String unitName) throws IOException {
         Path root = root();
         if (!Files.isDirectory(root)) return List.of();

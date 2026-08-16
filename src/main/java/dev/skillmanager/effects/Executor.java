@@ -317,6 +317,8 @@ public final class Executor {
             case SkillEffect.SyncGit e -> List.of();
             case SkillEffect.RemoveUnitFromStore e -> List.of();
             case SkillEffect.PruneCliIfOrphan e -> List.of();
+            case SkillEffect.RecordArtifactLedger e -> List.of();
+            case SkillEffect.PruneOrphanArtifacts e -> List.of();
             case SkillEffect.UnlinkAgentUnit e -> List.of();
             case SkillEffect.UnlinkAgentMcpEntry e -> List.of();
             case SkillEffect.ScaffoldSkill e -> List.of();
@@ -522,6 +524,8 @@ public final class Executor {
             case SkillEffect.SyncGit e -> List.of();
             case SkillEffect.RemoveUnitFromStore e -> List.of();
             case SkillEffect.PruneCliIfOrphan e -> List.of();
+            case SkillEffect.RecordArtifactLedger e -> List.of();
+            case SkillEffect.PruneOrphanArtifacts e -> List.of();
             case SkillEffect.UnlinkAgentUnit e -> List.of();
             case SkillEffect.UnlinkAgentMcpEntry e -> List.of();
             case SkillEffect.ScaffoldSkill e -> List.of();

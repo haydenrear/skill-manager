@@ -78,18 +78,29 @@ public final class CliInstallRecorder {
     /**
      * The binary name this dep's artifact lands under in {@code bin/cli/}.
      *
-     * <p>{@code on_path} first, because it is what the declaring unit asserts it
-     * needs on PATH; then a target's declared {@code binary}, for the tar and
-     * skill-script deps that name one; then nothing, rather than a guess. brew
-     * and npm link every executable in a package prefix, so a row's tool name is
-     * frequently not a binary at all, and recording it as one would put a
-     * fabricated path into the record that {@code ArtifactBackfill} probes.
+     * <p>A target's declared {@code binary} first, then {@code on_path}, then
+     * nothing rather than a guess. brew and npm link every executable in a
+     * package prefix, so a row's tool name is frequently not a binary at all,
+     * and recording it as one would put a fabricated path into the record that
+     * {@code ArtifactBackfill} probes.
+     *
+     * <p><b>ARTI-08 reversed the first two.</b> They used to read
+     * "{@code on_path} first, because it is what the declaring unit asserts it
+     * needs on PATH" — which is true and is an answer to a different question.
+     * {@code on_path} is the name this dep PROBES for; {@code install.<os>.binary}
+     * is the name the install PRODUCES. They are usually equal and they are
+     * allowed to differ, and where they differ the old order recorded a
+     * {@code binary} the install never wrote: the artifact's output was a path
+     * that does not exist, so the tree the install actually created was
+     * credited to nobody and survived every teardown. Measured on
+     * {@code test_graph/fixtures/skill-script-skill}, whose {@code on_path} is
+     * deliberately a name nothing provides so that the install always runs.
      */
     private static String producedBinary(CliDependency dep) {
-        if (dep.onPath() != null && !dep.onPath().isBlank()) return dep.onPath();
         for (var target : dep.install().values()) {
             if (target.binary() != null && !target.binary().isBlank()) return target.binary();
         }
+        if (dep.onPath() != null && !dep.onPath().isBlank()) return dep.onPath();
         return null;
     }
 

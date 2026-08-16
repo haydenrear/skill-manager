@@ -62,6 +62,8 @@ public sealed interface SkillEffect permits
         SkillEffect.SyncGit,
         SkillEffect.RemoveUnitFromStore,
         SkillEffect.PruneCliIfOrphan,
+        SkillEffect.RecordArtifactLedger,
+        SkillEffect.PruneOrphanArtifacts,
         SkillEffect.UnlinkAgentUnit,
         SkillEffect.UnlinkAgentMcpEntry,
         SkillEffect.ScaffoldSkill,
@@ -722,6 +724,32 @@ public sealed interface SkillEffect permits
      * identity, prune skill-manager-owned CLI artifacts too.
      */
     record PruneCliIfOrphan(String unitName, CliDependency dep) implements SkillEffect {}
+
+    /**
+     * Write {@code artifacts.lock.toml} from what the home holds RIGHT NOW.
+     *
+     * <p>Emitted before a removal, and the ordering is the whole point: a
+     * prune deletes only what the ledger recorded, and after the unit is gone
+     * there is nothing left to derive a record from. The tree
+     * {@code cache/skill-script-<unit>-<tool>/} is credited to its unit by
+     * containment from the shim that runs out of it, and the shim is one of
+     * the things the removal deletes — so the moment to write it down is
+     * while it is still knowable, which is here.
+     */
+    record RecordArtifactLedger() implements SkillEffect {}
+
+    /**
+     * Reverse-walk the artifact edges for {@code unitName} and remove what it
+     * alone owned.
+     *
+     * <p>The half {@link PruneCliIfOrphan} does not reach: it removes a lock
+     * claim and the DECLARED BINARY, and the tree the install actually wrote
+     * outlives it — there is no {@code skill-script} branch in
+     * {@code CliDependencyCleaner.removeArtifacts} at all. Every rule about
+     * what may be deleted, and the one about {@code .git} that must not bend,
+     * lives in {@link dev.skillmanager.artifacts.ArtifactPrune}.
+     */
+    record PruneOrphanArtifacts(String unitName) implements SkillEffect {}
 
     /**
      * Remove an agent's symlink (or copied dir) of {@code unitName}.
