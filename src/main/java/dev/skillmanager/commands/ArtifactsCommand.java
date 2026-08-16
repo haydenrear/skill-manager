@@ -416,9 +416,12 @@ public final class ArtifactsCommand implements Callable<Integer> {
                 description = "Only artifacts owned by this unit. Repeatable.")
         List<String> owners = new java.util.ArrayList<>();
 
+        /** Test seam, as on {@code BuildCommand} and {@code SyncCommand}. */
+        public SkillStore injectedStore;
+
         @Override
         public Integer call() throws IOException {
-            SkillStore store = requireHome();
+            SkillStore store = injectedStore != null ? injectedStore : requireHome();
             if (store == null) return NotAHomeException.EXIT_CODE;
             if (!dryRun) HomePolicy.requireLive(store, "artifacts prune");
             ArtifactPrune.Plan plan = ArtifactPrune.of(store, owners);
@@ -450,11 +453,23 @@ public final class ArtifactsCommand implements Callable<Integer> {
             for (ArtifactPrune.Step step : plan.refusals()) {
                 Log.warn("kept %s — %s", step.id(), step.reason());
             }
+            // The refusal COUNT belongs on the verdict line, not only in the
+            // per-item warnings above. Those go to stderr, as every warning in
+            // this program does; the verdict goes to stdout, and on a home with
+            // no ledger stdout read in full as "0 artifact(s) would be removed"
+            // — a sentence that describes a home with nothing to prune and a
+            // home where everything was refused identically. The PR body's
+            // claim that this command "refuses everything and names why" was
+            // true of `--json` and of stderr, and not of the surface an
+            // operator reads first.
+            int kept = plan.refusals().size();
+            String refused = kept == 0 ? ""
+                    : String.format(", %d refused and named above (stderr)", kept);
             if (dryRun) {
-                Log.info("%d artifact(s) would be removed; re-run without --dry-run",
-                        targets.size());
+                Log.info("%d artifact(s) would be removed%s; re-run without --dry-run",
+                        targets.size(), refused);
             } else {
-                Log.ok("removed %d artifact(s) from %s", pruned.size(), store.root());
+                Log.ok("removed %d artifact(s) from %s%s", pruned.size(), store.root(), refused);
             }
             return 0;
         }

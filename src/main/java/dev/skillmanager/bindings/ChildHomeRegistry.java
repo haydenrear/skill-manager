@@ -115,16 +115,45 @@ public final class ChildHomeRegistry {
      * is invisible while only {@code units()} is read and wrong the moment a
      * caller looks at a path.
      *
-     * <p>Never throws. A registry that cannot be read is reported and treated
-     * as empty by the caller, which is the conservative direction for a reader
-     * and the dangerous one for a deleter — so the deleter
-     * ({@link dev.skillmanager.artifacts.ArtifactPrune}) handles its own
-     * failure rather than inferring it from an empty list.
+     * <p><b>Never throws, and therefore never tells you what it dropped.</b>
+     * A record that fails to decode is silently absent from the returned list,
+     * which is the conservative direction for a reader and the dangerous one
+     * for a deleter: "no child home claims this" and "I could not read the
+     * record that would have said so" are the same empty list here, and
+     * {@link dev.skillmanager.artifacts.ArtifactPrune} turns the first into a
+     * deletion. So a deleter must call {@link #listing()} instead and treat a
+     * non-empty {@link Listing#unreadable()} as "I do not know what a child
+     * home is depending on" — this method is for readers that only report.
      */
     public List<ChildHomeRecord> list() {
+        return listing().records();
+    }
+
+    /**
+     * {@link #list()}, plus the registry files this pass could not decode.
+     *
+     * <p>The two halves are returned together because a caller that acts on
+     * the records has to be able to tell an empty registry from an unreadable
+     * one, and no signal in a {@code List<ChildHomeRecord>} can carry that.
+     *
+     * @param records the decoded records, sorted by id
+     * @param unreadable the registry files that exist and could not be
+     *        decoded, as absolute paths. A single unreadable entry here means
+     *        the registry as a whole is not a complete answer.
+     */
+    public record Listing(List<ChildHomeRecord> records, List<String> unreadable) {
+        public Listing {
+            records = records == null ? List.of() : List.copyOf(records);
+            unreadable = unreadable == null ? List.of() : List.copyOf(unreadable);
+        }
+    }
+
+    /** @see Listing */
+    public Listing listing() {
         Path root = root();
-        if (!Files.isDirectory(root)) return List.of();
+        if (!Files.isDirectory(root)) return new Listing(List.of(), List.of());
         List<ChildHomeRecord> out = new ArrayList<>();
+        List<String> unreadable = new ArrayList<>();
         try (var stream = Files.list(root)) {
             for (Path dir : (Iterable<Path>) stream::iterator) {
                 Path file = dir.resolve(FILENAME);
@@ -132,13 +161,20 @@ public final class ChildHomeRegistry {
                 try {
                     out.add(decode(BindingJson.MAPPER.readValue(file.toFile(),
                             ChildHomeRecord.class)));
-                } catch (IOException ignored) {}
+                } catch (IOException undecodable) {
+                    unreadable.add(file.toString());
+                }
             }
-        } catch (IOException ignored) {
-            return List.copyOf(out);
+        } catch (IOException cannotList) {
+            // The directory itself. Named rather than swallowed, for the same
+            // reason a per-file failure is: whatever it holds is invisible to
+            // this pass, and a caller that deletes must know that.
+            unreadable.add(root.toString());
+            return new Listing(out, unreadable);
         }
         out.sort((a, b) -> String.CASE_INSENSITIVE_ORDER.compare(a.id(), b.id()));
-        return List.copyOf(out);
+        unreadable.sort(String.CASE_INSENSITIVE_ORDER);
+        return new Listing(out, unreadable);
     }
 
     public List<String> childHomesClaiming(String unitName) throws IOException {
