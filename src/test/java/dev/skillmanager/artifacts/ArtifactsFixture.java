@@ -255,6 +255,55 @@ final class ArtifactsFixture {
     }
 
     /**
+     * A git-backed unit plus one {@link ProjectionKind#SYMLINK} projection of
+     * its store directory — the shape ARTI-18 decides, and the one the seeded
+     * home cannot express on its own.
+     *
+     * <p>The recorded commit is the checkout's OWN head by default, so the
+     * unit-store artifact is {@code CURRENT} and the projection's verdict is
+     * decided by its link rather than inherited from an undecided input. That
+     * matters: {@code alpha} is a {@code LOCAL_DIR} unit with no
+     * {@code gitHash}, so its store is legitimately {@code unverifiable} and
+     * every projection of it is too, whatever its link says. A test for "a
+     * correct link over a current unit is current" needs a current unit to
+     * exist.
+     *
+     * @param recordedHash the commit to record, or null for the checkout's own
+     *        head. Passing a hash the checkout is not on is how a caller gets a
+     *        STALE unit under a perfectly correct link.
+     * @return the destination link, or null when git is unavailable and the
+     *         caller should skip the assertion rather than pretend it ran
+     */
+    static Path withProjectedGitUnit(SkillStore store, String name, String recordedHash)
+            throws Exception {
+        if (!dev.skillmanager.source.GitOps.isAvailable()) return null;
+        Path unit = store.root().resolve("skills/" + name);
+        Files.createDirectories(unit);
+        Files.writeString(unit.resolve("SKILL.md"),
+                "---\nname: " + name + "\ndescription: fixture\n---\nbody\n");
+        String origin = "https://example.invalid/" + name + ".git";
+        if (!dev.skillmanager.source.GitOps.initLocalSnapshot(unit, origin)) return null;
+        String head = recordedHash != null ? recordedHash
+                : dev.skillmanager.source.GitOps.headHash(unit);
+        if (head == null) return null;
+        new UnitStore(store).write(new InstalledUnit(name, "0.1.0",
+                InstalledUnit.Kind.GIT, InstalledUnit.InstallSource.GIT, origin, head, "main",
+                "2026-01-01T00:00:00Z", List.of(), UnitKind.SKILL));
+
+        Path agentSkills = store.root().resolve(".claude/skills");
+        Files.createDirectories(agentSkills);
+        Path dest = agentSkills.resolve(name);
+        Files.createSymbolicLink(dest, unit);
+        String bindingId = "default:claude:" + name;
+        new BindingStore(store).write(new dev.skillmanager.bindings.ProjectionLedger(name,
+                List.of(new Binding(bindingId, name, UnitKind.SKILL, null, agentSkills,
+                        ConflictPolicy.ERROR, "2026-01-01T00:00:00Z", BindingSource.DEFAULT_AGENT,
+                        List.of(new Projection(bindingId, unit, dest,
+                                ProjectionKind.SYMLINK, null))))));
+        return dest;
+    }
+
+    /**
      * Add a real git-backed unit whose {@code installed/} record claims a
      * commit its own checkout is not on.
      *

@@ -491,7 +491,36 @@ public final class ArtifactBackfill {
 
     // ---------------------------------------------------------- projections
 
-    /** One artifact per persisted projection row across every unit's ledger. */
+    /**
+     * One artifact per persisted projection row across every unit's ledger.
+     *
+     * <h2>ARTI-18: a SYMLINK cannot carry a {@code boundHash}, so read the link</h2>
+     *
+     * <p>{@link Projection#boundHash()} is a hash of COPIED BYTES and is null
+     * for every {@link ProjectionKind#SYMLINK} row by construction. Setting an
+     * agreement only when it is non-null therefore left 105 of the 106
+     * projections in the operator's project home at
+     * {@link Artifact.Agreement#UNRECORDED} — which {@link ArtifactFreshness}
+     * maps to {@code unverifiable} — with the single {@code MANAGED_COPY} the
+     * only one that could ever reach a verdict. That was a mapping choice, not
+     * an evidence gap: 56% of the largest class in a real home could not be
+     * decided because the field that decides it describes a different kind.
+     *
+     * <p>So a symlink is asked the question a symlink can answer: <b>does it
+     * point at the source its binding declared?</b> The answer is recorded as
+     * {@code link_state} beside the declared and found paths, and
+     * {@link ArtifactFreshness#byProjection} turns it into a verdict. Nothing
+     * is hashed and {@code boundHash} keeps meaning exactly what it meant —
+     * ARTI-03 split "did the output get tampered with" from "did the input
+     * move" on purpose, and backfilling a digest onto symlinks would make one
+     * field answer both.
+     *
+     * <p>Note what this deliberately does NOT do: it never credits a
+     * projection for its link merely EXISTING. {@code copied}, {@code absent}
+     * and {@code unreadable} are all states in which something is (or is not)
+     * at the path and the question was still not answered, and every one of
+     * them stays undecided.
+     */
     List<Artifact> projections() {
         List<Artifact> out = new ArrayList<>();
         Map<String, Integer> seen = new TreeMap<>();
@@ -540,16 +569,121 @@ public final class ArtifactBackfill {
                                                                : Artifact.Agreement.DISAGREES);
                 }
 
+                // The link half. Only for SYMLINK: MANAGED_COPY keeps being
+                // decided by its hash, and the two never overwrite each other
+                // because no row carries both.
+                LinkProbe link = projection.kind() == ProjectionKind.SYMLINK
+                        ? probeLink(projection.sourcePath(), dest) : null;
+                if (link != null) agreement = link.agreement();
+
                 out.add(new Artifact(id, ArtifactKind.PROJECTION, binding.unitName(),
                         inputs, outputs,
                         "installed/" + binding.unitName() + ".projections.json",
                         Artifact.facts("bound_hash", recordedHash,
-                                "projection_kind", kind),
-                        Artifact.facts("bound_hash", actualHash),
+                                "projection_kind", kind,
+                                "source_path", link == null ? null : link.declared()),
+                        Artifact.facts("bound_hash", actualHash,
+                                "link_state", link == null ? null : link.state(),
+                                "link_target", link == null ? null : link.found()),
                         agreement, Artifact.Origin.HOME));
             }
         }
         return out;
+    }
+
+    /**
+     * What reading one projection's link found.
+     *
+     * @param state the token recorded as {@code link_state}; the fact the
+     *        verdict is decided by, so that the comparison lives here — where
+     *        the disk is read — and is not re-derived downstream. The set is
+     *        closed: {@code resolves}, {@code repointed}, {@code dangling},
+     *        {@code copied}, {@code absent}, {@code unreadable},
+     *        {@code undeclared}.
+     * @param declared the source the binding ledger claims, home-relative
+     * @param found where the link actually points, or null when there was no
+     *        link to read
+     */
+    record LinkProbe(String state, Artifact.Agreement agreement, String declared, String found) {}
+
+    /**
+     * Does this link point at the source its binding declared, and is that
+     * source there?
+     *
+     * <p>Two facts and two different negatives, kept apart because a reader
+     * has to act differently on them: a <b>repointed</b> link resolves to real
+     * bytes that are not the ones this binding is for, and a <b>dangling</b>
+     * one names the right source and this home does not hold it. Both are
+     * definite negatives — reporting "I cannot tell" about a link this pass
+     * just read would be the over-generous oracle the epic keeps removing —
+     * and neither is a hash of anything.
+     *
+     * <h2>The copy fallback is undecided, not wrong</h2>
+     *
+     * <p>{@code LiveInterpreter.materializeProjection} falls back to
+     * {@code Fs.copyRecursive} when the filesystem refuses a symlink, so a row
+     * recorded {@code SYMLINK} is legitimately a real directory here. Calling
+     * that {@code repointed} would report a correct projection as broken. It
+     * is {@code copied}: a state in which the question "does it point at its
+     * source" has no answer because there is no pointer, and the only thing
+     * that WOULD answer it is a content digest over the copy — which is
+     * {@code boundHash}'s job for the kind that carries one and would be a
+     * second meaning for it here.
+     *
+     * <h2>Why {@code isSameFile} and not only string equality</h2>
+     *
+     * <p>A link may be stored relative, and a home may sit under a symlinked
+     * ancestor ({@code /tmp} → {@code /private/tmp} on macOS, which every
+     * temp-dir fixture in this repo lands in). Resolving the target against
+     * the link's own parent covers the first; {@link Files#isSameFile} covers
+     * the second. Without them a correct projection reads {@code repointed},
+     * and a false definite negative costs more trust than the undecided
+     * verdict this replaces.
+     */
+    private LinkProbe probeLink(Path source, Path dest) {
+        String declared = source == null ? null : display(source);
+        if (dest == null || !Files.exists(dest, LinkOption.NOFOLLOW_LINKS)) {
+            return new LinkProbe("absent", Artifact.Agreement.UNVERIFIABLE, declared, null);
+        }
+        if (source == null) {
+            return new LinkProbe("undeclared", Artifact.Agreement.UNVERIFIABLE, null, null);
+        }
+        if (!Files.isSymbolicLink(dest)) {
+            return new LinkProbe("copied", Artifact.Agreement.UNVERIFIABLE, declared, null);
+        }
+        Path raw;
+        try {
+            raw = Files.readSymbolicLink(dest);
+        } catch (IOException | UnsupportedOperationException e) {
+            return new LinkProbe("unreadable", Artifact.Agreement.UNVERIFIABLE, declared, null);
+        }
+        Path parent = dest.getParent();
+        Path target = (raw.isAbsolute() || parent == null ? raw : parent.resolve(raw)).normalize();
+        String found = display(target);
+        if (!sameTarget(target, source.toAbsolutePath().normalize())) {
+            return new LinkProbe("repointed", Artifact.Agreement.DISAGREES, declared, found);
+        }
+        if (!Files.exists(target)) {
+            return new LinkProbe("dangling", Artifact.Agreement.DISAGREES, declared, found);
+        }
+        return new LinkProbe("resolves", Artifact.Agreement.AGREES, declared, found);
+    }
+
+    /** Equal as paths, or the same directory reached by two names. */
+    private static boolean sameTarget(Path target, Path declared) {
+        if (target.equals(declared)) return true;
+        try {
+            return Files.exists(target) && Files.exists(declared)
+                    && Files.isSameFile(target, declared);
+        } catch (IOException e) {
+            return false;
+        }
+    }
+
+    /** Home-relative where that is meaningful, so a reason reads as a path in THIS home. */
+    private String display(Path path) {
+        String relative = ArtifactIds.homeRelative(root, path);
+        return relative == null ? path.toString() : relative;
     }
 
     // ---------------------------------------------------------- marketplace

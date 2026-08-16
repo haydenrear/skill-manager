@@ -377,6 +377,147 @@ public final class ArtifactStalenessTest {
                             + "without ever seeing one");
         });
 
+        // ------------------------------------------------------------ ARTI-18
+        // The largest class in a real home — 106 of 190 artifacts, five times
+        // the next — of which 105 could not reach a verdict because the field
+        // that decided the kind (`boundHash`) describes a DIFFERENT kind. A
+        // symlink copies no bytes, so it never has one; reading where it points
+        // is the question it can actually answer.
+
+        suite.test("ARTI-18: a link that resolves to its declared source is current", () -> {
+            SkillStore store = ArtifactsFixture.seed();
+            if (ArtifactsFixture.withProjectedGitUnit(store, "delta", null) == null) {
+                skipped("git is unavailable, so there is no current unit to project");
+                return;
+            }
+            ArtifactFreshness freshness = ArtifactFreshness.of(ArtifactIndex.of(store), store);
+            assertEquals(ArtifactFreshness.Freshness.CURRENT,
+                    freshness.of(ArtifactIds.unitStore("delta")).freshness(),
+                    "precondition: the source unit is current");
+
+            var projection = onlyProjectionOf(freshness, "delta");
+            assertEquals(ArtifactFreshness.Freshness.CURRENT, projection.freshness(),
+                    "a correct link over a current unit: " + projection.reason());
+            assertContains(projection.reason(), "skills/delta",
+                    "and the reason names the source it resolves to");
+        });
+
+        suite.test("ARTI-18: a repointed link is a definite negative, not unverifiable", () -> {
+            SkillStore store = ArtifactsFixture.seed();
+            Path dest = ArtifactsFixture.withProjectedGitUnit(store, "delta", null);
+            if (dest == null) {
+                skipped("git is unavailable");
+                return;
+            }
+            // No install, no sync — one link, pointed somewhere else.
+            Files.delete(dest);
+            Files.createSymbolicLink(dest, store.root().resolve("skills/alpha"));
+
+            var projection = onlyProjectionOf(
+                    ArtifactFreshness.of(ArtifactIndex.of(store), store), "delta");
+            assertEquals(ArtifactFreshness.Freshness.STALE, projection.freshness(),
+                    "reporting `I cannot tell` about a link this pass just read is the "
+                            + "over-generous oracle the epic removes: " + projection.reason());
+            assertContains(projection.reason(), "skills/delta",
+                    "the reason names what was declared");
+            assertContains(projection.reason(), "skills/alpha",
+                    "and what it found instead");
+            // THE ARTI-06 invariant, from the other side: the link is on disk
+            // and it resolves, so every presence check in the system passes.
+            assertEquals(Artifact.Materialization.MATERIALIZED, projection.materialization(),
+                    "presence contributed nothing — the verdict is the link comparison");
+        });
+
+        suite.test("ARTI-18: a dangling link says which source this home does not hold", () -> {
+            SkillStore store = ArtifactsFixture.seed();
+            Path dest = ArtifactsFixture.withProjectedGitUnit(store, "delta", null);
+            if (dest == null) {
+                skipped("git is unavailable");
+                return;
+            }
+            // The link still names the declared source; the source is gone.
+            deleteRecursive(store.root().resolve("skills/delta"));
+
+            var projection = onlyProjectionOf(
+                    ArtifactFreshness.of(ArtifactIndex.of(store), store), "delta");
+            assertEquals(ArtifactFreshness.Freshness.STALE, projection.freshness(),
+                    "not `unverifiable`: " + projection.reason());
+            assertContains(projection.reason(), "does not hold it",
+                    "and it says which of the two negatives this is");
+        });
+
+        suite.test("ARTI-18: the copy fallback is undecided rather than wrong", () -> {
+            SkillStore store = ArtifactsFixture.seed();
+            Path dest = ArtifactsFixture.withProjectedGitUnit(store, "delta", null);
+            if (dest == null) {
+                skipped("git is unavailable");
+                return;
+            }
+            // MaterializeProjection falls back to Fs.copyRecursive where a
+            // filesystem refuses symlinks, so a row recorded SYMLINK is
+            // legitimately a real tree. Calling that `repointed` would report a
+            // correct projection broken; calling it current would credit a copy
+            // nothing compared.
+            Files.delete(dest);
+            Files.createDirectories(dest);
+            Files.writeString(dest.resolve("SKILL.md"), "---\nname: delta\n---\n");
+
+            var projection = onlyProjectionOf(
+                    ArtifactFreshness.of(ArtifactIndex.of(store), store), "delta");
+            assertEquals(ArtifactFreshness.Freshness.UNVERIFIABLE, projection.freshness(),
+                    "there is no pointer to compare: " + projection.reason());
+            assertContains(projection.reason(), "copy fallback",
+                    "and the reason says why, rather than crashing or guessing");
+        });
+
+        suite.test("ARTI-18: presence may DEMOTE a projection and may never promote one", () -> {
+            // The companion to the ARTI-06 case above, in the class that newly
+            // reaches CURRENT. The link is perfect and its file is on disk; the
+            // unit it projects records a commit its own checkout is not on. A
+            // projection of a stale unit is stale, and nothing about the link
+            // being there rescues it.
+            SkillStore store = ArtifactsFixture.seed();
+            Path dest = ArtifactsFixture.withProjectedGitUnit(store, "delta",
+                    "419d73886012b3472759763d928590417824ca1b");
+            if (dest == null) {
+                skipped("git is unavailable");
+                return;
+            }
+            ArtifactFreshness freshness = ArtifactFreshness.of(ArtifactIndex.of(store), store);
+            assertEquals(ArtifactFreshness.Freshness.STALE,
+                    freshness.of(ArtifactIds.unitStore("delta")).freshness(),
+                    "precondition: the source unit is stale");
+
+            var projection = onlyProjectionOf(freshness, "delta");
+            assertEquals(ArtifactFreshness.Freshness.STALE, projection.freshness(),
+                    "freshness composes: " + projection.reason());
+            assertEquals(Artifact.Materialization.MATERIALIZED, projection.materialization(),
+                    "with the link present and resolving the whole time");
+            assertTrue(projection.because().contains(ArtifactIds.unitStore("delta")),
+                    "and it names the unit that decided it: " + projection.because());
+        });
+
+        suite.test("ARTI-18: boundHash keeps deciding the kind that carries one", () -> {
+            // Rule 3 of the slice, as a test rather than an assertion. The
+            // fixture's doc-repo MANAGED_COPY has a real boundHash; nothing
+            // about the symlink rule may touch how it is decided.
+            SkillStore store = ArtifactsFixture.seed();
+            var managed = ArtifactIndex.of(store).artifacts().stream()
+                    .filter(a -> a.kind() == ArtifactKind.PROJECTION)
+                    .filter(a -> "MANAGED_COPY".equals(a.recorded().get("projection_kind")))
+                    .findFirst().orElseThrow();
+            assertEquals(Artifact.Agreement.AGREES, managed.agreement(),
+                    "its recorded hash still describes the bytes beside it");
+            assertTrue(managed.actual().get("link_state") == null,
+                    "and no link was probed for it, so one field cannot mean two things");
+            // Its verdict is still whatever the pre-ARTI-18 rules made it —
+            // here `unverifiable`, inherited from an undecided `unit-store:
+            // handbook`, exactly as before. What must not appear is a link.
+            assertFalse(ArtifactFreshness.of(ArtifactIndex.of(store), store)
+                            .of(managed.id()).reason().contains("link"),
+                    "the symlink rule does not reach the kind that carries a hash");
+        });
+
         return suite.runAll();
     }
 
@@ -415,6 +556,25 @@ public final class ArtifactStalenessTest {
                         dev.skillmanager.lock.Fingerprint.declared(digest,
                                 dev.skillmanager.mcp.McpRegistrationLock.BASIS)))
                 .write(store.root());
+    }
+
+    /**
+     * The one projection artifact owned by {@code unit}. Looked up by owner
+     * rather than by rebuilding its id, because the id grammar is
+     * {@link ArtifactIds}'s private matter and a test that re-spells it is a
+     * second spelling that can disagree.
+     */
+    private static ArtifactFreshness.Verdict onlyProjectionOf(ArtifactFreshness freshness,
+                                                              String unit) {
+        List<ArtifactFreshness.Verdict> found = freshness.all().stream()
+                .filter(v -> v.kind() == ArtifactKind.PROJECTION && unit.equals(v.owner()))
+                .toList();
+        assertEquals(1, found.size(), "exactly one projection of " + unit + ": " + found);
+        return found.get(0);
+    }
+
+    private static void skipped(String why) {
+        System.out.println("  [SKIP] ARTI-18: " + why);
     }
 
     /**
