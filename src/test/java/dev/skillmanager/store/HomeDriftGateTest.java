@@ -1,6 +1,7 @@
 package dev.skillmanager.store;
 
 import dev.skillmanager._lib.test.Tests;
+import dev.skillmanager.artifacts.ArtifactLedger;
 import dev.skillmanager.commands.ExecCommand;
 import dev.skillmanager.commands.HomeCommand;
 import dev.skillmanager.model.UnitKind;
@@ -297,8 +298,14 @@ public final class HomeDriftGateTest {
             // which is what the assertions below measure.
             assertFalse(Files.exists(copy.unitFile("alpha", ".venv/pyvenv.cfg")),
                     "the copy declares the virtualenv rather than carrying it");
-            assertTrue(Files.exists(copy.store.root().resolve("artifacts.lock.toml")),
-                    "and records it, so nothing was dropped silently");
+            // The ROW, not the file. `declareArtifacts` writes
+            // artifacts.lock.toml on every clone whether or not it deferred
+            // anything, so asserting the file exists is a claim about the
+            // cloner's unconditional behaviour and says nothing about this
+            // virtualenv — the assertion has to name the tree it dropped.
+            assertTrue(ArtifactLedger.load(copy.store).rows().stream()
+                            .anyMatch(row -> row.outputs().contains("skills/alpha/.venv")),
+                    "and records THAT TREE, so nothing was dropped silently");
             new CommandLine(new HomeCommand.DriftCmd(copy.store)).execute("--record");
 
             DriftGate pending = DriftGate.pending(copy.store).orElse(null);

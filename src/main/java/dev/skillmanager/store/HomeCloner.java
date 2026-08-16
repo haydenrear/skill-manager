@@ -863,6 +863,34 @@ public final class HomeCloner {
      *       overwrites the source's snapshot of the same id.</li>
      * </ol>
      *
+     * <h2>The second route into (1), which defeated it</h2>
+     *
+     * <p>{@code artifacts.lock.toml} is an ordinary file under no skipped root,
+     * so the copy carries the SOURCE's ledger verbatim — and
+     * {@link ArtifactIndex} is "the home overlaid with what the ledger says it
+     * once had". The copy's own index is therefore not "what the copy can see
+     * for itself": it is the copy's live facts PLUS every declaration the
+     * source ever wrote, arriving through step (3) with the restriction in step
+     * (1) bypassed entirely. Measured on the seeded home: the doc-import
+     * binding that projects into another checkout is dropped by
+     * {@link #remap}, and its projection came back as
+     * {@code projection:owner:consumer:page:bind#MANAGED_COPY/target/docs/agents/page.md}
+     * in the copy's ledger — the claim over another checkout wearing a new file
+     * name, exactly as described above and not actually prevented. It did not
+     * show up in the first measurements only because a source home without a
+     * ledger has no second route.
+     *
+     * <p>So a row that reaches the copy's index ONLY through the inherited file
+     * ({@link Artifact.Origin#LEDGER}) has to earn its place, and the test is
+     * whether it names anything in this home at all. A dropped binding's
+     * projections and doc imports land outside the home by definition — that is
+     * why the binding was dropped — so they carry no home-scoped output and
+     * declare nothing the copy holds or could build. Everything legitimately
+     * inherited does carry one: a provisioned tree under {@code cache/} or
+     * {@code venvs/}, and a virtualenv a previous clone deferred under
+     * {@code skills/}, which is why the test is not "under a skipped root"
+     * here — a clone of a clone must keep declaring what its parent deferred.
+     *
      * <p>Never fatal. A ledger is an optimisation and a memory
      * ({@link ArtifactLedger}); a home that gets one
      * lists better, and a home that does not still lists. Failing a clone over
@@ -876,13 +904,34 @@ public final class HomeCloner {
                 if (underSkippedRoot(artifact)) rows.add(artifact);
             }
             for (String tree : deferredTrees) rows.add(deferredTreeArtifact(dst, tree));
-            rows.addAll(ArtifactIndex.of(new SkillStore(dst)).artifacts());
+            for (Artifact artifact : ArtifactIndex.of(new SkillStore(dst)).artifacts()) {
+                if (inheritedClaimOverElsewhere(artifact)) continue;
+                rows.add(artifact);
+            }
             ArtifactLedger.of(rows).save(new SkillStore(dst));
         } catch (IOException | RuntimeException e) {
             Log.warn("clone: could not record the artifact ledger in %s (%s) — the copy still "
                     + "lists its artifacts, it just cannot name the ones under the roots a "
                     + "clone skips", dst, e.getMessage());
         }
+    }
+
+    /**
+     * Whether {@code artifact} reached the copy's index only through the
+     * source's inherited {@code artifacts.lock.toml} and names nothing in this
+     * home.
+     *
+     * <p>{@link Artifact.Origin#LEDGER} is precisely "declared, and the home
+     * cannot see it now"; a row that is also LEDGER-scoped to nothing inside
+     * the home is a declaration about somewhere else. See
+     * {@link #declareArtifacts}.
+     */
+    private static boolean inheritedClaimOverElsewhere(Artifact artifact) {
+        if (artifact.origin() != Artifact.Origin.LEDGER) return false;
+        for (Artifact.Output output : artifact.outputs()) {
+            if (output.scope() == Artifact.Scope.HOME) return false;
+        }
+        return true;
     }
 
     /** Whether every home-scoped output of {@code artifact} is under a skipped root. */
