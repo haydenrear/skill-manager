@@ -331,9 +331,16 @@ public final class ArtifactBuild {
                     + "`skill-manager sync`";
             case HARNESS_INSTANCE -> "a harness instance is instantiated, not rebuilt — "
                     + "`skill-manager harness instantiate` / `skill-manager sync harness:<name>`";
-            case MCP_REGISTRATION -> "a gateway registration is written by the gateway, and "
-                    + "nothing records what was posted (#120), so a rebuild here could not be "
-                    + "told from a no-op — `skill-manager sync --include-mcp`";
+            // The clause that stood here — "and nothing records what was posted
+            // (#120), so a rebuild here could not be told from a no-op" — was
+            // true when ARTI-06 wrote it and stopped being true when ARTI-17
+            // landed on this branch: mcp-lock.json records the payload digest,
+            // and a registration IS now decidable against its declaration. What
+            // did not change is whose write it is, which is the real reason
+            // `build` declines it.
+            case MCP_REGISTRATION -> "a gateway registration is a write to the GATEWAY, not to "
+                    + "this home, so `build` is not the verb that makes one — "
+                    + "`skill-manager sync --include-mcp`";
             case DOC_IMPORT -> "a doc unit's imports follow its store copy — `skill-manager sync "
                     + nameOr(artifact, "<unit>") + "`";
             case UNIT_DIGEST -> "the drift digest is recomputed whole — "
