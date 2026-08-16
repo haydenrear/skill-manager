@@ -613,12 +613,45 @@ public final class LiveInterpreter implements ProgramInterpreter {
                 .plan(units, true, true, store.cliBinDir());
     }
 
-    private EffectReceipt registerMcp(SkillEffect.RegisterMcp e, EffectContext ctx) throws IOException {
+    /**
+     * Register every live unit's MCP deps with the gateway.
+     *
+     * <h2>This handler must not be able to FAIL, and it used to be able to</h2>
+     *
+     * <p>ARTI-21 review. This is the defect the ticket's own thesis exists to
+     * prevent, reintroduced by the ticket. The handler runs <b>in stage 2,
+     * after {@code CommitUnitsToStore}</b>, and it was declared
+     * {@code throws IOException}: {@code ctx.addError}, {@code ctx.clearError}
+     * and {@code McpWriter.registerAll} each throw one. An escaping
+     * {@code IOException} becomes a {@code FAILED} receipt, and
+     * {@link Executor} sets {@code failed = true} on FAILED status <b>alone</b>,
+     * then walks the rollback journal — where {@code CommitUnitsToStore} has
+     * left one {@code DeleteUnitDir} per committed unit.
+     *
+     * <p><b>Rollback is decoupled from halt.</b> Asking whether an effect's
+     * continuation stops the program answers a different question, and it was
+     * the wrong frame in this ticket's first analysis: <em>any</em> FAILED
+     * receipt walks the journal back, halting or not. So a gateway hiccup on
+     * the DEFAULT sync path could delete the unit directories that same sync
+     * had just committed — a content sync destroyed by gateway trouble, which
+     * is exactly what {@code 7fce8ed} was written to stop.
+     *
+     * <p>The sibling handler already knew: {@link #registerMcpServer} wraps the
+     * identical {@code ctx.addError} in {@code try/catch (IOException)} and
+     * degrades to a warning. This one did not — and the unguarded call sat on
+     * the <b>gateway-unreachable</b> branch, the exact path this ticket makes
+     * the default.
+     *
+     * <p>So: no {@code throws}, and every I/O boundary inside is guarded. The
+     * worst this handler can now return is {@code partial}, which records what
+     * went wrong and leaves the store alone.
+     */
+    private EffectReceipt registerMcp(SkillEffect.RegisterMcp e, EffectContext ctx) {
         List<AgentUnit> units = freshen(e.units());
         if (!new GatewayClient(e.gateway()).ping()) {
             for (AgentUnit u : units) {
                 if (u.mcpDependencies().isEmpty()) continue;
-                ctx.addError(u.name(), InstalledUnit.ErrorKind.GATEWAY_UNAVAILABLE,
+                recordUnitError(ctx, u.name(), InstalledUnit.ErrorKind.GATEWAY_UNAVAILABLE,
                         "gateway at " + e.gateway().baseUrl() + " unreachable");
             }
             return EffectReceipt.skipped(e, "gateway unreachable");
@@ -632,12 +665,22 @@ public final class LiveInterpreter implements ProgramInterpreter {
         for (AgentUnit u : units) mcpCarriers.add(asMcpCarrier(u));
         // The store form: this writer registers, so it also records what it
         // registered into <home>/mcp-lock.json.
-        McpWriter writer = new McpWriter(e.gateway(), ctx.store());
-        List<InstallResult> results = writer.registerAll(mcpCarriers);
+        List<InstallResult> results;
+        try {
+            McpWriter writer = new McpWriter(e.gateway(), ctx.store());
+            results = writer.registerAll(mcpCarriers);
+        } catch (IOException | RuntimeException registrationFailed) {
+            // PARTIAL, never FAILED. The units are committed and correct; the
+            // only thing that did not happen is a gateway-side write. A FAILED
+            // receipt here would delete them.
+            Log.warn("mcp: registration pass failed: %s", registrationFailed.getMessage());
+            return EffectReceipt.partial(e, "MCP registration failed: "
+                    + registrationFailed.getMessage());
+        }
 
         for (AgentUnit u : units) {
             if (u.mcpDependencies().isEmpty()) continue;
-            ctx.clearError(u.name(), InstalledUnit.ErrorKind.GATEWAY_UNAVAILABLE);
+            clearUnitError(ctx, u.name(), InstalledUnit.ErrorKind.GATEWAY_UNAVAILABLE);
         }
         List<ContextFact> facts = new ArrayList<>();
         int erroredCount = 0;
@@ -645,18 +688,42 @@ public final class LiveInterpreter implements ProgramInterpreter {
             String owner = ownerOf(units, r.serverId());
             if (owner == null) continue;
             if (InstallResult.Status.ERROR.code.equals(r.status())) {
-                ctx.addError(owner, InstalledUnit.ErrorKind.MCP_REGISTRATION_FAILED,
+                recordUnitError(ctx, owner, InstalledUnit.ErrorKind.MCP_REGISTRATION_FAILED,
                         r.serverId() + ": " + r.message());
                 facts.add(new ContextFact.McpServerRegistrationFailed(owner, r));
                 erroredCount++;
             } else {
-                ctx.clearError(owner, InstalledUnit.ErrorKind.MCP_REGISTRATION_FAILED);
+                clearUnitError(ctx, owner, InstalledUnit.ErrorKind.MCP_REGISTRATION_FAILED);
                 facts.add(new ContextFact.McpServerRegistered(owner, r));
             }
         }
         return erroredCount == 0
                 ? EffectReceipt.ok(e, facts)
                 : EffectReceipt.partial(e, facts, erroredCount + " unit(s) had MCP errors");
+    }
+
+    /**
+     * {@code ctx.addError}, degraded to a warning when the record cannot be
+     * written. Recording that a unit has a problem must never become a bigger
+     * problem than the one being recorded — see {@link #registerMcp}.
+     */
+    private static void recordUnitError(EffectContext ctx, String unitName,
+                                        InstalledUnit.ErrorKind kind, String detail) {
+        try {
+            ctx.addError(unitName, kind, detail);
+        } catch (IOException | RuntimeException unwritable) {
+            Log.warn("could not record %s for %s: %s", kind, unitName, unwritable.getMessage());
+        }
+    }
+
+    /** {@link #recordUnitError}'s inverse, degraded the same way. */
+    private static void clearUnitError(EffectContext ctx, String unitName,
+                                       InstalledUnit.ErrorKind kind) {
+        try {
+            ctx.clearError(unitName, kind);
+        } catch (IOException | RuntimeException unwritable) {
+            Log.warn("could not clear %s for %s: %s", kind, unitName, unwritable.getMessage());
+        }
     }
 
     private static Skill asMcpCarrier(AgentUnit u) {

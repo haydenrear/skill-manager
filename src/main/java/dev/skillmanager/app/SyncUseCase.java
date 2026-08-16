@@ -59,19 +59,47 @@ public final class SyncUseCase {
      * program back. <b>That is gateway provisioning, and it is the only MCP
      * effect on the sync path that can do it.</b>
      *
-     * <p>Every other MCP effect already tolerates an absent gateway — read out
-     * of the handlers rather than assumed:
+     * <p>Every other MCP effect tolerates an absent gateway. <b>Corrected after
+     * review — the first version of this list was wrong twice and rested on the
+     * wrong question.</b>
+     *
+     * <p>The wrong question was "does this effect's continuation halt the
+     * program". <b>Rollback is decoupled from halt:</b> {@code Executor} sets
+     * {@code failed = true} on FAILED status <em>alone</em> and walks the
+     * compensation journal whenever {@code failed}, halting or not. So the
+     * property that matters is "can this effect return FAILED", and it must be
+     * asked of all five effects {@code withMcp} drives, not four:
      *
      * <ul>
      *   <li>{@code RegisterMcp} pings first and returns
-     *       {@code skipped("gateway unreachable")};</li>
-     *   <li>{@code UnregisterMcpOrphans} does the same;</li>
-     *   <li>{@code SnapshotMcpDeps} is a read of the installed units and never
-     *       touches a gateway at all;</li>
+     *       {@code skipped("gateway unreachable")} — but it was declared
+     *       {@code throws IOException} with its {@code ctx.addError} and
+     *       {@code registerAll} calls unguarded, so it COULD return FAILED,
+     *       in stage 2, after {@code CommitUnitsToStore}. That is fixed at
+     *       the handler; see its javadoc.</li>
+     *   <li>{@code UnregisterMcpOrphans} pings and skips the same way, and
+     *       catches its own exceptions.</li>
+     *   <li>{@code SnapshotMcpDeps} never touches a gateway — but it is
+     *       <b>not</b> harmless on failure, as this list first claimed: it
+     *       carries {@code continuationOnFail() == HALT} deliberately, because
+     *       orphan detection with no baseline mis-classifies live servers as
+     *       orphans. It is effect #1 of stage 1, so the journal is empty and a
+     *       halt there stops the sync before anything has been done — loud and
+     *       harmless to the store, which is the right behaviour and not the
+     *       "cannot fail" this list originally implied.</li>
      *   <li>the {@code withMcp} arm of {@code PlanBuilder.addToolEnsures} emits
      *       {@code EnsureTool}, which installs only BUNDLED tools and reports
      *       an external one (docker) as {@code missingOnPath} rather than
      *       failing.</li>
+     *   <li><b>the fifth, omitted from the first version:</b> {@code withMcp}
+     *       also drives {@code PlanBuilder.addMcp}, which adds a
+     *       {@code PlanAction.RegisterMcpServer} per dep. It is contained —
+     *       {@code runInstallPlan} runs the expanded plan as a SUB-program and
+     *       rolls its failures up into {@code ok}/{@code partial} on the parent
+     *       receipt, so a plan action cannot produce a parent FAILED — but that
+     *       containment is a property of {@code runInstallPlan}, not a
+     *       consequence of anything argued here. Stated so nobody inherits it
+     *       as a conclusion.</li>
      * </ul>
      *
      * <p>So the opt-in was on the wrong half. It suppressed a registration path
@@ -521,18 +549,48 @@ public final class SyncUseCase {
 
         for (EffectReceipt r : receipts) {
             // Each receipt counts at most once. PARTIAL counts on per-target
-            // sync (SyncGit / SyncFromLocalDir), RegisterMcp (some skills had
-            // MCP registration errors), and SyncAgents (per-(agent,skill)
-            // sync failures). Other PARTIAL paths are informational.
+            // sync (SyncGit / SyncFromLocalDir) and SyncAgents
+            // (per-(agent,skill) sync failures). Other PARTIAL paths are
+            // informational.
+            //
+            // `RegisterMcp` USED TO COUNT HERE and no longer does (ARTI-21
+            // review, measured A/B on one machine with one fixture and a LIVE
+            // gateway holding one server that fails `tools/list`):
+            //
+            //     base epic/artifact-dag : exit 0
+            //     with MCP on by default : exit 1     <-- regression
+            //
+            // The PR that turned registration back on claimed no exit-code
+            // change because a SKIPPED receipt is neither FAILED nor PARTIAL.
+            // That is true only for the gateway-ABSENT case. With a gateway
+            // PRESENT and any server failing to deploy, the receipt is PARTIAL
+            // — and PARTIAL was counted, so every sync at a home with one
+            // flaky MCP server started exiting 1 where it had exited 0. It was
+            // also the direct cause of `smoke`'s `sync_noop_exit_zero` and
+            // `sync_force_exit_zero` going red.
+            //
+            // The rule, and it is the same one `7fce8ed` established one level
+            // over: SYNC'S EXIT CODE DESCRIBES THE CONTENT SYNC. A gateway must
+            // not roll a content refresh back, and by the same argument it must
+            // not fail one either. Nothing is hidden by this — a failed
+            // registration is still recorded per unit as
+            // MCP_REGISTRATION_FAILED / GATEWAY_UNAVAILABLE, still printed by
+            // the renderer, and still surfaced by `report` with the remedy that
+            // fixes it. It moves from the exit code to the record, which is
+            // where a fact about the gateway belongs.
             boolean isSyncTarget = r.effect() instanceof SkillEffect.SyncGit
                     || r.effect() instanceof SkillEffect.SyncFromLocalDir;
-            boolean isMcpRegister = r.effect() instanceof SkillEffect.RegisterMcp;
             boolean isAgentSync = r.effect() instanceof SkillEffect.SyncAgents;
             boolean isProjectSync = r.effect() instanceof SkillEffect.SyncClaimingProjects;
+            // FAILED is deliberately NOT exempted for RegisterMcp. After the
+            // guard added to its handler it cannot return FAILED at all — and
+            // if some later change makes it able to again, that is a receipt
+            // that rolls the whole sync back, so the exit code is the least of
+            // it and it should count loudly rather than be quietly excused.
             if (r.status() == EffectStatus.FAILED) {
                 errorCount++;
             } else if (r.status() == EffectStatus.PARTIAL
-                    && (isSyncTarget || isMcpRegister || isAgentSync || isProjectSync)) {
+                    && (isSyncTarget || isAgentSync || isProjectSync)) {
                 errorCount++;
             }
             for (ContextFact f : r.facts()) {
