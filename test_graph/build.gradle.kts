@@ -1204,7 +1204,7 @@ validationGraph {
     testGraph("artifact-dag") {
         node("sources/common/EnvPrepared.java")
         node("sources/artifact-dag/ArtifactsEnumerated.java")
-        node("sources/artifact-dag/EveryBackendFingerprinted.java")
+        node("sources/artifact-dag/EveryLockRowFingerprinted.java")
         node("sources/artifact-dag/EditedInputMarksDependentsStale.java")
         node("sources/artifact-dag/BuildRepairsOneArtifact.java")
         node("sources/artifact-dag/LazyCloneDeclaresWithoutBuilding.java")

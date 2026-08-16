@@ -60,10 +60,26 @@ import java.util.List;
  * {@code src/test/java/dev/skillmanager/cli/} unit tests; what is NOT covered
  * anywhere is a live install of them, and that is a known gap rather than a
  * silent one.
+ *
+ * <h2>The name is narrower than ARTI-13 asked for, on purpose</h2>
+ *
+ * <p>#114 calls this node {@code EveryBackendFingerprinted}, and that is not
+ * what it establishes. A hermetic home can only hold {@code skill-script}
+ * rows: {@code brew}, {@code npm}, {@code pip}, {@code uv} and {@code tar} all
+ * need either the network or a tool already on the host PATH, and a node whose
+ * verdict depended on what a runner happens to have installed would be
+ * measuring the runner. So this quantifies over every row THIS HOME HOLDS, and
+ * is named for what it quantifies over.
+ *
+ * <p>The javadoc said so from the start; the PR table did not, and a review
+ * caught the difference between an honest comment and an honest name. <b>A
+ * live per-backend install remains covered nowhere</b> — here or in any other
+ * graph — and that gap is recorded on #100's backlog rather than implied away
+ * by a node title.
  */
-public class EveryBackendFingerprinted {
+public class EveryLockRowFingerprinted {
 
-    static final NodeSpec SPEC = NodeSpec.of("every.backend.fingerprinted")
+    static final NodeSpec SPEC = NodeSpec.of("every.lock.row.fingerprinted")
             .kind(NodeSpec.Kind.ASSERTION)
             .dependsOn("env.prepared")
             .tags("artifact-dag", "cli", "fingerprint")
@@ -143,8 +159,8 @@ public class EveryBackendFingerprinted {
                     && the_census_reports_the_fingerprint_the_lock_holds;
 
             NodeResult result = pass
-                    ? NodeResult.pass("every.backend.fingerprinted")
-                    : NodeResult.fail("every.backend.fingerprinted",
+                    ? NodeResult.pass("every.lock.row.fingerprinted")
+                    : NodeResult.fail("every.lock.row.fingerprinted",
                             "both_fixtures_installed=" + both_fixtures_installed
                                     + " the_lock_holds_a_row_for_every_declared_dep="
                                     + the_lock_holds_a_row_for_every_declared_dep

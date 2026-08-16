@@ -47,7 +47,7 @@ import java.util.Set;
  * resolve a package from the internet or find a tool on the host's PATH;
  * {@code tar} fetches a URL. A skill-script installs INTO the home
  * unconditionally, from bytes the graph wrote. That is a real limit on what
- * {@code every.backend.fingerprinted} can claim, and it is stated in that
+ * {@code every.lock.row.fingerprinted} can claim, and it is stated in that
  * node's javadoc rather than papered over here.
  *
  * <h2>Every subprocess gets the sandboxed agent homes</h2>
