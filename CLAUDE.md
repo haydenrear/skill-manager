@@ -66,16 +66,42 @@ Do not read the matrix out of `ci.yml` — it is computed, not typed.
 
 | event | graph set |
 | --- | --- |
-| `push` on `main`; `pull_request` into `main` or `epic/**` | **core** — 8 graphs, 152 nodes |
+| `push` on `main`; `pull_request` into `main` or `epic/**` | **none** — suspended, see below |
 | `schedule` (07:00 UTC) | **full** — every registered graph bar the named exclusions, plus the Selenium job |
 | `workflow_dispatch` | `graph_set: core\|full`, `run_browser_graphs: true\|false` |
 
-There is deliberately no `push: epic/**`: every ticket lands as a PR into
-the epic branch, and promotion is serialized, so ticket N+1's PR rebases
-onto N's merge and tests that integrated tree anyway. Adding it would run
-the matrix twice per ticket for a signal that arrives one ticket later
-regardless. **A direct push to an epic branch runs nothing** until the
-next PR — accepted, because this epic promotes through PRs.
+**The graphs do not run on a push or a PR right now**, at the owner's
+instruction ("disable the graphs and just run them locally for now"). The
+`graph-set` job carries `if: github.event_name == 'schedule' ||
+github.event_name == 'workflow_dispatch'`, and every graph job `needs:
+graph-set`, so push and PR skip the lot — including `graph-count`, so those
+runs produce no `graphs-executed` artifact at all. `unit-tests` and the
+`virtual-mcp-gateway` pytest job are unaffected and still run on both.
+
+**So run them locally** — that is now the only pre-merge graph signal:
+
+```
+python skills/test_graph/scripts/run.py <graph>
+python3 .github/scripts/select-graph-set.py --scope core --print   # what the core set is
+```
+
+Or on a runner, on demand, without waiting for 07:00 UTC:
+
+```
+gh workflow run ci.yml -R haydenrear/skill-manager --ref <branch> -f graph_set=core
+```
+
+**This costs GOAL-validation-floor metric (a)** — graphs executed per CI
+run, target ≥ 8 — on the push/PR half: **8 nightly, 0 per push and per PR.**
+It is a suspension and not a removal, which is why the `schedule` and
+`workflow_dispatch` triggers were kept; the terminal evaluation ticket
+decides which number the goal is read against.
+
+There remains deliberately no `push: epic/**` trigger: every ticket lands as
+a PR into the epic branch, and promotion is serialized, so ticket N+1's PR
+rebases onto N's merge and tests that integrated tree anyway. **A direct push
+to an epic branch runs nothing** until the next PR — accepted, because this
+epic promotes through PRs.
 
 Print either set without a runner:
 
