@@ -36,7 +36,7 @@ import java.util.List;
  * <h2>The two assertions that are red on purpose</h2>
  *
  * <p>Measured: {@code uninstall} prunes the store entry, the {@code bin/cli}
- * shim, the {@code cli-lock.toml} row and all three agent projections — and
+ * shim and the {@code cli-lock.toml} row — and
  * <b>leaves {@code cache/skill-script-&lt;unit&gt;-&lt;tool&gt;/} on disk</b>.
  * That directory is the {@code provisioned-tree} artifact the removed unit's
  * install produced, and it is precisely the edge ARTI-08 (#109) exists to draw.
@@ -50,6 +50,17 @@ import java.util.List;
  * finding seen from two directions, and both are left asserted and red. The
  * rest of the teardown is asserted separately and passes, so the report says
  * which part of ARTI-08 is already true.
+ *
+ * <h2>What this node does NOT assert, said plainly</h2>
+ *
+ * <p>An earlier version of this comment credited the uninstall with pruning
+ * "all three agent projections". It does prune them — that was observed — but
+ * <b>no assertion here checks it</b>, and a review was right to call the claim
+ * out. The byte-comparison assertion would catch a leftover projection
+ * incidentally, which is not the same as testing for one and is not what the
+ * sentence said. The eleven assertions below are the complete list of what is
+ * actually established; projections are covered by name in the
+ * {@code home-integrity} graph instead.
  */
 public class UninstallPrunesTheSubgraph {
 
