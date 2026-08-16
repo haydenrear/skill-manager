@@ -204,6 +204,11 @@ public final class CommandHomeAccess {
         m.put("ads create", WRITE);
         m.put("ads delete", WRITE);
         m.put("artifacts record", WRITE);
+        // `artifacts prune` DELETES from the home, so it is the strongest
+        // WRITE in this table, and --dry-run does not move it for the same
+        // reason it does not move `build`: access is the permission the
+        // command needs, not the bytes one invocation happened to write.
+        m.put("artifacts prune", WRITE);
         m.put("bind", WRITE);
         // `build` re-derives artifacts into the home; --dry-run does not make
         // it READ_ONLY, for the reason the `home` family is classified as a

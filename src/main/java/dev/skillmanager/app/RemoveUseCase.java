@@ -109,6 +109,17 @@ public final class RemoveUseCase {
 
         if (unregisterMcp) effects.addAll(ResolveContextUseCase.preflight(gw, null, true));
 
+        // ARTI-08. FIRST, while the unit is still there to be described.
+        //
+        // The reverse walk at the end deletes only what the ledger recorded,
+        // and most of what it has to reach is knowable only from records this
+        // program is about to delete: `cache/skill-script-<unit>-<tool>/` is
+        // credited to its unit by containment from the shim that runs out of
+        // it, and `PruneCliIfOrphan` below removes that shim. Recording after
+        // the removal would produce a ledger that has forgotten exactly the
+        // rows the prune needs, and a prune with no row deletes nothing.
+        if (pruneCliOrphans) effects.add(new SkillEffect.RecordArtifactLedger());
+
         // Walk the projection ledger — tear down every binding the unit
         // owns (DEFAULT_AGENT projections AND any user-created EXPLICIT
         // bindings to custom roots). When the ledger is empty (legacy
@@ -148,6 +159,20 @@ public final class RemoveUseCase {
         for (CliDependency dep : removedCliDeps) {
             effects.add(new SkillEffect.PruneCliIfOrphan(skillName, dep));
         }
+
+        // And AFTER, because "orphan" is a statement about what is still
+        // installed and the answer changes on the line above. This is the half
+        // PruneCliIfOrphan cannot reach: it removes the lock claim and the
+        // DECLARED BINARY, and there is no skill-script branch in
+        // CliDependencyCleaner.removeArtifacts at all, so the tree the install
+        // actually wrote — and the venv under it — has outlived every uninstall
+        // this program has ever run (skill-manager#104).
+        // Gated on the same flag PruneCliIfOrphan is, and for the same reason:
+        // `remove` is the lower-level verb that deliberately leaves CLI
+        // artifacts and lock rows alone, and `uninstall` is the one that tears
+        // them down. A prune that ran under both would make the two verbs
+        // differ only in which artifacts they forgot to remove.
+        if (pruneCliOrphans) effects.add(new SkillEffect.PruneOrphanArtifacts(skillName));
 
         // Plugin marketplace + harness CLI cleanup. Skip for skills —
         // the marketplace only catalogs plugins. For plugins, regenerate

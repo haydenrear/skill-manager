@@ -7,8 +7,10 @@ import dev.skillmanager.artifacts.ArtifactGraph;
 import dev.skillmanager.artifacts.ArtifactIndex;
 import dev.skillmanager.artifacts.ArtifactKind;
 import dev.skillmanager.artifacts.ArtifactLedger;
+import dev.skillmanager.artifacts.ArtifactPrune;
 import dev.skillmanager.artifacts.ArtifactReport;
 import dev.skillmanager.artifacts.StaleReport;
+import dev.skillmanager.policy.HomePolicy;
 import dev.skillmanager.store.NotAHomeException;
 import dev.skillmanager.store.SkillStore;
 import dev.skillmanager.util.Log;
@@ -31,10 +33,17 @@ import java.util.concurrent.Callable;
  * {@code show} are the read surface; {@code record} is the only writer, and it
  * writes {@code artifacts.lock.toml} and nothing else.
  *
- * <p><b>This command changes no provisioning behaviour.</b> It does not
- * install, rebuild, prune or repair. A home that predates it lists correctly
- * with no migration, because {@link dev.skillmanager.artifacts.ArtifactBackfill}
- * reads the records that were already there.
+ * <p><b>This command installs nothing and rebuilds nothing.</b> A home that
+ * predates it lists correctly with no migration, because
+ * {@link dev.skillmanager.artifacts.ArtifactBackfill} reads the records that
+ * were already there.
+ *
+ * <p>The sentence above used to read "it does not install, rebuild, prune or
+ * repair", and ARTI-08 makes one word of that false: {@code prune} deletes.
+ * It is the only subcommand that does, it deletes only paths the ledger
+ * recorded, and {@link dev.skillmanager.artifacts.ArtifactPrune} carries the
+ * argument for why a disposal decision in this program may never be made by
+ * looking at a directory.
  */
 @Command(name = "artifacts",
         description = "Name and inspect the artifacts this home derived.",
@@ -42,7 +51,8 @@ import java.util.concurrent.Callable;
                 ArtifactsCommand.ListArtifacts.class,
                 ArtifactsCommand.ShowArtifact.class,
                 ArtifactsCommand.StaleArtifacts.class,
-                ArtifactsCommand.RecordLedger.class
+                ArtifactsCommand.RecordLedger.class,
+                ArtifactsCommand.PruneArtifacts.class
         })
 public final class ArtifactsCommand implements Callable<Integer> {
 
@@ -367,6 +377,106 @@ public final class ArtifactsCommand implements Callable<Integer> {
             Log.ok("recorded %d artifact(s) to %s",
                     index.artifacts().size(), ArtifactLedger.file(store));
             return 0;
+        }
+    }
+
+    // ----------------------------------------------------------------- prune
+
+    /**
+     * {@code skill-manager artifacts prune} — remove the artifacts whose owner
+     * is gone.
+     *
+     * <p>For the orphans PAST removals already left behind, which the live
+     * homes have accumulated: {@code PruneCliIfOrphan} removes a unit's lock
+     * claim and its declared binary and nothing else, so the
+     * {@code cache/skill-script-<unit>-<tool>/} tree and its venv outlive every
+     * uninstall. Going forward the same walk runs as part of a removal; this
+     * verb is how a home that predates that catches up.
+     *
+     * <p><b>Deletes only what the ledger recorded.</b> See
+     * {@link ArtifactPrune} — the rule, and the three guards on top of it, are
+     * that class's whole subject and are not restated here.
+     *
+     * <p>Exit 0 whether or not it finds anything, including under
+     * {@code --dry-run}: "there are orphans" is a report, not a failure, and a
+     * non-zero exit would make it unusable in the close-out of a script that
+     * has just correctly removed a unit.
+     */
+    @Command(name = "prune",
+            description = "Remove artifacts whose owning unit is no longer installed.")
+    public static final class PruneArtifacts implements Callable<Integer> {
+
+        @Option(names = "--dry-run", description = "Print what would be removed and change nothing.")
+        boolean dryRun;
+
+        @Option(names = "--json", description = "Emit machine-readable JSON.")
+        boolean json;
+
+        @Option(names = "--owner", paramLabel = "UNIT",
+                description = "Only artifacts owned by this unit. Repeatable.")
+        List<String> owners = new java.util.ArrayList<>();
+
+        @Override
+        public Integer call() throws IOException {
+            SkillStore store = requireHome();
+            if (store == null) return NotAHomeException.EXIT_CODE;
+            if (!dryRun) HomePolicy.requireLive(store, "artifacts prune");
+            ArtifactPrune.Plan plan = ArtifactPrune.of(store, owners);
+            List<String> pruned = dryRun ? List.of() : ArtifactPrune.apply(store, plan);
+            if (json) return JsonOutput.print(PruneReport.of(plan, dryRun, pruned)) ? 0 : 2;
+            return render(plan, pruned, store);
+        }
+
+        private int render(ArtifactPrune.Plan plan, List<String> pruned, SkillStore store) {
+            if (!plan.ledgerPresent()) {
+                // Named before anything else, because it changes what an empty
+                // result MEANS: a home with no ledger cannot have orphans, it
+                // can only have unrecorded ones.
+                Log.warn("this home has no %s, so nothing can be pruned — everything this "
+                                + "command would delete has to have been recorded first: "
+                                + "`skill-manager artifacts record`",
+                        ArtifactLedger.FILENAME);
+            }
+            List<ArtifactPrune.Step> targets = plan.prunes();
+            if (targets.isEmpty() && plan.refusals().isEmpty()) {
+                Log.ok("no orphaned artifacts in %s", plan.home());
+                return 0;
+            }
+            for (ArtifactPrune.Step step : targets) {
+                Log.info("%s %s  (%s)", dryRun ? "would remove" : "removed", step.id(),
+                        step.reason());
+                for (String path : step.paths()) Log.detail("    %s", path);
+            }
+            for (ArtifactPrune.Step step : plan.refusals()) {
+                Log.warn("kept %s — %s", step.id(), step.reason());
+            }
+            if (dryRun) {
+                Log.info("%d artifact(s) would be removed; re-run without --dry-run",
+                        targets.size());
+            } else {
+                Log.ok("removed %d artifact(s) from %s", pruned.size(), store.root());
+            }
+            return 0;
+        }
+    }
+
+    /** The {@code --json} shape for {@link PruneArtifacts}. */
+    public record PruneReport(String home, boolean ledgerPresent, boolean dryRun,
+                              List<Row> pruned, List<Row> kept) {
+
+        public record Row(String id, String kind, String owner, String verdict,
+                          List<String> paths, String reason) {}
+
+        static PruneReport of(ArtifactPrune.Plan plan, boolean dryRun, List<String> applied) {
+            List<Row> pruned = new java.util.ArrayList<>();
+            List<Row> kept = new java.util.ArrayList<>();
+            for (ArtifactPrune.Step step : plan.steps()) {
+                Row row = new Row(step.id(), step.kind().id(), step.owner(),
+                        step.verdict().token(), step.paths(), step.reason());
+                if (step.prunes() && (dryRun || applied.contains(step.id()))) pruned.add(row);
+                else kept.add(row);
+            }
+            return new PruneReport(plan.home(), plan.ledgerPresent(), dryRun, pruned, kept);
         }
     }
 

@@ -15,6 +15,15 @@ import java.nio.file.Path;
 /**
  * ISSUE-91B command smoke: uninstalling a skill-script fixture removes the
  * orphaned bin/cli artifact and the matching cli-lock row.
+ *
+ * <p><b>ARTI-08 widened it to the half that survived.</b> The node asserted
+ * exactly what {@code PruneCliIfOrphan} already removed — the declared binary
+ * and the lock row — so it was green while the {@code cache/skill-script-&lt;unit&gt;
+ * -&lt;tool&gt;/} tree the install actually wrote outlived every uninstall
+ * (skill-manager#104). The fixture now writes that tree and a wrapper that
+ * execs into it, which is the real shape, and the two assertions below decide
+ * the ticket's declared expected effect: install, uninstall, and the home is
+ * comparable to before.
  */
 public class SkillScriptUninstallPrunesCli {
     static final String SKILL = "skill-script-skill";
@@ -59,11 +68,14 @@ public class SkillScriptUninstallPrunesCli {
             Path skillDir = privateHome.resolve("skills").resolve(SKILL);
             Path bin = privateHome.resolve("bin").resolve("cli").resolve(TOOL);
             Path lockPath = privateHome.resolve("cli-lock.toml");
+            Path cacheTree = privateHome.resolve("cache")
+                    .resolve("skill-script-" + SKILL + "-" + TOOL);
             String lockAfterInstall = read(lockPath);
             boolean installedSkill = Files.isDirectory(skillDir);
             boolean installedBin = Files.isRegularFile(bin);
             boolean installedLock = lockAfterInstall.contains("[\"skill-script\".\"" + TOOL + "\"]")
                     && lockAfterInstall.contains("requested_by = [\"" + SKILL + "\"]");
+            boolean installedTree = Files.isDirectory(cacheTree);
 
             ProcessRecord uninstall = Procs.run(ctx, "uninstall_skill_script",
                     smProc(sm, repoRoot, privateHome, privateClaude, privateCodex, privateGemini,
@@ -74,6 +86,7 @@ public class SkillScriptUninstallPrunesCli {
             boolean removedBin = !Files.exists(bin);
             boolean removedLock = !lockAfterUninstall.contains("[\"skill-script\".\"" + TOOL + "\"]")
                     && !lockAfterUninstall.contains(SKILL);
+            boolean removedTree = !Files.exists(cacheTree);
 
             boolean pass = install.exitCode() == 0
                     && uninstall.exitCode() == 0
@@ -82,7 +95,9 @@ public class SkillScriptUninstallPrunesCli {
                     && installedLock
                     && removedSkill
                     && removedBin
-                    && removedLock;
+                    && removedLock
+                    && installedTree
+                    && removedTree;
 
             NodeResult result = pass
                     ? NodeResult.pass("skill.script.uninstall.prunes.cli")
@@ -94,7 +109,9 @@ public class SkillScriptUninstallPrunesCli {
                                     + " installedLock=" + installedLock
                                     + " removedSkill=" + removedSkill
                                     + " removedBin=" + removedBin
-                                    + " removedLock=" + removedLock);
+                                    + " removedLock=" + removedLock
+                                    + " installedTree=" + installedTree
+                                    + " removedTree=" + removedTree);
             return result
                     .process(install)
                     .process(uninstall)
@@ -105,7 +122,10 @@ public class SkillScriptUninstallPrunesCli {
                     .assertion("cli_lock_row_installed_before_uninstall", installedLock)
                     .assertion("skill_removed_after_uninstall", removedSkill)
                     .assertion("cli_bin_removed_after_uninstall", removedBin)
-                    .assertion("cli_lock_row_removed_after_uninstall", removedLock);
+                    .assertion("cli_lock_row_removed_after_uninstall", removedLock)
+                    .assertion("skill_script_cache_tree_installed_before_uninstall", installedTree)
+                    // The one this node did not have, and the one #104 is about.
+                    .assertion("skill_script_cache_tree_removed_after_uninstall", removedTree);
         });
     }
 

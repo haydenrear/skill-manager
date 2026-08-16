@@ -1,6 +1,9 @@
 package dev.skillmanager.effects;
 
 import dev.skillmanager.agent.Agent;
+import dev.skillmanager.artifacts.ArtifactIndex;
+import dev.skillmanager.artifacts.ArtifactLedger;
+import dev.skillmanager.artifacts.ArtifactPrune;
 import dev.skillmanager.bindings.Binding;
 import dev.skillmanager.bindings.BindingStore;
 import dev.skillmanager.bindings.ConflictPolicy;
@@ -208,6 +211,8 @@ public final class LiveInterpreter implements ProgramInterpreter {
             case SkillEffect.SyncGit e -> SyncGitHandler.run(e, ctx);
             case SkillEffect.RemoveUnitFromStore e -> removeFromStore(e, ctx);
             case SkillEffect.PruneCliIfOrphan e -> pruneCliIfOrphan(e, ctx);
+            case SkillEffect.RecordArtifactLedger e -> recordArtifactLedger(e, ctx);
+            case SkillEffect.PruneOrphanArtifacts e -> pruneOrphanArtifacts(e, ctx);
             case SkillEffect.UnlinkAgentUnit e -> unlinkAgentUnit(e);
             case SkillEffect.UnlinkAgentMcpEntry e -> unlinkAgentMcpEntry(e);
             case SkillEffect.ScaffoldSkill e -> scaffoldSkill(e);
@@ -1690,6 +1695,48 @@ public final class LiveInterpreter implements ProgramInterpreter {
             return EffectReceipt.ok(e);
         } catch (Exception ex) {
             return EffectReceipt.failed(e, ex.getMessage());
+        }
+    }
+
+    /**
+     * Write the ledger while the unit being removed is still describable.
+     *
+     * <p>Never fatal, and a failure here does not fail the removal — it means
+     * the prune below finds no row and refuses to delete, which is the
+     * conservative direction. Losing a removal because an index could not be
+     * written would be the expensive one.
+     */
+    private EffectReceipt recordArtifactLedger(SkillEffect.RecordArtifactLedger e,
+                                               EffectContext ctx) {
+        try {
+            ArtifactLedger.of(ArtifactIndex.of(ctx.store()).artifacts()).save(ctx.store());
+            return EffectReceipt.ok(e);
+        } catch (Exception ex) {
+            Log.warn("could not record the artifact ledger before removal (%s) — orphaned "
+                    + "artifacts will be kept rather than guessed at", ex.getMessage());
+            return EffectReceipt.ok(e);
+        }
+    }
+
+    private EffectReceipt pruneOrphanArtifacts(SkillEffect.PruneOrphanArtifacts e,
+                                               EffectContext ctx) {
+        try {
+            ArtifactPrune.Plan plan = ArtifactPrune.of(ctx.store(), List.of(e.unitName()));
+            List<String> pruned = ArtifactPrune.apply(ctx.store(), plan);
+            for (ArtifactPrune.Step step : plan.refusals()) {
+                Log.warn("kept %s — %s", step.id(), step.reason());
+            }
+            if (!pruned.isEmpty()) {
+                Log.ok("pruned %d orphaned artifact(s) of %s: %s",
+                        pruned.size(), e.unitName(), String.join(", ", pruned));
+            }
+            return EffectReceipt.ok(e);
+        } catch (Exception ex) {
+            // A removal that succeeded and left an orphan is a smaller failure
+            // than a removal reported as failed after it removed the unit.
+            Log.warn("could not prune %s's orphaned artifacts (%s) — "
+                    + "`skill-manager artifacts prune` catches up", e.unitName(), ex.getMessage());
+            return EffectReceipt.ok(e);
         }
     }
 

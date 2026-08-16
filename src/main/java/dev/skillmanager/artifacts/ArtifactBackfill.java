@@ -246,9 +246,20 @@ public final class ArtifactBackfill {
             if (entry.spec() != null) inputs.add(ArtifactIds.specInput(entry.spec()));
             for (String requester : entry.requestedBy()) inputs.add(ArtifactIds.unitInput(requester));
 
-            String binary = declaredBinary.get(entry.backend() + " " + entry.tool());
-            // Then the row's own record, for a row whose declaring unit is gone.
-            if (binary == null) binary = entry.binary();
+            // THE ROW'S OWN RECORD FIRST. `binary` is what the install
+            // recorded that it PRODUCED; `on_path` is what the declaring unit
+            // says it PROBES for. They are usually equal and are allowed to
+            // differ, and ARTI-08 measured what the old order costs where
+            // they do: taking `on_path` gave this artifact an output path the
+            // install never wrote, so the shim probed as absent, so its bytes
+            // could not be read for a reference — and the TREE that install
+            // created was then credited to nobody. An unattributed tree is
+            // never an orphan, which is how a skill-script cache tree came to
+            // survive every uninstall with nothing able to name it.
+            String binary = entry.binary();
+            // Then the declaring unit's on_path, for a row written before the
+            // recorder wrote a binary at all.
+            if (binary == null) binary = declaredBinary.get(entry.backend() + "\0" + entry.tool());
             boolean nameIsTheArtifact =
                     "tar".equals(entry.backend()) || "skill-script".equals(entry.backend());
             if (binary == null && nameIsTheArtifact) binary = entry.tool();
@@ -334,7 +345,19 @@ public final class ArtifactBackfill {
         return out;
     }
 
-    /** {@code backend\0package} to the binary name the declaring unit named. */
+    /**
+     * {@code backend package} to the name the declaring unit says it PROBES for.
+     *
+     * <p>The install target's {@code binary} outranks {@code on_path}, for the
+     * reason {@code CliInstallRecorder.producedBinary} records at length:
+     * {@code on_path} is the name this dep PROBES for and
+     * {@code install.<os>.binary} is the name the install PRODUCES. Where they
+     * differ, taking {@code on_path} gives this artifact an output path that
+     * was never written — and the tree the install DID write is then credited
+     * to nobody, because a shim that does not exist has no bytes to read a
+     * reference out of. That is how a skill-script cache tree came to outlive
+     * its unit with nothing in the home able to name it.
+     */
     private Map<String, String> declaredBinaries() {
         Map<String, String> out = new LinkedHashMap<>();
         try {
@@ -343,7 +366,7 @@ public final class ArtifactBackfill {
                     if (dep.name() == null) continue;
                     String onPath = dep.onPath();
                     if (onPath == null || onPath.isBlank()) continue;
-                    out.putIfAbsent(dep.backend() + " " + dep.name(), onPath);
+                    out.putIfAbsent(dep.backend() + "\0" + dep.name(), onPath);
                 }
             }
         } catch (IOException e) {
