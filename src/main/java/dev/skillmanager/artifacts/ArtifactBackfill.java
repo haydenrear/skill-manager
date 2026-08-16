@@ -12,6 +12,8 @@ import dev.skillmanager.bindings.Sha256;
 import dev.skillmanager.cli.installer.CliArtifact;
 import dev.skillmanager.lock.CliLock;
 import dev.skillmanager.lock.Fingerprint;
+import dev.skillmanager.mcp.GatewayClient;
+import dev.skillmanager.mcp.GatewayConfig;
 import dev.skillmanager.mcp.McpRegistrationLock;
 import dev.skillmanager.model.AgentUnit;
 import dev.skillmanager.model.CliDependency;
@@ -28,6 +30,7 @@ import dev.skillmanager.store.SkillStore;
 import dev.skillmanager.util.Log;
 
 import java.io.IOException;
+import java.net.URI;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
@@ -616,12 +619,21 @@ public final class ArtifactBackfill {
             // the same inputs hash to now. Two fields rather than one, because
             // "the record claims X" and "the disk says X" are different claims
             // and the whole point of this class is to stop conflating them.
+            //
+            // BOTH halves of the recomputation come off the DISK, never out of
+            // the row being checked. Feeding the recorded `source`/`target` back
+            // in made the identity half of the digest self-confirming: the
+            // stored link target is an input to the digest, so a link
+            // re-pointed at another unit changed the artifact and could never
+            // DISAGREE, because the comparison re-hashed the recorded value
+            // rather than the one on disk. A comparison that reads its own
+            // answer as input is not a comparison.
             Optional<MarketplaceInputs.Entry> row = inputs.flatMap(i -> i.plugin(name));
             Optional<Fingerprint> recorded = row.flatMap(MarketplaceInputs.Entry::fingerprint)
                     .filter(Fingerprint::present);
             Fingerprint now = MarketplaceInputs.fingerprintOf(name,
-                    row.map(MarketplaceInputs.Entry::source).orElse("./plugins/" + name),
-                    row.map(MarketplaceInputs.Entry::target).orElse(storedLinkTarget(link)),
+                    "./plugins/" + name,
+                    storedLinkTarget(link),
                     store.unitDir(name, UnitKind.PLUGIN));
             Artifact.Agreement agreement;
             if (recorded.isEmpty()) {
@@ -801,13 +813,25 @@ public final class ArtifactBackfill {
      * synced without {@code --include-mcp} is in exactly this state and nothing
      * in it said so.
      *
-     * <p>What is NOT claimed: whether a REGISTERED server still matches its
-     * declaration. The gateway persists its own normalized {@code load_spec}
-     * rather than the payload skill-manager posted, so the two cannot be
-     * digested against each other from this home's files.
-     * {@link ArtifactFreshness} reports that as {@code unverifiable} with the
-     * reason, which is the honest answer and not a missing feature dressed up
-     * as a passing one.
+     * <h2>What IS claimed, and what still is not</h2>
+     *
+     * <p>Whether the registration still describes what this home DECLARES is
+     * decided here, by recomputing {@code specDigest} from the live
+     * {@link McpDependency} and comparing it with the digest
+     * {@link McpRegistrationLock} recorded at registration. That comparison is
+     * available because {@code specDigest} covers {@code load_spec} and
+     * {@code init_schema} only — both pure functions of the installed
+     * dependency — so nothing about the installing process has to be
+     * reconstructed. Edit a unit's {@code mcp_dependencies} and this reports
+     * {@code disagrees} without a gateway anywhere.
+     *
+     * <p>What is still NOT claimed: whether the GATEWAY's copy matches. It
+     * persists its own normalized {@code load_spec} rather than the payload
+     * skill-manager posted, so the two ends cannot be digested against each
+     * other from this home's files (skill-manager#121). Nor whether the server
+     * the gateway resolved and ran has moved — a load spec naming
+     * {@code latest} hashes identically across an upstream publish, which is
+     * why the recorded grade is {@code declared} and not {@code resolved}.
      */
     List<Artifact> mcpRegistrations() {
         Map<String, String> sources = new LinkedHashMap<>();
@@ -834,10 +858,17 @@ public final class ArtifactBackfill {
         }
 
         Map<String, String> declaringUnit = new LinkedHashMap<>();
+        // The live dependency beside the unit that declares it. Kept, not
+        // discarded: the digest recorded at registration is a pure function of
+        // this object, so holding on to it is the whole difference between a
+        // class that is merely RECORDED and one that is DECIDABLE.
+        Map<String, McpDependency> declaredDep = new LinkedHashMap<>();
         try {
             for (AgentUnit unit : store.listInstalledUnits().units()) {
                 for (McpDependency dep : unit.mcpDependencies()) {
-                    if (dep.name() != null) declaringUnit.putIfAbsent(dep.name(), unit.name());
+                    if (dep.name() == null) continue;
+                    declaringUnit.putIfAbsent(dep.name(), unit.name());
+                    declaredDep.putIfAbsent(dep.name(), dep);
                 }
             }
         } catch (IOException e) {
@@ -851,11 +882,14 @@ public final class ArtifactBackfill {
         }
         ids.sort(String::compareTo);
 
-        // This home's own record of what it asked the gateway to hold. Keyed by
-        // server id and read here rather than re-derived: the digest was
-        // computed by the writer that posted the payload, and nothing else in
-        // the home can reconstruct the environment it was built in.
+        // This home's own record of what it asked the gateway to hold, keyed by
+        // server id.
         McpRegistrationLock registrations = McpRegistrationLock.read(root);
+        // One client, for recomputation only — it is never used to talk to
+        // anything. `registerPayload` and `specDigest` are pure, and the base
+        // URL is irrelevant to both; building the payload is not a network call.
+        GatewayClient recompute = new GatewayClient(
+                GatewayConfig.of(URI.create(GatewayConfig.DEFAULT_URL)));
 
         List<Artifact> out = new ArrayList<>();
         for (String id : ids) {
@@ -870,6 +904,30 @@ public final class ArtifactBackfill {
             Optional<Fingerprint> recorded = registrations.server(id)
                     .flatMap(McpRegistrationLock.Entry::fingerprint)
                     .filter(Fingerprint::present);
+
+            // Recompute from the live declaration and compare. This is a real
+            // comparison, not a placeholder: `specDigest` digests
+            // {load_spec, init_schema} only, both of which come straight off
+            // the installed McpDependency, so nothing about the installing
+            // PROCESS enters the digest and any pass that can read the unit's
+            // manifest can reproduce it exactly.
+            McpDependency dep = declaredDep.get(id);
+            String now = dep == null ? null
+                    : GatewayClient.specDigest(recompute.registerPayload(dep, false, Map.of()));
+            String gap = dep == null
+                    ? "no installed unit declares this server any more, so the declaration its "
+                            + "digest describes cannot be re-read"
+                    : null;
+            Artifact.Agreement agreement;
+            if (recorded.isEmpty()) {
+                agreement = Artifact.Agreement.UNRECORDED;
+            } else if (now == null) {
+                agreement = Artifact.Agreement.UNVERIFIABLE;
+            } else {
+                agreement = recorded.get().value().equals(now)
+                        ? Artifact.Agreement.AGREES : Artifact.Agreement.DISAGREES;
+            }
+
             out.add(new Artifact(
                     ArtifactIds.mcpRegistration(id),
                     ArtifactKind.MCP_REGISTRATION,
@@ -884,16 +942,10 @@ public final class ArtifactBackfill {
                     Artifact.facts("registration_state", state,
                             "spec_digest", recorded.map(Fingerprint::value).orElse(null),
                             "spec_digest_kind", recorded.map(f -> f.kind().token()).orElse(null)),
-                    Artifact.facts("registration_state", state),
-                    // Recorded, and still not re-checkable HERE. The digest
-                    // covers the register payload including the init values the
-                    // installing process read out of ITS environment; this pass
-                    // is a different process and cannot reconstruct them, so
-                    // recomputing would produce a different digest for reasons
-                    // that are not staleness. "I did not look" is the honest
-                    // verdict and it is not AGREES.
-                    recorded.isPresent() ? Artifact.Agreement.UNVERIFIABLE
-                            : Artifact.Agreement.UNRECORDED,
+                    Artifact.facts("registration_state", state,
+                            "spec_digest", now,
+                            "spec_digest_gap", gap),
+                    agreement,
                     Artifact.Origin.HOME));
         }
         return out;

@@ -215,10 +215,22 @@ public final class HarnessInstantiator {
      * <p>These are bytes and resolutions READ OFF THIS HOME on this pass, not a
      * declaration copied out of some other manifest. When the harness unit is
      * updated in the store the digest moves; when a unit it references is
-     * removed the digest moves. That is what {@code resolved} asserts, and it is
-     * the claim {@code SyncHarness} could not make before — it re-instantiated
-     * with {@link ConflictPolicy#OVERWRITE} on every pass because re-running was
-     * the only way to learn whether the template had moved.
+     * <b>uninstalled</b> the digest moves. That is what {@code resolved}
+     * asserts, and it is the claim {@code SyncHarness} could not make before —
+     * it re-instantiated with {@link ConflictPolicy#OVERWRITE} on every pass
+     * because re-running was the only way to learn whether the template had
+     * moved.
+     *
+     * <p><b>"Uninstalled" means the install RECORD is gone, not the directory.</b>
+     * {@link #resolveReference} answers through {@code UnitStore.read}, so
+     * deleting {@code skills/widget} while {@code installed/widget.json} remains
+     * leaves this digest unchanged; deleting the record moves it. That is the
+     * right axis for this artifact — the template's coords resolve against what
+     * the home considers installed, and the bindings are planned from that same
+     * answer, so a digest resolving differently from the planner would be
+     * measuring a question nobody asked. A missing directory behind a live
+     * record is a defect in that unit's {@code UNIT_STORE} artifact, which has
+     * its own row and its own verdict.
      *
      * <p>What it deliberately does NOT cover: the CONTENTS of the units the
      * template references. Those are projected as symlinks into the store, so a
