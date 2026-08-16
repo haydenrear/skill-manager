@@ -180,7 +180,7 @@ final class HomeIntegrity {
             JsonNode rec = e.getValue();
             String recorded = text(rec, "gitHash");
             if (recorded == null || recorded.isBlank()) continue;   // not git-backed
-            Path store = storeOf(home, unit, text(rec, "unitKind"));
+            Path store = storeOf(home, unit);
             if (store == null) continue;                            // no checkout to compare
             examined++;
             String head = gitHead(store);
@@ -245,7 +245,7 @@ final class HomeIntegrity {
         List<Finding> out = new ArrayList<>();
         int examined = 0;
         for (Map.Entry<String, JsonNode> e : installedRecords(home).entrySet()) {
-            Path store = storeOf(home, e.getKey(), text(e.getValue(), "unitKind"));
+            Path store = storeOf(home, e.getKey());
             if (store == null) continue;
             String upstream = git(store, "rev-parse", "@{upstream}");
             if (upstream == null) continue;             // no tracking ref: a different defect
@@ -737,12 +737,13 @@ final class HomeIntegrity {
     /**
      * The store checkout for a unit, or null when there is none.
      *
-     * <p>Probed across all four unit roots rather than switched on
-     * {@code unitKind}: a record written by an older schema may carry no kind,
-     * and a wrong guess here silently skips the unit, which is the direction
-     * that makes a check pass over nothing.
+     * <p>Probed across all four unit roots rather than switched on the
+     * record's {@code unitKind}, which is deliberately not read: a record
+     * written by an older schema may carry no kind, and a wrong guess here
+     * silently skips the unit — the direction that makes a check pass over
+     * nothing.
      */
-    static Path storeOf(Path home, String unit, String unitKind) {
+    static Path storeOf(Path home, String unit) {
         for (String root : List.of("skills", "plugins", "docs", "harnesses")) {
             Path p = home.resolve(root).resolve(unit);
             if (Files.isDirectory(p.resolve(".git"))) return p;
