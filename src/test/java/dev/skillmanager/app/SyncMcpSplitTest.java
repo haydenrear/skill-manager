@@ -2,6 +2,9 @@ package dev.skillmanager.app;
 
 import dev.skillmanager._lib.test.Tests;
 import dev.skillmanager.effects.EffectContext;
+import dev.skillmanager.effects.EffectReceipt;
+import dev.skillmanager.effects.EffectStatus;
+import dev.skillmanager.effects.LiveInterpreter;
 import dev.skillmanager.effects.Program;
 import dev.skillmanager.effects.SkillEffect;
 import dev.skillmanager.mcp.GatewayConfig;
@@ -141,6 +144,69 @@ public final class SyncMcpSplitTest {
                 Tests.assertEquals(null, projects.gateway(),
                         "and it is handed no gateway to start one with");
             }
+        });
+
+        // ---------------------------------------------------- review, F1
+        //
+        // Measured A/B on one machine, one fixture, a LIVE gateway holding one
+        // server that fails `tools/list`:
+        //
+        //     base epic/artifact-dag : exit 0
+        //     MCP on by default      : exit 1     <-- regression
+        //
+        // The first version of this ticket claimed no exit-code change because
+        // a SKIPPED receipt is neither FAILED nor PARTIAL. True only for the
+        // gateway-ABSENT case: with a gateway PRESENT and a server failing to
+        // deploy the receipt is PARTIAL, and PARTIAL was counted. It was also
+        // what turned `smoke`'s sync_noop_exit_zero and sync_force_exit_zero
+        // red — two assertions that had been passing.
+        suite.test("a server that fails to deploy does not change what sync EXITS", () -> {
+            SkillStore store = seededHome("sync-mcp-exit-");
+            GatewayConfig gw = GatewayConfig.resolve(store, "http://127.0.0.1:59999");
+            var decoder = SyncUseCase.buildProgram(store, gw,
+                    new SyncUseCase.Options(null, false, false, true, true, false, false, false),
+                    List.of(), List.of()).decoder();
+
+            SkillEffect register = new SkillEffect.RegisterMcp(List.of(), gw);
+            SyncUseCase.Report partial = decoder.decode(List.of(
+                    EffectReceipt.partial(register, "1 unit(s) had MCP errors")));
+            Tests.assertEquals(0, partial.errorCount(),
+                    "a partly-failed registration is recorded per unit and reported; it is "
+                            + "not a verdict on the content sync");
+            Tests.assertEquals(0, partial.worstRc(), "and it does not raise the exit code");
+
+            // The neighbours still count, so this is a targeted exemption and
+            // not a hole: a content target that partly failed is still an error.
+            SyncUseCase.Report agents = decoder.decode(List.of(
+                    EffectReceipt.partial(new SkillEffect.SyncAgents(List.of(), gw),
+                            "agent sync failures")));
+            Tests.assertEquals(1, agents.errorCount(),
+                    "SyncAgents PARTIAL still counts — only the gateway half was exempted");
+        });
+
+        // ---------------------------------------------------- review, F3
+        //
+        // registerMcp runs in STAGE 2, AFTER CommitUnitsToStore, and was
+        // declared `throws IOException` with ctx.addError and registerAll
+        // unguarded. Executor sets failed=true on FAILED status ALONE and then
+        // walks the journal, where CommitUnitsToStore left one DeleteUnitDir
+        // per committed unit. Rollback is decoupled from halt — reasoning about
+        // continuations was the wrong frame. So a gateway hiccup on the DEFAULT
+        // sync path could delete the units that same sync had just committed.
+        suite.test("an unreachable gateway leaves a SKIPPED receipt, never a FAILED one", () -> {
+            SkillStore store = seededHome("sync-mcp-total-");
+            // Port 1 is privileged and unbound, so the ping cannot succeed —
+            // which drives the exact branch whose ctx.addError was unguarded.
+            GatewayConfig gw = GatewayConfig.resolve(store, "http://127.0.0.1:1");
+
+            EffectReceipt receipt = new LiveInterpreter(store, gw).runOne(
+                    new SkillEffect.RegisterMcp(List.of(), gw), new EffectContext(store, gw));
+
+            Tests.assertEquals(EffectStatus.SKIPPED, receipt.status(),
+                    "the handler decided for itself and reported a state, not a failure");
+            assertFalse(receipt.status() == EffectStatus.FAILED,
+                    "and a FAILED receipt here would walk CommitUnitsToStore's "
+                            + "DeleteUnitDir compensations over a healthy store");
         });
 
         suite.test("upgrade and sync plan the same MCP work — they disagreed before", () -> {
