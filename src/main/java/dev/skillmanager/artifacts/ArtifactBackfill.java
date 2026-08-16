@@ -12,6 +12,7 @@ import dev.skillmanager.bindings.Sha256;
 import dev.skillmanager.cli.installer.CliArtifact;
 import dev.skillmanager.lock.CliLock;
 import dev.skillmanager.lock.Fingerprint;
+import dev.skillmanager.lock.Fingerprints;
 import dev.skillmanager.mcp.GatewayClient;
 import dev.skillmanager.mcp.GatewayConfig;
 import dev.skillmanager.mcp.McpRegistrationLock;
@@ -20,6 +21,8 @@ import dev.skillmanager.model.CliDependency;
 import dev.skillmanager.model.HarnessParser;
 import dev.skillmanager.model.McpDependency;
 import dev.skillmanager.model.UnitKind;
+import dev.skillmanager.pm.PackageManager;
+import dev.skillmanager.pm.PackageManagerRuntime;
 import dev.skillmanager.project.MarketplaceInputs;
 import dev.skillmanager.source.GitOps;
 import dev.skillmanager.source.InstalledUnit;
@@ -28,6 +31,7 @@ import dev.skillmanager.store.HomeCloner;
 import dev.skillmanager.store.HomeDigest;
 import dev.skillmanager.store.SkillStore;
 import dev.skillmanager.util.Log;
+import dev.skillmanager.util.Platform;
 
 import java.io.IOException;
 import java.net.URI;
@@ -376,10 +380,15 @@ public final class ArtifactBackfill {
      * installer that names its own directory, which is all of the ones under
      * {@code venvs/}, {@code tools/} and {@code npm/}.
      *
-     * <p>A tree no shim references — {@code pm/uv}, {@code pm/node}, the shared
-     * package-manager roots — keeps the old shape: no owner, no inputs, and a
-     * verdict of {@code unverifiable} rather than a guess. That is still the
-     * finding, now stated about two trees instead of about all of them.
+     * <p>A tree no shim references and no {@link PackageManager} claims keeps
+     * the old shape: no owner, no inputs, and a verdict of {@code unrecorded}
+     * rather than a guess.
+     *
+     * <p>{@code pm/uv} and {@code pm/node} used to be exactly that, and are the
+     * exception ARTI-20 (#122) added. They have no lock row and never will —
+     * but they DO have a declaration, the version this codebase pins, and an
+     * observation, the {@code current} pointer beside them. See
+     * {@link #describeBundled} for why they are recorded rather than excluded.
      */
     List<Artifact> provisionedTrees(List<Artifact> shims) {
         List<Artifact> out = new ArrayList<>();
@@ -411,8 +420,11 @@ public final class ArtifactBackfill {
                     treePath.substring(slash + 1));
             List<String> inputs = new ArrayList<>();
             Map<String, String> recorded = Map.of();
+            Map<String, String> actual = Map.of();
             String owner = null;
             String source = null;
+            Artifact.Agreement agreement;
+            PackageManager bundled = shim == null ? bundledPackageManagerAt(treePath) : null;
             if (shim != null) {
                 owner = shim.owner();
                 source = shim.source();
@@ -420,15 +432,158 @@ public final class ArtifactBackfill {
                 String spec = shim.recorded().get("spec");
                 if (spec != null) inputs.add(ArtifactIds.specInput(spec));
                 recorded = shim.recorded();
+                agreement = recorded.get("install_fingerprint") == null
+                        ? Artifact.Agreement.UNRECORDED : Artifact.Agreement.UNVERIFIABLE;
+            } else if (bundled != null) {
+                BundledToolchain toolchain = describeBundled(bundled);
+                inputs.add(ArtifactIds.specInput(toolchain.spec()));
+                recorded = toolchain.recorded();
+                actual = toolchain.actual();
+                source = toolchain.source();
+                agreement = toolchain.agreement();
+            } else {
+                agreement = Artifact.Agreement.UNRECORDED;
             }
             out.add(new Artifact(id, ArtifactKind.PROVISIONED_TREE, owner, inputs,
                     List.of(Artifact.Output.inHome(treePath, presenceOf(directories.get(treePath)))),
-                    source, recorded, Map.of(),
-                    recorded.get("install_fingerprint") == null ? Artifact.Agreement.UNRECORDED
-                                                                : Artifact.Agreement.UNVERIFIABLE,
-                    Artifact.Origin.HOME));
+                    source, recorded, actual, agreement, Artifact.Origin.HOME));
         }
         return out;
+    }
+
+    /**
+     * The {@link PackageManager} whose bundled copy lives at {@code treePath},
+     * or null when the tree is not one.
+     *
+     * <p>Matched on the {@code pm/<id>} layout {@link PackageManagerRuntime}
+     * itself defines, and restricted to {@link PackageManager#bundleable()}
+     * entries: {@code docker} and {@code brew} are system-managed, so a
+     * {@code pm/docker} directory would not be an artifact this codebase
+     * derived and must not be described as one.
+     */
+    private static PackageManager bundledPackageManagerAt(String treePath) {
+        int slash = treePath.indexOf('/');
+        if (slash < 0 || !"pm".equals(treePath.substring(0, slash))) return null;
+        String id = treePath.substring(slash + 1);
+        for (PackageManager pm : PackageManager.values()) {
+            if (pm.bundleable() && pm.id.equals(id)) return pm;
+        }
+        return null;
+    }
+
+    /** What {@link #describeBundled} works out about one bundled toolchain. */
+    private record BundledToolchain(String spec, String source, Map<String, String> recorded,
+                                    Map<String, String> actual, Artifact.Agreement agreement) {}
+
+    /**
+     * The record for {@code pm/uv} and {@code pm/node} — the two trees that,
+     * before ARTI-20 (#122), nothing in a home claimed.
+     *
+     * <h2>Why they were unclaimed, and why "exclude them" was the wrong answer</h2>
+     *
+     * <p>{@link #provisionedTrees} credits a tree to the {@code cli-lock.toml}
+     * row whose shim execs out of it. The bundled package managers have no such
+     * row and never will: no unit declares them, no {@code bin/cli} shim points
+     * at them, and {@link PackageManagerRuntime} installs them because
+     * {@code PipBackend} or {@code NpmBackend} needed a toolchain, not because
+     * anything asked for {@code uv}. So they kept no owner, no inputs and a
+     * verdict of {@code unverifiable} — 2 of the project home's 4 unclaimed
+     * trees, and a cap on the provisioned-tree class, whose bar is EVERY
+     * instance decided.
+     *
+     * <p>#122 offered an argued exclusion as the alternative. It is the wrong
+     * call, and the reason is a defect rather than a preference: <b>a bundled
+     * package manager is a derived artifact that can and does go stale, and
+     * today nothing can tell.</b> {@link PackageManagerRuntime#ensureBundled}
+     * returns the moment {@code bundledPath(tool)} is non-null, so a home that
+     * installed {@code uv 0.4.18} keeps {@code uv 0.4.18} forever — a bump to
+     * {@link PackageManager#defaultVersion} in this codebase never reaches it,
+     * and no command reports the gap. That is precisely this epic's subject.
+     * Excluding the member would have excluded the defect from measurement,
+     * which is what "the class must not appear complete by dropping the members
+     * it cannot answer for" exists to prevent.
+     *
+     * <h2>Derived here rather than written at install time</h2>
+     *
+     * <p>The declaration is compiled in ({@link PackageManager#defaultVersion},
+     * {@link PackageManager#downloadUrl}) and the observation is on disk (the
+     * {@code current} pointer), so a lock row would be a third copy of two facts
+     * this process already holds. It would also be useless where it is most
+     * needed: every home on this machine already has {@code pm/} populated and
+     * nothing re-runs {@code install} to backfill a row into it. Reading both
+     * ends on the listing pass answers the question for every home that exists,
+     * today, with no migration.
+     *
+     * <p>The observation goes through {@link PackageManagerRuntime#currentVersion}
+     * — the implementation's own reader, not a second parse of the same pointer.
+     * That is {@code HomeCloner.missingReferencesIn}'s rule, and the census's
+     * {@code _implementation_owners} learned it the hard way against this very
+     * class.
+     *
+     * <h2>What the grade covers, and what it does not</h2>
+     *
+     * <p>{@code pm-v1} covers the tool, the version this codebase PINS, the
+     * version this home actually has, and the URL that pin resolves to. It is
+     * {@link Fingerprint.Kind#RESOLVED} because the installed version is read
+     * off the disk and the digest moves when the tree moves — the same shape as
+     * {@code pip-v1}, which covers the version resolved into {@code venvs/} and
+     * not that venv's bytes. It deliberately does NOT hash the tree:
+     * {@code pm/node} is ~170 MB and a full walk on every listing would be paid
+     * by every reader for a question the {@code current} pointer answers
+     * exactly. The basis says so rather than leaving a reader to assume
+     * otherwise.
+     */
+    private BundledToolchain describeBundled(PackageManager pm) {
+        String pinned = pm.defaultVersion;
+        String installed = new PackageManagerRuntime(store).currentVersion(pm);
+        String url = null;
+        try {
+            url = pm.downloadUrl(pinned);
+        } catch (RuntimeException unsupportedHere) {
+            // A platform this PM publishes no download for. The pin is still
+            // the declaration; the URL simply is not one of its facts here.
+            Log.detail("artifacts: no %s download url for %s: %s",
+                    pm.id, Platform.currentKey(), unsupportedHere.getMessage());
+        }
+
+        Fingerprint fingerprint = installed != null
+                ? Fingerprint.resolved(
+                        Fingerprints.scheme("pm-v1")
+                                .field("tool", pm.id)
+                                .field("pinned", pinned)
+                                .field("installed", installed)
+                                .field("url", url)
+                                .hex(),
+                        "the pinned version " + pinned + " + the version " + installed
+                                + " this home has under pm/" + pm.id
+                                + " (the tree's bytes are not hashed — pm/node alone is ~170 MB "
+                                + "and the current pointer answers staleness exactly)")
+                : Fingerprint.gap("pm/" + pm.id + "/current names no version, so this home "
+                        + "cannot say which " + pm.id + " it is running");
+
+        Map<String, String> recorded = Artifact.facts(
+                "tool", pm.id,
+                "pinned_version", pinned,
+                "url", url,
+                "install_fingerprint", fingerprint.value(),
+                "install_fingerprint_kind",
+                fingerprint.kind() == null ? null : fingerprint.kind().token(),
+                "install_fingerprint_basis", fingerprint.basis(),
+                "install_fingerprint_gap", fingerprint.gap());
+
+        // The comparison the record exists for, and it is cheap: a version
+        // string against a version string. DISAGREES is reachable, and it is
+        // the state a defaultVersion bump leaves every existing home in.
+        Artifact.Agreement agreement = installed == null ? Artifact.Agreement.UNVERIFIABLE
+                : installed.equals(pinned) ? Artifact.Agreement.AGREES
+                                           : Artifact.Agreement.DISAGREES;
+
+        return new BundledToolchain(
+                "pm:" + pm.id + "@" + pinned,
+                "pm/" + pm.id + "/current",
+                recorded,
+                Artifact.facts("installed_version", installed),
+                agreement);
     }
 
     /**

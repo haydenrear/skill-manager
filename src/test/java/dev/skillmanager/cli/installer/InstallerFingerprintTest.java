@@ -126,10 +126,13 @@ public final class InstallerFingerprintTest {
             assertEquals(Fingerprint.Kind.RESOLVED,
                     registry.fingerprintFor(deps.get("skill-script"), store, "fp-unit").kind(),
                     "skill-script hashes the scripts tree itself");
-            // Never looks at what it wrote; a declared sha256 is still a declaration.
+            // This home holds no bin/cli/rg, so tar falls back to tar-v1 and a
+            // declared sha256 is still a declaration. ARTI-20 gave it a resolved
+            // branch; "tar is always declared" is no longer the rule, and the
+            // two cases at the end of this file drive the other side.
             assertEquals(Fingerprint.Kind.DECLARED,
                     registry.fingerprintFor(deps.get("tar"), store, "fp-unit").kind(),
-                    "tar's strongest input is still the manifest's");
+                    "tar has nothing installed here to observe");
             // Nothing installed in this home yet.
             for (String backend : List.of("pip", "npm")) {
                 assertEquals(Fingerprint.Kind.DECLARED,
@@ -204,6 +207,80 @@ public final class InstallerFingerprintTest {
             assertContains(pinned.basis(), "sha256", "a pinned target says it covers the hash");
             assertContains(unpinned.basis(), "no sha256",
                     "an unpinned target says a re-publish is undetectable");
+        });
+
+        // ARTI-20 (#122) item 1. The measurement this kills, from ARTI-04's
+        // review of #105: ONE identical tar-v1 digest across three different
+        // installed bin/cli/rg payloads. The declaration did not move, so the
+        // digest could not, and the class was capped at DECLARED by
+        // construction rather than by anything install could do about it.
+        suite.test("tar: three different installed payloads produced ONE digest, and now do not", () -> {
+            SkillStore store = newStore("fp-tar-installed-");
+            TarBackend tar = new TarBackend();
+            CliDependency dep = tarDep("https://example/x.tar.gz", "a".repeat(64));
+
+            // The declaration is fixed for the whole case: only the bytes at
+            // bin/cli/rg change, which is exactly the input tar-v1 cannot see.
+            String declaredOnly = tar.fingerprint(dep, store, "fp-unit").value();
+
+            Set<String> digests = new LinkedHashSet<>();
+            for (String payload : List.of("#!/bin/sh\necho one\n",
+                                          "#!/bin/sh\necho two\n",
+                                          "")) {
+                plantShimContent(store, "rg", payload);
+                Fingerprint fp = tar.fingerprint(dep, store, "fp-unit");
+                assertEquals(Fingerprint.Kind.RESOLVED, fp.kind(),
+                        "the installed file was read, so the grade rests on an observation");
+                digests.add(fp.value());
+            }
+            assertEquals(3, digests.size(),
+                    "three payloads, three digests — this was 1 before ARTI-20");
+            assertFalse(digests.contains(declaredOnly),
+                    "tar-v2 is its own scheme: no installed payload can collide with "
+                            + "the declaration-only digest of the same dep");
+        });
+
+        suite.test("tar: the installed digest is its own field and never becomes the declared one", () -> {
+            SkillStore store = newStore("fp-tar-fields-");
+            TarBackend tar = new TarBackend();
+            plantShimContent(store, "rg", "#!/bin/sh\necho stub\n");
+
+            Fingerprint pinned = tar.fingerprint(
+                    tarDep("https://example/x.tar.gz", "a".repeat(64)), store, "fp-unit");
+            Fingerprint unpinned = tar.fingerprint(
+                    tarDep("https://example/x.tar.gz", null), store, "fp-unit");
+            Fingerprint elsewhere = tar.fingerprint(
+                    tarDep("https://example/y.tar.gz", "a".repeat(64)), store, "fp-unit");
+
+            // The declared half is still in the digest beside the installed
+            // one, not replaced by it: identical bytes on disk under three
+            // different declarations are three artifacts.
+            assertEquals(3, new LinkedHashSet<>(List.of(
+                            pinned.value(), unpinned.value(), elsewhere.value())).size(),
+                    "the declared fields still separate the digests when the bytes do not");
+            // And the basis says which half sees what, because the installed
+            // half detects local tampering and CANNOT detect upstream movement
+            // — the caveat the whole two-scheme split exists for.
+            assertContains(pinned.basis(), "installed bin/cli/rg",
+                    "the basis names the file it hashed");
+            assertContains(pinned.basis(), "same url",
+                    "the basis says what neither half detects");
+        });
+
+        suite.test("tar: a dangling shim is hashed as nothing, not as a resolved artifact", () -> {
+            SkillStore store = newStore("fp-tar-dangling-");
+            Files.createDirectories(store.cliBinDir());
+            Path shim = store.cliBinDir().resolve("rg");
+            Files.createSymbolicLink(shim, store.root().resolve("nowhere/rg"));
+
+            Fingerprint fp = new TarBackend()
+                    .fingerprint(tarDep("https://example/x.tar.gz", "a".repeat(64)),
+                            store, "fp-unit");
+            assertEquals(Fingerprint.Kind.DECLARED, fp.kind(),
+                    "a link with no target has no bytes; claiming RESOLVED over it "
+                            + "would be the dangling-shim-reports-healthy defect again");
+            assertContains(fp.basis(), "not observable here",
+                    "and it says so rather than reporting a gap for a dep that installed");
         });
 
         suite.test("tar: no target for this platform is a gap with a reason, not a digest", () -> {
@@ -531,6 +608,15 @@ public final class InstallerFingerprintTest {
         Path sitePackages = store.venvsDir().resolve(dist)
                 .resolve("lib").resolve("python3.13").resolve("site-packages");
         Files.createDirectories(sitePackages.resolve(escaped + "-" + version + ".dist-info"));
+    }
+
+    /** {@code bin/cli/<name>} holding exactly {@code content}. */
+    private static void plantShimContent(SkillStore store, String name, String content)
+            throws Exception {
+        Files.createDirectories(store.cliBinDir());
+        Path shim = store.cliBinDir().resolve(name);
+        Files.writeString(shim, content);
+        shim.toFile().setExecutable(true, false);
     }
 
     /** An executable in {@code bin/cli/} with no references out of the home. */
