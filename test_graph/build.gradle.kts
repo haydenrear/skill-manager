@@ -1174,9 +1174,19 @@ validationGraph {
      * alone; a lazy clone declares what it did not copy; a cold artifact refuses
      * with the way out; and an uninstall takes its owner's subgraph with it.
      *
-     * DOCKER-FREE AND NETWORK-FREE, on purpose — it is in the CI core set, and
-     * a core graph that needs postgres or the internet fails for reasons that
-     * are not about skill-manager. Every node depends only on env.prepared and
+     * DOCKER-FREE, on purpose: no postgres, no compose, no registry, so it
+     * cannot fail for reasons that are not about skill-manager, and two ticket
+     * worktrees can run it at once (which #104 measured they cannot do for the
+     * eight graphs that declare PostgresUp).
+     *
+     * It is NOT network-free end to end, and saying so would be the same
+     * comfortable overstatement #124 had to walk back on its own graph:
+     * `install` runs EnsureGateway, which builds the virtual-mcp-gateway venv,
+     * so on a cold runner this reaches the network like every other
+     * install-carrying graph. What is true is narrower — nothing this graph
+     * DECLARES has to be fetched.
+     *
+     * Every node depends only on env.prepared and
      * builds its own home under env.prepared's temp root, so no node reads lock
      * state another wrote and HomeFixpointLaw can find every home they made.
      *
