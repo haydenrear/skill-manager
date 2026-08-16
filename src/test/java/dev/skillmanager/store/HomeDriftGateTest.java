@@ -287,8 +287,18 @@ public final class HomeDriftGateTest {
                             + " as REMOVED from a copy that still had it");
 
             Home copy = source.cloneTo("drift-clone-schema-dst-");
-            assertTrue(Files.exists(copy.unitFile("alpha", ".venv/pyvenv.cfg")),
-                    "and the copy has it too, so nothing was actually lost");
+            // ARTI-07 changed the second half of this case and not the first.
+            // The copy no longer CARRIES the virtualenv — it declares it, and
+            // `uv` rebuilds it from the lockfile beside it on first use — and
+            // the property this case exists for is untouched, because the
+            // digest never counted a virtualenv on either side:
+            // ChildHomeMaterializer.walkPlain drops every Rederivable.isDerived
+            // path. Deferring one therefore moves nothing the gate can see,
+            // which is what the assertions below measure.
+            assertFalse(Files.exists(copy.unitFile("alpha", ".venv/pyvenv.cfg")),
+                    "the copy declares the virtualenv rather than carrying it");
+            assertTrue(Files.exists(copy.store.root().resolve("artifacts.lock.toml")),
+                    "and records it, so nothing was dropped silently");
             new CommandLine(new HomeCommand.DriftCmd(copy.store)).execute("--record");
 
             DriftGate pending = DriftGate.pending(copy.store).orElse(null);

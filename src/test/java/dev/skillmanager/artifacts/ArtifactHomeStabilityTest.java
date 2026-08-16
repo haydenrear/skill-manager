@@ -42,16 +42,34 @@ public final class ArtifactHomeStabilityTest {
     public static int run() throws Exception {
         Tests.Suite suite = Tests.suite("ArtifactHomeStabilityTest");
 
-        suite.test("the ledger crosses a clone byte-identical and fails nothing", () -> {
+        // ARTI-07 changed what this asserts, and the change is worth stating
+        // rather than hiding behind a renamed case. The ledger still holds no
+        // absolute path, so the cloner's substitution pass still has no needle
+        // to find and the file still crosses the copy untouched — that is
+        // ArtifactLedger's whole contract and it is checked below. What is no
+        // longer true is BYTE-IDENTITY of the final file, because the clone now
+        // finishes by RE-RECORDING the ledger: a copy has to declare the
+        // artifacts it deliberately did not carry, and a file copied verbatim
+        // from a home that never recorded one would declare nothing.
+        suite.test("the ledger crosses a clone with every id intact and no absolute path", () -> {
             SkillStore source = ArtifactsFixture.seed();
             ArtifactLedger.of(ArtifactIndex.of(source).artifacts()).save(source);
-            byte[] before = Files.readAllBytes(ArtifactLedger.file(source));
+            List<String> before = new java.util.ArrayList<>();
+            for (ArtifactLedger.Row row : ArtifactLedger.load(source).rows()) before.add(row.id());
 
             SkillStore clone = cloneOf(source);
 
-            assertTrue(Arrays.equals(before, Files.readAllBytes(ArtifactLedger.file(clone))),
-                    "no byte moved: the ledger holds no absolute path, so the cloner's"
-                            + " substitution pass has no needle to find");
+            List<String> after = new java.util.ArrayList<>();
+            for (ArtifactLedger.Row row : ArtifactLedger.load(clone).rows()) after.add(row.id());
+            assertTrue(after.containsAll(before),
+                    "every id the source declared is still declared in the copy — the copy's"
+                            + " ledger is a superset, never a replacement");
+            String text = Files.readString(ArtifactLedger.file(clone));
+            assertFalse(text.contains(source.root().toString()),
+                    "and it names the source home nowhere, which is why the substitution"
+                            + " pass has no needle to find");
+            assertFalse(text.contains(clone.root().toString()),
+                    "nor the copy's own root: home-relative only, so a further clone is free");
         });
 
         suite.test("every id survives the clone unchanged", () -> {
@@ -98,10 +116,16 @@ public final class ArtifactHomeStabilityTest {
             // The measured defect: the wrapper is copied and re-anchored, the
             // cache/ tree it execs into is skipped, and every presence check in
             // the system passes on an executable file.
+            //
+            // ARTI-07 replaced the broken wrapper with a cold shim, which is
+            // ALSO an executable file that every presence check passes on — so
+            // the verdict below is the load-bearing one: a cold shim that
+            // listed as `materialized` would be the same presence proxy with a
+            // better error message.
             assertEquals(Artifact.Materialization.DECLARED_ONLY, cloned.materialization(),
                     "the shim is there and it will not run");
             assertContains(cloned.actual().get("unusable_because"),
-                    "which this home does not hold", "and the listing says why");
+                    "declared and not built", "and the listing says why");
         });
 
         suite.test("the ledger refuses to write an absolute path", () -> {

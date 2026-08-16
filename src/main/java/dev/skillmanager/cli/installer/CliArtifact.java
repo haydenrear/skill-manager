@@ -166,6 +166,17 @@ public final class CliArtifact {
         if (!Files.isExecutable(artifact)) {
             return new Verdict(artifact, "present but not executable");
         }
+        // ARTI-07. A cold shim is a regular, executable file that resolves and
+        // runs — deliberately, because only a file that runs can print the one
+        // command that fixes it. That also makes it the strongest form of the
+        // presence proxy this epic exists to remove: every predicate above
+        // passes on it and the tool is not there. Asked BEFORE the reference
+        // scan, because it holds no reference into a provisionable root either.
+        if (dev.skillmanager.artifacts.ColdArtifactShim.isCold(artifact)) {
+            return new Verdict(artifact,
+                    "declared and not built — this home builds its artifacts on demand,"
+                            + " and the entry point names the command that builds this one");
+        }
         if (homeRoot != null) {
             // The shape a clone leaves for every generated wrapper, and the
             // one every previous predicate called healthy. Same scanner

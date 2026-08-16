@@ -1,12 +1,19 @@
 package dev.skillmanager.store;
 
 import dev.skillmanager.agent.AgentHomes;
+import dev.skillmanager.artifacts.Artifact;
+import dev.skillmanager.artifacts.ArtifactIds;
+import dev.skillmanager.artifacts.ArtifactIndex;
+import dev.skillmanager.artifacts.ArtifactKind;
+import dev.skillmanager.artifacts.ArtifactLedger;
+import dev.skillmanager.artifacts.ColdArtifactShim;
 import dev.skillmanager.bindings.Binding;
 import dev.skillmanager.bindings.BindingJson;
 import dev.skillmanager.bindings.ChildHomeRegistry;
 import dev.skillmanager.bindings.Projection;
 import dev.skillmanager.bindings.ProjectionLedger;
 import dev.skillmanager.launch.LaunchEnv;
+import dev.skillmanager.policy.HomePolicy;
 import dev.skillmanager.shared.util.Fs;
 import dev.skillmanager.shared.util.Rederivable;
 import dev.skillmanager.util.Log;
@@ -22,7 +29,9 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -398,8 +407,44 @@ public final class HomeCloner {
              * {@code child-homes/} records the copy deliberately did not
              * inherit, by id. See {@link HomeCloner#insideNewHome}.
              */
-            List<String> droppedChildHomes
+            List<String> droppedChildHomes,
+
+            /**
+             * Trees the copy DECLARED instead of carrying, home-relative — the
+             * in-unit virtualenvs a lazy home defers. Empty for an eager clone.
+             * See {@link HomeCloner#deferrableVirtualenv}.
+             */
+            List<String> deferredTrees,
+
+            /**
+             * Entry points under {@code bin/} the copy replaced with a cold
+             * shim, by name. Every one of these was a path that resolved to
+             * nothing before this ticket and said so in the kernel's words.
+             * See {@link ColdArtifactShim}.
+             */
+            List<String> coldShims,
+
+            /** Whether this copy declares its artifacts and builds them on demand. */
+            boolean lazyArtifacts
     ) {
+        /**
+         * The shape every caller before ARTI-07 constructs. Kept so that adding
+         * three components renamed nothing: an eager clone defers no tree and
+         * writes no cold shim, so the defaults are facts rather than
+         * placeholders.
+         */
+        public Report(Path source, Path dest, int directories, int files, int symlinks,
+                      long bytes, int linksRelativized, int stateReanchored,
+                      int provisionedRewritten, List<Leak> leaks,
+                      List<String> contentReferences, List<String> danglingLinks,
+                      List<String> danglingReferences, List<String> droppedRegistrations,
+                      List<String> droppedBindings, List<String> droppedChildHomes) {
+            this(source, dest, directories, files, symlinks, bytes, linksRelativized,
+                    stateReanchored, provisionedRewritten, leaks, contentReferences,
+                    danglingLinks, danglingReferences, droppedRegistrations, droppedBindings,
+                    droppedChildHomes, List.of(), List.of(), false);
+        }
+
         public Report {
             leaks = leaks == null ? List.of() : List.copyOf(leaks);
             contentReferences = contentReferences == null ? List.of() : List.copyOf(contentReferences);
@@ -410,6 +455,8 @@ public final class HomeCloner {
             droppedBindings = droppedBindings == null ? List.of() : List.copyOf(droppedBindings);
             droppedChildHomes = droppedChildHomes == null
                     ? List.of() : List.copyOf(droppedChildHomes);
+            deferredTrees = deferredTrees == null ? List.of() : List.copyOf(deferredTrees);
+            coldShims = coldShims == null ? List.of() : List.copyOf(coldShims);
         }
 
         /** True when nothing in the copy still points at the source home. */
@@ -428,6 +475,49 @@ public final class HomeCloner {
      *               append-only records
      */
     public static Report cloneHome(Path source, Path dest, boolean strict) throws IOException {
+        // The tier decides it, and the tier test is HomePolicy's, which is
+        // skt's `classify_tier` first comparison and not a second notion of it.
+        return cloneHome(source, dest, strict,
+                HomePolicy.lazyArtifactsDefault(new SkillStore(dest)));
+    }
+
+    /**
+     * Copy {@code source} to {@code dest}, declaring rather than building the
+     * artifacts a lazy copy defers.
+     *
+     * <h2>What "declares, does not build" means here, precisely</h2>
+     *
+     * <p>A clone has ALWAYS skipped {@link #SKIPPED_DIRS} and has never said so
+     * in a form anything could act on: the copy simply had shims that resolved
+     * to nothing, and the first thing to notice was the kernel. Three things
+     * change, and only these three:
+     *
+     * <ol>
+     *   <li>the copy gets an {@code artifacts.lock.toml} that <b>names</b> the
+     *       artifacts under the skipped roots, so they list as
+     *       {@link Artifact.Origin#LEDGER} /
+     *       {@code declared-only} instead of vanishing;</li>
+     *   <li>every entry point whose backing tree is absent becomes a
+     *       {@link ColdArtifactShim} that names the
+     *       artifact and the one command that builds it;</li>
+     *   <li>when {@code lazyArtifacts}, the copy additionally defers the
+     *       <b>virtualenvs inside units</b> — see {@link #deferrableVirtualenv},
+     *       which is where the bytes actually are.</li>
+     * </ol>
+     *
+     * <p>(1) and (2) are done for an EAGER copy too. They describe what the
+     * clone already did; withholding the description from a home that did not
+     * opt into laziness would leave the defect ARTI-01 measured exactly where
+     * it was, in the tier that is not even the one being changed.
+     *
+     * @param lazyArtifacts defer what the copy can rebuild on demand. Default
+     *                      is {@link HomePolicy#lazyArtifactsDefault}; the
+     *                      resulting decision is written into the copy's
+     *                      {@code home.policy.toml} so the home records the
+     *                      state it is in rather than re-deriving it later
+     */
+    public static Report cloneHome(Path source, Path dest, boolean strict, boolean lazyArtifacts)
+            throws IOException {
         Path src = source.toAbsolutePath().normalize();
         Path dst = dest.toAbsolutePath().normalize();
         if (!Files.isDirectory(src)) {
@@ -452,20 +542,21 @@ public final class HomeCloner {
         Counters counters = new Counters();
         try {
             Files.createDirectories(dst);
-            return build(src, dst, strict, counters);
+            return build(src, dst, strict, counters, lazyArtifacts);
         } catch (IOException | RuntimeException e) {
             discardPartialClone(dst, preexisting);
             throw e;
         }
     }
 
-    private static Report build(Path src, Path dst, boolean strict, Counters counters)
-            throws IOException {
+    private static Report build(Path src, Path dst, boolean strict, Counters counters,
+                                boolean lazyArtifacts) throws IOException {
         // Enumerated from the SOURCE before the copy, because the copy is what
         // omits them: after copyTree there is nothing left in the destination
         // to enumerate, and a drop nobody can name is a drop nobody can undo.
         List<String> droppedRegistrations = registrationsIn(src);
-        copyTree(src, dst, counters);
+        List<String> deferredTrees = new ArrayList<>();
+        copyTree(src, dst, counters, lazyArtifacts, deferredTrees);
 
         List<String> droppedBindings = new ArrayList<>();
         List<String> droppedChildHomes = new ArrayList<>();
@@ -474,6 +565,21 @@ public final class HomeCloner {
         List<String> danglingReferences = new ArrayList<>();
         int provisionedRewritten = reanchorProvisioned(src, dst, overflows, danglingReferences);
         HomeLinks.relativizeShims(new SkillStore(dst));
+
+        // Declare, then refuse in the copy's own words, then baseline. The
+        // order is load-bearing in both directions:
+        //
+        //  * BEFORE rebaselineDrift, so the copy's baseline describes the bytes
+        //    the copy actually holds. A baseline taken before the cold shims
+        //    were written would report every one of them as this home's own
+        //    drift on the first launch — the exact failure rebaselineDrift's
+        //    javadoc exists to keep closed, reintroduced one step later.
+        //  * BEFORE verifyRoots, because a cold shim is the ANSWER to an
+        //    unresolved reference. Verifying first would report the state that
+        //    the next line removes.
+        HomePolicy.writeLazyArtifacts(new SkillStore(dst), lazyArtifacts);
+        declareArtifacts(src, dst, deferredTrees);
+        List<String> coldShims = writeColdShims(dst);
         rebaselineDrift(new SkillStore(dst));
 
         Verification verification = verifyRoots(src, dst, strict);
@@ -496,7 +602,8 @@ public final class HomeCloner {
                 counters.linksRelativized, stateReanchored, provisionedRewritten,
                 leaks, verification.contentReferences(), verification.danglingLinks(),
                 danglingReferences, droppedRegistrations,
-                sorted(droppedBindings), sorted(droppedChildHomes));
+                sorted(droppedBindings), sorted(droppedChildHomes),
+                sorted(deferredTrees), sorted(coldShims), lazyArtifacts);
     }
 
     /** Directory iteration order is not a contract; the report's order is. */
@@ -599,13 +706,26 @@ public final class HomeCloner {
         long bytes;
     }
 
-    private static void copyTree(Path src, Path dst, Counters counters) throws IOException {
+    private static void copyTree(Path src, Path dst, Counters counters,
+                                 boolean lazyArtifacts, List<String> deferredTrees)
+            throws IOException {
         Files.walkFileTree(src, new FileVisitor<Path>() {
             @Override
             public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs)
                     throws IOException {
                 String rel = rel(src, dir);
                 if (!rel.isEmpty() && isSkipped(rel)) return FileVisitResult.SKIP_SUBTREE;
+                if (lazyArtifacts && !rel.isEmpty() && deferrableVirtualenv(dir, rel)) {
+                    // Left ABSENT, not created empty. `uv` decides what to do
+                    // by looking for `pyvenv.cfg`, so an empty directory with
+                    // no marker is a shape it has to recover from, where a
+                    // missing one is the shape it creates from scratch every
+                    // day. Absent is also the honest probe result: the artifact
+                    // is declared and not materialized, and a reader that finds
+                    // an empty directory cannot tell that from a broken build.
+                    deferredTrees.add(rel.replace(java.io.File.separatorChar, '/'));
+                    return FileVisitResult.SKIP_SUBTREE;
+                }
                 // walkFileTree reports a symlinked directory here only when
                 // following links, which we do not; a link to a directory
                 // arrives at visitFile instead.
@@ -655,6 +775,240 @@ public final class HomeCloner {
                 return FileVisitResult.CONTINUE;
             }
         });
+    }
+
+    // ------------------------------------------------- declared, not built
+
+    /**
+     * Whether {@code dir} is a virtualenv inside a unit that this copy may
+     * declare instead of carrying.
+     *
+     * <h2>The measurement that put this here</h2>
+     *
+     * <p>ARTI-01 decomposed a 989.5 MB ticket home and named two units and one
+     * runtime as 86% of it. Decomposing those, on the operator's project home:
+     * {@code skills/deploy-helm} is 400 MB of which <b>361 MB is
+     * {@code .venv}</b>; {@code skills/hyper-experiments-finance} carries
+     * another 51 MB and {@code skills/acp-cdc-ai-python} 26 MB, the same shape
+     * each time. That is 438 MB of a 989.5 MB home in virtualenvs that no
+     * record declares, that {@code uv} rebuilds from a lockfile sitting beside
+     * them, and that the clone currently copies AND byte-scans AND re-anchors,
+     * because a venv console script's shebang is an absolute interpreter path.
+     * The other 274 MB of {@code spec-double-compiler} is {@code specs/.history}
+     * and {@code specs/results} — append-only authored records, which is a
+     * different kind of thing and is not touched.
+     *
+     * <h2>Two structural tests, and no naming convention</h2>
+     *
+     * <p>The membership rule is deliberately NOT
+     * {@link Rederivable#OUTPUT_ROOTS}, which that class warns about in as many
+     * words: those names — {@code build}, {@code target}, {@code venv} — "are
+     * ordinary words used by convention", safe for a reconcile that compares
+     * two trees and not safe for a byte-for-byte copy that would simply drop
+     * whatever it matched. A unit with an authored {@code build/} directory
+     * exists; a unit with an authored {@code pyvenv.cfg} does not.
+     *
+     * <p>So the test is:
+     *
+     * <ol>
+     *   <li><b>inside a unit</b> — the top segment is one of
+     *       {@link #CONTENT_ROOTS}. A virtualenv anywhere else is either
+     *       already under a {@link #SKIPPED_DIRS} root or is skill-manager's
+     *       own state, and neither is this rule's business;</li>
+     *   <li><b>it contains {@code pyvenv.cfg}</b> — the marker every virtualenv
+     *       carries, that no authored directory carries, and that names the
+     *       interpreter the shebangs point at. Not the directory's NAME.</li>
+     * </ol>
+     *
+     * <p>{@code node_modules} is deliberately absent. {@link Rederivable} records
+     * why a clone must carry it — {@code node_modules/<pkg>/build/Release/*.node}
+     * is a prebuilt native binary no command rebuilds — and that argument is
+     * unchanged. It also does not arise: the operator's home has none inside a
+     * unit, so including it would trade a real risk for no measured bytes.
+     *
+     * <h2>Why deferring this does not move the drift baseline</h2>
+     *
+     * <p>{@code ChildHomeMaterializer.walkPlain} already excludes
+     * {@link Rederivable#isDerived} paths from the digest, which is what
+     * {@link #rebaselineDrift}'s javadoc means by "the current definition of
+     * unit content excludes them". A venv is therefore not in the digest on
+     * either side, so a copy that omits one is byte-identical to a copy that
+     * carries one as far as the gate is concerned — and building it later moves
+     * nothing either. That is asserted, not assumed.
+     */
+    static boolean deferrableVirtualenv(Path dir, String rel) {
+        String normalized = rel.replace(java.io.File.separatorChar, '/');
+        int slash = normalized.indexOf('/');
+        if (slash < 0) return false;
+        if (!CONTENT_ROOTS.contains(normalized.substring(0, slash))) return false;
+        return Files.isRegularFile(dir.resolve("pyvenv.cfg"));
+    }
+
+    /**
+     * Give the copy a ledger that NAMES what it does not hold.
+     *
+     * <p>Three sources, merged in one order that encodes one rule — the copy
+     * wins on facts, the source is consulted only for existence:
+     *
+     * <ol>
+     *   <li>the SOURCE's artifacts whose outputs land under a root this clone
+     *       skips. These are the only facts the copy cannot re-derive for
+     *       itself, and restricting the source's contribution to them is what
+     *       keeps a dropped registration or a dropped binding from being
+     *       resurrected through the ledger — the copy deliberately did not
+     *       inherit those, and a row declaring one would be a claim over
+     *       another checkout wearing a new file name;</li>
+     *   <li>the trees this copy deferred, which no home has ever recorded;</li>
+     *   <li>everything the COPY can see for itself, last, so a live fact
+     *       overwrites the source's snapshot of the same id.</li>
+     * </ol>
+     *
+     * <p>Never fatal. A ledger is an optimisation and a memory
+     * ({@link ArtifactLedger}); a home that gets one
+     * lists better, and a home that does not still lists. Failing a clone over
+     * it would trade a working home for a tidier index.
+     */
+    private static void declareArtifacts(Path src, Path dst, List<String> deferredTrees) {
+        try {
+            List<Artifact> rows = new ArrayList<>();
+            for (Artifact artifact
+                    : ArtifactIndex.of(new SkillStore(src)).artifacts()) {
+                if (underSkippedRoot(artifact)) rows.add(artifact);
+            }
+            for (String tree : deferredTrees) rows.add(deferredTreeArtifact(dst, tree));
+            rows.addAll(ArtifactIndex.of(new SkillStore(dst)).artifacts());
+            ArtifactLedger.of(rows).save(new SkillStore(dst));
+        } catch (IOException | RuntimeException e) {
+            Log.warn("clone: could not record the artifact ledger in %s (%s) — the copy still "
+                    + "lists its artifacts, it just cannot name the ones under the roots a "
+                    + "clone skips", dst, e.getMessage());
+        }
+    }
+
+    /** Whether every home-scoped output of {@code artifact} is under a skipped root. */
+    private static boolean underSkippedRoot(Artifact artifact) {
+        boolean any = false;
+        for (Artifact.Output output : artifact.outputs()) {
+            if (output.scope() != Artifact.Scope.HOME) continue;
+            String path = output.path().replace(java.io.File.separatorChar, '/');
+            int slash = path.indexOf('/');
+            String top = slash < 0 ? path : path.substring(0, slash);
+            if (!SKIPPED_DIRS.contains(top)) return false;
+            any = true;
+        }
+        return any;
+    }
+
+    /** One deferred in-unit virtualenv, as the artifact the copy declares. */
+    private static Artifact deferredTreeArtifact(Path dst, String rel) {
+        String[] segments = rel.split("/");
+        // skills/<unit>/... — the unit is the second segment, and a tree that
+        // is not under one has no owner rather than a guessed one.
+        String owner = segments.length > 1 ? segments[1] : null;
+        List<String> inputs = owner == null ? List.of()
+                : List.of(ArtifactIds.unitInput(owner));
+        return new Artifact(
+                ArtifactIds.of(
+                        ArtifactKind.PROVISIONED_TREE, rel),
+                ArtifactKind.PROVISIONED_TREE,
+                owner, inputs,
+                List.of(Artifact.Output.inHome(rel,
+                        Artifact.Presence.MISSING)),
+                null, Map.of(), Map.of(),
+                Artifact.Agreement.UNRECORDED,
+                Artifact.Origin.LEDGER);
+    }
+
+    /**
+     * Replace every entry point in the copy whose backing tree is absent with
+     * a {@link ColdArtifactShim}.
+     *
+     * <p>Both shapes, because a home has both and only one of them was ever
+     * visible: a SYMLINK into a skipped root, which {@link #copyLink}
+     * faithfully recreates pointing at nothing, and a GENERATED WRAPPER whose
+     * {@code exec} target {@link #reanchorProvisioned} correctly re-anchors
+     * onto a path the copy does not have. The first is
+     * {@code Verification.danglingLinks}, the second is
+     * {@code unresolvedReferences}, and to whoever typed the command they are
+     * the same event.
+     *
+     * <p>The id in the message comes from the ledger written a moment ago,
+     * matched by OUTPUT PATH — the same rule {@code ArtifactBuild.buildableFor}
+     * resolves a remedy by, and never by parsing a shim's name back into a lock
+     * key, because {@code bin/cli/tofu} comes from {@code brew:opentofu}. An
+     * entry point no artifact claims is left exactly as it was: a refusal that
+     * named a command nobody can run would be worse than the kernel's, which at
+     * least does not mislead.
+     *
+     * @return the names replaced
+     */
+    private static List<String> writeColdShims(Path dst) {
+        List<String> replaced = new ArrayList<>();
+        try {
+            Map<String, String> idByOutput = new LinkedHashMap<>();
+            for (ArtifactLedger.Row row
+                    : ArtifactLedger.load(new SkillStore(dst)).rows()) {
+                for (String output : row.outputs()) idByOutput.putIfAbsent(output, row.id());
+            }
+            for (String dir : SHIM_DIRS) {
+                Path shimDir = dst.resolve(dir);
+                if (!Files.isDirectory(shimDir)) continue;
+                try (var entries = Files.list(shimDir)) {
+                    for (Path entry : (Iterable<Path>) entries::iterator) {
+                        String rel = dir + entry.getFileName();
+                        String why = coldReason(entry, dst);
+                        if (why == null) continue;
+                        String id = idByOutput.get(rel);
+                        if (id == null) continue;
+                        ColdArtifactShim.write(entry, id, why);
+                        replaced.add(entry.getFileName().toString());
+                    }
+                }
+            }
+        } catch (IOException | RuntimeException e) {
+            Log.warn("clone: could not write the cold-artifact entry points in %s (%s) — an "
+                    + "entry point whose tree is missing will fail in the kernel's words "
+                    + "instead of naming `skill-manager build`", dst, e.getMessage());
+        }
+        return replaced;
+    }
+
+    /**
+     * Why {@code entry} cannot run in this copy, or null when it can.
+     *
+     * <p>Deliberately NOT "is the artifact materialized": this asks the
+     * filesystem the same question the kernel is about to ask, so the answer
+     * cannot disagree with what the operator sees.
+     */
+    private static String coldReason(Path entry, Path dst) throws IOException {
+        if (ColdArtifactShim.isCold(entry)) return null;
+        if (Files.isSymbolicLink(entry)) {
+            if (Files.exists(entry)) return null;
+            return "it links to " + insideHomeText(Files.readSymbolicLink(entry).toString(), dst)
+                    + ", which this home does not have";
+        }
+        if (!Files.isRegularFile(entry, LinkOption.NOFOLLOW_LINKS)) return null;
+        List<String> missing = missingReferencesIn(entry, dst);
+        if (missing.isEmpty()) return null;
+        return "it runs out of " + insideHomeText(missing.get(0), dst)
+                + ", which this home does not have";
+    }
+
+    /**
+     * {@code value} with this home's own root replaced by {@code $SKILL_MANAGER_HOME}.
+     *
+     * <p>The reason a cold shim gives has to name the missing tree — an agent
+     * that is told only "not built" cannot tell which of eight tools it just
+     * ran. It also has to name it WITHOUT writing an absolute path into the
+     * file, because the file is generated content that a further clone would
+     * carry verbatim, and an absolute path in generated content is precisely
+     * the {@code Surface.PROVISIONED} leak class this class exists to remove.
+     * Both at once means the token, which is the same encoding
+     * {@link HomePaths} uses for every other stored path.
+     */
+    private static String insideHomeText(String value, Path dst) {
+        String root = dst.toAbsolutePath().normalize().toString();
+        return value.replace(root, "$SKILL_MANAGER_HOME");
     }
 
     /**
@@ -1091,7 +1445,24 @@ public final class HomeCloner {
                                List<String> danglingLinks,
                                List<String> unresolvedReferences,
                                List<String> diagnosticReferences,
-                               List<String> parentStoreShims) {
+                               List<String> parentStoreShims,
+                               /**
+                                * Entry points this home DECLARES and has not
+                                * built — the third state, and the reason it is
+                                * a list of its own rather than a subset of
+                                * {@link #unresolvedReferences}.
+                                *
+                                * <p>A gate that reports a normal state as a
+                                * failure gets turned off. Every clone ships
+                                * these by construction, so folding them in
+                                * would make {@code home verify} exit 1 on every
+                                * fresh worktree, and the next move after that
+                                * is not "fix the artifact", it is "stop running
+                                * the check". They are reported and never
+                                * counted. See
+                                * {@link HomePolicy#LAZY_ARTIFACTS_KEY}.
+                                */
+                               List<String> declaredNotBuilt) {
         public Verification {
             leaks = leaks == null ? List.of() : List.copyOf(leaks);
             contentReferences = contentReferences == null ? List.of() : List.copyOf(contentReferences);
@@ -1101,18 +1472,27 @@ public final class HomeCloner {
             diagnosticReferences = diagnosticReferences == null
                     ? List.of() : List.copyOf(diagnosticReferences);
             parentStoreShims = parentStoreShims == null ? List.of() : List.copyOf(parentStoreShims);
+            declaredNotBuilt = declaredNotBuilt == null ? List.of() : List.copyOf(declaredNotBuilt);
+        }
+
+        public Verification(List<Leak> leaks, List<String> contentReferences,
+                            List<String> danglingLinks, List<String> unresolvedReferences,
+                            List<String> diagnosticReferences, List<String> parentStoreShims) {
+            this(leaks, contentReferences, danglingLinks, unresolvedReferences,
+                    diagnosticReferences, parentStoreShims, List.of());
         }
 
         public Verification(List<Leak> leaks, List<String> contentReferences,
                             List<String> danglingLinks, List<String> unresolvedReferences,
                             List<String> diagnosticReferences) {
             this(leaks, contentReferences, danglingLinks, unresolvedReferences,
-                    diagnosticReferences, List.of());
+                    diagnosticReferences, List.of(), List.of());
         }
 
         public Verification(List<Leak> leaks, List<String> contentReferences,
                             List<String> danglingLinks, List<String> unresolvedReferences) {
-            this(leaks, contentReferences, danglingLinks, unresolvedReferences, List.of(), List.of());
+            this(leaks, contentReferences, danglingLinks, unresolvedReferences,
+                    List.of(), List.of(), List.of());
         }
 
         public boolean clean() { return leaks.isEmpty(); }
@@ -1294,14 +1674,80 @@ public final class HomeCloner {
                 leaks.add(new Leak(rel, "FILE_CONTENT", surface.name().toLowerCase()));
             }
         }));
+        // The third state, separated LAST so that every rule above it is
+        // unchanged: a path that resolves into another home is still a leak
+        // whatever the ledger says about it, and only the "names something in
+        // THIS home that is not there" findings can be declared rather than
+        // broken.
+        List<String> declaredNotBuilt = partitionDeclared(dstRoot, dangling, unresolved);
         leaks.sort(java.util.Comparator.comparing(Leak::path));
         contentReferences.sort(String::compareTo);
         dangling.sort(String::compareTo);
         unresolved.sort(String::compareTo);
         diagnostics.sort(String::compareTo);
         parentShims.sort(String::compareTo);
+        declaredNotBuilt.sort(String::compareTo);
         return new Verification(leaks, contentReferences, dangling, unresolved, diagnostics,
-                parentShims);
+                parentShims, declaredNotBuilt);
+    }
+
+    /**
+     * Move the findings this home DECLARES out of the two failure lists.
+     *
+     * <h2>Three states, and the one that must not be a failure</h2>
+     *
+     * <ul>
+     *   <li><b>materialized</b> — nothing appears here at all;</li>
+     *   <li><b>declared, not built</b> — the home's ledger names an artifact
+     *       whose output is this path, and the home declares
+     *       {@code lazy_artifacts}. Normal, expected, and reported;</li>
+     *   <li><b>broken</b> — everything else, unchanged: a path nothing in this
+     *       home ever claimed to produce, which is a defect whatever tier the
+     *       home is.</li>
+     * </ul>
+     *
+     * <p><b>Both conditions, and neither alone.</b> Without the ledger test
+     * this would excuse every unresolved reference in a lazy home, which is
+     * "turn the gate off" spelled as a feature. Without the policy test it
+     * would excuse them in the operator root, where nothing deferred anything
+     * and an unresolved reference means an install broke.
+     *
+     * <p>Matching is by the finding's LEFT side — the entry point's own
+     * home-relative path — against the ledger's output paths. Same join
+     * {@code ArtifactBuild.buildableFor} uses to turn a finding into a remedy,
+     * so a finding this method excuses is exactly a finding that command can
+     * act on.
+     */
+    private static List<String> partitionDeclared(Path dstRoot, List<String> dangling,
+                                                  List<String> unresolved) {
+        List<String> declared = new ArrayList<>();
+        SkillStore store = new SkillStore(dstRoot);
+        try {
+            if (!HomePolicy.lazyArtifacts(store)) return declared;
+        } catch (IOException e) {
+            // An unreadable policy is not a licence to excuse anything.
+            return declared;
+        }
+        Set<String> outputs = new java.util.HashSet<>();
+        try {
+            for (ArtifactLedger.Row row : ArtifactLedger.load(store).rows()) {
+                outputs.addAll(row.outputs());
+            }
+        } catch (IOException | RuntimeException e) {
+            return declared;
+        }
+        if (outputs.isEmpty()) return declared;
+        for (List<String> findings : List.of(dangling, unresolved)) {
+            findings.removeIf(finding -> {
+                int arrow = finding.indexOf(" -> ");
+                String left = (arrow < 0 ? finding : finding.substring(0, arrow))
+                        .trim().replace('\\', '/');
+                if (!outputs.contains(left)) return false;
+                declared.add(finding);
+                return true;
+            });
+        }
+        return declared;
     }
 
     /**
