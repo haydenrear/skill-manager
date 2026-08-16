@@ -314,12 +314,20 @@ public final class ArtifactBuild {
             // referent — the #142 class this epic keeps closing.
             case PROVISIONED_TREE -> artifact.owner() == null
                     ? (artifact.recorded().get("pinned_version") != null
+                    // Review of #122: this used to tell the operator to DELETE
+                    // pm/<tool> by hand. That was wrong and needlessly
+                    // destructive — `pm install` calls PackageManagerRuntime
+                    // .install directly, which bypasses ensureBundled's
+                    // short-circuit and moves the `current` pointer, so it
+                    // re-pins in place and leaves the old version beside it.
+                    // A remedy that says "delete this" when a non-destructive
+                    // one exists is the #142 class in the other direction.
                     ? "it is a bundled package manager, not a unit's install: `build` has no "
-                    + "per-tree producer for it, and re-pinning it means deleting pm/"
+                    + "per-tree producer for it. Re-pin it with `skill-manager pm install "
                     + artifact.recorded().getOrDefault("tool", "<tool>")
-                    + " so the next install re-downloads the pinned version. Its record does "
-                    + "name what it was derived from, so a stale one is REPORTED rather than "
-                    + "silent (#122)"
+                    + "`, which downloads the pinned version and repoints `current` without "
+                    + "removing what is there. Its record does name what it was derived from, "
+                    + "so a stale one is REPORTED rather than silent (#122)"
                     : "nothing in this home claims to have produced it: no record says which "
                     + "installer wrote it and no artifact names it as an input, so there is no "
                     + "install to rerun and `build` has nothing to offer. A tree under a unit's "

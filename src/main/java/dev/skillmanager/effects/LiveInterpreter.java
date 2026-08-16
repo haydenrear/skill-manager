@@ -1388,8 +1388,21 @@ public final class LiveInterpreter implements ProgramInterpreter {
                 try {
                     boolean wasMissing = rt.bundledPath(tool.id()) == null;
                     rt.ensureBundled(tool.id());
+                    // The version this home ACTUALLY has, not the one it is
+                    // pinned to. Review of #122: this reported
+                    // `tool.pm().defaultVersion` unconditionally, while
+                    // `ensureBundled` returns the moment ANY bundled copy
+                    // exists — so a home holding uv 0.4.18 with the pin at
+                    // 0.5.0 printed "uv ready 0.5.0". The one thing that
+                    // reports on `pm/` stated a false fact, which is the same
+                    // shape as the defect that justified recording `pm/` at
+                    // all. `currentVersion` reads the `current` pointer in both
+                    // spellings; the pin is the fallback only when this home
+                    // has no pointer to read.
+                    String installed = rt.currentVersion(tool.pm());
                     facts.add(new ContextFact.PackageManagerReady(tool.id(),
-                            tool.pm().defaultVersion, wasMissing));
+                            installed != null ? installed : tool.pm().defaultVersion,
+                            wasMissing));
                 } catch (Exception ex) {
                     facts.add(new ContextFact.PackageManagerUnavailable(tool.id(), ex.getMessage()));
                     failed++;

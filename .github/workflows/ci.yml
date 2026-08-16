@@ -137,6 +137,16 @@ jobs:
   # evaluation ticket has to decide whether the goal is met on the nightly
   # figure or missed on the per-run one; that is the owner's call, not this
   # change's, and it is recorded here so the decision is made in daylight.
+  #
+  # AND THE SECOND HALF OF THAT COST, which this comment omitted while the PR
+  # body and CLAUDE.md both stated it: `graph-count` also `needs: graph-set`,
+  # so a push/PR run emits NO `graphs-executed` artifact at all rather than one
+  # reading zero. Anyone measuring metric (a) the documented way —
+  # `gh run download <id> -n graphs-executed` — gets a missing artifact, not a
+  # zero. That is the difference between "this run executed no graphs" and
+  # "this run cannot tell you", and ARTI-16 (#117) exists precisely so the
+  # count is READ rather than inferred. Recorded here so this file agrees with
+  # the two documents that describe it.
   # ---------------------------------------------------------------------------
   graph-set:
     name: select graph set
