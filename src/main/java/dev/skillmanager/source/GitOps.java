@@ -202,6 +202,20 @@ public final class GitOps {
         return !porcelainStatus(dir).isBlank();
     }
 
+    /**
+     * {@link #porcelainStatus} without the opportunistic index refresh.
+     *
+     * <p>A plain {@code git status} rewrites {@code .git/index} whenever stat
+     * information is stale, which is nearly always after a copy. Readers that
+     * must not change a byte of the tree they are asked about -- a dry-run
+     * reconcile, a teardown gate -- ask this instead: {@code --no-optional-locks}
+     * makes git skip that write. Same output, same exit code.
+     */
+    public static String porcelainStatusNoLock(Path dir) {
+        Result r = run(dir, List.of("git", "--no-optional-locks", "status", "--porcelain"));
+        return r.exit == 0 ? r.stdout : null;
+    }
+
     public static boolean isDirty(Path dir, String baselineHash) {
         if (hasWorktreeChanges(dir)) return true;
         if (baselineHash == null || baselineHash.isBlank()) return false;
@@ -214,6 +228,47 @@ public final class GitOps {
             return false;
         }
         return run(dir, List.of("git", "merge-base", "--is-ancestor", ancestor, descendant)).exit == 0;
+    }
+
+    /**
+     * Whether every object in {@code objects} is reachable from some ref of
+     * {@code dir} -- {@code refs/*} or HEAD, so a side branch, a remote-tracking
+     * ref, a tag or a stash in {@code dir} all count as "holding" it.
+     *
+     * <p>One {@code rev-list --stdin --not --all} rather than one
+     * {@code merge-base --is-ancestor} per object per ref: a real store copy
+     * carries a few dozen refs on each side, and asking about ancestry of the
+     * HEAD alone was measured false on every one of them (feature branches and
+     * remote-tracking refs are not ancestors of {@code main} in either home,
+     * while being identical in both). An object {@code dir} does not have at
+     * all makes rev-list exit non-zero, which reads as "not contained" -- the
+     * conservative answer.
+     */
+    public static boolean containsAll(Path dir, java.util.Collection<String> objects) {
+        if (objects == null || objects.isEmpty()) return true;
+        ProcessBuilder pb = new ProcessBuilder(List.of("git", "rev-list", "--stdin", "--not", "--all"))
+                .redirectErrorStream(true);
+        pb.directory(dir.toFile());
+        try {
+            Process p = pb.start();
+            try (java.io.Writer w = new java.io.OutputStreamWriter(p.getOutputStream(),
+                    java.nio.charset.StandardCharsets.UTF_8)) {
+                for (String object : objects) {
+                    if (object == null || object.isBlank()) continue;
+                    w.write(object.trim());
+                    w.write('\n');
+                }
+            }
+            StringBuilder out = new StringBuilder();
+            try (BufferedReader r = new BufferedReader(new InputStreamReader(p.getInputStream()))) {
+                String line;
+                while ((line = r.readLine()) != null) out.append(line).append('\n');
+            }
+            return p.waitFor() == 0 && out.toString().isBlank();
+        } catch (IOException | InterruptedException e) {
+            if (e instanceof InterruptedException) Thread.currentThread().interrupt();
+            return false;
+        }
     }
 
     /** Files left in unmerged ({@code UU}) state after a failed merge or stash pop. */

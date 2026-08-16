@@ -58,8 +58,10 @@ public final class SyncFromLocalDirHandler {
         boolean srcIsGit = GitOps.isGitRepo(src);
 
         if (storeIsGit && GitOps.isAvailable() && e.merge() && srcIsGit) {
+            SyncGitHandler.BaselineWatch watch = SyncGitHandler.BaselineWatch.before(store, skillName, kind);
             SyncGitHandler.MergeResult mr =
                     SyncGitHandler.runMerge(ctx, storeDir, src.toString(), "HEAD", skillName);
+            if (mr.rc() == 0) watch.afterUpstreamMove();
             return switch (mr.rc()) {
                 case 0 -> EffectReceipt.ok(e, new ContextFact.SyncGitMerged(skillName, mr.fetchedHash()));
                 case 8 -> EffectReceipt.partial(e, "merge conflict",
@@ -132,12 +134,14 @@ public final class SyncFromLocalDirHandler {
                 return EffectReceipt.failed(e, "could not read stdin: " + ex.getMessage());
             }
         }
+        SyncGitHandler.BaselineWatch watch = SyncGitHandler.BaselineWatch.before(store, skillName, kind);
         try {
             Fs.deleteRecursive(storeDir);
             Fs.copyRecursive(src, storeDir);
         } catch (IOException ex) {
             return EffectReceipt.failed(e, ex.getMessage());
         }
+        watch.afterUpstreamMove();
         // Refresh the source record so its gitHash matches what's actually
         // on disk now. Without this, a future `sync` would compare against
         // the pre-copy baseline and report bogus drift / refuse the merge.

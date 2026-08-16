@@ -1,6 +1,8 @@
 package dev.skillmanager.effects;
 
+import dev.skillmanager.bindings.ChildHomeMaterializer;
 import dev.skillmanager.lifecycle.BundledSkills;
+import dev.skillmanager.model.UnitKind;
 import dev.skillmanager.registry.AuthenticationRequiredException;
 import dev.skillmanager.registry.RegistryClient;
 import dev.skillmanager.registry.RegistryConfig;
@@ -164,8 +166,70 @@ public final class SyncGitHandler {
         if (!dirty && target.sha != null && target.sha.equals(baseline)) {
             return EffectReceipt.ok(e, new ContextFact.SyncGitUpToDate(skillName, target.displayLabel()));
         }
-        return runGitMerge(ctx, storeDir, upstream, target.ref, skillName, e,
+        BaselineWatch watch = BaselineWatch.before(store, skillName, e.kind());
+        EffectReceipt receipt = runGitMerge(ctx, storeDir, upstream, target.ref, skillName, e,
                 allowUnrelatedHistories(src, skillName));
+        if (receipt.status() == EffectStatus.OK) watch.afterUpstreamMove();
+        return receipt;
+    }
+
+    /**
+     * The materialization record's half of an upstream sync.
+     *
+     * <p>A sync moves the store copy to what upstream holds and refreshes
+     * {@code installed/<unit>.json}. The per-unit materialization record --
+     * the baseline every reconcile, prune and close-out reads -- was left
+     * naming the tree the home was cloned with (#210). This pairs the two
+     * moments a sync has to ask about it: {@link #before} establishes, while
+     * it is still true, that the copy stood on its own record with nothing
+     * local in it; {@link #afterUpstreamMove} then restates the record against
+     * the tree upstream just wrote. A copy that carried an edit or a commit
+     * before the sync fails the first question and keeps its record, so the
+     * edit remains an edit afterwards.
+     *
+     * <p>Failures here are logged and swallowed: the sync itself succeeded and
+     * a record that could not be rewritten is exactly as stale as it was
+     * before, which every reader already tolerates.
+     */
+    public static final class BaselineWatch {
+        private final SkillStore home;
+        private final String name;
+        private final UnitKind kind;
+        private final boolean pristine;
+
+        private BaselineWatch(SkillStore home, String name, UnitKind kind, boolean pristine) {
+            this.home = home;
+            this.name = name;
+            this.kind = kind;
+            this.pristine = pristine;
+        }
+
+        public static BaselineWatch before(SkillStore home, String name, UnitKind kind) {
+            boolean pristine = false;
+            if (home != null && name != null && kind != null) {
+                try {
+                    pristine = ChildHomeMaterializer.standsOnItsCopyRecord(home, name, kind);
+                } catch (IOException | RuntimeException ex) {
+                    Log.warn("could not read the materialization record for %s before sync: %s",
+                            name, ex.getMessage());
+                }
+            }
+            return new BaselineWatch(home, name, kind, pristine);
+        }
+
+        /** Was the copy a pristine, record-described tree when {@link #before} looked? */
+        public boolean wasPristine() { return pristine; }
+
+        /** Restate the record against the tree upstream wrote, if the copy was pristine before. */
+        public void afterUpstreamMove() {
+            if (!pristine) return;
+            try {
+                ChildHomeMaterializer.restateBaseline(home, name, kind);
+            } catch (IOException | RuntimeException ex) {
+                Log.warn("could not restate the materialization baseline for %s after sync: %s",
+                        name, ex.getMessage());
+            }
+        }
     }
 
     private static TargetResolution resolveTarget(SkillStore store, EffectContext ctx,
