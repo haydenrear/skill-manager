@@ -57,14 +57,23 @@ import java.util.Set;
  *
  * <ol>
  *   <li>a target that <b>contains a {@code .git} anywhere below it</b> is
- *       refused by name, with #29's reasoning in the refusal;</li>
- *   <li>a target that does not resolve strictly inside this home is refused;</li>
+ *       refused by name, with #29's reasoning in the refusal — and so is a
+ *       target with a subtree this pass could not read, because a tree it
+ *       could not look inside is a tree it cannot rule one out of;</li>
+ *   <li>a target that does not resolve strictly inside this home is refused,
+ *       decided on the path the KERNEL will use rather than on the string —
+ *       an intermediate directory symlink is a way out of a home, and the
+ *       operator's home has fourteen directory symlinks in it;</li>
  *   <li>{@link ArtifactKind#UNIT_STORE}, {@link ArtifactKind#UNIT_DIGEST} and
- *       every {@link Artifact.Scope#EXTERNAL} output are out of scope. A unit's
- *       bytes are removed by {@code uninstall} and its agent-side projections by
- *       {@code unbind}; both are ledger-driven already, and a second command
- *       that also deletes them is a second thing that can be wrong about
- *       somebody else's checkout.</li>
+ *       every {@link Artifact.Scope#EXTERNAL} output are out of scope, <b>and
+ *       so is any output whose PATH is installed unit content</b>
+ *       ({@link dev.skillmanager.store.HomeCloner.Surface#CONTENT}). The kind
+ *       is what a row DECLARES; the path is what would be deleted, and a row
+ *       declaring {@code provisioned-tree} over {@code skills/<unit>} is not a
+ *       hypothetical shape. A unit's bytes are removed by {@code uninstall}
+ *       and its agent-side projections by {@code unbind}; both are
+ *       ledger-driven already, and a second command that also deletes them is
+ *       a second thing that can be wrong about somebody else's checkout.</li>
  * </ol>
  *
  * <h2>What counts as an orphan</h2>
@@ -176,15 +185,23 @@ public final class ArtifactPrune {
         ArtifactLedger ledger = ArtifactLedger.load(store);
         Set<String> installed = installedUnitNames(store);
         Set<String> declaredLockKeys = declaredLockKeys(store);
-        Set<String> childClaims = childHomeClaims(store);
         Path home = store.root().toAbsolutePath().normalize();
-        Set<String> claimed = claimedIds(index, graph, installed, declaredLockKeys);
+        ChildClaims childClaims = childHomeClaims(store, home);
+        // Both closures are the SAME walk over the same reverse edges, run
+        // from two different seeds, because the two answers are different
+        // sentences: "something installed is built from it" and "a home this
+        // one scaffolded is running out of it". Folding them into one set
+        // would make the second refusal print the first's reason.
+        Set<String> claimed = closeOverFeeds(index, graph,
+                declaredSeeds(index, installed, declaredLockKeys));
+        Set<String> childClaimed = closeOverFeeds(index, graph,
+                childClaimSeeds(index, childClaims));
 
         List<Step> steps = new ArrayList<>();
         for (Artifact artifact : index.artifacts()) {
             if (!owners.isEmpty() && !declaredBy(artifact, owners)) continue;
             Step step = decide(artifact, ledger, installed, declaredLockKeys, claimed,
-                    childClaims, home);
+                    childClaimed, childClaims, home);
             if (step != null) steps.add(step);
         }
         return new Plan(home.toString(), !ledger.isEmpty(), steps);
@@ -206,14 +223,20 @@ public final class ArtifactPrune {
      * <p>Iterated to a fixpoint over {@link ArtifactGraph#feeds} rather than
      * recursed, so a cycle the graph tolerates cannot become a stack overflow
      * in the one command that deletes things.
+     *
+     * <p>The same closure is run from a SECOND seed — the artifacts a
+     * registered child home links at, {@link #childClaimSeeds} — because a
+     * child home's claim propagates exactly the way an installed unit's does:
+     * a child links at the parent's {@code bin/cli/<tool>}, that shim is built
+     * from {@code venvs/<x>}, and the tree therefore has a live claimant even
+     * though nothing in the registry ever names it. Before ARTI-08's review
+     * that propagation did not happen and both were deleted.
+     *
+     * @param seeds the ids known to be claimed before any edge is walked
      */
-    private static Set<String> claimedIds(ArtifactIndex index, ArtifactGraph graph,
-                                          Set<String> installed, Set<String> declaredLockKeys) {
-        Set<String> claimed = new LinkedHashSet<>();
-        if (declaredLockKeys == null) return claimed;
-        for (Artifact artifact : index.artifacts()) {
-            if (declaredByInstalled(artifact, installed, declaredLockKeys)) claimed.add(artifact.id());
-        }
+    private static Set<String> closeOverFeeds(ArtifactIndex index, ArtifactGraph graph,
+                                              Set<String> seeds) {
+        Set<String> claimed = new LinkedHashSet<>(seeds);
         boolean grew = true;
         while (grew) {
             grew = false;
@@ -231,14 +254,39 @@ public final class ArtifactPrune {
         return claimed;
     }
 
+    /** The artifacts an installed unit declares directly. */
+    private static Set<String> declaredSeeds(ArtifactIndex index, Set<String> installed,
+                                             Set<String> declaredLockKeys) {
+        Set<String> seeds = new LinkedHashSet<>();
+        if (declaredLockKeys == null) return seeds;
+        for (Artifact artifact : index.artifacts()) {
+            if (declaredByInstalled(artifact, installed, declaredLockKeys)) seeds.add(artifact.id());
+        }
+        return seeds;
+    }
+
+    /** The artifacts whose own outputs a registered child home links at. */
+    private static Set<String> childClaimSeeds(ArtifactIndex index, ChildClaims claims) {
+        Set<String> seeds = new LinkedHashSet<>();
+        if (claims.paths().isEmpty()) return seeds;
+        for (Artifact artifact : index.artifacts()) {
+            if (claims.claimOn(artifact) != null) seeds.add(artifact.id());
+        }
+        return seeds;
+    }
+
     /**
      * Whether an installed unit still claims this artifact.
      *
      * <h2>A shim is judged by the DECLARATION, not by {@code requested_by}</h2>
      *
-     * <p>{@code requested_by} records who asked for a row once; it is not
-     * re-derived, so it goes on naming an installed unit after that unit's
-     * manifest has stopped declaring the dep. Measured on the operator's
+     * <p>{@code requested_by} records who asked for a row once, and is
+     * re-derived in exactly one place: {@code CliDependencyCleaner.pruneIfOrphan}
+     * overwrites it with a freshly computed {@code survivorClaimers} set when a
+     * unit is uninstalled with pruning. Nothing else refreshes it — in
+     * particular, a unit that merely EDITS its manifest to stop declaring a dep
+     * leaves the row naming it forever, and that is the case below. Measured on
+     * the operator's
      * project home: {@code cli-lock.toml} carries {@code npm:gemini-cli},
      * {@code npm:google} and {@code npm:google-gemini-cli} beside the real
      * {@code npm:@google/gemini-cli}, all four with live requesters
@@ -310,9 +358,8 @@ public final class ArtifactPrune {
 
     private static Step decide(Artifact artifact, ArtifactLedger ledger,
                                Set<String> installed, Set<String> declaredLockKeys,
-                               Set<String> claimed, Set<String> childClaims, Path home) {
-        // A registry this pass could not read is not a licence to delete.
-        if (declaredLockKeys == null) return null;
+                               Set<String> claimed, Set<String> childClaimed,
+                               ChildClaims childClaims, Path home) {
         // Kinds whose teardown belongs to another verb, filtered before
         // anything else so they never even appear as candidates.
         if (artifact.kind() == ArtifactKind.UNIT_STORE
@@ -326,7 +373,32 @@ public final class ArtifactPrune {
             // them; see the class javadoc.
             return null;
         }
+        // A record this pass could not read is not a licence to delete — and
+        // it is REFUSED rather than skipped, because a silently empty plan and
+        // a plan that found nothing print the same thing.
+        if (declaredLockKeys == null) {
+            return new Step(artifact.id(), artifact.kind(), owner, Verdict.REFUSED, List.of(),
+                    "this pass could not read the installed units' CLI declarations, so it "
+                            + "cannot tell an orphan from a live dep — nothing is removed while "
+                            + "that is true");
+        }
+        if (!childClaims.unreadable().isEmpty()) {
+            return new Step(artifact.id(), artifact.kind(), owner, Verdict.REFUSED, List.of(),
+                    "a registered child home's record could not be read ("
+                            + childClaims.unreadable().get(0) + "), and a child home's bin/cli "
+                            + "entry is a symlink AT THIS HOME's copy by design "
+                            + "(parentStoreShims) — an unreadable registry is not the same "
+                            + "answer as an empty one");
+        }
         if (declaredByInstalled(artifact, installed, declaredLockKeys)) return null;
+        if (childClaimed.contains(artifact.id())) {
+            String at = childClaims.claimOn(artifact);
+            return new Step(artifact.id(), artifact.kind(), owner, Verdict.CLAIMED,
+                    at == null ? List.of() : List.of(at),
+                    "a registered child home links at "
+                            + (at == null ? "something built from it" : at)
+                            + " — the parent's copy is shared by design (parentStoreShims)");
+        }
         if (claimed.contains(artifact.id())) {
             return new Step(artifact.id(), artifact.kind(), owner, Verdict.CLAIMED, List.of(),
                     "something still installed is built from it");
@@ -342,10 +414,15 @@ public final class ArtifactPrune {
 
         List<String> targets = new ArrayList<>();
         for (String relative : row.outputs()) {
-            if (childClaims.contains(relative)) {
+            // Asked of the LEDGER's outputs too, and not only of the index's:
+            // the ledger is what `apply` deletes from, and a row naming a path
+            // the index did not attribute to this artifact is exactly the case
+            // the index cannot rule out.
+            String at = childClaims.claimFor(relative);
+            if (at != null) {
                 return new Step(artifact.id(), artifact.kind(), owner, Verdict.CLAIMED,
                         List.of(relative),
-                        "a registered child home links at " + relative
+                        "a registered child home links at " + at
                                 + " — the parent's copy is shared by design (parentStoreShims)");
             }
             Path target = home.resolve(relative).normalize();
@@ -393,30 +470,97 @@ public final class ArtifactPrune {
      * happens to CONTAIN a checkout somebody committed in. Issue #29 is what
      * that costs, and {@link dev.skillmanager.shared.util.Rederivable}'s
      * heading is a standing instruction not to let a disposal decision skip it.
+     *
+     * <h2>The containment test is asked of the path the KERNEL will use</h2>
+     *
+     * <p>It used to be asked of the lexically normalized path, while
+     * {@link Fs#deleteRecursive} operated on whatever the kernel resolved. An
+     * output whose intermediate directory is a symlink out of the home —
+     * {@code cache/escape/subdir} where {@code cache/escape} points elsewhere —
+     * passed a test about the string and then deleted a tree outside the home.
+     * Measured on this branch's review: the outside tree was removed. The
+     * operator's home carries fourteen directory symlinks today ({@code
+     * pm/*&#47;current}, the {@code test_graph/sdk} cross-unit links), all
+     * home-internal, so the blast radius was another unit's source tree — but
+     * nothing bounds it to that.
+     *
+     * <p>Only the PARENT chain is resolved, never the leaf: {@code
+     * deleteRecursive} deletes a leaf symlink without following it, so a shim
+     * pointing at {@code /opt/homebrew/bin/tofu} is still removable, and
+     * resolving the leaf would refuse the ordinary case to fix the dangerous
+     * one.
      */
     static String whyUndeletable(Path target, Path home, String relative) {
-        if (!target.startsWith(home) || target.equals(home)) {
-            return "it resolves to " + target + ", which is not inside this home";
+        Path resolved = withResolvedParents(target);
+        Path root = Fs.realOrNormalized(home);
+        if (!resolved.startsWith(root) || resolved.equals(root)) {
+            return "it resolves to " + resolved + ", which is not inside this home";
         }
-        if (relative.isBlank() || relative.contains("..")) {
+        if (relative == null || relative.isBlank() || relative.contains("..")) {
             return "\"" + relative + "\" is not a path this home can vouch for";
         }
-        Path git = findGitDir(target);
-        if (git != null) {
-            return "it contains " + home.relativize(git) + ". A `.git` holds commits that exist"
-                    + " nowhere else (issue #29), so no disposal decision in this program may"
-                    + " step over one — inspect it and remove it by hand if it really is spent";
+        // A PATH-level scope rule, beside the kind-level one in `decide`. The
+        // kind is what a ROW DECLARES and a row can declare anything: a
+        // `provisioned-tree` row whose outputs name `skills/<unit>` deleted a
+        // unit store whenever that store had no `.git` — which is every unit
+        // installed from a `file:` coordinate or a tarball, and the `.git` walk
+        // was the only thing standing in front of them.
+        if (dev.skillmanager.store.HomeCloner.classify(relative)
+                == dev.skillmanager.store.HomeCloner.Surface.CONTENT) {
+            return "\"" + relative + "\" is installed unit content, which `uninstall` removes and "
+                    + "this command does not — whatever kind the row that named it declares";
+        }
+        GitScan scan = scanForGit(target);
+        if (scan != null && scan.unreadable()) {
+            return "it contains " + describe(home, scan.at()) + ", which this pass could not"
+                    + " read. An unreadable subtree is treated as containing a `.git`: those"
+                    + " commits exist nowhere else (issue #29), and a tree this command could"
+                    + " not look inside is a tree it cannot say that about";
+        }
+        if (scan != null) {
+            return "it contains " + describe(home, scan.at()) + ". A `.git` holds commits that"
+                    + " exist nowhere else (issue #29), so no disposal decision in this program"
+                    + " may step over one — inspect it and remove it by hand if it really is"
+                    + " spent";
         }
         return null;
     }
 
+    /** {@code p} with its parent directories resolved and its own name left alone. */
+    private static Path withResolvedParents(Path p) {
+        Path parent = p.getParent();
+        if (parent == null) return p.toAbsolutePath().normalize();
+        Path real = Fs.realOrNormalized(parent);
+        Path name = p.getFileName();
+        return name == null ? real : real.resolve(name);
+    }
+
+    /** {@code path} relative to the home when it is under it, absolute when it is not. */
+    private static String describe(Path home, Path path) {
+        try {
+            return home.relativize(path).toString();
+        } catch (IllegalArgumentException notUnderHome) {
+            return path.toString();
+        }
+    }
+
+    /**
+     * Where a scan for a {@code .git} stopped.
+     *
+     * @param at the {@code .git} found, or the entry that could not be read
+     * @param unreadable whether it stopped because it could not read, rather
+     *        than because it found one
+     */
+    private record GitScan(Path at, boolean unreadable) {}
+
     /** The first {@code .git} at or below {@code target}, or null. */
-    private static Path findGitDir(Path target) {
+    private static GitScan scanForGit(Path target) {
         if (!Files.isDirectory(target, LinkOption.NOFOLLOW_LINKS)) {
-            return Files.exists(target.resolve(".git"), LinkOption.NOFOLLOW_LINKS)
-                    ? target.resolve(".git") : null;
+            Path git = target.resolve(".git");
+            return Files.exists(git, LinkOption.NOFOLLOW_LINKS) ? new GitScan(git, false) : null;
         }
         final Path[] found = {null};
+        final boolean[] unreadable = {false};
         try {
             Files.walkFileTree(target, new java.nio.file.SimpleFileVisitor<Path>() {
                 @Override
@@ -444,28 +588,57 @@ public final class ArtifactPrune {
 
                 @Override
                 public java.nio.file.FileVisitResult visitFileFailed(Path file, IOException e) {
-                    return java.nio.file.FileVisitResult.CONTINUE;
+                    // Unreadable means unvouchable, and this is the visitor
+                    // that decides it. Returning CONTINUE here — which it did
+                    // — swallowed the per-entry AccessDeniedException that
+                    // `walkFileTree` reports for a directory it cannot open,
+                    // so the catch below was unreachable for the failure it
+                    // was written for and a mode-000 subdirectory holding a
+                    // real `.git` scanned as deletable. Measured: a target
+                    // holding one was planned for PRUNE.
+                    found[0] = file;
+                    unreadable[0] = true;
+                    return java.nio.file.FileVisitResult.TERMINATE;
                 }
             });
         } catch (IOException e) {
-            // Unreadable means unvouchable: report a `.git` we cannot rule out
-            // rather than deleting a tree we could not read.
-            return target;
+            // The walk itself failed — the target's own directory stream, or a
+            // `postVisitDirectory` exception rethrown by SimpleFileVisitor.
+            return new GitScan(target, true);
         }
-        return found[0];
+        return found[0] == null ? null : new GitScan(found[0], unreadable[0]);
     }
 
     /**
      * Carry out {@code plan}, and re-record the ledger so it stops declaring
      * what is gone.
      *
+     * <h2>One step's failure does not abort the pass, and never skips the
+     * re-record</h2>
+     *
+     * <p>{@link Fs#deleteRecursive} threw an {@code AccessDeniedException}
+     * straight out through {@code ArtifactsCommand} on this branch's review:
+     * every step after it was skipped, none of their lock rows was dropped,
+     * and — the part that matters — the ledger re-save below never ran. The
+     * home was left PARTIALLY PRUNED with a ledger still naming what was gone,
+     * which is the exact disagreement between the ledger and the disk this
+     * epic exists to end, produced by the command that exists to end it.
+     *
+     * <p>So each step is wrapped, a failure is reported and the pass
+     * continues, a step whose deletion failed is NOT reported as pruned and
+     * keeps its lock row, and the ledger is re-recorded whenever anything was
+     * attempted — from what is actually on disk, so a partial deletion is
+     * described accurately rather than optimistically.
+     *
      * @return the artifact ids actually pruned
      */
     public static List<String> apply(SkillStore store, Plan plan) throws IOException {
         List<String> pruned = new ArrayList<>();
         Path home = store.root().toAbsolutePath().normalize();
+        boolean attempted = false;
         for (Step step : plan.prunes()) {
             boolean any = false;
+            boolean failed = false;
             for (String relative : step.paths()) {
                 Path target = home.resolve(relative).normalize();
                 // Re-asked at the moment of deletion, not merely at plan time.
@@ -475,9 +648,24 @@ public final class ArtifactPrune {
                     Log.warn("artifacts prune: not removing %s — %s", relative, refusal);
                     continue;
                 }
-                Fs.deleteRecursive(target);
-                any = true;
+                // Set BEFORE the call: a delete that throws part-way through a
+                // tree has still changed the disk, and that is precisely the
+                // state the ledger has to be re-recorded from.
+                attempted = true;
+                try {
+                    Fs.deleteRecursive(target);
+                    any = true;
+                } catch (IOException | RuntimeException e) {
+                    failed = true;
+                    Log.warn("artifacts prune: could not remove %s (%s) — the rest of the plan "
+                            + "still runs and the ledger is re-recorded from what is on disk",
+                            relative, e.toString());
+                }
             }
+            // A step whose removal failed is not a step that happened: it keeps
+            // its cli-lock.toml row, because the row describes an install whose
+            // files are still here.
+            if (failed) continue;
             // A row-only prune has no path and is still work: `any` is about
             // files, and the lock row is the artifact when there are none.
             if (!any && !step.paths().isEmpty()) continue;
@@ -489,8 +677,15 @@ public final class ArtifactPrune {
             // is for — the live homes carry three of them.
             dropLockRow(store, step);
         }
-        if (!pruned.isEmpty()) {
-            ArtifactLedger.of(ArtifactIndex.of(store).artifacts()).save(store);
+        if (attempted || !pruned.isEmpty()) {
+            try {
+                ArtifactLedger.of(ArtifactIndex.of(store).artifacts()).save(store);
+            } catch (IOException | RuntimeException e) {
+                Log.warn("artifacts prune: removed %d artifact(s) but could not re-record %s (%s)"
+                        + " — the ledger now names things this home no longer has; re-run"
+                        + " `skill-manager artifacts record`",
+                        pruned.size(), ArtifactLedger.FILENAME, e.toString());
+            }
         }
         return pruned;
     }
@@ -526,6 +721,74 @@ public final class ArtifactPrune {
     }
 
     /**
+     * What registered child homes link at inside THIS home, and what this pass
+     * could not read.
+     *
+     * <p>The second field is not decoration. An unreadable registry record and
+     * a registry with no records produce the same empty claim set, and the
+     * first must not read as "nothing claims this" — see {@code decide}, which
+     * refuses everything while it is non-empty.
+     *
+     * @param paths home-relative paths a child home reaches, every hop
+     * @param unreadable registry files that exist and could not be decoded
+     */
+    private record ChildClaims(Set<String> paths, List<String> unreadable) {
+
+        /**
+         * The claim covering {@code output}, or null.
+         *
+         * <h2>Why containment, and why in BOTH directions</h2>
+         *
+         * <p>The claim is a path a child home reaches; the output is the ROOT
+         * of what some artifact produced. Those are different strings in the
+         * shape that matters — a claim on {@code venvs/jinja2-cli/bin/jinja2}
+         * against the tree artifact's output {@code venvs/jinja2-cli} — and an
+         * exact-string test is how both the shim and the tree feeding it came
+         * to be planned for deletion while a child home was running out of
+         * them.
+         *
+         * <p>Downward too: a child that links at {@code venvs/x} is broken by
+         * deleting {@code venvs/x/bin/tool} just as surely. Deleting either an
+         * ancestor or a descendant of something a child home reaches is a
+         * hazard, so both are claims.
+         *
+         * <p>The {@code + "/"} is the same segment-boundary rule
+         * {@link ArtifactGraph} states: {@code venvs/jinja2-cli-old} is not
+         * inside {@code venvs/jinja2-cli}.
+         */
+        String claimFor(String output) {
+            String path = normalizeRelative(output);
+            if (path == null) return null;
+            for (String claim : paths) {
+                if (claim.equals(path)
+                        || claim.startsWith(path + "/")
+                        || path.startsWith(claim + "/")) {
+                    return claim;
+                }
+            }
+            return null;
+        }
+
+        /** The claim covering any of {@code artifact}'s in-home outputs, or null. */
+        String claimOn(Artifact artifact) {
+            for (Artifact.Output output : artifact.outputs()) {
+                if (output.scope() != Artifact.Scope.HOME) continue;
+                String claim = claimFor(output.path());
+                if (claim != null) return claim;
+            }
+            return null;
+        }
+    }
+
+    private static String normalizeRelative(String path) {
+        if (path == null || path.isBlank()) return null;
+        String out = path.replace('\\', '/');
+        while (out.startsWith("./")) out = out.substring(2);
+        while (out.endsWith("/")) out = out.substring(0, out.length() - 1);
+        return out.isEmpty() ? null : out;
+    }
+
+    /**
      * Home-relative entries in THIS home that a registered child home links at.
      *
      * <p>{@code ChildHomeRegistry} records every child home this home
@@ -535,10 +798,16 @@ public final class ArtifactPrune {
      * load-bearing for a home whose name appears nowhere in the parent's
      * installed set, which is exactly the shape an orphan test gets wrong.
      */
-    private static Set<String> childHomeClaims(SkillStore store) {
+    private static ChildClaims childHomeClaims(SkillStore store, Path home) {
         Set<String> claimed = new LinkedHashSet<>();
-        Path home = store.root().toAbsolutePath().normalize();
-        for (ChildHomeRegistry.ChildHomeRecord record : new ChildHomeRegistry(store).list()) {
+        List<String> unreadable = new ArrayList<>();
+        ChildHomeRegistry.Listing listing = new ChildHomeRegistry(store).listing();
+        for (String file : listing.unreadable()) {
+            Log.warn("artifacts prune: could not read the child-home record %s — this pass "
+                    + "cannot tell what that home links at, so it removes nothing", file);
+            unreadable.add(file);
+        }
+        for (ChildHomeRegistry.ChildHomeRecord record : listing.records()) {
             Path childHome = record.childHome() == null ? null : Path.of(record.childHome());
             if (childHome == null) continue;
             for (String dir : List.of("bin/cli", "bin/mcp")) {
@@ -546,8 +815,7 @@ public final class ArtifactPrune {
                 if (!Files.isDirectory(shimDir)) continue;
                 try (var entries = Files.list(shimDir)) {
                     for (Path entry : (Iterable<Path>) entries::iterator) {
-                        String relative = claimedByChildHome(entry, home);
-                        if (relative != null) claimed.add(relative);
+                        claimed.addAll(claimedByChildHome(entry, home));
                     }
                 } catch (IOException e) {
                     Log.warn("artifacts prune: could not read %s (%s) — treating this home's "
@@ -556,27 +824,70 @@ public final class ArtifactPrune {
                 }
             }
         }
-        return claimed;
+        return new ChildClaims(claimed, List.copyOf(unreadable));
     }
 
+    /** How far a link chain is followed before it is treated as a loop. */
+    private static final int MAX_LINK_HOPS = 32;
+
     /**
-     * The home-relative path in {@code home} that {@code entry} links at, or
-     * null when it links somewhere else.
+     * Every home-relative path in {@code home} that {@code entry}'s link chain
+     * passes THROUGH, not merely the one it ends at.
+     *
+     * <h2>The endpoint alone is the wrong answer for the shape that matters</h2>
+     *
+     * <p>This used to be one {@code entry.toRealPath()}, which resolves the
+     * WHOLE chain and returns only where it stops. That is correct exactly
+     * when the parent's {@code bin/cli/<tool>} is a regular file — the
+     * skill-script wrapper shape, where the resolution terminates one hop
+     * early — and wrong for every {@code pip}, {@code brew} and {@code npm}
+     * install, where the parent's own entry is itself a symlink:
+     *
+     * <pre>
+     *   child/bin/cli/jinja2 → parent/bin/cli/jinja2 → parent/venvs/jinja2-cli/bin/jinja2
+     * </pre>
+     *
+     * <p>The endpoint {@code venvs/jinja2-cli/bin/jinja2} matches neither the
+     * shim artifact's output ({@code bin/cli/jinja2}) nor the tree artifact's
+     * ({@code venvs/jinja2-cli}), so an exact-string claim test found neither
+     * and BOTH were pruned: the parent's tree deleted, the child home's entry
+     * left dangling. Measured against a clone of the operator's project home
+     * with a registered child home.
+     *
+     * <p>So every hop is claimed, and {@link ChildClaims#claimFor} matches by
+     * containment rather than equality. Two mechanisms rather than one, on
+     * purpose: the hop list catches the parent's own entry, the containment
+     * rule catches the tree that entry points into, and the closure in
+     * {@link #closeOverFeeds} catches anything further upstream that the
+     * edges already know about.
+     *
+     * <p>Parent directories are resolved at each hop and the leaf is not, so a
+     * temp home at {@code /var/folders/…} whose real path is
+     * {@code /private/var/folders/…} still compares equal — the reason the
+     * original went through {@code toRealPath} at all.
      */
-    static String claimedByChildHome(Path entry, Path home) {
-        try {
-            if (!Files.isSymbolicLink(entry)) return null;
-            // BOTH sides through toRealPath. A temp home is `/var/folders/…`
-            // and its real path is `/private/var/folders/…` on this platform;
-            // comparing a resolved link against an unresolved root answers
-            // "not mine" for a link that is very much mine, and the cost of
-            // that answer is deleting a file a child home is running out of.
-            Path resolved = entry.toRealPath();
-            Path root = home.toRealPath();
-            if (!resolved.startsWith(root)) return null;
-            return root.relativize(resolved).toString().replace('\\', '/');
-        } catch (IOException e) {
-            return null;
+    static Set<String> claimedByChildHome(Path entry, Path home) {
+        Set<String> out = new LinkedHashSet<>();
+        if (!Files.isSymbolicLink(entry)) return out;
+        Path root = Fs.realOrNormalized(home);
+        Set<Path> seen = new LinkedHashSet<>();
+        Path current = entry;
+        for (int hop = 0; hop < MAX_LINK_HOPS && current != null && seen.add(current); hop++) {
+            Path here = withResolvedParents(current);
+            if (here.startsWith(root) && !here.equals(root)) {
+                out.add(root.relativize(here).toString().replace('\\', '/'));
+            }
+            if (!Files.isSymbolicLink(current)) break;
+            Path link;
+            try {
+                link = Files.readSymbolicLink(current);
+            } catch (IOException unreadable) {
+                break;
+            }
+            Path parent = current.getParent();
+            current = (link.isAbsolute() || parent == null ? link : parent.resolve(link))
+                    .normalize();
         }
+        return out;
     }
 }

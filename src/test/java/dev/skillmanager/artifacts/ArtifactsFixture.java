@@ -213,6 +213,60 @@ final class ArtifactsFixture {
     }
 
     /**
+     * The {@code pip}/{@code brew}/{@code npm} shim shape: {@code bin/cli/<tool>}
+     * is ITSELF a symlink into a {@code venvs/} tree.
+     *
+     * <h2>Why this is a separate shape and not a spelling of the wrapper</h2>
+     *
+     * <p>{@link #seed} models the skill-script shape, where the home's
+     * {@code bin/cli} entry is a generated wrapper — a REGULAR FILE that names
+     * its tree in its body. A child home mirrors either shape the same way, by
+     * symlinking at the parent's entry, and the two then resolve differently:
+     * a chain through a wrapper stops AT the parent's {@code bin/cli/<tool>},
+     * and a chain through a symlink shim runs one hop further, past it, into
+     * {@code venvs/<x>/bin/<tool>}.
+     *
+     * <p>ARTI-08's first implementation asked {@code toRealPath()} for the
+     * endpoint and compared it by exact string. That is right for the wrapper
+     * and wrong for this, and the prune suite's child-home case used the
+     * wrapper — so the guard passed while both this shim and the tree feeding
+     * it were being deleted out from under a registered child home. The
+     * fixture choice was the reason the gap was invisible, which is why this
+     * shape now exists here rather than in one test's body.
+     *
+     * <p>{@code cli-shim:pip/shared-venv} → {@code bin/cli/shared-tool} →
+     * {@code provisioned-tree:venvs/shared-venv}.
+     */
+    static void withSharedVenvShim(SkillStore store) throws Exception {
+        Path venvBin = store.root().resolve("venvs/shared-venv/bin");
+        Files.createDirectories(venvBin);
+        Path tool = venvBin.resolve("shared-tool");
+        Files.writeString(tool, "#!/bin/sh\necho shared\n");
+        tool.toFile().setExecutable(true);
+
+        Path shim = store.cliBinDir().resolve("shared-tool");
+        Files.createDirectories(shim.getParent());
+        Files.deleteIfExists(shim);
+        // RELATIVE, which is what every installer writes and what makes the
+        // link survive a home clone.
+        Files.createSymbolicLink(shim, Path.of("../../venvs/shared-venv/bin/shared-tool"));
+
+        CliLock lock = CliLock.load(store);
+        lock.put(new CliLock.Entry("pip", "shared-venv", "1.0.0", "pip:shared-venv", null,
+                List.of("alpha"), "2026-01-01T00:00:00Z", "shared-tool", null));
+        lock.save(store);
+
+        Path manifest = store.root().resolve("skills/alpha/skill-manager.toml");
+        Files.writeString(manifest, Files.readString(manifest) + """
+
+                [[cli_dependencies]]
+                name = "shared-venv"
+                spec = "pip:shared-venv"
+                on_path = "shared-tool"
+                """);
+    }
+
+    /**
      * Add a unit declaring two MCP servers — one the fixture's
      * {@code gateway-config.json} already registers and one nothing registered.
      *
