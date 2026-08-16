@@ -1311,4 +1311,74 @@ validationGraph {
         // that quietly checks nothing is the failure mode being closed.
         node("sources/common/HomeFixpointLaw.java").dependsOn("onboarding.global.home.untouched")
     }
+
+    /**
+     * What a healthy Skill Manager home looks like — one node per invariant,
+     * each checked against a home this run provisioned AND against a
+     * deliberately damaged copy of it.
+     *
+     * WHY THIS GRAPH EXISTS. The artifact-DAG epic surfaced ten defects in the
+     * operator's own homes, every one found by accident while doing something
+     * else. Nothing anywhere said what a healthy home looks like, so each was
+     * noticed once and would have recurred silently. ARTI-22 (#124) is that
+     * statement, written so it executes.
+     *
+     * THE DAMAGED FIXTURES ARE THE POINT. Every node here plants the defect its
+     * invariant is drawn from, confirms the check catches it, repairs it, and
+     * confirms the check passes again. A detector that cannot fail and a
+     * detector that cannot pass are both worthless, and this epic has already
+     * found one oracle that passed vacuously and one metric that only ever
+     * moved in the flattering direction. Control, mutant, repair — all three in
+     * the same run.
+     *
+     * SEVERAL NODES ALSO ASSERT A NON-DETECTION, and those are not padding.
+     * Three of #124's nine candidate invariants were false as written — a
+     * brew-backed shim legitimately points outside every home, a dependency the
+     * machine already satisfies legitimately has no shim, and 51 of the
+     * operator's 106 "foreign" projections are correctly-registered child-home
+     * projections. Each correction is kept executable as an assertion that the
+     * healthy case is NOT reported, so a later "strengthening" of a check fails
+     * here instead of in somebody's home.
+     *
+     * ONE NODE CARRIES A PINNED DEFECT (#120) and says so in its name. It is
+     * expected to go RED when #120 lands. That is deliberate; read the class
+     * comment on DeclaredCliIsAttributed before changing it.
+     *
+     * DOCKER-FREE AND NETWORK-FREE. The fixture installs two units from local
+     * git repositories with local bare remotes, so this graph runs anywhere —
+     * #113 established that a hosted runner reaching the network is not
+     * something this repo may assume.
+     */
+    testGraph("home-integrity") {
+        node("sources/common/EnvPrepared.java")
+
+        // One real install, with the real CLI, into a private home. Every
+        // invariant below relates two things the PRODUCT wrote; a hand-built
+        // home would only prove this graph is self-consistent.
+        node("sources/home-integrity/HomeIntegrityFixture.java")
+
+        // The record/store relation, and its error-state disjunct.
+        node("sources/home-integrity/RecordAgreesWithStore.java")
+        // The tracking ref a URL fetch leaves behind — defects 2 and 3, merged.
+        node("sources/home-integrity/UpstreamTracksWhatSyncFetched.java")
+        // The drift gate, driven through a real record/change/record/ack cycle.
+        node("sources/home-integrity/AckIsStable.java")
+        // A shim that does not run is broken, wherever it points.
+        node("sources/home-integrity/EveryShimResolves.java")
+        // Orphan lock rows — the fix is #109's, the assertion is this ticket's.
+        node("sources/home-integrity/EveryLockRowHasAClaimant.java")
+        // PINNED DEFECT #120. Satisfied holds; attributed does not.
+        node("sources/home-integrity/DeclaredCliIsAttributed.java")
+        // Harness instances whose template is gone.
+        node("sources/home-integrity/InstanceTemplateInstalled.java")
+        // The 51-of-106 correction, kept executable.
+        node("sources/home-integrity/ProjectionSourceIsDecidable.java")
+        // Defect 10: the shim/bootstrap contradiction, and its remedy.
+        node("sources/home-integrity/BootstrapProjectsTheTargetHome.java")
+
+        // THE FIXPOINT LAW, as every home-producing graph ends. Depends on this
+        // graph's last node so it runs last, and FAILS if it finds no home.
+        node("sources/common/HomeFixpointLaw.java")
+                .dependsOn("home.integrity.bootstrap.projects.target")
+    }
 }

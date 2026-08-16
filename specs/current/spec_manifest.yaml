@@ -74,6 +74,68 @@ status:
       evidence:
         - ../results/validation-2026-08-07.md
         - ../results/model-descriptors-2026-08-07.md
+  home_integrity_slice:
+    name: home_integrity_invariants
+    ticket: ARTI-22
+    issue: skill-manager-integration-repository#124
+    status: validated
+    note: >
+      A third uniquely named bounded semantic view, added the same way and for
+      the same reason as the ISSUE-166 claimant views above: SkillManager.tla
+      and its accepted metadata remain byte-identical, and this view neither
+      promotes nor replaces the pending child-home Internal/External migration.
+      It states what a healthy Skill Manager home IS -- the record/store
+      relation, the drift/digest relation, and the projection-source relation
+      -- after the artifact-DAG epic surfaced ten defects in the operator's own
+      homes with nothing anywhere asserting any of them.
+    deviation: >
+      This ticket was asked to scaffold the EPIC'S SHARED spec workflow, on the
+      grounds that ARTI-02 (#103) had repaired the baseline that blocked it.
+      That baseline is indeed repaired. It was NOT scaffolded, because
+      specs/current and specs/desired_program_model are occupied by a live,
+      unpromoted workflow -- child-home-materialization-workflow, active ticket
+      CHM-1, with 16 of 36 tickets not closed. tla-spec-dev's scaffold writes
+      if-missing, so a scaffold would have silently no-opped on all seven
+      template files while appearing to succeed; with --force it would have
+      clobbered that 36-ticket plan, which is the exact class of damage ARTI-02
+      spent a whole ticket repairing. Recorded on #124 rather than half-done.
+    refines:
+      - SkillManager.SyncUnit
+      - SkillManager.RecordHomeDrift
+    implemented_actions:
+      - SyncAdvancesStoreAndRecord
+      - SyncConflictsAndRecordsTheError
+      - MaterializeIntoRegisteredChild
+      - AcknowledgeCurrentDigest
+    dropped_from_the_proposed_invariants: >
+      #124 proposed nine candidate invariants and said the list was a starting
+      point rather than a specification. Three did not survive the argument in
+      the form proposed: EveryShimResolves ("inside this home or a sanctioned
+      parent store") is FALSE of a healthy home because a brew-backed shim
+      legitimately points at /opt/homebrew; RecordedBinaryIsProduced is false
+      by design because CliPresence.alreadyProvided deliberately writes no shim
+      for a tool the machine already has; and ProjectionSourceIsDecidable's
+      narrow reading reports 51 correctly-registered child-home projections as
+      defects. NoPhantomAhead and defect 3 collapse into one home-level fact
+      and are merged. AckIsStable's second clause is dropped as a demand that
+      the gate fail open. The two corrections expressible in this model are
+      kept as regression configurations rather than as prose.
+    validation:
+      tlc:
+        status: passed
+        views: 1
+        configurations: 4
+        expected_violations: 3
+        commands:
+          - bash run_tlc.sh HomeIntegrityInternal.tla HomeIntegrityInternal.cfg
+          - bash run_tlc.sh HomeIntegrityInternal.tla HomeIntegrityInternal_regression_silentdrift.cfg
+          - bash run_tlc.sh HomeIntegrityInternal.tla HomeIntegrityInternal_regression_staleack.cfg
+          - bash run_tlc.sh HomeIntegrityInternal.tla HomeIntegrityInternal_regression_narrowprojection.cfg
+      graph:
+        status: passed
+        full_graphs: [home-integrity]
+        nodes: 12
+        assertions: 59
   next:
     - Fill in whole-program current state fields, actions, invariants, and adapters after the first production slice lands.
     - Preserve all existing specs/program_model state/actions unless production behavior changes them.
