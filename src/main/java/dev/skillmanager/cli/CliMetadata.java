@@ -48,6 +48,7 @@ public final class CliMetadata {
             command("artifacts record"),
             command("bind"),
             command("bindings"),
+            command("build"),
             command("bindings list"),
             command("bindings show"),
             command("cli"),

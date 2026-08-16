@@ -91,12 +91,80 @@ public final class ArtifactStalenessTest {
 
         suite.test("a row with no recorded fingerprint is unverifiable, not current", () -> {
             SkillStore store = ArtifactsFixture.seed();
+            // The fixture's pip shim IS the dangler — a link into a tree this
+            // home does not hold — and since ARTI-06 that alone decides it
+            // (stale). Materialise its target first, so this case measures the
+            // axis it is named for: the row carries no install_fingerprint,
+            // which is the 0-of-16 state the epic found on the real home.
+            Path target = store.root().resolve("cache/uv-tools/alpha/bin/dangler");
+            Files.createDirectories(target.getParent());
+            Files.writeString(target, "#!/bin/sh\necho ok\n");
+            target.toFile().setExecutable(true);
+
             ArtifactFreshness freshness = ArtifactFreshness.of(ArtifactIndex.of(store), store);
-            // The pip row in the fixture carries no install_fingerprint: the
-            // 0-of-16 state the epic measured on the real home.
             var shim = freshness.of(ArtifactIds.cliShim("pip", "alpha-pkg"));
             assertEquals(ArtifactFreshness.Freshness.UNVERIFIABLE, shim.freshness(),
                     "nothing to compare against: " + shim.reason());
+        });
+
+        suite.test("ARTI-06: a shim on disk whose output is hidden stops being current", () -> {
+            // THE case the epic exists for, and the one `stale` reported as
+            // CURRENT through ARTI-05. Measured then, on a real home:
+            //   $ mv bin/cli/skt bin/cli/.hidden
+            //   freshness = CURRENT "its inputs still hash to the fingerprint
+            //                        recorded at install"
+            SkillStore store = fingerprinted();
+            var before = ArtifactFreshness.of(ArtifactIndex.of(store), store)
+                    .of(ArtifactIds.cliShim("skill-script", "alpha-script"));
+            assertEquals(ArtifactFreshness.Freshness.CURRENT, before.freshness(),
+                    "precondition: it is current while its output is there");
+
+            Files.move(store.root().resolve("bin/cli/alpha-script"),
+                    store.root().resolve("bin/cli/.hidden"));
+
+            var after = ArtifactFreshness.of(ArtifactIndex.of(store), store)
+                    .of(ArtifactIds.cliShim("skill-script", "alpha-script"));
+            assertEquals(ArtifactFreshness.Freshness.STALE, after.freshness(),
+                    "a declared artifact with nothing at its path is not current: "
+                            + after.reason());
+            assertContains(after.reason(), "bin/cli/alpha-script",
+                    "and the reason names the output that is not there");
+            assertEquals(Artifact.Materialization.DECLARED_ONLY, after.materialization(),
+                    "the verdict carries the axis that decided it");
+        });
+
+        suite.test("ARTI-06: presence may DEMOTE a verdict and may never promote one", () -> {
+            // The companion that keeps the rule above from BEING the presence
+            // proxy this epic removes. A present output earns nothing: an
+            // artifact whose inputs moved is still stale with its file in place.
+            SkillStore store = fingerprinted();
+            Files.writeString(store.root().resolve("skills/alpha/skill-scripts/install.sh"),
+                    "# replaced\n");
+
+            var moved = ArtifactFreshness.of(ArtifactIndex.of(store), store)
+                    .of(ArtifactIds.cliShim("skill-script", "alpha-script"));
+            assertEquals(ArtifactFreshness.Freshness.STALE, moved.freshness(),
+                    "a present file does not rescue moved inputs: " + moved.reason());
+            assertEquals(Artifact.Materialization.MATERIALIZED, moved.materialization(),
+                    "and the artifact IS on disk, so presence contributed nothing here");
+            assertContains(moved.reason(), "skill-scripts/",
+                    "the reason is still the input comparison, not the file");
+        });
+
+        suite.test("ARTI-06: stale --json carries the axis that decided each row", () -> {
+            SkillStore store = fingerprinted();
+            Files.move(store.root().resolve("bin/cli/alpha-script"),
+                    store.root().resolve("bin/cli/.hidden"));
+
+            StaleReport report = StaleReport.of(store.root().toString(),
+                    ArtifactFreshness.of(ArtifactIndex.of(store), store));
+
+            StaleReport.VerdictView row = report.stale().stream()
+                    .filter(v -> v.id().equals(ArtifactIds.cliShim("skill-script", "alpha-script")))
+                    .findFirst().orElseThrow();
+            assertEquals("declared-only", row.materialization(),
+                    "a consumer of stale --json alone can now tell the two apart");
+            assertTrue(StaleReport.SCHEMA >= 2, "and the schema says the field is there");
         });
 
         suite.test("staleness propagates downstream and names what caused it", () -> {

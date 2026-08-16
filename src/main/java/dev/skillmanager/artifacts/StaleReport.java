@@ -38,15 +38,26 @@ public record StaleReport(
         List<VerdictView> unverifiable
 ) {
 
-    /** Bumped when a consumer would have to change to keep reading this. */
-    public static final int SCHEMA = 1;
+    /**
+     * Bumped when a consumer would have to change to keep reading this.
+     *
+     * <p>2 (ARTI-06) adds {@code materialization} to every row. Schema 1 could
+     * report an artifact as {@code stale} without saying whether it is stale
+     * because its inputs moved or because it is not on disk at all, and carried
+     * no field from which a consumer could recover the second — which is why
+     * this document had to change at the same time as the verdict that fills
+     * it. No field was removed or renamed.
+     */
+    public static final int SCHEMA = 2;
 
-    @JsonPropertyOrder({"id", "kind", "owner", "freshness", "reason", "because"})
+    @JsonPropertyOrder({"id", "kind", "owner", "freshness", "materialization", "reason", "because"})
     public record VerdictView(
             String id,
             String kind,
             String owner,
             String freshness,
+            /** {@code materialized} / {@code partial} / {@code declared-only} / {@code unknown}. */
+            String materialization,
             String reason,
             List<String> because
     ) {}
@@ -101,7 +112,9 @@ public record StaleReport(
         List<VerdictView> out = new ArrayList<>(verdicts.size());
         for (ArtifactFreshness.Verdict verdict : verdicts) {
             out.add(new VerdictView(verdict.id(), verdict.kind().id(), verdict.owner(),
-                    verdict.freshness().token(), verdict.reason(), verdict.because()));
+                    verdict.freshness().token(),
+                    Artifact.token(verdict.materialization()),
+                    verdict.reason(), verdict.because()));
         }
         return out;
     }

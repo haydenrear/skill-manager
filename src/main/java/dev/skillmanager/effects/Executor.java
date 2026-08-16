@@ -346,6 +346,13 @@ public final class Executor {
             // is idempotent; capturing pre-state ledger snapshots for
             // every unit it might touch is not worth the cost.
             case SkillEffect.SyncHarness e -> List.of();
+            // ---- ARTI-06 build ----
+            // A gate reads and prompts. A rebuild re-derives an artifact this
+            // home already declares, so there is no prior state to restore —
+            // and the compensation RunCliInstall gets would mean UNINSTALLING
+            // what this run just repaired. See RebuildCliArtifact's javadoc.
+            case SkillEffect.CheckBuildPolicyGate e -> List.of();
+            case SkillEffect.RebuildCliArtifact e -> List.of();
         };
     }
 
@@ -546,6 +553,12 @@ public final class Executor {
             case SkillEffect.UnmaterializeProjection e -> List.of();
             case SkillEffect.SyncDocRepo e -> List.of();
             case SkillEffect.SyncHarness e -> List.of();
+            // ARTI-06: deliberately uncompensated. A rebuild has no prior state
+            // to restore, and the UninstallCliIfOrphan that RunCliInstall pairs
+            // with would delete the shim and tree this run just repaired —
+            // leaving the home worse than before the remedy was run.
+            case SkillEffect.CheckBuildPolicyGate e -> List.of();
+            case SkillEffect.RebuildCliArtifact e -> List.of();
         };
     }
 

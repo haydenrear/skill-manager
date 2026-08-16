@@ -92,7 +92,10 @@ public final class RemediesAreRunnableTest {
                             assertEquals(1, r.rc, "an unresolvable reference still refuses");
                             assertContains(r.err, "do not resolve",
                                     "and names the class of failure");
-                            assertContains(r.err, "sync --force-scripts",
+                            // ARTI-06: the remedy is the per-artifact repair the
+                            // per-instance diagnosis always implied, not the
+                            // whole-home `sync --force-scripts` it used to be.
+                            assertContains(r.err, "build --stale",
                                     "and prints the remedy that repairs it");
                         })
 
