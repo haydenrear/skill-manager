@@ -218,7 +218,8 @@ public final class ArtifactFreshness {
         return switch (artifact.kind()) {
             case CLI_SHIM, PROVISIONED_TREE ->
                     byInstallFingerprint(artifact, store, registry, producers);
-            case UNIT_STORE, PROJECTION, DOC_IMPORT -> byAgreement(artifact);
+            case PROJECTION -> byProjection(artifact);
+            case UNIT_STORE, DOC_IMPORT -> byAgreement(artifact);
             case MARKETPLACE_ENTRY -> byMarketplace(artifact, root);
             case MCP_REGISTRATION -> byMcpRegistration(artifact);
             case HARNESS_INSTANCE -> verdict(artifact, Freshness.UNVERIFIABLE,
@@ -304,6 +305,77 @@ public final class ArtifactFreshness {
                     "this home cannot cheaply check what is recorded about it");
             case UNRECORDED -> verdict(artifact, Freshness.UNVERIFIABLE,
                     "nothing about its inputs is recorded anywhere in this home");
+        };
+    }
+
+    /**
+     * ARTI-18: a projection is decided by <b>reading its link</b> and by the
+     * freshness of the source that link names — never by the link being there.
+     *
+     * <h2>Why this kind stopped sharing {@link #byAgreement}</h2>
+     *
+     * <p>It still shares it for the rows that carry a {@code boundHash}: a
+     * {@code MANAGED_COPY} answers "were the copied bytes tampered with", and
+     * that question is unchanged. But a {@code SYMLINK} never has one — the
+     * hash is over copied bytes and a link copies nothing — so every symlink
+     * projection reached {@code UNRECORDED} and the mapping locked it at
+     * {@code unverifiable}. 105 of 106 projections in the operator's project
+     * home, the largest class in it by five times, could not be decided by a
+     * field that describes a different kind.
+     *
+     * <h2>The two halves of the verdict, and where each comes from</h2>
+     *
+     * <ol>
+     *   <li><b>Does the link point at the source its binding declared?</b>
+     *       Read off the disk by {@link ArtifactBackfill#probeLink} and carried
+     *       here as {@code link_state}. This is the LOCAL verdict.</li>
+     *   <li><b>Is that source current?</b> Not asked here at all — the
+     *       projection already declares {@code unit:<name>} and
+     *       {@code store:<source>} as inputs, so {@link ArtifactGraph} resolves
+     *       them to the unit-store artifact and {@link #combine} composes them.
+     *       A projection of a stale unit is stale, and a projection of an
+     *       undecided one is undecided, by the rules that were already here.</li>
+     * </ol>
+     *
+     * <h2>The demote-only invariant, in a class that now reaches CURRENT</h2>
+     *
+     * <p>ARTI-06's rule is that PRESENCE may demote and may never promote, and
+     * nothing here weakens it. {@code resolves} is not "the link is there" —
+     * it is "the link's target EQUALS the source path this binding's ledger
+     * declares", which is evidence about the artifact's input and is exactly
+     * the comparison {@code byInstallFingerprint} makes one field over. Every
+     * state in which something IS at the path and that comparison could not be
+     * made — {@code copied}, {@code unreadable} — stays undecided, and
+     * {@link #combine}'s materialization fold is untouched: a present link
+     * still earns nothing.
+     */
+    private static Local byProjection(Artifact artifact) {
+        String state = artifact.actual().get("link_state");
+        // No link was probed: a MANAGED_COPY, an IMPORT_DIRECTIVE, a backup
+        // row. Decided exactly as before, by whatever is recorded about it.
+        if (state == null) return byAgreement(artifact);
+        String declared = artifact.recorded().get("source_path");
+        String found = artifact.actual().get("link_target");
+        return switch (state) {
+            case "resolves" -> verdict(artifact, Freshness.CURRENT,
+                    "its link resolves to " + declared + ", the source its binding declares");
+            case "repointed" -> verdict(artifact, Freshness.STALE,
+                    "its link does not point at the source its binding declares: declared "
+                            + declared + ", points at " + found);
+            case "dangling" -> verdict(artifact, Freshness.STALE,
+                    "its link points at " + declared + " and this home does not hold it");
+            case "copied" -> verdict(artifact, Freshness.UNVERIFIABLE,
+                    "it is recorded as a symlink and is a real tree on disk — the copy "
+                            + "fallback taken where a filesystem refuses links — so there is no "
+                            + "pointer to compare against " + declared + ", and hashing the copy "
+                            + "would answer the tampering question rather than this one");
+            case "absent" -> verdict(artifact, Freshness.UNVERIFIABLE,
+                    "there is nothing at its path, so there is no link to read");
+            case "undeclared" -> verdict(artifact, Freshness.UNVERIFIABLE,
+                    "its ledger row records no source path, so there is nothing for the link "
+                            + "to be checked against");
+            default -> verdict(artifact, Freshness.UNVERIFIABLE,
+                    "its link could not be read, so where it points was never established");
         };
     }
 
