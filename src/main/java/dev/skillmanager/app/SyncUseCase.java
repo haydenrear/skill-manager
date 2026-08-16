@@ -363,10 +363,27 @@ public final class SyncUseCase {
         effects.add(buildLockUpdate(store, liveUnits));
         List<String> projectSyncUnits = projectSyncUnitNames(targets);
         if (!projectSyncUnits.isEmpty()) {
+            // startGateway, NOT withMcp, and this one is load-bearing rather
+            // than tidy. This argument reaches a CHILD project's own install
+            // program through ProjectDependencyResolver ->
+            // InstallUseCase.buildProgramForStagedGraph, where ONE boolean
+            // still gates both the EnsureGateway preflight and the MCP work —
+            // the same conflation this ticket is splitting, one level down and
+            // NOT split here. Passing withMcp would put an EnsureGateway back
+            // into a project resolve, which is precisely the rollback 7fce8ed
+            // fixed and precisely the home tier it was reported at.
+            //
+            // The cost, stated rather than hidden: a claiming-project sync
+            // does not register MCP servers, where the parent home now does.
+            // That asymmetry is the SAME behaviour this path has had since
+            // 7fce8ed, so nothing regresses — but it does not go away until
+            // buildProgramForStagedGraph takes two booleans too. Deferred on
+            // #100's backlog rather than widened into here, because that
+            // signature is `install`'s and `project resolve`'s, not sync's.
             effects.add(new SkillEffect.SyncClaimingProjects(
                     projectSyncUnits,
-                    options.withMcp() ? gw : null,
-                    options.withMcp()));
+                    options.startGateway() ? gw : null,
+                    options.startGateway()));
         }
 
         Program<?> p = new Program<>("sync-stage2-" + UUID.randomUUID(), effects, receipts -> null);
