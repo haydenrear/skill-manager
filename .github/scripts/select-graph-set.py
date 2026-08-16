@@ -70,6 +70,15 @@ CORE: list[str] = [
     # three of its assertions state those tickets' outcomes and fail. See the
     # graph's comment in test_graph/build.gradle.kts before quarantining it —
     # dropping the assertions would report those tickets done.
+    #
+    # THE ORDERING IS THE ANSWER, NOT A QUARANTINE. #114 is wave 6; #108 and
+    # #109 are wave 5, and this epic promotes serially, so they land first and
+    # this graph is green on arrival. If it is merged ahead of them, core CI
+    # goes red — and the fix is to merge them, not to edit this list. These
+    # three assertions ARE their acceptance criteria: #108 owes a `home verify`
+    # that treats declared-not-built as normal and a cold-artifact refusal that
+    # names its build command, #109 owes an uninstall that prunes the cache
+    # tree it provisioned.
     "artifact-dag",
 ]
 
