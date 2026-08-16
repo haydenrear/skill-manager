@@ -61,7 +61,17 @@ public record BuildReport(
             /** Re-derived after the run; null on a dry run or when nothing ran. */
             @JsonProperty("freshness_after") String freshnessAfter,
             @JsonProperty("materialization_after") String materializationAfter,
-            /** {@code built} / {@code failed} / {@code planned} / {@code skipped}. */
+            /**
+             * {@code built} / {@code no-op} / {@code failed} / {@code planned}
+             * / {@code skipped}.
+             *
+             * <p>{@code no-op} is its own value rather than a flavour of
+             * {@code built}: the producer RAN and wrote nothing, because the
+             * backend decided the dependency was already satisfied from outside
+             * this home. Folding it into {@code built} would be the presence
+             * proxy inverted — a claim that work happened, resting on an exit
+             * code.
+             */
             String outcome,
             /**
              * Whether this home can check what the rebuild produced.
@@ -79,11 +89,18 @@ public record BuildReport(
             boolean verifiable
     ) {}
 
-    @JsonPropertyOrder({"selected", "rebuilt", "failed", "already_current", "not_buildable",
-            "still_stale"})
+    @JsonPropertyOrder({"selected", "rebuilt", "no_op", "failed", "already_current",
+            "not_buildable", "still_stale"})
     public record Summary(
             int selected,
             int rebuilt,
+            /**
+             * Producers that ran and wrote nothing. Counted apart from
+             * {@code rebuilt} because "18 rebuilt" over a home where 11 of them
+             * were no-ops is the single most misleading number this document
+             * could carry.
+             */
+            @JsonProperty("no_op") int noOp,
             int failed,
             @JsonProperty("already_current") int alreadyCurrent,
             @JsonProperty("not_buildable") int notBuildable,
@@ -96,6 +113,8 @@ public record BuildReport(
 
     /** Outcome tokens, so the command and this document cannot spell them differently. */
     public static final String BUILT = "built";
+    /** The producer ran and wrote nothing — see {@link StepView#outcome()}. */
+    public static final String NO_OP = "no-op";
     public static final String FAILED = "failed";
     public static final String PLANNED = "planned";
     public static final String SKIPPED = "skipped";
@@ -105,6 +124,7 @@ public record BuildReport(
                                  ArtifactFreshness after) {
         List<StepView> views = new ArrayList<>();
         int rebuilt = 0;
+        int noOp = 0;
         int failed = 0;
         int alreadyCurrent = 0;
         int notBuildable = 0;
@@ -117,6 +137,7 @@ public record BuildReport(
                     });
             ArtifactFreshness.Verdict now = after == null ? null : after.of(step.id());
             if (BUILT.equals(outcome)) rebuilt++;
+            if (NO_OP.equals(outcome)) noOp++;
             if (FAILED.equals(outcome)) failed++;
             if (step.action() == ArtifactBuild.Action.ALREADY_CURRENT) alreadyCurrent++;
             if (step.action() == ArtifactBuild.Action.NOT_BUILDABLE) notBuildable++;
@@ -131,15 +152,15 @@ public record BuildReport(
                                 : now.freshness() != ArtifactFreshness.Freshness.UNVERIFIABLE));
         }
         return new BuildReport(SCHEMA, home, dryRun,
-                new Summary(plan.steps().size(), rebuilt, failed, alreadyCurrent, notBuildable,
-                        stillStale),
+                new Summary(plan.steps().size(), rebuilt, noOp, failed, alreadyCurrent,
+                        notBuildable, stillStale),
                 views);
     }
 
     /** An empty selection — a real answer, and it still names the home. */
     public static BuildReport empty(String home, boolean dryRun) {
         return new BuildReport(SCHEMA, home, dryRun,
-                new Summary(0, 0, 0, 0, 0, 0), List.of());
+                new Summary(0, 0, 0, 0, 0, 0, 0), List.of());
     }
 
     /** Convenience for the command: an outcome map it can fill as effects land. */

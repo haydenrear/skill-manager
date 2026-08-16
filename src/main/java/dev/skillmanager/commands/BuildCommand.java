@@ -286,13 +286,20 @@ public final class BuildCommand implements Callable<Integer> {
             render(index.home().toString(), plan, report, after, dryRun);
         }
         if (report.summary().failed() > 0) exit = 1;
-        // A rebuilt artifact that is STILL stale is a failed repair that
-        // returned 0, which is precisely the shape this epic keeps finding.
+        // An artifact this command ATTEMPTED and did not repair is a failure of
+        // this run, whether the producer errored, produced nothing, or produced
+        // something that is still stale. All three are "I tried and the home
+        // does not hold it".
+        //
+        // What is NOT exit 1: an artifact this command never attempted. A
+        // `not-buildable` row is named, loudly, with the command that does
+        // rebuild it, and it leaves the exit code alone — a verdict about work
+        // that was never this verb's would make every printed remedy fail on
+        // any home with a stale projection in it.
         for (BuildReport.StepView view : report.steps()) {
-            if (BuildReport.BUILT.equals(view.outcome())
-                    && "stale".equals(view.freshnessAfter())) {
-                exit = 1;
-            }
+            boolean attempted = BuildReport.BUILT.equals(view.outcome())
+                    || BuildReport.NO_OP.equals(view.outcome());
+            if (attempted && "stale".equals(view.freshnessAfter())) exit = 1;
         }
         return exit;
     }
@@ -302,10 +309,15 @@ public final class BuildCommand implements Callable<Integer> {
         int exit = 0;
         for (EffectReceipt receipt : receipts) {
             if (receipt.effect() instanceof SkillEffect.RebuildCliArtifact rebuild) {
+                // SKIPPED is the handler's typed signal that the backend ran
+                // and wrote nothing — a status rather than a sniffed summary
+                // string, which is exactly why the handler uses it.
                 outcomes.put(rebuild.artifactId(),
-                        receipt.status() == EffectStatus.FAILED ? BuildReport.FAILED
-                                : receipt.status() == EffectStatus.SKIPPED ? BuildReport.SKIPPED
-                                        : BuildReport.BUILT);
+                        switch (receipt.status()) {
+                            case FAILED -> BuildReport.FAILED;
+                            case SKIPPED -> BuildReport.NO_OP;
+                            default -> BuildReport.BUILT;
+                        });
             }
             for (ContextFact fact : receipt.facts()) {
                 if (fact instanceof ContextFact.HaltWithExitCode halt) {
@@ -338,17 +350,19 @@ public final class BuildCommand implements Callable<Integer> {
                 // after a successful build reads like a failure and is not one.
                 System.out.println("      now: " + view.freshnessAfter()
                         + describeAfter(after, step.id(), view));
-                if (BuildReport.BUILT.equals(view.outcome())
-                        && "stale".equals(view.freshnessAfter())) {
-                    // A rebuild that returned success over an artifact this home
-                    // still does not hold. Said outright, and WITHOUT a cause
-                    // invented for it — the backend's own decision is in the run
-                    // log, and guessing at it here would be a third claim about
-                    // an artifact two claims already disagree about.
-                    Log.error("      the rebuild reported success and this home still does not "
-                            + "hold the artifact — its backend decided the dependency was "
-                            + "already satisfied elsewhere. See the run log; this is not a "
-                            + "repair.");
+                boolean attempted = BuildReport.BUILT.equals(view.outcome())
+                        || BuildReport.NO_OP.equals(view.outcome());
+                if (attempted && "stale".equals(view.freshnessAfter())) {
+                    // An attempt that left the artifact absent. Said outright,
+                    // and WITHOUT a cause invented for it beyond what the
+                    // backend itself reported — guessing would be a third claim
+                    // about an artifact two claims already disagree about.
+                    Log.error("      the producer ran and this home still does not hold the "
+                            + "artifact%s. This is not a repair.",
+                            BuildReport.NO_OP.equals(view.outcome())
+                                    ? " — it reported the dependency already satisfied from "
+                                            + "outside this home and wrote nothing"
+                                    : " — see the run log");
                 }
             }
         }
@@ -382,6 +396,13 @@ public final class BuildCommand implements Callable<Integer> {
                        : summary.rebuilt(),
                 dryRun ? "to build" : "built",
                 summary.alreadyCurrent(), summary.notBuildable());
+        if (summary.noOp() > 0) {
+            // Never folded into "built". A run that reports 18 rebuilt over a
+            // home where 11 producers wrote nothing is the presence proxy
+            // inverted: work claimed on the strength of an exit code.
+            Log.error("%d producer(s) ran and wrote nothing — the backend reported the "
+                    + "dependency already satisfied from outside this home", summary.noOp());
+        }
         if (summary.failed() > 0) {
             Log.error("%d rebuild(s) failed", summary.failed());
         }
@@ -395,6 +416,7 @@ public final class BuildCommand implements Callable<Integer> {
         if (view == null) return "built      ";
         return switch (view.outcome()) {
             case BuildReport.BUILT -> "built      ";
+            case BuildReport.NO_OP -> "no-op      ";
             case BuildReport.FAILED -> "FAILED     ";
             default -> "skipped    ";
         };
