@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.skillmanager._lib.harness.TestHarness;
 import dev.skillmanager._lib.test.Tests;
+import dev.skillmanager.lock.Fingerprint;
 import dev.skillmanager.model.UnitKind;
 
 import java.nio.file.Files;
@@ -168,6 +169,81 @@ public final class PluginMarketplaceTest {
             assertTrue(!n1.equals(n2),
                     "two homes registering under one name is the codex collision this fixes: "
                     + n1 + " vs " + n2);
+        });
+
+        // ------------------------------------------------------------- ARTI-17
+
+        suite.test("regeneration records a RESOLVED input fingerprint per entry", () -> {
+            TestHarness h = TestHarness.create();
+            h.scaffoldUnitDir("repo-intel", UnitKind.PLUGIN);
+            PluginMarketplace mp = new PluginMarketplace(h.store());
+            mp.regenerate();
+
+            MarketplaceInputs inputs = MarketplaceInputs.read(mp.root()).orElseThrow(
+                    () -> new AssertionError("no " + MarketplaceInputs.FILENAME + " sidecar"));
+            assertEquals(mp.name(), inputs.marketplaceName(), "sidecar names this home's marketplace");
+            MarketplaceInputs.Entry entry = inputs.plugin("repo-intel").orElseThrow(
+                    () -> new AssertionError("no row for repo-intel"));
+            assertEquals("./plugins/repo-intel", entry.source(), "source matches the manifest's");
+            Fingerprint fp = entry.fingerprint().orElseThrow(
+                    () -> new AssertionError("row records neither a digest nor a gap"));
+            assertTrue(fp.present(), "a digest, not a gap");
+            assertEquals(Fingerprint.Kind.RESOLVED, fp.kind(),
+                    "the digest covers the plugin's bytes, so the producer asserts resolved");
+            assertEquals(MarketplaceInputs.SCHEME, entry.inputFingerprintScheme(),
+                    "the scheme is named, so a later scheme cannot silently collide with it");
+
+            // The manifest the harness CLIs read is untouched: an unrecognised
+            // key there is a bet on their leniency whose downside is every
+            // plugin in the home becoming unloadable.
+            JsonNode manifestEntry = readManifest(mp.manifestPath()).get("plugins").get(0);
+            assertEquals(2, manifestEntry.size(),
+                    "marketplace.json entry still carries name+source only");
+        });
+
+        suite.test("the entry fingerprint moves when the plugin's bytes move", () -> {
+            // The whole claim of the `resolved` grade. A digest over the
+            // declared plugin SET would be identical across this edit, which is
+            // exactly why that grade is `declared` and this one is not.
+            TestHarness h = TestHarness.create();
+            h.scaffoldUnitDir("repo-intel", UnitKind.PLUGIN);
+            PluginMarketplace mp = new PluginMarketplace(h.store());
+            mp.regenerate();
+            String before = MarketplaceInputs.read(mp.root()).orElseThrow()
+                    .plugin("repo-intel").orElseThrow().inputFingerprint();
+
+            mp.regenerate();
+            assertEquals(before, MarketplaceInputs.read(mp.root()).orElseThrow()
+                            .plugin("repo-intel").orElseThrow().inputFingerprint(),
+                    "regenerating with nothing changed must not move the digest");
+
+            Files.writeString(h.store().unitDir("repo-intel", UnitKind.PLUGIN).resolve("NEW.md"),
+                    "added after generation\n");
+            mp.regenerate();
+            assertFalse(before.equals(MarketplaceInputs.read(mp.root()).orElseThrow()
+                            .plugin("repo-intel").orElseThrow().inputFingerprint()),
+                    "adding a file to the plugin must move the entry's digest");
+        });
+
+        suite.test("a plugin's row leaves with its entry", () -> {
+            // A row that outlives its entry is a record claiming an artifact
+            // this home does not have — the "second copy that can disagree with
+            // the disk" the artifact model exists to refuse.
+            TestHarness h = TestHarness.create();
+            h.scaffoldUnitDir("alpha-plugin", UnitKind.PLUGIN);
+            h.scaffoldUnitDir("zebra-plugin", UnitKind.PLUGIN);
+            PluginMarketplace mp = new PluginMarketplace(h.store());
+            mp.regenerate();
+            assertEquals(2, MarketplaceInputs.read(mp.root()).orElseThrow().plugins().size(),
+                    "both rows recorded");
+
+            dev.skillmanager.shared.util.Fs.deleteRecursive(
+                    h.store().unitDir("zebra-plugin", UnitKind.PLUGIN));
+            mp.regenerate();
+
+            MarketplaceInputs after = MarketplaceInputs.read(mp.root()).orElseThrow();
+            assertEquals(1, after.plugins().size(), "the uninstalled plugin's row is gone");
+            assertTrue(after.plugin("zebra-plugin").isEmpty(), "and it is that plugin's row");
         });
 
         return suite.runAll();

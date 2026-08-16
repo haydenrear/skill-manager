@@ -201,6 +201,11 @@ public final class HarnessCommand {
                 new dev.skillmanager.bindings.HarnessInstanceLock(
                         name, id, resolvedClaude, resolvedCodex, resolvedGemini, resolvedProject,
                         dev.skillmanager.bindings.BindingStore.nowIso())
+                        // The digest the planner already computed over the
+                        // template it planned from. Taken from the plan rather
+                        // than recomputed: a second computation of one fact is a
+                        // second fact that can disagree with the first.
+                        .withTemplateFingerprint(plan.templateFingerprint())
                         .write(sandboxRoot, store.root());
             }
 

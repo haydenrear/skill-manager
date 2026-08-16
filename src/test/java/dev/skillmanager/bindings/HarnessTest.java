@@ -320,6 +320,79 @@ public final class HarnessTest {
                             .count();
                     assertEquals(1L, removed, "one REMOVED fact for the dropped unit");
                 })
+
+                // ------------------------------------------------------ ARTI-17
+
+                .test("instantiate records a RESOLVED fingerprint of the template", () -> {
+                    var fix = newHarnessFixture("fp", false);
+                    instantiate(fix, "fp-inst");
+                    var fp = lockOf(fix, "fp-inst").fingerprint().orElseThrow(
+                            () -> new AssertionError("instance records neither digest nor gap"));
+                    assertTrue(fp.present(), "a digest, not a gap");
+                    assertEquals(dev.skillmanager.lock.Fingerprint.Kind.RESOLVED, fp.kind(),
+                            "the digest is over the installed template's bytes");
+                    assertEquals(HarnessInstantiator.FINGERPRINT_SCHEME,
+                            lockOf(fix, "fp-inst").templateFingerprintScheme(),
+                            "the scheme is named so a later one cannot collide with it");
+                })
+
+                .test("SyncHarness re-records the fingerprint, and it moves with the template", () -> {
+                    // The claim: after this, "did the template move" is a
+                    // comparison of two recorded strings rather than a rerun of
+                    // the whole instantiation. The digest before and after a
+                    // template edit must differ, and a no-op sync must not
+                    // move it.
+                    var fix = newHarnessFixture("fpsync", false);
+                    instantiate(fix, "fpsync-inst");
+                    String atInstantiation = lockOf(fix, "fpsync-inst").templateFingerprint();
+
+                    new LiveInterpreter(fix.store).run(new Program<>("sync-noop",
+                            List.of(new SkillEffect.SyncHarness(fix.template.name(), "fpsync-inst")),
+                            r -> null));
+                    assertEquals(atInstantiation, lockOf(fix, "fpsync-inst").templateFingerprint(),
+                            "syncing an unchanged template must not move the digest");
+
+                    rewriteHarnessToml(fix.store, fix.template.name(),
+                            new String[] {"skill:widget"},
+                            new String[] {"doc:org-prompts/review-stance"});
+                    new LiveInterpreter(fix.store).run(new Program<>("sync-changed",
+                            List.of(new SkillEffect.SyncHarness(fix.template.name(), "fpsync-inst")),
+                            r -> null));
+                    assertFalse(atInstantiation.equals(
+                                    lockOf(fix, "fpsync-inst").templateFingerprint()),
+                            "editing the template must move the digest — otherwise re-running "
+                                    + "the instantiation stays the only way to learn it moved");
+                })
+
+                .test("a pre-ARTI-17 instance is not promoted, and one sync fixes it", () -> {
+                    // The five instances in the live project home are exactly
+                    // this shape. A reader must not invent a grade for them;
+                    // the producer must write a real one on the next pass.
+                    var fix = newHarnessFixture("legacy", false);
+                    instantiate(fix, "legacy-inst");
+                    makeLegacy(fix, "legacy-inst");
+                    assertTrue(lockOf(fix, "legacy-inst").fingerprint().isEmpty(),
+                            "a legacy lock records neither a digest nor a gap — not an "
+                                    + "`unknown` grade over a digest nobody computed");
+
+                    new LiveInterpreter(fix.store).run(new Program<>("sync-legacy",
+                            List.of(new SkillEffect.SyncHarness(fix.template.name(), "legacy-inst")),
+                            r -> null));
+                    var fp = lockOf(fix, "legacy-inst").fingerprint().orElseThrow(
+                            () -> new AssertionError("sync did not record a fingerprint"));
+                    assertEquals(dev.skillmanager.lock.Fingerprint.Kind.RESOLVED, fp.kind(),
+                            "and the one it writes is graded by its producer");
+                })
+
+                .test("a template that is gone yields a graded GAP, never a match", () -> {
+                    var fix = newHarnessFixture("gone", false);
+                    Fs.deleteRecursive(fix.store.unitDir(fix.template.name(), UnitKind.HARNESS));
+                    var fp = HarnessInstantiator.fingerprintOf(fix.template, fix.store);
+                    assertFalse(fp.present(), "no digest when the template cannot be read");
+                    assertTrue(fp.gap() != null && fp.gap().contains("harness.toml"),
+                            "and the reason is recorded rather than logged: " + fp.gap());
+                })
+
                 .runAll();
     }
 
@@ -438,14 +511,35 @@ public final class HarnessTest {
         }
         new LiveInterpreter(fix.store).run(new Program<>("inst-" + instanceId, effects, r -> null));
         // Mirror the CLI's lock-file write so SyncHarness can recover
-        // the same target paths on re-plan.
+        // the same target paths on re-plan — including the template
+        // fingerprint the CLI records from this same plan.
         Path sandboxRoot = fix.store.harnessesDir()
                 .resolve(dev.skillmanager.commands.HarnessCommand.INSTANCES_DIR);
         new HarnessInstanceLock(
                 fix.template.name(), instanceId,
                 fix.claudeConfigDir, fix.codexHome, fix.geminiHome, fix.projectDir,
                 BindingStore.nowIso())
+                .withTemplateFingerprint(plan.templateFingerprint())
                 .write(sandboxRoot);
+    }
+
+    /** Overwrite an instance's lock with the pre-ARTI-17 shape: no fingerprint. */
+    private static void makeLegacy(HarnessFixture fix, String instanceId) throws IOException {
+        new HarnessInstanceLock(
+                fix.template.name(), instanceId,
+                fix.claudeConfigDir, fix.codexHome, fix.geminiHome, fix.projectDir,
+                BindingStore.nowIso())
+                .write(fix.store.harnessesDir()
+                        .resolve(dev.skillmanager.commands.HarnessCommand.INSTANCES_DIR));
+    }
+
+    /** The lock an instance currently carries. */
+    private static HarnessInstanceLock lockOf(HarnessFixture fix, String instanceId) {
+        return HarnessInstanceLock.read(
+                        fix.store.harnessesDir()
+                                .resolve(dev.skillmanager.commands.HarnessCommand.INSTANCES_DIR),
+                        instanceId, fix.store.root())
+                .orElseThrow(() -> new AssertionError("no instance lock for " + instanceId));
     }
 
     /** Rewrite the harness template's toml in the store to drop / add references. */

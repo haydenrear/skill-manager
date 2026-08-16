@@ -5,15 +5,20 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.skillmanager.bindings.Binding;
 import dev.skillmanager.bindings.BindingStore;
 import dev.skillmanager.bindings.HarnessInstanceLock;
+import dev.skillmanager.bindings.HarnessInstantiator;
 import dev.skillmanager.bindings.Projection;
 import dev.skillmanager.bindings.ProjectionKind;
 import dev.skillmanager.bindings.Sha256;
 import dev.skillmanager.cli.installer.CliArtifact;
 import dev.skillmanager.lock.CliLock;
+import dev.skillmanager.lock.Fingerprint;
+import dev.skillmanager.mcp.McpRegistrationLock;
 import dev.skillmanager.model.AgentUnit;
 import dev.skillmanager.model.CliDependency;
+import dev.skillmanager.model.HarnessParser;
 import dev.skillmanager.model.McpDependency;
 import dev.skillmanager.model.UnitKind;
+import dev.skillmanager.project.MarketplaceInputs;
 import dev.skillmanager.source.GitOps;
 import dev.skillmanager.source.InstalledUnit;
 import dev.skillmanager.source.UnitStore;
@@ -596,13 +601,38 @@ public final class ArtifactBackfill {
         }
         names.sort(String::compareTo);
 
+        Path marketplaceRoot = root.resolve("plugin-marketplace");
+        Optional<MarketplaceInputs> inputs = MarketplaceInputs.read(marketplaceRoot);
+
         List<Artifact> out = new ArrayList<>();
         for (String name : names) {
             boolean isListed = listed.contains(name);
             boolean isInstalled = installedPlugins.contains(name);
             String state = isListed && isInstalled ? "listed"
                     : (isListed ? "orphaned" : "unlisted");
-            Path link = root.resolve("plugin-marketplace").resolve("plugins").resolve(name);
+            Path link = marketplaceRoot.resolve("plugins").resolve(name);
+
+            // What the generator recorded it built this entry from, and what
+            // the same inputs hash to now. Two fields rather than one, because
+            // "the record claims X" and "the disk says X" are different claims
+            // and the whole point of this class is to stop conflating them.
+            Optional<MarketplaceInputs.Entry> row = inputs.flatMap(i -> i.plugin(name));
+            Optional<Fingerprint> recorded = row.flatMap(MarketplaceInputs.Entry::fingerprint)
+                    .filter(Fingerprint::present);
+            Fingerprint now = MarketplaceInputs.fingerprintOf(name,
+                    row.map(MarketplaceInputs.Entry::source).orElse("./plugins/" + name),
+                    row.map(MarketplaceInputs.Entry::target).orElse(storedLinkTarget(link)),
+                    store.unitDir(name, UnitKind.PLUGIN));
+            Artifact.Agreement agreement;
+            if (recorded.isEmpty()) {
+                agreement = Artifact.Agreement.UNRECORDED;
+            } else if (!now.present()) {
+                agreement = Artifact.Agreement.UNVERIFIABLE;
+            } else {
+                agreement = recorded.get().value().equals(now.value())
+                        ? Artifact.Agreement.AGREES : Artifact.Agreement.DISAGREES;
+            }
+
             out.add(new Artifact(
                     ArtifactIds.marketplaceEntry(name),
                     ArtifactKind.MARKETPLACE_ENTRY,
@@ -612,15 +642,30 @@ public final class ArtifactBackfill {
                     List.of(Artifact.Output.inHome("plugin-marketplace/plugins/" + name,
                             presenceOf(link))),
                     "plugin-marketplace/.claude-plugin/marketplace.json",
-                    Artifact.facts("marketplace_state", state),
-                    Artifact.facts("marketplace_state", state),
-                    // Still UNRECORDED as an AGREEMENT: no input fingerprint is
-                    // written at generation, and the state above is a set
-                    // comparison rather than a recorded claim about content.
-                    Artifact.Agreement.UNRECORDED,
+                    Artifact.facts("marketplace_state", state,
+                            "input_fingerprint", recorded.map(Fingerprint::value).orElse(null),
+                            "input_fingerprint_kind",
+                            recorded.map(f -> f.kind().token()).orElse(null)),
+                    Artifact.facts("marketplace_state", state,
+                            "input_fingerprint", now.value(),
+                            "input_fingerprint_gap", now.gap()),
+                    agreement,
                     Artifact.Origin.HOME));
         }
         return out;
+    }
+
+    /**
+     * The target stored in a marketplace symlink, or null when the entry is a
+     * copy or is not there. Read off the link rather than re-derived, so it is
+     * the same string the generator wrote.
+     */
+    private static String storedLinkTarget(Path link) {
+        try {
+            return Files.isSymbolicLink(link) ? Files.readSymbolicLink(link).toString() : null;
+        } catch (IOException e) {
+            return null;
+        }
     }
 
     /** Names of installed units of kind {@code PLUGIN}, sorted. */
@@ -664,6 +709,28 @@ public final class ArtifactBackfill {
             List<String> inputs = harness == null ? List.of() : List.of(
                     ArtifactIds.unitInput(harness),
                     ArtifactIds.storeInput("harnesses/" + harness));
+
+            // The template digest the instantiation recorded, against what this
+            // home's installed template hashes to now. An instance written
+            // before the field existed has no recorded digest and stays
+            // UNRECORDED — it is not promoted, because a grade nobody wrote
+            // down is not a grade.
+            Optional<Fingerprint> recorded = lock.flatMap(HarnessInstanceLock::fingerprint)
+                    .filter(Fingerprint::present);
+            Fingerprint now = harness == null
+                    ? Fingerprint.gap("this instance's record does not name a harness, so the "
+                            + "template it came from cannot be identified")
+                    : currentTemplateFingerprint(harness);
+            Artifact.Agreement agreement;
+            if (recorded.isEmpty()) {
+                agreement = Artifact.Agreement.UNRECORDED;
+            } else if (!now.present()) {
+                agreement = Artifact.Agreement.UNVERIFIABLE;
+            } else {
+                agreement = recorded.get().value().equals(now.value())
+                        ? Artifact.Agreement.AGREES : Artifact.Agreement.DISAGREES;
+            }
+
             out.add(new Artifact(
                     ArtifactIds.harnessInstance(instanceId),
                     ArtifactKind.HARNESS_INSTANCE,
@@ -672,12 +739,40 @@ public final class ArtifactBackfill {
                     List.of(Artifact.Output.inHome("harnesses/instances/" + instanceId,
                             presenceOf(sandboxRoot.resolve(instanceId)))),
                     "harnesses/instances/" + instanceId + "/" + HarnessInstanceLock.FILENAME,
-                    Artifact.facts("created_at", lock.map(HarnessInstanceLock::createdAt).orElse(null)),
-                    Map.of(),
-                    Artifact.Agreement.UNRECORDED,
+                    Artifact.facts("created_at", lock.map(HarnessInstanceLock::createdAt).orElse(null),
+                            "input_fingerprint", recorded.map(Fingerprint::value).orElse(null),
+                            "input_fingerprint_kind",
+                            recorded.map(f -> f.kind().token()).orElse(null)),
+                    Artifact.facts("input_fingerprint", now.value(),
+                            "input_fingerprint_gap", now.gap()),
+                    agreement,
                     Artifact.Origin.HOME));
         }
         return out;
+    }
+
+    /**
+     * What the installed template for {@code harness} hashes to right now, or a
+     * gap naming why it could not be read.
+     *
+     * <p>A gap here is the ordinary case on a home that carries instances of
+     * harnesses it no longer installs: the sandbox dirs survive, the template
+     * does not, and "the template is gone" is a different answer from "the
+     * template matches". Reporting the second would be the presence-proxy
+     * defect wearing a fingerprint's clothes.
+     */
+    private Fingerprint currentTemplateFingerprint(String harness) {
+        Path dir = store.unitDir(harness, UnitKind.HARNESS);
+        if (!Files.isDirectory(dir)) {
+            return Fingerprint.gap("harnesses/" + harness + " is not installed in this home, so "
+                    + "the template this instance was made from cannot be re-read");
+        }
+        try {
+            return HarnessInstantiator.fingerprintOf(HarnessParser.load(dir), store);
+        } catch (IOException e) {
+            return Fingerprint.gap("the installed template for " + harness
+                    + " could not be parsed: " + e.getMessage());
+        }
     }
 
     // ------------------------------------------------------ MCP registrations
@@ -756,6 +851,12 @@ public final class ArtifactBackfill {
         }
         ids.sort(String::compareTo);
 
+        // This home's own record of what it asked the gateway to hold. Keyed by
+        // server id and read here rather than re-derived: the digest was
+        // computed by the writer that posted the payload, and nothing else in
+        // the home can reconstruct the environment it was built in.
+        McpRegistrationLock registrations = McpRegistrationLock.read(root);
+
         List<Artifact> out = new ArrayList<>();
         for (String id : ids) {
             String owner = declaringUnit.get(id);
@@ -766,6 +867,9 @@ public final class ArtifactBackfill {
                 inputs.add(ArtifactIds.unitInput(owner));
                 inputs.add(ArtifactIds.storeInput(unitStorePath(owner)));
             }
+            Optional<Fingerprint> recorded = registrations.server(id)
+                    .flatMap(McpRegistrationLock.Entry::fingerprint)
+                    .filter(Fingerprint::present);
             out.add(new Artifact(
                     ArtifactIds.mcpRegistration(id),
                     ArtifactKind.MCP_REGISTRATION,
@@ -777,12 +881,19 @@ public final class ArtifactBackfill {
                     // home-relative record that declares this artifact".
                     source != null ? source
                             : (owner == null ? null : "installed/" + owner + ".json"),
+                    Artifact.facts("registration_state", state,
+                            "spec_digest", recorded.map(Fingerprint::value).orElse(null),
+                            "spec_digest_kind", recorded.map(f -> f.kind().token()).orElse(null)),
                     Artifact.facts("registration_state", state),
-                    Artifact.facts("registration_state", state),
-                    // Provisioning short-circuits on a content-independent
-                    // marker, which is why an upgraded server keeps the old
-                    // binary (skill-manager#103). Nothing here to compare.
-                    Artifact.Agreement.UNRECORDED,
+                    // Recorded, and still not re-checkable HERE. The digest
+                    // covers the register payload including the init values the
+                    // installing process read out of ITS environment; this pass
+                    // is a different process and cannot reconstruct them, so
+                    // recomputing would produce a different digest for reasons
+                    // that are not staleness. "I did not look" is the honest
+                    // verdict and it is not AGREES.
+                    recorded.isPresent() ? Artifact.Agreement.UNVERIFIABLE
+                            : Artifact.Agreement.UNRECORDED,
                     Artifact.Origin.HOME));
         }
         return out;

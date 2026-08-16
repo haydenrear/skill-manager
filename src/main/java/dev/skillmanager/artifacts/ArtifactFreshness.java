@@ -221,9 +221,7 @@ public final class ArtifactFreshness {
             case UNIT_STORE, PROJECTION, DOC_IMPORT -> byAgreement(artifact);
             case MARKETPLACE_ENTRY -> byMarketplace(artifact, root);
             case MCP_REGISTRATION -> byMcpRegistration(artifact);
-            case HARNESS_INSTANCE -> verdict(artifact, Freshness.UNVERIFIABLE,
-                    "no fingerprint of the harness template is recorded at instantiation, so "
-                            + "whether the template moved can only be learned by re-running it");
+            case HARNESS_INSTANCE -> byHarnessTemplate(artifact);
             case UNIT_DIGEST -> verdict(artifact, Freshness.UNVERIFIABLE,
                     "verifying a digest row is a full walk of the unit; this read did not do one");
         };
@@ -316,9 +314,15 @@ public final class ArtifactFreshness {
 
     /**
      * The marketplace is regenerated wholesale precisely because "did anything
-     * change" is never asked, so this asks it: a row whose plugin is no longer
-     * installed, and a row whose symlink no longer resolves, are both a
-     * manifest that has fallen behind the set it is generated from.
+     * change" is never asked, so this asks it — on the two axes that are this
+     * method's: a row whose plugin is no longer installed, and a row whose
+     * recorded input fingerprint no longer matches the plugin's bytes, are both
+     * a manifest that has fallen behind the set it is generated from.
+     *
+     * <p>Whether the link is THERE is deliberately not asked here.
+     * {@link #combine} owns presence for every kind since ARTI-06, and the loop
+     * that used to test it in this one method was that change's motivating
+     * example.
      */
     private static Local byMarketplace(Artifact artifact, Path root) {
         String state = artifact.actual().get("marketplace_state");
@@ -334,9 +338,57 @@ public final class ArtifactFreshness {
         // missing" → STALE — is GONE, not moved by accident. It was the one
         // place in this class that read outputs(), and ARTI-06 made it every
         // kind's rule in combine(). Two spellings of one fact is how the two
-        // axes came to disagree in the first place.
-        return verdict(artifact, Freshness.CURRENT,
-                "the generated manifest and its link tree match the installed plugin set");
+        // axes came to disagree in the first place. ARTI-17 keeps that deletion
+        // and asks the OTHER question in its place: set membership is settled
+        // above, presence is combine()'s, and what is left is the one the
+        // wholesale regeneration existed to avoid asking.
+        return byInputFingerprint(artifact, "input_fingerprint",
+                "the generated manifest and its link tree match the installed plugin set, and "
+                        + "nothing records what that set hashed to when it was generated "
+                        + "(one regeneration records it)",
+                "the plugin this entry exposes is unchanged since the marketplace was generated",
+                "the plugin this entry exposes moved since the marketplace was generated");
+    }
+
+    /**
+     * A harness instance against the template it was instantiated from — the
+     * comparison {@code SyncHarness} used to perform by DOING the work: it
+     * re-instantiated with {@code OVERWRITE} on every pass because there was no
+     * recorded template digest to ask instead.
+     */
+    private static Local byHarnessTemplate(Artifact artifact) {
+        return byInputFingerprint(artifact, "input_fingerprint",
+                "its record carries no fingerprint of the harness template, so whether the "
+                        + "template moved can only be learned by re-running the instantiation "
+                        + "(one `sync harness:<n>` records one)",
+                "the installed template still hashes to the fingerprint recorded when this "
+                        + "instance was instantiated",
+                "the harness template moved since this instance was instantiated");
+    }
+
+    /**
+     * The shared shape for the kinds whose producer now records a graded digest
+     * of its inputs and whose reader can re-read those inputs on this pass.
+     *
+     * <p>{@link ArtifactBackfill} does the comparing — it holds both halves —
+     * and stamps the answer as an {@link Artifact.Agreement}. This maps that to
+     * a verdict with the kind's own words, and marks the positive answers
+     * DIRECT: they rest on bytes re-read off this home's disk, which is the
+     * strongest evidence available about an input and must not be dragged down
+     * by an undecided record ABOUT those same bytes.
+     */
+    private static Local byInputFingerprint(Artifact artifact, String key,
+                                            String unrecorded, String current, String stale) {
+        return switch (artifact.agreement()) {
+            case UNRECORDED -> verdict(artifact, Freshness.UNVERIFIABLE, unrecorded);
+            case AGREES -> verdict(artifact, Freshness.CURRENT, current, true);
+            case DISAGREES -> verdict(artifact, Freshness.STALE,
+                    stale + " (recorded " + shortDigest(artifact.recorded().get(key))
+                            + ", now " + shortDigest(artifact.actual().get(key)) + ")", true);
+            case UNVERIFIABLE -> verdict(artifact, Freshness.UNVERIFIABLE,
+                    "its inputs could not be re-read: "
+                            + artifact.actual().getOrDefault(key + "_gap", "no reason recorded"));
+        };
     }
 
     /**
@@ -356,10 +408,26 @@ public final class ArtifactFreshness {
                     "no installed unit declares this server, so there is no declaration to "
                             + "compare the registration against");
         }
+        String digest = artifact.recorded().get("spec_digest");
+        if (digest == null) {
+            return verdict(artifact, Freshness.UNVERIFIABLE,
+                    "this home records no spec digest for the payload it posted, so there is "
+                            + "nothing to compare a later declaration against (one `sync "
+                            + "--include-mcp` records one)");
+        }
+        // Recorded, and still undecided — for a reason that is about THIS pass
+        // and not about the record. The digest covers the init values the
+        // installing process read from its own environment; a listing running
+        // later in a different process cannot reconstruct them, so recomputing
+        // would differ for reasons that are not staleness. Saying "unverifiable"
+        // with that reason is the honest answer; the digest is nonetheless what
+        // makes the next INSTALL able to decide, offline, that the declaration
+        // moved.
         return verdict(artifact, Freshness.UNVERIFIABLE,
-                "the gateway persists its own normalized load spec rather than the payload "
-                        + "skill-manager posted, so the registered spec and the declared one "
-                        + "cannot be compared from this home's files alone");
+                "the payload digest recorded at registration (" + shortDigest(digest)
+                        + ", grade " + artifact.recorded().getOrDefault("spec_digest_kind", "unknown")
+                        + ") covers init values resolved from the installing process's "
+                        + "environment, which this pass cannot re-read");
     }
 
     // ------------------------------------------------------------ propagation

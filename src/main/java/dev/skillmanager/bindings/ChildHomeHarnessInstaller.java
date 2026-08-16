@@ -117,6 +117,9 @@ public final class ChildHomeHarnessInstaller {
         new HarnessInstanceLock(harnessName, id,
                 layout.claudeHome(), layout.codexHome(), layout.geminiHome(), layout.targetDir(),
                 BindingStore.nowIso())
+                // From the plan that produced these bindings, not recomputed:
+                // one fact, computed once, by the thing that knew it.
+                .withTemplateFingerprint(childPlan.templateFingerprint())
                 .write(parentStore.harnessesDir()
                         .resolve(dev.skillmanager.commands.HarnessCommand.INSTANCES_DIR));
         List<String> claimedUnits = new ArrayList<>();
