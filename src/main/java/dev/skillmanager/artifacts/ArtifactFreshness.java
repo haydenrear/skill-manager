@@ -392,10 +392,20 @@ public final class ArtifactFreshness {
     }
 
     /**
-     * The registration is a content-independent marker (skill-manager#103), so
-     * the only truthful local verdict is that nothing was compared — with the
-     * reason, and with the one case that IS decidable called out: a declared
-     * dependency that was never registered at all.
+     * A registration against the declaration it was built from.
+     *
+     * <p>This used to be hardcoded {@code unverifiable} on the grounds that the
+     * recorded digest covered init values only the installing process could
+     * read. That was wrong about its own record: {@code GatewayClient.specDigest}
+     * digests {@code load_spec} and {@code init_schema} and nothing else, both
+     * pure functions of the installed {@code McpDependency}. Nothing about the
+     * installing process is in it, so any pass that can read the unit's manifest
+     * can recompute it — and {@link ArtifactBackfill} does, which is what makes
+     * this decidable rather than merely recorded.
+     *
+     * <p>What stays undecidable is the GATEWAY's copy (skill-manager#121) and
+     * whether the server it actually ran has moved. Neither is what this
+     * comparison claims.
      */
     private static Local byMcpRegistration(Artifact artifact) {
         if ("declared-only".equals(artifact.actual().get("registration_state"))) {
@@ -408,26 +418,13 @@ public final class ArtifactFreshness {
                     "no installed unit declares this server, so there is no declaration to "
                             + "compare the registration against");
         }
-        String digest = artifact.recorded().get("spec_digest");
-        if (digest == null) {
-            return verdict(artifact, Freshness.UNVERIFIABLE,
-                    "this home records no spec digest for the payload it posted, so there is "
-                            + "nothing to compare a later declaration against (one `sync "
-                            + "--include-mcp` records one)");
-        }
-        // Recorded, and still undecided — for a reason that is about THIS pass
-        // and not about the record. The digest covers the init values the
-        // installing process read from its own environment; a listing running
-        // later in a different process cannot reconstruct them, so recomputing
-        // would differ for reasons that are not staleness. Saying "unverifiable"
-        // with that reason is the honest answer; the digest is nonetheless what
-        // makes the next INSTALL able to decide, offline, that the declaration
-        // moved.
-        return verdict(artifact, Freshness.UNVERIFIABLE,
-                "the payload digest recorded at registration (" + shortDigest(digest)
-                        + ", grade " + artifact.recorded().getOrDefault("spec_digest_kind", "unknown")
-                        + ") covers init values resolved from the installing process's "
-                        + "environment, which this pass cannot re-read");
+        return byInputFingerprint(artifact, "spec_digest",
+                "this home records no spec digest for the registration it made, so there is "
+                        + "nothing to compare its declaration against (one `sync --include-mcp` "
+                        + "records one)",
+                "its declared mcp spec still hashes to the digest recorded when this home "
+                        + "registered it",
+                "the mcp dependency this server was registered from moved");
     }
 
     // ------------------------------------------------------------ propagation

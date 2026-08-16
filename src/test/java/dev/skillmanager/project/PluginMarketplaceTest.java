@@ -246,6 +246,62 @@ public final class PluginMarketplaceTest {
             assertTrue(after.plugin("zebra-plugin").isEmpty(), "and it is that plugin's row");
         });
 
+        suite.test("a symlinked store dir is digested by its BYTES, not its path string", () -> {
+            // ChildHomeMaterializer.plainView emits ONE LINK entry when its root
+            // is a symlink and never descends, and Files.isDirectory follows
+            // links so it does not notice. Without resolving the root first the
+            // digest covers the target PATH STRING while the grade still says
+            // `resolved` — a resolved grade that is wrong about bytes, which is
+            // the one thing it must never be.
+            TestHarness h = TestHarness.create();
+            Path real = Files.createTempDirectory("real-plugin-");
+            Files.createDirectories(real.resolve(".claude-plugin"));
+            Files.writeString(real.resolve(".claude-plugin/plugin.json"), "{ \"name\": \"linked\" }\n");
+            Files.writeString(real.resolve("body.md"), "original\n");
+            Path storeDir = h.store().unitDir("linked", UnitKind.PLUGIN);
+            Files.createDirectories(storeDir.getParent());
+            Files.createSymbolicLink(storeDir, real);
+
+            Fingerprint before = MarketplaceInputs.fingerprintOf(
+                    "linked", "./plugins/linked", "../../plugins/linked", storeDir);
+            assertEquals(Fingerprint.Kind.RESOLVED, before.kind(), "graded resolved");
+
+            // Same byte length, so nothing but the content itself differs.
+            Files.writeString(real.resolve("body.md"), "modified\n");
+            Fingerprint after = MarketplaceInputs.fingerprintOf(
+                    "linked", "./plugins/linked", "../../plugins/linked", storeDir);
+            assertFalse(before.value().equals(after.value()),
+                    "editing the real bytes behind the link must move the digest");
+        });
+
+        suite.test("a link that does not resolve is a graded GAP, not a resolved digest", () -> {
+            TestHarness h = TestHarness.create();
+            Path storeDir = h.store().unitDir("dangling", UnitKind.PLUGIN);
+            Files.createDirectories(storeDir.getParent());
+            Files.createSymbolicLink(storeDir, storeDir.resolveSibling("nowhere-at-all"));
+            Fingerprint fp = MarketplaceInputs.fingerprintOf(
+                    "dangling", "./plugins/dangling", "../../plugins/dangling", storeDir);
+            assertFalse(fp.present(), "no digest when the link does not resolve");
+        });
+
+        suite.test("recording the inputs cannot fail the regeneration it describes", () -> {
+            // Evidence about an operation must not be able to fail that
+            // operation. A directory where the file goes makes the write throw
+            // reliably, without depending on file permissions.
+            TestHarness h = TestHarness.create();
+            h.scaffoldUnitDir("repo-intel", UnitKind.PLUGIN);
+            PluginMarketplace mp = new PluginMarketplace(h.store());
+            mp.regenerate();
+            Path sidecar = MarketplaceInputs.file(mp.root());
+            Files.deleteIfExists(sidecar);
+            Files.createDirectories(sidecar);
+
+            List<String> names = mp.regenerate().pluginNames();
+            assertEquals(1, names.size(), "the marketplace still regenerated");
+            assertEquals(1, readManifest(mp.manifestPath()).get("plugins").size(),
+                    "and the manifest it exists to describe is correct");
+        });
+
         return suite.runAll();
     }
 

@@ -608,7 +608,23 @@ public final class Executor {
                 if (!isMcpClaimedByOtherUnit(u.unitName(), u.dep().name())) {
                     GatewayClient client = new GatewayClient(u.gateway());
                     if (client.ping()) {
-                        try { client.unregister(u.dep().name()); } catch (Exception ignored) {}
+                        try {
+                            if (client.unregister(u.dep().name())) {
+                                // The row goes with the registration. McpWriter
+                                // writes it the moment `register` succeeds, so
+                                // this is the rollback path where a row can
+                                // outlive its artifact — the same "second copy
+                                // that can disagree with the disk" the forward
+                                // unregister paths in LiveInterpreter close.
+                                // Only after the gateway confirms it let go.
+                                dev.skillmanager.mcp.McpRegistrationLock lock =
+                                        dev.skillmanager.mcp.McpRegistrationLock.read(
+                                                ctx.store().root());
+                                if (lock.server(u.dep().name()).isPresent()) {
+                                    lock.without(u.dep().name()).write(ctx.store().root());
+                                }
+                            }
+                        } catch (Exception ignored) {}
                     }
                 }
             }

@@ -6,6 +6,7 @@ import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import dev.skillmanager.lock.Fingerprint;
+import dev.skillmanager.model.McpDependency;
 import dev.skillmanager.shared.util.Fs;
 
 import java.io.IOException;
@@ -55,11 +56,37 @@ import java.util.Optional;
  * version]} and {@code [env, package, type, version]}. That mismatch is its own
  * cross-repo ticket (#121) and needs both ends; this file needs neither.
  *
+ * <h2>What the digest covers is narrower than the payload, and that is good</h2>
+ *
+ * <p>{@link GatewayClient#specDigest} digests {@code {load_spec, init_schema}}
+ * out of the payload and nothing else. Measured by holding the dependency fixed
+ * and varying one input at a time: {@code deploy} true→false,
+ * {@code initialization_params} from the manifest, env-resolved init values,
+ * {@code default_scope}, and {@code idle_timeout_seconds} all leave the digest
+ * byte-identical; bumping the load spec's package or version, or adding an
+ * {@code init_schema} field, moves it.
+ *
+ * <p>Two consequences, and both are load-bearing:
+ *
+ * <ul>
+ *   <li><b>A plaintext secret never enters the digest.</b> The payload's
+ *       {@code initialization_params} routinely carries one — the live project
+ *       home's gateway record holds a {@code RUNPOD_API_KEY} in the clear — and
+ *       digesting it would put a value derived from that secret into a file
+ *       that is read, printed and diffed. Covering the init SHAPE and not the
+ *       init VALUES is the right line, not a gap.</li>
+ *   <li><b>The digest is a pure function of the installed
+ *       {@link McpDependency}.</b> Nothing about the installing process enters
+ *       it, so any later pass that can read the unit's manifest can recompute it
+ *       and compare — which is what makes this class decidable offline rather
+ *       than merely recorded. {@code ArtifactBackfill.mcpRegistrations} does
+ *       exactly that.</li>
+ * </ul>
+ *
  * <h2>The grade is {@code declared}, and that is the honest one</h2>
  *
- * <p>The payload is built from the unit's declared {@code mcp_dependencies} plus
- * the init values this install resolved out of its environment. It does not
- * observe the server the gateway actually resolved and ran: a dep naming
+ * <p>What it covers is a DECLARATION: the spec as the unit wrote it down. It
+ * does not observe the server the gateway resolved and ran, so a dep naming
  * {@code npm @runpod/mcp-server latest} hashes identically before and after
  * upstream publishes new bytes, exactly as {@code pip:ruff==0.6.9} does. So the
  * grade recorded here is {@link Fingerprint.Kind#DECLARED} — it catches a
@@ -79,11 +106,23 @@ public record McpRegistrationLock(int schemaVersion, String updatedAt, List<Entr
     /** The scheme name recorded beside every digest this file holds. */
     public static final String SCHEME = "mcp-register-payload-v1";
 
-    /** What {@link #specDigest} covers, in one phrase, for whoever opens the file. */
+    /**
+     * What the digest covers, in one phrase, for whoever opens the file.
+     *
+     * <p>Measured against {@link GatewayClient#specDigest}, which digests
+     * {@code {load_spec, init_schema}} and nothing else. Holding the dep fixed
+     * and varying each other input in turn leaves the digest byte-identical:
+     * {@code deploy} true→false, {@code initialization_params} from the manifest,
+     * env-resolved init values, {@code default_scope} global→global-sticky, and
+     * {@code idle_timeout_seconds} null→1800. Bumping the load spec's package or
+     * version, or adding an {@code init_schema} field, moves it.
+     */
     public static final String BASIS =
-            "the gateway register payload this home posted: the unit's declared mcp spec, "
-                    + "the deploy decision, and the init values resolved from this install's "
-                    + "environment — not the server the gateway resolved and ran";
+            "the load_spec and init_schema of the unit's declared mcp dependency — the server "
+                    + "spec and the SHAPE of its init fields. Deliberately not the init VALUES, "
+                    + "which keeps a plaintext secret out of the digest; and not the deploy "
+                    + "decision, default_scope or idle timeout, which GatewayClient.specDigest "
+                    + "does not cover. Not the server the gateway resolved and ran either.";
 
     public McpRegistrationLock {
         servers = servers == null ? List.of() : List.copyOf(servers);

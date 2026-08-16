@@ -141,6 +141,24 @@ public record MarketplaceInputs(
      * The digest for one entry, computed from what the generator can SEE at
      * generation time.
      *
+     * <h2>The store directory is resolved before it is walked</h2>
+     *
+     * <p>{@code ChildHomeMaterializer.plainView} emits a single {@code LINK}
+     * entry when its root is a symlink and never descends, so walking a
+     * symlinked unit directory digests <b>the target path string instead of the
+     * bytes</b>. A {@code Files.isDirectory} guard does not catch it, because
+     * that call follows links and happily returns true. Measured: editing the
+     * real bytes behind a symlinked plugin directory left the digest unchanged
+     * while the grade stayed {@code resolved} — a {@code resolved} grade that is
+     * wrong about bytes, which is the one thing this grade must never be.
+     *
+     * <p>So the root is resolved to its real path first and the real directory
+     * is walked. The link is not a reason to refuse: the marketplace entry
+     * exposes whatever is behind it and the harness CLIs follow it, so those
+     * bytes ARE the artifact's content. What is refused is walking the link and
+     * calling the resulting path-string digest {@code resolved}. A link that
+     * does not resolve is a graded gap.
+     *
      * @param pluginDir the plugin's directory in the store, or null when this
      *                  home does not have it — which yields a graded gap rather
      *                  than a digest over half the inputs
@@ -155,9 +173,25 @@ public record MarketplaceInputs(
             return Fingerprint.gap("the plugin's store directory is not readable in this home, "
                     + "so the contents this entry exposes could not be digested");
         }
+        Path contents;
+        try {
+            // NOFOLLOW first: only a symlinked root needs resolving, and
+            // toRealPath on an ordinary directory would also canonicalize every
+            // parent, which changes nothing in the digest and can fail on a
+            // path this process cannot fully stat.
+            contents = Files.isSymbolicLink(pluginDir) ? pluginDir.toRealPath() : pluginDir;
+        } catch (IOException e) {
+            return Fingerprint.gap("plugins/" + name + " is a symlink that does not resolve in "
+                    + "this home, so the bytes it exposes could not be digested: "
+                    + e.getMessage());
+        }
+        if (!Files.isDirectory(contents, java.nio.file.LinkOption.NOFOLLOW_LINKS)) {
+            return Fingerprint.gap("plugins/" + name + " resolves to something that is not a "
+                    + "directory, so there are no plugin contents to digest");
+        }
         Map<String, String> entries;
         try {
-            entries = ChildHomeMaterializer.entryDigests(pluginDir, HomeDigest.EXCLUDED);
+            entries = ChildHomeMaterializer.entryDigests(contents, HomeDigest.EXCLUDED);
         } catch (IOException e) {
             return Fingerprint.gap("the plugin's store directory could not be walked: "
                     + e.getMessage());

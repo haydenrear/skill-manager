@@ -260,6 +260,29 @@ public final class ArtifactStalenessTest {
                     "the manifest is behind: " + verdict.reason());
         });
 
+        suite.test("a re-pointed marketplace link DISAGREES — the identity half is compared", () -> {
+            // The stored link target is an input to the marketplace digest, so
+            // re-pointing it changes the artifact. Recomputing `actual` from the
+            // RECORDED target made that self-confirming: the comparison re-hashed
+            // its own answer and could never disagree. Both halves come off the
+            // disk now, and this is what pins it.
+            SkillStore store = ArtifactsFixture.seed();
+            var mp = new dev.skillmanager.project.PluginMarketplace(store);
+            mp.regenerate();
+            assertEquals(Artifact.Agreement.AGREES,
+                    agreementOf(store, ArtifactIds.marketplaceEntry("beta")),
+                    "precondition: a freshly generated entry agrees with its record");
+
+            Path link = mp.pluginsLinkDir().resolve("beta");
+            Files.deleteIfExists(link);
+            Files.createSymbolicLink(link, Path.of("../../plugins/somewhere-else"));
+
+            assertEquals(Artifact.Agreement.DISAGREES,
+                    agreementOf(store, ArtifactIds.marketplaceEntry("beta")),
+                    "a link re-pointed at another unit is a changed artifact and must be able "
+                            + "to say so");
+        });
+
         suite.test("a declared MCP server nothing registered is a node, and it is stale", () -> {
             SkillStore store = ArtifactsFixture.withMcpUnit(ArtifactsFixture.seed());
             ArtifactIndex index = ArtifactIndex.of(store);
@@ -278,10 +301,93 @@ public final class ArtifactStalenessTest {
                     "declared and never registered");
             assertEquals(ArtifactFreshness.Freshness.UNVERIFIABLE,
                     freshness.of(ArtifactIds.mcpRegistration("demo-mcp")).freshness(),
-                    "and a registration with no declaration is not claimed to be current");
+                    "and a registration this home recorded no digest for is not claimed current");
+        });
+
+        suite.test("a recorded MCP digest is DECIDABLE against the live declaration", () -> {
+            // The reason this class does not have to be hardcoded unverifiable:
+            // specDigest covers {load_spec, init_schema} only, both pure
+            // functions of the installed McpDependency. Nothing about the
+            // installing PROCESS is in it, so this pass recomputes it exactly.
+            SkillStore store = ArtifactsFixture.withMcpUnit(ArtifactsFixture.seed());
+            recordMcpDigest(store, "demo-mcp");
+
+            var before = ArtifactFreshness.of(ArtifactIndex.of(store), store)
+                    .of(ArtifactIds.mcpRegistration("demo-mcp"));
+            assertEquals(ArtifactFreshness.Freshness.CURRENT, before.freshness(),
+                    "an untouched declaration matches its recorded digest: " + before.reason());
+
+            // Bump the image the dep declares — a real manifest edit.
+            Path toml = store.root().resolve("skills/mcp-alpha/skill-manager.toml");
+            Files.writeString(toml, Files.readString(toml)
+                    .replace("image = \"example/demo:1\"", "image = \"example/demo:2\""));
+
+            var after = ArtifactFreshness.of(ArtifactIndex.of(store), store)
+                    .of(ArtifactIds.mcpRegistration("demo-mcp"));
+            assertEquals(ArtifactFreshness.Freshness.STALE, after.freshness(),
+                    "editing the declared mcp spec makes the registration stale, with no "
+                            + "gateway anywhere: " + after.reason());
+        });
+
+        suite.test("the MCP digest does not cover init VALUES, which keeps a secret out", () -> {
+            // The persisted basis says so; this is the measurement behind it,
+            // and the property is why a digest recorded by an install that read
+            // a secret is reproducible by a pass that cannot see one.
+            SkillStore store = ArtifactsFixture.withMcpUnit(ArtifactsFixture.seed());
+            var dep = liveDep(store, "demo-mcp");
+            var client = new dev.skillmanager.mcp.GatewayClient(
+                    dev.skillmanager.mcp.GatewayConfig.of(
+                            java.net.URI.create("http://127.0.0.1:1")));
+            assertEquals(
+                    dev.skillmanager.mcp.GatewayClient.specDigest(
+                            client.registerPayload(dep, false, java.util.Map.of())),
+                    dev.skillmanager.mcp.GatewayClient.specDigest(
+                            client.registerPayload(dep, true,
+                                    java.util.Map.of("API_KEY", "rpa_PLAINTEXT_SECRET"))),
+                    "neither the deploy decision nor an env-resolved init value enters the "
+                            + "digest — so nothing derived from a plaintext secret is written "
+                            + "into mcp-lock.json, and a later pass reproduces the digest "
+                            + "without ever seeing one");
         });
 
         return suite.runAll();
+    }
+
+    /** The recorded-versus-disk agreement this home derives for one artifact. */
+    private static Artifact.Agreement agreementOf(SkillStore store, String id) throws Exception {
+        return ArtifactIndex.of(store).byId(id)
+                .orElseThrow(() -> new IllegalStateException("no artifact " + id))
+                .agreement();
+    }
+
+    /** The installed dependency named {@code server}, as the home parses it. */
+    private static dev.skillmanager.model.McpDependency liveDep(SkillStore store, String server)
+            throws Exception {
+        for (var unit : store.listInstalledUnits().units()) {
+            for (var dep : unit.mcpDependencies()) {
+                if (server.equals(dep.name())) return dep;
+            }
+        }
+        throw new IllegalStateException("the fixture declares " + server);
+    }
+
+    /**
+     * Write the {@code mcp-lock.json} row a successful registration leaves —
+     * digest computed from the LIVE dep, from the same object and the same call
+     * {@code McpWriter} uses.
+     */
+    private static void recordMcpDigest(SkillStore store, String server) throws Exception {
+        var dep = liveDep(store, server);
+        var client = new dev.skillmanager.mcp.GatewayClient(
+                dev.skillmanager.mcp.GatewayConfig.of(java.net.URI.create("http://127.0.0.1:1")));
+        String digest = dev.skillmanager.mcp.GatewayClient.specDigest(
+                client.registerPayload(dep, true, java.util.Map.of()));
+        dev.skillmanager.mcp.McpRegistrationLock.read(store.root())
+                .with(dev.skillmanager.mcp.McpRegistrationLock.Entry.of(
+                        server, "mcp-alpha", dep.defaultScope(),
+                        dev.skillmanager.lock.Fingerprint.declared(digest,
+                                dev.skillmanager.mcp.McpRegistrationLock.BASIS)))
+                .write(store.root());
     }
 
     /**

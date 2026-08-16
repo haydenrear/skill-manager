@@ -241,7 +241,18 @@ public final class PluginMarketplace {
         }
         manifest.put("plugins", plugins);
         Files.writeString(manifestPath(), json.writeValueAsString(manifest) + "\n");
-        MarketplaceInputs.of(name(), inputs).write(root());
+        // A warning, not a failure. This file is EVIDENCE about the marketplace,
+        // never an input to generating one, so a read-only or full home must not
+        // turn a marketplace that regenerated correctly into a failed effect and
+        // an exit 1. The same rule the two other producers in this ticket
+        // follow, and it was missing here.
+        try {
+            MarketplaceInputs.of(name(), inputs).write(root());
+        } catch (IOException e) {
+            dev.skillmanager.util.Log.warn(
+                    "marketplace: could not record generation inputs in %s: %s",
+                    MarketplaceInputs.FILENAME, e.getMessage());
+        }
 
         return new RegenerateResult(names, listed.problems());
     }
