@@ -304,8 +304,20 @@ public final class ArtifactBuild {
                     + artifact.recorded().getOrDefault("tool", "?")
                     + " any more, so there is no install to rerun — `skill-manager install <unit>` "
                     + "brings the declaration back, `skill-manager sync` prunes the row";
-            case PROVISIONED_TREE ->
-                    "no install records that it wrote this tree; the owner shown for it was "
+            // Two different states, and they had one sentence between them.
+            // A tree WITH a (containment-inferred) owner is reached by building
+            // the artifact that runs out of it. A tree with NO owner is reached
+            // by nothing, and telling its operator to "build the artifact that
+            // runs out of it" is an instruction with no referent — a dead end
+            // dressed as a remedy, which is the #142 class this epic keeps
+            // closing rather than opening.
+            case PROVISIONED_TREE -> artifact.owner() == null
+                    ? "nothing in this home claims to have produced it: no record says which "
+                    + "installer wrote it and no artifact names it as an input, so there is no "
+                    + "install to rerun and `build` has nothing to offer. The shared "
+                    + "package-manager roots are in this state by construction (#122); a tree "
+                    + "under a unit's own name is usually re-created by reinstalling that unit"
+                    : "no install records that it wrote this tree; the owner shown for it was "
                     + "inferred from the shim that runs out of it, and an inference at the wrong "
                     + "granularity would mark a shared root rebuilt (ARTI-05 review). Build the "
                     + "artifact that runs out of it — its install is what rewrites this tree";
@@ -331,6 +343,83 @@ public final class ArtifactBuild {
 
     private static String nameOr(Artifact artifact, String fallback) {
         return artifact.owner() == null ? fallback : artifact.owner();
+    }
+
+    /**
+     * The artifacts {@code build} can rebuild to clear a set of unresolved
+     * references — the join that lets {@code home verify}'s remedy be about the
+     * diagnosis it was printed under.
+     *
+     * <h2>Why the remedy is scoped, and not {@code --stale}</h2>
+     *
+     * <p>{@code home verify} names N specific references. Printing
+     * {@code build --stale} beneath them prescribes a WHOLE-HOME action for a
+     * per-instance finding, which is the exact asymmetry this ticket exists to
+     * remove, restated one verb later. It is also measurably wrong as a remedy:
+     * on the operator's project home {@code build --stale} selects 55 artifacts
+     * and plans 18 rebuilds, of which 11 are lock rows recording a
+     * {@code binary} their install never produced — so the command exits 1 over
+     * artifacts that have nothing to do with the reference it was printed for.
+     * {@code HomeFixpointLaw} parses that printed string and runs it, and its
+     * law ("the remedy it printed must clear it, first try") is a good law. The
+     * fix is to print a remedy that answers its own question.
+     *
+     * <p>Resolution is by OUTPUT PATH, the way {@link ArtifactGraph} resolves
+     * everything else: an unresolved entry is {@code <home-relative path> ->
+     * <what it names>} and the left side IS the artifact's output. Never by
+     * parsing a shim name back into a lock key — {@code bin/cli/tofu} comes
+     * from {@code brew:opentofu}, and a rule that works for one kind and fails
+     * silently for another is the failure {@link ArtifactGraph}'s javadoc
+     * already records.
+     *
+     * <p>Only artifacts with a producer this command can invoke are returned.
+     * Naming one {@code build} would decline gives a remedy that runs, exits 0
+     * and repairs nothing, which is worse than a general one.
+     */
+    public static List<String> buildableFor(SkillStore store, List<String> unresolvedReferences) {
+        if (unresolvedReferences == null || unresolvedReferences.isEmpty()) return List.of();
+        ArtifactIndex index;
+        try {
+            index = ArtifactIndex.of(store);
+        } catch (RuntimeException | java.io.IOException e) {
+            // Never worth failing the check over. The caller falls back to the
+            // general command, which says nothing untrue either.
+            return List.of();
+        }
+        Set<String> wanted = new LinkedHashSet<>();
+        for (String reference : unresolvedReferences) {
+            if (reference == null) continue;
+            int arrow = reference.indexOf(" -> ");
+            String path = (arrow < 0 ? reference : reference.substring(0, arrow))
+                    .trim().replace('\\', '/');
+            if (!path.isEmpty()) wanted.add(path);
+        }
+        Map<String, ArtifactFreshness.CliProducer> producers =
+                ArtifactFreshness.cliProducers(store);
+        List<String> out = new ArrayList<>();
+        for (Artifact artifact : index.artifacts()) {
+            if (cliProducerOf(artifact, producers) == null) continue;
+            for (Artifact.Output output : artifact.outputs()) {
+                if (output.scope() != Artifact.Scope.HOME) continue;
+                if (!wanted.contains(output.path())) continue;
+                if (!out.contains(artifact.id())) out.add(artifact.id());
+                break;
+            }
+        }
+        return List.copyOf(out);
+    }
+
+    /**
+     * An artifact id as a shell word.
+     *
+     * <p>{@code cli-shim:pip/jinja2-cli[yaml]} is a real id in a real home and
+     * {@code [yaml]} is a glob. The printed remedy is EXECUTED — by an operator
+     * pasting it and by {@code HomeFixpointLaw}, which runs it through
+     * {@code sh -c} — so an id that reaches a shell unquoted is a remedy that
+     * silently addresses a different artifact, or none.
+     */
+    public static String shellWord(String id) {
+        return "'" + id.replace("'", "'\\''") + "'";
     }
 
     /**

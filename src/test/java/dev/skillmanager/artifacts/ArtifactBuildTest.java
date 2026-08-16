@@ -235,6 +235,135 @@ public final class ArtifactBuildTest {
                     "a dry run writes no audit line either");
         });
 
+        // ------------------------------------------ the remedy home verify prints
+
+        suite.test("`home verify`'s remedy NAMES the artifacts that own its findings", () -> {
+            // The remedy is printed under a per-instance diagnosis, so it has
+            // to be about those instances. `build --stale` beneath them is a
+            // whole-home action under a per-instance finding — the exact
+            // asymmetry this ticket exists to remove, restated one verb later —
+            // and its exit code answers a question nobody asked.
+            SkillStore store = fingerprinted();
+            deleteRecursive(store.root().resolve("cache/skill-script-alpha-alpha-script"));
+
+            Result r = verify(store);
+
+            assertEquals(1, r.rc, "an unresolved reference still refuses");
+            assertContains(r.err, "complete it with:", "and prints a remedy");
+            assertContains(r.err, ArtifactIds.cliShim("skill-script", "alpha-script"),
+                    "which names the artifact that owns the failing reference");
+            assertTrue(!r.err.contains("build --stale"),
+                    "and is NOT the whole-home command: " + r.err);
+        });
+
+        suite.test("COMPANION: an artifact id that reaches a shell is quoted", () -> {
+            // `cli-shim:pip/jinja2-cli[yaml]` is a real id in a real home and
+            // `[yaml]` is a glob. This line is pasted into shells and is run
+            // through `sh -c` by HomeFixpointLaw, so an unquoted id is a remedy
+            // that addresses a different artifact, or none.
+            SkillStore store = fingerprinted();
+            // The fixture's pip shim is a dangling symlink from the start.
+            Result r = verify(store);
+
+            assertEquals(1, r.rc, "the dangling pip shim refuses");
+            assertContains(r.err, "'" + ArtifactIds.cliShim("pip", "alpha-pkg") + "'",
+                    "the id is a single shell word: " + r.err);
+        });
+
+        suite.test("COMPANION: with nothing buildable behind them it falls back, not silent", () -> {
+            // A remedy line with no command in it is the #142 class. A home
+            // whose unresolved path belongs to no artifact with a producer
+            // still gets the general command.
+            Path root = Files.createTempDirectory("build-remedy-bare-");
+            SkillStore store = new SkillStore(root.resolve("home"));
+            store.init();
+            Files.createDirectories(store.root().resolve("bin/cli"));
+            Files.createSymbolicLink(store.root().resolve("bin/cli/ob-shim"),
+                    store.root().resolve("venvs/ob/bin/ob-shim"));
+
+            Result r = verify(store);
+
+            assertEquals(1, r.rc, "still refuses");
+            assertContains(r.err, "build --stale",
+                    "and still prints a command rather than a bare sentence");
+        });
+
+        suite.test("an artifact this command never attempted does not decide its exit code", () -> {
+            // The coupling created by BECOMING the remedy: something `build`
+            // cannot repair, elsewhere in the home, must not make the printed
+            // remedy fail after it did its job. `not-buildable` rows are named
+            // loudly and leave the exit code alone.
+            SkillStore store = scriptOnly(fingerprinted());
+            Files.move(store.root().resolve("bin/cli/alpha-script"),
+                    store.root().resolve("bin/cli/.hidden"));
+            // A stale artifact with no producer, beside the one that has one.
+            Files.delete(store.root().resolve(".claude/skills/alpha"));
+
+            Result whole = build(store, "--stale");
+
+            assertTrue(whole.out.contains("not rebuilt here"),
+                    "the home holds a stale artifact build cannot produce: " + whole.out);
+            assertContains(whole.out, "built ", "and one it can, which it repaired");
+            assertEquals(0, whole.rc,
+                    "the one it never attempted does not fail the run: " + whole.err);
+        });
+
+        // ----------------------------------------- a producer that wrote nothing
+
+        suite.test("a producer that ran and wrote nothing is a no-op, never `built`", () -> {
+            // `runCliInstall` discards InstallOutcome and emits CliInstalled
+            // unconditionally, so a short-circuited backend prints
+            // `✓ cli: <dep> installed`. This is the one verb whose whole thesis
+            // is that a successful exit is not evidence the artifact exists, so
+            // it reads the outcome. Here SkillScriptBackend skips: its
+            // fingerprint matches and its declared binary is present.
+            SkillStore store = scriptOnly(fingerprinted());
+
+            Result r = build(store, "--all");
+
+            assertEquals(0, r.rc, "a no-op over a current home is not a failure: " + r.err);
+            assertContains(r.out, "no-op", "the row says what happened");
+            assertTrue(!r.out.contains("1 built"),
+                    "and the summary does not count it as work: " + r.out);
+            assertContains(r.err, "wrote nothing", "with the count called out");
+        });
+
+        suite.test("COMPANION: a producer that DID write is still reported as built", () -> {
+            // Without this, "never reports built" could pass by the outcome
+            // never being read as an event at all.
+            SkillStore store = fingerprinted();
+            Files.move(store.root().resolve("bin/cli/alpha-script"),
+                    store.root().resolve("bin/cli/.hidden"));
+
+            Result r = build(store, ArtifactIds.cliShim("skill-script", "alpha-script"));
+
+            assertEquals(0, r.rc, "rc: " + r.err);
+            assertContains(r.out, "built ", "an install that ran says built");
+            assertTrue(!r.out.contains("no-op"), "and is not a no-op: " + r.out);
+        });
+
+        suite.test("an unowned tree is not sent after an artifact that does not exist", () -> {
+            // A refusal whose remedy has no referent is a dead end dressed as a
+            // remedy. `cache/uv-tools` in the fixture is claimed by nobody —
+            // its only shim reaches it through a broken link.
+            SkillStore store = ArtifactsFixture.seed();
+            String treeId = ArtifactIds.provisionedTree("cache", "uv-tools");
+            ArtifactIndex index = ArtifactIndex.of(store);
+            assertTrue(index.byId(treeId).orElseThrow().owner() == null,
+                    "precondition: nothing claims this tree");
+
+            ArtifactBuild.Plan plan = ArtifactBuild.of(index,
+                    ArtifactFreshness.of(index, store), store,
+                    ArtifactBuild.Scope.NAMED, List.of(treeId), false);
+            ArtifactBuild.Step step = plan.steps().get(0);
+
+            assertEquals(ArtifactBuild.Action.NOT_BUILDABLE, step.action(), "not buildable");
+            assertTrue(!step.reason().contains("Build the artifact that runs out of it"),
+                    "and is not sent after an artifact that does not exist: " + step.reason());
+            assertContains(step.reason(), "nothing in this home claims",
+                    "it names the condition instead");
+        });
+
         suite.test("a real build writes an audit line naming the artifact", () -> {
             // #45/T44: a mutation absent from audit.log is the gap that ticket
             // was filed on, and a new verb is a new chance to reintroduce it.
@@ -264,6 +393,42 @@ public final class ArtifactBuildTest {
     }
 
     private record Result(int rc, String out, String err) {}
+
+    /**
+     * The fixture with its {@code pip} lock row removed.
+     *
+     * <p>The fixture's pip dep names a package that does not exist, on purpose
+     * — it is there so a row with no install fingerprint is representable. A
+     * case about SELECTION ({@code --all}, {@code --stale}) would otherwise
+     * reach the real network through {@code uv} and fail for a reason that has
+     * nothing to do with what it is asserting. Removing the row, rather than
+     * stubbing the backend, keeps every remaining artifact a real one.
+     */
+    private static SkillStore scriptOnly(SkillStore store) throws Exception {
+        CliLock lock = CliLock.load(store);
+        lock.remove("pip", "alpha-pkg");
+        lock.save(store);
+        Files.deleteIfExists(store.root().resolve("bin/cli/dangler"));
+        return store;
+    }
+
+    /** {@code home verify} against a fixture home, capturing what it printed. */
+    private static Result verify(SkillStore store) {
+        PrintStream realOut = System.out;
+        PrintStream realErr = System.err;
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        ByteArrayOutputStream err = new ByteArrayOutputStream();
+        try {
+            System.setOut(new PrintStream(out, true));
+            System.setErr(new PrintStream(err, true));
+            int rc = new CommandLine(new dev.skillmanager.commands.HomeCommand.VerifyCmd())
+                    .execute("--home", store.root().toString());
+            return new Result(rc, out.toString(), err.toString());
+        } finally {
+            System.setOut(realOut);
+            System.setErr(realErr);
+        }
+    }
 
     private static Result build(SkillStore store, String... args) {
         PrintStream realOut = System.out;

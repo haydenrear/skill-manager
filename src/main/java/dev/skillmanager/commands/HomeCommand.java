@@ -14,6 +14,7 @@ import dev.skillmanager.store.HomeDescriptor;
 import dev.skillmanager.store.HomeDigest;
 import dev.skillmanager.store.HomeSync;
 import dev.skillmanager.store.NotAHomeException;
+import dev.skillmanager.artifacts.ArtifactBuild;
 import dev.skillmanager.store.SkillStore;
 import dev.skillmanager.util.Log;
 import picocli.CommandLine.Command;
@@ -307,18 +308,25 @@ public final class HomeCommand {
                 // (skill-manager#145). This is the one place the remedy is
                 // printed now, so it is printed runnable.
                 //
-                // ARTI-06: and the VERB is now `build --stale`, not
+                // ARTI-06: and the VERB is now `build`, not
                 // `sync --force-scripts`. The diagnosis above is per instance;
                 // the remedy was total — every skill-script in the home rerun,
                 // three deploy-helm venvs at ~530 MB each, to repair one shim.
-                // `build` re-derives exactly the artifacts that are stale, and
-                // a reference that does not resolve is stale under ARTI-06's
-                // composition (an artifact declared and not usable on disk is
-                // not current, whatever its inputs hash to) — which is what
-                // makes this the SAME set the block above just printed rather
-                // than a narrower command that happens to be nearby.
-                Log.error("  complete it with: %s build --stale, then re-run this check",
-                        homeEnvPrefix(home));
+                //
+                // The artifacts are NAMED, not left to `--stale`. This remedy
+                // is printed for THESE references, so its exit code has to
+                // answer THIS question. Measured: `build --stale` on the
+                // operator's project home selects 55 artifacts and plans 18
+                // rebuilds, 11 of them lock rows recording a `binary` their
+                // install never produced — so it exits 1 over artifacts that
+                // have nothing to do with the reference it was printed under,
+                // and HomeFixpointLaw (which parses this exact string and runs
+                // it through sh -c) then fails on a home whose reference WAS
+                // repaired. A whole-home remedy beneath a per-instance finding
+                // is also the asymmetry this ticket exists to remove, restated
+                // one verb later.
+                Log.error("  complete it with: %s, then re-run this check",
+                        reprovisionRemedy(home, unresolved));
             }
             // Last, because it is the verdict, and because a terminal keeps
             // the tail. Never gated on --strict: a path that RESOLVES into
@@ -382,6 +390,34 @@ public final class HomeCommand {
                     mentions.isEmpty() && diagnostics.isEmpty() ? "" : "repairable ",
                     against, home, except);
             return 0;
+        }
+
+        /**
+         * The re-provisioning remedy: {@code build} over the artifacts that
+         * own the references this run just refused on.
+         *
+         * <p>Falls back to {@code build --stale} when the join finds nothing —
+         * a home whose unresolved paths belong to no artifact with a producer.
+         * That fallback is the general command rather than a refusal, because a
+         * remedy line with no command in it is the #142 class, and
+         * {@code build --stale} at least names every stale artifact with the
+         * command that rebuilds each one.
+         *
+         * <p>Every id is a shell word ({@link ArtifactBuild#shellWord}):
+         * {@code cli-shim:pip/jinja2-cli[yaml]} is a real id and {@code [yaml]}
+         * is a glob, and this line is pasted into shells and executed by tests.
+         */
+        private static String reprovisionRemedy(Path home, List<String> unresolved) {
+            List<String> ids = List.of();
+            try {
+                ids = ArtifactBuild.buildableFor(new SkillStore(home), unresolved);
+            } catch (RuntimeException ignored) {
+                // The check's verdict does not depend on the remedy resolving.
+            }
+            if (ids.isEmpty()) return homeEnvPrefix(home) + " build --stale";
+            StringBuilder out = new StringBuilder(homeEnvPrefix(home)).append(" build");
+            for (String id : ids) out.append(' ').append(ArtifactBuild.shellWord(id));
+            return out.toString();
         }
 
         /**

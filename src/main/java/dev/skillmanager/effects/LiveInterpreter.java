@@ -1451,15 +1451,51 @@ public final class LiveInterpreter implements ProgramInterpreter {
      * on which verb last touched an artifact, which is the class of second
      * source of truth this epic exists to remove.
      *
-     * <p>What differs is entirely outside the handler: no compensation (see the
-     * effect's javadoc), and the receipt carries the artifact id so the command
-     * can join it back without re-deriving the lock key.
+     * <p>What differs is outside the install itself: no compensation (see the
+     * effect's javadoc), the receipt carries the artifact id so the command can
+     * join it back without re-deriving the lock key, and the backend's
+     * {@link dev.skillmanager.cli.installer.InstallOutcome} is READ rather than
+     * discarded.
+     *
+     * <h2>Why the outcome is read here and is not in {@link #runCliInstall}</h2>
+     *
+     * <p>{@code runCliInstall} throws the outcome away and emits
+     * {@link ContextFact.CliInstalled} unconditionally, so a backend that
+     * short-circuited — {@code gh already provided by the system
+     * (/opt/homebrew/bin/gh), outside any Skill Manager home}, no {@code brew}
+     * invoked, nothing written into this home — still prints
+     * {@code ✓ cli: gh [brew] installed for <unit>}. Inheriting that verbatim
+     * would put "the command succeeded, therefore the artifact exists" back
+     * into the console of the one verb whose whole thesis is that those are
+     * different claims. So a non-event is reported as a NO-OP, with no
+     * {@code CliInstalled} fact and nothing added to the {@code N installed}
+     * rollup, and {@code BuildCommand} names it beside the verdict it measured
+     * afterwards. Left alone in {@code runCliInstall} deliberately: that is
+     * {@code install}'s path, its console contract is not this ticket's, and
+     * changing it here would be a second claim about a line nobody asked me to
+     * move.
      */
     private EffectReceipt rebuildCliArtifact(SkillEffect.RebuildCliArtifact e) {
         try {
             dev.skillmanager.cli.installer.InstallerRegistry registry =
                     new dev.skillmanager.cli.installer.InstallerRegistry();
-            registry.installOne(e.dep(), store, e.unitName(), e.force());
+            dev.skillmanager.cli.installer.InstallOutcome outcome =
+                    registry.installOne(e.dep(), store, e.unitName(), e.force());
+            if (outcome != null && !outcome.isEvent()) {
+                // SKIPPED, so BuildCommand can tell a no-op from a rebuild
+                // without sniffing a summary string, and no CliInstalled fact,
+                // so neither the per-item line nor the `N installed` rollup
+                // claims work that did not happen.
+                //
+                // AND NO LOCK WRITE. Re-recording a fingerprint for an artifact
+                // the backend just declined to produce would make the home
+                // claim MORE than it holds — which is the mis-recorded-`binary`
+                // defect this run is reporting, committed one layer deeper by
+                // the command written to report it.
+                return EffectReceipt.skipped(e,
+                        e.artifactId() + ": the " + e.dep().backend() + " backend reported the "
+                                + "dependency already satisfied and wrote nothing into this home");
+            }
             try {
                 CliLock lock = CliLock.load(store);
                 dev.skillmanager.lock.CliInstallRecorder.record(
