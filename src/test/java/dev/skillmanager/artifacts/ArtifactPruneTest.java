@@ -485,7 +485,10 @@ public final class ArtifactPruneTest {
             // on `bin/cli` is a readdir failure, which the pass already had an
             // answer for. This is the dead-mount / detached-volume shape.
             Path sealed = childHome.resolve("bin");
-            if (!seal(sealed)) return;
+            if (!seal(sealed)) {
+                System.out.println("    (skipped: this filesystem/user ignores mode bits)");
+                return;
+            }
             try {
                 Path tree = store.root().resolve("venvs/shared-venv");
                 ArtifactPrune.Plan plan = ArtifactPrune.of(store, List.of());
@@ -501,6 +504,67 @@ public final class ArtifactPruneTest {
                 assertFalse(plan.refusals().isEmpty(), "the pass refuses instead");
                 assertContains(plan.refusals().get(0).reason(), childHome.toString(),
                         "naming the child home whose links it could not read");
+
+                ArtifactPrune.apply(store, plan);
+                assertTrue(Files.isRegularFile(tree.resolve("bin/shared-tool")),
+                        "so the child home's entry still RESOLVES rather than merely existing");
+            } finally {
+                unseal(sealed);
+            }
+        });
+
+        // F14. F13's rule, one tier UP, where it does more damage. The registry
+        // decided whether a record exists with `Files.isRegularFile`, which
+        // answers the same false to "no such record" and "I could not stat the
+        // record" — so a record directory behind a mode that bites was dropped
+        // BEFORE `unreadable` was ever consulted, and the prune received a
+        // clean, empty, confident answer about every child home at once. F13
+        // silences one shim directory; this silences the whole registry.
+        suite.test("a child-home record this pass cannot stat stops the prune, by name", () -> {
+            SkillStore store = ArtifactsFixture.seed();
+            ArtifactsFixture.withSharedVenvShim(store);
+            record(store);
+            Path childHome = ArtifactsFixture.newDir("prune-child-record-sealed-");
+            Files.createDirectories(childHome.resolve("bin/cli"));
+            Files.createSymbolicLink(childHome.resolve("bin/cli/shared-tool"),
+                    store.cliBinDir().resolve("shared-tool"));
+            registerChild(store, "child-record-sealed", childHome);
+            uninstall(store, "alpha");
+
+            // The child home itself is perfectly readable. What is sealed is
+            // the PARENT's own record of it — a plain `chmod 000` on
+            // `<home>/child-homes/<id>/`, which is all it takes to make the
+            // stat of `child-home.json` inside it fail.
+            Path sealed = new ChildHomeRegistry(store).file("child-record-sealed").getParent();
+            if (!seal(sealed)) {
+                System.out.println("    (skipped: this filesystem/user ignores mode bits)");
+                return;
+            }
+            try {
+                // Asserted on the PLAN first, because the plan is what the
+                // reviewer measured: `provisioned-tree:venvs/shared-venv` was a
+                // deletion step, and applying it took the venv tree out from
+                // under a live registered child home.
+                Path tree = store.root().resolve("venvs/shared-venv");
+                ArtifactPrune.Plan plan = ArtifactPrune.of(store, List.of());
+
+                String treeId = ArtifactIds.provisionedTree("venvs", "shared-venv");
+                for (ArtifactPrune.Step step : plan.prunes()) {
+                    assertFalse(treeId.equals(step.id()),
+                            "the tree the live child home runs out of is not a deletion step");
+                }
+                assertTrue(plan.prunes().isEmpty(),
+                        "and nothing at all is planned while a record is unreadable: "
+                                + plan.prunes());
+                assertFalse(plan.refusals().isEmpty(), "the pass refuses instead");
+                assertContains(plan.refusals().get(0).reason(), "child home",
+                        "naming what could not be read");
+
+                ChildHomeRegistry.Listing listing = new ChildHomeRegistry(store).listing();
+                assertTrue(listing.records().isEmpty(), "the record cannot be read");
+                assertEquals(1, listing.unreadable().size(),
+                        "and it is the REGISTRY that says so, rather than handing the pass a "
+                                + "clean empty list: " + listing.unreadable());
 
                 ArtifactPrune.apply(store, plan);
                 assertTrue(Files.isRegularFile(tree.resolve("bin/shared-tool")),
