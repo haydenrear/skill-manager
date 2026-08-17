@@ -70,7 +70,7 @@ import dev.skillmanager.server.SkillRegistryApp;
 
 public class SkillManagerServer {
     // x-release-please-start-version
-    public static final String VERSION = "0.23.0";
+    public static final String VERSION = "0.24.0";
     // x-release-please-end
 
     public static void main(String[] args) {

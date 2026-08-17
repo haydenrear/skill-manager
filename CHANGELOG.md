@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.24.0](https://github.com/haydenrear/skill-manager/compare/v0.23.0...v0.24.0) (2026-08-17)
+
+
+### Features
+
+* **home:** narrow home sync to one unit with --unit, so publishing an edit is not all-or-nothing ([88cacd1](https://github.com/haydenrear/skill-manager/commit/88cacd19102fe0d5d0c05ddae46710b370e45581))
+
+
+### Bug Fixes
+
+* **home:** a home that synced upstream no longer reads as edited, and a home cloned after that sync closes clean ([2286ce9](https://github.com/haydenrear/skill-manager/commit/2286ce98c0ac6cadc698e486fd02b6392b88541a))
+* **home:** give the unknown-unit refusal its own exit code, and test the CLI surface ([a2ab5e8](https://github.com/haydenrear/skill-manager/commit/a2ab5e8e42f7e41364fcce4126ffd3ce507fc016))
+
 ## [0.23.0](https://github.com/haydenrear/skill-manager/compare/v0.22.1...v0.23.0) (2026-08-12)
 
 
