@@ -10,7 +10,9 @@ import dev.skillmanager.util.Log;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -98,7 +100,11 @@ import java.util.Set;
  *       symlink at its PARENT's entry, by design, and {@code home verify}
  *       reports those and refuses to count them. Pruning in the parent has to
  *       ask the same question, or removing a unit from the parent breaks a
- *       child home that never mentioned it. See {@link #claimedByChildHome}.</li>
+ *       child home that never mentioned it. See {@link #claimedByChildHome}.
+ *       A child home this pass cannot read — its registry record, or the shim
+ *       directory the record points at — stops the pass by name, because "no
+ *       answer" and "links at nothing" are the same empty set and only one of
+ *       them is a licence to delete.</li>
  * </ul>
  */
 public final class ArtifactPrune {
@@ -384,11 +390,11 @@ public final class ArtifactPrune {
         }
         if (!childClaims.unreadable().isEmpty()) {
             return new Step(artifact.id(), artifact.kind(), owner, Verdict.REFUSED, List.of(),
-                    "a registered child home's record could not be read ("
+                    "a registered child home could not be read in full ("
                             + childClaims.unreadable().get(0) + "), and a child home's bin/cli "
                             + "entry is a symlink AT THIS HOME's copy by design "
-                            + "(parentStoreShims) — an unreadable registry is not the same "
-                            + "answer as an empty one");
+                            + "(parentStoreShims) — a child home this pass cannot read is not "
+                            + "the same answer as one that links at nothing");
         }
         if (declaredByInstalled(artifact, installed, declaredLockKeys)) return null;
         if (childClaimed.contains(artifact.id())) {
@@ -730,7 +736,9 @@ public final class ArtifactPrune {
      * refuses everything while it is non-empty.
      *
      * @param paths home-relative paths a child home reaches, every hop
-     * @param unreadable registry files that exist and could not be decoded
+     * @param unreadable what stood between this pass and a full claim set: a
+     *                   registry file that would not decode, or a child home's
+     *                   shim directory it could not stat
      */
     private record ChildClaims(Set<String> paths, List<String> unreadable) {
 
@@ -812,7 +820,29 @@ public final class ArtifactPrune {
             if (childHome == null) continue;
             for (String dir : List.of("bin/cli", "bin/mcp")) {
                 Path shimDir = childHome.resolve(dir);
-                if (!Files.isDirectory(shimDir)) continue;
+                // Asked as two questions rather than one, because
+                // `Files.isDirectory` gives the same false to both and they are
+                // opposite instructions. "Not there" means that home links at
+                // nothing here. "Could not be stat'd" — a mode that bites, a
+                // dead mount, a detached volume — means this pass cannot tell
+                // WHAT it links at, which is the sentence the unreadable
+                // registry records above already earn. Reading the second as
+                // the first is how a live child home's tree gets planned for
+                // deletion while that home is running out of it.
+                boolean isDir;
+                try {
+                    isDir = Files.readAttributes(shimDir, BasicFileAttributes.class).isDirectory();
+                } catch (NoSuchFileException absent) {
+                    continue;
+                } catch (IOException unstattable) {
+                    Log.warn("artifacts prune: could not stat %s (%s) — this pass cannot tell "
+                            + "what that child home links at, so it removes nothing. Make the "
+                            + "path readable, or unregister that child home, and run again",
+                            shimDir, unstattable.getClass().getSimpleName());
+                    unreadable.add(shimDir.toString());
+                    continue;
+                }
+                if (!isDir) continue;
                 try (var entries = Files.list(shimDir)) {
                     for (Path entry : (Iterable<Path>) entries::iterator) {
                         claimed.addAll(claimedByChildHome(entry, home));

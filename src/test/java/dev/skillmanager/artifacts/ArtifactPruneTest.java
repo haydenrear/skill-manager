@@ -463,6 +463,53 @@ public final class ArtifactPruneTest {
             assertTrue(Files.isDirectory(tree), "and nothing was removed");
         });
 
+        // F13. The same rule as F12, one level down. `Files.isDirectory`
+        // answers false for "not there" and for "could not be stat'd" alike,
+        // and those are opposite instructions — so a registered child home
+        // whose `bin/cli` sits behind an unreadable parent contributed ZERO
+        // claims, silently, and the parent planned to delete the tree that
+        // live home is running out of. The `catch (IOException)` the author
+        // put on the readdir below it was never reached for this shape.
+        suite.test("a child home's shim directory this pass cannot stat stops the prune", () -> {
+            SkillStore store = ArtifactsFixture.seed();
+            ArtifactsFixture.withSharedVenvShim(store);
+            record(store);
+            Path childHome = ArtifactsFixture.newDir("prune-child-unstattable-");
+            Files.createDirectories(childHome.resolve("bin/cli"));
+            Files.createSymbolicLink(childHome.resolve("bin/cli/shared-tool"),
+                    store.cliBinDir().resolve("shared-tool"));
+            registerChild(store, "child-sealed", childHome);
+            uninstall(store, "alpha");
+
+            // Sealing the PARENT is what makes the stat itself fail: mode 000
+            // on `bin/cli` is a readdir failure, which the pass already had an
+            // answer for. This is the dead-mount / detached-volume shape.
+            Path sealed = childHome.resolve("bin");
+            if (!seal(sealed)) return;
+            try {
+                Path tree = store.root().resolve("venvs/shared-venv");
+                ArtifactPrune.Plan plan = ArtifactPrune.of(store, List.of());
+
+                String treeId = ArtifactIds.provisionedTree("venvs", "shared-venv");
+                for (ArtifactPrune.Step step : plan.prunes()) {
+                    assertFalse(treeId.equals(step.id()),
+                            "the tree the sealed child home runs out of is not a deletion step");
+                }
+                assertTrue(plan.prunes().isEmpty(),
+                        "and nothing at all is planned while a child home is unreadable: "
+                                + plan.prunes());
+                assertFalse(plan.refusals().isEmpty(), "the pass refuses instead");
+                assertContains(plan.refusals().get(0).reason(), childHome.toString(),
+                        "naming the child home whose links it could not read");
+
+                ArtifactPrune.apply(store, plan);
+                assertTrue(Files.isRegularFile(tree.resolve("bin/shared-tool")),
+                        "so the child home's entry still RESOLVES rather than merely existing");
+            } finally {
+                unseal(sealed);
+            }
+        });
+
         suite.test("a recorded output that escapes the home is refused", () -> {
             SkillStore store = ArtifactsFixture.seed();
             uninstall(store, "alpha");
