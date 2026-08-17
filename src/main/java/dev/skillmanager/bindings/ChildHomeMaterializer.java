@@ -920,6 +920,72 @@ public final class ChildHomeMaterializer {
         return recorded;
     }
 
+    /**
+     * Whether {@code home}'s copy of a unit is still exactly the pristine
+     * {@link MaterializationMode#COPY} its own record describes -- the state
+     * an upstream {@code sync} may move without anybody having authored
+     * anything.
+     *
+     * <p>Asked BEFORE such a sync, so that {@link #restateBaseline} afterwards
+     * is a statement about bytes that were provably disposable a moment ago and
+     * were replaced wholesale by upstream's. False for a merge result, for a
+     * checkout, for a tree that has moved off its record (an edit, or a commit
+     * on any ref) and for a home with no usable record -- the root home,
+     * which is installed into rather than materialized.
+     */
+    public static boolean standsOnItsCopyRecord(SkillStore home, String name, UnitKind kind)
+            throws IOException {
+        Path dir = home.unitDir(name, kind).toAbsolutePath().normalize();
+        if (!Files.isDirectory(dir, LinkOption.NOFOLLOW_LINKS)) return false;
+        MaterializationRecord record =
+                new ChildHomeMaterializer(home, home).readRecord(name, kind).orElse(null);
+        if (!usableAsEvidence(record)) return false;
+        if (!MaterializationMode.COPY.name().equals(record.mode())) return false;
+        if (record.isMergeResult()) return false;
+        String baseline = copyBaseline(record);
+        if (baseline == null) return false;
+        return destUntouched(record, baseline, dir, treeDigest(dir));
+    }
+
+    /**
+     * Restate a unit's baseline as its current content, after an upstream sync
+     * moved a copy that {@link #standsOnItsCopyRecord} had just vouched for.
+     *
+     * <h2>Why a sync has to do this at all</h2>
+     *
+     * <p>{@code skill-manager sync <unit>} fast-forwards the store copy from
+     * the unit's own remote and refreshes {@code installed/<unit>.json} -- and,
+     * until #210, nothing else. The materialization record kept naming the
+     * tree the home was <em>cloned</em> with, so after the very first upstream
+     * sync a project home read as "locally modified" to every prune, refresh
+     * and close-out that consulted the record, and offered that clone-time
+     * tree as the baseline it "shared" with homes cloned from it since. Both
+     * are the same lie: the record described a tree the home no longer held.
+     *
+     * <p>Restating it here is sound for the same reason
+     * {@link #recordCloneBaselines} is: the bytes now in the tree are what
+     * upstream handed the home, and the home was standing on its previous
+     * record when it accepted them -- there was no local work for the sync to
+     * fold in and none for this record to paper over. Written with no
+     * {@code source} path, like a clone's own baseline: the content came from
+     * upstream, not from a peer home. A home that had edited or committed
+     * before the sync fails the precondition and keeps its old record, so an
+     * edit merged into upstream content stays visible as an edit.
+     *
+     * @return true when a record was written
+     */
+    public static boolean restateBaseline(SkillStore home, String name, UnitKind kind)
+            throws IOException {
+        Path dir = home.unitDir(name, kind).toAbsolutePath().normalize();
+        if (!Files.isDirectory(dir, LinkOption.NOFOLLOW_LINKS)) return false;
+        ChildHomeMaterializer self = new ChildHomeMaterializer(home, home);
+        Fingerprint print = fingerprint(dir);
+        self.writeRecord(name, kind, MaterializationMode.COPY, null,
+                gitStateOf(dir), print.digest(), print.digest(), print.entries(),
+                MaterializationRecord.COPIED);
+        return true;
+    }
+
     // ------------------------------------------------- home-to-home reconcile
 
     /** What reconciling one unit from the source home into this one did, or would do. */
@@ -1105,6 +1171,36 @@ public final class ChildHomeMaterializer {
                             + "only in git's own bookkeeping (an index, a reflog, a repack), which "
                             + "belongs to neither home");
         }
+        if (gitSourceIsBehind(source, dest)) {
+            // Answered by git, before any record is consulted, because no
+            // record can answer it: a home that pulled a newer upstream into
+            // its store copy is ahead of every home cloned from it earlier,
+            // and the clone-time baselines those homes carry describe an
+            // ancestor of both. Measured (#210): a ticket home at deploy-helm
+            // e22cbe8a, unedited, against a project home that had since
+            // synced to a367aa00, reported 11 files "changed on both sides"
+            // and blocked its own teardown.
+            return new UnitSync(name, kind, SyncStatus.UNCHANGED, dest, List.of(), List.of(),
+                    "the destination's history already contains every ref the source holds and "
+                            + "the source's working tree is clean, so the destination is ahead of "
+                            + "the source and the source has nothing to contribute");
+        }
+        if (gitDestIsBehind(source, dest)) {
+            // The mirror image, and the one case where git licenses a
+            // wholesale copy: a destination whose working tree is clean holds
+            // exactly what its own history says, and a source whose history
+            // contains every ref of that history holds all of it and more.
+            // Replacing the destination is a fast-forward -- the same outcome
+            // the destination would reach by syncing itself -- and carrying
+            // .git without the worktree (or the other way round) would leave
+            // a store copy whose HEAD and files disagree.
+            if (apply) writeCopy(name, kind, view, source, dest, src);
+            return new UnitSync(name, kind, SyncStatus.UPDATED, dest,
+                    changedFiles(dst.entries(), src.entries()), List.of(),
+                    "the destination's working tree is clean and its history is contained in "
+                            + "the source's, so it holds nothing of its own; a sync fast-forwards "
+                            + "it to the source copy");
+        }
 
         // The destination's record is evidence about the pair (this
         // destination, the home named in it). Read it as evidence about THIS
@@ -1138,16 +1234,47 @@ public final class ChildHomeMaterializer {
             return new UnitSync(name, kind, SyncStatus.HELD_BACK, dest, List.of(), List.of(),
                     holdBackReason(record, baseline, destUntouched, recordIsAboutThisSource));
         }
-        MergeBase base = mergeBase(record, recordIsAboutThisSource, sourceRecord);
+        MergeBase base = mergeBase(record,
+                recordIsAboutThisSource
+                        && !adoptedBaselineSuperseded(record, destUntouched, src, sourceRecord),
+                sourceRecord);
+        boolean gitPair = carriesGitDirectory(source) && carriesGitDirectory(dest);
         if (base == null || base.entries().isEmpty()) {
             return new UnitSync(name, kind, SyncStatus.CONFLICTED, dest, List.of(),
-                    changedFiles(dst.entries(), src.entries()),
+                    reportedDifferences(dst.entries(), src.entries(), gitPair, source, dest),
                     "both sides differ and neither home recorded a per-file baseline they can be "
                             + "shown to share, so there is no merge base; resolve it by hand or "
                             + "publish the edit with `skill-manager unit publish " + name + "`");
         }
 
-        MergePlan plan = mergePlan(base.entries(), src.entries(), dst.entries());
+        // A git-backed pair is merged in two halves, like everything else that
+        // asks whether such a unit moved: the worktree per path, and .git as
+        // ONE thing decided by refs. Feeding .git's own files through the
+        // per-path algebra was how a `git status` on each side -- which
+        // rewrites the index and authors nothing -- became a "changed on both
+        // sides" conflict on `.git/index` that no operator could resolve.
+        MergePlan plan = gitPair
+                ? mergePlan(base.entries(), outsideGit(src.entries()), outsideGit(dst.entries()))
+                : mergePlan(base.entries(), src.entries(), dst.entries());
+        GitHistoryMerge history = gitPair ? gitHistoryMerge(source, dest) : GitHistoryMerge.AGREE;
+        if (history != GitHistoryMerge.AGREE && history != GitHistoryMerge.KEEP_DEST) {
+            List<String> conflicts = new ArrayList<>(plan.conflicts());
+            conflicts.add(GIT_HISTORY_CONFLICT);
+            String why = history == GitHistoryMerge.DEST_BEHIND_BUT_EDITED
+                    ? "the source's history contains commits the destination lacks, and the "
+                            + "destination has uncommitted changes of its own, so its .git cannot "
+                            + "be replaced without leaving its files and its HEAD disagreeing; "
+                            + "nothing was written. Bring the destination up to date first "
+                            + "(`skill-manager sync " + name + "` in the destination home, or "
+                            + "commit its changes), then re-run"
+                    : "the two git histories have diverged -- neither contains every ref of the "
+                            + "other -- and nothing here may settle that; nothing was written. "
+                            + "Send the source's commits home with `skill-manager unit publish "
+                            + name + "`";
+            return new UnitSync(name, kind, SyncStatus.CONFLICTED, dest, List.of(), conflicts,
+                    why + (plan.conflicts().isEmpty() ? "" : ", and " + plan.conflicts().size()
+                            + " file(s) changed on both sides"));
+        }
         if (!plan.conflicts().isEmpty()) {
             return new UnitSync(name, kind, SyncStatus.CONFLICTED, dest, List.of(),
                     plan.conflicts(),
@@ -1328,12 +1455,248 @@ public final class ChildHomeMaterializer {
     private static MergeBase mergeBase(MaterializationRecord destRecord,
                                        boolean destRecordIsAboutThisSource,
                                        MaterializationRecord sourceRecord) {
-        if (hasEntries(destRecord) && destRecordIsAboutThisSource) {
-            return new MergeBase(destRecord.entryDigests(), true);
+        boolean destUsable = hasEntries(destRecord) && destRecordIsAboutThisSource;
+        boolean sourceUsable = hasEntries(sourceRecord);
+        if (!destUsable && !sourceUsable) return null;
+        java.util.LinkedHashMap<String, String> entries = new java.util.LinkedHashMap<>();
+        java.util.LinkedHashSet<String> shared = new java.util.LinkedHashSet<>();
+        if (destUsable) {
+            entries.putAll(destRecord.entryDigests());
+            shared.addAll(destRecord.entryDigests().keySet());
         }
-        return hasEntries(sourceRecord)
-                ? new MergeBase(sourceRecord.entryDigests(), false)
-                : null;
+        // Per path, not per record: a merge record deliberately claims only the
+        // paths the pair was SHOWN to share (the fourth decision), so a path
+        // the destination's record declines to claim is not "no base" for the
+        // whole unit -- the source's own record can still say what the source
+        // was handed there, with the same unshared standing the whole-record
+        // fallback has. Without this, the pass after a merge against a
+        // superseded baseline conflicted on every path that merge could not
+        // vouch for, even where the source had never moved (#210).
+        if (sourceUsable) {
+            for (java.util.Map.Entry<String, String> e : sourceRecord.entryDigests().entrySet()) {
+                entries.putIfAbsent(e.getKey(), e.getValue());
+            }
+        }
+        return new MergeBase(entries, shared);
+    }
+
+    /**
+     * Whether the destination's clone-time baseline has been <em>superseded</em>
+     * as evidence about this source by the source's own record.
+     *
+     * <h2>The defect this closes (#210)</h2>
+     *
+     * <p>{@link #describesSource}'s first showing accepts a record that names
+     * no source -- a home's own clone-time baseline -- as evidence about
+     * <em>any</em> source, on the reasoning that what a copy held when it was
+     * made is what the home it was copied from held too. That is true of the
+     * pair (this home, the home it was cloned from) and says nothing about a
+     * home cloned from THIS one <em>later</em>, after this one moved: by an
+     * upstream {@code sync} that fast-forwarded the store copy, or by an edit
+     * made in place. Neither touches the record. So a project home cloned from
+     * root at v1, synced to v2, then cloned into a ticket home (which restated
+     * its own baseline as v2), then synced to v3, still offered v1 as "the base
+     * these two homes share" when the ticket came back -- and every file that
+     * moved in v1..v2 as well as v2..v3 read as changed on both sides. Measured
+     * on a real project home: 11, 8, 9 and 45 spurious conflicts across four
+     * units nobody had edited, and a teardown gate that could not be cleared.
+     *
+     * <p>When the destination has moved off that adopted baseline, and the
+     * source carries a usable record of its own that names different content,
+     * and the source is not simply standing on the destination's baseline
+     * right now, the source's record is the tighter witness: it is a state the
+     * source passed through by construction, and if the source was cloned from
+     * this destination it is a state the destination held too -- strictly
+     * later than the adopted one. Preferring it can only turn a conflict into
+     * a fast-forward or a no-op, never the reverse: {@link #mergePlan} still
+     * takes a path only where the destination stands on the base, and the base
+     * is carried as {@code shared = false}, so nothing about the pair is
+     * written down that the pair has not shown.
+     *
+     * <p>Every other reading of the first showing is untouched: a destination
+     * still standing on its adopted baseline is disposable exactly as before
+     * (that path returns before any merge base is chosen), and two homes whose
+     * records agree keep the shared base.
+     */
+    private static boolean adoptedBaselineSuperseded(MaterializationRecord destRecord,
+                                                     boolean destUntouched,
+                                                     Fingerprint src,
+                                                     MaterializationRecord sourceRecord) {
+        if (!hasEntries(destRecord) || destUntouched) return false;
+        String named = destRecord.source();
+        if (named != null && !named.isBlank()) return false;
+        if (!hasEntries(sourceRecord)) return false;
+        if (destRecord.entryDigests().equals(src.entries())) return false;
+        return !destRecord.entryDigests().equals(sourceRecord.entryDigests());
+    }
+
+    /**
+     * Whether the source holds nothing the destination's history does not
+     * already contain -- the one question git can answer for a pair of
+     * git-backed copies without any record at all.
+     *
+     * <p>True when both trees carry {@code .git}, the source's working tree is
+     * clean (no uncommitted change, no untracked file), and <b>every ref</b> the
+     * source holds -- {@code refs/heads}, {@code refs/remotes}, {@code refs/tags},
+     * {@code refs/stash}, plus HEAD -- names an object the destination reaches
+     * from a ref of its own ({@link #historyContainedIn}). Every ref and not
+     * HEAD, for the reason {@link #gitHistoryMovedOn} spells out under "Every
+     * ref, not HEAD": a side-branch commit or a stash the destination lacks is
+     * work, and it lives on a ref HEAD knows nothing about.
+     *
+     * <p>Its mirror image, {@link #gitDestIsBehind}, is the one place git
+     * licenses a wholesale copy, and it asks the same two questions of the
+     * other side. Everything in between -- edits on either side, histories
+     * that diverged -- stays with the record rules and the per-path merge.
+     * False on any doubt: git missing, either side not a repository, an object
+     * the destination does not have.
+     *
+     * <p>Ignored files are invisible to {@code git status} and therefore to
+     * this check. They are, by the unit's own {@code .gitignore}, not content
+     * anybody meant to carry between homes; the re-derivable roots
+     * ({@code .venv/} and the rest) are filtered out of the answer whether
+     * ignored or not, since they are outside every digest here
+     * ({@link #worktreeCleanModuloDerived}).
+     */
+    private static boolean gitSourceIsBehind(Path source, Path dest) {
+        if (!carriesGitDirectory(source) || !carriesGitDirectory(dest)) return false;
+        if (!GitOps.isAvailable()) return false;
+        if (!GitOps.isGitRepo(source) || !GitOps.isGitRepo(dest)) return false;
+        if (!worktreeCleanModuloDerived(source)) return false;
+        return historyContainedIn(source, dest);
+    }
+
+    /**
+     * Whether a git-backed unit's working tree carries nothing beyond its HEAD
+     * that this class would call content: {@code git status} with the
+     * re-derivable roots ({@link Rederivable}) filtered out of the answer, so
+     * a unit that does not gitignore its {@code build/} is not "dirty" here
+     * for the reason it is not "edited" anywhere else (issue #41). Read
+     * without taking the index lock, so asking changes no byte of the tree.
+     * Null status (not a repository, git failed) reads as NOT clean.
+     */
+    private static boolean worktreeCleanModuloDerived(Path unit) {
+        String status = GitOps.porcelainStatusNoLock(unit);
+        if (status == null) return false;
+        for (String line : status.split("\\R")) {
+            if (line.length() < 4) continue;
+            String path = line.substring(3).trim();
+            int arrow = path.indexOf(" -> ");
+            if (arrow >= 0) path = path.substring(arrow + 4).trim();
+            if (path.startsWith("\"") && path.endsWith("\"") && path.length() >= 2) {
+                path = path.substring(1, path.length() - 1);
+            }
+            if (path.endsWith("/")) path = path.substring(0, path.length() - 1);
+            if (!isUnowned(path)) return false;
+        }
+        return true;
+    }
+
+    /**
+     * The mirror of {@link #gitSourceIsBehind}: the destination's working tree
+     * is clean and every ref it holds names an object the source reaches. Such
+     * a destination holds nothing of its own -- its files are exactly what its
+     * history says, and its history is all in the source -- so replacing it
+     * with the source copy loses nothing. False on any doubt.
+     */
+    private static boolean gitDestIsBehind(Path source, Path dest) {
+        if (!carriesGitDirectory(source) || !carriesGitDirectory(dest)) return false;
+        if (!GitOps.isAvailable()) return false;
+        if (!GitOps.isGitRepo(source) || !GitOps.isGitRepo(dest)) return false;
+        if (!worktreeCleanModuloDerived(dest)) return false;
+        return historyContainedIn(dest, source);
+    }
+
+    /** The per-file view of a git-backed unit with git's own files removed. */
+    private static java.util.LinkedHashMap<String, String> outsideGit(
+            java.util.Map<String, String> entries) {
+        java.util.LinkedHashMap<String, String> out = new java.util.LinkedHashMap<>();
+        for (java.util.Map.Entry<String, String> e : entries.entrySet()) {
+            if (!isUnder(e.getKey(), GIT_DIR)) out.put(e.getKey(), e.getValue());
+        }
+        return out;
+    }
+
+    /** The one entry a history conflict contributes to a conflict list. */
+    public static final String GIT_HISTORY_CONFLICT = ".git (history)";
+
+    /**
+     * What a merge does with the {@code .git} half of a git-backed pair -- one
+     * decision for the whole directory, the shape of {@code GitAgree},
+     * {@code GitTakeAllowed} and {@code GitConflict} in
+     * {@code specs/desired_program_model/External.tla}, with "does one side
+     * hold what the other has" answered by ancestry rather than by record.
+     *
+     * <p>There is deliberately no "take the source's .git" arm here. The one
+     * situation that licenses it -- the destination's history contained in
+     * the source's -- is answered before any merge is planned, in
+     * {@link #reconcile} via {@link #gitDestIsBehind}, and only for a
+     * destination whose working tree is clean, because carrying {@code .git}
+     * without the files those commits describe leaves a store copy whose
+     * HEAD and worktree disagree.
+     */
+    private enum GitHistoryMerge {
+        /** Both stand on the same refs: nothing to carry, whatever the bookkeeping says. */
+        AGREE,
+        /** The destination's history contains the source's; the destination keeps its own. */
+        KEEP_DEST,
+        /** The source's history contains the destination's, but the destination has local edits. */
+        DEST_BEHIND_BUT_EDITED,
+        /** Diverged: neither history contains the other. */
+        CONFLICT
+    }
+
+    private static GitHistoryMerge gitHistoryMerge(Path source, Path dest) {
+        String srcHistory = gitHistoryDigest(source);
+        String dstHistory = gitHistoryDigest(dest);
+        if (srcHistory != null && srcHistory.equals(dstHistory)) return GitHistoryMerge.AGREE;
+        if (historyContainedIn(source, dest)) return GitHistoryMerge.KEEP_DEST;
+        if (historyContainedIn(dest, source)) return GitHistoryMerge.DEST_BEHIND_BUT_EDITED;
+        return GitHistoryMerge.CONFLICT;
+    }
+
+    /**
+     * Whether every ref {@code holder} has -- heads, remotes, tags, stash, and
+     * HEAD -- names an object that {@code container} reaches from some ref of
+     * its own. Not "an ancestor of the container's HEAD": a store copy carries
+     * feature branches and remote-tracking refs that are not on {@code main} in
+     * either home while being identical in both, and against HEAD alone every
+     * one of them read as divergence. False on any doubt: git missing, either
+     * side not a repository, an object the container does not have.
+     */
+    private static boolean historyContainedIn(Path holder, Path container) {
+        if (!GitOps.isAvailable()) return false;
+        if (!GitOps.isGitRepo(holder) || !GitOps.isGitRepo(container)) return false;
+        String holderHead = GitOps.headHash(holder);
+        if (holderHead == null || holderHead.isBlank()) return false;
+        String listing = GitOps.refListing(holder);
+        if (listing == null) return false;
+        java.util.LinkedHashSet<String> objects = new java.util.LinkedHashSet<>();
+        objects.add(holderHead);
+        for (String line : listing.split("\\R")) {
+            String trimmed = line.trim();
+            if (trimmed.isEmpty()) continue;
+            objects.add(trimmed.split("\\s+", 2)[0]);
+        }
+        return GitOps.containsAll(container, objects);
+    }
+
+    /**
+     * The differing paths a no-base conflict reports. For a git-backed pair the
+     * bookkeeping under {@code .git} is collapsed to one line, present only when
+     * the two histories actually differ -- a list of index and reflog files is
+     * not something an operator can resolve, and it hides the files they can.
+     */
+    private static List<String> reportedDifferences(java.util.Map<String, String> dst,
+                                                    java.util.Map<String, String> src,
+                                                    boolean gitPair, Path source, Path dest) {
+        if (!gitPair) return changedFiles(dst, src);
+        List<String> out = new ArrayList<>(changedFiles(outsideGit(dst), outsideGit(src)));
+        String srcHistory = gitHistoryDigest(source);
+        if (srcHistory == null || !srcHistory.equals(gitHistoryDigest(dest))) {
+            out.add(GIT_HISTORY_CONFLICT);
+        }
+        return out;
     }
 
     /**
@@ -1353,7 +1716,13 @@ public final class ChildHomeMaterializer {
      * @param shared  true when the base came from the destination's own record
      *                and that record was shown to be evidence about this source
      */
-    private record MergeBase(java.util.Map<String, String> entries, boolean shared) {}
+    private record MergeBase(java.util.Map<String, String> entries, java.util.Set<String> sharedPaths) {
+        /** Whether the base at {@code path} is one the destination is on record as sharing. */
+        boolean sharedAt(String path) { return sharedPaths.contains(path); }
+
+        /** Whether every path of the base is shared -- the whole-record reading. */
+        boolean shared() { return sharedPaths.containsAll(entries.keySet()); }
+    }
 
     /**
      * The per-path baseline a completed merge may write down: the
@@ -1402,7 +1771,7 @@ public final class ChildHomeMaterializer {
             boolean justWritten = taken.contains(path);
             boolean alreadyAgreed = digest.equals(dest.get(path));
             boolean sourceStillOnASharedBase =
-                    base.shared() && digest.equals(base.entries().get(path));
+                    base.sharedAt(path) && digest.equals(base.entries().get(path));
             if (justWritten || alreadyAgreed || sourceStillOnASharedBase) {
                 shared.put(path, digest);
             }

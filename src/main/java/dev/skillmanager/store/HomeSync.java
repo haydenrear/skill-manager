@@ -63,15 +63,82 @@ public final class HomeSync {
      * @param merge three-way merge a destination unit that carries local work,
      *        instead of holding it back
      * @param dryRun compute and report the whole reconciliation, write nothing
+     * @param unit reconcile ONLY this unit, by name, instead of every unit
+     *        either home holds. Null (the default) means all of them.
      */
-    public record Options(boolean merge, boolean dryRun) {
-        public static Options defaults() { return new Options(false, false); }
+    public record Options(boolean merge, boolean dryRun, String unit) {
+        public Options {
+            if (unit != null && unit.isBlank()) unit = null;
+        }
+
+        /** The whole home — the shape every caller had before {@code --unit}. */
+        public Options(boolean merge, boolean dryRun) { this(merge, dryRun, null); }
+
+        public static Options defaults() { return new Options(false, false, null); }
+
+        public boolean targeted() { return unit != null; }
+    }
+
+    /**
+     * {@code --unit <name>} named a unit neither home holds.
+     *
+     * <p>Refusing is not pedantry. A filter that matches nothing leaves an
+     * empty unit list, and an empty unit list is indistinguishable in every
+     * report from "the two homes agree" — the same confusion
+     * {@link NotAHomeException} exists to remove one level up, where
+     * {@code --from <a path that is not a home>} printed "✓ reconciled" with
+     * all-zero counts and exit 0. A typo in a unit name must not be able to
+     * report success for work that did not happen.
+     */
+    public static final class UnknownUnitException extends IOException {
+        /**
+         * Its own code, and NOT {@link NotAHomeException#EXIT_CODE}.
+         *
+         * <p>That was the first choice, on the reasoning that a name nothing
+         * holds is the same category of fault as a path that is not a home.
+         * The reasoning was fine and the number was wrong: 2 is also
+         * <em>picocli's</em> usage code, so a CLI that predates {@code --unit}
+         * returns 2 for the unknown option and this returns 2 for an unknown
+         * unit. Measured:
+         *
+         * <pre>
+         * $ &lt;pre-#182 CLI&gt; home sync ... --unit alpha
+         * exit=2
+         * Unknown options: '--unit', 'alpha'
+         *
+         * $ &lt;#182 CLI&gt;     home sync ... --unit alpha
+         * exit=2
+         * ✗ home sync --unit alpha: no unit named 'alpha' in either home (...)
+         * </pre>
+         *
+         * <p>Same number, opposite meanings, and the caller that has to tell
+         * them apart is exactly the one this flag was added for: {@code skt
+         * publish} feature-detects the flag so an older pin degrades to a
+         * whole-home sync instead of hard-failing. If it read 2 as "old CLI"
+         * it would answer a typo'd unit name by silently running the
+         * whole-home sync this flag exists to avoid — worse than failing.
+         * A distinct code lets that decision be made on the code alone.
+         */
+        public static final int EXIT_CODE = 12;
+
+        private final String unit;
+
+        UnknownUnitException(String unit, Path from, Path to) {
+            super("home sync --unit " + unit + ": no unit named '" + unit + "' in either home ("
+                    + from + ", " + to + ") — nothing would have been reconciled");
+            this.unit = unit;
+        }
+
+        public String unit() { return unit; }
     }
 
     /**
      * @param destinationFrozen the destination declares {@code policy = "frozen"},
      *        so a real run would have been refused. Only ever true under
      *        {@code dryRun} — a real run throws instead of setting it.
+     * @param unit the single unit this pass was narrowed to, or null for the
+     *        whole home. Carried so a reader cannot mistake a targeted run's
+     *        all-but-one-zero summary for a verdict on every unit.
      */
     public record Report(
             Path from,
@@ -79,11 +146,16 @@ public final class HomeSync {
             boolean merge,
             boolean dryRun,
             boolean destinationFrozen,
-            List<UnitSync> units
+            List<UnitSync> units,
+            String unit
     ) {
         public Report {
             units = units == null ? List.of() : List.copyOf(units);
+            if (unit != null && unit.isBlank()) unit = null;
         }
+
+        /** Was this pass narrowed to one unit? */
+        public boolean targeted() { return unit != null; }
 
         public List<UnitSync> with(SyncStatus status) {
             return units.stream().filter(u -> u.status() == status).toList();
@@ -176,13 +248,19 @@ public final class HomeSync {
             HomePolicy.requireLive(to, "home sync");
         }
 
+        // A named unit neither home holds is refused BEFORE the lock and
+        // before to.init(), so a typo writes nothing at all — including the
+        // lock file whose absence #42 made load-bearing. The enumeration is a
+        // directory listing, and only a targeted run pays for it twice.
+        if (opts.targeted()) unitsToVisit(from, to, opts.unit());
+
         try (HomeLock ignored = opts.dryRun()
                 ? HomeLock.acquireWithoutCreating(dest, "home sync --dry-run")
                 : HomeLock.acquire(dest, "home sync")) {
             if (!opts.dryRun()) to.init();
             ChildHomeMaterializer materializer = new ChildHomeMaterializer(from, to);
             List<UnitSync> outcomes = new ArrayList<>();
-            for (UnitRef ref : unitsToVisit(from, to)) {
+            for (UnitRef ref : unitsToVisit(from, to, opts.unit())) {
                 UnitSync outcome = opts.dryRun()
                         ? materializer.planSync(ref.name(), ref.kind(), opts.merge())
                         : materializer.applySync(ref.name(), ref.kind(), opts.merge());
@@ -194,7 +272,8 @@ public final class HomeSync {
                 }
             }
             if (!opts.dryRun()) materializer.cleanStaging();
-            return new Report(source, dest, opts.merge(), opts.dryRun(), frozenDest, outcomes);
+            return new Report(source, dest, opts.merge(), opts.dryRun(), frozenDest, outcomes,
+                    opts.unit());
         }
     }
 
@@ -212,5 +291,39 @@ public final class HomeSync {
         List<UnitRef> out = new ArrayList<>(refs);
         java.util.Collections.sort(out);
         return out;
+    }
+
+    /**
+     * The units to visit, narrowed to {@code unit} when one was named.
+     *
+     * <p>Why narrowing exists at all: the sync is what makes a home-edited
+     * skill teardown-safe, and {@code skt publish <unit>} runs one before it
+     * publishes. Carrying every unit meant one unrelated conflicted unit
+     * blocked publishing the unit you actually edited — measured on this
+     * repository's project home, which holds three units in
+     * {@code MERGE_CONFLICT} from an unrelated issue. Narrowing is therefore
+     * not an optimisation; it is the difference between being able to publish
+     * an edit and not.
+     *
+     * <p>Matched on NAME across every kind, not on (name, kind): the caller
+     * that needs this knows the unit by the name it publishes under, and a
+     * home holding {@code foo} as both a skill and a plugin should reconcile
+     * both rather than silently pick one.
+     *
+     * <p>Everything above the loop is deliberately unchanged — the whole-home
+     * {@link HomeLock}, {@code to.init()}, and the staging cleanup all still
+     * run. A targeted sync writes less; it is not less careful.
+     */
+    static List<UnitRef> unitsToVisit(SkillStore from, SkillStore to, String unit)
+            throws IOException {
+        List<UnitRef> all = unitsToVisit(from, to);
+        if (unit == null || unit.isBlank()) return all;
+        List<UnitRef> matching = all.stream().filter(ref -> unit.equals(ref.name())).toList();
+        if (matching.isEmpty()) {
+            throw new UnknownUnitException(unit,
+                    from.root().toAbsolutePath().normalize(),
+                    to.root().toAbsolutePath().normalize());
+        }
+        return matching;
     }
 }

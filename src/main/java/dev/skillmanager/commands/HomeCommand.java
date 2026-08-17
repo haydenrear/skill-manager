@@ -925,6 +925,15 @@ public final class HomeCommand {
                 description = "Compute and print the whole report, write nothing.")
         boolean dryRun;
 
+        @Option(names = "--unit",
+                description = "Reconcile ONLY this unit, by name, instead of every unit either "
+                        + "home holds. A whole-home sync is all-or-nothing: one unrelated "
+                        + "conflicted unit blocks the unit you actually edited, which is what "
+                        + "stopped `skt publish <unit>` publishing it. Refused when neither home "
+                        + "holds the name — a filter that matches nothing would otherwise report "
+                        + "success for work that did not happen.")
+        String unit;
+
         @Option(names = "--json", description = "Emit machine-readable JSON.")
         boolean json;
 
@@ -934,7 +943,15 @@ public final class HomeCommand {
             SkillStore dest = new SkillStore(to.toAbsolutePath().normalize());
             HomeSync.Report report;
             try {
-                report = HomeSync.run(source, dest, new HomeSync.Options(merge, dryRun));
+                report = HomeSync.run(source, dest, new HomeSync.Options(merge, dryRun, unit));
+            } catch (HomeSync.UnknownUnitException unknown) {
+                // Same contract as the two refusals below: an exit code and a
+                // sentence, not a stack trace. This one matters most to a
+                // script, because what it replaces would have been silent
+                // success — an empty unit list reads exactly like agreement.
+                if (json) System.out.println(errorJson(unknown));
+                Log.error("%s", unknown.getMessage());
+                return HomeSync.UnknownUnitException.EXIT_CODE;
             } catch (NotAHomeException notAHome) {
                 // Same contract as the frozen case below: a refusal is the
                 // answer, so it is an exit code and a sentence, not a stack
@@ -1051,6 +1068,14 @@ public final class HomeCommand {
     private static void renderSync(HomeSync.Report report) {
         Log.detail("  from:        %s", report.from());
         Log.info("  to:          %s%s", report.to(), report.dryRun() ? "  (dry run — nothing written)" : "");
+        if (report.targeted()) {
+            // Said before the counts, not after: every count below is zero for
+            // every unit that was never visited, and a summary of eight zeroes
+            // reads exactly like a clean home. It is not one — nothing else
+            // was looked at.
+            Log.info("  unit:        %s  (only this unit was reconciled; the rest of the "
+                    + "home was not visited)", report.unit());
+        }
         if (report.destinationFrozen()) {
             Log.warn("  the destination is frozen (%s declares policy = \"frozen\"), so this is "
                             + "what a run WOULD do and no run will be allowed to do it — thaw it "
@@ -1085,7 +1110,8 @@ public final class HomeCommand {
                 report.count(ChildHomeMaterializer.SyncStatus.REMOVED_UPSTREAM),
                 report.count(ChildHomeMaterializer.SyncStatus.LINKED));
         if (report.clean()) {
-            Log.ok("%s%s", report.dryRun() ? "would reconcile " : "reconciled ", report.to());
+            Log.ok("%s%s%s", report.dryRun() ? "would reconcile " : "reconciled ", report.to(),
+                    report.targeted() ? " (unit " + report.unit() + " only)" : "");
         } else {
             Log.warn("%d unit(s) were not reconciled and were left exactly as they were",
                     report.unresolved().size());
@@ -1098,6 +1124,10 @@ public final class HomeCommand {
                 + "\",\"merge\":" + report.merge()
                 + ",\"dryRun\":" + report.dryRun()
                 + ",\"destinationFrozen\":" + report.destinationFrozen()
+                // `unit` is null for a whole-home pass and the name for a
+                // targeted one. Without it `clean:true` on a one-unit sync is
+                // indistinguishable from `clean:true` on the whole home.
+                + ",\"unit\":" + (report.unit() == null ? "null" : "\"" + esc(report.unit()) + "\"")
                 + ",\"clean\":" + report.clean()
                 + ",\"units\":" + unitsJson(report.units()) + "}";
     }
@@ -1140,6 +1170,16 @@ public final class HomeCommand {
      * that treats an absent field as its cheerful default — must not be able to
      * read this as approval.
      */
+    private static String errorJson(HomeSync.UnknownUnitException error) {
+        // Same shape as the not-a-home payload: a script parsing stdout must
+        // be able to tell "refused" from "crashed" from "reconciled", and the
+        // `clean:false` here is what stops a targeted typo reading as success.
+        return "{\"error\":\"unknown_unit\",\"unit\":\"" + esc(String.valueOf(error.unit()))
+                + "\",\"message\":\"" + esc(error.getMessage())
+                + "\",\"safe\":false,\"clean\":false,\"blockers\":[],\"units\":[],\"exitCode\":"
+                + HomeSync.UnknownUnitException.EXIT_CODE + "}";
+    }
+
     private static String errorJson(NotAHomeException error) {
         return "{\"error\":\"not_a_home\",\"path\":\"" + esc(String.valueOf(error.path()))
                 + "\",\"message\":\"" + esc(error.getMessage())
