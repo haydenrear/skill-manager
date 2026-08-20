@@ -67,7 +67,17 @@ def render(ticket_id: str, plan_commit: str | None) -> str:
         raise SystemExit(f"no ticket {ticket_id!r} in {PLAN}")
     t = tickets[ticket_id]
     role = t.get("role", "implementation")
-    slug = ticket_id.lower()
+    # references/epic-ticket.md fixes both names: the worktree is
+    # ../wt-<issue-number>-<slug> and the branch is feature/<issue-number>-<slug>.
+    # The ticket agent reads these two fields and creates exactly what they say,
+    # so a convenient-looking shorter name here is a real divergence.
+    issue = t.get("github_issue")
+    if issue is None:
+        raise SystemExit(
+            f"{ticket_id} has no github_issue in the plan; the worktree and branch "
+            "names are derived from it, so the issue must exist first"
+        )
+    slug = f"{issue}-{ticket_id.lower()}"
 
     conflicts = {
         assign: list(t.get("conflict_keys", {}).get(plan_key, []) or [])
@@ -114,7 +124,7 @@ def render(ticket_id: str, plan_commit: str | None) -> str:
         "ticket": {
             "spec_id": ticket_id,
             "role": role,
-            "feature_branch": f"ticket/{slug}",
+            "feature_branch": f"feature/{slug}",
             "worktree": f"../wt-{slug}",
             "pr_base": epic["branch"],
             "wave": t["wave"],
