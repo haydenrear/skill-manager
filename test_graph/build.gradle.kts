@@ -1460,4 +1460,27 @@ validationGraph {
         node("sources/common/HomeFixpointLaw.java")
                 .dependsOn("home.integrity.bootstrap.projects.target")
     }
+
+    /**
+     * sync-settles — the change-management drag, asserted end to end.
+     *
+     * Its own graph and NOT a node inside `home-integrity`, for one reason:
+     * home-integrity is in the CI core set and this assertion is RED until
+     * HIS-4 (#216) merges. `DeclaredCliIsAttributed` argued the rule this
+     * follows -- "a permanently red core graph is a signal nobody reads within
+     * a week" -- and `select-graph-set.py` already applies it to artifact-dag.
+     * It runs nightly in `full`, where the red is visible and costs nobody a
+     * push.
+     *
+     * TO PROMOTE IT: once #216 merges and this goes green, fold the node into
+     * `home-integrity` and delete this graph. The node is written to survive
+     * that move -- it carries its own fixture and shares no state.
+     */
+    testGraph("sync-settles") {
+        node("sources/common/EnvPrepared.java")
+
+        // One node, four assertions, because any single link left in place
+        // reproduces the drag. See the class comment for the chain.
+        node("sources/sync-settles/ScaffoldTreeDoesNotStrandTheBaseline.java")
+    }
 }

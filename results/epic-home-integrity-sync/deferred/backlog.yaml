@@ -48,7 +48,16 @@ findings:
       inherited staleness does not affect this epic's work. Re-check after
       HIS-4 lands.
     candidate_owner: HIS-4
-    status: open
+    status: closed
+    resolution: >
+      Released 2026-08-20. `git reset` alone was NOT enough -- both units still
+      refused with "extra local changes" because the installed baseline was
+      stranded behind a merge a previous sync had already committed. Releasing
+      them took removing the gitignored scaffold trees (making the working tree
+      clean) and then `sync --merge`, which merged with no stash, no pop and no
+      conflict. Both tiers now report `skt check: all current`. The product was
+      not changed; HIS-4 (#216) owns the mechanism and has been rescoped to the
+      full four-link chain.
 
   - id: DEF-002
     found_by: epic kickoff

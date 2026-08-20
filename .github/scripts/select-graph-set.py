@@ -99,6 +99,31 @@ CORE: list[str] = [
 # ---------------------------------------------------------------------------
 
 # ---------------------------------------------------------------------------
+# sync-settles is NOT IN CORE either, and for a DIFFERENT reason than
+# artifact-dag's. It is green.
+#
+# It pins the single biggest change-management drag the home mechanism has
+# produced: two units in the operator's project home sat permanently
+# unsyncable for nine days, first as MERGE_CONFLICT and then as "commits ahead
+# of the installed baseline", with neither printed remedy able to clear either
+# state. Every agent in every worktree cloned from that home inherited both.
+#
+# WHY NOT CORE. The node asserts the right property -- a sync must not strand
+# the installed baseline behind a merge it already committed -- and passes. But
+# it passes on a ROOT-TIER install/sync fixture, and the measured failure was
+# on a PROJECT-TIER materialized child copy. Two candidate reproductions were
+# tried and ruled out by measurement (see the node's class comment). So the
+# node is unproven against the defect it is named for, and a graph that passes
+# for the wrong reason is worth less in core than nothing: it would report the
+# drag covered.
+#
+# TO PROMOTE IT: HIS-4 (#216) owns reproducing the project-tier case. Once the
+# node is red against it and green after the fix, fold it into "home-integrity"
+# and delete this graph -- the node carries its own fixture and shares no
+# state, so the move is a file rename and a line here.
+# ---------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------
 # EXCLUDED — kept out of core AND full, on purpose, with the reason visible.
 #
 # A quarantined test nobody can see is worse than a red one, so these are
