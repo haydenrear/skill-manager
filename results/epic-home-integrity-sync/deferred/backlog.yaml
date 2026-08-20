@@ -81,3 +81,59 @@ findings:
       ticket rather than a drive-by fix.
     candidate_owner: unassigned
     status: open
+
+  - id: DEF-004
+    found_by: wave 2, attempting to provision HIS-4's declared worktree
+    found_at: "2026-08-20"
+    severity: blocking
+    escalated: true
+    summary: >
+      `home verify` and `home clone` disagree about the same five paths, and the
+      disagreement makes it impossible to bootstrap a ticket worktree home in
+      this repository at all.
+    detail: >
+      The project home's bin/cli holds ABSOLUTE SYMLINKS into the root home for
+      five CLIs -- computeq, helm-deploy, monitoring, tla-spec-dev, tlc2 -- each
+      pointing at /Users/hayde/.skill-manager/bin/cli/<name>.
+
+      The two readers say opposite things about them:
+
+        home verify : "every reference resolves, and no path reaches any other
+                       Skill Manager home EXCEPT THE 5 SANCTIONED PARENT-STORE
+                       SHIMS above" -- the home passes, clean.
+
+        home clone  : "clone verification FAILED -- 5 path(s) reach outside this
+                       copy", FOREIGN_HOME on each of the same five, and
+                       "home clone failed; <wt>/.skill-manager is not usable".
+
+      One home, two verdicts, on the same five paths. This is the CHM-15 shape
+      the epic keeps meeting -- two readings of one rule -- and it is the mirror
+      of integration-repository ARTI-29 (#132, "the clone tells the operator
+      verify will refuse; verify says everything is fine"): here verify says
+      fine and the clone refuses.
+    impact: >
+      BLOCKING for the epic's own machinery. git-issue-workflow's
+      bootstrap-home.sh fails, so `wt new` / `skt ticket new` cannot produce a
+      usable ticket home from this project home. Every ticket in this repository
+      that follows the documented worktree front door hits this.
+
+      It also retro-justifies wave 1's guardrail override for a reason that
+      review did not have: the worktree route was not merely skipped for
+      convenience, it would have FAILED. That is recorded in
+      reviews/wave-1.md as an efficiency decision and should be read alongside
+      this entry.
+    remedy_tried: >
+      `home shims` regenerates launchers only (4 written) and does not repoint
+      the five bin/cli symlinks. The home remains un-clonable afterwards.
+    why_deferred: >
+      Blocking and OUT OF HIS-4's declared slice. HIS-4 owns the four-link
+      scaffold-tree/stranded-baseline chain; this is a shim-provenance defect in
+      a different mechanism. Under deferment_policy blocking: escalate, it goes
+      to the owner as a decision rather than being absorbed into HIS-4, which is
+      how a ticket about one bug becomes a ticket about three.
+    options_for_the_owner:
+      - Give it its own ticket in this epic (HIS-7), since it blocks the epic's machinery and is squarely home-integrity.
+      - Fix it out-of-band by re-provisioning the five CLIs into the project home so the home is self-contained, then retry the worktree.
+      - Accept branch-based tickets for the rest of the epic and carry this to a successor, recording that the worktree machinery stays unexercised.
+    candidate_owner: unassigned
+    status: open
