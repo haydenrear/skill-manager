@@ -265,6 +265,122 @@ public final class ProjectChildHomeMaterializationTest {
                         assertEquals("skill:held-back-skill", outcome.label(), "held-back label");
                     }
                 })
+                .test("a pristine unit whose record names a store that is gone is not held back", () -> {
+                    // Issue #214, measured on the operator's real homes: 16 of 18
+                    // per-unit records named a `source` that was not the root
+                    // store -- six of them a path that no longer existed at all
+                    // (deleted ticket worktrees, and one /private/tmp scratchpad
+                    // from an evaluation session) -- and ALL 18 were pristine by
+                    // their own digest. Every one printed a paragraph about work
+                    // that "may exist nowhere else", over a tree nobody had
+                    // touched, on every single sync.
+                    //
+                    // The record is deliberately pointed at a path that does not
+                    // exist, because that is the case no record-based showing can
+                    // rescue: `recordIsAboutThisSource` is false, and the root
+                    // home is installed into rather than materialized into, so it
+                    // has no record of its own for `sourceHeldTheseBytes` to read.
+                    try (TestHarness h = TestHarness.create()) {
+                        Path repoRoot = Files.createTempDirectory("child-home-foreign-record-");
+                        Path skill = UnitFixtures.scaffoldSkill(
+                                repoRoot.resolve("units"), "foreign-record-skill", DepSpec.empty())
+                                .sourcePath();
+                        SkillProject project = project(repoRoot, """
+                                [project]
+                                name = "foreign-record-project"
+
+                                [skills.demo]
+                                source = "%s"
+                                """.formatted(skill));
+                        ProjectDependencyResolver resolver =
+                                new ProjectDependencyResolver(h.store(), null);
+                        resolver.resolve(project, new ProjectDependencyResolver.Options(true, false));
+
+                        Path record = repoRoot.resolve(
+                                ".skill-manager/.materialization/skill/foreign-record-skill.json");
+                        assertTrue(Files.isRegularFile(record), "the resolve wrote a record");
+
+                        // BOTH homes move to the SAME new content. This is what a
+                        // ticket worktree publishing its work upstream leaves
+                        // behind, and it is the shape the record cannot describe:
+                        // the two trees agree with each other and neither agrees
+                        // with the record, which still describes the worktree's
+                        // older bytes.
+                        //
+                        // Getting this wrong is how the first version of this test
+                        // passed without the fix. Leaving both trees pristine lets
+                        // `describesSource` rescue the unit at
+                        // ChildHomeMaterializer:1408 -- the record's entryDigests
+                        // still equal the live source's, so the named path never
+                        // gets consulted. The operator's homes were not in that
+                        // state: their parent stores had moved on too.
+                        Path childUnit =
+                                repoRoot.resolve(".skill-manager/skills/foreign-record-skill");
+                        Files.writeString(childUnit.resolve("SKILL.md"), "PUBLISHED CONTENT\n");
+                        Files.writeString(h.store().skillDir("foreign-record-skill")
+                                .resolve("SKILL.md"), "PUBLISHED CONTENT\n");
+
+                        String gone = repoRoot.resolve("wt-gone-worktree/.skill-manager/skills/"
+                                + "foreign-record-skill").toString();
+                        Files.writeString(record, Files.readString(record).replaceFirst(
+                                "\"source\"\\s*:\\s*\"[^\"]*\"",
+                                java.util.regex.Matcher.quoteReplacement(
+                                        "\"source\" : \"" + gone + "\"")));
+                        assertFalse(Files.exists(Path.of(gone)), "the recorded source really is gone");
+
+                        ProjectDependencyResolver.Result second = resolver.resolve(
+                                project, new ProjectDependencyResolver.Options(true, false));
+
+                        assertEquals(0, second.childHome().heldBack().size(),
+                                "a pristine unit is not held back because its record names a dead path");
+                    }
+                })
+                .test("a unit that genuinely differs is still held back, foreign record or not", () -> {
+                    // The other half of #214's target, and the one that keeps the
+                    // fix honest. Same foreign, dead `source` as above -- but this
+                    // time the child home really was edited, so a refresh really
+                    // would destroy work, and the hold-back must survive.
+                    try (TestHarness h = TestHarness.create()) {
+                        Path repoRoot = Files.createTempDirectory("child-home-foreign-edited-");
+                        Path skill = UnitFixtures.scaffoldSkill(
+                                repoRoot.resolve("units"), "foreign-edited-skill", DepSpec.empty())
+                                .sourcePath();
+                        SkillProject project = project(repoRoot, """
+                                [project]
+                                name = "foreign-edited-project"
+
+                                [skills.demo]
+                                source = "%s"
+                                """.formatted(skill));
+                        ProjectDependencyResolver resolver =
+                                new ProjectDependencyResolver(h.store(), null);
+                        resolver.resolve(project, new ProjectDependencyResolver.Options(true, false));
+
+                        Path record = repoRoot.resolve(
+                                ".skill-manager/.materialization/skill/foreign-edited-skill.json");
+                        String gone = repoRoot.resolve("wt-gone-worktree/.skill-manager/skills/"
+                                + "foreign-edited-skill").toString();
+                        Files.writeString(record, Files.readString(record).replaceFirst(
+                                "\"source\"\\s*:\\s*\"[^\"]*\"",
+                                java.util.regex.Matcher.quoteReplacement(
+                                        "\"source\" : \"" + gone + "\"")));
+
+                        Path childUnit =
+                                repoRoot.resolve(".skill-manager/skills/foreign-edited-skill");
+                        Files.writeString(childUnit.resolve("SKILL.md"), "AGENT WORK IN PROGRESS\n");
+                        Files.writeString(h.store().skillDir("foreign-edited-skill")
+                                .resolve("SKILL.md"), "NEW PARENT CONTENT\n");
+
+                        ProjectDependencyResolver.Result second = resolver.resolve(
+                                project, new ProjectDependencyResolver.Options(true, false));
+
+                        assertEquals(1, second.childHome().heldBack().size(),
+                                "an edited unit is still held back");
+                        assertEquals("AGENT WORK IN PROGRESS\n",
+                                Files.readString(childUnit.resolve("SKILL.md")),
+                                "and the agent's edit survives");
+                    }
+                })
                 .test("re-resolve refreshes an unmodified child home unit from the parent", () -> {
                     try (TestHarness h = TestHarness.create()) {
                         Path repoRoot = Files.createTempDirectory("child-home-refresh-");
