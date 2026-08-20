@@ -846,6 +846,10 @@ public final class HomeCommand {
                         + "as pending, and refresh the digest.")
         boolean record;
 
+        @Option(names = "--detail",
+                description = "Print every changed path instead of the per-unit rollup.")
+        boolean detail;
+
         @Option(names = "--ack", description = "Mark the pending change read, clearing the gate.")
         boolean ack;
 
@@ -897,8 +901,10 @@ public final class HomeCommand {
                 Log.ok("acknowledged %d changed unit(s) in %s",
                         acked.report().units().size(), store.root());
                 // The count is the verdict; the per-unit lines are already
-                // read by the time you acknowledge them.
-                for (String line : acked.report().render()) Log.detail("  %s", line);
+                // read by the time you acknowledge them. Detailed here because
+                // Log.detail is already an opt-in surface -- collapsing a
+                // stream nobody sees by default buys nothing.
+                for (String line : acked.report().renderDetailed()) Log.detail("  %s", line);
                 return 0;
             }
             DriftGate pending = DriftGate.pending(store).orElse(null);
@@ -920,7 +926,9 @@ public final class HomeCommand {
             // decision and the first dozen make it.
             Log.warn("%d unit(s) changed in %s (%s) and have not been read:",
                     pending.report().units().size(), store.root(), pending.operation());
-            Log.errorList("  ", pending.report().render());
+            Log.errorList("  ", detail
+                    ? pending.report().renderDetailed()
+                    : pending.report().render());
             Log.warn("  run `%s home drift --ack` once you have taken it in",
                     HomeDescriptor.cliInvocation(store.root()));
             return DriftGate.EXIT_CODE;
