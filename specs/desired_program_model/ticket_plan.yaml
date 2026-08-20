@@ -2600,8 +2600,7 @@ tickets:
     phase: HIS
     status: planned
     epic: home-integrity-sync
-    github_issue: null
-    needs_github_issue: true
+    github_issue: 216
     wave: 2
     depends_on: [HIS-1]
     blocks: [HIS-5, HIS-6]
@@ -2672,8 +2671,7 @@ tickets:
     phase: HIS
     status: planned
     epic: home-integrity-sync
-    github_issue: null
-    needs_github_issue: true
+    github_issue: 217
     wave: 3
     depends_on: [HIS-1, HIS-2, HIS-3, HIS-4]
     blocks: [HIS-6]
@@ -2712,8 +2710,7 @@ tickets:
     status: planned
     role: evaluation
     epic: home-integrity-sync
-    github_issue: null
-    needs_github_issue: true
+    github_issue: 218
     wave: 4
     depends_on: [HIS-1, HIS-2, HIS-3, HIS-4, HIS-5]
     blocks: []
