@@ -1464,17 +1464,29 @@ validationGraph {
     /**
      * sync-settles — the change-management drag, asserted end to end.
      *
-     * Its own graph and NOT a node inside `home-integrity`, for one reason:
-     * home-integrity is in the CI core set and this assertion is RED until
-     * HIS-4 (#216) merges. `DeclaredCliIsAttributed` argued the rule this
-     * follows -- "a permanently red core graph is a signal nobody reads within
-     * a week" -- and `select-graph-set.py` already applies it to artifact-dag.
-     * It runs nightly in `full`, where the red is visible and costs nobody a
-     * push.
+     * Its own graph and NOT a node inside `home-integrity`, and the reason is
+     * NOT that it is red. IT PASSES. It asserts the right property -- a sync
+     * must not strand the installed baseline behind a merge it already
+     * committed -- over a ROOT-TIER install/sync fixture, and the measured
+     * failure was on a PROJECT-TIER materialized child copy, which it does not
+     * reach. Two candidate reproductions were tried and ruled out by
+     * measurement; see the node's class comment so nobody re-spends them.
      *
-     * TO PROMOTE IT: once #216 merges and this goes green, fold the node into
-     * `home-integrity` and delete this graph. The node is written to survive
-     * that move -- it carries its own fixture and shares no state.
+     * So it is UNPROVEN AGAINST THE DEFECT IT IS NAMED FOR, and that is worse
+     * in core than a red node would be: a green `sync-settles` in a nightly
+     * summary reads as "the drag is covered". It runs in `full`, where the
+     * result is visible and nobody's push depends on it.
+     *
+     * (An earlier version of this comment said "RED until HIS-4 merges". That
+     * was written before the node was run and was simply false. Corrected
+     * rather than deleted, because a graph comment that has been wrong once
+     * about its own colour is worth flagging to the next reader.)
+     *
+     * TO PROMOTE IT: HIS-4 (#216) owns making it red against the project-tier
+     * case. Once it is red before the fix and green after, fold the node into
+     * `home-integrity` and delete this graph -- it carries its own fixture and
+     * shares no state, so the move is a file rename and a line in
+     * `select-graph-set.py`.
      */
     testGraph("sync-settles") {
         node("sources/common/EnvPrepared.java")

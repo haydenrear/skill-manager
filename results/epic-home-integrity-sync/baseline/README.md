@@ -27,8 +27,16 @@ that is:
 | spec-double-compiler | MODIFIED | 0 | 776 | 0 | 776 |
 | **total** | | **61** | **790** | **38** | **889** |
 
-**889 lines ≈ 87,208 rendered characters ≈ 21,800 tokens**, re-emitted on
-every `project sync`, every `exec` launch gate, and every `home drift`.
+**896 lines, 88,308 characters (~22,077 tokens)**, re-emitted on every
+`project sync`, every `exec` launch gate, and every `home drift`.
+
+> **On two numbers.** This file first recorded "889 lines ≈ 87,208 characters".
+> 889 is the per-FILE line count in the table above and omits the 7 per-unit
+> headers; 87,208 was an ESTIMATE (path length + 6 per line), not a render. The
+> figures above are what the product's own renderer produces over this record,
+> and they are the ones HIS-6 compares against. The estimate is superseded and
+> left on the record rather than deleted, so it is visible which number moved
+> and why — a baseline quietly edited after the fact is worth nothing.
 
 One unit — `spec-double-compiler` — is 776 of the 889. Those 776 "removed
 files" are the dereferenced in-unit symlink trees
