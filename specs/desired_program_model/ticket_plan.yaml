@@ -1,6 +1,7 @@
 # Desired program model + ticket plan for the child-home materialization epic.
 # Source of truth for tickets. Keep synchronized with spec_manifest.yaml status.
 version: 1
+schedule_revision: 1
 name: child-home-materialization-workflow
 updated: "2026-08-07"
 purpose: >
@@ -343,6 +344,208 @@ service_catalog:
     - Child-home MCP servers, tool shims, and agent configs stay in SkillManager.tla until phase MIG.
 
 # ---------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------
+# EPIC: home-integrity-sync
+#
+# Scheduled on top of this workflow rather than in a spec root of its own.
+# The decision and its reason: every ticket below is a defect in
+# ChildHomeMaterializer, DriftGate or the records they write, which is what
+# this workflow already models. A sibling root would have forked the same
+# subject into two live workflows that later had to be reconciled, and
+# ARTI-22's home_integrity views already live in this manifest.
+#
+# CHM-1..CHM-8 remain planned and CHM-24 remains open; this epic does not
+# touch them and does not promote the workflow. Only finalization does.
+# ---------------------------------------------------------------------------
+epic:
+  slug: home-integrity-sync
+  branch: epic/home-integrity-sync
+  base: "76434c7"                       # epic/artifact-dag cb0369f + main e5ba7ce
+  repository: haydenrear/skill-manager
+  umbrella_issue: 215
+  ticket_prefix: HIS
+  validation: >
+    validate_epic_plan.py cannot be run against this file as a whole: it
+    requires full epic scheduling fields (wave, promotion_order, blocks,
+    conflict_keys, goals) on EVERY ticket, and the 34 pre-epic CHM/COH/EFF/
+    ISSUE/MIG tickets predate the epic primitive and legitimately carry none.
+    Running it here reports those 34 and buries the epic's own findings.
+    The epic is validated against a generated projection instead --
+    results/epic-home-integrity-sync/validation/epic_plan_projection.yaml,
+    which carries the epic blocks and the HIS-* tickets only. Regenerate it
+    from this file after any schedule change; this file stays canonical.
+    Last run: OK, 6 tickets, 0 retired, 4 waves, 5 goals.
+  note: >
+    Branched from epic/artifact-dag and NOT closing it out. That branch is the
+    constituent side of integration-repository epic #100 (the derived-artifact
+    DAG), which is open with ~31 ARTI tickets and an unrun terminal evaluation
+    (#117 / ARTI-16). Folding it in here would strand #100's goal accounting,
+    so the branch stays intact and this epic simply starts from its tip.
+
+deferment_policy:
+  mode: batch
+  blocking: escalate
+  budget: 5
+  backlog: results/epic-home-integrity-sync/deferred/backlog.yaml
+  rule: >
+    A failure case a ticket agent finds outside its declared slice is appended
+    to the backlog with its reproduction and left there. Agents do not widen a
+    ticket to fix it and do not chase a goal metric by expanding scope. The
+    epic agent triages the backlog with the owner at each wave review.
+
+review_policy:
+  cadence: wave
+  gate: true
+  merges: owner
+  walkthrough: required
+  artifact_root: results/epic-home-integrity-sync/reviews/
+  rule: >
+    The epic agent merges each wave's ticket PRs into the epic branch in
+    promotion order, reconciles each ticket worktree's home into the project
+    home, writes the review artifact, walks the owner through it, and then
+    STOPS. No issue URL from the next wave is handed out until the owner has
+    answered. Silence is not approval.
+
+# ---------------------------------------------------------------------------
+# GOALS. Agreed with the owner 2026-08-20 before scaffolding. Baselines were
+# measured on the operator's real homes at the epic base commit and committed
+# under results/epic-home-integrity-sync/baseline/ BEFORE any ticket landed.
+#
+# The theme the owner named is token efficiency, productivity and
+# functionality. The mechanism underneath four of these five goals turned out
+# to be one thing: PERSISTED STATE THAT IS NEVER RE-DERIVED FROM THE LIVE TREE.
+# A materialization record naming a store that is gone (HIS-1), a drift gate
+# that only an explicit ack retires (HIS-3), an installed-record error whose
+# condition cleared nine days earlier (HIS-4). Stating it here because a ticket
+# agent that knows the shape will recognise the fourth instance when it meets
+# it, and file it rather than working around it.
+# ---------------------------------------------------------------------------
+epic_goals:
+  - id: GOAL-no-spurious-holdback
+    kind: integration
+    statement: >
+      A child home whose unit is byte-identical to the live parent store
+      reconciles silently, whatever its record says about where the bytes came
+      from -- and a unit that genuinely differs is still held back.
+    metric: >
+      units held back by copyUnit() whose tree is byte-identical to the live
+      source outside .git, over the 4 registered child homes
+    harness: >
+      python skills/test_graph/scripts/run.py home-integrity
+      (node ForeignRecordDoesNotHoldBackAnIdenticalTree), plus a re-count over
+      results/epic-home-integrity-sync/baseline/holdback-records.txt
+    baseline:
+      value: "16 of 18 records held back; 18 of 18 pristine by their own digest"
+      measured_at: "76434c7"
+      evidence: results/epic-home-integrity-sync/baseline/holdback-records.txt
+    target: >
+      CLAUSE 1: 0 of the 18 held back.
+      CLAUSE 2: a unit whose content genuinely differs from the live source is
+      STILL held back, with the same message -- proved by a deliberately
+      divergent fixture in the same node.
+    evaluation_ticket: HIS-6
+    evidence_root: results/epic-home-integrity-sync/goals/GOAL-no-spurious-holdback
+
+  - id: GOAL-sync-quiet
+    kind: quality
+    statement: >
+      A sync tells the agent WHAT moved, not every path that moved. The per-file
+      diff stops being the default surface and becomes something you ask for.
+    metric: >
+      lines and characters DriftReport.render() emits over the recorded
+      7-unit baseline drift record
+    harness: >
+      python skills/test_graph/scripts/run.py home-integrity
+      (node DriftReportIsBounded, which renders the committed baseline fixture)
+    baseline:
+      value: "889 lines, 87,208 characters (~21,800 tokens), re-emitted every sync / exec gate / home drift"
+      measured_at: "76434c7"
+      evidence: results/epic-home-integrity-sync/baseline/root-home-drift.json
+    target: >
+      CLAUSE 1: at most one line per changed unit plus one total line -- at most
+      10 lines over this fixture -- and at least a 99% character reduction.
+      CLAUSE 2: the full per-file list is still reachable, unchanged, through
+      --json / the detail surface. Collapsing is a default, not a deletion.
+    evaluation_ticket: HIS-6
+    evidence_root: results/epic-home-integrity-sync/goals/GOAL-sync-quiet
+
+  - id: GOAL-gate-settles
+    kind: integration
+    statement: >
+      An unacknowledged drift gate is reported once in full and thereafter as a
+      one-line reminder. A genuinely new change still gates.
+    metric: >
+      output size and exit code on the 2nd..Nth surfacing of one unacknowledged
+      gate, with no new change between passes
+    harness: >
+      python skills/test_graph/scripts/run.py home-integrity
+      (node AckIsStable, extended to drive record -> surface -> surface -> ack)
+    baseline:
+      value: "full report re-emitted on every pass; exec refuses with exit 8 each time"
+      measured_at: "76434c7"
+      evidence: results/epic-home-integrity-sync/baseline/root-home-drift.json
+    target: >
+      CLAUSE 1: the 2nd and later surfacing of the SAME unacknowledged gate is a
+      single line naming the count and the ack command.
+      CLAUSE 2: a change the agent has not seen still gates the next launch, and
+      DriftGate's documented reason for not clearing on digest refresh
+      (DriftGate.java:39-49) still holds -- the regression that rationale cites
+      must stay caught.
+    evaluation_ticket: HIS-6
+    evidence_root: results/epic-home-integrity-sync/goals/GOAL-gate-settles
+
+  - id: GOAL-symlink-merge-settles
+    kind: integration
+    statement: >
+      Dereferencing an in-unit symlink does not put the unit's git repository
+      into a merge conflict that its own printed remedy cannot clear.
+    metric: >
+      change-managed units left in MERGE_CONFLICT after a sync of a unit whose
+      store copy contains symlinks into the parent store
+    harness: >
+      python skills/test_graph/scripts/run.py home-integrity
+      (node DerefedSymlinkSyncsClean, synthetic fixture -- see the note below)
+    baseline:
+      value: >
+        2 of 21 units in the project home permanently stuck (deploy-helm,
+        spec-double-compiler), first recorded 2026-08-11T22:23:41Z, printed
+        remedy unable to clear it. CLEARED BY HAND at kickoff to satisfy rule
+        11; the mechanism is unchanged, so HIS-4 must reproduce it
+        synthetically rather than from the live homes.
+      measured_at: "76434c7"
+      evidence: results/epic-home-integrity-sync/baseline/README.md
+    target: >
+      CLAUSE 1: 0 units left in MERGE_CONFLICT by the synthetic fixture, and
+      `skt sync` completes for both.
+      CLAUSE 2: an installed-record error is re-derived from the live tree, so
+      a condition that has cleared stops being reported without anyone editing
+      the record by hand.
+    evaluation_ticket: HIS-6
+    evidence_root: results/epic-home-integrity-sync/goals/GOAL-symlink-merge-settles
+
+  - id: GOAL-home-invariants
+    kind: quality
+    statement: >
+      Each behavioural fix above is stated as an invariant that a deliberately
+      broken model violates, so the defect cannot come back unnoticed.
+    metric: >
+      invariants over the home-integrity view, each carrying a regression cfg
+      that must keep failing
+    harness: "specs/program_model/run_tlc.sh and pytest specs/"
+    baseline:
+      value: "4 invariants, 5 regression cfgs (ARTI-22, HomeIntegrityInternal)"
+      measured_at: "76434c7"
+      evidence: specs/desired_program_model/spec_manifest.yaml
+    target: >
+      CLAUSE 1: every new invariant carries an expected-violation cfg that
+      fails, per this file's regression_config_rule, and states whether it is
+      witness-dependent (and carries a guard cfg if it is).
+      CLAUSE 2: all 5 pre-existing regression cfgs still fail. A regression cfg
+      that starts passing is a defect in the invariant, not a success.
+    evaluation_ticket: HIS-6
+    evidence_root: results/epic-home-integrity-sync/goals/GOAL-home-invariants
+
 tickets:
   - id: CHM-1
     title: "Child home units materialize by copy, not by symlink"
@@ -2199,3 +2402,371 @@ tickets:
     acceptance:
       assertions:
         - Conflicting specs for one tool are reported at resolve, not resolved last-write-wins.
+
+  # =========================================================================
+  # EPIC home-integrity-sync -- HIS-1 .. HIS-6, schedule revision 1.
+  # See the `epic:` and `epic_goals:` blocks at the root of this file.
+  # =========================================================================
+
+  - id: HIS-1
+    title: "copyUnit holds back a tree it can see is identical, because it asks the record instead of the source"
+    phase: HIS
+    status: next
+    epic: home-integrity-sync
+    github_issue: 214
+    wave: 1
+    depends_on: []
+    blocks: [HIS-4, HIS-5, HIS-6]
+    promotion_order: 1
+    promotion_predecessor: null
+    conflict_keys:
+      production: [ChildHomeMaterializer.copyUnit, ChildHomeMaterializer.Disposal]
+      tla: []
+      adapters: []
+      test_graph: [home-integrity/ForeignRecordDoesNotHoldBackAnIdenticalTree]
+      workflow_data: []
+    objective: >
+      MEASURED on the operator's real homes: 16 of 18 per-unit materialization
+      records name a `source` that is not the root store, and all 18 are
+      pristine by their own digest. Every one is held back on every sync,
+      printing a five-line paragraph about work that "may exist nowhere else"
+      -- over trees nobody has touched. Six of the 16 name a path that no
+      longer exists at all: two deleted ticket worktrees, and one
+      /private/tmp scratchpad from a past evaluation session.
+
+      The root home is INSTALLED into and carries no per-unit record, so
+      `sourceHeldTheseBytes` is unavailable; the destination's own record names
+      a worktree rather than this store, so `recordIsAboutThisSource` is false;
+      `disposable()` is therefore false and copyUnit() refuses.
+    root_cause: >
+      NOT the one issue #214 proposes. #214 asks for a "root owns these bytes"
+      re-baselining path, which invents provenance -- exactly the move
+      `sourceHeldTheseBytes`'s own javadoc argues against, at length, as the
+      thing that would persist and be read as licence by the next reconcile in
+      either direction.
+
+      The actual defect is a divergence between two paths this file already
+      declares must agree. `reconcile()` -- the `home sync` path -- answers
+      three questions from evidence on disk BEFORE it consults any record:
+
+        ChildHomeMaterializer.java:1164  src.digest().equals(dst.digest())
+        ChildHomeMaterializer.java:1168  gitTwinsDifferOnlyInBookkeeping(source, dest)
+        ChildHomeMaterializer.java:1174  gitSourceIsBehind(source, dest)
+
+      `copyUnit()` -- the `project resolve` / root-sync path -- has NONE of
+      them. It computes currentDigest at :2173 and hands it straight to
+      disposal(). `gitTwinsDifferOnlyInBookkeeping` has exactly one caller in
+      the codebase, at :1168.
+
+      So the comment at :2181 -- "`home sync` and `project resolve` read the
+      same value or they eventually disagree about the units that matter,
+      which is what CHM-15 was" -- is false again, in the opposite direction.
+      home sync says UNCHANGED where copyUnit says HELD_BACK.
+    slice: >
+      Give the baseline rule its THIRD showing, the one that needs no record at
+      all: the source is standing on exactly these bytes RIGHT NOW. Where that
+      holds, refreshing is a byte-identical no-op, so nothing can be destroyed
+      -- whatever either record says, and whether or not the recorded source
+      still exists. Route copyUnit through the same three answers reconcile()
+      already gives, from one shared function, so the next divergence is a
+      compile error rather than a paragraph.
+
+      Do NOT write a baseline into the record-less destination. Nothing is
+      written by this showing; it is a question asked and answered from
+      evidence already on disk, once, per pass.
+    acceptance:
+      assertions:
+        - A unit byte-identical to the live source outside .git reconciles silently, whatever its record names.
+        - A unit whose content genuinely differs is still held back, with the message unchanged.
+        - copyUnit and reconcile answer the disposability question through ONE function, not two.
+        - No record is written by the new showing.
+    goals:
+      - goal: GOAL-no-spurious-holdback
+        contribution: direct
+        expected_effect: "16 of 18 held back -> 0, with the divergent-fixture clause still refusing"
+        local_signal: "python skills/test_graph/scripts/run.py home-integrity"
+      - goal: GOAL-sync-quiet
+        contribution: enabling
+        expected_effect: "none on its own -- removes 16 five-line paragraphs, which is most of the non-diff noise HIS-2 then bounds"
+        local_signal: "N/A: enabling"
+
+  - id: HIS-2
+    title: "DriftReport.render() prints every changed path, and re-prints it on every pass"
+    phase: HIS
+    status: planned
+    epic: home-integrity-sync
+    github_issue: 212
+    wave: 1
+    depends_on: []
+    blocks: [HIS-3, HIS-5, HIS-6]
+    promotion_order: 2
+    promotion_predecessor: HIS-1
+    conflict_keys:
+      production: [DriftReport.render, ProjectSyncUseCase.sync, ExecCommand.launchGate, HomeCommand.drift]
+      tla: []
+      adapters: []
+      test_graph: [home-integrity/DriftReportIsBounded]
+      workflow_data: []
+    objective: >
+      MEASURED: the root home's pending drift record is 87,054 bytes over 7
+      units. DriftReport.render() emits one line per changed file -- 889 lines,
+      ~87,208 characters, ~21,800 tokens -- and re-emits them on every
+      `project sync`, every `exec` launch gate, and every `home drift`. One
+      unit, spec-double-compiler, is 776 of the 889.
+
+      The per-unit SHA-256 the report wants already exists as
+      HomeDigest.UnitDigest.digest(); DriftReport keeps the file lists and
+      throws the digest away.
+    slice: >
+      Collapse the default surface to at most one line per changed unit -- unit,
+      kind, change, short digest, changed-file COUNT -- plus one total line.
+      Keep the full per-file list reachable and unchanged behind --json and the
+      detail surface. This is a default, not a deletion: an operator who wants
+      the paths must still be able to get exactly the paths they get today.
+    note: >
+      spec-double-compiler's 776 "removed files" are the dereferenced in-unit
+      symlink trees being read as deletions -- HIS-4's subject. Do not fix that
+      here. Bound the report; let HIS-4 remove the cause. If bounding it makes
+      the 776 invisible before HIS-4 lands, say so in the PR, because a number
+      that disappears from view is not a number that got smaller.
+    acceptance:
+      assertions:
+        - The committed baseline fixture renders in at most 10 lines.
+        - Character count over that fixture falls by at least 99%.
+        - --json output over the same fixture is byte-identical to today's.
+    goals:
+      - goal: GOAL-sync-quiet
+        contribution: direct
+        expected_effect: "889 lines / 87,208 chars -> <=10 lines, >=99% char reduction, over the committed fixture"
+        local_signal: "python skills/test_graph/scripts/run.py home-integrity"
+
+  - id: HIS-3
+    title: "the drift gate re-fires instead of settling -- the safety is right, the re-emission is not"
+    phase: HIS
+    status: planned
+    epic: home-integrity-sync
+    github_issue: 213
+    wave: 2
+    depends_on: [HIS-2]
+    blocks: [HIS-5, HIS-6]
+    promotion_order: 3
+    promotion_predecessor: HIS-2
+    conflict_keys:
+      production: [DriftGate.record, DriftGate.recordSince, ExecCommand.launchGate, ProjectSyncUseCase.sync]
+      tla: [HomeIntegrityInternal.AcknowledgeCurrentDigest]
+      adapters: []
+      test_graph: [home-integrity/AckIsStable]
+      workflow_data: []
+    objective: >
+      A sync records drift; the next sync or launch finds the pending gate and
+      re-warns or refuses with exit 8; nothing retires the record except an
+      explicit `home drift --ack`. DriftGate.record() returns the EXISTING
+      pending gate even when the incoming report is empty
+      (DriftGate.java:86), so a pass that changed nothing still hands its
+      caller an unacknowledged gate.
+    why_the_intent_is_load_bearing: >
+      This is deliberate and the rationale is written down at
+      DriftGate.java:39-49: a gate that cleared when the digest was refreshed
+      would let the SECOND recompute report "nothing to acknowledge" while the
+      change from the FIRST sync was still unread. That was reproduced as a
+      false pass -- prune_did_not_destroy_the_agent_edit failed while
+      child_home_holds_only_claimed_or_held_back_units passed vacuously.
+
+      So the ticket is NOT "clear the gate on refresh". Do not weaken the
+      safety to make the noise stop.
+    slice: >
+      Separate FIRST surfacing from SUBSEQUENT surfacing of the same
+      unacknowledged gate. First is the full (now bounded, per HIS-2) report.
+      Second and later, with no new change between them, is one line: the count
+      still unread and the ack command. A genuinely new change re-opens the
+      full report and still gates the next launch.
+    acceptance:
+      assertions:
+        - Second and later surfacing of one unacknowledged gate is a single line.
+        - A new unseen change still gates a launch and still exits 8.
+        - The regression DriftGate.java:39-49 cites is still caught.
+    goals:
+      - goal: GOAL-gate-settles
+        contribution: direct
+        expected_effect: "full report every pass -> full once, one line thereafter; exit-8-on-new-change unchanged"
+        local_signal: "python skills/test_graph/scripts/run.py home-integrity"
+      - goal: GOAL-sync-quiet
+        contribution: guard
+        expected_effect: "must not reintroduce per-file output on any surface"
+        local_signal: "python skills/test_graph/scripts/run.py home-integrity"
+
+  - id: HIS-4
+    title: "dereferencing an in-unit symlink deadlocks the unit's git repo, and the error record outlives the condition"
+    phase: HIS
+    status: planned
+    epic: home-integrity-sync
+    github_issue: null
+    needs_github_issue: true
+    wave: 2
+    depends_on: [HIS-1]
+    blocks: [HIS-5, HIS-6]
+    promotion_order: 4
+    promotion_predecessor: HIS-3
+    conflict_keys:
+      production: [ChildHomeMaterializer.materializedView, ChildHomeMaterializer.dereference, InstalledRecord.errors]
+      tla: [HomeIntegrityInternal.RecordDescribesItsStoreOrSaysWhy]
+      adapters: []
+      test_graph: [home-integrity/DerefedSymlinkSyncsClean]
+      workflow_data: []
+    objective: >
+      TWO defects that met in one live state, found while satisfying rule 11 at
+      this epic's kickoff. Both instances of the epic's theme.
+
+      (a) THE DEADLOCK. `deploy-helm` and `spec-double-compiler` in the project
+      home were stuck in MERGE_CONFLICT, blocking `skt sync` for both. The
+      index carried stages 1 and 3 at mode 120000 (symlink) for
+      test_graph/build-logic, test_graph/sdk and test_graph/standard-nodes,
+      stage 2 absent, NO MERGE_HEAD, and HEAD tracking none of those paths.
+      CHM-5 dereferences in-unit symlinks into real directories -- correct, and
+      what makes a child home independent -- but it does so inside a git
+      working tree. Git reads the symlink as deleted; sync stashes, merges an
+      upstream that still has mode 120000 there, pops, and conflicts. The
+      printed remedy (`git add` + `git commit`) cannot clear it, because the
+      working tree cannot hold both a directory and a symlink at one path. It
+      re-arms on the next sync.
+
+      (b) THE STICKY RECORD. installed/<unit>.json carried
+      errors: [{kind: MERGE_CONFLICT, firstSeenAt: 2026-08-11T22:23:41Z}] with
+      no resolvedAt and no re-derivation. After the git state was cleared, skt
+      still reported the conflict, because the state is RECORDED, not observed.
+      Same shape as HIS-1's dead source path and HIS-3's unretired gate.
+    slice: >
+      (a) Decide how a dereferenced path is represented to the unit's git repo
+      so a merge does not re-arm forever, and make the printed remedy one that
+      actually clears the state. As in CHM-24, "exclude it from the merge
+      algebra" is not automatically safe -- say what happens to a unit whose
+      only divergence IS the dereferenced path.
+      (b) Re-derive an installed-record error from the live tree when it is
+      read. A condition that has cleared stops being reported without anyone
+      editing home state by hand.
+    reproduction_note: >
+      The live instance was cleared by hand at kickoff to satisfy rule 11
+      (git reset restoring the index from HEAD; working trees untouched;
+      backups in the session scratchpad; the conflict did not recur on the next
+      sync). The mechanism is unchanged. Build the fixture SYNTHETICALLY -- a
+      unit carrying a symlink into the parent store, materialized, then synced
+      against a moved upstream. Do not rely on the operator's homes.
+    acceptance:
+      assertions:
+        - The synthetic fixture leaves 0 units in MERGE_CONFLICT and `sync` completes.
+        - The remedy printed for a genuinely divergent unit is runnable and changes the verdict.
+        - A unit whose only divergence is the dereferenced path is not silently reported clean.
+        - An installed-record error whose condition has cleared stops being reported, with no hand edit.
+    goals:
+      - goal: GOAL-symlink-merge-settles
+        contribution: direct
+        expected_effect: "2 of 21 stuck -> 0 on the synthetic fixture; stale error records self-clear"
+        local_signal: "python skills/test_graph/scripts/run.py home-integrity"
+      - goal: GOAL-sync-quiet
+        contribution: enabling
+        expected_effect: "none on its own -- removes the cause of 776 of the baseline's 889 lines"
+        local_signal: "N/A: enabling"
+
+  - id: HIS-5
+    title: "state the four fixes as invariants a broken model violates"
+    phase: HIS
+    status: planned
+    epic: home-integrity-sync
+    github_issue: null
+    needs_github_issue: true
+    wave: 3
+    depends_on: [HIS-1, HIS-2, HIS-3, HIS-4]
+    blocks: [HIS-6]
+    promotion_order: 5
+    promotion_predecessor: HIS-4
+    conflict_keys:
+      production: []
+      tla: [HomeIntegrityInternal]
+      adapters: [specs/desired_program_model/tests]
+      test_graph: []
+      workflow_data: [spec_manifest.yaml]
+    objective: >
+      ARTI-22 gave the home-integrity view 4 invariants and 5 regression cfgs.
+      None of them state the four properties this epic fixes, so all four can
+      regress silently. Extend the view; do not restate anything the legacy
+      monolith already says (dual_representation_rule).
+    slice: >
+      One invariant per fix, each with an expected-violation cfg that FAILS,
+      and for each, an explicit statement of whether it is witness-dependent
+      (guard_config_rule). Candidates, to be settled in the ticket:
+        - an identical tree is disposable regardless of what its record names;
+        - a divergent tree is not;
+        - an acknowledged gate is surfaced at most once in full;
+        - a recorded error is a function of the live tree, not of history.
+      Re-run ALL pre-existing regression cfgs; a cfg that starts passing is a
+      defect in the invariant, per regression_config_rule.
+    goals:
+      - goal: GOAL-home-invariants
+        contribution: direct
+        expected_effect: "4 invariants / 5 cfgs -> one new invariant per fix, each with a failing cfg, all 5 originals still failing"
+        local_signal: "specs/program_model/run_tlc.sh"
+
+  - id: HIS-6
+    title: "TERMINAL EVALUATION -- decide every goal on the integrated epic tip"
+    phase: HIS
+    status: planned
+    role: evaluation
+    epic: home-integrity-sync
+    github_issue: null
+    needs_github_issue: true
+    wave: 4
+    depends_on: [HIS-1, HIS-2, HIS-3, HIS-4, HIS-5]
+    blocks: []
+    promotion_order: 6
+    promotion_predecessor: HIS-5
+    owns_goals:
+      - GOAL-no-spurious-holdback
+      - GOAL-sync-quiet
+      - GOAL-gate-settles
+      - GOAL-symlink-merge-settles
+      - GOAL-home-invariants
+    conflict_keys:
+      production: []
+      tla: []
+      adapters: []
+      test_graph: []
+      workflow_data: []
+    objective: >
+      This ticket's slice IS the measurement. It runs each goal's harness on
+      the integrated epic tip, from a fresh start, and reports
+      baseline -> measured -> target with ONE VERDICT PER CLAUSE. Every goal
+      here has two clauses; a single token per goal would have to choose which
+      clause it referred to, and it would choose the flattering one.
+    rules: >
+      Does not fix anything. A goal that comes out short is reported short and
+      is a decision for the owner. Never edits a target so a result passes;
+      never re-runs selectively until a number passes. Regressions found are
+      filed to the deferment backlog, not repaired here.
+    re_measurement_note: >
+      GOAL-sync-quiet and GOAL-no-spurious-holdback are re-measured against the
+      COMMITTED baseline fixtures under results/epic-home-integrity-sync/
+      baseline/, not against the operator's homes, which have moved since.
+      GOAL-symlink-merge-settles is measured on HIS-4's synthetic fixture,
+      because its live instance was cleared at kickoff -- say so in the report
+      rather than presenting the synthetic number as the same measurement.
+    goals:
+      - goal: GOAL-no-spurious-holdback
+        contribution: guard
+        expected_effect: "decides the goal; adds no behavioural delta"
+        local_signal: "N/A: this ticket is the measurement"
+      - goal: GOAL-sync-quiet
+        contribution: guard
+        expected_effect: "decides the goal; adds no behavioural delta"
+        local_signal: "N/A: this ticket is the measurement"
+      - goal: GOAL-gate-settles
+        contribution: guard
+        expected_effect: "decides the goal; adds no behavioural delta"
+        local_signal: "N/A: this ticket is the measurement"
+      - goal: GOAL-symlink-merge-settles
+        contribution: guard
+        expected_effect: "decides the goal; adds no behavioural delta"
+        local_signal: "N/A: this ticket is the measurement"
+      - goal: GOAL-home-invariants
+        contribution: guard
+        expected_effect: "decides the goal; adds no behavioural delta"
+        local_signal: "N/A: this ticket is the measurement"

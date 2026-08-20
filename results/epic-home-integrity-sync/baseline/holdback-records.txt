@@ -1,0 +1,30 @@
+BASELINE: per-unit materialization records across the 4 registered child homes
+Measured 2026-08-20 on the operator's real homes. A record whose `source` is not
+the root store makes `recordIsAboutThisSource` false; with the root carrying no
+per-unit record of its own, `sourceHeldTheseBytes` is unavailable, so `disposable()`
+is false and copyUnit() holds the unit back on EVERY sync.
+
+project                                unit                       foreign  src gone  pristine  schema
+commit-diff-context-parent             cdc-agent-substrate-plugin True     False     True      2
+commit-diff-context-parent             deploy-helm                True     True      True      2
+commit-diff-context-parent             spec-double-compiler       True     True      True      2
+commit-diff-context-parent             test-graph                 True     True      True      2
+hyper-experiments-finance-polymarket   acp-cdc-ai-python          True     False     True      2
+hyper-experiments-finance-polymarket   deploy-helm                True     False     True      2
+hyper-experiments-finance-polymarket   hyper-experiments          True     False     True      2
+hyper-experiments-finance-polymarket   hyper-experiments-finance  True     False     True      2
+hyper-experiments-finance-polymarket   tracing-observability      True     False     True      2
+skill-manager                          deploy-helm                True     False     True      2
+skill-manager                          spec-double-compiler       True     False     True      2
+skill-manager                          test-graph                 True     False     True      2
+skill-manager                          tracing-observability      True     False     True      2
+support-agent-rears                    acp-cdc-ai-python          False    False     True      2
+support-agent-rears                    deploy-helm                False    False     True      2
+support-agent-rears                    hyper-experiments          True     True      True      2
+support-agent-rears                    test-graph                 True     True      True      2
+support-agent-rears                    tracing-observability      True     True      True      2
+
+total records                                  : 18
+records naming a source other than the root store: 16   <-- held back on every sync
+  of those, whose source path no longer exists   : 6
+records pristine by their own digest             : 18
