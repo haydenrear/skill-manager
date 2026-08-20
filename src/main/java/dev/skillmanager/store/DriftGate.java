@@ -164,7 +164,12 @@ public record DriftGate(
     }
 
     private static DriftReport.UnitDrift union(DriftReport.UnitDrift a, DriftReport.UnitDrift b) {
-        return new DriftReport.UnitDrift(b.name(), b.kind(), b.change(),
+        // b's digest, not a's: the union describes the unit as it stands NOW,
+        // and b is the newer observation. The file lists are unioned because
+        // the merge exists to keep an unread change from being dropped; the
+        // digest is not a set and the older one describes a tree nobody is
+        // standing on any more.
+        return new DriftReport.UnitDrift(b.name(), b.kind(), b.change(), b.digest(),
                 joined(a.addedFiles(), b.addedFiles()),
                 joined(a.removedFiles(), b.removedFiles()),
                 joined(a.modifiedFiles(), b.modifiedFiles()));
