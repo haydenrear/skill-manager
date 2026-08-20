@@ -2411,7 +2411,7 @@ tickets:
   - id: HIS-1
     title: "copyUnit holds back a tree it can see is identical, because it asks the record instead of the source"
     phase: HIS
-    status: next
+    status: delivered
     epic: home-integrity-sync
     github_issue: 214
     wave: 1
@@ -2493,7 +2493,7 @@ tickets:
   - id: HIS-2
     title: "DriftReport.render() prints every changed path, and re-prints it on every pass"
     phase: HIS
-    status: planned
+    status: delivered
     epic: home-integrity-sync
     github_issue: 212
     wave: 1
@@ -2543,7 +2543,7 @@ tickets:
   - id: HIS-3
     title: "the drift gate re-fires instead of settling -- the safety is right, the re-emission is not"
     phase: HIS
-    status: planned
+    status: next
     epic: home-integrity-sync
     github_issue: 213
     wave: 2
