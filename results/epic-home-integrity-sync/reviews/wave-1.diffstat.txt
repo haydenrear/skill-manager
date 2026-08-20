@@ -1,0 +1,14 @@
+ .github/scripts/select-graph-set.py                |  25 ++
+ .../epic-home-integrity-sync/deferred/backlog.yaml |  11 +-
+ .../tickets/HIS-1/goal-contribution.md             |  40 ++
+ .../tickets/HIS-2/goal-contribution.md             |  67 ++++
+ specs/desired_program_model/ticket_plan.yaml       | 126 ++++---
+ .../bindings/ChildHomeMaterializer.java            | 129 +++++--
+ .../dev/skillmanager/commands/HomeCommand.java     |  14 +-
+ .../java/dev/skillmanager/store/DriftGate.java     |   7 +-
+ .../java/dev/skillmanager/store/DriftReport.java   |  95 ++++-
+ .../ProjectChildHomeMaterializationTest.java       | 116 ++++++
+ .../dev/skillmanager/store/HomeDriftGateTest.java  | 156 +++++++-
+ test_graph/build.gradle.kts                        |  23 ++
+ .../ScaffoldTreeDoesNotStrandTheBaseline.java      | 405 +++++++++++++++++++++
+ 13 files changed, 1133 insertions(+), 81 deletions(-)
