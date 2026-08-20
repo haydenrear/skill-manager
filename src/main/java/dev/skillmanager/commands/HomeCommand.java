@@ -924,13 +924,20 @@ public final class HomeCommand {
             // reason for running the command: the list stays on the console,
             // bounded, because a home with 200 changed units is still one
             // decision and the first dozen make it.
-            Log.warn("%d unit(s) changed in %s (%s) and have not been read:",
-                    pending.report().units().size(), store.root(), pending.operation());
-            Log.errorList("  ", detail
-                    ? pending.report().renderDetailed()
-                    : pending.report().render());
-            Log.warn("  run `%s home drift --ack` once you have taken it in",
-                    HomeDescriptor.cliInvocation(store.root()));
+            String cli = HomeDescriptor.cliInvocation(store.root());
+            // `--detail` is an explicit ask, so it always answers in full. The
+            // collapse is about what an agent gets when it did NOT ask.
+            if (detail || pending.firstSurfacing()) {
+                Log.warn("%d unit(s) changed in %s (%s) and have not been read:",
+                        pending.report().units().size(), store.root(), pending.operation());
+                Log.errorList("  ", detail
+                        ? pending.report().renderDetailed()
+                        : pending.report().render());
+                Log.warn("  run `%s home drift --ack` once you have taken it in", cli);
+            } else {
+                Log.warn("%s", pending.stillUnreadLine(cli));
+            }
+            DriftGate.markSurfaced(store);
             return DriftGate.EXIT_CODE;
         }
 

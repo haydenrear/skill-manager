@@ -58,12 +58,23 @@ public record DriftGate(
         String operation,
         boolean acknowledged,
         String acknowledgedAt,
+        int surfacedCount,
         DriftReport report
 ) {
 
     public static final String FILENAME = "home.drift.json";
 
-    public static final int SCHEMA_VERSION = 1;
+    /**
+     * 2 since HIS-3 added {@link #surfacedCount}.
+     *
+     * <p>No migration, and none is needed: a v1 record simply has no field,
+     * Jackson yields {@code 0}, and {@code 0} means "not yet surfaced". A home
+     * carrying an old record therefore behaves exactly as it did before — full
+     * report once, collapsed after — which is the safe direction. The version
+     * is bumped anyway so the record says what shape it is, rather than leaving
+     * a reader to infer it from a field's absence.
+     */
+    public static final int SCHEMA_VERSION = 2;
 
     /** Exit code for a launch refused because drift is unacknowledged. */
     public static final int EXIT_CODE = 8;
@@ -88,8 +99,18 @@ public record DriftGate(
         DriftReport merged = existing == null
                 ? report
                 : merge(existing.report(), report);
+        // THE RESET, and it is defined against the UNION rather than against the
+        // record's existence -- because `merge` means "a genuinely new change"
+        // and "the same gate again" are the SAME record, differing only in
+        // content. A reset keyed on "is there a record" would fire on every
+        // pass and nothing would ever collapse; one keyed on nothing at all
+        // would leave a real new change opening as a one-line reminder, which
+        // is the safety this ticket must not break.
+        int surfaced = existing != null && merged.equals(existing.report())
+                ? existing.surfacedCount()
+                : 0;
         DriftGate gate = new DriftGate(SCHEMA_VERSION, Instant.now().toString(), operation,
-                false, null, merged);
+                false, null, surfaced, merged);
         Fs.ensureDir(store.root());
         mapper().writerWithDefaultPrettyPrinter().writeValue(file(store).toFile(), gate);
         return Optional.of(gate);
@@ -115,8 +136,11 @@ public record DriftGate(
             // that is the permissive direction, and the whole point of the gate is
             // that the permissive direction is the silent one. Synthesize an
             // unacknowledged record naming the unreadable file.
+            // surfacedCount 0: an unreadable record is a thing nobody has read
+            // by definition, and collapsing the one report that says the gate
+            // itself is broken would be the worst possible place to save lines.
             return Optional.of(new DriftGate(SCHEMA_VERSION, Instant.now().toString(),
-                    "unreadable " + FILENAME, false, null,
+                    "unreadable " + FILENAME, false, null, 0,
                     new DriftReport(null, null, List.of())));
         }
     }
@@ -125,11 +149,61 @@ public record DriftGate(
     public static Optional<DriftGate> acknowledge(SkillStore store) throws IOException {
         DriftGate gate = pending(store).orElse(null);
         if (gate == null) return Optional.empty();
+        // surfacedCount is NOT carried into the acknowledged receipt, and that
+        // is deliberate. An ack retires this gate; the next change writes a
+        // fresh one, which must start at 0 or the first sight of something the
+        // agent has never seen would be a one-line reminder.
         DriftGate acked = new DriftGate(gate.schemaVersion(), gate.detectedAt(), gate.operation(),
-                true, Instant.now().toString(), gate.report());
+                true, Instant.now().toString(), 0, gate.report());
         Fs.ensureDir(store.root());
         mapper().writerWithDefaultPrettyPrinter().writeValue(file(store).toFile(), acked);
         return Optional.of(acked);
+    }
+
+    /**
+     * Whether this is the first time the gate has been shown to anybody.
+     *
+     * <p>The whole point of persisting the count rather than deciding it at the
+     * call site: the loop being fixed is {@code exec} refuses -> operator runs
+     * {@code home drift} -> {@code exec} again, which is three JVMs. Nothing
+     * held in memory can answer this.
+     */
+    public boolean firstSurfacing() {
+        return surfacedCount <= 0;
+    }
+
+    /**
+     * The one line a second and later surfacing gets in place of the report.
+     *
+     * <p>It still names the count and still names the remedy, because a
+     * reminder that does not say what to do is just noise with fewer
+     * characters.
+     */
+    public String stillUnreadLine(String cliInvocation) {
+        int units = report == null ? 0 : report.units().size();
+        return "%d unit%s still unread — `%s home drift --ack` to clear, `%s home drift` to re-read"
+                .formatted(units, units == 1 ? "" : "s", cliInvocation, cliInvocation);
+    }
+
+    /**
+     * Record that the pending gate has been shown, so the next pass can be
+     * briefer. Returns the updated gate, or empty when nothing is pending.
+     *
+     * <p>A write on what is otherwise a read path, and that is the cost of the
+     * decision recorded on issue #213. It is bounded — one small file, once per
+     * surfacing — and it fails soft: an IOException here would be an exception
+     * on a path whose job was to print a warning, so callers that cannot
+     * usefully handle it should let it surface rather than swallowing the gate.
+     */
+    public static Optional<DriftGate> markSurfaced(SkillStore store) throws IOException {
+        DriftGate gate = pending(store).orElse(null);
+        if (gate == null) return Optional.empty();
+        DriftGate shown = new DriftGate(gate.schemaVersion(), gate.detectedAt(), gate.operation(),
+                gate.acknowledged(), gate.acknowledgedAt(), gate.surfacedCount() + 1,
+                gate.report());
+        Fs.ensureDir(store.root());
+        mapper().writerWithDefaultPrettyPrinter().writeValue(file(store).toFile(), shown);
+        return Optional.of(shown);
     }
 
     /**

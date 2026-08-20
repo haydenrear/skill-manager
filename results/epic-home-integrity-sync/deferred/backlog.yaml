@@ -81,3 +81,42 @@ findings:
       ticket rather than a drive-by fix.
     candidate_owner: unassigned
     status: open
+
+  - id: DEF-003
+    found_by: wave-1 close-out, sweeping this epic's branches
+    found_at: "2026-08-20"
+    severity: major
+    summary: >
+      Two worktrees from OTHER tickets have had their directories deleted while
+      their branches still carry unmerged commits -- and a deleted worktree
+      directory takes its gitignored Skill Manager home with it.
+    detail: >
+      `git worktree list` reports both as prunable, meaning the checkout is
+      gone and only the admin record remains:
+
+        wt-115-direct-git-reference-resolution  feature/115-...  1 commit ahead of origin/main
+        wt-SMVENV-001                           feature/SMVENV-001  5 commits ahead of origin/main
+
+      The commits survive on the branches, so no git work is lost. What does not
+      survive is each worktree's <root>/.skill-manager -- gitignored, carried by
+      no branch, and reachable only through `home sync` or `unit publish`. If
+      either home held an edited skill that was never sent up a tier, it is gone
+      and nothing recorded that it existed.
+
+      This is precisely the hazard git-epic-workflow rule 14 states: "git
+      worktree remove deletes a gitignored home without asking and succeeds just
+      as quietly whether it held a week of skill edits or nothing."
+    why_deferred: >
+      NOT THIS EPIC'S WORKTREES. epic/home-integrity-sync created none -- wave 1
+      was worked on branches in the main checkout, recorded as an override in
+      results/epic-home-integrity-sync/reviews/wave-1.md. Rule 14 scopes the
+      sweep to worktrees the epic created, and pruning another ticket's admin
+      record is a decision for whoever owns #115 and SMVENV-001 (#108, closed).
+      Recorded rather than acted on.
+    recommendation: >
+      For the owner: decide whether feature/115-... and feature/SMVENV-001
+      should be merged, retired, or pruned, and whether anything was lost with
+      their homes. `git worktree prune` clears the stale records once that is
+      answered -- it does not recover the homes, and nothing can.
+    candidate_owner: unassigned
+    status: open
