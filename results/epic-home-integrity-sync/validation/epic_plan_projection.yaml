@@ -325,7 +325,7 @@ tickets:
 - id: HIS-3
   title: the drift gate re-fires instead of settling -- the safety is right, the re-emission is not
   phase: HIS
-  status: next
+  status: delivered
   epic: home-integrity-sync
   github_issue: 213
   wave: 2
@@ -415,7 +415,7 @@ tickets:
 - id: HIS-4
   title: a scaffolded gitignored tree strands the installed baseline, and the unit is never syncable again
   phase: HIS
-  status: planned
+  status: next
   epic: home-integrity-sync
   github_issue: 216
   wave: 2
