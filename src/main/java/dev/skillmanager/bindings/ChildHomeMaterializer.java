@@ -1161,29 +1161,9 @@ public final class ChildHomeMaterializer {
         }
 
         Fingerprint dst = fingerprint(dest);
-        if (src.digest().equals(dst.digest())) {
-            return new UnitSync(name, kind, SyncStatus.UNCHANGED, dest, List.of(), List.of(),
-                    "already byte-identical to the source");
-        }
-        if (gitTwinsDifferOnlyInBookkeeping(source, dest)) {
-            return new UnitSync(name, kind, SyncStatus.UNCHANGED, dest, List.of(), List.of(),
-                    "identical outside .git and standing on the same refs; the two copies differ "
-                            + "only in git's own bookkeeping (an index, a reflog, a repack), which "
-                            + "belongs to neither home");
-        }
-        if (gitSourceIsBehind(source, dest)) {
-            // Answered by git, before any record is consulted, because no
-            // record can answer it: a home that pulled a newer upstream into
-            // its store copy is ahead of every home cloned from it earlier,
-            // and the clone-time baselines those homes carry describe an
-            // ancestor of both. Measured (#210): a ticket home at deploy-helm
-            // e22cbe8a, unedited, against a project home that had since
-            // synced to a367aa00, reported 11 files "changed on both sides"
-            // and blocked its own teardown.
-            return new UnitSync(name, kind, SyncStatus.UNCHANGED, dest, List.of(), List.of(),
-                    "the destination's history already contains every ref the source holds and "
-                            + "the source's working tree is clean, so the destination is ahead of "
-                            + "the source and the source has nothing to contribute");
+        String settled = settledWithoutARecord(source, dest, src.digest(), dst.digest());
+        if (settled != null) {
+            return new UnitSync(name, kind, SyncStatus.UNCHANGED, dest, List.of(), List.of(), settled);
         }
         if (gitDestIsBehind(source, dest)) {
             // The mirror image, and the one case where git licenses a
@@ -2171,6 +2151,26 @@ public final class ChildHomeMaterializer {
         String sourceDigest = sourcePrint.digest();
         MaterializationRecord record = readRecord(name, kind).orElse(null);
         String currentDigest = destIsDir ? treeDigest(dest) : null;
+
+        // ASK THE DISK BEFORE ASKING THE RECORD. `reconcile` has always done
+        // this; this method never did, and the gap is #214: 16 of 18 records
+        // across four child homes named a store this pass could not claim, all
+        // 18 were pristine, and every one of them printed a paragraph about
+        // work that "may exist nowhere else" over a tree nobody had touched.
+        //
+        // Placed above `disposal` rather than inside it deliberately. Disposal
+        // answers "may this destination be DESTROYED", which is a question
+        // about provenance and rightly needs evidence. These three answer
+        // "is there anything to do at all", which provenance cannot change:
+        // where the trees already agree, the destroying and the not-destroying
+        // have the same result.
+        if (destIsDir) {
+            String settled = settledWithoutARecord(source, dest, sourceDigest, currentDigest);
+            if (settled != null) {
+                return new UnitOutcome(name, kind, Status.UNCHANGED, dest, settled);
+            }
+        }
+
         Disposal disposal = disposal(name, kind, record, source, destIsDir ? dest : null,
                 sourcePrint, currentDigest);
         String baseline = disposal.baseline();
@@ -2370,6 +2370,89 @@ public final class ChildHomeMaterializer {
             return (destUntouched && recordIsAboutThisSource && !mergeResult)
                     || sourceHeldTheseBytes;
         }
+    }
+
+    /**
+     * The <b>third showing</b> of the <a href="#baseline-rule">baseline rule</a>:
+     * <b>the source is standing on exactly these bytes right now.</b>
+     *
+     * <p>Three questions, all answered from evidence on disk, none of them
+     * needing a record to exist or to be readable. Where any one holds there is
+     * nothing to do, so the answer is the same in both directions and whatever
+     * either record says is irrelevant.
+     *
+     * <h2>Why this function exists rather than three checks in one method</h2>
+     *
+     * <p>It was three checks in one method, and the other method did not have
+     * them. {@code reconcile} — the {@code home sync} path — asked all three
+     * before consulting a record; {@code copyUnit} — the {@code project
+     * resolve} and root-sync path — asked none, computed a digest it then only
+     * used as an argument to {@link #disposal}, and held the unit back. So
+     * {@code home sync} reported a unit UNCHANGED while a sync of the same two
+     * trees printed a paragraph about work that "may exist nowhere else".
+     *
+     * <p>That is the divergence the comment inside {@code copyUnit} says cannot
+     * be allowed to happen — "{@code home sync} and {@code project resolve}
+     * read the same value or they eventually disagree about the units that
+     * matter, which is what CHM-15 was" — reappearing in the opposite
+     * direction, because CHM-15 was fixed by making the two agree about
+     * DISPOSAL and nobody made them agree about the questions asked BEFORE
+     * disposal. One function, two callers, so the next one is a compile error.
+     *
+     * <h2>What it licenses, and why that is nothing</h2>
+     *
+     * <p>Nothing. Every branch returns "there is no work to do", and the
+     * callers turn that into {@code UNCHANGED}. <b>No record is written.</b>
+     * That is deliberate and it is the whole safety argument: the alternative
+     * fix considered for #214 was to re-baseline a record-less or
+     * foreign-sourced destination as "the root owns these bytes", which invents
+     * a claim about bytes two homes may never have shared, persists it, and
+     * hands it to the next reconcile in either direction as licence. See
+     * {@link #sourceHeldTheseBytes}, which argues the same point at length and
+     * declines to make the same move.
+     *
+     * <h2>The measurement</h2>
+     *
+     * <p>16 of 18 per-unit records across four registered child homes named a
+     * {@code source} that was not the root store — six of them a path that no
+     * longer existed, including a deleted ticket worktree and a
+     * {@code /private/tmp} scratchpad from an evaluation session. All 18 were
+     * pristine by their own digest. Every one was held back on every sync, and
+     * the hold-back was protecting nothing.
+     *
+     * @return the reason there is no work to do, or {@code null} when none of
+     *         the three showings holds and the caller must go on to ask the
+     *         record
+     */
+    private static String settledWithoutARecord(Path source, Path dest,
+                                                String sourceDigest, String destDigest)
+            throws IOException {
+        // 1. The trees are the same. Refreshing is a byte-identical no-op, so
+        //    there are no bytes a refresh could destroy -- which is the
+        //    baseline rule's question, answered without asking anyone.
+        if (sourceDigest != null && sourceDigest.equals(destDigest)) {
+            return "already byte-identical to the source";
+        }
+        // 2. Identical outside .git and standing on the same refs.
+        if (gitTwinsDifferOnlyInBookkeeping(source, dest)) {
+            return "identical outside .git and standing on the same refs; the two copies differ "
+                    + "only in git's own bookkeeping (an index, a reflog, a repack), which "
+                    + "belongs to neither home";
+        }
+        // 3. The destination is ahead. Answered by git, before any record is
+        //    consulted, because no record can answer it: a home that pulled a
+        //    newer upstream into its store copy is ahead of every home cloned
+        //    from it earlier, and the clone-time baselines those homes carry
+        //    describe an ancestor of both. Measured (#210): a ticket home at
+        //    deploy-helm e22cbe8a, unedited, against a project home that had
+        //    since synced to a367aa00, reported 11 files "changed on both
+        //    sides" and blocked its own teardown.
+        if (gitSourceIsBehind(source, dest)) {
+            return "the destination's history already contains every ref the source holds and "
+                    + "the source's working tree is clean, so the destination is ahead of "
+                    + "the source and the source has nothing to contribute";
+        }
+        return null;
     }
 
     /**
