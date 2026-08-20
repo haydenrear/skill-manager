@@ -318,6 +318,118 @@ public final class HomeDriftGateTest {
             assertContains(result.err, "1 file", "it says how many paths moved");
         });
 
+        suite.test("the second surfacing of one gate is a line, and a new change re-opens it", () -> {
+            // HIS-3 / #213. The loop: exec refuses, the operator reads, exec
+            // refuses again, and the whole report is re-printed every time. The
+            // count is PERSISTED rather than decided at the call site because
+            // that sequence is three separate JVMs -- nothing in memory can
+            // answer "has anybody seen this yet".
+            Home home = Home.create("drift-surfacing-");
+            home.installSkill("alpha", Map.of("SKILL.md", skillMd("alpha"),
+                    "references/one.md", "one\n"));
+            HomeDigest before = HomeDigest.compute(home.store);
+            Files.writeString(home.unitFile("alpha", "references/one.md"), "one, revised\n");
+            DriftGate.recordSince(home.store, before, "project sync");
+
+            DriftGate fresh = DriftGate.pending(home.store).orElseThrow();
+            assertTrue(fresh.firstSurfacing(), "a gate nobody has seen is a first surfacing");
+
+            Result first = captureBoth(() -> new CommandLine(new HomeCommand.DriftCmd(home.store))
+                    .execute());
+            assertEquals(DriftGate.EXIT_CODE, first.rc, "still gates");
+            assertContains(first.err + first.out, "skill:alpha",
+                    "the first surfacing carries the report");
+
+            Result second = captureBoth(() -> new CommandLine(new HomeCommand.DriftCmd(home.store))
+                    .execute());
+            assertEquals(DriftGate.EXIT_CODE, second.rc,
+                    "a collapsed surfacing still gates -- this ticket changes how often the "
+                            + "report is PRINTED, never when the gate is RETIRED");
+            String secondOut = second.err + second.out;
+            assertContains(secondOut, "still unread", "the second surfacing is the reminder");
+            assertContains(secondOut, "--ack", "which still names the remedy");
+            assertFalse(secondOut.contains("skill:alpha"),
+                    "and does not re-print the report: " + secondOut);
+
+            // FAILURE MODE 1, the one that would break the safety: a gate that
+            // stays collapsed across a change the agent has never seen.
+            HomeDigest mid = HomeDigest.compute(home.store);
+            Files.writeString(home.unitFile("alpha", "SKILL.md"), skillMd("alpha") + "\nmore\n");
+            DriftGate.recordSince(home.store, mid, "project sync");
+
+            assertTrue(DriftGate.pending(home.store).orElseThrow().firstSurfacing(),
+                    "a genuinely new change resets the count");
+            Result reopened = captureBoth(() ->
+                    new CommandLine(new HomeCommand.DriftCmd(home.store)).execute());
+            assertContains(reopened.err + reopened.out, "skill:alpha",
+                    "and re-opens the full report");
+        });
+
+        suite.test("--detail always answers in full, however often the gate has been shown", () -> {
+            Home home = Home.create("drift-detail-always-");
+            home.installSkill("alpha", Map.of("SKILL.md", skillMd("alpha"),
+                    "references/one.md", "one\n"));
+            HomeDigest before = HomeDigest.compute(home.store);
+            Files.writeString(home.unitFile("alpha", "references/one.md"), "one, revised\n");
+            DriftGate.recordSince(home.store, before, "project sync");
+
+            captureBoth(() -> new CommandLine(new HomeCommand.DriftCmd(home.store)).execute());
+            captureBoth(() -> new CommandLine(new HomeCommand.DriftCmd(home.store)).execute());
+
+            // Collapsed by now. `--detail` is an explicit ask; the collapse is
+            // about what an agent gets when it did NOT ask.
+            Result detailed = captureBoth(() ->
+                    new CommandLine(new HomeCommand.DriftCmd(home.store)).execute("--detail"));
+            assertContains(detailed.err + detailed.out, "references/one.md",
+                    "--detail still names every changed path");
+        });
+
+        suite.test("an ack does not leave a count behind for the next gate to inherit", () -> {
+            // If surfacedCount survived an ack into a later re-pend, the FIRST
+            // sight of a change the agent had never seen would be a one-line
+            // reminder. That is failure mode 1 arriving by a different route.
+            Home home = Home.create("drift-ack-resets-");
+            home.installSkill("alpha", Map.of("SKILL.md", skillMd("alpha")));
+            HomeDigest before = HomeDigest.compute(home.store);
+            Files.writeString(home.unitFile("alpha", "SKILL.md"), skillMd("alpha") + "\none\n");
+            DriftGate.recordSince(home.store, before, "project sync");
+
+            captureBoth(() -> new CommandLine(new HomeCommand.DriftCmd(home.store)).execute());
+            captureBoth(() -> new CommandLine(new HomeCommand.DriftCmd(home.store)).execute());
+            DriftGate.acknowledge(home.store);
+            assertTrue(DriftGate.pending(home.store).isEmpty(), "the ack retired the gate");
+
+            HomeDigest mid = HomeDigest.compute(home.store);
+            Files.writeString(home.unitFile("alpha", "SKILL.md"), skillMd("alpha") + "\ntwo\n");
+            DriftGate.recordSince(home.store, mid, "project sync");
+
+            assertTrue(DriftGate.pending(home.store).orElseThrow().firstSurfacing(),
+                    "the gate after an ack starts unseen");
+        });
+
+        suite.test("a record written before surfacedCount existed degrades to full-once", () -> {
+            // The compat rule, asserted rather than assumed: a v1 record has no
+            // field, Jackson yields 0, 0 means "not yet surfaced", and the home
+            // behaves exactly as it did before the field existed.
+            Home home = Home.create("drift-v1-record-");
+            home.installSkill("alpha", Map.of("SKILL.md", skillMd("alpha")));
+            HomeDigest before = HomeDigest.compute(home.store);
+            Files.writeString(home.unitFile("alpha", "SKILL.md"), skillMd("alpha") + "\nedit\n");
+            DriftGate.recordSince(home.store, before, "project sync");
+
+            Path record = DriftGate.file(home.store);
+            String v1 = Files.readString(record)
+                    .replaceAll("\\s*\"surfacedCount\"\\s*:\\s*\\d+,?", "")
+                    .replaceAll("\"schemaVersion\"\\s*:\\s*2", "\"schemaVersion\" : 1");
+            Files.writeString(record, v1);
+            assertFalse(Files.readString(record).contains("surfacedCount"),
+                    "the fixture really is a pre-HIS-3 record");
+
+            DriftGate reread = DriftGate.pending(home.store).orElseThrow();
+            assertTrue(reread.firstSurfacing(),
+                    "an old record reads as not yet surfaced, which is today's behaviour");
+        });
+
         suite.test("acknowledging clears the gate and the launch proceeds", () -> {
             Home home = Home.create("drift-gate-ack-");
             home.writeDescriptor();

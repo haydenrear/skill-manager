@@ -156,7 +156,19 @@ public final class ExecCommand implements Callable<Integer> {
         if (drift != null && !ackDrift) {
             Log.error("refusing to launch: %s changed and the change has not been read.",
                     store.root());
-            for (String line : drift.report().render()) Log.error("  %s", line);
+            // The refusal repeats every time a launch is attempted, which is the
+            // loop #213 is about: exec refuses, the operator reads, exec refuses
+            // again. The first refusal carries the report; the rest carry the
+            // count and the remedy. The REFUSAL itself is unchanged -- this
+            // ticket changes how often the gate is printed in full, never when
+            // it is retired.
+            if (drift.firstSurfacing()) {
+                for (String line : drift.report().render()) Log.error("  %s", line);
+            } else {
+                Log.error("  %s", drift.stillUnreadLine(
+                        dev.skillmanager.store.HomeDescriptor.cliInvocation(store.root())));
+            }
+            DriftGate.markSurfaced(store);
             // Bare `home drift` is the spelling that shows the pending change.
             // This line said `--show` for as long as the gate has existed, and
             // that option has never existed: it answered `Unknown option:
