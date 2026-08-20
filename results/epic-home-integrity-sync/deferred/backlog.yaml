@@ -1,0 +1,74 @@
+# Deferred findings — epic/home-integrity-sync
+#
+# APPEND ONLY. A ticket agent that meets a failure case outside its declared
+# slice adds an entry here and moves on. It does not widen the ticket to fix
+# it, and it does not chase a goal metric by expanding scope.
+#
+# Policy: mode batch, blocking escalate, budget 5 findings per ticket.
+# The epic agent triages this file with the owner at each wave review.
+#
+# Schema per entry:
+#   id, found_by, found_at, severity (blocking|major|minor), summary,
+#   reproduction, why_deferred, candidate_owner, status (open|triaged|closed)
+
+version: 1
+findings:
+  - id: DEF-001
+    found_by: epic kickoff (rule 11 currency check)
+    found_at: "2026-08-20"
+    severity: major
+    summary: >
+      The project home cannot be brought fully current before the epic starts,
+      because the two units that refuse to sync refuse for exactly the reason
+      HIS-4 exists to fix.
+    detail: >
+      `deploy-helm` and `spec-double-compiler` both report "extra local changes
+      (working tree edits, or commits ahead of the installed baseline) -- sync
+      would overwrite them" and stay stale. The "local changes" are the
+      dereferenced in-unit symlink trees (test_graph/build-logic, sdk,
+      standard-nodes) that CHM-5 correctly materializes as real directories.
+      Outside those paths the trees are content-identical to the root store.
+
+      This is the second face of the same defect. The first face was the
+      MERGE_CONFLICT deadlock, cleared by hand at kickoff (see
+      baseline/README.md). Clearing the deadlock did not make the units
+      syncable, because the deref divergence is still read as an edit.
+    reproduction: >
+      SKILL_MANAGER_HOME=<repo>/.skill-manager ./skill-manager sync deploy-helm
+    why_deferred: >
+      The remedy the tool prints is `sync --merge`, which re-runs the merge
+      that produced the deadlock in the first place. Running it to satisfy a
+      currency check would re-break the operator's project home to make a
+      preflight look green. HIS-4 (#216) owns the mechanism; this is its
+      subject, not a separate defect.
+    accepted_risk: >
+      Ticket worktree homes cloned from this project home inherit two units
+      one commit behind their source. Both are content-identical outside the
+      dereferenced paths, and neither is a unit any HIS ticket edits, so the
+      inherited staleness does not affect this epic's work. Re-check after
+      HIS-4 lands.
+    candidate_owner: HIS-4
+    status: open
+
+  - id: DEF-002
+    found_by: epic kickoff
+    found_at: "2026-08-20"
+    severity: minor
+    summary: >
+      A sync's printed remedy names the ROOT home's pinned CLI even when the
+      sync ran against the project home.
+    detail: >
+      `SKILL_MANAGER_HOME=<repo>/.skill-manager ./skill-manager sync deploy-helm`
+      prints `re-run with: /Users/hayde/.skill-manager/bin/cli/skill-manager
+      sync deploy-helm --merge`. Following that remedy verbatim operates on the
+      ROOT home, not the project home the operator was working in. A project
+      home with no pinned CLI of its own also refuses `skt sync` outright:
+      "this project-tier home has no pinned CLI -- regenerate it with
+      `skill-manager home shims`, or run the sync from the tier above".
+    why_deferred: >
+      Same family as #142 (a refusal remedy naming a bare `skill-manager`) but
+      a distinct surface, and outside every declared HIS slice. It is a remedy
+      that silently changes which home you are editing, which is worth its own
+      ticket rather than a drive-by fix.
+    candidate_owner: unassigned
+    status: open
