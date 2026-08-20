@@ -432,9 +432,16 @@ epic_goals:
       units held back by copyUnit() whose tree is byte-identical to the live
       source outside .git, over the 4 registered child homes
     harness: >
-      python skills/test_graph/scripts/run.py home-integrity
-      (node ForeignRecordDoesNotHoldBackAnIdenticalTree), plus a re-count over
-      results/epic-home-integrity-sync/baseline/holdback-records.txt
+      jbang RunTests.java -- ProjectChildHomeMaterializationTest, the cases
+      "a pristine unit whose record names a store that is gone is not held back"
+      (clause 1) and "a unit that genuinely differs is still held back, foreign
+      record or not" (clause 2); THEN
+      python skills/test_graph/scripts/run.py home-integrity for the integrated
+      home. A re-count over
+      results/epic-home-integrity-sync/baseline/holdback-records.txt is
+      SUPPORTING evidence about the operator's homes, not the deciding run --
+      those homes have moved since the baseline and must not be re-measured as
+      if they had not.
     baseline:
       value: "16 of 18 records held back; 18 of 18 pristine by their own digest"
       measured_at: "76434c7"
@@ -456,10 +463,22 @@ epic_goals:
       lines and characters DriftReport.render() emits over the recorded
       7-unit baseline drift record
     harness: >
-      python skills/test_graph/scripts/run.py home-integrity
-      (node DriftReportIsBounded, which renders the committed baseline fixture)
+      jbang RunTests.java -- HomeDriftGateTest, the case "the committed baseline
+      fixture renders inside GOAL-sync-quiet's bound", which reads
+      results/epic-home-integrity-sync/baseline/root-home-drift.json and asserts
+      both clauses over the real record; plus the cases "the rollup is one line
+      per unit, and the paths are still reachable" and "`home drift` shows the
+      pending change and exits non-zero" (clause 2, through the CLI).
     baseline:
-      value: "889 lines, 87,208 characters (~21,800 tokens), re-emitted every sync / exec gate / home drift"
+      value: >
+        896 lines, 88,308 characters (~22,077 tokens), re-emitted every sync /
+        exec gate / home drift. MEASURED by rendering the committed record
+        through the product's own renderer. An earlier figure of "889 lines,
+        87,208 characters" appears in this epic's first commits: 889 was the
+        per-FILE line count without the 7 per-unit headers, and 87,208 was an
+        estimate (path length + 6 per line) rather than a render. The rendered
+        figure above is the one HIS-6 compares against; the estimate is
+        superseded, not deleted, so the record shows which number moved.
       measured_at: "76434c7"
       evidence: results/epic-home-integrity-sync/baseline/root-home-drift.json
     target: >
@@ -479,8 +498,10 @@ epic_goals:
       output size and exit code on the 2nd..Nth surfacing of one unacknowledged
       gate, with no new change between passes
     harness: >
-      python skills/test_graph/scripts/run.py home-integrity
-      (node AckIsStable, extended to drive record -> surface -> surface -> ack)
+      python skills/test_graph/scripts/run.py home-integrity -- node
+      home.integrity.ack.is.stable, extended by HIS-3 to drive
+      record -> surface -> surface -> ack; plus jbang RunTests.java --
+      HomeDriftGateTest for the per-surface output shape.
     baseline:
       value: "full report re-emitted on every pass; exec refuses with exit 8 each time"
       measured_at: "76434c7"
@@ -504,8 +525,10 @@ epic_goals:
       change-managed units left in MERGE_CONFLICT after a sync of a unit whose
       store copy contains symlinks into the parent store
     harness: >
-      python skills/test_graph/scripts/run.py home-integrity
-      (node DerefedSymlinkSyncsClean, synthetic fixture -- see the note below)
+      python skills/test_graph/scripts/run.py sync-settles -- node
+      sync.settles.scaffold.tree.does.not.strand.baseline. That node EXISTS and
+      currently PASSES on a root-tier fixture; HIS-4's first acceptance item is
+      to make it red against the project-tier case before anything is fixed.
     baseline:
       value: >
         2 of 21 units in the project home permanently stuck (deploy-helm,
@@ -532,7 +555,7 @@ epic_goals:
     metric: >
       invariants over the home-integrity view, each carrying a regression cfg
       that must keep failing
-    harness: "specs/program_model/run_tlc.sh and pytest specs/"
+    harness: "specs/program_model/run_tlc.sh and uv run pytest specs/"
     baseline:
       value: "4 invariants, 5 regression cfgs (ARTI-22, HomeIntegrityInternal)"
       measured_at: "76434c7"
@@ -2580,6 +2603,41 @@ tickets:
       Second and later, with no new change between them, is one line: the count
       still unread and the ack command. A genuinely new change re-opens the
       full report and still gates the next launch.
+    design_decision_to_make_before_coding: >
+      THERE IS NO FIELD TODAY THAT DISTINGUISHES THE TWO. home.drift.json
+      carries detectedAt, operation, acknowledged, acknowledgedAt and the
+      report; nothing records that a pass has SHOWN this gate. So "second
+      surfacing" is not observable yet, and the ticket must choose how it
+      becomes observable. Two routes, and they are not equivalent:
+
+      (a) A PERSISTED MARKER on the gate -- surfacedAt / surfacedCount. Works
+      across processes, which is the case that actually bites: `exec` refuses,
+      the operator runs `home drift`, then `exec` again, and those are three
+      processes. It is a schema change to home.drift.json, so it needs a schema
+      version and a decision about what an old record without the field means
+      (proposal: absent == not yet surfaced, which degrades to today's
+      behaviour rather than to silence). It also touches ack/re-pend, which
+      AckIsNotStaleOnArrival constrains -- a marker that survives an ack would
+      let a re-pended gate open collapsed.
+
+      (b) A CALL-SITE DISTINCTION -- the caller decides, from whether the
+      incoming report added anything, whether this is a re-read. Writes no new
+      state and cannot get stale, but it is per-process: it collapses nothing
+      across the exec -> drift -> exec sequence above, which is the sequence
+      the complaint is about.
+
+      Write the choice and its reason into the ticket before any code. Recording
+      it here because a decision made silently inside an implementation is the
+      one nobody can review, and this one changes a persisted schema.
+    merge_interaction: >
+      DriftGate.record() MERGES a new report into the pending one and rewrites
+      the gate (DriftGate.java:87-95), so "a genuinely new change" and "the same
+      gate again" are the same record, differing only in content. Whichever
+      route above is taken must define change against the UNION, not against
+      the record's existence. The two failure modes to test for, both plausible:
+      a gate that stays collapsed across a real new change (the safety this
+      ticket must not break), and one that never collapses at all (the drag it
+      exists to remove).
     acceptance:
       assertions:
         - Second and later surfacing of one unacknowledged gate is a single line.
@@ -2625,8 +2683,17 @@ tickets:
 
       (1) THE TRIGGER. The test-graph scaffolder writes
       test_graph/{build-logic,sdk,standard-nodes} into a consuming unit as
-      SYMLINKS into the test-graph store copy, and the unit's own
-      test_graph/.gitignore:30-32 declares all three not-content. CHM-5
+      SYMLINKS into the test-graph store copy, and ALSO writes the .gitignore
+      that declares all three not-content -- ensure_provider_binding_ignores,
+      skills/test_graph/scripts/_common.py:318-346.
+
+      READ THAT CAREFULLY, because an earlier draft of this ticket got it
+      wrong: the ignore lines are GENERATED at bind time, not checked in. The
+      repo's own skills/test_graph/test_graph/.gitignore is 26 lines and names
+      none of the three. The installed copy in the operator's project home is
+      33 lines and carries them at 30-32. Any fixture that hand-writes a
+      plausible .gitignore is testing the fixture; capture what the scaffolder
+      actually emits. CHM-5
       dereferences them into real directories so the child home is independent
       -- correct -- but Rederivable does not carry these names and the digest
       walk does not read .gitignore, so they count as unit content. MEASURED:

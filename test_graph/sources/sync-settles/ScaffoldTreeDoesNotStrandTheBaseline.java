@@ -50,8 +50,13 @@ import java.util.List;
  *   <li><b>The trigger.</b> The test-graph scaffolder writes
  *       {@code test_graph/build-logic}, {@code sdk} and {@code standard-nodes}
  *       into a consuming unit as symlinks into the test-graph store copy, and
- *       the unit's own {@code test_graph/.gitignore} declares all three
- *       not-content. {@code ChildHomeMaterializer} dereferences them into real
+ *       ALSO writes the {@code .gitignore} that declares all three
+ *       not-content — {@code ensure_provider_binding_ignores},
+ *       {@code skills/test_graph/scripts/_common.py:318-346}. The lines are
+ *       GENERATED at bind time, not checked in: the repo's own
+ *       {@code skills/test_graph/test_graph/.gitignore} is 26 lines and names
+ *       none of the three, while the installed copy in the operator's project
+ *       home is 33 and carries them at 30-32. {@code ChildHomeMaterializer} dereferences them into real
  *       directories so the child home is independent — correct — but
  *       {@code Rederivable} does not know these names and the digest walk does
  *       not read {@code .gitignore}, so they count as unit content. The child

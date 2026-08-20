@@ -8,6 +8,15 @@ epic:
   repository: haydenrear/skill-manager
   umbrella_issue: 215
   ticket_prefix: HIS
+  validation: 'validate_epic_plan.py cannot be run against this file as a whole: it requires full epic
+    scheduling fields (wave, promotion_order, blocks, conflict_keys, goals) on EVERY ticket, and the 34
+    pre-epic CHM/COH/EFF/ ISSUE/MIG tickets predate the epic primitive and legitimately carry none. Running
+    it here reports those 34 and buries the epic''s own findings. The epic is validated against a generated
+    projection instead -- results/epic-home-integrity-sync/validation/epic_plan_projection.yaml, which
+    carries the epic blocks and the HIS-* tickets only. Regenerate it from this file after any schedule
+    change; this file stays canonical. Last run: OK, 6 tickets, 0 retired, 4 waves, 5 goals.
+
+    '
   note: 'Branched from epic/artifact-dag and NOT closing it out. That branch is the constituent side of
     integration-repository epic #100 (the derived-artifact DAG), which is open with ~31 ARTI tickets and
     an unrun terminal evaluation (#117 / ARTI-16). Folding it in here would strand #100''s goal accounting,
@@ -48,8 +57,12 @@ epic_goals:
     over the 4 registered child homes
 
     '
-  harness: 'python skills/test_graph/scripts/run.py home-integrity (node ForeignRecordDoesNotHoldBackAnIdenticalTree),
-    plus a re-count over results/epic-home-integrity-sync/baseline/holdback-records.txt
+  harness: 'jbang RunTests.java -- ProjectChildHomeMaterializationTest, the cases "a pristine unit whose
+    record names a store that is gone is not held back" (clause 1) and "a unit that genuinely differs
+    is still held back, foreign record or not" (clause 2); THEN python skills/test_graph/scripts/run.py
+    home-integrity for the integrated home. A re-count over results/epic-home-integrity-sync/baseline/holdback-records.txt
+    is SUPPORTING evidence about the operator''s homes, not the deciding run -- those homes have moved
+    since the baseline and must not be re-measured as if they had not.
 
     '
   baseline:
@@ -72,12 +85,22 @@ epic_goals:
   metric: 'lines and characters DriftReport.render() emits over the recorded 7-unit baseline drift record
 
     '
-  harness: 'python skills/test_graph/scripts/run.py home-integrity (node DriftReportIsBounded, which renders
-    the committed baseline fixture)
+  harness: 'jbang RunTests.java -- HomeDriftGateTest, the case "the committed baseline fixture renders
+    inside GOAL-sync-quiet''s bound", which reads results/epic-home-integrity-sync/baseline/root-home-drift.json
+    and asserts both clauses over the real record; plus the cases "the rollup is one line per unit, and
+    the paths are still reachable" and "`home drift` shows the pending change and exits non-zero" (clause
+    2, through the CLI).
 
     '
   baseline:
-    value: 889 lines, 87,208 characters (~21,800 tokens), re-emitted every sync / exec gate / home drift
+    value: '896 lines, 88,308 characters (~22,077 tokens), re-emitted every sync / exec gate / home drift.
+      MEASURED by rendering the committed record through the product''s own renderer. An earlier figure
+      of "889 lines, 87,208 characters" appears in this epic''s first commits: 889 was the per-FILE line
+      count without the 7 per-unit headers, and 87,208 was an estimate (path length + 6 per line) rather
+      than a render. The rendered figure above is the one HIS-6 compares against; the estimate is superseded,
+      not deleted, so the record shows which number moved.
+
+      '
     measured_at: 76434c7
     evidence: results/epic-home-integrity-sync/baseline/root-home-drift.json
   target: 'CLAUSE 1: at most one line per changed unit plus one total line -- at most 10 lines over this
@@ -97,8 +120,9 @@ epic_goals:
     change between passes
 
     '
-  harness: 'python skills/test_graph/scripts/run.py home-integrity (node AckIsStable, extended to drive
-    record -> surface -> surface -> ack)
+  harness: 'python skills/test_graph/scripts/run.py home-integrity -- node home.integrity.ack.is.stable,
+    extended by HIS-3 to drive record -> surface -> surface -> ack; plus jbang RunTests.java -- HomeDriftGateTest
+    for the per-surface output shape.
 
     '
   baseline:
@@ -123,8 +147,9 @@ epic_goals:
     symlinks into the parent store
 
     '
-  harness: 'python skills/test_graph/scripts/run.py home-integrity (node DerefedSymlinkSyncsClean, synthetic
-    fixture -- see the note below)
+  harness: 'python skills/test_graph/scripts/run.py sync-settles -- node sync.settles.scaffold.tree.does.not.strand.baseline.
+    That node EXISTS and currently PASSES on a root-tier fixture; HIS-4''s first acceptance item is to
+    make it red against the project-tier case before anything is fixed.
 
     '
   baseline:
@@ -152,7 +177,7 @@ epic_goals:
   metric: 'invariants over the home-integrity view, each carrying a regression cfg that must keep failing
 
     '
-  harness: specs/program_model/run_tlc.sh and pytest specs/
+  harness: specs/program_model/run_tlc.sh and uv run pytest specs/
   baseline:
     value: 4 invariants, 5 regression cfgs (ARTI-22, HomeIntegrityInternal)
     measured_at: 76434c7
@@ -170,7 +195,7 @@ tickets:
   title: copyUnit holds back a tree it can see is identical, because it asks the record instead of the
     source
   phase: HIS
-  status: next
+  status: delivered
   epic: home-integrity-sync
   github_issue: 214
   wave: 1
@@ -243,7 +268,7 @@ tickets:
 - id: HIS-2
   title: DriftReport.render() prints every changed path, and re-prints it on every pass
   phase: HIS
-  status: planned
+  status: delivered
   epic: home-integrity-sync
   github_issue: 212
   wave: 1
@@ -300,7 +325,7 @@ tickets:
 - id: HIS-3
   title: the drift gate re-fires instead of settling -- the safety is right, the re-emission is not
   phase: HIS
-  status: planned
+  status: next
   epic: home-integrity-sync
   github_issue: 213
   wave: 2
@@ -344,6 +369,35 @@ tickets:
     and still gates the next launch.
 
     '
+  design_decision_to_make_before_coding: 'THERE IS NO FIELD TODAY THAT DISTINGUISHES THE TWO. home.drift.json
+    carries detectedAt, operation, acknowledged, acknowledgedAt and the report; nothing records that a
+    pass has SHOWN this gate. So "second surfacing" is not observable yet, and the ticket must choose
+    how it becomes observable. Two routes, and they are not equivalent:
+
+    (a) A PERSISTED MARKER on the gate -- surfacedAt / surfacedCount. Works across processes, which is
+    the case that actually bites: `exec` refuses, the operator runs `home drift`, then `exec` again, and
+    those are three processes. It is a schema change to home.drift.json, so it needs a schema version
+    and a decision about what an old record without the field means (proposal: absent == not yet surfaced,
+    which degrades to today''s behaviour rather than to silence). It also touches ack/re-pend, which AckIsNotStaleOnArrival
+    constrains -- a marker that survives an ack would let a re-pended gate open collapsed.
+
+    (b) A CALL-SITE DISTINCTION -- the caller decides, from whether the incoming report added anything,
+    whether this is a re-read. Writes no new state and cannot get stale, but it is per-process: it collapses
+    nothing across the exec -> drift -> exec sequence above, which is the sequence the complaint is about.
+
+    Write the choice and its reason into the ticket before any code. Recording it here because a decision
+    made silently inside an implementation is the one nobody can review, and this one changes a persisted
+    schema.
+
+    '
+  merge_interaction: 'DriftGate.record() MERGES a new report into the pending one and rewrites the gate
+    (DriftGate.java:87-95), so "a genuinely new change" and "the same gate again" are the same record,
+    differing only in content. Whichever route above is taken must define change against the UNION, not
+    against the record''s existence. The two failure modes to test for, both plausible: a gate that stays
+    collapsed across a real new change (the safety this ticket must not break), and one that never collapses
+    at all (the drag it exists to remove).
+
+    '
   acceptance:
     assertions:
     - Second and later surfacing of one unacknowledged gate is a single line.
@@ -359,13 +413,11 @@ tickets:
     expected_effect: must not reintroduce per-file output on any surface
     local_signal: python skills/test_graph/scripts/run.py home-integrity
 - id: HIS-4
-  title: dereferencing an in-unit symlink deadlocks the unit's git repo, and the error record outlives
-    the condition
+  title: a scaffolded gitignored tree strands the installed baseline, and the unit is never syncable again
   phase: HIS
   status: planned
   epic: home-integrity-sync
-  github_issue: null
-  needs_github_issue: true
+  github_issue: 216
   wave: 2
   depends_on:
   - HIS-1
@@ -376,58 +428,101 @@ tickets:
   promotion_predecessor: HIS-3
   conflict_keys:
     production:
+    - Rederivable
     - ChildHomeMaterializer.materializedView
-    - ChildHomeMaterializer.dereference
+    - SyncUseCase.merge
     - InstalledRecord.errors
     tla:
     - HomeIntegrityInternal.RecordDescribesItsStoreOrSaysWhy
     adapters: []
     test_graph:
-    - home-integrity/DerefedSymlinkSyncsClean
+    - sync-settles/ScaffoldTreeDoesNotStrandTheBaseline
     workflow_data: []
-  objective: 'TWO defects that met in one live state, found while satisfying rule 11 at this epic''s kickoff.
-    Both instances of the epic''s theme.
-
-    (a) THE DEADLOCK. `deploy-helm` and `spec-double-compiler` in the project home were stuck in MERGE_CONFLICT,
-    blocking `skt sync` for both. The index carried stages 1 and 3 at mode 120000 (symlink) for test_graph/build-logic,
-    test_graph/sdk and test_graph/standard-nodes, stage 2 absent, NO MERGE_HEAD, and HEAD tracking none
-    of those paths. CHM-5 dereferences in-unit symlinks into real directories -- correct, and what makes
-    a child home independent -- but it does so inside a git working tree. Git reads the symlink as deleted;
-    sync stashes, merges an upstream that still has mode 120000 there, pops, and conflicts. The printed
-    remedy (`git add` + `git commit`) cannot clear it, because the working tree cannot hold both a directory
-    and a symlink at one path. It re-arms on the next sync.
-
-    (b) THE STICKY RECORD. installed/<unit>.json carried errors: [{kind: MERGE_CONFLICT, firstSeenAt:
-    2026-08-11T22:23:41Z}] with no resolvedAt and no re-derivation. After the git state was cleared, skt
-    still reported the conflict, because the state is RECORDED, not observed. Same shape as HIS-1''s dead
-    source path and HIS-3''s unretired gate.
+  objective: 'THE SINGLE BIGGEST CHANGE-MANAGEMENT DRAG THE HOME MECHANISM HAS PRODUCED, and the reason
+    this ticket is scoped wider than the issue that opened it. Two units in the operator''s project home
+    -- deploy-helm and spec-double-compiler -- sat permanently unsyncable for nine days. Every agent in
+    every worktree cloned from that home inherited both, which is why it reads as a productivity problem
+    rather than a bug.
 
     '
-  slice: '(a) Decide how a dereferenced path is represented to the unit''s git repo so a merge does not
-    re-arm forever, and make the printed remedy one that actually clears the state. As in CHM-24, "exclude
-    it from the merge algebra" is not automatically safe -- say what happens to a unit whose only divergence
-    IS the dereferenced path. (b) Re-derive an installed-record error from the live tree when it is read.
-    A condition that has cleared stops being reported without anyone editing home state by hand.
+  the_chain: 'FOUR LINKS, and any one of them left in place reproduces the drag. This is why the ticket
+    is not "exclude the tree from the digest".
+
+    (1) THE TRIGGER. The test-graph scaffolder writes test_graph/{build-logic,sdk,standard-nodes} into
+    a consuming unit as SYMLINKS into the test-graph store copy, and ALSO writes the .gitignore that declares
+    all three not-content -- ensure_provider_binding_ignores, skills/test_graph/scripts/_common.py:318-346.
+
+    READ THAT CAREFULLY, because an earlier draft of this ticket got it wrong: the ignore lines are GENERATED
+    at bind time, not checked in. The repo''s own skills/test_graph/test_graph/.gitignore is 26 lines
+    and names none of the three. The installed copy in the operator''s project home is 33 lines and carries
+    them at 30-32. Any fixture that hand-writes a plausible .gitignore is testing the fixture; capture
+    what the scaffolder actually emits. CHM-5 dereferences them into real directories so the child home
+    is independent -- correct -- but Rederivable does not carry these names and the digest walk does not
+    read .gitignore, so they count as unit content. MEASURED: root store test_graph/ holds 10 entries,
+    the project home holds 13 and 12. Rederivable''s own membership test is "can a tool write it again
+    from content that is still here", and these pass it.
+
+    (2) THE MECHANISM. Sync reads that as a dirty tree, stashes, merges upstream -- THE MERGE COMMIT LANDS
+    -- then pops. The pop conflicts: the stash carries a change to a path upstream holds at mode 120000
+    and the working tree cannot hold both a directory and a symlink there. Sync aborts. MEASURED: index
+    stages 1 and 3 at 120000 for all three paths, stage 2 absent, no MERGE_HEAD, HEAD tracking none of
+    them.
+
+    (3) THE PERMANENCE, AND THE LOAD-BEARING LINK. The merge is committed; installed/<unit>.json is not
+    updated. MEASURED: record gitHash c72d03a6 written 2026-07-25, store HEAD at eab28837. HEAD is ahead
+    of the baseline FOREVER, so every later sync reports "extra local changes (working tree edits, or
+    commits ahead of the installed baseline)" and refuses. Fixing (1) and (2) does NOT release a home
+    already in this state -- which is the state the operator was actually in, and the reason a fix that
+    only excludes the tree would look right and change nothing.
+
+    (4) THE INVISIBILITY. errors[{kind: MERGE_CONFLICT}] carries no resolvedAt and is never re-derived,
+    so `skt check` kept reporting the conflict after the git state was clean.
 
     '
-  reproduction_note: 'The live instance was cleared by hand at kickoff to satisfy rule 11 (git reset restoring
-    the index from HEAD; working trees untouched; backups in the session scratchpad; the conflict did
-    not recur on the next sync). The mechanism is unchanged. Build the fixture SYNTHETICALLY -- a unit
-    carrying a symlink into the parent store, materialized, then synced against a moved upstream. Do not
-    rely on the operator''s homes.
+  slice: '(1) Decide whether a unit''s own .gitignore, or an extension to Rederivable, or both, keeps
+    scaffolded re-derivable trees out of the digest. Prefer the unit''s declaration over a global name
+    list: `sdk` and `standard-nodes` are generic enough to be real content in some other unit, and #180
+    already establishes that gitignored paths should be honoured on a neighbouring surface. Whatever is
+    chosen, the skip must be on BOTH sides -- not hashed, not copied, and NOT DELETED (carryOverUnownedTrees).
+    Excluding a path must make it invisible, not disposable.
+
+    (2) Make the merge and the record atomic, or compensated. A sync that leaves a merge committed and
+    the baseline unwritten is the generator of the permanent state; either roll the merge back on a failed
+    pop, or write the advanced baseline together with the recorded conflict.
+
+    (3) Re-derive an installed-record error from the live tree when it is read.
+
+    (4) Provide the release path for a home ALREADY stranded. Fixes (1)-(3) are prospective; the operator''s
+    two units were only recovered by hand.
+
+    '
+  manual_recovery_performed: '2026-08-20, recorded so the ticket is not measured against a state that
+    no longer exists. The deadlock was cleared by `git reset` (restoring the index from HEAD; working
+    trees untouched). That was NOT sufficient: both units still refused with "extra local changes" because
+    of link (3). They were released by removing the gitignored scaffold trees from the project home copies
+    -- which made the working tree clean -- and then `sync --merge`, which merged with no stash, no pop
+    and no conflict. Both tiers then reported `skt check: all current` for the first time. Backups of
+    the removed trees, the original indexes and the original installed records are in the session scratchpad.
+    THE PRODUCT WAS NOT CHANGED, so the mechanism is intact and will re-produce this state.
 
     '
   acceptance:
     assertions:
-    - The synthetic fixture leaves 0 units in MERGE_CONFLICT and `sync` completes.
-    - The remedy printed for a genuinely divergent unit is runnable and changes the verdict.
-    - A unit whose only divergence is the dereferenced path is not silently reported clean.
+    - FIRST, reproduce it. sync-settles/ScaffoldTreeDoesNotStrandTheBaseline currently PASSES on a root-tier
+      install/sync fixture and does not reach the project-tier materialized case. Make it red against
+      the real defect before fixing anything.
+    - A unit carrying a scaffolded gitignored tree stays syncable, at every tier.
+    - A sync that fails partway never leaves the baseline behind a merge it already committed.
+    - An excluded path is not hashed, not copied, and not deleted.
     - An installed-record error whose condition has cleared stops being reported, with no hand edit.
+    - A home already stranded has a documented, runnable release path that is not `git reset` plus manual
+      deletion.
   goals:
   - goal: GOAL-symlink-merge-settles
     contribution: direct
-    expected_effect: 2 of 21 stuck -> 0 on the synthetic fixture; stale error records self-clear
-    local_signal: python skills/test_graph/scripts/run.py home-integrity
+    expected_effect: 2 of 21 units permanently stuck -> 0; a stranded baseline becomes impossible rather
+      than manually recoverable
+    local_signal: python skills/test_graph/scripts/run.py sync-settles
   - goal: GOAL-sync-quiet
     contribution: enabling
     expected_effect: none on its own -- removes the cause of 776 of the baseline's 889 lines
@@ -437,8 +532,7 @@ tickets:
   phase: HIS
   status: planned
   epic: home-integrity-sync
-  github_issue: null
-  needs_github_issue: true
+  github_issue: 217
   wave: 3
   depends_on:
   - HIS-1
@@ -481,8 +575,7 @@ tickets:
   status: planned
   role: evaluation
   epic: home-integrity-sync
-  github_issue: null
-  needs_github_issue: true
+  github_issue: 218
   wave: 4
   depends_on:
   - HIS-1
@@ -544,9 +637,10 @@ tickets:
     contribution: guard
     expected_effect: decides the goal; adds no behavioural delta
     local_signal: 'N/A: this ticket is the measurement'
-_note: GENERATED PROJECTION -- do not hand-edit. Extracted from specs/desired_program_model/ticket_plan.yaml,
-  which is canonical. It carries the epic blocks and only the HIS-* tickets, because validate_epic_plan.py
-  requires full epic scheduling fields (wave, promotion_order, blocks, conflict_keys, goals) on EVERY
-  ticket in a file, and the 34 pre-epic CHM/COH/EFF/ISSUE/MIG tickets predate this epic and legitimately
-  have none. Validating the whole file reports those 34 and hides the epic's own findings; this projection
-  is what the epic is actually checked against.
+_note: 'GENERATED PROJECTION -- do not hand-edit, and REGENERATE IT AFTER EVERY SCHEDULE CHANGE with .github/scripts/regen-epic-projection.py.
+  Extracted from specs/desired_program_model/ticket_plan.yaml, which is canonical. It carries the epic
+  blocks and only the HIS-* tickets, because validate_epic_plan.py requires full epic scheduling fields
+  on EVERY ticket in a file and the pre-epic CHM/COH/EFF/ISSUE/MIG tickets legitimately have none. A stale
+  projection is worse than no projection: it is what validate_epic_plan.py actually runs against, so an
+  unregenerated copy silently validates a schedule nobody is working to. That happened once, between wave
+  1 and wave 2, which is why this file is generated and checkable.'

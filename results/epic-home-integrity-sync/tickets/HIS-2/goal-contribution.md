@@ -2,8 +2,11 @@
 
 ## GOAL-sync-quiet (direct)
 
-**Expected effect:** 889 lines / 87,208 chars → ≤10 lines, ≥99% char reduction,
-over the committed fixture.
+**Expected effect:** ≤10 lines and ≥99% character reduction over the committed
+fixture. (The plan's baseline was restated from an estimate of 889 lines /
+87,208 chars to the rendered 896 lines / 88,308 chars — see
+`baseline/README.md`. The target is a ratio, so the restatement does not move
+it.)
 
 **Measured**, on `results/epic-home-integrity-sync/baseline/root-home-drift.json`
 — the operator's real pending record at the epic base commit:
