@@ -531,3 +531,95 @@ findings:
       and belongs with whoever closes DEF-008.
     candidate_owner: unassigned
     status: open
+
+  - id: DEF-011
+    found_by: wave-3 close-out, running `run.py --all` on the merged tip
+    found_at: "2026-08-21"
+    severity: major
+    escalated: true
+    summary: >
+      The epic's ONLY pre-merge graph signal is a single ordered chain that has
+      never completed. A teardown node in the FIRST graph raced its own kill and
+      lost, twice in a row, and took the other 23 graphs with it.
+    detail: >
+      TWO FINDINGS, one instrument.
+
+      (1) THE RACE, and it is a real defect in ServersDown.killByPidFile:
+
+            h.destroy();                                  // SIGTERM
+            try { h.onExit().get(5, SECONDS); }           // wait
+            catch (Exception e) { h.destroyForcibly(); }  // SIGKILL
+            return !h.isAlive();                          // sampled IMMEDIATELY
+
+          `destroyForcibly` is a REQUEST, not a reaping. Nothing waits after it,
+          so `isAlive()` is read while SIGKILL is still in flight and the node
+          reports a failure to stop a process that did stop.
+
+          MEASURED: `smoke` failed at servers.down / registry_down on runs
+          20260821-164405 and 20260821-170159 -- the same node, the same
+          assertion, both times, so not a flake. The registry JVM was
+          registry.up's recorded pid 70183 on port 52348 (a random port; an
+          early theory about a fixed port 5000 colliding with macOS
+          ControlCenter is WRONG and is recorded here so it is not re-derived).
+          Afterwards `ps -p 70183` was empty and no SkillRegistryApp survived:
+          the process DID die, and the assertion still said it had not.
+
+          Reproducibility is environmental in the honest sense -- a JVM under
+          SIGTERM on a loaded machine needs more than five seconds, and this
+          machine was loaded (16-minute smoke runs, 95% disk). It is not
+          environment-CAUSED; the budget was simply too small and the forcible
+          path did not wait at all.
+
+      (2) THE ORDERING, which is what turns (1) from an annoyance into a
+          coverage hole. Gradle stops the sweep at the first failing task and
+          `smoke` is the first graph, so ONE lost race meant 1 graph of 24
+          executed and 23 never ran. CLAUDE.md is explicit that graphs do not
+          run on push or PR -- "run them locally, that is now the only pre-merge
+          graph signal" -- so the only signal there is has a single point of
+          failure at position one.
+
+          Stated plainly: `run.py --all` has NOT completed once in this epic.
+          Waves 1, 2 and 3 each validated against a hand-picked subset and
+          reported that honestly as a subset. The reason it stayed a subset was
+          not judgement.
+    fixed_here: >
+      (1) IS FIXED, by the epic agent, because it is the epic's own instrument
+      rather than the product: ServersDown now waits for the reap after
+      SIGKILL, the graceful budget is a JVM shutdown budget (20s) rather than a
+      guess, and the node timeout was raised with it so the wait cannot merely
+      move the failure one level out. The old shape and the measurement are
+      recorded in the method's javadoc so the next author does not restore it.
+
+      PROVED BY THE ONLY CONTROL THAT MATTERS HERE: `smoke` went RED, RED, then
+      GREEN (BUILD SUCCESSFUL in 16m 47s) with the fix as the only variable, on
+      the same machine and the same graph. Two failures before, one pass after.
+    still_open: >
+      (2) IS NOT FIXED and is the finding that matters. A sweep whose graphs are
+      strictly ordered cannot tell you "23 passed, 1 failed"; it tells you
+      "stopped at 1", which reads identically to "1 ran". Options the owner may
+      want to weigh: --continue on the Gradle invocation so every graph runs and
+      the wrapper reports a tally; running the graph set as independent
+      invocations; or accepting the chain and requiring the tally artifact
+      (graphs_executed, which CI already produces) to be read locally too.
+    why_deferred: >
+      (2) is a change to the test harness's execution model and to what
+      GOAL-validation-floor's metric (a) counts. It is not inside any declared
+      HIS slice, and picking between the options above is an owner decision
+      about what a local sweep is FOR.
+    owner_decision_2026_08_21: >
+      At the wave-3 gate the owner set the policy: "--all takes forever. We'll
+      do it once at the end with the goal/evals/scorecard." That is recorded as
+      the root `validation_policy` block and makes the per-wave subset the
+      POLICY rather than a shortfall against one.
+
+      IT ALSO RAISES THIS FINDING'S SEVERITY RATHER THAN RETIRING IT. Running
+      the sweep once, at the end, is the right economy and is exactly when a
+      chain that stops at its first failure costs the most: there is no earlier
+      complete run to fall back on, and a terminal scorecard that dies on graph
+      1 is no scorecard, at the moment the epic most needs one. So (2) moves
+      from "worth doing" to a PREREQUISITE for HIS-6, and the owner is now
+      HIS-6 rather than unassigned.
+    evidence:
+      - results/epic-home-integrity-sync/probes/wave-3/smoke-failed-twice.txt
+    candidate_owner: HIS-6
+    status: triaged

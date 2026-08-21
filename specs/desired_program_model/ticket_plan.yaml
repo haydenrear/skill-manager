@@ -408,6 +408,56 @@ review_policy:
     answered. Silence is not approval.
 
 # ---------------------------------------------------------------------------
+# VALIDATION POLICY. Set by the owner 2026-08-21, at the wave-3 gate:
+# "--all takes forever. We'll do it once at the end with the goal/evals/
+# scorecard."
+#
+# So the sweep is a TERMINAL instrument, not a per-wave one, and this file says
+# so rather than leaving each wave to decide and each review to apologise for a
+# subset. Waves 1-3 each validated against a hand-picked subset and reported it
+# honestly as a subset; that is now the policy, not a shortfall against it.
+# ---------------------------------------------------------------------------
+validation_policy:
+  per_wave:
+    required:
+      - "jbang RunTests.java"
+      - "the graphs named in the wave's tickets' conflict_keys.test_graph"
+      - "any graph whose fixtures exercise the mechanism the wave changed, named in the review with the reason"
+    rule: >
+      Targeted, and the targeting is ARGUED in the review artifact rather than
+      asserted. A wave review names which graphs it ran, which it did not, and
+      why that subset covers what the wave changed. "Ran the usual ones" is not
+      a reason.
+  terminal:
+    owner: HIS-6
+    command: "python skills/test_graph/scripts/run.py --all"
+    runs: once, on the integrated epic tip, with the goal scorecard
+    prerequisite: >
+      DEF-011's SECOND half must be answered first. `--all` is a strictly
+      ordered Gradle chain that stops at the first failing task, so a single
+      red graph at position 1 produces "stopped at 1", which is
+      indistinguishable in the output from "only 1 graph exists". Measured
+      2026-08-21: one lost teardown race in `smoke` -- the FIRST graph -- meant
+      1 graph of 24 executed and 23 never ran.
+
+      Running the sweep ONCE at the end is the right economy and it is also
+      exactly when that single point of failure costs the most: a terminal
+      scorecard that dies on graph 1 yields no scorecard, at the moment the
+      epic most needs one and with no earlier full run to fall back on. So the
+      ordering question is a PREREQUISITE for HIS-6 rather than optional
+      cleanup. Options are in DEF-011; choosing between them is the owner's.
+  known_state:
+    value: "`run.py --all` has never completed in this epic"
+    measured_at: "22b947c"
+    detail: >
+      Runs 20260821-164405 (--all) and 20260821-170159 (smoke alone) both died
+      at servers.down / registry_down -- the same node, the same assertion, so
+      not a flake. The cause was a teardown that raced its own SIGKILL and
+      sampled isAlive() before the reap; the registry process was CONFIRMED
+      DEAD afterwards. Fixed in ServersDown as epic-machinery work. The
+      ORDERING half is not fixed and is the prerequisite above.
+
+# ---------------------------------------------------------------------------
 # GOALS. Agreed with the owner 2026-08-20 before scaffolding. Baselines were
 # measured on the operator's real homes at the epic base commit and committed
 # under results/epic-home-integrity-sync/baseline/ BEFORE any ticket landed.
@@ -2973,6 +3023,31 @@ tickets:
       - GOAL-mechanism-documented
       - GOAL-one-home-one-answer
       - GOAL-no-destructive-recovery
+    owns_the_terminal_sweep: >
+      SET BY THE OWNER AT THE WAVE-3 GATE, 2026-08-21: "--all takes forever.
+      We'll do it once at the end with the goal/evals/scorecard." So this ticket
+      owns the ONE `run.py --all`, run on the integrated tip alongside the
+      scorecard, and no wave before it owes a full sweep. See the root
+      `validation_policy` block, which is canonical.
+
+      TWO THINGS THIS TICKET MUST NOT ASSUME.
+
+      (1) THE SWEEP IS A CHAIN. Gradle stops at the first failing task, so a red
+      graph at position 1 yields "stopped at 1" -- output that is
+      indistinguishable from "only 1 graph exists". Measured 2026-08-21: one
+      lost teardown race in `smoke`, the first graph, meant 1 of 24 executed and
+      23 never ran. Because this is now the epic's ONLY full run, there is no
+      earlier complete sweep to fall back on, and a scorecard that dies on graph
+      1 is no scorecard. DEF-011's second half is therefore a PREREQUISITE, not
+      cleanup. Read `graphs_executed` -- do not infer it from a green build.
+
+      (2) WHICH BUILD PRODUCED THE HOMES IT MEASURES. `skt` and
+      bootstrap-home.sh resolve their CLI from the root home's pin, which
+      DEF-006 measured as Homebrew 0.23.0 -- a release predating this epic. A
+      home built through the documented front door is built by code that has
+      none of these fixes, so a goal measured over such a home measures the old
+      product. State the build for every number, or the terminal verdicts are
+      about something other than this epic.
     conflict_keys:
       production: []
       tla: []

@@ -729,6 +729,27 @@ tickets:
   - GOAL-mechanism-documented
   - GOAL-one-home-one-answer
   - GOAL-no-destructive-recovery
+  owns_the_terminal_sweep: 'SET BY THE OWNER AT THE WAVE-3 GATE, 2026-08-21: "--all takes forever. We''ll
+    do it once at the end with the goal/evals/scorecard." So this ticket owns the ONE `run.py --all`,
+    run on the integrated tip alongside the scorecard, and no wave before it owes a full sweep. See the
+    root `validation_policy` block, which is canonical.
+
+    TWO THINGS THIS TICKET MUST NOT ASSUME.
+
+    (1) THE SWEEP IS A CHAIN. Gradle stops at the first failing task, so a red graph at position 1 yields
+    "stopped at 1" -- output that is indistinguishable from "only 1 graph exists". Measured 2026-08-21:
+    one lost teardown race in `smoke`, the first graph, meant 1 of 24 executed and 23 never ran. Because
+    this is now the epic''s ONLY full run, there is no earlier complete sweep to fall back on, and a scorecard
+    that dies on graph 1 is no scorecard. DEF-011''s second half is therefore a PREREQUISITE, not cleanup.
+    Read `graphs_executed` -- do not infer it from a green build.
+
+    (2) WHICH BUILD PRODUCED THE HOMES IT MEASURES. `skt` and bootstrap-home.sh resolve their CLI from
+    the root home''s pin, which DEF-006 measured as Homebrew 0.23.0 -- a release predating this epic.
+    A home built through the documented front door is built by code that has none of these fixes, so a
+    goal measured over such a home measures the old product. State the build for every number, or the
+    terminal verdicts are about something other than this epic.
+
+    '
   conflict_keys:
     production: []
     tla: []
