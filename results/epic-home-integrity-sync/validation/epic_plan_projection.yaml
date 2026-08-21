@@ -1087,12 +1087,43 @@ tickets:
   title: a clone records no durable descent, so three readers give three answers and its first sync discards
     the inherited toolchain
   phase: HIS
-  status: next
   epic: home-integrity-sync
   github_issue: 227
   also_closes:
   - 206
   added_in_schedule_revision: 4
+  status_note_delivered: 'DELIVERED IN FULL, after a review round that sent it back. PR #228, merged into
+    epic/home-integrity-sync as 22b947c.
+
+    THE FIRST VERSION WAS UNMERGEABLE AND THE REVIEW WAS RIGHT. The provenance record was SELF-CERTIFYING:
+    a hand-written home.provenance.json flipped `home verify` from exit 1 to exit 0, and `clonedFrom:
+    /nowhere` -- a path that does not exist -- was accepted and printed as authoritative descent. Anything
+    that could write one file into a home switched that home''s isolation gate off permanently, and the
+    new verify output ADVERTISED the filename. A second case needed no hand-editing at all: revoking a
+    parent''s claim left `verify proj` = 1 and `verify wt1` = 0 on the same shim and the same parent,
+    and re-cloning re-minted the claim -- this goal''s own failure mode, recreated on the tier axis by
+    the fix for it.
+
+    WHAT LANDED INSTEAD: the record is a POINTER TO EVIDENCE, not the evidence. HomeProvenance.sanctions
+    walks `clonedFrom` hop by hop and asks ChildHomeLink.isChildOf LIVE at each hop, with a cycle guard
+    and MAX_HOPS = 16; parentStoresOf derives at WRITE time rather than copying the source''s set forward,
+    so nothing is carried between clones; `parentStores` survives only as a reporting/repair snapshot
+    that nothing consults; a relative `clonedFrom` is refused outright rather than resolved against the
+    process CWD.
+
+    THE COST IS STATED WHERE THE OLD JAVADOC PROMISED THE OPPOSITE. That javadoc chose this evidence because
+    it "needs no second home to be present, readable, or even to still exist when the question is asked."
+    Re-derivation gives that up, and it FAILS CLOSED: evidence that cannot be re-derived does not sanction.
+    Worst case is a worktree whose project home was deleted reverting to pre-HIS-10 behaviour.
+
+    NOT CLAIMED: forgery-proof. A writer can still name some other home that genuinely is a claimed child,
+    and the chain re-derives. What is gone is the ARBITRARY grant. This adds no new class of in-home forgery,
+    because ChildHomeLink already accepts a materialization record inside the judged home -- that pre-existing
+    trust is named, not widened.
+
+    '
+  status: delivered
+  delivered_in: 'PR #228, merged into epic/home-integrity-sync as 22b947c'
   wave: 3
   depends_on:
   - HIS-7
