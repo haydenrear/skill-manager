@@ -1643,6 +1643,10 @@ public final class HomeCloner {
         // lists two directories, and a child home mirroring twenty CLI deps
         // would otherwise ask the identical question twenty times.
         java.util.Map<Path, Boolean> childOf = new java.util.HashMap<>();
+        // The same question asked of the SOURCE, cached the same way and for
+        // the same reason. Separate map rather than a composite key: two
+        // questions about two homes are two questions.
+        java.util.Map<Path, Boolean> srcChildOf = new java.util.HashMap<>();
         String needleText = srcRoot == null ? null : srcRoot.toString();
         Files.walkFileTree(dstRoot, new SimpleWalker((file, rel) -> {
             if (Files.isSymbolicLink(file)) {
@@ -1659,7 +1663,7 @@ public final class HomeCloner {
                 } else {
                     Path foreign = foreignHomeReachedBy(file, dstReal);
                     if (foreign != null) {
-                        if (sanctionedParentShim(rel, file, foreign, dstRoot, childOf)) {
+                        if (sanctionedParentShim(rel, file, foreign, dstRoot, srcRoot, childOf, srcChildOf)) {
                             parentShims.add(rel + " -> " + foreign);
                         } else {
                             leaks.add(new Leak(rel, "FOREIGN_HOME",
@@ -1824,7 +1828,10 @@ public final class HomeCloner {
         Path root = homeRoot.toAbsolutePath().normalize();
         Path foreign = foreignHomeReachedBy(link, realOrSame(root));
         if (foreign == null) return null;
-        return sanctionedParentShim(rel, link, foreign, root, new java.util.HashMap<>())
+        // No source here: CliShimPruner asks about ONE standing home, not about
+        // a copy, so there is no source whose sanction could be inherited.
+        return sanctionedParentShim(rel, link, foreign, root, null,
+                new java.util.HashMap<>(), new java.util.HashMap<>())
                 ? null : foreign;
     }
 
@@ -1859,7 +1866,9 @@ public final class HomeCloner {
      * mirroring — was rejected.
      */
     private static boolean sanctionedParentShim(String rel, Path link, Path foreign, Path dstRoot,
-                                                java.util.Map<Path, Boolean> childOf) {
+                                                Path srcRoot,
+                                                java.util.Map<Path, Boolean> childOf,
+                                                java.util.Map<Path, Boolean> srcChildOf) {
         String normalized = rel.replace(java.io.File.separatorChar, '/');
         String dir = null;
         for (String candidate : SHIM_DIRS) {
@@ -1871,8 +1880,34 @@ public final class HomeCloner {
         Path parentEntry = foreign.resolve(dir + name);
         if (!Files.exists(parentEntry, java.nio.file.LinkOption.NOFOLLOW_LINKS)) return false;
         if (!realOrSame(link).equals(realOrSame(parentEntry))) return false;
-        return childOf.computeIfAbsent(foreign,
-                home -> dev.skillmanager.bindings.ChildHomeLink.isChildOf(dstRoot, home));
+        if (childOf.computeIfAbsent(foreign,
+                home -> dev.skillmanager.bindings.ChildHomeLink.isChildOf(dstRoot, home))) {
+            return true;
+        }
+        // HIS-7. A COPY INHERITS ITS SOURCE'S SANCTION.
+        //
+        // The check above asks whether the DESTINATION is a child of the home
+        // this shim points into. During a clone the destination is a home that
+        // DOES NOT EXIST YET: nothing claims it, and it was materialized from
+        // the source, not from the home the shim names. So the identical shim
+        // that `home verify` sanctions in the source was refused in the copy,
+        // `bootstrap-home.sh` failed, and neither `wt new` nor `skt ticket new`
+        // could produce a ticket home in this repository at all.
+        //
+        // The chain is root -> project -> worktree, so a clone of a child is a
+        // GRANDCHILD and the one-level question could never have answered yes.
+        // Asked of the SOURCE instead, it answers correctly: the project home
+        // IS a registered child of root, the shim was legitimately inherited,
+        // and copying it changes nothing about whose artifact it is.
+        //
+        // This is NOT a widening of what counts as sanctioned. The structural
+        // tests above still hold -- same bin/cli spelling, same real target,
+        // pointing at a home some link in this chain is genuinely a child of.
+        // What changed is WHICH home is asked, and a copy that inherits bytes
+        // inherits the reason they were allowed.
+        if (srcRoot == null || srcRoot.equals(dstRoot)) return false;
+        return srcChildOf.computeIfAbsent(foreign,
+                home -> dev.skillmanager.bindings.ChildHomeLink.isChildOf(srcRoot, home));
     }
 
     /**

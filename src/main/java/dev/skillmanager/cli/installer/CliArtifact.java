@@ -1,5 +1,6 @@
 package dev.skillmanager.cli.installer;
 
+import dev.skillmanager.launch.LaunchEnv;
 import dev.skillmanager.store.HomeCloner;
 import dev.skillmanager.store.SkillStore;
 
@@ -144,6 +145,35 @@ public final class CliArtifact {
      * which target is missing rather than "not executable", which would send
      * the reader to {@code chmod}.
      */
+    /**
+     * The other Skill Manager home {@code artifact} resolves into, or null when
+     * it resolves inside {@code homeRoot} or into no home at all.
+     *
+     * <p>Same walk as {@code HomeCloner.foreignHomeReachedBy}, and for the same
+     * reason: a path is only foreign if some ANCESTOR of what it resolves to is
+     * a store root, and the resolved path is not under this home. A tool in
+     * {@code /usr/local/bin} belongs to no home and is not this method's
+     * business — {@link CliPresence#providedOutsideEveryHome} owns that case and
+     * must keep owning it, or a system {@code git} would start reading as
+     * something this home failed to provide.
+     */
+    public static Path foreignHomeReachedBy(Path artifact, Path homeRoot) {
+        Path resolved;
+        Path here;
+        try {
+            resolved = artifact.toRealPath();
+            here = homeRoot.toRealPath();
+        } catch (IOException unresolvable) {
+            return null;   // dangling or unreadable; the branches above own it
+        }
+        if (resolved.startsWith(here)) return null;
+        for (Path parent = resolved; parent != null; parent = parent.getParent()) {
+            if (parent.startsWith(here)) return null;
+            if (LaunchEnv.looksLikeStoreRoot(parent)) return parent;
+        }
+        return null;
+    }
+
     public static Verdict inspect(Path artifact, Path homeRoot) {
         if (artifact == null) return new Verdict(null, "no path");
         if (!Files.exists(artifact, LinkOption.NOFOLLOW_LINKS)) {
@@ -178,6 +208,39 @@ public final class CliArtifact {
                             + " and the entry point names the command that builds this one");
         }
         if (homeRoot != null) {
+            // HIS-7. The shape a clone leaves for every PARENT-STORE shim, and
+            // the one predicate none of the above catches: it exists, it is not
+            // dangling, it is executable, it is not cold, and it holds no
+            // missing reference -- because its reference resolves perfectly
+            // well, into somebody else's home.
+            //
+            // MEASURED: `build --force cli-shim:skill-script/computeq` on a
+            // cloned home printed "✓ cli: installed computeq -> <clone>/bin/cli/
+            // computeq" and "built", and left the symlink pointing at
+            // ~/.skill-manager/bin/cli/computeq. The installer skipped the
+            // write because CliPresence.alreadyProvided asked "will this run
+            // from this home" and a symlink into another home runs. So the one
+            // property that makes the shim wrong was invisible to the check
+            // deciding whether to replace it, and the home was at once complete
+            // (nothing to build) and unusable (five foreign paths `home clone`
+            // refuses).
+            //
+            // "Provided by this home" is an OWNERSHIP question, not a
+            // runnability one. `home verify` and `home clone` have always
+            // answered it that way; this is the third reader finally agreeing
+            // with them rather than a new rule.
+            //
+            // LaunchEnv.looksLikeStoreRoot deliberately, and not a fourth
+            // spelling of "is this a home" -- HomeCloner.foreignHomeReachedBy
+            // walks the resolved path with exactly this predicate, and #24 is
+            // what happens when two spellings disagree about the homes that
+            // matter.
+            Path foreign = foreignHomeReachedBy(artifact, homeRoot);
+            if (foreign != null) {
+                return new Verdict(artifact,
+                        "resolves into the home at " + foreign + ", so this home does not "
+                                + "provide it — rebuild it here with `skill-manager build`");
+            }
             // The shape a clone leaves for every generated wrapper, and the
             // one every previous predicate called healthy. Same scanner
             // `home verify` refuses on.

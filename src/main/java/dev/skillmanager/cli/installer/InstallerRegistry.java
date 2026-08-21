@@ -9,6 +9,8 @@ import dev.skillmanager.shared.util.Fs;
 import dev.skillmanager.util.Log;
 
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -104,6 +106,33 @@ public final class InstallerRegistry {
             Log.warn("cli: backend %s not available on this host; skipping %s", id, dep.name());
             return InstallOutcome.SKIPPED;
         }
+        // HIS-7. A shim at this dep's path that resolves into ANOTHER home is
+        // cleared before the producer runs, and this is a data-integrity guard
+        // rather than a tidiness one.
+        //
+        // MEASURED, and it wrote into the operator's root home twice before it
+        // was noticed. A cloned home inherits `bin/cli/<name>` as an absolute
+        // symlink into its parent -- by design, they are the parent's artifacts
+        // and the agent needs them on PATH. Producers then write with
+        // `cat > "$SKILL_MANAGER_BIN_DIR/<name>"`, and `cat >` FOLLOWS A
+        // SYMLINK. So a `build` inside the clone did not write the clone's
+        // shim; it overwrote the PARENT's, with a wrapper containing the
+        // CLONE's absolute paths:
+        //
+        //   ~/.skill-manager/bin/cli/computeq  ->  exec "/private/tmp/.../clone
+        //   -probe/.skill-manager/cache/.../venv/bin/computeq"
+        //
+        // A child home mutating its parent's bytes is the one thing this
+        // epic's baseline rule exists to prevent, and it happened through a
+        // path nobody was checking. `tlc2` survived only because its wrapper
+        // happens to be BIN_DIR-relative -- luck, not design.
+        //
+        // Placed HERE, at the single dispatch, for the same reason
+        // relativizeShims sits just below: "normalize after every install
+        // rather than patching each backend and hoping the next one
+        // remembers". Four backends write into bin/cli by four different
+        // mechanisms and the guard must not depend on any of them.
+        clearForeignShims(dep, store);
         InstallOutcome outcome = backend.install(dep, store, skillName, force);
         // Backends we do not control write absolute symlinks into bin/cli:
         // `uv tool install` and `npm -g` both do, and neither has a flag for
@@ -112,5 +141,39 @@ public final class InstallerRegistry {
         // patching each backend and hoping the next one remembers.
         HomeLinks.relativizeShims(store);
         return outcome == null ? InstallOutcome.INSTALLED : outcome;
+    }
+
+    /**
+     * Remove any entry at {@code dep}'s bin/cli path that resolves into a
+     * different Skill Manager home, so the producer writes a real file here.
+     *
+     * <p>Deletes only a SYMLINK, and only one whose resolved target lies in
+     * another home. A regular file is this home's own artifact and is the
+     * producer's to overwrite; a link inside this home is fine; a link to a
+     * system tool outside every home belongs to
+     * {@link CliPresence#providedOutsideEveryHome} and is left alone.
+     *
+     * <p>Both spellings are cleared, {@code on_path} and {@code name}, because
+     * {@link CliPresence#providedByThisHome} consults both and a producer may
+     * write either.
+     */
+    private static void clearForeignShims(CliDependency dep, SkillStore store) {
+        if (dep == null || store == null) return;
+        for (String spelling : new String[]{dep.onPath(), dep.name()}) {
+            if (spelling == null || spelling.isBlank() || spelling.contains("/")) continue;
+            Path at = store.cliBinDir().resolve(spelling);
+            if (!Files.isSymbolicLink(at)) continue;
+            Path foreign = CliArtifact.foreignHomeReachedBy(at, store.root());
+            if (foreign == null) continue;
+            try {
+                Files.delete(at);
+                Log.detail("cli: cleared %s, which resolved into the home at %s — "
+                        + "this home builds its own", spelling, foreign);
+            } catch (IOException notOurs) {
+                Log.warn("cli: could not clear the shim at %s, which resolves into the home "
+                        + "at %s; the producer may write through it into that home (%s)",
+                        at, foreign, notOurs.getMessage());
+            }
+        }
     }
 }
