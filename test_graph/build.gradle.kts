@@ -1475,8 +1475,24 @@ validationGraph {
         // the same sync without the link must NOT refuse.
         node("sources/home-integrity/SyncStaysInsideItsHome.java")
 
-        // THE FIXPOINT LAW, as every home-producing graph ends. Depends on this
-        // graph's last node so it runs last, and FAILS if it finds no home.
+        // THE FIXPOINT LAW, as every home-producing graph ends. FAILS if it
+        // finds no home.
+        //
+        // THE EDGE BELOW IS NOT WHAT DECIDES WHAT IT COVERS, and reading it as
+        // though it were cost this graph six homes. The law does not take a
+        // home list and does not scan the filesystem: HomeFixpointLaw.
+        // candidateHomes walks every UPSTREAM CONTEXT VALUE and offers each
+        // existing directory to `home verify`. So a node covers itself by
+        // PUBLISHING its homes, not by being named here -- and the planner
+        // already orders this node last regardless (plan 15/15).
+        //
+        // MEASURED, run 20260821-191337: seven store-shaped directories existed
+        // under the sandbox when the law ran, production's `home verify` called
+        // all seven homes, and the law reported homesChecked = 1. The six it
+        // never saw belong to ParentHomeSurvivesAChildBuild,
+        // ReadersAgreeAboutOneClone and SyncStaysInsideItsHome -- none of which
+        // published a home path. The last of those now does; the other two are
+        // DEF-017.
         node("sources/common/HomeFixpointLaw.java")
                 .dependsOn("home.integrity.bootstrap.projects.target")
     }

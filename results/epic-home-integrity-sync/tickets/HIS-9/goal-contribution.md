@@ -147,49 +147,99 @@ already shipped a shim that refused *unconditionally* and satisfied a one-sided
 | --- | --- |
 | `jbang RunTests.java` | **ALL PASSED** (139 suites; 3 new classes, 19 new cases) |
 | `uv run pytest specs/` | **38 passed** in 1.71s |
-| `python skills/test_graph/scripts/run.py home-integrity` | **NOT RUN — blocked. See below.** |
+| `python skills/test_graph/scripts/run.py home-integrity` | **BUILD SUCCESSFUL, 15/15 nodes passed** (run `20260821-191337`, 5m 18s) |
 
-### THE GRAPH DID NOT RUN, AND THAT IS A GAP IN THIS TICKET'S EVIDENCE
+### The graph result — run `20260821-191337`, BUILD SUCCESSFUL, 15/15
 
-`home-integrity` is this ticket's only local graph signal and it is **unrun**.
-The wave's shared serializing wrapper is stuck on an **empty** lock directory
-that its own reclaim logic cannot clear — filed as **DEF-016**, blocking,
-escalated.
+`home-integrity` ran green end to end in 5m 18s after DEF-016 was cleared. Both
+of this ticket's nodes executed. Verbatim envelopes are committed under
+`probes/his-9/graph-*.json`.
 
-Measured 2026-08-21 15:02 EDT: `.graph.lock` existed, created 14:58:31,
-containing nothing — no `owner`, no `pid`. At the same moment `ps` showed no
-`run.py`, no Gradle, no Gradle daemon and no `test_graph` process anywhere;
-`docker ps` showed no compose containers for this project; and the only
-`graph-run.sh` alive was this ticket's own waiter. **The lock was provably held
-by nobody**, and the wrapper only reclaims a lock whose `pid` file names a dead
-process, so an empty one is never reclaimed and every waiter blocks 90 minutes.
+**`home.integrity.sync.stays.inside.its.home` — new, `passed`**
 
-It got that way because the wrapper was **edited while running**: this ticket's
-first invocation was inside its `sleep 20` loop when the file was rewritten at
-14:58:14, bash resumed into changed bytes, and it died with
-`line 27: syntax error near unexpected token '('`. A second process appears to
-have created the lock directory and gone the same way before writing its owner.
+```
+[PASS] a_sync_in_one_home_removes_nothing_from_another
+[PASS] it_refuses_rather_than_pruning_through_the_link
+[PASS] the_refusal_names_the_home_it_was_given
+[PASS] the_refusal_names_the_path_it_would_have_reached
+[PASS] without_the_link_the_same_sync_does_not_refuse
+metric victimEntriesBefore = 2
+metric victimEntriesAfter  = 2
+```
 
-The lock was **not removed**. The ticket instructions say to report rather than
-remove, and an attempt to `rmdir` the empty directory was additionally refused
-by the harness permission classifier. Both were respected.
+`2 → 2` is DEF-007's measurement inverted and now standing: the same fixture
+that took another home from 2 entries to 0 leaves it at 2. The last assertion is
+the control — the identical sync without the link does **not** refuse, so the
+node discriminates on the shape rather than on "sync refuses".
 
-**What this means for the two graph nodes here.** Both compile — `jbang build`
-was run on each — and neither has been **executed**. So:
+**`home.integrity.bootstrap.projects.target` — re-aimed, `passed`**
 
-- `home.integrity.sync.stays.inside.its.home` is **unproven as a node**. What it
-  asserts is proven at the CLI by `probes/his-9/def007-{before,after}-guard.out`
-  and in-process by `PruneStaysInsideItsHomeTest` on three tiers, but the node
-  itself has never gone green or red, and by this epic's own standard an
-  assertion that has not run is not coverage. It should be treated as unverified
-  until the graph runs.
-- `home.integrity.bootstrap.projects.target` was **re-aimed** and is likewise
-  unrun. Its new assertions are the same properties `LauncherShimsTest` covers
-  in-process and the CLI probe covers end to end, but the node's own rendering of
-  them is unverified.
+```
+[PASS] the_home_carries_its_own_cli_entrypoint
+[PASS] the_shim_refuses_a_home_it_was_not_told_to_edit
+[PASS] the_refusal_names_both_homes
+[PASS] the_shim_never_runs_against_an_inherited_home
+[PASS] naming_a_home_with_the_flag_beats_the_shims_own_binding
+[PASS] the_flag_does_not_silently_fall_back_to_the_shims_home
+metric shimExitOnHomeMismatch = 79
+```
 
-Neither gap is hidden behind a green tick anywhere in this file. The graph must
-be run before this ticket is merged.
+The process record shows `shim-with-inherited-env` exiting **79**, and what it
+printed (`probes/his-9/graph-shim-refusal-verbatim.log`):
+
+```
+skill-manager: refusing to run against a home you did not name.
+  you named:  …/home-integrity/scratch/bootstrap-target
+  this shim would have edited: /private/…/home-integrity/home
+  This entrypoint binds the home it lives in, so it cannot honour
+  SKILL_MANAGER_HOME. Refusing rather than silently editing the
+  other one.
+  Use `…/home-integrity/home/bin/cli/skill-manager <cmd> --home …/bootstrap-target`,
+  or run the CLI build directly instead of this shim.
+```
+
+The old assertion this replaced — `the_shim_overrides_an_inherited_skill_manager_home`
+— would have gone red on this build. What it protected is intact and sharper:
+the shim still never runs against the inherited home, and it no longer runs
+against its own in silence.
+
+### The law was checking 1 of 7 homes — DEF-017
+
+Asked whether `home.fixpoint.law` still covers the graph's newest node, the
+answer was **no, and not only for this node**. On the same run:
+
+| store-shaped directory | production's `home verify` | law checked it |
+| --- | --- | --- |
+| `home-integrity/home` (fixture) | exit 0 | **yes** |
+| `scratch/middle-home` (HIS-7 node) | exit 0 | no |
+| `scratch/leaf-home` (HIS-7 node) | exit 0 | no |
+| `scratch/his10/middle-home` (HIS-10 node) | exit 1 — negative fixture | no |
+| `scratch/his10/leaf-home` (HIS-10 node) | exit 1 — negative fixture | no |
+| `scratch/his9/victim-home` | exit 0 | no |
+| `scratch/his9/syncing-home` | exit 0 | no |
+
+`homesChecked = 1`. Seven directories, all of which **production itself** calls
+homes (none exited 2, which is `NotAHomeException`, "skip me").
+
+**The gate is `publish()`, not `dependsOn()`**, and that is the correction to the
+obvious diagnosis. `HomeFixpointLaw.candidateHomes` walks
+`item.data().values()` over upstream context items and offers each existing
+directory to `home verify`; ordering was never wrong — the planner already put
+the law at 15/15, after every assertion node. The fixture node is simply the only
+one that ever published a home path.
+
+That matters because of what the law is for. Its javadoc: a run that finds
+**zero** homes fails, because "an instrument reporting success because it could
+not look" is the failure it exists to close. A run that finds **one of seven** is
+the same failure one notch quieter, and it passed.
+
+**Fixed for this ticket's node only**: it now declares and publishes
+`victimHome` and `syncingHome`. Both verify **exit 0**, so this extends the law's
+reach rather than importing a known-bad fixture into a shared post-condition.
+The other two nodes are **DEF-017** — and HIS-10's pair is a *decision*, not a
+one-liner, because those two verify exit 1 by construction and publishing them
+would point the law's `sync --force-scripts` remedy at a deliberately
+unsanctioned home.
 
 **Graphs run, and why those.** `home-integrity` is this ticket's declared
 `conflict_keys.test_graph` graph and the only one whose fixtures exercise the

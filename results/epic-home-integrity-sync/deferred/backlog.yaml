@@ -1319,3 +1319,76 @@ findings:
       directory populated in three steps.
     candidate_owner: epic agent (wave-4 machinery)
     status: open
+
+  - id: DEF-017
+    found_by: HIS-9, after the epic agent asked whether home.fixpoint.law still covers the graph's newest node
+    found_at: "2026-08-21"
+    severity: major
+    summary: >
+      `home.fixpoint.law` covered 1 of 7 homes on the home-integrity graph. Six
+      real homes were invisible to it because the nodes that create them publish
+      no home path, and the law discovers homes ONLY from published upstream
+      context values.
+    detail: >
+      MEASURED on run 20260821-191337 (home-integrity, BUILD SUCCESSFUL, 15/15
+      nodes green). At the moment the law ran, seven store-shaped directories
+      existed under the sandbox. Production's OWN `home verify` was then asked
+      about each -- none exited 2 ("not a home"), so production calls all seven
+      homes:
+
+        home-integrity/home                              verify exit 0
+        scratch/middle-home/.skill-manager               verify exit 0
+        scratch/leaf-home/.skill-manager                 verify exit 0
+        scratch/his10/middle-home/.skill-manager         verify exit 1
+        scratch/his10/leaf-home/.skill-manager           verify exit 1
+        scratch/his9/victim-home/.skill-manager          verify exit 0
+        scratch/his9/syncing-home/.skill-manager         verify exit 0
+
+      The law's envelope for the same run:  homesChecked = 1.
+
+      THE MECHANISM IS `publish`, NOT `dependsOn`. HomeFixpointLaw.candidateHomes
+      iterates `item.data().values()` over upstream ContextItems and offers each
+      existing directory to `home verify`; the class javadoc says so ("every
+      upstream value that is an existing directory is offered"). Only
+      HomeIntegrityFixture publishes a home path, so only its home was checked.
+      Ordering is NOT the problem -- the planner already places the law at 15/15,
+      after every assertion node.
+
+      This matters because of what the law is FOR. Its own javadoc: "a run that
+      finds zero homes FAILS... an instrument reporting success because it could
+      not look" is the failure mode it exists to close. A run that finds ONE of
+      seven is the same failure mode, one notch quieter, and it passed.
+    what_his_9_fixed: >
+      Its own share only. SyncStaysInsideItsHome now declares
+      `.output("victimHome"/"syncingHome")` and publishes both, so the law sees
+      them. Both verify clean (exit 0, measured above), so this extends the law's
+      reach rather than importing a known-bad fixture into a shared
+      post-condition.
+    what_is_left: >
+      TWO OTHER NODES, NEITHER OF THEM HIS-9's.
+
+      (a) ParentHomeSurvivesAChildBuild (HIS-7) creates
+          scratch/{middle,leaf}-home. Both verify exit 0 and neither is checked.
+          Publishing them looks safe and would be a one-line change.
+
+      (b) ReadersAgreeAboutOneClone (HIS-10) creates scratch/his10/{middle,leaf}
+          -home. Both verify EXIT 1 -- by construction: that node's whole subject
+          is a home whose sanction has been revoked. Publishing those would hand
+          the law a deliberately-unsanctioned home, and the law's remedy arm
+          would run `sync --force-scripts` against it. So (b) is a DECISION, not
+          a one-liner: either the law needs a way for a node to say "this home is
+          a negative fixture, do not adopt it", or those two stay out and the
+          reason is written down.
+
+      Whether the law should discover homes structurally (walk the sandbox)
+      rather than from published values is the broader question. That is a change
+      to a node wired into 24 of 29 graphs and is nobody's drive-by.
+    why_deferred: >
+      HIS-9 covered the node it added, which is what it was asked to do. Fixing
+      the shared law, or publishing two other tickets' fixtures, is outside its
+      slice and (b) needs an owner's decision about negative fixtures.
+    candidate_owner: unassigned -- suggest HIS-6, which reads this instrument's output
+    status: open
+    evidence:
+      - results/epic-home-integrity-sync/probes/his-9/graph-home.fixpoint.law.json
+      - results/epic-home-integrity-sync/probes/his-9/fixpoint-law-coverage.out

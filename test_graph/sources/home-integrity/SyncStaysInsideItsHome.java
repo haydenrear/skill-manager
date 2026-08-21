@@ -72,7 +72,21 @@ public class SyncStaysInsideItsHome {
             .kind(NodeSpec.Kind.ASSERTION)
             .dependsOn("home.integrity.fixture")
             .tags("home", "integrity", "confinement", "his-9")
-            .timeout("900s");
+            .timeout("900s")
+            // PUBLISHED SO home.fixpoint.law CAN SEE THEM, and that is not
+            // bookkeeping. The law does not take a home list and does not scan
+            // the filesystem -- HomeFixpointLaw.candidateHomes walks every
+            // UPSTREAM CONTEXT VALUE and offers each existing directory to
+            // `home verify`. A node that publishes nothing therefore hands it
+            // nothing, whatever the dependency edges say.
+            //
+            // MEASURED on run 20260821-191337, before these two outputs
+            // existed: seven store-shaped directories existed under the sandbox
+            // when the law ran, production's own `home verify` called all seven
+            // homes, and the law reported homesChecked = 1. This node's two
+            // clones were among the six it never saw. See DEF-017.
+            .output("victimHome", "string")
+            .output("syncingHome", "string");
 
     /** The text every write-confinement refusal carries. */
     private static final String REFUSAL = "outside the home";
@@ -170,6 +184,11 @@ public class SyncStaysInsideItsHome {
                 .assertion("without_the_link_the_same_sync_does_not_refuse", controlDidNotRefuse)
                 .metric("victimEntriesBefore", before)
                 .metric("victimEntriesAfter", after)
+                // Both verify clean (exit 0, measured on run 20260821-191337),
+                // so handing them to the law extends its reach rather than
+                // importing a known-bad fixture into a shared post-condition.
+                .publish("victimHome", victim.toString())
+                .publish("syncingHome", syncing.toString())
                 .log("DEF-007, measured 2026-08-21: this sync took the other home's bin/cli "
                         + "from 2 entries to 0 and exited 0. The prune decided every entry "
                         + "correctly, in the wrong home.");
