@@ -1203,16 +1203,44 @@ findings:
       mirror owns the slot instead of writing through it", which reddens with the
       ownership call removed: the parent's artifact is no longer byte-identical.
     the_cost: >
-      A child home running `sync --force-scripts` now rebuilds the skill-script
-      artifacts it had been sharing, rather than sharing them. That is more work
-      than before for that flag, and it is the correct trade -- the alternative
-      is rewriting the parent's file -- but it is a partial walk-back of HIS-10's
-      "do not rebuild what nobody changed" for this one flag, and HIS-6 should
-      know which behaviour it is measuring.
+      THIS IS A PARTIAL WALK-BACK OF HIS-10 (#227) FOR THIS ONE FLAG, AND IT IS
+      DELIBERATE.
+
+      HIS-10's measured win was that a clone's first sync stopped pruning five
+      inherited shims and re-provisioning five toolchains nobody had changed:
+      5 pruned / 6 installed (~90s) became 0 pruned / 2 installed. The owner's
+      contract for that work was "we clone, then we say, here are the artifacts
+      for these skills on the path for you... Why would we build them without
+      the agent changing?"
+
+      HIS-9 narrows that for `--force-scripts` ONLY. A child home running
+      `sync --force-scripts` now REBUILDS the skill-script artifacts it had been
+      sharing, rather than sharing them -- more work than before, and a
+      deliberate narrowing of HIS-10's "do not rebuild what nobody changed"
+      rather than a regression of it.
+
+      WHAT IS NOT NARROWED, and this is the part that keeps #227's number
+      intact: a routine sync (force=false) over a sanctioned mirror is untouched.
+      HIS-10's 0-pruned/2-installed first sync is unchanged, because the
+      ownership arm is gated on `force` and nothing else.
+
+      WHY THE NARROWING IS CORRECT: the alternative for a forced run is that the
+      producer's `cat > "$SKILL_MANAGER_BIN_DIR/<n>"` follows the mirror into the
+      parent store and REWRITES THE PARENT'S FILE -- which is the HIS-7 damage,
+      measured twice on the operator's real root home. Between rebuilding an
+      artifact this home was sharing and overwriting the artifact the home above
+      it owns, this ticket rebuilds. `--force-scripts` is also an explicit
+      request to re-run the script, which is the same signal a rebuild carries,
+      so owning the slot is what the flag already means.
     why_deferred: >
-      Not deferred as a defect; recorded so the interaction with HIS-10 is
-      visible at the wave review and so HIS-6's sync-cost numbers are read with
-      the flag in mind. No action is requested.
+      Not deferred as a defect; recorded so the DELIBERATE NARROWING OF HIS-10
+      (#227) is visible at the wave review as a narrowing rather than being
+      discovered later as a regression, and so HIS-6's sync-cost numbers are read
+      with the flag in mind. No action is requested.
+    see_also: >
+      #227 (HIS-10) -- the ticket whose "do not rebuild what nobody changed"
+      behaviour this narrows, and whose measured 0-pruned/2-installed first sync
+      is deliberately left intact.
     candidate_owner: HIS-6 (measurement only)
     status: open
 

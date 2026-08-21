@@ -339,10 +339,16 @@ falling over — but it is a behavioural change in another repository. Filed as
 asserted in both the unit suite and the graph node.
 
 **5. `sync --force-scripts` in a child home now rebuilds locally instead of
-writing through.** A partial walk-back of HIS-10's "do not rebuild what nobody
-changed", for that flag only. It is the correct trade — the alternative is
-rewriting the parent store's file — but HIS-6 should know which behaviour its
-sync-cost numbers are measuring. Filed as **DEF-015**.
+writing through — a deliberate partial walk-back of HIS-10 (#227) for that flag
+only.** HIS-10's measured win was a clone's first sync going from 5 pruned / 6
+installed (~90s) to 0 pruned / 2 installed. That number is **unchanged**: the
+ownership arm is gated on `force` and nothing else, so a routine sync over a
+sanctioned mirror is untouched. What changes is that `--force-scripts` now
+rebuilds the skill-script artifacts a child had been sharing. The alternative
+for a forced run is the producer following the mirror into the parent store and
+rewriting the parent's file, which is the HIS-7 damage. Recorded as a
+**narrowing, not a regression** — **DEF-015**, which names #227 explicitly so
+nobody discovers it later as one.
 
 **6. The root tier is covered by a SYNTHETIC root-shaped fixture.** A store that
 is nobody's child, built under a temp directory. The operator's real root home
@@ -373,10 +379,71 @@ property.
 **8. `home verify` and the pruner still disagree about one thing, and it is now
 the safe direction.** `home verify` reports `FOREIGN_HOME bin/cli` and exits 1;
 the prune refuses and the sync fails. Both refuse; neither repairs. **Repairing
-a home already in this shape is HIS-13 (#159)**, explicitly out of scope here,
-and a home with a linked `bin/cli` is now a home that cannot be synced until a
-person fixes it by hand. That is a deliberate trade of availability for bytes,
-and it is the trade the epic's goal statement asks for.
+a home already in this shape is HIS-13 (#159)**, explicitly out of scope here.
+
+## THE BEHAVIOUR CHANGE AN OPERATOR WILL ACTUALLY MEET
+
+**A home whose `bin/cli` is a symlink at another home's cannot be synced at all
+any more. `sync` fails, every time, until a person repairs it by hand — and
+nothing this ticket ships will repair it for them.**
+
+That is availability traded for bytes. It is the right trade and it is the trade
+the epic's goal statement asks for, but it is a real cost and it belongs in front
+of a reader rather than in a footnote, so here is exactly what it looks like.
+
+### Before
+
+```
+$ SKILL_MANAGER_HOME=<homeB> skill-manager sync
+✓ resolve: 0 unit(s)
+cli: pruned bin/cli/alpha — resolved into the home at …/homeA, which is not this home's parent store
+cli: pruned bin/cli/beta  — resolved into the home at …/homeA, which is not this home's parent store
+✓ synced 1 unit(s)
+exit 0
+```
+
+Exit **0**. The sync succeeded. `homeA/bin/cli` went from 2 entries to 0 and
+nothing in that output says so.
+
+### After
+
+```
+$ SKILL_MANAGER_HOME=<homeB> skill-manager sync
+✓ resolve: 0 unit(s)
+✗ × InstallCli: refused: sync's bin/cli prune would list and delete through a path outside the home it was given
+  path:     …/homeB/bin/cli
+  resolves: /private/…/homeA/bin/cli  <- outside the home, through a symlink
+  home:     …/homeB
+! sync rolled back 2 effect(s) — store + gateway state restored
+exit 1
+```
+
+Exit **1**, and it will exit 1 on every subsequent attempt too.
+
+### What the operator is left holding
+
+- **`sync` is unusable in that home** until the shape is gone. Not degraded —
+  the `InstallCli` effect fails and the program rolls back, so the CLI install
+  pass never runs and no unit's tools get provisioned.
+- **`home verify` agrees** — exit 1, `FOREIGN_HOME bin/cli` — so at least the two
+  readers now say the same thing, which they did not before.
+- **Neither of them fixes it.** There is no `home repair`. The manual remedy is
+  to remove the link and put a real directory back:
+  `rm <home>/bin/cli && mkdir -p <home>/bin/cli`, then re-run `sync`, which will
+  re-provision this home's own tools. **That is a person typing `rm` on a
+  Skill Manager home**, which is precisely the operation this epic exists to
+  stop being necessary.
+- **A home in this shape is reachable by hand or by a restored backup**, not by
+  the product: `ChildHomeMaterializer.mirrorExistingShim` mirrors ENTRIES, never
+  the directory. That is why DEF-007 was filed rather than allowed to stop
+  HIS-10, and it is why the availability cost is expected to be rare.
+
+**The alternative was not "sync keeps working".** It was "sync keeps working and
+keeps deleting another home's toolchain, reporting success". Between a command
+that refuses until a person looks and a command that succeeds while destroying
+bytes, this ticket takes the refusal. **Turning that refusal into a repair is
+HIS-13 (#159)**, and this is the concrete case it should be measured against:
+a home that `verify` refuses, `sync` refuses, and nothing can currently mend.
 
 ## One thing this file got wrong on the way, kept rather than edited away
 
