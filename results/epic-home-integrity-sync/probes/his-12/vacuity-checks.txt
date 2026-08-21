@@ -88,7 +88,24 @@ below are the post-review set, not the pre-review one.
   [FAIL] a pin that is not a literal path, or names a directory, is not dangling: not true: two disagreeing pins are unreadable, not first-one-wins
   FAILURES: 1
 
-=== V17 M2: a continued line read as if the pin were on it
-  !!! NO FAILURE — THE ASSERTION IS VACUOUS
+=== V17 (FIRST RUN) M2: a continued line read as if the pin were on it
+  !!! NO FAILURE — THE ASSERTION WAS VACUOUS, and this is the record of it.
 
-ALL 17 CHECKS FAILED AGAINST BROKEN CODE: NO — see the VACUOUS marker above
+  The mutation removed `pinnedCliIn`'s `endsWith("\\")` guard and nothing failed.
+  Reason: every line continuation that guard was meant to catch is ALREADY caught
+  by the search for the closing `}"`, which for a wrapped pin is on the NEXT line
+  — so the extractor returns "cannot tell" either way.
+
+  RESOLUTION: the guard was REMOVED rather than kept. A guard that cannot be made
+  to fail is not a guard; keeping it would be a second reader of one rule, which
+  is this epic's subject. The ASSERTION stays — a continued line must not read as
+  a truncated path — and it is now carried by the `}"` search, whose own vacuity
+  check is V16's neighbour: making that search fall back to end-of-line returns
+  the truncated remainder and fails the test.
+
+  This is the second time this ticket's vacuity pass deleted something of mine.
+  The first was V10 last round (the hand-written-entrypoint fixture that could
+  not fail), which the reviewer independently re-ran and confirmed.
+
+ALL 16 REMAINING CHECKS FAILED AGAINST BROKEN CODE.
+V17 did not, was recorded, and the code it guarded was removed.
