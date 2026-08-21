@@ -53,6 +53,20 @@ below are the post-review set, not the pre-review one.
   [FAIL] ProjectSyncUseCase.rebuild still captures a snapshot before it removes: not true: the snapshot is captured BEFORE removeRealization
   FAILURES: 2
 
+  READ THE ORDER OF THOSE TWO. The BEHAVIOURAL assertion fails first, and the
+  source-order oracle second. That is the whole of the review's H6: before the
+  fixture was corrected, ONLY the source oracle failed here, because the project
+  had never resolved, so `removeRealization` removed nothing and "byte-identical
+  afterwards" was true whether or not anything restored it.
+
+  The truncated diff is base64 file contents. What is missing on the "but was"
+  side, decoded:
+      child-homes/project_typed-rebuild-…/child-home.json   — GONE
+      installed/typed-live.projections.json                 — GONE
+      projects/typed-rebuild-…/project-lock.toml            — GONE
+  i.e. the realization the teardown removed and the moved snapshot could not put
+  back. That is #187's destructive half, re-armed on purpose and caught.
+
 === V9  DEF-012 resolution half off: a dangling pin is no longer skipped
   [FAIL] a home entrypoint whose pin was deleted by an upgrade is not the remedy: a remedy falls through rather than naming a front door that cannot open: expected <RUNNING_BUILD> but was <HOME_ENTRYPOINT>
   FAILURES: 1
