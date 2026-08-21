@@ -264,7 +264,7 @@ HIS-6 owns the terminal measurement; this contributes the remedy reader.
 | `uv run pytest specs/` | **38 passed** |
 | **`home-sync` (CORE)** | **passed — 18 of 18 nodes, complete** (re-run on the rebased tree) |
 | `home-integrity` (assigned) | **passed — 14 of 14 nodes, complete** |
-| `ticket-lifecycle` | see below |
+| **`ticket-lifecycle` (CORE)** | **passed — 13 of 13 nodes, complete** (re-run after `a4a95cb`) |
 
 **`home-sync` is H1, and it is the graph I owed and had not run.** With the
 `env` prefix it was red: `remedyArgs` strips token 0 only when it
@@ -273,6 +273,28 @@ HIS-6 owns the terminal measurement; this contributes the remedy reader.
 were skipped**, `home.fixpoint.law` among them. Under the class-1 rule
 (`home sync --from … --to …` binds nothing) it is green, including
 `home.sync.worktree.to.project`, the node that holds `remedyArgs`.
+
+**`ticket-lifecycle` is where the remedy is read AND executed**, and last round
+11 of its 13 nodes were skipped behind the failure that is now DEF-028. All 13
+pass now, including the three that matter here:
+
+```
+every_remedy_the_refusal_prints_names_an_existing_executable   passed
+every_remedy_names_a_resolved_cli_not_a_bare_skill_manager     passed
+running_the_remedy_opens_the_gate                              passed
+```
+
+and the remedy those assertions read, captured verbatim from the refusal log:
+
+```
+✗   `<HOME>/bin/cli/skill-manager home drift --ack --home <HOME>`
+```
+
+The head token is a **per-home executable**. Under #229's first shape it was
+`/usr/bin/env`, which satisfies "absolute" and "executable" forever — those two
+assertions were passing then too, and meant nothing. `global.home.untouched`
+also passes, which is the node that would have caught DEF-029 had the leak been
+inside a graph rather than in my own hand-run probe.
 
 `run.py --all` was not run; it belongs to HIS-6.
 
