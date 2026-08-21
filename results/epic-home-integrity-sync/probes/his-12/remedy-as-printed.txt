@@ -1,0 +1,39 @@
+THE REMEDY AS ACTUALLY PRINTED, under the per-verb contract
+============================================================
+
+Captured from the ticket-lifecycle graph, run 20260821-202959, node
+`ticket.lifecycle.first.launch`, log `launch-refused` — i.e. a real `exec`
+refusal against a real worktree home, not a fixture string.
+
+  ✗   Read it with `<HOME>/bin/cli/skill-manager home drift --home <HOME>`,
+      then clear the gate with
+  ✗   `<HOME>/bin/cli/skill-manager home drift --ack --home <HOME>`
+      (or launch with --ack-drift).
+
+  where <HOME> = …/ticket-lifecycle/proj-TICKET-A/.skill-manager
+
+Three properties, all of them assertions in that node, all passing:
+
+  every_remedy_the_refusal_prints_names_an_existing_executable   passed
+  every_remedy_names_a_resolved_cli_not_a_bare_skill_manager     passed
+  running_the_remedy_opens_the_gate                              passed
+  metric remediesChecked = 2, remedyIsAbsolutelyResolved = 1
+
+READ THE HEAD TOKEN. It is `<HOME>/bin/cli/skill-manager` — a per-home
+executable. Under #229's first shape it was `/usr/bin/env`, which satisfies
+"absolute" and "executable" FOREVER, whatever the resolution behind it does.
+Those two assertions were passing then too, and meant nothing. They mean
+something here.
+
+READ WHERE THE HOME IS. In `--home`, a token no consumer substitutes — not in
+the head token, which `home-sync`'s `remedyArgs` and `close-change.sh`'s
+`run_cli` both drop by design.
+
+AND THE REMEDY WAS RUN. `running_the_remedy_opens_the_gate` executes the
+printed command and requires the gate to open. A remedy that names the right
+home and does not work is still not a remedy.
+
+`ticket.lifecycle.concurrent.close.out` — which parses close-out remedies into
+an argv vector and EXECUTES them, with no shell — also passed, covering the
+class-1 (`home sync --from … --to …`) and class-2 (`unit publish … --home …`)
+spellings the same way.
