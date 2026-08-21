@@ -1,0 +1,29 @@
+# sync-settles — the node RED against the unfixed build
+
+runId 20260821-191159. Wrapper exit 1, `BUILD FAILED in 59s`, node `status: failed`.
+
+The production fix was reverted to epic tip `dc97f2a` (five files, plus deleting
+`DereferencedStoreLinks.java`). The node, the fixture, the graph and the machine
+are identical to the green run (20260821-184449, `BUILD SUCCESSFUL in 1m 14s`,
+`status: passed`). The production diff is the only variable.
+
+## The four failures, verbatim
+
+1. sync exited 7; a unit whose only divergence is the child home's own
+   dereference must stay syncable at every tier
+2. installed baseline was stranded: record says ea137889 (was ea137889),
+   upstream HEAD is baa68c1a. A merge that lands without its record makes
+   every later sync report 'commits ahead of the installed baseline' forever
+3. a second sync with nothing changed exited 7; the home never reaches a
+   settled state
+4. the printed remedy (`sync --merge`) exited 8 — a remedy that does not
+   clear the state it is printed for is how this defect stayed alive for nine
+   days
+
+Read against the chain the ticket names:
+
+- (1) is links 1+2 — the dereference is read as an edit and the sync refuses.
+- (2) is **link 3**, the load-bearing one: the record did not move (`ea137889`
+  before and after) while upstream is at `baa68c1a`.
+- (3) is the permanence — the second sync, nothing changed, refuses identically.
+- (4) is the printed remedy failing to clear the state it is printed for.

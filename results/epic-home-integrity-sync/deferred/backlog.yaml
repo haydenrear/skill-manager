@@ -706,9 +706,9 @@ findings:
     severity: major
     summary: >
       A javadoc that describes an enforcement site, a caller, or a precedence
-      the code no longer has is this epic's most repeated defect -- FOUR
-      instances in four tickets -- and nothing catches it, because prose is not
-      compiled and "declares" reads exactly like "enforces".
+      the code no longer has is this epic's most repeated defect -- EIGHT
+      instances across four tickets -- and nothing catches it, because prose is
+      not compiled and "declares" reads exactly like "enforces".
     detail: >
       Instances, all in this epic, all found by hand:
 
@@ -731,6 +731,22 @@ findings:
                 deleted, caught by the author on a final grep after fixing two.
         HIS-12  locateCli's javadoc names HomeDescriptorTest as the checker of
                 its precedence; the checker is HomeDescriptorCliRemedyTest.
+        HIS-4   DereferencedStoreLinks' class javadoc promised, in bold, that a
+                path it names is "not counted as a local change, not stashed,
+                and NOT DESTROYED", and said SyncGitHandler "carries these
+                directories across the stash -> merge -> pop window and puts
+                them back". True of ONE sync path. The other -- `sync --from`,
+                whose apply is deleteRecursive + copyRecursive -- had no escrow
+                at all, and the review measured the data loss the javadoc said
+                was impossible: the link back to a symlink out of the unit, the
+                child home's bytes gone, exit 0. Found by the review agent.
+        HIS-4   SyncPathsAgreeAboutDirtyTest's javadoc claimed the scan "fails
+                on the FOURTH handler nobody has written". Wrong twice over: it
+                is scoped to the effects package, and a THIRD and FOURTH caller
+                already exist outside it (UnitTrunkPull:187, UnitPublisher:169 --
+                now DEF-016). A guard whose own documentation overstates its
+                reach is worse than no guard, because it stops the next person
+                looking. Found by the review agent.
 
       The author's own diagnosis, which I think is right and is why this is
       filed rather than fixed six times: "'declares' and 'enforces' read alike,
@@ -756,5 +772,303 @@ findings:
       files three tickets are actively editing. Recorded now, with all six
       instances, so the pattern is arguable from evidence rather than from
       memory when someone decides whether to build it.
+    added_2026_08_21_by_his_4: >
+      TWO MORE INSTANCES, both from HIS-4 (#216), both found by the adversarial
+      review of #231 rather than by their author. Added here rather than filed
+      separately, because this entry's value is that the pattern is arguable
+      from evidence and a missing instance weakens it.
+
+      They also move the candidate_fix's coverage. The mechanical check proposed
+      above -- every {@code}/{@link} naming a method must RESOLVE -- catches
+      neither of mine: "NOT DESTROYED" names SyncGitHandler, which exists, and
+      "fails on the FOURTH handler nobody has written" names nothing at all.
+      Both are false CLAIMS about code that is present, which is the bucket the
+      entry already identifies as uncaught (takeOwnershipOfShim, the
+      unchecked-exception case). So of the eight instances, the cheap check
+      would catch the two that name a vanished surface and miss six.
+
+      NOTE ALSO, without changing it, that the entry as pushed said "FOUR
+      instances" in its summary while listing six in its detail, and that
+      candidate_fix says the check "would have caught all six above" two lines
+      before excluding two of them. The count in the summary is corrected to
+      eight; the candidate_fix prose is left in its author's words. Recorded
+      because an entry about documentation drifting from what it describes
+      should not quietly drift from its own evidence -- and because I would
+      rather flag it than silently rewrite somebody else's analysis.
+
+      The sharper reading for whoever picks this up: in BOTH of my instances the
+      javadoc was describing a GUARD -- what is protected, and what the scan
+      catches. A javadoc that overstates a guard is not the same risk as one
+      that misnames a method. It actively suppresses the next reader's doubt,
+      which is exactly what happened: the "NOT DESTROYED" promise is what made a
+      second sync path look already-handled.
+    candidate_owner: unassigned
+  - id: DEF-013
+    # RENUMBERING AID: HIS-12 filed a different DEF-013 in a separate worktree.
+    # This one is: HIS-4 / the exact MERGE_CONFLICT index stages were not reproduced.
+    filed_by_ticket: HIS-4
+    short_label: "HIS-4: index stages 1+3 at 120000 not reproduced synthetically"
+    found_by: HIS-4, reproducing the MERGE_CONFLICT deadlock synthetically
+    found_at: "2026-08-21"
+    severity: minor
+    summary: >
+      The exact index shape the epic recorded -- stages 1 and 3 at mode 120000
+      with stage 2 absent -- was NOT reproduced. What HIS-4's fixture produces
+      is a stash-pop conflict with `ls-files -u` EMPTY and no MERGE_HEAD.
+    detail: >
+      MEASURED 2026-08-21 on epic tip dc97f2a, project-tier fixture, MODE=C of
+      results/epic-home-integrity-sync/probes/his-4/repro.sh:
+
+        sync --merge  -> exit 8
+        record        -> errors[{kind: MERGE_CONFLICT, "stash pop conflict ..."}]
+        HEAD          -> f52ffb7c  (the merge LANDED)
+        record gitHash-> 3dd070e5  (the baseline never moved)  <- link 3, exact
+        stash list    -> stash@{0}: On main: skill-manager-sync
+        ls-files -u   -> EMPTY
+        MERGE_HEAD    -> absent
+
+      Every consequence an operator can act on matches the recorded state: a
+      MERGE_CONFLICT record, an abandoned stash, a baseline stranded behind a
+      committed merge, and a printed remedy (`git add` + `git commit`) with
+      nothing to act on. The INDEX STAGES do not.
+
+      Stage 2 absent means OUR side deleted the path; stages 1 and 3 both at
+      120000 mean the merge BASE and the STASH both still held the symlink,
+      unchanged. Deriving that needs the unit's real pre-migration history --
+      the commit at which deploy-helm still tracked the three links, before the
+      managed-bindings migration untracked them and added the ignore block.
+    why_this_matters_anyway: >
+      Because the difference changes which remedy is correct, and HIS-4 now
+      prints two. With unmerged stages present the remedy is `git reset`; with
+      none it is "already clear, the next command retires it". The second branch
+      is the one the fixture exercises; the FIRST branch -- the operator's actual
+      state -- is covered only by a unit test that plants the residue with git
+      (DereferencedStoreLinkSyncTest, "the remedy for a stash-pop residue is not
+      the remedy for a merge"), not by the graph.
+    why_deferred: >
+      The live instance was cleared by hand on 2026-08-20 to satisfy rule 11 and
+      the pre-migration history is not recoverable from the operator's homes.
+      Reconstructing it would mean rebuilding deploy-helm's upstream history
+      synthetically, which is a fixture-archaeology exercise rather than a slice
+      of the mechanism, and HIS-4's fix makes the state unreachable prospectively
+      either way (the merge is now rolled back on a failed pop, so no stash-pop
+      residue is left at all).
+    candidate_owner: HIS-6
+    status: open
+
+  - id: DEF-014
+    # RENUMBERING AID: HIS-12 filed a different DEF-014 in a separate worktree.
+    # This one is: HIS-4 / a SUCCEEDING sync --merge undoes the materialization.
+    filed_by_ticket: HIS-4
+    short_label: "HIS-4: a successful `sync --merge` reverts or deletes a materialized store link"
+    found_by: HIS-4, measuring what `sync --merge` does when it SUCCEEDS
+    found_at: "2026-08-21"
+    severity: major
+    summary: >
+      Before HIS-4, a `sync --merge` that did NOT conflict silently undid the
+      child home's materialization -- reverting a dereferenced tree to a symlink
+      into the parent store, or deleting it outright -- and reported success.
+      HIS-4 fixes the sync path. The same shape is reachable from any other
+      command that runs git in a materialized store copy.
+    detail: >
+      MEASURED 2026-08-21, project-tier fixture, epic tip dc97f2a:
+
+        MODE=A  sync --merge -> exit 0, "1 merged"
+                test_graph/build-logic is a SYMLINK again
+                  -> ../../scaffold-provider/project_sdk_sources/build-logic
+        MODE=B  sync --merge -> exit 0, "1 merged"
+                test_graph/build-logic is GONE
+
+      In MODE=A the link happened to resolve inside the child home, because the
+      provider unit was materialized there too and the link is RELATIVE. With an
+      ABSOLUTE link -- which prepare_provider_bindings emits for a `skill-root`
+      provider (`target = str(source)`, _common.py:~575) rather than a
+      workspace-relative one -- the restored link would point back into the
+      PARENT STORE, and the child home would be writing through into the home it
+      was materialized from. That is the isolation break CHM-5 exists to prevent,
+      reintroduced by a successful sync.
+    fixed_here: >
+      Only for the sync path, and only inside SyncGitHandler.runMerge, which now
+      escrows the dereferenced trees across the stash/merge/pop window and
+      restores them (MaterializationEscrow). Asserted by the sync-settles node
+      and by the probes above.
+    still_open: >
+      Nothing re-establishes the invariant AFTER an arbitrary git operation. An
+      agent running `git checkout`, `git merge` or `git stash pop` by hand in a
+      materialized store copy restores the tracked symlink exactly as the merge
+      did, with the same absolute-link consequence, and no command detects it.
+      A `project resolve` would re-dereference it -- but only if it decides the
+      unit is not settled, and `settledWithoutARecord` may well decide it is.
+    why_deferred: >
+      The general form is "a materialized child home has an invariant that only
+      the materializer maintains, and any tool may break it". That is a
+      detection question -- HIS-13's (#159) subject, "no command can tell a
+      damaged home from a healthy one" -- and widening HIS-4 to own it is how a
+      ticket about one bug becomes a ticket about three.
+    candidate_owner: HIS-13
+    status: open
+    evidence:
+      - results/epic-home-integrity-sync/probes/his-4/README.md
+      - results/epic-home-integrity-sync/probes/his-4/before-run1-sync-merge.out
+      - results/epic-home-integrity-sync/probes/his-4/before-run2-sync-merge.out
+
+  - id: DEF-015
+    # RENUMBERING AID: HIS-12 filed a different DEF-015 in a separate worktree.
+    # This one is: HIS-4 / the MERGE_CONFLICT probe clears an error whose damage remains.
+    filed_by_ticket: HIS-4
+    short_label: "HIS-4: MERGE_CONFLICT probe narrower than the condition it retires"
+    found_by: HIS-4, checking whether clause 2 needed a new mechanism
+    found_at: "2026-08-21"
+    severity: minor
+    summary: >
+      An installed-record error IS already re-derived from the live tree on
+      every command -- and the MERGE_CONFLICT probe asks a narrower question
+      than the error it retires, so it can clear an error whose damage is still
+      there.
+    detail: >
+      ReconcileUseCase.buildProgram emits a ValidateAndClearError for every
+      recorded error, and SkillManagerCli.tryReconcile runs it at the start of
+      EVERY invocation. MEASURED: after the pre-fix `sync --merge` recorded a
+      MERGE_CONFLICT, the very next command printed `reconcile: onboarded=0
+      cleared=1` and the record's errors[] was empty again.
+
+      So HIS-4's clause 2 ("an installed-record error is re-derived from the
+      live tree, so a condition that has cleared stops being reported without
+      anyone editing the record by hand") was ALREADY SATISFIED by the
+      mechanism HIS-1 is next door to. HIS-4 deliberately added no second
+      spelling of it.
+
+      What is wrong is the probe's question. LiveInterpreter.validateAndClear
+      asks, for MERGE_CONFLICT, only `GitOps.unmergedFiles(dir).isEmpty()`. The
+      state it was recorded for -- a failed stash pop -- can leave NO unmerged
+      files at all (see DEF-013), so the error cleared on the next command while
+      stash@{0} still held the local work and the baseline was still stranded
+      behind a committed merge. The record went quiet; the damage did not.
+    why_this_is_not_fixed_here: >
+      Widening the probe means deciding what MERGE_CONFLICT means -- unmerged
+      paths, or "this store is not in a state a sync left it in", which is a
+      different predicate that would also have to name the stash and the
+      baseline gap. HIS-4's atomicity fix removes the GENERATOR (a failed pop no
+      longer leaves either a committed merge or, normally, a stash), so the
+      false-clear is much harder to reach; it is not proved unreachable.
+    the_pattern_this_belongs_to: >
+      READ THIS ALONGSIDE DEF-012, BECAUSE THEY ARE THE SAME DEFECT IN TWO
+      INSTRUMENTS AND THEY WERE FOUND IN ONE WAVE.
+
+      DEF-012: `home verify` returns exit 0 -- "clean" -- on a home whose own
+      pinned CLI names a Cellar directory Homebrew has deleted. The home is
+      unusable and the instrument says healthy.
+
+      DEF-015: `ValidateAndClearError(MERGE_CONFLICT)` retires the recorded
+      error on the next command, because it asks only "are there unmerged
+      paths", while stash@{0} still holds the local work and the installed
+      baseline is still behind a merge that was already committed. The store is
+      damaged and the instrument says healthy.
+
+      In both, the probe's SCOPE is narrower than the condition it is trusted to
+      decide, and in both the narrowing is defensible in isolation --
+      missingReferencesIn is scoped to references under the home root, and
+      unmergedFiles is scoped to the index. Neither is defensible as an answer
+      to "is this healthy".
+
+      Whoever picks up HIS-13 should treat these as one finding with two
+      surfaces rather than two tickets: the fix for either alone leaves the
+      other reporting healthy over damage, and HIS-13's own statement of the
+      problem -- "no command can tell a damaged home from a healthy one" -- is
+      exactly what both of them demonstrate.
+    why_deferred: >
+      It is a question about what an error KIND asserts, across all nine kinds
+      in the exhaustive switch, and the switch is deliberately exhaustive so
+      that choice is made once per kind by whoever owns the kind. Not inside
+      HIS-4's declared slice, which names InstalledRecord.errors but not the
+      validation predicate.
+    open_question_the_third_surface: >
+      COULD NOT BE MEASURED FROM A TICKET WORKTREE, AND IT MAY BE THE SAME
+      PATTERN A THIRD TIME.
+
+      #216(b) states that after the git state was cleared by hand, `skt check`
+      STILL reported the conflict. On this build the CLI re-derives the error on
+      every invocation, so the CLI cannot produce that symptom -- measured
+      above. Two readings are possible and one command decides between them:
+
+        (a) the report predates the reconcile pass, and the symptom no longer
+            exists; or
+        (b) `skt check` reads installed/<unit>.json DIRECTLY, without going
+            through a skill-manager command, so it never triggers the reconcile
+            that would retire the error.
+
+      IF (b), THEN `skt` AND THE CLI ARE TWO READERS OF ONE RECORD, disagreeing
+      about whether a unit has an outstanding error -- which is the same pattern
+      as DEF-012 and this finding, on a third surface. That makes it one class
+      with three instances rather than three tickets, and HIS-13 should meet it
+      as one.
+
+      NOT GUESSED AT HERE. `skt` is a separate unit and reading its
+      implementation to decide was outside this ticket's slice; the honest
+      report is the question plus the command that answers it, not an inference.
+      To decide: find where `skt check` obtains a unit's errors -- if it parses
+      the JSON itself rather than shelling out to skill-manager, it is (b).
+    candidate_owner: HIS-13
+    related: [DEF-012]
+    status: open
+
+  - id: DEF-016
+    filed_by_ticket: HIS-4
+    short_label: "HIS-4: `project sync` and `publish` are a third and fourth reader of the dirty question"
+    found_by: adversarial review of #231 (MED-6), confirmed by HIS-4
+    found_at: "2026-08-21"
+    severity: major
+    summary: >
+      HIS-4 made the two sync handlers in `effects` agree about what "local
+      work" means. There are TWO MORE readers outside that package, one of which
+      operates on exactly the tier HIS-4 is about, and HIS-4's own guard cannot
+      see either of them.
+    detail: >
+      MEASURED 2026-08-21 on this branch.
+
+      (3) `UnitTrunkPull:187` -- the `project sync` path:
+
+            if (GitOps.hasWorktreeChanges(repo) && !opts.merge()) { ... HELD_BACK }
+
+          and `pullTarget(unit, childStore, materializer)` returns THE CHILD
+          HOME'S OWN CHECKOUT for CHECKOUT-mode units. So a materialized child
+          copy -- the exact subject of this ticket -- is held back on every
+          `project sync`, forever, with the message "local changes in <repo>;
+          re-run with --merge to three-way merge them". That is HIS-4's defect,
+          untouched, on the command a project agent actually runs.
+
+      (4) `UnitPublisher:169`:
+
+            boolean dirty = GitOps.hasWorktreeChanges(repo);
+
+          read as "there is local work to commit". From a child home the
+          dereferenced store link IS that "local work", so publish would COMMIT
+          THE MATERIALIZATION ARTIFACT UPSTREAM -- a deletion of the tracked
+          symlink, pushed to the unit's own repository, from a home that only
+          ever dereferenced it locally.
+
+      Two further callers read the same predicate legitimately and are NOT part
+      of this finding -- `ProjectLibResolver:152` and
+      `ChildHomeMaterializer:537` ask "has this working tree changed at all",
+      which is a real and different question from "is there work here a sync
+      would destroy".
+    why_the_guard_does_not_catch_it: >
+      SyncPathsAgreeAboutDirtyTest is scoped to
+      src/main/java/dev/skillmanager/effects. Its first javadoc claimed it
+      "fails on the FOURTH handler nobody has written"; review measured that as
+      wrong twice over, because the third and fourth already exist and live
+      outside the scanned package. The javadoc has been corrected to say what
+      the scan cannot see, and a fourth case now asserts the ledger of
+      out-of-scope callers, so this finding cannot silently drift.
+    why_deferred: >
+      `project sync` and `publish` are different surfaces with their own
+      semantics -- publish in particular needs a decision about what SHOULD
+      happen when a child home publishes a unit it has dereferenced, and the
+      answer is plausibly "refuse and say why" rather than "ignore the path".
+      That is a design question, not a mechanical application of HIS-4's
+      predicate, and widening this ticket to make it would be the third time
+      this epic turned one bug into three.
     candidate_owner: unassigned
     status: open
+    evidence:
+      - src/test/java/dev/skillmanager/source/SyncPathsAgreeAboutDirtyTest.java

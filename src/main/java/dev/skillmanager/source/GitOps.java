@@ -278,6 +278,94 @@ public final class GitOps {
         return List.of(r.stdout.trim().split("\\r?\\n"));
     }
 
+    /** One row of {@code git ls-files --stage}: the tracked mode, object and path. */
+    public record IndexEntry(String mode, String objectId, String path) {}
+
+    /**
+     * Every tracked entry in {@code dir}'s index, with the MODE git records for
+     * it.
+     *
+     * <p>The mode is the point. {@code git status} tells you a path changed; it
+     * does not tell you that git holds it at {@code 120000} while the working
+     * tree holds a directory, which is the shape a dereferenced store link
+     * makes and the one no commit can reconcile. See
+     * {@link DereferencedStoreLinks}.
+     *
+     * <p>Stage-0 rows only. An unmerged path appears at stages 1-3 and is a
+     * different question, asked by {@link #unmergedFiles}; folding the two
+     * together would let a conflicted index masquerade as a materialization.
+     */
+    public static List<IndexEntry> indexEntries(Path dir) {
+        Result r = run(dir, List.of("git", "ls-files", "--stage"));
+        if (r.exit != 0 || r.stdout.isBlank()) return List.of();
+        List<IndexEntry> out = new java.util.ArrayList<>();
+        for (String line : r.stdout.split("\\r?\\n")) {
+            if (line.isBlank()) continue;
+            int tab = line.indexOf('\t');
+            if (tab < 0) continue;
+            String[] meta = line.substring(0, tab).trim().split("\\s+");
+            if (meta.length < 3) continue;
+            if (!"0".equals(meta[2])) continue;
+            out.add(new IndexEntry(meta[0], meta[1], line.substring(tab + 1)));
+        }
+        return List.copyOf(out);
+    }
+
+    /**
+     * The contents of a blob as text, or {@code null} when it cannot be read.
+     * Used to recover the TARGET of a symlink git still tracks after the
+     * working tree stopped holding one.
+     */
+    public static String blobText(Path dir, String objectId) {
+        if (objectId == null || objectId.isBlank()) return null;
+        Result r = run(dir, List.of("git", "cat-file", "-p", objectId));
+        return r.exit == 0 ? r.stdout : null;
+    }
+
+    /**
+     * Whether {@code dir} is in the middle of a merge — {@code MERGE_HEAD}
+     * exists.
+     *
+     * <p>Distinct from "are there unmerged paths", and the difference is the
+     * whole of HIS-4's link 2. The state measured on the operator's home had
+     * unmerged index stages and <b>no {@code MERGE_HEAD}</b>: residue of a
+     * failed {@code git stash pop}, not a merge in progress. The remedy printed
+     * for it — {@code git add} then {@code git commit} — is the remedy for a
+     * merge in progress, and it cannot clear a stash-pop residue.
+     */
+    public static boolean isMidMerge(Path dir) {
+        return Files.isRegularFile(gitDir(dir).resolve("MERGE_HEAD"));
+    }
+
+    /**
+     * {@code git checkout -- <paths>}: restore these paths in the working tree
+     * from the index. Best-effort; a path the index does not hold is simply not
+     * restored.
+     */
+    public static boolean checkoutPaths(Path dir, java.util.Collection<String> paths) {
+        if (paths == null || paths.isEmpty()) return true;
+        List<String> argv = new java.util.ArrayList<>(List.of("git", "checkout", "--"));
+        argv.addAll(paths);
+        return run(dir, argv).exit == 0;
+    }
+
+    /** Whether {@code dir} carries at least one stash entry. */
+    public static boolean hasStash(Path dir) {
+        Result r = run(dir, List.of("git", "stash", "list"));
+        return r.exit == 0 && !r.stdout.isBlank();
+    }
+
+    /**
+     * The repository's git directory. Usually {@code dir/.git}, but a store
+     * copy that was materialized from a worktree can carry a {@code .git} FILE
+     * naming somewhere else, and asking git is the only way to be right.
+     */
+    private static Path gitDir(Path dir) {
+        Result r = run(dir, List.of("git", "rev-parse", "--absolute-git-dir"));
+        if (r.exit == 0 && !r.stdout.isBlank()) return Path.of(r.stdout.trim());
+        return dir.resolve(".git");
+    }
+
     /**
      * {@code git stash push --include-untracked}. Returns true if anything was
      * stashed (working tree had changes), false if the tree was clean (nothing
