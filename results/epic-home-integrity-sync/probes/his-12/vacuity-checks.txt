@@ -123,3 +123,29 @@ below are the post-review set, not the pre-review one.
 
 ALL 16 REMAINING CHECKS FAILED AGAINST BROKEN CODE.
 V17 did not, was recorded, and the code it guarded was removed.
+
+=== V18 the per-verb GUARD: one `--home` removed from a class-3 remedy
+  [FAIL] every printed remedy that names a class-2/3 verb also names its home:
+         expected <[]> but was <[ConsoleProgramRenderer.java: %s sync %s%s%s --merge
+         (merges %s into %s)", spelling.binary(), skillName, …]>
+  FAILURES: 1
+
+  AND IT CATCHES THE ONE IT WAS BUILT FOR. HIS-4 (#216) routes its new
+  merge-conflict remedies through HomeDescriptor.cliInvocation — correctly —
+  and they read `<cli> sync <name>`, a class-3 verb with no --home. HIS-4
+  promotes before HIS-12. The three lines, verbatim from
+  origin/feature/216-his-4, run against the guard's pattern:
+
+    MATCHED   + ", then `" + cli + " sync " + name + "`";
+    MATCHED   + " (`git status`), then `" + cli + " sync " + name + "`; or merge by hand "
+    MATCHED   + "command retires it; `" + cli + " sync " + name + "` does so now";
+
+  and the class-1 negative is correctly skipped:
+
+    skipped   String sync = cli + " home sync --from " + a + " --to " + b;
+
+  A FIRST VERSION OF THIS GUARD WAS UNUSABLE AND IS RECORDED RATHER THAN
+  ELIDED: it let the verb be any lowercase word, so `%s` matched nearly every
+  log format string in the project — about 180 false positives. A check that
+  can only be satisfied by weakening it is not a check. Pinning the verb list
+  to the five that take --home is what makes each match a real remedy site.

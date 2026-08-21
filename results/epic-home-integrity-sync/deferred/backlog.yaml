@@ -727,12 +727,17 @@ findings:
       healthy.
 
       It did NOT take the "a pin should survive an upgrade" half -- how a pin is
-      WRITTEN. That is DEF-014, and it is a design change to LauncherShims,
+      WRITTEN. That is DEF-027, and it is a design change to LauncherShims,
       outside HIS-12's conflict keys and argued against at length in that
       class's javadoc (#61). This entry stays OPEN for HIS-13's detection half,
       which HIS-12 did not touch.
 
-  - id: DEF-020
+  # HIS-12's findings are 025, 027, 028 — allocated by the epic owner
+  # 2026-08-21 to clear collisions: 020 was HIS-9's and 021 is the epic
+  # branch's own. The mapping is the owner's, id for id (020->025, 022->027,
+  # 023->028); 026 is deliberately unused rather than silently reassigned,
+  # because the owner's message allocated it to an entry HIS-12 never had.
+  - id: DEF-025
     found_by: HIS-12 (#161, #187), implementing the typed refusal for project sync
     found_at: "2026-08-21"
     severity: minor
@@ -775,7 +780,7 @@ findings:
     candidate_owner: unassigned
     status: open
 
-  - id: DEF-022
+  - id: DEF-027
     found_by: HIS-12 (#161), taking the bounded half of DEF-012
     found_at: "2026-08-21"
     severity: major
@@ -815,11 +820,11 @@ findings:
       DEF-012 remains open for its detection half (HIS-13): `home verify`
       returning exit 0 on a home whose own CLI is gone, because
       missingReferencesIn only considers references UNDER the home root. HIS-12
-      changes nothing there. DEF-014 is the third piece: the writing half.
+      changes nothing there. DEF-027 is the third piece: the writing half.
     candidate_owner: unassigned (LauncherShims / release packaging)
     status: open
 
-  - id: DEF-023
+  - id: DEF-028
     found_by: HIS-12 (#161), running ticket-lifecycle as its second graph
     found_at: "2026-08-21"
     severity: major

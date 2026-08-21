@@ -168,7 +168,7 @@ was built from the binary alone, so a pasted `home shims` with no
 inside the fix for DEF-002, in the branch that fires exactly when the reader's
 front door is already broken.
 
-**Not taken:** how a pin is *written* (DEF-022) and whether `home verify` should
+**Not taken:** how a pin is *written* (DEF-027) and whether `home verify` should
 notice (DEF-012's detection half, HIS-13's).
 
 ## Two more the review measured, and both were real
@@ -261,12 +261,12 @@ defect one level up. It resolves `{@link}`, `@see` and `@throws`. It cannot see
 
 ## Deferred
 
-- **DEF-020** — `project sync --rebuild` still validates the staged closure
+- **DEF-025** — `project sync --rebuild` still validates the staged closure
   *after* the teardown and rolls back, rather than refusing before it. Needs the
   resolver's install phase split from its realize phase.
-- **DEF-022** — a pin is still *written* as an absolute versioned Cellar path,
+- **DEF-027** — a pin is still *written* as an absolute versioned Cellar path,
   so the next `brew upgrade` re-breaks it.
-- **DEF-023** — HIS-10's descent record read as a leak by `ticket-lifecycle`.
+- **DEF-028** — HIS-10's descent record read as a leak by `ticket-lifecycle`.
   **Closed: fixed upstream in `a4a95cb` from this finding**, before this PR.
 
 DEF-002 is **closed** with its before/after pasted. DEF-012 stays **open** for

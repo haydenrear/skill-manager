@@ -69,7 +69,7 @@ refusal escapes. Two assertions now hold that in place:
 Vacuity probe V8 reorders the capture after the teardown; the order assertion
 fails. V7 removes the typed catch; three assertions fail.
 
-NOT TAKEN, and backlogged as DEF-020: validating the staged closure BEFORE the
+NOT TAKEN, and backlogged as DEF-025: validating the staged closure BEFORE the
 teardown rather than rolling the teardown back. That is a change to what
 `project sync --rebuild` DOES, which the plan's slice excludes, and it needs
 ProjectDependencyResolver's install phase split from its realize phase.

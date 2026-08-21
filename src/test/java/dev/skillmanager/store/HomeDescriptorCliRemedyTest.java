@@ -477,7 +477,92 @@ public final class HomeDescriptorCliRemedyTest {
             assertTrue(resolved.danglingHomePin() == null, "and nothing is reported dangling");
         });
 
+        // ------------------------------- the contract, guarded mechanically
+
+        suite.test("every printed remedy that names a class-2/3 verb also names its home", () -> {
+            // THE GUARD THE CONTRACT NEEDS, and the reason it is a source scan.
+            //
+            // "Bind per verb" is a rule with N call sites, and this repository
+            // has paid for that shape twice: `home close-out`'s fix went into
+            // close-change.sh and left the human path un-runnable, and #142's
+            // fix reached six refusals one at a time. The CLI resolution was
+            // centralised for exactly that reason -- but the ARGUMENT cannot
+            // be, because only the call site knows the verb. So the rule is
+            // enforced by reading the sources.
+            //
+            // MEASURED NEED, not hypothetical: HIS-4 (#216) routed its new
+            // merge-conflict remedies through HomeDescriptor.cliInvocation --
+            // correctly, and that closed a finding -- and those remedies read
+            // `<cli> sync <name>`, a class-3 verb with no --home. HIS-4
+            // promotes before HIS-12. Without this, that lands unbound and
+            // nobody finds out until an operator's root home is edited.
+            List<String> unbound = new ArrayList<>();
+            int checked = 0;
+            for (Path file : javaSourcesUnder(mainSourceRoot())) {
+                String src = Files.readString(file);
+                Matcher m = REMEDY_VERB.matcher(src);
+                while (m.find()) {
+                    checked++;
+                    // The rest of the statement: a remedy is built in one
+                    // expression, and the binding has to be inside it.
+                    int end = src.indexOf(";", m.end());
+                    String statement = src.substring(m.start(), end < 0 ? src.length() : end);
+                    if (statement.contains("--home") || statement.contains("homeArg")) continue;
+                    unbound.add(file.getFileName() + ": " + oneLine(statement));
+                }
+            }
+            // A scan that reads nothing proves nothing -- the failure mode this
+            // epic keeps meeting.
+            assertTrue(checked >= 4,
+                    "the scan found class-2/3 remedy sites to check; found " + checked);
+            assertEquals(List.of(), unbound,
+                    "every remedy naming a verb that takes --home carries one");
+        });
+
         return suite.runAll();
+    }
+
+    /**
+     * A resolved CLI interpolated into a remedy, immediately followed by a verb
+     * that TAKES {@code --home}.
+     *
+     * <p>The verb list is explicit and closed, and that is the whole
+     * reliability of this check. The first version let the verb be any
+     * lowercase word, which made {@code %s} match nearly every log format
+     * string in the project -- ~180 false positives, a check satisfiable only
+     * by weakening it. Naming the verbs makes each match a real remedy site.
+     *
+     * <p>{@code home sync} is CLASS 1 and is deliberately absent: it names its
+     * target with {@code --from} / {@code --to} and has no {@code --home} at
+     * all -- probed against the built CLI, not assumed. The negative lookbehind
+     * keeps bare {@code sync} from matching it.
+     *
+     * <p>Both spellings the sources use: {@code %s <verb>} in a format string,
+     * and {@code " + cli + " <verb>} in a concatenation.
+     */
+    private static final Pattern REMEDY_VERB = Pattern.compile(
+            "(?:%s|\\+\\s*(?:cli|rePin|spelling\\.binary\\(\\)|binary\\(\\))\\s*\\+\\s*\")"
+                    + "\\s+(?<!home )(home drift|home shims|home close-out|unit publish"
+                    + "|project sync|sync)(?![a-z-])");
+
+    private static String oneLine(String s) {
+        String flat = s.replaceAll("\\s+", " ").strip();
+        return flat.length() <= 160 ? flat : flat.substring(0, 160) + " …";
+    }
+
+    private static List<Path> javaSourcesUnder(Path root) throws Exception {
+        try (var walk = Files.walk(root)) {
+            return walk.filter(p -> p.toString().endsWith(".java")).sorted().toList();
+        }
+    }
+
+    private static Path mainSourceRoot() {
+        Path dir = Path.of(System.getProperty("user.dir")).toAbsolutePath();
+        for (Path p = dir; p != null; p = p.getParent()) {
+            Path candidate = p.resolve("src/main/java/dev/skillmanager");
+            if (Files.isDirectory(candidate)) return candidate;
+        }
+        throw new AssertionError("cannot find src/main/java/dev/skillmanager from " + dir);
     }
 
     // ----------------------------------------------------------------- setup
