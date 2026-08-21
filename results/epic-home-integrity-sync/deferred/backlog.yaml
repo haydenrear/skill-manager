@@ -79,8 +79,15 @@ findings:
       a distinct surface, and outside every declared HIS slice. It is a remedy
       that silently changes which home you are editing, which is worth its own
       ticket rather than a drive-by fix.
-    candidate_owner: unassigned
-    status: open
+    candidate_owner: HIS-12
+    status: triaged
+    resolution: >
+      Owned in schedule revision 4. DEF-002 is the same defect as #161
+      (HomeDescriptor.resolveCli falls through to a raw PATH walk and the printed
+      remedy reads as authoritative) landing on the operator: a sync run against
+      the PROJECT home prints a remedy naming the ROOT home's pinned CLI.
+      Scheduled as HIS-12 (#161), wave 4, promotion order 8, together with #187.
+      `triaged` means the owner decided, not that the bug is gone.
 
   - id: DEF-003
     found_by: wave-1 close-out, sweeping this epic's branches
@@ -206,3 +213,38 @@ findings:
       with it. Every open assignment was re-rendered and re-validated against
       the amended plan. The finding stays open as a defect until #223 lands --
       `triaged` means the owner decided, not that the bug is gone.
+
+  - id: DEF-005
+    found_by: wave-2 close-out, probing a clone of the project home
+    found_at: "2026-08-21"
+    severity: minor
+    summary: >
+      Every clone of this project home exits 11 from its first sync, after doing
+      all of its work, because a unit in the home declares skill-imports naming
+      units the home does not hold.
+    detail: >
+      Measured 2026-08-21 on epic tip 23e35c7. `sync --yes` in a fresh clone
+      completes agents, tools and CLI provisioning, prints
+      `✓ cli: 6 already present, 7 installed`, and THEN:
+
+        markdown skill-import violations (2) — fix these references:
+        ✗   - spec-double-compiler (skill): SKILL.md
+        ✗     skill-imports[0] references missing unit `skill-manager`
+        ✗   - spec-double-compiler (skill): SKILL.md
+        ✗     skill-imports[1] references missing unit `skt`
+
+      exit 11. The project home holds 4 units; neither `skill-manager` nor `skt`
+      is one of them.
+    reproduction: >
+      skill-manager home clone --to <scratch>; SKILL_MANAGER_HOME=<scratch>
+      skill-manager sync --yes; echo $?
+    why_deferred: >
+      It is HOME CONTENT, not a product defect: the unit legitimately declares an
+      import the home has not installed. But it means every ticket worktree this
+      epic creates ends its first sync non-zero, which a bootstrap script may
+      read as failure. Two candidate answers -- install the named units into the
+      project home, or make the violation non-fatal when the missing unit is not
+      required to load -- and choosing between them is not inside any declared
+      HIS slice.
+    candidate_owner: unassigned
+    status: open

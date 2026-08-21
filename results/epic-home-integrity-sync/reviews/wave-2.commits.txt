@@ -1,0 +1,16 @@
+23e35c7 Merge pull request #225 from haydenrear/feature/223-his-7
+cb885f7 fix(cli): a rebuild owns its own shim, so a producer cannot write into another home
+a7e7a5b fix(cli): a build in a cloned home was writing into its parent
+006f487 chore(epic): close out wave 1-2 deliveries; record the worktree prune's true scope
+5c72dc7 feat(epic): GOAL-mechanism-documented and HIS-8 (#224) — schedule revision 3
+5aacfdf fix(epic): HIS-7's clone half was wrong too — lazy declaration, not an eager build
+5826703 fix(epic): re-found HIS-7 (#223) — the first diagnosis was wrong
+92768a9 feat(epic): schedule HIS-7 (#223) — schedule revision 2
+de7f0f2 chore(epic): HIS-3 delivered; HIS-4 is next
+525adbc Merge HIS-3 (#222) into epic/home-integrity-sync: a gate reports in full once, then reminds
+1e61490 chore(epic): escalate DEF-004 — verify and clone disagree, and no ticket worktree can be built
+39e8b9d fix(drift): a gate is reported in full once, then reminds — and a new change re-opens it
+f04730c Merge review response (#221) into epic/home-integrity-sync
+6bde238 fix(epic): close four seams where the plan-as-text had drifted from the plan-as-code
+d54218b chore(epic): HIS-1 and HIS-2 delivered; HIS-3 is next
+99d720a docs(epic): wave 1 review artifact — two goals on track, one guardrail overridden

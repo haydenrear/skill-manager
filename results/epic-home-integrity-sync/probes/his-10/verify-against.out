@@ -1,0 +1,8 @@
+! Telemetry export unavailable; continuing without telemetry.
+5 shim(s) in /private/tmp/claude-501/-Users-hayde-IdeaProjects-skill-manager/dcb6a969-c6fd-484c-873c-6d6175b7d220/scratchpad/his10-probe/dest link at its parent store — a child home shares the parent's provisioned tools by design; the parent must outlive this home
+    bin/cli/computeq -> /Users/hayde/.skill-manager
+    bin/cli/helm-deploy -> /Users/hayde/.skill-manager
+    bin/cli/monitoring -> /Users/hayde/.skill-manager
+    … 2 more
+✓ no reference to /Users/hayde/IdeaProjects/skill-manager/.skill-manager survives in /private/tmp/claude-501/-Users-hayde-IdeaProjects-skill-manager/dcb6a969-c6fd-484c-873c-6d6175b7d220/scratchpad/his10-probe/dest, and no path in it reaches any other Skill Manager home except the 5 sanctioned parent-store shim(s) above
+  log: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-manager/logs/home-verify-20260821-103114-c711.log

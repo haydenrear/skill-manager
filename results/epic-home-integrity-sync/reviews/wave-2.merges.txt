@@ -1,0 +1,6 @@
+23e35c7 Merge pull request #225 from haydenrear/feature/223-his-7
+  2026-08-21 10:28:33 -0400
+525adbc Merge HIS-3 (#222) into epic/home-integrity-sync: a gate reports in full once, then reminds
+  2026-08-20 19:17:23 -0400
+f04730c Merge review response (#221) into epic/home-integrity-sync
+  2026-08-20 18:58:00 -0400
