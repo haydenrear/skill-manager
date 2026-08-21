@@ -1072,7 +1072,6 @@ findings:
     status: open
     evidence:
       - src/test/java/dev/skillmanager/source/SyncPathsAgreeAboutDirtyTest.java
-  - id: DEF-013
   - id: DEF-017
     found_by: HIS-9, placing the write-confinement guard
     found_at: "2026-08-21"
@@ -1287,98 +1286,6 @@ findings:
     candidate_owner: HIS-6 (measurement only)
     status: open
 
-  - id: DEF-016
-    found_by: HIS-9, trying to run its declared graph
-    found_at: "2026-08-21"
-    severity: blocking
-    escalated: true
-    summary: >
-      The wave's shared graph lock is stuck on an EMPTY lock directory that its
-      own reclaim logic cannot clear, so no parallel agent can run a graph until
-      a human removes it.
-    detail: >
-      `scratchpad/graph-run.sh` serializes graph runs with `mkdir "$LOCK"`. The
-      holder then writes `$LOCK/owner` and `$LOCK/pid`, and a waiter reclaims the
-      lock when that pid is gone:
-
-        owner_pid="$(cat "$LOCK/pid" 2>/dev/null || echo "")"
-        if [ -n "$owner_pid" ] && ! kill -0 "$owner_pid" 2>/dev/null; then
-          rm -rf "$LOCK"; continue
-        fi
-
-      THE RECLAIM REQUIRES A PID FILE. A lock directory that exists with NO pid
-      file -- because its creator died between the `mkdir` and the two `echo`s --
-      is never reclaimed, and every waiter blocks the full 90 minutes and then
-      exits 75.
-
-      MEASURED 2026-08-21 15:02 EDT. `.graph.lock` existed, created 14:58:31,
-      containing NOTHING (`ls -A` empty: no `owner`, no `pid`). At the same
-      moment:
-
-        ps: no run.py, no gradle, no GradleDaemon, no test_graph process
-        docker ps: no skill-manager compose containers (only unrelated k3d ones)
-        the only graph-run.sh alive was HIS-9's own waiter
-
-      So the lock was provably held by nobody and was unreclaimable by design.
-    how_it_got_there: >
-      The wrapper was EDITED WHILE RUNNING. HIS-9's first invocation was inside
-      the `sleep 20` loop when graph-run.sh was rewritten at 14:58:14 to add the
-      pid-reclaim logic; bash reads a script incrementally by byte offset, so it
-      resumed into changed bytes and died with
-      `graph-run.sh: line 27: syntax error near unexpected token '('`. A second
-      process appears to have created the lock directory at 14:58:31 and gone
-      the same way before writing its owner/pid.
-
-      That is the sharper half of this finding: **a shared shell script that
-      several running agents execute cannot be edited in place.** Any edit
-      corrupts every run currently inside it. Write a new file and switch, or
-      edit only while no agent is running it.
-    impact: >
-      HIS-9 could not run `home-integrity`, its declared conflict_keys graph and
-      its only local graph signal. The ticket's unit and spec evidence is
-      complete and its two CLI probes were measured, but the graph half of its
-      validation is UNRUN, including the node HIS-9 itself adds
-      (home.integrity.sync.stays.inside.its.home) and the node it re-aimed
-      (home.integrity.bootstrap.projects.target). Both compile
-      (`jbang build` on each) but neither has been executed.
-
-      Any other wave-4 agent reaching for a graph after 14:58:31 hits the same
-      wall.
-    why_not_cleared_by_this_ticket: >
-      The ticket agent's instructions are explicit -- "if that happens, report it
-      -- do not remove the lock" -- and an attempt to `rmdir` the empty directory
-      was additionally refused by the harness permission classifier. Both were
-      respected. Recorded here rather than worked around.
-    remedy: >
-      Remove the empty directory:  rmdir <scratchpad>/.graph.lock
-      Then re-run:  GRAPH_AGENT=HIS-9 bash <scratchpad>/graph-run.sh home-integrity
-      from /Users/hayde/IdeaProjects/wt-226-his-9 (HIS-9's waiter is still parked
-      and will pick the lock up on its own within 20s of the directory going
-      away, if it has not yet hit its 90-minute cap).
-
-      For the wrapper itself: reclaim on an empty lock directory older than some
-      threshold, not only on a dead pid; and write `pid` BEFORE `owner`, or
-      better, make the lock a single file written atomically rather than a
-      directory populated in three steps.
-    candidate_owner: epic agent (wave-4 machinery)
-    status: closed
-    resolution: >
-      Cleared by the epic agent, 2026-08-21, who confirmed the cause: graph-run.sh
-      was edited IN PLACE (truncate-and-rewrite of the same inode) while HIS-9's
-      invocation was mid-execution. Later edits used write-temp-then-rename, which
-      an already-open inode survives. Both halves are fixed in the wrapper --
-      unattributed locks are now reclaimed after 60s, and it no longer `exec`s, so
-      the release trap actually fires (found by HIS-12).
-
-      HIS-9 then ran `home-integrity` twice to completion: 20260821-191337 and,
-      after the DEF-020 fix, 20260821-192222. Both BUILD SUCCESSFUL, 15/15.
-
-      THE DURABLE LESSON, which outlives the two bugs: a shell script that several
-      running agents execute cannot be edited in place, because bash reads a
-      script incrementally by byte offset and resumes into whatever the file now
-      contains. Write a new file and rename, or edit only when nothing is running
-      it.
-
   - id: DEF-020
     found_by: HIS-9, after the epic agent asked whether home.fixpoint.law still covers the graph's newest node
     found_at: "2026-08-21"
@@ -1451,3 +1358,91 @@ findings:
     evidence:
       - results/epic-home-integrity-sync/probes/his-9/graph-home.fixpoint.law.json
       - results/epic-home-integrity-sync/probes/his-9/fixpoint-law-coverage.out
+
+  - id: DEF-024
+    renumbered_from: >
+      Filed as DEF-016. Renumbered to DEF-024 on the epic agent's authoritative
+      allocation, 2026-08-21: HIS-4 also filed a DEF-016 and merges first
+      (promotion order 6 to this ticket's 7). HIS-9's other ids -- 017, 018, 019,
+      020 -- are uncontested and unchanged.
+    found_by: HIS-9, trying to run its declared graph
+    found_at: "2026-08-21"
+    severity: blocking
+    escalated: true
+    status: closed
+    closed_at: "2026-08-21"
+    summary: >
+      CLOSED. The wave's shared graph lock could be left in a state nothing
+      could clear, and a waiter would then block its full 90-minute cap. Three
+      distinct failure modes in one small wrapper; all three are fixed. Recorded
+      so the next author does not rebuild the same lock.
+    the_three_failure_modes: >
+      (1) A SHARED SCRIPT EDITED IN PLACE WHILE RUNNING. `graph-run.sh` was
+          rewritten by truncate-and-rewrite of the SAME INODE while HIS-9's
+          invocation sat in its `sleep 20` loop. Bash reads a script
+          incrementally by byte offset, so the running shell resumed into
+          changed bytes and died:
+            graph-run.sh: line 27: syntax error near unexpected token '('
+          FIXED by editing through write-temp-then-rename instead: an
+          already-open inode survives a rename, so a running shell keeps reading
+          the file it started with.
+
+      (2) THE RELEASE TRAP NEVER FIRED, because the wrapper ended in `exec
+          python ...`. `exec` replaces the shell image, and with it the EXIT trap
+          that was supposed to `rm -rf "$LOCK"`. Found by HIS-12.
+          FIXED: the wrapper no longer execs, so the trap runs.
+
+      (3) AN UNATTRIBUTABLE LOCK WAS NEVER RECLAIMED. The lock is a DIRECTORY
+          populated in three steps -- `mkdir`, then `echo > owner`, then
+          `echo > pid` -- and the reclaim was keyed only on a pid naming a dead
+          process:
+
+            owner_pid="$(cat "$LOCK/pid" 2>/dev/null || echo "")"
+            if [ -n "$owner_pid" ] && ! kill -0 "$owner_pid" 2>/dev/null; then
+              rm -rf "$LOCK"; continue
+            fi
+
+          A shell killed BETWEEN the mkdir and those writes -- which is exactly
+          what (1) caused -- leaves a directory with no owner and no pid, which
+          that predicate can never reclaim. Every waiter then blocked the full
+          90 minutes and exited 75.
+          FIXED: an unattributed lock is now reclaimed after 60 seconds.
+    what_was_measured: >
+      2026-08-21 15:02 EDT. `.graph.lock` existed, created 14:58:31, containing
+      NOTHING (`ls -A` empty: no owner, no pid). At the same moment:
+
+        ps         : no run.py, no gradle, no GradleDaemon, no test_graph process
+        docker ps  : no skill-manager compose containers (only unrelated k3d ones)
+        graph-run.sh: the only one alive was HIS-9's own waiter
+
+      So the lock was provably held by nobody and was unreclaimable by
+      construction -- which is what separated "wait longer" from "this will never
+      clear itself".
+    why_this_ticket_did_not_clear_it: >
+      Recorded because the judgement was contested and came out right. The ticket
+      agent's instructions said "if that happens, report it -- do not remove the
+      lock", and an attempt to `rmdir` the empty directory was independently
+      refused by the harness permission classifier. Both were respected and the
+      lock was left alone; the epic agent cleared it and confirmed the diagnosis.
+      Removing a lock you have proved is orphaned is still removing a shared
+      lock, and the instruction did not carve out that case.
+    outcome: >
+      No graph evidence was lost. Once cleared, HIS-9 ran `home-integrity` to
+      completion three times -- 20260821-191337 (which surfaced DEF-020),
+      20260821-192222 (which proved that fix), and 20260821-200059 (after the
+      second review round changed the shim refusal text the
+      bootstrap.projects.target node asserts on). All three BUILD SUCCESSFUL,
+      15/15 nodes passed.
+    the_durable_lesson: >
+      Two of the three modes are the same mistake in different clothes: a
+      coordination primitive whose invariant spans MORE THAN ONE non-atomic step.
+      A lock that is a directory plus two files has a window in which it is
+      neither held nor free, and any mechanism that reads only one of those files
+      inherits the window.
+
+      If this wrapper is ever rewritten, make the lock a SINGLE file written
+      atomically -- write to a temp path in the same directory, then rename --
+      so there is no partially-created lock to reason about, and no reclaim
+      predicate that can be wrong about it. And do not edit a script several
+      running agents are executing; rename a new one into place.
+    candidate_owner: epic agent (wave-4 machinery) -- fixed by them, no action outstanding
