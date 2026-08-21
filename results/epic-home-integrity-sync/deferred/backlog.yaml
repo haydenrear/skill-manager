@@ -174,5 +174,11 @@ findings:
       - Give it its own ticket in this epic (HIS-7), since it blocks the epic's machinery and is squarely home-integrity.
       - Fix it out-of-band by re-provisioning the five CLIs into the project home so the home is self-contained, then retry the worktree.
       - Accept branch-based tickets for the rest of the epic and carry this to a successor, recording that the worktree machinery stays unexercised.
-    candidate_owner: unassigned
-    status: open
+    candidate_owner: HIS-7
+    status: triaged
+    resolution: >
+      Scheduled as HIS-7 (#223) in schedule revision 2, wave 2, promotion order
+      4. HIS-4 now depends on it and moved to wave 3; HIS-5 and HIS-6 shifted
+      with it. Every open assignment was re-rendered and re-validated against
+      the amended plan. The finding stays open as a defect until #223 lands --
+      `triaged` means the owner decided, not that the bug is gone.
