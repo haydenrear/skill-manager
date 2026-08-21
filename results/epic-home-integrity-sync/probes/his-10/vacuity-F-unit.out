@@ -1,0 +1,44 @@
+[jbang] Building jar for His10Vacuity.java...
+Note: /Users/hayde/IdeaProjects/wt-227-his-10/src/main/java/dev/skillmanager/mcp/GatewayClient.java uses or overrides a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
+== ProvenanceRecordExemptionTest (4 cases)
+  [PASS] a record whose mentions are exactly accounted for is NOT a leak
+  [PASS] ONE EXTRA occurrence beyond the accounted fields is still a hard leak
+  [FAIL] the exemption is granted to the PATH, not to the JSON shape: the copy still holds its real record, which is exempt, and a duplicate elsewhere, which is not; got: []: expected <1> but was <0>
+java.lang.AssertionError: the copy still holds its real record, which is exempt, and a duplicate elsewhere, which is not; got: []: expected <1> but was <0>
+	at dev.skillmanager._lib.test.Tests.assertEquals(Tests.java:73)
+	at dev.skillmanager.store.ProvenanceRecordExemptionTest.lambda$run$2(ProvenanceRecordExemptionTest.java:119)
+	at dev.skillmanager._lib.test.Tests$Suite.runAll(Tests.java:48)
+	at dev.skillmanager.store.ProvenanceRecordExemptionTest.run(ProvenanceRecordExemptionTest.java:144)
+	at His10Vacuity.main(His10Vacuity.java:23)
+  [PASS] an unreadable record buys no exemption — a downgrade needs evidence
+   → 3 passed, 1 failed
+== ClonedHomeDescentTest (6 cases)
+  [PASS] all four readers agree about a cloned home's inherited shim, with no --against
+cli: pruned bin/cli/tool — resolved into the home at /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/clone-descent-vacuity-9345387447849186274/parent, which is not this home's parent store
+  [PASS] VACUITY CONTROL: delete the record and the same four readers disagree again
+  [PASS] a clone of a home with NO record records nothing and stays unsanctioned
+  [PASS] a HAND-WRITTEN record grants nothing — the chain it names must re-derive
+cli: pruned bin/cli/tool — resolved into the home at /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/clone-descent-revoked-15483994952619985956/parent, which is not this home's parent store
+cli: pruned bin/cli/tool — resolved into the home at /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/clone-descent-revoked-15483994952619985956/parent, which is not this home's parent store
+  [PASS] revoking the parent's claim revokes it in EVERY tier at once
+  [PASS] descent is transitive: a clone of a clone still shares the root store
+   → 6 passed, 0 failed
+== HomeVerifyPathSpellingTest (4 cases)
+  [PASS] a missing reference is found through the symlinked spelling too
+  [PASS] THE STATED LIMIT: an alias spelling the caller did not name is not recovered
+  [PASS] a reference that DOES resolve is reported by neither spelling
+  [PASS] the recovered path is reported in the spelling the caller asked about
+   → 4 passed, 0 failed
+== ChildHomeShimIsolationTest (9 cases)
+  [PASS] a child home's shim at its parent's entry passes, on the PARENT's claim
+  [PASS] and on the CHILD's own provenance, which outlives the parent's claim
+  [PASS] with NO evidence on either side, the identical link is still a leak
+  [PASS] a COPY of a sanctioned child inherits the sanction — root -> project -> worktree
+  [PASS] inheritance needs a source that was itself sanctioned, not merely a source
+  [PASS] the sanction does not extend past bin/cli and bin/mcp
+  [PASS] a shim naming a DIFFERENT entry in the parent is not a mirror
+  [PASS] an isolation refusal prints a remedy, in the spelling every caller parses
+  [PASS] a leaking launcher pin gets home shims, which is the command that repairs it
+   → 9 passed, 0 failed
+HIS10 VACUITY FAILURES: 1

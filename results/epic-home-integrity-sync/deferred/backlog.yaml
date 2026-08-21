@@ -456,14 +456,17 @@ findings:
       re-derivation (the chain still has to hold), but it is the same
       leaf-only-symlink shape as DEF-007 and should be closed with NOFOLLOW.
 
-      MED-8, no direct coverage. `mentionsOnlyRecordedDescent`,
-      `isProvenanceRecord`, `rootSpellings` and `insideHomeText` have no unit
-      test that calls them; they are exercised only through `home verify`. The
-      leak EXEMPTION in particular is a branch that turns a hard finding into no
-      finding and it is absent from HIS-10's vacuity table -- nobody has run an
-      assertion against a version of it that is broken. That is exactly the
-      "assume vacuity until disproved" rule, applied to the one branch that
-      downgrades.
+      MED-8, PARTLY CLOSED IN HIS-10 -- what remains is narrower than filed.
+      The half that mattered is done: the leak EXEMPTION
+      (`mentionsOnlyRecordedDescent` + `isProvenanceRecord`) is the branch that
+      turns a hard finding into no finding, the epic owner refused to let it be
+      deferred, and `ProvenanceRecordExemptionTest` now pins it from four
+      directions with three separate disables (vacuity rows E, F, G) proving
+      each case reddens. What is STILL uncovered directly is
+      `HomeCloner.rootSpellings` and `insideHomeText`: both are exercised only
+      through `home verify`, which is behavioural coverage rather than a unit
+      test, and `insideHomeText` -- the cold-shim token substitution -- has no
+      assertion at all over its multi-spelling, longest-first replacement.
 
       LOW-12, no size cap on the record read (every other whole-file read in
       HomeCloner caps at WHOLE_FILE_LIMIT), and `HomeCloner.unsanctionedForeignHome`

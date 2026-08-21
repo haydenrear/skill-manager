@@ -235,7 +235,8 @@ re-derive.
 ## Vacuity — every new assertion, run against the broken code
 
 The epic's rule is that an assertion never run against the defect is not
-coverage. Four fixes, four disables, all re-run after the re-derivation change.
+coverage. Seven disables over four fixes, all re-run after the re-derivation
+change.
 
 | # | fix disabled | assertion | result with the fix removed |
 | --- | --- | --- | --- |
@@ -244,8 +245,11 @@ coverage. Four fixes, four disables, all re-run after the re-derivation change.
 | B | same | graph node `home.integrity.readers.agree.about.one.clone` | **node FAILED** — `readers disagreed: clone=0 verify=1 verify--against=0 shim-after-sync=replaced locally`, and `removing home.provenance.json changed nothing — the readers agree for some other reason and this node is vacuous`. Metrics: `readers.agreeing=2, readers.distinctVerdicts=2` — the epic-tip baseline, reproduced live |
 | C | `rootSpellings` returns only the caller's spelling (pre-#206 behaviour) | `HomeVerifyPathSpellingTest` | **2/4 FAIL** — *"the same home reached through a symlink must reach the same verdict; real=[…/venvs/nope/bin/probe] link=[]"* |
 | **D** | **`sanctions` TRUSTS the recorded `parentStores` instead of re-deriving** (the shape the review measured) | `ClonedHomeDescentTest` | **2/6 FAIL**, and they are the review's two findings verbatim: *"a record is a POINTER to evidence, not the evidence: /nowhere re-derives to nothing, so it sanctions nothing: expected <1> but was <0>"* and *"after the claim is revoked the two tiers must still AGREE: expected <1> but was <0>"* |
+| **E** | **the exemption's byte accounting removed** — `mentionsOnlyRecordedDescent` returns true whenever the file is the record | `ProvenanceRecordExemptionTest` | **2/4 FAIL** — *"one occurrence the record cannot account for and the exemption is off; got: []: expected <1> but was <0>"* and *"not being able to parse it is not evidence that it is harmless; got: []: expected <1> but was <0>"* |
+| **F** | the exemption's PATH test removed — `isProvenanceRecord` returns true for any file | `ProvenanceRecordExemptionTest` | **1/4 FAIL** — *"the copy still holds its real record, which is exempt, and a duplicate elsewhere, which is not; got: []: expected <1> but was <0>"* |
+| **G** | the exemption removed entirely — the record is refused as a leak | `ProvenanceRecordExemptionTest`, `ClonedHomeDescentTest` | **2/4 and 1/6 FAIL** — *"refusing it would refuse the evidence the sanction stands on. got: [FILE_CONTENT home.provenance.json (state)]"*, and `home clone` itself goes red: *"home clone must not report a leak on a shim its own descent record sanctions; got: [FILE_CONTENT home.provenance.json (state)]"* |
 
-Raw logs: `probes/his-10/vacuity-{A,B,C,D}-unit.out`. The review's own CLI repro,
+Raw logs: `probes/his-10/vacuity-{A,B,C,D,E,F,G}-unit.out`. The review's own CLI repro,
 re-run against the fix, is `probes/his-10/after-forged-record-refused.out` —
 exit 1, and the report now reads
 `0 of 1 recorded parent store(s) still re-derive` /
@@ -269,12 +273,37 @@ directory, a sibling symlink at it, and the home addressed through the symlink.
 file, and fails the node if the verdict did not change. Green run:
 `without home.provenance.json: home verify exited 1`.
 
-**One branch is still uncovered and it is named, not hidden.** The leak
-*exemption* — the branch in `verifyRoots` that turns a hard `FOREIGN_HOME`-class
-finding into no finding for the provenance record — has no direct assertion and
-does not appear in the table above. That is exactly the rule this epic keeps
-re-learning, applied to the one branch that downgrades. Filed as **DEF-009**
-(MED-8) rather than claimed as covered.
+**The exemption is covered, and it was the branch most likely to become the
+fifth instance.** It is the one branch in this change that turns a HARD LEAK
+FINDING INTO NO FINDING, in a file that by design names another home. The first
+version of this PR shipped it with no direct assertion and filed it as a
+follow-up; the epic owner refused that deferral, and was right — this epic's
+failure mode, four times now, is a branch nobody asserted on (HIS-1's first
+regression test, HIS-7's first graph node, the `/var` fixture, and the
+self-certifying record itself).
+
+`ProvenanceRecordExemptionTest` pins it from four directions, over a
+deliberately **shim-free** fixture so a red result cannot be blamed on the
+sanction predicate:
+
+| assertion | reddened by |
+| --- | --- |
+| a record whose mentions are exactly accounted for is NOT a leak | G |
+| ONE EXTRA occurrence beyond the accounted fields is still a hard leak | E |
+| the exemption is granted to the PATH, not to the JSON shape | F, G |
+| an unreadable record buys no exemption | E |
+
+Every case has a disable that reddens it, and E/F/G discriminate different
+halves of the branch rather than all firing together.
+
+**The encoding contract is NOT asserted here, and the assertion says so.** The
+accounting counts occurrences in the file's RAW TEXT and covers them with the
+PARSED field values, so for a path JSON has to escape the two spellings differ,
+the counts differ, and the branch fails CLOSED — the finding stands. The unsafe
+mirror image (two different strings whose escaped forms coincide) was not
+measured and stays **DEF-009 / MED-4's**. What is pinned is what is true of the
+writer this ticket ships, for paths that need no escaping, which is every path
+the product's clones produce. A pinned narrow truth beats an unpinned broad one.
 
 ## Goals
 
@@ -312,7 +341,7 @@ regression cfgs are untouched.
 
 | lane | command | result |
 | --- | --- | --- |
-| repository_unit | `jbang RunTests.java` | **ALL PASSED** (`ClonedHomeDescentTest` **6/6**, `HomeVerifyPathSpellingTest` 4/4, `ChildHomeShimIsolationTest` 9/9 unchanged) |
+| repository_unit | `jbang RunTests.java` | **ALL PASSED** (`ClonedHomeDescentTest` **6/6**, `ProvenanceRecordExemptionTest` **4/4**, `HomeVerifyPathSpellingTest` 4/4, `ChildHomeShimIsolationTest` 9/9 unchanged) |
 | spec_graph | `python skills/test_graph/scripts/run.py home-integrity` | **BUILD SUCCESSFUL in 4m 34s**, 14 nodes, `status: passed`, no missing/unexpected node ids; node metrics `readers.agreeing=4, readers.distinctVerdicts=1` |
 | spec_unit | `uv run pytest specs/` | **38 passed in 1.82s** |
 | manual | four-reader matrix, re-run after the fix | captured in `probes/his-10/after-*.out` |
@@ -345,5 +374,6 @@ former is the epic agent's call at wave close; the latter is HIS-5's.
 | `src/main/java/dev/skillmanager/cli/installer/CliShimPruner.java` | **unchanged** — it already asks the gate rather than deciding, so the record reaches it for free |
 | `src/test/java/dev/skillmanager/store/ClonedHomeDescentTest.java` | **new**, 6 cases — four readers over one clone; the vacuity control; the no-record case; **the hand-written-record case**; **the revoked-claim case**; transitivity two tiers down |
 | `src/test/java/dev/skillmanager/store/HomeVerifyPathSpellingTest.java` | **new** — #206, on a fixture the `/var` accident cannot rescue |
+| `src/test/java/dev/skillmanager/store/ProvenanceRecordExemptionTest.java` | **new**, 4 cases — the leak exemption, the one branch that downgrades a hard finding to nothing; shim-free fixture; each case reddened by disable E, F or G |
 | `test_graph/sources/home-integrity/ReadersAgreeAboutOneClone.java` | **new** graph node, three-tier topology, real `sync`, own control; removes the fixture claim it plants, on every exit path; publishes `readers.distinctVerdicts` so the goal's own metric can express the baseline (2) and not just pass/fail |
 | `results/epic-home-integrity-sync/deferred/backlog.yaml` | DEF-007 (blocking, escalated; widened with MED-9), DEF-008, DEF-009, DEF-010 |
