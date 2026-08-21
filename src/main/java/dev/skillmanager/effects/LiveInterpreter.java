@@ -306,6 +306,30 @@ public final class LiveInterpreter implements ProgramInterpreter {
                         project.activeProfile(),
                         result.bindingsRemoved(),
                         result.resolved().lock().resolvedUnits().size()));
+            } catch (dev.skillmanager.project.ProjectImportViolationException imports) {
+                // M7 of #229's review: the THIRD caller of ProjectSyncUseCase.sync,
+                // and the one no CLI is standing in front of. The generic branch
+                // below would record this as "project sync failed: <text>",
+                // indistinguishable from an install failure — and this ticket
+                // closes #187, whose subject is exactly that loss of type.
+                //
+                // There is no exit code to give here: this is an effect handler
+                // emitting facts, not a command. What it owes is the CONDITION,
+                // named, with the same per-violation attribution
+                // `project resolve` and `project sync` print — so a reader of
+                // the fact stream can tell "your markdown names a unit that is
+                // not there" from "the install broke", which is the whole
+                // distinction the typed exception exists to carry.
+                String message = projectName + ": closure import violations ("
+                        + imports.violations().size() + ") — nothing was installed; "
+                        + "declare the missing unit in skill-project.toml or fix the import:\n"
+                        + dev.skillmanager.validation.MarkdownImportValidator
+                                .format(imports.violations());
+                failures.add(message);
+                for (String unitName : projectClaimers.getOrDefault(projectName, new LinkedHashSet<>())) {
+                    addUnitProjectSyncFailure(unitFailures, unitName, message);
+                }
+                facts.add(new ContextFact.ProjectSyncFailed(projectName, message));
             } catch (Exception ex) {
                 String message = projectName + ": " + ex.getMessage();
                 failures.add(message);

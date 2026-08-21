@@ -131,7 +131,9 @@ public final class HomeCloseOut {
             if (!dirtyCheckouts.contains(unit.label())) continue;
             if (blockers.stream().anyMatch(b -> b.label().equals(unit.label()))) continue;
             blockers.add(new Blocker(unit,
-                    cliInvocation(homeRoot) + " unit publish " + unit.unitName()
+                    (cliInvocation(homeRoot) + " unit publish "
+                            + HomeDescriptor.shellQuote(unit.unitName()) + " "
+                            + HomeDescriptor.homeArg(homeRoot)).strip()
                             + "  (a git checkout with unpushed work; a file copy cannot carry it)"));
         }
         return new Verdict(homeRoot, intoRoot, blockers.isEmpty(), blockers, report.units());
@@ -154,14 +156,24 @@ public final class HomeCloseOut {
      */
     private static String remedyFor(UnitSync unit, Path home, Path into) {
         String cli = cliInvocation(home);
-        String sync = cli + " home sync --from " + home + " --to " + into;
+        // CLASS 1 (#161): `home sync --from <a> --to <b>` NAMES ITS OWN TARGET
+        // in its arguments, so it binds nothing further. This is the remedy
+        // `home-sync`'s `remedyArgs` re-runs after dropping the head token, and
+        // it is the spelling that shipped green; #229's first attempt put an
+        // `env SKILL_MANAGER_HOME=…` prefix in front of it, which that strip
+        // (guarded by endsWith("skill-manager")) passed through as ARGUMENTS —
+        // `Unmatched arguments from index 0` — taking the graph red.
+        String sync = cli + " home sync --from " + HomeDescriptor.shellQuote(home.toString())
+                + " --to " + HomeDescriptor.shellQuote(into.toString());
+        // CLASS 2: `unit publish` names no home, and takes --home.
+        String publish = (cli + " unit publish " + HomeDescriptor.shellQuote(unit.unitName())
+                + " " + HomeDescriptor.homeArg(home)).strip();
         return switch (unit.status()) {
             case NEW, UPDATED -> sync;
             case MERGED -> sync + " --merge";
             case CONFLICTED -> sync + " --merge  (then resolve: "
                     + String.join(", ", unit.conflicts()) + ")";
-            case HELD_BACK -> cli + " unit publish " + unit.unitName()
-                    + ", or " + sync + " --merge";
+            case HELD_BACK -> publish + ", or " + sync + " --merge";
             // A linked unit is the one case where the gate cannot say whether
             // anything would be lost, because it cannot say whose bytes they
             // are: the link may point inside the worktree (removed with it) or
@@ -244,6 +256,16 @@ public final class HomeCloseOut {
         }
         for (Blocker blocker : verdict.blockers()) {
             out.add("  fix %s: %s".formatted(blocker.label(), blocker.remedy()));
+        }
+        // M4 of #229's review: the caveat reaches four surfaces and this one
+        // dropped it. Every remedy above names a build, and when that build
+        // came from a raw PATH walk — or when this home's own entrypoint pins
+        // something an upgrade deleted — the reader is entitled to know before
+        // pasting it. Printed once for the verdict rather than once per
+        // blocker: it is a fact about the resolution, not about a unit.
+        if (!verdict.blockers().isEmpty()) {
+            String caveat = HomeDescriptor.cliSpelling(verdict.home()).caveat();
+            if (caveat != null) out.add("  note: " + caveat);
         }
         return out;
     }

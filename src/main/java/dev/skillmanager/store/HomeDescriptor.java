@@ -367,39 +367,42 @@ public record HomeDescriptor(
      */
     public enum CliSource {
         /** {@code SKILL_MANAGER_CLI} — an explicit pin from the caller. */
-        PINNED_ENV(true, true),
+        PINNED_ENV(true),
         /**
          * {@code <storeRoot>/bin/cli/skill-manager} — the home's own
-         * entrypoint, which {@code home shims} wrote and which exports
-         * {@code SKILL_MANAGER_HOME=<storeRoot>} before it delegates. The only
-         * source that BINDS the home by itself.
+         * entrypoint, which {@code home shims} wrote.
+         *
+         * <p>It used to be modelled here as "the source that binds the home by
+         * itself", and remedies built on it carried no binding. That is
+         * <b>wrong twice</b>. HIS-9 makes the entrypoint REFUSE a mismatch with
+         * exit 79 rather than silently rebinding, so "it binds its own home" is
+         * no longer the whole story; and binding is not a property of which
+         * build was found at all — see {@link #homeArg}.
          */
-        HOME_ENTRYPOINT(true, false),
+        HOME_ENTRYPOINT(true),
         /**
          * The build that is running right now, located through
          * {@link dev.skillmanager.launch.RunningCli} — which reads
          * {@code SKILL_MANAGER_INSTALL_DIR} rather than the process basename,
          * so it works in a shipped launcher.
          */
-        RUNNING_BUILD(true, true),
+        RUNNING_BUILD(true),
         /**
          * A raw {@code PATH} walk. Nothing here says which build was found;
          * on a developer machine it is routinely an older release that answers
          * an unknown subcommand with top-level usage and exit 0 (#61).
          */
-        PATH_FALLBACK(false, true),
+        PATH_FALLBACK(false),
         /**
          * Nothing resolved, or the only candidate left was this home's own
          * entrypoint with a DANGLING pin.
          */
-        UNRESOLVED(false, true);
+        UNRESOLVED(false);
 
         private final boolean verified;
-        private final boolean needsHomeBinding;
 
-        CliSource(boolean verified, boolean needsHomeBinding) {
+        CliSource(boolean verified) {
             this.verified = verified;
-            this.needsHomeBinding = needsHomeBinding;
         }
 
         /**
@@ -407,13 +410,6 @@ public record HomeDescriptor(
          * or this process, as opposed to it merely being first on {@code PATH}.
          */
         public boolean verified() { return verified; }
-
-        /**
-         * Whether a remedy naming this executable must also name the home, by
-         * carrying {@code SKILL_MANAGER_HOME}. False only for
-         * {@link #HOME_ENTRYPOINT}, which binds the home from its own location.
-         */
-        public boolean needsHomeBinding() { return needsHomeBinding; }
     }
 
     /**
@@ -475,9 +471,20 @@ public record HomeDescriptor(
      * question correctly, by reading the {@code SKILL_MANAGER_INSTALL_DIR}
      * back-reference every launcher exports, so the dead step is replaced by a
      * live one rather than merely deleted. It is placed AFTER the home's own
-     * entrypoint, which is where the old ordering effectively put it (the dead
-     * step never won), so promoting it cannot change which build an existing
-     * home's descriptor names.
+     * entrypoint, which is where the old ordering effectively put it.
+     *
+     * <p><b>What that ordering does and does not preserve.</b> For a home that
+     * HAS a live entrypoint, the answer is unchanged: the entrypoint won
+     * before and wins now. For every other home the answer CAN change, and the
+     * change is the point — a live step 3 now answers where a raw {@code PATH}
+     * walk used to. Four shapes move: a home with no {@code bin/cli} at all; a
+     * home whose entrypoint's pin an upgrade deleted; a machine whose
+     * {@code PATH} {@code skill-manager} is a foreign home's entrypoint (which
+     * is now skipped outright); and a machine with no {@code skill-manager} on
+     * {@code PATH}, which used to resolve nothing. In each, the previous answer
+     * was a guess or a wrong home, which is what #161 is about. The claim worth
+     * making is the narrow one, and it is what {@code HomeDescriptorTest}
+     * pins: <em>a home that ships a working CLI still names that CLI.</em>
      *
      * <h2>Another home's entrypoint is never the answer</h2>
      *
@@ -567,9 +574,10 @@ public record HomeDescriptor(
      * every hand-written entrypoint off its own home.
      */
     private static Path danglingPinIn(Path entrypoint) {
-        Path pin = dev.skillmanager.launch.LauncherShims.pinnedCliIn(entrypoint).orElse(null);
-        if (pin == null) return null;
-        return Files.isExecutable(pin) ? null : pin;
+        // One definition of "this pin is gone", in the class that writes the
+        // file. A second spelling here is how two readers of one artifact come
+        // to disagree, which is the whole subject of this epic.
+        return dev.skillmanager.launch.LauncherShims.danglingPinIn(entrypoint).orElse(null);
     }
 
     /**
@@ -593,13 +601,29 @@ public record HomeDescriptor(
      * <p>Structural, and every part of the shape is required: the basename,
      * the {@code bin/cli} parents, and the enclosing directory actually being
      * a home ({@link dev.skillmanager.launch.LaunchEnv#looksLikeStoreRoot} —
-     * the one predicate this repository asks that question with). Compared
-     * through {@link Fs#realOrNormalized} so a home reached through a symlink
-     * is not mistaken for a foreign one, which is the same spelling-invariance
-     * clause GOAL-one-home-one-answer states.
+     * the one predicate this repository asks that question with).
+     *
+     * <h2>The CANDIDATE is resolved first, and that was the hole</h2>
+     *
+     * <p>The first version of this resolved {@code owner} and {@code storeRoot}
+     * but never the candidate — so it saw only the shape it was handed. The
+     * most ordinary way to put a CLI on {@code PATH} is a symlink:
+     *
+     * <pre>
+     * /usr/local/bin/skill-manager -> &lt;foreignHome&gt;/bin/cli/skill-manager
+     * </pre>
+     *
+     * <p>whose parents are {@code /usr/local/bin} and {@code /usr/local}, not
+     * {@code bin/cli} under a home — so the predicate returned false and
+     * DEF-002 survived intact for that spelling, inside the fix for DEF-002.
+     * The link is followed first, then the shape is read off the real file.
+     * That is the spelling-invariance clause GOAL-one-home-one-answer states,
+     * applied to the input as well as to the comparison.
      */
     static boolean isForeignHomeEntrypoint(Path storeRoot, Path candidate) {
-        if (candidate == null || !looksLikeSkillManagerLauncher(candidate)) return false;
+        if (candidate == null) return false;
+        candidate = Fs.realOrNormalized(candidate);
+        if (!looksLikeSkillManagerLauncher(candidate)) return false;
         Path cliDir = candidate.getParent();
         if (cliDir == null || !"cli".equals(String.valueOf(cliDir.getFileName()))) return false;
         Path binDir = cliDir.getParent();
@@ -632,25 +656,17 @@ public record HomeDescriptor(
         }
 
         /**
-         * The head of a runnable remedy, bound to {@link #storeRoot}.
-         *
-         * <p>This is the answer to DEF-002. {@code binary()} alone is enough
-         * only for {@link CliSource#HOME_ENTRYPOINT}, whose path both names the
-         * home and binds it; every other spelling inherits whatever
-         * {@code SKILL_MANAGER_HOME} the reader's shell happens to carry, which
-         * unset is the operator's ROOT home. A remedy printed by a command run
-         * against home X that silently edits a different home is worse than no
-         * remedy, because it looks like it worked.
+         * {@code --home <storeRoot>}, or the empty string when there is no home
+         * to name. See {@link HomeDescriptor#homeArg} for why the binding lives
+         * in an argument rather than in {@link #binary()}.
          */
-        public String command() {
-            if (storeRoot == null || !source.needsHomeBinding()) return binary();
-            return envBinary() + " SKILL_MANAGER_HOME=" + shellQuote(storeRoot.toString())
-                    + " " + binary();
+        public String homeArg() {
+            return HomeDescriptor.homeArg(storeRoot);
         }
 
         /**
          * The one line a caller must print under a remedy built from
-         * {@link #command()}, or null when there is nothing to admit.
+         * {@link #binary()}, or null when there is nothing to admit.
          *
          * <p>Issue #161: the fix that made remedies absolute
          * ({@code /opt/homebrew/bin/skill-manager …}) made the {@code PATH}
@@ -660,6 +676,14 @@ public record HomeDescriptor(
          * distinguishes them.
          */
         public String caveat() {
+            // EVERY instruction here is itself a remedy, and the review of
+            // #229 caught this one reintroducing DEF-002 inside the fix for
+            // DEF-002: it was built from `binary()` alone, so a pasted
+            // `<build> home shims` with no SKILL_MANAGER_HOME set re-pins the
+            // operator's ROOT home. The dangling-pin branch had the identical
+            // bug, and it fires exactly when the reader's front door is
+            // already broken. `home shims` takes --home; it is used.
+            String rePin = (binary() + " home shims " + homeArg()).strip();
             if (danglingHomePin != null) {
                 // DEF-012's resolution half. Stated FIRST because it is the
                 // more actionable fact: the reader's home has a broken front
@@ -668,14 +692,13 @@ public record HomeDescriptor(
                 return "this home's own CLI entrypoint pins a build that is gone ("
                         + danglingHomePin + ") — an upgrade deleted it, and the shim cannot "
                         + "open. This remedy fell through to " + (cli == null ? "nothing" : cli)
-                        + ". Re-pin the home with `%s home shims`.".formatted(binary());
+                        + ". Re-pin the home with `" + rePin + "`.";
             }
             return switch (source) {
                 case PATH_FALLBACK -> "this skill-manager came from PATH (" + cli + "); nothing "
                         + "records it as the build that printed this message, and an older "
                         + "release answers an unknown subcommand with usage and exit 0. Give "
-                        + "this home its own CLI with `%s home shims` to remove the guess."
-                                .formatted(binary());
+                        + "this home its own CLI with `" + rePin + "` to remove the guess.";
                 case UNRESOLVED -> "no skill-manager could be located for " + storeRoot
                         + ", so this remedy names the bare command and your PATH decides which "
                         + "build runs it.";
@@ -717,37 +740,98 @@ public record HomeDescriptor(
     }
 
     /**
-     * The runnable head of a remedy about {@code storeRoot}: the CLI, bound to
-     * that home.
-     *
-     * <p>Every existing refusal already routed its remedy through this method
-     * (#142), which is why the home binding was added HERE rather than at the
-     * six call sites — the same argument that put the CLI resolution here in
-     * the first place. Callers that want only the executable, because they
-     * build their own environment prefix, ask {@link #cliSpelling} for
-     * {@link CliSpelling#binary()}.
+     * The head token of a remedy about {@code storeRoot}: which build to run.
+     * Nothing else — see {@link #homeArg} for which home to run it against.
      */
     public static String cliInvocation(Path storeRoot) {
-        return cliSpelling(storeRoot).command();
+        return cliSpelling(storeRoot).binary();
     }
 
     /**
-     * {@code /usr/bin/env} when it is there, else the bare token.
+     * {@code --home <storeRoot>} — how a remedy names the home it is about.
+     * Empty when {@code storeRoot} is null.
      *
-     * <p>Absolute on purpose: the {@code ticket-lifecycle} graph asserts that
-     * every remedy a refusal prints begins with a path a shell can run, and a
-     * bare {@code env} satisfies "runs" while failing "absolute". Resolving it
-     * here keeps the remedy honest under that check instead of weakening it.
+     * <h2>The binding is a property of the VERB, not of the CLI token</h2>
+     *
+     * <p>#229's first attempt made it a property of {@link CliSource}: a remedy
+     * whose build was not the home's own entrypoint got an
+     * {@code env SKILL_MANAGER_HOME=<X>} prefix in front of the head token.
+     * That was wrong three ways, and each was measured.
+     *
+     * <ol>
+     *   <li><b>The head token is the one token every consumer replaces.</b>
+     *       {@code home-sync}'s {@code remedyArgs} documents itself as dropping
+     *       token 0 and re-running the remedy through its own CLI, and
+     *       {@code close-change.sh}'s {@code run_cli} does the same. A binding
+     *       carried there is silently deleted by all of them — and because that
+     *       strip is guarded by {@code endsWith("skill-manager")}, an
+     *       {@code env} prefix was not deleted but passed through as ARGUMENTS:
+     *       {@code Unmatched arguments from index 0: '/usr/bin/env', …}. That
+     *       took the {@code home-sync} graph red, 12 of 18 nodes skipped.
+     *       {@code --home} lives in a token nobody substitutes.</li>
+     *   <li><b>Some verbs already name their target.</b>
+     *       {@code home sync --from <a> --to <b>} says which home it writes in
+     *       its own arguments; a binding in front of it is redundant at best
+     *       and contradictory at worst.</li>
+     *   <li><b>An env prefix in the head token neutralizes the checks that
+     *       guard remedies.</b> Three graph assertions require the head to be
+     *       an absolute, executable path. {@code /usr/bin/env} satisfies both
+     *       forever, whatever the resolution behind it does, so those readers
+     *       go permanently green. With the head token a real per-home
+     *       executable again, they assert something.</li>
+     * </ol>
+     *
+     * <p>So a remedy binds by class of VERB. A verb that names its own target
+     * binds nothing; every other verb takes {@code --home}, and the two that
+     * did not ({@code sync}, {@code project sync}) were given it — additive,
+     * and it changes nothing about what those operations do.
+     *
+     * <p>It is also the spelling that binds for ALL FOUR {@link CliSource}s,
+     * including a home with no entrypoint of its own. The rejected alternative
+     * — printing {@code <X>/bin/cli/skill-manager} as the head — assumed every
+     * home has that file. It does not: only {@code home shims} writes it, and
+     * {@code home clone} copies only what the source had. {@code home-sync}'s
+     * own project and worktree fixtures have an empty {@code bin/cli}.
      */
-    public static String envBinary() {
-        Path usr = Path.of("/usr/bin/env");
-        return Files.isExecutable(usr) ? usr.toString() : "env";
+    public static String homeArg(Path storeRoot) {
+        return storeRoot == null ? "" : "--home " + shellQuote(storeRoot.toString());
     }
 
-    /** A token that survives being pasted into a shell. */
-    static String shellQuote(String raw) {
-        return raw.indexOf(' ') < 0 ? raw : "'" + raw.replace("'", "'\\''") + "'";
+    /**
+     * A token that survives being pasted into a shell, whatever is in it.
+     *
+     * <h2>Quoting on a space alone was a hole, and it was DEF-002's hole</h2>
+     *
+     * <p>The predecessor quoted only when it saw {@code ' '}. A home path
+     * containing {@code $} was then emitted raw and the reader's shell expanded
+     * it — so the remedy named, and bound, <em>a different home</em>: exactly
+     * the failure this ticket exists to remove, produced by its own fix. A
+     * {@code '} gave {@code unexpected EOF}; {@code ;}, {@code &}, a newline
+     * and a tab are an injection surface whose input is a filesystem path,
+     * which an operator, a fixture, or an attacker chooses.
+     *
+     * <p>The rule is inverted accordingly: quote everything unless every
+     * character is in a small allowlist that is safe unquoted in every POSIX
+     * shell. Single-quoting is total — no escape is interpreted inside it — and
+     * an embedded {@code '} is closed, escaped and reopened.
+     */
+    public static String shellQuote(String raw) {
+        if (raw == null || raw.isEmpty()) return "''";
+        for (int i = 0; i < raw.length(); i++) {
+            if (SAFE_UNQUOTED.indexOf(raw.charAt(i)) < 0) {
+                return "'" + raw.replace("'", "'\\''") + "'";
+            }
+        }
+        return raw;
     }
+
+    /**
+     * Characters that need no quoting in any POSIX shell. Deliberately small:
+     * a character omitted here costs a pair of quotes, a character wrongly
+     * included costs a remedy that does something else.
+     */
+    private static final String SAFE_UNQUOTED =
+            "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789._-+=:,/@%^";
 
     private static Path normalizedExecutable(Path candidate) {
         if (candidate == null) return null;

@@ -97,12 +97,36 @@ public final class ProjectSyncTypedRefusalTest {
             }
         });
 
-        suite.test("a refused --rebuild puts the realization back before the refusal escapes",
+        suite.test("a refused --rebuild puts back a realization it really did tear down",
                 () -> {
             try (TestHarness h = TestHarness.create()) {
                 bindDefaultStore(h.store());
-                Path repoRoot = brokenClosure("sync-typed-rebuild-");
-                java.util.Map<String, String> before = Snapshots.tree(h.store().root());
+                // H6 of #229's review. The first version of this went straight
+                // to the refused --rebuild over a project that had never
+                // resolved — so the previous lock was empty, removeRealization
+                // removed NOTHING, and "the home is byte-identical afterwards"
+                // held whether or not anything restored it. Measured: moving
+                // ProjectRealizationSnapshot.capture to AFTER removeRealization
+                // left this green, and only the source-order oracle failed.
+                //
+                // So the project is resolved SUCCESSFULLY first, and the
+                // realization that produces is what the refused --rebuild must
+                // put back. The closure is broken only afterwards.
+                Path repoRoot = workingProject("sync-typed-rebuild-");
+                Capture first = run(new ProjectCommand.SyncCmd(h.store()),
+                        "--project-dir", repoRoot.toString(), "--skip-gateway", "--no-pull");
+                assertEquals(0, first.exit(),
+                        "the project resolves before anything is broken; stderr: " + first.err());
+                assertTrue(h.store().containsUnit("typed-live"),
+                        "and it really installed a unit");
+                java.util.Map<String, String> before = Snapshots.tree(h.store().root(),
+                        h.store().root().resolve("tmp"));
+                assertTrue(before.keySet().stream().anyMatch(k -> k.contains("typed-live")),
+                        "so the snapshot being compared holds a REALIZATION, not an empty home");
+
+                // Now break the declared closure, so the rebuild's resolve is
+                // refused after the teardown has already happened.
+                breakClosure(repoRoot);
 
                 Capture sync = run(new ProjectCommand.SyncCmd(h.store()),
                         "--project-dir", repoRoot.toString(), "--skip-gateway", "--no-pull",
@@ -118,6 +142,8 @@ public final class ProjectSyncTypedRefusalTest {
                                 .resolve("tmp")),
                         "the home is byte-identical: the teardown was rolled back, and the "
                                 + "refusal did not leave it emptier than it found it");
+                assertTrue(h.store().containsUnit("typed-live"),
+                        "the unit the realization held is still installed");
                 try (var scratch = Files.list(h.store().root().resolve("tmp"))) {
                     assertEquals(List.of(), scratch.toList(),
                             "and the rollback scratch directory was emptied, not abandoned full");
@@ -159,6 +185,52 @@ public final class ProjectSyncTypedRefusalTest {
      * that is neither declared nor installed — the #168 refusal condition,
      * reached identically by resolve and by sync.
      */
+    /**
+     * A project that resolves cleanly: one declared skill, no broken imports.
+     * {@link #breakClosure} then adds a second, unresolvable declaration, so a
+     * later {@code --rebuild} is refused with a realization already on disk.
+     */
+    private static Path workingProject(String prefix) throws Exception {
+        Path repoRoot = Files.createTempDirectory(prefix);
+        Path units = repoRoot.resolve("units");
+        Path live = UnitFixtures.scaffoldSkill(units, "typed-live", DepSpec.empty()).sourcePath();
+        Files.writeString(repoRoot.resolve("skill-project.toml"), """
+                [project]
+                name = "%s"
+
+                [skills.live]
+                source = "%s"
+                """.formatted("typed-rebuild-" + Math.abs(prefix.hashCode()), live));
+        return repoRoot;
+    }
+
+    /**
+     * Add a declared unit whose markdown imports a unit that does not exist,
+     * so the next resolve of this project's closure is refused.
+     */
+    private static void breakClosure(Path repoRoot) throws Exception {
+        Path units = repoRoot.resolve("units");
+        Path bad = UnitFixtures.scaffoldSkill(units, "typed-ghosted", DepSpec.empty()).sourcePath();
+        Files.createDirectories(bad.resolve("docs"));
+        Files.writeString(bad.resolve("docs").resolve("uses-ghost.md"), GHOST_IMPORT);
+        Files.writeString(repoRoot.resolve("skill-project.toml"),
+                Files.readString(repoRoot.resolve("skill-project.toml")) + """
+
+                        [skills.ghosted]
+                        source = "%s"
+                        """.formatted(bad));
+    }
+
+    private static final String GHOST_IMPORT = """
+            ---
+            skill-imports:
+              - unit: ghost-unit
+                path: SKILL.md
+                reason: Refusal fixture for issue #187.
+            ---
+            Uses ghost-unit.
+            """;
+
     private static Path brokenClosure(String prefix) throws Exception {
         Path repoRoot = Files.createTempDirectory(prefix);
         Path units = repoRoot.resolve("units");

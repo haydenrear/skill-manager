@@ -660,16 +660,63 @@ public final class LauncherShims {
         } catch (IOException unreadable) {
             return java.util.Optional.empty();
         }
-        if (lines.stream().noneMatch(l -> l.contains(PIN_MARKER))) return java.util.Optional.empty();
+        if (lines.stream().noneMatch(l -> l.contains(PIN_MARKER))) {
+            return java.util.Optional.empty();
+        }
+        // EVERY matching line, not the first. `ensure_cli_pin` takes the first
+        // and the template's own comment warns that nothing above it may spell
+        // the prefix out — a warning is not an invariant, and a file with two
+        // assignment lines that disagree is a file this cannot read. Two
+        // agreeing lines are fine; two disagreeing ones are "cannot tell".
+        java.util.Set<String> found = new java.util.LinkedHashSet<>();
         for (String line : lines) {
             String trimmed = line.strip();
             if (!trimmed.startsWith(PIN_PREFIX)) continue;
+            // A LINE CONTINUATION means the pin is not on this line. `\` at the
+            // end of a shell line joins the next one, so reading the prefix
+            // line alone would take a truncated path and call the home
+            // dangling. We cannot see the rest without reassembling the
+            // command, so this reports "cannot tell" rather than guessing.
+            if (trimmed.endsWith("\\")) return java.util.Optional.empty();
             String rest = trimmed.substring(PIN_PREFIX.length());
             int end = rest.indexOf("}\"");
             if (end < 0) return java.util.Optional.empty();
             String pin = rest.substring(0, end);
-            return pin.isBlank() ? java.util.Optional.empty() : java.util.Optional.of(Path.of(pin));
+            if (pin.isBlank()) return java.util.Optional.empty();
+            // NOT A LITERAL PATH. A pin carrying `$`, a backtick or `$(` is
+            // computed by the shell at run time, and the text is not what will
+            // be exec'd. Reading it literally makes a HEALTHY home look
+            // dangling — and the caller's response to "dangling" is to push
+            // that home off its own working front door, so a false positive
+            // here is worse than no check at all.
+            if (pin.indexOf('$') >= 0 || pin.indexOf('`') >= 0) {
+                return java.util.Optional.empty();
+            }
+            found.add(pin);
         }
-        return java.util.Optional.empty();
+        return found.size() == 1
+                ? java.util.Optional.of(Path.of(found.iterator().next()))
+                : java.util.Optional.empty();
+    }
+
+    /**
+     * Whether {@code entrypoint}'s pin names something that is gone.
+     *
+     * <p>False when there is no readable literal pin — see
+     * {@link #pinnedCliIn}, and note that "cannot tell" must never be reported
+     * as "broken" here.
+     *
+     * <p>{@code isRegularFile} as well as {@code isExecutable}, because a
+     * DIRECTORY is executable on POSIX (that is what the execute bit means for
+     * one): a pin naming a directory would otherwise pass as a live build. The
+     * link is followed, so a pin through a symlink to a real build is live and
+     * a pin through a dangling symlink is not.
+     */
+    public static java.util.Optional<Path> danglingPinIn(Path entrypoint) {
+        Path pin = pinnedCliIn(entrypoint).orElse(null);
+        if (pin == null) return java.util.Optional.empty();
+        return Files.isRegularFile(pin) && Files.isExecutable(pin)
+                ? java.util.Optional.empty()
+                : java.util.Optional.of(pin);
     }
 }

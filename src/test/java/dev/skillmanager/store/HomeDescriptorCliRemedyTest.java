@@ -1,6 +1,7 @@
 package dev.skillmanager.store;
 
 import dev.skillmanager._lib.test.Tests;
+import dev.skillmanager.launch.LauncherShims;
 import dev.skillmanager.launch.RunningCli;
 import dev.skillmanager.shared.util.Fs;
 
@@ -163,8 +164,19 @@ public final class HomeDescriptorCliRemedyTest {
             for (Case c : cases) {
                 if ("running build".equals(c.label())) Files.deleteIfExists(f.ownEntrypoint);
                 HomeDescriptor.CliSpelling spelling = f.spell(c.pin(), c.running(), c.pathDir());
-                assertContains(spelling.command(), f.home.toString(),
+                // The binding is in the ARGUMENT, for EVERY source including
+                // the home's own entrypoint. #229's first attempt exempted
+                // HOME_ENTRYPOINT on the reasoning that the shim binds its own
+                // home; HIS-9 makes that shim REFUSE a mismatch with exit 79
+                // and then recommend the home the operator was not in, so the
+                // exemption's premise is gone. A class-2/3 verb carries --home
+                // whatever build is running it, and HIS-9's guard exempts a
+                // command line that already carries one.
+                assertEquals("--home " + f.home, spelling.homeArg(),
                         "the " + c.label() + " remedy names the home it is about");
+                assertFalse(spelling.binary().contains("SKILL_MANAGER_HOME"),
+                        "and the binding is NOT in the head token, which every consumer of a "
+                                + "printed remedy substitutes: " + spelling.binary());
             }
         });
 
@@ -196,25 +208,75 @@ public final class HomeDescriptorCliRemedyTest {
                     foreign, key -> null, () -> null);
             assertEquals(HomeDescriptor.CliSource.HOME_ENTRYPOINT, ownSide.source(),
                     "the foreign home resolves its own entrypoint normally");
-            assertEquals(foreignEntrypoint.toString(), ownSide.command(),
-                    "and needs no binding prefix, because that file binds itself");
+            assertEquals(foreignEntrypoint.toString(), ownSide.binary(),
+                    "and it is the head token, unadorned");
         });
 
-        suite.test("a home's own entrypoint binds itself; every other spelling is bound", () -> {
-            Fixture f = Fixture.create("cli-binding-");
-
-            HomeDescriptor.CliSpelling own = f.spell(null, f.running, f.pathDir);
-            assertEquals(HomeDescriptor.CliSource.HOME_ENTRYPOINT, own.source(), "own entrypoint");
-            assertEquals(f.ownEntrypoint.toString(), own.command(),
-                    "no prefix: bin/cli/skill-manager exports its own location as the home");
-
+        suite.test("DEF-002 survives a SYMLINK unless the candidate is resolved first", () -> {
+            // The most ordinary way to put a CLI on PATH. Before the candidate
+            // was resolved, this shape walked straight past the predicate: the
+            // link's parents are /usr/local/bin and /usr/local, not bin/cli
+            // under a home, so `isForeignHomeEntrypoint` returned false and the
+            // root home's entrypoint became the remedy again — DEF-002 intact,
+            // inside the fix for DEF-002.
+            Fixture f = Fixture.create("cli-foreign-link-");
             Files.delete(f.ownEntrypoint);
-            HomeDescriptor.CliSpelling running = f.spell(null, f.running, f.pathDir);
-            assertContains(running.command(), "SKILL_MANAGER_HOME=" + f.home,
-                    "a build that is not this home's own carries the home explicitly");
-            assertTrue(running.command().startsWith("/"),
-                    "and the remedy still begins with an absolute path a shell can run: "
-                            + running.command());
+            Path foreign = Fixture.home(Files.createTempDirectory("cli-foreign-link-root-"));
+            Path foreignEntrypoint = executable(foreign.resolve("bin/cli/skill-manager"));
+
+            Path usrLocalBin = Files.createDirectories(
+                    Files.createTempDirectory("cli-usr-local-").resolve("bin"));
+            Path link = usrLocalBin.resolve("skill-manager");
+            Files.createSymbolicLink(link, foreignEntrypoint);
+            assertTrue(Files.isSymbolicLink(link), "the fixture really is a symlink");
+            assertFalse(link.toString().contains("bin/cli"),
+                    "and its own spelling carries none of the shape the predicate reads");
+
+            assertTrue(HomeDescriptor.isForeignHomeEntrypoint(f.home, link),
+                    "a symlink to a foreign home's entrypoint IS that entrypoint");
+            assertEquals(HomeDescriptor.CliSource.UNRESOLVED,
+                    f.locate(null, null, usrLocalBin).source(),
+                    "so PATH finding it resolves nothing rather than the wrong home");
+
+            // And the same link, for the home it actually belongs to, is not
+            // foreign — spelling-invariance has to hold in both directions or
+            // it is just a refusal.
+            assertFalse(HomeDescriptor.isForeignHomeEntrypoint(foreign, link),
+                    "the same link is not foreign to the home it points into");
+
+            // A home reached through a symlinked ROOT is likewise not foreign
+            // to its own entrypoint. This is GOAL-one-home-one-answer clause 2.
+            Path aliasParent = Files.createTempDirectory("cli-home-alias-");
+            Path alias = aliasParent.resolve("home-link");
+            Files.createSymbolicLink(alias, foreign);
+            assertFalse(HomeDescriptor.isForeignHomeEntrypoint(alias, foreignEntrypoint),
+                    "the home reached through a symlinked root owns its own entrypoint");
+        });
+
+        suite.test("the head token is the build and nothing else, for every source", () -> {
+            // The property that keeps every existing consumer working. Both
+            // `home-sync`'s remedyArgs and close-change.sh's run_cli DROP token
+            // 0 and re-run the rest through their own CLI; remedyArgs guards
+            // that strip with endsWith("skill-manager"), so a head token that
+            // is anything else is not dropped but passed through as arguments.
+            Fixture f = Fixture.create("cli-binding-");
+            record Case(String label, Path pin, Path running, Path pathDir) {}
+            List<Case> cases = List.of(
+                    new Case("pinned", f.pin, f.running, f.pathDir),
+                    new Case("own entrypoint", null, f.running, f.pathDir),
+                    new Case("running build", null, f.running, f.pathDir),
+                    new Case("path fallback", null, null, f.pathDir));
+            for (Case c : cases) {
+                if ("running build".equals(c.label())) Files.deleteIfExists(f.ownEntrypoint);
+                String head = f.spell(c.pin(), c.running(), c.pathDir()).binary();
+                assertEquals(1, head.split("\\s+").length,
+                        "the " + c.label() + " head token is ONE token: " + head);
+                assertTrue(head.endsWith("skill-manager"),
+                        "and it ends in skill-manager, which is the predicate every consumer "
+                                + "strips on: " + head);
+                assertTrue(Files.isExecutable(Path.of(head)),
+                        "and it is executable: " + head);
+            }
         });
 
         // ------------------------------------------- the fallback admits it
@@ -237,43 +299,18 @@ public final class HomeDescriptorCliRemedyTest {
             assertContains(caveat, "PATH", "the caveat names where the build came from");
             assertContains(caveat, f.onPath.toString(), "and which build it is");
             assertContains(caveat, "home shims", "and how to stop guessing");
+            // H3 of #229's review: the caveat's own instruction is a remedy,
+            // and it used to be built from the binary alone — so a pasted
+            // `<build> home shims` with no SKILL_MANAGER_HOME re-pinned the
+            // operator's ROOT home. DEF-002, reintroduced inside its own fix.
+            assertContains(caveat, "home shims --home " + f.home,
+                    "and the instruction it gives is itself bound to this home");
 
             HomeDescriptor.CliSpelling none = f.spell(null, null, null);
-            assertContains(none.command(), "skill-manager", "the bare token remains the floor");
+            assertEquals("skill-manager", none.binary(),
+                    "the bare token remains the floor");
             assertContains(none.caveat(), "no skill-manager could be located",
                     "and an unresolved remedy admits that too");
-        });
-
-        suite.test("every remedy head is an absolute path a shell can actually run", () -> {
-            // The two assertions `ticket.lifecycle.first.launch` and
-            // `ticket.lifecycle.concurrent.close.out` make about a printed
-            // remedy — first token absolute, first token resolves to an
-            // executable — asserted here as well, because this ticket changes
-            // the string those nodes read and the ticket-lifecycle graph is
-            // was blocked upstream of them by DEF-023 when this was written.
-            // The floor under a fix must not depend on a graph node that did
-            // not run — and it still should not now that a4a95cb has unblocked
-            // the graph, because a chained graph can go red above these nodes
-            // again for a reason that has nothing to do with them.
-            //
-            // It is also why the home binding is spelled with an ABSOLUTE
-            // `/usr/bin/env`: a bare `env` passes "runs" and fails "absolute".
-            Fixture f = Fixture.create("cli-remedy-head-");
-            record Case(String label, Path pin, Path running, Path pathDir) {}
-            List<Case> cases = List.of(
-                    new Case("pinned", f.pin, f.running, f.pathDir),
-                    new Case("own entrypoint", null, f.running, f.pathDir),
-                    new Case("running build", null, f.running, f.pathDir),
-                    new Case("path fallback", null, null, f.pathDir));
-            for (Case c : cases) {
-                if ("running build".equals(c.label())) Files.deleteIfExists(f.ownEntrypoint);
-                String command = f.spell(c.pin(), c.running(), c.pathDir()).command();
-                String head = command.strip().split("\\s+")[0];
-                assertTrue(head.startsWith("/"),
-                        "the " + c.label() + " remedy begins with an absolute path: " + command);
-                assertTrue(Files.isExecutable(Path.of(head)),
-                        "and that path is executable: " + head + "  (from " + command + ")");
-            }
         });
 
         // ------------------------------------------- DEF-012, resolution half
@@ -312,9 +349,99 @@ public final class HomeDescriptorCliRemedyTest {
             HomeDescriptor.CliSpelling spelling = f.spell(null, f.running, f.pathDir);
             assertContains(spelling.caveat(), oldBuild.toString(),
                     "the caveat names the deleted build");
-            assertContains(spelling.caveat(), "home shims", "and how to re-pin the home");
-            assertContains(spelling.command(), f.home.toString(),
+            assertContains(spelling.caveat(), "home shims --home " + f.home,
+                    "and how to re-pin the home — bound to THIS home, because the branch that "
+                            + "fires here is the one where the front door is already broken");
+            assertEquals("--home " + f.home, spelling.homeArg(),
                     "and the remedy still names the home it is about");
+        });
+
+        suite.test("a pin that is not a literal path, or names a directory, is not dangling",
+                () -> {
+            // M2 of #229's review. Each of these made a HEALTHY home read as
+            // broken, and the caller's response to "broken" is to push that
+            // home off its own working front door — so a false positive here
+            // is worse than no check at all.
+            Fixture f = Fixture.create("cli-pin-shapes-");
+            Path real = executable(Files.createTempDirectory("cli-pin-real-")
+                    .resolve("skill-manager"));
+
+            // (a) a computed pin. The text is not what gets exec'd.
+            Files.writeString(f.ownEntrypoint, """
+                    #!/usr/bin/env bash
+                    # skill-manager:cli-pin
+                    cli="${SKILL_MANAGER_CLI:-$SM_PREFIX/bin/skill-manager}"
+                    exec "$cli" "$@"
+                    """);
+            Fs.makeExecutable(f.ownEntrypoint);
+            assertTrue(LauncherShims.pinnedCliIn(f.ownEntrypoint).isEmpty(),
+                    "a pin carrying $ is computed at run time and cannot be read literally");
+            assertEquals(HomeDescriptor.CliSource.HOME_ENTRYPOINT,
+                    f.locate(null, f.running, f.pathDir).source(),
+                    "so the home keeps its own entrypoint");
+
+            // (b) a pin naming a DIRECTORY. Directories carry the execute bit;
+            // that is what it means for one, so isExecutable alone says yes.
+            Path dir = Files.createTempDirectory("cli-pin-dir-");
+            assertTrue(Files.isExecutable(dir),
+                    "a directory is 'executable' — which is why isExecutable alone was wrong");
+            Files.writeString(f.ownEntrypoint, LauncherShims.cliScript(dir));
+            Fs.makeExecutable(f.ownEntrypoint);
+            assertEquals(dir, LauncherShims.danglingPinIn(f.ownEntrypoint).orElse(null),
+                    "a pin naming a directory is not a live build");
+
+            // (c) two assignment lines that disagree: cannot tell.
+            Files.writeString(f.ownEntrypoint, """
+                    #!/usr/bin/env bash
+                    # skill-manager:cli-pin
+                    cli="${SKILL_MANAGER_CLI:-/nowhere/one/skill-manager}"
+                    cli="${SKILL_MANAGER_CLI:-/nowhere/two/skill-manager}"
+                    exec "$cli" "$@"
+                    """);
+            Fs.makeExecutable(f.ownEntrypoint);
+            assertTrue(LauncherShims.pinnedCliIn(f.ownEntrypoint).isEmpty(),
+                    "two disagreeing pins are unreadable, not first-one-wins");
+
+            // (d) a continued line. The pin is not on the line the prefix is.
+            Files.writeString(f.ownEntrypoint, """
+                    #!/usr/bin/env bash
+                    # skill-manager:cli-pin
+                    cli="${SKILL_MANAGER_CLI:-\\
+                    /nowhere/wrapped/skill-manager}"
+                    exec "$cli" "$@"
+                    """);
+            Fs.makeExecutable(f.ownEntrypoint);
+            assertTrue(LauncherShims.pinnedCliIn(f.ownEntrypoint).isEmpty(),
+                    "a continued line is unreadable, not a truncated path");
+
+            // And the control: a real, live pin still reads as live.
+            Files.writeString(f.ownEntrypoint, LauncherShims.cliScript(real));
+            Fs.makeExecutable(f.ownEntrypoint);
+            assertEquals(real, LauncherShims.pinnedCliIn(f.ownEntrypoint).orElse(null),
+                    "a plain live pin is still read");
+            assertTrue(LauncherShims.danglingPinIn(f.ownEntrypoint).isEmpty(),
+                    "and is not dangling");
+        });
+
+        suite.test("a remedy survives a home path a shell would otherwise interpret", () -> {
+            // H5 of #229's review. Quoting on a space alone left `$` raw, so
+            // the reader's shell EXPANDED it and the remedy bound a different
+            // home — DEF-002's failure mode, produced by DEF-002's fix. A `'`
+            // gave `unexpected EOF`; `;` and `&` are an injection surface whose
+            // input is a filesystem path.
+            for (String hostile : List.of(
+                    "/tmp/home $HOME/x", "/tmp/home'x", "/tmp/home;rm -rf .",
+                    "/tmp/home&background", "/tmp/home\ttab", "/tmp/home`id`",
+                    "/tmp/home(paren)", "/tmp/home*glob", "/tmp/home\nnewline")) {
+                String quoted = HomeDescriptor.shellQuote(hostile);
+                assertEquals(hostile, unquoteWithShell(quoted),
+                        "a shell reading " + quoted + " gets back exactly the path");
+            }
+            // The common case still costs no quotes at all.
+            assertEquals("/Users/x/.skill-manager",
+                    HomeDescriptor.shellQuote("/Users/x/.skill-manager"),
+                    "an ordinary path is left alone");
+            assertEquals("''", HomeDescriptor.shellQuote(""), "and the empty string is quoted");
         });
 
         suite.test("a hand-written entrypoint is left alone: cannot tell is not broken", () -> {
@@ -414,6 +541,27 @@ public final class HomeDescriptorCliRemedyTest {
         private static Supplier<Path> supplier(Path runningBuild) {
             return () -> runningBuild;
         }
+    }
+
+    /**
+     * What {@code /bin/sh} actually sees when it reads {@code quoted}.
+     *
+     * <p>A real shell, not a re-implementation of one. The defect being closed
+     * is "the string we emit is not the string the reader's shell receives",
+     * and an oracle that parsed the quoting itself would agree with whichever
+     * model produced the bug.
+     */
+    private static String unquoteWithShell(String quoted) throws Exception {
+        Process p = new ProcessBuilder("/bin/sh", "-c", "printf %s " + quoted)
+                .redirectErrorStream(false)
+                .start();
+        String out = new String(p.getInputStream().readAllBytes());
+        String err = new String(p.getErrorStream().readAllBytes());
+        int rc = p.waitFor();
+        if (rc != 0) {
+            throw new AssertionError("/bin/sh refused " + quoted + ": exit " + rc + " " + err);
+        }
+        return out;
     }
 
     private static Path executable(Path file) throws Exception {

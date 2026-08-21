@@ -360,6 +360,7 @@ public final class HomeCommand {
                 // one verb later.
                 Log.error("  complete it with: %s, then re-run this check",
                         reprovisionRemedy(home, unresolved));
+                noteCaveat(home);
             }
             // Last, because it is the verdict, and because a terminal keeps
             // the tail. Never gated on --strict: a path that RESOLVES into
@@ -384,6 +385,7 @@ public final class HomeCommand {
                 // printed none. The reader was told which paths leak and
                 // nothing about how to stop them leaking.
                 Log.error("  %s", isolationRemedy(isolation, home));
+                noteCaveat(home);
             } else if (tolerated > 0) {
                 Log.error("%s of %s, fatal under --strict; no path in %s "
                         + "resolves into another Skill Manager home",
@@ -504,7 +506,10 @@ public final class HomeCommand {
             }
             String prefix = homeEnvPrefix(home);
             List<String> commands = new java.util.ArrayList<>();
-            if (launcher) commands.add(prefix + " home shims --home " + home);
+            if (launcher) {
+                commands.add(prefix + " home shims --home "
+                        + HomeDescriptor.shellQuote(home.toString()));
+            }
             if (other || commands.isEmpty()) commands.add(prefix + " sync --force-scripts");
             return "complete it with: " + String.join(" && ", commands)
                     + ", then re-run this check";
@@ -618,8 +623,14 @@ public final class HomeCommand {
          */
         private static String homeEnvPrefix(Path home) {
             Path root = dev.skillmanager.agent.AgentHomes.homeRootFor(home);
-            StringBuilder out = new StringBuilder(HomeDescriptor.envBinary())
-                    .append(" SKILL_MANAGER_HOME=").append(home);
+            // A BARE `env`, exactly as this shipped. #229's first attempt
+            // spelled it /usr/bin/env, arguing that made the remedy honest
+            // under the graph assertions that require an absolute head token.
+            // It does the opposite: /usr/bin/env is absolute and executable
+            // forever, whatever the resolution behind it does, so three
+            // readers go permanently green and stop asserting anything.
+            StringBuilder out = new StringBuilder("env SKILL_MANAGER_HOME=")
+                    .append(HomeDescriptor.shellQuote(home.toString()));
             for (Path dir : dev.skillmanager.agent.AgentHomes.agentDirsUnder(root)) {
                 String name = dir.getFileName().toString();
                 String var = switch (name) {
@@ -627,15 +638,36 @@ public final class HomeCommand {
                     case ".gemini" -> "GEMINI_HOME";
                     default -> "CLAUDE_CONFIG_DIR";
                 };
-                out.append(' ').append(var).append('=').append(dir);
+                out.append(' ').append(var).append('=')
+                        .append(HomeDescriptor.shellQuote(dir.toString()));
             }
-            // `binary()`, not `command()`: this method IS the home binding, and
-            // `command()` would prepend a second `env SKILL_MANAGER_HOME=` in
-            // front of the four roots assembled above. The two spellings of
-            // "bind this remedy to this home" agree because there is one
-            // decision — which build — and it is asked in one place.
-            return out.append(' ')
-                    .append(HomeDescriptor.cliSpelling(home).binary()).toString();
+            // This method is its own binding, and it binds MORE than --home:
+            // SKILL_MANAGER_HOME says where the units are, the three agent
+            // roots say where the agent configs are, and a remedy that pinned
+            // only the first resolves the agent half against the operator's
+            // real ~/.claude (#145). So this is not a class-2 verb wearing an
+            // env prefix; it is the one remedy whose target is four variables.
+            //
+            // The caveat is appended here rather than left to the caller: this
+            // is the exact line #161 quotes, and it was the surface where a
+            // PATH-resolved build read as authoritative.
+            HomeDescriptor.CliSpelling spelling = HomeDescriptor.cliSpelling(home);
+            out.append(' ').append(spelling.binary());
+            return out.toString();
+        }
+
+        /**
+         * Print the one line a remedy built on {@link #homeEnvPrefix} owes its
+         * reader, when there is one.
+         *
+         * <p>M4 of #229's review: the caveat reached four surfaces and this one
+         * dropped it — and this is the exact line issue #161 quotes, where a
+         * PATH-resolved build read as authoritative while being the same binary
+         * the bare token would have found.
+         */
+        private static void noteCaveat(Path home) {
+            String caveat = HomeDescriptor.cliSpelling(home).caveat();
+            if (caveat != null) Log.error("  note: %s", caveat);
         }
 
         /** "40 authored mention(s)", "10 diagnostic message(s)", or both. */
@@ -995,8 +1027,11 @@ public final class HomeCommand {
             // reason for running the command: the list stays on the console,
             // bounded, because a home with 200 changed units is still one
             // decision and the first dozen make it.
+            // CLASS 2: `home drift` takes --home, so that is where the
+            // binding goes.
             HomeDescriptor.CliSpelling spelling = HomeDescriptor.cliSpelling(store.root());
-            String cli = spelling.command();
+            String cli = spelling.binary();
+            String homeArg = spelling.homeArg();
             // `--detail` is an explicit ask, so it always answers in full. The
             // collapse is about what an agent gets when it did NOT ask.
             if (detail || pending.firstSurfacing()) {
@@ -1005,9 +1040,10 @@ public final class HomeCommand {
                 Log.errorList("  ", detail
                         ? pending.report().renderDetailed()
                         : pending.report().render());
-                Log.warn("  run `%s home drift --ack` once you have taken it in", cli);
+                Log.warn("  run `%s home drift --ack %s` once you have taken it in",
+                        cli, homeArg);
             } else {
-                Log.warn("%s", pending.stillUnreadLine(cli));
+                Log.warn("%s", pending.stillUnreadLine(cli, homeArg));
             }
             if (spelling.caveat() != null) Log.warn("  note: %s", spelling.caveat());
             DriftGate.markSurfaced(store);
