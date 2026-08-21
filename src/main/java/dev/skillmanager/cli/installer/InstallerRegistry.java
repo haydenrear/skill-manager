@@ -136,14 +136,15 @@ public final class InstallerRegistry {
      *
      * <p>The two artifact checks — {@link #refuseAForeignDestination} and
      * {@link #requireProducedInThisHome} — go through
-     * {@link dev.skillmanager.store.WriteConfinement#checkWrite}, so they DO
-     * consult whatever an effect declared (see
-     * {@code SkillEffect.writeConfinement}). That is the seam an effect
-     * legitimately writing under a second root would use, in one reviewable
-     * place. When nothing declared a scope this method declares this home, so
-     * calling the registry directly is confined too — which means removing the
-     * effect's declaration changes nothing today, and that is recorded in the
-     * ticket's evidence rather than left to be discovered.
+     * {@link dev.skillmanager.store.WriteConfinement#checkWrite}, so they
+     * consult the scope this method declares.
+     *
+     * <p><b>This method is the only declarer.</b> A per-effect
+     * {@code SkillEffect.writeConfinement} once wrapped every dispatch in
+     * {@code LiveInterpreter.execute}; a vacuity check measured that removing
+     * it reddened nothing, because every enforcement site already re-derived
+     * the home for itself, and it was deleted rather than kept as
+     * enforcing-looking API.
      */
     public InstallOutcome installOne(CliDependency dep, SkillStore store, String skillName,
                                      boolean force) throws IOException {

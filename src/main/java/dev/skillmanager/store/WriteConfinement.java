@@ -98,14 +98,14 @@ import java.util.List;
  * mechanism"). A guard that defaulted to "inside the home or refuse" would not
  * be a guard, it would be an outage. So confinement is stated by the effects
  * that claim to be writing <em>into this home</em>, and
- * {@code SkillEffect.writeConfinement} is the enumeration of which ones do.
+ * {@code InstallerRegistry.installOne} declares it for the duration of one
+ * install. A per-effect declaration existed, gated nothing, and is gone.
  *
  * <h2>Two enforcement modes, and the difference matters</h2>
  *
  * <ul>
- *   <li>{@link #checkWrite} / {@link #checkDelete} are <b>scoped</b>: they
- *       consult whatever the current invocation declared, and do nothing when
- *       nothing declared anything.</li>
+ *   <li>{@link #checkWrite} is <b>scoped</b>: it consults whatever the current
+ *       invocation declared, and does nothing when nothing declared anything.</li>
  *   <li>{@link #requireInside} is <b>unconditional</b>. It is for the handful of
  *       facts that are true of a home whatever is running — {@code bin/cli}
  *       belongs to the home whose {@code bin/cli} it is spelled as, always —
