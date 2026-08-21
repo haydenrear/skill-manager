@@ -171,10 +171,37 @@ public class TicketLifecycleProvisioned {
                 }
             }
 
+            // --- and PRODUCTION'S OWN VERDICT on the same question -----------
+            //
+            // The walk above is a SECOND SPELLING of a rule production already
+            // owns in HomeCloner.verifyRoots. That is this epic's signature
+            // defect -- two readers of one rule -- and it bit here: HIS-10
+            // (#227) made a correct clone record its DESCENT, which names the
+            // homes above it on purpose, and production exempted that one file
+            // from its own isolation rule. This walk did not follow, so it went
+            // red the day HIS-10 merged and took 11 skipped nodes with it, and
+            // nobody saw it for a wave because the graph was not in HIS-10's
+            // selected set.
+            //
+            // Exempting the record in the walk fixes today. Asking PRODUCTION
+            // the same question is what stops the two drifting apart again: if
+            // a future change moves the rule once more, this assertion fails on
+            // the day of that change rather than a wave later.
+            boolean bothVerifyClean = true;
+            for (Path home : List.of(homeA, homeB)) {
+                Path pin = home.resolve("bin").resolve("cli").resolve("skill-manager");
+                if (!Files.isExecutable(pin)) { bothVerifyClean = false; continue; }
+                String label = "verify-" + home.getParent().getFileName();
+                ProcessRecord verify = TicketLifecycleSupport.plain(ctx, label, null, ambient,
+                        List.of(pin.toString(), "home", "verify", "--home", home.toString()));
+                pins.add(verify);
+                if (verify.exitCode() != 0) bothVerifyClean = false;
+            }
+
             boolean pass = bothProvisioned && bothWorktreesExist && bothBranchesExist
                     && everyHomeRootIsItsOwnInode && theEditedFileIsItsOwnInode
                     && noWorktreeHomeNamesAnother && theWalkReadTheTree
-                    && thePlantedReferenceIsFound && bothPinsRun;
+                    && thePlantedReferenceIsFound && bothPinsRun && bothVerifyClean;
 
             NodeResult result = pass
                     ? NodeResult.pass("ticket.lifecycle.provisioned")
@@ -189,7 +216,8 @@ public class TicketLifecycleProvisioned {
                                     + " entriesRead=" + aNamesProject.entriesRead() + "/"
                                     + bNamesProject.entriesRead()
                                     + " plantedFound=" + planted.hits()
-                                    + " pins=" + bothPinsRun);
+                                    + " pins=" + bothPinsRun
+                                    + " verifyClean=" + bothVerifyClean);
             result = result.process(provisionA).process(provisionB);
             for (ProcessRecord p : pins) result = result.process(p);
             return result
@@ -207,6 +235,8 @@ public class TicketLifecycleProvisioned {
                     .assertion("the_reference_walk_finds_a_planted_reference_to_another_home",
                             thePlantedReferenceIsFound)
                     .assertion("each_worktree_home_has_a_pinned_cli_that_actually_runs", bothPinsRun)
+                    .assertion("production_agrees_the_worktree_home_reaches_no_other_home",
+                            bothVerifyClean)
                     .metric("entriesScannedPerHome", aNamesProject.entriesRead())
                     .metric("plantedReferencesFound", planted.hits().size())
                     .publish("worktreeA", worktreeA.toString())

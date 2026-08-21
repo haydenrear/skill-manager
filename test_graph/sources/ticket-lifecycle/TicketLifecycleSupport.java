@@ -447,6 +447,33 @@ final class TicketLifecycleSupport {
      * mistaken for a measurement four times in this epic, so the count is
      * asserted against a floor and reported as a metric either way.
      */
+    /**
+     * The ONE file a correct home is allowed to name another home in, since
+     * HIS-10 (#227).
+     *
+     * <p>This walk used to enforce "nothing in a correct home names ANY
+     * absolute home path, its own included". That was true until a clone
+     * started recording its DESCENT -- {@code clonedFrom} and
+     * {@code parentStores} -- so that the sanction for an inherited
+     * parent-store shim is a fact in the copy rather than a flag somebody types
+     * on the command line. The record names other homes BY DESIGN; production
+     * exempts exactly this path from its own isolation rule, gated on byte
+     * accounting ({@code HomeProvenance.mentionsOnlyRecordedDescent}).
+     *
+     * <p>So the exemption here is not a loosening, it is this walk catching up
+     * with a contract that moved. It is deliberately the single filename and
+     * not a pattern: anything else naming another home is still a leak.
+     *
+     * <p>AND THIS WALK IS A SECOND SPELLING, which is the defect this epic
+     * keeps meeting. Production already answers "does anything in this home
+     * reach another home" in {@code HomeCloner.verifyRoots}; this method asks
+     * it again, in Java, in a test. The caller therefore ALSO requires
+     * production's own verdict, so the two cannot drift apart silently again --
+     * that cross-check is what would have caught this the day HIS-10 merged
+     * instead of a wave later.
+     */
+    static final String DESCENT_RECORD = "home.provenance.json";
+
     static Scan filesNaming(Path root, String needle, int limit) {
         List<String> out = new ArrayList<>();
         int read = 0;
@@ -454,6 +481,11 @@ final class TicketLifecycleSupport {
         try (var walk = Files.walk(root)) {
             for (Path p : (Iterable<Path>) walk::iterator) {
                 if (out.size() >= limit) break;
+                if (p.getFileName() != null
+                        && DESCENT_RECORD.equals(p.getFileName().toString())
+                        && root.relativize(p).getNameCount() == 1) {
+                    continue;   // the sanctioned descent record; see above
+                }
                 if (Files.isSymbolicLink(p)) {
                     read++;
                     if (Files.readSymbolicLink(p).toString().contains(needle)) {
