@@ -699,3 +699,62 @@ findings:
     status: open
     evidence:
       - results/epic-home-integrity-sync/probes/release-0.24.0/root-verify-says-clean.out
+
+  - id: DEF-021
+    found_by: epic agent, wave-4 review round, counting instances across the epic
+    found_at: "2026-08-21"
+    severity: major
+    summary: >
+      A javadoc that describes an enforcement site, a caller, or a precedence
+      the code no longer has is this epic's most repeated defect -- FOUR
+      instances in four tickets -- and nothing catches it, because prose is not
+      compiled and "declares" reads exactly like "enforces".
+    detail: >
+      Instances, all in this epic, all found by hand:
+
+        HIS-10  HomeCloner.java:1806-1809 claimed `home clone` prints the
+                recorded descent. It never did; only VerifyCmd does. Found by
+                the review agent, measured.
+        HIS-9   WriteConfinement's javadoc claimed enforcement at
+                Fs.deleteRecursive -- never true; Fs cannot import store
+                without breaking the standalone server build. Found by the
+                author on its own re-read.
+        HIS-9   WriteOutsideHomeException's javadoc said being unchecked is
+                what stops the refusal becoming "a line in a log". Measured
+                false: `catch (Exception)` in CliInstallRecorder swallowed it
+                and sync exited 0. Found by the review agent.
+        HIS-9   InstallerRegistry:300-318 still said takeOwnershipOfShim runs
+                only from rebuildCliArtifact and that running it from installOne
+                was the bug -- after it was put back in installOne. Found by
+                the review agent.
+        HIS-9   A THIRD javadoc describing a surface the same commit series
+                deleted, caught by the author on a final grep after fixing two.
+        HIS-12  locateCli's javadoc names HomeDescriptorTest as the checker of
+                its precedence; the checker is HomeDescriptorCliRemedyTest.
+
+      The author's own diagnosis, which I think is right and is why this is
+      filed rather than fixed six times: "'declares' and 'enforces' read alike,
+      prose isn't compiled, and only a caller count separates them."
+    why_it_matters_here_specifically: >
+      This epic's recurring bug is TWO READERS OF ONE RULE. A javadoc is a
+      reader. Every instance above is a second, human-facing answer to a
+      question the code already answers, drifting from it silently -- the same
+      shape as HomeCloner.verifyRoots vs ticket-lifecycle's bespoke walk
+      (fixed in a4a95cb), and as `home verify` vs `skt check` (DEF-015's third
+      surface). It is not a documentation-hygiene complaint.
+    candidate_fix: >
+      The author's suggestion, unbuilt: a check that every {@code} / {@link}
+      naming a method in these files RESOLVES to a method that exists. Cheap,
+      mechanical, and it would have caught all six above. It would NOT catch a
+      javadoc whose named methods all exist but whose CLAIM about them is false
+      (the takeOwnershipOfShim and unchecked-exception cases), so it is a floor
+      rather than a solution. A caller-count assertion for anything a javadoc
+      calls an "enforcement site" is the stronger version and is more work.
+    why_deferred: >
+      It is epic machinery, not a home bug, and it is outside every declared HIS
+      slice. Building it mid-wave would also mean landing a new check across
+      files three tickets are actively editing. Recorded now, with all six
+      instances, so the pattern is arguable from evidence rather than from
+      memory when someone decides whether to build it.
+    candidate_owner: unassigned
+    status: open
