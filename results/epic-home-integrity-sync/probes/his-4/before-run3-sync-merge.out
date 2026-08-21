@@ -1,0 +1,13 @@
+✗ scaffolded-unit: merge conflict in 0 file(s):
+✗   resolve in <SCRATCH>/run3/project/.skill-manager/skills/scaffolded-unit, then `git add` + `git commit`; back out with `git merge --abort`. A stash, if sync made one, is at `stash@{0}` (`git stash pop` once the tree is clean).
+✓ resolve: 0 unit(s)
+! Telemetry export unavailable; continuing without telemetry.
+✓ units.lock.toml: wrote 2 unit(s) → <SCRATCH>/run3/project/.skill-manager/units.lock.toml
+✓ agents: 2 unit(s) linked into claude, codex, gemini
+✗ sync: 1 unit(s) need attention
+✗   conflicted — resolve in the store dir, then `git commit` or `git merge --abort`: scaffolded-unit
+! skills with outstanding errors (1) — 1 distinct cause(s) — re-run after fixing:
+✗   scaffolded-unit:
+✗     - MERGE_CONFLICT: stash pop conflict after merging file://<SCRATCH>/run3/src/scaffolded-unit.git main — local changes preserved at stash@{0}
+✗       → resolve in <SCRATCH>/run3/project/.skill-manager/skills/scaffolded-unit, then `git add` + `git commit`
+  log: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-manager/logs/sync-20260821-140015-d49a.log

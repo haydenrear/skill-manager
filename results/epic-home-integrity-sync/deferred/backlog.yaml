@@ -757,4 +757,173 @@ findings:
       instances, so the pattern is arguable from evidence rather than from
       memory when someone decides whether to build it.
     candidate_owner: unassigned
+  - id: DEF-013
+    found_by: HIS-4, reproducing the MERGE_CONFLICT deadlock synthetically
+    found_at: "2026-08-21"
+    severity: minor
+    summary: >
+      The exact index shape the epic recorded -- stages 1 and 3 at mode 120000
+      with stage 2 absent -- was NOT reproduced. What HIS-4's fixture produces
+      is a stash-pop conflict with `ls-files -u` EMPTY and no MERGE_HEAD.
+    detail: >
+      MEASURED 2026-08-21 on epic tip dc97f2a, project-tier fixture, MODE=C of
+      results/epic-home-integrity-sync/probes/his-4/repro.sh:
+
+        sync --merge  -> exit 8
+        record        -> errors[{kind: MERGE_CONFLICT, "stash pop conflict ..."}]
+        HEAD          -> f52ffb7c  (the merge LANDED)
+        record gitHash-> 3dd070e5  (the baseline never moved)  <- link 3, exact
+        stash list    -> stash@{0}: On main: skill-manager-sync
+        ls-files -u   -> EMPTY
+        MERGE_HEAD    -> absent
+
+      Every consequence an operator can act on matches the recorded state: a
+      MERGE_CONFLICT record, an abandoned stash, a baseline stranded behind a
+      committed merge, and a printed remedy (`git add` + `git commit`) with
+      nothing to act on. The INDEX STAGES do not.
+
+      Stage 2 absent means OUR side deleted the path; stages 1 and 3 both at
+      120000 mean the merge BASE and the STASH both still held the symlink,
+      unchanged. Deriving that needs the unit's real pre-migration history --
+      the commit at which deploy-helm still tracked the three links, before the
+      managed-bindings migration untracked them and added the ignore block.
+    why_this_matters_anyway: >
+      Because the difference changes which remedy is correct, and HIS-4 now
+      prints two. With unmerged stages present the remedy is `git reset`; with
+      none it is "already clear, the next command retires it". The second branch
+      is the one the fixture exercises; the FIRST branch -- the operator's actual
+      state -- is covered only by a unit test that plants the residue with git
+      (DereferencedStoreLinkSyncTest, "the remedy for a stash-pop residue is not
+      the remedy for a merge"), not by the graph.
+    why_deferred: >
+      The live instance was cleared by hand on 2026-08-20 to satisfy rule 11 and
+      the pre-migration history is not recoverable from the operator's homes.
+      Reconstructing it would mean rebuilding deploy-helm's upstream history
+      synthetically, which is a fixture-archaeology exercise rather than a slice
+      of the mechanism, and HIS-4's fix makes the state unreachable prospectively
+      either way (the merge is now rolled back on a failed pop, so no stash-pop
+      residue is left at all).
+    candidate_owner: HIS-6
+    status: open
+
+  - id: DEF-014
+    found_by: HIS-4, measuring what `sync --merge` does when it SUCCEEDS
+    found_at: "2026-08-21"
+    severity: major
+    summary: >
+      Before HIS-4, a `sync --merge` that did NOT conflict silently undid the
+      child home's materialization -- reverting a dereferenced tree to a symlink
+      into the parent store, or deleting it outright -- and reported success.
+      HIS-4 fixes the sync path. The same shape is reachable from any other
+      command that runs git in a materialized store copy.
+    detail: >
+      MEASURED 2026-08-21, project-tier fixture, epic tip dc97f2a:
+
+        MODE=A  sync --merge -> exit 0, "1 merged"
+                test_graph/build-logic is a SYMLINK again
+                  -> ../../scaffold-provider/project_sdk_sources/build-logic
+        MODE=B  sync --merge -> exit 0, "1 merged"
+                test_graph/build-logic is GONE
+
+      In MODE=A the link happened to resolve inside the child home, because the
+      provider unit was materialized there too and the link is RELATIVE. With an
+      ABSOLUTE link -- which prepare_provider_bindings emits for a `skill-root`
+      provider (`target = str(source)`, _common.py:~575) rather than a
+      workspace-relative one -- the restored link would point back into the
+      PARENT STORE, and the child home would be writing through into the home it
+      was materialized from. That is the isolation break CHM-5 exists to prevent,
+      reintroduced by a successful sync.
+    fixed_here: >
+      Only for the sync path, and only inside SyncGitHandler.runMerge, which now
+      escrows the dereferenced trees across the stash/merge/pop window and
+      restores them (MaterializationEscrow). Asserted by the sync-settles node
+      and by the probes above.
+    still_open: >
+      Nothing re-establishes the invariant AFTER an arbitrary git operation. An
+      agent running `git checkout`, `git merge` or `git stash pop` by hand in a
+      materialized store copy restores the tracked symlink exactly as the merge
+      did, with the same absolute-link consequence, and no command detects it.
+      A `project resolve` would re-dereference it -- but only if it decides the
+      unit is not settled, and `settledWithoutARecord` may well decide it is.
+    why_deferred: >
+      The general form is "a materialized child home has an invariant that only
+      the materializer maintains, and any tool may break it". That is a
+      detection question -- HIS-13's (#159) subject, "no command can tell a
+      damaged home from a healthy one" -- and widening HIS-4 to own it is how a
+      ticket about one bug becomes a ticket about three.
+    candidate_owner: HIS-13
+    status: open
+    evidence:
+      - results/epic-home-integrity-sync/probes/his-4/README.md
+      - results/epic-home-integrity-sync/probes/his-4/before-run1-sync-merge.out
+      - results/epic-home-integrity-sync/probes/his-4/before-run2-sync-merge.out
+
+  - id: DEF-015
+    found_by: HIS-4, checking whether clause 2 needed a new mechanism
+    found_at: "2026-08-21"
+    severity: minor
+    summary: >
+      An installed-record error IS already re-derived from the live tree on
+      every command -- and the MERGE_CONFLICT probe asks a narrower question
+      than the error it retires, so it can clear an error whose damage is still
+      there.
+    detail: >
+      ReconcileUseCase.buildProgram emits a ValidateAndClearError for every
+      recorded error, and SkillManagerCli.tryReconcile runs it at the start of
+      EVERY invocation. MEASURED: after the pre-fix `sync --merge` recorded a
+      MERGE_CONFLICT, the very next command printed `reconcile: onboarded=0
+      cleared=1` and the record's errors[] was empty again.
+
+      So HIS-4's clause 2 ("an installed-record error is re-derived from the
+      live tree, so a condition that has cleared stops being reported without
+      anyone editing the record by hand") was ALREADY SATISFIED by the
+      mechanism HIS-1 is next door to. HIS-4 deliberately added no second
+      spelling of it.
+
+      What is wrong is the probe's question. LiveInterpreter.validateAndClear
+      asks, for MERGE_CONFLICT, only `GitOps.unmergedFiles(dir).isEmpty()`. The
+      state it was recorded for -- a failed stash pop -- can leave NO unmerged
+      files at all (see DEF-013), so the error cleared on the next command while
+      stash@{0} still held the local work and the baseline was still stranded
+      behind a committed merge. The record went quiet; the damage did not.
+    why_this_is_not_fixed_here: >
+      Widening the probe means deciding what MERGE_CONFLICT means -- unmerged
+      paths, or "this store is not in a state a sync left it in", which is a
+      different predicate that would also have to name the stash and the
+      baseline gap. HIS-4's atomicity fix removes the GENERATOR (a failed pop no
+      longer leaves either a committed merge or, normally, a stash), so the
+      false-clear is much harder to reach; it is not proved unreachable.
+    the_pattern_this_belongs_to: >
+      READ THIS ALONGSIDE DEF-012, BECAUSE THEY ARE THE SAME DEFECT IN TWO
+      INSTRUMENTS AND THEY WERE FOUND IN ONE WAVE.
+
+      DEF-012: `home verify` returns exit 0 -- "clean" -- on a home whose own
+      pinned CLI names a Cellar directory Homebrew has deleted. The home is
+      unusable and the instrument says healthy.
+
+      DEF-015: `ValidateAndClearError(MERGE_CONFLICT)` retires the recorded
+      error on the next command, because it asks only "are there unmerged
+      paths", while stash@{0} still holds the local work and the installed
+      baseline is still behind a merge that was already committed. The store is
+      damaged and the instrument says healthy.
+
+      In both, the probe's SCOPE is narrower than the condition it is trusted to
+      decide, and in both the narrowing is defensible in isolation --
+      missingReferencesIn is scoped to references under the home root, and
+      unmergedFiles is scoped to the index. Neither is defensible as an answer
+      to "is this healthy".
+
+      Whoever picks up HIS-13 should treat these as one finding with two
+      surfaces rather than two tickets: the fix for either alone leaves the
+      other reporting healthy over damage, and HIS-13's own statement of the
+      problem -- "no command can tell a damaged home from a healthy one" -- is
+      exactly what both of them demonstrate.
+    why_deferred: >
+      It is a question about what an error KIND asserts, across all nine kinds
+      in the exhaustive switch, and the switch is deliberately exhaustive so
+      that choice is made once per kind by whoever owns the kind. Not inside
+      HIS-4's declared slice, which names InstalledRecord.errors but not the
+      validation predicate.
+    candidate_owner: HIS-13
+    related: [DEF-012]
     status: open

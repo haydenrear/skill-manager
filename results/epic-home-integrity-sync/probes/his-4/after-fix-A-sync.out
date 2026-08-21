@@ -1,0 +1,7 @@
+reconcile: backfilled 6 default-agent binding(s)
+! Telemetry export unavailable; continuing without telemetry.
+✓ resolve: 0 unit(s)
+✓ units.lock.toml: wrote 2 unit(s) → <SCRATCH>/fix-A/project/.skill-manager/units.lock.toml
+✓ synced 1 unit(s) — 1 merged
+✓ agents: 2 unit(s) linked into claude, codex, gemini
+  log: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-manager/logs/sync-20260821-141019-77bb.log
