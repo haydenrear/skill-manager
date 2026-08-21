@@ -12,7 +12,7 @@ Two of the four known instances were live and one of them was destroying bytes.
 Both are closed, measured before and after, at the CLI and in the unit suite.
 
 `dev.skillmanager.store.WriteConfinement` +
-`dev.skillmanager.store.WriteOutsideHomeException` (exit code **13**).
+`dev.skillmanager.store.WriteOutsideHomeException`.
 
 ### The measured before/after, at the CLI
 
@@ -300,7 +300,27 @@ was not read, written, or used as a fixture at any point in this ticket, and
 that is a deliberate limit on what "the root tier is covered" claims: it covers
 the *shape*, not that particular home.
 
-**7. `home verify` and the pruner still disagree about one thing, and it is now
+**7. A confinement refusal has NO exit code of its own, and one was written
+before it was cut.** Every sibling refusal here carries one —
+`NotAHomeException` 2, `FrozenHomeException` 9, `GitFetcherException` 10,
+`HomeSync` 12 — so this class got `EXIT_CODE = 13` and a dispatch branch in
+`SkillManagerCli.handleExecutionException`. Then the callers were traced: every
+production path that can raise it (`CliShimPruner.prune`,
+`InstallerRegistry.installOne`, `takeOwnershipOfShim`) runs inside an effect,
+and `LiveInterpreter.runEffects` traps `Exception` and turns it into a failed
+receipt. **The branch was unreachable** — a contract with no caller, which is
+the shape this epic keeps filing findings about. Both were removed and the
+reason is written into the exception's javadoc where the constant used to be.
+A sync that refuses exits 1 today; giving the refusal its own status means
+mapping receipt kinds to exit codes, which is wider than this slice.
+
+What is NOT cut is the exception being **unchecked**, and that is the part with
+teeth: both DEF-007 call sites sit inside `catch (IOException)` handlers that
+log a warning and carry on, and a checked exception would have been caught by
+exactly those and turned back into a log line. Vacuity rows A and B are that
+property.
+
+**8. `home verify` and the pruner still disagree about one thing, and it is now
 the safe direction.** `home verify` reports `FOREIGN_HOME bin/cli` and exits 1;
 the prune refuses and the sync fails. Both refuse; neither repairs. **Repairing
 a home already in this shape is HIS-13 (#159)**, explicitly out of scope here,

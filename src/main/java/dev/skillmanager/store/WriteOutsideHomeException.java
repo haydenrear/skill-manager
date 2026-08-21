@@ -34,15 +34,25 @@ import java.nio.file.Path;
 public final class WriteOutsideHomeException extends RuntimeException {
 
     /**
-     * Exit status when this reaches the top of the CLI.
+     * <h2>There is deliberately NO {@code EXIT_CODE} here, and that is a cut</h2>
      *
-     * <p>13, the next unallocated code after {@code HomeSync}'s 12. Deliberately
-     * its own: an operator or a script that sees it has hit a confinement
-     * refusal and not a missing home (2), a frozen home (9) or a fetch failure
-     * (10), and the remedy for each of those is different.
+     * <p>Every sibling refusal in this codebase carries one —
+     * {@code NotAHomeException} 2, {@code FrozenHomeException} 9,
+     * {@code GitFetcherException} 10, {@code HomeSync} 12 — and one was written
+     * for this class before it was measured that nothing could reach it. Every
+     * production path that can raise this ({@code CliShimPruner.prune},
+     * {@code InstallerRegistry.installOne} and {@code takeOwnershipOfShim})
+     * runs inside an effect, and {@code LiveInterpreter.runEffects} traps
+     * {@code Exception} and turns it into a FAILED RECEIPT. So the exception
+     * never reaches {@code SkillManagerCli}'s handler, and a constant plus a
+     * dispatch branch there would have been a contract with no caller — the
+     * shape this epic keeps filing findings about.
+     *
+     * <p>What the command exits with today is whatever the failed receipt makes
+     * it — 1 for a sync. Giving a confinement refusal its own status means
+     * mapping receipt kinds to exit codes, which is a wider change than this
+     * ticket's slice. Recorded rather than half-built.
      */
-    public static final int EXIT_CODE = 13;
-
     private final transient Path spelled;
     private final transient Path resolved;
     private final transient Path home;

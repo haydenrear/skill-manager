@@ -221,20 +221,6 @@ public final class SkillManagerCli implements Runnable {
         if (gitErr != null) {
             return completeExecution(rootCommand(pr), pr, printGitFetcherBanner(gitErr));
         }
-        // A write-confinement refusal gets its own exit code. The message is
-        // already written for a person and printFailure renders it exactly like
-        // every other refusal — what a distinct code adds is that a script, or
-        // an operator, can tell "this command tried to write outside the home it
-        // was given" from a missing home (2), a frozen home (9) or a fetch
-        // failure (10). The remedy for each of those is different, and this
-        // epic has damaged a real home three times.
-        dev.skillmanager.store.WriteOutsideHomeException confined =
-                unwrapCause(ex, dev.skillmanager.store.WriteOutsideHomeException.class);
-        if (confined != null) {
-            printFailure(ex, c, pr);
-            return completeExecution(rootCommand(pr), pr,
-                    dev.skillmanager.store.WriteOutsideHomeException.EXIT_CODE);
-        }
         // Everything else, which is where the REFUSALS live. This used to
         // `throw ex` into picocli's default handler.
         return completeExecution(rootCommand(pr), pr, printFailure(ex, c, pr));
