@@ -244,6 +244,35 @@ public final class HomeDescriptorCliRemedyTest {
                     "and an unresolved remedy admits that too");
         });
 
+        suite.test("every remedy head is an absolute path a shell can actually run", () -> {
+            // The two assertions `ticket.lifecycle.first.launch` and
+            // `ticket.lifecycle.concurrent.close.out` make about a printed
+            // remedy — first token absolute, first token resolves to an
+            // executable — asserted here as well, because this ticket changes
+            // the string those nodes read and the ticket-lifecycle graph is
+            // currently blocked upstream of them by DEF-015. The floor under
+            // the fix must not depend on a graph node that did not run.
+            //
+            // It is also why the home binding is spelled with an ABSOLUTE
+            // `/usr/bin/env`: a bare `env` passes "runs" and fails "absolute".
+            Fixture f = Fixture.create("cli-remedy-head-");
+            record Case(String label, Path pin, Path running, Path pathDir) {}
+            List<Case> cases = List.of(
+                    new Case("pinned", f.pin, f.running, f.pathDir),
+                    new Case("own entrypoint", null, f.running, f.pathDir),
+                    new Case("running build", null, f.running, f.pathDir),
+                    new Case("path fallback", null, null, f.pathDir));
+            for (Case c : cases) {
+                if ("running build".equals(c.label())) Files.deleteIfExists(f.ownEntrypoint);
+                String command = f.spell(c.pin(), c.running(), c.pathDir()).command();
+                String head = command.strip().split("\\s+")[0];
+                assertTrue(head.startsWith("/"),
+                        "the " + c.label() + " remedy begins with an absolute path: " + command);
+                assertTrue(Files.isExecutable(Path.of(head)),
+                        "and that path is executable: " + head + "  (from " + command + ")");
+            }
+        });
+
         // ------------------------------------------- DEF-012, resolution half
 
         suite.test("a home entrypoint whose pin was deleted by an upgrade is not the remedy",
