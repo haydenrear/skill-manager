@@ -310,3 +310,98 @@ findings:
       - Accept the SKILL_MANAGER_CLI workaround for the rest of the epic and record it in HIS-8's documentation as the supported way to bootstrap against an unreleased build.
     candidate_owner: unassigned
     status: open
+
+  - id: DEF-007
+    found_by: HIS-10, answering HIS-7 review finding MED-6 by measurement
+    found_at: "2026-08-21"
+    severity: blocking
+    escalated: true
+    summary: >
+      `sync` in one home DELETES another home's toolchain when this home's
+      `bin/cli` is itself a symlink at that other home's `bin/cli`. The gate
+      sees the shape and refuses it; the REPAIR follows the link and prunes
+      through it.
+    detail: >
+      MEASURED 2026-08-21 on the HIS-10 branch, two hand-built homes, no clone
+      involved. `homeB/bin/cli -> homeA/bin/cli`, homeA holding two executables:
+
+        home verify homeB   -> FOREIGN_HOME bin/cli  (the gate SEES it)
+        CliShimPruner.prune(homeB)
+                            -> "pruned bin/cli/alpha ... not this home's parent store"
+                               "pruned bin/cli/beta  ... not this home's parent store"
+        homeA/bin/cli       -> 2 entries BEFORE, 0 entries AFTER
+
+      The cause is that `CliShimPruner.prune` opens `store.cliBinDir()` with
+      `Files.isDirectory` + `Files.list`, both of which FOLLOW the link, and then
+      deletes each entry it decides is foreign -- correctly deciding, in the
+      wrong home. Every entry it lists is in the other home by construction, so
+      it empties that directory. `home verify`'s walk does not follow it
+      (`Files.walkFileTree` without FOLLOW_LINKS), which is why the two readers
+      disagree here in the one direction that destroys bytes.
+
+      MED-7 from the same review is ANSWERED AND IS NOT A DEFECT, recorded here
+      so it is not re-opened: the isolation walk covers the WHOLE home, not
+      `bin/cli`. The same probe planted `bin/launch/claude` and `bin/mcp/srv`
+      links into homeA and verify reported `FOREIGN_HOME bin/launch/claude` and
+      `FOREIGN_HOME bin/mcp/srv` alongside. `HomeCloner.SHIM_DIRS` scopes which
+      foreign links may be EXCUSED as sanctioned mirrors, not which are scanned.
+    reproduction: >
+      Two homes with installed/ + skills/; make homeB/bin/cli a symlink at
+      homeA/bin/cli; call CliShimPruner.prune(new SkillStore(homeB)) -- or run
+      `sync` in homeB, which calls it. See
+      results/epic-home-integrity-sync/probes/his-10/med-6-med-7-measured.out
+    evidence:
+      - results/epic-home-integrity-sync/probes/his-10/med-6-med-7-measured.out
+    why_deferred: >
+      This is WRITE CONFINEMENT -- "no home operation writes outside the home
+      SKILL_MANAGER_HOME names" -- which is HIS-9 (#226)'s declared slice, not
+      HIS-10's. HIS-10 owns provenance, path spelling and the pruner's SANCTION
+      decision; it does not own where the pruner is allowed to point. Fixing it
+      here would mean adding a confinement guard to a delete path in a ticket
+      whose acceptance says nothing about deletion, and the guard belongs in one
+      place for every writer, not bolted onto this one.
+
+      Escalated rather than merely filed because it is destructive and because
+      this epic has already damaged the operator's root home twice. Nothing
+      creates this shape today -- `ChildHomeMaterializer.mirrorExistingShim`
+      mirrors ENTRIES, never the directory -- so it is reachable by hand or by a
+      restored backup rather than by the product's own path. That is why it is
+      recorded as blocking-severity rather than stopping HIS-10.
+    candidate_owner: HIS-9
+    status: open
+
+  - id: DEF-008
+    found_by: HIS-10, writing the #206 path-spelling fixture
+    found_at: "2026-08-21"
+    severity: minor
+    summary: >
+      After HIS-10, a home is checked under the spelling the caller named AND
+      that spelling resolved. A home CREATED through one alias and VERIFIED
+      through a DIFFERENT one is still partly unchecked, because a symlink
+      cannot be inverted.
+    detail: >
+      `HomeCloner.destReferences` finds candidate paths BY searching for the
+      home root as a string, so it can only use spellings it can derive. HIS-10
+      derives two -- the caller's and `toRealPath` of it -- which closes the
+      measured case (#206: a home reached through a symlink while its generated
+      wrappers hold the resolved spelling). It cannot close the mirror image:
+      standing at `<s>/realdir/home` there is nothing that says `<s>/link/home`
+      names the same directory, so a wrapper holding the LINKED spelling is
+      invisible.
+
+      ASSERTED, not assumed: `HomeVerifyPathSpellingTest`'s
+      "THE STATED LIMIT" case pins the current behaviour, and says in its comment
+      that it should become an equality assertion if the limit is ever closed.
+    reproduction: >
+      See HomeVerifyPathSpellingTest -- build <s>/realdir/home with a wrapper
+      naming <s>/link/home/venvs/nope/bin/probe, then verify --home
+      <s>/realdir/home. Reports clean.
+    why_deferred: >
+      Closing it needs the home to RECORD the spelling it was created at -- a
+      new durable fact, in the same family as HIS-10's provenance record but not
+      the one this ticket's acceptance names. Small blast radius: a clone
+      re-anchors generated files to the destination spelling it was GIVEN, so
+      the created-at and verified-at spellings agree for every home this product
+      makes; the gap needs someone to address a home by a second alias.
+    candidate_owner: unassigned
+    status: open
