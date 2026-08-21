@@ -158,14 +158,16 @@ already shipped a shim that refused *unconditionally* and satisfied a one-sided
 | --- | --- |
 | `jbang RunTests.java` | **ALL PASSED** (139 suites; 3 new classes, 19 new cases) |
 | `uv run pytest specs/` | **38 passed** in 1.71s |
-| `python skills/test_graph/scripts/run.py home-integrity` | **BUILD SUCCESSFUL, 15/15 nodes passed** (run `20260821-192222`, 5m 11s, on the rebased tree) |
+| `python skills/test_graph/scripts/run.py home-integrity` | **BUILD SUCCESSFUL, 15/15 nodes passed** (run `20260821-200059`, 5m 12s, after the review fixes) |
 
-### The graph result — run `20260821-192222`, BUILD SUCCESSFUL, 15/15
+### The graph result — run `20260821-200059`, BUILD SUCCESSFUL, 15/15
 
-`home-integrity` ran green end to end in 5m 11s, on the tree rebased onto epic
-tip `a4a95cb`. Both of this ticket's nodes executed. It was run twice: once at
-`20260821-191337`, which surfaced the coverage hole below, and again at
-`20260821-192222` after the fix. Verbatim envelopes are committed under
+`home-integrity` ran green end to end in 5m 12s on the reviewed tree. Both of
+this ticket's nodes executed. It was run three times: `20260821-191337`, which
+surfaced the coverage hole below; `20260821-192222`, which proved that fix; and
+`20260821-200059` after the second review round changed the shim's refusal text,
+which the `bootstrap.projects.target` node asserts on. The committed envelopes
+are from the last of those. Verbatim envelopes are committed under
 `probes/his-9/graph-*.json`.
 
 **`home.integrity.sync.stays.inside.its.home` — new, `passed`**
@@ -207,9 +209,13 @@ skill-manager: refusing to run against a home you did not name.
   This entrypoint binds the home it lives in, so it cannot honour
   SKILL_MANAGER_HOME. Refusing rather than silently editing the
   other one.
-  Use `…/home-integrity/home/bin/cli/skill-manager <cmd> --home …/bootstrap-target`,
-  or run the CLI build directly instead of this shim.
+  Say which one you mean:
+    --home /private/…/home-integrity/home   (this shim's home)
+    --home …/home-integrity/scratch/bootstrap-target   (the home your environment names)
 ```
+
+Both homes, neither guessed — and both spellings are now runnable on `sync`,
+which is what row N executes.
 
 The old assertion this replaced — `the_shim_overrides_an_inherited_skill_manager_home`
 — would have gone red on this build. What it protected is intact and sharper:
@@ -255,6 +261,8 @@ and publishes `victimHome` and `syncingHome`. Measured across the two runs:
 | `homesRepaired` | 0 | **0** — both new homes verified; neither needed the remedy |
 | law status | passed | passed |
 | graph | 15/15 | 15/15 |
+
+Held at **3** on the third run (`20260821-200059`) as well.
 
 Both homes verify **exit 0**, so this extends the law's reach rather than
 importing a known-bad fixture into a shared post-condition — which is why

@@ -1,8 +1,8 @@
 {
   "nodeId" : "home.integrity.sync.stays.inside.its.home",
   "status" : "passed",
-  "startedAt" : "2026-08-21T19:26:18.327188Z",
-  "endedAt" : "2026-08-21T19:26:29.261178Z",
+  "startedAt" : "2026-08-21T20:04:55.388829Z",
+  "endedAt" : "2026-08-21T20:05:06.442141Z",
   "assertions" : [ {
     "name" : "a_sync_in_one_home_removes_nothing_from_another",
     "status" : "passed"
@@ -22,49 +22,49 @@
   "artifacts" : [ ],
   "processes" : [ {
     "label" : "his9-clone-victim",
-    "command" : [ "/Users/hayde/IdeaProjects/wt-226-his-9/skill-manager", "home", "clone", "--from", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-14472970540486174842/home-integrity/home", "--to", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-14472970540486174842/home-integrity/scratch/his9/victim-home/.skill-manager" ],
-    "startedAt" : "2026-08-21T19:26:18.332282Z",
-    "endedAt" : "2026-08-21T19:26:20.859354Z",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-226-his-9/skill-manager", "home", "clone", "--from", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13136062788885688304/home-integrity/home", "--to", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13136062788885688304/home-integrity/scratch/his9/victim-home/.skill-manager" ],
+    "startedAt" : "2026-08-21T20:04:55.394225Z",
+    "endedAt" : "2026-08-21T20:04:57.918696Z",
     "exitCode" : 0,
-    "pid" : 70153,
+    "pid" : 73109,
     "log" : "node-logs/home.integrity.sync.stays.inside.its.home.his9-clone-victim.log",
     "error" : null
   }, {
     "label" : "his9-clone-syncing",
-    "command" : [ "/Users/hayde/IdeaProjects/wt-226-his-9/skill-manager", "home", "clone", "--from", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-14472970540486174842/home-integrity/home", "--to", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-14472970540486174842/home-integrity/scratch/his9/syncing-home/.skill-manager" ],
-    "startedAt" : "2026-08-21T19:26:20.859687Z",
-    "endedAt" : "2026-08-21T19:26:23.389181Z",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-226-his-9/skill-manager", "home", "clone", "--from", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13136062788885688304/home-integrity/home", "--to", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13136062788885688304/home-integrity/scratch/his9/syncing-home/.skill-manager" ],
+    "startedAt" : "2026-08-21T20:04:57.919061Z",
+    "endedAt" : "2026-08-21T20:05:00.401089Z",
     "exitCode" : 0,
-    "pid" : 70217,
+    "pid" : 73349,
     "log" : "node-logs/home.integrity.sync.stays.inside.its.home.his9-clone-syncing.log",
     "error" : null
   }, {
     "label" : "his9-sync-through-the-link",
     "command" : [ "/Users/hayde/IdeaProjects/wt-226-his-9/skill-manager", "sync", "--skip-mcp", "--skip-agents", "--yes" ],
-    "startedAt" : "2026-08-21T19:26:23.393292Z",
-    "endedAt" : "2026-08-21T19:26:26.368211Z",
+    "startedAt" : "2026-08-21T20:05:00.405327Z",
+    "endedAt" : "2026-08-21T20:05:03.463052Z",
     "exitCode" : 1,
-    "pid" : 70287,
+    "pid" : 73552,
     "log" : "node-logs/home.integrity.sync.stays.inside.its.home.his9-sync-through-the-link.log",
     "error" : null
   }, {
     "label" : "his9-sync-without-the-link",
     "command" : [ "/Users/hayde/IdeaProjects/wt-226-his-9/skill-manager", "sync", "--skip-mcp", "--skip-agents", "--yes" ],
-    "startedAt" : "2026-08-21T19:26:26.372204Z",
-    "endedAt" : "2026-08-21T19:26:29.260449Z",
+    "startedAt" : "2026-08-21T20:05:03.465770Z",
+    "endedAt" : "2026-08-21T20:05:06.441387Z",
     "exitCode" : 0,
-    "pid" : 70398,
+    "pid" : 73822,
     "log" : "node-logs/home.integrity.sync.stays.inside.its.home.his9-sync-without-the-link.log",
     "error" : null
   } ],
   "metrics" : {
     "victimEntriesBefore" : 2,
     "victimEntriesAfter" : 2,
-    "durationMs" : 10934
+    "durationMs" : 11054
   },
   "logs" : [ "DEF-007, measured 2026-08-21: this sync took the other home's bin/cli from 2 entries to 0 and exited 0. The prune decided every entry correctly, in the wrong home." ],
   "published" : {
-    "victimHome" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-14472970540486174842/home-integrity/scratch/his9/victim-home/.skill-manager",
-    "syncingHome" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-14472970540486174842/home-integrity/scratch/his9/syncing-home/.skill-manager"
+    "victimHome" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13136062788885688304/home-integrity/scratch/his9/victim-home/.skill-manager",
+    "syncingHome" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-13136062788885688304/home-integrity/scratch/his9/syncing-home/.skill-manager"
   }
-,"envelopeVersion":1,"executorStartedAt":"2026-08-21T19:26:17.594199Z","executorEndedAt":"2026-08-21T19:26:42.538635Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/home.integrity.sync.stays.inside.its.home.stdout.log","inputContextFile":"context/home.integrity.sync.stays.inside.its.home.input.json","traceId":"618bf443a80d2ab5413f94b1acde2dc0"}
+,"envelopeVersion":1,"executorStartedAt":"2026-08-21T20:04:54.694916Z","executorEndedAt":"2026-08-21T20:05:20.012824Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/home.integrity.sync.stays.inside.its.home.stdout.log","inputContextFile":"context/home.integrity.sync.stays.inside.its.home.input.json","traceId":"2eed0cec8e76d9913d31e32d60e60dc4"}
