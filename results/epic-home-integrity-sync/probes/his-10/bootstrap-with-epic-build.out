@@ -1,0 +1,5 @@
+home:      /Users/hayde/IdeaProjects/wt-227-his-10/.skill-manager
+projected: 4 of 4 into each of .claude .codex .gemini
+verified:  4 skill(s) servable — an agent launched here reads them from .claude .codex .gemini; descriptor env inside /Users/hayde/IdeaProjects/wt-227-his-10; claude/codex resolve to this home's shims
+launch:    /Users/hayde/IdeaProjects/wt-227-his-10/.skill-manager/bin/launch/claude
+log:       /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/bootstrap-home-GPmkaz.log

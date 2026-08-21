@@ -248,3 +248,65 @@ findings:
       HIS slice.
     candidate_owner: unassigned
     status: open
+
+  - id: DEF-006
+    found_by: wave-3 dispatch, provisioning HIS-10's declared worktree
+    found_at: "2026-08-21"
+    severity: major
+    escalated: true
+    summary: >
+      DEF-004 was never only a sanction defect. bootstrap-home.sh runs the ROOT
+      home's pinned CLI -- Homebrew 0.23.0, which predates this epic and the
+      artifact-DAG epic before it -- so the worktree front door has been
+      refusing clones that the current build accepts.
+    detail: >
+      MEASURED 2026-08-21 at epic tip 58692cf. Same script, same source home,
+      same destination worktree. The ONLY variable is which build runs it:
+
+        cli: /Users/hayde/.skill-manager/bin/cli/skill-manager   (Homebrew 0.23.0)
+          -> "clone verification FAILED -- 5 path(s) reach outside this copy"
+          -> FOREIGN_HOME x5, exit 1,
+             "home clone failed; <wt>/.skill-manager is not usable"
+
+        SKILL_MANAGER_CLI=<repo>/skill-manager                   (epic build)
+          -> exit 0, in 38s: "verified: 4 skill(s) servable",
+             launch shim written, home usable
+
+      bootstrap-home.sh PRINTS the CLI it chose (`cli: ...`) and it is the root
+      home's, not the home being bootstrapped and not the build under test.
+    why_this_matters_beyond_one_worktree: >
+      It reframes DEF-004 and both prior waves. Waves 1 and 2 skipped worktrees;
+      wave 2's review recorded the reason as the sanction disagreement. That was
+      only half of it. The front door was ALSO running a build from before the
+      fixes, so a fix landing on the epic branch could never reach the machinery
+      that provisions the tickets that test it.
+
+      It is a fifth reader for GOAL-one-home-one-answer, and the most dangerous
+      kind: not a different rule, a different BUILD OF THE SAME RULE.
+    reproduction: >
+      git worktree add ../wt-x -b feature/x epic/home-integrity-sync
+      ~/.skill-manager/skills/git-issue-workflow/scripts/bootstrap-home.sh --root ../wt-x   # fails
+      SKILL_MANAGER_CLI=<repo>/skill-manager  <same command>                                # succeeds
+    evidence:
+      - results/epic-home-integrity-sync/probes/his-10/bootstrap-with-root-pinned-0.23.0.out
+      - results/epic-home-integrity-sync/probes/his-10/bootstrap-with-epic-build.out
+    why_deferred: >
+      It spans two owners and neither slice covers it whole. HIS-9 (#226) names
+      "bootstrap-home.sh and skt resolve their CLI from the root home" as its
+      instance (3) but scopes that to a REPORT, because the script lives in
+      git-issue-workflow. HIS-12 (#161) owns resolveCli's unversioned PATH
+      fallback, which is the same shape one layer down. Neither owns "the front
+      door runs a stale build", and widening either mid-wave is how a ticket
+      about one bug becomes a ticket about three.
+    workaround_in_use: >
+      HIS-10's worktree was bootstrapped with SKILL_MANAGER_CLI pointed at the
+      epic build. That works and is what every ticket in this epic should do
+      until this is owned. It is a workaround: it makes the tool under test
+      bootstrap its own test environment, which is exactly the circularity the
+      root home's pin exists to avoid.
+    options_for_the_owner:
+      - Re-run the failed v0.24.0 release so the root home can be upgraded, which closes the version gap without a code change. Blocked on the release workflow, which publishes.
+      - Widen HIS-9 to own instance (3) for real, including the git-issue-workflow change, and reach it through HIS-8's publish path.
+      - Accept the SKILL_MANAGER_CLI workaround for the rest of the epic and record it in HIS-8's documentation as the supported way to bootstrap against an unreleased build.
+    candidate_owner: unassigned
+    status: open
