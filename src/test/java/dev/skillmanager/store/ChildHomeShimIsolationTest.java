@@ -83,6 +83,60 @@ public final class ChildHomeShimIsolationTest {
                             "and it is reported as the isolation failure it is");
                 })
 
+                .test("a COPY of a sanctioned child inherits the sanction — root -> project -> worktree", () -> {
+                    // HIS-7 / #223, and this is the case that blocked every
+                    // ticket worktree in the repository.
+                    //
+                    // The sanction asks "is the DESTINATION a child of the home
+                    // this shim points into". During a clone the destination is
+                    // a home that DOES NOT EXIST YET: nothing claims it, and it
+                    // was materialized from the SOURCE, not from the home the
+                    // shim names. The real chain is root -> project -> worktree,
+                    // so a clone of a child is a GRANDCHILD and the one-level
+                    // question could never answer yes.
+                    //
+                    // Measured before the fix: bootstrap-home.sh reported
+                    // "clone verification FAILED — 5 path(s) reach outside this
+                    // copy" and "not usable", so neither `wt new` nor
+                    // `skt ticket new` could produce a ticket home at all.
+                    Fixture fx = Fixture.build("inherited");
+                    fx.mirrorShim("tool");
+                    fx.writeParentClaim();
+                    assertEquals(0, verify(fx.child).rc, "precondition: the child is sanctioned");
+
+                    Path copy = copyHome(fx.child, "worktree");
+
+                    Result r = verifyAgainst(copy, fx.child);
+
+                    assertEquals(0, r.rc, "a copy inherits the reason its source's shim was "
+                            + "allowed; copying bytes changes nothing about whose artifact "
+                            + "it is. got:\n" + r.err);
+                    assertContains(r.out, "sanctioned parent-store shim",
+                            "and the copy still REPORTS it, rather than claiming to reach "
+                                    + "no other home");
+                })
+
+                .test("inheritance needs a source that was itself sanctioned, not merely a source", () -> {
+                    // The guard that keeps this from being a widening. An
+                    // UNCLAIMED child's shim is a leak (asserted above); a copy
+                    // of that child must inherit the leak, not launder it.
+                    // Without this, "clone it once more" would become a way to
+                    // turn any foreign path into a sanctioned one.
+                    Fixture fx = Fixture.build("laundering");
+                    fx.mirrorShim("tool");
+                    // deliberately NO parent claim and NO child record
+                    assertEquals(1, verify(fx.child).rc, "precondition: the child is a leak");
+
+                    Path copy = copyHome(fx.child, "worktree");
+
+                    Result r = verifyAgainst(copy, fx.child);
+
+                    assertEquals(1, r.rc, "a copy of an unsanctioned home is still unsanctioned "
+                            + "— cloning is not a laundering step");
+                    assertContains(r.err, "FOREIGN_HOME bin/cli/tool",
+                            "and it is reported as the isolation failure it is");
+                })
+
                 .test("the sanction does not extend past bin/cli and bin/mcp", () -> {
                     Fixture fx = Fixture.build("scope");
                     fx.writeParentClaim();
@@ -222,6 +276,50 @@ public final class ChildHomeShimIsolationTest {
     // ------------------------------------------------------------ plumbing
 
     private record Result(int rc, String out, String err) {}
+
+    /** Verify {@code home} as a copy OF {@code source} — the clone's question. */
+    private static Result verifyAgainst(Path home, Path source) {
+        PrintStream realOut = System.out;
+        PrintStream realErr = System.err;
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        ByteArrayOutputStream err = new ByteArrayOutputStream();
+        try {
+            System.setOut(new PrintStream(out, true));
+            System.setErr(new PrintStream(err, true));
+            int rc = new CommandLine(new HomeCommand.VerifyCmd())
+                    .execute("--home", home.toString(), "--against", source.toString());
+            return new Result(rc, out.toString(), err.toString());
+        } finally {
+            System.setOut(realOut);
+            System.setErr(realErr);
+        }
+    }
+
+    /**
+     * A byte copy of {@code home} beside it, symlinks preserved — what a clone
+     * produces before anything re-anchors it.
+     */
+    private static Path copyHome(Path home, String name) throws Exception {
+        Path dest = home.getParent().getParent().resolve(name + "/.skill-manager");
+        Files.createDirectories(dest.getParent());
+        try (var walk = Files.walk(home)) {
+            for (Path src : (Iterable<Path>) walk::iterator) {
+                Path rel = home.relativize(src);
+                Path to = dest.resolve(rel.toString());
+                if (Files.isSymbolicLink(src)) {
+                    Files.createDirectories(to.getParent());
+                    Files.createSymbolicLink(to, Files.readSymbolicLink(src));
+                } else if (Files.isDirectory(src)) {
+                    Files.createDirectories(to);
+                } else {
+                    Files.createDirectories(to.getParent());
+                    Files.copy(src, to);
+                    to.toFile().setExecutable(src.toFile().canExecute(), false);
+                }
+            }
+        }
+        return dest;
+    }
 
     private static Result verify(Path home) {
         PrintStream realOut = System.out;

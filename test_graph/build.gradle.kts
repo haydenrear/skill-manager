@@ -1455,6 +1455,12 @@ validationGraph {
         // Defect 10: the shim/bootstrap contradiction, and its remedy.
         node("sources/home-integrity/BootstrapProjectsTheTargetHome.java")
 
+        // HIS-7 (#223): a build inside a child home does not write into its
+        // parent. Drives a real clone and a real producer, because the defect
+        // was in what `cat >` does to an inherited symlink and no hand-built
+        // fixture would have contained it.
+        node("sources/home-integrity/ParentHomeSurvivesAChildBuild.java")
+
         // THE FIXPOINT LAW, as every home-producing graph ends. Depends on this
         // graph's last node so it runs last, and FAILS if it finds no home.
         node("sources/common/HomeFixpointLaw.java")

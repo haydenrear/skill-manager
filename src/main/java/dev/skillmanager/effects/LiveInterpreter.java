@@ -1591,8 +1591,27 @@ public final class LiveInterpreter implements ProgramInterpreter {
         try {
             dev.skillmanager.cli.installer.InstallerRegistry registry =
                     new dev.skillmanager.cli.installer.InstallerRegistry();
-            dev.skillmanager.cli.installer.InstallOutcome outcome =
-                    registry.installOne(e.dep(), store, e.unitName(), e.force());
+            // HIS-7. A REBUILD is the one moment this home has a reason to own
+            // the artifact — the agent changed the unit — so an inherited link
+            // into the parent store is replaced here and nowhere else. On the
+            // sync path the same link is left alone, because building what
+            // nobody changed is waste and deleting it defeats the sharing
+            // `ChildHomeMaterializer.mirrorExistingShim` exists to provide.
+            //
+            // Without this the producer's `cat > "$SKILL_MANAGER_BIN_DIR/<n>"`
+            // FOLLOWS the link and writes the PARENT's file, with this home's
+            // absolute paths in it. Measured on the operator's root home twice.
+            Path inherited = dev.skillmanager.cli.installer.InstallerRegistry
+                    .takeOwnershipOfShim(e.dep(), store);
+            dev.skillmanager.cli.installer.InstallOutcome outcome;
+            try {
+                outcome = registry.installOne(e.dep(), store, e.unitName(), e.force());
+            } finally {
+                // Deleting and then failing would leave the home with no tool
+                // where a working parent-owned one stood.
+                dev.skillmanager.cli.installer.InstallerRegistry
+                        .restoreForeignShim(e.dep(), store, inherited);
+            }
             if (outcome != null && !outcome.isEvent()) {
                 // SKIPPED, so BuildCommand can tell a no-op from a rebuild
                 // without sniffing a summary string, and no CliInstalled fact,
