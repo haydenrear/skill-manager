@@ -188,6 +188,7 @@ public class RunTests {
         failures += HandlerSubstitutabilityTest.run();
         failures += ListTypedHandlerSubstitutabilityTest.run();
         failures += dev.skillmanager.source.GitOpsRepoBoundaryTest.run();
+        failures += dev.skillmanager.source.DereferencedStoreLinkSyncTest.run();
         failures += SourceProvenanceRecorderTest.run();
         failures += ResolveGraphDirectGitSyncTest.run();
         failures += SyncGitDocRepoTest.run();
