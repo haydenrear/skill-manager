@@ -12,6 +12,7 @@ import dev.skillmanager.store.HomeCloseOut;
 import dev.skillmanager.store.HomeCloner;
 import dev.skillmanager.store.HomeDescriptor;
 import dev.skillmanager.store.HomeDigest;
+import dev.skillmanager.store.HomeProvenance;
 import dev.skillmanager.store.HomeSync;
 import dev.skillmanager.store.NotAHomeException;
 import dev.skillmanager.artifacts.ArtifactBuild;
@@ -298,6 +299,15 @@ public final class HomeCommand {
                         parentShims.size(), home);
                 sample(parentShims);
             }
+            // HIS-10. WHY those shims were sanctioned, printed with the verdict.
+            //
+            // The sanction used to be visible only when an operator passed
+            // --against, so the same home read clean here and FOREIGN_HOME one
+            // command later. It is now a record in the home; saying so is the
+            // "and DECLARES it" half of the lazy contract — a clone keeps its
+            // inherited artifacts on PATH and says whose they are, instead of
+            // pruning and rebuilding a toolchain nobody changed.
+            reportDescent(home);
             // ARTI-07: the THIRD state, and the reason this section is above
             // the failure section rather than inside it. A home that declares
             // its artifacts and builds them on demand ships these on purpose —
@@ -511,6 +521,60 @@ public final class HomeCommand {
          * home" checkable without becoming the 163 lines that buried the six
          * findings underneath them.
          */
+        /**
+         * Print what {@code home} RECORDS about where it came from, and which
+         * of it still re-derives.
+         *
+         * <p>Printed either way on purpose. "No descent recorded" is the state
+         * in which an inherited shim is a hard {@code FOREIGN_HOME} refusal, and
+         * an operator staring at that refusal needs to see the missing fact
+         * rather than infer it. It is also what tells a pre-HIS-10 copy apart
+         * from one this build made — the input HIS-13's repair needs.
+         *
+         * <h2>A claim and a fact are never printed as the same thing</h2>
+         *
+         * <p>The first version of this printed the record's own
+         * {@code parentStores} as the answer. Measured on review of #228: a
+         * hand-written record naming {@code /nowhere} as its source turned the
+         * isolation gate off AND was reported here as authoritative descent —
+         * and because this line names the filename, it told the next agent
+         * exactly which file to write to make a refusal go away.
+         *
+         * <p>So the recorded set is a CLAIM, each entry is re-derived live
+         * ({@link HomeProvenance#sanctions}), and an entry that no longer
+         * re-derives is printed as the dead claim it is rather than omitted.
+         * Omitting it would hide the one transition an operator has to act on:
+         * a parent whose claim was revoked, whose shims are foreign again.
+         */
+        private static void reportDescent(Path home) {
+            HomeProvenance.Descent descent = HomeProvenance.read(home);
+            if (descent == null) {
+                Log.detail("no recorded descent: %s carries no %s, so nothing in it sanctions a "
+                                + "path into another home",
+                        home, HomeProvenance.FILENAME);
+                return;
+            }
+            List<Path> recorded = HomeProvenance.recordedParentStores(home);
+            List<Path> verified = HomeProvenance.verifiedParentStores(home);
+            if (recorded.isEmpty()) {
+                Log.info("descent: %s records that it was cloned from %s, and names no parent "
+                                + "store — so no foreign path in it is sanctioned by that record",
+                        home, descent.clonedFrom());
+                return;
+            }
+            Log.info("descent: %s records that it was cloned from %s; %d of %d recorded parent "
+                            + "store(s) still re-derive as ancestors of this home",
+                    home, descent.clonedFrom(), verified.size(), recorded.size());
+            for (Path store : recorded) {
+                if (verified.contains(store)) {
+                    Log.info("    %s  — re-derived, so its artifacts are shared by right", store);
+                } else {
+                    Log.info("    %s  — NOT re-derivable: no live claim links this home to it, "
+                            + "so its shims here are foreign again", store);
+                }
+            }
+        }
+
         private static void sample(List<String> refs) {
             int shown = Math.min(TOLERATED_SAMPLE, refs.size());
             for (int i = 0; i < shown; i++) Log.info("    %s", refs.get(i));

@@ -257,6 +257,9 @@ public class RunTests {
         failures += HomeVerifyDiagnosticTextTest.run();
         failures += dev.skillmanager.commands.HomeUnresolvedGateTest.run();
         failures += dev.skillmanager.store.ChildHomeShimIsolationTest.run();
+        failures += dev.skillmanager.store.ClonedHomeDescentTest.run();
+        failures += dev.skillmanager.store.HomeVerifyPathSpellingTest.run();
+        failures += dev.skillmanager.store.ProvenanceRecordExemptionTest.run();
         failures += dev.skillmanager.cli.installer.CliShimPrunerTest.run();
         failures += dev.skillmanager.cli.BuildIdentityTest.run();
         failures += dev.skillmanager.store.HomeDescriptorTest.run();

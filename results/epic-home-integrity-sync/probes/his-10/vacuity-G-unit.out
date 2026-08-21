@@ -1,0 +1,56 @@
+[jbang] Building jar for His10Vacuity.java...
+Note: /Users/hayde/IdeaProjects/wt-227-his-10/src/main/java/dev/skillmanager/mcp/GatewayClient.java uses or overrides a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
+== ProvenanceRecordExemptionTest (4 cases)
+  [FAIL] a record whose mentions are exactly accounted for is NOT a leak: the copy's own descent record is the one file whose job is to name the home it was copied from; refusing it would refuse the evidence the sanction stands on. got: [FILE_CONTENT home.provenance.json (state)]: expected <0> but was <1>
+java.lang.AssertionError: the copy's own descent record is the one file whose job is to name the home it was copied from; refusing it would refuse the evidence the sanction stands on. got: [FILE_CONTENT home.provenance.json (state)]: expected <0> but was <1>
+	at dev.skillmanager._lib.test.Tests.assertEquals(Tests.java:73)
+	at dev.skillmanager.store.ProvenanceRecordExemptionTest.lambda$run$0(ProvenanceRecordExemptionTest.java:76)
+	at dev.skillmanager._lib.test.Tests$Suite.runAll(Tests.java:48)
+	at dev.skillmanager.store.ProvenanceRecordExemptionTest.run(ProvenanceRecordExemptionTest.java:144)
+	at His10Vacuity.main(His10Vacuity.java:23)
+  [PASS] ONE EXTRA occurrence beyond the accounted fields is still a hard leak
+  [FAIL] the exemption is granted to the PATH, not to the JSON shape: the copy still holds its real record, which is exempt, and a duplicate elsewhere, which is not; got: [FILE_CONTENT home.provenance.json (state), FILE_CONTENT looks-like-provenance.json (state)]: expected <1> but was <2>
+java.lang.AssertionError: the copy still holds its real record, which is exempt, and a duplicate elsewhere, which is not; got: [FILE_CONTENT home.provenance.json (state), FILE_CONTENT looks-like-provenance.json (state)]: expected <1> but was <2>
+	at dev.skillmanager._lib.test.Tests.assertEquals(Tests.java:73)
+	at dev.skillmanager.store.ProvenanceRecordExemptionTest.lambda$run$2(ProvenanceRecordExemptionTest.java:119)
+	at dev.skillmanager._lib.test.Tests$Suite.runAll(Tests.java:48)
+	at dev.skillmanager.store.ProvenanceRecordExemptionTest.run(ProvenanceRecordExemptionTest.java:144)
+	at His10Vacuity.main(His10Vacuity.java:23)
+  [PASS] an unreadable record buys no exemption — a downgrade needs evidence
+   → 2 passed, 2 failed
+== ClonedHomeDescentTest (6 cases)
+  [FAIL] all four readers agree about a cloned home's inherited shim, with no --against: not true: home clone must not report a leak on a shim its own descent record sanctions; got: [FILE_CONTENT home.provenance.json (state)]
+java.lang.AssertionError: not true: home clone must not report a leak on a shim its own descent record sanctions; got: [FILE_CONTENT home.provenance.json (state)]
+	at dev.skillmanager._lib.test.Tests.assertTrue(Tests.java:78)
+	at dev.skillmanager.store.ClonedHomeDescentTest.lambda$run$1(ClonedHomeDescentTest.java:72)
+	at dev.skillmanager._lib.test.Tests$Suite.runAll(Tests.java:48)
+	at dev.skillmanager.store.ClonedHomeDescentTest.run(ClonedHomeDescentTest.java:278)
+	at His10Vacuity.main(His10Vacuity.java:24)
+cli: pruned bin/cli/tool — resolved into the home at /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/clone-descent-vacuity-18303305513100855749/parent, which is not this home's parent store
+  [PASS] VACUITY CONTROL: delete the record and the same four readers disagree again
+  [PASS] a clone of a home with NO record records nothing and stays unsanctioned
+  [PASS] a HAND-WRITTEN record grants nothing — the chain it names must re-derive
+cli: pruned bin/cli/tool — resolved into the home at /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/clone-descent-revoked-5127848601531152560/parent, which is not this home's parent store
+cli: pruned bin/cli/tool — resolved into the home at /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/clone-descent-revoked-5127848601531152560/parent, which is not this home's parent store
+  [PASS] revoking the parent's claim revokes it in EVERY tier at once
+  [PASS] descent is transitive: a clone of a clone still shares the root store
+   → 5 passed, 1 failed
+== HomeVerifyPathSpellingTest (4 cases)
+  [PASS] a missing reference is found through the symlinked spelling too
+  [PASS] THE STATED LIMIT: an alias spelling the caller did not name is not recovered
+  [PASS] a reference that DOES resolve is reported by neither spelling
+  [PASS] the recovered path is reported in the spelling the caller asked about
+   → 4 passed, 0 failed
+== ChildHomeShimIsolationTest (9 cases)
+  [PASS] a child home's shim at its parent's entry passes, on the PARENT's claim
+  [PASS] and on the CHILD's own provenance, which outlives the parent's claim
+  [PASS] with NO evidence on either side, the identical link is still a leak
+  [PASS] a COPY of a sanctioned child inherits the sanction — root -> project -> worktree
+  [PASS] inheritance needs a source that was itself sanctioned, not merely a source
+  [PASS] the sanction does not extend past bin/cli and bin/mcp
+  [PASS] a shim naming a DIFFERENT entry in the parent is not a mirror
+  [PASS] an isolation refusal prints a remedy, in the spelling every caller parses
+  [PASS] a leaking launcher pin gets home shims, which is the command that repairs it
+   → 9 passed, 0 failed
+HIS10 VACUITY FAILURES: 3

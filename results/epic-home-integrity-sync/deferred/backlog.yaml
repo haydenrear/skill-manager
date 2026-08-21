@@ -310,3 +310,224 @@ findings:
       - Accept the SKILL_MANAGER_CLI workaround for the rest of the epic and record it in HIS-8's documentation as the supported way to bootstrap against an unreleased build.
     candidate_owner: unassigned
     status: open
+
+  - id: DEF-007
+    found_by: HIS-10, answering HIS-7 review finding MED-6 by measurement
+    found_at: "2026-08-21"
+    severity: blocking
+    escalated: true
+    summary: >
+      `sync` in one home DELETES another home's toolchain when this home's
+      `bin/cli` is itself a symlink at that other home's `bin/cli`. The gate
+      sees the shape and refuses it; the REPAIR follows the link and prunes
+      through it.
+    detail: >
+      MEASURED 2026-08-21 on the HIS-10 branch, two hand-built homes, no clone
+      involved. `homeB/bin/cli -> homeA/bin/cli`, homeA holding two executables:
+
+        home verify homeB   -> FOREIGN_HOME bin/cli  (the gate SEES it)
+        CliShimPruner.prune(homeB)
+                            -> "pruned bin/cli/alpha ... not this home's parent store"
+                               "pruned bin/cli/beta  ... not this home's parent store"
+        homeA/bin/cli       -> 2 entries BEFORE, 0 entries AFTER
+
+      The cause is that `CliShimPruner.prune` opens `store.cliBinDir()` with
+      `Files.isDirectory` + `Files.list`, both of which FOLLOW the link, and then
+      deletes each entry it decides is foreign -- correctly deciding, in the
+      wrong home. Every entry it lists is in the other home by construction, so
+      it empties that directory. `home verify`'s walk does not follow it
+      (`Files.walkFileTree` without FOLLOW_LINKS), which is why the two readers
+      disagree here in the one direction that destroys bytes.
+
+      MED-7 from the same review is ANSWERED AND IS NOT A DEFECT, recorded here
+      so it is not re-opened: the isolation walk covers the WHOLE home, not
+      `bin/cli`. The same probe planted `bin/launch/claude` and `bin/mcp/srv`
+      links into homeA and verify reported `FOREIGN_HOME bin/launch/claude` and
+      `FOREIGN_HOME bin/mcp/srv` alongside. `HomeCloner.SHIM_DIRS` scopes which
+      foreign links may be EXCUSED as sanctioned mirrors, not which are scanned.
+    reproduction: >
+      Two homes with installed/ + skills/; make homeB/bin/cli a symlink at
+      homeA/bin/cli; call CliShimPruner.prune(new SkillStore(homeB)) -- or run
+      `sync` in homeB, which calls it. See
+      results/epic-home-integrity-sync/probes/his-10/med-6-med-7-measured.out
+    evidence:
+      - results/epic-home-integrity-sync/probes/his-10/med-6-med-7-measured.out
+    why_deferred: >
+      This is WRITE CONFINEMENT -- "no home operation writes outside the home
+      SKILL_MANAGER_HOME names" -- which is HIS-9 (#226)'s declared slice, not
+      HIS-10's. HIS-10 owns provenance, path spelling and the pruner's SANCTION
+      decision; it does not own where the pruner is allowed to point. Fixing it
+      here would mean adding a confinement guard to a delete path in a ticket
+      whose acceptance says nothing about deletion, and the guard belongs in one
+      place for every writer, not bolted onto this one.
+
+      Escalated rather than merely filed because it is destructive and because
+      this epic has already damaged the operator's root home twice. Nothing
+      creates this shape today -- `ChildHomeMaterializer.mirrorExistingShim`
+      mirrors ENTRIES, never the directory -- so it is reachable by hand or by a
+      restored backup rather than by the product's own path. That is why it is
+      recorded as blocking-severity rather than stopping HIS-10.
+    candidate_owner: HIS-9
+    status: open
+    also_reported_by: >
+      #228 review, MED-9 second half, and it WIDENS this entry rather than
+      repeating it. Before HIS-10 a clone's inherited link was pruned on the
+      first sync, so it never survived long enough to reach the rebuild path.
+      It now survives every sync -- which is the point of the ticket -- and
+      therefore reaches InstallerRegistry.takeOwnershipOfShim, which performs
+      the SAME follow-the-link delete in a different method. So the confinement
+      guard this entry asks for has a second call site, and HIS-10 made that
+      call site reachable. Whoever fixes DEF-007 must cover both.
+
+  - id: DEF-008
+    found_by: HIS-10, writing the #206 path-spelling fixture
+    found_at: "2026-08-21"
+    severity: minor
+    summary: >
+      After HIS-10, a home is checked under the spelling the caller named AND
+      that spelling resolved. A home CREATED through one alias and VERIFIED
+      through a DIFFERENT one is still partly unchecked, because a symlink
+      cannot be inverted.
+    detail: >
+      `HomeCloner.destReferences` finds candidate paths BY searching for the
+      home root as a string, so it can only use spellings it can derive. HIS-10
+      derives two -- the caller's and `toRealPath` of it -- which closes the
+      measured case (#206: a home reached through a symlink while its generated
+      wrappers hold the resolved spelling). It cannot close the mirror image:
+      standing at `<s>/realdir/home` there is nothing that says `<s>/link/home`
+      names the same directory, so a wrapper holding the LINKED spelling is
+      invisible.
+
+      ASSERTED, not assumed: `HomeVerifyPathSpellingTest`'s
+      "THE STATED LIMIT" case pins the current behaviour, and says in its comment
+      that it should become an equality assertion if the limit is ever closed.
+    reproduction: >
+      See HomeVerifyPathSpellingTest -- build <s>/realdir/home with a wrapper
+      naming <s>/link/home/venvs/nope/bin/probe, then verify --home
+      <s>/realdir/home. Reports clean.
+    why_deferred: >
+      Closing it needs the home to RECORD the spelling it was created at -- a
+      new durable fact, in the same family as HIS-10's provenance record but not
+      the one this ticket's acceptance names. Small blast radius: a clone
+      re-anchors generated files to the destination spelling it was GIVEN, so
+      the created-at and verified-at spellings agree for every home this product
+      makes; the gap needs someone to address a home by a second alias.
+    candidate_owner: unassigned
+    status: open
+
+  - id: DEF-009
+    found_by: adversarial review of PR #228 (HIS-10), findings MED-3/4/5/8 and LOW-12/13
+    found_at: "2026-08-21"
+    severity: major
+    summary: >
+      The descent record HIS-10 added is durable state in front of a DELETE
+      path, and it is neither written atomically, nor read as a file that must
+      live inside the home, nor covered directly by any test.
+    detail: >
+      Six findings on one mechanism, filed together because they share an owner
+      and a fix location (HomeProvenance, and HomeCloner's exemption branch).
+
+      MED-3, silent fail-open in front of a delete. HomeProvenance.read swallows
+      every IOException and RuntimeException and returns null. Null means "no
+      record", which after HIS-10's re-derivation change means "sanction
+      nothing", which means CliShimPruner DELETES the inherited shim. So a
+      truncated or half-written record does not refuse loudly -- it re-provisions
+      a toolchain silently, which is the ~90s regression this ticket exists to
+      stop, reappearing as a corruption mode. Compounding it, `write()` is a
+      plain mapper.writeValue: no temp file, no ATOMIC_MOVE, so a crash mid-write
+      leaves exactly the half-record that reads as absent. Every other durable
+      record this epic touches (ChildHomeRegistry, ArtifactLedger) should be
+      checked for the same, and the fix is one shared writer, not six.
+
+      MED-4, the exemption's accounting compares parsed strings against raw
+      bytes. HomeCloner's provenance branch counts occurrences of the source
+      needle in the file's TEXT and then accounts for them using the PARSED
+      clonedFrom/parentStores values. A path containing a character JSON escapes
+      -- a quote, a backslash, a control byte -- appears escaped in the text and
+      unescaped in the parsed value, so the counts differ and the branch fails
+      closed (a leak is reported). That direction is safe. The unsafe direction
+      is the mirror: two DIFFERENT strings whose escaped forms coincide would
+      over-account. Neither was measured. The accounting should compare the
+      re-serialized field values against the raw bytes, or the raw JSON tokens.
+
+      MED-5, `read` follows a symlink. `Files.isRegularFile` follows links, so
+      `<home>/home.provenance.json -> /elsewhere/record.json` is accepted and a
+      home's descent can be stored outside the home. Lower risk after
+      re-derivation (the chain still has to hold), but it is the same
+      leaf-only-symlink shape as DEF-007 and should be closed with NOFOLLOW.
+
+      MED-8, PARTLY CLOSED IN HIS-10 -- what remains is narrower than filed.
+      The half that mattered is done: the leak EXEMPTION
+      (`mentionsOnlyRecordedDescent` + `isProvenanceRecord`) is the branch that
+      turns a hard finding into no finding, the epic owner refused to let it be
+      deferred, and `ProvenanceRecordExemptionTest` now pins it from four
+      directions with three separate disables (vacuity rows E, F, G) proving
+      each case reddens. What is STILL uncovered directly is
+      `HomeCloner.rootSpellings` and `insideHomeText`: both are exercised only
+      through `home verify`, which is behavioural coverage rather than a unit
+      test, and `insideHomeText` -- the cold-shim token substitution -- has no
+      assertion at all over its multi-spelling, longest-first replacement.
+
+      LOW-12, no size cap on the record read (every other whole-file read in
+      HomeCloner caps at WHOLE_FILE_LIMIT), and `HomeCloner.unsanctionedForeignHome`
+      builds a fresh cache map per call, so the pruner re-derives the chain once
+      per shim instead of once per foreign home.
+
+      LOW-13, `--strict` does not escalate the exemption. Every other tolerated
+      class (CONTENT_REFERENCE, DIAGNOSTIC_TEXT) becomes a failure under
+      --strict; the provenance exemption is silent at every strictness. Decide
+      deliberately and write down which.
+    reproduction: >
+      MED-3: truncate <home>/home.provenance.json to half its bytes, run sync,
+      watch the inherited shims be pruned with no diagnostic about the record.
+      MED-5: replace the record with a symlink to a file outside the home.
+    why_deferred: >
+      All six are hardening of a mechanism whose CORRECTNESS this ticket had to
+      establish first, and the review's two REQUIRED changes (re-derive rather
+      than trust; correct the false claims) were landed instead. Doing six more
+      inside the same PR would mean shipping the atomic-write refactor, a JSON
+      accounting rewrite and four new test surfaces in a ticket whose acceptance
+      names none of them -- and MED-3's real fix is a shared durable-record
+      writer, which is an epic-level change, not a HIS-10 one.
+    candidate_owner: unassigned
+    status: open
+
+  - id: DEF-010
+    found_by: adversarial review of PR #228 (HIS-10), findings LOW-10/11/14
+    found_at: "2026-08-21"
+    severity: minor
+    summary: >
+      Three small, independent cleanups on HIS-10's own surface: a per-file
+      recomputation in the reference scan, a CWD-relative hazard left in the
+      record's advisory field, and DEF-008 being closable with one field.
+    detail: >
+      LOW-10, `rootSpellings` is called inside the per-file loop of the
+      verification walk and does a `toRealPath` each time. Measured by the
+      reviewer over 4000 files: 240ms with the call inside the loop against
+      168ms hoisted. Correctness is unaffected; it is one variable.
+
+      LOW-11, relative entries in `parentStores` resolve against the process
+      working directory. HIS-10 closed this for `clonedFrom` -- which is the
+      only field that decides anything, and now refuses a relative spelling
+      outright -- but left it in `parentStores`, which is advisory. So a
+      relative entry there cannot grant a sanction; it can only make
+      `home verify` PRINT a store that depends on where the command was typed,
+      in the ticket whose second clause is spelling-invariance. Refuse or
+      normalize it at write time.
+
+      LOW-14, DEF-008 (a home created through one symlinked alias and verified
+      through a different one is partly unchecked) is closable with ONE additive
+      field in the file HIS-10 just added: record the spelling the home was
+      created at, and scan for it too. It was not done because the record's
+      trust semantics were still being settled by this review, and adding a
+      field that feeds the scanner while the scanner's trust model was in flux
+      is how the first version of this record got its hole.
+    reproduction: >
+      LOW-10: time HomeCloner.verify over a home with several thousand files.
+      LOW-11: write "parentStores": ["../elsewhere"] and run home verify from
+      two different working directories.
+    why_deferred: >
+      None changes a verdict. LOW-14 is a feature with a design decision in it
+      and belongs with whoever closes DEF-008.
+    candidate_owner: unassigned
+    status: open
