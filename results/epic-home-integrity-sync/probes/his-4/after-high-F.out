@@ -1,0 +1,26 @@
+reconcile: backfilled 6 default-agent binding(s)
+✗ consumer: merge conflict in 1 file(s):
+✗     SHARED.md
+✗   already clear in /private/tmp/claude-501/-Users-hayde-IdeaProjects-skill-manager/dcb6a969-c6fd-484c-873c-6d6175b7d220/scratchpad/his4/hi-F/project/.skill-manager/skills/consumer — the record has not caught up and the next command retires it; `/Users/hayde/.skill-manager/bin/cli/skill-manager sync consumer` does so now
+✓ resolve: 0 unit(s)
+! Telemetry export unavailable; continuing without telemetry.
+✓ units.lock.toml: wrote 2 unit(s) → /private/tmp/claude-501/-Users-hayde-IdeaProjects-skill-manager/dcb6a969-c6fd-484c-873c-6d6175b7d220/scratchpad/his4/hi-F/project/.skill-manager/units.lock.toml
+✓ agents: 2 unit(s) linked into claude, codex, gemini
+✗ sync: 1 unit(s) need attention
+✗   conflicted — in each unit's store directory: `git status` says which — resolve + `git add` + `git commit` mid-merge, or `git reset` to drop a failed stash pop: consumer
+! skills with outstanding errors (1) — 1 distinct cause(s) — re-run after fixing:
+✗   consumer:
+✗     - MERGE_CONFLICT: local changes conflict with file:///private/tmp/claude-501/-Users-hayde-IdeaProjects-skill-manager/dcb6a969-c6fd-484c-873c-6d6175b7d220/scratchpad/his4/hi-F/src/consumer.git main in 1 file(s) — the merge was rolled back, so the store is where it was
+✗       → already clear in /private/tmp/claude-501/-Users-hayde-IdeaProjects-skill-manager/dcb6a969-c6fd-484c-873c-6d6175b7d220/scratchpad/his4/hi-F/project/.skill-manager/skills/consumer — the record has not caught up and the next command retires it; `/Users/hayde/.skill-manager/bin/cli/skill-manager sync consumer` does so now
+  log: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-manager/logs/sync-20260821-160357-1381.log
+reconcile: backfilled 6 default-agent binding(s)
+! Telemetry export unavailable; continuing without telemetry.
+✗ consumer: merge conflict in 1 file(s):
+✗     SHARED.md
+✗   nothing was changed — the merge was rolled back, so the store is exactly where it was, and 1 local file(s) conflict with upstream. Commit or drop the local work in /private/tmp/claude-501/-Users-hayde-IdeaProjects-skill-manager/dcb6a969-c6fd-484c-873c-6d6175b7d220/scratchpad/his4/hi-F2/project/.skill-manager/skills/consumer (`git status`), then `/Users/hayde/.skill-manager/bin/cli/skill-manager sync consumer`; or merge by hand there if both sides are wanted
+✓ resolve: 0 unit(s)
+✓ units.lock.toml: wrote 2 unit(s) → /private/tmp/claude-501/-Users-hayde-IdeaProjects-skill-manager/dcb6a969-c6fd-484c-873c-6d6175b7d220/scratchpad/his4/hi-F2/project/.skill-manager/units.lock.toml
+✓ agents: 2 unit(s) linked into claude, codex, gemini
+✗ sync: 1 unit(s) need attention
+✗   conflicted — in each unit's store directory: `git status` says which — resolve + `git add` + `git commit` mid-merge, or `git reset` to drop a failed stash pop: consumer
+  log: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-manager/logs/sync-20260821-160530-c515.log

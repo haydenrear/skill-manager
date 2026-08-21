@@ -459,7 +459,8 @@ argument, and nothing in the git-surface fix needs a name list.
 | `uv run pytest specs/` | **38 passed** in 1.81s |
 | `run_tlc.sh HomeIntegrityInternal` | **No error has been found** — 11 states, 10 distinct |
 | `run_tlc.sh` regression `_silentdrift` | **`Invariant RecordDescribesItsStoreOrSaysWhy is violated`** — the spec's own control still reddens |
-| `run.py sync-settles` | **RED without the fix** — `BUILD FAILED in 59s`, node `failed`, runId `20260821-191159`. **GREEN with it** — `BUILD SUCCESSFUL in 1m 14s`, node `passed`, runId `20260821-184449`. Evidence: `probes/his-4/graph-red-node.out`, `graph-green-node.out`. |
+| `run.py sync-settles` | **RED without the fix** — `BUILD FAILED in 59s`, node `failed`, runId `20260821-191159`. **GREEN with it** — re-run after the review fixes: `BUILD SUCCESSFUL in 1m 1s`, node `passed`, runId `20260821-201708`. |
+| `run.py project-child-home` | **BUILD SUCCESSFUL in 3m 49s, 12/12**, runId `20260821-201827` — re-run on my own tip rather than relying on the reviewer's run, because `SyncFromLocalDirHandler` changed after it. |
 
 **No spec change.** `RecordDescribesItsStoreOrSaysWhy ==
 (hi_record_revision = hi_store_revision) \/ hi_record_error` already forbids the
@@ -482,8 +483,10 @@ fixtures exercise the sources I edited**, named with its reason:
   `ChildHomeSyncPreservesEdits` then syncs the result). The edit-preservation
   nodes are the closest thing the suite has to my negative control, so a
   regression in `hasAuthoredWorktreeChanges` should surface there.
-  **Not yet run** — blocked behind the same lock as the red `sync-settles` run.
-  Named here with its reason so the gap is visible rather than absent.
+  **Run: `BUILD SUCCESSFUL in 3m 49s`, 12/12** (runId `20260821-201827`). It
+  passed before the review fixes too — and surfaced none of the three HIGHs,
+  which falsified my prediction that it was the closest thing to a negative
+  control. See the review section above.
 
 `run.py --all` was **not** run: it is multi-hour and belongs to HIS-6, which
 owns the one terminal sweep.
