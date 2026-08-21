@@ -412,7 +412,9 @@ public final class HomeDescriptorCliRemedyTest {
                     """);
             Fs.makeExecutable(f.ownEntrypoint);
             assertTrue(LauncherShims.pinnedCliIn(f.ownEntrypoint).isEmpty(),
-                    "a continued line is unreadable, not a truncated path");
+                    "a continued line is unreadable, not a truncated path — the closing }\" "
+                            + "is on the NEXT line, so the search fails rather than returning "
+                            + "the truncated remainder");
 
             // And the control: a real, live pin still reads as live.
             Files.writeString(f.ownEntrypoint, LauncherShims.cliScript(real));

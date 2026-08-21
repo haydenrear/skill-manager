@@ -48,7 +48,7 @@ import java.util.Optional;
  * resolve against whatever root the file is read from, so the same bytes
  * describe the copy and a clone needs no descriptor rewrite at all. See
  * {@code storageMapper} for the exact bound on that encoding and
- * {@link #toJson(Path)} for why the printed form is different.
+ * {@link #toJson()} for why the printed form is different.
  *
  * <h2>{@code CLAUDE_HOME} and {@code CLAUDE_CONFIG_DIR} carry one value</h2>
  *
@@ -212,7 +212,7 @@ public record HomeDescriptor(
      * path that travels with the home is tokenized, so the same bytes
      * describe the copy after a relocation.
      *
-     * <p>Storage form is <em>not</em> what {@link #toJson(Path)} prints —
+     * <p>Storage form is <em>not</em> what {@link #toJson()} prints —
      * see {@link #storageMapper} for the distinction and why it exists.
      */
     public void write(Path storeRoot) throws IOException {

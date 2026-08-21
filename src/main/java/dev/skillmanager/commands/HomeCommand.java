@@ -613,10 +613,19 @@ public final class HomeCommand {
          * {@code out.append(" skill-manager")} — so on a machine whose PATH
          * carries an older release, or none at all, the pasted line runs a
          * different program than the one that printed it, or nothing.
-         * {@link HomeDescriptor#cliInvocation} resolves the CLI that IS running
+         * {@link HomeDescriptor#cliInvocation} resolves a build for this home
          * and falls back to the bare name only when it cannot; it is the same
          * routing the drift gate, {@code close-out}, {@code exec} and the sync
          * renderer already use.
+         *
+         * <p>The sentence above used to read "resolves the CLI that IS
+         * running", and that was an OVERSTATEMENT of the same family as the
+         * precedence javadoc #161 is about: the running build is one of four
+         * steps, and it is not the first. Which step answered is
+         * {@link HomeDescriptor.CliSpelling#source()}, and when it is the
+         * {@code PATH} walk the remedy says so — see
+         * {@link HomeDescriptor.CliSpelling#caveat()}, printed here by
+         * {@code noteCaveat}.
          *
          * <p>Resolved against {@code home} rather than the ambient store: the
          * remedy is for THAT home, and a home carries its own launcher.

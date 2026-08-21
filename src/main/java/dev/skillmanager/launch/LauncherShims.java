@@ -672,13 +672,17 @@ public final class LauncherShims {
         for (String line : lines) {
             String trimmed = line.strip();
             if (!trimmed.startsWith(PIN_PREFIX)) continue;
-            // A LINE CONTINUATION means the pin is not on this line. `\` at the
-            // end of a shell line joins the next one, so reading the prefix
-            // line alone would take a truncated path and call the home
-            // dangling. We cannot see the rest without reassembling the
-            // command, so this reports "cannot tell" rather than guessing.
-            if (trimmed.endsWith("\\")) return java.util.Optional.empty();
             String rest = trimmed.substring(PIN_PREFIX.length());
+            // The CLOSING `}"` must be on this line. It is what makes a line
+            // continuation unreadable rather than truncated: a wrapped pin
+            // leaves the brace on the next line, so the search fails and this
+            // reports "cannot tell". Falling back to end-of-line here would
+            // return a truncated path and call a healthy home dangling.
+            //
+            // A separate `endsWith("\\")` guard stood here and was REMOVED: the
+            // epic's vacuity rule could not make it fail, because every
+            // continuation it was meant to catch is already caught by this
+            // search. A guard that cannot fail is not a guard.
             int end = rest.indexOf("}\"");
             if (end < 0) return java.util.Optional.empty();
             String pin = rest.substring(0, end);
