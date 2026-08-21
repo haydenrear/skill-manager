@@ -235,12 +235,27 @@ public final class CliArtifact {
             // walks the resolved path with exactly this predicate, and #24 is
             // what happens when two spellings disagree about the homes that
             // matter.
-            Path foreign = foreignHomeReachedBy(artifact, homeRoot);
-            if (foreign != null) {
-                return new Verdict(artifact,
-                        "resolves into the home at " + foreign + ", so this home does not "
-                                + "provide it — rebuild it here with `skill-manager build`");
-            }
+            // NOTE (HIS-7, and the reason there is no ownership branch here).
+            // An earlier version of this method treated any path resolving into
+            // another home as "not provided here". That is true of an
+            // UNSANCTIONED path and false of a SANCTIONED one: a child home's
+            // shim into its parent store IS provision — the child shares the
+            // toolchain its parent provisioned, deliberately, and building what
+            // nobody changed is waste.
+            //
+            // Narrowing it to `HomeCloner.unsanctionedForeignHome` was not
+            // enough either, and the measurement is worth keeping: a clone is a
+            // GRANDCHILD, nothing durable records its descent, so every reader
+            // calls its inherited shims unsanctioned and one `sync` in a fresh
+            // ticket home re-provisioned five local venvs instead of sharing.
+            // The missing piece is clone-time provenance, not a predicate here.
+            //
+            // Ownership is therefore asserted where this home actually has a
+            // reason to own the artifact — the REBUILD path, via
+            // InstallerRegistry.takeOwnershipOfShim, which removes the
+            // inherited link before the producer runs so `cat >` cannot follow
+            // it into the parent.
+            //
             // The shape a clone leaves for every generated wrapper, and the
             // one every previous predicate called healthy. Same scanner
             // `home verify` refuses on.
