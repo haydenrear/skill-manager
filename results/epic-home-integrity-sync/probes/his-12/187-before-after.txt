@@ -1,0 +1,75 @@
+#187 — `project sync` losing the typed refusal, before and after
+================================================================
+
+Both `project resolve` and `project sync` reach ProjectDependencyResolver's
+staged-closure markdown validation, which throws ProjectImportViolationException
+(a typed IOException) when the declared closure names a unit that is in neither
+the closure nor the store.
+
+Measured by ProjectSyncTypedRefusalTest, which drives BOTH commands over ONE
+fixture in one JVM and compares their outputs to each other.
+
+-----------------------------------------------------------------------------
+BEFORE — SyncCmd has no catch (vacuity probe V7 restores exactly this)
+-----------------------------------------------------------------------------
+
+  project resolve   exit 11, per-violation evidence on stderr
+  project sync      exit 1
+
+  stderr:
+    dev.skillmanager.project.ProjectImportViolationException: project resolve
+    refused: declared closure has unresolved markdown skill-imports; nothing was
+    installed. Declare the missing unit in skill-project.toml or fix the import.
+
+Note what a caller sees: a stack-shaped message that names `project resolve`
+from a run of `project sync`, an exit code (1) that means nothing in
+particular, and no machine-readable form at all under --json — the same exit 1.
+
+-----------------------------------------------------------------------------
+AFTER — this branch
+-----------------------------------------------------------------------------
+
+  project resolve   exit 11
+  project sync      exit 11
+
+  stderr (sync):
+    project sync refused — declared closure has 1 unresolved markdown
+    skill-import(s); nothing was installed:
+      - <unit> (<file>): missing unit `ghost-unit` ...
+    declare the missing unit in skill-project.toml or fix the import
+
+  --json: byte-identical between the two commands, including
+    {"resolved":false,"reason":"closure-import-violations", ...}
+
+Asserted as an equality between the two renderings, not against a string this
+test made up:
+
+    assertEquals(resolve.err().replace("project resolve refused", "REFUSED"),
+                 sync.err().replace("project sync refused", "REFUSED"), ...)
+
+-----------------------------------------------------------------------------
+THE DESTRUCTIVE HALF — verified, not assumed
+-----------------------------------------------------------------------------
+
+#187's second claim was that `project sync --rebuild` completes the teardown
+and THEN refuses, leaving the home emptier than before.
+
+VERIFIED AS ALREADY HEALED. ProjectSyncUseCase.rebuild captures a
+ProjectRealizationSnapshot BEFORE removeRealization and restoreAndRethrows on
+any IOException or RuntimeException, so the realization is put back before the
+refusal escapes. Two assertions now hold that in place:
+
+  * a refused --rebuild leaves the home byte-identical (excluding <store>/tmp,
+    the rollback scratch dir, which is asserted separately to be EMPTY — the
+    one residue a refused rebuild leaves, and it holds nothing);
+  * the capture/remove/restore ORDER is asserted against the source, because no
+    runtime observation of a successful run distinguishes "captured first" from
+    "captured after".
+
+Vacuity probe V8 reorders the capture after the teardown; the order assertion
+fails. V7 removes the typed catch; three assertions fail.
+
+NOT TAKEN, and backlogged as DEF-020: validating the staged closure BEFORE the
+teardown rather than rolling the teardown back. That is a change to what
+`project sync --rebuild` DOES, which the plan's slice excludes, and it needs
+ProjectDependencyResolver's install phase split from its realize phase.

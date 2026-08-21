@@ -427,8 +427,22 @@ public record HomeDescriptor(
 
     /**
      * Locate the {@code skill-manager} executable that belongs with this home.
-     * The precedence, and this list is checked against the code by
-     * {@code HomeDescriptorTest}:
+     * The precedence below is not decoration: it is parsed out of THIS javadoc
+     * and checked against the walk the code performs, by
+     * {@code HomeDescriptorCliRemedyTest} — "the javadoc's stated precedence is
+     * the precedence the walk observed".
+     *
+     * <p>It said {@code HomeDescriptorTest} until #229's review, which is a
+     * class that does not check this. A pointer naming the wrong checker is
+     * DEF-021's pattern landing in the very javadoc whose accuracy is this
+     * ticket's subject.
+     *
+     * <p>Note what it is NOT written as. A {@code {@link}} here would be
+     * checkable by {@code javac -Xdoclint:reference} — and would also be a
+     * main-source reference to a test class, which does not resolve on a
+     * main-only compile. So this stays {@code @code}, which puts it in exactly
+     * the family that flag cannot see. That is the boundary DEF-021 records,
+     * standing in its own example.
      *
      * <ol>
      *   <li>{@code SKILL_MANAGER_CLI}, when it names an executable — the

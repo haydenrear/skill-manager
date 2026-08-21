@@ -1,0 +1,64 @@
+VACUITY CHECKS — HIS-12 (#161, #187)
+
+Every assertion added by this ticket, run against the code with its own fix
+disabled. An assertion that was not run against broken code is not coverage.
+Runner: `jbang RunHis12.java` (HomeDescriptorCliRemedyTest +
+ProjectSyncTypedRefusalTest). Recorded verbatim.
+
+=== V1  precedence walk — steps 2 and 3 swapped in the code, javadoc untouched
+  [FAIL] locateCli walks all four steps, in the order it documents: step 2: the home's own bin/cli entrypoint, before anything global: expected <HOME_ENTRYPOINT> but was <RUNNING_BUILD>
+  [FAIL] a home's own entrypoint binds itself; every other spelling is bound: own entrypoint: expected <HOME_ENTRYPOINT> but was <RUNNING_BUILD>
+  FAILURES: 2
+
+=== V2  the dead step put back into the code (javadoc still omits it)
+  [FAIL] the javadoc's stated precedence is the precedence the walk observed: expected false: but no code consults it: the dead step's implementation is gone, not just its documentation
+  FAILURES: 1
+
+=== V3  RunningCli accepts any basename — the old step would have fired
+  [FAIL] the step that was replaced could not fire in any shipped launcher: not true: a process named java is not a skill-manager launcher
+  FAILURES: 1
+
+=== V4  DEF-002 fix off: command() drops the SKILL_MANAGER_HOME binding
+  [FAIL] a remedy about home X names X, whichever step resolved the CLI: the pinned remedy names the home it is about: expected </var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/cli-names-home-2158156812243875002/pinned/skill-manager> to contain </var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/cli-names-home-2158156812243875002/project/.skill-manager>
+  [FAIL] a home's own entrypoint binds itself; every other spelling is bound: a build that is not this home's own carries the home explicitly: expected </var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/cli-binding-12020982230505322254/running/skill-manager> to contain <SKILL_MANAGER_HOME=/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/cli-binding-12020982230505322254/project/.skill-manager>
+  FAILURES: 2
+
+=== V5  the foreign-entrypoint skip removed - the root home's shim on PATH wins again
+  [FAIL] DEF-002: another home's entrypoint is never the remedy: not true: the root home's entrypoint is foreign to the project home
+  FAILURES: 1
+
+=== V6  the PATH-fallback caveat suppressed
+  [FAIL] a PATH-resolved remedy says so; a verified one has nothing to admit: not true: and it must say so
+  FAILURES: 1
+
+=== V7  #187 as it shipped: SyncCmd rethrows instead of rendering the typed refusal
+  [FAIL] project sync renders the same typed refusal, and the same exit code, as project resolve: sync exits exactly what resolve exits for the same condition; got 1 with stderr: dev.skillmanager.project.ProjectImportViolationException: project resolve refused: declared closure has unresolved markdown skill-imports; nothing was installed. Declare the missing unit in skill-project.toml or fix the import.
+  [FAIL] the --json refusal is byte-identical between resolve and sync: same exit code under --json too: expected <11> but was <1>
+  [FAIL] a refused --rebuild puts the realization back before the refusal escapes: --rebuild is refused with the same typed code; stderr: dev.skillmanager.project.ProjectImportViolationException: project resolve refused: declared closure has unresolved markdown skill-imports; nothing was installed. Declare the missing unit in skill-project.toml or fix the import.
+  FAILURES: 3
+
+=== V8  #187 destructive half re-armed: the snapshot is captured AFTER the teardown
+  [FAIL] ProjectSyncUseCase.rebuild still captures a snapshot before it removes: not true: the snapshot is captured BEFORE removeRealization
+  FAILURES: 1
+
+=== V9  DEF-012 resolution half off: a dangling pin is no longer skipped
+  [FAIL] a home entrypoint whose pin was deleted by an upgrade is not the remedy: a remedy falls through rather than naming a front door that cannot open: expected <RUNNING_BUILD> but was <HOME_ENTRYPOINT>
+  FAILURES: 1
+
+=== V10 (FIRST ATTEMPT) the pin-marker guard removed
+  !!! NO FAILURE — THE ASSERTION WAS VACUOUS, and this is the record of it.
+  The fixture was `#!/bin/sh\nexec /nowhere/skill-manager "$@"`, which carries
+  no line the pin extractor keys on either — so `pinnedCliIn` returned empty
+  for a second, unrelated reason and the guard was never exercised. Fixture
+  replaced with one that DOES carry the assignment line, naming an absent
+  path, and no marker. Re-run below.
+
+=== V10 (RE-RUN, corrected fixture) the pin-marker guard removed
+  [FAIL] a hand-written entrypoint is left alone: cannot tell is not broken: not true: a file without the pin marker carries no pin this may judge, even though its assignment line parses
+  FAILURES: 1
+
+=== V11 the absolute /usr/bin/env replaced by a bare `env` -- the spelling the
+        ticket-lifecycle nodes reject (and could not reject here, being skipped)
+  [FAIL] a home's own entrypoint binds itself; every other spelling is bound: not true: and the remedy still begins with an absolute path a shell can run: env SKILL_MANAGER_HOME=/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/cli-binding-7175047380289769367/project/.skill-manager /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/cli-binding-7175047380289769367/running/skill-manager
+  [FAIL] every remedy head is an absolute path a shell can actually run: not true: the pinned remedy begins with an absolute path: env SKILL_MANAGER_HOME=/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/cli-remedy-head-7670538439635579335/project/.skill-manager /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/cli-remedy-head-7670538439635579335/pinned/skill-manager
+  FAILURES: 2

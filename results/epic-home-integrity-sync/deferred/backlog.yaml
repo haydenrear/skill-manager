@@ -80,14 +80,33 @@ findings:
       that silently changes which home you are editing, which is worth its own
       ticket rather than a drive-by fix.
     candidate_owner: HIS-12
-    status: triaged
+    status: closed
+    evidence:
+      - results/epic-home-integrity-sync/probes/his-12/def002-before-after.txt
+      - results/epic-home-integrity-sync/probes/his-12/def002-repro.sh
     resolution: >
       Owned in schedule revision 4. DEF-002 is the same defect as #161
       (HomeDescriptor.resolveCli falls through to a raw PATH walk and the printed
       remedy reads as authoritative) landing on the operator: a sync run against
       the PROJECT home prints a remedy naming the ROOT home's pinned CLI.
       Scheduled as HIS-12 (#161), wave 4, promotion order 8, together with #187.
-      `triaged` means the owner decided, not that the bug is gone.
+
+      FIXED by HIS-12, 2026-08-21, commit 540dc8d. Reproduced from scratch on
+      the epic tip and re-measured on the fix; both sentences are pasted in
+      results/epic-home-integrity-sync/probes/his-12/def002-before-after.txt and
+      the shape is re-runnable via that directory's def002-repro.sh.
+
+        before:  re-run with: <ROOT>/.skill-manager/bin/cli/skill-manager sync probe-unit --merge
+        after:   re-run with: /usr/bin/env SKILL_MANAGER_HOME=<PROJECT>/.skill-manager \
+                              <running build> sync probe-unit --merge
+
+      Two mechanisms. (1) Another home's bin/cli/skill-manager exports its own
+      location as SKILL_MANAGER_HOME and lets that win, so it cannot be
+      redirected by any prefix; it is now skipped as a candidate at every
+      resolution step rather than returned. (2) resolveCli's second step -- the
+      running build -- was DEAD in every shipped launcher and is now live via
+      RunningCli, so a real invocation almost never reaches the PATH walk that
+      found the root home's shim.
 
   - id: DEF-003
     found_by: wave-1 close-out, sweeping this epic's branches
@@ -697,8 +716,161 @@ findings:
       home, not only those inside it.
     candidate_owner: HIS-12 (resolution) and HIS-13 (detection)
     status: open
+    resolution_half_progress: >
+      HIS-12 took the BOUNDED part, 2026-08-21, commit 2c9a68f: a remedy no
+      longer names a front door that cannot open. LauncherShims.pinnedCliIn
+      reads the pin back through the line shape ensure_cli_pin already parses,
+      and HomeDescriptor.locateCli skips a home entrypoint whose pinned build is
+      gone, carrying which build went missing into the remedy caveat. Worth
+      naming: the shim FILE stays executable in that state, which is exactly why
+      every reader testing `-x` on it -- resolveCli included -- called the home
+      healthy.
+
+      It did NOT take the "a pin should survive an upgrade" half -- how a pin is
+      WRITTEN. That is DEF-014, and it is a design change to LauncherShims,
+      outside HIS-12's conflict keys and argued against at length in that
+      class's javadoc (#61). This entry stays OPEN for HIS-13's detection half,
+      which HIS-12 did not touch.
+
+  - id: DEF-020
+    found_by: HIS-12 (#161, #187), implementing the typed refusal for project sync
+    found_at: "2026-08-21"
+    severity: minor
+    summary: >
+      `project sync --rebuild` still tears the realization down BEFORE the
+      staged closure is validated. Nothing is lost -- the snapshot puts it back
+      -- but the ordering is a rollback where it could be a refusal.
+    detail: >
+      #187's second claim was that a refused `--rebuild` leaves the home
+      emptier than before. VERIFIED AS ALREADY HEALED and now held in place by
+      assertions: ProjectSyncUseCase.rebuild captures a
+      ProjectRealizationSnapshot before ProjectRemoveUseCase.removeRealization
+      and restoreAndRethrows, so a refused rebuild leaves the home
+      byte-identical (see probes/his-12/187-before-after.txt).
+
+      What remains is the ORDERING the issue asked for: validate the staged
+      closure BEFORE removeRealization, so a doomed rebuild never tears
+      anything down at all. Rolling back is strictly weaker than not doing it
+      -- a rollback depends on a whole-tree snapshot being complete and
+      restorable, and it leaves an empty <store>/tmp scratch directory behind.
+
+      WHY IT IS NOT A DRIVE-BY: the exception can only be raised from
+      ProjectDependencyResolver.installMissing, which is reached from
+      resolve(), which is what runs AFTER the teardown. Hoisting the check
+      means splitting the resolver's staging/install phase from its realize
+      phase, or staging the closure twice (which double-downloads). Either is a
+      change to what `project sync --rebuild` DOES.
+    why_deferred: >
+      The HIS-12 plan entry's slice says in terms: "NOT IN SCOPE: changing what
+      any of those operations DO." The ticket's four acceptance assertions are
+      about the refusal's TYPE and its remedy's TARGET, and all four are met.
+      Widening to the resolver's phase structure would be scope the epic did
+      not schedule, in the file with the largest blast radius in the project
+      surface.
+    scope_if_taken: >
+      ProjectDependencyResolver.installMissing + ProjectSyncUseCase.rebuild.
+      One new assertion: a refused --rebuild removes NOTHING (bindingsRemoved
+      == 0, clearedPaths empty, no <store>/tmp scratch dir created), which
+      today's rollback cannot satisfy.
+    candidate_owner: unassigned
+    status: open
+
+  - id: DEF-022
+    found_by: HIS-12 (#161), taking the bounded half of DEF-012
+    found_at: "2026-08-21"
+    severity: major
+    summary: >
+      A home's pin is still WRITTEN as an absolute versioned Cellar path, so
+      the next `brew upgrade` re-breaks every home that pins a Homebrew build.
+      HIS-12 stopped remedies from NAMING a dangling pin; it did not stop pins
+      from dangling.
+    detail: >
+      DEF-012 measured the breakage; its resolution half asked that "a pin
+      SHOULD survive an upgrade of the thing it pins, or refuse loudly."
+
+      WHAT HIS-12 TOOK (bounded, and shipped in 2c9a68f): the "refuse loudly"
+      half at the REMEDY surface. LauncherShims.pinnedCliIn reads the pin back
+      through the line shape ensure_cli_pin already parses, and
+      HomeDescriptor.locateCli now SKIPS a home entrypoint whose pinned build
+      is gone, carrying which build went missing into the remedy's caveat. A
+      remedy no longer names a front door that cannot open. Note the shim
+      itself was ALWAYS executable in that state, which is why every reader
+      testing `-x` on it -- including resolveCli -- called the home healthy.
+
+      WHAT IT DID NOT TAKE: the "survive an upgrade" half. `home shims` pins
+      RunningCli.locate()'s answer verbatim, and for a Homebrew install that is
+      /opt/homebrew/Cellar/skill-manager/<version>/libexec/bin/skill-manager.
+      Pinning /opt/homebrew/bin/skill-manager instead -- the symlink Homebrew
+      re-points on upgrade -- would survive, at the cost of the property
+      LauncherShims exists to hold: "this home runs the build it was
+      provisioned with", not "whatever is installed under this name now". That
+      is a real design decision with a real tradeoff and it belongs to whoever
+      owns LauncherShims, which is not in HIS-12's conflict keys.
+    why_deferred: >
+      Changing how a pin is written changes what `home shims` DOES for every
+      home on every machine, and the argument for the current behaviour is
+      written out at length in LauncherShims' class javadoc (issue #61). It
+      should be decided against that argument, not around it.
+    relation_to_def_012: >
+      DEF-012 remains open for its detection half (HIS-13): `home verify`
+      returning exit 0 on a home whose own CLI is gone, because
+      missingReferencesIn only considers references UNDER the home root. HIS-12
+      changes nothing there. DEF-014 is the third piece: the writing half.
+    candidate_owner: unassigned (LauncherShims / release packaging)
+    status: open
+
+  - id: DEF-023
+    found_by: HIS-12 (#161), running ticket-lifecycle as its second graph
+    found_at: "2026-08-21"
+    severity: major
+    summary: >
+      HIS-10's descent record was read as a leak by the ticket-lifecycle graph,
+      which had been red for a wave. FIXED UPSTREAM before this ticket's PR, in
+      a4a95cb, from this finding.
+    detail: >
+      MEASURED 2026-08-21 on epic tip dc97f2a, run id 20260821-184202:
+
+        ticket.lifecycle.provisioned  FAILED
+          no_path_in_a_worktree_home_resolves_back_to_the_homes_above_it  failed
+          aNamesProject=Scan[hits=[file home.provenance.json], entriesRead=31]
+          bNamesProject=Scan[hits=[file home.provenance.json], entriesRead=31]
+          aNamesRoot=Scan[hits=[], entriesRead=31]
+          bNamesRoot=Scan[hits=[], entriesRead=31]
+          (every other assertion in the node passed)
+
+      Gradle stops the chain at the first failing task, so 11 of 13 nodes were
+      SKIPPED -- `home.fixpoint.law` and `first.launch` among them, which are
+      the nodes that read and RUN a printed remedy, and therefore the nodes this
+      ticket most needed.
+
+      TWO READERS, TWO ANSWERS, about one file: `home verify` reads the descent
+      record and sanctions what it points at, while this node's BESPOKE
+      reference walk read the same bytes as "a path in this home reaches another
+      home". That is GOAL-one-home-one-answer's own failure mode, one reader
+      short.
+    attribution_evidence: >
+      MEASURED, not inferred. This worktree's OWN home was bootstrapped by the
+      epic agent at 2026-08-21 13:49, before HIS-12 existed as a branch, and it
+      already carried the offending content:
+
+        $ ls -la wt-161-his-12/.skill-manager/home.provenance.json
+        -rw-r--r--  200  Aug 21 13:49
+        { "schemaVersion": 1,
+          "clonedFrom": "/Users/hayde/IdeaProjects/skill-manager/.skill-manager", ... }
+
+      `clonedFrom` IS the project-home path the scan reported as `aNamesProject`.
+      The file and its parent-naming content predate this branch's first commit.
+    candidate_owner: HIS-10 (the record)
+    status: closed
+    resolution: >
+      Fixed by the epic owner in a4a95cb, "ticket-lifecycle encoded a contract
+      HIS-10 changed, and went red for a wave", which replaces the bespoke walk's
+      blanket rule with an exemption for the descent record. HIS-12 rebased onto
+      that commit and re-ran the graph; see the ticket's goal contribution for
+      the post-fix result. Recorded here rather than dropped because the finding
+      and its attribution are the evidence behind that commit.
     evidence:
-      - results/epic-home-integrity-sync/probes/release-0.24.0/root-verify-says-clean.out
+      - results/epic-home-integrity-sync/probes/his-12/ticket-lifecycle-provisioned-failed.json
 
   - id: DEF-021
     found_by: epic agent, wave-4 review round, counting instances across the epic
@@ -766,6 +938,26 @@ findings:
       (the takeOwnershipOfShim and unchecked-exception cases), so it is a floor
       rather than a solution. A caller-count assertion for anything a javadoc
       calls an "enforcement site" is the stronger version and is more work.
+
+      MEASURED BY HIS-12, 2026-08-21, and the floor already exists as a COMPILER
+      FLAG -- nothing needs building:
+
+        $ javac -Xdoclint:reference   (on a fixture with a stale {@link})
+          error: reference not found        x2
+        $ javac                       (as this repo builds today)
+          silent
+
+      Over src/main/java it reports 26 stale references in 15 files. That is the
+      whole cost of turning it on. Two of the 26 were in HomeDescriptor and are
+      fixed in HIS-12's branch, including the HIS-12 instance listed above.
+
+      ITS BOUNDARY, stated so the check is not oversold -- which would be this
+      same defect one level up: it resolves {@link}, @see and @throws, and it
+      CANNOT see {@code foo()}, which is literal text, nor any prose claim. So it
+      would catch the two POINTER instances above and none of the three CLAIM
+      instances. Whoever takes this should either rewrite {@code} method
+      references as {@link} (making them checkable) or accept that the flag is a
+      floor under the pointer family only.
     why_deferred: >
       It is epic machinery, not a home bug, and it is outside every declared HIS
       slice. Building it mid-wave would also mean landing a new check across

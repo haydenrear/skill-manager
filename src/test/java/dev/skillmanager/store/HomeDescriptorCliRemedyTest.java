@@ -250,8 +250,11 @@ public final class HomeDescriptorCliRemedyTest {
             // remedy — first token absolute, first token resolves to an
             // executable — asserted here as well, because this ticket changes
             // the string those nodes read and the ticket-lifecycle graph is
-            // currently blocked upstream of them by DEF-015. The floor under
-            // the fix must not depend on a graph node that did not run.
+            // was blocked upstream of them by DEF-023 when this was written.
+            // The floor under a fix must not depend on a graph node that did
+            // not run — and it still should not now that a4a95cb has unblocked
+            // the graph, because a chained graph can go red above these nodes
+            // again for a reason that has nothing to do with them.
             //
             // It is also why the home binding is spelled with an ABSOLUTE
             // `/usr/bin/env`: a bare `env` passes "runs" and fails "absolute".
