@@ -120,6 +120,21 @@ findings:
       answered -- it does not recover the homes, and nothing can.
     candidate_owner: unassigned
     status: open
+    update_2026_08_20: >
+      The stale worktree ADMIN RECORDS were cleared by `git worktree prune`
+      during the wave-2 close-out. That removes bookkeeping only: the
+      directories were already gone before this epic began, and both branches
+      survive intact -- feature/115-direct-git-reference-resolution at 1 commit
+      ahead of main, feature/SMVENV-001 at 5. No git work was lost by the
+      prune, and none was recovered by it either.
+
+      Note the prune was WIDER than the instruction that prompted it, which was
+      to close worktrees for MERGED tickets: `git worktree prune` takes no
+      filter and clears every stale record at once, and neither of these two
+      branches is merged. Recorded because the finding is unchanged -- each of
+      those worktrees took its gitignored Skill Manager home with it when its
+      directory was deleted, and whether anything was lost with them is still a
+      question for whoever owns #115 and SMVENV-001.
 
   - id: DEF-004
     found_by: wave 2, attempting to provision HIS-4's declared worktree
