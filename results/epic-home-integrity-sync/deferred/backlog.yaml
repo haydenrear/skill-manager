@@ -1073,6 +1073,7 @@ findings:
     evidence:
       - src/test/java/dev/skillmanager/source/SyncPathsAgreeAboutDirtyTest.java
   - id: DEF-013
+  - id: DEF-017
     found_by: HIS-9, placing the write-confinement guard
     found_at: "2026-08-21"
     severity: major
@@ -1107,11 +1108,29 @@ findings:
       server build, so the guard cannot live behind Fs without either moving Fs
       or moving the guard into `shared/`.
     what_his_9_did_instead: >
-      Enforced at the four sites where the measured damage happened --
-      CliShimPruner.prune, InstallerRegistry.takeOwnershipOfShim, the producer
-      boundary in InstallerRegistry.installOne, and the effect boundary in
-      LiveInterpreter.execute -- and said so, in WriteConfinement's javadoc and
-      in the goal contribution, rather than implying general coverage.
+      Enforced at the sites where the measured damage happened --
+      CliShimPruner.prune, InstallerRegistry.takeOwnershipOfShim, and the
+      producer boundary in InstallerRegistry.installOne -- and said so, in
+      WriteConfinement's javadoc and in the goal contribution, rather than
+      implying general coverage.
+
+      CORRECTED AFTER REVIEW: an earlier version of this entry also named
+      "the effect boundary in LiveInterpreter.execute" as an enforcement site.
+      It was not one. It DECLARED a scope that every enforcement site already
+      re-derived for itself, a vacuity check measured that removing it reddened
+      nothing, and it has since been deleted rather than left as
+      enforcing-looking API. That is the SECOND time this ticket wrote that
+      claim down (the first was in WriteConfinement's own javadoc, corrected in
+      its own commit), which is worth more than the claim: "declares" and
+      "enforces" read alike six weeks later, and only a caller count tells them
+      apart.
+
+      ALSO CORRECTED: this entry must not be read as saying Fs.deleteRecursive
+      is unsafe. It is not. It deletes a symlink LEAF without following it
+      (Files.isSymbolicLink -> Files.delete), so the prune's recursive delete
+      does the right thing; the DEF-007 defect was in the DIRECTORY the entries
+      were listed from, not in the deletion of each entry. Fs is named here only
+      because it is not a choke point, not because it is wrong.
     why_deferred: >
       Routing 173 call sites through a facade is a mechanical change with a very
       wide blast radius across bindings, projections and the project surface --
@@ -1128,7 +1147,7 @@ findings:
     candidate_owner: unassigned
     status: open
 
-  - id: DEF-014
+  - id: DEF-018
     found_by: HIS-9, fixing instance (2) -- the pinned shim rebinding the home
     found_at: "2026-08-21"
     severity: major
@@ -1178,10 +1197,26 @@ findings:
       - results/epic-home-integrity-sync/probes/his-9/instance2-before-guard.out
       - results/epic-home-integrity-sync/probes/his-9/instance2-after-guard.out
 
-  - id: DEF-015
+  - id: DEF-019
     found_by: HIS-9, closing the forced-write-through hole at the producer boundary
     found_at: "2026-08-21"
-    severity: minor
+    severity: major
+    severity_note: >
+      RE-GRADED FROM minor AFTER REVIEW, and the review was right. Two facts I
+      had under-weighted:
+
+      (a) takeOwnershipOfShim DOES NOT CONSULT SANCTION. It acts on any bin/cli
+          entry that is a symlink reaching another home, so under --force-scripts
+          it deletes SANCTIONED mirrors -- the very links a child home is meant
+          to share -- not merely unsanctioned ones.
+
+      (b) --force-scripts is the flag AgentHomes.java:186 TELLS OPERATORS TO USE.
+          This is not a corner: it is on the documented path.
+
+      The behaviour is still the one I want -- rebuilding locally beats
+      overwriting the parent store's file -- but "minor / no action requested"
+      was the wrong label for a change that deletes sanctioned links on a
+      documented command.
     summary: >
       `sync --force-scripts` in a child home now TAKES OWNERSHIP of a sanctioned
       inherited shim and rebuilds it locally, where it previously wrote through
@@ -1232,8 +1267,16 @@ findings:
       it owns, this ticket rebuilds. `--force-scripts` is also an explicit
       request to re-run the script, which is the same signal a rebuild carries,
       so owning the slot is what the flag already means.
+    also_now_false: >
+      InstallerRegistry.takeOwnershipOfShim's javadoc at :300-318 still argues
+      that running from installOne was the BUG, and still says
+      rebuildCliArtifact is "the one caller". HIS-9 put it back in installOne
+      under `force`, so BOTH sentences are now false. The javadoc needs to state
+      the force-gated exception and say that the sanction is not consulted.
     why_deferred: >
-      Not deferred as a defect; recorded so the DELIBERATE NARROWING OF HIS-10
+      Recorded rather than fixed here because the javadoc correction and the
+      sanction question are one small change that wants its own review, and
+      because the DELIBERATE NARROWING OF HIS-10
       (#227) is visible at the wave review as a narrowing rather than being
       discovered later as a regression, and so HIS-6's sync-cost numbers are read
       with the flag in mind. No action is requested.
@@ -1318,9 +1361,25 @@ findings:
       better, make the lock a single file written atomically rather than a
       directory populated in three steps.
     candidate_owner: epic agent (wave-4 machinery)
-    status: open
+    status: closed
+    resolution: >
+      Cleared by the epic agent, 2026-08-21, who confirmed the cause: graph-run.sh
+      was edited IN PLACE (truncate-and-rewrite of the same inode) while HIS-9's
+      invocation was mid-execution. Later edits used write-temp-then-rename, which
+      an already-open inode survives. Both halves are fixed in the wrapper --
+      unattributed locks are now reclaimed after 60s, and it no longer `exec`s, so
+      the release trap actually fires (found by HIS-12).
 
-  - id: DEF-017
+      HIS-9 then ran `home-integrity` twice to completion: 20260821-191337 and,
+      after the DEF-020 fix, 20260821-192222. Both BUILD SUCCESSFUL, 15/15.
+
+      THE DURABLE LESSON, which outlives the two bugs: a shell script that several
+      running agents execute cannot be edited in place, because bash reads a
+      script incrementally by byte offset and resumes into whatever the file now
+      contains. Write a new file and rename, or edit only when nothing is running
+      it.
+
+  - id: DEF-020
     found_by: HIS-9, after the epic agent asked whether home.fixpoint.law still covers the graph's newest node
     found_at: "2026-08-21"
     severity: major

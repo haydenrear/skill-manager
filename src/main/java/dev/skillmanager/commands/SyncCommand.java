@@ -68,6 +68,26 @@ public final class SyncCommand implements Callable<Integer> {
                     + "Requires <name>.")
     public Path fromDir;
 
+    /**
+     * HIS-9. The one verb this was missing, and the omission was load-bearing.
+     *
+     * <p>{@code --home} was declared on {@code home}, {@code exec} and
+     * {@code unit} only, so {@code sync --home <x>} answered
+     * {@code Unknown option: '--home'} — and {@code sync} is what
+     * {@code bootstrap-home.sh} runs and what a pinned shim's home-mismatch
+     * refusal has to be able to recommend. A refusal whose remedy the product
+     * rejects is worse than no remedy.
+     *
+     * <p>Additive: it changes nothing about what a sync does, and an unset value
+     * still means {@code $SKILL_MANAGER_HOME} exactly as before. It also gives
+     * the pinned shim's refusal something to name, which is why the guard
+     * exempts a command line carrying this flag — intent is stated by the
+     * caller rather than guessed by the shim.
+     */
+    @Option(names = "--home",
+            description = "Skill Manager home. Defaults to $SKILL_MANAGER_HOME.")
+    java.nio.file.Path home;
+
     @Option(names = {"-y", "--yes"},
             description = "Skip the approval prompt for --from.")
     public boolean yes;
@@ -144,7 +164,11 @@ public final class SyncCommand implements Callable<Integer> {
 
     @Override
     public Integer call() throws Exception {
-        SkillStore store = injectedStore != null ? injectedStore : SkillStore.defaultStore();
+        SkillStore store = injectedStore != null
+                ? injectedStore
+                : home != null
+                    ? new SkillStore(home.toAbsolutePath().normalize())
+                    : SkillStore.defaultStore();
         store.init();
 
         // A frozen home refuses every mutation below, including --refresh:

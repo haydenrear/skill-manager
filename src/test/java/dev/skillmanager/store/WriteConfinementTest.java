@@ -61,12 +61,13 @@ public final class WriteConfinementTest {
                     Path mirror = fx.home.resolve("bin/cli/tool");
                     Files.createSymbolicLink(mirror, fx.elsewhere.resolve("tool"));
 
-                    WriteConfinement.Scope previous = WriteConfinement.declare(fx.scope());
-                    try {
-                        WriteConfinement.checkDelete(mirror, "the pruner");
-                    } finally {
-                        WriteConfinement.restore(previous);
-                    }
+                    // requireInside is the LIVE delete rule -- the one
+                    // takeOwnershipOfShim calls. There used to be a scoped
+                    // checkDelete beside it with no production caller, and this
+                    // case pointed at that one, so it was reddening a predicate
+                    // the product never reached. It is gone; this asks the
+                    // method that actually runs.
+                    WriteConfinement.requireInside(mirror, fx.home, "the pruner");
                     // no exception is the assertion; make it explicit so the
                     // case cannot pass by not running.
                     assertTrue(Files.isSymbolicLink(mirror), "and the fixture really was a link");
@@ -78,47 +79,47 @@ public final class WriteConfinementTest {
                     Path binCli = fx.home.resolve("bin/cli");
                     dev.skillmanager.shared.util.Fs.deleteRecursive(binCli);
                     Files.createSymbolicLink(binCli, fx.elsewhere);
-                    Path entry = binCli.resolve("tool");
 
-                    String refusal = refused(fx, () -> WriteConfinement.checkDelete(entry, "the pruner"));
+                    String refusal = refused(fx,
+                            () -> WriteConfinement.requireContainerInside(binCli, fx.home, "the pruner"));
 
                     assertTrue(refusal.contains("outside the home"),
-                            "the escaping component is the DIRECTORY, and resolving the parent "
-                                    + "is what catches it; got:\n" + refusal);
+                            "the escaping component is the DIRECTORY, so the container rule -- "
+                                    + "which resolves the leaf -- is what catches it; got:\n"
+                                    + refusal);
                 })
 
-                .test("a declared extra root is permitted, and it is the ONLY way one is", () -> {
-                    // An exception that is listed can be argued with; one that is
-                    // implicit is the bug. This is the listing mechanism, and the
-                    // second half of the case is that nothing else gets in.
-                    Fixture fx = Fixture.build("extra-root");
-                    Path shared = fx.elsewhere.resolve("shared-cache/thing");
-                    Path unlisted = fx.base.resolve("third/thing");
-                    Files.createDirectories(shared.getParent());
-                    Files.createDirectories(unlisted.getParent());
+                .test("a scope has exactly ONE root, and there is no escape hatch", () -> {
+                    // WHAT THIS REPLACED, AND WHY IT IS BETTER AS AN ABSENCE.
+                    //
+                    // forHome once took an `alsoUnder` varargs -- the
+                    // reviewable-exemption seam this ticket's acceptance asks
+                    // for -- and the case here passed one and watched it be
+                    // permitted. NO PRODUCTION CALLER EVER PASSED ONE, so the
+                    // case was exercising a parameter only it used.
+                    //
+                    // The two exemptions the guard really needs are not
+                    // root-shaped: a sanctioned mirror, and a path outside every
+                    // home. Both are decided by asking
+                    // HomeCloner.unsanctionedForeignHome -- the predicate
+                    // `home verify` itself uses -- so they cannot drift from
+                    // what the gate refuses. That is asserted where it lives, in
+                    // ProducerStaysInsideItsHomeTest.
+                    //
+                    // So what is pinned here is the ABSENCE: a scope admits its
+                    // home and nothing else, and no caller can widen it.
+                    Fixture fx = Fixture.build("one-root");
+                    Path outside = fx.base.resolve("third/thing");
+                    Files.createDirectories(outside.getParent());
 
-                    WriteConfinement.Scope widened = WriteConfinement.forHome(
-                            fx.home, "an effect with a second root", fx.elsewhere.resolve("shared-cache"));
-                    WriteConfinement.Scope previous = WriteConfinement.declare(widened);
-                    boolean listedRefused = false;
-                    boolean unlistedRefused = false;
-                    try {
-                        try {
-                            WriteConfinement.checkWrite(shared, "a listed write");
-                        } catch (WriteOutsideHomeException e) {
-                            listedRefused = true;
-                        }
-                        try {
-                            WriteConfinement.checkWrite(unlisted, "an unlisted write");
-                        } catch (WriteOutsideHomeException e) {
-                            unlistedRefused = true;
-                        }
-                    } finally {
-                        WriteConfinement.restore(previous);
-                    }
+                    WriteConfinement.Scope scope = fx.scope();
+                    assertEquals(1, scope.roots().size(),
+                            "one home, one root: " + scope.roots());
 
-                    assertTrue(!listedRefused, "a root the effect declared is permitted");
-                    assertTrue(unlistedRefused, "and one it did not declare is not");
+                    String refusal = refused(fx,
+                            () -> WriteConfinement.checkWrite(outside, "an unlisted write"));
+                    assertTrue(refusal.contains("outside the home"),
+                            "and anything else is refused; got:\n" + refusal);
                 })
 
                 .test("the default gates nothing, because a dozen effects write outside on purpose",
@@ -133,13 +134,13 @@ public final class WriteConfinementTest {
                     assertTrue(WriteConfinement.declared().unconfined(),
                             "nothing declared, nothing gated");
                     WriteConfinement.checkWrite(Path.of("/etc/anywhere-at-all"), "unscoped");
-                    WriteConfinement.checkDelete(Path.of("/etc/anywhere-at-all"), "unscoped");
                 })
 
                 .test("a declaration does not outlive its scope", () -> {
-                    // LiveInterpreter declares per effect and restores in a
-                    // finally; a leak here would confine every later effect in
-                    // the process to whichever home ran first.
+                    // InstallerRegistry.installOne declares for the duration of
+                    // one install and restores in a finally; a leak here would
+                    // confine every later install in the process to whichever
+                    // home ran first.
                     Fixture fx = Fixture.build("restore");
                     WriteConfinement.reset();
                     WriteConfinement.Scope previous = WriteConfinement.declare(fx.scope());
@@ -162,7 +163,10 @@ public final class WriteConfinementTest {
                     WriteConfinement.Scope previous = WriteConfinement.declare(fx.scope());
                     try {
                         WriteConfinement.checkWrite(throughAlias, "a write through an alias");
-                        WriteConfinement.checkDelete(throughAlias, "a delete through an alias");
+                        WriteConfinement.requireInside(throughAlias, fx.home,
+                                "a delete through an alias");
+                        WriteConfinement.requireContainerInside(alias.resolve("bin/cli"),
+                                fx.home, "a container reached through an alias");
                     } finally {
                         WriteConfinement.restore(previous);
                     }

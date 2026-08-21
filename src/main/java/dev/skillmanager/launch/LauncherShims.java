@@ -555,8 +555,29 @@ public final class LauncherShims {
                 echo "  This entrypoint binds the home it lives in, so it cannot honour" >&2
                 echo "  SKILL_MANAGER_HOME. Refusing rather than silently editing the" >&2
                 echo "  other one." >&2
-                echo "  Use \\`$home/bin/cli/skill-manager <cmd> --home $sm_inherited_home\\`," >&2
-                echo "  or run the CLI build directly instead of this shim." >&2
+                # NAME BOTH HOMES AND LET THE OPERATOR CHOOSE. The shim must
+                # not guess, and two earlier versions of this text did.
+                #
+                # The first printed `--home $sm_inherited_home` only, which
+                # recommends the home named in the ENVIRONMENT -- not the one
+                # this shim serves -- so following it verbatim operated on a
+                # third thing.
+                #
+                # The second tried to infer intent from the invocation and could
+                # not: a #! script never sees the word that was typed (the shell
+                # PATH-resolves it and execve's the absolute path, and the
+                # kernel discards argv[0]), so bare-name and absolute
+                # invocations give an IDENTICAL $0. Worse, the damage case this
+                # guard exists for -- `SKILL_MANAGER_HOME=<x> <y>/bin/cli/
+                # skill-manager sync foo` -- is itself absolute, so no
+                # shim-side observation separates it from a pasted remedy.
+                #
+                # Intent is therefore STATED by the caller, on the command line,
+                # where --home is already this guard's exemption. Both spellings
+                # below are exact and both are runnable.
+                echo "  Say which one you mean:" >&2
+                echo "    --home $home   (this shim's home)" >&2
+                echo "    --home $sm_inherited_home   (the home your environment names)" >&2
                 exit @SKILL_MANAGER_HOME_MISMATCH_EXIT@
               fi
             fi

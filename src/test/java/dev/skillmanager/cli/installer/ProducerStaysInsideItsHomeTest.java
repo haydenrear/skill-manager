@@ -1,7 +1,10 @@
 package dev.skillmanager.cli.installer;
 
 import dev.skillmanager._lib.test.Tests;
+import dev.skillmanager.lock.CliInstallRecorder;
 import dev.skillmanager.lock.Fingerprint;
+import dev.skillmanager.plan.InstallPlan;
+import dev.skillmanager.plan.PlanAction;
 import dev.skillmanager.model.CliDependency;
 import dev.skillmanager.store.SkillStore;
 import dev.skillmanager.store.WriteOutsideHomeException;
@@ -172,6 +175,56 @@ public final class ProducerStaysInsideItsHomeTest {
 
                     assertEquals(InstallOutcome.ALREADY_PRESENT, outcome,
                             "no refusal: that directory is not another Skill Manager home");
+                })
+
+                .test("THE BULK PATH refuses too, and does not tally it as one dep failing",
+                        () -> {
+                    // EVERY OTHER CASE IN THIS FILE CALLS installOne DIRECTLY,
+                    // AND THAT IS WHY THIS ONE EXISTS.
+                    //
+                    // `sync` does not take that route. It goes through
+                    // CliInstallRecorder.run, which wraps each dep in
+                    // `catch (Exception)` so one unreachable download cannot
+                    // stop the other twenty. That arm caught the confinement
+                    // refusal exactly as happily as a checked exception: it
+                    // became Log.warn plus a failure tally, installCli still
+                    // returned EffectReceipt.ok, and sync exited 0.
+                    //
+                    // Measured side by side before the fix -- through
+                    // CliInstallRecorder.run it RETURNED NORMALLY; through
+                    // installOne it threw. Same defect, two verdicts, and the
+                    // bulk path is the one every sync takes. No vacuity row over
+                    // the direct calls could have seen it, which is the coverage
+                    // lesson rather than just the bug.
+                    // A REAL backend id, not the stub: CliInstallRecorder.run
+                    // builds its OWN InstallerRegistry, so a test-only backend is
+                    // unknown to it and installOne returns SKIPPED before any
+                    // confinement check runs. The first version of this case did
+                    // exactly that and passed against the swallowing code.
+                    // skill-script is registered, and the check that fires is the
+                    // unconditional bin/cli one -- ahead of anything the backend
+                    // would do, so nothing is downloaded or executed.
+                    Fixture fx = Fixture.build("bulk-path");
+                    dev.skillmanager.shared.util.Fs.deleteRecursive(fx.home.resolve("bin/cli"));
+                    Files.createSymbolicLink(fx.home.resolve("bin/cli"),
+                            fx.other.resolve("bin/cli"));
+                    String before = Files.readString(fx.other.resolve("bin/cli/tool"));
+
+                    CliDependency scripted = new CliDependency(TOOL, "skill-script:" + TOOL,
+                            null, null, TOOL, false,
+                            Map.of("any", new CliDependency.InstallTarget(
+                                    null, null, TOOL, List.of(), null, "install.sh", List.of())));
+                    InstallPlan plan = new InstallPlan()
+                            .add(new PlanAction.RunCliInstall("demo", scripted, false));
+
+                    String refusal = refused(() ->
+                            CliInstallRecorder.run(plan, new SkillStore(fx.home)));
+
+                    assertEquals(before, Files.readString(fx.other.resolve("bin/cli/tool")),
+                            "and the other home is byte-identical");
+                    assertTrue(refusal.contains("outside the home"),
+                            "the refusal reached the caller instead of becoming a tally; got:\n"
+                                    + refusal);
                 })
 
                 .runAll();

@@ -84,7 +84,7 @@ public class SyncStaysInsideItsHome {
             // existed: seven store-shaped directories existed under the sandbox
             // when the law ran, production's own `home verify` called all seven
             // homes, and the law reported homesChecked = 1. This node's two
-            // clones were among the six it never saw. See DEF-017.
+            // clones were among the six it never saw. See DEF-020.
             .output("victimHome", "string")
             .output("syncingHome", "string");
 

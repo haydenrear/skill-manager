@@ -619,13 +619,63 @@ public final class LauncherShimsTest {
                     "and nothing ran: the pin was never reached, so neither home was touched");
         });
 
-        suite.test("--home settles it, so the remedy the refusal prints is not itself refused",
-                () -> {
-            // The escape this file's own comment documents, and what
-            // bootstrap-home.sh should be passing. It is also what the generated
-            // AGENT launcher passes (`exec "$cli" exec --home "$home"`), so
-            // without this branch a worktree launcher inheriting a project
-            // home's variable would refuse to launch anything at all.
+        suite.test("the printed remedy RUNS -- both spellings, against the real CLI", () -> {
+            // THIS CASE EXECUTES THE REMEDY, and that is the whole point of it.
+            //
+            // The version it replaces asserted that BASH did not refuse when
+            // `--home` was present. That is a statement about this script and
+            // NOT about whether the advice works -- and it did not: `--home` was
+            // declared on the home, exec and unit commands only, so the one
+            // command bootstrap-home.sh runs answered
+            //
+            //     $ skill-manager sync --home <x>
+            //     Unknown option: '--home'
+            //
+            // A remedy the product rejects is worse than no remedy, and a test
+            // that reads the remedy's TEXT can never see that. So this one pulls
+            // both advised spellings out of the refusal and runs them against
+            // the real CLI, on `sync` -- the verb that was missing the flag.
+            Home shimHome = Home.create("remedy-runs-shim-");
+            LauncherShims.write(shimHome.store, realCli());
+            Path shim = shimHome.store.cliBinDir().resolve("skill-manager");
+            Home named = Home.create("remedy-runs-named-");
+
+            Result refusal = runProcess(List.of(shim.toString(), "sync"),
+                    Map.of("SKILL_MANAGER_HOME", named.store.root().toString()));
+            assertEquals(LauncherShims.HOME_MISMATCH_EXIT_CODE, refusal.rc,
+                    "precondition: the mismatch is refused");
+
+            // BOTH homes are offered, because the shim must not guess which one
+            // the operator meant -- see the template's comment.
+            List<String> advised = advisedHomesIn(refusal.out);
+            assertEquals(2, advised.size(),
+                    "it offers this shim's home AND the one the environment names; got:\n"
+                            + refusal.out);
+            assertTrue(advised.contains(shimHome.store.root().toRealPath().toString()),
+                    "one of them is the shim's own home; got " + advised);
+            assertTrue(advised.contains(named.store.root().toString())
+                            || advised.contains(named.store.root().toRealPath().toString()),
+                    "the other is the home the environment named; got " + advised);
+
+            // RUN EACH ONE, verbatim, in the same hostile environment.
+            for (String home : advised) {
+                Result remedy = runProcess(
+                        List.of(shim.toString(), "sync", "--home", home),
+                        Map.of("SKILL_MANAGER_HOME", named.store.root().toString()));
+                assertFalse(remedy.out.contains("Unknown option"),
+                        "the CLI accepts the flag the refusal printed -- this is the assertion "
+                                + "that would have caught `sync` not declaring --home. home="
+                                + home + "\n" + remedy.out);
+                assertTrue(remedy.rc != LauncherShims.HOME_MISMATCH_EXIT_CODE,
+                        "and the remedy is not itself refused. home=" + home);
+            }
+        });
+
+        suite.test("--home is still honoured when the subcommand takes one", () -> {
+            // The escape is kept -- the generated AGENT launcher passes
+            // `exec --home "$home"`, and exec DOES declare the flag -- but it is
+            // no longer what the refusal recommends, because most subcommands do
+            // not have it.
             Home home = Home.create("cli-entrypoint-flag-");
             Path pin = writeEnvEcho(home.root.resolve("pin-env"), "SKILL_MANAGER_HOME");
             LauncherShims.write(home.store, pin);
@@ -987,6 +1037,31 @@ public final class LauncherShimsTest {
     }
 
     /** A CLI stand-in that reports what {@code var} was set to when it ran. */
+    /**
+     * Every home the refusal offered, in order, parsed out of its printed text.
+     *
+     * <p>Parsed rather than passed in, so the case exercises the same string an
+     * operator would copy. The advised lines are
+     * {@code     --home <path>   (...)}.
+     */
+    private static List<String> advisedHomesIn(String out) {
+        List<String> homes = new java.util.ArrayList<>();
+        for (String line : out.split("\n")) {
+            String t = line.trim();
+            if (!t.startsWith("--home ")) continue;
+            String rest = t.substring("--home ".length()).trim();
+            int cut = rest.indexOf("   ");
+            homes.add((cut < 0 ? rest : rest.substring(0, cut)).trim());
+        }
+        return homes;
+    }
+
+    /** This repository's real CLI, so a remedy is run against the actual product. */
+    private static Path realCli() {
+        return Path.of(System.getProperty("user.dir")).resolve("skill-manager")
+                .toAbsolutePath().normalize();
+    }
+
     private static Path writeEnvEcho(Path file, String var) throws Exception {
         Fs.ensureDir(file.getParent());
         Files.writeString(file,

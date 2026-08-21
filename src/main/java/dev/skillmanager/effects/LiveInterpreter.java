@@ -175,38 +175,7 @@ public final class LiveInterpreter implements ProgramInterpreter {
         return receipts;
     }
 
-    /**
-     * The effect boundary — and, since HIS-9, the one place a write
-     * confinement is put in force for the duration of an effect.
-     *
-     * <p>Every effect declares the roots it may write under
-     * ({@link SkillEffect#writeConfinement}); the default is unconfined,
-     * because around a dozen effects write outside the home as their entire
-     * purpose. The declaration is restored in a {@code finally} so a nested
-     * program — this class calls itself through {@code runWithContext} — cannot
-     * leave a confinement pinned on the thread after its effect ended. That is
-     * the {@link dev.skillmanager.store.HomeScaffold} discipline, for the same
-     * reason it has it.
-     *
-     * <p>A refusal arrives here as a
-     * {@link dev.skillmanager.store.WriteOutsideHomeException}, which is
-     * unchecked precisely so it passes the {@code catch (IOException)} handlers
-     * that used to turn this class of failure into a log line. The three
-     * callers of this method trap {@code Exception} and turn it into a failed
-     * receipt carrying the message — which names the path, where it actually
-     * resolved, and the home it escaped.
-     */
     private EffectReceipt execute(SkillEffect effect, EffectContext ctx) throws IOException {
-        dev.skillmanager.store.WriteConfinement.Scope previous =
-                dev.skillmanager.store.WriteConfinement.declare(effect.writeConfinement(store));
-        try {
-            return dispatch(effect, ctx);
-        } finally {
-            dev.skillmanager.store.WriteConfinement.restore(previous);
-        }
-    }
-
-    private EffectReceipt dispatch(SkillEffect effect, EffectContext ctx) throws IOException {
         return switch (effect) {
             case SkillEffect.ConfigureRegistry e -> configureRegistry(e, ctx);
             case SkillEffect.EnsureGateway e -> ensureGateway(e);

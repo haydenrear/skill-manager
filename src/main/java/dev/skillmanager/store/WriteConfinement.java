@@ -3,7 +3,6 @@ package dev.skillmanager.store;
 import dev.skillmanager.shared.util.Fs;
 
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -57,15 +56,24 @@ import java.util.List;
  *       link's <em>target</em>. So {@link #checkWrite} resolves the whole path,
  *       leaf included — that is instance (1), and refusing it is the point.</li>
  *   <li>A <b>delete</b> does not. {@code Files.delete(link)} removes the link
- *       itself. So {@link #checkDelete} resolves the <em>parent</em> and
+ *       itself. So {@link #requireInside} resolves the <em>parent</em> and
  *       re-appends the name. This distinction is not pedantry: a child home's
  *       sanctioned mirror of its parent's shim is a link that <em>points</em>
  *       into the parent store while <em>living</em> inside the child, and a
  *       delete rule that followed the leaf would refuse every legitimate
  *       {@code CliShimPruner} and {@code takeOwnershipOfShim} call in every
- *       child home. It is the resolved <b>parent</b> that catches DEF-007,
- *       where the escaping component is the {@code bin/cli} directory.</li>
+ *       child home.</li>
+ *   <li>A <b>container</b> about to be listed and deleted through needs the
+ *       WRITE rule even though the operation is a delete, because the escaping
+ *       component is the directory itself. That is {@link #requireContainerInside},
+ *       and it is what catches DEF-007.</li>
  * </ul>
+ *
+ * <p>There were once two spellings of the delete rule — a scoped
+ * {@code checkDelete} and {@link #requireInside}'s own copy — and <b>only the
+ * second had a production caller</b>. The scoped one is gone rather than left
+ * as reachable-looking API; three public entry points remain and all three are
+ * called by the product.
  *
  * <p>Both sides resolve through {@link Fs#realOrNormalized}, which is this
  * codebase's one spelling-proof path comparison — a comparison that can be
@@ -121,18 +129,26 @@ import java.util.List;
  *       enforces the same rule about which home a command may edit.</li>
  * </ol>
  *
- * <p>{@code LiveInterpreter.execute} <em>declares</em> a scope per effect; it
- * enforces nothing itself, and each site above carries its own unconditional
- * home check so that closing the defects does not depend on a declaration being
- * present. That is a seam, not a gate, and it is measured as one — removing the
- * declaration reddens nothing.
+ * <p>The scope is declared by {@code InstallerRegistry.installOne} itself, for
+ * the duration of one install, and is consulted only by {@link #checkWrite}.
+ * The other two entry points are unconditional, so closing the measured defects
+ * does not depend on anyone having declared anything.
+ *
+ * <p><b>There is no per-effect declaration any more.</b> {@code SkillEffect}
+ * carried a {@code writeConfinement} method and four effects overrode it,
+ * routed through {@code LiveInterpreter.execute}. A vacuity check measured that
+ * removing the whole thing reddened <em>nothing</em> — every enforcement site
+ * already carried its own home check, and with the extra-roots parameter gone
+ * an override could not express anything the fallback did not. It was
+ * decoration with a docstring, so it went. If an effect ever genuinely needs a
+ * second root, the place to put it back is here, with a caller.
  *
  * <p>{@link Fs} is deliberately NOT the choke point, and it cannot become one
  * here: it carries recursive delete, recursive copy, mkdir and chmod and no
  * write, move or symlink at all, and {@code SkillManagerServer.java} compiles it
  * standalone out of a {@code shared/} package that imports nothing from
  * {@code dev.skillmanager}. Adding this class to it would break the server
- * build. Filed as DEF-013 with the two options.
+ * build. Filed as DEF-017 with the two options.
  *
  * <p>Nothing here can see what a <em>forked producer</em> writes; no in-JVM hook
  * can. What the producer boundary does instead is refuse to hand a producer a
@@ -176,25 +192,33 @@ public final class WriteConfinement {
     private static final Scope UNCONFINED = new Scope(null, null, "unconfined");
 
     /**
-     * A scope permitting writes under {@code home} and under each of
-     * {@code alsoUnder}.
+     * A scope permitting writes under {@code home}, and nowhere else.
      *
-     * <p>{@code alsoUnder} is how a legitimate exception becomes
-     * <em>reviewable</em>: a sanctioned parent store, a shared package cache and
-     * an operator-named output directory are all real, and an exception that is
-     * listed can be argued with while one that is implicit is the bug. Nulls
-     * are dropped so a caller can pass an optional root without branching.
+     * <h2>There is deliberately no "and also under X" parameter</h2>
+     *
+     * <p>One existed. It was the reviewable-exemption seam this ticket's
+     * acceptance asks for — declare your extra roots and they can be argued
+     * with — and <b>no production caller ever passed one</b>, because the two
+     * exceptions this guard actually needs are not root-shaped:
+     *
+     * <ul>
+     *   <li>a child home's <b>sanctioned mirror</b> of its parent's shim;</li>
+     *   <li>an artifact resolving <b>outside every home</b> — brew's cellar.</li>
+     * </ul>
+     *
+     * <p>Both are decided by asking {@code HomeCloner.unsanctionedForeignHome},
+     * which is the predicate {@code home verify} itself uses. That is a
+     * <em>better</em> answer than a roots list, and it is why the parameter went
+     * rather than being kept unused: an exemption expressed as the gate's own
+     * predicate cannot drift away from what the gate refuses, whereas a second
+     * list of roots is exactly the kind of parallel spelling this epic has been
+     * paying for. See {@code InstallerRegistry.requireProducedInThisHome},
+     * where both exemptions are named in one place.
      */
-    public static Scope forHome(Path home, String what, Path... alsoUnder) {
+    public static Scope forHome(Path home, String what) {
         if (home == null) return UNCONFINED;
-        List<Path> roots = new ArrayList<>();
-        roots.add(Fs.realOrNormalized(home));
-        if (alsoUnder != null) {
-            for (Path extra : alsoUnder) {
-                if (extra != null) roots.add(Fs.realOrNormalized(extra));
-            }
-        }
-        return new Scope(home.toAbsolutePath().normalize(), List.copyOf(roots), what);
+        List<Path> roots = List.of(Fs.realOrNormalized(home));
+        return new Scope(home.toAbsolutePath().normalize(), roots, what);
     }
 
     private WriteConfinement() {}
@@ -238,15 +262,6 @@ public final class WriteConfinement {
      */
     public static void checkWrite(Path target, String what) {
         check(CURRENT.get(), target, writeTargetOf(target), what, "write");
-    }
-
-    /**
-     * Refuse {@code target} when removing that entry would remove it from
-     * outside the declared roots. Does NOT follow the final component, because
-     * a delete does not — see the class javadoc.
-     */
-    public static void checkDelete(Path target, String what) {
-        check(CURRENT.get(), target, deleteTargetOf(target), what, "delete");
     }
 
     /**

@@ -1492,7 +1492,7 @@ validationGraph {
         // never saw belong to ParentHomeSurvivesAChildBuild,
         // ReadersAgreeAboutOneClone and SyncStaysInsideItsHome -- none of which
         // published a home path. The last of those now does; the other two are
-        // DEF-017.
+        // DEF-020.
         node("sources/common/HomeFixpointLaw.java")
                 .dependsOn("home.integrity.bootstrap.projects.target")
     }

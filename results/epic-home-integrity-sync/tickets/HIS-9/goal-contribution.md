@@ -122,18 +122,29 @@ twelfth reddens nothing and is reported as such rather than dropped. Raw logs:
 | **C** | `refuseAForeignDestination` removed from `installOne` | **1 FAIL** — *"not true: the producer never ran — no byte moved"* |
 | **D** | `requireContainerInside` removed from `installOne` | **1 FAIL** — *"$SKILL_MANAGER_BIN_DIR itself pointed at the other home, and the producer was never handed it"* |
 | **E** | the `force` ownership arm removed from `installOne` | **1 FAIL** — *"and the PARENT's artifact is byte-identical — this is the measured HIS-7 damage, not reproduced: expected <#!/usr/bin/env sh…"* |
-| **F** | `checkDelete` follows the leaf | **1 FAIL** — *"a DELETE of that same link is permitted — it removes what lives here: refused: the pruner would delete a path outside the home it was given"* |
+| ~~F~~ | ~~`checkDelete` follows the leaf~~ | **WITHDRAWN — it reddened a DEAD predicate.** `checkDelete` had **zero** production callers; the delete rule the product actually runs is `requireInside`'s. Row **K** is the same disable against the live method, and it is the one that counts. `checkDelete` has been deleted rather than left as reachable-looking API. |
 | **G** | `requireContainerInside` does **not** follow the leaf (the bug the first version had) | **4 FAIL** — all three prune tiers **and** the producer's `bin/cli`-is-a-link case |
 | **H** | the shim's home-mismatch refusal removed | **1 FAIL** — *"it refuses with its own status, not the self-exec one and not 1: expected <79> but was <0>"* |
 | **I** | the produced-artifact exemption removed | **2 FAIL** — *"a SANCTIONED mirror is not refused"* and *"an artifact linked OUTSIDE every home is left alone — brew's case"*, both *"refused: the stub-producer backend's artifact for tool would write a path outside the home it was given"* |
 | **J** | the shim's `--home` escape removed | **1 FAIL** — *"naming a home on the command line is never refused: expected <0> but was <79>"* |
 | **K** | `requireInside` follows the leaf | **2 FAIL** — *"takeOwnershipOfShim still takes ownership when the home is intact"* and the forced-ownership case, both *"refused: taking ownership of bin/cli/… would reach a path outside the home it was given"* |
-| **L** | the **effect-boundary declaration** removed (`LiveInterpreter.execute` always declares unconfined) | **ALL PASSED** — nothing reddens. Reported, not hidden; see "What was cut", item 2. |
+| ~~L~~ | ~~the effect-boundary declaration removed~~ | **ALL PASSED — nothing reddened, and the declaration has since been DELETED.** Reporting a seam that gates nothing was the right disclosure; keeping it was not. See "What was cut", item 2. |
+| **M** | `CliInstallRecorder.run` swallows the refusal instead of re-throwing (the shipped behaviour, before review) | **1 FAIL** — *"THE BULK PATH refuses too, and does not tally it as one dep failing: expected a write-confinement refusal, and the install completed — the producer was handed a destination in another home"* |
+| **N** | `--home` removed from `SyncCommand` (the state this ticket shipped it in) | **1 FAIL** — *"the printed remedy RUNS -- both spellings, against the real CLI: expected false: the CLI accepts the flag the refusal printed -- this is the assertion that would have caught `sync` not declaring --home"* |
 
-Rows **F**, **G** and **K** are the ones that matter. A–E and H–J prove each
-enforcement site is reached; F, G and K discriminate between three *different*
-containment rules that all look plausible and of which only one combination is
-correct.
+Rows **G** and **K** are the ones that discriminate: between them they cover
+three *different* containment rules that all look plausible and of which only one
+combination is correct. A–E and H–J prove each enforcement site is reached.
+
+**Rows M and N are the two adversarial review found, and neither could have been
+caught by the rows above** — that is the coverage lesson, not just two bugs.
+Every case in `ProducerStaysInsideItsHomeTest` called `installOne` **directly**,
+so no disable over those calls could ever see that the **bulk** path — the one
+every `sync` takes — swallowed the refusal into a log line and exited 0. And
+every assertion about the shim's remedy read its **text**, so none could see that
+the flag it printed did not exist. Both are now driven end to end: M through
+`CliInstallRecorder.run`, N by executing both printed spellings against the real
+CLI.
 
 Two of the rows also carry the epic's other failure mode. Row **I** reddens the
 two cases that keep this from being a blanket refusal; row **K** reddens the
@@ -205,7 +216,7 @@ The old assertion this replaced — `the_shim_overrides_an_inherited_skill_manag
 the shim still never runs against the inherited home, and it no longer runs
 against its own in silence.
 
-### The law was checking 1 of 7 homes — DEF-017
+### The law was checking 1 of 7 homes — DEF-020
 
 Asked whether `home.fixpoint.law` still covers the graph's newest node, the
 answer was **no, and not only for this node**. On the same run:
@@ -250,7 +261,7 @@ importing a known-bad fixture into a shared post-condition — which is why
 `homesRepaired` stays at 0 rather than the law running `sync --force-scripts`
 against something.
 
-The other four homes belong to the HIS-7 and HIS-10 nodes and are **DEF-017**.
+The other four homes belong to the HIS-7 and HIS-10 nodes and are **DEF-020**.
 HIS-10's pair is a *decision*, not a one-liner: those two verify **exit 1 by
 construction** — that node's subject is a home whose sanction was revoked — so
 publishing them would point the law's repair arm at a deliberately unsanctioned
@@ -313,7 +324,7 @@ that**. The honest statement:
 - a delete path can no longer follow a link out of the home, at either of the
   two call sites;
 - **an arbitrary `Files.writeString` elsewhere in the product is still
-  unguarded** — 173 direct mutation sites, filed as **DEF-013**.
+  unguarded** — 173 direct mutation sites, filed as **DEF-017**.
 
 Against the goal's clause 1 (bytes surviving a failed resolve/install) this is a
 **contribution, not a decision**: HIS-11 owns `Executor.preStateCompensations`.
@@ -357,7 +368,7 @@ this ticket.** 173 direct `java.nio.file.Files` mutation call sites exist in
 point — it carries no write, no move and no `createSymbolicLink` at all — and it
 **cannot** be made one from here without breaking the server build:
 `SkillManagerServer.java` compiles `shared/util/Fs.java` standalone out of a
-package that imports nothing from `dev.skillmanager`. Filed as **DEF-013** with
+package that imports nothing from `dev.skillmanager`. Filed as **DEF-017** with
 two concrete options for the owner. Everything in this ticket is scoped to the
 four enforcement sites named above.
 
@@ -368,8 +379,29 @@ re-read before the PR and fixed; recorded here rather than quietly edited,
 because a false coverage claim in a guard's javadoc is exactly the kind of thing
 a later reader trusts.
 
-**2. The effect-boundary declaration is a SEAM, not a GATE, and vacuity row L
-proves it.** `SkillEffect.writeConfinement` + the `LiveInterpreter.execute`
+**2. The effect-boundary declaration is GONE, having been measured to gate
+nothing.** `SkillEffect.writeConfinement`, its four overrides and the
+`LiveInterpreter.execute` wrapper were the ticket's stated mechanism — "an
+effect declares the roots it may write under". Row L measured that removing all
+of it reddened nothing, because every enforcement site already re-derived the
+home for itself. Adversarial review then found the same shape twice more:
+`WriteConfinement.checkDelete` had **zero** production callers, and
+`forHome`'s `alsoUnder` extra-roots parameter — the reviewable-exemption seam
+acceptance item 2 asks for — had never been passed one.
+
+With `alsoUnder` gone an override could not express anything the fallback did
+not, so the whole declaration layer was **deleted** rather than kept as
+enforcing-looking API. Three public entry points remain and all three have
+production callers.
+
+**Acceptance item 2 is still met, by a better mechanism than the one I built.**
+The two exemptions that exist — a sanctioned mirror, and a path outside every
+home — are decided by asking `HomeCloner.unsanctionedForeignHome`, the predicate
+`home verify` itself uses. An exemption expressed as the gate's own predicate
+cannot drift from what the gate refuses; a parallel list of roots is exactly the
+second spelling this epic keeps paying for.
+
+<details><summary>What the earlier draft of this section said</summary> `SkillEffect.writeConfinement` + the `LiveInterpreter.execute`
 wrapper exist, are declared by the four CLI effects, and are what a future
 effect would use to widen its roots in one reviewable place. But every
 enforcement site also carries its own *unconditional* home check — deliberately,
@@ -384,6 +416,13 @@ weakened real safety (a direct `installOne` call would be unguarded) to make a
 vacuity row redder, and that is the wrong trade. The seam is kept because the
 plan's slice and `conflict_keys` both name it and because widening is a real
 future need; it is labelled as a seam in its own javadoc.
+
+</details>
+
+**The disclosure was right and the decision was wrong**, and the difference is
+worth naming: reporting that a mechanism gates nothing is not a substitute for
+removing it. "Widening is a real future need" was speculation; two reviews later
+there was still no caller.
 
 **3. The after-the-fork check cannot un-write bytes.** Nothing in this JVM can
 see what a forked producer writes. What the boundary does is refuse to *hand* a
@@ -401,8 +440,12 @@ the root home; on a machine where PATH's `skill-manager` is a home shim, their
 named instead of syncing the wrong home. It does not break a working path — that
 path was already failing, and ARTI-14 measured 58 of 207 downstream assertions
 falling over — but it is a behavioural change in another repository. Filed as
-**DEF-014** for HIS-8, with the one-line remedy (`--home <target>`) already
-asserted in both the unit suite and the graph node.
+**DEF-018** for HIS-8. Its remedy is `--home <target>` — **which this ticket had
+to add to `sync` and `project sync` to make true.** Those were the only two
+verbs a home-mismatch refusal needs to be able to recommend and the only two
+that lacked the flag, so the refusal printed advice the product answered with
+`Unknown option: '--home'`. Now asserted by executing both printed spellings
+against the real CLI (row N).
 
 **5. `sync --force-scripts` in a child home now rebuilds locally instead of
 writing through — a deliberate partial walk-back of HIS-10 (#227) for that flag
@@ -413,7 +456,7 @@ sanctioned mirror is untouched. What changes is that `--force-scripts` now
 rebuilds the skill-script artifacts a child had been sharing. The alternative
 for a forced run is the producer following the mirror into the parent store and
 rewriting the parent's file, which is the HIS-7 damage. Recorded as a
-**narrowing, not a regression** — **DEF-015**, which names #227 explicitly so
+**narrowing, not a regression** — **DEF-019**, which names #227 explicitly so
 nobody discovers it later as one.
 
 **6. The root tier is covered by a SYNTHETIC root-shaped fixture.** A store that
@@ -510,6 +553,70 @@ that refuses until a person looks and a command that succeeds while destroying
 bytes, this ticket takes the refusal. **Turning that refusal into a repair is
 HIS-13 (#159)**, and this is the concrete case it should be measured against:
 a home that `verify` refuses, `sync` refuses, and nothing can currently mend.
+
+## What adversarial review found that this file had not disclosed
+
+Five things, all of them mine, none of them caught by my own vacuity rows.
+
+**1. The bulk path swallowed the refusal and `sync` exited 0.** Fixed and
+covered by row M. See the vacuity section for why no existing row could see it.
+
+**2. The printed remedy named a flag that did not exist.** Fixed by adding
+`--home` to `sync` and `project sync`, and covered by row N.
+
+**3. Three of `WriteConfinement`'s five public entry points were inert.** Fixed
+by deleting them; see "What was cut", item 2.
+
+**4. `LAUNCHER_PIN` — issue slice item 4 — is NOT IMPLEMENTED, and was not
+declared cut.** The issue asks for the `LAUNCHER_PIN` exemption `CliShimPruner`
+carries to be mirrored "wherever the guard could reach `bin/cli/skill-manager`".
+Nothing in this ticket does that. It is **declared cut here**, with the reason:
+the guard's two delete sites cannot reach the pin — `CliShimPruner` skips it by
+name before any confinement question is asked, and `takeOwnershipOfShim` only
+ever addresses a declared dep's `on_path`, which is never `skill-manager`. So
+there is no reachable case to exempt, and adding an exemption for one would be
+untestable by construction. If a future writer *can* reach the pin, this needs
+revisiting; it is not covered today and no assertion pretends it is.
+
+**5. Acceptance (d) says a child may READ through a sanctioned mirror. Nothing
+here reads.** What is asserted is that the mirror is **not deleted** (prune), not
+refused before a producer (pre-check), and not refused after one (post-check).
+Those are three write-side statements. No assertion resolves, opens or executes
+through a mirror. The sharing contract is therefore covered *as far as this
+guard can break it* — which is the honest width — and the read path is untouched
+by this ticket because the guard never consults reads. Stated rather than
+counted as met.
+
+### Two more, about the assertions themselves
+
+**`BootstrapProjectsTheTargetHome` half 2 does not exercise the mismatch
+branch.** It sets the inherited home to the shim's *own* home, so the refusal
+never fires and row J's disable leaves that half green. It still asserts
+something real — `--home` addresses the named home — but it is not a second
+witness for the refusal. The unit suite is (row N).
+
+**That node also LOST an assertion, and I did not say so.** The re-aim replaced
+`the_shim_binds_the_home_it_lives_in` — which was **deleted, not renamed**. The
+property it held is now carried by
+`the_shim_never_runs_against_an_inherited_home` plus the unit case *"the cli
+entrypoint binds the home it lives in when none was named"*, but the node itself
+no longer asserts the positive binding. Recorded here rather than left for a
+reader to notice the count went from five to six with one of the five missing.
+
+**The three prune "tiers" run byte-identical code.** `requireContainerInside`
+throws before anything tier-sensitive is consulted — no claim is read, no
+provenance record, no sanction — so ROOT, PROJECT and WORKTREE exercise one
+path three times. Reporting "3 FAIL" for row A overstates it: it is one
+behaviour, asserted on three fixtures, and the fixtures differ in ways the code
+under test never looks at. They are worth keeping — they prove the refusal does
+not accidentally depend on descent — but they are not three independent cases
+and this file should not have implied they were.
+
+**The vacuity `.out` files are curated.** Each holds the `[FAIL]` lines and the
+`FAILURES:` count for its run, not the full suite output, so a reader can see
+*which* cases failed but cannot confirm from the file alone that **only** those
+failed. The counts are in the files and they are small; a reader wanting the
+whole log has to re-run the disable. Said plainly rather than implied.
 
 ## One thing this file got wrong on the way, kept rather than edited away
 

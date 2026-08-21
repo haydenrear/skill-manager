@@ -6,22 +6,36 @@ import java.nio.file.Path;
  * A filesystem mutation was refused because it resolved outside every root the
  * operation declared it may write under.
  *
- * <h2>Unchecked, and that is the point</h2>
+ * <h2>Unchecked buys something, and it is LESS than this class once claimed</h2>
  *
- * <p>The two DEF-007 call sites both sit inside {@code catch (IOException)}
- * blocks that log a warning and carry on — {@code CliShimPruner.prune} says
- * "best-effort per entry", and
- * {@code InstallerRegistry.takeOwnershipOfShim} warns and returns null. A
- * checked exception would be caught by exactly those handlers and turned back
- * into the thing this class exists to stop being: a line in a log. The epic's
- * slice says <b>REFUSED, not logged</b>, so this is a {@link RuntimeException}
- * and it goes past them.
+ * <p>The earlier version of this javadoc said being a {@link RuntimeException}
+ * was what stopped this becoming "a line in a log". <b>That was measured false
+ * and is corrected here rather than deleted</b>, because the gap it hid was
+ * real: {@code CliInstallRecorder.run} — the BULK path every {@code sync}
+ * takes — wraps each dep in {@code catch (Exception)}, which catches an
+ * unchecked exception exactly as happily as a checked one. The refusal became
+ * {@code Log.warn} plus a failure tally, {@code installCli} still returned
+ * {@code EffectReceipt.ok}, and {@code sync} exited <b>0</b>. Reproduced side by
+ * side: through {@code CliInstallRecorder.run} it returned normally; through
+ * {@code InstallerRegistry.installOne} directly it threw.
  *
- * <p>Inside a program it surfaces as a failed {@code EffectReceipt} carrying
- * this message, because {@code LiveInterpreter.runEffects} traps
- * {@code Exception}. That is the wanted behaviour: the operation that would
- * have escaped fails, loudly, and the rest of the program halts or continues on
- * its own declared continuation policy.
+ * <p>What unchecked <em>does</em> buy is passing the {@code catch (IOException)}
+ * handlers at the two DEF-007 delete sites — {@code CliShimPruner.prune}'s
+ * "best-effort per entry" arm, and {@code takeOwnershipOfShim}, which warns and
+ * returns null. Those are real and they are why it stays unchecked.
+ *
+ * <p>What carries it past {@code catch (Exception)} is an explicit re-throw,
+ * and there is exactly one: {@code CliInstallRecorder.run} names this type and
+ * rethrows before its general arm. <b>A new {@code catch (Exception)} on this
+ * path would re-open the hole</b>, and no compiler will say so — which is the
+ * argument for auditing catch sites rather than trusting the exception's
+ * modifier.
+ *
+ * <p>Having got past those, it surfaces as a failed {@code EffectReceipt}
+ * carrying this message, because {@code LiveInterpreter.runEffects} traps
+ * {@code Exception} at the boundary. That is the wanted behaviour: the operation
+ * that would have escaped fails, loudly, and the rest of the program halts or
+ * continues on its own declared continuation policy.
  *
  * <h2>The message names the path AND the home</h2>
  *
