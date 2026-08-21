@@ -147,12 +147,14 @@ already shipped a shim that refused *unconditionally* and satisfied a one-sided
 | --- | --- |
 | `jbang RunTests.java` | **ALL PASSED** (139 suites; 3 new classes, 19 new cases) |
 | `uv run pytest specs/` | **38 passed** in 1.71s |
-| `python skills/test_graph/scripts/run.py home-integrity` | **BUILD SUCCESSFUL, 15/15 nodes passed** (run `20260821-191337`, 5m 18s) |
+| `python skills/test_graph/scripts/run.py home-integrity` | **BUILD SUCCESSFUL, 15/15 nodes passed** (run `20260821-192222`, 5m 11s, on the rebased tree) |
 
-### The graph result — run `20260821-191337`, BUILD SUCCESSFUL, 15/15
+### The graph result — run `20260821-192222`, BUILD SUCCESSFUL, 15/15
 
-`home-integrity` ran green end to end in 5m 18s after DEF-016 was cleared. Both
-of this ticket's nodes executed. Verbatim envelopes are committed under
+`home-integrity` ran green end to end in 5m 11s, on the tree rebased onto epic
+tip `a4a95cb`. Both of this ticket's nodes executed. It was run twice: once at
+`20260821-191337`, which surfaced the coverage hole below, and again at
+`20260821-192222` after the fix. Verbatim envelopes are committed under
 `probes/his-9/graph-*.json`.
 
 **`home.integrity.sync.stays.inside.its.home` — new, `passed`**
@@ -233,13 +235,27 @@ That matters because of what the law is for. Its javadoc: a run that finds
 not look" is the failure it exists to close. A run that finds **one of seven** is
 the same failure one notch quieter, and it passed.
 
-**Fixed for this ticket's node only**: it now declares and publishes
-`victimHome` and `syncingHome`. Both verify **exit 0**, so this extends the law's
-reach rather than importing a known-bad fixture into a shared post-condition.
-The other two nodes are **DEF-017** — and HIS-10's pair is a *decision*, not a
-one-liner, because those two verify exit 1 by construction and publishing them
-would point the law's `sync --force-scripts` remedy at a deliberately
-unsanctioned home.
+**Fixed for this ticket's node only, and re-run to prove it.** It now declares
+and publishes `victimHome` and `syncingHome`. Measured across the two runs:
+
+| | run `…191337` | run `…192222` |
+| --- | --- | --- |
+| `homesChecked` | **1** | **3** |
+| `homesRepaired` | 0 | **0** — both new homes verified; neither needed the remedy |
+| law status | passed | passed |
+| graph | 15/15 | 15/15 |
+
+Both homes verify **exit 0**, so this extends the law's reach rather than
+importing a known-bad fixture into a shared post-condition — which is why
+`homesRepaired` stays at 0 rather than the law running `sync --force-scripts`
+against something.
+
+The other four homes belong to the HIS-7 and HIS-10 nodes and are **DEF-017**.
+HIS-10's pair is a *decision*, not a one-liner: those two verify **exit 1 by
+construction** — that node's subject is a home whose sanction was revoked — so
+publishing them would point the law's repair arm at a deliberately unsanctioned
+home. Either the law needs a way to mark a negative fixture, or they stay out
+and the reason is written down.
 
 **Graphs run, and why those.** `home-integrity` is this ticket's declared
 `conflict_keys.test_graph` graph and the only one whose fixtures exercise the

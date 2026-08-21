@@ -18,3 +18,16 @@ Seven homes present, one checked. The gate is publish(), not dependsOn():
 HomeFixpointLaw.candidateHomes walks upstream CONTEXT VALUES only, and
 the fixture node is the only one that published a home path.
 Filed as DEF-017. HIS-9's node now publishes its two.
+
+--------------------------------------------------------------------
+AFTER: run 20260821-192222, same graph, SyncStaysInsideItsHome now
+declares and publishes victimHome + syncingHome.
+
+  homesChecked   1  ->  3
+  homesRepaired  0  ->  0      (both new homes verified; nothing needed repair)
+  law status     passed -> passed
+  graph          BUILD SUCCESSFUL, 15/15 nodes passed
+
+The two homes this node creates are now inside the graph's shared
+post-condition. The four belonging to the HIS-7 and HIS-10 nodes are not,
+and remain DEF-017.
