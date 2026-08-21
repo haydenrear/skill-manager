@@ -2945,18 +2945,40 @@ tickets:
       fails and neither `wt new` nor `skt ticket new` can produce a ticket home
       in this repository -- which is how the defect was found.
     slice: >
-      Make presence ask about ownership as well as runnability, from one
-      reading. A path in this home's bin/cli that resolves into another Skill
-      Manager home is NOT provided by this home, whatever it runs -- which is
-      exactly what verify and clone already say about it.
+      TWO HALVES, and the owner settled the second one -- see
+      the_contract_the_owner_stated.
 
-      Then either the clone rebuilds those shims locally, or it declares them
-      cold (ARTI-07's lazy-clone shape, already on this branch) and lets the
-      first use build them. State which, and why the other was not enough.
+      (1) THE DEFECT. Make presence ask about OWNERSHIP as well as runnability.
+      A path in this home's bin/cli that resolves into another Skill Manager
+      home is not provided by THIS home, whatever it runs. Today it is, so a
+      change-driven rebuild silently does nothing and says it did something.
+      This half is required under either design and is the actual bug.
 
-      DO NOT fix this by widening the sanction so clone accepts what verify
-      accepts. The permissive direction is the silent one, and it would leave
-      every ticket home quietly executing another home's binaries.
+      (2) THE CLONE. Do NOT build eagerly, and do NOT convert the inherited
+      shims into cold refusals. The clone keeps them usable -- they are the
+      parent's artifacts, they run, and the agent needs them on PATH -- and
+      DECLARES them: what artifacts this home has, which unit each belongs to,
+      and the exact command to rebuild one after changing that unit. Then
+      `home clone` must stop refusing a home for holding exactly what it was
+      designed to inherit.
+
+      An earlier draft of this slice offered "either the clone rebuilds them
+      locally, or it declares them cold". Both are wrong: the first spends time
+      rebuilding artifacts nobody changed, and the second takes working tools
+      off the agent's PATH to prove a point about ownership.
+    the_contract_the_owner_stated: >
+      LAZY BY DESIGN, AND THE AGENT IS TOLD. "The whole point of introducing
+      artifacts into skt was to make the agent aware of the artifacts, the CLI,
+      the things to be built. So we clone, then we say: here are the artifacts
+      for these skills on the path for you, and here is how you rebuild them if
+      you make a change. Why would we build them without the agent changing?
+      That's just a waste of time. However, if the agent changes it, then
+      they'll rebuild."
+
+      So the clone is a DECLARATION, not a build, and the rebuild is
+      CHANGE-DRIVEN. That is why (1) is the whole defect: the change-driven
+      rebuild is the only thing that ever replaces a shim, and it does not
+      work.
     acceptance:
       assertions:
         - "`build --force` on a shim that points into another home replaces it, or says plainly that it cannot and why."
