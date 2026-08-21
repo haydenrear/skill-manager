@@ -2874,7 +2874,7 @@ tickets:
         local_signal: "N/A: this ticket is the measurement"
 
   - id: HIS-7
-    title: "`home verify` sanctions the shim `home clone` refuses, so no ticket worktree can be built"
+    title: "`build` reports a shim it did not write, because presence is decided by what runs rather than what this home owns"
     phase: HIS
     status: next
     epic: home-integrity-sync
@@ -2886,76 +2886,90 @@ tickets:
     promotion_order: 4
     promotion_predecessor: HIS-3
     conflict_keys:
-      production: [HomeCloner.sanctionedParentShim, ChildHomeLink.isChildOf]
+      production: [CliPresence.alreadyProvided, CliArtifact.inHome, HomeCloner.sanctionedParentShim]
       tla: []
       adapters: []
       test_graph: [home-integrity/EveryShimResolves]
       workflow_data: []
     found_by: >
-      wave 2, attempting to provision HIS-4's declared worktree. Recorded first
-      as DEF-004 and escalated under deferment_policy blocking: escalate; the
-      owner scheduled it rather than absorbing it into HIS-4.
-    objective: >
-      BLOCKING THE EPIC'S OWN MACHINERY. `bootstrap-home.sh` fails against this
-      repository's project home, so neither `wt new` nor `skt ticket new` can
-      produce a usable ticket home, and every ticket that follows the documented
-      worktree front door hits it.
+      Wave 2, attempting to provision HIS-4's declared worktree; recorded as
+      DEF-004 and escalated. THE FIRST DIAGNOSIS WAS WRONG and was corrected by
+      the owner's sanity check -- see corrected_root_cause. The original framing
+      ("verify and clone disagree about a sanctioned shim") described a real
+      symptom but named the wrong cause and would have led to changing the
+      sanction rule, which is not the defect.
+    superseded_diagnosis: >
+      Filed first as: home verify sanctions five bin/cli symlinks into the root
+      home while home clone refuses the same five as FOREIGN_HOME, so no ticket
+      worktree can be built. Both halves of that are TRUE and neither is the
+      cause. The asymmetry is correct behaviour: the project home IS a
+      registered child of root, so its parent-store shims are sanctioned; a
+      fresh clone is not yet anybody's child, so they are not. Root-pointing
+      shims are BY DESIGN -- sanctionedParentShim exists to bless them and the
+      artifact graph models them as cli-shim:* artifacts with producers.
+    corrected_root_cause: >
+      THE REBUILD IS A NO-OP AT THE SHIM, AND REPORTS SUCCESS.
 
-      The project home's bin/cli holds absolute symlinks into the ROOT home for
-      five CLIs -- computeq, helm-deploy, monitoring, tla-spec-dev, tlc2. Two
-      readers disagree about those same five paths:
+      Measured on a clone of this project home, with the raw epic build:
 
-        home verify : "no path reaches any other Skill Manager home EXCEPT THE 5
-                      SANCTIONED PARENT-STORE SHIMS above" -- passes, clean.
-        home clone  : FOREIGN_HOME on each of the five, "clone verification
-                      FAILED", "<wt>/.skill-manager is not usable".
+        skill-manager build --force cli-shim:skill-script/tlc2 cli-shim:skill-script/computeq
+        ✓ cli: installed computeq -> <clone>/.skill-manager/bin/cli/computeq
+        ✓ built cli-shim:skill-script/computeq
+        2 selected: 2 built, 0 already current, 0 not buildable here
 
-      One home, two verdicts. This is CHM-15's shape and HIS-1's shape a third
-      time: two readings of one rule, in two methods, that nobody made agree.
-    root_cause: >
-      Both readers go through HomeCloner.sanctionedParentShim
-      (HomeCloner.java:1861-1876), whose last test is
-      ChildHomeLink.isChildOf(dstRoot, foreign) -- "is the DESTINATION home a
-      child of the home this shim points into". isChildOf
-      (ChildHomeLink.java:82-88) is satisfied by parentClaims (the parent's
-      child-homes registry names the child) or childWasMaterializedFrom.
+      and afterwards:
 
-      For `home verify` on the project home, dstRoot IS the project home and the
-      root home's registry claims it -- sanctioned.
+        <clone>/bin/cli/computeq -> /Users/hayde/.skill-manager/bin/cli/computeq
 
-      For `home clone` into a worktree, dstRoot is a home that DOES NOT EXIST
-      YET. Nothing claims it, and it was materialized from the PROJECT home, not
-      from root. So the identical shim is unsanctioned and the clone refuses.
+      unchanged, still pointing into root, and `home verify` on the clone still
+      refuses all five. The command announced a write it did not perform -- the
+      same defect shape as #133 finding 3, one layer down.
 
-      Two things are wrong and the ticket should say which it is fixing:
-      (a) the sanction is evaluated against a relationship the destination
-      cannot have at the moment it is being created; and
-      (b) isChildOf is one level deep, while the real chain is
-      root -> project -> worktree, so a clone of a child is a GRANDCHILD and
-      would still fail even after it was registered.
+      WHY. CliPresence.alreadyProvided (CliPresence.java:137-150) short-circuits
+      on providedByThisHome, whose question is CliArtifact.inHome -- "will this
+      run from this home". A symlink at <home>/bin/cli/<name> pointing into
+      ANOTHER home runs. So it is "provided by this home", the installer skips
+      the write, `build` reports built, and the one property that makes the shim
+      wrong -- that it belongs to a different home -- is invisible to the check
+      deciding whether to replace it.
+
+      So this is the epic's theme once more, in a new place: TWO ANSWERS TO ONE
+      QUESTION. `inHome` answers "runnable from here"; `verify` and `clone`
+      answer "owned by here"; nothing makes them agree, and a home can therefore
+      be simultaneously complete (nothing to build) and unusable (five foreign
+      paths).
+    consequence: >
+      The state cannot self-heal. A cloned home carries shims it does not own,
+      `build` refuses to replace them because they run, and `home clone`
+      refuses the home because they are foreign. bootstrap-home.sh therefore
+      fails and neither `wt new` nor `skt ticket new` can produce a ticket home
+      in this repository -- which is how the defect was found.
     slice: >
-      Make the two readers agree, from one function, on one rule -- the same
-      remedy HIS-1 applied to disposal. A clone inherits its source's shims, so
-      the natural rule is that it inherits the SOURCE's sanction: a shim that
-      was sanctioned in the home being copied is sanctioned in the copy.
+      Make presence ask about ownership as well as runnability, from one
+      reading. A path in this home's bin/cli that resolves into another Skill
+      Manager home is NOT provided by this home, whatever it runs -- which is
+      exactly what verify and clone already say about it.
 
-      State explicitly whether the answer is source-inheritance, transitive
-      descent, or both, and why the other was not enough. Do NOT fix it by
-      widening `verify` to accept more -- the permissive direction is the silent
-      one, and this rule exists to stop a home reaching into another home's
-      bytes.
+      Then either the clone rebuilds those shims locally, or it declares them
+      cold (ARTI-07's lazy-clone shape, already on this branch) and lets the
+      first use build them. State which, and why the other was not enough.
+
+      DO NOT fix this by widening the sanction so clone accepts what verify
+      accepts. The permissive direction is the silent one, and it would leave
+      every ticket home quietly executing another home's binaries.
     acceptance:
       assertions:
-        - bootstrap-home.sh produces a usable ticket home from this project home, and HIS-4's worktree can actually be created.
-        - "`home verify` and `home clone` return the same verdict for the same shim, from one function."
-        - A genuinely foreign path -- one that is NOT a parent-store shim -- is still refused by both, with the message unchanged.
-        - A clone of a clone (root -> project -> worktree) is handled, not merely the one-level case.
+        - "`build --force` on a shim that points into another home replaces it, or says plainly that it cannot and why."
+        - No command reports an artifact built when the path it names is unchanged.
+        - bootstrap-home.sh produces a usable ticket home from this project home, and HIS-4's worktree can be created.
+        - A CLI genuinely provided by the system, outside every home, is still not reinstalled — the existing escape hatch survives.
     goals:
       - goal: GOAL-home-invariants
         contribution: direct
         expected_effect: >
-          one new invariant stating that verify and clone agree on foreign-path
-          sanction, with a regression cfg that fails when they diverge
+          one new invariant stating that an artifact reported built is an
+          artifact whose output this home owns, with a regression cfg that fails
+          when a foreign path satisfies presence
         local_signal: "python skills/test_graph/scripts/run.py home-integrity"
       - goal: GOAL-no-spurious-holdback
         contribution: guard

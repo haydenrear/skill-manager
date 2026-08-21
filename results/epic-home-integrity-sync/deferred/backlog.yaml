@@ -127,9 +127,18 @@ findings:
     severity: blocking
     escalated: true
     summary: >
-      `home verify` and `home clone` disagree about the same five paths, and the
-      disagreement makes it impossible to bootstrap a ticket worktree home in
-      this repository at all.
+      A cloned home cannot be made usable: `build` reports its CLI shims built
+      without writing them, and `home clone` refuses the home for holding the
+      foreign paths that were therefore never replaced.
+    first_diagnosis_was_wrong: >
+      Filed as "verify and clone disagree about a sanctioned shim", corrected by
+      the owner's sanity check. That asymmetry is CORRECT behaviour -- the
+      project home is a registered child of root so its parent-store shims are
+      sanctioned, and a fresh clone is nobody's child yet so they are not.
+      Root-pointing shims are BY DESIGN. The defect is one layer down: the
+      rebuild that should replace them is a no-op that reports success, because
+      CliPresence decides provision by "will this run from this home" and a
+      symlink into another home runs. See #223 for the measurement.
     detail: >
       The project home's bin/cli holds ABSOLUTE SYMLINKS into the root home for
       five CLIs -- computeq, helm-deploy, monitoring, tla-spec-dev, tlc2 -- each
