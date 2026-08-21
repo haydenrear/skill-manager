@@ -706,9 +706,9 @@ findings:
     severity: major
     summary: >
       A javadoc that describes an enforcement site, a caller, or a precedence
-      the code no longer has is this epic's most repeated defect -- FOUR
-      instances in four tickets -- and nothing catches it, because prose is not
-      compiled and "declares" reads exactly like "enforces".
+      the code no longer has is this epic's most repeated defect -- EIGHT
+      instances across four tickets -- and nothing catches it, because prose is
+      not compiled and "declares" reads exactly like "enforces".
     detail: >
       Instances, all in this epic, all found by hand:
 
@@ -731,6 +731,22 @@ findings:
                 deleted, caught by the author on a final grep after fixing two.
         HIS-12  locateCli's javadoc names HomeDescriptorTest as the checker of
                 its precedence; the checker is HomeDescriptorCliRemedyTest.
+        HIS-4   DereferencedStoreLinks' class javadoc promised, in bold, that a
+                path it names is "not counted as a local change, not stashed,
+                and NOT DESTROYED", and said SyncGitHandler "carries these
+                directories across the stash -> merge -> pop window and puts
+                them back". True of ONE sync path. The other -- `sync --from`,
+                whose apply is deleteRecursive + copyRecursive -- had no escrow
+                at all, and the review measured the data loss the javadoc said
+                was impossible: the link back to a symlink out of the unit, the
+                child home's bytes gone, exit 0. Found by the review agent.
+        HIS-4   SyncPathsAgreeAboutDirtyTest's javadoc claimed the scan "fails
+                on the FOURTH handler nobody has written". Wrong twice over: it
+                is scoped to the effects package, and a THIRD and FOURTH caller
+                already exist outside it (UnitTrunkPull:187, UnitPublisher:169 --
+                now DEF-016). A guard whose own documentation overstates its
+                reach is worse than no guard, because it stops the next person
+                looking. Found by the review agent.
 
       The author's own diagnosis, which I think is right and is why this is
       filed rather than fixed six times: "'declares' and 'enforces' read alike,
@@ -756,6 +772,36 @@ findings:
       files three tickets are actively editing. Recorded now, with all six
       instances, so the pattern is arguable from evidence rather than from
       memory when someone decides whether to build it.
+    added_2026_08_21_by_his_4: >
+      TWO MORE INSTANCES, both from HIS-4 (#216), both found by the adversarial
+      review of #231 rather than by their author. Added here rather than filed
+      separately, because this entry's value is that the pattern is arguable
+      from evidence and a missing instance weakens it.
+
+      They also move the candidate_fix's coverage. The mechanical check proposed
+      above -- every {@code}/{@link} naming a method must RESOLVE -- catches
+      neither of mine: "NOT DESTROYED" names SyncGitHandler, which exists, and
+      "fails on the FOURTH handler nobody has written" names nothing at all.
+      Both are false CLAIMS about code that is present, which is the bucket the
+      entry already identifies as uncaught (takeOwnershipOfShim, the
+      unchecked-exception case). So of the eight instances, the cheap check
+      would catch the two that name a vanished surface and miss six.
+
+      NOTE ALSO, without changing it, that the entry as pushed said "FOUR
+      instances" in its summary while listing six in its detail, and that
+      candidate_fix says the check "would have caught all six above" two lines
+      before excluding two of them. The count in the summary is corrected to
+      eight; the candidate_fix prose is left in its author's words. Recorded
+      because an entry about documentation drifting from what it describes
+      should not quietly drift from its own evidence -- and because I would
+      rather flag it than silently rewrite somebody else's analysis.
+
+      The sharper reading for whoever picks this up: in BOTH of my instances the
+      javadoc was describing a GUARD -- what is protected, and what the scan
+      catches. A javadoc that overstates a guard is not the same risk as one
+      that misnames a method. It actively suppresses the next reader's doubt,
+      which is exactly what happened: the "NOT DESTROYED" promise is what made a
+      second sync path look already-handled.
     candidate_owner: unassigned
   - id: DEF-013
     # RENUMBERING AID: HIS-12 filed a different DEF-013 in a separate worktree.
