@@ -780,6 +780,53 @@ findings:
     candidate_owner: unassigned
     status: open
 
+  - id: DEF-026
+    found_by: HIS-12 (#161), building the per-verb binding guard against HIS-4's branch
+    found_at: "2026-08-21"
+    severity: major
+    summary: >
+      HIS-4's three new merge-conflict remedies are CLASS 3 (`sync`) and carry no
+      `--home`, so once HIS-4 merges they name a build correctly and a home not
+      at all. HIS-12's guard will go red on them, deliberately, and the fix is
+      one token per line.
+    detail: >
+      HIS-4 (#216) routed its new merge-conflict remedies through
+      `HomeDescriptor.cliInvocation` rather than emitting a bare token. That is
+      right, and it closed a HIS-12 review finding by itself -- the head token is
+      now a resolved build, and after HIS-12 it can no longer be a FOREIGN home's
+      entrypoint, which was DEF-002's mechanism.
+
+      What it does not do is bind the home. The three lines, verbatim from
+      origin/feature/216-his-4 at 39fc823:
+
+        + ", then `" + cli + " sync " + name + "`";
+        + " (`git status`), then `" + cli + " sync " + name + "`; or merge by hand "
+        + "command retires it; `" + cli + " sync " + name + "` does so now";
+
+      `sync` is a class-3 verb under the per-verb contract (#161): it names no
+      home of its own, so a remedy built on it inherits whatever
+      SKILL_MANAGER_HOME the reader's shell carries -- unset, the operator's ROOT
+      home. That is the same instruction-edits-the-wrong-home defect as DEF-002,
+      on a surface that did not exist when DEF-002 was filed.
+    why_it_is_filed_and_not_fixed: >
+      The lines are on an unmerged branch this ticket cannot edit, and HIS-4
+      promotes before HIS-12. Filing it is also not the only mitigation: HIS-12
+      ships a source-scan guard that FAILS on exactly these three lines, so the
+      defect cannot merge silently. Verified against the pattern, all three
+      match, and the class-1 negative (`home sync --from/--to`) is skipped.
+    fix: >
+      Append ` --home <the home the command operated on>` to each of the three,
+      the same way ConsoleProgramRenderer's sync remedy does:
+      `spelling.binary() + " sync " + name + " " + spelling.homeArg()`.
+      `sync --home` exists (added by HIS-9, and independently by HIS-12).
+    expected_signal: >
+      After HIS-4 merges and before this is fixed, HomeDescriptorCliRemedyTest's
+      "every printed remedy that names a class-2/3 verb also names its home"
+      fails and names the three lines. That is the guard working, not a
+      regression in HIS-12.
+    candidate_owner: HIS-4 (the lines) — or whoever resolves the wave-4 merge
+    status: open
+
   - id: DEF-027
     found_by: HIS-12 (#161), taking the bounded half of DEF-012
     found_at: "2026-08-21"

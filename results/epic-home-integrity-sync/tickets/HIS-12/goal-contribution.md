@@ -171,6 +171,25 @@ front door is already broken.
 **Not taken:** how a pin is *written* (DEF-027) and whether `home verify` should
 notice (DEF-012's detection half, HIS-13's).
 
+## The rule, guarded mechanically
+
+"Bind per verb" has N call sites and only the call site knows the verb, so the
+binding cannot be centralised the way the CLI resolution was. A source scan
+enforces it instead: any remedy interpolating a resolved CLI in front of a verb
+that takes `--home` must carry one in the same expression.
+
+**It was built because it was already needed.** HIS-4 (#216) routed its new
+merge-conflict remedies through `HomeDescriptor.cliInvocation` — correctly, and
+that closed one of my review findings — putting three `<cli> sync <name>` lines,
+class 3 and unbound, in front of this rule. HIS-4 promotes first. All three match
+the guard; the class-1 negative (`home sync --from/--to`) is correctly skipped.
+
+**The first version of the guard was unusable and is recorded rather than
+elided.** It let the verb be any lowercase word, so `%s` matched nearly every log
+format string in the project — about 180 false positives. A check that can only
+be satisfied by weakening it is not a check. Pinning the verb list to the five
+that take `--home` is what makes each match a real remedy site.
+
 ## Two more the review measured, and both were real
 
 - **H4 — the symlink invariance was one-sided.** `isForeignHomeEntrypoint`
@@ -206,7 +225,7 @@ HIS-6 owns the terminal measurement; this contributes the remedy reader.
 | --- | --- |
 | `jbang RunTests.java` | **ALL PASSED** |
 | `uv run pytest specs/` | **38 passed** |
-| **`home-sync` (CORE)** | **passed — 18 of 18 nodes, complete** |
+| **`home-sync` (CORE)** | **passed — 18 of 18 nodes, complete** (re-run on the rebased tree) |
 | `home-integrity` (assigned) | **passed — 14 of 14 nodes, complete** |
 | `ticket-lifecycle` | see below |
 
@@ -266,11 +285,22 @@ defect one level up. It resolves `{@link}`, `@see` and `@throws`. It cannot see
   resolver's install phase split from its realize phase.
 - **DEF-027** — a pin is still *written* as an absolute versioned Cellar path,
   so the next `brew upgrade` re-breaks it.
+- **DEF-026** — HIS-4's three new merge-conflict remedies are class 3 and carry
+  no `--home`. Filed rather than fixed because they are on an unmerged branch
+  that promotes first — but **the guard fails on exactly those three lines**, so
+  it cannot merge silently. One token per line fixes it.
 - **DEF-028** — HIS-10's descent record read as a leak by `ticket-lifecycle`.
   **Closed: fixed upstream in `a4a95cb` from this finding**, before this PR.
 
 DEF-002 is **closed** with its before/after pasted. DEF-012 stays **open** for
-its detection half.
+its detection half, and its two internal cross-references — which said
+`DEF-014`, meaning my own finding, and would after renumbering have pointed at
+**HIS-4's** unrelated DEF-014 — now say `DEF-027`. That is DEF-021's
+stale-pointer pattern in a findings file rather than a javadoc.
+
+Numbers are the owner's allocation of 2026-08-21, id for id: `020→025`,
+`022→027`, `023→028`, plus `026` for the HIS-4 finding. `021` is the epic
+branch's own.
 
 ## Known rebase conflict, and how to resolve it
 
