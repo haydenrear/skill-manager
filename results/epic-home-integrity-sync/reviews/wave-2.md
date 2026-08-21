@@ -133,9 +133,19 @@ probe confirmed rather than broke.
   deletes an operator's toolchain rather than printing something wrong.
 - **`HomeCloner.verifyRoots`, provisioned-file branch.** It compares against the
   *unresolved* home spelling (`:1691` / `:1428`) while the symlink branch uses
-  the resolved one (`:1635`). On macOS every temp path is symlinked, so
-  `HomeFixpointLaw` — the post-condition of **22 graphs** — is currently blind
-  there. That is #206, folded into HIS-10.
+  the resolved one (`:1635`). **Reproduced** — one home, one broken reference,
+  two spellings: through a symlink it reports *"every reference resolves"*;
+  through its real path it refuses. That is #206, folded into HIS-10.
+
+  **And a correction to my own first reading of it.** I wrote that `HomeFixpointLaw`
+  — wired into **24 of 29** registered graphs, every one of whose homes sits under
+  `/var/folders/…/T` — was therefore blind. It is not: `/private/var/X` *contains*
+  the substring `/var/X`, so `indexOf` accidentally matches and the reference is
+  found. The graphs are saved by an accident of macOS path naming, not by
+  correctness. The practical consequence is a trap, not a reprieve: **the obvious
+  `/var`-based fixture passes before and after the fix**, and would have been this
+  epic's third vacuous assertion. The ticket agent was told before writing it.
+  Evidence: `probes/his-10/path-spelling.md`.
 - **`Executor.java:307`** — `case SkillEffect.CommitUnitsToStore e -> List.of();`
   An empty compensation for the one effect that overwrites installed bytes. A
   failed resolve deletes what it overwrote and restores nothing. That is #186,

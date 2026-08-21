@@ -643,10 +643,12 @@ epic_goals:
                                    store") and re-provisions five toolchains
                                    locally, ~90s
         The sanction therefore depends on an operator-supplied --against flag
-        and on nothing durable in the clone. Separately, on any machine where
-        the home path is reached through a symlink (/var -> /private/var), the
-        provisioned-file branch of HomeCloner.verifyRoots compares against the
-        UNRESOLVED spelling, so it reports clean without having checked.
+        and on nothing durable in the clone. Separately, where a home is reached
+        through a symlink whose spelling is not substring-compatible with its
+        real path, the provisioned-file branch of HomeCloner.verifyRoots compares
+        against the UNRESOLVED spelling and reports clean without having checked
+        -- measured on one home addressed two ways, blind through the symlink and
+        correct through the real path.
       measured_at: "23e35c7"
       evidence: results/epic-home-integrity-sync/probes/his-10/
     target: >
@@ -3397,11 +3399,25 @@ tickets:
       at :1635) for the symlink branch but hands the UNRESOLVED spelling to the
       provisioned-file branch (`missingReferencesIn(file, dstRoot)` at :1691),
       and destReferences (:1428) does a raw `text.indexOf(dstRoot.toString())`.
-      On any machine where the home is reached through a symlink -- /var ->
-      /private/var, a symlinked $HOME or checkout, which is every macOS temp
-      path -- that branch reports clean WITHOUT HAVING CHECKED. HomeFixpointLaw
-      is the post-condition of 22 graphs, so the assertion is currently blind
-      there. CliArtifact.usableInHome does the same string walk.
+      Where the home is reached through a symlink, that branch reports clean
+      WITHOUT HAVING CHECKED. CliArtifact.usableInHome does the same string walk.
+
+      MEASURED 2026-08-21, and the obvious fixture is VACUOUS -- see
+      results/epic-home-integrity-sync/probes/his-10/path-spelling.md. The macOS
+      temp case does NOT trigger it: "/private/var/X" CONTAINS the substring
+      "/var/X", so indexOf accidentally matches and the reference IS found. 24 of
+      29 registered graphs wire HomeFixpointLaw and every test-graph home lives
+      under /var/folders/.../T; they are saved by that accident, not by
+      correctness. The defect bites only where the two spellings are not
+      substring-compatible -- a symlinked intermediate directory, a symlinked
+      $HOME or checkout, /Volumes/..., a symlinked worktree path:
+
+        --home <s>/link/homeC     -> "every reference ... resolves"       BLIND
+        --home <s>/realdir/homeC  -> "1 reference(s) ... do not resolve"  CORRECT
+
+      one home, one broken file, two spellings. A fixture built on /var or /tmp
+      would pass before AND after the fix, which would have been this epic's
+      THIRD vacuous assertion.
     slice: >
       (1) PROVENANCE. A clone records its descent durably -- what it was cloned
       from, and what that home's parent store is -- so the sanction is a fact in
