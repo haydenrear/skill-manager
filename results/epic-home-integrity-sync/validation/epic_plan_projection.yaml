@@ -1,5 +1,5 @@
 version: 1
-schedule_revision: 4
+schedule_revision: 5
 name: child-home-materialization-workflow
 epic:
   slug: home-integrity-sync
@@ -654,7 +654,7 @@ tickets:
   status: planned
   epic: home-integrity-sync
   github_issue: 217
-  wave: 7
+  wave: 8
   depends_on:
   - HIS-1
   - HIS-2
@@ -666,9 +666,10 @@ tickets:
   - HIS-11
   - HIS-12
   - HIS-13
+  - HIS-14
   blocks:
   - HIS-6
-  promotion_order: 12
+  promotion_order: 13
   promotion_predecessor: HIS-8
   conflict_keys:
     production: []
@@ -703,7 +704,7 @@ tickets:
   role: evaluation
   epic: home-integrity-sync
   github_issue: 218
-  wave: 8
+  wave: 9
   depends_on:
   - HIS-1
   - HIS-2
@@ -717,8 +718,9 @@ tickets:
   - HIS-11
   - HIS-12
   - HIS-13
+  - HIS-14
   blocks: []
-  promotion_order: 13
+  promotion_order: 14
   promotion_predecessor: HIS-5
   owns_goals:
   - GOAL-no-spurious-holdback
@@ -935,7 +937,7 @@ tickets:
   epic: home-integrity-sync
   github_issue: 224
   added_in_schedule_revision: 3
-  wave: 6
+  wave: 7
   depends_on:
   - HIS-7
   - HIS-9
@@ -943,9 +945,10 @@ tickets:
   - HIS-11
   - HIS-12
   - HIS-13
+  - HIS-14
   blocks:
   - HIS-6
-  promotion_order: 11
+  promotion_order: 12
   promotion_predecessor: HIS-13
   rescheduled_in_revision_4: 'Moved from wave 3 to wave 6. HIS-8 documents the contract; revision 4 added
     five tickets that CHANGE the contract (what a clone records, what a remedy names, what a walk-back
@@ -1027,6 +1030,7 @@ tickets:
   blocks:
   - HIS-11
   - HIS-13
+  - HIS-14
   - HIS-5
   - HIS-6
   - HIS-8
@@ -1301,6 +1305,7 @@ tickets:
   depends_on:
   - HIS-7
   blocks:
+  - HIS-14
   - HIS-5
   - HIS-6
   - HIS-8
@@ -1365,16 +1370,23 @@ tickets:
   epic: home-integrity-sync
   github_issue: 159
   added_in_schedule_revision: 4
-  wave: 5
+  wave: 6
   depends_on:
   - HIS-9
   - HIS-10
+  - HIS-14
   blocks:
   - HIS-5
   - HIS-6
   - HIS-8
-  promotion_order: 10
-  promotion_predecessor: HIS-11
+  promotion_order: 11
+  promotion_predecessor: HIS-14
+  rescheduled_in_revision_5: 'Moved behind HIS-14. DEF-029''s damage was to the operator''s real AGENT
+    directories rather than to a store, which makes it HIS-13''s sharpest test case -- and a detector
+    written before HIS-14 lands would be written against the two-axis bug rather than against the fixed
+    contract.
+
+    '
   conflict_keys:
     production:
     - HomeCommand.repair
@@ -1422,6 +1434,94 @@ tickets:
     contribution: guard
     expected_effect: detection must use the same reader HIS-10 makes canonical, not a fourth one
     local_signal: jbang RunTests.java
+- id: HIS-14
+  title: '`--home` binds one of a home''s two axes, so a remedy edits the operator''s real agent directories'
+  phase: HIS
+  status: planned
+  epic: home-integrity-sync
+  github_issue: 232
+  added_in_schedule_revision: 5
+  wave: 5
+  depends_on:
+  - HIS-9
+  - HIS-12
+  blocks:
+  - HIS-13
+  - HIS-5
+  - HIS-6
+  - HIS-8
+  promotion_order: 10
+  promotion_predecessor: HIS-11
+  conflict_keys:
+    production:
+    - HomeCommand.homeEnvPrefix
+    - SyncCommand.home
+    - ProjectCommand.SyncCmd.home
+    - AgentHomes
+    tla: []
+    adapters: []
+    test_graph:
+    - home-integrity/EveryShimResolves
+    workflow_data: []
+  found_by: 'HIS-12 (#161), filed as DEF-029 -- by pasting its OWN printed remedy into a fresh shell and
+    then looking at what it had touched. Not by a check.
+
+    '
+  root_cause: "A HOME HAS TWO AXES AND `--home` PINS ONE.\nSKILL_MANAGER_HOME says where the UNITS live.\
+    \ CLAUDE_CONFIG_DIR, CODEX_HOME and GEMINI_HOME say where the AGENT CONFIGS live, and they are a separate\
+    \ axis. `--home` sets the first only, so the store half goes where it was told and the agent half\
+    \ resolves against the ambient environment.\nMEASURED, with SKILL_MANAGER_HOME unset and the root\
+    \ home's bin/cli first on PATH:\n\n  $ <build> sync probe-unit --merge --home <scratch>/project/.skill-manager\n\
+    \    ✓ units.lock.toml: wrote 1 unit(s) -> <scratch>/project/...\n    ✓ agents: 1 unit(s) linked into\
+    \ claude, codex, gemini   <-- WHICH claude?\n\nThe agent half landed in the OPERATOR'S REAL homes\
+    \ -- three dangling symlinks under ~/.claude, ~/.codex, ~/.gemini plus marketplace registrations in\
+    \ ~/.claude/settings.json, ~/.claude/plugins/known_marketplaces.json and ~/.codex/config.toml. The\
+    \ scratch directory was deleted afterwards, so `probe-unit` began appearing as a loadable skill IN\
+    \ AN UNRELATED AGENT SESSION. That is how it was found. Repaired by hand 2026-08-21; the config edits\
+    \ had to be approved by the owner because the permission layer correctly refused both the ticket agent\
+    \ and the epic agent.\nTHE CORRECT SHAPE IS ALREADY IN THE CODEBASE. HomeCommand.homeEnvPrefix binds\
+    \ all four variables and its own javadoc states the rule that was broken. `home verify`'s remedy is\
+    \ unaffected because of it. So this is not a missing design -- it is the epic's signature defect once\
+    \ more, TWO SPELLINGS OF ONE DECISION, where one spelling is right and the other is the one every\
+    \ other remedy uses.\n"
+  not_introduced_by_his_12: 'A bare `sync <unit> --merge` behaved identically and could not name a home
+    at all. What HIS-12''s per-verb contract changes is that the remedy now LOOKS bound while binding
+    half, which is worse than visibly unbound: it suppresses the doubt that would make a reader check.
+    The epic agent chose that contract, so this is a consequence of an epic-level decision rather than
+    a ticket-level mistake, and it is recorded that way.
+
+    '
+  slice: '(1) `--home` binds BOTH axes, or refuses and names the variable it cannot set -- on every verb
+    that accepts it: sync, project sync, home drift, home shims, home close-out, unit publish, exec. (2)
+    Every remedy printing `--home` is runnable without touching an unnamed home, PROVED BY EXECUTING the
+    printed string rather than asserting on its text. (3) A regression fixture that fails when the agent
+    axis is unbound -- the assertion this epic did not have, which is why the damage was found by an unrelated
+    agent session instead of by the suite. NOT IN SCOPE: write confinement (HIS-9, merged), clone provenance
+    (HIS-10, merged), detection and repair of homes already damaged (HIS-13).
+
+    '
+  acceptance:
+    assertions:
+    - A command carrying `--home <X>` writes no byte outside X and the agent directories X owns.
+    - That fixture FAILS when the agent axis is left unpinned -- vacuity checked, in writing.
+    - '`home verify`''s four-variable prefix and `--home` produce the SAME binding: one answer, not two
+      spellings.'
+    - A printed remedy is EXECUTED by a test, in a shell whose ambient agent variables name a different
+      home, and leaves that other home untouched.
+    - The root tier is covered by a synthetic root-shaped fixture, and NO test writes to the operator's
+      real agent homes -- the thing that caused this.
+  goals:
+  - goal: GOAL-one-home-one-answer
+    contribution: direct
+    expected_effect: 'two spellings of "which home is this command about" -> one; the agent axis stops
+      resolving against whatever the shell happened to export
+
+      '
+    local_signal: jbang RunTests.java
+  - goal: GOAL-no-destructive-recovery
+    contribution: guard
+    expected_effect: must not weaken the sanctioned parent-store sharing HIS-10 landed
+    local_signal: python skills/test_graph/scripts/run.py home-integrity
 _note: 'GENERATED PROJECTION -- do not hand-edit, and REGENERATE IT AFTER EVERY SCHEDULE CHANGE with .github/scripts/regen-epic-projection.py.
   Extracted from specs/desired_program_model/ticket_plan.yaml, which is canonical. It carries the epic
   blocks and only the HIS-* tickets, because validate_epic_plan.py requires full epic scheduling fields
