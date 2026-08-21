@@ -3305,7 +3305,19 @@ tickets:
       output root is a fresh chance to be wrong, and root is the tier with no
       tests, so it is where being wrong is discovered last.
 
-      Three known instances, all live:
+      FOUR known instances, all live:
+        (0) THE DESTRUCTIVE ONE, added in wave 3 as DEF-007 and MEASURED:
+            CliShimPruner.prune opens store.cliBinDir() with Files.isDirectory +
+            Files.list, both of which FOLLOW a symlink. Where homeB/bin/cli is
+            itself a link at homeA/bin/cli, a `sync` in homeB decides each entry
+            correctly and deletes it IN THE WRONG HOME -- homeA/bin/cli went from
+            2 entries to 0. `home verify` SEES the shape and refuses it
+            (walkFileTree without FOLLOW_LINKS); the repair path follows it. Two
+            readers, disagreeing in the one direction that destroys bytes.
+            Nothing the product does creates this shape today
+            (mirrorExistingShim mirrors ENTRIES, never the directory), so it is
+            reachable by hand or by a restored backup -- which is why it was
+            filed rather than allowed to stop HIS-10;
         (1) a producer following an inherited symlink out of the home -- fixed
             for cli-shim rebuilds only;
         (2) a home's PINNED bin/cli/skill-manager rebinding SKILL_MANAGER_HOME to
@@ -3323,10 +3335,16 @@ tickets:
       say which home it would have edited. Instance (3) is a REPORT, not a fix:
       those live in git-issue-workflow and skt, and reaching them is HIS-8's
       publish path.
+      Instance (0) is IN SCOPE and is the reason this ticket is no longer only
+      preventative: a delete path that follows a link out of the home is the
+      same defect as a write path that does, and the guard belongs in one place
+      for every writer rather than bolted onto the pruner.
       NOT IN SCOPE: repairing a home already damaged -- that is HIS-13.
     acceptance:
       assertions:
         - A producer that writes outside the home is refused, and the refusal names the path and the home.
+        - "DEF-007: a `sync` in homeB whose bin/cli is a symlink at homeA's does not remove one byte from homeA. Reproduced before the fix, refused after."
+        - The confinement covers DELETES, not only writes -- the pruner is a writer for this purpose.
         - The refusal is proved by a fixture that PASSES when the guard is removed -- vacuity checked, in writing.
         - "`SKILL_MANAGER_HOME=<x> <y>/bin/cli/skill-manager home describe` reports x or refuses; it never silently reports y."
         - A legitimate write into a sanctioned parent store (an inherited toolchain a child is allowed to read) is not broken by the guard.

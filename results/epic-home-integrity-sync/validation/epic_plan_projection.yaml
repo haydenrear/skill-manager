@@ -1033,23 +1033,37 @@ tickets:
     \ the process can write, and no layer between the effect and the filesystem asks whether the destination\
     \ is inside the home the command was given. Every new producer, every new effect and every new output\
     \ root is a fresh chance to be wrong, and root is the tier with no tests, so it is where being wrong\
-    \ is discovered last.\nThree known instances, all live:\n  (1) a producer following an inherited symlink\
-    \ out of the home -- fixed\n      for cli-shim rebuilds only;\n  (2) a home's PINNED bin/cli/skill-manager\
-    \ rebinding SKILL_MANAGER_HOME to\n      its own home, so `SKILL_MANAGER_HOME=<x> <y>/bin/cli/skill-manager`\n\
-    \      edits y, not x (this is why scratch homes must be driven with the raw\n      build);\n  (3)\
-    \ bootstrap-home.sh and skt resolving their CLI from the ROOT home, so\n      a worktree bootstrap\
-    \ runs a root-pinned binary.\n"
+    \ is discovered last.\nFOUR known instances, all live:\n  (0) THE DESTRUCTIVE ONE, added in wave 3\
+    \ as DEF-007 and MEASURED:\n      CliShimPruner.prune opens store.cliBinDir() with Files.isDirectory\
+    \ +\n      Files.list, both of which FOLLOW a symlink. Where homeB/bin/cli is\n      itself a link\
+    \ at homeA/bin/cli, a `sync` in homeB decides each entry\n      correctly and deletes it IN THE WRONG\
+    \ HOME -- homeA/bin/cli went from\n      2 entries to 0. `home verify` SEES the shape and refuses\
+    \ it\n      (walkFileTree without FOLLOW_LINKS); the repair path follows it. Two\n      readers, disagreeing\
+    \ in the one direction that destroys bytes.\n      Nothing the product does creates this shape today\n\
+    \      (mirrorExistingShim mirrors ENTRIES, never the directory), so it is\n      reachable by hand\
+    \ or by a restored backup -- which is why it was\n      filed rather than allowed to stop HIS-10;\n\
+    \  (1) a producer following an inherited symlink out of the home -- fixed\n      for cli-shim rebuilds\
+    \ only;\n  (2) a home's PINNED bin/cli/skill-manager rebinding SKILL_MANAGER_HOME to\n      its own\
+    \ home, so `SKILL_MANAGER_HOME=<x> <y>/bin/cli/skill-manager`\n      edits y, not x (this is why scratch\
+    \ homes must be driven with the raw\n      build);\n  (3) bootstrap-home.sh and skt resolving their\
+    \ CLI from the ROOT home, so\n      a worktree bootstrap runs a root-pinned binary.\n"
   slice: 'A write-confinement guard at the effect boundary: an effect declares the roots it may write
     under, and a write outside every declared root is REFUSED with the offending path and the home it
     escaped, not logged. Producers run with the guard in force. Instance (2) is in scope -- the pinned
     shim must honour an explicitly-set SKILL_MANAGER_HOME or refuse and say which home it would have edited.
     Instance (3) is a REPORT, not a fix: those live in git-issue-workflow and skt, and reaching them is
-    HIS-8''s publish path. NOT IN SCOPE: repairing a home already damaged -- that is HIS-13.
+    HIS-8''s publish path. Instance (0) is IN SCOPE and is the reason this ticket is no longer only preventative:
+    a delete path that follows a link out of the home is the same defect as a write path that does, and
+    the guard belongs in one place for every writer rather than bolted onto the pruner. NOT IN SCOPE:
+    repairing a home already damaged -- that is HIS-13.
 
     '
   acceptance:
     assertions:
     - A producer that writes outside the home is refused, and the refusal names the path and the home.
+    - 'DEF-007: a `sync` in homeB whose bin/cli is a symlink at homeA''s does not remove one byte from
+      homeA. Reproduced before the fix, refused after.'
+    - The confinement covers DELETES, not only writes -- the pruner is a writer for this purpose.
     - The refusal is proved by a fixture that PASSES when the guard is removed -- vacuity checked, in
       writing.
     - '`SKILL_MANAGER_HOME=<x> <y>/bin/cli/skill-manager home describe` reports x or refuses; it never
