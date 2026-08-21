@@ -554,6 +554,38 @@ bytes, this ticket takes the refusal. **Turning that refusal into a repair is
 HIS-13 (#159)**, and this is the concrete case it should be measured against:
 a home that `verify` refuses, `sync` refuses, and nothing can currently mend.
 
+## The contract with HIS-12 (#161), stated so it can be checked
+
+HIS-12 is changing printed remedies to bind per verb, and its
+`CliSource.HOME_ENTRYPOINT` reasons that a home's own shim binds its home, so it
+prints a **bare** `<home>/bin/cli/skill-manager <cmd>`. Against this ticket's
+guard that spelling exits **79** in any shell exporting a different
+`SKILL_MANAGER_HOME` — which is the normal state in every ticket worktree — at
+ten call sites.
+
+**What this ticket guarantees, and what HIS-12 must do to land on it:**
+
+1. **The guard never refuses a command line carrying `--home`.** Both spellings
+   are exempt — `--home <x>` and `--home=<x>` — checked by scanning `"$@"`
+   before any home comparison. A remedy that carries `--home` is safe by
+   construction, whatever the environment says.
+2. **`--home` now exists on every verb a remedy needs.** It was declared on
+   `home`, `exec` and `unit`; this ticket adds it to **`sync`** and
+   **`project sync`**, which were the only two missing and the two that a
+   home-mismatch refusal most has to recommend. There is still **no global
+   `--home`**: a remedy naming any other verb must not assume one.
+3. **The refusal names both homes and chooses neither.** It prints
+   `--home <this shim's home>` and `--home <the environment's home>` and lets
+   the operator pick. A shim cannot infer which was meant — a `#!` script never
+   sees the word that was typed, and the damage case is itself an absolute
+   invocation — so it does not try.
+
+So HIS-12's `HOME_ENTRYPOINT` class needs its remedy to carry `--home <that
+home>` rather than being bare. That is one flag on a spelling it already
+computes, and it makes the remedy correct whatever `SKILL_MANAGER_HOME` the
+reader's shell happens to export — which is a property the bare form never had,
+independently of this guard.
+
 ## What adversarial review found that this file had not disclosed
 
 Five things, all of them mine, none of them caught by my own vacuity rows.
