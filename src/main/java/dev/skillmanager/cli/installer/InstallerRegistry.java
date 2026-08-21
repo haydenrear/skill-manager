@@ -126,14 +126,24 @@ public final class InstallerRegistry {
      * an artifact that lives somewhere else — instead of the previous behaviour,
      * which was to report the install green.
      *
-     * <h2>The scope an outer caller declared WIDENS this, it does not replace it</h2>
+     * <h2>Which checks an outer declaration can reach, stated exactly</h2>
      *
-     * <p>When an effect has declared a
-     * {@link dev.skillmanager.store.WriteConfinement.Scope} — see
-     * {@code SkillEffect.writeConfinement} — that scope is used, so an effect
-     * that legitimately writes under a second root can say so and be reviewed
-     * for it. When nothing declared one, this method declares this home, so
-     * calling the registry directly is confined too.
+     * <p>Two of the checks below are <b>unconditional</b> and no declaration
+     * moves them: {@code bin/cli} must resolve inside this home, and the entry
+     * {@code takeOwnershipOfShim} deletes must belong to it. Those are facts
+     * about a home whoever is running, and making them depend on a caller
+     * having declared something is how the measured defects come back.
+     *
+     * <p>The two artifact checks — {@link #refuseAForeignDestination} and
+     * {@link #requireProducedInThisHome} — go through
+     * {@link dev.skillmanager.store.WriteConfinement#checkWrite}, so they DO
+     * consult whatever an effect declared (see
+     * {@code SkillEffect.writeConfinement}). That is the seam an effect
+     * legitimately writing under a second root would use, in one reviewable
+     * place. When nothing declared a scope this method declares this home, so
+     * calling the registry directly is confined too — which means removing the
+     * effect's declaration changes nothing today, and that is recorded in the
+     * ticket's evidence rather than left to be discovered.
      */
     public InstallOutcome installOne(CliDependency dep, SkillStore store, String skillName,
                                      boolean force) throws IOException {
