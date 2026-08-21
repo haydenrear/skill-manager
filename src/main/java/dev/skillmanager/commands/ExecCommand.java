@@ -162,11 +162,11 @@ public final class ExecCommand implements Callable<Integer> {
             // count and the remedy. The REFUSAL itself is unchanged -- this
             // ticket changes how often the gate is printed in full, never when
             // it is retired.
+            HomeDescriptor.CliSpelling spelling = HomeDescriptor.cliSpelling(store.root());
             if (drift.firstSurfacing()) {
                 for (String line : drift.report().render()) Log.error("  %s", line);
             } else {
-                Log.error("  %s", drift.stillUnreadLine(
-                        dev.skillmanager.store.HomeDescriptor.cliInvocation(store.root())));
+                Log.error("  %s", drift.stillUnreadLine(spelling.command()));
             }
             DriftGate.markSurfaced(store);
             // Bare `home drift` is the spelling that shows the pending change.
@@ -182,9 +182,10 @@ public final class ExecCommand implements Callable<Integer> {
             // top-level usage and exit 0 (#61): the operator sees success, the
             // gate refuses again, and nothing in the transcript says the remedy
             // was a no-op. Resolved against this home, same as close-out. #142.
-            String cli = HomeDescriptor.cliInvocation(store.root());
+            String cli = spelling.command();
             Log.error("  Read it with `%s home drift`, then clear the gate with", cli);
             Log.error("  `%s home drift --ack` (or launch with --ack-drift).", cli);
+            if (spelling.caveat() != null) Log.error("  note: %s", spelling.caveat());
             return DriftGate.EXIT_CODE;
         }
         if (drift != null) {

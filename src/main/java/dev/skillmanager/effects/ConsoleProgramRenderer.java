@@ -778,12 +778,18 @@ public final class ConsoleProgramRenderer implements ProgramRenderer {
         Log.error("%s has extra local changes (working tree edits, or commits ahead of the "
                 + "installed baseline) — sync would overwrite them.", skillName);
         String source = upstream == null || upstream.isBlank() ? "<origin>" : upstream;
+        // DEF-002 was measured on exactly this line: run against the PROJECT
+        // home it printed `/Users/hayde/.skill-manager/bin/cli/skill-manager
+        // sync <unit> --merge`, and following that verbatim edits the ROOT
+        // home. `cliSpelling` binds the remedy to the home the sync was about.
+        HomeDescriptor.CliSpelling spelling = HomeDescriptor.cliSpelling(store.root());
         Log.error("  re-run with: %s sync %s%s%s --merge   (merges %s into %s)",
-                HomeDescriptor.cliInvocation(store.root()),
+                spelling.command(),
                 skillName,
                 gitLatest ? " --git-latest" : "",
                 fromDir ? " --from " + source : "",
                 source, unitDirFor(skillName));
+        if (spelling.caveat() != null) Log.error("  note: %s", spelling.caveat());
     }
 
     /**

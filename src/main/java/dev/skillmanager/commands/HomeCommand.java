@@ -618,7 +618,8 @@ public final class HomeCommand {
          */
         private static String homeEnvPrefix(Path home) {
             Path root = dev.skillmanager.agent.AgentHomes.homeRootFor(home);
-            StringBuilder out = new StringBuilder("env SKILL_MANAGER_HOME=").append(home);
+            StringBuilder out = new StringBuilder(HomeDescriptor.envBinary())
+                    .append(" SKILL_MANAGER_HOME=").append(home);
             for (Path dir : dev.skillmanager.agent.AgentHomes.agentDirsUnder(root)) {
                 String name = dir.getFileName().toString();
                 String var = switch (name) {
@@ -628,7 +629,13 @@ public final class HomeCommand {
                 };
                 out.append(' ').append(var).append('=').append(dir);
             }
-            return out.append(' ').append(HomeDescriptor.cliInvocation(home)).toString();
+            // `binary()`, not `command()`: this method IS the home binding, and
+            // `command()` would prepend a second `env SKILL_MANAGER_HOME=` in
+            // front of the four roots assembled above. The two spellings of
+            // "bind this remedy to this home" agree because there is one
+            // decision — which build — and it is asked in one place.
+            return out.append(' ')
+                    .append(HomeDescriptor.cliSpelling(home).binary()).toString();
         }
 
         /** "40 authored mention(s)", "10 diagnostic message(s)", or both. */
@@ -988,7 +995,8 @@ public final class HomeCommand {
             // reason for running the command: the list stays on the console,
             // bounded, because a home with 200 changed units is still one
             // decision and the first dozen make it.
-            String cli = HomeDescriptor.cliInvocation(store.root());
+            HomeDescriptor.CliSpelling spelling = HomeDescriptor.cliSpelling(store.root());
+            String cli = spelling.command();
             // `--detail` is an explicit ask, so it always answers in full. The
             // collapse is about what an agent gets when it did NOT ask.
             if (detail || pending.firstSurfacing()) {
@@ -1001,6 +1009,7 @@ public final class HomeCommand {
             } else {
                 Log.warn("%s", pending.stillUnreadLine(cli));
             }
+            if (spelling.caveat() != null) Log.warn("  note: %s", spelling.caveat());
             DriftGate.markSurfaced(store);
             return DriftGate.EXIT_CODE;
         }

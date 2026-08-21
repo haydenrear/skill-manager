@@ -14,6 +14,8 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.SerializerProvider;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import dev.skillmanager.agent.AgentHomes;
+import dev.skillmanager.launch.RunningCli;
+import dev.skillmanager.shared.util.Fs;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -355,56 +357,270 @@ public record HomeDescriptor(
     // ------------------------------------------------------- cli discovery
 
     /**
-     * Locate the {@code skill-manager} executable that belongs with this
-     * home, in the order a consumer would want it honoured:
+     * Which step of {@link #locateCli} answered, and therefore how much the
+     * answer is worth.
+     *
+     * <p>The distinction is the whole of issue #161. Three of these steps
+     * identify a build somebody deliberately associated with this home or with
+     * this process; the fourth is a guess that happens to be spelled
+     * absolutely, which reads as authoritative and is not.
+     */
+    public enum CliSource {
+        /** {@code SKILL_MANAGER_CLI} — an explicit pin from the caller. */
+        PINNED_ENV(true, true),
+        /**
+         * {@code <storeRoot>/bin/cli/skill-manager} — the home's own
+         * entrypoint, which {@code home shims} wrote and which exports
+         * {@code SKILL_MANAGER_HOME=<storeRoot>} before it delegates. The only
+         * source that BINDS the home by itself.
+         */
+        HOME_ENTRYPOINT(true, false),
+        /**
+         * The build that is running right now, located through
+         * {@link dev.skillmanager.launch.RunningCli} — which reads
+         * {@code SKILL_MANAGER_INSTALL_DIR} rather than the process basename,
+         * so it works in a shipped launcher.
+         */
+        RUNNING_BUILD(true, true),
+        /**
+         * A raw {@code PATH} walk. Nothing here says which build was found;
+         * on a developer machine it is routinely an older release that answers
+         * an unknown subcommand with top-level usage and exit 0 (#61).
+         */
+        PATH_FALLBACK(false, true),
+        /** Nothing resolved. The bare token is all there is. */
+        UNRESOLVED(false, true);
+
+        private final boolean verified;
+        private final boolean needsHomeBinding;
+
+        CliSource(boolean verified, boolean needsHomeBinding) {
+            this.verified = verified;
+            this.needsHomeBinding = needsHomeBinding;
+        }
+
+        /**
+         * Whether anything actually associated this executable with this home
+         * or this process, as opposed to it merely being first on {@code PATH}.
+         */
+        public boolean verified() { return verified; }
+
+        /**
+         * Whether a remedy naming this executable must also name the home, by
+         * carrying {@code SKILL_MANAGER_HOME}. False only for
+         * {@link #HOME_ENTRYPOINT}, which binds the home from its own location.
+         */
+        public boolean needsHomeBinding() { return needsHomeBinding; }
+    }
+
+    /**
+     * A located CLI and the step that located it.
+     *
+     * @param path null exactly when {@code source} is {@link CliSource#UNRESOLVED}
+     */
+    public record ResolvedCli(Path path, CliSource source) {}
+
+    /**
+     * Locate the {@code skill-manager} executable that belongs with this home.
+     * The precedence, and this list is checked against the code by
+     * {@code HomeDescriptorTest}:
      *
      * <ol>
      *   <li>{@code SKILL_MANAGER_CLI}, when it names an executable — the
      *       explicit pin, used by a harness that built its own.</li>
-     *   <li>The running process's own command, when it really is a
-     *       {@code skill-manager} launcher rather than a bare {@code java}
-     *       or {@code jbang}. Self-reference is the most accurate answer
-     *       available and needs no search.</li>
      *   <li>{@code <storeRoot>/bin/cli/skill-manager}, the home's own
-     *       shim, before anything global — a per-project home that ships a
-     *       CLI means to use it.</li>
-     *   <li>{@code PATH}.</li>
+     *       entrypoint, before anything global — a home that ships a CLI means
+     *       to use it, and that file is the only candidate that binds this home
+     *       rather than inheriting whatever home the caller carries.</li>
+     *   <li>The build that is running right now, via
+     *       {@link dev.skillmanager.launch.RunningCli#locate}.</li>
+     *   <li>{@code PATH} — a guess, reported as {@link CliSource#PATH_FALLBACK}
+     *       so a caller can decline to present it as authoritative.</li>
      * </ol>
      *
-     * <p>Returns null when none of those find one, and the field is then
-     * omitted from the JSON rather than filled with a plausible guess: a
-     * consumer that execs a wrong path fails confusingly, while one that
-     * sees a missing field can say so.
+     * <h2>The step that used to be second was dead, and is gone</h2>
+     *
+     * <p>It read "the running process's own command, when it really is a
+     * {@code skill-manager} launcher", implemented as
+     * {@code ProcessHandle.current().info().command()} filtered on the basename
+     * {@code skill-manager}. Every shipped distribution of this CLI is a shell
+     * launcher that {@code exec}s a JVM, so that command is {@code java} or
+     * {@code jbang} and the filter never matched — in ANY shipped
+     * configuration. The javadoc claimed a precedence the code did not have,
+     * and the step it claimed was the one that would have made the
+     * {@code PATH} fallback rare.
+     *
+     * <p>{@link dev.skillmanager.launch.RunningCli} already answers that exact
+     * question correctly, by reading the {@code SKILL_MANAGER_INSTALL_DIR}
+     * back-reference every launcher exports, so the dead step is replaced by a
+     * live one rather than merely deleted. It is placed AFTER the home's own
+     * entrypoint, which is where the old ordering effectively put it (the dead
+     * step never won), so promoting it cannot change which build an existing
+     * home's descriptor names.
+     *
+     * <h2>Another home's entrypoint is never the answer</h2>
+     *
+     * <p>{@code <otherHome>/bin/cli/skill-manager} exports
+     * {@code SKILL_MANAGER_HOME=<otherHome>} from its own location and
+     * deliberately lets that win over the environment — so it cannot be
+     * pointed at this home by any prefix a remedy could carry. Reached through
+     * {@code PATH} (an operator with a home's {@code bin/cli} on their profile
+     * PATH — the measured shape of DEF-002) it turns "re-run this against the
+     * home you were in" into "silently edit a different home". Every step
+     * therefore skips such a candidate rather than returning it.
+     *
+     * <p>Returns {@link CliSource#UNRESOLVED} with a null path when none of
+     * those find one; the descriptor field is then omitted rather than filled
+     * with a plausible guess, because a consumer that execs a wrong path fails
+     * confusingly while one that sees a missing field can say so.
+     */
+    public static ResolvedCli locateCli(Path storeRoot) {
+        return locateCli(storeRoot, System::getenv, RunningCli::locateOrNull);
+    }
+
+    /**
+     * The testable form. {@code System.getenv} cannot be set from inside a JVM,
+     * so a resolution rule driven only by the ambient environment is a rule
+     * nobody can test — which is exactly how the dead second step survived
+     * three releases and a javadoc that described it.
+     *
+     * @param env          environment lookup ({@code SKILL_MANAGER_CLI}, {@code PATH})
+     * @param runningBuild the running launcher, or null when it cannot be established
+     */
+    static ResolvedCli locateCli(Path storeRoot,
+                                 java.util.function.Function<String, String> env,
+                                 java.util.function.Supplier<Path> runningBuild) {
+        Path root = storeRoot == null ? null : storeRoot.toAbsolutePath().normalize();
+
+        String pinned = env.apply("SKILL_MANAGER_CLI");
+        if (pinned != null && !pinned.isBlank()) {
+            Path p = normalizedExecutable(Path.of(pinned.trim()));
+            if (p != null && !isForeignHomeEntrypoint(root, p)) {
+                return new ResolvedCli(p, CliSource.PINNED_ENV);
+            }
+        }
+        if (root != null) {
+            Path own = normalizedExecutable(homeEntrypoint(root));
+            if (own != null) return new ResolvedCli(own, CliSource.HOME_ENTRYPOINT);
+        }
+        Path running = runningBuild.get();
+        if (running != null) {
+            Path p = normalizedExecutable(running);
+            if (p != null && !isForeignHomeEntrypoint(root, p)) {
+                return new ResolvedCli(p, CliSource.RUNNING_BUILD);
+            }
+        }
+        Path found = onPath(root, env.apply("PATH"));
+        return found == null
+                ? new ResolvedCli(null, CliSource.UNRESOLVED)
+                : new ResolvedCli(found, CliSource.PATH_FALLBACK);
+    }
+
+    /**
+     * As {@link #locateCli}, keeping the pre-#161 shape for callers that only
+     * want the path — the {@code home.runtime.json} {@code cli} field, which
+     * has no room to carry a caveat.
      */
     public static Path resolveCli(Path storeRoot) {
-        String pinned = System.getenv("SKILL_MANAGER_CLI");
-        if (pinned != null && !pinned.isBlank()) {
-            Path p = Path.of(pinned.trim());
-            if (Files.isExecutable(p)) return p.toAbsolutePath().normalize();
+        return locateCli(storeRoot).path();
+    }
+
+    /** {@code <storeRoot>/bin/cli/skill-manager}. */
+    private static Path homeEntrypoint(Path storeRoot) {
+        return storeRoot.resolve("bin").resolve("cli").resolve("skill-manager");
+    }
+
+    /**
+     * Whether {@code candidate} is the pinned entrypoint of a Skill Manager
+     * home that is NOT {@code storeRoot}.
+     *
+     * <p>Structural, and every part of the shape is required: the basename,
+     * the {@code bin/cli} parents, and the enclosing directory actually being
+     * a home ({@link dev.skillmanager.launch.LaunchEnv#looksLikeStoreRoot} —
+     * the one predicate this repository asks that question with). Compared
+     * through {@link Fs#realOrNormalized} so a home reached through a symlink
+     * is not mistaken for a foreign one, which is the same spelling-invariance
+     * clause GOAL-one-home-one-answer states.
+     */
+    static boolean isForeignHomeEntrypoint(Path storeRoot, Path candidate) {
+        if (candidate == null || !looksLikeSkillManagerLauncher(candidate)) return false;
+        Path cliDir = candidate.getParent();
+        if (cliDir == null || !"cli".equals(String.valueOf(cliDir.getFileName()))) return false;
+        Path binDir = cliDir.getParent();
+        if (binDir == null || !"bin".equals(String.valueOf(binDir.getFileName()))) return false;
+        Path owner = binDir.getParent();
+        if (owner == null || !dev.skillmanager.launch.LaunchEnv.looksLikeStoreRoot(owner)) {
+            return false;
         }
-        Path own = ProcessHandle.current().info().command()
-                .map(Path::of)
-                .filter(HomeDescriptor::looksLikeSkillManagerLauncher)
-                .orElse(null);
-        if (own != null && Files.isExecutable(own)) return own.toAbsolutePath().normalize();
-        if (storeRoot != null) {
-            Path shim = storeRoot.resolve("bin").resolve("cli").resolve("skill-manager");
-            if (Files.isExecutable(shim)) return shim.toAbsolutePath().normalize();
+        if (storeRoot == null) return true;
+        return !Fs.realOrNormalized(owner).equals(Fs.realOrNormalized(storeRoot));
+    }
+
+    /**
+     * How a remedy spells the {@code skill-manager} to run, and what it must
+     * admit about it.
+     *
+     * @param storeRoot the home the remedy is about
+     * @param cli       the located executable, or null
+     * @param source    which step of {@link #locateCli} located it
+     */
+    public record CliSpelling(Path storeRoot, Path cli, CliSource source) {
+
+        /** Just the executable, quoted so it survives being pasted into a shell. */
+        public String binary() {
+            return cli == null ? "skill-manager" : shellQuote(cli.toString());
         }
-        return onPath("skill-manager");
+
+        /**
+         * The head of a runnable remedy, bound to {@link #storeRoot}.
+         *
+         * <p>This is the answer to DEF-002. {@code binary()} alone is enough
+         * only for {@link CliSource#HOME_ENTRYPOINT}, whose path both names the
+         * home and binds it; every other spelling inherits whatever
+         * {@code SKILL_MANAGER_HOME} the reader's shell happens to carry, which
+         * unset is the operator's ROOT home. A remedy printed by a command run
+         * against home X that silently edits a different home is worse than no
+         * remedy, because it looks like it worked.
+         */
+        public String command() {
+            if (storeRoot == null || !source.needsHomeBinding()) return binary();
+            return envBinary() + " SKILL_MANAGER_HOME=" + shellQuote(storeRoot.toString())
+                    + " " + binary();
+        }
+
+        /**
+         * The one line a caller must print under a remedy built from
+         * {@link #command()}, or null when there is nothing to admit.
+         *
+         * <p>Issue #161: the fix that made remedies absolute
+         * ({@code /opt/homebrew/bin/skill-manager …}) made the {@code PATH}
+         * case READ more authoritative while leaving it exactly as wrong — that
+         * absolute path is the same binary the bare token would have resolved
+         * to. Nothing distinguished the two for the reader. This is what
+         * distinguishes them.
+         */
+        public String caveat() {
+            return switch (source) {
+                case PATH_FALLBACK -> "this skill-manager came from PATH (" + cli + "); nothing "
+                        + "records it as the build that printed this message, and an older "
+                        + "release answers an unknown subcommand with usage and exit 0. Give "
+                        + "this home its own CLI with `%s home shims` to remove the guess."
+                                .formatted(binary());
+                case UNRESOLVED -> "no skill-manager could be located for " + storeRoot
+                        + ", so this remedy names the bare command and your PATH decides which "
+                        + "build runs it.";
+                default -> null;
+            };
+        }
+
+        /** Whether the located build is one somebody associated with this home or process. */
+        public boolean verified() { return source.verified(); }
     }
 
     /**
      * How to spell {@code skill-manager} inside a remedy this build prints, so
-     * that pasting the remedy runs the build that understands this home.
-     *
-     * <p>The bare token is not a safe default in a printed remedy. On a machine
-     * whose {@code PATH} {@code skill-manager} is an older release, that build
-     * answers an unknown subcommand with <em>top-level usage and exit 0</em>
-     * (#61) — so an operator who copy-pastes gets a command that looks like it
-     * worked and did nothing, and the gate refuses again with the same message.
-     * That is worse than an error, because nothing in the transcript says the
-     * remedy was a no-op.
+     * that pasting the remedy runs a build that understands this home — and
+     * runs it AGAINST this home.
      *
      * <p>Lives here rather than at each refusal because a guard at N call sites
      * is N chances to miss one. {@code home close-out} learned that the
@@ -413,20 +629,59 @@ public record HomeDescriptor(
      * un-runnable spelling. The answer belongs where the string is built, and
      * every refusal that prints a remedy should reach for this.
      *
-     * <p>Falls back to the bare token when {@link #resolveCli} finds nothing.
-     * That is strictly better than an invented path: the operator sees the same
-     * string as before and can fix their {@code PATH}, whereas a
-     * plausible-looking wrong absolute path fails confusingly.
+     * @param storeRoot the home the remedy is about
+     */
+    public static CliSpelling cliSpelling(Path storeRoot) {
+        return cliSpelling(storeRoot, System::getenv, RunningCli::locateOrNull);
+    }
+
+    /** The testable form — see {@link #locateCli(Path, java.util.function.Function,
+     * java.util.function.Supplier)} for why one exists. */
+    static CliSpelling cliSpelling(Path storeRoot,
+                                   java.util.function.Function<String, String> env,
+                                   java.util.function.Supplier<Path> runningBuild) {
+        Path root = storeRoot == null ? null : storeRoot.toAbsolutePath().normalize();
+        ResolvedCli resolved = locateCli(root, env, runningBuild);
+        return new CliSpelling(root, resolved.path(), resolved.source());
+    }
+
+    /**
+     * The runnable head of a remedy about {@code storeRoot}: the CLI, bound to
+     * that home.
      *
-     * @param storeRoot the home the remedy is about — {@code <home>/bin/cli/skill-manager}
-     *                  names the build that home was created with
+     * <p>Every existing refusal already routed its remedy through this method
+     * (#142), which is why the home binding was added HERE rather than at the
+     * six call sites — the same argument that put the CLI resolution here in
+     * the first place. Callers that want only the executable, because they
+     * build their own environment prefix, ask {@link #cliSpelling} for
+     * {@link CliSpelling#binary()}.
      */
     public static String cliInvocation(Path storeRoot) {
-        Path cli = resolveCli(storeRoot);
-        if (cli == null) return "skill-manager";
-        String path = cli.toString();
-        // A path with a space in it has to survive being pasted into a shell.
-        return path.indexOf(' ') < 0 ? path : "'" + path.replace("'", "'\\''") + "'";
+        return cliSpelling(storeRoot).command();
+    }
+
+    /**
+     * {@code /usr/bin/env} when it is there, else the bare token.
+     *
+     * <p>Absolute on purpose: the {@code ticket-lifecycle} graph asserts that
+     * every remedy a refusal prints begins with a path a shell can run, and a
+     * bare {@code env} satisfies "runs" while failing "absolute". Resolving it
+     * here keeps the remedy honest under that check instead of weakening it.
+     */
+    public static String envBinary() {
+        Path usr = Path.of("/usr/bin/env");
+        return Files.isExecutable(usr) ? usr.toString() : "env";
+    }
+
+    /** A token that survives being pasted into a shell. */
+    static String shellQuote(String raw) {
+        return raw.indexOf(' ') < 0 ? raw : "'" + raw.replace("'", "'\\''") + "'";
+    }
+
+    private static Path normalizedExecutable(Path candidate) {
+        if (candidate == null) return null;
+        Path abs = candidate.toAbsolutePath().normalize();
+        return Files.isExecutable(abs) ? abs : null;
     }
 
     private static boolean looksLikeSkillManagerLauncher(Path command) {
@@ -437,13 +692,17 @@ public record HomeDescriptor(
         return base.equals("skill-manager");
     }
 
-    private static Path onPath(String binary) {
-        String path = System.getenv("PATH");
+    private static Path onPath(Path storeRoot, String path) {
         if (path == null || path.isBlank()) return null;
         for (String part : path.split(java.io.File.pathSeparator)) {
             if (part.isBlank()) continue;
-            Path candidate = Path.of(part, binary);
-            if (Files.isExecutable(candidate)) return candidate.toAbsolutePath().normalize();
+            Path candidate = normalizedExecutable(Path.of(part, "skill-manager"));
+            if (candidate == null) continue;
+            // A foreign home's entrypoint on PATH is the measured shape of
+            // DEF-002. Skipped, not returned: it would rebind the remedy to a
+            // home the operator was not in, and no prefix can stop it.
+            if (isForeignHomeEntrypoint(storeRoot, candidate)) continue;
+            return candidate;
         }
         return null;
     }

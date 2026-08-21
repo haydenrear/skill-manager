@@ -155,11 +155,14 @@ public final class ProjectSyncUseCase {
 
         DriftGate gate = DriftGate.recordSince(store, before, "project sync").orElse(null);
         if (gate != null) {
-            String cli = dev.skillmanager.store.HomeDescriptor.cliInvocation(store.root());
+            dev.skillmanager.store.HomeDescriptor.CliSpelling spelling =
+                    dev.skillmanager.store.HomeDescriptor.cliSpelling(store.root());
+            String cli = spelling.command();
             Log.warn("this sync changed %d unit(s) in %s — a launch will refuse until the change "
                             + "is read (`%s home drift`, then `%s home drift --ack`)",
                     gate.report().units().size(), store.root(), cli, cli);
             for (String line : gate.report().render()) Log.warn("  %s", line);
+            if (spelling.caveat() != null) Log.warn("  note: %s", spelling.caveat());
         }
         return new Result(result.resolved(), result.bindingsRemoved(), result.clearedPaths(),
                 result.pull(), result.rebuilt(), gate);

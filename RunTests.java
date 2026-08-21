@@ -214,6 +214,7 @@ public class RunTests {
         failures += SkillProjectRegistryTest.run();
         failures += ProjectDependencyResolverTest.run();
         failures += ProjectResolveAtomicClosureTest.run();
+        failures += dev.skillmanager.commands.ProjectSyncTypedRefusalTest.run();
         failures += ProjectChildHomeMaterializationTest.run();
         failures += ProjectSyncIdempotencyTest.run();
         failures += ProjectEnvMaterializerTest.run();
@@ -270,6 +271,7 @@ public class RunTests {
         failures += dev.skillmanager.cli.installer.ProducerStaysInsideItsHomeTest.run();
         failures += dev.skillmanager.cli.BuildIdentityTest.run();
         failures += dev.skillmanager.store.HomeDescriptorTest.run();
+        failures += dev.skillmanager.store.HomeDescriptorCliRemedyTest.run();
         failures += dev.skillmanager.policy.HomePolicyTest.run();
         failures += dev.skillmanager.launch.LauncherShimsTest.run();
         failures += dev.skillmanager.project.ProjectTrunkSyncTest.run();
