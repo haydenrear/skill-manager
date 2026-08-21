@@ -388,7 +388,10 @@ public record HomeDescriptor(
          * an unknown subcommand with top-level usage and exit 0 (#61).
          */
         PATH_FALLBACK(false, true),
-        /** Nothing resolved. The bare token is all there is. */
+        /**
+         * Nothing resolved, or the only candidate left was this home's own
+         * entrypoint with a DANGLING pin.
+         */
         UNRESOLVED(false, true);
 
         private final boolean verified;
@@ -418,7 +421,9 @@ public record HomeDescriptor(
      *
      * @param path null exactly when {@code source} is {@link CliSource#UNRESOLVED}
      */
-    public record ResolvedCli(Path path, CliSource source) {}
+    public record ResolvedCli(Path path, CliSource source, Path danglingHomePin) {
+        public ResolvedCli(Path path, CliSource source) { this(path, source, null); }
+    }
 
     /**
      * Locate the {@code skill-manager} executable that belongs with this home.
@@ -431,7 +436,9 @@ public record HomeDescriptor(
      *   <li>{@code <storeRoot>/bin/cli/skill-manager}, the home's own
      *       entrypoint, before anything global — a home that ships a CLI means
      *       to use it, and that file is the only candidate that binds this home
-     *       rather than inheriting whatever home the caller carries.</li>
+     *       rather than inheriting whatever home the caller carries. Skipped
+     *       when the build it pins is GONE (DEF-012), because a remedy must not
+     *       name a front door that cannot open.</li>
      *   <li>The build that is running right now, via
      *       {@link dev.skillmanager.launch.RunningCli#locate}.</li>
      *   <li>{@code PATH} — a guess, reported as {@link CliSource#PATH_FALLBACK}
@@ -499,21 +506,56 @@ public record HomeDescriptor(
                 return new ResolvedCli(p, CliSource.PINNED_ENV);
             }
         }
+        Path danglingPin = null;
         if (root != null) {
             Path own = normalizedExecutable(homeEntrypoint(root));
-            if (own != null) return new ResolvedCli(own, CliSource.HOME_ENTRYPOINT);
+            if (own != null) {
+                danglingPin = danglingPinIn(own);
+                if (danglingPin == null) return new ResolvedCli(own, CliSource.HOME_ENTRYPOINT);
+            }
         }
         Path running = runningBuild.get();
         if (running != null) {
             Path p = normalizedExecutable(running);
             if (p != null && !isForeignHomeEntrypoint(root, p)) {
-                return new ResolvedCli(p, CliSource.RUNNING_BUILD);
+                return new ResolvedCli(p, CliSource.RUNNING_BUILD, danglingPin);
             }
         }
         Path found = onPath(root, env.apply("PATH"));
         return found == null
-                ? new ResolvedCli(null, CliSource.UNRESOLVED)
-                : new ResolvedCli(found, CliSource.PATH_FALLBACK);
+                ? new ResolvedCli(null, CliSource.UNRESOLVED, danglingPin)
+                : new ResolvedCli(found, CliSource.PATH_FALLBACK, danglingPin);
+    }
+
+    /**
+     * The build {@code entrypoint} pins, when that build is GONE — otherwise
+     * null.
+     *
+     * <h2>DEF-012: a pin that does not survive an upgrade of the thing it pins</h2>
+     *
+     * <p>Measured 2026-08-21, immediately after {@code brew upgrade
+     * skill-manager} 0.23.0 → 0.24.0: the root home's entrypoint pinned
+     * {@code /opt/homebrew/Cellar/skill-manager/0.23.0/libexec/bin/skill-manager},
+     * a directory Homebrew had deleted. The shim file itself is still there
+     * and still executable, so the {@code isExecutable} test every reader
+     * (including this one) applies to it passed — while running it could only
+     * ever produce exit 127.
+     *
+     * <p>This is the RESOLUTION half of DEF-012 and it is deliberately narrow:
+     * a remedy must not name a front door that cannot open. It does not change
+     * how a pin is written or what any command does; the pin's dangling is
+     * carried into {@link CliSpelling#caveat()} and the next candidate answers
+     * instead. DETECTING a damaged home — {@code home verify} returning exit 0
+     * on a home whose own CLI is gone — is HIS-13's, and stays there.
+     *
+     * <p>Null for a file that is not one of ours, or whose pin is unreadable:
+     * "cannot tell" is not "broken", and treating it as broken would push
+     * every hand-written entrypoint off its own home.
+     */
+    private static Path danglingPinIn(Path entrypoint) {
+        Path pin = dev.skillmanager.launch.LauncherShims.pinnedCliIn(entrypoint).orElse(null);
+        if (pin == null) return null;
+        return Files.isExecutable(pin) ? null : pin;
     }
 
     /**
@@ -564,7 +606,11 @@ public record HomeDescriptor(
      * @param cli       the located executable, or null
      * @param source    which step of {@link #locateCli} located it
      */
-    public record CliSpelling(Path storeRoot, Path cli, CliSource source) {
+    public record CliSpelling(Path storeRoot, Path cli, CliSource source, Path danglingHomePin) {
+
+        public CliSpelling(Path storeRoot, Path cli, CliSource source) {
+            this(storeRoot, cli, source, null);
+        }
 
         /** Just the executable, quoted so it survives being pasted into a shell. */
         public String binary() {
@@ -600,6 +646,16 @@ public record HomeDescriptor(
          * distinguishes them.
          */
         public String caveat() {
+            if (danglingHomePin != null) {
+                // DEF-012's resolution half. Stated FIRST because it is the
+                // more actionable fact: the reader's home has a broken front
+                // door, and whatever this remedy fell through to is a
+                // consequence of that rather than the thing to fix.
+                return "this home's own CLI entrypoint pins a build that is gone ("
+                        + danglingHomePin + ") — an upgrade deleted it, and the shim cannot "
+                        + "open. This remedy fell through to " + (cli == null ? "nothing" : cli)
+                        + ". Re-pin the home with `%s home shims`.".formatted(binary());
+            }
             return switch (source) {
                 case PATH_FALLBACK -> "this skill-manager came from PATH (" + cli + "); nothing "
                         + "records it as the build that printed this message, and an older "
@@ -642,7 +698,8 @@ public record HomeDescriptor(
                                    java.util.function.Supplier<Path> runningBuild) {
         Path root = storeRoot == null ? null : storeRoot.toAbsolutePath().normalize();
         ResolvedCli resolved = locateCli(root, env, runningBuild);
-        return new CliSpelling(root, resolved.path(), resolved.source());
+        return new CliSpelling(root, resolved.path(), resolved.source(),
+                resolved.danglingHomePin());
     }
 
     /**

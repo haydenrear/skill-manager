@@ -244,6 +244,62 @@ public final class HomeDescriptorCliRemedyTest {
                     "and an unresolved remedy admits that too");
         });
 
+        // ------------------------------------------- DEF-012, resolution half
+
+        suite.test("a home entrypoint whose pin was deleted by an upgrade is not the remedy",
+                () -> {
+            Fixture f = Fixture.create("cli-dangling-pin-");
+            // The measured shape: `brew upgrade` 0.23.0 -> 0.24.0 removed the
+            // Cellar directory the pin names. The SHIM is still there and
+            // still executable, which is why every reader that tests -x on it
+            // called the home healthy.
+            Path cellar = Files.createTempDirectory("cli-cellar-");
+            Path oldBuild = executable(cellar.resolve("0.23.0/libexec/bin/skill-manager"));
+            Files.writeString(f.ownEntrypoint,
+                    dev.skillmanager.launch.LauncherShims.cliScript(oldBuild));
+            Fs.makeExecutable(f.ownEntrypoint);
+
+            assertEquals(oldBuild, dev.skillmanager.launch.LauncherShims
+                            .pinnedCliIn(f.ownEntrypoint).orElse(null),
+                    "the pin is readable while the build it names is still there");
+            assertEquals(HomeDescriptor.CliSource.HOME_ENTRYPOINT,
+                    f.locate(null, f.running, f.pathDir).source(),
+                    "and a live pin makes the entrypoint the answer, as it should");
+
+            // The upgrade.
+            Fs.deleteRecursive(cellar.resolve("0.23.0"));
+            assertTrue(Files.isExecutable(f.ownEntrypoint),
+                    "the shim itself is untouched — this is why -x could not see the defect");
+
+            HomeDescriptor.ResolvedCli after = f.locate(null, f.running, f.pathDir);
+            assertEquals(HomeDescriptor.CliSource.RUNNING_BUILD, after.source(),
+                    "a remedy falls through rather than naming a front door that cannot open");
+            assertEquals(oldBuild, after.danglingHomePin(),
+                    "and it carries WHICH build went missing");
+
+            HomeDescriptor.CliSpelling spelling = f.spell(null, f.running, f.pathDir);
+            assertContains(spelling.caveat(), oldBuild.toString(),
+                    "the caveat names the deleted build");
+            assertContains(spelling.caveat(), "home shims", "and how to re-pin the home");
+            assertContains(spelling.command(), f.home.toString(),
+                    "and the remedy still names the home it is about");
+        });
+
+        suite.test("a hand-written entrypoint is left alone: cannot tell is not broken", () -> {
+            Fixture f = Fixture.create("cli-handwritten-");
+            Files.writeString(f.ownEntrypoint, "#!/bin/sh\nexec /nowhere/skill-manager \"$@\"\n");
+            Fs.makeExecutable(f.ownEntrypoint);
+
+            assertTrue(dev.skillmanager.launch.LauncherShims
+                            .pinnedCliIn(f.ownEntrypoint).isEmpty(),
+                    "a file without the pin marker carries no pin this can read");
+            HomeDescriptor.ResolvedCli resolved = f.locate(null, f.running, f.pathDir);
+            assertEquals(HomeDescriptor.CliSource.HOME_ENTRYPOINT, resolved.source(),
+                    "so it is still this home's entrypoint — only a pin that is present AND "
+                            + "names something absent is a finding");
+            assertTrue(resolved.danglingHomePin() == null, "and nothing is reported dangling");
+        });
+
         return suite.runAll();
     }
 

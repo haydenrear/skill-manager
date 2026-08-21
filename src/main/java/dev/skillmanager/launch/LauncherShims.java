@@ -616,4 +616,60 @@ public final class LauncherShims {
             """.replace("@SKILL_MANAGER_HOME_MISMATCH_EXIT@",
                     String.valueOf(HOME_MISMATCH_EXIT_CODE));
 
+    /**
+     * The prefix of the one line in a generated entrypoint that carries the
+     * pin, up to the default-value {@code :-}.
+     *
+     * <p>This shape is already a contract with a second reader:
+     * {@code git-integration-repo}'s {@code ensure_cli_pin} finds the first
+     * line with this prefix, strips the closing brace and quote, and asserts
+     * the result is executable. See the comment inside {@link #CLI_TEMPLATE}
+     * for why nothing above that line may spell the prefix out. Named here so
+     * a third reader does not invent a fourth spelling of it.
+     */
+    public static final String PIN_PREFIX = "cli=\"${SKILL_MANAGER_CLI:-";
+
+    /**
+     * The absolute build a generated entrypoint pins, or empty when
+     * {@code entrypoint} is not one of ours or carries no readable pin.
+     *
+     * <h2>Why anything reads this back</h2>
+     *
+     * <p>DEF-012, measured 2026-08-21: the pin is an absolute VERSIONED path
+     * into the Homebrew Cellar
+     * ({@code /opt/homebrew/Cellar/skill-manager/0.23.0/libexec/bin/skill-manager}),
+     * and {@code brew upgrade} to 0.24.0 deleted that directory. The shim
+     * itself still exists and is still executable, so every caller that tests
+     * {@code -x <home>/bin/cli/skill-manager} — including
+     * {@link dev.skillmanager.store.HomeDescriptor#locateCli} — sees a healthy
+     * home entrypoint, while running it can only produce exit 127. A REMEDY
+     * naming that file reads as authoritative and cannot run, which is the
+     * defect of issue #161 in its purest form.
+     *
+     * <p>Empty rather than throwing for a file that is not ours, or is ours
+     * and unreadable: "cannot tell" must not be reported as "broken". Only a
+     * pin that is present AND names something absent is a finding.
+     */
+    public static java.util.Optional<Path> pinnedCliIn(Path entrypoint) {
+        if (entrypoint == null || !Files.isRegularFile(entrypoint)) {
+            return java.util.Optional.empty();
+        }
+        List<String> lines;
+        try {
+            lines = Files.readAllLines(entrypoint);
+        } catch (IOException unreadable) {
+            return java.util.Optional.empty();
+        }
+        if (lines.stream().noneMatch(l -> l.contains(PIN_MARKER))) return java.util.Optional.empty();
+        for (String line : lines) {
+            String trimmed = line.strip();
+            if (!trimmed.startsWith(PIN_PREFIX)) continue;
+            String rest = trimmed.substring(PIN_PREFIX.length());
+            int end = rest.indexOf("}\"");
+            if (end < 0) return java.util.Optional.empty();
+            String pin = rest.substring(0, end);
+            return pin.isBlank() ? java.util.Optional.empty() : java.util.Optional.of(Path.of(pin));
+        }
+        return java.util.Optional.empty();
+    }
 }
