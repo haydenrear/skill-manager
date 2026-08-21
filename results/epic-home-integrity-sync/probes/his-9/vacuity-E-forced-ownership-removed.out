@@ -1,0 +1,5 @@
+# HIS-9 vacuity check: E-forced-ownership-removed
+# fix disabled, `jbang RunTests.java` run against the broken code
+
+  [FAIL] a FORCED run over a sanctioned mirror owns the slot instead of writing through it: and the PARENT's artifact is byte-identical — this is the measured HIS-7 damage, not reproduced: expected <#!/usr/bin/env sh
+FAILURES: 1

@@ -1,0 +1,33 @@
+== fixture
+homeX = /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T//his9-shim-bSvO5y/homeX/.skill-manager
+homeY = /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T//his9-shim-bSvO5y/homeY/.skill-manager
+shim  = /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T//his9-shim-bSvO5y/homeY/.skill-manager/bin/cli/skill-manager  (executable)
+
+== SKILL_MANAGER_HOME=<x>  <y>/bin/cli/skill-manager home describe
+skill-manager: refusing to run against a home you did not name.
+  you named:  /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T//his9-shim-bSvO5y/homeX/.skill-manager
+  this shim would have edited: /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/his9-shim-bSvO5y/homeY/.skill-manager
+  This entrypoint binds the home it lives in, so it cannot honour
+  SKILL_MANAGER_HOME. Refusing rather than silently editing the
+  other one.
+  Use `/private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/his9-shim-bSvO5y/homeY/.skill-manager/bin/cli/skill-manager <cmd> --home /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T//his9-shim-bSvO5y/homeX/.skill-manager`,
+  or run the CLI build directly instead of this shim.
+   exit=79
+
+-- verdict
+REFUSED (79).
+  names the home you asked for: yes
+  names the home it would have edited: yes
+
+== the escape: same environment, plus --home
+  home root:   /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/his9-shim-bSvO5y/homeX
+  policy:      live
+  cli:         /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/his9-shim-bSvO5y/homeX/.skill-manager/bin/cli/skill-manager
+  gateway:     http://127.0.0.1:51717 (owned)
+  env:
+    SKILL_MANAGER_HOME /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/his9-shim-bSvO5y/homeX/.skill-manager
+    CLAUDE_CONFIG_DIR  /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/his9-shim-bSvO5y/homeX/.claude
+    CLAUDE_HOME        /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/his9-shim-bSvO5y/homeX/.claude
+   exit=0
+
+scratch: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T//his9-shim-bSvO5y

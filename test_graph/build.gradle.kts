@@ -1467,6 +1467,14 @@ validationGraph {
         // delete the descent record and the readers must split up again.
         node("sources/home-integrity/ReadersAgreeAboutOneClone.java")
 
+        // HIS-9 (#226) / DEF-007: a sync in one home deletes nothing from
+        // another. Runs a REAL sync over two cloned homes, one of whose bin/cli
+        // IS a link at the other's, and reads the victim's directory before and
+        // after -- the unit test drives the pruner, this one shows the exit-0
+        // silent data loss an operator would have met. Carries its own control:
+        // the same sync without the link must NOT refuse.
+        node("sources/home-integrity/SyncStaysInsideItsHome.java")
+
         // THE FIXPOINT LAW, as every home-producing graph ends. Depends on this
         // graph's last node so it runs last, and FAILS if it finds no home.
         node("sources/common/HomeFixpointLaw.java")

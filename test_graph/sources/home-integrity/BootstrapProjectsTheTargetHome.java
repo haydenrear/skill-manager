@@ -55,8 +55,8 @@ import java.nio.file.Path;
  * halves of the contract so neither can drift:
  *
  * <ul>
- *   <li>the shim <b>does</b> override an inherited {@code SKILL_MANAGER_HOME}
- *       (half 1, and if this ever stops being true the incident it prevents
+ *   <li>the shim <b>never runs against an inherited {@code SKILL_MANAGER_HOME}</b>
+ *       (half 1, and if this ever stops being true the decoy incident above
  *       comes back);</li>
  *   <li><b>{@code --home} beats the shim</b> (the escape the shim's own comment
  *       documents — "Name a different home with {@code --home}, or call the CLI
@@ -69,6 +69,28 @@ import java.nio.file.Path;
  * {@code --home <target>} rather than exporting the variable, and this node is
  * the evidence that doing so works. Anyone can then change one line in the leaf
  * and know before running it what the result will be.
+ *
+ * <h2>HIS-9 changed half 1, and it is a strengthening rather than a reversal</h2>
+ *
+ * <p>Overriding silently was the OTHER half of the same defect. The shim edited
+ * <b>y</b> having been told <b>x</b> and said nothing, which is how a command
+ * aimed at a worktree home lands in the root home — the class HIS-9 (#226)
+ * exists for, on the launch surface instead of in the filesystem. Measured
+ * before the fix, on two synthetic homes:
+ * {@code SKILL_MANAGER_HOME=<x> <y>/bin/cli/skill-manager home describe}
+ * exited <b>0</b> and reported {@code SKILL_MANAGER_HOME <y>}.
+ *
+ * <p>So the shim now <b>refuses</b>, exit
+ * {@code LauncherShims.HOME_MISMATCH_EXIT_CODE} (79), naming the home you asked
+ * for and the home it would have edited instead. Neither home is silently
+ * operated on, which is what half 1 was always protecting; what changed is that
+ * the disagreement is now visible rather than resolved in silence.
+ *
+ * <p><b>This makes bootstrap-home.sh's fix mandatory rather than merely
+ * correct.</b> Before, {@code env SKILL_MANAGER_HOME=<target> "$CLI" sync} with
+ * a home shim as {@code $CLI} silently synced the wrong home and 58 downstream
+ * assertions fell over; now it exits 79 with both homes named. The remedy is
+ * unchanged and is asserted below: pass {@code --home <target>}.
  */
 public class BootstrapProjectsTheTargetHome {
 
@@ -105,13 +127,28 @@ public class BootstrapProjectsTheTargetHome {
             }
 
             // HALF 1. Run the shim with SKILL_MANAGER_HOME naming a DIFFERENT
-            // home. The shim must ignore it and describe its own.
+            // home. It must not operate on either one silently: since HIS-9 it
+            // REFUSES, exit 79, naming both.
+            //
+            // Asserted on the exit code AND on both paths appearing in the
+            // output, never on the status alone. A shim that refused
+            // unconditionally would satisfy a status-only assertion perfectly,
+            // and this file has been burned by exactly that: a `printf '%%s'`
+            // copied across once made every home's shim refuse on every
+            // invocation, and the one-sided assertion covering it stayed green.
             ProcessBuilder envPb = new ProcessBuilder(shim.toString(), "home", "describe");
             SmEnv.apply(ctx, envPb, target);
             viaEnv = com.hayden.testgraphsdk.sdk.Procs.run(ctx, "shim-with-inherited-env", envPb);
             String envOut = readLog(ctx.reportDir(), viaEnv);
-            boolean shimAssertsItsOwnHome = envOut.contains(shimHome.toString());
-            boolean shimIgnoredTheInheritedValue = !envOut.contains(target.toString());
+            boolean shimRefusedTheMismatch = viaEnv.exitCode() == HOME_MISMATCH_EXIT_CODE;
+            boolean refusalNamesBothHomes =
+                    mentions(envOut, target) && mentions(envOut, shimHome);
+            // The property half 1 always protected, restated for the refusal:
+            // the shim did not run against the home it was handed. `home
+            // describe` prints its store root on a `SKILL_MANAGER_HOME <path>`
+            // line, so a refusal that never reached the CLI cannot produce one.
+            boolean shimNeverRanAgainstTheNamedHome =
+                    !envOut.contains("SKILL_MANAGER_HOME " + target);
 
             // HALF 2. Same shim, same inherited value, plus --home. The flag
             // must win — this is the escape the shim's comment documents and
@@ -131,37 +168,45 @@ public class BootstrapProjectsTheTargetHome {
                             && !flagOut.contains("home: " + shimHome);
 
             boolean pass = shimWritten
-                    && shimAssertsItsOwnHome && shimIgnoredTheInheritedValue
+                    && shimRefusedTheMismatch && refusalNamesBothHomes
+                    && shimNeverRanAgainstTheNamedHome
                     && flagAddressedTheTarget && flagDidNotAddressTheShimsHome;
 
             NodeResult result = pass
                     ? NodeResult.pass(SPEC.id())
                     : NodeResult.fail(SPEC.id(),
                             "shimWritten=" + shimWritten
-                                    + " shimAssertsItsOwnHome=" + shimAssertsItsOwnHome
-                                    + " shimIgnoredTheInheritedValue="
-                                    + shimIgnoredTheInheritedValue
+                                    + " shimRefusedTheMismatch=" + shimRefusedTheMismatch
+                                    + " refusalNamesBothHomes=" + refusalNamesBothHomes
+                                    + " shimNeverRanAgainstTheNamedHome="
+                                    + shimNeverRanAgainstTheNamedHome
                                     + " flagAddressedTheTarget=" + flagAddressedTheTarget
                                     + " flagDidNotAddressTheShimsHome="
                                     + flagDidNotAddressTheShimsHome
                                     + " envExit=" + viaEnv.exitCode()
+                                    + " (expected " + HOME_MISMATCH_EXIT_CODE + ")"
                                     + " flagExit=" + viaFlag.exitCode());
 
             return result
                     .process(shims).process(viaEnv).process(viaFlag)
                     .assertion("the_home_carries_its_own_cli_entrypoint", shimWritten)
-                    .assertion("the_shim_binds_the_home_it_lives_in", shimAssertsItsOwnHome)
-                    .assertion("the_shim_overrides_an_inherited_skill_manager_home",
-                            shimIgnoredTheInheritedValue)
+                    .assertion("the_shim_refuses_a_home_it_was_not_told_to_edit",
+                            shimRefusedTheMismatch)
+                    .assertion("the_refusal_names_both_homes", refusalNamesBothHomes)
+                    .assertion("the_shim_never_runs_against_an_inherited_home",
+                            shimNeverRanAgainstTheNamedHome)
                     .assertion("naming_a_home_with_the_flag_beats_the_shims_own_binding",
                             flagAddressedTheTarget)
                     .assertion("the_flag_does_not_silently_fall_back_to_the_shims_home",
                             flagDidNotAddressTheShimsHome)
-                    .log("Defect 10 is the composition of the first three assertions with"
-                            + " bootstrap-home.sh's `env SKILL_MANAGER_HOME=<target> \"$CLI\""
-                            + " sync`. The last two are the remedy: pass --home instead."
-                            + " The one-line fix is in the git-issue-workflow leaf and cannot"
-                            + " land from this repository.");
+                    .metric("shimExitOnHomeMismatch", viaEnv.exitCode())
+                    .log("Defect 10 is bootstrap-home.sh's `env SKILL_MANAGER_HOME=<target>"
+                            + " \"$CLI\" sync` meeting a shim that binds its own home. Since"
+                            + " HIS-9 that composition exits " + HOME_MISMATCH_EXIT_CODE
+                            + " with both homes named instead of syncing the wrong one in"
+                            + " silence. The last two assertions are the remedy: pass --home"
+                            + " instead. The one-line fix is in the git-issue-workflow leaf"
+                            + " and cannot land from this repository.");
         });
     }
 
@@ -180,9 +225,33 @@ public class BootstrapProjectsTheTargetHome {
     private static NodeResult unproven(String why) {
         return NodeResult.fail(SPEC.id(), why)
                 .assertion("the_home_carries_its_own_cli_entrypoint", false)
-                .assertion("the_shim_binds_the_home_it_lives_in", false)
-                .assertion("the_shim_overrides_an_inherited_skill_manager_home", false)
+                .assertion("the_shim_refuses_a_home_it_was_not_told_to_edit", false)
+                .assertion("the_refusal_names_both_homes", false)
+                .assertion("the_shim_never_runs_against_an_inherited_home", false)
                 .assertion("naming_a_home_with_the_flag_beats_the_shims_own_binding", false)
                 .assertion("the_flag_does_not_silently_fall_back_to_the_shims_home", false);
     }
+
+    /**
+     * Does {@code out} name {@code home}, in either spelling?
+     *
+     * <p>The shim resolves its own location with {@code pwd -P} while the node
+     * holds whatever spelling the fixture handed it, and on macOS a temp path is
+     * reachable as both {@code /var/…} and {@code /private/var/…}. A raw
+     * {@code contains} on one spelling is a false negative — the trap
+     * {@code Fs.realOrNormalized}'s javadoc says this codebase has fallen into
+     * five times.
+     */
+    private static boolean mentions(String out, Path home) {
+        if (out.contains(home.toString())) return true;
+        try {
+            return out.contains(home.toRealPath().toString());
+        } catch (IOException notThere) {
+            return false;
+        }
+    }
+
+    /** Mirrors {@code LauncherShims.HOME_MISMATCH_EXIT_CODE}; graph nodes do not
+     *  compile against the product's classes. */
+    private static final int HOME_MISMATCH_EXIT_CODE = 79;
 }

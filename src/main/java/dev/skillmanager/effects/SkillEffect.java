@@ -118,6 +118,56 @@ public sealed interface SkillEffect permits
     default Continuation continuationOnPartial() { return Continuation.CONTINUE; }
     default Continuation continuationOnFail() { return Continuation.CONTINUE; }
 
+    // ------------------------------------------------------------------
+    // Write confinement. An effect that claims to be writing INTO THIS HOME
+    // says so, and everything it reaches that consults
+    // dev.skillmanager.store.WriteConfinement then refuses a path resolving
+    // outside the roots named here.
+    //
+    // THE DEFAULT IS UNCONFINED, AND IT HAS TO BE. Around a dozen of the
+    // effects below write outside the home as their ENTIRE PURPOSE:
+    // MaterializeProjection and CreateBinding write ~/.claude, SyncAgents and
+    // RefreshHarnessPlugins write the three agent homes, SyncClaimingProjects
+    // writes a project checkout, ScaffoldSkill and ScaffoldPlugin write an
+    // operator-named directory, and every package backend writes a shared
+    // content-addressed cache whose own javadoc says confinement is not this
+    // codebase's mechanism. A default of "inside the home or refuse" would not
+    // be a guard, it would be an outage.
+    //
+    // So this method is the ENUMERATION of which effects claim confinement,
+    // and it is deliberately short. Adding an override is a reviewable act;
+    // the bug is the exception nobody wrote down.
+    // ------------------------------------------------------------------
+
+    /**
+     * The roots this effect may write under, or
+     * {@link dev.skillmanager.store.WriteConfinement#unconfined()} when it
+     * makes no such claim.
+     *
+     * <p><b>Declaring is not the same as enforcing</b>, and this method should
+     * not be read as though it were. Enforcement lives at the sites that
+     * actually mutate — {@code CliShimPruner.prune},
+     * {@code InstallerRegistry}'s producer boundary and
+     * {@code InstallerRegistry.takeOwnershipOfShim} — and each of those carries
+     * its own <em>unconditional</em> home check, so closing the measured
+     * defects does not depend on this declaration being present. What a
+     * declaration here does is let an effect WIDEN the roots (a sanctioned
+     * parent store, a shared cache) in one reviewable place, instead of each
+     * writer inventing its own exception where nobody reads it.
+     */
+    default dev.skillmanager.store.WriteConfinement.Scope writeConfinement(
+            dev.skillmanager.store.SkillStore store) {
+        return dev.skillmanager.store.WriteConfinement.unconfined();
+    }
+
+    /** Shorthand for the effects below that claim this home and nothing else. */
+    private static dev.skillmanager.store.WriteConfinement.Scope thisHome(
+            dev.skillmanager.store.SkillStore store, String what) {
+        return store == null
+                ? dev.skillmanager.store.WriteConfinement.unconfined()
+                : dev.skillmanager.store.WriteConfinement.forHome(store.root(), what);
+    }
+
     /**
      * Persist a registry URL override and reload {@link
      * dev.skillmanager.registry.RegistryConfig}. Failure modes: malformed
@@ -344,6 +394,14 @@ public sealed interface SkillEffect permits
             forceScriptUnitNames = forceScriptUnitNames == null
                     ? List.of()
                     : List.copyOf(forceScriptUnitNames);
+        }
+        // This effect prunes bin/cli and then runs every declared producer.
+        // Both halves are the measured damage: DEF-007 (the prune, deleting
+        // through a bin/cli that is itself a link at another home) and HIS-7
+        // (the producer, writing through an inherited shim into the parent).
+        @Override public dev.skillmanager.store.WriteConfinement.Scope writeConfinement(
+                dev.skillmanager.store.SkillStore store) {
+            return thisHome(store, "sync's CLI install pass");
         }
     }
 
@@ -632,6 +690,12 @@ public sealed interface SkillEffect permits
         public RunCliInstall(String unitName, CliDependency dep) {
             this(unitName, dep, false);
         }
+        // Runs a producer this codebase did not write, with
+        // $SKILL_MANAGER_BIN_DIR in its environment.
+        @Override public dev.skillmanager.store.WriteConfinement.Scope writeConfinement(
+                dev.skillmanager.store.SkillStore store) {
+            return thisHome(store, "the CLI install of " + dep.name());
+        }
     }
 
     /** One per MCP dep: register the server with the gateway. */
@@ -707,6 +771,12 @@ public sealed interface SkillEffect permits
         // One failed rebuild must not stop the others: the whole point of the
         // verb is repairing what it can and naming what it could not.
         @Override public Continuation continuationOnFail() { return Continuation.CONTINUE; }
+        // The HIS-7 path: this is the one moment a home takes ownership of an
+        // inherited shim and hands the slot to a producer.
+        @Override public dev.skillmanager.store.WriteConfinement.Scope writeConfinement(
+                dev.skillmanager.store.SkillStore store) {
+            return thisHome(store, "the rebuild of " + artifactId);
+        }
     }
 
     // ----------------------------------------------------- store / agent removal
@@ -723,7 +793,14 @@ public sealed interface SkillEffect permits
      * surviving installed unit still declares the same backend/requested-tool
      * identity, prune skill-manager-owned CLI artifacts too.
      */
-    record PruneCliIfOrphan(String unitName, CliDependency dep) implements SkillEffect {}
+    record PruneCliIfOrphan(String unitName, CliDependency dep) implements SkillEffect {
+        // A delete path, which is why it is here: the confinement covers
+        // deletes, not only writes.
+        @Override public dev.skillmanager.store.WriteConfinement.Scope writeConfinement(
+                dev.skillmanager.store.SkillStore store) {
+            return thisHome(store, "the CLI prune for " + unitName);
+        }
+    }
 
     /**
      * Write {@code artifacts.lock.toml} from what the home holds RIGHT NOW.

@@ -1072,3 +1072,146 @@ findings:
     status: open
     evidence:
       - src/test/java/dev/skillmanager/source/SyncPathsAgreeAboutDirtyTest.java
+  - id: DEF-013
+    found_by: HIS-9, placing the write-confinement guard
+    found_at: "2026-08-21"
+    severity: major
+    summary: >
+      There is no filesystem choke point to hang confinement on. 173 direct
+      `java.nio.file.Files` mutation call sites bypass `Fs`, and `Fs` cannot be
+      made the choke point without breaking the server build.
+    detail: >
+      HIS-9's slice says "every filesystem write that claims to be into this
+      home passes through one place". There is no such place, and the obvious
+      candidate cannot become one.
+
+      MEASURED on this branch:
+
+        grep -rn "Files\.(write|createDirect|copy|move|delete|createSymbolicLink
+                 |newOutputStream|createFile)" src/main/java | wc -l   ->  173
+
+        top packages: bindings 33, effects 27 (26 of them in LiveInterpreter
+        alone), project 24, shared/util 15, cli/installer 15, store 14
+
+      `dev.skillmanager.shared.util.Fs` covers recursive delete (50 call sites),
+      recursive copy (19), ensureDir (89) and chmod (13) -- and carries NO
+      write, NO move and NO createSymbolicLink at all. So the shims, the lock
+      files and the projections, which is where the mutation actually is, do not
+      go through it.
+
+      AND IT CANNOT SIMPLY BE WIDENED. `SkillManagerServer.java` compiles
+      `shared/util/Fs.java` STANDALONE (`//SOURCES` lines 11-13, alongside
+      Archives and BundleMetadata only). `shared/` imports nothing from
+      `dev.skillmanager` today -- verified, zero hits. Adding a
+      `dev.skillmanager.store.WriteConfinement` import to Fs would break the
+      server build, so the guard cannot live behind Fs without either moving Fs
+      or moving the guard into `shared/`.
+    what_his_9_did_instead: >
+      Enforced at the four sites where the measured damage happened --
+      CliShimPruner.prune, InstallerRegistry.takeOwnershipOfShim, the producer
+      boundary in InstallerRegistry.installOne, and the effect boundary in
+      LiveInterpreter.execute -- and said so, in WriteConfinement's javadoc and
+      in the goal contribution, rather than implying general coverage.
+    why_deferred: >
+      Routing 173 call sites through a facade is a mechanical change with a very
+      wide blast radius across bindings, projections and the project surface --
+      every one of which writes outside the home legitimately, so each site needs
+      its roots DECIDED, not just rewritten. That is a ticket, not a drive-by,
+      and doing it inside HIS-9 would have buried the four real fixes in it.
+    recommendation: >
+      For the owner: decide whether the follow-up is (a) a `HomeFs` facade in
+      `store/` that the home-writing paths adopt incrementally, or (b) moving
+      `WriteConfinement` into `shared/util` so `Fs` itself can consult it. (b) is
+      one commit and gives 171 delete/copy/mkdir sites coverage immediately; it
+      costs putting home-shaped policy in the package that is deliberately
+      dependency-free and shared with the server.
+    candidate_owner: unassigned
+    status: open
+
+  - id: DEF-014
+    found_by: HIS-9, fixing instance (2) -- the pinned shim rebinding the home
+    found_at: "2026-08-21"
+    severity: major
+    summary: >
+      `bootstrap-home.sh`'s `env SKILL_MANAGER_HOME=<target> "$CLI" sync` now
+      EXITS 79 where it used to silently sync the wrong home. The already-broken
+      path is now loud, which is better and is still broken until the leaf
+      passes `--home`.
+    detail: >
+      HIS-9 made `<home>/bin/cli/skill-manager` REFUSE when SKILL_MANAGER_HOME
+      names a different home, rather than override it in silence. Measured on
+      two synthetic homes, before and after, in
+      probes/his-9/instance2-{before,after}-guard.out:
+
+        before:  exit 0, `home describe` reported home Y -- the home the
+                 operator did NOT name
+        after :  exit 79, "refusing to run against a home you did not name",
+                 naming X and Y
+
+      `bootstrap-home.sh` (git-issue-workflow) and `skt` resolve $CLI as
+      $SKILL_MANAGER_CLI or `command -v skill-manager`. On a machine where the
+      PATH `skill-manager` is a HOME SHIM -- which the home-integrity graph node
+      records as the normal state, since `home shims` puts one there and its
+      directory goes on PATH -- that composition previously synced the shim's
+      home instead of the target, bootstrap exited 6, and ARTI-14 measured 58 of
+      207 downstream assertions falling over. It now exits 79 with both homes
+      named.
+
+      So this does NOT break a working path; it makes an already-failing one
+      diagnosable. It is filed because it is a behavioural change in a script
+      that lives in ANOTHER repository and is the epic's own front door.
+    the_remedy_is_one_line_and_is_already_asserted: >
+      Pass `--home <target>` instead of exporting the variable. The shim never
+      refuses when `--home` is present -- that escape is deliberate, is what the
+      refusal's own text recommends, and is pinned by
+      LauncherShimsTest's "--home settles it, so the remedy the refusal prints is
+      not itself refused" and by the graph node
+      home.integrity.bootstrap.projects.target.
+    why_deferred: >
+      Instance (3) of HIS-9's root cause is declared A REPORT, NOT A FIX, in the
+      ticket plan: bootstrap-home.sh and skt live in git-issue-workflow and skt,
+      and reaching them is HIS-8's publish path. The outer CLAUDE.md also forbids
+      starting a leaf change from anywhere but that leaf.
+    candidate_owner: HIS-8
+    status: open
+    evidence:
+      - results/epic-home-integrity-sync/probes/his-9/instance2-before-guard.out
+      - results/epic-home-integrity-sync/probes/his-9/instance2-after-guard.out
+
+  - id: DEF-015
+    found_by: HIS-9, closing the forced-write-through hole at the producer boundary
+    found_at: "2026-08-21"
+    severity: minor
+    summary: >
+      `sync --force-scripts` in a child home now TAKES OWNERSHIP of a sanctioned
+      inherited shim and rebuilds it locally, where it previously wrote through
+      the link into the parent store.
+    detail: >
+      HIS-7 closed the write-through for the REBUILD path only, by taking
+      ownership of the one slot it was about to write. A FORCED install reaches
+      the same producer by a different route: `InstallerRegistry.installOne(...,
+      force=true)` runs the backend over a slot that may still be a sanctioned
+      mirror, and `cat > "$SKILL_MANAGER_BIN_DIR/<n>"` follows it into the
+      parent home exactly as it did in the measurement HIS-7 was filed for.
+
+      HIS-9 handles it by reusing HIS-7's own mechanism -- takeOwnershipOfShim +
+      restoreForeignShim -- under `force` only. A routine sync (force=false) over
+      a sanctioned mirror is untouched, so HIS-10's "0 pruned, 2 installed" first
+      sync is unchanged.
+
+      Pinned by ProducerStaysInsideItsHomeTest's "a FORCED run over a sanctioned
+      mirror owns the slot instead of writing through it", which reddens with the
+      ownership call removed: the parent's artifact is no longer byte-identical.
+    the_cost: >
+      A child home running `sync --force-scripts` now rebuilds the skill-script
+      artifacts it had been sharing, rather than sharing them. That is more work
+      than before for that flag, and it is the correct trade -- the alternative
+      is rewriting the parent's file -- but it is a partial walk-back of HIS-10's
+      "do not rebuild what nobody changed" for this one flag, and HIS-6 should
+      know which behaviour it is measuring.
+    why_deferred: >
+      Not deferred as a defect; recorded so the interaction with HIS-10 is
+      visible at the wave review and so HIS-6's sync-cost numbers are read with
+      the flag in mind. No action is requested.
+    candidate_owner: HIS-6 (measurement only)
+    status: open

@@ -568,22 +568,77 @@ public final class LauncherShimsTest {
             assertEquals(0, result.rc, "so it exits with the exec'd CLI's status");
         });
 
-        suite.test("the cli entrypoint exports the home it lives in", () -> {
-            // Load-bearing, and measurable: the child is told a DIFFERENT home
-            // in its inherited environment, and must still see this one. Unset,
-            // SKILL_MANAGER_HOME means the operator's global home.
+        suite.test("the cli entrypoint binds the home it lives in when none was named", () -> {
+            // Load-bearing, and measurable: with SKILL_MANAGER_HOME unset the
+            // CLI would resolve the operator's GLOBAL home, so an unset variable
+            // is the case the export exists for. An unset variable is also not a
+            // request, which is why it is not refused — see the case below.
             Home home = Home.create("cli-entrypoint-exports-");
             Path pin = writeEnvEcho(home.root.resolve("pin-env"), "SKILL_MANAGER_HOME");
             LauncherShims.write(home.store, pin);
             Path shim = home.store.cliBinDir().resolve("skill-manager");
 
-            Result result = runProcess(List.of(shim.toString(), "--version"),
-                    Map.of("SKILL_MANAGER_HOME", "/somewhere/else/.skill-manager"));
+            Result result = runProcess(List.of(shim.toString(), "--version"), Map.of());
 
             assertContains(result.out, "SKILL_MANAGER_HOME=" + home.store.root().toRealPath(),
-                    "the shim rebound the home to the one it lives in");
-            assertFalse(result.out.contains("/somewhere/else"),
-                    "the caller's home did not survive");
+                    "the shim bound the home it lives in");
+            assertEquals(0, result.rc, "and handed over to its pin");
+        });
+
+        suite.test("the cli entrypoint refuses a home it was not told to edit, naming both",
+                () -> {
+            // HIS-9, instance (2). The shim overrides an inherited
+            // SKILL_MANAGER_HOME on purpose — that override exists because a
+            // project shim run with a decoy inherited created ten directories in
+            // the decoy. Overriding SILENTLY is the mirror of the same defect:
+            // `SKILL_MANAGER_HOME=<x> <y>/bin/cli/skill-manager` edited y having
+            // been told x, and said nothing, which is how a command aimed at a
+            // worktree home lands in the root home.
+            //
+            // The pin here ECHOES the home it was handed, so this case can tell
+            // "refused" from "ran against the right home" from "ran against the
+            // wrong one" — an exit code alone could not, and a one-sided
+            // assertion on the status is how a shim that ALWAYS refuses once
+            // passed this file for two releases.
+            Home home = Home.create("cli-entrypoint-refuses-");
+            Path pin = writeEnvEcho(home.root.resolve("pin-env"), "SKILL_MANAGER_HOME");
+            LauncherShims.write(home.store, pin);
+            Path shim = home.store.cliBinDir().resolve("skill-manager");
+            Path elsewhere = Files.createTempDirectory("cli-entrypoint-elsewhere-");
+
+            Result result = runProcess(List.of(shim.toString(), "--version"),
+                    Map.of("SKILL_MANAGER_HOME", elsewhere.toString()));
+
+            assertEquals(LauncherShims.HOME_MISMATCH_EXIT_CODE, result.rc,
+                    "it refuses with its own status, not the self-exec one and not 1");
+            assertContains(result.out, elsewhere.toString(),
+                    "the refusal names the home you asked for");
+            assertContains(result.out, home.store.root().toRealPath().toString(),
+                    "AND the home it would have edited instead");
+            assertFalse(result.out.contains("SKILL_MANAGER_HOME=" + home.store.root().toRealPath()),
+                    "and nothing ran: the pin was never reached, so neither home was touched");
+        });
+
+        suite.test("--home settles it, so the remedy the refusal prints is not itself refused",
+                () -> {
+            // The escape this file's own comment documents, and what
+            // bootstrap-home.sh should be passing. It is also what the generated
+            // AGENT launcher passes (`exec "$cli" exec --home "$home"`), so
+            // without this branch a worktree launcher inheriting a project
+            // home's variable would refuse to launch anything at all.
+            Home home = Home.create("cli-entrypoint-flag-");
+            Path pin = writeEnvEcho(home.root.resolve("pin-env"), "SKILL_MANAGER_HOME");
+            LauncherShims.write(home.store, pin);
+            Path shim = home.store.cliBinDir().resolve("skill-manager");
+            Path elsewhere = Files.createTempDirectory("cli-entrypoint-flag-elsewhere-");
+
+            Result result = runProcess(
+                    List.of(shim.toString(), "home", "describe", "--home", elsewhere.toString()),
+                    Map.of("SKILL_MANAGER_HOME", elsewhere.toString()));
+
+            assertEquals(0, result.rc, "naming a home on the command line is never refused");
+            assertContains(result.out, "SKILL_MANAGER_HOME=" + home.store.root().toRealPath(),
+                    "the pin ran, and --home is left to the CLI to honour");
         });
 
         suite.test("the cli entrypoint refuses when its pin is gone, and still ignores PATH", () -> {

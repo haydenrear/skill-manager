@@ -1,0 +1,4 @@
+# HIS-9 vacuity check: L-effect-declaration-removed
+# fix disabled, `jbang RunTests.java` run against the broken code
+
+ALL PASSED

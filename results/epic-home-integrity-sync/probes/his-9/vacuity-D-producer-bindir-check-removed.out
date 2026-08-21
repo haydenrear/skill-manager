@@ -1,0 +1,5 @@
+# HIS-9 vacuity check: D-producer-bindir-check-removed
+# fix disabled, `jbang RunTests.java` run against the broken code
+
+  [FAIL] a producer aimed at a home whose bin/cli IS a link out is refused: not true: $SKILL_MANAGER_BIN_DIR itself pointed at the other home, and the producer was never handed it
+FAILURES: 1

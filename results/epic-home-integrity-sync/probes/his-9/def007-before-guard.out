@@ -1,0 +1,42 @@
+installed units: his9-demo 
+== fixture
+homeA = /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T//his9-def007-WqukkX/homeA
+homeB = /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T//his9-def007-WqukkX/homeB   (bin/cli -> /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T//his9-def007-WqukkX/homeA/bin/cli)
+homeA/bin/cli BEFORE = 2 entries: alpha beta 
+
+== home verify homeB  (the GATE — it has always seen this shape)
+! reconcile: no skill-manager projection for his9-demo on claude at /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/his9-def007-WqukkX/homeB/.claude/skills/his9-demo. In order to create all symlinks missing, please run: skill-manager sync
+! reconcile: no skill-manager projection for his9-demo on codex at /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/his9-def007-WqukkX/homeB/.codex/skills/his9-demo. In order to create all symlinks missing, please run: skill-manager sync
+! reconcile: no skill-manager projection for his9-demo on gemini at /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/his9-def007-WqukkX/homeB/.gemini/skills/his9-demo. In order to create all symlinks missing, please run: skill-manager sync
+NOT CHECKED: whether a reference back to the home this one was copied from survives — pass `--against <source home>` for that half. Checked below: every link and generated script in /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/his9-def007-WqukkX/homeB resolves, and no path in it reaches any other Skill Manager home.
+✗ 1 path(s) in /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/his9-def007-WqukkX/homeB resolve into another Skill Manager home
+✗   FOREIGN_HOME bin/cli (/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T//his9-def007-WqukkX/homeA/bin/cli resolves into the home at /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/his9-def007-WqukkX/homeA)
+✗   complete it with: env SKILL_MANAGER_HOME=/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/his9-def007-WqukkX/homeB CLAUDE_CONFIG_DIR=/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/his9-def007-WqukkX/homeB/.claude CODEX_HOME=/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/his9-def007-WqukkX/homeB/.codex GEMINI_HOME=/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/his9-def007-WqukkX/homeB/.gemini /Users/hayde/.skill-manager/bin/cli/skill-manager sync --force-scripts, then re-run this check
+  log: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-manager/logs/home-verify-20260821-143714-ce53.log
+! Telemetry export unavailable; continuing without telemetry.
+   exit=1
+
+== sync in homeB  (the REPAIR path — this is what deleted homeA's toolchain)
+! reconcile: no skill-manager projection for his9-demo on claude at /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/his9-def007-WqukkX/agents/.claude/skills/his9-demo. In order to create all symlinks missing, please run: skill-manager sync
+! reconcile: no skill-manager projection for his9-demo on codex at /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/his9-def007-WqukkX/agents/.codex/skills/his9-demo. In order to create all symlinks missing, please run: skill-manager sync
+! reconcile: no skill-manager projection for his9-demo on gemini at /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/his9-def007-WqukkX/agents/.gemini/skills/his9-demo. In order to create all symlinks missing, please run: skill-manager sync
+✓ resolve: 0 unit(s)
+cli: pruned bin/cli/alpha — resolved into the home at /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/his9-def007-WqukkX/homeA, which is not this home's parent store
+cli: pruned bin/cli/beta — resolved into the home at /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/his9-def007-WqukkX/homeA, which is not this home's parent store
+! Telemetry export unavailable; continuing without telemetry.
+✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/his9-def007-WqukkX/homeB/units.lock.toml
+✓ synced 1 unit(s) — 1 local-only (no shared upstream)
+✓ agents: 1 unit(s) linked into claude, codex, gemini
+  ADDED    claude (/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/his9-def007-WqukkX/agents/.claude/.claude.json)  → http://127.0.0.1:51717/mcp
+  ADDED    codex (/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/his9-def007-WqukkX/agents/.codex/config.toml)  → http://127.0.0.1:51717/mcp
+  ADDED    gemini (/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/his9-def007-WqukkX/agents/.gemini/settings.json)  → http://127.0.0.1:51717/mcp
+agent MCP configs: ADDED 3, UPDATED 0 → http://127.0.0.1:51717/mcp
+ACTION_REQUIRED: restart Claude / Codex for the virtual-mcp-gateway entry to take effect — without a restart the agent will not see any MCP tools.
+  log: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-manager/logs/sync-20260821-143715-69b5.log
+   exit=0
+
+== result
+homeA/bin/cli AFTER  = 0 entries: 
+VERDICT: homeA DAMAGED — 0 of 2 entries left.
+
+scratch: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T//his9-def007-WqukkX

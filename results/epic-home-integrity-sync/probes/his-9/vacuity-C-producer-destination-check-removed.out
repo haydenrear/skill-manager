@@ -1,0 +1,5 @@
+# HIS-9 vacuity check: C-producer-destination-check-removed
+# fix disabled, `jbang RunTests.java` run against the broken code
+
+  [FAIL] a producer aimed at an UNSANCTIONED link into another home is refused, before it runs: not true: the producer never ran — no byte moved
+FAILURES: 1
