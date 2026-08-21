@@ -3,11 +3,24 @@
 Issue #227 (also closes #206). Branch `feature/227-his-10`, based on epic tip
 `32b437b`.
 
+> **Corrected after adversarial review of #228.** The first version of this file
+> made a claim it could not support, and the review measured it false. What
+> follows is the revised, measured claim; the correction is written out below
+> under "The claim I got wrong" rather than quietly edited away.
+>
+> The mechanism changed with it: the record no longer *stores* the sanction, it
+> *points* at evidence that is re-derived live on every read.
+
 ## What this delivers
 
-**A clone records its descent, so every reader answers from one file instead of
-guessing — and a clone keeps the toolchain it inherited instead of rebuilding
-it.**
+**A clone records the CHAIN it descends from, every reader re-derives that chain
+live, and a clone keeps the toolchain it inherited instead of rebuilding it.**
+
+The record is a pointer, not a grant. `HomeProvenance.sanctions` walks
+`clonedFrom` hop by hop and asks `ChildHomeLink.isChildOf` at each one, against
+the parent's own store, at the moment the question is asked. Nothing trusts the
+`parentStores` set the record carries — that is a snapshot, kept for reporting
+and for HIS-13's repair.
 
 ### The four-reader matrix, measured, before and after
 
@@ -109,6 +122,31 @@ unprovided would re-break exactly the case this ticket exists to fix.
 home does not hold. Unrelated to shims; the CLI half of that run reported
 `cli: 11 already present, 2 installed`.
 
+**5. THE NUMBERS ABOVE ARE TRUE OF THE RAW BUILD ONLY, AND THE FRONT DOOR DOES
+NOT RUN IT.** Nothing in `skt` reads or writes `home.provenance.json` — that is
+fine, it needs no client — but `skt sync` / `skt publish` / `skt check` and
+`bootstrap-home.sh` all resolve their CLI from the ROOT home's pin, which
+**DEF-006 measured as Homebrew 0.23.0**, a build predating this epic. So a
+worktree created by the documented front door today is cloned by a build that
+**writes no record**, is refused by `home verify` exactly as before, and its
+first sync still prunes five shims and re-provisions five toolchains. The
+measurements in this file used `SKILL_MANAGER_CLI` pointed at this branch's
+build, which is a workaround, and DEF-006 records it as one.
+
+This is the difference between *fixed* and *fixed, and unreachable until DEF-006
+is closed*. It also means the goal metric HIS-6 will read has two values
+depending on which build produced the home, and HIS-6 should be told which one
+it is reading.
+
+**6. `HomeCloner.verify(Path, boolean)`'s javadoc — an acceptance item — was
+CORRECTED, not left.** Issue #227 item 4 said that javadoc ("two of the three
+findings never needed a source at all") "is currently false and must end up true
+again". It is now true *with a stated condition*: true for a home this program
+cloned, because the copy records its descent and the chain is re-derived; still
+false for a home this program did not clone, where `--against` is the only
+excuse available. The condition is written into the javadoc rather than dropped,
+so the sentence stops over-promising the way it did for two releases.
+
 ## MED-6 and MED-7, answered by measurement
 
 The issue's acceptance asks for these two HIS-7 review findings to be *answered*.
@@ -130,19 +168,92 @@ Both were measured on this branch; output in
   (`mirrorExistingShim` mirrors entries, never the directory), which is why it
   did not stop this ticket.
 
+## The claim I got wrong
+
+The first version of this file, of `HomeProvenance`'s class javadoc and of the
+#228 PR body all said some form of **"a copy of an unsanctioned home is still
+unsanctioned — cloning is not a laundering step."** The review measured that
+false, and it was right to:
+
+```
+child is NOT a registered child of parent; child/bin/cli/tool -> parent/bin/cli/tool
+  home verify --home child                 -> exit 1, 1x FOREIGN_HOME    [correct]
+  echo '{"schemaVersion":1,"clonedFrom":"/nowhere",
+         "parentStores":["<parent>"]}' > child/home.provenance.json
+  home verify --home child                 -> exit 0, 0x FOREIGN_HOME    [gate off]
+```
+
+One file, written into the home being judged, naming a source that does not
+exist, switched that home's isolation gate off — and the verdict then **printed
+the forged descent as authoritative**. Worse in context: the line I added names
+the filename, so an agent chasing a `FOREIGN_HOME` refusal was being told
+exactly which file to write to make the refusal go away.
+
+The same shape produced a second defect through **product operations only**:
+revoke the parent's claim (what `ChildHomeRegistry.delete` does on teardown) and
+`verify project` refused while `verify worktree` passed, on the same shim and
+the same parent; the pruner deleted it in one home and kept it in the other; and
+cloning the worktree again **re-minted** the deleted claim. That is
+GOAL-one-home-one-answer's own failure mode, recreated on the tier axis by the
+mechanism meant to close it.
+
+**What I tested and what I should have tested.** `ClonedHomeDescentTest`'s
+laundering case covered a source carrying *no record*. It never covered a source
+carrying a *hand-written* one, and it never covered a claim being *revoked*.
+Both are now assertions; see the vacuity table's row D, which is what proves
+they are not decorative.
+
+### What is true now, stated at the width it holds
+
+- **A copy of a home with no live descent is unsanctioned** — the no-record case,
+  the forged-record case, and the revoked-claim case, all asserted.
+- **Cloning does not launder**, because a clone no longer carries anything
+  forward: `parentStoresOf` re-derives at write time and `sanctions` re-derives
+  again at read time, so a copy can only be sanctioned by evidence that is live
+  when the question is asked.
+- **It is still not forgery-proof.** A writer inside a home can name, as its
+  `clonedFrom`, some *other* home that genuinely is a claimed child; the chain
+  re-derives and the sanction holds. What is gone is the arbitrary grant: a
+  record can no longer name a store and be believed. This adds **no new class**
+  of in-home forgery — `ChildHomeLink` already accepts
+  `<child>/.materialization/<kind>/<unit>.json`, a file inside the judged home,
+  as positive evidence. That pre-existing trust is named in the class javadoc
+  rather than widened.
+
+### What re-derivation costs
+
+The class javadoc used to justify this evidence over the alternatives because it
+*"needs no second home to be present, readable, or even to still exist when the
+question is asked."* **Re-derivation gives that up.** The sanction now depends on
+the chain still being derivable, and when it cannot be, the class **sanctions
+nothing** — fail closed. The worst case is a worktree whose project home was
+deleted reverting to pre-HIS-10 behaviour: a bad day, not a breach. It is softer
+than it sounds, because `ChildHomeLink` reads the *parent's* registry and that
+record outlives the directory it names, so a moved or deleted ancestor can still
+re-derive.
+
 ## Vacuity — every new assertion, run against the broken code
 
 The epic's rule is that an assertion never run against the defect is not
-coverage. Three fixes, three disables, each recorded.
+coverage. Four fixes, four disables, all re-run after the re-derivation change.
 
 | # | fix disabled | assertion | result with the fix removed |
 | --- | --- | --- | --- |
-| A | `HomeProvenance.recordDescent` in `HomeCloner.build` (clone writes no record) | `ClonedHomeDescentTest` | **4/4 FAIL** — "the clone recorded no descent at all"; "precondition: the clone verifies clean: expected <0> but was <1>" |
-| B | the `HomeProvenance.sanctions` arm in `sanctionedParentShim` (record written, no reader consults it) | `ClonedHomeDescentTest` | **3/4 FAIL** — "`home verify --home <clone>` must reach the same verdict `home clone` just did, WITHOUT an operator supplying a source"; the laundering case correctly still passes |
-| B | same | graph node `home.integrity.readers.agree.about.one.clone` | **node FAILED** — `readers disagreed: clone=0 verify=1 verify--against=0 shim-after-sync=replaced locally` and `removing home.provenance.json changed nothing — the readers agree for some other reason and this node is vacuous`. That log line is the epic-tip baseline, reproduced live. |
-| C | `rootSpellings` returns only the caller's spelling (pre-#206 behaviour) | `HomeVerifyPathSpellingTest` | **2/4 FAIL** — "the same home reached through a symlink must reach the same verdict; real=[…/venvs/nope/bin/probe] link=[]" |
+| A | `HomeProvenance.recordDescent` in `HomeCloner.build` (clone writes no record) | `ClonedHomeDescentTest` | **6/6 FAIL** — *"the clone recorded no descent at all"*; *"precondition: the clone verifies clean: expected <0> but was <1>"* |
+| B | the `HomeProvenance.sanctions` arm in `sanctionedParentShim` (record written, no reader consults it) | `ClonedHomeDescentTest` | **4/6 FAIL** — *"`home verify --home <clone>` must reach the same verdict `home clone` just did, WITHOUT an operator supplying a source"* |
+| B | same | graph node `home.integrity.readers.agree.about.one.clone` | **node FAILED** — `readers disagreed: clone=0 verify=1 verify--against=0 shim-after-sync=replaced locally`, and `removing home.provenance.json changed nothing — the readers agree for some other reason and this node is vacuous`. Metrics: `readers.agreeing=2, readers.distinctVerdicts=2` — the epic-tip baseline, reproduced live |
+| C | `rootSpellings` returns only the caller's spelling (pre-#206 behaviour) | `HomeVerifyPathSpellingTest` | **2/4 FAIL** — *"the same home reached through a symlink must reach the same verdict; real=[…/venvs/nope/bin/probe] link=[]"* |
+| **D** | **`sanctions` TRUSTS the recorded `parentStores` instead of re-deriving** (the shape the review measured) | `ClonedHomeDescentTest` | **2/6 FAIL**, and they are the review's two findings verbatim: *"a record is a POINTER to evidence, not the evidence: /nowhere re-derives to nothing, so it sanctions nothing: expected <1> but was <0>"* and *"after the claim is revoked the two tiers must still AGREE: expected <1> but was <0>"* |
 
-Raw logs: `probes/his-10/vacuity-{A,B,C}-unit.out`.
+Raw logs: `probes/his-10/vacuity-{A,B,C,D}-unit.out`. The review's own CLI repro,
+re-run against the fix, is `probes/his-10/after-forged-record-refused.out` —
+exit 1, and the report now reads
+`0 of 1 recorded parent store(s) still re-derive` /
+`NOT re-derivable: no live claim links this home to it`.
+
+**Row D is the one that matters.** Rows A–C were all green on the version the
+review broke; only D discriminates between "the record decides" and "the record
+points at something that is re-checked".
 
 **The `/var` trap was avoided.** The epic agent's correction arrived before the
 fixture was written: `/private/var/X` *contains* `/var/X`, so `indexOf` finds the
@@ -152,11 +263,18 @@ a section headed "THE FIXTURE THIS DELIBERATELY DOES NOT USE, AND WHY", so the
 next author does not reach for `/var` first. The fixture used is a real
 directory, a sibling symlink at it, and the home addressed through the symlink.
 
-**The graph node carries its own control, every run.** Rather than relying on a
-one-off probe, `removing_the_record_makes_the_readers_disagree` deletes
+**The graph node carries its own control, every run.**
+`removing_the_record_makes_the_readers_disagree` deletes
 `home.provenance.json` from the leaf home, re-runs `home verify`, restores the
 file, and fails the node if the verdict did not change. Green run:
 `without home.provenance.json: home verify exited 1`.
+
+**One branch is still uncovered and it is named, not hidden.** The leak
+*exemption* — the branch in `verifyRoots` that turns a hard `FOREIGN_HOME`-class
+finding into no finding for the provenance record — has no direct assertion and
+does not appear in the table above. That is exactly the rule this epic keeps
+re-learning, applied to the one branch that downgrades. Filed as **DEF-009**
+(MED-8) rather than claimed as covered.
 
 ## Goals
 
@@ -169,14 +287,24 @@ file, and fails the node if the verdict did not change. Green run:
 - CLAUSE 3 — the lazy contract: **met**, 0 pruned / 2 installed, and the two
   installed are the two the clone declared cold.
 
+**And a caveat on all three: they are measured on homes cloned by THIS BUILD.**
+The documented front door (`bootstrap-home.sh`, `skt ticket new`) resolves its
+CLI from the root home's pin, which DEF-006 measured as Homebrew 0.23.0, so a
+worktree made the normal way today still scores the baseline. See "What was
+cut" (5). HIS-6 should be told which build produced the homes it measures.
+
 The metric's harness is now in place: `home.integrity.readers.agree.about.one.clone`
 drives all four readers over one cloned home and publishes
-`readers.agreeing = 4`.
+`readers.distinctVerdicts` — **1** with the fix, **2** with it removed, which is
+the goal's own metric rather than a pass/fail restatement of it.
 
 **GOAL-home-invariants (direct).** The behavioural statement this ticket
-contributes, for HIS-5 to render as a TLA+ invariant: *a home's sanction set is a
-function of its recorded descent, not of the command line.* No new invariant or
-regression cfg is added here — HIS-5 carries the model work for the epic, and
+contributes, for HIS-5 to render as a TLA+ invariant, and the review changed its
+wording: *a home's sanction set is a function of evidence that is live when the
+question is asked* — not of the command line, and **not of what the home says
+about itself**. The first version of this ticket would have modelled the weaker
+property and the model would have been satisfied by the forged record. No new
+invariant or regression cfg is added here — HIS-5 carries the model work for the epic, and
 this ticket's `validation.tlc` says so explicitly. The five pre-existing
 regression cfgs are untouched.
 
@@ -184,8 +312,8 @@ regression cfgs are untouched.
 
 | lane | command | result |
 | --- | --- | --- |
-| repository_unit | `jbang RunTests.java` | **ALL PASSED** (`ClonedHomeDescentTest` 4/4, `HomeVerifyPathSpellingTest` 4/4, `ChildHomeShimIsolationTest` 9/9 unchanged) |
-| spec_graph | `python skills/test_graph/scripts/run.py home-integrity` | **BUILD SUCCESSFUL in 5m 12s**, 14 nodes, `status: passed`, no missing/unexpected node ids |
+| repository_unit | `jbang RunTests.java` | **ALL PASSED** (`ClonedHomeDescentTest` **6/6**, `HomeVerifyPathSpellingTest` 4/4, `ChildHomeShimIsolationTest` 9/9 unchanged) |
+| spec_graph | `python skills/test_graph/scripts/run.py home-integrity` | **BUILD SUCCESSFUL in 4m 34s**, 14 nodes, `status: passed`, no missing/unexpected node ids; node metrics `readers.agreeing=4, readers.distinctVerdicts=1` |
 | spec_unit | `uv run pytest specs/` | **38 passed in 1.82s** |
 | manual | four-reader matrix, re-run after the fix | captured in `probes/his-10/after-*.out` |
 | manual | bootstrap probe on a throwaway worktree | exit 0, five shims kept, root home unchanged |
@@ -197,6 +325,13 @@ contribution named them as the graphs most exposed to a change in this
 mechanism, and because the spelling widening can only ever make the checker find
 *more* — which is the direction that turns other graphs red.
 
+**Everything in this table was re-run after the re-derivation change**, except
+`project-child-home` and `harness-smoke`, which were run against the first
+version. Their exposure is to the *sanction* predicate, which re-derivation
+makes strictly narrower, so a stale green there is the direction that could
+hide a regression. They are the first thing to re-run before merge, and I am
+flagging that rather than restating a result I did not reproduce.
+
 **Not run:** `run.py --all` (~7 min plus the excluded graphs), and TLC. The
 former is the epic agent's call at wave close; the latter is HIS-5's.
 
@@ -204,11 +339,11 @@ former is the epic agent's call at wave close; the latter is HIS-5's.
 
 | file | what changed |
 | --- | --- |
-| `src/main/java/dev/skillmanager/store/HomeProvenance.java` | **new** — the record, its reader, and the derivation of a copy's parent stores from evidence the source already had |
+| `src/main/java/dev/skillmanager/store/HomeProvenance.java` | **new** — the record; `sanctions` walks `clonedFrom` hop by hop and re-derives each one through `ChildHomeLink`, live; `parentStores` is a snapshot nothing trusts; a relative `clonedFrom` is refused rather than resolved against the CWD; cycle and depth guards |
 | `src/main/java/dev/skillmanager/store/HomeCloner.java` | writes the record during `build`; `sanctionedParentShim` consults it; `destReferences`/`referencesIn`/`insideHomeText` scan every spelling of the root; the record is exempted from the source-naming leak rule by byte accounting |
-| `src/main/java/dev/skillmanager/commands/HomeCommand.java` | `home verify` prints the descent it read, or says the home records none |
+| `src/main/java/dev/skillmanager/commands/HomeCommand.java` | `home verify` prints the descent as a CLAIM and marks each recorded store re-derived or `NOT re-derivable`, so a forged record reads as the dead claim it is; says so when the home records none |
 | `src/main/java/dev/skillmanager/cli/installer/CliShimPruner.java` | **unchanged** — it already asks the gate rather than deciding, so the record reaches it for free |
-| `src/test/java/dev/skillmanager/store/ClonedHomeDescentTest.java` | **new** — four readers, one clone; the vacuity control; the laundering guard over a real clone; transitivity two tiers down |
+| `src/test/java/dev/skillmanager/store/ClonedHomeDescentTest.java` | **new**, 6 cases — four readers over one clone; the vacuity control; the no-record case; **the hand-written-record case**; **the revoked-claim case**; transitivity two tiers down |
 | `src/test/java/dev/skillmanager/store/HomeVerifyPathSpellingTest.java` | **new** — #206, on a fixture the `/var` accident cannot rescue |
-| `test_graph/sources/home-integrity/ReadersAgreeAboutOneClone.java` | **new** graph node, three-tier topology, real `sync`, own control |
-| `results/epic-home-integrity-sync/deferred/backlog.yaml` | DEF-007 (blocking, escalated), DEF-008 |
+| `test_graph/sources/home-integrity/ReadersAgreeAboutOneClone.java` | **new** graph node, three-tier topology, real `sync`, own control; removes the fixture claim it plants, on every exit path; publishes `readers.distinctVerdicts` so the goal's own metric can express the baseline (2) and not just pass/fail |
+| `results/epic-home-integrity-sync/deferred/backlog.yaml` | DEF-007 (blocking, escalated; widened with MED-9), DEF-008, DEF-009, DEF-010 |

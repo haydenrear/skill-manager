@@ -1679,6 +1679,26 @@ public final class HomeCloner {
      * CHECKED rather than silently skipped, because a check that quietly
      * narrows its scope while keeping its verdict is the defect this whole
      * epic keeps re-finding.
+     *
+     * <h2>That claim was FALSE for two releases, and is now true with a
+     * condition</h2>
+     *
+     * <p>Issue #227 named this javadoc as a defect, and it was one. The
+     * {@code FOREIGN_HOME} half DID need a source: a clone's inherited
+     * parent-store shims were sanctioned only when the caller passed
+     * {@code --against}, so this overload refused, on its own, homes that the
+     * two-argument form accepted. Measured on one cloned home: exit 1 with five
+     * {@code FOREIGN_HOME} findings here, exit 0 there.
+     *
+     * <p>HIS-10 makes it true FOR A HOME THIS PROGRAM CLONED, and not by
+     * widening the rule: the copy records its descent
+     * ({@link HomeProvenance}) and {@link #sanctionedParentShim} re-derives that
+     * chain live, so the sanction is a fact in the home rather than an argument
+     * on the command line. For a home this program did not clone — a {@code cp
+     * -a} copy, an rsync, a pre-HIS-10 clone — there is nothing in the home to
+     * re-derive and {@code --against} is still the only thing that can excuse
+     * its inherited shims. Repairing those homes is HIS-13's, and until it
+     * lands this sentence carries that condition rather than dropping it.
      */
     public static Verification verify(Path dest, boolean strict) throws IOException {
         return verifyRoots(null, dest.toAbsolutePath().normalize(), strict);
@@ -1803,10 +1823,13 @@ public final class HomeCloner {
                 // byte-counting mentionIsOnlyDiagnostic does. One occurrence
                 // anywhere else and this is false and the finding stands.
                 //
-                // Nor is it silent: `home verify` and `home clone` print the
-                // recorded descent for any home that has one, whether or not
-                // this branch fired, so the exemption is visible in the same
-                // output as the verdict it shaped.
+                // Nor is it silent: `home verify` prints the recorded descent
+                // for any home that has one, whether or not this branch fired,
+                // and prints each recorded store as re-derived or as a dead
+                // claim -- so the exemption is visible in the same output as
+                // the verdict it shaped. (`home clone` does NOT print it. An
+                // earlier version of this comment said it did; it never has,
+                // and the review of #228 was right to check.)
                 descentRecords.add(rel);
             } else if (mentionIsOnlyDiagnostic(file, rel, needleText)) {
                 // A sentence about another home, not a path into one. See

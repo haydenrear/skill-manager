@@ -147,7 +147,7 @@ public final class ClonedHomeDescentTest {
                             "the shim really is gone, so the two readers really did disagree");
                 })
 
-                .test("a clone of an UNSANCTIONED home records nothing and stays unsanctioned", () -> {
+                .test("a clone of a home with NO record records nothing and stays unsanctioned", () -> {
                     // Cloning is not a laundering step. ChildHomeShimIsolationTest
                     // asserts this for the --against path; it has to hold for the
                     // recorded one too, or the record becomes a way to mint a
@@ -168,6 +168,93 @@ public final class ClonedHomeDescentTest {
                             "and every reader still refuses it");
                     assertEquals(1, verifyAgainst(clone, fx.child).rc,
                             "including with --against, unchanged from HIS-7");
+                })
+
+                .test("a HAND-WRITTEN record grants nothing — the chain it names must re-derive", () -> {
+                    // THE HOLE THE #228 REVIEW MEASURED, pinned.
+                    //
+                    // The first version of HomeProvenance stored the parent-store
+                    // set and sanctions() answered "is it in that set". So one
+                    // file, written into the home being judged, naming a source
+                    // that does not exist, switched that home's isolation gate
+                    // off permanently -- and `home verify` then PRINTED the
+                    // forged descent as authoritative, which is worse: the line
+                    // names the filename, so an agent chasing a FOREIGN_HOME
+                    // refusal is told exactly which file to write.
+                    Fixture fx = Fixture.build("forged", false);   // NOT a claimed child
+                    assertEquals(1, verify(fx.child).rc, "precondition: the shim is a leak");
+
+                    Files.writeString(fx.child.resolve(HomeProvenance.FILENAME), """
+                            {
+                              "schemaVersion" : 1,
+                              "clonedFrom" : "/nowhere",
+                              "clonedAt" : "2026-01-01T00:00:00Z",
+                              "parentStores" : [ "%s" ]
+                            }
+                            """.formatted(fx.parent));
+
+                    Result forged = verify(fx.child);
+                    assertEquals(1, forged.rc,
+                            "a record is a POINTER to evidence, not the evidence: /nowhere "
+                                    + "re-derives to nothing, so it sanctions nothing");
+                    assertContains(forged.err, "FOREIGN_HOME bin/cli/" + TOOL,
+                            "and the finding is unchanged");
+                    assertTrue(!HomeProvenance.sanctions(fx.child, fx.parent),
+                            "the predicate itself refuses it, not just the command");
+                    assertContains(forged.out, "NOT re-derivable",
+                            "and the report tells a CLAIM from a FACT, rather than reprinting "
+                                    + "the forged set as authoritative descent");
+
+                    // And it cannot be laundered by cloning it either.
+                    Path copy = fx.clone("worktree");
+                    assertTrue(HomeProvenance.read(copy).parentStores().isEmpty(),
+                            "the copy re-derives its own snapshot rather than inheriting the "
+                                    + "forged one; got " + HomeProvenance.read(copy).parentStores());
+                    assertEquals(1, verify(copy).rc, "so the copy is refused too");
+                })
+
+                .test("revoking the parent's claim revokes it in EVERY tier at once", () -> {
+                    // The second half of the review finding, and it needs no
+                    // hand-editing at all -- ChildHomeRegistry.delete does this
+                    // on teardown. With the set stored rather than re-derived,
+                    // `verify project` refused and `verify worktree` passed on
+                    // the SAME shim and the SAME parent, the pruner deleted it in
+                    // one home and kept it in the other, and cloning the worktree
+                    // RE-MINTED the deleted claim. That is
+                    // GOAL-one-home-one-answer's own failure mode on the tier
+                    // axis, produced by the mechanism meant to close it.
+                    Fixture fx = Fixture.build("revoked", true);
+                    Path wt1 = fx.clone("wt1");
+                    assertEquals(0, verify(fx.child).rc, "precondition: the source is sanctioned");
+                    assertEquals(0, verify(wt1).rc, "precondition: so is its copy");
+
+                    // What ChildHomeRegistry.delete leaves behind on teardown.
+                    Files.delete(fx.parent.resolve("child-homes/proj/child-home.json"));
+                    Files.delete(fx.parent.resolve("child-homes/proj"));
+
+                    assertEquals(verify(fx.child).rc, verify(wt1).rc,
+                            "after the claim is revoked the two tiers must still AGREE");
+                    assertEquals(1, verify(wt1).rc,
+                            "and the answer is the one the evidence supports: no live claim "
+                                    + "links either home to that store any more");
+
+                    // Cloning again must not re-mint what was deleted.
+                    Path wt2 = fx.root.resolve("wt2/.skill-manager");
+                    HomeCloner.cloneHome(wt1, wt2, false, false);
+                    assertTrue(HomeProvenance.read(wt2).parentStores().isEmpty(),
+                            "a clone re-derives the set; it does not carry the previous "
+                                    + "clone's assertion forward. got "
+                                    + HomeProvenance.read(wt2).parentStores());
+                    assertEquals(1, verify(wt2).rc, "so the revocation reaches the new copy too");
+
+                    // And the destructive reader agrees with the gate, in both.
+                    List<CliShimPruner.Pruned> inSource = CliShimPruner.prune(new SkillStore(fx.child));
+                    List<CliShimPruner.Pruned> inCopy = CliShimPruner.prune(new SkillStore(wt1));
+                    assertEquals(inSource.size(), inCopy.size(),
+                            "the pruner must not delete in one tier and keep in the other; "
+                                    + "source=" + inSource + " copy=" + inCopy);
+                    assertEquals(1, inSource.size(),
+                            "and what it does is refuse the now-unsanctioned shim");
                 })
 
                 .test("descent is transitive: a clone of a clone still shares the root store", () -> {

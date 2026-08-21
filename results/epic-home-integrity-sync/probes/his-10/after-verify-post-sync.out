@@ -5,7 +5,7 @@ NOT CHECKED: whether a reference back to the home this one was copied from survi
     bin/cli/helm-deploy -> /Users/hayde/.skill-manager
     bin/cli/monitoring -> /Users/hayde/.skill-manager
     … 2 more
-descent: this home was cloned from /Users/hayde/IdeaProjects/skill-manager/.skill-manager; 1 recorded parent store(s), whose provisioned artifacts it shares rather than rebuilding
-    /Users/hayde/.skill-manager
+descent: /private/tmp/claude-501/-Users-hayde-IdeaProjects-skill-manager/dcb6a969-c6fd-484c-873c-6d6175b7d220/scratchpad/probe/.skill-manager records that it was cloned from /Users/hayde/IdeaProjects/skill-manager/.skill-manager; 1 of 1 recorded parent store(s) still re-derive as ancestors of this home
+    /Users/hayde/.skill-manager  — re-derived, so its artifacts are shared by right
 ✓ every reference in /private/tmp/claude-501/-Users-hayde-IdeaProjects-skill-manager/dcb6a969-c6fd-484c-873c-6d6175b7d220/scratchpad/probe/.skill-manager resolves, and no path in it reaches any other Skill Manager home except the 5 sanctioned parent-store shim(s) above (source-reference check not run — see NOT CHECKED above)
-  log: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-manager/logs/home-verify-20260821-111842-1987.log
+  log: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-manager/logs/home-verify-20260821-121847-647d.log

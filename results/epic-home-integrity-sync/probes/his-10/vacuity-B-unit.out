@@ -1,38 +1,46 @@
 [jbang] Building jar for His10Vacuity.java...
 Note: /Users/hayde/IdeaProjects/wt-227-his-10/src/main/java/dev/skillmanager/mcp/GatewayClient.java uses or overrides a deprecated API.
 Note: Recompile with -Xlint:deprecation for details.
-== ClonedHomeDescentTest (4 cases)
+== ClonedHomeDescentTest (6 cases)
   [FAIL] all four readers agree about a cloned home's inherited shim, with no --against: `home verify --home <clone>` must reach the same verdict `home clone` just did, WITHOUT an operator supplying a source; got:
-✗ 1 path(s) in /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/clone-descent-agree-13599871813716546595/worktree/.skill-manager resolve into another Skill Manager home
-✗   FOREIGN_HOME bin/cli/tool (/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/clone-descent-agree-13599871813716546595/parent/bin/cli/tool resolves into the home at /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/clone-descent-agree-13599871813716546595/parent)
-✗   complete it with: env SKILL_MANAGER_HOME=/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/clone-descent-agree-13599871813716546595/worktree/.skill-manager CLAUDE_CONFIG_DIR=/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/clone-descent-agree-13599871813716546595/worktree/.claude CODEX_HOME=/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/clone-descent-agree-13599871813716546595/worktree/.codex GEMINI_HOME=/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/clone-descent-agree-13599871813716546595/worktree/.gemini /Users/hayde/.skill-manager/bin/cli/skill-manager sync --force-scripts, then re-run this check
+✗ 1 path(s) in /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/clone-descent-agree-14426486823930324614/worktree/.skill-manager resolve into another Skill Manager home
+✗   FOREIGN_HOME bin/cli/tool (/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/clone-descent-agree-14426486823930324614/parent/bin/cli/tool resolves into the home at /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/clone-descent-agree-14426486823930324614/parent)
+✗   complete it with: env SKILL_MANAGER_HOME=/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/clone-descent-agree-14426486823930324614/worktree/.skill-manager CLAUDE_CONFIG_DIR=/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/clone-descent-agree-14426486823930324614/worktree/.claude CODEX_HOME=/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/clone-descent-agree-14426486823930324614/worktree/.codex GEMINI_HOME=/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/clone-descent-agree-14426486823930324614/worktree/.gemini /Users/hayde/.skill-manager/bin/cli/skill-manager sync --force-scripts, then re-run this check
 : expected <0> but was <1>
 java.lang.AssertionError: `home verify --home <clone>` must reach the same verdict `home clone` just did, WITHOUT an operator supplying a source; got:
-✗ 1 path(s) in /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/clone-descent-agree-13599871813716546595/worktree/.skill-manager resolve into another Skill Manager home
-✗   FOREIGN_HOME bin/cli/tool (/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/clone-descent-agree-13599871813716546595/parent/bin/cli/tool resolves into the home at /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/clone-descent-agree-13599871813716546595/parent)
-✗   complete it with: env SKILL_MANAGER_HOME=/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/clone-descent-agree-13599871813716546595/worktree/.skill-manager CLAUDE_CONFIG_DIR=/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/clone-descent-agree-13599871813716546595/worktree/.claude CODEX_HOME=/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/clone-descent-agree-13599871813716546595/worktree/.codex GEMINI_HOME=/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/clone-descent-agree-13599871813716546595/worktree/.gemini /Users/hayde/.skill-manager/bin/cli/skill-manager sync --force-scripts, then re-run this check
+✗ 1 path(s) in /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/clone-descent-agree-14426486823930324614/worktree/.skill-manager resolve into another Skill Manager home
+✗   FOREIGN_HOME bin/cli/tool (/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/clone-descent-agree-14426486823930324614/parent/bin/cli/tool resolves into the home at /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/clone-descent-agree-14426486823930324614/parent)
+✗   complete it with: env SKILL_MANAGER_HOME=/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/clone-descent-agree-14426486823930324614/worktree/.skill-manager CLAUDE_CONFIG_DIR=/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/clone-descent-agree-14426486823930324614/worktree/.claude CODEX_HOME=/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/clone-descent-agree-14426486823930324614/worktree/.codex GEMINI_HOME=/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/clone-descent-agree-14426486823930324614/worktree/.gemini /Users/hayde/.skill-manager/bin/cli/skill-manager sync --force-scripts, then re-run this check
 : expected <0> but was <1>
 	at dev.skillmanager._lib.test.Tests.assertEquals(Tests.java:73)
 	at dev.skillmanager.store.ClonedHomeDescentTest.lambda$run$1(ClonedHomeDescentTest.java:90)
 	at dev.skillmanager._lib.test.Tests$Suite.runAll(Tests.java:48)
-	at dev.skillmanager.store.ClonedHomeDescentTest.run(ClonedHomeDescentTest.java:191)
+	at dev.skillmanager.store.ClonedHomeDescentTest.run(ClonedHomeDescentTest.java:278)
 	at His10Vacuity.main(His10Vacuity.java:23)
   [FAIL] VACUITY CONTROL: delete the record and the same four readers disagree again: precondition: the clone verifies clean: expected <0> but was <1>
 java.lang.AssertionError: precondition: the clone verifies clean: expected <0> but was <1>
 	at dev.skillmanager._lib.test.Tests.assertEquals(Tests.java:73)
 	at dev.skillmanager.store.ClonedHomeDescentTest.lambda$run$3(ClonedHomeDescentTest.java:128)
 	at dev.skillmanager._lib.test.Tests$Suite.runAll(Tests.java:48)
-	at dev.skillmanager.store.ClonedHomeDescentTest.run(ClonedHomeDescentTest.java:191)
+	at dev.skillmanager.store.ClonedHomeDescentTest.run(ClonedHomeDescentTest.java:278)
 	at His10Vacuity.main(His10Vacuity.java:23)
-  [PASS] a clone of an UNSANCTIONED home records nothing and stays unsanctioned
+  [PASS] a clone of a home with NO record records nothing and stays unsanctioned
+  [PASS] a HAND-WRITTEN record grants nothing — the chain it names must re-derive
+  [FAIL] revoking the parent's claim revokes it in EVERY tier at once: precondition: so is its copy: expected <0> but was <1>
+java.lang.AssertionError: precondition: so is its copy: expected <0> but was <1>
+	at dev.skillmanager._lib.test.Tests.assertEquals(Tests.java:73)
+	at dev.skillmanager.store.ClonedHomeDescentTest.lambda$run$6(ClonedHomeDescentTest.java:229)
+	at dev.skillmanager._lib.test.Tests$Suite.runAll(Tests.java:48)
+	at dev.skillmanager.store.ClonedHomeDescentTest.run(ClonedHomeDescentTest.java:278)
+	at His10Vacuity.main(His10Vacuity.java:23)
   [FAIL] descent is transitive: a clone of a clone still shares the root store: so it verifies clean with no flag, two tiers down: expected <0> but was <1>
 java.lang.AssertionError: so it verifies clean with no flag, two tiers down: expected <0> but was <1>
 	at dev.skillmanager._lib.test.Tests.assertEquals(Tests.java:73)
-	at dev.skillmanager.store.ClonedHomeDescentTest.lambda$run$5(ClonedHomeDescentTest.java:187)
+	at dev.skillmanager.store.ClonedHomeDescentTest.lambda$run$7(ClonedHomeDescentTest.java:274)
 	at dev.skillmanager._lib.test.Tests$Suite.runAll(Tests.java:48)
-	at dev.skillmanager.store.ClonedHomeDescentTest.run(ClonedHomeDescentTest.java:191)
+	at dev.skillmanager.store.ClonedHomeDescentTest.run(ClonedHomeDescentTest.java:278)
 	at His10Vacuity.main(His10Vacuity.java:23)
-   → 1 passed, 3 failed
+   → 2 passed, 4 failed
 == HomeVerifyPathSpellingTest (4 cases)
   [PASS] a missing reference is found through the symlinked spelling too
   [PASS] THE STATED LIMIT: an alias spelling the caller did not name is not recovered
@@ -50,4 +58,4 @@ java.lang.AssertionError: so it verifies clean with no flag, two tiers down: exp
   [PASS] an isolation refusal prints a remedy, in the spelling every caller parses
   [PASS] a leaking launcher pin gets home shims, which is the command that repairs it
    → 9 passed, 0 failed
-HIS10 VACUITY FAILURES: 3
+HIS10 VACUITY FAILURES: 4

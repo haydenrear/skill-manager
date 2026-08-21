@@ -104,7 +104,31 @@ public class ReadersAgreeAboutOneClone {
 
     private static NodeResult check(NodeContext ctx) throws IOException {
         String homeStr = ctx.get("home.integrity.fixture", "integrityHome").orElse(null);
-        String scratchStr = ctx.get("home.integrity.fixture", "scratchRoot").orElse(null);
+        try {
+            return run(ctx, homeStr, ctx.get("home.integrity.fixture", "scratchRoot").orElse(null));
+        } finally {
+            // Every exit path, including the early fixture refusals below.
+            removeClaim(homeStr);
+        }
+    }
+
+    /** Drop the child-home record this node plants in the shared fixture home. */
+    private static void removeClaim(String homeStr) {
+        if (homeStr == null) return;
+        Path claim = Path.of(homeStr).resolve("child-homes/his10-middle");
+        try {
+            Files.deleteIfExists(claim.resolve("child-home.json"));
+            Files.deleteIfExists(claim);
+        } catch (IOException cannotClean) {
+            // Reported, never fatal: a leftover record is a fixture smell, and
+            // failing the assertion over it would report the wrong defect.
+            System.err.println("could not remove the fixture claim at " + claim
+                    + ": " + cannotClean.getMessage());
+        }
+    }
+
+    private static NodeResult run(NodeContext ctx, String homeStr, String scratchStr)
+            throws IOException {
         if (homeStr == null || scratchStr == null) {
             return NodeResult.fail(SPEC.id(), "missing home.integrity.fixture context");
         }
@@ -135,6 +159,11 @@ public class ReadersAgreeAboutOneClone {
         // And the parent CLAIMS it. Shape alone never sanctions — without this
         // record the middle tier is a leak and the leaf inherits a leak, which
         // is the laundering case ChildHomeShimIsolationTest pins.
+        // REMOVED AGAIN at the end of this node, in every exit path. It is a
+        // record in the SHARED fixture home that this node alone needs, and a
+        // home-integrity graph whose own nodes leave claims lying around in the
+        // subject is a graph that will eventually assert about its own litter --
+        // HomeFixpointLaw runs last, over this home.
         Path claim = parent.resolve("child-homes/his10-middle");
         Files.createDirectories(claim);
         Files.writeString(claim.resolve("child-home.json"), """
@@ -183,8 +212,28 @@ public class ReadersAgreeAboutOneClone {
                 && Files.readSymbolicLink(leafShim).equals(linkTargetBefore);
         boolean stillPresent = Files.exists(leafShim, LinkOption.NOFOLLOW_LINKS);
 
-        boolean allAgree = clone.exitCode() == 0 && bare.exitCode() == 0
-                && against.exitCode() == 0 && stillInherited;
+        // FOUR VERDICTS, COUNTED — not one boolean.
+        //
+        // The goal's metric is "distinct verdicts returned by the readers over
+        // one fixed scenario; the target is one verdict per scenario", so the
+        // node has to be able to REPORT two or three readers agreeing. An
+        // earlier version published `readers.agreeing = allAgree ? 4 : 0`,
+        // which can never say 2 — and 2 is exactly what the epic-tip baseline
+        // scored (clone and --against sanctioned it; bare verify and the pruner
+        // did not). A metric that cannot express the baseline cannot show
+        // progress towards the target either.
+        boolean[] verdicts = {
+                clone.exitCode() == 0,      // the clone
+                bare.exitCode() == 0,       // home verify, no flag
+                against.exitCode() == 0,    // home verify --against
+                stillInherited,             // sync's shim pruner
+        };
+        int sanctioned = 0;
+        for (boolean v : verdicts) if (v) sanctioned++;
+        int agreeingWithTheClone = verdicts[0] ? sanctioned : verdicts.length - sanctioned;
+        int distinctVerdicts = (sanctioned == 0 || sanctioned == verdicts.length) ? 1 : 2;
+
+        boolean allAgree = distinctVerdicts == 1 && verdicts[0];
         if (!allAgree) {
             failures.add("readers disagreed: clone=" + clone.exitCode()
                     + " verify=" + bare.exitCode()
@@ -239,6 +288,8 @@ public class ReadersAgreeAboutOneClone {
                         + " shim=" + (stillInherited ? "inherited link kept"
                                 : stillPresent ? "replaced by a local artifact" : "deleted")
                         + " | " + controlEvidence)
-                .metric("readers.agreeing", allAgree ? 4 : 0);
+                .metric("readers.agreeing", agreeingWithTheClone)
+                .metric("readers.distinctVerdicts", distinctVerdicts)
+                .metric("readers.sanctioning", sanctioned);
     }
 }

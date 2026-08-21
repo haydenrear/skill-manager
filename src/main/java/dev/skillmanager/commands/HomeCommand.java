@@ -522,14 +522,29 @@ public final class HomeCommand {
          * findings underneath them.
          */
         /**
-         * Print what {@code home} records about where it came from, or say that
-         * it records nothing.
+         * Print what {@code home} RECORDS about where it came from, and which
+         * of it still re-derives.
          *
          * <p>Printed either way on purpose. "No descent recorded" is the state
          * in which an inherited shim is a hard {@code FOREIGN_HOME} refusal, and
          * an operator staring at that refusal needs to see the missing fact
          * rather than infer it. It is also what tells a pre-HIS-10 copy apart
          * from one this build made — the input HIS-13's repair needs.
+         *
+         * <h2>A claim and a fact are never printed as the same thing</h2>
+         *
+         * <p>The first version of this printed the record's own
+         * {@code parentStores} as the answer. Measured on review of #228: a
+         * hand-written record naming {@code /nowhere} as its source turned the
+         * isolation gate off AND was reported here as authoritative descent —
+         * and because this line names the filename, it told the next agent
+         * exactly which file to write to make a refusal go away.
+         *
+         * <p>So the recorded set is a CLAIM, each entry is re-derived live
+         * ({@link HomeProvenance#sanctions}), and an entry that no longer
+         * re-derives is printed as the dead claim it is rather than omitted.
+         * Omitting it would hide the one transition an operator has to act on:
+         * a parent whose claim was revoked, whose shims are foreign again.
          */
         private static void reportDescent(Path home) {
             HomeProvenance.Descent descent = HomeProvenance.read(home);
@@ -539,14 +554,25 @@ public final class HomeCommand {
                         home, HomeProvenance.FILENAME);
                 return;
             }
-            List<Path> stores = HomeProvenance.parentStores(home);
-            Log.info("descent: this home was cloned from %s; %s",
-                    descent.clonedFrom(),
-                    stores.isEmpty()
-                            ? "it records no parent store, so no foreign path in it is sanctioned"
-                            : stores.size() + " recorded parent store(s), whose provisioned "
-                                    + "artifacts it shares rather than rebuilding");
-            for (Path store : stores) Log.info("    %s", store);
+            List<Path> recorded = HomeProvenance.recordedParentStores(home);
+            List<Path> verified = HomeProvenance.verifiedParentStores(home);
+            if (recorded.isEmpty()) {
+                Log.info("descent: %s records that it was cloned from %s, and names no parent "
+                                + "store — so no foreign path in it is sanctioned by that record",
+                        home, descent.clonedFrom());
+                return;
+            }
+            Log.info("descent: %s records that it was cloned from %s; %d of %d recorded parent "
+                            + "store(s) still re-derive as ancestors of this home",
+                    home, descent.clonedFrom(), verified.size(), recorded.size());
+            for (Path store : recorded) {
+                if (verified.contains(store)) {
+                    Log.info("    %s  — re-derived, so its artifacts are shared by right", store);
+                } else {
+                    Log.info("    %s  — NOT re-derivable: no live claim links this home to it, "
+                            + "so its shims here are foreign again", store);
+                }
+            }
         }
 
         private static void sample(List<String> refs) {

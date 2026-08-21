@@ -18,8 +18,9 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * What a copied home records about where it came from — the one durable fact
- * every reader of "is this foreign path sanctioned" answers from.
+ * What a copied home records about where it came from — a POINTER to evidence
+ * that is re-derived every time the question is asked, never the evidence
+ * itself.
  *
  * <h2>Four readers, three answers, and why a flag was deciding</h2>
  *
@@ -41,51 +42,90 @@ import java.util.Set;
  * {@code child-homes/<id>/child-home.json} claiming the PROJECT home, so the
  * project's shims into root are sanctioned; a worktree home is a COPY of the
  * project home, a GRANDCHILD, and nothing in the copy recorded that descent.
- * HIS-7 made the clone <em>call</em> pass its {@code srcRoot} so the copy could
- * inherit its source's sanction, which works — inside that one call. Afterwards
- * the only way to make the sanction visible again was an operator typing
+ * The only thing that made the sanction visible was an operator typing
  * {@code --against}, which is a flag, not a fact.
  *
- * <h2>The evidence chosen, and why this one</h2>
+ * <h2>A POINTER, NOT A GRANT — and the review that forced this shape</h2>
  *
- * <p>Three candidates were available:
+ * <p>The first version of this class STORED the set of parent stores and
+ * {@link #sanctions} answered "is {@code S} in that set". <b>That was a hole,
+ * and it was measured</b> on review of #228:
+ *
+ * <pre>
+ *   child is NOT a registered child of parent; child/bin/cli/tool -> parent/bin/cli/tool
+ *     home verify --home child   -> exit 1, FOREIGN_HOME              [correct]
+ *     echo '{"schemaVersion":1,"clonedFrom":"/nowhere",
+ *            "parentStores":["&lt;parent&gt;"]}' > child/home.provenance.json
+ *     home verify --home child   -> exit 0                            [gate off]
+ * </pre>
+ *
+ * <p>One file, written into the home being judged, naming a source
+ * ({@code /nowhere}) that does not exist, switched that home's isolation gate
+ * off — and the verdict then PRINTED the forged descent as authoritative.
+ *
+ * <p>The same shape produced a second defect with no hand-editing at all,
+ * through product operations only: revoke the parent's claim — which is exactly
+ * what {@code ChildHomeRegistry.delete} does on teardown — and
+ * {@code verify project} refuses while {@code verify worktree} passes, on the
+ * same shim and the same parent; the pruner deletes it in one and keeps it in
+ * the other; and cloning that worktree again RE-MINTS the deleted claim. That is
+ * GOAL-one-home-one-answer's own failure mode, recreated on the tier axis by the
+ * mechanism meant to close it.
+ *
+ * <p>So the record names a CHAIN and grants nothing on its own.
+ * {@link #sanctions} walks {@code clonedFrom} hop by hop and asks
+ * {@link ChildHomeLink#isChildOf} at each one, live. A forged {@code /nowhere}
+ * re-derives to nothing. A revoked claim stops re-deriving the instant it is
+ * removed, in every tier at once. {@code parentStores} survives only as a
+ * SNAPSHOT for reporting and for repair (HIS-13); it is never consulted to
+ * decide anything.
+ *
+ * <h2>What this costs, stated plainly</h2>
+ *
+ * <p>An earlier draft of this javadoc justified choosing this evidence over the
+ * alternatives because it "needs no second home to be present, readable, or
+ * even to still exist when the question is asked". <b>Re-derivation gives that
+ * up, and that is the trade.</b> The sanction now depends on the chain still
+ * being derivable: the terminal hop's claim must still be in the parent's own
+ * store, or an intermediate home must still hold materialization records naming
+ * it. When it cannot be re-derived, this class SANCTIONS NOTHING — fail closed.
+ * The worst case is a worktree whose project home was deleted reverting to
+ * pre-HIS-10 behaviour, which is a bad day and not a breach.
+ *
+ * <p>The common cases are cheaper than that sounds: {@link ChildHomeLink}
+ * reads the PARENT's registry, and that record outlives the directory it names,
+ * so a recorded ancestor that has been moved or deleted can still re-derive.
+ *
+ * <h2>What it is still NOT: forgery-proof</h2>
+ *
+ * <p>Said out loud so nobody reads a guarantee here. A writer inside a home can
+ * still name, as its {@code clonedFrom}, some OTHER home that genuinely is a
+ * claimed child; the chain re-derives and the sanction holds. What is gone is
+ * the arbitrary grant the review measured — a record can no longer name a store
+ * and be believed. It must name a live, independently-claimed chain ENDING at
+ * that store, and the shim must still be a structural mirror of that store's own
+ * entry ({@code HomeCloner.sanctionedParentShim}'s first two conditions).
+ *
+ * <p>This adds <b>no new class</b> of in-home forgery: {@link ChildHomeLink}
+ * already accepts {@code <child>/.materialization/<kind>/<unit>.json} — a file
+ * inside the home being judged — as positive evidence. That pre-existing trust
+ * is recorded as a follow-up rather than widened here.
+ *
+ * <h2>The two alternatives, and why neither</h2>
  *
  * <ol>
- *   <li><b>A child-home claim written into the parent</b> at clone time. Rejected:
- *       a clone would then WRITE INTO ANOTHER HOME to record its own descent —
- *       the exact class of damage HIS-7 and HIS-9 exist to stop, and it fails
- *       outright when the parent is read-only or gone.</li>
+ *   <li><b>A child-home claim written into the parent</b> at clone time. The
+ *       strongest evidence available — but a clone would then WRITE INTO ANOTHER
+ *       HOME to record its own descent, the exact class of damage HIS-7 and
+ *       HIS-9 exist to stop, and it fails outright when the parent is read-only
+ *       or gone.</li>
  *   <li><b>The clone's {@code .materialization} records.</b> Already read by
- *       {@link ChildHomeLink}, and they do outlive a harness teardown — but they
+ *       {@link ChildHomeLink}, and they outlive a harness teardown — but they
  *       describe UNITS, not homes. A worktree home's records name the units'
  *       sources in the home it was materialized from, which for this repository
  *       is the integration checkout, not root. They cannot express "the home I
  *       was copied from was itself a child of X".</li>
- *   <li><b>An explicit ancestry record in the copy</b> — this. It is written by
- *       the operation that creates the relationship ({@code home clone}), it
- *       lives in the home the question is asked about, and it needs no second
- *       home to be present, readable, or even to still exist when the question
- *       is asked.</li>
  * </ol>
- *
- * <p><b>Absent or stale is not "sanctioned".</b> A home with no record grants
- * nothing: {@link #sanctions} returns false, and the pre-existing
- * {@link ChildHomeLink} evidence is the only thing left, exactly as before. A
- * record naming a store that no longer exists still answers — it is a statement
- * about descent, not about what is on disk today — but a shim into a home the
- * record does not name is still a leak. That asymmetry is deliberate: a
- * downgrade needs positive evidence, and this file is the positive evidence.
- *
- * <h2>Why cloning is still not a laundering step</h2>
- *
- * <p>{@link #parentStoresOf} derives the recorded set from the SOURCE, and only
- * from evidence the source already had: a foreign home reached by one of the
- * source's own shims is recorded only when {@link ChildHomeLink#isChildOf} says
- * the source is genuinely that home's child, or when the source's OWN record
- * already named it (which is what makes the relation transitive down a chain of
- * copies). A home whose shims are unsanctioned records an empty set, so its copy
- * is unsanctioned too — asserted by {@code ChildHomeShimIsolationTest}'s
- * laundering case, which this must keep passing.
  */
 public final class HomeProvenance {
 
@@ -98,15 +138,28 @@ public final class HomeProvenance {
     public static final int SCHEMA_VERSION = 1;
 
     /**
+     * How many {@code clonedFrom} hops a re-derivation walks.
+     *
+     * <p>Belt and braces beside the cycle guard: the chain is a filesystem
+     * relation that a corrupt or hostile record controls, and an unbounded walk
+     * over record-chosen paths is a directory-scan amplifier. Real chains are
+     * {@code root -> project -> worktree}, which is two hops.
+     */
+    private static final int MAX_HOPS = 16;
+
+    /**
      * One home's recorded descent.
      *
-     * @param clonedFrom   the home this one was copied from, as it was spelled
-     *                     at clone time. Informational: nothing resolves it and
-     *                     nothing writes through it — see the class javadoc for
-     *                     why it is not what grants the sanction
-     * @param parentStores the homes whose provisioned artifacts this home
-     *                     legitimately shares. THIS is what every reader
-     *                     answers from
+     * @param clonedFrom   the home this one was copied from. <b>The only field
+     *                     that decides anything</b>, and only as the first hop
+     *                     of a chain re-derived live — see {@link #sanctions}.
+     *                     Must be ABSOLUTE; a relative spelling would resolve
+     *                     against the process working directory, which is
+     *                     nobody's home
+     * @param parentStores the stores that re-derived at clone time. A SNAPSHOT,
+     *                     kept for reporting and repair and <b>never consulted
+     *                     to grant a sanction</b>. Trusting it is the hole the
+     *                     #228 review measured
      */
     public record Descent(int schemaVersion, String clonedFrom, String clonedAt,
                           List<String> parentStores) {
@@ -129,7 +182,7 @@ public final class HomeProvenance {
         try {
             Descent descent = mapper().readValue(file.toFile(), Descent.class);
             // A record written by a NEWER skill-manager is not evidence this
-            // one may act on: same rule CHM-2 applies to an unknown
+            // one may act on: the same rule CHM-2 applies to an unknown
             // materialization mode. Not being able to tell is not a sanction.
             return descent != null && descent.usable() ? descent : null;
         } catch (IOException | RuntimeException unreadable) {
@@ -138,29 +191,72 @@ public final class HomeProvenance {
     }
 
     /**
-     * True when {@code home}'s recorded descent names {@code foreign} as a store
-     * whose artifacts it shares.
+     * True when {@code foreign} is re-derivable, RIGHT NOW, as an ancestor store
+     * of {@code home} along the descent {@code home} records.
      *
-     * <p>Compared on the resolved spelling of both sides. {@code foreign}
-     * arrives from {@link HomeCloner#foreignHomeReachedBy}, which derives it
-     * from {@link Path#toRealPath}; the recorded side is written realized for
-     * the same reason. The whole of #206 is what happens when two spellings of
-     * one path are compared as text.
+     * <p>Each hop asks {@link ChildHomeLink#isChildOf} — the parent's own
+     * registry, or that hop's own materialization records. The recorded
+     * {@code parentStores} are not read here at all. See the class javadoc for
+     * the forgery and revocation defects that shape this.
      */
     public static boolean sanctions(Path home, Path foreign) {
         if (home == null || foreign == null) return false;
-        Descent descent = read(home);
-        if (descent == null) return false;
-        Path target = realized(foreign);
-        for (String recorded : descent.parentStores()) {
-            if (recorded == null || recorded.isBlank()) continue;
-            if (realized(Path.of(recorded)).equals(target)) return true;
-        }
-        return false;
+        return rederive(home.toAbsolutePath().normalize(), foreign, new LinkedHashSet<>(), 0);
     }
 
-    /** The parent stores {@code home} records, resolved, for reporting. */
-    public static List<Path> parentStores(Path home) {
+    private static boolean rederive(Path home, Path foreign, Set<Path> seen, int hops) {
+        if (hops >= MAX_HOPS) return false;
+        Descent descent = read(home);
+        if (descent == null) return false;
+        Path from = recordedSource(descent);
+        if (from == null) return false;
+        // A chain that revisits a home already walked cannot produce new
+        // evidence, and unguarded, two records naming each other never return.
+        if (!seen.add(realized(from))) return false;
+        if (ChildHomeLink.isChildOf(from, foreign)) return true;
+        return rederive(from, foreign, seen, hops + 1);
+    }
+
+    /**
+     * The recorded source as an ABSOLUTE path, or null when the record does not
+     * name one this class may act on.
+     *
+     * <p>Relative is refused rather than resolved. {@link Path#toAbsolutePath}
+     * resolves against the process working directory, so one record would name
+     * different homes depending on where the command was typed — in the ticket
+     * whose second clause is that a verdict must not depend on how a path is
+     * spelled.
+     */
+    private static Path recordedSource(Descent descent) {
+        String from = descent.clonedFrom();
+        if (from == null || from.isBlank()) return null;
+        Path path;
+        try {
+            path = Path.of(from);
+        } catch (RuntimeException notAPath) {
+            return null;
+        }
+        return path.isAbsolute() ? path.normalize() : null;
+    }
+
+    /**
+     * The recorded stores that STILL re-derive, for reporting.
+     *
+     * <p>Kept apart from {@link #recordedParentStores} on purpose: a reader has
+     * to be able to tell a CLAIM from a FACT, and printing the snapshot as
+     * though it were the verdict is what made the forged record read as
+     * authoritative.
+     */
+    public static List<Path> verifiedParentStores(Path home) {
+        List<Path> out = new ArrayList<>();
+        for (Path candidate : recordedParentStores(home)) {
+            if (sanctions(home, candidate)) out.add(candidate);
+        }
+        return List.copyOf(out);
+    }
+
+    /** The stores the record NAMES, re-derived or not. A claim, not a fact. */
+    public static List<Path> recordedParentStores(Path home) {
         Descent descent = read(home);
         if (descent == null) return List.of();
         List<Path> out = new ArrayList<>();
@@ -199,37 +295,34 @@ public final class HomeProvenance {
     }
 
     /**
-     * The homes {@code src} may pass on as parent stores.
+     * The stores {@code src} can show, TODAY, that it legitimately shares.
      *
-     * <p>Two sources, unioned, and NEITHER of them is "any home a shim happens
-     * to reach":
+     * <p>Every entry is derived live, and the source's own recorded set is
+     * deliberately NOT copied forward. Copying it was the second half of the
+     * review's finding: a revoked parent claim stayed true forever, because each
+     * clone carried the previous clone's assertion, so cloning RE-MINTED a claim
+     * that had been deleted.
      *
-     * <ol>
-     *   <li>whatever {@code src}'s own record already names — this is what makes
-     *       the relation transitive, so {@code root -> project -> wt1 -> wt2}
-     *       keeps working past the second copy;</li>
-     *   <li>every foreign home reached by one of {@code src}'s own shim entries
-     *       that {@link ChildHomeLink#isChildOf} confirms {@code src} is a child
-     *       of. That is the same evidence {@code home verify} already sanctions
-     *       {@code src}'s shims on, so this records a reason that already
-     *       existed rather than inventing one.</li>
-     * </ol>
+     * <p>Candidates come from {@code src}'s own shim entries — a store is only
+     * interesting here if something in {@code src} actually reaches it — and
+     * each must pass {@link ChildHomeLink#isChildOf} directly or
+     * {@link #sanctions}, which re-derives {@code src}'s own chain. Both are the
+     * evidence {@code home verify} already sanctions {@code src}'s shims on, so
+     * this records a reason that exists rather than inventing one.
+     *
+     * <p>Note this is a SNAPSHOT of that derivation, written for reporting. It
+     * is not what a later reader trusts, so a stale entry here misleads a human
+     * at worst; it cannot grant anything.
      */
     static List<Path> parentStoresOf(Path src) {
         Set<Path> out = new LinkedHashSet<>();
-        Descent inherited = read(src);
-        if (inherited != null) {
-            for (String recorded : inherited.parentStores()) {
-                if (recorded == null || recorded.isBlank()) continue;
-                out.add(realized(Path.of(recorded)));
-            }
-        }
         Path srcReal = realized(src);
         for (Path shim : shimEntries(src)) {
             Path foreign = HomeCloner.foreignHomeReachedBy(shim, srcReal);
             if (foreign == null) continue;
-            if (out.contains(realized(foreign))) continue;
-            if (ChildHomeLink.isChildOf(src, foreign)) out.add(realized(foreign));
+            Path key = realized(foreign);
+            if (out.contains(key)) continue;
+            if (ChildHomeLink.isChildOf(src, foreign) || sanctions(src, foreign)) out.add(key);
         }
         return List.copyOf(out);
     }
@@ -238,7 +331,7 @@ public final class HomeProvenance {
      * Every entry in {@code home}'s two shim directories.
      *
      * <p>{@code bin/cli} and {@code bin/mcp}, one segment deep — the same scope
-     * {@code HomeCloner.SHIM_DIRS} sanctions, because a record that named homes
+     * {@code HomeCloner.SHIM_DIRS} sanctions, because a record naming homes
      * reached from anywhere else would grant sanction in places the isolation
      * rule refuses.
      */
@@ -272,19 +365,19 @@ public final class HomeProvenance {
      * by the descent it declares.
      *
      * <p>The provenance record is the one file in a copy whose PURPOSE is to
-     * name the home the copy was made from, so the isolation rule's
-     * "nothing here may name the source" would refuse the very evidence it now
-     * reads. The exemption is therefore not "this filename is trusted": it is
-     * the same byte-accounting {@code mentionIsOnlyDiagnostic} performs. The raw
+     * name the home the copy was made from, so the isolation rule's "nothing
+     * here may name the source" would refuse the very evidence it now reads. The
+     * exemption is therefore not "this filename is trusted": it is the same
+     * byte-accounting {@code mentionIsOnlyDiagnostic} performs. The raw
      * occurrences must be covered exactly by the parsed {@code clonedFrom} and
      * {@code parentStores} fields; one occurrence anywhere else — a field a
      * future version adds, a path smuggled into a timestamp — leaves this false
      * and the finding stays a hard leak.
      *
      * <p>Naming the source here is also not an instruction to touch it. Nothing
-     * resolves {@code clonedFrom}, nothing writes through it, and
-     * {@link #sanctions} reads only {@code parentStores}. Contrast a projection
-     * ledger row, which {@code unbind} executes.
+     * writes through {@code clonedFrom}; it is read only in order to ask another
+     * home a question. Contrast a projection ledger row, which {@code unbind}
+     * executes.
      */
     public static boolean mentionsOnlyRecordedDescent(Path file, String needle) {
         if (file == null || needle == null || needle.isBlank()) return false;
