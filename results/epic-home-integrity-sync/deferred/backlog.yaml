@@ -758,6 +758,10 @@ findings:
       memory when someone decides whether to build it.
     candidate_owner: unassigned
   - id: DEF-013
+    # RENUMBERING AID: HIS-12 filed a different DEF-013 in a separate worktree.
+    # This one is: HIS-4 / the exact MERGE_CONFLICT index stages were not reproduced.
+    filed_by_ticket: HIS-4
+    short_label: "HIS-4: index stages 1+3 at 120000 not reproduced synthetically"
     found_by: HIS-4, reproducing the MERGE_CONFLICT deadlock synthetically
     found_at: "2026-08-21"
     severity: minor
@@ -807,6 +811,10 @@ findings:
     status: open
 
   - id: DEF-014
+    # RENUMBERING AID: HIS-12 filed a different DEF-014 in a separate worktree.
+    # This one is: HIS-4 / a SUCCEEDING sync --merge undoes the materialization.
+    filed_by_ticket: HIS-4
+    short_label: "HIS-4: a successful `sync --merge` reverts or deletes a materialized store link"
     found_by: HIS-4, measuring what `sync --merge` does when it SUCCEEDS
     found_at: "2026-08-21"
     severity: major
@@ -859,6 +867,10 @@ findings:
       - results/epic-home-integrity-sync/probes/his-4/before-run2-sync-merge.out
 
   - id: DEF-015
+    # RENUMBERING AID: HIS-12 filed a different DEF-015 in a separate worktree.
+    # This one is: HIS-4 / the MERGE_CONFLICT probe clears an error whose damage remains.
+    filed_by_ticket: HIS-4
+    short_label: "HIS-4: MERGE_CONFLICT probe narrower than the condition it retires"
     found_by: HIS-4, checking whether clause 2 needed a new mechanism
     found_at: "2026-08-21"
     severity: minor
@@ -924,6 +936,32 @@ findings:
       that choice is made once per kind by whoever owns the kind. Not inside
       HIS-4's declared slice, which names InstalledRecord.errors but not the
       validation predicate.
+    open_question_the_third_surface: >
+      COULD NOT BE MEASURED FROM A TICKET WORKTREE, AND IT MAY BE THE SAME
+      PATTERN A THIRD TIME.
+
+      #216(b) states that after the git state was cleared by hand, `skt check`
+      STILL reported the conflict. On this build the CLI re-derives the error on
+      every invocation, so the CLI cannot produce that symptom -- measured
+      above. Two readings are possible and one command decides between them:
+
+        (a) the report predates the reconcile pass, and the symptom no longer
+            exists; or
+        (b) `skt check` reads installed/<unit>.json DIRECTLY, without going
+            through a skill-manager command, so it never triggers the reconcile
+            that would retire the error.
+
+      IF (b), THEN `skt` AND THE CLI ARE TWO READERS OF ONE RECORD, disagreeing
+      about whether a unit has an outstanding error -- which is the same pattern
+      as DEF-012 and this finding, on a third surface. That makes it one class
+      with three instances rather than three tickets, and HIS-13 should meet it
+      as one.
+
+      NOT GUESSED AT HERE. `skt` is a separate unit and reading its
+      implementation to decide was outside this ticket's slice; the honest
+      report is the question plus the command that answers it, not an inference.
+      To decide: find where `skt check` obtains a unit's errors -- if it parses
+      the JSON itself rather than shelling out to skill-manager, it is (b).
     candidate_owner: HIS-13
     related: [DEF-012]
     status: open

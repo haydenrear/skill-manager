@@ -17,6 +17,17 @@ tree** that tracks that path at mode `120000`. `git status` reads it as a
 deletion; `sync` reads a deletion as "extra local changes"; and from that moment
 the unit is never syncable again.
 
+**And the sharpest thing I found is not in the issue at all: a `sync --merge`
+that SUCCEEDS — exit 0, `✓ synced 1 unit(s) — 1 merged` — silently restores the
+symlink the child home was materialized to replace.** Where the provider link is
+absolute — which `prepare_provider_bindings` emits for a `skill-root` provider
+(`target = str(source)`) rather than a workspace-relative one — that restored
+link points **back into the parent store**, and the child home is writing
+through into the home it was materialized from. That is the isolation break
+CHM-5 exists to prevent, reintroduced by a command reporting success and
+reporting nothing else. In the other upstream shape it does not restore the tree
+at all: it **deletes** it. Both measured; see the section below and **DEF-014**.
+
 ## What I changed
 
 | file | what |
@@ -26,6 +37,8 @@ the unit is never syncable again.
 | `effects/SyncGitHandler.java` | the dirty gate asks about **authored** changes; the merge **escrows** the materialized trees; a failed stash pop **rolls the merge back** |
 | `app/ReportUseCase.java` | the `MERGE_CONFLICT` remedy is chosen by looking at the store, so it is one that clears the state it is printed for |
 | `effects/ConsoleProgramRenderer.java` | routed through that single definition; the second spelling is gone |
+| `effects/SyncFromLocalDirHandler.java` | the **second sync path**, which asked the raw question and would have gone on refusing a materialized copy in identical words |
+| `SyncPathsAgreeAboutDirtyTest` (new) | the oracle that fails when a **third** sync path spells it a third way |
 
 **No new persisted state and no schema change.** The predicate reads the index's
 mode for the path, the shape on disk, and the link target git holds in the blob
@@ -154,14 +167,79 @@ re-run green after each.
 | 2 | the `escapesUnit` clause dropped — the **over-broad** fix | *a link resolving inside the unit…* — `expected false: a link that resolves inside the unit is never a materialization artifact` |
 | 3 | `hasAuthoredWorktreeChanges` returns false whenever any deref is present — the **over-reach** | *a real edit alongside the materialization…* — `not true: the edit is still there to protect` |
 | 4 | the old single-sentence remedy restored | *the remedy for a stash-pop residue…* — `expected <resolve in …, then `git add` + `git commit`> to contain <already clear>` |
-| 5 | the whole production diff reverted (`git checkout` + delete the new class) | the **graph node** — see below |
+| 5 | `SyncFromLocalDirHandler` put back on `GitOps.isDirty` — the divergence itself | *no effects handler asks the raw dirty question* — ``a sync path is asking the raw dirty question instead of DereferencedStoreLinks.isAuthoredDirty, so it will refuse a materialized child home forever while its sibling does not: [SyncFromLocalDirHandler.java asks GitOps.isDirty(]``, and *both sync paths reach the one definition* reddened with it |
 
 Probes 2 and 3 are the ones that matter: they redden against *plausible fixes*,
 not against no fix. The cheap version of this change ("a deleted symlink is
 never a local change") passes probe 1 and fails 2 and 3, and it silently
 discards an agent's work.
 
-## GRAPH_RESULTS_PLACEHOLDER
+Probe 5 is a different kind and worth its own note. There are **two** sync paths
+— `SyncGitHandler` against a git remote, `SyncFromLocalDirHandler` against a
+local directory — and **both refuse with the same sentence**. Fixing only the
+first would have left `sync --from` refusing a materialized child copy forever,
+in identical words, for a reason already fixed next door, with nothing to detect
+it because both look correct in isolation. That is **two readings of one rule**:
+CHM-15's shape, DEF-004's shape, the shape this epic meets every wave. So the
+question has **one definition** (`DereferencedStoreLinks.isAuthoredDirty`) and
+`SyncPathsAgreeAboutDirtyTest` is a **source scan**, not a behavioural test —
+deliberately, because the failure it prevents is *a handler nobody has written
+yet*, and a behavioural test can only cover the ones somebody remembered. It
+proves itself sensitive every run (it asserts it walked ≥ 5 files and that its
+matcher still recognises the banned shape), so a scan that quietly stopped
+matching cannot pass as compliance. Modelled on `SandboxEnvContract`.
+
+## The graph — and the order the runs actually happened in
+
+**Read this before the result, because the order is not the one the narrative
+would suggest and tidying it up would be the second thing this epic had to
+correct after the fact.**
+
+The intended sequence was red-then-green: run the node against the unfixed
+build, see it fail, restore, see it pass. That is *not* what happened. The
+shared graph lock freed while I was restoring the fix into the working tree, so
+the run that had been queued for the red measurement **acquired the lock with
+the fixed build in the tree** and produced the GREEN result instead:
+
+| | |
+| --- | --- |
+| runId | `20260821-184449` |
+| build in tree | **fixed** (`88a4346`'s content) |
+| result | `BUILD SUCCESSFUL in 1m 14s`; node `"status": "passed"`, 20.7 s |
+
+The red run was then started against the reverted build and **has not
+completed** — see below. So at the time of writing, the graph evidence is:
+green-with-the-fix, measured; red-without-the-fix, **not yet measured through
+the graph**.
+
+**Why this is still a legitimate control, and where its limit is.**
+Red-with-the-fix-reverted is the same evidence whichever order it is measured
+in — the node and the fixture are byte-identical across both runs, and the only
+variable is the five production files. But *"not yet measured"* is not
+*"measured and red"*, and I am not going to write it as though it were. What
+**is** measured, at the CLI level rather than through the graph, is the same
+comparison over the same fixture: `probes/his-4/before-*.out` against
+`after-*.out`, exit 7 → exit 0 across modes A/B/C with the negative control
+D staying at 7. The node asserts exactly those facts; the graph run would
+confirm that the node *reports* them, which is a weaker and separate claim.
+
+### Why the red run is blocked
+
+The wrapper's lock deadlocked, twice, and neither time was a real collision:
+
+1. My own green run finished in 1m 14s but its release trap only fires on a
+   clean shell exit; the process ended without one, leaving the lock directory
+   with **no holder**. My next invocation then queued behind *myself* for 13
+   minutes. The coordinator fixed the wrapper (the holder now records its PID
+   and a waiter reclaims a lock whose holder is gone) and cleared the lock.
+2. The clearing left an **empty** lock directory — no `owner`, no `pid` — which
+   the fixed wrapper **cannot reclaim either**, because its reclaim branch
+   requires a non-empty `pid` file. Verified orphaned: no `run.py`, no
+   `GradleWrapperMain`, no `skill-manager` compose containers, directory
+   created at the moment of the clearing. It was blocking **HIS-9's**
+   `home-integrity` waiter as well as mine.
+
+I did not remove it. Reported instead, which is the standing instruction.
 
 ## The defect the issue did not name: a *successful* `--merge` destroys the materialization
 
@@ -235,11 +313,11 @@ argument, and nothing in the git-surface fix needs a name list.
 
 | gate | result |
 | --- | --- |
-| `jbang RunTests.java` | RUNTESTS_PLACEHOLDER |
+| `jbang RunTests.java` | **ALL PASSED** — 135 suites, 1224 cases, including the 5 new `DereferencedStoreLinkSyncTest` cases and the 3 `SyncPathsAgreeAboutDirtyTest` cases |
 | `uv run pytest specs/` | **38 passed** in 1.81s |
 | `run_tlc.sh HomeIntegrityInternal` | **No error has been found** — 11 states, 10 distinct |
 | `run_tlc.sh` regression `_silentdrift` | **`Invariant RecordDescribesItsStoreOrSaysWhy is violated`** — the spec's own control still reddens |
-| `run.py sync-settles` | GRAPH_PLACEHOLDER |
+| `run.py sync-settles` | **`BUILD SUCCESSFUL in 1m 14s`**, node `passed` (runId `20260821-184449`) — on the FIXED build. The red counterpart is blocked on the shared lock; see above. |
 
 **No spec change.** `RecordDescribesItsStoreOrSaysWhy ==
 (hi_record_revision = hi_store_revision) \/ hi_record_error` already forbids the
@@ -262,7 +340,8 @@ fixtures exercise the sources I edited**, named with its reason:
   `ChildHomeSyncPreservesEdits` then syncs the result). The edit-preservation
   nodes are the closest thing the suite has to my negative control, so a
   regression in `hasAuthoredWorktreeChanges` should surface there.
-  PROJECT_CHILD_HOME_PLACEHOLDER
+  **Not yet run** — blocked behind the same lock as the red `sync-settles` run.
+  Named here with its reason so the gap is visible rather than absent.
 
 `run.py --all` was **not** run: it is multi-hour and belongs to HIS-6, which
 owns the one terminal sweep.

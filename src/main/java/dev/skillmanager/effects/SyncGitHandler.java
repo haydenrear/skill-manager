@@ -533,10 +533,7 @@ public final class SyncGitHandler {
      * because the first half no longer answers "dirty" first.
      */
     private static boolean isAuthoredDirty(Path storeDir, String baselineHash) {
-        if (DereferencedStoreLinks.hasAuthoredWorktreeChanges(storeDir)) return true;
-        if (baselineHash == null || baselineHash.isBlank()) return false;
-        String head = GitOps.headHash(storeDir);
-        return head != null && !head.equals(baselineHash);
+        return DereferencedStoreLinks.isAuthoredDirty(storeDir, baselineHash);
     }
 
     /**

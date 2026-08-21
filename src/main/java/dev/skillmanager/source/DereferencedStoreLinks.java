@@ -157,6 +157,37 @@ public final class DereferencedStoreLinks {
     }
 
     /**
+     * <b>The one definition of "is there work here a sync would destroy".</b>
+     *
+     * <p>Both halves of {@code GitOps.isDirty} — uncommitted work, or HEAD past
+     * the recorded baseline — with the first half blind to the materializer's
+     * own dereferences. The second half is untouched on purpose: a HEAD ahead of
+     * the baseline is HIS-4's link 3, and it must still stop an overwrite.
+     *
+     * <h2>Why it lives here and not in each handler</h2>
+     *
+     * <p>Because there are two sync paths and there will be a third.
+     * {@code SyncGitHandler} syncs a store copy against a git remote;
+     * {@code SyncFromLocalDirHandler} syncs it against a local directory
+     * ({@code sync --from}). Both refuse with the same sentence — "extra local
+     * changes (working tree edits, or commits ahead of the installed baseline)"
+     * — and before HIS-4 both asked {@code GitOps.isDirty} directly. Fixing one
+     * would have left the other refusing a materialized child copy forever,
+     * with the same words, which is <b>two readings of one rule</b>: the shape
+     * CHM-15 was, the shape DEF-004 was, and the shape this epic keeps meeting.
+     *
+     * <p>{@code SyncPathsAgreeAboutDirtyTest} is the oracle that keeps it one
+     * definition: it fails when any handler in the effects package asks
+     * {@code GitOps.isDirty} or {@code GitOps.hasWorktreeChanges} again.
+     */
+    public static boolean isAuthoredDirty(Path storeDir, String baselineHash) {
+        if (hasAuthoredWorktreeChanges(storeDir)) return true;
+        if (baselineHash == null || baselineHash.isBlank()) return false;
+        String head = GitOps.headHash(storeDir);
+        return head != null && !head.equals(baselineHash);
+    }
+
+    /**
      * The path a {@code git status --porcelain} line names, or {@code null}
      * when the line cannot be parsed.
      *

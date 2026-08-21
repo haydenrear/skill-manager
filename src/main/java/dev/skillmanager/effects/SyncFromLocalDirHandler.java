@@ -73,7 +73,18 @@ public final class SyncFromLocalDirHandler {
         }
         if (storeIsGit && GitOps.isAvailable()) {
             String baseline = sourceHash(store, skillName);
-            boolean dirty = GitOps.isDirty(storeDir, baseline);
+            // THE SAME QUESTION SyncGitHandler ASKS, and deliberately the same
+            // function. Both paths refuse with the same sentence -- "extra
+            // local changes (working tree edits, or commits ahead of the
+            // installed baseline)" -- so if only one of them learned that a
+            // dereferenced store link is the materializer's work and not an
+            // author's, a `sync --from` would go on refusing a materialized
+            // child copy forever, in the same words, for a reason that had
+            // already been fixed next door. Two readings of one rule is this
+            // epic's signature defect; SyncPathsAgreeAboutDirtyTest fails if a
+            // third sync path spells it a third way.
+            boolean dirty = dev.skillmanager.source.DereferencedStoreLinks
+                    .isAuthoredDirty(storeDir, baseline);
             if (dirty && !e.merge()) {
                 return EffectReceipt.partial(e, "extra local changes — re-run with --merge",
                         new ContextFact.SyncGitRefused(skillName, src.toString(), false, true));
