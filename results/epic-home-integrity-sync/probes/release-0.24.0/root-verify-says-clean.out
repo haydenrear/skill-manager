@@ -1,0 +1,3 @@
+! Telemetry export unavailable; continuing without telemetry.
+NOT CHECKED: whether a reference back to the home this one was copied from survives — pass `--against <source home>` for that half. Checked below: every link and generated script in /Users/hayde/.skill-manager resolves, and no path in it reaches any other Skill Manager home.
+✓ every reference in /Users/hayde/.skill-manager resolves, and no path in it reaches any other Skill Manager home (source-reference check not run — see NOT CHECKED above)

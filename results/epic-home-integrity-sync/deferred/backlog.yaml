@@ -310,6 +310,30 @@ findings:
       - Accept the SKILL_MANAGER_CLI workaround for the rest of the epic and record it in HIS-8's documentation as the supported way to bootstrap against an unreleased build.
     candidate_owner: unassigned
     status: open
+    update_2026_08_21_release_rerun: >
+      THE RELEASE WAS RE-RUN AND THE GAP NARROWED BUT DID NOT CLOSE. On the
+      owner's instruction the v0.24.0 Release workflow was re-run with every
+      Actions cache cleared (52 caches, 5.1 GiB). It succeeded: the tarball
+      (19,722,385 bytes) and its sha256 are attached to v0.24.0, the homebrew
+      tap was bumped, and `brew upgrade` took the root home from 0.23.0 to
+      0.24.0.
+
+      MEASURED AFTERWARDS, same probe as the original finding, throwaway
+      worktree, NO SKILL_MANAGER_CLI:
+
+        bootstrap-home.sh --root <wt>  ->  exit 1
+        "clone verification FAILED -- 5 path(s) reach outside this copy"
+        FOREIGN_HOME x5, "home clone failed; ... is not usable"
+
+      STILL REFUSED, and it should be: 0.24.0 is cut from `main`, which predates
+      BOTH this epic and epic/artifact-dag before it. HIS-10's provenance fix
+      lives on epic/home-integrity-sync and reaches no released build until this
+      epic merges to main and releases.
+
+      So the version gap this finding named is now 0.24.0-vs-epic rather than
+      0.23.0-vs-epic. The remedy is unchanged: every ticket in this epic
+      bootstraps its worktree with SKILL_MANAGER_CLI pointed at the epic build,
+      and that is a workaround, recorded as one. The finding stays OPEN.
 
   - id: DEF-007
     found_by: HIS-10, answering HIS-7 review finding MED-6 by measurement
@@ -623,3 +647,55 @@ findings:
       - results/epic-home-integrity-sync/probes/wave-3/smoke-failed-twice.txt
     candidate_owner: HIS-6
     status: triaged
+
+  - id: DEF-012
+    found_by: wave-3 close-out, upgrading the root home after the v0.24.0 release re-run
+    found_at: "2026-08-21"
+    severity: major
+    escalated: true
+    summary: >
+      A home's pinned CLI is an absolute VERSIONED path into the Homebrew
+      Cellar, so upgrading the very build it pins leaves the home pointing at a
+      directory Homebrew has deleted -- and `home verify` calls that home clean.
+    detail: >
+      MEASURED 2026-08-21, immediately after `brew upgrade skill-manager`
+      0.23.0 -> 0.24.0:
+
+        ~/.skill-manager/bin/cli/skill-manager, line 117:
+          cli="${SKILL_MANAGER_CLI:-/opt/homebrew/Cellar/skill-manager/0.23.0/libexec/bin/skill-manager}"
+
+        ls /opt/homebrew/Cellar/skill-manager/  ->  0.24.0     (0.23.0 is GONE)
+        test -x .../0.23.0/libexec/bin/skill-manager  ->  false
+
+      So the root home's own front door was dangling. And the instrument did
+      not notice:
+
+        home verify --home ~/.skill-manager  ->  exit 0
+        "every reference in /Users/hayde/.skill-manager resolves, and no path in
+         it reaches any other Skill Manager home"
+
+      WHY IT IS BLIND: missingReferencesIn only considers references that fall
+      UNDER the home root (underProvisionableRoot). A Cellar path is outside the
+      home, so the one reference deciding WHICH BUILD THIS HOME RUNS is not
+      checked at all. That scope is defensible for leak detection and indefensible
+      for "is this home healthy".
+    repaired: >
+      `SKILL_MANAGER_HOME=~/.skill-manager skill-manager home shims` rewrote the
+      pin to 0.24.0 and the shim runs again. The pre-repair shim was backed up
+      first. This is a REPAIR, not a fix: the next `brew upgrade` re-breaks it,
+      silently, and nothing will say so.
+    why_this_is_two_tickets: >
+      HIS-12 (#161) owns the resolution half -- a pin that names one absolute
+      build, with no version check, is the same defect as resolveCli's
+      unversioned PATH fallback. A pin SHOULD survive an upgrade of the thing it
+      pins, or refuse loudly.
+
+      HIS-13 (#159) owns the detection half, and this is the sharpest example
+      the epic has produced: `home verify` returning exit 0 on a home whose own
+      CLI is gone is precisely "no command can tell a damaged home from a
+      healthy one". HIS-13's detection must cover references that leave the
+      home, not only those inside it.
+    candidate_owner: HIS-12 (resolution) and HIS-13 (detection)
+    status: open
+    evidence:
+      - results/epic-home-integrity-sync/probes/release-0.24.0/root-verify-says-clean.out

@@ -195,6 +195,13 @@ def _validation(ticket: dict, role: str) -> dict:
         ),
         "spec_graph": graph,
         "graphs": names,
+        "graphs_not_required": (
+            "python skills/test_graph/scripts/run.py --all -- it is multi-hour and it "
+            "belongs to HIS-6, which owns the ONE terminal sweep run with the goal "
+            "scorecard. Run the graphs above plus any graph whose fixtures exercise the "
+            "sources you edited, and NAME that second set with its reason in your goal "
+            "contribution. Owner's instruction, 2026-08-21."
+        ),
         "toolchain_spec_workflow": (
             "tla-spec-dev --spec-root specs open ticket "
             f"{ticket['id']} ... close ticket {ticket['id']}"

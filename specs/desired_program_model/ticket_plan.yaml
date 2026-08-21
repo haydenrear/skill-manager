@@ -418,16 +418,37 @@ review_policy:
 # honestly as a subset; that is now the policy, not a shortfall against it.
 # ---------------------------------------------------------------------------
 validation_policy:
-  per_wave:
+  per_ticket:
     required:
       - "jbang RunTests.java"
-      - "the graphs named in the wave's tickets' conflict_keys.test_graph"
-      - "any graph whose fixtures exercise the mechanism the wave changed, named in the review with the reason"
+      - "uv run pytest specs/"
+      - "the graphs named in this ticket's conflict_keys.test_graph"
+      - "any graph whose fixtures exercise the SOURCES this ticket edited, named in the goal contribution with the reason"
     rule: >
-      Targeted, and the targeting is ARGUED in the review artifact rather than
-      asserted. A wave review names which graphs it ran, which it did not, and
-      why that subset covers what the wave changed. "Ran the usual ones" is not
-      a reason.
+      RELEVANT GRAPHS, NOT ALL GRAPHS. The unit tests and the spec tests are
+      cheap and run every time. Graphs are selected by what the ticket TOUCHED:
+      its declared conflict_keys.test_graph, plus any graph whose fixtures
+      exercise the sources it edited -- and that second set is named with its
+      reason, because "the usual ones" is not a selection rule.
+    not_required: >
+      `run.py --all`. It is multi-hour and it belongs to HIS-6. A ticket agent
+      that runs it is spending the epic's time on the terminal instrument.
+  per_wave:
+    required:
+      - "jbang RunTests.java on the merged tip, not on any branch"
+      - "uv run pytest specs/ on the merged tip"
+      - "the union of the wave's tickets' relevant graphs, re-run on the merged tip"
+    rule: >
+      Same selection rule, applied to the union, and RE-RUN rather than carried
+      forward. A ticket's green was measured on its own branch; the wave asks
+      the same question of the integrated tree, and a green carried forward
+      from before a sibling merged is the wrong kind of evidence. HIS-10 caught
+      this on itself -- it re-ran project-child-home and harness-smoke after a
+      late change narrowed the predicate they exercise, rather than reusing the
+      earlier pass.
+    argued_in_the_review: >
+      The review artifact names which graphs ran, which did not, and why the
+      selection covers what the wave changed.
   terminal:
     owner: HIS-6
     command: "python skills/test_graph/scripts/run.py --all"
