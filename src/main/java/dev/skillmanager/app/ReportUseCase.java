@@ -142,9 +142,7 @@ public final class ReportUseCase {
         return switch (kind) {
             case GATEWAY_UNAVAILABLE -> "start the gateway: skill-manager gateway up";
             case MCP_REGISTRATION_FAILED -> "retry: skill-manager sync" + target;
-            case MERGE_CONFLICT -> one
-                    ? "resolve in " + storeDir + ", then `git add` + `git commit`"
-                    : "resolve in each unit's store directory, then `git add` + `git commit`";
+            case MERGE_CONFLICT -> mergeConflictRemedy(storeDir, name);
             case NO_GIT_REMOTE -> one
                     ? "set origin: cd " + storeDir + " && git remote add origin <url>"
                     : "set origin in each unit's store directory: git remote add origin <url>";
@@ -170,5 +168,64 @@ public final class ReportUseCase {
                     + "`skill-manager sync` — a project sync that succeeds clears this from every "
                     + "unit it claims";
         };
+    }
+
+    /**
+     * The remedy for a {@code MERGE_CONFLICT}, chosen by looking at the store
+     * rather than by assuming which conflict it was.
+     *
+     * <h2>Why this is not one sentence any more</h2>
+     *
+     * <p>It was, and the sentence was wrong for the state it was printed for.
+     * MEASURED on the operator's project home, on two units, for nine days:
+     * unmerged index stages at mode {@code 120000} and <b>no {@code MERGE_HEAD}</b>
+     * — residue of a failed {@code git stash pop}, not a merge in progress. The
+     * printed remedy was
+     *
+     * <pre>resolve in &lt;store&gt;, then `git add` + `git commit`</pre>
+     *
+     * <p>which is the remedy for a merge in progress. There was no merge to
+     * commit; running it verbatim could not clear the state, and the state
+     * re-armed on the next sync. HIS-4's acceptance is that the printed remedy
+     * is one that actually clears the state it is printed for, so this asks
+     * which state it is:
+     *
+     * <ul>
+     *   <li><b>Mid-merge</b> ({@code MERGE_HEAD} present) — resolve, {@code git
+     *       add}, {@code git commit}, or back out with {@code git merge --abort}.
+     *       The original sentence, now printed only where it is true.</li>
+     *   <li><b>Unmerged paths with no {@code MERGE_HEAD}</b> — stash-pop
+     *       residue. {@code git reset} drops the phantom stages; the stash, if
+     *       one is left, still holds the local work. This is the hand recovery
+     *       the epic performed, made printable.</li>
+     *   <li><b>Neither</b> — the condition has already cleared and the record
+     *       has not caught up. It is retired by the reconcile pass on the very
+     *       next command ({@code ReconcileUseCase} → {@code ValidateAndClearError}),
+     *       so the remedy is to say so rather than to send anyone into a store
+     *       directory to fix nothing.</li>
+     * </ul>
+     *
+     * <p>Store-less (a shared block of several units, or no store handle) falls
+     * back to the shape-agnostic sentence: naming one unit's git state for ten
+     * units is the misleading-remedy problem in the other direction.
+     */
+    public static String mergeConflictRemedy(Path storeDir, String name) {
+        if (storeDir == null) {
+            return "in each unit's store directory: `git status` says which — resolve + `git add` + "
+                    + "`git commit` mid-merge, or `git reset` to drop a failed stash pop";
+        }
+        if (dev.skillmanager.source.GitOps.isMidMerge(storeDir)) {
+            return "resolve in " + storeDir + ", then `git add` + `git commit` "
+                    + "(or back out with `git merge --abort`)";
+        }
+        if (!dev.skillmanager.source.GitOps.unmergedFiles(storeDir).isEmpty()) {
+            return "a failed stash pop, not a merge — no MERGE_HEAD, so `git commit` has nothing "
+                    + "to do. Clear the stages: git -C " + storeDir + " reset"
+                    + (dev.skillmanager.source.GitOps.hasStash(storeDir)
+                            ? "  (local work is still at stash@{0})" : "")
+                    + ", then `skill-manager sync " + name + "`";
+        }
+        return "already clear in " + storeDir + " — the record has not caught up and the next "
+                + "command retires it; `skill-manager sync " + name + "` does so now";
     }
 }

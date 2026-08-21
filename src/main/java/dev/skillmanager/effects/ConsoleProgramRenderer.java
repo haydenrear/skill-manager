@@ -257,13 +257,18 @@ public final class ConsoleProgramRenderer implements ProgramRenderer {
                 Log.error("%s: merge conflict in %d file(s):",
                         x.skillName(), x.conflictedFiles().size());
                 Log.errorList("    ", x.conflictedFiles());
-                // One sentence per way out, not four with a blank line
-                // between. The stash clause is only printed when there IS a
-                // stash to speak about — it used to be said on every conflict,
-                // including the ones where nothing was stashed.
-                Log.error("  resolve in %s, then `git add` + `git commit`; back out with "
-                        + "`git merge --abort`. A stash, if sync made one, is at `stash@{0}` "
-                        + "(`git stash pop` once the tree is clean).", storeDir);
+                // ONE definition of this remedy, shared with the outstanding-
+                // errors banner: dev.skillmanager.app.ReportUseCase.
+                //
+                // It used to be spelled here as well, and the two spellings had
+                // already drifted -- this one claimed "the stash clause is only
+                // printed when there IS a stash" in a comment while printing it
+                // unconditionally, and both of them printed `git add` + `git
+                // commit` for a stash-pop residue with no MERGE_HEAD, which
+                // cannot clear it. The remedy now asks the store which state it
+                // is in. See ReportUseCase.mergeConflictRemedy.
+                Log.error("  %s", dev.skillmanager.app.ReportUseCase
+                        .mergeConflictRemedy(storeDir, x.skillName()));
                 conflictedSkills.add(x.skillName());
             }
             case ContextFact.SyncGitFailed x ->

@@ -7,6 +7,7 @@ import dev.skillmanager.registry.AuthenticationRequiredException;
 import dev.skillmanager.registry.RegistryClient;
 import dev.skillmanager.registry.RegistryConfig;
 import dev.skillmanager.registry.RegistryUnavailableException;
+import dev.skillmanager.source.DereferencedStoreLinks;
 import dev.skillmanager.source.GitOps;
 import dev.skillmanager.source.InstalledUnit;
 import dev.skillmanager.source.UnitStore;
@@ -141,8 +142,18 @@ public final class SyncGitHandler {
         // a user may have already merged the upstream commit manually, leaving
         // only the source record stale. That case should refresh the record
         // instead of printing a no-op `sync --merge` recipe.
+        //
+        // "Uncommitted changes" is asked of what an AUTHOR did, not of what the
+        // materializer did. A child home holds a real directory where the unit
+        // tracks a symlink into the parent store, because that is what makes it
+        // independent (CHM-5) -- and git reads it as a deletion. Counting it as
+        // local work is what left 2 of 21 units in the operator's project home
+        // permanently unsyncable: the refusal protected nothing, and its own
+        // remedy could not clear it. See DereferencedStoreLinks, including why
+        // this is not licence to overwrite those paths -- runMerge carries them
+        // across the merge window and puts them back.
         String baseline = src != null ? src.gitHash() : null;
-        boolean dirty = GitOps.isDirty(storeDir, baseline);
+        boolean dirty = isAuthoredDirty(storeDir, baseline);
 
         TargetResolution tr = resolveTarget(store, ctx, e, src, skillName, storeDir, upstream, dirty);
         if (tr.fact != null) {
@@ -350,6 +361,33 @@ public final class SyncGitHandler {
                                        String ref, String skillName,
                                        boolean allowUnrelatedHistories) {
         String preHead = GitOps.headHash(storeDir);
+        // Lift the dereferenced store links OUT of the working tree before git
+        // is allowed to look at it, and put them back at the end. Not an
+        // optimization: while they are there, `git stash` and `git merge` both
+        // see a directory where the repository holds mode 120000, and neither
+        // can express that. Measured outcomes with them left in place, on the
+        // synthetic project-tier fixture in
+        // results/epic-home-integrity-sync/probes/his-4/:
+        //   * the stash pop conflicts -> MERGE_CONFLICT, stash@{0} abandoned,
+        //     no MERGE_HEAD, and a printed remedy (`git add` + `git commit`)
+        //     with nothing to act on;
+        //   * or the merge "succeeds" and SILENTLY REVERTS the materialization,
+        //     leaving the child home pointing at a symlink again (run1) or with
+        //     the tree deleted outright (run2).
+        // Both are the exclusion rule from carryOverUnownedTrees, broken on the
+        // git surface: not compared, not copied, and NOT DESTROYED.
+        MaterializationEscrow escrow = MaterializationEscrow.lift(storeDir);
+        try {
+            return mergeWithoutMaterializedTrees(ctx, storeDir, upstream, ref, skillName,
+                    allowUnrelatedHistories, preHead);
+        } finally {
+            escrow.restore();
+        }
+    }
+
+    private static MergeResult mergeWithoutMaterializedTrees(
+            EffectContext ctx, Path storeDir, String upstream, String ref, String skillName,
+            boolean allowUnrelatedHistories, String preHead) {
         boolean stashed = GitOps.stashAll(storeDir, "skill-manager-sync");
 
         String fetchedHash = GitOps.fetchRef(storeDir, upstream, ref);
@@ -372,15 +410,104 @@ public final class SyncGitHandler {
         }
 
         if (stashed && !GitOps.stashPop(storeDir)) {
+            // LINK 3, AND THE ONLY ONE THAT MAKES THE STATE PERMANENT.
+            //
+            // The merge above has already COMMITTED. Returning here without
+            // undoing it leaves HEAD ahead of installed/<unit>.json forever,
+            // and every later sync then reports "commits ahead of the installed
+            // baseline" and refuses -- measured on the operator's home as
+            // record c72d03a6 (2026-07-25) against store HEAD eab28837, nine
+            // days later, on a unit nobody had edited.
+            //
+            // So the merge is ROLLED BACK rather than left standing, and the
+            // stash re-popped onto the pre-merge HEAD it was taken from, where
+            // it applies. The plan offered the alternative -- write the
+            // advanced baseline together with the recorded conflict -- and this
+            // is the safer of the two: it leaves the store exactly where the
+            // operator left it, so a conflict costs a retry rather than a
+            // repository state nobody asked for. A failed sync now changes
+            // nothing at all.
+            GitOps.resetHard(storeDir, preHead);
+            boolean recovered = GitOps.stashPop(storeDir);
             List<String> conflicted = GitOps.unmergedFiles(storeDir);
             tryAddError(ctx, skillName, InstalledUnit.ErrorKind.MERGE_CONFLICT,
-                    "stash pop conflict after merging " + upstream + " " + ref
-                            + " — local changes preserved at stash@{0}");
+                    "local changes conflict with " + upstream + " " + ref
+                            + " — the merge was rolled back, so the store is where it was"
+                            + (recovered ? "" : "; local work is preserved at stash@{0}"));
             return new MergeResult(8, null, conflicted);
         }
 
         refreshSourceRecord(ctx, skillName, storeDir);
         return new MergeResult(0, fetchedHash);
+    }
+
+    /**
+     * The dereferenced store links of one store copy, moved aside for the
+     * duration of a merge and moved back afterwards.
+     *
+     * <p>Held next to the store rather than inside it, so nothing git walks can
+     * see them mid-flight, and restored in a {@code finally} so an exception on
+     * the merge path cannot lose them. {@link #restore} is best-effort in the
+     * same sense {@code carryOverUnownedTrees} is: a move that fails leaves the
+     * bytes in the escrow directory, whose path is logged, rather than throwing
+     * away a merge that has already succeeded.
+     */
+    private record MaterializationEscrow(Path storeDir, Path holding, Map<String, Path> held) {
+
+        static MaterializationEscrow lift(Path storeDir) {
+            java.util.Set<String> paths = DereferencedStoreLinks.in(storeDir);
+            if (paths.isEmpty()) {
+                return new MaterializationEscrow(storeDir, null, Map.of());
+            }
+            Map<String, Path> held = new java.util.LinkedHashMap<>();
+            Path holding = null;
+            try {
+                holding = java.nio.file.Files.createTempDirectory(
+                        storeDir.toAbsolutePath().getParent(), ".sm-materialized-");
+                int i = 0;
+                for (String rel : paths) {
+                    Path from = storeDir.resolve(rel);
+                    Path to = holding.resolve(String.valueOf(i++));
+                    java.nio.file.Files.move(from, to);
+                    held.put(rel, to);
+                }
+                // Put the symlink the repository tracks back where it belongs,
+                // so the tree AGREES with HEAD at these paths and git has
+                // nothing to stash, merge or conflict over there. Moving the
+                // directory aside without this leaves a DELETION, which stashes
+                // and then collides on the pop with an upstream that re-pointed
+                // the link -- which is the exact conflict this whole class
+                // exists to stop, moved one step later.
+                GitOps.checkoutPaths(storeDir, held.keySet());
+            } catch (IOException io) {
+                Log.warn("could not set aside the materialized tree(s) of %s before merging (%s) — "
+                        + "syncing with them in place", storeDir, io.getMessage());
+            }
+            return new MaterializationEscrow(storeDir, holding, held);
+        }
+
+        void restore() {
+            for (Map.Entry<String, Path> e : held.entrySet()) {
+                Path back = storeDir.resolve(e.getKey());
+                try {
+                    // The merge may have written its own idea of this path --
+                    // the symlink upstream still tracks. That is exactly what
+                    // the child home must NOT hold, so it is replaced.
+                    if (java.nio.file.Files.exists(back, java.nio.file.LinkOption.NOFOLLOW_LINKS)) {
+                        java.nio.file.Files.deleteIfExists(back);
+                    }
+                    java.nio.file.Files.createDirectories(back.getParent());
+                    java.nio.file.Files.move(e.getValue(), back);
+                } catch (IOException io) {
+                    Log.warn("could not restore the materialized tree %s of %s (%s) — its bytes "
+                            + "are at %s; `skill-manager project resolve` writes it again",
+                            e.getKey(), storeDir, io.getMessage(), e.getValue());
+                }
+            }
+            if (holding != null) {
+                try { java.nio.file.Files.deleteIfExists(holding); } catch (IOException ignored) {}
+            }
+        }
     }
 
     public record MergeResult(int rc, String fetchedHash, List<String> conflictedFiles) {
@@ -393,8 +520,39 @@ public final class SyncGitHandler {
         catch (IOException e) { Log.warn("could not record error for %s: %s", skillName, e.getMessage()); }
     }
 
+    /**
+     * {@code GitOps.isDirty}, asked about what an AUTHOR did.
+     *
+     * <p>Same two halves — uncommitted work, or HEAD past the recorded baseline
+     * — with the first half blind to {@linkplain DereferencedStoreLinks
+     * dereferenced store links}, which the materializer wrote and no author
+     * did. The second half is untouched on purpose: a HEAD ahead of the
+     * baseline is HIS-4's link 3 and it must still stop an overwrite. What
+     * releases a home already in that state is
+     * {@link #alreadyContainsTarget} below, which now gets a chance to run
+     * because the first half no longer answers "dirty" first.
+     */
+    private static boolean isAuthoredDirty(Path storeDir, String baselineHash) {
+        if (DereferencedStoreLinks.hasAuthoredWorktreeChanges(storeDir)) return true;
+        if (baselineHash == null || baselineHash.isBlank()) return false;
+        String head = GitOps.headHash(storeDir);
+        return head != null && !head.equals(baselineHash);
+    }
+
+    /**
+     * <p>THE RELEASE PATH for a home stranded behind a merge a previous sync
+     * committed without writing its baseline. HEAD already contains the target,
+     * so there is nothing to merge and nothing to overwrite: the record is
+     * restated against the tree and the unit is syncable again, on an ORDINARY
+     * {@code sync}. Before HIS-4 this could not be reached from a materialized
+     * child home, because the dereferenced tree made the guard on the first
+     * line answer "there is local work here" and the caller refused first. The
+     * operator's two units were recovered by hand instead — {@code git reset},
+     * deleting the scaffold trees, then {@code sync --merge} — which is not a
+     * remedy anything can print.
+     */
     private static boolean alreadyContainsTarget(Path storeDir, String upstream, TargetRef target) {
-        if (GitOps.hasWorktreeChanges(storeDir)) return false;
+        if (DereferencedStoreLinks.hasAuthoredWorktreeChanges(storeDir)) return false;
 
         String targetHash = target.sha();
         if (targetHash == null || !GitOps.isAncestor(storeDir, targetHash, "HEAD")) {
