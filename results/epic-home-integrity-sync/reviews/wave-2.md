@@ -89,9 +89,12 @@ records its own failed first shape so the next author does not rebuild it.
   invocation; not proved.
 - **The PR merged with `Lint PR title` and `DCO` red.** The title was fixed;
   DCO has never passed on this epic (no commit carries a sign-off, including the
-  wave-1 merges). Merged with `--admin` into an integration branch. **It will
-  block the epic PR into `main` if `main` enforces it** — worth answering before
-  finalization, not at it.
+  wave-1 merges). Merged with `--admin` into an integration branch.
+
+  **Checked rather than left as a worry:** `GET /repos/haydenrear/skill-manager/branches/main/protection`
+  returns *"Branch not protected"*. `main` requires no checks, so DCO will **not**
+  block the epic PR. It stays red and stays cosmetic. Recorded here because the
+  first version of this line said it *would* block, which was a guess.
 - **`run.py --all` was not run before the merge**, as above.
 
 ## Guardrails overridden
@@ -231,8 +234,8 @@ effect-boundary write guard against `HomeDescriptor`/`ProjectCommand`.
 
 Two things to decide:
 
-1. **DCO.** It has never passed on this epic. If `main` enforces it, the epic PR
-   cannot merge without rewriting every commit. Cheaper to answer now.
+1. ~~**DCO.**~~ **Answered, not a decision.** `main` is unprotected and requires
+   no checks, so a red DCO cannot block the epic PR. No action.
 2. **The v0.24.0 release re-run.** The root home still pins Homebrew `0.23.0`
    because the release workflow died on a transient dependency-descriptor read.
    Re-running it publishes a release, so it is the owner's call.
