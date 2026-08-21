@@ -1461,6 +1461,12 @@ validationGraph {
         // fixture would have contained it.
         node("sources/home-integrity/ParentHomeSurvivesAChildBuild.java")
 
+        // HIS-10 (#227): four readers, one answer, on ONE cloned home, with no
+        // `--against`. Drives clone, verify, verify --against and a real sync
+        // over the same three-tier topology, and carries its own control:
+        // delete the descent record and the readers must split up again.
+        node("sources/home-integrity/ReadersAgreeAboutOneClone.java")
+
         // THE FIXPOINT LAW, as every home-producing graph ends. Depends on this
         // graph's last node so it runs last, and FAILS if it finds no home.
         node("sources/common/HomeFixpointLaw.java")

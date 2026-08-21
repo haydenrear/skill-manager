@@ -1,0 +1,40 @@
+[jbang] Building jar for His10Vacuity.java...
+Note: /Users/hayde/IdeaProjects/wt-227-his-10/src/main/java/dev/skillmanager/mcp/GatewayClient.java uses or overrides a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
+== ClonedHomeDescentTest (4 cases)
+  [PASS] all four readers agree about a cloned home's inherited shim, with no --against
+cli: pruned bin/cli/tool — resolved into the home at /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/clone-descent-vacuity-11194374335510106936/parent, which is not this home's parent store
+  [PASS] VACUITY CONTROL: delete the record and the same four readers disagree again
+  [PASS] a clone of an UNSANCTIONED home records nothing and stays unsanctioned
+  [PASS] descent is transitive: a clone of a clone still shares the root store
+   → 4 passed, 0 failed
+== HomeVerifyPathSpellingTest (4 cases)
+  [FAIL] a missing reference is found through the symlinked spelling too: the same home reached through a symlink must reach the same verdict; real=[bin/cli/probe -> /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/home-spelling-real-target-8819691133296092797/realdir/home/venvs/nope/bin/probe] link=[]: expected <1> but was <0>
+java.lang.AssertionError: the same home reached through a symlink must reach the same verdict; real=[bin/cli/probe -> /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/home-spelling-real-target-8819691133296092797/realdir/home/venvs/nope/bin/probe] link=[]: expected <1> but was <0>
+	at dev.skillmanager._lib.test.Tests.assertEquals(Tests.java:73)
+	at dev.skillmanager.store.HomeVerifyPathSpellingTest.lambda$run$0(HomeVerifyPathSpellingTest.java:77)
+	at dev.skillmanager._lib.test.Tests$Suite.runAll(Tests.java:48)
+	at dev.skillmanager.store.HomeVerifyPathSpellingTest.run(HomeVerifyPathSpellingTest.java:149)
+	at His10Vacuity.main(His10Vacuity.java:24)
+  [PASS] THE STATED LIMIT: an alias spelling the caller did not name is not recovered
+  [PASS] a reference that DOES resolve is reported by neither spelling
+  [FAIL] the recovered path is reported in the spelling the caller asked about: not true: control
+java.lang.AssertionError: not true: control
+	at dev.skillmanager._lib.test.Tests.assertTrue(Tests.java:78)
+	at dev.skillmanager.store.HomeVerifyPathSpellingTest.lambda$run$3(HomeVerifyPathSpellingTest.java:141)
+	at dev.skillmanager._lib.test.Tests$Suite.runAll(Tests.java:48)
+	at dev.skillmanager.store.HomeVerifyPathSpellingTest.run(HomeVerifyPathSpellingTest.java:149)
+	at His10Vacuity.main(His10Vacuity.java:24)
+   → 2 passed, 2 failed
+== ChildHomeShimIsolationTest (9 cases)
+  [PASS] a child home's shim at its parent's entry passes, on the PARENT's claim
+  [PASS] and on the CHILD's own provenance, which outlives the parent's claim
+  [PASS] with NO evidence on either side, the identical link is still a leak
+  [PASS] a COPY of a sanctioned child inherits the sanction — root -> project -> worktree
+  [PASS] inheritance needs a source that was itself sanctioned, not merely a source
+  [PASS] the sanction does not extend past bin/cli and bin/mcp
+  [PASS] a shim naming a DIFFERENT entry in the parent is not a mirror
+  [PASS] an isolation refusal prints a remedy, in the spelling every caller parses
+  [PASS] a leaking launcher pin gets home shims, which is the command that repairs it
+   → 9 passed, 0 failed
+HIS10 VACUITY FAILURES: 2

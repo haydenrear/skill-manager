@@ -578,6 +578,13 @@ public final class HomeCloner {
         //    unresolved reference. Verifying first would report the state that
         //    the next line removes.
         HomePolicy.writeLazyArtifacts(new SkillStore(dst), lazyArtifacts);
+        // HIS-10. BEFORE verifyRoots, and for the same reason the two lines
+        // below it are: the copy's own clone verdict must be produced by the
+        // evidence every LATER reader will use, or `home clone` and
+        // `home verify` are two readers of two different homes again. Before
+        // rebaselineDrift too, so the baseline describes the bytes the home
+        // holds rather than reporting this record as the home's own drift.
+        HomeProvenance.recordDescent(src, dst);
         declareArtifacts(src, dst, deferredTrees);
         List<String> coldShims = writeColdShims(dst);
         rebaselineDrift(new SkillStore(dst));
@@ -1056,8 +1063,13 @@ public final class HomeCloner {
      * {@link HomePaths} uses for every other stored path.
      */
     private static String insideHomeText(String value, Path dst) {
-        String root = dst.toAbsolutePath().normalize().toString();
-        return value.replace(root, "$SKILL_MANAGER_HOME");
+        String out = value;
+        // Every spelling of the root, longest first: replacing /var/x before
+        // /private/var/x would leave "/private$SKILL_MANAGER_HOME".
+        List<String> spellings = new ArrayList<>(rootSpellings(dst));
+        spellings.sort(java.util.Comparator.comparingInt(String::length).reversed());
+        for (String root : spellings) out = out.replace(root, "$SKILL_MANAGER_HOME");
+        return out;
     }
 
     /**
@@ -1427,8 +1439,67 @@ public final class HomeCloner {
      */
     private static List<String> destReferences(byte[] content, Path dstRoot) {
         String text = new String(content, StandardCharsets.UTF_8);
-        String root = dstRoot.toString();
+        String canonical = dstRoot.toAbsolutePath().normalize().toString();
         List<String> found = new ArrayList<>();
+        for (String root : rootSpellings(dstRoot)) scanFor(text, root, canonical, found);
+        return found;
+    }
+
+    /**
+     * Every spelling of {@code root} a generated file in this home could hold:
+     * the one the caller was given, and the one {@link Path#toRealPath} makes
+     * of it.
+     *
+     * <h2>#206, and why resolving ONCE is not enough</h2>
+     *
+     * <p>{@link #verifyRoots} resolves the destination for the symlink branch
+     * ({@code realOrSame(dstRoot)}) and handed the UNRESOLVED spelling to the
+     * provisioned-file branch, and the scan below is a literal
+     * {@code text.indexOf}. So a home reached through a symlink was checked
+     * against a string its own generated shims do not contain, and the branch
+     * reported clean WITHOUT HAVING CHECKED — on the check that is the
+     * post-condition of 22 graphs.
+     *
+     * <p><b>Resolving the root once and handing THAT to every branch would swap
+     * the blindness rather than remove it.</b> The clone re-anchors generated
+     * files to the destination spelling it was GIVEN, so a home created at
+     * {@code /link/home} holds {@code /link/home/cache/…} in its wrappers; a
+     * scan for {@code /real/home} alone would miss every one of them. Both
+     * spellings are real, either can be in the bytes, so both are scanned and
+     * the results merged.
+     *
+     * <p><b>Do not reach for {@code /var -> /private/var} to test this.</b>
+     * Measured at the epic tip: that pair is substring-compatible —
+     * {@code /private/var/folders/x} literally CONTAINS {@code /var/folders/x} —
+     * so {@code indexOf} finds the reference by accident and a fixture built on
+     * a macOS temp path passes before AND after this fix. The defect needs two
+     * spellings that are not substrings of one another: a symlinked
+     * intermediate directory, a symlinked {@code $HOME} or checkout,
+     * {@code /Volumes/…}. See {@code HomeVerifyPathSpellingTest}, which builds
+     * exactly that and records the vacuous shape it did not use.
+     */
+    static List<String> rootSpellings(Path root) {
+        Path abs = root.toAbsolutePath().normalize();
+        String given = abs.toString();
+        String real = realOrSame(abs).toString();
+        return given.equals(real) ? List.of(given) : List.of(given, real);
+    }
+
+    /**
+     * One spelling's pass over {@code text}, appending what it recovers
+     * REWRITTEN to {@code canonical}.
+     *
+     * <p>The rewrite is what keeps this from becoming a second defect. Callers
+     * make these strings home-relative against the root they passed in
+     * ({@link #referencesIn}'s contract, and what {@code ArtifactBuild} joins
+     * on), so a path recovered under the OTHER spelling would relativize into
+     * {@code ../../..} nonsense. It also collapses the duplicate that
+     * substring-compatible spellings produce — {@code /private/var/x/cache/y}
+     * matches a scan for {@code /var/x} as well as one for {@code /private/var/x}
+     * — so a home on a macOS temp path still reports ONE unresolved reference
+     * and not two.
+     */
+    private static void scanFor(String text, String root, String canonical, List<String> found) {
         int from = 0;
         while (true) {
             int at = text.indexOf(root, from);
@@ -1443,9 +1514,9 @@ public final class HomeCloner {
             }
             if (candidate.length() <= root.length()) continue;
             if (!underProvisionableRoot(candidate, root)) continue;
-            if (!found.contains(candidate)) found.add(candidate);
+            String normalized = canonical + candidate.substring(root.length());
+            if (!found.contains(normalized)) found.add(normalized);
         }
-        return found;
     }
 
     /**
@@ -1639,6 +1710,9 @@ public final class HomeCloner {
         List<String> unresolved = new ArrayList<>();
         List<String> diagnostics = new ArrayList<>();
         List<String> parentShims = new ArrayList<>();
+        // Kept only so the walk has somewhere to put the one file it exempts;
+        // the descent itself is read from the home by whoever reports it.
+        List<String> descentRecords = new ArrayList<>();
         // One answer per foreign home rather than one per shim: `isChildOf`
         // lists two directories, and a child home mirroring twenty CLI deps
         // would otherwise ask the identical question twenty times.
@@ -1716,6 +1790,24 @@ public final class HomeCloner {
                         "names an agent directory of the source home (" + surface.name().toLowerCase()
                                 + ") — acting on this record would read or delete files "
                                 + "in the home this copy was made from"));
+            } else if (HomeProvenance.isProvenanceRecord(rel)
+                    && HomeProvenance.mentionsOnlyRecordedDescent(file, needleText)) {
+                // HIS-10. The ONE file in a copy whose job is to name the home
+                // the copy was made from. Refusing it would refuse the evidence
+                // the sanction now stands on, and "record your descent, then
+                // fail verification for having recorded it" is not a fixpoint.
+                //
+                // Not a blanket filename exemption: the branch holds only when
+                // every raw occurrence of the source-home needle is accounted
+                // for by the parsed clonedFrom / parentStores fields, the same
+                // byte-counting mentionIsOnlyDiagnostic does. One occurrence
+                // anywhere else and this is false and the finding stands.
+                //
+                // Nor is it silent: `home verify` and `home clone` print the
+                // recorded descent for any home that has one, whether or not
+                // this branch fired, so the exemption is visible in the same
+                // output as the verdict it shaped.
+                descentRecords.add(rel);
             } else if (mentionIsOnlyDiagnostic(file, rel, needleText)) {
                 // A sentence about another home, not a path into one. See
                 // Leak#DIAGNOSTIC_TEXT — and note this is the only branch that
@@ -1732,6 +1824,11 @@ public final class HomeCloner {
         // whatever the ledger says about it, and only the "names something in
         // THIS home that is not there" findings can be declared rather than
         // broken.
+        for (String record : descentRecords) {
+            Log.detail("verify: %s names the home this copy descends from — every occurrence "
+                    + "accounted for by its recorded clonedFrom/parentStores, so it is a "
+                    + "statement about descent and not a path into that home", record);
+        }
         List<String> declaredNotBuilt = partitionDeclared(dstRoot, dangling, unresolved);
         leaks.sort(java.util.Comparator.comparing(Leak::path));
         contentReferences.sort(String::compareTo);
@@ -1852,11 +1949,13 @@ public final class HomeCloner {
      *       {@code bin/cli/<name>} and the child's must resolve to one
      *       artifact. A shim pointing at some other file that merely happens to
      *       live in another home is not a mirror of anything.</li>
-     *   <li><b>That home is this home's parent.</b>
+     *   <li><b>That home is an ancestor of this one.</b>
      *       {@link dev.skillmanager.bindings.ChildHomeLink#isChildOf} — evidence
      *       on disk, from the parent's registry or the child's own
-     *       materialization records. Without this, the first two conditions
-     *       describe a shape that a stale copied link has too.</li>
+     *       materialization records — or {@link HomeProvenance#sanctions}, the
+     *       descent a copy records at clone time. Without one of the two, the
+     *       first two conditions describe a shape that a stale copied link has
+     *       too.</li>
      * </ol>
      *
      * <p>The result is NOT a tolerated leak. A tolerated leak is fatal under
@@ -1880,8 +1979,19 @@ public final class HomeCloner {
         Path parentEntry = foreign.resolve(dir + name);
         if (!Files.exists(parentEntry, java.nio.file.LinkOption.NOFOLLOW_LINKS)) return false;
         if (!realOrSame(link).equals(realOrSame(parentEntry))) return false;
+        // TWO KINDS OF EVIDENCE, BOTH IN THIS HOME, NEITHER ON THE COMMAND LINE.
+        //
+        // ChildHomeLink is the one-level relation: the parent's registry claims
+        // this home, or this home's materialization records name a unit source
+        // inside that store. HomeProvenance is the recorded DESCENT: a copy of a
+        // child is a grandchild, and this is where it says so. Both are files in
+        // this home; neither needs the other home to exist, and neither needs an
+        // operator to type anything. Cached together because a home mirroring
+        // twenty deps would otherwise ask the identical pair of questions twenty
+        // times.
         if (childOf.computeIfAbsent(foreign,
-                home -> dev.skillmanager.bindings.ChildHomeLink.isChildOf(dstRoot, home))) {
+                home -> dev.skillmanager.bindings.ChildHomeLink.isChildOf(dstRoot, home)
+                        || HomeProvenance.sanctions(dstRoot, home))) {
             return true;
         }
         // HIS-7. A COPY INHERITS ITS SOURCE'S SANCTION.
@@ -1905,6 +2015,17 @@ public final class HomeCloner {
         // pointing at a home some link in this chain is genuinely a child of.
         // What changed is WHICH home is asked, and a copy that inherits bytes
         // inherits the reason they were allowed.
+        //
+        // HIS-10 KEPT THIS ARM AND DEMOTED IT. A home cloned by this build
+        // carries a HomeProvenance record written before the clone verifies
+        // itself, so the branch above answers first and `--against` decides
+        // nothing about a copy this program made. What is left here is the home
+        // this program did NOT make: a byte copy taken with `cp -a`, an rsync,
+        // a clone by an older skill-manager. For those, `--against` still
+        // EXPLAINS a sanction that has nothing in the copy to stand on -- and
+        // repairing such a home so it stands on its own record is HIS-13's, not
+        // this method's. Deleting the arm here would turn every pre-HIS-10 clone
+        // red on a command that used to pass, which is a migration, not a fix.
         if (srcRoot == null || srcRoot.equals(dstRoot)) return false;
         return srcChildOf.computeIfAbsent(foreign,
                 home -> dev.skillmanager.bindings.ChildHomeLink.isChildOf(srcRoot, home));
@@ -2032,11 +2153,18 @@ public final class HomeCloner {
                 Path target = Files.readSymbolicLink(file);
                 Path resolved = (target.isAbsolute() ? target
                         : file.toAbsolutePath().getParent().resolve(target)).normalize();
-                String root = dstRoot.toAbsolutePath().normalize().toString();
+                // Both spellings, same reason as the byte scan: a link stored
+                // with the resolved root is a reference this home holds even
+                // when the home was addressed through a symlink, and vice
+                // versa. Emitted in the CALLER's spelling. See rootSpellings.
+                String canonical = dstRoot.toAbsolutePath().normalize().toString();
                 String candidate = resolved.toString();
-                return candidate.startsWith(root) && candidate.length() > root.length()
-                        && underProvisionableRoot(candidate, root)
-                        ? List.of(candidate) : List.of();
+                for (String root : rootSpellings(dstRoot)) {
+                    if (!candidate.startsWith(root) || candidate.length() <= root.length()) continue;
+                    if (!underProvisionableRoot(candidate, root)) continue;
+                    return List.of(canonical + candidate.substring(root.length()));
+                }
+                return List.of();
             }
             if (!Files.isRegularFile(file)) return List.of();
             if (Files.size(file) > WHOLE_FILE_LIMIT) return List.of();
@@ -2086,7 +2214,10 @@ public final class HomeCloner {
      * same disguised shape that forced the {@code [[vendored]]} validator to
      * compare resolved physical paths.
      */
-    private static Path foreignHomeReachedBy(Path link, Path dstReal) {
+    // Package-private rather than private: HomeProvenance asks the same
+    // question when it records which stores a copy may inherit from, and a
+    // second spelling of "is this another home" is #24 all over again.
+    static Path foreignHomeReachedBy(Path link, Path dstReal) {
         Path resolved;
         try {
             resolved = link.toRealPath();

@@ -12,6 +12,7 @@ import dev.skillmanager.store.HomeCloseOut;
 import dev.skillmanager.store.HomeCloner;
 import dev.skillmanager.store.HomeDescriptor;
 import dev.skillmanager.store.HomeDigest;
+import dev.skillmanager.store.HomeProvenance;
 import dev.skillmanager.store.HomeSync;
 import dev.skillmanager.store.NotAHomeException;
 import dev.skillmanager.artifacts.ArtifactBuild;
@@ -298,6 +299,15 @@ public final class HomeCommand {
                         parentShims.size(), home);
                 sample(parentShims);
             }
+            // HIS-10. WHY those shims were sanctioned, printed with the verdict.
+            //
+            // The sanction used to be visible only when an operator passed
+            // --against, so the same home read clean here and FOREIGN_HOME one
+            // command later. It is now a record in the home; saying so is the
+            // "and DECLARES it" half of the lazy contract — a clone keeps its
+            // inherited artifacts on PATH and says whose they are, instead of
+            // pruning and rebuilding a toolchain nobody changed.
+            reportDescent(home);
             // ARTI-07: the THIRD state, and the reason this section is above
             // the failure section rather than inside it. A home that declares
             // its artifacts and builds them on demand ships these on purpose —
@@ -511,6 +521,34 @@ public final class HomeCommand {
          * home" checkable without becoming the 163 lines that buried the six
          * findings underneath them.
          */
+        /**
+         * Print what {@code home} records about where it came from, or say that
+         * it records nothing.
+         *
+         * <p>Printed either way on purpose. "No descent recorded" is the state
+         * in which an inherited shim is a hard {@code FOREIGN_HOME} refusal, and
+         * an operator staring at that refusal needs to see the missing fact
+         * rather than infer it. It is also what tells a pre-HIS-10 copy apart
+         * from one this build made — the input HIS-13's repair needs.
+         */
+        private static void reportDescent(Path home) {
+            HomeProvenance.Descent descent = HomeProvenance.read(home);
+            if (descent == null) {
+                Log.detail("no recorded descent: %s carries no %s, so nothing in it sanctions a "
+                                + "path into another home",
+                        home, HomeProvenance.FILENAME);
+                return;
+            }
+            List<Path> stores = HomeProvenance.parentStores(home);
+            Log.info("descent: this home was cloned from %s; %s",
+                    descent.clonedFrom(),
+                    stores.isEmpty()
+                            ? "it records no parent store, so no foreign path in it is sanctioned"
+                            : stores.size() + " recorded parent store(s), whose provisioned "
+                                    + "artifacts it shares rather than rebuilding");
+            for (Path store : stores) Log.info("    %s", store);
+        }
+
         private static void sample(List<String> refs) {
             int shown = Math.min(TOLERATED_SAMPLE, refs.size());
             for (int i = 0; i < shown; i++) Log.info("    %s", refs.get(i));

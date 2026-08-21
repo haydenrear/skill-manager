@@ -1,0 +1,50 @@
+[jbang] Building jar for His10Vacuity.java...
+Note: /Users/hayde/IdeaProjects/wt-227-his-10/src/main/java/dev/skillmanager/mcp/GatewayClient.java uses or overrides a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
+== ClonedHomeDescentTest (4 cases)
+  [FAIL] all four readers agree about a cloned home's inherited shim, with no --against: not true: the clone recorded no descent at all
+java.lang.AssertionError: not true: the clone recorded no descent at all
+	at dev.skillmanager._lib.test.Tests.assertTrue(Tests.java:78)
+	at dev.skillmanager.store.ClonedHomeDescentTest.lambda$run$1(ClonedHomeDescentTest.java:78)
+	at dev.skillmanager._lib.test.Tests$Suite.runAll(Tests.java:48)
+	at dev.skillmanager.store.ClonedHomeDescentTest.run(ClonedHomeDescentTest.java:191)
+	at His10Vacuity.main(His10Vacuity.java:23)
+  [FAIL] VACUITY CONTROL: delete the record and the same four readers disagree again: precondition: the clone verifies clean: expected <0> but was <1>
+java.lang.AssertionError: precondition: the clone verifies clean: expected <0> but was <1>
+	at dev.skillmanager._lib.test.Tests.assertEquals(Tests.java:73)
+	at dev.skillmanager.store.ClonedHomeDescentTest.lambda$run$3(ClonedHomeDescentTest.java:128)
+	at dev.skillmanager._lib.test.Tests$Suite.runAll(Tests.java:48)
+	at dev.skillmanager.store.ClonedHomeDescentTest.run(ClonedHomeDescentTest.java:191)
+	at His10Vacuity.main(His10Vacuity.java:23)
+  [FAIL] a clone of an UNSANCTIONED home records nothing and stays unsanctioned: not true: a clone always records SOMETHING about itself
+java.lang.AssertionError: not true: a clone always records SOMETHING about itself
+	at dev.skillmanager._lib.test.Tests.assertTrue(Tests.java:78)
+	at dev.skillmanager.store.ClonedHomeDescentTest.lambda$run$4(ClonedHomeDescentTest.java:161)
+	at dev.skillmanager._lib.test.Tests$Suite.runAll(Tests.java:48)
+	at dev.skillmanager.store.ClonedHomeDescentTest.run(ClonedHomeDescentTest.java:191)
+	at His10Vacuity.main(His10Vacuity.java:23)
+  [FAIL] descent is transitive: a clone of a clone still shares the root store: Cannot invoke "dev.skillmanager.store.HomeProvenance$Descent.parentStores()" because the return value of "dev.skillmanager.store.HomeProvenance.read(java.nio.file.Path)" is null
+java.lang.NullPointerException: Cannot invoke "dev.skillmanager.store.HomeProvenance$Descent.parentStores()" because the return value of "dev.skillmanager.store.HomeProvenance.read(java.nio.file.Path)" is null
+	at dev.skillmanager.store.ClonedHomeDescentTest.lambda$run$5(ClonedHomeDescentTest.java:186)
+	at dev.skillmanager._lib.test.Tests$Suite.runAll(Tests.java:48)
+	at dev.skillmanager.store.ClonedHomeDescentTest.run(ClonedHomeDescentTest.java:191)
+	at His10Vacuity.main(His10Vacuity.java:23)
+   → 0 passed, 4 failed
+== HomeVerifyPathSpellingTest (4 cases)
+  [PASS] a missing reference is found through the symlinked spelling too
+  [PASS] THE STATED LIMIT: an alias spelling the caller did not name is not recovered
+  [PASS] a reference that DOES resolve is reported by neither spelling
+  [PASS] the recovered path is reported in the spelling the caller asked about
+   → 4 passed, 0 failed
+== ChildHomeShimIsolationTest (9 cases)
+  [PASS] a child home's shim at its parent's entry passes, on the PARENT's claim
+  [PASS] and on the CHILD's own provenance, which outlives the parent's claim
+  [PASS] with NO evidence on either side, the identical link is still a leak
+  [PASS] a COPY of a sanctioned child inherits the sanction — root -> project -> worktree
+  [PASS] inheritance needs a source that was itself sanctioned, not merely a source
+  [PASS] the sanction does not extend past bin/cli and bin/mcp
+  [PASS] a shim naming a DIFFERENT entry in the parent is not a mirror
+  [PASS] an isolation refusal prints a remedy, in the spelling every caller parses
+  [PASS] a leaking launcher pin gets home shims, which is the command that repairs it
+   → 9 passed, 0 failed
+HIS10 VACUITY FAILURES: 4

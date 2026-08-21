@@ -1,0 +1,26 @@
+# bootstrap probe — a fresh worktree home, bootstrapped with this build
+
+home:      /private/tmp/claude-501/-Users-hayde-IdeaProjects-skill-manager/dcb6a969-c6fd-484c-873c-6d6175b7d220/scratchpad/bootstrap-probe/.skill-manager
+projected: 4 of 4 into each of .claude .codex .gemini
+verified:  4 skill(s) servable — an agent launched here reads them from .claude .codex .gemini; descriptor env inside /private/tmp/claude-501/-Users-hayde-IdeaProjects-skill-manager/dcb6a969-c6fd-484c-873c-6d6175b7d220/scratchpad/bootstrap-probe; claude/codex resolve to this home's shims
+launch:    /private/tmp/claude-501/-Users-hayde-IdeaProjects-skill-manager/dcb6a969-c6fd-484c-873c-6d6175b7d220/scratchpad/bootstrap-probe/.skill-manager/bin/launch/claude
+log:       /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/bootstrap-home-4tkd5C.log
+
+# bin/cli after bootstrap
+total 32
+lrwxr-xr-x@ 1 hayde  wheel    44 Aug 21 11:19 computeq -> /Users/hayde/.skill-manager/bin/cli/computeq
+lrwxr-xr-x@ 1 hayde  wheel    47 Aug 21 11:19 helm-deploy -> /Users/hayde/.skill-manager/bin/cli/helm-deploy
+-rwxr-xr-x@ 1 hayde  wheel   914 Aug 21 11:19 jinja2
+lrwxr-xr-x@ 1 hayde  wheel    46 Aug 21 11:19 monitoring -> /Users/hayde/.skill-manager/bin/cli/monitoring
+-rwxr-xr-x@ 1 hayde  staff  5880 Aug 21 11:20 skill-manager
+lrwxr-xr-x@ 1 hayde  wheel    48 Aug 21 11:19 tla-spec-dev -> /Users/hayde/.skill-manager/bin/cli/tla-spec-dev
+lrwxr-xr-x@ 1 hayde  wheel    40 Aug 21 11:19 tlc2 -> /Users/hayde/.skill-manager/bin/cli/tlc2
+-rwxr-xr-x@ 1 hayde  wheel  1044 Aug 21 11:19 tracing-observability-install
+
+# home.provenance.json
+{
+  "schemaVersion" : 1,
+  "clonedFrom" : "/Users/hayde/IdeaProjects/skill-manager/.skill-manager",
+  "clonedAt" : "2026-08-21T15:19:50.622127Z",
+  "parentStores" : [ "/Users/hayde/.skill-manager" ]
+}

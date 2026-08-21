@@ -1,0 +1,10 @@
+! Telemetry export unavailable; continuing without telemetry.
+  copied:      5876 dirs, 30406 files, 10 links (430181810 bytes; cache, logs, npm, tmp, tools, venvs skipped)
+  re-anchored: 0 links relativized, 4 records, 1 provisioned files
+!   1 reference(s) do not resolve in the copy (targets under a directory the clone skips) — `skill-manager home verify --home /private/tmp/claude-501/-Users-hayde-IdeaProjects-skill-manager/dcb6a969-c6fd-484c-873c-6d6175b7d220/scratchpad/probe/.skill-manager` reports each one and refuses the home until they are re-provisioned
+  declared:    2 entry point(s) name `skill-manager build <id>` instead of failing in the kernel's words — they were shims into a tree this copy does not carry: jinja2, tracing-observability-install
+✓ cloned home to /private/tmp/claude-501/-Users-hayde-IdeaProjects-skill-manager/dcb6a969-c6fd-484c-873c-6d6175b7d220/scratchpad/probe/.skill-manager — checked: nothing in it resolves back to /Users/hayde/IdeaProjects/skill-manager/.skill-manager; no path in it reaches another Skill Manager home; no record or link in it names another home's agent directories (.claude, .codex, .gemini); no binding, child-home record or registration in it claims a path outside this home. NOT checked: mentions inside unit content, and anything reached by a path this copy does not record — toolchains, caches, anything else on this machine.
+  gateway:     attached to http://127.0.0.1:51717 (the source home owns it; pass --own-gateway to claim it instead)
+  baseline:    recorded for 2 unit(s), so edits made here can be merged back with `skill-manager home sync`
+  drift:       baselined against this copy's own content (4 unit(s)); a clone is not drifted
+  log: /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/skill-manager/logs/home-clone-20260821-111658-fbbf.log
