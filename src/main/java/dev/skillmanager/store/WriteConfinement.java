@@ -107,16 +107,32 @@ import java.util.List;
  *
  * <h2>What this does NOT cover, stated so nobody reads more into it</h2>
  *
- * <p>There are <b>173 direct {@code java.nio.file.Files} mutation call sites</b>
- * in {@code src/main/java}, and {@code Fs} is not a choke point — it carries
- * recursive delete, recursive copy, mkdir and chmod, and no write, move or
- * symlink at all. Enforcement here is at {@link Fs#deleteRecursive}, at the two
- * DEF-007 delete sites, at the producer boundary in
- * {@code InstallerRegistry.installOne}, and at the effect boundary in
- * {@code LiveInterpreter.execute}. Those are the sites where the measured
- * damage happened. An arbitrary {@code Files.writeString} elsewhere in the
- * product is still unguarded, and making {@code Fs} the universal choke point is
- * separate work with its own blast radius.
+ * <p><b>This is not general coverage and must not be read as it.</b> There are
+ * <b>173 direct {@code java.nio.file.Files} mutation call sites</b> in
+ * {@code src/main/java}, and none of them consults this class. Enforcement is at
+ * exactly four sites, which are the four where the measured damage happened:
+ *
+ * <ol>
+ *   <li>{@code CliShimPruner.prune} — DEF-007's first delete site;</li>
+ *   <li>{@code InstallerRegistry.takeOwnershipOfShim} — its second;</li>
+ *   <li>{@code InstallerRegistry.installOne}, before and after the fork — the
+ *       producer boundary;</li>
+ *   <li>{@code LauncherShims}' generated CLI entrypoint, which is bash and
+ *       enforces the same rule about which home a command may edit.</li>
+ * </ol>
+ *
+ * <p>{@code LiveInterpreter.execute} <em>declares</em> a scope per effect; it
+ * enforces nothing itself, and each site above carries its own unconditional
+ * home check so that closing the defects does not depend on a declaration being
+ * present. That is a seam, not a gate, and it is measured as one — removing the
+ * declaration reddens nothing.
+ *
+ * <p>{@link Fs} is deliberately NOT the choke point, and it cannot become one
+ * here: it carries recursive delete, recursive copy, mkdir and chmod and no
+ * write, move or symlink at all, and {@code SkillManagerServer.java} compiles it
+ * standalone out of a {@code shared/} package that imports nothing from
+ * {@code dev.skillmanager}. Adding this class to it would break the server
+ * build. Filed as DEF-013 with the two options.
  *
  * <p>Nothing here can see what a <em>forked producer</em> writes; no in-JVM hook
  * can. What the producer boundary does instead is refuse to hand a producer a

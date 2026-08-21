@@ -244,13 +244,21 @@ subprocess — and an invariant that is false in the model is worse than none.
 ## What was cut, and what is not covered
 
 **1. There is no universal in-process confinement, and there could not be one in
-this ticket.** `Fs` is not a choke point: 173 direct `java.nio.file.Files`
-mutation call sites bypass it, and it carries no write, no move and no
-`createSymbolicLink` at all. It also **cannot** be made one without breaking the
-server build — `SkillManagerServer.java` compiles `shared/util/Fs.java`
-standalone, and `shared/` imports nothing from `dev.skillmanager` today. Filed
-as **DEF-013** with two concrete options for the owner. Everything in this file
-is scoped to the four enforcement sites named above.
+this ticket.** 173 direct `java.nio.file.Files` mutation call sites exist in
+`src/main/java` and **none of them consults the guard**. `Fs` is not a choke
+point — it carries no write, no move and no `createSymbolicLink` at all — and it
+**cannot** be made one from here without breaking the server build:
+`SkillManagerServer.java` compiles `shared/util/Fs.java` standalone out of a
+package that imports nothing from `dev.skillmanager`. Filed as **DEF-013** with
+two concrete options for the owner. Everything in this ticket is scoped to the
+four enforcement sites named above.
+
+An earlier draft of `WriteConfinement`'s own javadoc claimed enforcement at
+`Fs.deleteRecursive`, which was never true — it was written while that was still
+the plan and not corrected when the server-build constraint killed it. Caught on
+re-read before the PR and fixed; recorded here rather than quietly edited,
+because a false coverage claim in a guard's javadoc is exactly the kind of thing
+a later reader trusts.
 
 **2. The effect-boundary declaration is a SEAM, not a GATE, and vacuity row L
 proves it.** `SkillEffect.writeConfinement` + the `LiveInterpreter.execute`
