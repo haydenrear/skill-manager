@@ -1467,8 +1467,32 @@ validationGraph {
         // delete the descent record and the readers must split up again.
         node("sources/home-integrity/ReadersAgreeAboutOneClone.java")
 
-        // THE FIXPOINT LAW, as every home-producing graph ends. Depends on this
-        // graph's last node so it runs last, and FAILS if it finds no home.
+        // HIS-9 (#226) / DEF-007: a sync in one home deletes nothing from
+        // another. Runs a REAL sync over two cloned homes, one of whose bin/cli
+        // IS a link at the other's, and reads the victim's directory before and
+        // after -- the unit test drives the pruner, this one shows the exit-0
+        // silent data loss an operator would have met. Carries its own control:
+        // the same sync without the link must NOT refuse.
+        node("sources/home-integrity/SyncStaysInsideItsHome.java")
+
+        // THE FIXPOINT LAW, as every home-producing graph ends. FAILS if it
+        // finds no home.
+        //
+        // THE EDGE BELOW IS NOT WHAT DECIDES WHAT IT COVERS, and reading it as
+        // though it were cost this graph six homes. The law does not take a
+        // home list and does not scan the filesystem: HomeFixpointLaw.
+        // candidateHomes walks every UPSTREAM CONTEXT VALUE and offers each
+        // existing directory to `home verify`. So a node covers itself by
+        // PUBLISHING its homes, not by being named here -- and the planner
+        // already orders this node last regardless (plan 15/15).
+        //
+        // MEASURED, run 20260821-191337: seven store-shaped directories existed
+        // under the sandbox when the law ran, production's `home verify` called
+        // all seven homes, and the law reported homesChecked = 1. The six it
+        // never saw belong to ParentHomeSurvivesAChildBuild,
+        // ReadersAgreeAboutOneClone and SyncStaysInsideItsHome -- none of which
+        // published a home path. The last of those now does; the other two are
+        // DEF-020.
         node("sources/common/HomeFixpointLaw.java")
                 .dependsOn("home.integrity.bootstrap.projects.target")
     }

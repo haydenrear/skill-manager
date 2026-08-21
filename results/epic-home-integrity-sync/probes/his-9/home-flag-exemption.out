@@ -1,0 +1,22 @@
+# HIS-9: the guard's --home exemption, both spellings.
+#
+# The generated bin/cli/skill-manager body, extracted from LauncherShims and
+# driven directly with SKILL_MANAGER_HOME naming a DIFFERENT home.
+#
+#   case               exit   refused?
+#   no flag            79     YES   <- the mismatch is refused
+#   --home <x>          -     no    <- exempt
+#   --home=<x>          -     no    <- exempt
+#   --home <y>          -     no    <- exempt
+#
+# Both spellings are exempt, which is what HIS-12 (#161) needs: a remedy that
+# carries --home is safe whatever SKILL_MANAGER_HOME the reader's shell exports.
+#
+# CAVEAT ON THIS PROBE, so nobody reads more into it than it shows: the
+# extraction unescaped the backslash-backtick sequences that must stay LITERAL
+# in the generated script, so the non-refused cases exit 1 on a spurious command
+# substitution instead of reaching the pin. That is an artifact of this probe,
+# not of the shim -- the real generated script keeps them escaped, and
+# LauncherShimsTest drives the real one and asserts the pin runs. What this
+# probe establishes is only the exit-79 column: refused without the flag,
+# not refused with it, in either spelling.

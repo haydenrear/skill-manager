@@ -1,0 +1,33 @@
+# home.fixpoint.law coverage, measured on run 20260821-191337
+# home-integrity: BUILD SUCCESSFUL, 15/15 nodes passed.
+#
+# Store-shaped directories under the sandbox when the law ran, each put
+# to production's OWN `home verify` (exit 2 would mean 'not a home'):
+
+home-integrity/home                              verify exit 0
+scratch/middle-home/.skill-manager               verify exit 0   (HIS-7 node)
+scratch/leaf-home/.skill-manager                 verify exit 0   (HIS-7 node)
+scratch/his10/middle-home/.skill-manager         verify exit 1   (HIS-10 node, negative fixture)
+scratch/his10/leaf-home/.skill-manager           verify exit 1   (HIS-10 node, negative fixture)
+scratch/his9/victim-home/.skill-manager          verify exit 0   (HIS-9 node)
+scratch/his9/syncing-home/.skill-manager         verify exit 0   (HIS-9 node)
+
+law envelope, same run:  homesChecked = 1
+
+Seven homes present, one checked. The gate is publish(), not dependsOn():
+HomeFixpointLaw.candidateHomes walks upstream CONTEXT VALUES only, and
+the fixture node is the only one that published a home path.
+Filed as DEF-017. HIS-9's node now publishes its two.
+
+--------------------------------------------------------------------
+AFTER: run 20260821-192222, same graph, SyncStaysInsideItsHome now
+declares and publishes victimHome + syncingHome.
+
+  homesChecked   1  ->  3
+  homesRepaired  0  ->  0      (both new homes verified; nothing needed repair)
+  law status     passed -> passed
+  graph          BUILD SUCCESSFUL, 15/15 nodes passed
+
+The two homes this node creates are now inside the graph's shared
+post-condition. The four belonging to the HIS-7 and HIS-10 nodes are not,
+and remain DEF-017.

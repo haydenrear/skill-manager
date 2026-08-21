@@ -1,0 +1,6 @@
+# HIS-9 vacuity check: K-entry-rule-follows-the-leaf
+# fix disabled, `jbang RunTests.java` run against the broken code
+
+  [FAIL] takeOwnershipOfShim still takes ownership when the home is intact: refused: taking ownership of bin/cli/gamma would reach a path outside the home it was given
+  [FAIL] a FORCED run over a sanctioned mirror owns the slot instead of writing through it: refused: taking ownership of bin/cli/tool would reach a path outside the home it was given
+FAILURES: 2

@@ -1,0 +1,5 @@
+# HIS-9 vacuity check: J-shim-home-flag-escape-removed
+# fix disabled, `jbang RunTests.java` run against the broken code
+
+  [FAIL] --home settles it, so the remedy the refusal prints is not itself refused: naming a home on the command line is never refused: expected <0> but was <79>
+FAILURES: 1

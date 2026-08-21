@@ -263,6 +263,11 @@ public class RunTests {
         failures += dev.skillmanager.store.HomeVerifyPathSpellingTest.run();
         failures += dev.skillmanager.store.ProvenanceRecordExemptionTest.run();
         failures += dev.skillmanager.cli.installer.CliShimPrunerTest.run();
+        // HIS-9 (#226): the write-confinement guard, its two DEF-007 delete
+        // call sites, and the producer boundary.
+        failures += dev.skillmanager.store.WriteConfinementTest.run();
+        failures += dev.skillmanager.store.PruneStaysInsideItsHomeTest.run();
+        failures += dev.skillmanager.cli.installer.ProducerStaysInsideItsHomeTest.run();
         failures += dev.skillmanager.cli.BuildIdentityTest.run();
         failures += dev.skillmanager.store.HomeDescriptorTest.run();
         failures += dev.skillmanager.policy.HomePolicyTest.run();

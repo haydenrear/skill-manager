@@ -385,9 +385,18 @@ public final class ProjectCommand {
 
         public SyncCmd(SkillStore injectedStore) { this.injectedStore = injectedStore; }
 
+        /** HIS-9. The second verb that lacked it — see {@code SyncCommand.home}. */
+        @Option(names = "--home",
+                description = "Skill Manager home. Defaults to $SKILL_MANAGER_HOME.")
+        java.nio.file.Path home;
+
         @Override
         public Integer call() throws Exception {
-            SkillStore store = injectedStore != null ? injectedStore : SkillStore.defaultStore();
+            SkillStore store = injectedStore != null
+                    ? injectedStore
+                    : home != null
+                        ? new SkillStore(home.toAbsolutePath().normalize())
+                        : SkillStore.defaultStore();
             store.init();
             Path root = projectDir == null || projectDir.isBlank()
                     ? Path.of(System.getProperty("user.dir"))

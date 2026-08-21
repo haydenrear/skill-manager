@@ -1072,3 +1072,377 @@ findings:
     status: open
     evidence:
       - src/test/java/dev/skillmanager/source/SyncPathsAgreeAboutDirtyTest.java
+  - id: DEF-017
+    found_by: HIS-9, placing the write-confinement guard
+    found_at: "2026-08-21"
+    severity: major
+    summary: >
+      There is no filesystem choke point to hang confinement on. 173 direct
+      `java.nio.file.Files` mutation call sites bypass `Fs`, and `Fs` cannot be
+      made the choke point without breaking the server build.
+    detail: >
+      HIS-9's slice says "every filesystem write that claims to be into this
+      home passes through one place". There is no such place, and the obvious
+      candidate cannot become one.
+
+      MEASURED on this branch:
+
+        grep -rn "Files\.(write|createDirect|copy|move|delete|createSymbolicLink
+                 |newOutputStream|createFile)" src/main/java | wc -l   ->  173
+
+        top packages: bindings 33, effects 27 (26 of them in LiveInterpreter
+        alone), project 24, shared/util 15, cli/installer 15, store 14
+
+      `dev.skillmanager.shared.util.Fs` covers recursive delete (50 call sites),
+      recursive copy (19), ensureDir (89) and chmod (13) -- and carries NO
+      write, NO move and NO createSymbolicLink at all. So the shims, the lock
+      files and the projections, which is where the mutation actually is, do not
+      go through it.
+
+      AND IT CANNOT SIMPLY BE WIDENED. `SkillManagerServer.java` compiles
+      `shared/util/Fs.java` STANDALONE (`//SOURCES` lines 11-13, alongside
+      Archives and BundleMetadata only). `shared/` imports nothing from
+      `dev.skillmanager` today -- verified, zero hits. Adding a
+      `dev.skillmanager.store.WriteConfinement` import to Fs would break the
+      server build, so the guard cannot live behind Fs without either moving Fs
+      or moving the guard into `shared/`.
+    what_his_9_did_instead: >
+      Enforced at the sites where the measured damage happened --
+      CliShimPruner.prune, InstallerRegistry.takeOwnershipOfShim, and the
+      producer boundary in InstallerRegistry.installOne -- and said so, in
+      WriteConfinement's javadoc and in the goal contribution, rather than
+      implying general coverage.
+
+      CORRECTED AFTER REVIEW: an earlier version of this entry also named
+      "the effect boundary in LiveInterpreter.execute" as an enforcement site.
+      It was not one. It DECLARED a scope that every enforcement site already
+      re-derived for itself, a vacuity check measured that removing it reddened
+      nothing, and it has since been deleted rather than left as
+      enforcing-looking API. That is the SECOND time this ticket wrote that
+      claim down (the first was in WriteConfinement's own javadoc, corrected in
+      its own commit), which is worth more than the claim: "declares" and
+      "enforces" read alike six weeks later, and only a caller count tells them
+      apart.
+
+      ALSO CORRECTED: this entry must not be read as saying Fs.deleteRecursive
+      is unsafe. It is not. It deletes a symlink LEAF without following it
+      (Files.isSymbolicLink -> Files.delete), so the prune's recursive delete
+      does the right thing; the DEF-007 defect was in the DIRECTORY the entries
+      were listed from, not in the deletion of each entry. Fs is named here only
+      because it is not a choke point, not because it is wrong.
+    why_deferred: >
+      Routing 173 call sites through a facade is a mechanical change with a very
+      wide blast radius across bindings, projections and the project surface --
+      every one of which writes outside the home legitimately, so each site needs
+      its roots DECIDED, not just rewritten. That is a ticket, not a drive-by,
+      and doing it inside HIS-9 would have buried the four real fixes in it.
+    recommendation: >
+      For the owner: decide whether the follow-up is (a) a `HomeFs` facade in
+      `store/` that the home-writing paths adopt incrementally, or (b) moving
+      `WriteConfinement` into `shared/util` so `Fs` itself can consult it. (b) is
+      one commit and gives 171 delete/copy/mkdir sites coverage immediately; it
+      costs putting home-shaped policy in the package that is deliberately
+      dependency-free and shared with the server.
+    candidate_owner: unassigned
+    status: open
+
+  - id: DEF-018
+    found_by: HIS-9, fixing instance (2) -- the pinned shim rebinding the home
+    found_at: "2026-08-21"
+    severity: major
+    summary: >
+      `bootstrap-home.sh`'s `env SKILL_MANAGER_HOME=<target> "$CLI" sync` now
+      EXITS 79 where it used to silently sync the wrong home. The already-broken
+      path is now loud, which is better and is still broken until the leaf
+      passes `--home`.
+    detail: >
+      HIS-9 made `<home>/bin/cli/skill-manager` REFUSE when SKILL_MANAGER_HOME
+      names a different home, rather than override it in silence. Measured on
+      two synthetic homes, before and after, in
+      probes/his-9/instance2-{before,after}-guard.out:
+
+        before:  exit 0, `home describe` reported home Y -- the home the
+                 operator did NOT name
+        after :  exit 79, "refusing to run against a home you did not name",
+                 naming X and Y
+
+      `bootstrap-home.sh` (git-issue-workflow) and `skt` resolve $CLI as
+      $SKILL_MANAGER_CLI or `command -v skill-manager`. On a machine where the
+      PATH `skill-manager` is a HOME SHIM -- which the home-integrity graph node
+      records as the normal state, since `home shims` puts one there and its
+      directory goes on PATH -- that composition previously synced the shim's
+      home instead of the target, bootstrap exited 6, and ARTI-14 measured 58 of
+      207 downstream assertions falling over. It now exits 79 with both homes
+      named.
+
+      So this does NOT break a working path; it makes an already-failing one
+      diagnosable. It is filed because it is a behavioural change in a script
+      that lives in ANOTHER repository and is the epic's own front door.
+    the_remedy_is_one_line_and_is_already_asserted: >
+      Pass `--home <target>` instead of exporting the variable. The shim never
+      refuses when `--home` is present -- that escape is deliberate, is what the
+      refusal's own text recommends, and is pinned by
+      LauncherShimsTest's "--home settles it, so the remedy the refusal prints is
+      not itself refused" and by the graph node
+      home.integrity.bootstrap.projects.target.
+    why_deferred: >
+      Instance (3) of HIS-9's root cause is declared A REPORT, NOT A FIX, in the
+      ticket plan: bootstrap-home.sh and skt live in git-issue-workflow and skt,
+      and reaching them is HIS-8's publish path. The outer CLAUDE.md also forbids
+      starting a leaf change from anywhere but that leaf.
+    candidate_owner: HIS-8
+    status: open
+    evidence:
+      - results/epic-home-integrity-sync/probes/his-9/instance2-before-guard.out
+      - results/epic-home-integrity-sync/probes/his-9/instance2-after-guard.out
+
+  - id: DEF-019
+    found_by: HIS-9, closing the forced-write-through hole at the producer boundary
+    found_at: "2026-08-21"
+    severity: major
+    severity_note: >
+      RE-GRADED FROM minor AFTER REVIEW, and the review was right. Two facts I
+      had under-weighted:
+
+      (a) takeOwnershipOfShim DOES NOT CONSULT SANCTION. It acts on any bin/cli
+          entry that is a symlink reaching another home, so under --force-scripts
+          it deletes SANCTIONED mirrors -- the very links a child home is meant
+          to share -- not merely unsanctioned ones.
+
+      (b) --force-scripts is the flag AgentHomes.java:186 TELLS OPERATORS TO USE.
+          This is not a corner: it is on the documented path.
+
+      The behaviour is still the one I want -- rebuilding locally beats
+      overwriting the parent store's file -- but "minor / no action requested"
+      was the wrong label for a change that deletes sanctioned links on a
+      documented command.
+    summary: >
+      `sync --force-scripts` in a child home now TAKES OWNERSHIP of a sanctioned
+      inherited shim and rebuilds it locally, where it previously wrote through
+      the link into the parent store.
+    detail: >
+      HIS-7 closed the write-through for the REBUILD path only, by taking
+      ownership of the one slot it was about to write. A FORCED install reaches
+      the same producer by a different route: `InstallerRegistry.installOne(...,
+      force=true)` runs the backend over a slot that may still be a sanctioned
+      mirror, and `cat > "$SKILL_MANAGER_BIN_DIR/<n>"` follows it into the
+      parent home exactly as it did in the measurement HIS-7 was filed for.
+
+      HIS-9 handles it by reusing HIS-7's own mechanism -- takeOwnershipOfShim +
+      restoreForeignShim -- under `force` only. A routine sync (force=false) over
+      a sanctioned mirror is untouched, so HIS-10's "0 pruned, 2 installed" first
+      sync is unchanged.
+
+      Pinned by ProducerStaysInsideItsHomeTest's "a FORCED run over a sanctioned
+      mirror owns the slot instead of writing through it", which reddens with the
+      ownership call removed: the parent's artifact is no longer byte-identical.
+    the_cost: >
+      THIS IS A PARTIAL WALK-BACK OF HIS-10 (#227) FOR THIS ONE FLAG, AND IT IS
+      DELIBERATE.
+
+      HIS-10's measured win was that a clone's first sync stopped pruning five
+      inherited shims and re-provisioning five toolchains nobody had changed:
+      5 pruned / 6 installed (~90s) became 0 pruned / 2 installed. The owner's
+      contract for that work was "we clone, then we say, here are the artifacts
+      for these skills on the path for you... Why would we build them without
+      the agent changing?"
+
+      HIS-9 narrows that for `--force-scripts` ONLY. A child home running
+      `sync --force-scripts` now REBUILDS the skill-script artifacts it had been
+      sharing, rather than sharing them -- more work than before, and a
+      deliberate narrowing of HIS-10's "do not rebuild what nobody changed"
+      rather than a regression of it.
+
+      WHAT IS NOT NARROWED, and this is the part that keeps #227's number
+      intact: a routine sync (force=false) over a sanctioned mirror is untouched.
+      HIS-10's 0-pruned/2-installed first sync is unchanged, because the
+      ownership arm is gated on `force` and nothing else.
+
+      WHY THE NARROWING IS CORRECT: the alternative for a forced run is that the
+      producer's `cat > "$SKILL_MANAGER_BIN_DIR/<n>"` follows the mirror into the
+      parent store and REWRITES THE PARENT'S FILE -- which is the HIS-7 damage,
+      measured twice on the operator's real root home. Between rebuilding an
+      artifact this home was sharing and overwriting the artifact the home above
+      it owns, this ticket rebuilds. `--force-scripts` is also an explicit
+      request to re-run the script, which is the same signal a rebuild carries,
+      so owning the slot is what the flag already means.
+    also_now_false: >
+      InstallerRegistry.takeOwnershipOfShim's javadoc at :300-318 still argues
+      that running from installOne was the BUG, and still says
+      rebuildCliArtifact is "the one caller". HIS-9 put it back in installOne
+      under `force`, so BOTH sentences are now false. The javadoc needs to state
+      the force-gated exception and say that the sanction is not consulted.
+    why_deferred: >
+      Recorded rather than fixed here because the javadoc correction and the
+      sanction question are one small change that wants its own review, and
+      because the DELIBERATE NARROWING OF HIS-10
+      (#227) is visible at the wave review as a narrowing rather than being
+      discovered later as a regression, and so HIS-6's sync-cost numbers are read
+      with the flag in mind. No action is requested.
+    see_also: >
+      #227 (HIS-10) -- the ticket whose "do not rebuild what nobody changed"
+      behaviour this narrows, and whose measured 0-pruned/2-installed first sync
+      is deliberately left intact.
+    candidate_owner: HIS-6 (measurement only)
+    status: open
+
+  - id: DEF-020
+    found_by: HIS-9, after the epic agent asked whether home.fixpoint.law still covers the graph's newest node
+    found_at: "2026-08-21"
+    severity: major
+    summary: >
+      `home.fixpoint.law` covered 1 of 7 homes on the home-integrity graph. Six
+      real homes were invisible to it because the nodes that create them publish
+      no home path, and the law discovers homes ONLY from published upstream
+      context values.
+    detail: >
+      MEASURED on run 20260821-191337 (home-integrity, BUILD SUCCESSFUL, 15/15
+      nodes green). At the moment the law ran, seven store-shaped directories
+      existed under the sandbox. Production's OWN `home verify` was then asked
+      about each -- none exited 2 ("not a home"), so production calls all seven
+      homes:
+
+        home-integrity/home                              verify exit 0
+        scratch/middle-home/.skill-manager               verify exit 0
+        scratch/leaf-home/.skill-manager                 verify exit 0
+        scratch/his10/middle-home/.skill-manager         verify exit 1
+        scratch/his10/leaf-home/.skill-manager           verify exit 1
+        scratch/his9/victim-home/.skill-manager          verify exit 0
+        scratch/his9/syncing-home/.skill-manager         verify exit 0
+
+      The law's envelope for the same run:  homesChecked = 1.
+
+      THE MECHANISM IS `publish`, NOT `dependsOn`. HomeFixpointLaw.candidateHomes
+      iterates `item.data().values()` over upstream ContextItems and offers each
+      existing directory to `home verify`; the class javadoc says so ("every
+      upstream value that is an existing directory is offered"). Only
+      HomeIntegrityFixture publishes a home path, so only its home was checked.
+      Ordering is NOT the problem -- the planner already places the law at 15/15,
+      after every assertion node.
+
+      This matters because of what the law is FOR. Its own javadoc: "a run that
+      finds zero homes FAILS... an instrument reporting success because it could
+      not look" is the failure mode it exists to close. A run that finds ONE of
+      seven is the same failure mode, one notch quieter, and it passed.
+    what_his_9_fixed: >
+      Its own share only. SyncStaysInsideItsHome now declares
+      `.output("victimHome"/"syncingHome")` and publishes both, so the law sees
+      them. Both verify clean (exit 0, measured above), so this extends the law's
+      reach rather than importing a known-bad fixture into a shared
+      post-condition.
+    what_is_left: >
+      TWO OTHER NODES, NEITHER OF THEM HIS-9's.
+
+      (a) ParentHomeSurvivesAChildBuild (HIS-7) creates
+          scratch/{middle,leaf}-home. Both verify exit 0 and neither is checked.
+          Publishing them looks safe and would be a one-line change.
+
+      (b) ReadersAgreeAboutOneClone (HIS-10) creates scratch/his10/{middle,leaf}
+          -home. Both verify EXIT 1 -- by construction: that node's whole subject
+          is a home whose sanction has been revoked. Publishing those would hand
+          the law a deliberately-unsanctioned home, and the law's remedy arm
+          would run `sync --force-scripts` against it. So (b) is a DECISION, not
+          a one-liner: either the law needs a way for a node to say "this home is
+          a negative fixture, do not adopt it", or those two stay out and the
+          reason is written down.
+
+      Whether the law should discover homes structurally (walk the sandbox)
+      rather than from published values is the broader question. That is a change
+      to a node wired into 24 of 29 graphs and is nobody's drive-by.
+    why_deferred: >
+      HIS-9 covered the node it added, which is what it was asked to do. Fixing
+      the shared law, or publishing two other tickets' fixtures, is outside its
+      slice and (b) needs an owner's decision about negative fixtures.
+    candidate_owner: unassigned -- suggest HIS-6, which reads this instrument's output
+    status: open
+    evidence:
+      - results/epic-home-integrity-sync/probes/his-9/graph-home.fixpoint.law.json
+      - results/epic-home-integrity-sync/probes/his-9/fixpoint-law-coverage.out
+
+  - id: DEF-024
+    renumbered_from: >
+      Filed as DEF-016. Renumbered to DEF-024 on the epic agent's authoritative
+      allocation, 2026-08-21: HIS-4 also filed a DEF-016 and merges first
+      (promotion order 6 to this ticket's 7). HIS-9's other ids -- 017, 018, 019,
+      020 -- are uncontested and unchanged.
+    found_by: HIS-9, trying to run its declared graph
+    found_at: "2026-08-21"
+    severity: blocking
+    escalated: true
+    status: closed
+    closed_at: "2026-08-21"
+    summary: >
+      CLOSED. The wave's shared graph lock could be left in a state nothing
+      could clear, and a waiter would then block its full 90-minute cap. Three
+      distinct failure modes in one small wrapper; all three are fixed. Recorded
+      so the next author does not rebuild the same lock.
+    the_three_failure_modes: >
+      (1) A SHARED SCRIPT EDITED IN PLACE WHILE RUNNING. `graph-run.sh` was
+          rewritten by truncate-and-rewrite of the SAME INODE while HIS-9's
+          invocation sat in its `sleep 20` loop. Bash reads a script
+          incrementally by byte offset, so the running shell resumed into
+          changed bytes and died:
+            graph-run.sh: line 27: syntax error near unexpected token '('
+          FIXED by editing through write-temp-then-rename instead: an
+          already-open inode survives a rename, so a running shell keeps reading
+          the file it started with.
+
+      (2) THE RELEASE TRAP NEVER FIRED, because the wrapper ended in `exec
+          python ...`. `exec` replaces the shell image, and with it the EXIT trap
+          that was supposed to `rm -rf "$LOCK"`. Found by HIS-12.
+          FIXED: the wrapper no longer execs, so the trap runs.
+
+      (3) AN UNATTRIBUTABLE LOCK WAS NEVER RECLAIMED. The lock is a DIRECTORY
+          populated in three steps -- `mkdir`, then `echo > owner`, then
+          `echo > pid` -- and the reclaim was keyed only on a pid naming a dead
+          process:
+
+            owner_pid="$(cat "$LOCK/pid" 2>/dev/null || echo "")"
+            if [ -n "$owner_pid" ] && ! kill -0 "$owner_pid" 2>/dev/null; then
+              rm -rf "$LOCK"; continue
+            fi
+
+          A shell killed BETWEEN the mkdir and those writes -- which is exactly
+          what (1) caused -- leaves a directory with no owner and no pid, which
+          that predicate can never reclaim. Every waiter then blocked the full
+          90 minutes and exited 75.
+          FIXED: an unattributed lock is now reclaimed after 60 seconds.
+    what_was_measured: >
+      2026-08-21 15:02 EDT. `.graph.lock` existed, created 14:58:31, containing
+      NOTHING (`ls -A` empty: no owner, no pid). At the same moment:
+
+        ps         : no run.py, no gradle, no GradleDaemon, no test_graph process
+        docker ps  : no skill-manager compose containers (only unrelated k3d ones)
+        graph-run.sh: the only one alive was HIS-9's own waiter
+
+      So the lock was provably held by nobody and was unreclaimable by
+      construction -- which is what separated "wait longer" from "this will never
+      clear itself".
+    why_this_ticket_did_not_clear_it: >
+      Recorded because the judgement was contested and came out right. The ticket
+      agent's instructions said "if that happens, report it -- do not remove the
+      lock", and an attempt to `rmdir` the empty directory was independently
+      refused by the harness permission classifier. Both were respected and the
+      lock was left alone; the epic agent cleared it and confirmed the diagnosis.
+      Removing a lock you have proved is orphaned is still removing a shared
+      lock, and the instruction did not carve out that case.
+    outcome: >
+      No graph evidence was lost. Once cleared, HIS-9 ran `home-integrity` to
+      completion three times -- 20260821-191337 (which surfaced DEF-020),
+      20260821-192222 (which proved that fix), and 20260821-200059 (after the
+      second review round changed the shim refusal text the
+      bootstrap.projects.target node asserts on). All three BUILD SUCCESSFUL,
+      15/15 nodes passed.
+    the_durable_lesson: >
+      Two of the three modes are the same mistake in different clothes: a
+      coordination primitive whose invariant spans MORE THAN ONE non-atomic step.
+      A lock that is a directory plus two files has a window in which it is
+      neither held nor free, and any mechanism that reads only one of those files
+      inherits the window.
+
+      If this wrapper is ever rewritten, make the lock a SINGLE file written
+      atomically -- write to a temp path in the same directory, then rename --
+      so there is no partially-created lock to reason about, and no reclaim
+      predicate that can be wrong about it. And do not edit a script several
+      running agents are executing; rename a new one into place.
+    candidate_owner: epic agent (wave-4 machinery) -- fixed by them, no action outstanding

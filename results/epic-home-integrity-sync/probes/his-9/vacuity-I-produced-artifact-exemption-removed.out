@@ -1,0 +1,6 @@
+# HIS-9 vacuity check: I-produced-artifact-exemption-removed
+# fix disabled, `jbang RunTests.java` run against the broken code
+
+  [FAIL] a SANCTIONED mirror is not refused, and the producer is left to decline: refused: the stub-producer backend's artifact for tool would write a path outside the home it was given
+  [FAIL] an artifact linked OUTSIDE every home is left alone — brew's case: refused: the stub-producer backend's artifact for tool would write a path outside the home it was given
+FAILURES: 2

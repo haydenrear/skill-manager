@@ -250,6 +250,32 @@ public final class LauncherShims {
     public static final int SELF_EXEC_EXIT_CODE = 78;
 
     /**
+     * Exit status when {@code SKILL_MANAGER_HOME} names a home other than the
+     * one this shim lives in, and no {@code --home} settled it.
+     *
+     * <h2>The defect, which is this epic's own class on the launch surface</h2>
+     *
+     * <p>{@code bin/cli/skill-manager} exports its own home, deliberately —
+     * that override exists because running a project home's shim with a decoy
+     * home inherited created ten directories in the decoy. What it did not do
+     * is <em>say</em> so. {@code SKILL_MANAGER_HOME=<x> <y>/bin/cli/skill-manager}
+     * edits <b>y</b>, having been told <b>x</b>, silently. That is how a command
+     * aimed at a worktree home lands in the root home, and it is why every
+     * scratch home in this epic had to be driven with the raw build instead of
+     * a home's own pin.
+     *
+     * <p>Both directions of the bug are now closed: the shim still never runs
+     * against the inherited home (the incident above), and it no longer runs
+     * against its own without saying so. Neither home is silently edited.
+     *
+     * <p>79, not 78: this is a different misconfiguration from the self-exec
+     * refusal and a caller must be able to tell them apart. It sits next to it
+     * because both are {@code sysexits}' {@code EX_CONFIG} family — the shim
+     * works, the request does not.
+     */
+    public static final int HOME_MISMATCH_EXIT_CODE = 79;
+
+    /**
      * The marker a test — or an operator reading a stuck fan-out — can grep the
      * generated shims for to tell "this shim can defend itself" from "this shim
      * is the version that hangs".
@@ -491,9 +517,72 @@ public final class LauncherShims {
             # that deferred to the environment would be indistinguishable from
             # the bare CLI. Name a different home with --home, or call the CLI
             # directly.
-            export SKILL_MANAGER_HOME="$home"
-
+            #
+            # HIS-9: WINNING SILENTLY IS THE OTHER HALF OF THE SAME DEFECT.
+            # Overriding fixed the decoy incident above and created its mirror:
+            # `SKILL_MANAGER_HOME=<x> <y>/bin/cli/skill-manager` edits y, having
+            # been told x, and says nothing. That is how a command aimed at a
+            # worktree home lands in the root home instead — the class this
+            # ticket exists for, on the launch surface rather than in the
+            # filesystem. So the shim still never runs against the inherited
+            # home, and it no longer runs against its own without saying so: a
+            # DIFFERENT home named in the environment is a REFUSAL naming both.
+            # Two spellings of one directory are not different (`cd -P` on each
+            # side); an unset or empty value is not a request and still binds
+            # this home, which is the case the block above is about.
             @SKILL_MANAGER_SELF_GUARD@
+
+            # `--home` on the command line settles the question and is never
+            # refused: it is the escape this file's own comment above tells the
+            # operator to use, it is what the refusal below recommends, and it
+            # is what bootstrap-home.sh should be passing. A refusal whose
+            # printed remedy the refusal itself would reject is not a remedy.
+            sm_names_a_home=0
+            for sm_arg in "$@"; do
+              if [ "$sm_arg" = "--home" ] || [ "${sm_arg#--home=}" != "$sm_arg" ]; then
+                sm_names_a_home=1
+                break
+              fi
+            done
+
+            sm_inherited_home="${SKILL_MANAGER_HOME:-}"
+            if [ -n "$sm_inherited_home" ] && [ "$sm_names_a_home" -eq 0 ]; then
+              sm_named="$(cd -- "$sm_inherited_home" 2>/dev/null && pwd -P || printf '%s' "$sm_inherited_home")"
+              if [ "$sm_named" != "$home" ]; then
+                echo "skill-manager: refusing to run against a home you did not name." >&2
+                echo "  you named:  $sm_inherited_home" >&2
+                echo "  this shim would have edited: $home" >&2
+                echo "  This entrypoint binds the home it lives in, so it cannot honour" >&2
+                echo "  SKILL_MANAGER_HOME. Refusing rather than silently editing the" >&2
+                echo "  other one." >&2
+                # NAME BOTH HOMES AND LET THE OPERATOR CHOOSE. The shim must
+                # not guess, and two earlier versions of this text did.
+                #
+                # The first printed `--home $sm_inherited_home` only, which
+                # recommends the home named in the ENVIRONMENT -- not the one
+                # this shim serves -- so following it verbatim operated on a
+                # third thing.
+                #
+                # The second tried to infer intent from the invocation and could
+                # not: a #! script never sees the word that was typed (the shell
+                # PATH-resolves it and execve's the absolute path, and the
+                # kernel discards argv[0]), so bare-name and absolute
+                # invocations give an IDENTICAL $0. Worse, the damage case this
+                # guard exists for -- `SKILL_MANAGER_HOME=<x> <y>/bin/cli/
+                # skill-manager sync foo` -- is itself absolute, so no
+                # shim-side observation separates it from a pasted remedy.
+                #
+                # Intent is therefore STATED by the caller, on the command line,
+                # where --home is already this guard's exemption. Both spellings
+                # below are exact and both are runnable.
+                echo "  Say which one you mean:" >&2
+                echo "    --home $home   (this shim's home)" >&2
+                echo "    --home $sm_inherited_home   (the home your environment names)" >&2
+                exit @SKILL_MANAGER_HOME_MISMATCH_EXIT@
+              fi
+            fi
+
+            export SKILL_MANAGER_HOME="$home"
 
             # The pin is written out TWICE, and the duplication is load-bearing.
             # The assignment below is not only bash. bootstrap-home.sh's
@@ -524,6 +613,7 @@ public final class LauncherShims {
             fi
 
             exec "$cli" "$@"
-            """;
+            """.replace("@SKILL_MANAGER_HOME_MISMATCH_EXIT@",
+                    String.valueOf(HOME_MISMATCH_EXIT_CODE));
 
 }

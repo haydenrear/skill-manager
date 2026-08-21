@@ -1,0 +1,7 @@
+# HIS-9 vacuity check: A-pruner-guard-removed
+# fix disabled, `jbang RunTests.java` run against the broken code
+
+  [FAIL] ROOT tier: a prune whose bin/cli is a link at another home is refused: expected a write-confinement refusal, and nothing was refused — the prune ran to completion in the wrong home
+  [FAIL] PROJECT tier: a REGISTERED child may not prune through a link at its parent: expected a write-confinement refusal, and nothing was refused — the prune ran to completion in the wrong home
+  [FAIL] WORKTREE tier: a clone with a descent record may not either: expected a write-confinement refusal, and nothing was refused — the prune ran to completion in the wrong home
+FAILURES: 3

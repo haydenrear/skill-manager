@@ -47,6 +47,28 @@ public final class CliInstallRecorder {
                 tally = tally.plus(
                         registry.installOne(rc.dep(), store, rc.unitName(), rc.forceScripts()));
                 record(lock, registry, rc.dep(), store, rc.unitName());
+            } catch (dev.skillmanager.store.WriteOutsideHomeException confined) {
+                // NOT ONE DEP'S FAILURE, so not this loop's to absorb.
+                //
+                // The catch below is deliberate resilience: one dep that cannot
+                // be fetched must not stop the other twenty, so it warns and
+                // tallies. A write-confinement refusal is a different kind of
+                // event -- this install was pointed at a home it was not given,
+                // and the same bin/cli is about to be handed to every remaining
+                // dep in the plan. Absorbing it would carry on aiming at that
+                // home, nineteen more times, and `installCli` would still hand
+                // back EffectReceipt.ok so `sync` exited 0.
+                //
+                // Measured before this arm existed: through CliInstallRecorder
+                // .run the refusal returned normally; through installOne
+                // directly it threw. Same defect, two verdicts, and the bulk
+                // path is the one every `sync` takes.
+                //
+                // Rethrown rather than tallied so it reaches LiveInterpreter's
+                // handler and becomes a FAILED receipt. Being unchecked is NOT
+                // what does this -- see WriteOutsideHomeException's javadoc,
+                // which used to claim it was.
+                throw confined;
             } catch (Exception e) {
                 Log.warn("cli: %s failed: %s", rc.dep().name(), e.getMessage());
                 tally = tally.withFailure();
