@@ -317,20 +317,20 @@ regression cfgs are untouched.
 | spec_unit | `uv run pytest specs/` | **38 passed in 1.82s** |
 | manual | four-reader matrix, re-run after the fix | captured in `probes/his-10/after-*.out` |
 | manual | bootstrap probe on a throwaway worktree | exit 0, five shims kept, root home unchanged |
-| regression | `run.py project-child-home` | **BUILD SUCCESSFUL in 3m 55s** |
-| regression | `run.py harness-smoke` | **BUILD SUCCESSFUL in 4m 36s** |
+| regression | `run.py project-child-home` | **BUILD SUCCESSFUL in 3m 51s** |
+| regression | `run.py harness-smoke` | **BUILD SUCCESSFUL in 4m 39s** |
 
 `project-child-home` and `harness-smoke` were run because HIS-7's own goal
 contribution named them as the graphs most exposed to a change in this
 mechanism, and because the spelling widening can only ever make the checker find
 *more* — which is the direction that turns other graphs red.
 
-**Everything in this table was re-run after the re-derivation change**, except
-`project-child-home` and `harness-smoke`, which were run against the first
-version. Their exposure is to the *sanction* predicate, which re-derivation
-makes strictly narrower, so a stale green there is the direction that could
-hide a regression. They are the first thing to re-run before merge, and I am
-flagging that rather than restating a result I did not reproduce.
+**Every row was re-run after the re-derivation change.** `project-child-home`
+and `harness-smoke` in particular, because re-derivation makes the sanction
+predicate strictly NARROWER and a stale green there is the direction that could
+hide a regression: both build child homes carrying CLI deps, which is the shape
+this predicate decides. Both were green before the change and are green after,
+at the timings above.
 
 **Not run:** `run.py --all` (~7 min plus the excluded graphs), and TLC. The
 former is the epic agent's call at wave close; the latter is HIS-5's.
