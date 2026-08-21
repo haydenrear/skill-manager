@@ -7,8 +7,11 @@ declared worktree, because HIS-10 is what made a clone usable.
 ## The headline
 
 **The defect is reproduced at the project tier, synthetically, and it is fixed.**
-The graph node this ticket was told to redden is red before the change and green
-after, with the production diff as the only variable.
+The graph node this ticket was told to redden is **red without the fix**
+(`BUILD FAILED in 59s`, runId `20260821-191159`) and **green with it**
+(`BUILD SUCCESSFUL in 1m 14s`, runId `20260821-184449`), with the production
+diff as the only variable. The green run was measured *first*, because the
+shared lock freed mid-restore; the order is recorded below rather than tidied.
 
 The mechanism, stated once: `ChildHomeMaterializer` dereferences an in-unit
 symlink that points into the parent store into a real directory, because that is
@@ -207,25 +210,45 @@ the fixed build in the tree** and produced the GREEN result instead:
 | build in tree | **fixed** (`88a4346`'s content) |
 | result | `BUILD SUCCESSFUL in 1m 14s`; node `"status": "passed"`, 20.7 s |
 
-The red run was then started against the reverted build and **has not
-completed** — see below. So at the time of writing, the graph evidence is:
-green-with-the-fix, measured; red-without-the-fix, **not yet measured through
-the graph**.
+The red run was then started against the reverted build, was killed twice by a
+wrapper defect (below), and finally completed:
 
-**Why this is still a legitimate control, and where its limit is.**
-Red-with-the-fix-reverted is the same evidence whichever order it is measured
-in — the node and the fixture are byte-identical across both runs, and the only
-variable is the five production files. But *"not yet measured"* is not
-*"measured and red"*, and I am not going to write it as though it were. What
-**is** measured, at the CLI level rather than through the graph, is the same
-comparison over the same fixture: `probes/his-4/before-*.out` against
-`after-*.out`, exit 7 → exit 0 across modes A/B/C with the negative control
-D staying at 7. The node asserts exactly those facts; the graph run would
-confirm that the node *reports* them, which is a weaker and separate claim.
+| | |
+| --- | --- |
+| runId | `20260821-191159` |
+| build in tree | **reverted** to epic tip `dc97f2a` — five files, plus deleting `DereferencedStoreLinks.java` |
+| result | `BUILD FAILED in 59s`; node `"status": "failed"` |
 
-### Why the red run is blocked
+**Four failures, verbatim from the envelope, and they are the four links:**
 
-The wrapper's lock deadlocked, twice, and neither time was a real collision:
+```
+sync exited 7; a unit whose only divergence is the child home's own dereference
+  must stay syncable at every tier
+installed baseline was stranded: record says ea137889 (was ea137889), upstream
+  HEAD is baa68c1a. A merge that lands without its record makes every later sync
+  report 'commits ahead of the installed baseline' forever
+a second sync with nothing changed exited 7; the home never reaches a settled
+  state
+the printed remedy (`sync --merge`) exited 8 — a remedy that does not clear the
+  state it is printed for is how this defect stayed alive for nine days
+```
+
+The second is **link 3**, measured through the node rather than by hand: the
+record did not move at all (`ea137889` before, `ea137889` after) while upstream
+stands at `baa68c1a`. The third is the permanence. The fourth is the remedy.
+
+**So the node is red without the fix and green with it, and the production diff
+is the only variable** — same node, same fixture, same machine, 27 minutes
+apart. That is the ticket's first acceptance item, discharged.
+
+**The order remains what it was**, and it is worth being plain about the limit:
+green was measured first, red second. Nothing about the comparison depends on
+the order — the node and fixture are byte-identical across both runs — but the
+record says green-then-red because that is what happened.
+
+### Why it took three attempts — none of them a product signal
+
+The wrapper's lock failed three times, and no failure was a real collision:
 
 1. My own green run finished in 1m 14s but its release trap only fires on a
    clean shell exit; the process ended without one, leaving the lock directory
@@ -239,7 +262,19 @@ The wrapper's lock deadlocked, twice, and neither time was a real collision:
    created at the moment of the clearing. It was blocking **HIS-9's**
    `home-integrity` waiter as well as mine.
 
-I did not remove it. Reported instead, which is the standing instruction.
+3. The wrapper had been edited **in place** while invocations were mid-flight.
+   Bash reads a script incrementally by byte offset, so running shells resumed
+   into changed bytes and died; one killed between `mkdir` and the `owner`/`pid`
+   writes left a lock nothing could attribute.
+
+I did not remove any lock — reported instead, which is the standing instruction,
+and the one time I tried to clear a verified-empty orphan the permission layer
+refused, which was the right answer. All three were fixed in the harness (no
+`exec`, so the release trap fires; unattributed locks reclaimed after 60s;
+edits written temp-then-renamed). **None of this is evidence about the product**,
+and it is recorded here only so the three failed attempts in the run log are not
+read as flakiness in `sync-settles`. The run that finally measured the red took
+60s of waiting and 59s of work.
 
 ## The defect the issue did not name: a *successful* `--merge` destroys the materialization
 
@@ -317,7 +352,7 @@ argument, and nothing in the git-surface fix needs a name list.
 | `uv run pytest specs/` | **38 passed** in 1.81s |
 | `run_tlc.sh HomeIntegrityInternal` | **No error has been found** — 11 states, 10 distinct |
 | `run_tlc.sh` regression `_silentdrift` | **`Invariant RecordDescribesItsStoreOrSaysWhy is violated`** — the spec's own control still reddens |
-| `run.py sync-settles` | **`BUILD SUCCESSFUL in 1m 14s`**, node `passed` (runId `20260821-184449`) — on the FIXED build. The red counterpart is blocked on the shared lock; see above. |
+| `run.py sync-settles` | **RED without the fix** — `BUILD FAILED in 59s`, node `failed`, runId `20260821-191159`. **GREEN with it** — `BUILD SUCCESSFUL in 1m 14s`, node `passed`, runId `20260821-184449`. Evidence: `probes/his-4/graph-red-node.out`, `graph-green-node.out`. |
 
 **No spec change.** `RecordDescribesItsStoreOrSaysWhy ==
 (hi_record_revision = hi_store_revision) \/ hi_record_error` already forbids the
