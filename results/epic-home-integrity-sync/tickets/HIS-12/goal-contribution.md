@@ -207,6 +207,43 @@ that take `--home` is what makes each match a real remedy site.
   the oracle** — the test round-trips nine hostile paths through a real shell
   rather than through a second model of one.
 
+## The limitation I found by running my own remedy — DEF-029
+
+I pasted the printed remedy into a fresh shell to prove it works. It does, and
+it edits the home it names — **and it linked the unit into the operator's real
+`~/.claude`, `~/.codex` and `~/.gemini`.**
+
+```
+$ <build> sync probe-unit --merge --home <scratch>/project/.skill-manager
+  ✓ units.lock.toml: wrote 1 unit(s) -> <scratch>/project/.skill-manager/…
+  ✓ agents: 1 unit(s) linked into claude, codex, gemini        <-- WHICH claude?
+
+$ ls -la ~/.claude/skills/probe-unit
+  probe-unit -> <scratch>/…/skills/probe-unit          (and ~/.codex, ~/.gemini)
+```
+
+**`--home` binds one of a home's two axes.** `SKILL_MANAGER_HOME` says where the
+UNITS live; `CLAUDE_CONFIG_DIR` / `CODEX_HOME` / `GEMINI_HOME` say where the
+AGENT CONFIGS live, and they are a separate axis — which is issue #145, and
+which `homeEnvPrefix`'s own javadoc states in those words. `home verify`'s
+remedy binds all four and is unaffected; `--home` binds the first.
+
+It is **not a defect the per-verb contract introduced** — a bare
+`sync <unit> --merge` had the same behaviour and no way to name any home. What
+the contract does is make the remedy *look* bound while binding half. I did not
+change what `--home` means unilaterally: HIS-9 added it too, and two tickets in
+this wave now depend on it. Filed as **DEF-029, blocking**, with the fix
+(derive the agent roots from `--home`, as `HomeDescriptor.envFor` already does).
+
+**Cleanup is incomplete and part of it needs the operator.** I removed the three
+dangling skill symlinks I created. I did *not* edit `~/.claude/settings.json`,
+`~/.claude/plugins/known_marketplaces.json` or `~/.codex/config.toml` — writing
+an operator's real agent config is outside a ticket agent's remit, and the
+attempt was correctly refused. Three stale marketplace registrations naming a
+now-deleted scratch directory remain; backups taken before anything was touched
+are at `scratchpad/his12-leak-backup/`, and the entries to drop are those whose
+paths contain `his12/def002`.
+
 ## How the goal metric moves
 
 | scenario | reader | before | after |
@@ -327,6 +364,12 @@ on an unmerged branch so this branch builds and its assertions run.
 - **`ticket-lifecycle` and `home-sync` were re-run after the rebase onto
   `a4a95cb`**; every other graph in the core set is unobserved under this change.
   The two I ran are the two that read remedy text.
+- **DEF-029 is the thing I am least comfortable shipping.** The remedy is
+  correct on the axis it binds and silently wrong on the other, and I found it
+  only because I ran it rather than reading it. I think filing it is right —
+  changing what `--home` binds is a semantic change to a flag HIS-9 also added —
+  but a reviewer may reasonably decide the ticket should not ship a remedy that
+  is half-bound, and I would not argue.
 
 ## Files
 

@@ -924,6 +924,95 @@ findings:
     evidence:
       - results/epic-home-integrity-sync/probes/his-12/ticket-lifecycle-provisioned-failed.json
 
+  - id: DEF-029
+    found_by: >
+      HIS-12 (#161), by pasting its own printed remedy into a fresh shell and
+      then looking at what it touched
+    found_at: "2026-08-21"
+    severity: blocking
+    escalated: true
+    summary: >
+      `--home` binds ONE of a home's two axes. A remedy that carries it sends
+      the UNITS to the named home and the AGENT PROJECTIONS to the operator's
+      real ~/.claude, ~/.codex and ~/.gemini. Measured by causing it.
+    detail: >
+      MEASURED 2026-08-21, running HIS-12's own DEF-002 remedy exactly as an
+      operator would -- SKILL_MANAGER_HOME unset, the root home's bin/cli first
+      on PATH:
+
+        $ <build> sync probe-unit --merge --home <scratch>/project/.skill-manager
+          ✓ units.lock.toml: wrote 1 unit(s) -> <scratch>/project/.skill-manager/...
+          ✓ agents: 1 unit(s) linked into claude, codex, gemini      <-- WHICH claude?
+
+      The store half went where it was told. The agent half went to the
+      operator's REAL agent homes:
+
+        ~/.claude/skills/probe-unit  -> <scratch>/.../skills/probe-unit
+        ~/.codex/skills/probe-unit   -> same
+        ~/.gemini/skills/probe-unit  -> same
+
+      and three real config files gained marketplace registrations naming the
+      scratch directory:
+
+        ~/.claude/settings.json                  (1 path entry)
+        ~/.claude/plugins/known_marketplaces.json (marketplace `skill-manager-f3821b33`)
+        ~/.codex/config.toml:281                 (1 source entry)
+
+      The scratch directory was then deleted, so the symlinks became DANGLING
+      and `probe-unit` began appearing as a loadable skill in an unrelated
+      agent session. That is how it was noticed -- not by a check.
+
+      THIS IS ISSUE #145 EXACTLY, and `HomeCommand.homeEnvPrefix`'s own javadoc
+      states the rule that was broken: "SKILL_MANAGER_HOME says where the UNITS
+      live. CLAUDE_CONFIG_DIR / CODEX_HOME / GEMINI_HOME say where the AGENT
+      CONFIGS live, and they are a separate axis. A remedy that pins only the
+      first resolves the agent half against the ambient environment."
+    why_this_is_a_finding_about_HIS-12: >
+      HIS-12's per-verb contract routes class-2 and class-3 remedies through
+      `--home`, and `--home` pins only the first axis. So the ticket that exists
+      to stop a remedy editing the wrong home ships remedies that edit the
+      operator's real AGENT home. The `home verify` remedy is unaffected --
+      `homeEnvPrefix` binds all four variables, which is why it was written that
+      way -- so the epic already contains the correct shape; `--home` does not
+      implement it.
+
+      It is not a defect the per-verb contract INTRODUCED: a bare
+      `sync <unit> --merge`, the pre-#161 spelling, had the same behaviour and
+      no way to name any home at all. What the contract does is make the remedy
+      look bound while binding half.
+    candidate_fix: >
+      Make `--home` mean the whole home. When `--home` is given and the agent
+      roots are not otherwise set, derive them from it the way
+      `HomeDescriptor.envFor` and `AgentHomes.homeRootFor` already do
+      (`<root>/.claude`, `<root>/.codex`, `<root>/.gemini`). That is one
+      derivation this repository already has two callers for, and it makes the
+      flag's name true. It IS a behaviour change to `sync` and `project sync`,
+      which is why HIS-12 did not make it unilaterally.
+
+      The weaker alternative -- have remedies emit the four-variable `env`
+      prefix instead of `--home` -- is rejected: the head token is the token
+      every consumer of a printed remedy substitutes, which is what took
+      home-sync red in #229's first shape.
+    why_deferred: >
+      `--home` was added by HIS-9 (#226) and independently by HIS-12; changing
+      what it BINDS is a semantic change to a flag two tickets in this wave now
+      depend on, and it is "changing what the operation does", which HIS-12's
+      plan slice excludes. It needs an owner decision, not a drive-by.
+    operator_action_required: >
+      NOT FULLY REPAIRED, and the unrepaired part is in the operator's real
+      home. HIS-12 removed the three dangling skill symlinks it created. It did
+      NOT edit ~/.claude/settings.json, ~/.claude/plugins/known_marketplaces.json
+      or ~/.codex/config.toml -- writing an operator's real agent config is
+      outside a ticket agent's remit and the attempt was correctly refused.
+
+      Three stale marketplace registrations naming a deleted scratch directory
+      remain. Backups of all three files, taken before anything was touched, are
+      at scratchpad/his12-leak-backup/. The entries to drop are the ones whose
+      paths contain `his12/def002`; in known_marketplaces.json that is the whole
+      `skill-manager-f3821b33` key.
+    candidate_owner: epic owner (the flag's semantics) plus the operator (the cleanup)
+    status: open
+
   - id: DEF-021
     found_by: epic agent, wave-4 review round, counting instances across the epic
     found_at: "2026-08-21"
