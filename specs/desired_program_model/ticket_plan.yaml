@@ -1,7 +1,7 @@
 # Desired program model + ticket plan for the child-home materialization epic.
 # Source of truth for tickets. Keep synchronized with spec_manifest.yaml status.
 version: 1
-schedule_revision: 2
+schedule_revision: 3
 name: child-home-materialization-workflow
 updated: "2026-08-07"
 purpose: >
@@ -546,6 +546,44 @@ epic_goals:
       the record by hand.
     evaluation_ticket: HIS-6
     evidence_root: results/epic-home-integrity-sync/goals/GOAL-symlink-merge-settles
+
+  - id: GOAL-mechanism-documented
+    kind: quality
+    statement: >
+      An agent can learn the derived-artifact contract from the documentation
+      instead of from the source, because the last two agents to need it read
+      the source and got it wrong.
+    metric: >
+      (a) markdown files across installed units documenting the contract;
+      (b) whether a fresh agent, given only the docs, answers three questions
+      correctly: what a derived artifact is, what a clone inherits versus
+      declares, and when to rebuild
+    harness: >
+      (a) uv run .github/scripts/check-docs-coverage.py, which re-runs the
+      baseline measurement; (b) a judged read -- one agent, no repository
+      access beyond the units' markdown, answering the three questions above,
+      its answers recorded under the evidence root beside the count. Read
+      together, not combined: a link count cannot show that the prose is
+      right, and a judged read of one agent is not a statistic.
+    baseline:
+      value: >
+        `skill-manager build` in 0 md files; cold shim / ColdArtifact in 0;
+        declared-only in 1; `home clone` in 4. skt's SKILL.md -- the
+        session-start front door -- mentions artifacts once, in a code comment,
+        and ships no references/ pages, while skt/src/skt/check.py:877 prints
+        artifact state to the agent at every session start.
+      measured_at: "5aacfdf"
+      evidence: results/epic-home-integrity-sync/baseline/docs-coverage.txt
+    target: >
+      CLAUSE 1: the contract is stated ONCE, and the units that instruct agents
+      about homes -- skt, skill-manager, git-issue-workflow, git-epic-workflow
+      -- link to it rather than restate it. Restating it in four places is the
+      failure this epic already warns about for rubrics; a copy is covered by
+      nothing and will drift.
+      CLAUSE 2: the judged read answers all three questions correctly from the
+      docs alone.
+    evaluation_ticket: HIS-6
+    evidence_root: results/epic-home-integrity-sync/goals/GOAL-mechanism-documented
 
   - id: GOAL-home-invariants
     kind: quality
@@ -2780,8 +2818,8 @@ tickets:
     wave: 4
     depends_on: [HIS-1, HIS-2, HIS-3, HIS-4, HIS-7]
     blocks: [HIS-6]
-    promotion_order: 6
-    promotion_predecessor: HIS-4
+    promotion_order: 7
+    promotion_predecessor: HIS-8
     conflict_keys:
       production: []
       tla: [HomeIntegrityInternal]
@@ -2817,9 +2855,9 @@ tickets:
     epic: home-integrity-sync
     github_issue: 218
     wave: 5
-    depends_on: [HIS-1, HIS-2, HIS-3, HIS-4, HIS-5, HIS-7]
+    depends_on: [HIS-1, HIS-2, HIS-3, HIS-4, HIS-5, HIS-7, HIS-8]
     blocks: []
-    promotion_order: 7
+    promotion_order: 8
     promotion_predecessor: HIS-5
     owns_goals:
       - GOAL-no-spurious-holdback
@@ -2827,6 +2865,7 @@ tickets:
       - GOAL-gate-settles
       - GOAL-symlink-merge-settles
       - GOAL-home-invariants
+      - GOAL-mechanism-documented
     conflict_keys:
       production: []
       tla: []
@@ -2872,6 +2911,10 @@ tickets:
         contribution: guard
         expected_effect: "decides the goal; adds no behavioural delta"
         local_signal: "N/A: this ticket is the measurement"
+      - goal: GOAL-mechanism-documented
+        contribution: guard
+        expected_effect: "decides the goal; adds no behavioural delta"
+        local_signal: "N/A: this ticket is the measurement"
 
   - id: HIS-7
     title: "`build` reports a shim it did not write, because presence is decided by what runs rather than what this home owns"
@@ -2882,7 +2925,7 @@ tickets:
     added_in_schedule_revision: 2
     wave: 2
     depends_on: []
-    blocks: [HIS-4, HIS-5, HIS-6]
+    blocks: [HIS-4, HIS-5, HIS-6, HIS-8]
     promotion_order: 4
     promotion_predecessor: HIS-3
     conflict_keys:
@@ -2997,3 +3040,79 @@ tickets:
         contribution: guard
         expected_effect: "must not weaken the rule that stops a home reaching into another home's bytes"
         local_signal: "jbang RunTests.java"
+
+  - id: HIS-8
+    title: "the derived-artifact contract is undocumented, so agents read the source and get it wrong"
+    phase: HIS
+    status: planned
+    epic: home-integrity-sync
+    github_issue: 224
+    added_in_schedule_revision: 3
+    wave: 3
+    depends_on: [HIS-7]
+    blocks: [HIS-6]
+    promotion_order: 6
+    promotion_predecessor: HIS-4
+    conflict_keys:
+      production: []
+      tla: []
+      adapters: []
+      test_graph: []
+      workflow_data: [skt, skill-manager-skill, git-issue-workflow, git-epic-workflow]
+    found_by: >
+      Two consecutive wrong diagnoses of HIS-7 by the epic agent, both from
+      reading source because no document describes the mechanism. The first
+      blamed the clone/verify sanction rule; the second proposed eager
+      rebuilds. The owner corrected both.
+    objective: >
+      MEASURED across every installed unit: `skill-manager build` appears in 0
+      markdown files, cold shim / ColdArtifact in 0, declared-only in 1.
+      skt's SKILL.md -- the session-start front door an agent is told to read
+      FIRST -- mentions artifacts once, inside a code comment, and the skill
+      ships no references/ pages at all.
+
+      Meanwhile skt/src/skt/check.py:877 prints artifact state into every
+      session's opening context. So the tooling announces artifacts to every
+      agent and nothing tells them what an artifact is, that
+      `skill-manager build` exists, what a clone inherits, or when to rebuild.
+
+      This is not a tidiness ticket. It is the direct cause of two wrong
+      root-cause diagnoses in this epic's own wave 2, and the next agent will
+      make the third.
+    slice: >
+      State the contract ONCE, in skt, as a references page -- skt is the
+      session-start front door and the one unit every agent is told to read.
+      It must answer, in the agent's order of need:
+
+        - what a derived artifact is, and that `artifacts list` names them;
+        - what a clone INHERITS (the parent's artifacts, on PATH, usable) and
+          what it DECLARES rather than builds -- and why building unchanged
+          artifacts is waste;
+        - when to rebuild: after YOU change the unit, not on arrival;
+        - the exact command, `skill-manager build <artifact-id>`, and how to
+          read `artifacts stale`.
+
+      Then skill-manager, git-issue-workflow and git-epic-workflow LINK to it.
+      They must not restate it: a copy is covered by nothing and will drift,
+      which is the rule this epic already applies to judged rubrics.
+    change_management: >
+      Four separate repositories. Edits go through the home and reach their
+      units by `skt publish` (home sync one tier up, then unit publish), not by
+      this epic's branch -- the epic's own PR carries nothing from a gitignored
+      home. Sequence leaf-to-parent per CLAUDE.md, and record each published
+      unit's commit in the ticket evidence so the terminal evaluation can
+      re-read exactly what was published.
+    acceptance:
+      assertions:
+        - The contract is stated once, in skt, and the other three link rather than restate.
+        - A fresh agent given only the docs answers what an artifact is, what a clone inherits versus declares, and when to rebuild.
+        - The page states the LAZY contract explicitly, including why an eager rebuild is waste -- both wrong answers this epic produced are named and closed off.
+        - Each touched unit is published and its commit recorded.
+    goals:
+      - goal: GOAL-mechanism-documented
+        contribution: direct
+        expected_effect: >
+          0 md files documenting the contract -> stated once and linked from
+          the four units that instruct agents about homes; judged read answers
+          all three questions
+        local_signal: "uv run .github/scripts/check-docs-coverage.py"

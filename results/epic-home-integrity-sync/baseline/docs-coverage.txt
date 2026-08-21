@@ -1,0 +1,43 @@
+BASELINE: documentation coverage of the derived-artifact contract
+Measured 2026-08-20 across every installed unit in the operator's root home.
+The mechanism landed in the artifact-DAG epic; these are the docs an agent reads.
+
+unit                         md  skill-manag         cold  declared-on    artifacts         home
+acp-cdc-ai-python            26            0            0            0            0            0
+debugging                     1            0            0            0            0            0
+deploy-helm                  33            0            0            0            0            0
+discovery                     1            0            0            0            0            0
+git-epic-workflow             8            0            0            0            0            1
+git-integration-repo          6            0            0            0            0            0
+git-issue                     7            0            0            0            0            0
+git-issue-workflow           10            0            0            0            0            2
+hyper-experiments            31            0            0            0            0            0
+hyper-experiments-finance    24            0            0            0            0            0
+llm-wiki                      8            0            0            0            0            0
+plugin-repository             7            0            0            0            0            0
+skill-dev-skill               2            0            0            0            0            0
+skill-manager                 7            0            0            0            0            1
+slm-agent                     2            0            0            0            0            0
+spec-double-compiler        601            0            0            1            0            0
+test-graph                   16            0            0            0            0            0
+tracer-agent                  2            0            0            0            0            0
+tracing-observability         6            0            0            0            0            0
+vision-toolbelt-skill         3            0            0            0            0            0
+andrej-karpathy-skills        6            0            0            0            0            0
+cdc-agent-substrate-plugin    2            0            0            0            0            0
+skt                          26            0            0            0            0            0
+
+--------------------------------------------------------------------------------
+TOTAL md files mentioning                  0            0            1            0            4
+
+HEADLINE
+  `skill-manager build`     documented in 0 markdown file(s)
+  cold shim / ColdArtifact  documented in 0 markdown file(s)
+  declared-only             documented in 1 markdown file(s)
+
+  skt SKILL.md (the session-start front door) mentions 'artifact' in exactly
+  one line, inside a code comment: `skt check  # ... , stale artifacts`.
+  The skt skill ships NO references/ pages.
+
+  Meanwhile skt/src/skt/check.py:877 PRINTS artifact state to the agent at
+  session start. The tooling announces artifacts; nothing explains them.
