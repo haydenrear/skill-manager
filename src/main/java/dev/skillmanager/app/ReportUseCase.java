@@ -142,7 +142,8 @@ public final class ReportUseCase {
         return switch (kind) {
             case GATEWAY_UNAVAILABLE -> "start the gateway: skill-manager gateway up";
             case MCP_REGISTRATION_FAILED -> "retry: skill-manager sync" + target;
-            case MERGE_CONFLICT -> mergeConflictRemedy(storeDir, name);
+            case MERGE_CONFLICT -> mergeConflictRemedy(storeDir, name,
+                    store != null ? store.root() : null, 0);
             case NO_GIT_REMOTE -> one
                     ? "set origin: cd " + storeDir + " && git remote add origin <url>"
                     : "set origin in each unit's store directory: git remote add origin <url>";
@@ -205,11 +206,34 @@ public final class ReportUseCase {
      *       directory to fix nothing.</li>
      * </ul>
      *
+     * <p><b>The CLI is spelled with {@code HomeDescriptor.cliInvocation(homeRoot)},
+     * not as a bare {@code skill-manager}</b>, and that is not cosmetic. DEF-002
+     * recorded a remedy naming the ROOT home's CLI while the operator was
+     * working in the project home, so following it verbatim silently operates on
+     * a different home; #142 is the same family with a bare name. HIS-12 (#161)
+     * owns that surface generally. This remedy is new text landing before that
+     * ticket, so it uses the existing spelling helper rather than adding two more
+     * bare invocations for HIS-12 to find.
+     *
      * <p>Store-less (a shared block of several units, or no store handle) falls
      * back to the shape-agnostic sentence: naming one unit's git state for ten
      * units is the misleading-remedy problem in the other direction.
      */
-    public static String mergeConflictRemedy(Path storeDir, String name) {
+    public static String mergeConflictRemedy(Path storeDir, String name, Path homeRoot) {
+        return mergeConflictRemedy(storeDir, name, homeRoot, 0);
+    }
+
+    /**
+     * @param conflictedCount how many files the operation reported as
+     *        conflicting, read BEFORE any rollback. Zero means "not known here"
+     *        — the outstanding-errors banner reads a persisted record and has no
+     *        such set, so it passes zero and gets the store-derived answer.
+     */
+    public static String mergeConflictRemedy(Path storeDir, String name, Path homeRoot,
+                                             int conflictedCount) {
+        String cli = homeRoot != null
+                ? dev.skillmanager.store.HomeDescriptor.cliInvocation(homeRoot)
+                : "skill-manager";
         if (storeDir == null) {
             return "in each unit's store directory: `git status` says which — resolve + `git add` + "
                     + "`git commit` mid-merge, or `git reset` to drop a failed stash pop";
@@ -223,9 +247,21 @@ public final class ReportUseCase {
                     + "to do. Clear the stages: git -C " + storeDir + " reset"
                     + (dev.skillmanager.source.GitOps.hasStash(storeDir)
                             ? "  (local work is still at stash@{0})" : "")
-                    + ", then `skill-manager sync " + name + "`";
+                    + ", then `" + cli + " sync " + name + "`";
+        }
+        if (conflictedCount > 0) {
+            // THE ROLLED-BACK CONFLICT, and it needs its own sentence because
+            // the store looks pristine and is not. The merge was undone, so
+            // there are no unmerged paths and no MERGE_HEAD to find -- and
+            // saying "already clear" here told an operator whose sync had just
+            // refused that nothing was wrong. Review finding HIGH-2.
+            return "nothing was changed — the merge was rolled back, so the store is exactly "
+                    + "where it was, and " + conflictedCount + " local file(s) conflict with "
+                    + "upstream. Commit or drop the local work in " + storeDir
+                    + " (`git status`), then `" + cli + " sync " + name + "`; or merge by hand "
+                    + "there if both sides are wanted";
         }
         return "already clear in " + storeDir + " — the record has not caught up and the next "
-                + "command retires it; `skill-manager sync " + name + "` does so now";
+                + "command retires it; `" + cli + " sync " + name + "` does so now";
     }
 }

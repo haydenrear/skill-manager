@@ -40,13 +40,39 @@ import static dev.skillmanager._lib.test.Tests.assertTrue;
  * <p>Because the failure being prevented is <em>a path that does not exist
  * yet</em>. A behavioural test can only cover the handlers somebody remembered
  * to write a case for, which is exactly the gap that let the second path keep
- * the old question. A scan fails on the FOURTH handler nobody has written,
- * which is the one that will get this wrong.
+ * the old question.
  *
  * <p>Modelled on {@code sources/sandbox/SandboxEnvContract.java}, which does the
  * same for {@code SKILL_MANAGER_HOME} — including its discipline of proving
  * itself sensitive every run, so a scan that silently stopped matching anything
  * cannot pass as compliance.
+ *
+ * <h2 id="scope">WHAT THIS SCAN CANNOT SEE, and why that is written down here</h2>
+ *
+ * <p>An earlier version of this comment claimed the scan "fails on the FOURTH
+ * handler nobody has written". <b>That was wrong twice over</b>, and an
+ * adversarial review of #231 measured it: the scan is scoped to the
+ * {@code effects} package, and there are already a THIRD and a FOURTH caller
+ * outside it that somebody did write.
+ *
+ * <ul>
+ *   <li>{@code UnitTrunkPull:187} — the {@code project sync} path. It asks
+ *       {@code GitOps.hasWorktreeChanges} directly, and its {@code pullTarget}
+ *       returns <b>the child home's own checkout</b> for CHECKOUT-mode units,
+ *       which is exactly the tier HIS-4 is about. A materialized copy is
+ *       therefore {@code HELD_BACK} there, forever, for the reason HIS-4
+ *       fixed everywhere else.</li>
+ *   <li>{@code UnitPublisher:169} — publish. It reads the same dirtiness as
+ *       "there is local work to commit", so from a child home it would
+ *       <b>commit the materialization artifact upstream</b>.</li>
+ * </ul>
+ *
+ * <p>Neither is in HIS-4's slice and neither is fixed here. They are
+ * <b>DEF-016</b>, filed rather than left to a scan that provably cannot see
+ * them — a guard whose own documentation overstates its reach is worse than no
+ * guard, because it stops the next person looking. The third case below keeps
+ * that ledger honest: it fails if the set of out-of-scope callers changes, so
+ * either the finding gets updated or somebody discovers a fifth.
  */
 public final class SyncPathsAgreeAboutDirtyTest {
 
@@ -111,6 +137,30 @@ public final class SyncPathsAgreeAboutDirtyTest {
             assertTrue(local.contains("isAuthoredDirty"),
                     "SyncFromLocalDirHandler reaches the shared definition — this is the one "
                             + "that was left behind, and the case that would have caught it");
+        });
+
+        suite.test("the ledger of callers this scan cannot see is accurate", () -> {
+            // The scan is scoped to `effects`. These are the callers OUTSIDE it,
+            // named in DEF-016. Asserted rather than described, so this fails
+            // when somebody fixes one (update DEF-016) or adds a fifth (file it)
+            // -- which is the only way a documented blind spot stays honest.
+            List<String> outside = new ArrayList<>();
+            for (String rel : List.of("project/UnitTrunkPull.java",
+                                      "project/UnitPublisher.java",
+                                      "project/ProjectLibResolver.java",
+                                      "bindings/ChildHomeMaterializer.java")) {
+                Path p = Path.of("src/main/java/dev/skillmanager").resolve(rel);
+                if (!Files.isRegularFile(p)) continue;
+                String body = Files.readString(p);
+                for (String banned : BANNED) {
+                    if (body.contains(banned)) { outside.add(rel); break; }
+                }
+            }
+            assertTrue(outside.size() == 4,
+                    "DEF-016 names four readers of the raw dirty question outside the effects "
+                            + "package; the scan sees none of them. Found " + outside.size()
+                            + ": " + outside + ". If this changed, update DEF-016 rather than "
+                            + "this number");
         });
 
         return suite.runAll();

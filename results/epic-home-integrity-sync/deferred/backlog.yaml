@@ -965,3 +965,64 @@ findings:
     candidate_owner: HIS-13
     related: [DEF-012]
     status: open
+
+  - id: DEF-016
+    filed_by_ticket: HIS-4
+    short_label: "HIS-4: `project sync` and `publish` are a third and fourth reader of the dirty question"
+    found_by: adversarial review of #231 (MED-6), confirmed by HIS-4
+    found_at: "2026-08-21"
+    severity: major
+    summary: >
+      HIS-4 made the two sync handlers in `effects` agree about what "local
+      work" means. There are TWO MORE readers outside that package, one of which
+      operates on exactly the tier HIS-4 is about, and HIS-4's own guard cannot
+      see either of them.
+    detail: >
+      MEASURED 2026-08-21 on this branch.
+
+      (3) `UnitTrunkPull:187` -- the `project sync` path:
+
+            if (GitOps.hasWorktreeChanges(repo) && !opts.merge()) { ... HELD_BACK }
+
+          and `pullTarget(unit, childStore, materializer)` returns THE CHILD
+          HOME'S OWN CHECKOUT for CHECKOUT-mode units. So a materialized child
+          copy -- the exact subject of this ticket -- is held back on every
+          `project sync`, forever, with the message "local changes in <repo>;
+          re-run with --merge to three-way merge them". That is HIS-4's defect,
+          untouched, on the command a project agent actually runs.
+
+      (4) `UnitPublisher:169`:
+
+            boolean dirty = GitOps.hasWorktreeChanges(repo);
+
+          read as "there is local work to commit". From a child home the
+          dereferenced store link IS that "local work", so publish would COMMIT
+          THE MATERIALIZATION ARTIFACT UPSTREAM -- a deletion of the tracked
+          symlink, pushed to the unit's own repository, from a home that only
+          ever dereferenced it locally.
+
+      Two further callers read the same predicate legitimately and are NOT part
+      of this finding -- `ProjectLibResolver:152` and
+      `ChildHomeMaterializer:537` ask "has this working tree changed at all",
+      which is a real and different question from "is there work here a sync
+      would destroy".
+    why_the_guard_does_not_catch_it: >
+      SyncPathsAgreeAboutDirtyTest is scoped to
+      src/main/java/dev/skillmanager/effects. Its first javadoc claimed it
+      "fails on the FOURTH handler nobody has written"; review measured that as
+      wrong twice over, because the third and fourth already exist and live
+      outside the scanned package. The javadoc has been corrected to say what
+      the scan cannot see, and a fourth case now asserts the ledger of
+      out-of-scope callers, so this finding cannot silently drift.
+    why_deferred: >
+      `project sync` and `publish` are different surfaces with their own
+      semantics -- publish in particular needs a decision about what SHOULD
+      happen when a child home publishes a unit it has dereferenced, and the
+      answer is plausibly "refuse and say why" rather than "ignore the path".
+      That is a design question, not a mechanical application of HIS-4's
+      predicate, and widening this ticket to make it would be the third time
+      this epic turned one bug into three.
+    candidate_owner: unassigned
+    status: open
+    evidence:
+      - src/test/java/dev/skillmanager/source/SyncPathsAgreeAboutDirtyTest.java

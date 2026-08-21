@@ -171,6 +171,18 @@ re-run green after each.
 | 3 | `hasAuthoredWorktreeChanges` returns false whenever any deref is present — the **over-reach** | *a real edit alongside the materialization…* — `not true: the edit is still there to protect` |
 | 4 | the old single-sentence remedy restored | *the remedy for a stash-pop residue…* — `expected <resolve in …, then `git add` + `git commit`> to contain <already clear>` |
 | 5 | `SyncFromLocalDirHandler` put back on `GitOps.isDirty` — the divergence itself | *no effects handler asks the raw dirty question* — ``a sync path is asking the raw dirty question instead of DereferencedStoreLinks.isAuthoredDirty, so it will refuse a materialized child home forever while its sibling does not: [SyncFromLocalDirHandler.java asks GitOps.isDirty(]``, and *both sync paths reach the one definition* reddened with it |
+| 6 | `isAuthoredDirty` → `return hasAuthoredWorktreeChanges(storeDir)` — **review HIGH-3's exact disable** | *a commit ahead of the baseline is dirty even with a clean tree* — ``a store copy whose HEAD is past the installed baseline has work a sync would overwrite, and the worktree half cannot see it`` |
+| 7b | `MaterializationEscrow.restore()` made a no-op — **review HIGH-1's data loss** | *a wholesale replace does not destroy the materialized tree* — ``the path is NOT a symlink again — a child home that links back out of itself has lost the independence CHM-5 gave it`` |
+| 8 | `restore()` back on `Files.deleteIfExists` — **review MED-4** | *restore replaces a path upstream converted to real content* — ``the escrowed tree replaced the non-empty directory rather than being stranded in the cache``, with the warn line naming the cache path the bytes were stranded at |
+| 9 | the rolled-back remedy branch removed — **review HIGH-2** | *a rolled-back conflict is not reported as already clear* — ``a conflict that was rolled back is NOT 'already clear': already clear in <store> — the record has not caught up…`` |
+
+Probe **7b** is the one worth reading twice. Its first form disabled `lift()`
+and reddened only the *"the escrow really took something"* guard — proving the
+guard worked, never reaching the data-loss assertion. Disabling `restore()`
+instead reddened the byte-level claim, **and in doing so exposed that my own
+test was vacuous**: the "upstream" snapshot was taken after the dereference, so
+the copy carried the child's bytes back on its own. A probe that only reddens a
+precondition is not a probe of the thing.
 
 Probes 2 and 3 are the ones that matter: they redden against *plausible fixes*,
 not against no fix. The cheap version of this change ("a deleted symlink is
@@ -314,6 +326,87 @@ sync" / "was destroyed by the sync" checks, and measured in all four modes:
 agent runs by hand in a materialized store copy restores the tracked symlink,
 and nothing detects it — is **DEF-014**, candidate owner HIS-13.
 
+## Adversarial review of #231 — three blocking defects, and one of them was mine
+
+Recorded in full because two of the three are defects **this ticket
+introduced**, and a goal contribution that reported only the fixes would be the
+comfortable version of this document.
+
+### HIGH-1 — I created DEF-014 while deferring it
+
+`sync --from` applies by `Fs.deleteRecursive(storeDir)` then
+`Fs.copyRecursive(src, storeDir)`: a wholesale replace with no carry-over.
+Before this ticket a materialized copy never reached it — the dereference made
+the unit read dirty and the handler refused. **I taught that gate the
+dereference is not an author's work, and thereby walked the path straight into
+the delete.** Review reproduced it at exit 0: the link came back pointing out of
+the unit and the child home's own bytes were gone.
+
+The escrow existed and protected only the *other* sync path, which is exactly
+what a private helper inside one handler guarantees. It is now
+`source/MaterializationEscrow`, a shared class, used by both. Measured after:
+
+```
+sync --from <src> --yes   -> exit 0
+build-logic  -> DIRECTORY (correct)
+child-only bytes: PRESENT
+```
+
+**My own first test of this was vacuous** and probe 7b caught it: I snapshotted
+the "upstream" source *after* dereferencing, so the copy carried the child's
+bytes back regardless of the escrow. The snapshot is now taken before, and the
+reason is written into the test.
+
+### HIGH-2 — a rolled-back conflict reported nothing, over a self-erasing record
+
+My rollback ran `resetHard` → `stashPop` → *then* read `unmergedFiles`, which
+reads a tree the rollback has just made clean. Result: `merge conflict in 0
+file(s)`, a remedy saying "already clear", and a record whose own probe retires
+it on the next command. Two fixes:
+
+1. the conflict set is read **before** the rollback, and passed into both
+   `MergeResult` and the remedy selection;
+2. on a **successful** rollback **no `MERGE_CONFLICT` is recorded at all** —
+   there is no durable git condition to record, and an error whose probe says
+   "resolved" the moment it is written is DEF-015's shape manufactured rather
+   than deferred. The condition is not lost: the dirty gate re-derives it every
+   sync. A failed rollback (local work stuck in a stash) *is* durable and is
+   still recorded.
+
+Measured after, on a genuinely conflicting `--merge`:
+
+```
+✗ consumer: merge conflict in 1 file(s):
+✗     SHARED.md
+✗   nothing was changed — the merge was rolled back, so the store is exactly
+    where it was, and 1 local file(s) conflict with upstream. Commit or drop the
+    local work in <store> (`git status`), then `... sync consumer`
+record errors: []          HEAD == record          stash: 0
+agent edit still present; materialization still a directory
+```
+
+### HIGH-3 — the guard I called load-bearing had zero coverage
+
+`isAuthoredDirty`'s second half, whose javadoc says it "must still stop an
+overwrite". Review replaced the body with `return
+hasAuthoredWorktreeChanges(storeDir)` and ran everything: **1224 cases, 135
+suites, zero new failures.** My probes 2 and 3 pinned the two wrong fixes I
+anticipated; this was the third, in the direction I had *named* as load-bearing,
+and nothing was watching it. Two cases now cover it — a commit ahead of the
+baseline with a clean tree, and the same alongside a dereference.
+
+### What the review confirmed, and one prediction of mine it falsified
+
+It ran `project-child-home` for me: **BUILD SUCCESSFUL in 3m52s, 12/12**,
+including the three `preserves.edits` nodes. The gap I disclosed is closed.
+
+But I had predicted that graph was "the closest thing the suite has to my
+negative control". **It surfaced none of the three HIGHs.** That prediction was
+wrong and the reason is worth keeping: `project-child-home` exercises
+materialization and reconcile, not the `sync`/`sync --from` handlers where all
+three defects lived. Proximity of *subject* is not proximity of *code path*, and
+I used the first as evidence for the second.
+
 ## What was cut
 
 **1. The exact index shape is not reproduced.** Stages 1 and 3 at `120000` with
@@ -326,19 +419,33 @@ by a unit test that plants the residue *with git*, not by the graph.
 
 **2. Only the sync path is repaired** — see the section above. **DEF-014.**
 
-**3. The digest side is untouched.** The ticket's slice (1) offers "the unit's
-own `.gitignore`, or an extension to `Rederivable`, or both" for keeping
-scaffolded trees **out of the digest**. I did neither. The digest question and
-the git question turned out to be genuinely separate: the digest sees these
-trees because they are *content the child home holds*, and the sync refuses
-because *git tracks a symlink there*. Fixing the second does not touch the
-first, so the `13 and 12 entries against the root store's 10` measurement is
-unchanged and GOAL-sync-quiet's `776 of 889` lines are **not** removed by this
-ticket. My `enabling` contribution to GOAL-sync-quiet is therefore **not
-delivered**; HIS-2 owns the rendering bound and this ticket does not shrink the
-input to it. Said plainly because the plan's `expected_effect` for that goal
-("removes the cause of 776 of the baseline's 889 lines") is not something this
-diff can claim.
+**3. SLICE (1) AND ONE ACCEPTANCE ASSERTION WERE NOT DELIVERED.**
+
+I previously wrote that "the plan assumed the digest question and the git
+question are one". **That was wrong, and I am correcting it in my own words
+rather than having it overruled.** The plan does not conflate them. Slice (1) is
+explicitly and only the digest side — *"whether a unit's own .gitignore, or an
+extension to Rederivable, or both, keeps scaffolded re-derivable trees out of
+THE DIGEST"* — stated separately from slice (2)'s git atomicity, and it carries
+its own acceptance assertion: *"An excluded path is not hashed, not copied, and
+not deleted."* The plan was right and my reading of it was not.
+
+The correct statement is: **slice (1) was not delivered, and neither was that
+acceptance assertion.** I delivered slices (2), (3) and (4) plus the git-surface
+half of "not deleted" — the escrow — but nothing in this diff keeps a scaffolded
+tree out of the **digest**. So:
+
+- `13 and 12 entries against the root store's 10` is **unchanged**;
+- GOAL-sync-quiet's `776 of 889` lines are **not** removed;
+- my `enabling` contribution to GOAL-sync-quiet is **not delivered**.
+
+Nothing currently owns shrinking that input — HIS-2 owns the rendering bound,
+which is the other half. That re-scoping is the epic agent's call, not a defect
+in the plan.
+
+The distinction matters beyond bookkeeping: *"the plan was wrong"* invites
+amending the plan, and *"a slice was not delivered"* invites finishing the work.
+Only the second is true here.
 
 **4. `Rederivable` is unchanged**, and deliberately: `sdk` and `standard-nodes`
 are generic enough to be real content elsewhere, which is the plan's own
@@ -348,7 +455,7 @@ argument, and nothing in the git-surface fix needs a name list.
 
 | gate | result |
 | --- | --- |
-| `jbang RunTests.java` | **ALL PASSED** — 135 suites, 1224 cases, including the 5 new `DereferencedStoreLinkSyncTest` cases and the 3 `SyncPathsAgreeAboutDirtyTest` cases |
+| `jbang RunTests.java` | **ALL PASSED** — 135 suites, **1230** cases, including the **10** `DereferencedStoreLinkSyncTest` cases and the **4** `SyncPathsAgreeAboutDirtyTest` cases |
 | `uv run pytest specs/` | **38 passed** in 1.81s |
 | `run_tlc.sh HomeIntegrityInternal` | **No error has been found** — 11 states, 10 distinct |
 | `run_tlc.sh` regression `_silentdrift` | **`Invariant RecordDescribesItsStoreOrSaysWhy is violated`** — the spec's own control still reddens |

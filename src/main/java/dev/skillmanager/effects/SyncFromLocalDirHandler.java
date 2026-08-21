@@ -6,6 +6,7 @@ import dev.skillmanager.model.PluginParser;
 import dev.skillmanager.model.SkillParser;
 import dev.skillmanager.model.UnitKind;
 import dev.skillmanager.shared.util.Fs;
+import dev.skillmanager.source.MaterializationEscrow;
 import dev.skillmanager.source.GitOps;
 import dev.skillmanager.source.InstalledUnit;
 import dev.skillmanager.source.UnitStore;
@@ -146,11 +147,35 @@ public final class SyncFromLocalDirHandler {
             }
         }
         SyncGitHandler.BaselineWatch watch = SyncGitHandler.BaselineWatch.before(store, skillName, kind);
+        // THE APPLY IS A WHOLESALE REPLACE, so it needs the same carry-over
+        // ChildHomeMaterializer.swapIn needs. Delete-then-copy destroys every
+        // byte the destination holds that the source does not, and a
+        // materialized child home holds exactly such bytes on purpose: the
+        // dereferenced store links that make it independent of the home it was
+        // materialized from (CHM-5).
+        //
+        // Before HIS-4 this path was unreachable for such a unit -- the
+        // dereference made it read dirty and the handler refused above -- so
+        // the missing carry-over cost nothing. HIS-4 taught the gate that a
+        // dereference is not an author's work, which is right, and thereby
+        // walked this path straight into the delete. MEASURED by review, exit 0:
+        // the link came back pointing OUT of the unit and the child home's own
+        // bytes were gone. That is a data-loss defect HIS-4 introduced, in the
+        // shape it had deferred as DEF-014, and it is why the escrow is a
+        // shared class rather than a private helper in the other handler.
+        //
+        // restoreTrackedShape=false: unlike the merge path there is no git
+        // operation to keep happy here, and the whole tree is about to be
+        // deleted regardless.
+        MaterializationEscrow escrow =
+                MaterializationEscrow.lift(storeDir, store.root(), false);
         try {
             Fs.deleteRecursive(storeDir);
             Fs.copyRecursive(src, storeDir);
         } catch (IOException ex) {
             return EffectReceipt.failed(e, ex.getMessage());
+        } finally {
+            escrow.restore();
         }
         watch.afterUpstreamMove();
         // Refresh the source record so its gitHash matches what's actually

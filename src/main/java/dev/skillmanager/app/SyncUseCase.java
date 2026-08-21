@@ -633,7 +633,12 @@ public final class SyncUseCase {
         }
         if (!report.conflicted().isEmpty()) {
             System.err.println();
-            System.err.println("  Conflicted — resolve in the store dir, then `git commit` or `git merge --abort`:");
+            // Same one definition as ReportUseCase.hint and the console
+            // renderer; see MED-7. Three spellings of one remedy is how they
+            // come to disagree, and two of the three were still printing the
+            // mid-merge instruction for a state it cannot clear.
+            System.err.println("  Conflicted — "
+                    + ReportUseCase.mergeConflictRemedy(null, null, null) + ":");
             for (String n : report.conflicted()) System.err.println("    " + n);
         }
         System.err.println();

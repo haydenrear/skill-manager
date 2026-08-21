@@ -268,7 +268,8 @@ public final class ConsoleProgramRenderer implements ProgramRenderer {
                 // cannot clear it. The remedy now asks the store which state it
                 // is in. See ReportUseCase.mergeConflictRemedy.
                 Log.error("  %s", dev.skillmanager.app.ReportUseCase
-                        .mergeConflictRemedy(storeDir, x.skillName()));
+                        .mergeConflictRemedy(storeDir, x.skillName(), store.root(),
+                                x.conflictedFiles().size()));
                 conflictedSkills.add(x.skillName());
             }
             case ContextFact.SyncGitFailed x ->
@@ -639,8 +640,16 @@ public final class ConsoleProgramRenderer implements ProgramRenderer {
                     joinBounded(refusedSkills));
         }
         if (!conflictedSkills.isEmpty()) {
-            Log.error("  conflicted — resolve in the store dir, then `git commit` or "
-                    + "`git merge --abort`: %s", joinBounded(conflictedSkills));
+            // The ROLLUP for several units, routed through the same definition
+            // as the per-unit line above via its store-less branch. It said
+            // `git commit` or `git merge --abort` unconditionally, which is the
+            // mid-merge remedy and cannot clear a stash-pop residue -- the very
+            // wrongness this ticket fixed one line up. Review finding MED-7:
+            // the claim that there was ONE definition of this remedy was false
+            // while these two rollups still carried their own.
+            Log.error("  conflicted — %s: %s",
+                    dev.skillmanager.app.ReportUseCase.mergeConflictRemedy(null, null, null),
+                    joinBounded(conflictedSkills));
         }
     }
 
