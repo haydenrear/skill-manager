@@ -2556,3 +2556,110 @@ findings:
       rather than refuse.
     candidate_owner: HIS-11's surface — HIS-13, or whoever takes DEF-041
     status: open
+
+  - id: DEF-044
+    found_by: HIS-15 (#235)
+    found_at: "2026-08-22"
+    severity: minor
+    summary: >
+      Three --json paths exit 0 having printed nothing, and whether that is
+      right is a design question nobody has answered.
+    detail: >
+      `harness rm` with no matching binding, `harness instantiate
+      --child-home-dir --dry-run`, and `home drift --record` / `--ack` all
+      succeed and emit no document. A consumer that ran them with --json gets
+      an empty stdout and has to infer "nothing happened" from an exit code.
+
+      An {"error":…} envelope would be a LIE about them -- nothing failed --
+      which is why HIS-15's generic net deliberately fires only on non-zero
+      exits. The honest options are an empty-result document
+      ({"removed":[],"exitCode":0}) or a documented "silence means no-op", and
+      choosing between them is a contract decision, not a bug fix.
+    what_is_NOT_deferred: >
+      Their CURRENT behaviour, which is pinned. `JsonContractTest` asserts each
+      of them prints exactly nothing today. A change that starts writing prose
+      there fails the guard, and a change that starts writing a document fails
+      it too and forces whoever makes it to move the case out of SILENT
+      deliberately. The epic owner's instruction, and it is the right one: a
+      deferred gap is an unasserted state, which is the shape this epic has
+      been bitten by repeatedly. This is a known state with a test on it.
+    candidate_owner: HIS-6, or whoever owns the CLI's machine-readable contract
+    status: open
+
+  - id: DEF-045
+    found_by: HIS-15 (#235)
+    found_at: "2026-08-22"
+    severity: minor
+    summary: >
+      close-change.sh should distinguish "the gate refused and told me why"
+      from "the gate produced nothing" in its UNPARSEABLE branch too. Defence
+      in depth against a future cause, not a live defect.
+    detail: >
+      WHICH BRANCH IS WHICH, written down because the output is confusing and
+      the epic owner and this ticket both mis-read it once:
+
+        BRANCH 1  `if [ -z "$VERDICT" ]` -- stdout was EMPTY.
+                  ALREADY CORRECT. It refuses with
+                  REFUSE_FIX="$CLI home close-out --home … --into …", i.e.
+                  re-run the gate by hand without --json so its stderr is
+                  visible. It does NOT say --force.
+
+        BRANCH 2  stdout was NON-EMPTY but json.load() raised.
+                  This is the one that printed
+                  `could not parse the verdict: …`, then found no `run:` lines
+                  in the rendered output, and fell back to
+                  REFUSE_FIX="$0 $TARGET --force" -- advising the operator to
+                  DISCARD the work the gate had just refused to destroy.
+
+      #235 travelled through BRANCH 2, because HomeLock's wait notice made
+      stdout non-empty and unparseable. HIS-15 fixes that at the source: under
+      --json nothing but the document reaches stdout, so this cause cannot
+      produce branch 2 again.
+    why_this_is_deferred_and_not_fixed_here: >
+      close-change.sh lives in a DIFFERENT REPOSITORY
+      (github.com/haydenrear/git-issue-workflow-skill; the copy the graph runs
+      is the one installed in the root home, which this ticket must not write).
+      Cross-repo publishing is HIS-8's (#224) declared path, and opening a
+      second PR from here was ruled out by the epic owner.
+    what_remains: >
+      Branch 2 is still reachable by a DIFFERENT future cause -- any command
+      that emits malformed JSON rather than none. The hardening is: on a parse
+      failure, refuse with the same re-run fix branch 1 uses, and never
+      synthesise --force as a remedy. `--force` is the only fix that is always
+      available and the worst one to lead with, because it is the one that
+      throws the work away.
+    candidate_owner: HIS-8 (#224)
+    status: open
+
+  - id: DEF-046
+    found_by: HIS-15 (#235)
+    found_at: "2026-08-22"
+    severity: minor
+    summary: >
+      The four `project` commands cannot be driven under test, because they
+      resolve their project from the working directory and a JVM cannot change
+      its own.
+    detail: >
+      `project register|remove|resolve|sync` walk UP FROM THE WORKING DIRECTORY
+      to find `skill-project.toml`. A unit test in this repository therefore
+      cannot make them operate on a fixture: they find THIS project. MEASURED
+      while writing JsonContractTest -- `project resolve --json` returned a real
+      report for skill-manager itself ("installed":3,"bindings":3) and wrote the
+      worktree home's `.materialization`, from a test that believed it was
+      sandboxed. The root and project homes were not touched, and the guard's
+      sandbox assertion now covers the home; it cannot cover the CWD.
+    consequence: >
+      Those four commands are guarded only on their parse-error path, which
+      executes nothing. Their real execution paths have no --json coverage, and
+      more generally nothing in the unit lane can test project behaviour
+      end-to-end -- which is why it all lives in graphs.
+    candidate_shapes: >
+      (a) An explicit `--project-dir` on the family, which makes them testable
+      and is also what an agent operating outside a checkout needs.
+      (b) Drive them in a subprocess with cwd set; correct but costs a JVM
+      start per case in the unit lane.
+    why_deferred: >
+      (a) is a CLI surface change well outside "--json always emits JSON", and
+      it is the better fix, so doing (b) here would entrench the worse one.
+    candidate_owner: HIS-6, or a follow-up on the project command family
+    status: open
