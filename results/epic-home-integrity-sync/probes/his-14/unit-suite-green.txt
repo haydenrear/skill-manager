@@ -1,0 +1,15 @@
+== HomeBindsBothAxesTest (10 cases)
+  [PASS] FLOOR: a projection into a home's agent dirs is observable
+  [PASS] `sync --home <X>` writes nothing into the home the environment names
+  [PASS] the ROOT TIER, on a synthetic root-shaped home
+  [PASS] every verb that declares --home is bound, not a list of seven
+  [PASS] the printed env prefix is a RENDERING of the binding --home applies
+  [PASS] --home makes every in-process reader answer with the named home
+  [PASS] an ambient CLAUDE_HOME naming another home does not survive the binding
+  [PASS] REFUSAL: an agent dir that resolves out of the home is named, not bound
+  [PASS] COMPANION: a real agent directory inside the home is bound, not refused
+  [PASS] the printed remedy RUNS, in a shell whose environment names another home
+   → 10 passed, 0 failed
+   → 13 passed, 0 failed
+
+ALL PASSED

@@ -1,0 +1,60 @@
+{
+ "runId": "20260822-142637",
+ "status": "passed",
+ "graph": "ticket-lifecycle",
+ "complete": true,
+ "nodes": [
+  {
+   "id": null,
+   "status": "passed"
+  },
+  {
+   "id": null,
+   "status": "passed"
+  },
+  {
+   "id": null,
+   "status": "passed"
+  },
+  {
+   "id": null,
+   "status": "passed"
+  },
+  {
+   "id": null,
+   "status": "passed"
+  },
+  {
+   "id": null,
+   "status": "passed"
+  },
+  {
+   "id": null,
+   "status": "passed"
+  },
+  {
+   "id": null,
+   "status": "passed"
+  },
+  {
+   "id": null,
+   "status": "passed"
+  },
+  {
+   "id": null,
+   "status": "passed"
+  },
+  {
+   "id": null,
+   "status": "passed"
+  },
+  {
+   "id": null,
+   "status": "passed"
+  },
+  {
+   "id": null,
+   "status": "passed"
+  }
+ ]
+}

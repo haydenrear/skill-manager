@@ -1,0 +1,80 @@
+{
+ "runId": "20260822-141853",
+ "status": "passed",
+ "graph": "home-sync",
+ "complete": true,
+ "nodes": [
+  {
+   "id": null,
+   "status": "passed"
+  },
+  {
+   "id": null,
+   "status": "passed"
+  },
+  {
+   "id": null,
+   "status": "passed"
+  },
+  {
+   "id": null,
+   "status": "passed"
+  },
+  {
+   "id": null,
+   "status": "passed"
+  },
+  {
+   "id": null,
+   "status": "passed"
+  },
+  {
+   "id": null,
+   "status": "passed"
+  },
+  {
+   "id": null,
+   "status": "passed"
+  },
+  {
+   "id": null,
+   "status": "passed"
+  },
+  {
+   "id": null,
+   "status": "passed"
+  },
+  {
+   "id": null,
+   "status": "passed"
+  },
+  {
+   "id": null,
+   "status": "passed"
+  },
+  {
+   "id": null,
+   "status": "passed"
+  },
+  {
+   "id": null,
+   "status": "passed"
+  },
+  {
+   "id": null,
+   "status": "passed"
+  },
+  {
+   "id": null,
+   "status": "passed"
+  },
+  {
+   "id": null,
+   "status": "passed"
+  },
+  {
+   "id": null,
+   "status": "passed"
+  }
+ ]
+}
