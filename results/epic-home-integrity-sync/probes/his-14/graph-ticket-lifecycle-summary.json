@@ -1,8 +1,10 @@
 {
- "runId": "20260822-154837",
- "status": "passed",
+ "runId": "20260822-161645",
+ "status": "errored",
  "graph": "ticket-lifecycle",
- "execution.complete": true,
+ "execution.complete": false,
+ "tree": "rebased onto d40c39f (HIS-11 integrated) -- RED, see DEF-043",
+ "attribution": "the same node fails identically on d40c39f with none of HIS-14 applied (run 20260822-162522); HIS-14 passed this graph 13/13 pre-rebase (run 20260822-154837)",
  "nodes": [
   {
    "id": null,
@@ -10,7 +12,7 @@
   },
   {
    "id": null,
-   "status": "passed"
+   "status": "skipped"
   },
   {
    "id": null,
@@ -22,7 +24,11 @@
   },
   {
    "id": null,
-   "status": "passed"
+   "status": "failed"
+  },
+  {
+   "id": null,
+   "status": "skipped"
   },
   {
    "id": null,
@@ -34,7 +40,11 @@
   },
   {
    "id": null,
-   "status": "passed"
+   "status": "skipped"
+  },
+  {
+   "id": null,
+   "status": "skipped"
   },
   {
    "id": null,
@@ -42,19 +52,11 @@
   },
   {
    "id": null,
-   "status": "passed"
+   "status": "skipped"
   },
   {
    "id": null,
-   "status": "passed"
-  },
-  {
-   "id": null,
-   "status": "passed"
-  },
-  {
-   "id": null,
-   "status": "passed"
+   "status": "skipped"
   }
  ]
 }

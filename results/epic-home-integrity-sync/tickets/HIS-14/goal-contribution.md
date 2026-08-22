@@ -308,8 +308,8 @@ in a second flavour; the numbers below are from a stable tree.
 | `jbang RunTests.java`, four variables UNSET | **ALL PASSED** (`HomeBindsBothAxesTest` **17/17**) |
 | `jbang RunTests.java`, four variables EXPORTED | `HomeBindsBothAxesTest` **17/17**; 19 failures in other suites, the same 19 as on the base commit — DEF-042 |
 | `uv run pytest specs/` | **38 passed** |
-| `home-integrity` (assigned) | **passed — 15 of 15, `execution.complete: true`**, run `20260822-153607` |
-| **`home-sync` (CORE)** | **passed — 18 of 18, `execution.complete: true`**, run `20260822-154113` |
+| `home-integrity` (assigned) | **passed — 15 of 15, `execution.complete: true`** on the INTEGRATED tip (rebased onto `d40c39f`) |
+| **`home-sync` (CORE)** | **passed — 18 of 18, `execution.complete: true`** on the INTEGRATED tip |
 | **`ticket-lifecycle` (CORE)** | **passed — 13 of 13, `execution.complete: true`**, run `20260822-154837`, on this branch BEFORE the rebase onto HIS-11. **RED on the integrated tip — see below.** |
 | TLC | **N/A** per the plan: this ticket states no new invariant; HIS-5 carries the model work |
 
