@@ -825,7 +825,24 @@ findings:
       fails and names the three lines. That is the guard working, not a
       regression in HIS-12.
     candidate_owner: HIS-4 (the lines) — or whoever resolves the wave-4 merge
-    status: open
+    status: closed
+    resolution: >
+      FIXED 2026-08-21 by HIS-12, which is "whoever resolves the wave-4 merge":
+      HIS-4 merged, HIS-12 is last in promotion order, and the guard turned the
+      three lines into a BUILD FAILURE on the integrated tip -- so they could
+      not be left for later without leaving the epic red.
+
+      The guard fired exactly as this entry predicted:
+
+        [FAIL] every printed remedy that names a class-2/3 verb also names its
+        home: expected <[]> but was <[ReportUseCase.java: + cli + " sync " +
+        name + "`", ReportUseCase.java: + cli + " sync " + name + "`…]>
+
+      `ReportUseCase.mergeConflictRemedy` now builds ONE `syncRemedy` string
+      carrying `--home`, used at all three sites, rather than three
+      concatenations that have to remember. Nothing else about the remedies
+      changed, and HIS-4's spelling of the CLI -- the part that closed DEF-002
+      on this surface -- is untouched.
 
   - id: DEF-027
     found_by: HIS-12 (#161), taking the bounded half of DEF-012
@@ -998,20 +1015,31 @@ findings:
       what it BINDS is a semantic change to a flag two tickets in this wave now
       depend on, and it is "changing what the operation does", which HIS-12's
       plan slice excludes. It needs an owner decision, not a drive-by.
-    operator_action_required: >
-      NOT FULLY REPAIRED, and the unrepaired part is in the operator's real
-      home. HIS-12 removed the three dangling skill symlinks it created. It did
-      NOT edit ~/.claude/settings.json, ~/.claude/plugins/known_marketplaces.json
-      or ~/.codex/config.toml -- writing an operator's real agent config is
-      outside a ticket agent's remit and the attempt was correctly refused.
+    repaired: >
+      FULLY REPAIRED 2026-08-21 -- read this entry as a MEASUREMENT, not as live
+      damage.
 
-      Three stale marketplace registrations naming a deleted scratch directory
-      remain. Backups of all three files, taken before anything was touched, are
-      at scratchpad/his12-leak-backup/. The entries to drop are the ones whose
-      paths contain `his12/def002`; in known_marketplaces.json that is the whole
-      `skill-manager-f3821b33` key.
-    candidate_owner: epic owner (the flag's semantics) plus the operator (the cleanup)
-    status: open
+      HIS-12 removed the three dangling skill symlinks it created
+      (~/.claude, ~/.codex, ~/.gemini). It did NOT edit the three config files:
+      writing an operator's real agent config is outside a ticket agent's remit,
+      and the attempt was correctly refused by the permission system. The epic
+      agent removed all three stale registrations with the owner's approval, and
+      verified by diff that nothing else changed and that all four config files
+      still parse.
+
+      ONE CORRECTION TO THIS TICKET'S OWN RECORD, kept because the next agent
+      will make the same mistake: the backups at scratchpad/his12-leak-backup/
+      were described as "pre-change". They were not. They were byte-identical to
+      the DAMAGED state, because they were taken after the leak was noticed
+      rather than before the command that caused it -- so restoring them would
+      have been a no-op. Snapshot before the experiment, not after the surprise.
+    scheduled_as: >
+      HIS-14 (#232), wave 5, promotion order 10, on the owner's instruction --
+      "we need to make sure the homes are isolated properly and fixed in this
+      epic". HIS-13 moved behind it. HIS-12 deliberately did NOT fix it:
+      file-and-move-on was the right call and it stands.
+    candidate_owner: HIS-14 (#232)
+    status: triaged
 
   - id: DEF-021
     found_by: epic agent, wave-4 review round, counting instances across the epic

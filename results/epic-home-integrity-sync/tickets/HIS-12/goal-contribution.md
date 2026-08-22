@@ -178,11 +178,26 @@ binding cannot be centralised the way the CLI resolution was. A source scan
 enforces it instead: any remedy interpolating a resolved CLI in front of a verb
 that takes `--home` must carry one in the same expression.
 
-**It was built because it was already needed.** HIS-4 (#216) routed its new
-merge-conflict remedies through `HomeDescriptor.cliInvocation` — correctly, and
-that closed one of my review findings — putting three `<cli> sync <name>` lines,
-class 3 and unbound, in front of this rule. HIS-4 promotes first. All three match
-the guard; the class-1 negative (`home sync --from/--to`) is correctly skipped.
+**It was built because it was already needed, and it has now caught the thing it
+was built for.** HIS-4 (#216) routed its new merge-conflict remedies through
+`HomeDescriptor.cliInvocation` — correctly, and that closed one of my review
+findings — putting three `<cli> sync <name>` lines, class 3 and unbound, in front
+of this rule. I predicted the failure in DEF-026 before HIS-4 merged; when it
+merged, the guard turned those lines into a build failure on the integrated tip:
+
+```
+[FAIL] every printed remedy that names a class-2/3 verb also names its home:
+  expected <[]> but was <[ReportUseCase.java: + cli + " sync " + name + "`", …]>
+```
+
+Fixed here, because "whoever resolves the wave-4 merge" is this ticket — I am
+last in promotion order, and a red guard cannot be left for later without
+leaving the epic red. `mergeConflictRemedy` now builds one `syncRemedy` string
+carrying `--home` and uses it at all three sites, instead of three
+concatenations that each have to remember. HIS-4's spelling of the CLI — the
+part that closed DEF-002 on that surface — is untouched. DEF-026 closed.
+
+The class-1 negative (`home sync --from/--to`) is correctly skipped.
 
 **The first version of the guard was unusable and is recorded rather than
 elided.** It let the verb be any lowercase word, so `%s` matched nearly every log
@@ -207,7 +222,30 @@ that take `--home` is what makes each match a real remedy site.
   the oracle** — the test round-trips nine hostile paths through a real shell
   rather than through a second model of one.
 
-## The limitation I found by running my own remedy — DEF-029
+## What a reader gets today, and what it does not do — DEF-029 / HIS-14
+
+**State this before anything else about the remedy: `--home` binds the STORE
+axis and not the AGENT axis. HIS-14 (#232) closes the other half.**
+
+A home has two axes. `SKILL_MANAGER_HOME` says where the UNITS live;
+`CLAUDE_CONFIG_DIR` / `CODEX_HOME` / `GEMINI_HOME` say where the AGENT CONFIGS
+live. The remedies this ticket ships carry `--home`, which pins the first. So a
+reader who pastes one gets: **the right store, and agent projections resolved
+against whatever their shell carries** — which, unset, is their real `~/.claude`.
+`home verify`'s remedy is unaffected; it binds all four variables, which is why
+it was written that way.
+
+That is a real limitation of what I am shipping, not a footnote. It is
+strictly better than what it replaces — a bare `sync <unit> --merge` behaved
+identically and could name no home at all — but "better than nothing on one
+axis" is not "binds the home", and the PR should not read as though it does.
+The per-verb contract was the owner's decision; what this write-up owes is an
+accurate description of the result.
+
+Scheduled as **HIS-14 (#232)**, wave 5, promotion order 10, on the owner's
+instruction that homes be isolated properly within this epic.
+
+### How I found it
 
 I pasted the printed remedy into a fresh shell to prove it works. It does, and
 it edits the home it names — **and it linked the unit into the operator's real
@@ -235,14 +273,20 @@ change what `--home` means unilaterally: HIS-9 added it too, and two tickets in
 this wave now depend on it. Filed as **DEF-029, blocking**, with the fix
 (derive the agent roots from `--home`, as `HomeDescriptor.envFor` already does).
 
-**Cleanup is incomplete and part of it needs the operator.** I removed the three
-dangling skill symlinks I created. I did *not* edit `~/.claude/settings.json`,
+**The damage is repaired.** I removed the three dangling skill symlinks I
+created. I did *not* edit `~/.claude/settings.json`,
 `~/.claude/plugins/known_marketplaces.json` or `~/.codex/config.toml` — writing
 an operator's real agent config is outside a ticket agent's remit, and the
-attempt was correctly refused. Three stale marketplace registrations naming a
-now-deleted scratch directory remain; backups taken before anything was touched
-are at `scratchpad/his12-leak-backup/`, and the entries to drop are those whose
-paths contain `his12/def002`.
+attempt was correctly refused. The epic agent removed all three stale
+registrations with the owner's approval and verified by diff that nothing else
+changed.
+
+**And one correction to my own record, because the next agent will repeat it.**
+I called the backups at `scratchpad/his12-leak-backup/` "pre-change". They were
+not: they were byte-identical to the damaged state, because I took them after
+noticing the leak rather than before running the command that caused it.
+Restoring them would have been a no-op. Snapshot before the experiment, not
+after the surprise.
 
 ## How the goal metric moves
 
@@ -298,6 +342,12 @@ inside a graph rather than in my own hand-run probe.
 
 `run.py --all` was not run; it belongs to HIS-6.
 
+**What no graph covered:** DEF-029. `ticket.lifecycle.global.home.untouched`
+passes, and it is the node that would have caught the leak — but the leak
+happened in a remedy I pasted by hand outside any graph, against the real
+ambient environment that a graph deliberately sandboxes. A sandbox that makes
+the test safe also makes this defect invisible to it.
+
 ## Vacuity checks
 
 Seventeen, each recorded verbatim in `probes/his-12/vacuity-checks.txt`, and
@@ -344,10 +394,9 @@ defect one level up. It resolves `{@link}`, `@see` and `@throws`. It cannot see
   resolver's install phase split from its realize phase.
 - **DEF-027** — a pin is still *written* as an absolute versioned Cellar path,
   so the next `brew upgrade` re-breaks it.
-- **DEF-026** — HIS-4's three new merge-conflict remedies are class 3 and carry
-  no `--home`. Filed rather than fixed because they are on an unmerged branch
-  that promotes first — but **the guard fails on exactly those three lines**, so
-  it cannot merge silently. One token per line fixes it.
+- **DEF-026** — HIS-4's three merge-conflict remedies were class 3 and unbound.
+  **Closed:** predicted before HIS-4 merged, caught by the guard as a build
+  failure when it did, fixed here as the wave-4 merge resolution.
 - **DEF-028** — HIS-10's descent record read as a leak by `ticket-lifecycle`.
   **Closed: fixed upstream in `a4a95cb` from this finding**, before this PR.
 
@@ -386,12 +435,12 @@ on an unmerged branch so this branch builds and its assertions run.
 - **`ticket-lifecycle` and `home-sync` were re-run after the rebase onto
   `a4a95cb`**; every other graph in the core set is unobserved under this change.
   The two I ran are the two that read remedy text.
-- **DEF-029 is the thing I am least comfortable shipping.** The remedy is
-  correct on the axis it binds and silently wrong on the other, and I found it
-  only because I ran it rather than reading it. I think filing it is right —
-  changing what `--home` binds is a semantic change to a flag HIS-9 also added —
-  but a reviewer may reasonably decide the ticket should not ship a remedy that
-  is half-bound, and I would not argue.
+- **DEF-029 was the thing I was least comfortable shipping**, and that
+  discomfort is the only reason it was found: I ran the remedy instead of
+  reading it. Filing it rather than fixing it was the right call and the owner
+  has confirmed it — but a reader should know the remedy is half-bound until
+  HIS-14 lands, which is why that is now stated at the top of this document
+  rather than in a caveat at the bottom.
 
 ## Files
 

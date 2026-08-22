@@ -234,6 +234,18 @@ public final class ReportUseCase {
         String cli = homeRoot != null
                 ? dev.skillmanager.store.HomeDescriptor.cliInvocation(homeRoot)
                 : "skill-manager";
+        // DEF-026. HIS-4 spelled the CLI correctly -- which is what closed
+        // DEF-002 on this surface -- and then named no home. `sync` is a
+        // CLASS-3 verb under #161's per-verb contract: it names no home of its
+        // own, so a remedy built on it inherits whatever SKILL_MANAGER_HOME the
+        // reader's shell carries, and unset that is the operator's ROOT home.
+        // Naming the right BUILD and the wrong HOME is the same defect one step
+        // along. Built once here rather than at the three call sites below,
+        // because a guard at N sites is N chances to miss one -- which is how
+        // these three came to differ from every other remedy in the project.
+        String syncRemedy = (cli + " sync "
+                + dev.skillmanager.store.HomeDescriptor.shellQuote(name) + " "
+                + dev.skillmanager.store.HomeDescriptor.homeArg(homeRoot)).strip();
         if (storeDir == null) {
             return "in each unit's store directory: `git status` says which — resolve + `git add` + "
                     + "`git commit` mid-merge, or `git reset` to drop a failed stash pop";
@@ -247,7 +259,7 @@ public final class ReportUseCase {
                     + "to do. Clear the stages: git -C " + storeDir + " reset"
                     + (dev.skillmanager.source.GitOps.hasStash(storeDir)
                             ? "  (local work is still at stash@{0})" : "")
-                    + ", then `" + cli + " sync " + name + "`";
+                    + ", then `" + syncRemedy + "`";
         }
         if (conflictedCount > 0) {
             // THE ROLLED-BACK CONFLICT, and it needs its own sentence because
@@ -258,10 +270,10 @@ public final class ReportUseCase {
             return "nothing was changed — the merge was rolled back, so the store is exactly "
                     + "where it was, and " + conflictedCount + " local file(s) conflict with "
                     + "upstream. Commit or drop the local work in " + storeDir
-                    + " (`git status`), then `" + cli + " sync " + name + "`; or merge by hand "
+                    + " (`git status`), then `" + syncRemedy + "`; or merge by hand "
                     + "there if both sides are wanted";
         }
         return "already clear in " + storeDir + " — the record has not caught up and the next "
-                + "command retires it; `" + cli + " sync " + name + "` does so now";
+                + "command retires it; `" + syncRemedy + "` does so now";
     }
 }
