@@ -214,8 +214,19 @@ The first version of the script that applies these mutations reverted them with
 `git checkout -- <path>`. That restores to HEAD, not to the state the mutation
 was applied on top of, and it silently discarded uncommitted work TWICE during
 this ticket -- once for the whole of the original Executor change, once for the
-drain. Nothing was lost (both were reapplied and re-verified before anything was
-pushed), but the shape is worth writing down for whoever does mutation testing
-next: snapshot the file CONTENT in memory and write it back, and commit before
-you start. A revert mechanism that consults a different source of truth than the
-thing it is reverting is its own small version of this epic's recurring defect.
+drain. Nothing was lost: both were reapplied and re-verified before anything was
+pushed, and every V-number above was re-run on the harness that does it safely.
+
+This is now DEF-035 on the epic branch, routed to HIS-8, and the entry records
+the part that makes it worth reading: the recurrence. The agent that FILED the
+hazard walked into it again the same day, because the revert is the natural
+gesture and a backlog entry is not in front of you at the moment you reach for
+it. The procedure that finally worked -- snapshot CONTENT and restore it in a
+`finally`, commit before mutating anyway, and assert the mutation string matches
+exactly once -- is written out in full there rather than duplicated here, since
+one description of it in the place HIS-8 will read is worth more than two.
+
+(That third clause is not incidental. A mutation string that matches nothing
+produces a GREEN run that reads exactly like a passing vacuity check and is
+no check at all -- the same false negative this whole file exists to prevent,
+arriving through the tooling instead of through the assertion.)

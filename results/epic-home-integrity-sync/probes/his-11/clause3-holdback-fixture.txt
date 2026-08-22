@@ -25,5 +25,5 @@ now held for the WHOLE program including RunInstallPlan, whose skill-script
 installers run for minutes, while HomeLock's patience is fixed at 120s. That
 converts "queue behind a peer" into "REFUSE because the peer was slow" -- the
 same hold-back shape this ticket used as its stated reason for rejecting option
-(b) of DEF-031, one layer up. Filed as DEF-035; it is not what CLAUSE 3's
+(b) of DEF-031, one layer up. Filed as DEF-041; it is not what CLAUSE 3's
 fixture measures and this run cannot speak to it.

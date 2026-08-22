@@ -2103,6 +2103,47 @@ findings:
       A separate agent (HIS-14) independently avoided it by mutating file
       backups rather than reverting, and said so unprompted -- so the technique
       that works is already in use and simply undocumented.
+    the_loop_that_worked_third_time: >
+      Added by HIS-11, which is the only agent to have hit this twice, so that
+      the fix is a procedure rather than a warning.
+
+      TWO changes, and BOTH are needed -- either alone still loses work:
+
+        1. The harness snapshots the file's CONTENT before mutating and writes
+           that content back in a `finally`. Never `git checkout -- <path>`.
+           This is the load-bearing one, because it removes the appeal to HEAD
+           entirely: the restore target is the exact bytes the mutation was
+           applied to, whatever their commit state.
+        2. Commit the fix before the first mutation anyway. This is the belt to
+           (1)'s braces: it makes HEAD a correct restore target too, so a
+           harness someone writes in a hurry, an interrupted run, or a `git
+           checkout` typed by hand all still land somewhere safe.
+
+      A ~15-line Python driver is enough:
+
+        saved = {}
+        for path, old, new in edits:
+            s = (root/path).read_text()
+            saved.setdefault(path, s)
+            assert s.count(old) == 1        # a mutation that matches 0 or 2
+            (root/path).write_text(s.replace(old, new))   # sites is a bug
+        try:
+            run the suite
+        finally:
+            for path, content in saved.items():
+                (root/path).write_text(content)
+
+      The `assert s.count(old) == 1` earns its place separately: a mutation
+      string that matches nothing produces a GREEN run that looks like a passing
+      vacuity check and is actually no check at all -- the same false negative
+      the discipline exists to prevent, arriving through the tooling instead of
+      through the assertion.
+
+      Why (1) matters more than the rule above it: "commit first" is advice you
+      have to remember at the moment you are thinking about something else,
+      which is exactly when this ticket forgot it -- twice, hours apart, having
+      filed the entry in between. A restore that cannot consult HEAD cannot be
+      wrong about HEAD.
 
   - id: DEF-041
     found_by: HIS-11 (#186), from the adversarial review of #233

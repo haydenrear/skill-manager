@@ -370,7 +370,7 @@ I had claimed and got wrong.
 | 4 | nothing can **detect** a stranded escrow; moving the bytes out of `skills/` fixed the namespace half of #231 and left the detection half | **partly fixed in this PR** — `escrow.txt` manifest, so HIS-13 has a marker to key on. Cell + **V8**. The reader stays in DEF-032 |
 | 5 | a post-commit HALT discards the pre-image; `commit` argued for it in prose and nothing pinned it | **cell + V7.** And the review's named instance was wrong — see below |
 | — | CLAUSE 3 was reasoned about, not run | **run:** 22/22, §7 |
-| — | the lock is a hold-back the ticket did not apply its own standard to | **DEF-035** |
+| — | the lock is a hold-back the ticket did not apply its own standard to | **DEF-041** |
 | 7 | `conflict_keys.production` under-declares | theirs to fix; my read is below |
 
 **Where I disagree, with evidence.** Finding #5 names `RunInstallPlan`'s
@@ -426,8 +426,16 @@ first two:
 - **A startup sweep for escrows the JVM died on.** **DEF-032.**
 - **A typed exit code for a contended home, and any argument about whether 120
   seconds is the right patience.** **DEF-034.**
+- **Reconciling the lock's unbounded hold time with its fixed 120 s patience**,
+  which is the hold-back I did not apply my own standard to. **DEF-041.**
 
-Four deferrals against a budget of five.
+Five deferrals against a budget of five — DEF-031, 032, 033, 034 and 041.
+
+> **DEF-041 was filed as DEF-035 and renumbered on rebase.** The epic branch had
+> already allocated DEF-035 to the mutation-testing hazard I reported, and that
+> entry was pushed and referenced from a commit message first, so it keeps the
+> id. Two different findings, one number, and the one with a reference outside
+> the backlog wins.
 
 ---
 
@@ -466,7 +474,7 @@ footnote: **I applied that standard to the escrow and not to the lock.** DEF-031
 rejects its option (b) in my own words — *"it converts an install into a refusal
 on a condition the operator never asked about, which is the hold-back shape
 CLAUSE 3 exists to prevent"* — and the lock does the same thing one layer up.
-Filed as **DEF-035**, naming the **duration mismatch** (hold time unbounded,
+Filed as **DEF-041**, naming the **duration mismatch** (hold time unbounded,
 patience fixed at 120 s) rather than folded into DEF-034's "the exit code is
 untested", because they are different claims.
 
