@@ -162,6 +162,98 @@ public final class CommitPreImageRestoreTest {
             }
         });
 
+        suite.test("an exception escaping the program releases the escrow instead of "
+                + "stranding it", () -> {
+            // Found by the adversarial review of #233. `commit` and `walkBack`
+            // are the only two drains and both sat on ordinary control-flow
+            // edges, so an exception escaping the body reached NEITHER: the
+            // commit had already landed, the process was still alive, and the
+            // held pre-image stayed in cache/ with nothing referencing it.
+            // The reachable trigger is the stage-2 builder, a caller-supplied
+            // lambda outside any drain.
+            try (TestHarness h = TestHarness.create()) {
+                Path dst = h.store().unitDir("gamma", UnitKind.SKILL);
+                installVersionA(dst, UnitKind.SKILL);
+
+                ResolvedGraph graph = versionB(UnitKind.SKILL);
+                StagedProgram<Void> staged = new StagedProgram<>("preimage-escape",
+                        new Program<>("preimage-escape-1",
+                                List.of(new SkillEffect.CommitUnitsToStore(graph)),
+                                receipts -> null),
+                        ctx -> { throw new IllegalStateException("stage 2 builder blew up"); },
+                        receipts -> null);
+
+                boolean threw = false;
+                try {
+                    new Executor(h.store(), null).runStaged(staged);
+                } catch (IllegalStateException expected) {
+                    threw = true;
+                }
+                assertTrue(threw, "the exception still propagates — the drain is not a catch");
+                assertEquals(List.of().toString(), escrowDirs(h.store().root()).toString(),
+                        "and the escrow was released rather than stranded in cache/");
+                // The drain DISCARDS, which is what makes the escape path
+                // byte-for-byte what it was before this ticket: the commit's
+                // bytes stay put, and the only difference is the absent
+                // residue. Restoring here would revert a commit nobody rolled
+                // back while the rest of the journal stayed applied.
+                assertContains(Files.readString(dst.resolve("SKILL.md")), "VERSION-B",
+                        "the committed bytes are left alone — an escape is not a rollback signal");
+            }
+        });
+
+        suite.test("a HALT after the commit keeps the new bytes and discards the pre-image, "
+                + "deliberately", () -> {
+            // Finding #5 of #233's review: `runStaged` treats halted && !failed
+            // as "not going to be walked back", so a cooperative stop AFTER a
+            // commit discards the pre-image. That is argued for in
+            // Executor.commit's javadoc, and an argued decision that destroys
+            // operator bytes should have a cell rather than a paragraph.
+            //
+            // The LIVE instance is SyncUseCase, whose effect list runs
+            // CommitUnitsToStore and then BuildInstallPlan, and BuildInstallPlan
+            // returns okAndHalt when the plan is policy-blocked. (The review
+            // named RunInstallPlan; that handler only ever returns ok or
+            // partial, and InstallUseCase puts both of its halting effects
+            // BEFORE the commit. The shape is real, the instance is on the sync
+            // path.) Reproduced here with the same shape the interpreter emits:
+            // an OK receipt carrying Continuation.HALT.
+            try (TestHarness h = TestHarness.create()) {
+                Path dst = h.store().unitDir("gamma", UnitKind.SKILL);
+                installVersionA(dst, UnitKind.SKILL);
+
+                ResolvedGraph graph = versionB(UnitKind.SKILL);
+                // RejectIfAlreadyInstalled is the okAndHalt that is reachable
+                // from a fixture: after the commit, `gamma` IS installed, so it
+                // halts with status OK — exactly halted && !failed.
+                // The decoder reports whether a HALT with a NON-failed status
+                // actually occurred. Without it this cell would pass just as
+                // well if RejectIfAlreadyInstalled had quietly returned ok --
+                // i.e. it would assert the discard on the ordinary success edge
+                // and call it the halt edge.
+                ResultDecoder<Boolean> haltedOk = receipts -> receipts.stream().anyMatch(
+                        r -> r.continuation() == Continuation.HALT
+                                && r.status() != EffectStatus.FAILED);
+                StagedProgram<Boolean> staged = new StagedProgram<>("preimage-halt",
+                        new Program<>("preimage-halt-1",
+                                List.of(new SkillEffect.CommitUnitsToStore(graph),
+                                        new SkillEffect.RejectIfAlreadyInstalled("gamma")),
+                                haltedOk),
+                        ctx -> new Program<>("preimage-halt-2", List.of(), receipts -> null),
+                        haltedOk);
+
+                Executor.Outcome<Boolean> outcome = new Executor(h.store(), null).runStaged(staged);
+
+                assertTrue(outcome.result(),
+                        "fixture precondition: a non-FAILED HALT really did fire after the commit");
+                assertFalse(outcome.rolledBack(), "a halt is not a rollback");
+                assertContains(Files.readString(dst.resolve("SKILL.md")), "VERSION-B",
+                        "the committed bytes stay — the halt was about what comes AFTER the commit");
+                assertEquals(List.of().toString(), escrowDirs(h.store().root()).toString(),
+                        "and the superseded version is let go, not held forever");
+            }
+        });
+
         // ------------------------------------------- half two: the home lock
 
         suite.test("a second program against the same home WAITS, and says so before it waits", () -> {

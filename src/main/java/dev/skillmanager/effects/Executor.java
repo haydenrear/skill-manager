@@ -179,28 +179,32 @@ public final class Executor {
         EffectContext ctx = new EffectContext(store, gateway, renderer);
         try (HomeLock ignored = homeLock(staged.operationId())) {
             RollbackJournal journal = new RollbackJournal();
-            List<EffectReceipt> all = new ArrayList<>();
+            try {
+                List<EffectReceipt> all = new ArrayList<>();
 
-            StageOutcome s1 = runStage(staged.stage1(), ctx, journal);
-            all.addAll(s1.receipts);
+                StageOutcome s1 = runStage(staged.stage1(), ctx, journal);
+                all.addAll(s1.receipts);
 
-            boolean failed = s1.failed;
-            boolean halted = s1.halted;
-            if (!failed && !halted) {
-                Program<?> stage2 = staged.stage2().apply(ctx);
-                StageOutcome s2 = runStage(stage2, ctx, journal);
-                all.addAll(s2.receipts);
-                failed = s2.failed;
+                boolean failed = s1.failed;
+                boolean halted = s1.halted;
+                if (!failed && !halted) {
+                    Program<?> stage2 = staged.stage2().apply(ctx);
+                    StageOutcome s2 = runStage(stage2, ctx, journal);
+                    all.addAll(s2.receipts);
+                    failed = s2.failed;
+                }
+
+                List<Compensation> applied = List.of();
+                if (failed) {
+                    applied = walkBack(journal, ctx);
+                } else {
+                    commit(journal);
+                }
+                R result = staged.decoder().decode(all);
+                return new Outcome<>(result, failed, applied);
+            } finally {
+                drain(journal);
             }
-
-            List<Compensation> applied = List.of();
-            if (failed) {
-                applied = walkBack(journal, ctx);
-            } else {
-                commit(journal);
-            }
-            R result = staged.decoder().decode(all);
-            return new Outcome<>(result, failed, applied);
         } finally {
             renderer.onComplete();
         }
@@ -209,16 +213,69 @@ public final class Executor {
     public <R> Outcome<R> runWithContext(Program<R> program, EffectContext ctx) {
         try (HomeLock ignored = homeLock(program.operationId())) {
             RollbackJournal journal = new RollbackJournal();
-            StageOutcome s = runStage(program, ctx, journal);
-            List<Compensation> applied = List.of();
-            if (s.failed) {
-                applied = walkBack(journal, ctx);
-            } else {
-                commit(journal);
+            try {
+                StageOutcome s = runStage(program, ctx, journal);
+                List<Compensation> applied = List.of();
+                if (s.failed) {
+                    applied = walkBack(journal, ctx);
+                } else {
+                    commit(journal);
+                }
+                R result = program.decoder().decode(s.receipts);
+                return new Outcome<>(result, s.failed, applied);
+            } finally {
+                drain(journal);
             }
-            R result = program.decoder().decode(s.receipts);
-            return new Outcome<>(result, s.failed, applied);
         }
+    }
+
+    /**
+     * The last-resort drain, on the {@code finally} of every program.
+     *
+     * <h3>The hole this closes, found reviewing #233</h3>
+     *
+     * <p>{@link #commit} and {@link #walkBack} are the only two places an
+     * escrow is told to let go, and both sit on <b>ordinary control-flow
+     * edges</b>. An exception that escapes the program body reaches neither, so
+     * a held pre-image stayed under {@code <home>/cache/} with the process
+     * still alive and nothing left holding a reference to it. Reproduced: a
+     * {@link StagedProgram} whose stage-2 builder throws left
+     * {@code skills/gamma} committed and
+     * {@code cache/.materialization-escrow-*} stranded.
+     *
+     * <p>The reachable trigger is {@code staged.stage2().apply(ctx)} — a
+     * caller-supplied lambda outside any drain. {@link #runStage} has three
+     * more: {@link #preStateCompensations} for a later effect,
+     * {@link #compensationsFor}, and {@code renderer.onReceipt}. All four
+     * propagate out through here, so one {@code finally} per public entry point
+     * covers the set — rather than four guards at four sites, which is an
+     * enumeration and this project has shipped several that were correct only
+     * for the cases someone imagined.
+     *
+     * <h3>Why the drain DISCARDS rather than restores</h3>
+     *
+     * <p>Discarding makes the escape path byte-for-byte what it was before this
+     * ticket: the commit's bytes stay where the commit put them, and the only
+     * difference is that nothing is left in {@code cache/}. Restoring would be a
+     * new semantic — it would revert a commit that nobody rolled back, while
+     * the REST of the journal (installed records, the units lock, MCP
+     * registrations) stayed applied, leaving records that disagree with bytes.
+     * An escaping exception is not a rollback signal; {@code FAILED} is, and
+     * that path already runs {@link #walkBack}.
+     *
+     * <p>A no-op on both ordinary edges: {@link #commit} and {@link #walkBack}
+     * each clear the journal, so there is nothing pending left to drain.
+     */
+    private void drain(RollbackJournal journal) {
+        if (journal.isEmpty()) return;
+        for (Compensation c : journal.pendingLifo()) {
+            if (c instanceof Compensation.RestoreUnitDir r) {
+                Log.warn("a program ended without committing or rolling back; releasing the "
+                        + "escrowed pre-image of %s", r.unitName());
+                r.escrow().discard();
+            }
+        }
+        journal.clear();
     }
 
     /**
@@ -235,9 +292,34 @@ public final class Executor {
      * to {@code home verify} — the exact residue the review of #231 caught the
      * first version of that class leaving behind, one directory further down.
      *
-     * <p>Called on the success edge AND the HALTED edge: a cooperative stop is
-     * not a rollback, so bytes a commit superseded before the halt are equally
-     * not coming back.
+     * <h3>The HALTED edge is deliberate, and here is its live instance</h3>
+     *
+     * <p>Called on the success edge AND the {@link EffectStatus#HALTED} edge:
+     * {@link #runStaged} treats {@code halted && !failed} as "not going to be
+     * walked back", so a cooperative stop <b>after</b> a commit discards the
+     * pre-image and the newly committed bytes stay.
+     *
+     * <p>That is a decision, not an oversight, so it should be checkable. The
+     * live instance is {@code SyncUseCase}: its effect list runs
+     * {@code CommitUnitsToStore} and then {@code BuildInstallPlan}, and
+     * {@code BuildInstallPlan} returns {@code okAndHalt} when the plan is
+     * policy-blocked. A sync that pulls an unmet reference in, commits it, and
+     * then finds that unit's CLI/MCP actions gated therefore keeps the synced
+     * bytes and drops the version they replaced.
+     *
+     * <p>Which is the right answer for that instance: the halt is about the
+     * PLAN, not the commit; the commit did what the operator asked; and the
+     * installed record written alongside it already names the new version.
+     * Restoring would put the old bytes back underneath a record naming the new
+     * ones.
+     *
+     * <p>(#233's review named {@code RunInstallPlan} as the live instance.
+     * Checked, and it is not: {@code runInstallPlan} only ever returns
+     * {@code ok} or {@code partial}, never a halt, and in
+     * {@code InstallUseCase} both halting effects —
+     * {@code CheckInstallPolicyGate} and {@code BuildInstallPlan} — sit BEFORE
+     * the commit. The shape the review found is real; the instance is on the
+     * sync path.)
      */
     private void commit(RollbackJournal journal) {
         for (Compensation c : journal.pendingLifo()) {
@@ -501,7 +583,8 @@ public final class Executor {
             dev.skillmanager.source.MaterializationEscrow escrow =
                     dev.skillmanager.source.MaterializationEscrow.liftPaths(
                             parent, ctx.store().root(),
-                            List.of(dst.getFileName().toString()), false);
+                            List.of(dst.getFileName().toString()), false,
+                            "commit pre-image: " + resolved.name() + " (" + kind + ")");
             if (escrow.isEmpty()) {
                 // The lift warned already. Say which unit is now unprotected:
                 // "could not set aside <some directory>" does not tell an

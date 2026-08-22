@@ -83,7 +83,26 @@ import java.util.Set;
  */
 public final class MaterializationEscrow {
 
-    private static final String PREFIX = ".materialization-escrow-";
+    public static final String PREFIX = ".materialization-escrow-";
+
+    /**
+     * The manifest every holding directory carries, so a stranded escrow is a
+     * DETECTABLE condition rather than an opaque temp directory.
+     *
+     * <p>#231's review moved these bytes out of the units namespace, which
+     * fixed the half of the problem where {@code list} and {@code home verify}
+     * mistook them for a unit. It left the other half exactly where it was:
+     * nothing looks for them, so an escrow the process never released is
+     * invisible until somebody wonders why {@code cache/} is large. A repair
+     * command cannot own a condition that has no marker.
+     *
+     * <p>Plain {@code key=value}: a header written before the first move, and
+     * one {@code <slot>=<relative path>} line appended as each tree is taken.
+     * Everything a reader needs to say WHAT is held and WHERE it goes back —
+     * without reading it back into this class, which deliberately still
+     * re-derives its own state and never trusts a file.
+     */
+    public static final String MANIFEST = "escrow.txt";
 
     private final Path storeDir;
     private final Path holding;
@@ -117,7 +136,8 @@ public final class MaterializationEscrow {
     public static MaterializationEscrow lift(Path storeDir, Path homeRoot,
                                              boolean restoreTrackedShape) {
         Set<String> paths = DereferencedStoreLinks.in(storeDir);
-        return liftPaths(storeDir, homeRoot, paths, restoreTrackedShape);
+        return liftPaths(storeDir, homeRoot, paths, restoreTrackedShape,
+                "sync: dereferenced store links");
     }
 
     /**
@@ -139,16 +159,27 @@ public final class MaterializationEscrow {
      */
     public static MaterializationEscrow liftPaths(Path storeDir, Path homeRoot,
                                                   Collection<String> relPaths,
-                                                  boolean restoreTrackedShape) {
+                                                  boolean restoreTrackedShape,
+                                                  String purpose) {
         Collection<String> paths = relPaths == null ? Set.of() : relPaths;
         if (paths.isEmpty() || homeRoot == null) return empty(storeDir);
 
         Map<String, Path> held = new LinkedHashMap<>();
         Path holding = null;
+        StringBuilder manifest = null;
         try {
             Path cache = homeRoot.resolve("cache");
             Files.createDirectories(cache);
             holding = Files.createTempDirectory(cache, PREFIX);
+            manifest = new StringBuilder()
+                    .append("# skill-manager escrow — bytes moved aside by an operation that\n")
+                    .append("# would have destroyed them. If the operation finished, nothing\n")
+                    .append("# here is needed. If it did not, each slot line below says where\n")
+                    .append("# the bytes belong: <slot>=<path relative to store-dir>.\n")
+                    .append("purpose=").append(purpose == null ? "unstated" : purpose).append('\n')
+                    .append("store-dir=").append(storeDir).append('\n')
+                    .append("created=").append(java.time.Instant.now()).append('\n');
+            Files.writeString(holding.resolve(MANIFEST), manifest.toString());
             int i = 0;
             for (String rel : paths) {
                 Path from = storeDir.resolve(rel);
@@ -156,9 +187,16 @@ public final class MaterializationEscrow {
                         && !Files.isSymbolicLink(from)) {
                     continue;
                 }
-                Path to = holding.resolve(String.valueOf(i++));
+                Path to = holding.resolve(String.valueOf(i));
                 Files.move(from, to);
                 held.put(rel, to);
+                manifest.append(i).append('=').append(rel).append('\n');
+                // Re-written per slot, not once at the end: a process killed
+                // mid-loop is exactly the case the manifest exists for, and a
+                // manifest that only lands on the happy path describes only the
+                // escrows that were never a problem.
+                Files.writeString(holding.resolve(MANIFEST), manifest.toString());
+                i++;
             }
             if (restoreTrackedShape) GitOps.checkoutPaths(storeDir, held.keySet());
         } catch (IOException io) {
