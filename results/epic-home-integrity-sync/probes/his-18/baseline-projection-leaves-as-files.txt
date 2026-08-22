@@ -1,0 +1,35 @@
+unit                     kind    before  after   what the exclusion removed
+------------------------------------------------------------------------------------------------
+deploy-helm              SKILL       20      6   14 path(s) the unit declares generated
+git-epic-workflow        SKILL       14     14   —
+git-issue                SKILL        5      5   —
+git-issue-workflow       SKILL        2      2   —
+plugin-repository        SKILL       25     25   —
+skt                      PLUGIN      47     47   —
+spec-double-compiler     SKILL      776     25   751 path(s) the unit declares generated
+
+units with any drift left             7 ->        7   (0.0% removed)
+file lines in the record            889 ->      124   (86.1% removed)
+render() lines                        8 ->        8   (0.0% removed)
+render() characters                 474 ->      472   (0.4% removed)
+renderDetailed() lines              896 ->      131   (85.4% removed)
+renderDetailed() characters       88309 ->     5639   (93.6% removed)
+
+--- render() over the projected record ---
+modified  skill:deploy-helm  no-digest  (6 files)
+modified  skill:git-epic-workflow  no-digest  (14 files)
+modified  skill:git-issue  no-digest  (5 files)
+modified  skill:git-issue-workflow  no-digest  (2 files)
+added     skill:plugin-repository  no-digest  (25 files)
+modified  plugin:skt  no-digest  (47 files)
+modified  skill:spec-double-compiler  no-digest  (25 files)
+7 units, 124 files changed — `home drift --detail` for the paths, `home drift --json` for the data
+
+--- test_graph/ entries, as the digest counts them ---
+unit                           root    project
+acp-cdc-ai-python                 9          -
+deploy-helm                      10         10
+hyper-experiments                11          -
+hyper-experiments-finance         10          -
+spec-double-compiler             10         10
+test-graph                       13         13

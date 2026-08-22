@@ -1,0 +1,146 @@
+VACUITY CHECKS — HIS-18 (#239)
+
+Every assertion this ticket adds, run against the code with its own fix
+disabled. RUNNER: `jbang RunHis18.java` — ScaffoldedTreeIsNotContentTest, 7
+cases. That file IS IN THE REPOSITORY, shipped for the reason RunHis11.java,
+RunHis12.java and RunHis15.java are: a record naming a file that does not exist
+is a claim, not evidence.
+
+Each probe below states the file it edits, the substitution, and THAT THE
+SUBSTITUTION MATCHED EXACTLY ONCE — mechanism C in the epic's vacuity ledger,
+"the mutation never reached the code". A probe whose count is not 1 aborts
+before running anything. The tree was restored after each (`git status --short`
+empty at the end, printed below).
+
+READ THE TWO CORRECTIONS FIRST. Both are mechanism A — "the probe reddens a
+precondition, not the claim" — and both were found by these probes rather than
+argued away.
+
+  (A) V1's FIRST run reddened case (1) on `precondition for the digest claim:
+      build-logic is not in the child copy at all`. That sentence is case (2)'s
+      CLAIM, standing in front of case (1)'s. Case (1) asserts a DIGEST; it can
+      only be believed if the digest is what fails. The precondition was moved
+      out (commit "the not-hashed case reddens on the digest, not on a
+      precondition") and V1 now reddens on the two hashes.
+
+  (B) V3's FIRST run reddened case (3) with a bare NoSuchFileException path and
+      no sentence at all, because `Files.readString` throws before
+      `assertEquals` can say anything. Split into an existence assertion that
+      carries the claim and a bytes assertion behind it.
+
+ONE PRECONDITION IS STILL WHERE IT REDDENS, AND IT IS RECORDED AS SUCH. Under
+V1, case (3) fails on `precondition: the refresh really replaced the tree`, not
+on its claim — because in the pre-HIS-18 world the child copy LOOKS edited (the
+dereferenced tree is hashed), so the unit is held back and no wholesale replace
+happens at all. The claim is unreachable in that world by construction. V3 is
+the probe that reddens case (3)'s claim, and it is the sharper one anyway: it
+disables ONLY the carry-over half, i.e. leaves HIS-4's delivered sibling doing
+exactly what it already did, and case (3) still fails while (1) and (2) pass.
+That is the whole reason the three cases are three.
+
+MECHANISM B — "the fixture cannot express the defect" — is answered by case (4)
+rather than by assertion: the SAME fixture with the scaffolder's ignore block
+absent keeps the dereferenced trees and its two digests DIVERGE. So case (1)'s
+equality is not the structural equality of two identical walks; the shape it is
+asserted over really does move a digest. Case (1) additionally asserts its own
+preconditions (the three paths are symlinks in the store, each resolving to a
+real tree with content in it) before it asserts anything.
+
+TRANSCRIPTS
+===========
+
+=== V1  the pre-HIS-18 world — the unit's declaration is never consulted
+    file:    src/main/java/dev/skillmanager/bindings/ChildHomeMaterializer.java
+    matched: 1 occurrence(s)  (must be exactly 1)
+  [PASS] the ignore block under test is the one the scaffolder emits
+  [FAIL] an excluded path is NOT HASHED — a dereference leaves the child copy's digest equal to the store's: the child copy's digest matches the store's across the dereference, so nothing downstream reports drift: expected <f76869705e546783b137e429b69cba2d0b2a49106f1c4fab25524e9dec3c4014> but was <c3ed26bab6836ca11e4ec5a9c964421a4b6d1b4d2ed5ed3cfeab3aff9c1e9e6a>
+  [FAIL] an excluded path is NOT COPIED: expected false: the scaffolded tree build-logic is not written into the child home, as a directory or as a link back into the parent store
+  [FAIL] an excluded path is NOT DELETED — a wholesale refresh carries it across the swap: precondition: the refresh really replaced the tree, so the swap this claim is about actually happened: expected <STORE v2
+  [PASS] a unit that legitimately contains sdk and standard-nodes keeps them — and the same fixture without the exclusion moves its digest
+  [FAIL] a path the unit TRACKS is content even when its own .gitignore matches it: expected false: and its untracked neighbour under the same ignored directory is still excluded, so the clause is narrow
+  [PASS] a scaffolded tree the unit COMMITTED is still materialized, and both sides name it
+   → 3 passed, 4 failed
+
+=== V2  the tracked clause dropped — an ignore rule may hide committed content
+    file:    src/main/java/dev/skillmanager/shared/util/GitIgnoreRules.java
+    matched: 1 occurrence(s)  (must be exactly 1)
+  [PASS] the ignore block under test is the one the scaffolder emits
+  [PASS] an excluded path is NOT HASHED — a dereference leaves the child copy's digest equal to the store's
+  [PASS] an excluded path is NOT COPIED
+  [PASS] an excluded path is NOT DELETED — a wholesale refresh carries it across the swap
+  [PASS] a unit that legitimately contains sdk and standard-nodes keeps them — and the same fixture without the exclusion moves its digest
+  [FAIL] a path the unit TRACKS is content even when its own .gitignore matches it: not true: a committed file its own .gitignore matches still reaches the child home — measured on the operator's store, one unit tracks 14 such files
+  [FAIL] a scaffolded tree the unit COMMITTED is still materialized, and both sides name it: not true: a link the unit's own history holds at mode 120000 is content: it is dereferenced into the child home, not dropped, and HIS-4's DereferencedStoreLinks owns what git then makes of it
+   → 5 passed, 2 failed
+
+=== V3  the delivered sibling ALONE — carry-over back on Rederivable only
+    file:    src/main/java/dev/skillmanager/bindings/ChildHomeMaterializer.java
+    matched: 1 occurrence(s)  (must be exactly 1)
+  [PASS] the ignore block under test is the one the scaffolder emits
+  [PASS] an excluded path is NOT HASHED — a dereference leaves the child copy's digest equal to the store's
+  [PASS] an excluded path is NOT COPIED
+  [FAIL] an excluded path is NOT DELETED — a wholesale refresh carries it across the swap: not true: the excluded tree survives the wholesale replace — excluding a path makes it invisible, not disposable
+  [PASS] a unit that legitimately contains sdk and standard-nodes keeps them — and the same fixture without the exclusion moves its digest
+  [PASS] a path the unit TRACKS is content even when its own .gitignore matches it
+  [PASS] a scaffolded tree the unit COMMITTED is still materialized, and both sides name it
+   → 6 passed, 1 failed
+
+=== V4  the rejected design — a GLOBAL NAME LIST instead of the declaration
+    file:    src/main/java/dev/skillmanager/shared/util/Rederivable.java
+    matched: 1 occurrence(s)  (must be exactly 1)
+  [PASS] the ignore block under test is the one the scaffolder emits
+  [PASS] an excluded path is NOT HASHED — a dereference leaves the child copy's digest equal to the store's
+  [PASS] an excluded path is NOT COPIED
+  [PASS] an excluded path is NOT DELETED — a wholesale refresh carries it across the swap
+  [FAIL] a unit that legitimately contains sdk and standard-nodes keeps them — and the same fixture without the exclusion moves its digest: not true: a unit that never declared build-logic generated keeps it, dereferenced into the child home as content
+  [PASS] a path the unit TRACKS is content even when its own .gitignore matches it
+  [FAIL] a scaffolded tree the unit COMMITTED is still materialized, and both sides name it: not true: a link the unit's own history holds at mode 120000 is content: it is dereferenced into the child home, not dropped, and HIS-4's DereferencedStoreLinks owns what git then makes of it
+   → 5 passed, 2 failed
+
+=== V5  the tracked-ANCESTOR clause dropped — the bug sync-settles caught
+    file:    src/main/java/dev/skillmanager/shared/util/GitIgnoreRules.java
+    matched: 1 occurrence(s)  (must be exactly 1)
+  [PASS] the ignore block under test is the one the scaffolder emits
+  [PASS] an excluded path is NOT HASHED — a dereference leaves the child copy's digest equal to the store's
+  [PASS] an excluded path is NOT COPIED
+  [PASS] an excluded path is NOT DELETED — a wholesale refresh carries it across the swap
+  [PASS] a unit that legitimately contains sdk and standard-nodes keeps them — and the same fixture without the exclusion moves its digest
+  [PASS] a path the unit TRACKS is content even when its own .gitignore matches it
+  [FAIL] a scaffolded tree the unit COMMITTED is still materialized, and both sides name it: not true: a link the unit's own history holds at mode 120000 is content: it is dereferenced into the child home, not dropped, and HIS-4's DereferencedStoreLinks owns what git then makes of it
+   → 6 passed, 1 failed
+
+--- restored (the line above must be empty)
+
+WHAT EACH PROBE PROVES, AND THE COLLATERAL
+==========================================
+
+V1  disables the whole change. Cases (1), (2) and (5) fail on their claims;
+    case (3) fails on the precondition explained above. Cases (4) and (7) PASS,
+    correctly: both are about paths the exclusion must NOT touch, and in a world
+    with no exclusion nothing is touched.
+
+V2  removes only "a tracked path is never ignored". Case (5) fails on
+    `a committed file its own .gitignore matches still reaches the child home`.
+    This is the clause the operator's own store forced: `spec-double-compiler`
+    commits 14 files that its own `.gitignore` matches. Case (7) falls with it,
+    which is the same clause at a different depth.
+
+V3  puts `carryOverUnownedTrees` back on the Rederivable-only question — HIS-4's
+    delivered sibling, untouched, doing exactly what it already did. ONLY case
+    (3) fails. That is the discrimination the three-case split exists for: the
+    digest half is intact, the copy half is intact, and the delivered sibling
+    cannot mask the missing half.
+
+V4  builds the design the plan rejected: `sdk`, `standard-nodes` and
+    `build-logic` added to `Rederivable.OUTPUT_ROOTS` — a GLOBAL NAME LIST.
+    Case (4) fails on `a unit that never declared build-logic generated keeps
+    it`. The plan's argument for a per-unit declaration is therefore asserted
+    rather than argued, which is what the acceptance line asked for.
+
+V5  removes the tracked-ANCESTOR clause. Case (7) fails. This is the bug
+    `sync-settles`'s OWN vacuity guard caught on the first graph run of this
+    change, before any of the unit cases could see it — a tracked mode-120000
+    binding was dereferenced into a subtree whose every path had a
+    tracked-but-ignored ancestor, so the source walk emitted nothing for it
+    while the store's own walk still emitted the tracked LINK. Case (7) exists
+    so the graph is not the only thing that can catch it again.
