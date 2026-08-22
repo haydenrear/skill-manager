@@ -140,9 +140,37 @@ public final class GitIgnoreRules {
         // does not let a negation re-include through an ignored parent. Checked
         // explicitly so this predicate means the same thing whether or not the
         // caller happened to walk top-down.
+        //
+        // AN ANCESTOR THE INDEX HOLDS AT THAT EXACT PATH IS SKIPPED, and the
+        // exactness is the whole clause. A test-graph binding a unit COMMITTED
+        // is tracked at mode 120000 and matched by the very .gitignore block
+        // that declares it generated; the materializer dereferences it into the
+        // provider's tree, and every path in that tree then sits under a tracked
+        // path. Without this the source walk emitted NOTHING for that subtree
+        // while the store's own walk still emitted the tracked LINK -- two
+        // sides disagreeing about one path, which is the divergence this class
+        // exists to remove wearing a new hat. Measured on the sync-settles
+        // fixture, whose own vacuity guard caught it.
+        //
+        // `contains`, not `trackedAtOrUnder`: a directory git merely DESCENDS
+        // THROUGH to reach a tracked file is not itself content, and treating
+        // it as content costs everything. Measured on the committed baseline:
+        // spec-double-compiler commits twelve files under
+        // examples/distributed_history/specs/generated/, and reading that
+        // directory as tracked un-ignores 742 of its untracked siblings --
+        // 772 excluded paths collapse to 30, and the record stops shrinking at
+        // all.
+        //
+        // So: a path git holds a blob for is content, and so is whatever the
+        // walk finds under it. The UNTRACKED generated trees are this class's
+        // subject; a TRACKED store link is HIS-4's, on the git surface, already
+        // delivered ({@code DereferencedStoreLinks}).
         int cut = rel.indexOf('/');
         while (cut >= 0) {
-            if (Boolean.TRUE.equals(decide(rel.substring(0, cut), true))) return true;
+            String ancestor = rel.substring(0, cut);
+            if (!tracked.contains(ancestor) && Boolean.TRUE.equals(decide(ancestor, true))) {
+                return true;
+            }
             cut = rel.indexOf('/', cut + 1);
         }
         return Boolean.TRUE.equals(decide(rel, directory));
