@@ -229,14 +229,24 @@ public final class CommandHomeAccess {
         m.put("harness rm", WRITE);
         m.put("home", WRITE);
         m.put("home clone", WRITE);
-        m.put("home verify", WRITE);
+        // READ, not WRITE, and narrowed deliberately -- see the `home` family
+        // note above, which called that narrowing "a separate, verifiable
+        // step". This is that step, for the two rows whose own contracts say
+        // they write nothing: `home verify` inspects a home and `home
+        // close-out` documents itself as "Writes nothing; safe to run
+        // repeatedly". Both were mutating the home named by --home, because
+        // SkillManagerCli.tryReconcile ran ahead of them and was gated on
+        // neither this classification nor the home policy. Review of #234,
+        // HIGH-2. Neither declares --init, so nothing legitimate loses the
+        // permission to scaffold.
+        m.put("home verify", READ);
         m.put("home describe", WRITE);
         m.put("home policy", WRITE);
         m.put("home shims", WRITE);
         m.put("home drift", WRITE);
         m.put("home sync", WRITE);
         m.put("home refresh-plugins", WRITE);
-        m.put("home close-out", WRITE);
+        m.put("home close-out", READ);
         m.put("install", WRITE);
         // `login` bare is the browser OAuth flow, not a usage print: it
         // caches the bearer token under the home. Only `login show` reads.

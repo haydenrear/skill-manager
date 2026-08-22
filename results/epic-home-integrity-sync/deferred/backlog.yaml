@@ -2196,4 +2196,363 @@ findings:
       needs the measurement DEF-034 asks for before the number can be argued.
       Out of "take the home lock for the resolve/install path".
     candidate_owner: HIS-6, or whoever owns HomeLock after this epic
+
+  - id: DEF-036
+    found_by: HIS-14 (#232), while making `--home` and `homeEnvPrefix` one binding
+    found_at: "2026-08-22"
+    severity: major
+    summary: >
+      There is now ONE statement of "what home X means as an environment"
+      (`AgentHomes.binding`) and a SECOND one beside it
+      (`HomeDescriptor.envFor`). They agree today because both derive from
+      `agentDirsUnder`, but they are two code paths that a future edit can
+      separate -- the epic's signature defect, one step along.
+    detail: >
+      `AgentHomes.binding(store)` yields four variables: SKILL_MANAGER_HOME,
+      CLAUDE_CONFIG_DIR, CODEX_HOME, GEMINI_HOME. It is what `--home` APPLIES
+      and what `HomeCommand.homeEnvPrefix` RENDERS, which is what HIS-14 fixed.
+
+      `HomeDescriptor.envFor(root, store)` yields FIVE: the same four plus
+      CLAUDE_HOME, which is the parent spelling of CLAUDE_CONFIG_DIR. It is
+      what a home's `home.runtime.json` publishes and what `exec`'s LaunchEnv
+      hands a child process.
+
+      The difference is deliberate and documented -- a descriptor is read by
+      consumers that know only one of the two Claude names, while a binding is
+      applied by code that knows the precedence -- but it is documented in two
+      javadocs rather than enforced anywhere. Nothing fails if one gains a
+      variable the other does not.
+    reproduction: >
+      Compare `AgentHomes.binding(store)` with
+      `HomeDescriptor.envFor(AgentHomes.homeRootFor(store), store).asMap()`:
+      identical for four keys, and the fifth is unasserted anywhere.
+    why_deferred: >
+      HIS-14's slice is `--home`, and folding the descriptor's env into the
+      binding changes what every home's published `home.runtime.json` contains
+      -- a wire-format change with `home clone`, `exec`, `bootstrap-home.sh`
+      and the launcher shims downstream of it. That is a bigger blast radius
+      than this ticket's acceptance needs, and it is exactly the kind of
+      widening the deferment policy exists to stop.
+    fix: >
+      Make `envFor` derive its four shared entries FROM `binding` and add
+      CLAUDE_HOME on top, so the descriptor is provably a superset of the
+      binding rather than a parallel construction; assert that relation in a
+      test rather than in prose.
+    candidate_owner: HIS-13 or HIS-5 (the invariant half -- "one home, one env")
+    status: open
+
+  - id: DEF-037
+    found_by: HIS-14 (#232), enumerating which verbs the new binding reaches
+    found_at: "2026-08-22"
+    severity: major
+    summary: >
+      `--home` now binds both axes on every verb that DECLARES it. Several
+      home-mutating verbs still do not declare it -- `install`, `uninstall`,
+      `bind`, `rebind`, `unbind`, `env run`, `harness instantiate` -- so the
+      only way to point them at a home remains the ambient environment, and
+      the only way to get that wrong remains silent.
+    detail: >
+      HIS-9 gave `sync` the flag and HIS-12 gave `project sync` the flag,
+      each for a named reason (a refusal had to be able to recommend something
+      runnable). Nobody has swept the rest. `install <path>` is the command
+      that puts a unit into a home in the first place, and it can only be
+      aimed with `env SKILL_MANAGER_HOME=... CLAUDE_CONFIG_DIR=... ...` -- the
+      four-variable prefix an operator has to know about, which is precisely
+      the knowledge `--home` exists to remove.
+
+      Not a regression and not made worse by HIS-14: these verbs were always
+      environment-only. What changes is that the CLI now has a working
+      one-argument way to name a home, so continuing to make `install` take
+      four variables is a gap rather than a limitation.
+    reproduction: >
+      `skill-manager install <dir> --home <X>`  ->  Unknown option: '--home'
+    why_deferred: >
+      Adding an option to seven more commands is additive and mechanical, but
+      it is seven surfaces, seven refusal messages and seven help texts --
+      outside a slice whose acceptance is about the flag's MEANING, not its
+      spread. Doing it in HIS-14 would also make the diff impossible to review
+      against the defect it exists for.
+    fix: >
+      Declare `--home` on every WRITES_HOME command in `CommandHomeAccess`, and
+      turn `LazyHomeScaffoldTest`'s completeness scan into the enforcer: a
+      command classified WRITES_HOME that declares no `--home` is a finding.
+      The binding itself needs no change -- it already reads the flag wherever
+      it appears in the parse.
+    candidate_owner: HIS-13, or a follow-on ticket after the epic
+    status: open
+
+  - id: DEF-038
+    found_by: HIS-14 (#232), auditing what a thread-local binding does and does not reach
+    found_at: "2026-08-22"
+    severity: major
+    summary: >
+      The binding is thread-local, and a child process inherits the JVM's REAL
+      environment, not the binding. Two harness drivers pass the bound value
+      down explicitly (`claude plugin …` passes CLAUDE_CONFIG_DIR, `codex …`
+      passes CODEX_HOME) and that is the only reason `--home` confines them.
+      Nothing enforces that the next driver does the same.
+    detail: >
+      `HarnessPluginCli.Claude.claudeEnv()` and `Codex.codexEnv()` each build a
+      one-entry map from `AgentHomes`, which is override-aware, so the child
+      lands in the bound home. Verified end to end: with the binding applied,
+      the `ADDED claude (<decoy>/.claude.json)` line that DEF-029 measured no
+      longer appears and the decoy's config files are byte-identical after.
+
+      But that is a per-driver decision written down twice. A third agent
+      driver, or a new subprocess anywhere in the codebase, gets the ambient
+      environment by default -- and "by default it leaks" is the same failure
+      shape `AgentHomes.userHome()`'s javadoc says this repository has already
+      paid for three times.
+    reproduction: >
+      Add a `new ProcessBuilder(...)` that reads CLAUDE_CONFIG_DIR without
+      putting it in `pb.environment()`, run it under `--home <X>`, and it reads
+      the operator's. Nothing in the suite notices.
+    why_deferred: >
+      The guard wants to be a source scan of the same family as HIS-12's
+      remedy-binding scan ("every ProcessBuilder that a bound invocation can
+      reach exports the bound variables"), and getting its reachability
+      analysis honest is a ticket of its own. HIS-14 covers the two drivers
+      that exist, by measurement.
+    fix: >
+      A single `AgentHomes.exportTo(ProcessBuilder)` that writes the whole
+      binding into a child's environment, plus a source scan that fails on a
+      ProcessBuilder built anywhere under `agent/`, `project/` or `effects/`
+      without it.
+    candidate_owner: HIS-13, or the same ticket as DEF-037
+    status: open
+
+  - id: DEF-039
+    found_by: HIS-14 (#232), deciding where the binding had to sit relative to tryReconcile
+    found_at: "2026-08-22"
+    severity: minor
+    summary: >
+      `SkillManagerCli.tryReconcile` projects the AMBIENT home's units into the
+      AMBIENT agent directories on EVERY invocation, before the parsed command
+      runs -- including invocations `CommandHomeAccess` classifies READ_ONLY.
+      So `skill-manager list` writes agent symlinks.
+    detail: >
+      HIS-14 puts the `--home` binding AHEAD of this call, which fixes the case
+      the ticket is about: a command that names a home now reconciles THAT home
+      and touches no other. The case it does not address is a command that
+      names no home, where the reconcile still happens on a read.
+
+      `CommandHomeAccess`'s whole contract is "a READ_ONLY command produces
+      output and no bytes", and its own javadoc records the measurement that
+      made the classification real (12 directories created by `--version`).
+      `tryReconcile` sits OUTSIDE that gate: `HomeScaffold.declare` governs
+      `SkillStore.init()`, and the reconcile's symlink writes are not init.
+    reproduction: >
+      With an ambient home holding units whose agent links are missing, run
+      `skill-manager list`. The links are recreated; exit 0; nothing said.
+    why_deferred: >
+      Narrowing it is a behaviour change on every read command in the CLI, and
+      the epic's acceptance for HIS-14 is scoped to invocations that CARRY
+      `--home`. Whether an unnamed read should reconcile at all is a question
+      for whoever owns `CommandHomeAccess`'s row for `home`, which that file
+      already records as a deliberate under-claim.
+    fix: >
+      Gate `tryReconcile` on `HomeScaffold.declared() == WRITES_HOME`, and
+      measure the read-only sweep the way `7d87a06` measured the last one.
+    closed_by: >
+      HIS-14, in the review round of #234, because the review measured the
+      general form doing real damage rather than the narrow one this entry
+      described. `home verify --home <X>` and `home close-out --home <X>` were
+      MUTATING X -- a legacy `sources/` record migrated and the directory
+      deleted -- on a home declared FROZEN, and `close-out` documents itself as
+      "Writes nothing; safe to run repeatedly" while `close-change.sh:441` runs
+      it as the `wt close` gate.
+
+      Both gates landed: `tryReconcile` now returns unless
+      `HomeScaffold.declared()` is WRITES_HOME, and it honours the frozen
+      policy that `ExecCommand.refreshHome` already honoured. `home verify` and
+      `home close-out` are narrowed to READ_ONLY -- the step
+      `CommandHomeAccess`'s own javadoc called "a separate, verifiable step" --
+      for the two rows whose contracts say they write nothing and which declare
+      no `--init`, so nothing legitimate loses the permission to scaffold.
+
+      What is NOT closed, and is the reason this stays worth reading: the other
+      eight `home` rows are still WRITES_HOME as a family, so `home describe`,
+      `home policy`, `home shims`, `home drift` and `home refresh-plugins` all
+      still reconcile before they run. Narrowing those needs the `--init` opt-in
+      each of them declares to keep working, which is the design work this entry
+      was filed for. Re-filed as the remainder rather than left open as a whole.
+    candidate_owner: HIS-13, or the CommandHomeAccess follow-on it names
+    status: closed
+
+  - id: DEF-040
+    found_by: HIS-14 (#232), reconciling `exec`'s own binding with the new one
+    found_at: "2026-08-22"
+    severity: minor
+    summary: >
+      `exec` now states which home it is about TWICE: once through `--home`,
+      which the CLI binds, and once through `LaunchEnv`, which
+      `ExecCommand.refreshHome` installs over the top for its symlink refresh.
+      They agree, and they agree by two derivations.
+    detail: >
+      `refreshHome` sets the four agent overrides from `launch.env()` before
+      reconciling, which was the correct fix when it was written -- without it
+      the refresh resolved against the CLI's ambient environment. With the
+      binding in place that call is a second, narrower statement of the same
+      decision for the one command that had already solved it.
+
+      HIS-14 changed its `finally` from `clearOverrides()` to
+      `restoreOverrides(displaced)`, because clearing now deletes the
+      invocation's binding (and, in an embedding process, the harness's
+      sandbox). That is the minimum correct change; collapsing the two
+      derivations is not.
+    reproduction: >
+      Read `ExecCommand.refreshHome` beside `SkillManagerCli.bindNamedHome`:
+      two paths, one question.
+    why_deferred: >
+      `LaunchEnv` answers a genuinely different question for the CHILD process
+      (see `AgentHomes.claude(Map)`'s javadoc: the Claude CLI has never heard
+      of SKILL_MANAGER_HOME), so the two are not simply mergeable, and deciding
+      which half of `refreshHome` is about skill-manager and which is about the
+      child is design work rather than cleanup.
+    why_deferred_not_a_defect_today: >
+      Measured: `exec --home <X> --print-env` and the binding resolve the same
+      four paths, and `LauncherShimsTest`'s exec cases are unchanged.
+    candidate_owner: HIS-5 (state it as an invariant) or HIS-13
+    status: open
+
+  - id: DEF-042
+    found_by: HIS-14 (#232), review round of #234 (MED-4)
+    found_at: "2026-08-22"
+    severity: major
+    summary: >
+      `AgentHomes.setOverride` can say "this variable is X" and "stop overriding
+      this variable". It cannot say "this variable is NOT SET". So every
+      assertion in the suite about unset-variable behaviour silently depends on
+      the developer's shell not exporting one, and 19 of them go RED in the
+      environment every `exec`-launched agent session in this repository
+      actually has.
+    detail: >
+      MEASURED on the BASE commit, before any of HIS-14's code, and again on
+      HIS-14's tip: with SKILL_MANAGER_HOME, CLAUDE_CONFIG_DIR, CODEX_HOME and
+      GEMINI_HOME exported at a scratch home, `jbang RunTests.java` reports the
+      same 19 failures in the same suites both times --
+
+        AgentHomesTest        a sandboxed HOME keeps every agent home out of
+                              the real user.home; …also covers the four
+                              fallbacks outside this package; Claude driver:
+                              CLAUDE_HOME override redirects CLAUDE_CONFIG_DIR;
+                              TestHarness installs sandboxed overrides
+        HomeDescriptorTest    CLAUDE_HOME alone keeps its parent-of-.claude
+                              meaning
+        LauncherShimsTest     seven cli-entrypoint cases (the pin refuses
+                              because SKILL_MANAGER_HOME names another home)
+        the #145 test         a sync in a project home leaves the operator's
+                              agent homes alone; an explicit agent-home
+                              variable still wins over the active home
+        the MCP agent tests   three "with CLAUDE_CONFIG_DIR unset …" cases
+
+      Each is a correct assertion about a state the test cannot express, so the
+      runner expresses it instead: `env -u CLAUDE_CONFIG_DIR -u CODEX_HOME -u
+      GEMINI_HOME`. A test whose truth depends on the shell that launched it is
+      a test that will be believed in the wrong environment.
+    reproduction: >
+      CLAUDE_CONFIG_DIR=/tmp/x CODEX_HOME=/tmp/x GEMINI_HOME=/tmp/x
+      SKILL_MANAGER_HOME=/tmp/x/.skill-manager jbang RunTests.java
+    why_deferred: >
+      The mechanism is already here: HIS-14 added `AgentHomes.setUnset` and a
+      sentinel to `resolve`, and used it to make `HomeBindsBothAxesTest` green
+      with the variables set OR unset (17/17 both ways). Applying it to the
+      other 19 assertions is a sweep across four unrelated suites, none of which
+      this ticket touches, and each needs its author's judgement about which
+      variables its case is really about. Widening HIS-14 to carry it would put
+      four foreign suites in a diff about `--home`.
+    fix: >
+      Replace each affected fixture's reliance on an unset ambient variable with
+      an explicit `AgentHomes.setUnset(...)`, then drop the `env -u` from
+      `probes/his-14/runtests.sh` and from any other runner that carries one.
+      The suite should be green in the environment its own product creates.
+    renumbered: >
+      Filed as DEF-041 by HIS-14 and re-issued as DEF-042 on rebase onto the
+      epic tip: HIS-11's merge (#233) had already taken DEF-041. Same convention
+      HIS-11 used one entry earlier, and the same cause -- two branches
+      allocating from one counter while both were open.
+    candidate_owner: HIS-8 (which owns what an agent reads before working here)
+      or HIS-13
+    status: open
+
+  - id: DEF-043
+    found_by: HIS-14 (#232), re-running ticket-lifecycle after rebasing onto the
+      epic tip that carries HIS-11's merge (#233)
+    found_at: "2026-08-22"
+    severity: blocking
+    summary: >
+      `ticket.lifecycle.concurrent.close.out` is RED on the integrated epic tip,
+      and takes 6 of 13 nodes with it. `home close-out --json` produces NO JSON
+      and exits 1 for one of the two concurrent tickets, so the gate prints no
+      remedy and the node has nothing to run. NOT caused by HIS-14 -- measured
+      on the epic tip with none of HIS-14's code.
+    detail: >
+      MEASURED 2026-08-22, three runs.
+
+        HIS-14 tip (d40c39f + HIS-14), run 20260822-161645   FAILED
+        HIS-14 tip, re-run,             run (g4 retry)       FAILED   (not a flake)
+        EPIC TIP d40c39f, no HIS-14,    run 20260822-162522  FAILED   (same signature)
+
+      Byte-identical signature in all three, always on ticket B:
+
+        running:  <cli> home close-out --home <...>/proj-TICKET-B/.skill-manager
+                  --into <...>/proj/.skill-manager --json
+        could not parse the verdict: Expecting value: line 1 column 1 (char 0)
+        FAILED    `home close-out` exited 1
+
+        node ... failed: the gate printed no remedy for one of the tickets, so
+        there is nothing to run concurrently; exits=4/4
+        remediesA=[<cli> home sync --from ...proj-TICKET-A... --to ...proj...]
+        remediesB=[]
+
+      Exit 1 with EMPTY STDOUT can only come from an exception escaping
+      `HomeCloseOut.inspect` that is neither `NotAHomeException` nor
+      `FrozenHomeException` -- `CloseOutCmd` catches those two and prints JSON
+      for the first, and every other path prints the verdict before returning.
+      A generic exception reaches `handleExecutionException`, which returns 1
+      and writes to stderr, so a `--json` consumer reading stdout gets nothing.
+
+      The likely thrower is the home lock. `HomeCloseOut.inspect` is a DRY-RUN
+      SYNC into the project home (`HomeSync.run(..., Options(true, true))`), and
+      a dry run takes the destination's lock through
+      `HomeLock.acquireWithoutCreating`, which throws
+      `IOException("<op>: <root> is locked by another ... 120000ms")` on
+      timeout. HIS-11 additionally put `HomeLock` around the WHOLE program in
+      `Executor`, so a concurrent pass holds the project home's lock for longer
+      than it used to. This is exactly the scenario HIS-11's own DEF-041
+      describes -- "a slow-but-healthy peer makes the next command REFUSE rather
+      than queue", and "worktree close-out contending with the project home is
+      the EXACT scenario HomeLock was written for". DEF-043 may be the graph
+      finding DEF-041 predicted; whoever owns DEF-041 should read them together.
+      NOT CONFIRMED HERE: the exception's own message went to stderr and the
+      node captures stdout, so the thrower is inferred from the shape rather
+      than read. Confirming it is one line of node-log capture.
+    attribution: >
+      NOT CAUSED BY HIS-14, and measured rather than argued:
+
+        - the same node fails identically on d40c39f with none of HIS-14's
+          commits applied (run 20260822-162522);
+        - HIS-14's diff touches NOTHING under `test_graph/` (`git diff
+          origin/epic..HEAD --stat -- test_graph/` is empty);
+        - HIS-14's diff touches none of `HomeCloseOut`, `HomeSync`, `HomeLock`
+          or `Executor` (same command over those four files: empty);
+        - the pre-rebase run of this graph on HIS-14's own tree passed 13/13
+          (run 20260822-154837), including this node's fifteen assertions --
+          so HIS-14's `home close-out` change (WRITES_HOME -> READ_ONLY) is
+          present in a PASSING run of the same node.
+    why_deferred: >
+      HIS-14 is promotion order 10 with HIS-13, HIS-5, HIS-8 and HIS-6 after it,
+      so unlike DEF-030 -- which HIS-12 fixed because it was LAST and could not
+      hand a red core graph to anyone -- there is somewhere for this to go. The
+      fix is in `Executor`/`HomeLock`/`HomeCloseOut`, which are HIS-11's surface
+      and outside HIS-14's slice by every conflict key. Widening HIS-14 to carry
+      it would put HIS-11's lock design in a diff about `--home`.
+    fix: >
+      Two halves, and the first is worth doing whoever takes it: `CloseOutCmd`
+      should catch `IOException` and emit the same `--json` error shape it
+      already emits for `NotAHomeException`, so a teardown script branching on
+      the verdict gets a typed answer instead of an empty stdout. Then decide
+      the lock question with DEF-041 -- scale the timeout to the work, or queue
+      rather than refuse.
+    candidate_owner: HIS-11's surface — HIS-13, or whoever takes DEF-041
     status: open
