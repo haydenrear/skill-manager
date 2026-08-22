@@ -1,0 +1,9 @@
+HIS-16 graph runs, all on feature/237-his-16 at the tip that opened the PR.
+Every run through scratchpad/graph-run.sh (one docker stack, one runner at a time).
+
+smoke                runId 20260822-225952  53 nodes, ALL PASSED   law: passed  homesChecked=1 unitsObserved=22
+project-manifest     runId 20260822-231639   4 nodes, ALL PASSED   law: passed  homesChecked=1 unitsObserved=0
+project-resolve      runId 20260822-231813   4 nodes, ALL PASSED   law: passed  homesChecked=1 unitsObserved=5
+project-smoke        runId 20260822-231954   8 nodes, ALL PASSED   law: passed  homesChecked=3 unitsObserved=9
+project-child-home   runId 20260822-224455  13 nodes, ALL PASSED   law: passed  homesChecked=2 unitsObserved=8
+home-integrity       runId 20260822-223831  17 nodes, ALL PASSED   law: passed  homesChecked=5 unitsObserved=12

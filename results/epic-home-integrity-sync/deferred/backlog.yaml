@@ -2755,3 +2755,177 @@ findings:
       as the reason.
     candidate_owner: HIS-13
     status: open
+
+  - id: DEF-048
+    found_by: HIS-16 (#237)
+    found_at: "2026-08-22"
+    severity: major
+    summary: >
+      `HomeMembershipLaw` is a WITHIN-HOME consistency law, not a temporal one.
+      A post-condition that runs once cannot hold a first-sight image of a home
+      it never saw at the start, so "snapshot at first sight, re-read at the
+      end" is implemented only around a SINGLE operation, by the direct node.
+    detail: >
+      HIS-16 was asked for a law that snapshots each discovered home's unit set
+      at first sight, re-reads it at the end, and fails on an unexplained delta.
+      What shipped reads the same membership through three readers of the home
+      ITSELF -- production's unit snapshot, the `installed/` records, and
+      `units.lock.toml` -- and requires one answer. A unit on disk that no
+      record names is one nobody installed; a record naming a unit the home does
+      not hold is one nobody removed. That IS the law's sentence, it is
+      intrinsic so it cannot go stale, and it fires on DEF-047's actual residue
+      (deploy-helm's orphaned .projections.json).
+
+      MEASURED LIMIT, on home-integrity run 20260822-223059. The graph's own
+      control reproduced the escape -- an unconfined `project resolve` reached a
+      checkout from the working directory and swapped that checkout's child home
+      from one unit to another -- and the law reported the resulting home CLEAN.
+      It was: the resolve rewrote the records to match what it had done. So the
+      law sees the RESIDUE form and not a clean re-realization.
+
+      A post-condition node runs at one instant. There is no point in a generic
+      graph at which "first sight" of every home is available -- homes appear at
+      different times in different graphs, and wiring a census node early enough
+      to matter is a per-graph decision that would go stale exactly like the key
+      list HomeFixpointLaw's structural discovery exists to avoid.
+    candidate_shapes: >
+      (a) PRODUCTION writes a membership stamp into a home on every
+      home-mutating command, and the law diffs the live set against the stamp.
+      That makes "first sight" a property of the home rather than of the graph,
+      and it is the only shape that survives structural discovery.
+      (b) A `home.membership.census` node any graph MAY wire at its own
+      meaningful point, with the law diffing when a census exists. Cheap, but it
+      is a list that goes stale silently -- the failure mode being closed.
+      (c) home.runtime.json's persisted snapshot, which already exists. See
+      DEF-049: nothing establishes how often a legitimate flow leaves it stale.
+    why_deferred: >
+      (a) is a production change to every write path and is well outside "add a
+      law beside HomeFixpointLaw". Doing (b) here would entrench the shape the
+      law's own design rejects.
+    candidate_owner: HIS-6, or a follow-up on the membership law
+    status: open
+
+  - id: DEF-049
+    found_by: HIS-16 (#237)
+    found_at: "2026-08-22"
+    severity: minor
+    summary: >
+      `home.runtime.json` carries a PERSISTED unit snapshot -- the closest thing
+      a home has to a first-sight image of itself -- and its drift from the live
+      disk view is measured but not asserted.
+    detail: >
+      HomeMembershipLaw reports `descriptorDrift` as a metric and logs the
+      difference. It is not a violation, because nothing establishes how often a
+      LEGITIMATE flow leaves that descriptor stale: `home describe --write`
+      refreshes it, clone writes it, and it is not obvious that install,
+      uninstall or sync do. Measured on home-integrity run 20260822-223831:
+      descriptorDrift = 0 over 5 homes, which is one graph and not a baseline.
+
+      Turning an unmeasured signal into a post-condition on 24 graphs would buy
+      noise rather than coverage, and a law that cries wolf is read as noise and
+      then not read at all.
+    reproduction: >
+      Read `descriptorDrift` in any home.membership.law envelope. It is
+      currently 0 everywhere it has been run, which is the thing that needs a
+      wider sample before it can be trusted as an assertion.
+    why_deferred: >
+      It needs a measurement across the full sweep, which belongs to the ticket
+      that owns the full sweep.
+    candidate_owner: HIS-6
+    status: open
+
+  - id: DEF-050
+    found_by: HIS-16 (#237)
+    found_at: "2026-08-22"
+    severity: major
+    summary: >
+      FOUR more commands resolve a target from the working directory and are NOT
+      routed through `ProjectRoot`, so the confinement check does not cover them.
+    detail: >
+      HIS-16's slice named the `project` family, and `ProjectRoot` now carries
+      all five of its verbs plus `env` (the sixth copy of the same three lines,
+      and the one nobody would have thought to change). The remaining CWD
+      readers, by grep over src/main:
+
+        OnboardCommand.java:302   walks UP from user.dir, exactly like the
+                                  project family -- the closest thing to an
+                                  un-migrated instance of the same defect
+        CreateCommand.java:62     --parent-dir defaults to user.dir
+        PublishCommand.java:97    --skill-dir defaults to user.dir
+        GatewayRuntime.java:48    user.dir/virtual-mcp-gateway
+
+      A confined process running any of these still resolves its target from an
+      axis nothing checks. `OnboardCommand` is the one that matters: it walks
+      UP, so like `project resolve` it can reach a checkout the caller never
+      named.
+    reproduction: >
+      grep -rn 'user\.dir' src/main/java/ -- six sites before this ticket, four
+      after.
+    why_deferred: >
+      Outside the declared slice. Routing them is mechanical (ProjectRoot.resolve
+      takes the option and the verb name) but each needs its own decision about
+      what "target" means, and `create`/`publish` write into a directory the
+      operator named rather than resolving a project.
+    candidate_owner: a follow-up on the confinement surface
+    status: open
+
+  - id: DEF-051
+    found_by: HIS-16 (#237)
+    found_at: "2026-08-22"
+    severity: minor
+    summary: >
+      Confinement is a check over path SPELLINGS. `Confinement` deliberately
+      does not call `toRealPath()`, so a symlink pointing out of the root
+      defeats it.
+    detail: >
+      A driver declares its confinement root BEFORE laying the home out, and
+      `toRealPath` throws on a path that does not exist yet, so the check
+      normalizes and takes `Path.startsWith` -- per-segment, so the
+      /var vs /private/var substring trap the epic already paid for is not
+      reintroduced (asserted in ConfinementTest). What it does not do is resolve
+      links: a confinement root containing a symlink whose target is outside it
+      reads as covered.
+
+      Stated as a decision rather than left as an omission.
+      GOAL-one-home-one-answer clause 2 owns spelling-invariance and HIS-17
+      owns the spelling-pair fixtures; HIS-9 owns the effect boundary. This is
+      the axis check neither performs.
+    why_deferred: >
+      The fix needs a "resolve as far as exists, then normalize the rest" helper
+      that is spelling-invariant AND works on paths that are not there yet.
+      That is HIS-17's subject, not a side change here.
+    candidate_owner: HIS-17
+    status: open
+
+  - id: DEF-052
+    found_by: HIS-16 (#237)
+    found_at: "2026-08-22"
+    severity: minor
+    summary: >
+      SIX graphs carry neither law, and at least two of them produce homes.
+      `HomeMembershipLaw` was wired to exactly `HomeFixpointLaw`'s 24 graphs --
+      one coverage decision, not two -- which means it inherits that
+      instrument's gap rather than closing it.
+    detail: >
+      Counted from build.gradle.kts, 2026-08-22: 30 graphs, 24 carry both laws,
+      and these 6 carry neither --
+
+        browser-auth      Selenium; run on demand
+        refresh-flow      excluded from every automatic set (integration #53)
+        password-reset    registry/auth flow
+        hyper-experiments excluded from every automatic set (#143)
+        sponsored         PRODUCES A HOME
+        sync-settles      PRODUCES A HOME
+
+      `sync-settles` in particular is the change-management drag asserted end to
+      end over a root-tier install/sync fixture, which is precisely the shape a
+      membership delta would show up in.
+    why_deferred: >
+      Widening the coverage is a decision about BOTH laws and should move them
+      together; making them disagree about which graphs they cover is how the
+      next reader ends up believing a graph is watched when only one of the two
+      is watching it. Doing it inside HIS-16 would also mean touching graphs
+      this ticket has no other reason to touch, four of which are red or
+      excluded on the epic tip for reasons that are not this ticket's.
+    candidate_owner: HIS-6, alongside the terminal sweep that would measure the cost
+    status: open

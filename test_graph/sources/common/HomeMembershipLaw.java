@@ -91,9 +91,13 @@ import java.util.stream.Stream;
  *       list that goes stale silently; graphs publish home paths under a dozen
  *       different keys.</li>
  *   <li>Only homes under the JVM temp root are touched. The onboarding graph's
- *       scan once surfaced one of the OPERATOR'S REAL HOMES; this law is
- *       read-only, but "read-only" is one refactor away from not being, and
- *       the skipped ones are counted and named rather than silently dropped.</li>
+ *       scan once surfaced one of the OPERATOR'S REAL HOMES. This law never
+ *       changes a home's MEMBERSHIP — it runs {@code home describe}, which is
+ *       classified {@code READ} and writes no descriptor without
+ *       {@code --write} — but {@code READ} is not {@code NONE}
+ *       ({@code store.init()} still ensures the layout), and "does not write"
+ *       is one refactor away from not being true. The skipped ones are counted
+ *       and NAMED rather than silently dropped.</li>
  *   <li><b>A run that finds zero homes FAILS.</b> An instrument reporting
  *       success because it could not look is the failure mode this epic keeps
  *       paying for, and it is the one this law exists to close.</li>
@@ -150,6 +154,11 @@ public final class HomeMembershipLaw {
 
     public static void main(String[] args) {
         Node.run(args, SPEC, ctx -> {
+            // THREE separate claims, kept separate. Folding them into one
+            // boolean is mechanism A from this epic's vacuity ledger seen from
+            // the reader's side: the self-test failing, the run checking
+            // nothing, and a home genuinely holding the wrong units would all
+            // redden one name and the envelope would not say which.
             List<String> violations = new ArrayList<>();
             List<String> log = new ArrayList<>();
 
@@ -158,9 +167,6 @@ public final class HomeMembershipLaw {
             // until the same comparison has been shown to go red.
             SelfTest self = selfTest();
             log.add(self.report());
-            if (!self.ok()) {
-                violations.add("the membership detector failed its own self-test: " + self.why());
-            }
 
             Path cli = SmEnv.cli();
             Set<Path> all = candidateHomes(ctx.context());
@@ -200,19 +206,27 @@ public final class HomeMembershipLaw {
 
             // A law that checked nothing is not a law. HomeFixpointLaw's reason,
             // and this law's reason for existing at all.
-            if (checked.isEmpty()) {
-                violations.add("no Skill Manager home was found in this graph's context — "
+            boolean lookedAtSomething = !checked.isEmpty();
+            boolean membershipHeld = violations.isEmpty();
+
+            List<String> failures = new ArrayList<>(violations);
+            if (!self.ok()) {
+                failures.add(0, "the membership detector failed its own self-test: " + self.why());
+            }
+            if (!lookedAtSomething) {
+                failures.add("no Skill Manager home was found in this graph's context — "
                         + "either this node is wired into a graph that produces none, or it "
                         + "runs before the home exists. Both make the law vacuous.");
             }
 
-            NodeResult result = violations.isEmpty()
+            NodeResult result = failures.isEmpty()
                     ? NodeResult.pass("home.membership.law")
-                    : NodeResult.fail("home.membership.law", String.join("; ", violations));
+                    : NodeResult.fail("home.membership.law", String.join("; ", failures));
             return result
                     .assertion("every_home_holds_exactly_what_was_installed_into_it",
-                            violations.isEmpty())
+                            membershipHeld)
                     .assertion("the_detector_flags_a_planted_gain_and_a_planted_loss", self.ok())
+                    .assertion("at_least_one_home_was_actually_checked", lookedAtSomething)
                     .metric("homesChecked", checked.size())
                     .metric("unitsObserved", unitsObserved)
                     .metric("homesOutsideSandbox", outsideSandbox.size())
@@ -221,7 +235,7 @@ public final class HomeMembershipLaw {
                     .publish("unitsObserved", String.valueOf(unitsObserved))
                     .log(String.join("\n", log)
                             + (outsideSandbox.isEmpty() ? ""
-                                    : "\nSKIPPED (outside the sandbox, never read): "
+                                    : "\nSKIPPED (outside the sandbox, never touched): "
                                             + String.join(", ", outsideSandbox)));
         });
     }

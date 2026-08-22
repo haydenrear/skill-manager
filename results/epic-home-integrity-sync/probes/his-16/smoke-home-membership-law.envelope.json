@@ -1,0 +1,27 @@
+{
+  "nodeId" : "home.membership.law",
+  "status" : "passed",
+  "startedAt" : "2026-08-22T23:16:04.217459Z",
+  "endedAt" : "2026-08-22T23:16:12.087386Z",
+  "assertions" : [ {
+    "name" : "every_home_holds_exactly_what_was_installed_into_it",
+    "status" : "passed"
+  }, {
+    "name" : "the_detector_flags_a_planted_gain_and_a_planted_loss",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ ],
+  "metrics" : {
+    "homesChecked" : 1,
+    "unitsObserved" : 22,
+    "homesOutsideSandbox" : 0,
+    "descriptorDrift" : 0,
+    "durationMs" : 7870
+  },
+  "logs" : [ "SELF-TEST (runs before any real home):\n  consistent home -> 0 violation(s)\n  gained a unit   -> 1 violation(s)\n  lost  a unit    -> 2 violation(s)\nPASS  /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-6249795552928256512\n    disk    [echo-global-skill, echo-http-skill, echo-session-skill, echo-stdio-session-skill, echo-stdio-skill, hello-skill, markdown-import-broken-doc, markdown-import-broken-harness, markdown-import-broken-plugin, markdown-import-broken-skill, markdown-import-clean-skill, mcp-tool-loads-skill, mk-source-skill, mk-target-doc, mk-target-harness, mk-target-plugin, npm-cli-skill, pip-cli-skill, skill-script-inner, skill-script-skill, skill-script-umbrella-skill, umbrella-skill]\n    records [echo-global-skill, echo-http-skill, echo-session-skill, echo-stdio-session-skill, echo-stdio-skill, hello-skill, markdown-import-broken-doc, markdown-import-broken-harness, markdown-import-broken-plugin, markdown-import-broken-skill, markdown-import-clean-skill, mcp-tool-loads-skill, mk-source-skill, mk-target-doc, mk-target-harness, mk-target-plugin, npm-cli-skill, pip-cli-skill, skill-script-inner, skill-script-skill, skill-script-umbrella-skill, umbrella-skill]\n    lock    [echo-global-skill, echo-http-skill, echo-session-skill, echo-stdio-session-skill, echo-stdio-skill, hello-skill, markdown-import-broken-doc, markdown-import-broken-harness, markdown-import-broken-plugin, markdown-import-broken-skill, markdown-import-clean-skill, mcp-tool-loads-skill, mk-source-skill, mk-target-doc, mk-target-harness, mk-target-plugin, npm-cli-skill, pip-cli-skill, skill-script-inner, skill-script-skill, skill-script-umbrella-skill, umbrella-skill]" ],
+  "published" : {
+    "homesChecked" : "/private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-6249795552928256512",
+    "unitsObserved" : "22"
+  }
+,"envelopeVersion":1,"executorStartedAt":"2026-08-22T23:16:02.656945Z","executorEndedAt":"2026-08-22T23:16:25.782341Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/home.membership.law.stdout.log","inputContextFile":"context/home.membership.law.input.json","traceId":"1b32b30910d35801401b2164ec21ba48"}
