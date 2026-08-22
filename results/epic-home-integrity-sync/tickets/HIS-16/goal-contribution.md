@@ -285,14 +285,27 @@ CONTROL  exit 0; victim [skills/his16-unit-claimed-later]  <- the escape, reprod
 `home.membership.law` — three assertions, and the numbers matter more than the
 verdict, because a green law that looked at nothing is the failure mode:
 
-| graph | homes checked | units observed |
-| --- | --- | --- |
-| `smoke` | 1 | **22** |
-| `home-integrity` | 5 | 12 |
-| `project-smoke` | 3 | 9 |
-| `project-child-home` | 2 | 8 |
-| `project-resolve` | 1 | 5 |
-| `project-manifest` | 1 | **0** |
+| graph | nodes | runId | homes checked | units observed |
+| --- | --- | --- | --- | --- |
+| `smoke` | 53 | 20260822-225952 | 1 | **22** |
+| `home-integrity` | 17 | 20260822-232933 | 5 | 12 |
+| `project-child-home` | 13 | 20260822-233526 | 2 | 8 |
+| `project-smoke` | 8 | 20260822-233937 | 3 | 9 |
+| `home-tripwire` | 8 | 20260822-234255 | 1 | 1 |
+| `project-resolve` | 4 | 20260822-231813 | 1 | 5 |
+| `project-manifest` | 4 | 20260822-231639 | 1 | **0** |
+
+Every one **ALL PASSED**. The four re-runs at the bottom of `probes/his-16/
+graph-runs.txt` are on the shipped tip `f12cdfd`; `smoke`, `project-manifest`
+and `project-resolve` are one commit earlier at `a7155d6`, where the only
+difference is how the law *reports* rather than what it checks. Stated rather
+than smoothed over.
+
+`home-tripwire` carries **`sandbox.env.contract`**, the oracle that fails when
+any file except `sources/lib/SmEnv.java` writes a managed variable into a child
+environment, or when a node spawns the CLI without routing through it. Both new
+nodes pass it, which is what makes `SmEnv.confineTo` / `SmEnv.unconfine` the
+right home for the seventh variable rather than a fifth spelling of the recipe.
 
 **`project-manifest` observed zero units**, and that is exactly the case the
 self-test exists for: three readers that all return the empty set agree

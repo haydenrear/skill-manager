@@ -1,9 +1,17 @@
-HIS-16 graph runs, all on feature/237-his-16 at the tip that opened the PR.
-Every run through scratchpad/graph-run.sh (one docker stack, one runner at a time).
+HIS-16 graph runs. Every run through scratchpad/graph-run.sh -- one docker
+stack, one runner at a time, shared with HIS-18. `run.py --all` is HIS-6's
+and was NOT run.
 
-smoke                runId 20260822-225952  53 nodes, ALL PASSED   law: passed  homesChecked=1 unitsObserved=22
-project-manifest     runId 20260822-231639   4 nodes, ALL PASSED   law: passed  homesChecked=1 unitsObserved=0
-project-resolve      runId 20260822-231813   4 nodes, ALL PASSED   law: passed  homesChecked=1 unitsObserved=5
-project-smoke        runId 20260822-231954   8 nodes, ALL PASSED   law: passed  homesChecked=3 unitsObserved=9
-project-child-home   runId 20260822-224455  13 nodes, ALL PASSED   law: passed  homesChecked=2 unitsObserved=8
-home-integrity       runId 20260822-223831  17 nodes, ALL PASSED   law: passed  homesChecked=5 unitsObserved=12
+The last four rows are on the SHIPPED tip (f12cdfd, after the membership
+law's assertions were split into three). smoke, project-manifest and
+project-resolve are one commit earlier, at a7155d6; the only difference
+between the two is how the law REPORTS, not what it checks. Stated rather
+than smoothed over.
+
+smoke                runId 20260822-225952  53 nodes  ALL PASSED   law passed  homesChecked=1 unitsObserved=22 descriptorDrift=0
+project-manifest     runId 20260822-231639   4 nodes  ALL PASSED   law passed  homesChecked=1 unitsObserved=0 descriptorDrift=0
+project-resolve      runId 20260822-231813   4 nodes  ALL PASSED   law passed  homesChecked=1 unitsObserved=5 descriptorDrift=0
+project-smoke        runId 20260822-233937   8 nodes  ALL PASSED   law passed  homesChecked=3 unitsObserved=9 descriptorDrift=0
+project-child-home   runId 20260822-233526  13 nodes  ALL PASSED   law passed  homesChecked=2 unitsObserved=8 descriptorDrift=0
+home-integrity       runId 20260822-232933  17 nodes  ALL PASSED   law passed  homesChecked=5 unitsObserved=12 descriptorDrift=0
+home-tripwire        runId 20260822-234255   8 nodes  ALL PASSED   law passed  homesChecked=1 unitsObserved=1 descriptorDrift=0

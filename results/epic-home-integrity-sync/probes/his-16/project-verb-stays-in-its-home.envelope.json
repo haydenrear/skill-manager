@@ -1,8 +1,8 @@
 {
   "nodeId" : "project.verb.stays.in.its.home",
   "status" : "passed",
-  "startedAt" : "2026-08-22T22:42:50.934192Z",
-  "endedAt" : "2026-08-22T22:42:56.017298Z",
+  "startedAt" : "2026-08-22T23:33:52.827389Z",
+  "endedAt" : "2026-08-22T23:33:57.814772Z",
   "assertions" : [ {
     "name" : "precondition_victim_home_holds_the_seeded_unit",
     "status" : "passed"
@@ -28,29 +28,29 @@
   "artifacts" : [ ],
   "processes" : [ {
     "label" : "seed-victim",
-    "command" : [ "/Users/hayde/IdeaProjects/wt-237-his-16/skill-manager", "project", "resolve", "--skip-gateway", "--project-dir", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-9616936167042326712/his16-confinement/victim" ],
-    "startedAt" : "2026-08-22T22:42:50.941852Z",
-    "endedAt" : "2026-08-22T22:42:52.827962Z",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-237-his-16/skill-manager", "project", "resolve", "--skip-gateway", "--project-dir", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2128363550874000236/his16-confinement/victim" ],
+    "startedAt" : "2026-08-22T23:33:52.836095Z",
+    "endedAt" : "2026-08-22T23:33:54.689649Z",
     "exitCode" : 0,
-    "pid" : 24701,
+    "pid" : 47837,
     "log" : "node-logs/project.verb.stays.in.its.home.seed-victim.log",
     "error" : null
   }, {
     "label" : "confined-resolve-from-victim-cwd",
     "command" : [ "/Users/hayde/IdeaProjects/wt-237-his-16/skill-manager", "project", "resolve", "--skip-gateway" ],
-    "startedAt" : "2026-08-22T22:42:52.834476Z",
-    "endedAt" : "2026-08-22T22:42:54.118386Z",
+    "startedAt" : "2026-08-22T23:33:54.695274Z",
+    "endedAt" : "2026-08-22T23:33:55.941773Z",
     "exitCode" : 14,
-    "pid" : 24712,
+    "pid" : 47873,
     "log" : "node-logs/project.verb.stays.in.its.home.confined-resolve-from-victim-cwd.log",
     "error" : null
   }, {
     "label" : "control-unconfined-resolve-from-victim-cwd",
     "command" : [ "/Users/hayde/IdeaProjects/wt-237-his-16/skill-manager", "project", "resolve", "--skip-gateway" ],
-    "startedAt" : "2026-08-22T22:42:54.121571Z",
-    "endedAt" : "2026-08-22T22:42:56.016323Z",
+    "startedAt" : "2026-08-22T23:33:55.945112Z",
+    "endedAt" : "2026-08-22T23:33:57.813886Z",
     "exitCode" : 0,
-    "pid" : 24721,
+    "pid" : 47882,
     "log" : "node-logs/project.verb.stays.in.its.home.control-unconfined-resolve-from-victim-cwd.log",
     "error" : null
   } ],
@@ -59,11 +59,11 @@
     "unconfinedExitCode" : 0,
     "victimUnitsBefore" : 1,
     "victimUnitsAfterControl" : 1,
-    "durationMs" : 5083
+    "durationMs" : 4987
   },
-  "logs" : [ "FIXTURE  victim home /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-9616936167042326712/his16-confinement/victim/.skill-manager -> [skills/his16-unit-kept] (seed exit 0)\nCLAIM    exit 14 (expected 14); victim [skills/his16-unit-kept]; driver [skills/his16-unit-kept]\nCONTROL  exit 0; victim [skills/his16-unit-claimed-later]  <- the escape, reproduced\nThe control reddens: the_other_homes_unit_set_is_unchanged (victim [skills/his16-unit-kept] -> [skills/his16-unit-claimed-later])" ],
+  "logs" : [ "FIXTURE  victim home /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2128363550874000236/his16-confinement/victim/.skill-manager -> [skills/his16-unit-kept] (seed exit 0)\nCLAIM    exit 14 (expected 14); victim [skills/his16-unit-kept]; driver [skills/his16-unit-kept]\nCONTROL  exit 0; victim [skills/his16-unit-claimed-later]  <- the escape, reproduced\nThe control reddens: the_other_homes_unit_set_is_unchanged (victim [skills/his16-unit-kept] -> [skills/his16-unit-claimed-later])" ],
   "published" : {
-    "victimHome" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-9616936167042326712/his16-confinement/victim/.skill-manager",
-    "driverHome" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-9616936167042326712/his16-confinement/driver/home"
+    "victimHome" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2128363550874000236/his16-confinement/victim/.skill-manager",
+    "driverHome" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2128363550874000236/his16-confinement/driver/home"
   }
-,"envelopeVersion":1,"executorStartedAt":"2026-08-22T22:42:50.261984Z","executorEndedAt":"2026-08-22T22:43:11.299336Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/project.verb.stays.in.its.home.stdout.log","inputContextFile":"context/project.verb.stays.in.its.home.input.json","traceId":"9abe0a1ebb88560d809741b21cdbad7c"}
+,"envelopeVersion":1,"executorStartedAt":"2026-08-22T23:33:52.184495Z","executorEndedAt":"2026-08-22T23:34:14.770355Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/project.verb.stays.in.its.home.stdout.log","inputContextFile":"context/project.verb.stays.in.its.home.input.json","traceId":"1d3776215ca3b923a04ca0cd654145b4"}

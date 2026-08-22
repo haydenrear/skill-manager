@@ -1,0 +1,289 @@
+{"runId":"20260822-234255","status":"passed","traceId":"006131c9fd220f5e7dc9e7a3fbec1e05","execution":{"mode":"full","graphName":"home-tripwire","complete":true,"expectedNodeIds":["sandbox.env.contract","home.tripwire.sensitive","env.prepared","home.tripwire.armed","home.tripwire.workload","home.tripwire.checked","home.fixpoint.law","home.membership.law"],"observedNodeIds":["env.prepared","home.fixpoint.law","home.membership.law","home.tripwire.armed","home.tripwire.checked","home.tripwire.sensitive","home.tripwire.workload","sandbox.env.contract"],"missingNodeIds":[],"invalidEnvelopeFiles":[],"duplicateNodeIds":[],"unexpectedNodeIds":[],"unknownStatusNodeIds":[],"missingTraceNodeIds":[],"invalidTraceNodeIds":[],"mismatchedTraceNodeIds":[],"observedContextNodeIds":["sandbox.env.contract","home.tripwire.sensitive","env.prepared","home.tripwire.armed","home.tripwire.workload","home.tripwire.checked","home.fixpoint.law","home.membership.law"],"missingContextNodeIds":[],"invalidContextFiles":[],"unexpectedContextNodeIds":[],"contextProvenanceViolationNodeIds":[],"replaySourceContextMismatchNodeIds":[],"contextFileCountExceeded":false,"aggregateContextBytesExceeded":false,"envelopeFileCountExceeded":false,"aggregateEnvelopeBytesExceeded":false,"aggregateJsonStructureExceeded":false,"unknownExecutionScope":false},"nodes":[{
+  "nodeId" : "env.prepared",
+  "status" : "passed",
+  "startedAt" : "2026-08-22T23:43:25.446518Z",
+  "endedAt" : "2026-08-22T23:43:25.473063Z",
+  "assertions" : [ {
+    "name" : "home_created",
+    "status" : "passed"
+  }, {
+    "name" : "agent_home_created",
+    "status" : "passed"
+  }, {
+    "name" : "codex_home_created",
+    "status" : "passed"
+  }, {
+    "name" : "gemini_home_created",
+    "status" : "passed"
+  }, {
+    "name" : "ports_allocated",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ ],
+  "metrics" : {
+    "registryPort" : 56281,
+    "gatewayPort" : 56282,
+    "durationMs" : 27
+  },
+  "logs" : [ ],
+  "published" : {
+    "home" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-8974836260184819283",
+    "claudeHome" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-8974836260184819283/agent-home",
+    "codexHome" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-8974836260184819283/agent-home/.codex",
+    "geminiHome" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-8974836260184819283/agent-home/.gemini",
+    "registryPort" : "56281",
+    "gatewayPort" : "56282"
+  }
+,"envelopeVersion":1,"executorStartedAt":"2026-08-22T23:43:24.691550Z","executorEndedAt":"2026-08-22T23:43:39.411403Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/env.prepared.stdout.log","inputContextFile":"context/env.prepared.input.json","traceId":"006131c9fd220f5e7dc9e7a3fbec1e05"},{
+  "nodeId" : "home.fixpoint.law",
+  "status" : "passed",
+  "startedAt" : "2026-08-22T23:44:51.023680Z",
+  "endedAt" : "2026-08-22T23:44:55.900275Z",
+  "assertions" : [ {
+    "name" : "every_home_verifies_or_its_own_remedy_repairs_it",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ ],
+  "metrics" : {
+    "homesChecked" : 1,
+    "homesRepaired" : 0,
+    "homesOutsideSandbox" : 2,
+    "durationMs" : 4877
+  },
+  "logs" : [ "PASS  /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-8974836260184819283\nSKIPPED (outside the sandbox, never mutated): /Users/hayde, /Users/hayde/.skill-manager" ],
+  "published" : {
+    "homesChecked" : "/private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-8974836260184819283",
+    "homesRepaired" : ""
+  }
+,"envelopeVersion":1,"executorStartedAt":"2026-08-22T23:44:50.375342Z","executorEndedAt":"2026-08-22T23:45:09.514474Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/home.fixpoint.law.stdout.log","inputContextFile":"context/home.fixpoint.law.input.json","traceId":"006131c9fd220f5e7dc9e7a3fbec1e05"},{
+  "nodeId" : "home.membership.law",
+  "status" : "passed",
+  "startedAt" : "2026-08-22T23:45:10.179859Z",
+  "endedAt" : "2026-08-22T23:45:14.737497Z",
+  "assertions" : [ {
+    "name" : "every_home_holds_exactly_what_was_installed_into_it",
+    "status" : "passed"
+  }, {
+    "name" : "the_detector_flags_a_planted_gain_and_a_planted_loss",
+    "status" : "passed"
+  }, {
+    "name" : "at_least_one_home_was_actually_checked",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ ],
+  "metrics" : {
+    "homesChecked" : 1,
+    "unitsObserved" : 1,
+    "homesOutsideSandbox" : 2,
+    "descriptorDrift" : 0,
+    "durationMs" : 4558
+  },
+  "logs" : [ "SELF-TEST (runs before any real home):\n  consistent home -> 0 violation(s)\n  gained a unit   -> 1 violation(s)\n  lost  a unit    -> 2 violation(s)\nPASS  /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-8974836260184819283\n    disk    [tw-probe-skill]\n    records [tw-probe-skill]\n    lock    [tw-probe-skill]\nSKIPPED (outside the sandbox, never touched): /Users/hayde, /Users/hayde/.skill-manager" ],
+  "published" : {
+    "homesChecked" : "/private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-8974836260184819283",
+    "unitsObserved" : "1"
+  }
+,"envelopeVersion":1,"executorStartedAt":"2026-08-22T23:45:09.532823Z","executorEndedAt":"2026-08-22T23:45:28.559882Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/home.membership.law.stdout.log","inputContextFile":"context/home.membership.law.input.json","traceId":"006131c9fd220f5e7dc9e7a3fbec1e05"},{
+  "nodeId" : "home.tripwire.armed",
+  "status" : "passed",
+  "startedAt" : "2026-08-22T23:43:40.097023Z",
+  "endedAt" : "2026-08-22T23:43:47.688375Z",
+  "assertions" : [ {
+    "name" : "the_metadata_baseline_is_not_empty",
+    "status" : "passed"
+  }, {
+    "name" : "the_content_baseline_is_not_empty",
+    "status" : "passed"
+  }, {
+    "name" : "every_declared_root_that_exists_is_in_the_baseline",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ ],
+  "metrics" : {
+    "metadataEntries" : 79311,
+    "contentEntries" : 36455,
+    "watchedRoots" : 4,
+    "contentSurfaces" : 5,
+    "durationMs" : 7591
+  },
+  "logs" : [ ],
+  "published" : {
+    "metadataBaseline" : "/Users/hayde/IdeaProjects/wt-237-his-16/test_graph/build/validation-reports/20260822-234255/tripwire-metadata.txt",
+    "contentBaseline" : "/Users/hayde/IdeaProjects/wt-237-his-16/test_graph/build/validation-reports/20260822-234255/tripwire-content.txt",
+    "realHome" : "/Users/hayde"
+  }
+,"envelopeVersion":1,"executorStartedAt":"2026-08-22T23:43:39.428370Z","executorEndedAt":"2026-08-22T23:44:00.957936Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/home.tripwire.armed.stdout.log","inputContextFile":"context/home.tripwire.armed.input.json","traceId":"006131c9fd220f5e7dc9e7a3fbec1e05"},{
+  "nodeId" : "home.tripwire.checked",
+  "status" : "passed",
+  "startedAt" : "2026-08-22T23:44:28.496372Z",
+  "endedAt" : "2026-08-22T23:44:34.217327Z",
+  "assertions" : [ {
+    "name" : "the_baselines_were_actually_read",
+    "status" : "passed"
+  }, {
+    "name" : "the_real_agent_homes_are_unchanged",
+    "status" : "passed"
+  }, {
+    "name" : "the_watched_content_surfaces_are_byte_identical",
+    "status" : "passed"
+  }, {
+    "name" : "this_graphs_probe_unit_is_in_no_real_home",
+    "status" : "passed"
+  }, {
+    "name" : "no_git_worktree_registration_changed_under_a_watched_home",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ ],
+  "metrics" : {
+    "metadataDifferences" : 0,
+    "contentDifferences" : 0,
+    "metadataEntries" : 79311,
+    "contentEntries" : 36455,
+    "gitDirectoriesWatched" : 21,
+    "worktreeRegistrationChanges" : 0,
+    "durationMs" : 5721
+  },
+  "logs" : [ ],
+  "published" : { }
+,"envelopeVersion":1,"executorStartedAt":"2026-08-22T23:44:27.846248Z","executorEndedAt":"2026-08-22T23:44:50.355579Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/home.tripwire.checked.stdout.log","inputContextFile":"context/home.tripwire.checked.input.json","traceId":"006131c9fd220f5e7dc9e7a3fbec1e05"},{
+  "nodeId" : "home.tripwire.sensitive",
+  "status" : "passed",
+  "startedAt" : "2026-08-22T23:43:10.298023Z",
+  "endedAt" : "2026-08-22T23:43:10.456641Z",
+  "assertions" : [ {
+    "name" : "an_unmutated_decoy_reports_clean",
+    "status" : "passed"
+  }, {
+    "name" : "a_planted_projection_is_detected",
+    "status" : "passed"
+  }, {
+    "name" : "a_dangling_symlink_is_detected",
+    "status" : "passed"
+  }, {
+    "name" : "a_size_and_mtime_preserving_edit_is_invisible_to_metadata",
+    "status" : "passed"
+  }, {
+    "name" : "a_size_and_mtime_preserving_edit_is_caught_by_content",
+    "status" : "passed"
+  }, {
+    "name" : "a_retargeted_symlink_is_detected",
+    "status" : "passed"
+  }, {
+    "name" : "a_deletion_is_detected",
+    "status" : "passed"
+  }, {
+    "name" : "a_planted_git_worktree_registration_is_detected",
+    "status" : "passed"
+  }, {
+    "name" : "ordinary_git_churn_inside_a_watched_home_is_not_detected",
+    "status" : "passed"
+  }, {
+    "name" : "a_removed_git_worktree_registration_is_detected",
+    "status" : "passed"
+  }, {
+    "name" : "an_unreadable_worktrees_directory_is_not_reported_as_zero",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ ],
+  "metrics" : {
+    "mutationsPlanted" : 9,
+    "durationMs" : 158
+  },
+  "logs" : [ ],
+  "published" : { }
+,"envelopeVersion":1,"executorStartedAt":"2026-08-22T23:43:09.658897Z","executorEndedAt":"2026-08-22T23:43:24.672494Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/home.tripwire.sensitive.stdout.log","inputContextFile":"context/home.tripwire.sensitive.input.json","traceId":"006131c9fd220f5e7dc9e7a3fbec1e05"},{
+  "nodeId" : "home.tripwire.workload",
+  "status" : "passed",
+  "startedAt" : "2026-08-22T23:44:01.651414Z",
+  "endedAt" : "2026-08-22T23:44:13.673128Z",
+  "assertions" : [ {
+    "name" : "install_exits_zero",
+    "status" : "passed"
+  }, {
+    "name" : "the_unit_landed_in_the_sandbox_store",
+    "status" : "passed"
+  }, {
+    "name" : "the_projection_landed_in_the_sandbox_agent_home",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "install",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-237-his-16/skill-manager", "install", "file:///var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/tw-probe-10028664666674972692/tw-probe-skill", "--yes" ],
+    "startedAt" : "2026-08-22T23:44:01.675827Z",
+    "endedAt" : "2026-08-22T23:44:13.671078Z",
+    "exitCode" : 0,
+    "pid" : 55363,
+    "log" : "node-logs/home.tripwire.workload.install.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "durationMs" : 12022
+  },
+  "logs" : [ ],
+  "published" : {
+    "unitName" : "tw-probe-skill"
+  }
+,"envelopeVersion":1,"executorStartedAt":"2026-08-22T23:44:00.973109Z","executorEndedAt":"2026-08-22T23:44:27.832305Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/home.tripwire.workload.stdout.log","inputContextFile":"context/home.tripwire.workload.input.json","traceId":"006131c9fd220f5e7dc9e7a3fbec1e05"},{
+  "nodeId" : "sandbox.env.contract",
+  "status" : "passed",
+  "startedAt" : "2026-08-22T23:42:55.949322Z",
+  "endedAt" : "2026-08-22T23:42:56.219806Z",
+  "assertions" : [ {
+    "name" : "only_the_shared_helper_writes_a_managed_home_variable",
+    "status" : "passed"
+  }, {
+    "name" : "every_file_that_resolves_the_cli_routes_through_the_helper",
+    "status" : "passed"
+  }, {
+    "name" : "the_scan_read_the_tree_it_claims_to_have_read",
+    "status" : "passed"
+  }, {
+    "name" : "a_node_that_writes_a_managed_variable_itself_is_detected",
+    "status" : "passed"
+  }, {
+    "name" : "a_node_that_spells_the_recipe_in_a_map_literal_is_detected",
+    "status" : "passed"
+  }, {
+    "name" : "a_node_that_spawns_the_cli_without_the_helper_is_detected",
+    "status" : "passed"
+  }, {
+    "name" : "a_node_that_routes_through_the_helper_is_not_flagged",
+    "status" : "passed"
+  }, {
+    "name" : "a_node_that_merely_reads_a_variable_name_is_not_flagged",
+    "status" : "passed"
+  }, {
+    "name" : "the_helper_sets_all_six_managed_variables",
+    "status" : "passed"
+  }, {
+    "name" : "no_variable_the_helper_sets_names_the_operators_home",
+    "status" : "passed"
+  }, {
+    "name" : "the_helper_still_sandboxes_with_no_upstream_context",
+    "status" : "passed"
+  }, {
+    "name" : "the_helper_leaves_posix_home_alone_until_asked",
+    "status" : "passed"
+  }, {
+    "name" : "the_helper_redirects_posix_home_when_asked",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ ],
+  "metrics" : {
+    "filesScanned" : 278,
+    "writeStatements" : 10,
+    "cliResolvers" : 116,
+    "violations" : 0,
+    "durationMs" : 270
+  },
+  "logs" : [ ],
+  "published" : { }
+,"envelopeVersion":1,"executorStartedAt":"2026-08-22T23:42:55.311292Z","executorEndedAt":"2026-08-22T23:43:09.637443Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/sandbox.env.contract.stdout.log","inputContextFile":"context/sandbox.env.contract.input.json","traceId":"006131c9fd220f5e7dc9e7a3fbec1e05"}]}
