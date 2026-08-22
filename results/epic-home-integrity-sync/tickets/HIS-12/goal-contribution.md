@@ -385,11 +385,13 @@ the test safe also makes this defect invisible to it.
 
 ## Vacuity checks
 
-Seventeen, each recorded verbatim in `probes/his-12/vacuity-checks.txt`, and
+Nineteen, each recorded verbatim in `probes/his-12/vacuity-checks.txt`, and
 **re-run in full after the contract changed** — the earlier records described
 code that no longer exists, so they were replaced rather than appended to. The
 runner they name, `RunHis12.java`, **is in the repository**: a record naming a
 file that does not exist cannot be re-run, which makes it a claim.
+
+**Two of them found something other than what they were checking.**
 
 **V17 came back vacuous on its first run and the record of that is kept.** An
 `endsWith("\\")` guard in `pinnedCliIn` could not be made to fail — every line
@@ -397,6 +399,13 @@ continuation it was meant to catch is already caught by the search for the
 closing brace. A guard that cannot fail is not a guard, so it was **removed**
 rather than kept for the look of it. That is the second time this ticket's own
 vacuity pass has deleted something of mine; the first was V10 last round.
+
+**V19 found a gap in the guard it was checking.** On its first run only the
+behavioural assertion failed: the guard's pattern required a `+` before the CLI
+token, so the reverted code's assignment form — `String syncRemedy = cli + "
+sync " + name` — walked straight past it. Widened to accept `+`, `=`, `(` and
+`,`. A guard whose own vacuity check finds a way around it is a guard with a
+gap, not a passing check.
 
 ## The stale-javadoc pattern, and a check that costs nothing
 
