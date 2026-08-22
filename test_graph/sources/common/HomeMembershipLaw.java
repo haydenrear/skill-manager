@@ -404,10 +404,15 @@ public final class HomeMembershipLaw {
                 // gained: on disk, no record — "a unit nobody installed"
                 Path gained = plant(root.resolve("gained"),
                         Set.of("alpha", "intruder"), Set.of("alpha"), Set.of("alpha"));
-                // lost: record survives, unit gone — DEF-047's exact residue
-                Path lost = plant(root.resolve("lost"),
-                        Set.of("alpha"), Set.of("alpha", "deploy-helm"),
-                        Set.of("alpha", "deploy-helm"));
+                // lost: the unit is gone from the home and ONLY its
+                // .projections.json record survives. That is DEF-047 to the
+                // letter — "deploy-helm is GONE from skills/ (its
+                // .projections.json record survives, orphaned)" — and it is why
+                // the record reader must count both spellings. Planted in the
+                // exact shape so that narrowing the reader to <name>.json
+                // fails here rather than in production a year from now.
+                Path lost = plantOrphanedProjection(root.resolve("lost"),
+                        Set.of("alpha"), "deploy-helm");
 
                 List<String> goodV = at(good, Set.of("alpha")).violations(good);
                 List<String> gainedV = at(gained, Set.of("alpha", "intruder")).violations(gained);
@@ -446,6 +451,17 @@ public final class HomeMembershipLaw {
         return new Membership(new TreeSet<>(disk),
                 installedRecords(home.resolve("installed")),
                 lockUnits(read(home.resolve("units.lock.toml"))));
+    }
+
+    /**
+     * A home holding {@code disk} whose only trace of {@code orphan} is an
+     * orphaned {@code <orphan>.projections.json}. DEF-047's residue.
+     */
+    private static Path plantOrphanedProjection(Path home, Set<String> disk, String orphan)
+            throws IOException {
+        plant(home, disk, disk, disk);
+        Files.writeString(home.resolve("installed").resolve(orphan + ".projections.json"), "{}");
+        return home;
     }
 
     private static Path plant(Path home, Set<String> disk, Set<String> records, Set<String> lock)
