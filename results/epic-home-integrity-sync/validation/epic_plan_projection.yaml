@@ -1340,8 +1340,41 @@ tickets:
   title: a refusal names a home you were not in and a build that cannot run the remedy, and project sync
     loses the typed refusal entirely
   phase: HIS
-  status: planned
+  status: delivered
   epic: home-integrity-sync
+  status_note_delivered: 'DELIVERED, after a review that sent it back and a design decision the EPIC AGENT
+    got wrong first.
+
+    The /usr/bin/env SKILL_MANAGER_HOME=... <build> binding came out entirely. Review measured three things
+    against it: it broke a remedy parser and put home-sync, a CORE graph, at 12-of-18-skipped BECAUSE
+    OF THE DIFF; it was not runnable verbatim, because a home path containing `$` is shell-expanded and
+    BINDS A DIFFERENT HOME -- DEF-002''s failure mode produced by DEF-002''s fix; and it did not defend
+    the head-token graph assertion but NEUTRALIZED it, turning three readers permanently green where a
+    bare `env` would have turned them visibly red.
+
+    The epic agent then proposed a replacement -- print the home''s own entrypoint and branch the guard
+    on absolute-vs-bare invocation -- and put it up to be attacked. IT LOST ON MEASUREMENT. `$0` cannot
+    carry "deliberate": a #! script never sees the typed word, so bare-via-PATH and absolute give identical
+    `$0`, and the only shape that differs is ./skill-manager, a human at a keyboard, which the rule would
+    have refused. And not every home has bin/cli/skill-manager -- it is written by `home shims` and nothing
+    else, so the premise was false.
+
+    WHAT SHIPPED IS THE PER-VERB RULE: verbs that already name their target bind nothing; verbs that take
+    --home carry it; sync and project sync were given it. The binding lives in --home rather than the
+    head token because EVERY CONSUMER FEELS ENTITLED TO REPLACE THE HEAD TOKEN -- remedyArgs and close-change.sh''s
+    run_cli both document doing exactly that.
+
+    A GUARD, NOT JUST A FIX. A source scan enforces the per-verb rule, and it fired on the integrated
+    tip against HIS-4''s three unbound remedies -- catching a cross-ticket drift that two reviews and
+    two green suites had missed. Its own vacuity check then found a GAP IN THE GUARD (the pattern missed
+    the assignment form), which was widened.
+
+    KNOWN LIMITATION, stated at the top of the goal contribution rather than as a footnote: --home binds
+    the STORE axis and not the AGENT axis. HIS-14 (#232) closes the other half, and that defect was found
+    by this ticket pasting its own remedy into a shell and looking at what it touched.
+
+    '
+  delivered_in: 'PR #229, merged into epic/home-integrity-sync as fb9205b'
   github_issue: 161
   also_closes:
   - 187

@@ -1,0 +1,56 @@
+fb9205b Merge pull request #229 from haydenrear/feature/161-his-12
+3af742f docs(epic): ticket-lifecycle 13/13 on the integrated tip, after DEF-030
+b8d1020 docs(epic): vacuity count 17 -> 19, and what V19 found in the guard itself
+1979114 docs(epic): what integrating HIS-4 and HIS-9 actually cost, and what caught it
+a6502f2 fix(test-graph): the pin probe asked a question HIS-9 stopped answering
+1e93a01 docs(epic): DEF-029 is scheduled, not open — say so where it is described
+c8b3745 fix(remedy): bind HIS-4's merge-conflict remedies, and close DEF-026
+77c8b62 docs(epic): ticket-lifecycle 13/13 — the remedy is read, and run, and it works
+e1a56f1 docs(epic): DEF-029 — `--home` binds half a home, found by running my own remedy
+fa475c8 docs(epic): re-measure DEF-002's after, and paste the remedy into a fresh shell
+d465c59 docs(epic): the remedy as actually printed, from a real refusal
+0cb5cbf docs(epic): DEF-026 — HIS-4's new remedies name a build but not a home
+353d3f3 test(remedy): guard the per-verb rule mechanically, because it has N call sites
+46d1f73 docs(epic): decode V8's evidence — the behavioural assertion fails FIRST now
+67866d5 docs(epic): HIS-12 rewritten after review — the shape that lost is kept
+2f23c5f test(remedy): re-run every vacuity check against the post-review contract
+8a44602 docs(remedy): three stale javadoc claims, and the cheap check that finds them
+4f7bca3 fix(remedy)!: bind a remedy per VERB, not in the head token
+17df9d4 docs(epic): HIS-12 goal contribution, its probes, and three findings
+ed47905 test(remedy): assert the two properties the blocked graph node would have checked
+15e1db1 test(remedy): the hand-written-entrypoint fixture could not fail, so it did not cover the marker guard
+3599eb1 fix(remedy): a remedy never names a home entrypoint whose pinned build is gone
+ca2635e fix(remedy): a printed remedy names the home you were in, and admits a PATH guess
+e7bbe96 chore(epic): worktree ledger — wave-4 close-out gates, all clean
+a20edcc chore(epic): HIS-4 and HIS-9 delivered — what landed, and what did not
+ad0a500 feat(epic): HIS-14 (#232) — a home has two axes and --home pins one; schedule revision 5
+62e91ea Merge pull request #230 from haydenrear/feature/226-his-9
+373c41a chore(epic): DEF-016 -> DEF-024, and rewrite it as the closed defect it is
+533e3f2 docs(home): two javadocs still described the surface this commit series deleted
+3e21b0c test(home-integrity): third run, green on the reviewed tree
+0549cc6 docs(epic): state the HIS-12 contract, and record the --home exemption probe
+ad23e45 fix(home): unswallow the refusal, give sync a --home, and cut the inert guard surface
+77135d6 test(home-integrity): re-run proves the coverage fix -- homesChecked 1 -> 3
+d612a7c test(home-integrity): the graph result, and the law was checking 1 of 7 homes
+d3b49e5 docs(epic): spell out the availability cost, and name DEF-015 as a narrowing of #227
+0889b81 chore(epic): DEF-016 -- the wave's graph lock is stuck on an empty directory
+089e0b3 docs(home): the guard's javadoc claimed an enforcement site it never had
+96e81c7 fix(home): drop the confinement exit code nothing could reach
+1127f30 docs(home): say exactly which confinement checks a declaration can reach
+5ca2a75 fix(home): refuse a write or delete that resolves outside the home it was given
+15fd561 Merge pull request #231 from haydenrear/feature/216-his-4
+3812b30 docs(epic): DEF-021 gains this ticket's two instances, and the count is corrected
+4f04a0c docs(epic): HIS-4 — graphs re-run after the review fixes, and slice (1) named correctly
+f92ab22 fix(sync): the escrow protected one sync path and I opened a hole in the other
+8ef8578 docs(epic): HIS-4 — the node measured red without the fix, green with it
+e64469b fix(sync): the second sync path asked the same question a different way
+22aa1e6 docs(epic): HIS-4 evidence — the project-tier reproduction, and three findings
+dfd0880 test(sync-settles): the node reproduces the defect at the tier it happens on
+9755da6 test(sync): pin the predicate against the two fixes that look right and lose work
+f993ae7 fix(sync): a dereferenced store link is the materializer's work, not an author's
+cbd00f4 docs(epic): DEF-021 — a javadoc describing code that no longer exists, four tickets running
+a4a95cb fix(test-graph): ticket-lifecycle encoded a contract HIS-10 changed, and went red for a wave
+dc97f2a chore(epic): worktree ledger, and wave-4 assignments rendered at plan 9539d46
+9539d46 feat(epic): validation policy is per-ticket and per-wave; release re-run; DEF-012
+5bd0a26 fix(test-graph): the teardown raced its own SIGKILL, and took 23 graphs with it
+fab28e0 chore(epic): HIS-10 delivered — the record points at evidence, it is no longer the evidence
