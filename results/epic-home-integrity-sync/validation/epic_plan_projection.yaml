@@ -1645,9 +1645,25 @@ tickets:
     ON ITS OWN BRANCH.
 
     '
-  root_cause: "HIS-11 put HomeLock around Executor.runStaged/runWithContext. `home close-out` therefore\
-    \ contends, and under concurrency the losing invocation exits non-zero with its explanation on STDERR\
-    \ and NOTHING ON STDOUT -- while `--json` was asked for.\nMEASURED on epic tip d40c39f, ticket.lifecycle.concurrent.close.out:\n\
+  root_cause_as_filed_was_WRONG: "THE EPIC AGENT FILED THIS AND GOT THE CAUSE WRONG. Corrected by the\
+    \ ticket agent, which measured instead of accepting the framing it was handed -- the third time in\
+    \ this epic that has happened, after HIS-7 and HIS-4.\nFILED AS: the losing invocation exits non-zero\
+    \ with its explanation on stderr and nothing on stdout.\nMEASURED, with a peer holding the project\
+    \ home's lock for 8s:\n\n  $ skill-manager home close-out --home <wt> --into <proj> --json\n  exit=0\
+    \                      <-- THE COMMAND SUCCEEDED\n  home sync --dry-run: waiting for /.../proj-home\
+    \ — another\n    skill-manager process holds this home's lock\n  {\"home\":\"...\",\"into\":\"...\"\
+    ,\"safe\":true,\"exitCode\":0,...}\n\nByte-identical to the error in the red node. The cause is HomeLock.announceWait\
+    \ -- the line HIS-11 added so a wait would not look like a hang -- going to STDOUT via Log.info. It\
+    \ corrupts the document on any run that waits, WHETHER OR NOT that run then fails. The failing run\
+    \ exited 0, so every word of the filed cause describing a non-zero exit with empty stdout is wrong\
+    \ about the graph.\n"
+  root_cause: "THREE DISTINCT BREAKS OF ONE CONTRACT, all measured:\n\n  (1) extra non-JSON on stdout\
+    \ (announceWait)   exit 0   unparseable\n      <- this is the red graph\n  (2) close-out's own not_a_home\
+    \ paths          exit 2   correct JSON already\n  (3) an exception escaping the command         exit\
+    \ 1   EMPTY stdout\n      <- the filed defect, real, but not the red one\n\nSo the contract is NOT\
+    \ \"emit JSON when you fail\". It is: UNDER --json, STDOUT CARRIES ONLY JSON -- exactly one document,\
+    \ and nothing else -- ON EVERY EXIT PATH. A fix aimed only at failure paths closes (3) and leaves\
+    \ (1), which is the one that is red.\nMEASURED on epic tip d40c39f, ticket.lifecycle.concurrent.close.out:\n\
     \n  close-change-a:  run: <abs>/skill-manager home sync --from ... --to ...\n  close-change-b:  could\
     \ not parse the verdict:\n                   Expecting value: line 1 column 1 (char 0)\n         \
     \          FIX  .../close-change.sh TICKET-B --force\n\n`both_close_change_runs_were_refused_by_the_gate`\

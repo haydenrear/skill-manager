@@ -3991,11 +3991,41 @@ tickets:
       The EPIC AGENT, verifying a blocker HIS-14 reported and could not attribute
       -- and it is a regression from HIS-11 (#186), which the epic agent had
       merged an hour earlier on graphs measured ON ITS OWN BRANCH.
+    root_cause_as_filed_was_WRONG: >
+      THE EPIC AGENT FILED THIS AND GOT THE CAUSE WRONG. Corrected by the ticket
+      agent, which measured instead of accepting the framing it was handed --
+      the third time in this epic that has happened, after HIS-7 and HIS-4.
+
+      FILED AS: the losing invocation exits non-zero with its explanation on
+      stderr and nothing on stdout.
+
+      MEASURED, with a peer holding the project home's lock for 8s:
+
+        $ skill-manager home close-out --home <wt> --into <proj> --json
+        exit=0                      <-- THE COMMAND SUCCEEDED
+        home sync --dry-run: waiting for /.../proj-home — another
+          skill-manager process holds this home's lock
+        {"home":"...","into":"...","safe":true,"exitCode":0,...}
+
+      Byte-identical to the error in the red node. The cause is
+      HomeLock.announceWait -- the line HIS-11 added so a wait would not look
+      like a hang -- going to STDOUT via Log.info. It corrupts the document on
+      any run that waits, WHETHER OR NOT that run then fails. The failing run
+      exited 0, so every word of the filed cause describing a non-zero exit with
+      empty stdout is wrong about the graph.
     root_cause: >
-      HIS-11 put HomeLock around Executor.runStaged/runWithContext. `home
-      close-out` therefore contends, and under concurrency the losing invocation
-      exits non-zero with its explanation on STDERR and NOTHING ON STDOUT --
-      while `--json` was asked for.
+      THREE DISTINCT BREAKS OF ONE CONTRACT, all measured:
+
+        (1) extra non-JSON on stdout (announceWait)   exit 0   unparseable
+            <- this is the red graph
+        (2) close-out's own not_a_home paths          exit 2   correct JSON already
+        (3) an exception escaping the command         exit 1   EMPTY stdout
+            <- the filed defect, real, but not the red one
+
+      So the contract is NOT "emit JSON when you fail". It is: UNDER --json,
+      STDOUT CARRIES ONLY JSON -- exactly one document, and nothing else -- ON
+      EVERY EXIT PATH. A fix aimed only at failure paths closes (3) and leaves
+      (1), which is the one that is red.
 
       MEASURED on epic tip d40c39f, ticket.lifecycle.concurrent.close.out:
 
