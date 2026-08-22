@@ -519,6 +519,37 @@ public final class HomeDescriptorCliRemedyTest {
                     "every remedy naming a verb that takes --home carries one");
         });
 
+        suite.test("the merge-conflict remedy names the home it was asked about", () -> {
+            // THE BEHAVIOURAL HALF OF DEF-026. The guard above reads SOURCE
+            // TEXT: it proves the expression mentions --home, not that the
+            // printed string carries the right home. Those are different
+            // claims, and this epic has been bitten by exactly that gap.
+            //
+            // It also covers a real hole in the inherited tests: every existing
+            // case for `mergeConflictRemedy` passes homeRoot = null, so with
+            // `homeArg(null)` returning "" and the result stripped, the output
+            // is byte-identical with or without the fix. Those tests could not
+            // have failed on it.
+            Path home = Fixture.home(
+                    Files.createTempDirectory("merge-remedy-").resolve("proj/.skill-manager"));
+            Path storeDir = Files.createDirectories(home.resolve("skills/u"));
+
+            String bound = dev.skillmanager.app.ReportUseCase
+                    .mergeConflictRemedy(storeDir, "u", home, 3);
+            assertContains(bound, "sync u --home " + home,
+                    "the remedy names the home it was asked about, in the argument");
+
+            // And the null case still renders exactly as before — the flag is
+            // additive, and a caller with no home to name must not get a
+            // dangling `--home` or a trailing space.
+            String unbound = dev.skillmanager.app.ReportUseCase
+                    .mergeConflictRemedy(storeDir, "u", null, 3);
+            assertContains(unbound, "`skill-manager sync u`",
+                    "with no home to name, the remedy is unchanged and well-formed");
+            assertFalse(unbound.contains("--home"),
+                    "and carries no dangling flag: " + unbound);
+        });
+
         return suite.runAll();
     }
 
@@ -537,11 +568,20 @@ public final class HomeDescriptorCliRemedyTest {
      * all -- probed against the built CLI, not assumed. The negative lookbehind
      * keeps bare {@code sync} from matching it.
      *
-     * <p>Both spellings the sources use: {@code %s <verb>} in a format string,
-     * and {@code " + cli + " <verb>} in a concatenation.
+     * <p>Three spellings the sources use: {@code %s <verb>} in a format string,
+     * {@code " + cli + " <verb>} in the middle of a concatenation, and
+     * {@code = cli + " <verb>} where the remedy is assigned to a variable
+     * first.
+     *
+     * <p>That third form was a HOLE, found by vacuity-checking this guard: the
+     * pattern required a {@code +} BEFORE the CLI token, so reverting
+     * {@code ReportUseCase}'s fix to {@code String syncRemedy = cli + " sync "
+     * + name} slipped past it while the behavioural assertion caught it. A
+     * guard whose own vacuity check finds a way around it is a guard with a
+     * gap, not a passing check.
      */
     private static final Pattern REMEDY_VERB = Pattern.compile(
-            "(?:%s|\\+\\s*(?:cli|rePin|spelling\\.binary\\(\\)|binary\\(\\))\\s*\\+\\s*\")"
+            "(?:%s|[+=(,]\\s*(?:cli|rePin|spelling\\.binary\\(\\)|binary\\(\\))\\s*\\+\\s*\")"
                     + "\\s+(?<!home )(home drift|home shims|home close-out|unit publish"
                     + "|project sync|sync)(?![a-z-])");
 

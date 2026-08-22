@@ -149,3 +149,28 @@ V17 did not, was recorded, and the code it guarded was removed.
   log format string in the project — about 180 false positives. A check that
   can only be satisfied by weakening it is not a check. Pinning the verb list
   to the five that take --home is what makes each match a real remedy site.
+
+=== V19 DEF-026's fix reverted: ReportUseCase back to `cli + " sync " + name`
+  [FAIL] every printed remedy that names a class-2/3 verb also names its home:
+         expected <[]> but was <[ReportUseCase.java: = cli + " sync " + name]>
+  [FAIL] the merge-conflict remedy names the home it was asked about:
+         the remedy names the home it was asked about, in the argument
+  FAILURES: 2
+
+  TWO ASSERTIONS, AND THEY ARE NOT THE SAME CLAIM. The guard reads SOURCE TEXT
+  and proves the expression mentions --home. The second runs the method and
+  proves the PRINTED STRING carries the right home. A guard that only reads the
+  source can be satisfied by a mention that does nothing.
+
+  THE SECOND ONE ALSO CLOSED A HOLE IN THE INHERITED TESTS. Every pre-existing
+  case for `mergeConflictRemedy` passes homeRoot = null, and with `homeArg(null)`
+  returning "" and the result stripped, the output is byte-identical with or
+  without the fix. Those tests could not have failed on it.
+
+  AND THIS CHECK FOUND A HOLE IN THE GUARD ITSELF. On its FIRST run only the
+  behavioural assertion failed: the guard's pattern required a `+` BEFORE the CLI
+  token, so the reverted form `String syncRemedy = cli + " sync " + name` — an
+  ASSIGNMENT rather than a mid-concatenation — walked straight past it. The
+  pattern now accepts `+`, `=`, `(` and `,` before the token, and the re-run
+  above shows both assertions failing. A guard whose own vacuity check finds a
+  way around it is a guard with a gap, not a passing check.

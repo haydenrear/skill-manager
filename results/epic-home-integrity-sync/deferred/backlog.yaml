@@ -1041,6 +1041,66 @@ findings:
     candidate_owner: HIS-14 (#232)
     status: triaged
 
+  - id: DEF-030
+    found_by: HIS-12 (#161), re-running ticket-lifecycle on the integrated tip
+    found_at: "2026-08-21"
+    severity: major
+    summary: >
+      HIS-9's home-mismatch refusal is met by a ticket-lifecycle probe written
+      before it, so the node asks a question the product deliberately stopped
+      answering. Red on the integrated tip, 11 of 13 nodes skipped behind it.
+      Fixed here.
+    detail: >
+      MEASURED 2026-08-21 on the integrated tip (a20edcc), run 20260822-001812:
+
+        ticket.lifecycle.provisioned  FAILED   (pins=false)
+          each_worktree_home_has_a_pinned_cli_that_actually_runs   failed
+          (every other assertion in the node passed)
+
+        node-logs/...pin-probe-proj-TICKET-A.log:
+          skill-manager: refusing to run against a home you did not name.
+            you named:  .../ticket-lifecycle/ambient
+            this shim would have edited: .../proj-TICKET-A/.skill-manager
+            This entrypoint binds the home it lives in, so it cannot honour
+            SKILL_MANAGER_HOME. Refusing rather than silently editing the
+            other one.
+            Say which one you mean:  --home <...>
+
+      The probe runs `<home>/bin/cli/skill-manager home close-out --help` with
+      SKILL_MANAGER_HOME set to `ambient` -- a DIFFERENT home from the one the
+      shim lives in. Before HIS-9 the shim silently bound its own home and the
+      probe passed. HIS-9 (#226, commit 5ca2a75) made that exact situation a
+      refusal, which is the right behaviour and is the point of that ticket.
+
+      So the REFUSAL is correct and the PROBE was wrong: "does this home's
+      pinned CLI run" has to NAME the home now. Exactly the shape of the
+      descent-record finding one wave earlier -- a graph node encoding a
+      contract a ticket deliberately changed.
+    attribution: >
+      NOT CAUSED BY HIS-12, and measured rather than argued:
+
+        - HIS-12's diff touches NOTHING under test_graph/ (`git diff
+          origin/epic..HEAD --stat -- test_graph/` is empty).
+        - The refusal text is added by 5ca2a75, HIS-9's, and HIS-12's diff to
+          LauncherShims contains ZERO removed lines -- it is purely additive
+          (PIN_PREFIX, pinnedCliIn, danglingPinIn) and changes no part of the
+          generated shim script or its guard.
+        - The previous ticket-lifecycle run, on a tree rebased before HIS-4/9
+          were merged, passed this node 13/13.
+    fix: >
+      The probe passes `--home <this shim's home>`, which is what the refusal
+      itself recommends and what `home close-out` (a class-2 verb under #161's
+      per-verb contract) takes. One argument; the assertion's question is
+      unchanged.
+    why_his_12_fixed_it_rather_than_filing_it: >
+      HIS-12 is LAST in promotion order and this is a CORE graph red on the
+      integrated tip, so there is no later ticket to hand it to -- pushing it
+      red means merging it red. Same reasoning as DEF-026. Filed anyway, with
+      the attribution, because the epic should be able to see that the wave-4
+      integration cost two node-level fixes and why.
+    candidate_owner: HIS-12 (fixed) — recorded for HIS-9's and HIS-6's awareness
+    status: closed
+
   - id: DEF-021
     found_by: epic agent, wave-4 review round, counting instances across the epic
     found_at: "2026-08-21"

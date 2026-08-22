@@ -152,6 +152,24 @@ public class TicketLifecycleProvisioned {
             boolean thePlantedReferenceIsFound = planted.hits().size() >= 2;
 
             // --- a runnable pinned CLI ---------------------------------------
+            //
+            // `--home <this shim's home>` is NOT decoration, and it was added
+            // after HIS-9 (#226) merged. The probe runs the shim with
+            // SKILL_MANAGER_HOME set to `ambient`, which is a DIFFERENT home
+            // from the one the shim lives in -- and HIS-9's entrypoint now
+            // refuses exactly that rather than silently editing one of the two:
+            //
+            //   skill-manager: refusing to run against a home you did not name.
+            //     you named:  .../ticket-lifecycle/ambient
+            //     this shim would have edited: .../proj-TICKET-A/.skill-manager
+            //     Say which one you mean:  --home <...>
+            //
+            // So the node was asking a question the product no longer answers.
+            // The refusal is right and the probe was wrong: "does this home's
+            // pinned CLI run" has to NAME the home now, which is what the
+            // refusal itself recommends. Same shape as the descent-record
+            // finding one wave earlier -- a node encoding a contract a ticket
+            // deliberately changed.
             List<ProcessRecord> pins = new ArrayList<>();
             boolean bothPinsRun = true;
             for (Path home : List.of(homeA, homeB)) {
@@ -162,7 +180,8 @@ public class TicketLifecycleProvisioned {
                 }
                 ProcessRecord probe = TicketLifecycleSupport.plain(ctx,
                         "pin-probe-" + home.getParent().getFileName(), null, ambient,
-                        List.of(pin.toString(), "home", "close-out", "--help"));
+                        List.of(pin.toString(), "home", "close-out",
+                                "--home", home.toString(), "--help"));
                 pins.add(probe);
                 if (probe.exitCode() != 0
                         || !HomeSyncSupport.log(ctx,
