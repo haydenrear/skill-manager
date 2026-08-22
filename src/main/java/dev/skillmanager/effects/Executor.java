@@ -600,6 +600,15 @@ public final class Executor {
         for (var resolved : graph.resolved()) {
             UnitKind kind = resolved.unit().kind();
             Path dst = ctx.store().unitDir(resolved.name(), kind);
+            // The SAME predicate the commit handler guards its delete with
+            // (`if (Files.exists(dst)) deleteRecursive(dst)`), deliberately.
+            // Which predicate it is matters less than that the two agree: the
+            // escrow must fire on exactly the set of destinations the
+            // destructive step would destroy, or there is a case that gets
+            // deleted without a pre-image. A LINK-mode child home's symlinked
+            // destination is inside that set for both, and `Files.move` takes
+            // the link rather than following it, so the parent store is not
+            // reached through.
             if (!Files.exists(dst)) continue;              // nothing there to lose
             Path parent = dst.getParent();
             if (parent == null) continue;
