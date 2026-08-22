@@ -310,7 +310,7 @@ in a second flavour; the numbers below are from a stable tree.
 | `uv run pytest specs/` | **38 passed** |
 | `home-integrity` (assigned) | **passed — 15 of 15, `execution.complete: true`**, run `20260822-153607` |
 | **`home-sync` (CORE)** | **passed — 18 of 18, `execution.complete: true`**, run `20260822-154113` |
-| **`ticket-lifecycle` (CORE)** | **passed — 13 of 13, `execution.complete: true`**, run `20260822-154837` |
+| **`ticket-lifecycle` (CORE)** | **passed — 13 of 13, `execution.complete: true`**, run `20260822-154837`, on this branch BEFORE the rebase onto HIS-11. **RED on the integrated tip — see below.** |
 | TLC | **N/A** per the plan: this ticket states no new invariant; HIS-5 carries the model work |
 
 `complete` is nested under `execution` in `summary.json`, not at the top level —
@@ -355,6 +355,51 @@ hand-run probe. It is the right node, it can see the damage, and it is green.
 
 `run.py --all` was not run; it belongs to HIS-6, which owns the one terminal
 sweep.
+
+### `ticket-lifecycle` is red on the integrated tip, and it is not this ticket's
+
+Rebasing onto `d40c39f` — the epic tip that carries HIS-11's merge (#233) —
+turns `ticket.lifecycle.concurrent.close.out` red and takes 6 of 13 nodes with
+it. `home close-out --json` produces **no JSON** and exits 1 for one of the two
+concurrent tickets, so the gate prints no remedy:
+
+```
+running:  <cli> home close-out --home <…>/proj-TICKET-B/.skill-manager
+          --into <…>/proj/.skill-manager --json
+could not parse the verdict: Expecting value: line 1 column 1 (char 0)
+FAILED    `home close-out` exited 1
+
+node … failed: the gate printed no remedy for one of the tickets;
+exits=4/4  remediesA=[<cli> home sync --from …TICKET-A… --to …proj…]  remediesB=[]
+```
+
+**Attribution, measured rather than argued**, three runs:
+
+| tree | run | result |
+| --- | --- | --- |
+| HIS-14 rebased onto `d40c39f` | `20260822-161645` | FAILED |
+| the same, re-run | — | FAILED — **not a flake** |
+| **`d40c39f` with none of HIS-14's code** | `20260822-162522` | **FAILED, byte-identical signature** |
+
+and HIS-14's diff touches nothing under `test_graph/` and none of
+`HomeCloseOut`, `HomeSync`, `HomeLock` or `Executor`. The pre-rebase run passed
+this node 13/13 **with HIS-14's `home close-out` narrowing already in it**, so
+the READ_ONLY change is present in a passing run of the same node.
+
+Exit 1 with empty stdout can only be an exception escaping
+`HomeCloseOut.inspect` that is neither `NotAHomeException` nor
+`FrozenHomeException`. `inspect` is a dry-run sync into the project home, and a
+dry run takes that home's lock through `HomeLock.acquireWithoutCreating`, which
+throws on a 120s timeout — while HIS-11 put `HomeLock` around the **whole**
+program in `Executor`. That is the scenario HIS-11's own **DEF-041** describes
+in those words. **I did not confirm the thrower**: its message went to stderr
+and the node captures stdout, so this is the shape and not the read. Filed as
+**DEF-043** with that stated.
+
+Unlike DEF-030 — which HIS-12 fixed because it was last in promotion order and
+could not hand a red core graph to anyone — HIS-14 is order 10 with HIS-13,
+HIS-5, HIS-8 and HIS-6 after it, and the fix is in HIS-11's surface. Filed, not
+absorbed.
 
 ## The operator's real agent homes
 
@@ -433,6 +478,8 @@ the agent axis of every other one.
   `home` rows, each of which declares `--init`.
 - **DEF-040** — `exec` now states its home twice, through `--home` and through
   `LaunchEnv`. They agree; they are two derivations.
+- **DEF-043** (new, **blocking**) — `ticket.lifecycle.concurrent.close.out` is
+  red on the integrated tip, from HIS-11's surface, with the attribution above.
 - **DEF-042** (new) — `AgentHomes` could not express "this variable is unset", so
   19 assertions across four suites depend on the developer's shell and go red in
   the environment the product itself creates. `setUnset` is the mechanism and it

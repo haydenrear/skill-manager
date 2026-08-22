@@ -2474,3 +2474,85 @@ findings:
     candidate_owner: HIS-8 (which owns what an agent reads before working here)
       or HIS-13
     status: open
+
+  - id: DEF-043
+    found_by: HIS-14 (#232), re-running ticket-lifecycle after rebasing onto the
+      epic tip that carries HIS-11's merge (#233)
+    found_at: "2026-08-22"
+    severity: blocking
+    summary: >
+      `ticket.lifecycle.concurrent.close.out` is RED on the integrated epic tip,
+      and takes 6 of 13 nodes with it. `home close-out --json` produces NO JSON
+      and exits 1 for one of the two concurrent tickets, so the gate prints no
+      remedy and the node has nothing to run. NOT caused by HIS-14 -- measured
+      on the epic tip with none of HIS-14's code.
+    detail: >
+      MEASURED 2026-08-22, three runs.
+
+        HIS-14 tip (d40c39f + HIS-14), run 20260822-161645   FAILED
+        HIS-14 tip, re-run,             run (g4 retry)       FAILED   (not a flake)
+        EPIC TIP d40c39f, no HIS-14,    run 20260822-162522  FAILED   (same signature)
+
+      Byte-identical signature in all three, always on ticket B:
+
+        running:  <cli> home close-out --home <...>/proj-TICKET-B/.skill-manager
+                  --into <...>/proj/.skill-manager --json
+        could not parse the verdict: Expecting value: line 1 column 1 (char 0)
+        FAILED    `home close-out` exited 1
+
+        node ... failed: the gate printed no remedy for one of the tickets, so
+        there is nothing to run concurrently; exits=4/4
+        remediesA=[<cli> home sync --from ...proj-TICKET-A... --to ...proj...]
+        remediesB=[]
+
+      Exit 1 with EMPTY STDOUT can only come from an exception escaping
+      `HomeCloseOut.inspect` that is neither `NotAHomeException` nor
+      `FrozenHomeException` -- `CloseOutCmd` catches those two and prints JSON
+      for the first, and every other path prints the verdict before returning.
+      A generic exception reaches `handleExecutionException`, which returns 1
+      and writes to stderr, so a `--json` consumer reading stdout gets nothing.
+
+      The likely thrower is the home lock. `HomeCloseOut.inspect` is a DRY-RUN
+      SYNC into the project home (`HomeSync.run(..., Options(true, true))`), and
+      a dry run takes the destination's lock through
+      `HomeLock.acquireWithoutCreating`, which throws
+      `IOException("<op>: <root> is locked by another ... 120000ms")` on
+      timeout. HIS-11 additionally put `HomeLock` around the WHOLE program in
+      `Executor`, so a concurrent pass holds the project home's lock for longer
+      than it used to. This is exactly the scenario HIS-11's own DEF-041
+      describes -- "a slow-but-healthy peer makes the next command REFUSE rather
+      than queue", and "worktree close-out contending with the project home is
+      the EXACT scenario HomeLock was written for". DEF-043 may be the graph
+      finding DEF-041 predicted; whoever owns DEF-041 should read them together.
+      NOT CONFIRMED HERE: the exception's own message went to stderr and the
+      node captures stdout, so the thrower is inferred from the shape rather
+      than read. Confirming it is one line of node-log capture.
+    attribution: >
+      NOT CAUSED BY HIS-14, and measured rather than argued:
+
+        - the same node fails identically on d40c39f with none of HIS-14's
+          commits applied (run 20260822-162522);
+        - HIS-14's diff touches NOTHING under `test_graph/` (`git diff
+          origin/epic..HEAD --stat -- test_graph/` is empty);
+        - HIS-14's diff touches none of `HomeCloseOut`, `HomeSync`, `HomeLock`
+          or `Executor` (same command over those four files: empty);
+        - the pre-rebase run of this graph on HIS-14's own tree passed 13/13
+          (run 20260822-154837), including this node's fifteen assertions --
+          so HIS-14's `home close-out` change (WRITES_HOME -> READ_ONLY) is
+          present in a PASSING run of the same node.
+    why_deferred: >
+      HIS-14 is promotion order 10 with HIS-13, HIS-5, HIS-8 and HIS-6 after it,
+      so unlike DEF-030 -- which HIS-12 fixed because it was LAST and could not
+      hand a red core graph to anyone -- there is somewhere for this to go. The
+      fix is in `Executor`/`HomeLock`/`HomeCloseOut`, which are HIS-11's surface
+      and outside HIS-14's slice by every conflict key. Widening HIS-14 to carry
+      it would put HIS-11's lock design in a diff about `--home`.
+    fix: >
+      Two halves, and the first is worth doing whoever takes it: `CloseOutCmd`
+      should catch `IOException` and emit the same `--json` error shape it
+      already emits for `NotAHomeException`, so a teardown script branching on
+      the verdict gets a typed answer instead of an empty stdout. Then decide
+      the lock question with DEF-041 -- scale the timeout to the work, or queue
+      rather than refuse.
+    candidate_owner: HIS-11's surface — HIS-13, or whoever takes DEF-041
+    status: open
