@@ -61,13 +61,14 @@ import static dev.skillmanager._lib.test.Tests.assertTrue;
  *       commit's own mid-copy self-rollback is not what is under test.</li>
  * </ol>
  *
- * <p>Vacuity checked by hand: with
+ * <p>Vacuity checked, five ways, all recorded verbatim in
+ * {@code results/epic-home-integrity-sync/probes/his-11/vacuity-checks.txt} and
+ * re-runnable with {@code jbang RunHis11.java}. The headline one: with
  * {@code case SkillEffect.CommitUnitsToStore e -> List.of();} put back in
- * {@code preStateCompensations}, case 1 fails with
- * {@code the pre-installed skill survives byte-for-byte: expected [SKILL.md,
- * nested/keepme.txt, skill-manager.toml] got []} — the unit directory is gone
- * entirely. Recorded in
- * {@code results/epic-home-integrity-sync/probes/his-11/}.
+ * {@code preStateCompensations}, the skill case fails with
+ * {@code expected <{SKILL.md=…/19B, nested/keepme.txt=…/29B,
+ * skill-manager.toml=…/72B}> but was <{}>} — 120 pre-existing bytes down to
+ * zero, the unit directory not merely different but gone.
  *
  * <h2>Half two — the home lock on the resolve/install path</h2>
  *
@@ -94,6 +95,8 @@ public final class CommitPreImageRestoreTest {
                     Map<String, String> before = digest(dst);
                     assertTrue(before.size() >= 3,
                             "fixture precondition: the destination is genuinely non-empty");
+                    System.out.println("  pre-existing " + label + ": " + before.size()
+                            + " file(s), " + totalBytes(dst) + " bytes at " + dst);
 
                     ResolvedGraph graph = versionB(kind);
                     // Step 1 fails; step 0 (the commit) has already run and
@@ -280,12 +283,25 @@ public final class CommitPreImageRestoreTest {
                 byte[] h = md.digest(Files.readAllBytes(p));
                 StringBuilder hex = new StringBuilder();
                 for (byte b : h) hex.append(String.format("%02x", b));
-                out.put(root.relativize(p).toString(), hex.toString());
+                // Size alongside the digest so a failure message reports the
+                // goal's metric — pre-existing unit BYTES surviving — rather
+                // than only "these differ".
+                out.put(root.relativize(p).toString(), hex + "/" + Files.size(p) + "B");
             }
         } catch (java.security.NoSuchAlgorithmException impossible) {
             throw new IllegalStateException(impossible);
         }
         return out;
+    }
+
+    /** Total bytes of every regular file under {@code root}. */
+    private static long totalBytes(Path root) throws IOException {
+        if (!Files.isDirectory(root)) return 0L;
+        try (Stream<Path> walk = Files.walk(root)) {
+            long total = 0L;
+            for (Path p : walk.toList()) if (Files.isRegularFile(p)) total += Files.size(p);
+            return total;
+        }
     }
 
     /** Any escrow holding directory left under {@code <home>/cache/}. */

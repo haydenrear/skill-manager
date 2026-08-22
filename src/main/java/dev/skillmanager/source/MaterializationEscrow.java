@@ -176,16 +176,6 @@ public final class MaterializationEscrow {
         return new MaterializationEscrow(storeDir, holding, held);
     }
 
-    /** The paths this escrow actually holds, relative to its store dir. */
-    public Set<String> heldPaths() { return Set.copyOf(held.keySet()); }
-
-    /**
-     * Where the bytes are parked, or {@code null} when nothing was lifted.
-     * Exists so a caller that could not restore can name the directory an
-     * operator would go looking in.
-     */
-    public Path holdingDir() { return holding; }
-
     /**
      * Put every escrowed tree back, replacing whatever now stands at its path.
      *
