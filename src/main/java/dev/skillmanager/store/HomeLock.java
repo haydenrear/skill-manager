@@ -140,7 +140,7 @@ public final class HomeLock implements AutoCloseable {
             throw new IOException("interrupted waiting for the home lock on " + root, interrupted);
         }
         if (!held) {
-            throw new IOException(operation + ": " + root + " is locked by another "
+            throw new HomeContendedException(operation, root, "is locked by another "
                     + "operation in this process and did not free up within "
                     + DEFAULT_TIMEOUT.toMillis() + "ms");
         }
@@ -174,7 +174,7 @@ public final class HomeLock implements AutoCloseable {
             }
         }
         if (!held) {
-            throw new IOException(operation + ": " + root + " is locked by another "
+            throw new HomeContendedException(operation, root, "is locked by another "
                     + "operation in this process and did not free up within " + waitMillis + "ms");
         }
         // The outer acquisition owns the OS lock; a nested one is already
@@ -200,7 +200,7 @@ public final class HomeLock implements AutoCloseable {
                     announced = true;
                 }
                 if (System.currentTimeMillis() >= deadline) {
-                    throw new IOException(operation + ": " + root + " is locked by another "
+                    throw new HomeContendedException(operation, root, "is locked by another "
                             + "skill-manager process (" + lockFile + ") and did not free up within "
                             + waitMillis + "ms");
                 }

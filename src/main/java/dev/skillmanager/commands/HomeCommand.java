@@ -1209,6 +1209,17 @@ public final class HomeCommand {
                 // exit code, not a stack trace — a teardown script branches on
                 // this, and 9 ("refused, nothing attempted") is not 1 ("this
                 // worktree still holds work").
+                //
+                // The `if (json)` line is #235's: this catch sat immediately
+                // below one that DID answer a --json caller and it answered
+                // nothing, so a frozen project home produced exit 9 with an
+                // empty stdout. Nobody decided that; the catch was simply added
+                // later than its sibling. The generic envelope in
+                // JsonExitEnvelope would now cover it, but only with
+                // error="failed" — a caught exception never reaches the
+                // classifier — and this command's consumer reads `safe` and
+                // `blockers`, so it gets the same shape as its sibling.
+                if (json) System.out.println(frozenJson(frozen));
                 Log.error("%s", frozen.getMessage());
                 return FrozenHomeException.EXIT_CODE;
             }
@@ -1356,6 +1367,13 @@ public final class HomeCommand {
                 + "\",\"message\":\"" + esc(error.getMessage())
                 + "\",\"safe\":false,\"clean\":false,\"blockers\":[],\"units\":[],\"exitCode\":"
                 + NotAHomeException.EXIT_CODE + "}";
+    }
+
+    private static String frozenJson(FrozenHomeException frozen) {
+        return "{\"error\":\"home_frozen\",\"path\":\"" + esc(String.valueOf(frozen.homeRoot()))
+                + "\",\"message\":\"" + esc(frozen.getMessage())
+                + "\",\"safe\":false,\"clean\":false,\"blockers\":[],\"units\":[],\"exitCode\":"
+                + FrozenHomeException.EXIT_CODE + "}";
     }
 
     private static String strings(List<String> values) {

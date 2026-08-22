@@ -1,0 +1,56 @@
+PROBE 1 — the actual root cause of #235, measured on epic tip 854f2ea
+
+Setup: a healthy worktree home and project home, no blockers at all. A peer
+holds the project home's lock file for 8s. One close-out --json runs against it.
+
+$ skill-manager home close-out --home <wt> --into <proj> --json
+exit=0        <-- THE COMMAND SUCCEEDED
+
+stdout:
+  home sync --dry-run: waiting for /private/tmp/claude-501/-Users-hayde-IdeaProjects-skill-manager/dcb6a969-c6fd-484c-873c-6d6175b7d220/scratchpad/his15/proj-home — another skill-manager process holds this home's lock
+  {"home":"/private/tmp/claude-501/-Users-hayde-IdeaProjects-skill-manager/dcb6a969-c6fd-484c-873c-6d6175b7d220/scratchpad/his15/wt-home","into":"/private/tmp/claude-501/-Users-hayde-IdeaProjects-skill-manager/dcb6a969-c6fd-484c-873c-6d6175b7d220/scratchpad/his15/proj-home","safe":true,"exitCode":0,"blockers":[],"units":[]}
+
+python json.load(stdout):
+  json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+  ^ byte-identical to the message the red graph node reports
+
+
+PROBE 2 — close-out's OWN failure paths already honour the contract
+
+  $ skill-manager home close-out --home <nonexistent> --into <proj> --json
+  exit=2
+  stdout: {"error":"not_a_home","path":"...","message":"...","safe":false,
+           "clean":false,"blockers":[],"units":[],"exitCode":2}
+  stderr: the same sentence, human-rendered
+
+  Same for a bad --into. So slice item 1 as the issue words it -- "--json
+  always emits JSON, including on every failure path" -- is ALREADY TRUE for
+  the failure paths close-out knows about. That is not where the hole is.
+
+
+PROBE 3 — an exception escaping the command emits NOTHING on stdout
+
+  A unit directory made unreadable under the worktree home, so HomeSync
+  throws AccessDeniedException out of the command:
+
+  $ skill-manager home close-out --home <wt> --into <proj> --json
+  exit=1
+  stdout: (empty)
+  stderr: ✗ <path>
+            (re-run with --verbose for the stack trace)
+
+  THIS is the defect the issue describes, and it is real. It is simply not
+  the one that reddened the graph.
+
+
+WHAT THE THREE ADD UP TO
+
+  The contract that is broken is not "emit JSON when you fail". It is:
+
+    under --json, stdout carries EXACTLY ONE JSON document and nothing else,
+    on every exit path.
+
+  Probe 1 breaks it by writing something EXTRA to stdout (exit 0, no failure
+  at all). Probe 3 breaks it by writing NOTHING. Probe 2 is the shape both
+  should have. A fix aimed only at failure paths closes probe 3 and leaves
+  probe 1 -- the one the graph is red on -- exactly as it is.
