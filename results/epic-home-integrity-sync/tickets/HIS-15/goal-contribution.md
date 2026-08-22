@@ -187,10 +187,13 @@ described.
 > My first pass over the node envelope asked each assertion for a `passed`
 > field. The schema names it `status`, so every assertion came back `None` and
 > printed as FAIL — a node reporting `status: passed` with fifteen failed
-> assertions under it. That shape is impossible, which is what prompted a second
-> look rather than a report. The lesson is the epic's own: read the artifact's
-> schema, do not assume its field names, and treat a self-contradictory
-> measurement as a bug in the measurement until proven otherwise.
+> assertions under it. **That shape is impossible, which is what stopped me.**
+> The lesson is the epic's own: read the artifact's schema, do not assume its
+> field names, and treat a self-contradictory measurement as a bug in the
+> measurement until proven otherwise.
+>
+> Three tickets in this epic have now been bitten by a measurement rather than
+> by the thing measured, and nobody had written this down.
 
 | # | mutation | what reddened |
 | --- | --- | --- |
@@ -198,6 +201,41 @@ described.
 | V2 | the `JsonExitEnvelope` net removed | 8+ commands nobody edited — the argument for a net |
 | V3 | the parse-error branch removed | exactly the four `project` entries |
 | V4 | `close-out`'s frozen `if (json)` reverted | the typed-payload case, showing the generic `"failed"` fallback |
+| V5 | HIS-14's exit 13 routed around `completeExecution` again | the exit-13 case, `got []` |
+
+---
+
+## 4b. Rebasing onto HIS-14, and the case that justifies the whole design
+
+HIS-14 (#232) and this ticket both insert into `SkillManagerCli`'s execution
+strategy and both read the parsed command, so the merge was taken deliberately.
+
+**Ordering, verified rather than assumed.** `Log.setJsonMode` latches at the top
+of the strategy, ahead of `bindNamedHome`. HIS-14's unbindable refusal prints
+through `Log.error`, which is stderr in every mode, so it cannot contaminate the
+document — but only because the latch is already set by the time it runs.
+
+**The gap it exposed.** `bindNamedHome`'s refusal returned
+`UNBINDABLE_HOME_EXIT_CODE` straight out of the strategy — the one exit path in
+this CLI that went **around** `completeExecution`, and therefore around the
+`--json` envelope, the outstanding-error report, the observability close and the
+log naming. Under `--json` it exited 13 with an empty stdout: **#235's exact
+shape, on a path that did not exist when #235 was filed.** It now returns
+through `completeExecution`.
+
+> **This is the argument for a convention check over an enumerated list, and it
+> is not hypothetical.** The check landed; the next ticket in the same wave grew
+> a new failure path; the check caught it. A list of known-bad sites could not
+> have, because nobody had written the path yet. **V5.**
+
+**The contended fixture, checked rather than assumed.** HIS-14 gated
+`tryReconcile` on `WRITES_HOME`, and `home close-out` is `READ_ONLY`, so the
+reconcile no longer runs ahead of it. A fixture that had been measuring *that*
+contention would now measure nothing and **go green for the wrong reason** —
+the trap this whole ticket is about. It was not measuring that: the wait is
+`HomeSync`'s dry-run into the named project home, which is the command's own
+path and the one #235 travelled. The fixture now **asserts the operation label**
+so it cannot silently start measuring something else.
 
 ---
 
@@ -214,7 +252,15 @@ described.
   out of scope.
 - **A contract for the three silent success paths** — **DEF-044**, with their
   current behaviour pinned rather than deferred.
-- **Making the `project` family testable** — **DEF-046**.
+- **Making the `project` family testable** — **DEF-046**, whose body now carries
+  the general lesson rather than an apology: *an in-process driver cannot
+  sandbox a command that resolves from the working directory.* A JVM cannot
+  change its own CWD, so every override this repository has covers the HOME axis
+  and none covers the CWD axis. A test that pins the first and believes it is
+  sandboxed is wrong in exactly one direction, silently. That is why the
+  driver's sandbox is **asserted** and not merely established — it is the only
+  thing that distinguishes "sandboxed" from "sandboxed on the axis I thought
+  of".
 
 Three deferrals against a budget of five.
 

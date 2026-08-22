@@ -75,6 +75,21 @@ epic owner said to expect and what actually happened.
   close-change.sh reads. Without this case the arm would look redundant to the
   next person and be deleted.
 
+=== V5  HIS-14's exit-13 refusal routed AROUND completeExecution again
+  [FAIL] exit 13 — HIS-14's unbindable-home refusal — emits a document too: a --json run that exits 13 says why, in JSON — got []: expected <1> but was <0>
+  FAILURES: 1
+
+  Added after rebasing onto HIS-14 (#232). Its unbindable-home refusal returns
+  UNBINDABLE_HOME_EXIT_CODE straight out of the execution strategy, which is the
+  one exit path in this CLI that goes AROUND completeExecution -- and therefore
+  around the --json envelope. Under --json it exited 13 with an empty stdout:
+  #235's exact shape on a path that DID NOT EXIST when #235 was filed.
+
+  This is the argument for a convention check rather than an enumerated list of
+  known-bad sites, and it is not hypothetical: the check landed, the next ticket
+  in the same wave grew a new failure path, and the check caught it. A list
+  could not have, because nobody had written the path yet.
+
 === NOT A VACUITY CHECK
 `every_json_command_is_covered` has no V-number. It is a coverage gate, not a
 claim about behaviour: it fails when a --json command has no entry in the

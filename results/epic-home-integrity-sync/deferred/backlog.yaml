@@ -2648,6 +2648,33 @@ findings:
       worktree home's `.materialization`, from a test that believed it was
       sandboxed. The root and project homes were not touched, and the guard's
       sandbox assertion now covers the home; it cannot cover the CWD.
+    the_general_lesson: >
+      Bigger than the four commands, and the reason JsonContractTest's driver
+      ASSERTS its sandbox instead of establishing one and trusting it:
+
+        AN IN-PROCESS DRIVER CANNOT SANDBOX A COMMAND THAT RESOLVES FROM THE
+        WORKING DIRECTORY.
+
+      A JVM cannot change its own working directory, so every override
+      mechanism this repository has -- AgentHomes' thread-locals, the
+      HomeScaffold access latch, SKILL_MANAGER_HOME -- covers the HOME axis and
+      none of them covers the CWD axis. A test that pins the first and believes
+      it is sandboxed is wrong in exactly one direction, silently, and the
+      command it drives writes real state. That is what happened here: the
+      driver pinned five variables, asserted the default home resolved inside
+      the temp dir, and `project resolve` still acted on this repository,
+      because it never asked the home where the project was.
+
+      So the assertion is not an apology for a near-miss. It is the only thing
+      that can distinguish "sandboxed" from "sandboxed on the axis I thought
+      of", and any future in-process driver in this repository needs the same
+      check plus an explicit decision about the working directory.
+    containment_verified: >
+      Root home and project home untouched: no writes under ~/.skill-manager in
+      the window, main checkout clean, its .skill-manager/.materialization last
+      written 2026-08-14. Confirmed independently by the epic agent before the
+      finding was relayed. The one write was the worktree's own home, which the
+      ticket is entitled to.
     consequence: >
       Those four commands are guarded only on their parse-error path, which
       executes nothing. Their real execution paths have no --json coverage, and
