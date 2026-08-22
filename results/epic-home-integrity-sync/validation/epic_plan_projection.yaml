@@ -1,5 +1,5 @@
 version: 1
-schedule_revision: 6
+schedule_revision: 7
 name: child-home-materialization-workflow
 epic:
   slug: home-integrity-sync
@@ -675,7 +675,7 @@ tickets:
   status: planned
   epic: home-integrity-sync
   github_issue: 217
-  wave: 9
+  wave: 11
   depends_on:
   - HIS-1
   - HIS-2
@@ -689,9 +689,11 @@ tickets:
   - HIS-13
   - HIS-14
   - HIS-15
+  - HIS-16
+  - HIS-17
   blocks:
   - HIS-6
-  promotion_order: 14
+  promotion_order: 16
   promotion_predecessor: HIS-8
   conflict_keys:
     production: []
@@ -726,7 +728,7 @@ tickets:
   role: evaluation
   epic: home-integrity-sync
   github_issue: 218
-  wave: 10
+  wave: 12
   depends_on:
   - HIS-1
   - HIS-2
@@ -742,8 +744,10 @@ tickets:
   - HIS-13
   - HIS-14
   - HIS-15
+  - HIS-16
+  - HIS-17
   blocks: []
-  promotion_order: 15
+  promotion_order: 17
   promotion_predecessor: HIS-5
   owns_goals:
   - GOAL-no-spurious-holdback
@@ -960,7 +964,7 @@ tickets:
   epic: home-integrity-sync
   github_issue: 224
   added_in_schedule_revision: 3
-  wave: 8
+  wave: 10
   depends_on:
   - HIS-7
   - HIS-9
@@ -970,9 +974,11 @@ tickets:
   - HIS-13
   - HIS-14
   - HIS-15
+  - HIS-16
+  - HIS-17
   blocks:
   - HIS-6
-  promotion_order: 13
+  promotion_order: 15
   promotion_predecessor: HIS-13
   rescheduled_in_revision_4: 'Moved from wave 3 to wave 6. HIS-8 documents the contract; revision 4 added
     five tickets that CHANGE the contract (what a clone records, what a remedy names, what a walk-back
@@ -1079,6 +1085,7 @@ tickets:
   - HIS-11
   - HIS-13
   - HIS-14
+  - HIS-16
   - HIS-5
   - HIS-6
   - HIS-8
@@ -1202,6 +1209,7 @@ tickets:
   - HIS-7
   blocks:
   - HIS-13
+  - HIS-17
   - HIS-4
   - HIS-5
   - HIS-6
@@ -1288,7 +1296,8 @@ tickets:
   title: compensation for CommitUnitsToStore is delete-only, so a failed install destroys the bytes it
     overwrote
   phase: HIS
-  status: planned
+  status: delivered
+  delivered_in: 'PR #233, merged into epic/home-integrity-sync as d40c39f'
   epic: home-integrity-sync
   github_issue: 186
   added_in_schedule_revision: 4
@@ -1393,6 +1402,7 @@ tickets:
   - HIS-7
   blocks:
   - HIS-14
+  - HIS-17
   - HIS-5
   - HIS-6
   - HIS-8
@@ -1457,18 +1467,20 @@ tickets:
   epic: home-integrity-sync
   github_issue: 159
   added_in_schedule_revision: 4
-  wave: 7
+  wave: 9
   depends_on:
   - HIS-9
   - HIS-10
   - HIS-14
   - HIS-15
+  - HIS-16
+  - HIS-17
   blocks:
   - HIS-5
   - HIS-6
   - HIS-8
-  promotion_order: 12
-  promotion_predecessor: HIS-15
+  promotion_order: 14
+  promotion_predecessor: HIS-17
   rescheduled_in_revision_5: 'Moved behind HIS-14. DEF-029''s damage was to the operator''s real AGENT
     directories rather than to a store, which makes it HIS-13''s sharpest test case -- and a detector
     written before HIS-14 lands would be written against the two-axis bug rather than against the fixed
@@ -1525,7 +1537,8 @@ tickets:
 - id: HIS-14
   title: '`--home` binds one of a home''s two axes, so a remedy edits the operator''s real agent directories'
   phase: HIS
-  status: planned
+  status: delivered
+  delivered_in: 'PR #234, merged into epic/home-integrity-sync as c44a2a0'
   epic: home-integrity-sync
   github_issue: 232
   added_in_schedule_revision: 5
@@ -1536,6 +1549,7 @@ tickets:
   blocks:
   - HIS-13
   - HIS-15
+  - HIS-17
   - HIS-5
   - HIS-6
   - HIS-8
@@ -1614,7 +1628,8 @@ tickets:
 - id: HIS-15
   title: '`home close-out --json` emits no JSON when it fails, so the `wt close` gate loses every verdict'
   phase: HIS
-  status: planned
+  status: delivered
+  delivered_in: 'PR #236, merged into epic/home-integrity-sync as 7437c72'
   epic: home-integrity-sync
   github_issue: 235
   added_in_schedule_revision: 6
@@ -1624,6 +1639,7 @@ tickets:
   - HIS-14
   blocks:
   - HIS-13
+  - HIS-16
   - HIS-5
   - HIS-6
   - HIS-8
@@ -1722,6 +1738,180 @@ tickets:
     contribution: guard
     expected_effect: the gate stops recommending --force, which discards work it just refused to destroy
     local_signal: jbang RunTests.java
+- id: HIS-16
+  title: a command that resolves its target from the working directory escapes every sandbox this repo
+    has
+  phase: HIS
+  status: planned
+  epic: home-integrity-sync
+  github_issue: 237
+  added_in_schedule_revision: 7
+  wave: 7
+  depends_on:
+  - HIS-9
+  - HIS-15
+  blocks:
+  - HIS-13
+  - HIS-5
+  - HIS-6
+  - HIS-8
+  promotion_order: 12
+  promotion_predecessor: HIS-15
+  conflict_keys:
+    production:
+    - ProjectCommand
+    - ProjectRoot.resolve
+    - AgentHomes.binding
+    tla: []
+    adapters: []
+    test_graph:
+    - common/HomeMembershipLaw
+    workflow_data: []
+  found_by: 'DEF-046 (HIS-15, the visible half) and DEF-047 (the wave-5 close-out gate, the rest of it).
+
+    '
+  root_cause: "EVERY HOME OVERRIDE IN THIS REPOSITORY PINS THE HOME AXIS. NONE PINS CWD.\nSKILL_MANAGER_HOME,\
+    \ CLAUDE_CONFIG_DIR, CODEX_HOME and GEMINI_HOME cover where units and agent configs live. The `project`\
+    \ family resolves its target from the WORKING DIRECTORY, which a JVM cannot change. So a test, a driver\
+    \ or an agent that pins all four and believes it is sandboxed is wrong in exactly one direction, silently.\n\
+    MEASURED. HIS-15 drove the project family in-process from its worktree; `project resolve --json` returned\
+    \ a real report for THIS repository and wrote the worktree home's .materialization. The close-out\
+    \ gate later found the rest:\n\n  worktree home BEFORE: deploy-helm, spec-double-compiler, test-graph,\n\
+    \                        tracing-observability\n  worktree home AFTER:  skill-manager, spec-double-compiler,\
+    \ test-graph,\n                        tracing-observability\n\ndeploy-helm GONE, skill-manager and\
+    \ skt INSTALLED at 13:06:18 -- this repository's project manifest realized into a home never meant\
+    \ to hold it. Confined to one worktree home, verified rather than assumed.\n"
+  why_three_instruments_missed_it: 'The ticket''s probes, its adversarial reviewer and the epic agent''s
+    containment check all asked "did it write where it should not?". The close-out gate asks "does this
+    home hold something the tier above does not?" -- and that is the only question that sees a unit QUIETLY
+    GOING AWAY. The epic''s recurring shape, now in the instruments rather than the product: a probe narrower
+    than the condition it is trusted to decide.
+
+    '
+  slice: '(1) A command whose target comes from CWD says so, or takes it from an override: either the
+    project verbs accept an explicit project root, or they refuse when the CWD-derived target is not the
+    home SKILL_MANAGER_HOME names. (2) A sandbox is ASSERTABLE -- one call answering "is this process
+    confined?", covering CWD, rather than four variables set by hand and hoped over. NOT IN SCOPE: write
+    confinement at the effect boundary (HIS-9, merged -- it guards PATHS, and this defect writes legitimate
+    paths in the wrong home), and repair of homes already re-realized (HIS-13).
+
+    '
+  where_the_assertions_go: 'A MEMBERSHIP LAW, ALONGSIDE HomeFixpointLaw, and this is the part that generalises.
+
+    HomeFixpointLaw is this project''s best instrument -- one post-condition, wired into 24 of 30 graphs,
+    asking "does every home this graph produced still verify?". IT WOULD NOT HAVE CAUGHT THIS, because
+    a re-realized home verifies fine: it is internally consistent and merely wrong about what it holds.
+
+    So add the second law with the gate''s question: for every home a graph produced or touched, its UNIT
+    MEMBERSHIP is what the graph intended -- no home gains a unit nobody installed, none loses one nobody
+    removed. Snapshot each discovered home''s unit set at first sight, re-read at the end, fail on an
+    unexplained delta. Structural discovery like HomeFixpointLaw''s so it cannot go stale as a list, and
+    a run that finds zero homes FAILS.
+
+    Plus a direct node: run a project verb from a worktree whose CWD is another repository, assert the
+    other home''s unit set is unchanged, and vacuity-check by removing the confinement.
+
+    '
+  acceptance:
+    assertions:
+    - A project verb run with SKILL_MANAGER_HOME naming home X, from a CWD inside project Y, modifies
+      neither X's nor Y's home — or refuses and names the conflict.
+    - The membership law fails when a home gains or loses a unit the graph did not ask for — vacuity-checked
+      against this exact escape.
+    - The law is wired into every graph that produces a home, discovered structurally, and a run finding
+      zero homes fails.
+    - A driver can ask "am I confined?" in one call, and that call covers the CWD axis.
+  goals:
+  - goal: GOAL-no-destructive-recovery
+    contribution: direct
+    expected_effect: a unit vanishing from a home nobody named is bytes destroyed by an operation that
+      reported success
+    local_signal: python skills/test_graph/scripts/run.py project-child-home
+  - goal: GOAL-one-home-one-answer
+    contribution: direct
+    expected_effect: SKILL_MANAGER_HOME and the working directory stop being two answers to which project
+      this command is about
+    local_signal: jbang RunTests.java
+- id: HIS-17
+  title: four graphs each keep their own copy of "nothing in a clone names its source", and HIS-10 moved
+    the rule
+  phase: HIS
+  status: planned
+  epic: home-integrity-sync
+  github_issue: 238
+  added_in_schedule_revision: 7
+  wave: 8
+  depends_on:
+  - HIS-10
+  - HIS-12
+  - HIS-14
+  blocks:
+  - HIS-13
+  - HIS-5
+  - HIS-6
+  - HIS-8
+  promotion_order: 13
+  promotion_predecessor: HIS-16
+  conflict_keys:
+    production: []
+    tla: []
+    adapters: []
+    test_graph:
+    - home-clone/HomeClonedIntoProject
+    - home-clone/HomeCloneSupport
+    - artifact-dag/LazyCloneDeclaresWithoutBuilding
+    workflow_data: []
+  found_by: 'The wave-5 epic-relevant graph sweep -- the first time several of these graphs had been run
+    in this epic AT ALL. home-clone in particular had never been run, despite HomeCloner being the single
+    most-changed file.
+
+    '
+  root_cause: "MEASURED on epic tip 640080c:\n\n  home-clone     home.cloned.into.project\n          \
+    \       X independent_scan_finds_no_owned_surface_naming_the_source\n                   leakCount:\
+    \ 1\n  checkout-home  home.cloned.into.project   X same node, same assertion\n  artifact-dag   lazy.clone.declares.without.building\n\
+    \                 X home_verify_names_the_build_that_completes_the_clone\n\nThe leak is home.provenance.json,\
+    \ which HIS-10 added BY DESIGN so a clone's descent is a fact in the copy rather than a flag an operator\
+    \ types. Production exempts exactly that file, gated on byte accounting.\nTHIS IS THE THIRD AND FOURTH\
+    \ INSTANCE OF ONE DEFECT. TicketLifecycleSupport.filesNaming encoded the same rule, went red the day\
+    \ HIS-10 merged, took 11 skipped nodes with it, and was fixed in a4a95cb -- and NOBODY CHECKED WHETHER\
+    \ OTHER GRAPHS KEPT THEIR OWN COPY. They did: HomeCloneSupport.referencesTo, reached by two graphs,\
+    \ plus artifact-dag's verify-text expectation broken by HIS-12/HIS-14's remedy and caveat changes.\n\
+    Four bespoke spellings of a rule HomeCloner.verifyRoots already owns. The epic's signature defect\
+    \ living inside its own instruments, and patching each scan as it reddens is how a fifth gets written.\n"
+  slice: '(1) Fix the three red assertions -- the sanctioned descent record is not a leak. (2) AND make
+    each one cross-check production, the way a4a95cb did for ticket-lifecycle: alongside the bespoke scan,
+    require production''s own verdict. The scan stays as an independent reading; the cross-check is what
+    fails ON THE DAY the contract moves instead of a wave later. (3) SWEEP FOR THE FIFTH. Find every remaining
+    private implementation of "does anything here name another home" across test_graph/sources/ and either
+    delete it in favour of production''s answer or give it the same cross-check. Report the list even
+    where nothing changes. NOT IN SCOPE: production''s isolation rule or the exemption. Both are HIS-10''s
+    and both are correct.
+
+    '
+  also_in_this_sweep: 'onboard -> onboard.skills.installed ERRORED, timing out at 10s, TWICE. No assertion
+    failed; the budget expired. Same shape already fixed once this epic in ServersDown (a 5s budget for
+    a JVM shutdown). Either the budget is wrong for a real install or something in this epic made the
+    path slower -- HomeLock contention is the obvious suspect and is NOT CONFIRMED. Fold in only if it
+    is the same cause; otherwise file it.
+
+    '
+  acceptance:
+    assertions:
+    - The three assertions pass, and each FAILS when the exemption is removed from production — proving
+      they still test the rule rather than having been widened into uselessness.
+    - Every touched node also asserts production's verdict, and that assertion fails when production's
+      isolation check is disabled — vacuity-checked, in writing.
+    - The sweep's list of private implementations is in the goal contribution, with a disposition for
+      each.
+    - onboard.skills.installed is green, or its cause is filed with a measurement.
+  goals:
+  - goal: GOAL-one-home-one-answer
+    contribution: direct
+    expected_effect: 'four readings of one rule, three of them in tests, become one reading plus three
+      cross-checks against it
+
+      '
+    local_signal: python skills/test_graph/scripts/run.py home-clone
 _note: 'GENERATED PROJECTION -- do not hand-edit, and REGENERATE IT AFTER EVERY SCHEDULE CHANGE with .github/scripts/regen-epic-projection.py.
   Extracted from specs/desired_program_model/ticket_plan.yaml, which is canonical. It carries the epic
   blocks and only the HIS-* tickets, because validate_epic_plan.py requires full epic scheduling fields

@@ -2195,6 +2195,7 @@ findings:
       (help text, the typed-exit-code table, an agent-parseable banner), and it
       needs the measurement DEF-034 asks for before the number can be argued.
       Out of "take the home lock for the resolve/install path".
+    status: open
     candidate_owner: HIS-6, or whoever owns HomeLock after this epic
 
   - id: DEF-036
