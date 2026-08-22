@@ -196,6 +196,13 @@ public final class CommandHomeAccess {
         m.put("project profiles list", READ);
         m.put("registry", READ);
         m.put("registry status", READ);
+        // `sandbox status` reads the ENVIRONMENT, never the store: it answers
+        // "is this process confined?" from the five home variables and the
+        // working directory. Classified READ rather than given a fourth
+        // level, because READ here means "does not scaffold", which is the
+        // property this table decides.
+        m.put("sandbox", READ);
+        m.put("sandbox status", READ);
         m.put("search", READ);
         m.put("show", READ);
         m.put("unit", READ);                // parent; `unit publish` writes

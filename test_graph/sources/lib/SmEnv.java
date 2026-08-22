@@ -89,6 +89,19 @@ final class SmEnv {
     static final String CLAUDE_CONFIG_DIR = "CLAUDE_CONFIG_DIR";
     static final String CODEX_HOME = "CODEX_HOME";
     static final String GEMINI_HOME = "GEMINI_HOME";
+    /**
+     * The variable a process sets to declare "everything I touch lives under
+     * this directory" (#237). Not one of the four agent roots and not the
+     * store: it is the axis check that spans all of them PLUS the working
+     * directory, which is the one a JVM cannot pin and the one DEF-046 escaped
+     * through.
+     *
+     * <p>It lives here for the reason everything else does — the recipe is
+     * written down once. A node that spelled it itself would be the fifth copy
+     * this class exists to prevent.
+     */
+    static final String CONFINE_ROOT = "SKILL_MANAGER_CONFINE_ROOT";
+
     static final String POSIX_HOME = "HOME";
     static final String JAVA_TOOL_OPTIONS = "JAVA_TOOL_OPTIONS";
 
@@ -281,5 +294,37 @@ final class SmEnv {
     /** {@link #alsoRedirectPosixHome(ProcessBuilder, String)} for a path root. */
     static ProcessBuilder alsoRedirectPosixHome(ProcessBuilder pb, Path sandboxRoot) {
         return alsoRedirectPosixHome(pb, sandboxRoot.toString());
+    }
+
+    /**
+     * Declare this child process CONFINED to {@code root}: every axis that
+     * decides where it writes — the store, the three agent roots, and the
+     * WORKING DIRECTORY — must resolve inside it, or the command refuses.
+     *
+     * <p>Opt-in, and deliberately not part of {@link #apply}'s recipe. A
+     * confined {@code project} verb refuses a target taken from a working
+     * directory outside the root, and most graph nodes legitimately drive
+     * fixtures from wherever the graph put them. Ask for it when the node's
+     * claim is about confinement itself.
+     *
+     * @see #unconfine
+     */
+    static ProcessBuilder confineTo(ProcessBuilder pb, Path root) {
+        pb.environment().put(CONFINE_ROOT, root.toString());
+        return pb;
+    }
+
+    /**
+     * The CONTROL for {@link #confineTo}: the identical child with the
+     * confinement removed, including any the parent process inherited.
+     *
+     * <p>Its own method rather than "just don't call confineTo", because a
+     * vacuity check whose control silently inherits the very variable it means
+     * to remove is a green run that proves nothing — mechanism C in this
+     * epic's vacuity ledger.
+     */
+    static ProcessBuilder unconfine(ProcessBuilder pb) {
+        pb.environment().remove(CONFINE_ROOT);
+        return pb;
     }
 }

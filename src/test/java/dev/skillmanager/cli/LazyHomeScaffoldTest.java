@@ -401,6 +401,8 @@ public final class LazyHomeScaffoldTest {
         m.put("project profiles list", new String[]{"project", "profiles", "list"});
         m.put("registry", new String[]{"registry"});
         m.put("registry status", new String[]{"registry", "status"});
+        m.put("sandbox", new String[]{"sandbox"});
+        m.put("sandbox status", new String[]{"sandbox", "status"});
         m.put("search", new String[]{"search", "no-such-unit"});
         m.put("show", new String[]{"show", "no-such-unit"});
         m.put("unit", new String[]{"unit"});

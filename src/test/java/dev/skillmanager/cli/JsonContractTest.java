@@ -2,6 +2,7 @@ package dev.skillmanager.cli;
 
 import dev.skillmanager._lib.test.Tests;
 import dev.skillmanager.agent.AgentHomes;
+import dev.skillmanager.sandbox.Confinement;
 import dev.skillmanager.store.HomeLock;
 import dev.skillmanager.store.SkillStore;
 import dev.skillmanager.util.Log;
@@ -94,13 +95,6 @@ public final class JsonContractTest {
      * home pinned through {@link AgentHomes}.
      */
     private static final Map<String, Expect> TABLE = new LinkedHashMap<>();
-
-    /**
-     * An option no command declares, so the parse fails before anything runs.
-     * The only invocation that is safe for a command whose working directory
-     * this test cannot pin.
-     */
-    private static final String GUARD_BAD_OPTION = "--sm-json-guard-not-an-option";
 
     private static void expect(String path, Mode mode, String why, String... args) {
         TABLE.put(path, new Expect(mode, List.of(args), why));
@@ -432,10 +426,29 @@ public final class JsonContractTest {
             Files.createDirectories(o.getValue());
             AgentHomes.setOverride(o.getKey(), o.getValue());
         }
+        // DECLARE the confinement, don't just pin variables. This is the axis
+        // the five overrides above cannot cover, and DEF-046 is what happens
+        // without it: `project resolve` walked up from THIS repository and
+        // re-realized a worktree home while the driver's own sandbox assertion
+        // said everything was fine.
+        AgentHomes.setOverride(Confinement.ROOT_ENV, sandbox);
         try {
             Path resolved = SkillStore.defaultStore().root().toAbsolutePath().normalize();
             assertTrue(resolved.startsWith(sandbox.toAbsolutePath().normalize()),
                     "SANDBOX: the default home must resolve inside the temp dir, got " + resolved);
+
+            // ONE CALL, and it covers CWD. The assertion is not `confined()`:
+            // a JVM cannot change its own working directory, so this driver can
+            // NEVER be fully confined and asserting it would be asserting a
+            // falsehood. What it asserts is the honest statement — every axis I
+            // can pin IS pinned, and the only escape is the one I cannot pin.
+            // A regression that unpinned CODEX_HOME would show up here as a
+            // second escaped axis, which a boolean would have hidden.
+            Confinement confinement = Confinement.current();
+            assertTrue(confinement.declared(), "SANDBOX: a confinement is declared");
+            assertEquals(List.of(Confinement.CWD), confinement.escapedAxes(),
+                    "SANDBOX: the working directory is the ONLY axis outside the sandbox\n"
+                            + confinement.describe());
 
             List<String> full = new ArrayList<>(argv);
             full.add("--json");
@@ -555,24 +568,30 @@ public final class JsonContractTest {
                 "/nonexistent/sm-guard/unit");
         // The `project` family resolves its project by walking UP FROM THE
         // WORKING DIRECTORY, and a JVM cannot change its own working
-        // directory. Run in this repository they therefore find THIS project
-        // and act on it — measured: `project resolve --json` returned a real
-        // report for skill-manager itself and wrote the worktree home's
-        // .materialization. So they are driven on a deliberate parse error,
-        // which provably executes nothing, and which asserts the contract on
-        // the path that had no document at all until this ticket.
+        // directory. Run in this repository they used to find THIS project and
+        // ACT on it — measured as DEF-046/DEF-047: `project resolve --json`
+        // returned a real report for skill-manager itself, and re-realized the
+        // worktree home, removing one unit and installing two. So these four
+        // were driven on a deliberate parse error, which executes nothing.
+        //
+        // They are now driven on their REAL execution path. What changed is
+        // production: this driver declares a Confinement over its temp
+        // directory (see invokeIn), the working directory is outside it, and
+        // ProjectRoot refuses rather than acting — exit 14, one JSON document,
+        // and nothing written. The parse-error stand-in asserted the contract
+        // on a path that reaches no code; this asserts it on the path that
+        // caused the incident.
         expect("skill-manager project register", Mode.FAILS,
-                "a parse error, because its working directory cannot be sandboxed",
-                GUARD_BAD_OPTION);
+                "a confined process refuses a project root taken from a CWD outside it");
         expect("skill-manager project remove", Mode.FAILS,
-                "a parse error, because its working directory cannot be sandboxed",
-                GUARD_BAD_OPTION);
+                "a confined process refuses a project root taken from a CWD outside it",
+                "no-such-project");
         expect("skill-manager project resolve", Mode.FAILS,
-                "a parse error, because its working directory cannot be sandboxed",
-                GUARD_BAD_OPTION);
+                "a confined process refuses a project root taken from a CWD outside it",
+                "--skip-gateway");
         expect("skill-manager project sync", Mode.FAILS,
-                "a parse error, because its working directory cannot be sandboxed",
-                GUARD_BAD_OPTION);
+                "a confined process refuses a project root taken from a CWD outside it",
+                "--skip-gateway");
         expect("skill-manager unit publish", Mode.FAILS, "no such unit is installed",
                 "no-such-unit");
 
@@ -590,5 +609,10 @@ public final class JsonContractTest {
         expect("skill-manager home refresh-plugins", Mode.SUCCEEDS,
                 "nothing installed, so nothing to refresh");
         expect("skill-manager env sync", Mode.FAILS, "no project env is declared here");
+        // Exit 14, not 0: this driver's working directory is outside the
+        // confinement it declares — a JVM cannot change its own — so the honest
+        // answer to "am I confined?" is no, and the document says which axis.
+        expect("skill-manager sandbox status", Mode.FAILS,
+                "declared, but the cwd axis escapes — see Confinement's class comment");
     }
 }
