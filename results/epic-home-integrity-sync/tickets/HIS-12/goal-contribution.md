@@ -309,7 +309,7 @@ HIS-6 owns the terminal measurement; this contributes the remedy reader.
 | `uv run pytest specs/` | **38 passed** |
 | **`home-sync` (CORE)** | **passed — 18 of 18 nodes, complete**, on the integrated tip |
 | `home-integrity` (assigned) | **passed — 14 of 14 nodes, complete** |
-| **`ticket-lifecycle` (CORE)** | passed 13/13 pre-merge; **red on the integrated tip until DEF-030 was fixed** — see below |
+| **`ticket-lifecycle` (CORE)** | **passed — 13 of 13 nodes, complete**, on the integrated tip (red until DEF-030 was fixed — see below) |
 
 **`home-sync` is H1, and it is the graph I owed and had not run.** With the
 `env` prefix it was red: `remedyArgs` strips token 0 only when it
