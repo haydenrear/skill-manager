@@ -134,14 +134,24 @@ rediscovered:
    leaves a partial tree at the destination that no `SkillCommitted` fact
    accounts for and that `DeleteUnitDir` therefore never removes.
 
-### One small hardening to the shared class
+### Three changes to the shared class, stated as changes
 
-`liftPaths` now **skips a named path that is not there** rather than throwing
-into the best-effort catch. HIS-4's caller could not hit it (`DereferencedStoreLinks`
-only ever returns paths that exist), mine can, and the difference matters: "there
-was nothing to protect" and "the protection broke" should not produce the same
-warning. It also now cleans up its own holding directory when nothing ended up
-lifted, so the empty-directory version of the residue cannot happen either.
+Listed because §2's first draft called them "no behaviour change", which was not
+true and the review of #233 caught it. HIS-4's two call sites see all three.
+
+1. **A named path that is not there is skipped** rather than throwing into the
+   best-effort catch. `DereferencedStoreLinks` only returns paths that exist, so
+   HIS-4's caller reaches this only in a race; mine reaches it normally. The
+   difference matters because "there was nothing to protect" and "the protection
+   broke" should not produce the same warning — but the consequence on their
+   path is that one absent entry no longer aborts the whole lift, and
+   `checkoutPaths` still runs on the trees that were moved. I think that is
+   better. It is still different.
+2. **The warning text lost the word *materialized***, because the class now has
+   a caller for which the word is wrong.
+3. **The holding directory carries a manifest**, and cleans itself up when
+   nothing ended up lifted so the empty-directory version of the residue cannot
+   happen either.
 
 ---
 
