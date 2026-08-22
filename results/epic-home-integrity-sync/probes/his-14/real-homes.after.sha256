@@ -2,7 +2,21 @@ a7147f18470f2748d0c8c1b3b2e969da06a786031a95030c7c5b035f1b9837f1  ~/.claude/sett
 bc43350ab9b78b5ad2dbf277a064eb38488a6e3ed42957392460a3aef6779e66  ~/.claude/plugins/known_marketplaces.json
 73432608f00c5337bfb0c7d15a81b1fce0bc87b47d1352a64a2bd71daac80e84  ~/.codex/config.toml
 a2f0ab57a937d697804ad99b46b9e6d119087ef7e06eda343791b6778c817efc  ~/.gemini/settings.json
-e36940fdbb3f885f48a0d2ec394b5407d6b2b616896767022f91be5a9eab88dc  ~/.claude.json
+4cb6a0a900a5f2fa1cfbaf411b329f61f1ae13507d1d9fbb60f4654b2687224c  ~/.claude.json
 b7d3253b7f5acdb80bfa67f0c16e66cd182ad9c82bafe012dc5830a4faebc4de  ~/.claude/skills (names+targets)
 c94515dab41d662d93ee7f45c1a46940685b3f79a3dd505c9015b047b643d67e  ~/.codex/skills (names+targets)
 b7d3253b7f5acdb80bfa67f0c16e66cd182ad9c82bafe012dc5830a4faebc4de  ~/.gemini/skills (names+targets)
+
+# Every line above matches real-homes.before.sha256 except ~/.claude.json,
+# which has no before-digest: the first snapshot omitted it (review of #234,
+# MED-5). It is also NOT a usable before/after subject in this session, and
+# that is measurable rather than asserted -- its digest moved from
+# e36940fdbb3f885f48a0d2ec394b5407d6b2b616896767022f91be5a9eab88dc to the
+# value above with no skill-manager command run in between, because the live
+# agent session hosting this ticket writes it continuously. A naive
+# before/after on it would have produced a false positive, not evidence.
+#
+# What covers it instead: ticket.lifecycle.global.home.untouched's
+# `the_config_check_covers_the_sibling_claude_json_file`, green on this branch,
+# and the fact that every CLI run in this ticket was driven with $HOME pointed
+# at a scratch directory.

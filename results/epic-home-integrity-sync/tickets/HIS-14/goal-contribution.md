@@ -45,6 +45,44 @@ lookup, so binding it makes **every** reader in the process — the store, the
 projector, the MCP writers, the two harness drivers that spawn `claude` and
 `codex` children — answer with the home the operator named. One answer.
 
+### What decides each agent directory: does this home own it
+
+The first version of this fix derived all three agent directories from the store
+path and installed them **over** whatever was set. Right for the default layout,
+wrong for every other one, and it discards a correct answer to install a guess —
+**HIGH-1 in the review of #234, and the third time in this epic a diff has
+recreated the defect it was closing.**
+
+Neither simple rule is right. "The environment wins" is DEF-029 restored in
+full. "The derivation wins" is HIGH-1. The rule is the predicate the acceptance
+is written in, and the one `unbindable` already used:
+
+| an explicit agent variable that | is | so it is |
+| --- | --- | --- |
+| resolves INSIDE the named home | a more precise statement about this home's layout than a derivation can be | **kept** |
+| resolves OUTSIDE it | a statement about a DIFFERENT home — DEF-029 | **replaced** |
+| is unset — DEF-029's own environment | nothing | **derived** |
+
+Measured on a real profile home, whose agent directories are
+`<profileRoot>/agents/{claude,codex,gemini}`
+(`ProjectChildHomeScaffolder.layoutFor`), with the correct `CLAUDE_CONFIG_DIR`
+exported:
+
+```
+before   sync --home <profileRoot>
+         ✓ agents: 1 unit(s) linked into claude, codex, gemini
+           ADDED claude (<profileRoot>/.claude/.claude.json)     <- created, wrong
+           ADDED codex  (<profileRoot>/.codex/config.toml)
+           ADDED gemini (<profileRoot>/.gemini/settings.json)
+         <profileRoot>/agents/claude/skills:                     <- stale, empty
+
+after    <profileRoot>/.claude exists? NO
+         <profileRoot>/agents/claude/skills: his14-profile-probe
+```
+
+One predicate, two uses, so a printed remedy names the agent directory the
+reader's home really uses rather than one this class assumed it would.
+
 ### Why the applier is central and not per-verb
 
 Because "N call sites, one rule" is the shape this epic keeps paying for, and
@@ -56,18 +94,70 @@ flag is read in one place. `sync`, `project sync`, `home drift`, `home shims`,
 option — not because they were listed. A future verb that declares it is covered
 the day it is added.
 
-The applier runs **ahead of `tryReconcile`**, deliberately. That call projects
+It also walks the **whole** parse chain, so the coverage question is "which
+commands declare `--home`" — and the answer is **eleven**, not the seven this
+ticket's slice names. The four the first round missed are `home describe`,
+`home policy`, `home refresh-plugins` and `home verify`, which are exactly the
+read-shaped ones the next section is about. The test now derives that list by
+walking picocli instead of listing it.
+
+### `tryReconcile`, and the write it was aiming
+
+The applier runs **ahead of `tryReconcile`**, deliberately: that call projects
 the ambient home's units into the ambient agent directories before the parsed
-command executes. After the binding the ambient home IS the named home, so a
-`--home` invocation reconciles the home it named; before it, a command carrying
-`--home` still wrote into a home nobody mentioned.
+command executes, and after the binding the ambient home IS the named home.
+
+**The first round of this ticket stated that consequence as "writes agent
+symlinks into X" and offered `home-integrity` 15/15 as evidence. That claim was
+not supported, and the review was right to reject it.** The write is
+`UnitStore.migrateFromLegacy` — which moves a legacy `sources/` record and
+DELETES the directory — plus `BindingBackfill` and the full `ReconcileUseCase`.
+It was gated on neither the read-only classification nor the home policy. And
+15/15 was evidence that **no fixture asks**: none plants a home whose reconcile
+has work to do.
+
+Measured, on a home declared frozen through `home policy frozen`, carrying a
+planted legacy record:
+
+```
+before   $ home verify --home <frozen>
+         migrated installed-unit record: legacy-probe.json
+         reconcile: migrated 1 legacy source records
+         sources/ still there?  DELETED
+         tree digest 27d2feeb… -> 88a93abd…            MUTATED
+
+after    sources/ still there?  yes
+         tree digest 33850cdb… -> 33850cdb…            BYTE-IDENTICAL
+```
+
+`home close-out` does the same, and its own description reads *"Writes nothing;
+safe to run repeatedly"* while `close-change.sh:441` runs it as the `wt close`
+gate.
+
+Two gates, and the second was already written down ten lines away:
+
+1. `tryReconcile` returns unless `HomeScaffold.declared()` is `WRITES_HOME`.
+2. It honours the frozen policy — which `ExecCommand.refreshHome` already did.
+   Two spellings of one decision, in the file that exists to remove one.
+
+And `home verify` and `home close-out` are narrowed to `READ_ONLY` — the step
+`CommandHomeAccess`'s own javadoc called *"a separate, verifiable step"* — for
+the two rows whose contracts say they write nothing and which declare no
+`--init`, so nothing legitimate loses the permission to scaffold. The other
+eight `home` rows stay WRITES_HOME as a family; narrowing them needs their
+`--init` to keep working, which is design work. DEF-039 is **closed** for the
+half that was doing damage and re-filed for the remainder.
 
 ### The refusal
 
 Setting a variable is not the same as confining a write. An agent directory that
 symlinks OUT of the home writes wherever the link points, however the variable
 is set — the shape the epic measured twice on the operator's own root home
-during HIS-7. `AgentHomes.unbindable` finds those and the CLI refuses with
+during HIS-7. `AgentHomes.unbindable` finds those — including a **dangling** one, which the
+first round missed because it asked `Files.exists`, and that follows the link,
+so a `.claude` pointing at a path that does not exist read as "nothing to judge"
+and the sync behind it then failed three ways at exit 0 (MED-9) — and the CLI
+refuses with
 `UNBINDABLE_HOME_EXIT_CODE` (13), naming each variable and where it actually
 lands, rather than running with a binding that is true of the environment and
 false of the filesystem. Only directories that EXIST are judged, and a symlink
@@ -134,6 +224,10 @@ pastes the message.
 | **V2** | `AgentHomes.binding` reduced to `SKILL_MANAGER_HOME` | 6 of 10 |
 | **V3** | `homeEnvPrefix` builds its own list again, drifting by one variable | the rendering case, **and** HIS-12's inherited guard |
 | **V4** | the `unbindable` refusal | the refusal case; the companion stays green, as it must |
+| **V5** | the HIGH-1 fix (always derive, discard what is set) | the profile-layout case |
+| **V6** | the ownership TEST (an explicit variable always wins) | **12 of 16** — the two halves are one predicate |
+| **V7** | the HIGH-2 gates | the read-shaped case, with `migrated installed-unit record: legacy-probe.json` |
+| **V8** | the frozen gate ALONE | the frozen-writer case — **and it found a defect in the fixture**, below |
 
 **Both of the traps the ticket named fired, and both were fixture defects I
 fixed rather than findings I explained away.**
@@ -159,6 +253,31 @@ rather than on the claim, because the other home was three empty directories. It
 now builds a populated other home — a store plus the three config files the real
 damage edited — and reddens on the claim itself.
 
+**And both traps bit again in the second round.**
+
+*V8 found that neither frozen fixture was frozen.* The HIGH-2 case is frozen AND
+read-shaped, so it reddens if either gate is removed and proves neither on its
+own. V8 removed only the frozen gate, and the failure it produced was the
+product migrating a legacy record — correct behaviour for a home that is not
+frozen. Both fixtures had written `policy.toml` by hand; the file is
+`home.policy.toml`. **A fixture that states a precondition through a string
+literal is a fixture that can be wrong about it.** Both now go through
+`HomePolicy.write` and assert `HomePolicy.load(...).frozen()` explicitly, and
+the frozen gate has its own probe — a WRITING verb against a frozen home —
+because the read-only gate returns first and would otherwise hide it.
+
+*MED-4: the suite was green only in a shell the runner had emptied.* With
+`CLAUDE_CONFIG_DIR` exported it went **9/1**, on the precondition of the
+`CLAUDE_HOME` case — trap (a), inside the file written to close trap (b). The
+cause is real and general: `AgentHomes.setOverride` could say "this variable is
+X" and "stop overriding this variable", but **not "this variable is unset"**, so
+every assertion about unset-variable behaviour depended on the developer's
+shell. `AgentHomes.setUnset` is the third state. The suite is now **17/17 with
+the four variables exported AND with them unset**, and `runtests.sh` runs both
+ways. The 19 failures that remain in other suites under `--set` are the same 19,
+in the same suites, as on the base commit before any of this ticket's code —
+filed as **DEF-041**, with `setUnset` as the fix they need.
+
 ## HIS-12's source-scan guard
 
 **Green, unchanged, and not weakened.** The scan enforces that every remedy
@@ -178,14 +297,26 @@ command resolves against; it changes no predicate about what a home may share.
 
 ## Validation
 
+All re-run after the review round, on the committed tree, with no edits in
+flight — the first attempt at this re-run had `home.integrity.fixture` fail with
+`No main class deduced`, which was my own vacuity mutations rewriting
+`src/main` while a graph was compiling from the same worktree. DEF-035's hazard
+in a second flavour; the numbers below are from a stable tree.
+
 | signal | result |
 | --- | --- |
-| `jbang RunTests.java` | **ALL PASSED** (`HomeBindsBothAxesTest` 10/10) |
+| `jbang RunTests.java`, four variables UNSET | **ALL PASSED** (`HomeBindsBothAxesTest` **17/17**) |
+| `jbang RunTests.java`, four variables EXPORTED | `HomeBindsBothAxesTest` **17/17**; 19 failures in other suites, the same 19 as on the base commit — DEF-041 |
 | `uv run pytest specs/` | **38 passed** |
-| `home-integrity` (assigned) | **passed — 15 of 15 nodes, `complete: true`**, run `20260822-141230` |
-| **`home-sync` (CORE)** | **passed — 18 of 18 nodes, `complete: true`**, run `20260822-141853` |
-| **`ticket-lifecycle` (CORE)** | **passed — 13 of 13 nodes, `complete: true`**, run `20260822-142637` |
+| `home-integrity` (assigned) | **passed — 15 of 15, `execution.complete: true`**, run `20260822-153607` |
+| **`home-sync` (CORE)** | **passed — 18 of 18, `execution.complete: true`**, run `20260822-154113` |
+| **`ticket-lifecycle` (CORE)** | **passed — 13 of 13, `execution.complete: true`**, run `20260822-154837` |
 | TLC | **N/A** per the plan: this ticket states no new invariant; HIS-5 carries the model work |
+
+`complete` is nested under `execution` in `summary.json`, not at the top level —
+the citation in the first round did not say so, which made it look unbacked
+(LOW-12). The saved summaries in `probes/his-14/` spell the field as
+`execution.complete`.
 
 **Why those two graphs and not others**, named with the reason the plan asks
 for: my diff changes `SkillManagerCli`'s execution strategy, which every CLI
@@ -207,7 +338,14 @@ ticket.lifecycle.global.home.untouched              passed
     the_agent_config_registrations_are_unchanged    passed
     the_leak_oracle_detects_a_repointed_agent_skill_link   passed
     the_config_check_covers_the_sibling_claude_json_file   passed
+
+ticket.lifecycle.concurrent.close.out               passed
+    the_close_out_gate_writes_nothing_at_all        passed
 ```
+
+That last one now passes because it is **true**, rather than because nothing in
+the fixture asked it to be: `home close-out` was reconciling the home it was
+inspecting until this round.
 
 The last two are that node's own vacuity guards — the oracle proves it can SEE
 a repointed agent link and a `.claude.json` beside the config dir, which are
@@ -289,10 +427,16 @@ the agent axis of every other one.
 - **DEF-038** — the binding is thread-local and a child process inherits the
   real environment. The two harness drivers pass the bound value down
   explicitly, which is measured, but nothing enforces that the next one will.
-- **DEF-039** — `tryReconcile` still reconciles the AMBIENT home on invocations
-  that name none, READ_ONLY ones included, outside `CommandHomeAccess`'s gate.
+- **DEF-039** — **CLOSED** for the half that was doing damage: `tryReconcile` is
+  now gated on `WRITES_HOME` and on the frozen policy, and `home verify` /
+  `home close-out` are READ_ONLY. Re-filed for the remainder — the other eight
+  `home` rows, each of which declares `--init`.
 - **DEF-040** — `exec` now states its home twice, through `--home` and through
   `LaunchEnv`. They agree; they are two derivations.
+- **DEF-041** (new) — `AgentHomes` could not express "this variable is unset", so
+  19 assertions across four suites depend on the developer's shell and go red in
+  the environment the product itself creates. `setUnset` is the mechanism and it
+  is now in the codebase; applying it to those four suites is the sweep.
 
 ## What I am unsure about
 
@@ -311,18 +455,28 @@ the agent axis of every other one.
   naming another home does not survive the binding`) rather than trusted — but
   it is a precedence, not an absence, and a reader who greps for `CLAUDE_HOME`
   in the binding will not find it.
-- **A `--home` invocation now reconciles the home it named, where before it
-  reconciled the ambient one.** `tryReconcile` runs on every invocation,
-  read-only ones included, so `home verify --home <X>` used to write agent
-  symlinks into whatever home the shell named and now writes them into X. That
-  is strictly what the acceptance asks for — no byte outside X — but it is a
-  write on a verb whose name says it reads, and `home-integrity` passing 15/15
-  is the evidence that it changes no verdict rather than an argument that it
-  cannot. DEF-039 is the general form.
-- **`AgentHomes.binding` normalizes to an absolute path.** The printed prefix
-  therefore absolutizes a relative `--home`, where before it printed what it was
-  given. Strictly better, and no test depended on the old spelling, but it is a
-  change to remedy text.
+- **The eight remaining `home` rows still reconcile before they run.**
+  `home describe`, `home policy`, `home shims`, `home drift` and
+  `home refresh-plugins` are still WRITES_HOME as a family, and each declares
+  `--init`, so narrowing them is not the one-line change `verify` and
+  `close-out` were. A `--home` invocation of those verbs now reconciles the home
+  it NAMED rather than the ambient one, which is what the acceptance asks for —
+  but it is still a write, and `home describe` reads like a report. DEF-039
+  carries the remainder.
+- **Remedy text changed in two ways, and the first round said it had not.**
+  `AgentHomes.binding` normalizes to an absolute path, so the printed prefix
+  absolutizes a relative `--home`; `homeArg` now does the same, because
+  otherwise one line spelled one home two ways (MED-7). The PR body's
+  "byte-identical" was wrong and is corrected.
+- **`binding` is now environment-dependent.** Keeping an explicit agent variable
+  that the home owns means the printed remedy depends on what the printing shell
+  had set. That is what makes the remedy true for a non-default layout, and it
+  means two operators in different shells can be shown two different — both
+  correct — prefixes for one home.
+- **The `setUnset` sentinel is a new third state in a hot path.** It is compared
+  by identity and only `resolve` reads it, but it is a new state in the one
+  lookup every home question goes through, and 19 assertions elsewhere still
+  need it (DEF-041).
 - **The `tla-spec-dev` ticket open/close was not run.** `validation.tlc` is
   `N/A` for this ticket, the plan's `status` transitions are written by the epic
   agent at merge (`chore(epic): … delivered`), and the only `tla-spec-dev` on
@@ -331,10 +485,15 @@ the agent axis of every other one.
 
 ## Files
 
-Production: `AgentHomes` (`binding`, `bind`, `unbindable`, `variableFor`,
-`snapshotOverrides`, `restoreOverrides`), `SkillManagerCli` (`bindNamedHome`,
-`UNBINDABLE_HOME_EXIT_CODE`), `HomeCommand.homeEnvPrefix` (now a renderer),
-`ExecCommand.refreshHome` (restore, not clear).
+Production: `AgentHomes` (`binding`, `agentBinding`, `bind`, `bindAgents`,
+`unbindable`, `variableFor`, `snapshotOverrides`, `restoreOverrides`,
+`setUnset`), `SkillManagerCli` (`bindNamedHome`, `UNBINDABLE_HOME_EXIT_CODE`,
+`tryReconcile`'s two gates), `CommandHomeAccess` (`home verify` and
+`home close-out` narrowed to READ_ONLY), `HomeCommand.homeEnvPrefix` (now a
+renderer), `HomeDescriptor.homeArg` (absolutizes), `ExecCommand.refreshHome`
+(restore, not clear).
 
-Tests: `HomeBindsBothAxesTest`, registered in `RunTests.java`.
+Tests: `HomeBindsBothAxesTest` (17 cases), registered in `RunTests.java`;
+`LazyHomeScaffoldTest` gains the two probes its completeness scan requires for
+the newly READ_ONLY rows.
 Probes: `results/epic-home-integrity-sync/probes/his-14/`.

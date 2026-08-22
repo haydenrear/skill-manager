@@ -136,3 +136,132 @@ FIXTURE, and it is labelled that way rather than counted as evidence.
 The same role is played inside `otherHomeIsUntouched`, which refuses a
 before-snapshot with fewer than six entries — the mechanised form of trap (a),
 since an empty snapshot makes every later comparison trivially true.
+
+
+================================================================
+SECOND ROUND — the review of #234 (V5…V8)
+================================================================
+
+Same discipline, four more, plus one finding the checks made about the
+checks themselves. Run with the agent variables UNSET unless a block says
+otherwise; the suite is now green either way (see MED-4 below), which it
+was not in the first round.
+
+
+V5 — the HIGH-1 fix removed (always derive, discard what is set)
+---------------------------------------------------------------
+  [FAIL] a home whose agent dirs are NOT beside the store keeps the ones it has:
+         an explicitly-set agent dir INSIDE this home is a more precise
+         statement about its layout than a derivation, and is kept:
+         expected <…/profiles/dev/agents/claude>
+         but was  <…/profiles/dev/.claude>
+   → 15 passed, 1 failed
+
+The same thing end to end, with the real CLI and a real profile home,
+CLAUDE_CONFIG_DIR correctly exported:
+
+  before   ✓ agents: 1 unit(s) linked into claude, codex, gemini
+             ADDED claude (<profileRoot>/.claude/.claude.json)
+             ADDED codex  (<profileRoot>/.codex/config.toml)
+             ADDED gemini (<profileRoot>/.gemini/settings.json)
+           <profileRoot>/.claude/skills: his14-profile-probe
+           <profileRoot>/agents/claude/skills:            <- STALE, empty
+  after    <profileRoot>/.claude exists? NO
+           <profileRoot>/agents/claude/skills: his14-profile-probe
+
+
+V6 — the ownership TEST removed (an explicit variable always wins)
+-----------------------------------------------------------------
+The other side of V5, and the one that matters: "keep what is set" on its
+own is DEF-029 restored in full.
+
+   → 4 passed, 12 failed
+
+including
+
+  [FAIL] COMPANION: an explicit agent dir OUTSIDE the home is still replaced:
+         expected <…/named/.claude> but was <…/other/.claude>
+  [FAIL] `sync --home <X>` writes nothing into the home the environment names
+  [FAIL] the ROOT TIER, on a synthetic root-shaped home
+  [FAIL] --home makes every in-process reader answer with the named home
+
+Twelve of sixteen, because `unbindable` reads the same binding: with the
+ownership test gone it judges the foreign directories unbindable and the
+refusal fires everywhere. The two halves are one predicate, and this is
+what that looks like when it is removed.
+
+
+V7 — the HIGH-2 gates removed (read-only + frozen)
+--------------------------------------------------
+  [FAIL] a read-shaped verb does not reconcile the home it was asked to inspect:
+         expected false: and migrated nothing on the way:
+         migrated installed-unit record: legacy-probe.json
+   → 15 passed, 1 failed
+
+End to end, with the real CLI, on a home declared frozen through
+`home policy frozen` and carrying a planted legacy record:
+
+  before   $ home verify --home <frozen>
+           migrated installed-unit record: legacy-probe.json
+           reconcile: migrated 1 legacy source records
+           sources/ still there? DELETED
+           => MUTATED  (27d2feeb… -> 88a93abd…)
+  after    sources/ still there? yes; legacy record still there? yes
+           => BYTE-IDENTICAL  (33850cdb… -> 33850cdb…)
+
+
+V8 — the FROZEN gate alone removed
+----------------------------------
+**THIS ONE FOUND A DEFECT IN THE FIXTURE, NOT IN THE PRODUCT, AND IT IS THE
+REASON THE FROZEN HALF HAS A PROBE AT ALL.**
+
+The HIGH-2 case is frozen AND read-shaped, so it reddens if EITHER gate is
+removed and proves neither on its own. V8 removed only the frozen gate and
+got:
+
+  [FAIL] a WRITING verb does not reconcile a FROZEN home either:
+         not true: a frozen home is not reconciled, whoever asked: rc=127
+         migrated installed-unit record: legacy-probe.json
+
+— the product doing exactly what the new case says it must not. Except the
+case was RIGHT and the fixture was wrong: both frozen fixtures wrote
+`policy.toml` by hand, and the file is `home.policy.toml`. Neither home was
+ever frozen. The read-only gate returns first, so the earlier case passed on
+the OTHER gate and looked like evidence for both.
+
+A fixture that states a precondition through a string literal is a fixture
+that can be wrong about it. Both now go through `HomePolicy.write` and assert
+`HomePolicy.load(...).frozen()` as an explicit precondition. Re-run against
+the corrected fixture, V8 reddens on the claim:
+
+  [FAIL] a WRITING verb does not reconcile a FROZEN home either
+  [FAIL] the printed remedy RUNS, in a shell whose environment names another home
+   → 15 passed, 2 failed
+
+
+MED-4 — the suite no longer depends on the shell
+------------------------------------------------
+In the first round `runtests.sh` passed `env -u CLAUDE_CONFIG_DIR …` and the
+suite went 9/1 without it:
+
+  [FAIL] an ambient CLAUDE_HOME naming another home does not survive the binding:
+         precondition: an ambient CLAUDE_HOME decides the config dir:
+         expected <…/other/.claude> but was <…/his14b/fake/.claude>
+
+Trap (a) — reddening on a PRECONDITION — inside the file written to close
+trap (b). The case is about the CLAUDE_CONFIG_DIR-UNSET branch of the
+precedence, and `setOverride` could say "this variable is X" and "stop
+overriding this variable" but not "this variable is not set", so the
+assertion silently depended on the developer's shell.
+
+`AgentHomes.setUnset` is the third state. With it, measured both ways on the
+same tree:
+
+  CLAUDE_CONFIG_DIR / CODEX_HOME / GEMINI_HOME / SKILL_MANAGER_HOME unset
+      HomeBindsBothAxesTest  → 17 passed, 0 failed;  whole suite ALL PASSED
+  all four EXPORTED, naming a scratch home
+      HomeBindsBothAxesTest  → 17 passed, 0 failed;  19 pre-existing failures
+      elsewhere (AgentHomesTest, HomeDescriptorTest, LauncherShimsTest, the
+      #145 test) — the same 19, in the same suites, as on the BASE commit
+      before any of this ticket's code. Filed as DEF-041; they are the same
+      "cannot say unset" gap, and `setUnset` is the fix they need.

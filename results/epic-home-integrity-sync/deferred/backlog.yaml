@@ -2353,8 +2353,31 @@ findings:
     fix: >
       Gate `tryReconcile` on `HomeScaffold.declared() == WRITES_HOME`, and
       measure the read-only sweep the way `7d87a06` measured the last one.
+    closed_by: >
+      HIS-14, in the review round of #234, because the review measured the
+      general form doing real damage rather than the narrow one this entry
+      described. `home verify --home <X>` and `home close-out --home <X>` were
+      MUTATING X -- a legacy `sources/` record migrated and the directory
+      deleted -- on a home declared FROZEN, and `close-out` documents itself as
+      "Writes nothing; safe to run repeatedly" while `close-change.sh:441` runs
+      it as the `wt close` gate.
+
+      Both gates landed: `tryReconcile` now returns unless
+      `HomeScaffold.declared()` is WRITES_HOME, and it honours the frozen
+      policy that `ExecCommand.refreshHome` already honoured. `home verify` and
+      `home close-out` are narrowed to READ_ONLY -- the step
+      `CommandHomeAccess`'s own javadoc called "a separate, verifiable step" --
+      for the two rows whose contracts say they write nothing and which declare
+      no `--init`, so nothing legitimate loses the permission to scaffold.
+
+      What is NOT closed, and is the reason this stays worth reading: the other
+      eight `home` rows are still WRITES_HOME as a family, so `home describe`,
+      `home policy`, `home shims`, `home drift` and `home refresh-plugins` all
+      still reconcile before they run. Narrowing those needs the `--init` opt-in
+      each of them declares to keep working, which is the design work this entry
+      was filed for. Re-filed as the remainder rather than left open as a whole.
     candidate_owner: HIS-13, or the CommandHomeAccess follow-on it names
-    status: open
+    status: closed
 
   - id: DEF-040
     found_by: HIS-14 (#232), reconciling `exec`'s own binding with the new one
@@ -2390,4 +2413,59 @@ findings:
       Measured: `exec --home <X> --print-env` and the binding resolve the same
       four paths, and `LauncherShimsTest`'s exec cases are unchanged.
     candidate_owner: HIS-5 (state it as an invariant) or HIS-13
+    status: open
+
+  - id: DEF-041
+    found_by: HIS-14 (#232), review round of #234 (MED-4)
+    found_at: "2026-08-22"
+    severity: major
+    summary: >
+      `AgentHomes.setOverride` can say "this variable is X" and "stop overriding
+      this variable". It cannot say "this variable is NOT SET". So every
+      assertion in the suite about unset-variable behaviour silently depends on
+      the developer's shell not exporting one, and 19 of them go RED in the
+      environment every `exec`-launched agent session in this repository
+      actually has.
+    detail: >
+      MEASURED on the BASE commit, before any of HIS-14's code, and again on
+      HIS-14's tip: with SKILL_MANAGER_HOME, CLAUDE_CONFIG_DIR, CODEX_HOME and
+      GEMINI_HOME exported at a scratch home, `jbang RunTests.java` reports the
+      same 19 failures in the same suites both times --
+
+        AgentHomesTest        a sandboxed HOME keeps every agent home out of
+                              the real user.home; …also covers the four
+                              fallbacks outside this package; Claude driver:
+                              CLAUDE_HOME override redirects CLAUDE_CONFIG_DIR;
+                              TestHarness installs sandboxed overrides
+        HomeDescriptorTest    CLAUDE_HOME alone keeps its parent-of-.claude
+                              meaning
+        LauncherShimsTest     seven cli-entrypoint cases (the pin refuses
+                              because SKILL_MANAGER_HOME names another home)
+        the #145 test         a sync in a project home leaves the operator's
+                              agent homes alone; an explicit agent-home
+                              variable still wins over the active home
+        the MCP agent tests   three "with CLAUDE_CONFIG_DIR unset …" cases
+
+      Each is a correct assertion about a state the test cannot express, so the
+      runner expresses it instead: `env -u CLAUDE_CONFIG_DIR -u CODEX_HOME -u
+      GEMINI_HOME`. A test whose truth depends on the shell that launched it is
+      a test that will be believed in the wrong environment.
+    reproduction: >
+      CLAUDE_CONFIG_DIR=/tmp/x CODEX_HOME=/tmp/x GEMINI_HOME=/tmp/x
+      SKILL_MANAGER_HOME=/tmp/x/.skill-manager jbang RunTests.java
+    why_deferred: >
+      The mechanism is already here: HIS-14 added `AgentHomes.setUnset` and a
+      sentinel to `resolve`, and used it to make `HomeBindsBothAxesTest` green
+      with the variables set OR unset (17/17 both ways). Applying it to the
+      other 19 assertions is a sweep across four unrelated suites, none of which
+      this ticket touches, and each needs its author's judgement about which
+      variables its case is really about. Widening HIS-14 to carry it would put
+      four foreign suites in a diff about `--home`.
+    fix: >
+      Replace each affected fixture's reliance on an unset ambient variable with
+      an explicit `AgentHomes.setUnset(...)`, then drop the `env -u` from
+      `probes/his-14/runtests.sh` and from any other runner that carries one.
+      The suite should be green in the environment its own product creates.
+    candidate_owner: HIS-8 (which owns what an agent reads before working here)
+      or HIS-13
     status: open

@@ -35,11 +35,15 @@
 - `check-real-homes.sh` — the comparison. Hashes in place and copies nothing;
   `./check-real-homes.sh real-homes.before.sha256` prints a diff and exits 1 on
   any change.
-- `runtests.sh` — how the unit suite was run: `$HOME` pointed at a scratch
-  directory (`AgentHomes.userHome()` prefers `$HOME`) with the four agent/store
-  variables left UNSET, which is what the suite's own fallback assertions
-  require. Running with them SET fails 19 pre-existing cases that assert the
-  unset-variable defaults; that is the suite's contract, not a regression.
-- `unit-suite-green.txt` — the final green run.
-- `graph-home-integrity-summary.json` — 15 of 15, `complete: true`.
-- `graph-*.txt` — the two CORE graphs this ticket owed by evidence.
+- `runtests.sh` — how the unit suite was run, in BOTH modes:
+  `./runtests.sh` leaves the four agent/store variables unset,
+  `./runtests.sh --set` exports them at a scratch home.
+  `HomeBindsBothAxesTest` is **17/17 either way**, which is the point of
+  shipping both: in the first round it was run only one way and went 9/1 on a
+  precondition when a real `CLAUDE_CONFIG_DIR` was present. `--set` still shows
+  19 failures in OTHER suites — the same 19, in the same suites, as on the base
+  commit before any of this ticket's code — filed as DEF-041.
+  `$HOME` is a scratch directory in both modes.
+- `unit-suite-green.txt` — the green runs, both modes.
+- `graph-*-summary.json` — the three graphs, node by node. `execution.complete`
+  is the field to read (it is nested under `execution`, not at the top level).

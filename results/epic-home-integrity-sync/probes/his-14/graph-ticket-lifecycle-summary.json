@@ -1,8 +1,8 @@
 {
- "runId": "20260822-142637",
+ "runId": "20260822-154837",
  "status": "passed",
  "graph": "ticket-lifecycle",
- "complete": true,
+ "execution.complete": true,
  "nodes": [
   {
    "id": null,

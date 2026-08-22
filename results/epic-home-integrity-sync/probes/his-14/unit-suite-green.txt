@@ -1,15 +1,48 @@
-== HomeBindsBothAxesTest (10 cases)
+=== ./runtests.sh   (the four variables UNSET) ===
+== HomeBindsBothAxesTest (17 cases)
   [PASS] FLOOR: a projection into a home's agent dirs is observable
   [PASS] `sync --home <X>` writes nothing into the home the environment names
   [PASS] the ROOT TIER, on a synthetic root-shaped home
-  [PASS] every verb that declares --home is bound, not a list of seven
+  [PASS] EVERY verb that declares --home is bound, and the list is derived
   [PASS] the printed env prefix is a RENDERING of the binding --home applies
   [PASS] --home makes every in-process reader answer with the named home
   [PASS] an ambient CLAUDE_HOME naming another home does not survive the binding
+  [PASS] a home whose agent dirs are NOT beside the store keeps the ones it has
+  [PASS] COMPANION: an explicit agent dir OUTSIDE the home is still replaced
+  [PASS] a read-shaped verb does not reconcile the home it was asked to inspect
+  [PASS] a WRITING verb does not reconcile a FROZEN home either
+  [PASS] COMPANION: a writing verb on a LIVE home still reconciles
+  [PASS] `--home-root` on its own binds the agent axis and NOT the store
   [PASS] REFUSAL: an agent dir that resolves out of the home is named, not bound
+  [PASS] REFUSAL: a DANGLING agent dir pointing out of the home is refused too
   [PASS] COMPANION: a real agent directory inside the home is bound, not refused
   [PASS] the printed remedy RUNS, in a shell whose environment names another home
-   → 10 passed, 0 failed
+   → 17 passed, 0 failed
    → 13 passed, 0 failed
 
 ALL PASSED
+
+=== ./runtests.sh --set   (the four EXPORTED at a scratch home) ===
+  [PASS] the printed remedy RUNS, in a shell whose environment names another home
+   → 17 passed, 0 failed
+whole-suite failures: 19 -- all in OTHER suites, the same
+19 that fail on the BASE commit before any of this ticket's code. See DEF-041.
+  [FAIL] a sandboxed HOME keeps every agent home out of the real user.home
+  [FAIL] a sandboxed HOME also covers the four fallbacks outside this package
+  [FAIL] Claude driver
+  [FAIL] TestHarness installs sandboxed overrides at create()
+  [FAIL] a sync in a project home leaves the operator's agent homes alone
+  [FAIL] an explicit agent-home variable still wins over the active home
+  [FAIL] claude(env) does NOT derive the child's config dir from SKILL_MANAGER_HOME
+  [FAIL] with CLAUDE_CONFIG_DIR unset the GLOBAL home's entry stays at $HOME/.claude.json
+  [FAIL] CLAUDE_HOME pointing somewhere that is not $HOME follows the same rule
+  [FAIL] with CLAUDE_CONFIG_DIR unset a PROJECT home writes where a launch reads
+  [FAIL] CLAUDE_HOME alone keeps its parent-of-.claude meaning
+  [FAIL] the cli entrypoint execs its pin with a working decoy first on PATH
+  [FAIL] the cli entrypoint binds the home it lives in when none was named
+  [FAIL] the cli entrypoint refuses when its pin is gone, and still ignores PATH
+  [FAIL] the cli entrypoint refuses to exec itself and uses its pin instead
+  [FAIL] a symlink to the cli entrypoint is still the cli entrypoint
+  [FAIL] a relative spelling of the cli entrypoint is still the cli entrypoint
+  [FAIL] a pin that is the entrypoint itself refuses loudly rather than looping
+  [FAIL] SKILL_MANAGER_CLI still overrides the pin
