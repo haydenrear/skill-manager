@@ -52,6 +52,15 @@ import java.util.TreeSet;
  * to avoid inverted. So the index is consulted, and anything it holds — or
  * holds anything beneath — stays visible.
  *
+ * <p>The two readings of "tracked" are not interchangeable, and the difference
+ * cost 742 paths when it was got wrong. A path is <em>visible</em> when the
+ * index holds it or anything under it, so the walk descends into a directory
+ * that merely contains committed files. But a path stops being an
+ * <em>ignoring ancestor</em> only when the index holds a blob at exactly that
+ * path: a directory git descends through to reach one tracked file is not
+ * itself content, and reading it as content un-ignores every untracked sibling
+ * beside that file. Both readings are measured in {@link #ignores}'s comments.
+ *
  * <p>When the index cannot be read at all, <b>nothing is ignored</b>. Without
  * evidence that a path is untracked there is no evidence it is disposable, and
  * this class fails towards visibility, the same way {@code Disposal} does.
