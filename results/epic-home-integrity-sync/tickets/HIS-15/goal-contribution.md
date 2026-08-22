@@ -164,6 +164,34 @@ jbang RunHis15.java     35 passed, 0 failed
 
 `tlc` — **N/A** per the assignment; HIS-5 carries the model work.
 
+### The graph this ticket exists to clear
+
+```
+ticket-lifecycle   BUILD SUCCESSFUL in 6m 20s   status: passed
+                   13/13 nodes, 117 assertions, 0 not passed
+                   runId 20260822-171850
+```
+
+The two that decide the ticket:
+
+- `ticket.lifecycle.concurrent.close.out` — **passed**, all 15 assertions,
+  including `every_remedy_the_gate_printed_is_an_absolute_runnable_command`,
+  which is the one that was failing because `remediesB` was empty.
+- `home.fixpoint.law` — **passed**. It was one of the six nodes skipping behind
+  the red one; all six now run.
+
+Summary copied to `probes/his-15/ticket-lifecycle-summary.json` rather than
+described.
+
+> **A reading error worth recording**, because it nearly became a false report.
+> My first pass over the node envelope asked each assertion for a `passed`
+> field. The schema names it `status`, so every assertion came back `None` and
+> printed as FAIL — a node reporting `status: passed` with fifteen failed
+> assertions under it. That shape is impossible, which is what prompted a second
+> look rather than a report. The lesson is the epic's own: read the artifact's
+> schema, do not assume its field names, and treat a self-contradictory
+> measurement as a bug in the measurement until proven otherwise.
+
 | # | mutation | what reddened |
 | --- | --- | --- |
 | V1 | the json routing reverted | the Log unit, **the contended case (on its claim, after correction)**, and pinned `home drift` |
