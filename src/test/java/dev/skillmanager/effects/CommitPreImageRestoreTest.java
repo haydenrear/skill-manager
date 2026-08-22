@@ -483,7 +483,9 @@ public final class CommitPreImageRestoreTest {
         if (!Files.isDirectory(cache)) return List.of();
         try (Stream<Path> kids = Files.list(cache)) {
             return kids.map(p -> p.getFileName().toString())
-                    .filter(n -> n.startsWith(".materialization-escrow-"))
+                    // The constant, not a copy of it: a test that hard-codes
+                    // the prefix goes green the day the class changes it.
+                    .filter(n -> n.startsWith(MaterializationEscrow.PREFIX))
                     .sorted()
                     .toList();
         }
