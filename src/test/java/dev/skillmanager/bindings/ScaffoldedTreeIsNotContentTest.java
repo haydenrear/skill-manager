@@ -164,10 +164,16 @@ public final class ScaffoldedTreeIsNotContentTest {
                         assertFalse(outcome.heldBack(),
                                 "and writing into an excluded path is not a new reason to hold "
                                         + "the unit back (GOAL-no-spurious-holdback)");
-                        assertEquals("THE CHILD'S BINDING\n",
-                                Files.readString(bound.resolve("bound-here.txt")),
+                        // Two assertions, because a missing file throws
+                        // NoSuchFileException out of readString and the record
+                        // then names a path instead of a claim. Probe V3
+                        // reddened exactly that way before this split.
+                        assertTrue(Files.isRegularFile(bound.resolve("bound-here.txt")),
                                 "the excluded tree survives the wholesale replace — excluding a "
                                         + "path makes it invisible, not disposable");
+                        assertEquals("THE CHILD'S BINDING\n",
+                                Files.readString(bound.resolve("bound-here.txt")),
+                                "and with its bytes, not as an empty shell");
                     }
                 })
 
