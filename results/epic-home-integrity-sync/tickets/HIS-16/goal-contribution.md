@@ -242,7 +242,65 @@ Vacuity discipline, answered by mechanism:
 
 ## 6. Validation
 
-_Filled in below from the runs themselves; nothing here is reconstructed._
+```
+jbang RunTests.java     ALL PASSED
+uv run pytest specs/    38 passed
+jbang RunHis16.java     8 passed, 0 failed
+```
+
+`tlc` — **N/A** per the assignment; HIS-5 carries the model work for the epic.
+
+### Graphs
+
+Every run through `graph-run.sh` — one docker stack, one runner at a time, shared
+with HIS-18. `python skills/test_graph/scripts/run.py --all` is **HIS-6's** and
+was not run.
+
+| graph | why this one | verdict |
+| --- | --- | --- |
+| `home-integrity` | carries the new direct node and both laws | see below |
+| `project-child-home` | `GOAL-no-destructive-recovery`'s declared local signal, and the graph whose fixtures drive `project resolve` hardest | see below |
+| `project-smoke` | the `project` verb family end to end — the six call sites this ticket rerouted | see below |
+| `home-tripwire` | runs `sandbox.env.contract`, the oracle that decides whether my two new nodes spell the sandbox recipe themselves | see below |
+| `smoke` (53 nodes) | the broadest install / sync / bind / uninstall home in the repository — the strongest available evidence that the membership law is not noisy | see below |
+| `project-manifest`, `project-resolve` | `project register` and `project resolve` in isolation | see below |
+
+**Four graphs are red on the epic tip and are not mine** — `home-clone`,
+`checkout-home`, `artifact-dag` (HIS-17's) and `onboard` (a 10 s timeout). Not
+run, not chased.
+
+### The two nodes that decide the ticket
+
+`project.verb.stays.in.its.home` — seven assertions, all passed, and its control
+is live:
+
+```
+FIXTURE  victim home …/his16-confinement/victim/.skill-manager
+             -> [skills/his16-unit-kept]   (seed exit 0)
+CLAIM    exit 14 (expected 14); victim [skills/his16-unit-kept];
+                                driver [skills/his16-unit-kept]
+CONTROL  exit 0; victim [skills/his16-unit-claimed-later]  <- the escape, reproduced
+```
+
+`home.membership.law` — three assertions, and the numbers matter more than the
+verdict, because a green law that looked at nothing is the failure mode:
+
+| graph | homes checked | units observed |
+| --- | --- | --- |
+| `smoke` | 1 | **22** |
+| `home-integrity` | 5 | 12 |
+| `project-smoke` | 3 | 9 |
+| `project-child-home` | 2 | 8 |
+| `project-resolve` | 1 | 5 |
+| `project-manifest` | 1 | **0** |
+
+**`project-manifest` observed zero units**, and that is exactly the case the
+self-test exists for: three readers that all return the empty set agree
+perfectly. The self-test runs before every real home on every one of these runs
+and is what makes the green mean something.
+
+`descriptorDrift` was **0** on all six — see DEF-049 for why that is measured and
+not asserted.
 
 ---
 
@@ -261,6 +319,58 @@ paths in the wrong home), and repair of homes already re-realized (HIS-13).
 
 ---
 
-## 8. What I am unsure about
+## 8. Containment — the ticket is the hazard, so it is measured
 
-_Filled in below._
+Snapshot as the first command of the session, re-read at the end, over the three
+homes the assignment names — unit set, full top-level listing, a SHA-256 of every
+top-level `.toml`/`.json`, and the `.materialization` mtime:
+
+```
+$ diff snapshot-before/full.txt snapshot-after/full.txt
+IDENTICAL — no home changed
+```
+
+Plus a census of **every** home reachable on the machine — 20 of them — with a
+write count for this ticket's window: **zero writes in every one**. Full listing
+in `probes/his-16/containment.txt`. The window opens at 18:08 because the
+session's own `skt` currency check refreshed the root home's
+`cache/skt-check.json` and its `plugin-marketplace` symlinks at 18:05–18:07;
+that is recorded rather than filtered out silently.
+
+The snapshot asks the **membership** question, not the narrower "did it write
+where it should not" one that missed DEF-047. And `home.membership.law` reported
+`homesOutsideSandbox = 0` on all six runs, so no graph even *named* a real home.
+
+---
+
+## 9. What I am unsure about
+
+**The law does not see a clean re-realization, and that is a real gap, not a
+quibble.** §4 records the measurement: my own control reproduced the escape and
+the law called the resulting home clean. What the law adds over `HomeFixpointLaw`
+is real — it catches the residue form, which is the form DEF-047 took and the
+only form any instrument in this repository sees — but somebody reading "a
+membership law is wired into 24 graphs" could reasonably believe it catches more
+than it does. DEF-048 says what would.
+
+**The `LOCK` reader may be closer to noise than to signal.** It abstains when
+`units.lock.toml` is empty, which is every project child home. On the six runs
+above it therefore only ever spoke about root-tier homes, where it agreed
+perfectly every time. I have no measurement of it ever *disagreeing* usefully,
+and I would not object to it being demoted to a metric.
+
+**I did not measure the confinement's cost on the graphs that carry it.** The
+membership law adds 7–13 s per graph and is wired into 24 of them. On `--all`
+that is a few minutes; HIS-6 owns the sweep and will find out.
+
+**V4a is unresolved as a design question.** Disabling the `.projections.json`
+branch did not change the outcome, because the file also ends in `.json` and the
+sibling branch catches it under the mangled name `deploy-helm.projections`. The
+shipped behaviour is correct — the specific branch is tested first — but the two
+readers overlap, and a refactor that reorders them would still "work" while
+reporting a name no unit has. I left it, and recorded it rather than quietly
+rewriting the probe until it was green.
+
+**The `sandbox status` exit codes are a guess at what a driver wants.** 0 / 1 /
+14, with 1 meaning "no confinement declared" specifically so it does not read as
+a failed confinement. Nothing consumes them yet except a human.

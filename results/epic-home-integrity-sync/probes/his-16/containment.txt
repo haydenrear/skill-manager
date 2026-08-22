@@ -1,0 +1,51 @@
+HIS-16 (#237) — containment
+===========================
+
+THE TICKET IS THE HAZARD. DEF-046 happened because an in-process driver
+pinned all four home variables and believed it was sandboxed. So this is
+measured, not assumed, and it asks the MEMBERSHIP question rather than the
+narrower "did it write where it should not" one that missed DEF-047.
+
+1. BEFORE/AFTER over the three homes named in the assignment — the root home,
+   the project home, and this worktree's own home. For each: the unit set,
+   the full top-level listing, a SHA-256 of every top-level .toml/.json, and
+   the .materialization mtime. Snapshot taken as the FIRST command of the
+   session, re-read at the end.
+
+   $ diff snapshot-before/full.txt snapshot-after/full.txt
+   IDENTICAL — no home changed
+
+2. CENSUS over every home reachable on the machine (20 of them), with a
+   write count for HIS-16's window. The window opens at 18:08, after the
+   session's own skt currency check refreshed the root home's
+   cache/skt-check.json and its plugin-marketplace symlinks at 18:05-18:07
+   — recorded here rather than filtered out silently.
+
+Every Skill Manager home reachable from this machine, unit set and any write in HIS-16's window.
+Window opens 2026-08-22 18:08 — after the session's own skt currency check (18:05-18:07)
+and after HIS-16's first command. Closes at the time this file was written.
+
+/Users/hayde/.skill-manager                                            skills=20  plugins=3   writes-in-window=0
+/Users/hayde/IdeaProjects/skill-manager/.skill-manager                 skills=4   plugins=0   writes-in-window=0
+/Users/hayde/IdeaProjects/wt-12-load-and-store-benchmark-harness-and/.skill-manager skills=19  plugins=3   writes-in-window=0
+/Users/hayde/IdeaProjects/wt-126-cdc-isf-002/.skill-manager            skills=10  plugins=2   writes-in-window=0
+/Users/hayde/IdeaProjects/wt-16-concurrent-agent-registration-cannot-lose/.skill-manager skills=19  plugins=3   writes-in-window=0
+/Users/hayde/IdeaProjects/wt-161-his-12/.skill-manager                 skills=4   plugins=0   writes-in-window=0
+/Users/hayde/IdeaProjects/wt-186-his-11/.skill-manager                 skills=4   plugins=0   writes-in-window=0
+/Users/hayde/IdeaProjects/wt-216-his-4/.skill-manager                  skills=4   plugins=0   writes-in-window=0
+/Users/hayde/IdeaProjects/wt-226-his-9/.skill-manager                  skills=4   plugins=0   writes-in-window=0
+/Users/hayde/IdeaProjects/wt-227-his-10/.skill-manager                 skills=4   plugins=0   writes-in-window=0
+/Users/hayde/IdeaProjects/wt-232-his-14/.skill-manager                 skills=4   plugins=0   writes-in-window=0
+/Users/hayde/IdeaProjects/wt-235-his-15/.skill-manager                 skills=4   plugins=1   writes-in-window=0
+/Users/hayde/IdeaProjects/wt-237-his-16/.skill-manager                 skills=4   plugins=0   writes-in-window=0
+/Users/hayde/IdeaProjects/wt-239-his-18/.skill-manager                 skills=4   plugins=0   writes-in-window=0
+/Users/hayde/IdeaProjects/wt-epic-acp-server-memory-hardening/.skill-manager skills=19  plugins=3   writes-in-window=0
+/Users/hayde/IdeaProjects/wt-epic-meta-harness-mvp/.skill-manager      skills=20  plugins=3   writes-in-window=0
+/Users/hayde/IdeaProjects/wt-epic-portable-substrate-RM-04/.skill-manager skills=18  plugins=1   writes-in-window=0
+/Users/hayde/IdeaProjects/wt-epic-score-drives-validation-SV-04/.skill-manager skills=18  plugins=1   writes-in-window=0
+/Users/hayde/IdeaProjects/wt-epic-stabilize-substrate-SS-09/.skill-manager skills=18  plugins=2   writes-in-window=0
+/Users/hayde/IdeaProjects/wt-epic-stabilize-substrate/.skill-manager   skills=18  plugins=2   writes-in-window=0
+
+3. The graphs' own laws agree. home.membership.law reported homesOutsideSandbox=0
+   on all six runs, meaning no discovered candidate lay outside the JVM temp
+   root — nothing named a real home at all.

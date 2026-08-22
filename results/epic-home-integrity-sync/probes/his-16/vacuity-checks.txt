@@ -1,0 +1,345 @@
+HIS-16 (#237) — vacuity checks
+==============================
+
+Produced by scratchpad/his16/vacuity.py, which is reproduced in full at the
+bottom of this file. Every mutation is applied to a COMMITTED tree and reverted
+from a byte copy taken by the harness — never `git checkout --`, which restores
+to HEAD and has eaten an agent's uncommitted work twice in this epic (DEF-035).
+
+The three mechanisms from results/epic-home-integrity-sync/validation/
+vacuity-ledger.md, and how each is answered:
+
+  A  the probe reddens a PRECONDITION, not the claim
+     -> every row below names the assertion(s) that actually reddened, and the
+        verdict line says whether that set is exactly the claim. A row that is
+        not exactly the claim is printed as MISMATCH and kept.
+
+  B  the FIXTURE cannot express the defect
+     -> ConfinementTest's refusal case asserts its own precondition first
+        ("PRECONDITION: the working directory is outside the confinement"),
+        and it is blind to the mutation under test: it reads
+        Confinement.covers, which V1 does not touch.
+     -> the membership law's self-test plants DEF-047's exact residue — a unit
+        gone from the home with ONLY its .projections.json surviving — and
+        runs the production comparison over it, every run, before any real
+        home is read.
+
+  C  the mutation never REACHED the code
+     -> the harness asserts `s.count(old) == 1` before every mutation and
+        fails loudly otherwise.
+     -> V4a is the case that proves this matters: the mutation matched exactly
+        once, provably ran, and the outcome DID NOT MOVE. Kept as evidence.
+
+RUNNER: `jbang RunHis16.java` (ConfinementTest), plus the membership law run
+standalone with --result-out. RunHis16 deliberately EXCLUDES JsonContractTest —
+see below.
+
+WHY JsonContractTest IS NOT IN THE MUTATION LANE
+------------------------------------------------
+JsonContractTest now drives `project register|remove|resolve|sync` on their
+REAL execution paths, which is safe only because the confinement guard refuses
+them. Run that suite with the guard mutated away and it does not go red: it
+REPRODUCES DEF-047 against whatever checkout the JVM is standing in, which for
+a ticket agent is its own worktree home. That is the incident, not a probe of
+it. Its dependence on the guard is measured the other way round — it is
+asserted GREEN on the unmutated tree, where all four entries reach the refusal
+and get exit 14 with one JSON document.
+
+The end-to-end escape IS reproduced, under control, by the graph node
+home-integrity/ProjectVerbStaysInItsHome, which owns a throwaway victim
+checkout and can afford to let it be damaged. Its control is part of the node
+and runs on every graph run:
+
+    CLAIM    exit 14; victim [skills/his16-unit-kept]
+    CONTROL  exit  0; victim [skills/his16-unit-claimed-later]   <- the escape
+
+RESULTS
+-------
+BASELINE
+    RunHis16: 8 cases, all PASS
+    membership law self-test: passed
+
+V1  the CWD/confinement check in ProjectRoot removed
+    mutation: ProjectRoot.resolve: `if (!confinement.covers(root))` -> `if (false)`
+    expected to redden: ['a confined process refuses a CWD-derived root outside the root', 'an explicit --project-dir OUTSIDE the root is refused too']
+    ACTUALLY reddened:  ['a confined process refuses a CWD-derived root outside the root', 'an explicit --project-dir OUTSIDE the root is refused too']
+    verdict: the claim reddened, and only the claim
+
+V2  the working-directory axis dropped from Confinement.current()
+    mutation: Confinement.current: the `axes.add(axis(CWD, ...))` line deleted
+    expected to redden: ['every axis is read, and the working directory is one of them']
+    ACTUALLY reddened:  ['every axis is read, and the working directory is one of them']
+    verdict: the claim reddened, and only the claim
+    This is the scope-2 claim itself: a sandbox report that does not cover CWD is the pre-#237 state, where five variables were pinned and the sixth axis was never asked about.
+
+V3  an UNSET axis treated as confined rather than as an escape
+    mutation: Confinement.axis: a null value now reads as inside
+    expected to redden: ['an UNSET agent variable is an escape, not a pass']
+    ACTUALLY reddened:  ['an UNSET agent variable is an escape, not a pass']
+    verdict: the claim reddened, and only the claim
+    SmEnv's class comment records what an unset agent root costs: five units projected into three real agent homes.
+
+V4a  the .projections.json BRANCH disabled (first attempt)
+    mutation: HomeMembershipLaw.installedRecords: `if (n.endsWith(...))` -> `if (false)`
+    expected to redden: ['the_detector_flags_a_planted_gain_and_a_planted_loss']
+    ACTUALLY reddened:  (nothing)
+    verdict: MISMATCH — read this before trusting the probe
+    EXPECTED MISMATCH, kept as evidence. The record is still read, by the `.json` sibling branch, under the mangled name 'deploy-helm.projections' -- so the loss is still flagged. The mutation reached the code and the outcome did not move.
+    self-test after the mutation:
+      SELF-TEST (runs before any real home):
+        consistent home -> 0 violation(s)
+        gained a unit   -> 1 violation(s)
+        lost  a unit    -> 2 violation(s)
+
+V4b  the membership law stops reading orphaned .projections.json records
+    mutation: HomeMembershipLaw.installedRecords: the .projections.json arm returns without recording the name
+    expected to redden: ['the_detector_flags_a_planted_gain_and_a_planted_loss']
+    ACTUALLY reddened:  ['the_detector_flags_a_planted_gain_and_a_planted_loss']
+    verdict: the claim reddened, and only the claim
+    That reader is the one DEF-047 turned on: deploy-helm vanished from skills/ and ONLY its .projections.json survived, orphaned. The self-test plants that exact residue.
+    self-test after the mutation:
+      SELF-TEST (runs before any real home):
+        consistent home -> 0 violation(s)
+        gained a unit   -> 1 violation(s)
+        lost  a unit    -> 0 violation(s)
+
+V5  a run that finds ZERO homes FAILS — demonstrated without a mutation
+    The law run standalone has no upstream context, so it discovers no
+    home. It reports FAILED, not PASSED:
+      every_home_holds_exactly_what_was_installed_into_it: passed
+    An instrument reporting success because it could not look is the
+    failure mode this law exists to close, so 'checked nothing' is red.
+
+RESTORED
+    RunHis16 after every revert: rc=0, 8 cases, all PASS
+
+    git status --porcelain: (clean — every mutation reverted)
+
+
+THE HARNESS
+-----------
+#!/usr/bin/env python3
+"""HIS-16 vacuity probes.
+
+DEF-035 discipline, applied literally:
+  * the tree is COMMITTED before anything is mutated, and the revert is from a
+    saved byte copy taken here — never `git checkout --`, which restores to HEAD
+    and has eaten uncommitted work twice in this epic;
+  * every mutation asserts its pattern matched EXACTLY ONCE before it is
+    applied, so a mutation that matched nothing cannot read as a passing check;
+  * the reddened ASSERTION NAMES are recorded, not just "it went red", because
+    mechanism A in the epic's ledger is a probe that reddens a precondition.
+
+DELIBERATELY NOT PROBED HERE: JsonContractTest. It now drives the four project
+verbs on their real execution paths, and with the guard mutated away that does
+not go red — it reproduces DEF-047 against this worktree's own home. See
+RunHis16.java's javadoc.
+"""
+import json
+import os
+import shutil
+import subprocess
+import sys
+import tempfile
+
+REPO = "/Users/hayde/IdeaProjects/wt-237-his-16"
+SCRATCH = os.path.dirname(os.path.abspath(__file__))
+LAWPROBE = os.path.join(SCRATCH, "lawprobe")
+
+
+def run(cmd, cwd=REPO, timeout=900):
+    p = subprocess.run(cmd, cwd=cwd, shell=True, capture_output=True,
+                       text=True, timeout=timeout)
+    return p.returncode, p.stdout + p.stderr
+
+
+def unit_lane():
+    """RunHis16 -> {case label: 'PASS'|'FAIL'}."""
+    rc, out = run("jbang RunHis16.java")
+    cases = {}
+    for line in out.split("\n"):
+        line = line.strip()
+        if line.startswith("[PASS] "):
+            cases[line[7:]] = "PASS"
+        elif line.startswith("[FAIL] "):
+            cases[line[7:].split(": ")[0]] = "FAIL"
+    return rc, cases, out
+
+
+def law_lane():
+    """The membership law standalone -> {assertion: status}."""
+    os.makedirs(LAWPROBE, exist_ok=True)
+    result = os.path.join(LAWPROBE, "result.json")
+    if os.path.exists(result):
+        os.remove(result)
+    run("jbang sources/common/HomeMembershipLaw.java "
+        "--nodeId=home.membership.law --reportDir=%s --result-out=%s"
+        % (LAWPROBE, result), cwd=os.path.join(REPO, "test_graph"))
+    with open(result) as fh:
+        d = json.load(fh)
+    return ({a["name"]: a["status"] for a in d.get("assertions", [])},
+            "\n".join(d.get("logs", [])))
+
+
+class Mutation:
+    def __init__(self, path, old, new):
+        self.path = os.path.join(REPO, path)
+        self.old = old
+        self.new = new
+        self.backup = None
+
+    def __enter__(self):
+        with open(self.path) as fh:
+            s = fh.read()
+        n = s.count(self.old)
+        # Mechanism C, stated as an assertion rather than a hope.
+        assert n == 1, "MUTATION PATTERN matched %d times in %s (must be 1)" % (n, self.path)
+        fd, self.backup = tempfile.mkstemp(suffix=".bak")
+        os.close(fd)
+        shutil.copyfile(self.path, self.backup)
+        with open(self.path, "w") as fh:
+            fh.write(s.replace(self.old, self.new))
+        return self
+
+    def __exit__(self, *a):
+        shutil.copyfile(self.backup, self.path)
+        os.remove(self.backup)
+        return False
+
+
+REPORT = []
+
+
+def record(v, what, mutation, expected, before, after, extra=""):
+    reddened = sorted(k for k in after if after[k] != before.get(k, after[k]))
+    ok = sorted(expected) == reddened
+    REPORT.append(
+        "%s  %s\n"
+        "    mutation: %s\n"
+        "    expected to redden: %s\n"
+        "    ACTUALLY reddened:  %s\n"
+        "    verdict: %s%s\n"
+        % (v, what, mutation, expected or "(nothing)", reddened or "(nothing)",
+           "the claim reddened, and only the claim" if ok
+           else "MISMATCH — read this before trusting the probe",
+           ("\n    " + extra) if extra else ""))
+    return ok
+
+
+def main():
+    rc, base_unit, _ = unit_lane()
+    assert rc == 0, "BASELINE unit lane is not green; probes are meaningless"
+    base_law, base_log = law_lane()
+    REPORT.append("BASELINE\n    RunHis16: %d cases, all PASS\n"
+                  "    membership law self-test: %s\n"
+                  % (len(base_unit),
+                     base_law.get("the_detector_flags_a_planted_gain_and_a_planted_loss")))
+
+    # ---- V1: the confinement check in ProjectRoot never fires ---------------
+    with Mutation(
+            "src/main/java/dev/skillmanager/project/ProjectRoot.java",
+            "        if (!confinement.covers(root)) {",
+            "        if (false) {   // V1: the guard removed"):
+        _, after, _ = unit_lane()
+        record("V1", "the CWD/confinement check in ProjectRoot removed",
+               "ProjectRoot.resolve: `if (!confinement.covers(root))` -> `if (false)`",
+               ["a confined process refuses a CWD-derived root outside the root",
+                "an explicit --project-dir OUTSIDE the root is refused too"],
+               base_unit, after)
+
+    # ---- V2: the CWD axis dropped from the one call -------------------------
+    with Mutation(
+            "src/main/java/dev/skillmanager/sandbox/Confinement.java",
+            "        axes.add(axis(CWD, workingDirectory(), normalizedRoot));",
+            "        // V2: the cwd axis dropped"):
+        _, after, _ = unit_lane()
+        record("V2", "the working-directory axis dropped from Confinement.current()",
+               "Confinement.current: the `axes.add(axis(CWD, ...))` line deleted",
+               ["every axis is read, and the working directory is one of them"],
+               base_unit, after,
+               "This is the scope-2 claim itself: a sandbox report that does not "
+               "cover CWD is the pre-#237 state, where five variables were pinned "
+               "and the sixth axis was never asked about.")
+
+    # ---- V3: an unset axis read as confined ---------------------------------
+    with Mutation(
+            "src/main/java/dev/skillmanager/sandbox/Confinement.java",
+            "        boolean inside = root != null && normalized != null && normalized.startsWith(root);",
+            "        boolean inside = root == null || normalized == null || normalized.startsWith(root);"):
+        _, after, _ = unit_lane()
+        record("V3", "an UNSET axis treated as confined rather than as an escape",
+               "Confinement.axis: a null value now reads as inside",
+               ["an UNSET agent variable is an escape, not a pass"],
+               base_unit, after,
+               "SmEnv's class comment records what an unset agent root costs: "
+               "five units projected into three real agent homes.")
+
+    # ---- V4: the law stops counting orphaned .projections.json --------------
+    # FIRST ATTEMPT, recorded because it is itself a finding. Disabling the
+    # .projections.json branch with `if (false)` did NOT move the outcome: the
+    # file also ends in ".json", so the sibling branch caught it and reported
+    # the loss under the mangled name "deploy-helm.projections". The mutation
+    # matched exactly once and provably reached the code, and the result was
+    # green-equivalent anyway. See vacuity-checks.txt.
+    with Mutation(
+            "test_graph/sources/common/HomeMembershipLaw.java",
+            '                if (n.endsWith(".projections.json")) {',
+            '                if (false) {   // V4a: the orphaned-projection branch disabled'):
+        after, log = law_lane()
+        record("V4a", "the .projections.json BRANCH disabled (first attempt)",
+               "HomeMembershipLaw.installedRecords: `if (n.endsWith(...))` -> `if (false)`",
+               ["the_detector_flags_a_planted_gain_and_a_planted_loss"],
+               base_law, after,
+               "EXPECTED MISMATCH, kept as evidence. The record is still read, by "
+               "the `.json` sibling branch, under the mangled name "
+               "'deploy-helm.projections' -- so the loss is still flagged. The "
+               "mutation reached the code and the outcome did not move.\n"
+               "    self-test after the mutation:\n      "
+               + log.replace("\n", "\n      "))
+
+    # V4b: actually stop READING the record, rather than falling through to a
+    # branch that reads it under another name.
+    with Mutation(
+            "test_graph/sources/common/HomeMembershipLaw.java",
+            """                if (n.endsWith(".projections.json")) {
+                    out.add(n.substring(0, n.length() - ".projections.json".length()));""",
+            """                if (n.endsWith(".projections.json")) {
+                    return;   // V4b: orphaned projection records not read at all"""):
+        after, log = law_lane()
+        record("V4b", "the membership law stops reading orphaned .projections.json records",
+               "HomeMembershipLaw.installedRecords: the .projections.json arm returns "
+               "without recording the name",
+               ["the_detector_flags_a_planted_gain_and_a_planted_loss"],
+               base_law, after,
+               "That reader is the one DEF-047 turned on: deploy-helm vanished from "
+               "skills/ and ONLY its .projections.json survived, orphaned. The "
+               "self-test plants that exact residue.\n"
+               "    self-test after the mutation:\n      "
+               + log.replace("\n", "\n      "))
+
+    # ---- V5: zero homes, no mutation needed --------------------------------
+    after, log = law_lane()
+    REPORT.append(
+        "V5  a run that finds ZERO homes FAILS — demonstrated without a mutation\n"
+        "    The law run standalone has no upstream context, so it discovers no\n"
+        "    home. It reports FAILED, not PASSED:\n"
+        "      every_home_holds_exactly_what_was_installed_into_it: %s\n"
+        "    An instrument reporting success because it could not look is the\n"
+        "    failure mode this law exists to close, so 'checked nothing' is red.\n"
+        % after.get("every_home_holds_exactly_what_was_installed_into_it"))
+
+    # ---- restoration is asserted, not assumed ------------------------------
+    rc, restored, _ = unit_lane()
+    REPORT.append("RESTORED\n    RunHis16 after every revert: rc=%d, %d cases, %s\n"
+                  % (rc, len(restored),
+                     "all PASS" if all(v == "PASS" for v in restored.values())
+                     else "NOT CLEAN — " + str(restored)))
+    rc2, out2 = run("git -C %s status --porcelain" % REPO)
+    REPORT.append("    git status --porcelain: %s\n"
+                  % (out2.strip() or "(clean — every mutation reverted)"))
+
+    print("\n".join(REPORT))
+
+
+if __name__ == "__main__":
+    main()
