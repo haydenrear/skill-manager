@@ -245,6 +245,120 @@ public final class ScaffoldedTreeIsNotContentTest {
                                         + "not a new place to create it");
                     }
                 })
+
+                // ---------------------------------------- the DELETION surface
+                // Review of #240, BLOCKER 1. `treeDigest` is what
+                // `isLocallyModified` reads, and that predicate's own javadoc
+                // calls it "the predicate a prune, a teardown and a close-out
+                // consult before destroying it". Excluding a path from the
+                // digest therefore made an agent's authored file DISPOSABLE —
+                // `home sync` reported UNCHANGED, close-out found no blocker,
+                // and `wt close` / `project remove` deleted the child home with
+                // an empty preserve set. `carryOverUnownedTrees` guards the
+                // SWAP; nothing guarded the TEARDOWN.
+                //
+                // Not hypothetical: acp-cdc-ai-python/scripts/sources/logs/*.jsonl
+                // in the operator's root store are ACP session transcripts, and
+                // they are one of only three genuinely-new exclusions this
+                // change adds.
+                .test("an agent's file under an excluded path is NOT DISPOSABLE — the teardown "
+                        + "predicate still sees it", () -> {
+                    try (Fixture f = Fixture.declaring("results/\n")) {
+                        f.materialize();
+                        assertFalse(f.locallyModified(),
+                                "precondition: a pristine child copy is disposable, so the "
+                                        + "assertion below is about the file and not about the "
+                                        + "predicate refusing everything");
+
+                        Path authored = f.childUnit.resolve("results/findings.md");
+                        Fs.ensureDir(authored.getParent());
+                        Files.writeString(authored, "WHAT THE TICKET FOUND\n");
+
+                        assertTrue(f.locallyModified(),
+                                "a file the child home wrote under an excluded path is work the "
+                                        + "parent store cannot be shown to have — invisible to "
+                                        + "the digest must not mean disposable by the teardown");
+                        assertEquals(1, f.locallyModifiedCount(),
+                                "and `locallyModifiedUnits()` names the unit, so close-out and "
+                                        + "`project remove` both see it");
+                    }
+                })
+                .test("an excluded path the SOURCE also holds is still disposable — the guard is "
+                        + "narrow", () -> {
+                    try (Fixture f = Fixture.declaring("results/\n")) {
+                        Path inStore = f.sourceUnit.resolve("results/generated.txt");
+                        Fs.ensureDir(inStore.getParent());
+                        Files.writeString(inStore, "REGENERATED\n");
+                        f.materialize();
+
+                        Path inChild = f.childUnit.resolve("results/generated.txt");
+                        Fs.ensureDir(inChild.getParent());
+                        Files.writeString(inChild, "REGENERATED\n");
+
+                        assertFalse(f.locallyModified(),
+                                "byte-identical to what the parent store holds at the same "
+                                        + "excluded path, so there is nothing here that exists "
+                                        + "nowhere else and the teardown is not blocked");
+                    }
+                })
+
+                // ------------------------------------- the two walkers agreeing
+                // Review of #240, BLOCKER 2. `walk` asked the question at the
+                // SYMLINK frame (directory=false) and again at the DEREFERENCED
+                // frame (directory=true). A dir-only rule matches the second and
+                // not the first, so `walk` emitted neither the link nor its
+                // target while `walkPlain` still emitted the LINK: a permanent
+                // one-sided entry in every drift report. The fixture the
+                // scaffolder's own block produces cannot reach it, because
+                // `ensure_provider_binding_ignores` emits `/sdk` with no
+                // trailing slash — and `build/`, `dist/`, `.venv/` are the
+                // dominant convention everywhere else.
+                .test("a DIRECTORY-ONLY rule over an in-unit store link leaves the two walkers "
+                        + "agreeing", () -> {
+                    try (Fixture f = Fixture.dirOnlyRuleOverStoreLink()) {
+                        assertTrue(Files.isSymbolicLink(f.sourceUnit.resolve("test_graph/sdk")),
+                                "precondition: the store holds a symlink there");
+                        f.materialize();
+
+                        boolean inSource = ChildHomeMaterializer.entryDigests(f.sourceUnit,
+                                java.util.Set.of(".git")).containsKey("test_graph/sdk");
+                        boolean inChild = ChildHomeMaterializer.entryDigests(f.childUnit,
+                                java.util.Set.of(".git")).containsKey("test_graph/sdk");
+                        assertEquals(inSource, inChild,
+                                "one side hashing a path the other does not have is a permanent "
+                                        + "entry in every later drift report — the exact failure "
+                                        + "the case above names, arriving through the `directory` "
+                                        + "argument instead");
+                        assertTrue(inSource,
+                                "and both sides KEEP it: git's own dir-only rule does not match a "
+                                        + "symlink, so this path is content and HIS-4's git "
+                                        + "surface owns what the dereference then makes of it");
+                        assertTrue(Files.isRegularFile(
+                                        f.childUnit.resolve("test_graph/sdk/generated.txt")),
+                                "which means the tree really is materialized, not dropped");
+                    }
+                })
+
+                // ------------------------------ GOAL-no-spurious-holdback, clause 2
+                // The review is right that clause 1 was asserted here and clause
+                // 2 was not, and a guard that only ever says "do not hold back"
+                // is not a guard.
+                .test("a unit that GENUINELY differs is still held back, excluded paths or not",
+                        () -> {
+                    try (Fixture f = Fixture.scaffolded(scaffolded)) {
+                        f.materialize();
+                        Files.writeString(f.childUnit.resolve("SKILL.md"), "AN AGENT WROTE THIS\n");
+                        Files.writeString(f.sourceUnit.resolve("SKILL.md"), "STORE v2\n");
+
+                        ChildHomeMaterializer.UnitOutcome outcome = f.materialize();
+                        assertTrue(outcome.heldBack(),
+                                "an ordinary edit is still an edit — narrowing the question must "
+                                        + "not answer 'clean' whenever an excluded path exists");
+                        assertEquals("AN AGENT WROTE THIS\n",
+                                Files.readString(f.childUnit.resolve("SKILL.md")),
+                                "and the edit is still there");
+                    }
+                })
                 .runAll();
     }
 
@@ -363,6 +477,58 @@ public final class ScaffoldedTreeIsNotContentTest {
             git(unit, "-c", "user.email=fixture@localhost", "-c", "user.name=fixture",
                     "commit", "--quiet", "-m", "fixture: commit an ignored path on purpose");
             return new Fixture(base, parent, child, List.of());
+        }
+
+        /**
+         * A unit with nothing scaffolded in it, declaring one ordinary path
+         * generated. The shape a worktree agent actually meets: a unit whose
+         * `.gitignore` says `results/`, and an agent that writes a finding
+         * there.
+         */
+        static Fixture declaring(String unitGitignore) throws Exception {
+            Path base = Files.createTempDirectory("his18-declaring-");
+            SkillStore parent = store(base.resolve("parent/.skill-manager"));
+            SkillStore child = store(base.resolve("child/.skill-manager"));
+            Path unit = parent.unitDir(UNIT, UnitKind.SKILL);
+            Fs.ensureDir(unit);
+            Files.writeString(unit.resolve("SKILL.md"), "STORE v1\n");
+            Files.writeString(unit.resolve(".gitignore"), unitGitignore);
+            return new Fixture(base, parent, child, List.of());
+        }
+
+        /**
+         * A scaffolded store link under a DIRECTORY-ONLY rule ({@code sdk/}
+         * rather than {@code /sdk}). The scaffolder emits the second form, so
+         * no other fixture here reaches the first — and trailing-slash rules
+         * are the dominant convention everywhere else.
+         */
+        static Fixture dirOnlyRuleOverStoreLink() throws Exception {
+            Path base = Files.createTempDirectory("his18-dironly-");
+            SkillStore parent = store(base.resolve("parent/.skill-manager"));
+            SkillStore child = store(base.resolve("child/.skill-manager"));
+
+            Path providerUnit = parent.unitDir(PROVIDER, UnitKind.SKILL);
+            Path target = providerUnit.resolve("project_sdk_sources/sdk");
+            Fs.ensureDir(target);
+            Files.writeString(providerUnit.resolve("SKILL.md"), "PROVIDER\n");
+            Files.writeString(target.resolve("generated.txt"), "regenerated\n");
+
+            Path unit = parent.unitDir(UNIT, UnitKind.SKILL);
+            Path graph = unit.resolve("test_graph");
+            Fs.ensureDir(graph);
+            Files.writeString(unit.resolve("SKILL.md"), "STORE v1\n");
+            Files.writeString(graph.resolve(".gitignore"), "sdk/\n");
+            Files.createSymbolicLink(graph.resolve("sdk"), target.toAbsolutePath());
+            return new Fixture(base, parent, child, List.of("sdk"));
+        }
+
+        boolean locallyModified() throws IOException {
+            return new ChildHomeMaterializer(parent, child)
+                    .isLocallyModified(UNIT, UnitKind.SKILL);
+        }
+
+        int locallyModifiedCount() throws IOException {
+            return new ChildHomeMaterializer(parent, child).locallyModifiedUnits().size();
         }
 
         ChildHomeMaterializer.UnitOutcome materialize() throws IOException {
