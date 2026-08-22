@@ -151,7 +151,13 @@ public final class SkillManagerCli implements Runnable {
         }
     }
 
-    private static int execute(String[] args) {
+    /**
+     * Package-private rather than private: {@code JsonContractTest} drives
+     * every {@code --json} command through this exact entry point, so the
+     * guard exercises the real execution strategy — the json latch, the
+     * envelope, the exception handler — and not a reconstruction of it.
+     */
+    static int execute(String[] args) {
         dev.skillmanager.effects.UnitReadProblemReporter.reset();
         CommandLine cmd = new CommandLine(new SkillManagerCli());
         // The mode this invocation displaced, so the finally below can put it
@@ -210,6 +216,20 @@ public final class SkillManagerCli implements Runnable {
         // {@link #printFailure}; only a failure with nothing to say still
         // prints a trace.
         cmd.setExecutionExceptionHandler(SkillManagerCli::handleExecutionException);
+        // A PARSE failure never reaches the execution strategy, so the --json
+        // latch above never runs and the envelope is never armed: `bind
+        // no-such-unit --json` exited 2 with an empty stdout. The flag is still
+        // in the raw argv whether or not the parse succeeded, so that is what
+        // this consults. Found by JsonContractTest while driving the commands
+        // whose working directory cannot be sandboxed in-process.
+        CommandLine.IParameterExceptionHandler defaultParams = cmd.getParameterExceptionHandler();
+        cmd.setParameterExceptionHandler((ex, params) -> {
+            int rc = defaultParams.handleParseException(ex, params);
+            if (declaresJson(params)) {
+                JsonExitEnvelope.emit(rc, "usage", String.valueOf(ex.getMessage()));
+            }
+            return rc;
+        });
         try {
             return cmd.execute(args);
         } finally {
@@ -558,6 +578,22 @@ public final class SkillManagerCli implements Runnable {
         if (log == null) return;
         if (jsonRequested(pr)) return;
         System.err.println("  log: " + log);
+    }
+
+    /**
+     * Whether {@code --json} is present in the raw argv.
+     *
+     * <p>The parsed-result form below cannot be used on a parse FAILURE —
+     * there is no usable parse result, which is the whole reason that path
+     * emitted nothing. Reading argv is exact here: {@code --json} is a flag on
+     * every command that has it, so its presence as a token is unambiguous,
+     * and a value that merely equals the string cannot occur because no option
+     * in this CLI takes {@code --json} as an argument.
+     */
+    private static boolean declaresJson(String[] argv) {
+        if (argv == null) return false;
+        for (String arg : argv) if ("--json".equals(arg)) return true;
+        return false;
     }
 
     /** Whether {@code --json} was matched anywhere in the parsed command chain. */

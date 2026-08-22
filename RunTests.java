@@ -46,6 +46,7 @@ import dev.skillmanager.plan.MixedKindTopoOrderTest;
 import dev.skillmanager.cli.CliAgentContextExecutionTest;
 import dev.skillmanager.cli.CliRefusalsAreMessagesTest;
 import dev.skillmanager.cli.HomeBindsBothAxesTest;
+import dev.skillmanager.cli.JsonContractTest;
 import dev.skillmanager.cli.LazyHomeScaffoldTest;
 import dev.skillmanager.command.CliAgentContextTest;
 import dev.skillmanager.command.CliHelpProgressiveDisclosureTest;
@@ -238,6 +239,7 @@ public class RunTests {
         failures += ServerObservabilityContractTest.run();
         failures += CliAgentContextExecutionTest.run();
         failures += CliRefusalsAreMessagesTest.run();
+        failures += JsonContractTest.run();
         failures += LazyHomeScaffoldTest.run();
         failures += HomeBindsBothAxesTest.run();
         failures += CliAgentContextTest.run();
