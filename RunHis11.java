@@ -41,11 +41,19 @@
  * names and running this.
  *
  * <p>jbang RunTests.java remains the full suite and the ticket's declared
- * local signal; this is the three compensation suites, seconds instead of
- * minutes. CompensationPairingTest and FailureInjectionSweepTest are in
- * here because they are what a bad pre-image escrow would break FIRST --
- * a vacuity run that only ever reddens the new file has not checked that
- * the fix left the existing walk-back contract alone.
+ * local signal; this is four suites, seconds instead of minutes.
+ *
+ * <p>CompensationPairingTest and FailureInjectionSweepTest are in here
+ * because they are what a bad pre-image escrow would break FIRST -- a
+ * vacuity run that only ever reddens the new file has not checked that the
+ * fix left the existing walk-back contract alone.
+ *
+ * <p>ProjectChildHomeMaterializationTest is in here because it is
+ * GOAL-no-spurious-holdback's fixture, which GOAL-no-destructive-recovery
+ * CLAUSE 3 names as the thing this ticket's guard must not regress. The
+ * first version of this ticket ARGUED that it would not instead of running
+ * it; #233's review said run it. It is one run, and now it is one that
+ * happens every time.
  */
 public class RunHis11 {
     public static void main(String[] args) throws Exception {
@@ -53,6 +61,7 @@ public class RunHis11 {
         f += dev.skillmanager.effects.CommitPreImageRestoreTest.run();
         f += dev.skillmanager.effects.CompensationPairingTest.run();
         f += dev.skillmanager.effects.FailureInjectionSweepTest.run();
+        f += dev.skillmanager.project.ProjectChildHomeMaterializationTest.run();
         System.out.println(f == 0 ? "\nALL PASSED" : "\nFAILURES: " + f);
         if (f != 0) System.exit(1);
     }

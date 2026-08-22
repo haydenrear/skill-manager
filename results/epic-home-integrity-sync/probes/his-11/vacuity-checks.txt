@@ -115,6 +115,50 @@ THE WAIT LEFT SILENT. HomeLock.acquire, in-process branch:
   the operation, the home, and "is locked by another"); this is the waiting
   half.
 
+================================================================ V6
+THE LAST-RESORT DRAIN REMOVED (added answering #233's review, finding #1).
+Executor.drain:
+
+  -  private void drain(RollbackJournal journal) { if (journal.isEmpty()) return;
+  +  private void drain(RollbackJournal journal) { if (true) return;
+
+  [FAIL] an exception escaping the program releases the escrow instead of stranding it: and the escrow was released rather than stranded in cache/: expected <[]> but was <[.materialization-escrow-5446657473548208461]>
+  FAILURES: 1
+
+  The escaping exception is a StagedProgram whose stage-2 builder throws --
+  `staged.stage2().apply(ctx)` is a caller-supplied lambda outside `commit` and
+  outside `walkBack`, which were the only two drains and both sat on ordinary
+  control-flow edges. The cell also asserts that the exception still
+  PROPAGATES, so the drain cannot pass by turning into a catch, and that the
+  committed bytes are left alone, so it cannot pass by restoring.
+
+================================================================ V7
+THE POST-COMMIT HALT DECISION INVERTED (#233's review, finding #5).
+Executor.commit:
+
+  -  if (c instanceof Compensation.RestoreUnitDir r) r.escrow().discard();
+  +  if (c instanceof Compensation.RestoreUnitDir r) r.escrow().restore();
+
+  [FAIL] a commit that succeeds keeps the NEW bytes and leaves no escrow behind: the destination holds the newly committed tree: expected <# gamma …
+  [FAIL] a HALT after the commit keeps the new bytes and discards the pre-image, deliberately: the committed bytes stay — the halt was about what comes AFTER the commit: expected <# gamma …
+  FAILURES: 2
+
+  The point of this one is the SECOND line. `commit` argues in prose that a
+  cooperative stop is not a rollback and so a post-commit HALT keeps the new
+  bytes; that is the one place an explicitly-argued line in this ticket's new
+  code destroys operator bytes, and until now it had no cell. It has one, and
+  inverting the decision reddens it.
+
+  The cell's decoder asserts a non-FAILED HALT actually fired, because without
+  that it would pass just as well on the ordinary success edge -- i.e. it would
+  assert the discard and merely CALL it the halt edge.
+
+  The live instance is on the SYNC path, not the install path: SyncUseCase runs
+  CommitUnitsToStore and then BuildInstallPlan, and BuildInstallPlan returns
+  okAndHalt when the plan is policy-blocked. #233's review named RunInstallPlan;
+  checked, and that handler only ever returns ok or partial, and InstallUseCase
+  puts both of its halting effects BEFORE the commit.
+
 ================================================================ NOT A VACUITY CHECK
 The cell "a commit into an EMPTY destination still rolls back to absent" has no
 V-number and is not claimed as one. It is a NON-REGRESSION guard against the
@@ -122,3 +166,14 @@ opposite defect — an escrow that restored unconditionally would look correct o
 every case above and wrong on a fresh install, resurrecting a unit that was
 never there. There is no single-line mutation that reddens it and not V1, so
 calling it vacuity-checked would be a claim I did not measure.
+
+================================================================ A NOTE ON THE HARNESS
+The first version of the script that applies these mutations reverted them with
+`git checkout -- <path>`. That restores to HEAD, not to the state the mutation
+was applied on top of, and it silently discarded uncommitted work TWICE during
+this ticket -- once for the whole of the original Executor change, once for the
+drain. Nothing was lost (both were reapplied and re-verified before anything was
+pushed), but the shape is worth writing down for whoever does mutation testing
+next: snapshot the file CONTENT in memory and write it back, and commit before
+you start. A revert mechanism that consults a different source of truth than the
+thing it is reverting is its own small version of this epic's recurring defect.

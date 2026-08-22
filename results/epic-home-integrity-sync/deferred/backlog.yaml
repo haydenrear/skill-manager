@@ -1948,10 +1948,38 @@ findings:
       per crash, AND that unit is missing from `skills/` with nothing pointing
       at where its bytes went.
     what_this_is_NOT: >
-      Not a regression. Before HIS-11 the same crash left those bytes DELETED
-      rather than parked, so the parked copy is strictly better; and the same
-      unbounded-residue exposure already exists for HIS-4's escrow on the sync
-      path, which this ticket did not introduce and did not widen.
+      CORRECTED after the adversarial review of #233 -- the original text
+      claimed "not a regression ... did not widen", and the reviewer's verdict
+      was that "the `did not widen` claim in DEF-032 is not supported by what I
+      can verify". They are right, and the correction is worth more than the
+      original claim.
+
+      For BYTES it stands: before HIS-11 the same crash left those bytes
+      DELETED rather than parked, so parked is strictly better and recoverable.
+
+      For AVAILABILITY it does not. `commitUnits` was per-unit
+      delete-then-copy, so a ^C midway left the units it had already processed
+      present and the rest untouched. HIS-11's lift moves EVERY unit in the
+      closure aside before ANY copy runs, so the same ^C now leaves the WHOLE
+      closure missing from `skills/` -- and readers take no lock, so a
+      concurrent reader sees a home with a hole in it that is wider than it used
+      to be. That is a widening, in a dimension the original entry did not
+      consider, and it makes the stranded-escrow sweep more valuable rather than
+      less.
+    detection_is_the_other_half: >
+      Added for #233's finding #4. `.materialization-escrow-` appeared in
+      exactly two places -- the class that creates it and a test helper --
+      so nothing could FIND a stranded escrow even in principle. Moving the
+      bytes out of `skills/` fixed the namespace half of #231's defect and left
+      the detection half exactly where it was.
+
+      Partly closed in this PR: each holding directory now carries an
+      `escrow.txt` manifest (purpose, store dir, one `<slot>=<relative path>`
+      line per held tree, appended as each is taken so a process killed mid-loop
+      still leaves a readable one). That gives HIS-13 a marker to key on, which
+      it needs -- a repair command cannot own a condition with no marker. What
+      is still deferred is the reader: nothing enumerates `cache/` for these,
+      nothing reports them, nothing sweeps them.
     reproduction: >
       kill -9 a `skill-manager install <unit>` between CommitUnitsToStore and
       the end of the program, against a home where <unit> is already installed.
@@ -2075,3 +2103,56 @@ findings:
       A separate agent (HIS-14) independently avoided it by mutating file
       backups rather than reverting, and said so unprompted -- so the technique
       that works is already in use and simply undocumented.
+
+  - id: DEF-041
+    found_by: HIS-11 (#186), from the adversarial review of #233
+    found_at: "2026-08-22"
+    severity: major
+    summary: >
+      The home lock's hold time is unbounded and its patience is fixed at 120s,
+      so a slow-but-healthy peer makes the next command REFUSE rather than queue.
+    detail: >
+      `Executor` now takes `HomeLock` around the whole program, and the program
+      includes `RunInstallPlan`, which runs arbitrary skill-script installers.
+      `HomeLock.DEFAULT_TIMEOUT` is 120 seconds and nothing scales it to the work
+      being done. An agent installing `deploy-helm` into the project home --
+      three venvs, roughly 530 MB each -- holds the lock for far longer than
+      that, so a peer's `home close-out` -> `home sync` refuses.
+
+      Worktree close-out contending with the project home is the EXACT scenario
+      HomeLock was written for, so this is not a hypothetical pairing.
+    renumbered: >
+      Filed as DEF-035 by HIS-11 and re-issued as DEF-041 on rebase: the epic
+      branch had already allocated DEF-035 to the mutation-testing hazard, which
+      was pushed and referenced from a commit message first. Two different
+      findings, one id, and the one with a reference outside this file keeps it.
+    why_this_is_its_own_entry_and_not_part_of_DEF_034: >
+      DEF-034 is about the refusal's exit code and about nobody having watched
+      the real edge. This is a different claim: that the DURATION MISMATCH makes
+      the refusal fire on healthy runs. Folding it in would lose it.
+    the_uncomfortable_part: >
+      Recorded because it is a consistency failure in this ticket's own
+      reasoning, not just a defect. DEF-031 rejects its option (b) -- refuse the
+      commit when the pre-image cannot be taken -- on the grounds that it
+      "converts an install into a refusal on a condition the operator never
+      asked about, which is the hold-back shape CLAUSE 3 exists to prevent".
+      The lock does the same thing one layer up, and HIS-11 applied the standard
+      to the escrow and not to the lock. The reviewer found that; the ticket did
+      not.
+    candidate_shapes: >
+      (a) Scale the wait with what the holder is doing -- the holder knows, the
+      waiter does not, so this needs the lock file to carry the holder's
+      operation and a heartbeat.
+      (b) Wait indefinitely while the holder is demonstrably ALIVE (pid liveness,
+      as the wave's own graph-run.sh lock does), and refuse only when it is not.
+      (c) Narrow what the lock covers so RunInstallPlan is outside it -- rejected
+      on sight here: the commit and the plan run are the two halves of one
+      install, and unlocking between them is the interleaving the lock exists to
+      stop.
+    why_deferred: >
+      Choosing between those is a CLI-contract decision with a surface of its own
+      (help text, the typed-exit-code table, an agent-parseable banner), and it
+      needs the measurement DEF-034 asks for before the number can be argued.
+      Out of "take the home lock for the resolve/install path".
+    candidate_owner: HIS-6, or whoever owns HomeLock after this epic
+    status: open

@@ -93,10 +93,20 @@ means, because "they both move files" would not be a good enough argument:
 The first four rows are one mechanism. The last two are policy, and policy is
 the caller's. So the class gained exactly two things:
 
-- `liftPaths(storeDir, homeRoot, relPaths, restoreTrackedShape)` — the existing
-  body, with the caller naming the paths; `lift(...)` is now a one-line wrapper
-  that asks `DereferencedStoreLinks` for them. No behaviour change for HIS-4's
-  two call sites.
+- `liftPaths(storeDir, homeRoot, relPaths, restoreTrackedShape, purpose)` — the
+  existing body, with the caller naming the paths; `lift(...)` is now a wrapper
+  that asks `DereferencedStoreLinks` for them.
+
+  > **Corrected after the review of #233.** I originally wrote "no behaviour
+  > change for HIS-4's two call sites". That was false and the reviewer caught
+  > it. Three things did change on their path: the warning text lost the word
+  > *materialized*; a named path that is **absent** is now skipped rather than
+  > throwing `NoSuchFileException` into the best-effort catch, so the loop
+  > continues and `checkoutPaths` still runs on the trees that were moved,
+  > where before one absent path aborted the whole lift; and the holding
+  > directory now carries a manifest. I believe all three are improvements, and
+  > that is a different claim from "nothing changed" — which is the claim I
+  > should not have made about somebody else's merged code.
 - `discard()` — new, because an escrow that *always* restores never needed a
   "the operation succeeded, let the bytes go" edge. Without it the home would
   grow one held unit tree per resolve under `cache/`, which is **exactly** the
@@ -109,6 +119,15 @@ rediscovered:
 
 1. **Not in the units namespace.** The bytes go under `<home>/cache/`, never
    `<home>/skills/`. Free, because I reused the class that already decided this.
+   The review's finding #4 is that this fixed the **namespace** half of #231's
+   defect and left the **detection** half exactly where it was —
+   `.materialization-escrow-` appeared in precisely two places, the class that
+   creates it and a test helper. Each holding directory now carries an
+   `escrow.txt` manifest (purpose, store dir, one `<slot>=<relative path>` line
+   per held tree, appended as each is taken so a process killed mid-loop still
+   leaves a readable one), because HIS-13 cannot own a condition with no marker.
+   The reader — something that enumerates `cache/`, reports, and sweeps — stays
+   deferred to DEF-032.
 2. **`restore()` must not assume an empty destination.** Its
    `DirectoryNotEmptyException` bug was already fixed to a recursive delete —
    which is what makes it correct for me, since a commit that failed mid-copy
@@ -148,9 +167,41 @@ restore would be immediately deleted.
 
 **A move, not a copy.** `cache/` and `skills/` are the same home and so the same
 filesystem; the rename is constant-time and makes no second copy of a unit that
-can be hundreds of megabytes on a disk that is routinely near full. The window in
-which the bytes exist only in `cache/` is not a regression: what used to happen
-in that window was `deleteRecursive`.
+can be hundreds of megabytes on a disk that is routinely near full.
+
+For **bytes**, the window in which they exist only in `cache/` is not a
+regression: what used to happen in that window was `deleteRecursive`. For
+**availability** it is one, and I had this wrong — `commitUnits` was per-unit
+delete-then-copy, so a `^C` midway used to leave the already-processed units
+present and the rest untouched, where the lift now moves the **whole closure**
+aside before any copy runs. Readers take no lock, so a concurrent reader sees a
+wider hole than before. DEF-032's `what_this_is_NOT` has been corrected; it
+previously asserted "did not widen", and the reviewer's verdict — *"the `did not
+widen` claim in DEF-032 is not supported by what I can verify"* — is right.
+
+**Every program drains the escrow on the way out**, including the way out
+through an exception. `commit` and `walkBack` are the ordinary edges and both
+are ordinary control flow; the review reproduced a `StagedProgram` whose stage-2
+builder throws, which reaches neither, leaving the commit landed and the
+pre-image stranded with the process still alive. Both public entry points now
+carry `finally { drain(journal) }`, and the drain **discards** — which makes the
+escape path byte-for-byte what it was before this ticket, where restoring would
+revert a commit nobody rolled back while the rest of the journal stayed applied.
+V6.
+
+**A post-commit HALT discards the pre-image, deliberately.** `runStaged` treats
+`halted && !failed` as "not going to be walked back". The live instance is
+`SyncUseCase` — `CommitUnitsToStore` then `BuildInstallPlan`, which returns
+`okAndHalt` on a policy-blocked plan — so a sync that commits an unmet reference
+and then finds its actions gated keeps the synced bytes. That is right for that
+instance (the halt is about the plan, and the installed record already names the
+new version), and it is now pinned by a cell with its own V-number rather than
+argued in a comment. V7.
+
+> The review named `RunInstallPlan` as the live instance. Checked, and it is
+> not: `runInstallPlan` only ever returns `ok` or `partial`, and
+> `InstallUseCase` puts **both** of its halting effects before the commit. The
+> shape is real; the instance is on the sync path.
 
 **`preStateCompensations` now has a side effect**, which nothing else in it does.
 That is inherent and I have said so in the javadoc rather than hidden it: a
@@ -209,16 +260,21 @@ ALL PASSED
 $ uv run pytest specs/ -q
 38 passed in 1.78s
 
-$ jbang RunHis11.java            # the three compensation suites, ~7s
+$ jbang RunHis11.java            # four suites, ~10s
   pre-existing skill: 3 file(s), 120 bytes at …/skills/gamma
   [PASS] the pre-installed skill survives a failure after the commit, byte-for-byte
   pre-existing plugin: 6 file(s), 376 bytes at …/plugins/gamma
   [PASS] the pre-installed plugin survives a failure after the commit, byte-for-byte
   [PASS] a commit that succeeds keeps the NEW bytes and leaves no escrow behind
   [PASS] a commit into an EMPTY destination still rolls back to absent
+  [PASS] an exception escaping the program releases the escrow instead of stranding it
+  [PASS] a HALT after the commit keeps the new bytes and discards the pre-image, deliberately
   [PASS] a second program against the same home WAITS, and says so before it waits
   [PASS] a second program that will not get the home REFUSES, naming it
-   → 6 passed, 0 failed
+   → 8 passed, 0 failed     CommitPreImageRestoreTest
+   → 12 passed, 0 failed    CompensationPairingTest
+   → 9 passed, 0 failed     FailureInjectionSweepTest
+   → 22 passed, 0 failed    ProjectChildHomeMaterializationTest  (CLAUSE 3)
 ALL PASSED
 ```
 
@@ -241,7 +297,7 @@ HIS-6, which owns the one terminal sweep with the goal scorecard (owner's
 instruction, 2026-08-21). All graph runs went through the wave's shared
 `graph-run.sh` lock.
 
-### Vacuity, five ways
+### Vacuity, seven ways
 
 Full transcripts in `results/epic-home-integrity-sync/probes/his-11/vacuity-checks.txt`;
 re-runnable, because `RunHis11.java` is in the repository rather than described
@@ -254,6 +310,8 @@ in a file. Summary of what reddened, and with what message:
 | V3 | `escrow().restore()` removed from the walk-back, lift left in | both byte-identity cells again — proves the *apply* arm is load-bearing, not just the lift |
 | V4 | `Executor.homeLock` pointed at a throwaway directory | both lock cells: `the second program did not run while the first held the home`, and `the second program refused rather than proceeding` |
 | V5 | `announceWait` suppressed | `expected <> to contain <waiting for>` — captured stdout empty |
+| V6 | the last-resort `drain` neutered | `expected <[]> but was <[.materialization-escrow-5446657473548208461]>` — the escaping-exception cell |
+| V7 | the post-commit HALT decision inverted (`discard` → `restore`) | the success cell **and** the HALT cell — the argued line now has a check |
 
 **The fixture is able to fail, and I checked that specifically**, because #187 in
 this same epic is the standing counter-example: an empty `previousLock` there
@@ -275,6 +333,52 @@ checked would be a claim I did not measure.
 
 ---
 
+## 5b. What the adversarial review of #233 changed
+
+Recorded here rather than folded in silently, because three of these were things
+I had claimed and got wrong.
+
+| # | finding | disposition |
+| --- | --- | --- |
+| 1 | **an exception escaping `runStaged` strands an escrow with the process alive** — `commit` and `walkBack` are the only drains and both are ordinary control flow; the trigger is `staged.stage2().apply(ctx)`, a caller-supplied lambda | **fixed in this PR.** `finally { drain(journal) }` on both entry points; the drain discards. Cell + **V6** |
+| 3 | DEF-032's `what_this_is_NOT` claimed "not a regression … did not widen" — false for **availability**: the lift moves the whole closure aside before any copy, where `commitUnits` was per-unit, so a `^C` now leaves a wider hole | **corrected in the backlog**, and in §2 and §3 above |
+| — | §2 claimed "no behaviour change for HIS-4's two call sites" — false: warning text, absent-path handling, and now the manifest | **corrected in §2** |
+| 4 | nothing can **detect** a stranded escrow; moving the bytes out of `skills/` fixed the namespace half of #231 and left the detection half | **partly fixed in this PR** — `escrow.txt` manifest, so HIS-13 has a marker to key on. The reader stays in DEF-032 |
+| 5 | a post-commit HALT discards the pre-image; `commit` argued for it in prose and nothing pinned it | **cell + V7.** And the review's named instance was wrong — see below |
+| — | CLAUSE 3 was reasoned about, not run | **run:** 22/22, §7 |
+| — | the lock is a hold-back the ticket did not apply its own standard to | **DEF-035** |
+| 7 | `conflict_keys.production` under-declares | theirs to fix; my read is below |
+
+**Where I disagree, with evidence.** Finding #5 names `RunInstallPlan`'s
+`okAndHalt` as the live post-commit halt, "the **last** effect of
+`InstallUseCase` stage 1". The shape is real and the finding stands, but that
+instance does not exist: `runInstallPlan` returns only `ok` or `partial` and
+never a halt, and `InstallUseCase` puts **both** of its halting effects
+(`CheckInstallPolicyGate`, `BuildInstallPlan`) *before* `CommitUnitsToStore`.
+The complete `okAndHalt` set is four effects — `CheckInstallPolicyGate`,
+`RejectIfAlreadyInstalled`, `BuildInstallPlan`, `CheckBuildPolicyGate` — and the
+only builder that puts one of them after a commit is **`SyncUseCase`**:
+`CommitUnitsToStore` → `BuildInstallPlan`, which halts on a policy-blocked plan.
+That is the instance now named in `Executor.commit`'s javadoc and in the cell.
+
+**Finding #7, my read of the under-declaration.** Declared:
+`Executor.preStateCompensations`, `HomeLock`. Missing, and the review names the
+first two:
+
+- **`Compensation`** — a new record in a **sealed permits clause**. Anything
+  exhaustively switching on it fails to compile. This is the sharpest one.
+- **`MaterializationEscrow`** — shared with HIS-4, whose merge is upstream of me;
+  a concurrent ticket touching it would collide.
+- **`Executor` as a whole**, not just `preStateCompensations`. I changed
+  `runStaged`, `runWithContext`, `applyCompensation`, and added `commit`,
+  `drain`, `homeLock`, `escrowOverwrittenUnits` and a field. A key naming one
+  method under-describes a change to eight.
+- **`RunTests.java`** — every ticket that adds a suite edits the same import
+  block and the same call list. It has no key at all and it is the file most
+  likely to conflict textually across the wave.
+
+---
+
 ## 6. What I cut
 
 - **Every other effect's compensation.** `SyncDocRepo` ("the dest bytes
@@ -284,9 +388,14 @@ checked would be a claim I did not measure.
   Out of slice, in as many words. **DEF-033.**
 - **The shape of the compensation framework.** `Compensation` gained one record;
   it did not gain a lifecycle, a `close()`, or a base type for compensations that
-  own resources. `Executor.commit` special-cases the one record that does, in
-  eleven lines, and says why. A general answer is a design decision this ticket
-  is not entitled to make.
+  own resources. `Executor.commit` and `Executor.drain` each special-case the one
+  record that does, and say why. A general answer is a design decision this
+  ticket is not entitled to make — though after the review's finding #1 I am
+  less comfortable with that than I was: the reason the drain was missing is
+  precisely that nothing in the type system says this compensation owns a
+  resource. If a second resource-owning compensation ever lands, the hole comes
+  back. Noted here rather than deferred, because the fix is the framework change
+  the slice excludes.
 - **A copy fallback when the escrow's `Files.move` fails.** Correct, and
   rejected: it adds a branch inside a data-loss guard that this ticket cannot
   make fail on demand, and an untested branch is not coverage. **DEF-031.**
@@ -300,16 +409,42 @@ Four deferrals against a budget of five.
 
 ## 7. What I am unsure about
 
-**CLAUSE 3, and whether the lock is a hold-back.** The clause says the guard must
-not become a new hold-back, and it is written about *staleness*. The pre-image
-escrow cannot hold anything back — it adds no refusal. The **home lock** can: it
-is now on every mutating command, and a command that queues for two minutes and
-then refuses is a hold-back by any reasonable reading, even though the thing it
-is holding back is a genuinely concurrent second writer. I believe that is
-correct behaviour and not what CLAUSE 3 is about, but I did not measure it
-against GOAL-no-spurious-holdback's fixture, because that fixture is about
-staleness reporting and this is a different surface. **A reviewer should decide
-whether they agree, and DEF-034 is where the timeout question is parked.**
+**CLAUSE 3 — now measured, and I was half right.** The first version of this
+section *argued* the answer instead of running the fixture, which the review
+called out and was right to. Run:
+
+```
+$ jbang RunHis11.java     # ProjectChildHomeMaterializationTest, last suite
+   → 22 passed, 0 failed
+ALL PASSED
+```
+
+GOAL-no-spurious-holdback's fixture does not regress; CLAUSE 3's literal written
+obligation holds. Recorded in `probes/his-11/clause3-holdback-fixture.txt`, and
+that fixture is now **in `RunHis11.java`** rather than run once by hand — the
+epic's own rule is that a record naming something you cannot re-run is a claim,
+and "I ran it separately that one time" is that claim. (One test run. I should
+have spent it the first time.)
+
+**Where the review disagreed with me, and it is the finding I most want read.**
+I framed the question as "is queueing a concurrent second writer a hold-back?"
+and answered no; the reviewer agrees. But that is not the only hold-back the
+lock creates. **The lock is held across `RunInstallPlan`, which runs arbitrary
+skill-script installers for minutes, while `HomeLock`'s patience is fixed at
+120 s.** That turns "queue behind a peer" into "**refuse** because the peer was
+slow" — concretely, an agent installing `deploy-helm` (three venvs, ~530 MB
+each) into the project home makes a peer's `home close-out` → `home sync` refuse,
+and worktree close-out contending with the project home is the exact scenario
+`HomeLock` was written for.
+
+The uncomfortable part, which is why it gets its own entry rather than a
+footnote: **I applied that standard to the escrow and not to the lock.** DEF-031
+rejects its option (b) in my own words — *"it converts an install into a refusal
+on a condition the operator never asked about, which is the hold-back shape
+CLAUSE 3 exists to prevent"* — and the lock does the same thing one layer up.
+Filed as **DEF-035**, naming the **duration mismatch** (hold time unbounded,
+patience fixed at 120 s) rather than folded into DEF-034's "the exit code is
+untested", because they are different claims.
 
 **The blast radius of taking the lock in `Executor`.** This is the change with
 the widest reach, and it is deliberate rather than incidental. Every program now

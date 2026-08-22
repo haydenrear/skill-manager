@@ -1,0 +1,29 @@
+CLAUSE 3 — "the guard does not become a new hold-back" — measured, not reasoned about.
+
+GOAL-no-destructive-recovery CLAUSE 3 says the guard must not turn a merely
+STALE home into one reported as damaged, and names GOAL-no-spurious-holdback's
+fixture as the thing that must not regress. That fixture is
+`dev.skillmanager.project.ProjectChildHomeMaterializationTest`. The first version
+of this ticket ARGUED the answer instead of running it, which #233's review
+called out. It is now the last suite in `jbang RunHis11.java`, so it runs on
+every vacuity pass rather than once by hand. Run on the branch tip:
+
+  [PASS] harness instantiate into a child home copies units instead of symlinking
+  [PASS] symlinks into the parent store are dereferenced by COPY
+  [PASS] a failed materialization leaves the previous child home unit intact
+   → 22 passed, 0 failed
+
+ALL PASSED
+
+Both clauses hold. Nothing this ticket adds reports a stale home as damaged --
+the escrow adds no verdict and no refusal at all; the only new refusal in the
+whole change is HomeLock's contention timeout, which is a genuinely concurrent
+second writer and not a stale home.
+
+WHAT THIS RUN DOES NOT SETTLE, and what the review was right about: the lock is
+now held for the WHOLE program including RunInstallPlan, whose skill-script
+installers run for minutes, while HomeLock's patience is fixed at 120s. That
+converts "queue behind a peer" into "REFUSE because the peer was slow" -- the
+same hold-back shape this ticket used as its stated reason for rejecting option
+(b) of DEF-031, one layer up. Filed as DEF-035; it is not what CLAUSE 3's
+fixture measures and this run cannot speak to it.
