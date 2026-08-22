@@ -263,5 +263,5 @@ same tree:
       HomeBindsBothAxesTest  → 17 passed, 0 failed;  19 pre-existing failures
       elsewhere (AgentHomesTest, HomeDescriptorTest, LauncherShimsTest, the
       #145 test) — the same 19, in the same suites, as on the BASE commit
-      before any of this ticket's code. Filed as DEF-041; they are the same
+      before any of this ticket's code. Filed as DEF-042; they are the same
       "cannot say unset" gap, and `setUnset` is the fix they need.

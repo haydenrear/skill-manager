@@ -276,7 +276,7 @@ shell. `AgentHomes.setUnset` is the third state. The suite is now **17/17 with
 the four variables exported AND with them unset**, and `runtests.sh` runs both
 ways. The 19 failures that remain in other suites under `--set` are the same 19,
 in the same suites, as on the base commit before any of this ticket's code —
-filed as **DEF-041**, with `setUnset` as the fix they need.
+filed as **DEF-042**, with `setUnset` as the fix they need.
 
 ## HIS-12's source-scan guard
 
@@ -306,7 +306,7 @@ in a second flavour; the numbers below are from a stable tree.
 | signal | result |
 | --- | --- |
 | `jbang RunTests.java`, four variables UNSET | **ALL PASSED** (`HomeBindsBothAxesTest` **17/17**) |
-| `jbang RunTests.java`, four variables EXPORTED | `HomeBindsBothAxesTest` **17/17**; 19 failures in other suites, the same 19 as on the base commit — DEF-041 |
+| `jbang RunTests.java`, four variables EXPORTED | `HomeBindsBothAxesTest` **17/17**; 19 failures in other suites, the same 19 as on the base commit — DEF-042 |
 | `uv run pytest specs/` | **38 passed** |
 | `home-integrity` (assigned) | **passed — 15 of 15, `execution.complete: true`**, run `20260822-153607` |
 | **`home-sync` (CORE)** | **passed — 18 of 18, `execution.complete: true`**, run `20260822-154113` |
@@ -433,7 +433,7 @@ the agent axis of every other one.
   `home` rows, each of which declares `--init`.
 - **DEF-040** — `exec` now states its home twice, through `--home` and through
   `LaunchEnv`. They agree; they are two derivations.
-- **DEF-041** (new) — `AgentHomes` could not express "this variable is unset", so
+- **DEF-042** (new) — `AgentHomes` could not express "this variable is unset", so
   19 assertions across four suites depend on the developer's shell and go red in
   the environment the product itself creates. `setUnset` is the mechanism and it
   is now in the codebase; applying it to those four suites is the sweep.
@@ -476,7 +476,7 @@ the agent axis of every other one.
 - **The `setUnset` sentinel is a new third state in a hot path.** It is compared
   by identity and only `resolve` reads it, but it is a new state in the one
   lookup every home question goes through, and 19 assertions elsewhere still
-  need it (DEF-041).
+  need it (DEF-042).
 - **The `tla-spec-dev` ticket open/close was not run.** `validation.tlc` is
   `N/A` for this ticket, the plan's `status` transitions are written by the epic
   agent at merge (`chore(epic): … delivered`), and the only `tla-spec-dev` on

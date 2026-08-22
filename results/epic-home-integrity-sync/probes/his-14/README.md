@@ -42,7 +42,7 @@
   shipping both: in the first round it was run only one way and went 9/1 on a
   precondition when a real `CLAUDE_CONFIG_DIR` was present. `--set` still shows
   19 failures in OTHER suites — the same 19, in the same suites, as on the base
-  commit before any of this ticket's code — filed as DEF-041.
+  commit before any of this ticket's code — filed as DEF-042.
   `$HOME` is a scratch directory in both modes.
 - `unit-suite-green.txt` — the green runs, both modes.
 - `graph-*-summary.json` — the three graphs, node by node. `execution.complete`

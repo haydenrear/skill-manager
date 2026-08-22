@@ -26,7 +26,7 @@ ALL PASSED
   [PASS] the printed remedy RUNS, in a shell whose environment names another home
    → 17 passed, 0 failed
 whole-suite failures: 19 -- all in OTHER suites, the same
-19 that fail on the BASE commit before any of this ticket's code. See DEF-041.
+19 that fail on the BASE commit before any of this ticket's code. See DEF-042.
   [FAIL] a sandboxed HOME keeps every agent home out of the real user.home
   [FAIL] a sandboxed HOME also covers the four fallbacks outside this package
   [FAIL] Claude driver

@@ -15,7 +15,7 @@
 # HomeDescriptorTest, LauncherShimsTest, the #145 test). They are the same 19,
 # in the same suites, as on the BASE commit before any of this ticket's code:
 # each is a correct assertion about an unset variable that has no way to say so.
-# Filed as DEF-041, with `setUnset` as the fix they need.
+# Filed as DEF-042, with `setUnset` as the fix they need.
 #
 # $HOME is a scratch directory in both modes. AgentHomes.userHome() prefers
 # $HOME, so this keeps every fallback out of the operator's real agent homes --

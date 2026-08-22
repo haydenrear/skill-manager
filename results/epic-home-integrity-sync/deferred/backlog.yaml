@@ -2415,7 +2415,7 @@ findings:
     candidate_owner: HIS-5 (state it as an invariant) or HIS-13
     status: open
 
-  - id: DEF-041
+  - id: DEF-042
     found_by: HIS-14 (#232), review round of #234 (MED-4)
     found_at: "2026-08-22"
     severity: major
@@ -2466,6 +2466,11 @@ findings:
       an explicit `AgentHomes.setUnset(...)`, then drop the `env -u` from
       `probes/his-14/runtests.sh` and from any other runner that carries one.
       The suite should be green in the environment its own product creates.
+    renumbered: >
+      Filed as DEF-041 by HIS-14 and re-issued as DEF-042 on rebase onto the
+      epic tip: HIS-11's merge (#233) had already taken DEF-041. Same convention
+      HIS-11 used one entry earlier, and the same cause -- two branches
+      allocating from one counter while both were open.
     candidate_owner: HIS-8 (which owns what an agent reads before working here)
       or HIS-13
     status: open
