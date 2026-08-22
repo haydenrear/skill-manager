@@ -1,7 +1,7 @@
 # Desired program model + ticket plan for the child-home materialization epic.
 # Source of truth for tickets. Keep synchronized with spec_manifest.yaml status.
 version: 1
-schedule_revision: 5
+schedule_revision: 6
 name: child-home-materialization-workflow
 updated: "2026-08-07"
 purpose: >
@@ -3015,10 +3015,10 @@ tickets:
     status: planned
     epic: home-integrity-sync
     github_issue: 217
-    wave: 8
-    depends_on: [HIS-1, HIS-2, HIS-3, HIS-4, HIS-7, HIS-9, HIS-10, HIS-11, HIS-12, HIS-13, HIS-14]
+    wave: 9
+    depends_on: [HIS-1, HIS-2, HIS-3, HIS-4, HIS-7, HIS-9, HIS-10, HIS-11, HIS-12, HIS-13, HIS-14, HIS-15]
     blocks: [HIS-6]
-    promotion_order: 13
+    promotion_order: 14
     promotion_predecessor: HIS-8
     conflict_keys:
       production: []
@@ -3054,10 +3054,10 @@ tickets:
     role: evaluation
     epic: home-integrity-sync
     github_issue: 218
-    wave: 9
-    depends_on: [HIS-1, HIS-2, HIS-3, HIS-4, HIS-5, HIS-7, HIS-8, HIS-9, HIS-10, HIS-11, HIS-12, HIS-13, HIS-14]
+    wave: 10
+    depends_on: [HIS-1, HIS-2, HIS-3, HIS-4, HIS-5, HIS-7, HIS-8, HIS-9, HIS-10, HIS-11, HIS-12, HIS-13, HIS-14, HIS-15]
     blocks: []
-    promotion_order: 14
+    promotion_order: 15
     promotion_predecessor: HIS-5
     owns_goals:
       - GOAL-no-spurious-holdback
@@ -3291,10 +3291,10 @@ tickets:
     epic: home-integrity-sync
     github_issue: 224
     added_in_schedule_revision: 3
-    wave: 7
-    depends_on: [HIS-7, HIS-9, HIS-10, HIS-11, HIS-12, HIS-13, HIS-14]
+    wave: 8
+    depends_on: [HIS-7, HIS-9, HIS-10, HIS-11, HIS-12, HIS-13, HIS-14, HIS-15]
     blocks: [HIS-6]
-    promotion_order: 12
+    promotion_order: 13
     promotion_predecessor: HIS-13
     rescheduled_in_revision_4: >
       Moved from wave 3 to wave 6. HIS-8 documents the contract; revision 4
@@ -3661,7 +3661,7 @@ tickets:
     added_in_schedule_revision: 4
     wave: 5
     depends_on: [HIS-9]
-    blocks: [HIS-5, HIS-6, HIS-8]
+    blocks: [HIS-15, HIS-5, HIS-6, HIS-8]
     promotion_order: 9
     promotion_predecessor: HIS-12
     conflict_keys:
@@ -3822,11 +3822,11 @@ tickets:
     epic: home-integrity-sync
     github_issue: 159
     added_in_schedule_revision: 4
-    wave: 6
-    depends_on: [HIS-9, HIS-10, HIS-14]
+    wave: 7
+    depends_on: [HIS-9, HIS-10, HIS-14, HIS-15]
     blocks: [HIS-5, HIS-6, HIS-8]
-    promotion_order: 11
-    promotion_predecessor: HIS-14
+    promotion_order: 12
+    promotion_predecessor: HIS-15
     rescheduled_in_revision_5: >
       Moved behind HIS-14. DEF-029's damage was to the operator's real AGENT
       directories rather than to a store, which makes it HIS-13's sharpest test
@@ -3887,7 +3887,7 @@ tickets:
     added_in_schedule_revision: 5
     wave: 5
     depends_on: [HIS-9, HIS-12]
-    blocks: [HIS-13, HIS-5, HIS-6, HIS-8]
+    blocks: [HIS-13, HIS-15, HIS-5, HIS-6, HIS-8]
     promotion_order: 10
     promotion_predecessor: HIS-11
     conflict_keys:
@@ -3968,3 +3968,100 @@ tickets:
         contribution: guard
         expected_effect: "must not weaken the sanctioned parent-store sharing HIS-10 landed"
         local_signal: "python skills/test_graph/scripts/run.py home-integrity"
+
+  - id: HIS-15
+    title: "`home close-out --json` emits no JSON when it fails, so the `wt close` gate loses every verdict"
+    phase: HIS
+    status: planned
+    epic: home-integrity-sync
+    github_issue: 235
+    added_in_schedule_revision: 6
+    wave: 6
+    depends_on: [HIS-11, HIS-14]
+    blocks: [HIS-13, HIS-5, HIS-6, HIS-8]
+    promotion_order: 11
+    promotion_predecessor: HIS-14
+    conflict_keys:
+      production: [HomeCloseOut, HomeCommand.CloseOutCmd, HomeLock.acquire, Executor.runStaged]
+      tla: []
+      adapters: []
+      test_graph: [ticket-lifecycle/TicketLifecycleConcurrentCloseOut]
+      workflow_data: []
+    found_by: >
+      The EPIC AGENT, verifying a blocker HIS-14 reported and could not attribute
+      -- and it is a regression from HIS-11 (#186), which the epic agent had
+      merged an hour earlier on graphs measured ON ITS OWN BRANCH.
+    root_cause: >
+      HIS-11 put HomeLock around Executor.runStaged/runWithContext. `home
+      close-out` therefore contends, and under concurrency the losing invocation
+      exits non-zero with its explanation on STDERR and NOTHING ON STDOUT --
+      while `--json` was asked for.
+
+      MEASURED on epic tip d40c39f, ticket.lifecycle.concurrent.close.out:
+
+        close-change-a:  run: <abs>/skill-manager home sync --from ... --to ...
+        close-change-b:  could not parse the verdict:
+                         Expecting value: line 1 column 1 (char 0)
+                         FIX  .../close-change.sh TICKET-B --force
+
+      `both_close_change_runs_were_refused_by_the_gate` PASSES -- the refusal is
+      correct. What is lost is the VERDICT. 6 nodes skip behind the failure,
+      home.fixpoint.law among them.
+    why_this_is_a_product_defect: >
+      close-change.sh:440-447 is the `wt close` gate every ticket in this
+      repository runs, and it branches on stdout being parseable. On the
+      unparseable path it downgrades to "re-run with --force" -- advising the
+      operator to DISCARD work the gate just refused to destroy. That is the
+      worst possible fallback for this specific command.
+
+      The HIS-14 reviewer predicted this same consumer harm independently, for a
+      DIFFERENT cause (a new exit code whose explanation is on stderr while
+      stdout is discarded). Two causes, one hole -- which makes it a CONTRACT
+      GAP rather than a bug. `--json` is a promise of machine-readable output,
+      and a command that emits none on the failure path breaks it exactly when
+      the consumer most needs the reason.
+    slice: >
+      (1) `--json` always emits JSON, on every exit path, carrying the exit
+      reason, the home, and any blockers known at the point of failure.
+      (2) The lock refusal is one of those structured reasons rather than an
+      unstructured stderr line.
+      (3) close-change.sh distinguishes "the gate refused and told me why" from
+      "the gate produced nothing", and NEVER advises --force for the second.
+      NOT IN SCOPE: the lock's scope or its 120s patience -- that is DEF-041,
+      open and unassigned.
+    acceptance:
+      assertions:
+        - "`home close-out --json` emits parseable JSON on EVERY exit path, proved by driving the failure paths and PARSING stdout rather than asserting on text."
+        - Two concurrent close-outs — the loser emits a JSON verdict naming contention as the reason.
+        - That fixture FAILS when the failure-path JSON is removed — vacuity checked, in writing.
+        - "GENERAL, not just this command: an assertion that holds for EVERY command declaring --json, so the next one to grow a failure path is covered by a check that already exists."
+        - ticket.lifecycle.concurrent.close.out is green and the 6 nodes behind it run.
+        - "close-change.sh never prints --force as the remedy for an unparseable verdict."
+    the_assertion_that_was_missing: >
+      THIS IS THE POINT OF THE TICKET, stated separately because a fix without
+      it leaves the next instance uncaught.
+
+      The graph node DID catch this -- but only on the integrated tip, and only
+      because somebody had written that specific node. Nothing asserts the
+      GENERAL contract, so every command that grows a `--json` failure path is a
+      fresh chance to break it silently, and the failure surfaces as a red
+      graph in another ticket's wave rather than as a red unit test in the wave
+      that caused it.
+
+      What is wanted is the shape HIS-12 shipped for remedies: a check over the
+      CONVENTION, not over one instance. Enumerate the commands declaring
+      --json, drive each one's failure paths, and parse stdout. Cheap, runs in
+      the unit lane every ticket already runs, and it fails in the wave that
+      breaks it.
+    goals:
+      - goal: GOAL-one-home-one-answer
+        contribution: direct
+        expected_effect: >
+          a machine-readable verdict and a human-readable refusal are currently
+          two answers and one of them is empty; after, one answer in two
+          renderings
+        local_signal: "python skills/test_graph/scripts/run.py ticket-lifecycle"
+      - goal: GOAL-no-destructive-recovery
+        contribution: guard
+        expected_effect: "the gate stops recommending --force, which discards work it just refused to destroy"
+        local_signal: "jbang RunTests.java"
