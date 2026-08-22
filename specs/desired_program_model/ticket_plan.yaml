@@ -1,7 +1,7 @@
 # Desired program model + ticket plan for the child-home materialization epic.
 # Source of truth for tickets. Keep synchronized with spec_manifest.yaml status.
 version: 1
-schedule_revision: 7
+schedule_revision: 8
 name: child-home-materialization-workflow
 updated: "2026-08-07"
 purpose: >
@@ -2728,7 +2728,7 @@ tickets:
     github_issue: 212
     wave: 1
     depends_on: []
-    blocks: [HIS-3, HIS-5, HIS-6]
+    blocks: [HIS-18, HIS-3, HIS-5, HIS-6]
     promotion_order: 2
     promotion_predecessor: HIS-1
     conflict_keys:
@@ -2892,7 +2892,7 @@ tickets:
     github_issue: 216
     wave: 4
     depends_on: [HIS-1, HIS-7, HIS-10]
-    blocks: [HIS-5, HIS-6]
+    blocks: [HIS-18, HIS-5, HIS-6]
     promotion_order: 6
     promotion_predecessor: HIS-10
     rescheduled_in_revision_4: >
@@ -3016,9 +3016,9 @@ tickets:
     epic: home-integrity-sync
     github_issue: 217
     wave: 11
-    depends_on: [HIS-1, HIS-2, HIS-3, HIS-4, HIS-7, HIS-9, HIS-10, HIS-11, HIS-12, HIS-13, HIS-14, HIS-15, HIS-16, HIS-17]
+    depends_on: [HIS-1, HIS-2, HIS-3, HIS-4, HIS-7, HIS-9, HIS-10, HIS-11, HIS-12, HIS-13, HIS-14, HIS-15, HIS-16, HIS-17, HIS-18]
     blocks: [HIS-6]
-    promotion_order: 16
+    promotion_order: 17
     promotion_predecessor: HIS-8
     conflict_keys:
       production: []
@@ -3055,9 +3055,9 @@ tickets:
     epic: home-integrity-sync
     github_issue: 218
     wave: 12
-    depends_on: [HIS-1, HIS-2, HIS-3, HIS-4, HIS-5, HIS-7, HIS-8, HIS-9, HIS-10, HIS-11, HIS-12, HIS-13, HIS-14, HIS-15, HIS-16, HIS-17]
+    depends_on: [HIS-1, HIS-2, HIS-3, HIS-4, HIS-5, HIS-7, HIS-8, HIS-9, HIS-10, HIS-11, HIS-12, HIS-13, HIS-14, HIS-15, HIS-16, HIS-17, HIS-18]
     blocks: []
-    promotion_order: 17
+    promotion_order: 18
     promotion_predecessor: HIS-5
     owns_goals:
       - GOAL-no-spurious-holdback
@@ -3292,9 +3292,9 @@ tickets:
     github_issue: 224
     added_in_schedule_revision: 3
     wave: 10
-    depends_on: [HIS-7, HIS-9, HIS-10, HIS-11, HIS-12, HIS-13, HIS-14, HIS-15, HIS-16, HIS-17]
+    depends_on: [HIS-7, HIS-9, HIS-10, HIS-11, HIS-12, HIS-13, HIS-14, HIS-15, HIS-16, HIS-17, HIS-18]
     blocks: [HIS-6]
-    promotion_order: 15
+    promotion_order: 16
     promotion_predecessor: HIS-13
     rescheduled_in_revision_4: >
       Moved from wave 3 to wave 6. HIS-8 documents the contract; revision 4
@@ -3824,9 +3824,9 @@ tickets:
     github_issue: 159
     added_in_schedule_revision: 4
     wave: 9
-    depends_on: [HIS-9, HIS-10, HIS-14, HIS-15, HIS-16, HIS-17]
+    depends_on: [HIS-9, HIS-10, HIS-14, HIS-15, HIS-16, HIS-17, HIS-18]
     blocks: [HIS-5, HIS-6, HIS-8]
-    promotion_order: 14
+    promotion_order: 15
     promotion_predecessor: HIS-17
     rescheduled_in_revision_5: >
       Moved behind HIS-14. DEF-029's damage was to the operator's real AGENT
@@ -4207,8 +4207,8 @@ tickets:
     wave: 8
     depends_on: [HIS-10, HIS-12, HIS-14]
     blocks: [HIS-13, HIS-5, HIS-6, HIS-8]
-    promotion_order: 13
-    promotion_predecessor: HIS-16
+    promotion_order: 14
+    promotion_predecessor: HIS-18
     conflict_keys:
       production: []
       tla: []
@@ -4277,3 +4277,101 @@ tickets:
           four readings of one rule, three of them in tests, become one reading
           plus three cross-checks against it
         local_signal: "python skills/test_graph/scripts/run.py home-clone"
+
+  - id: HIS-18
+    title: "a scaffolded re-derivable tree is still hashed, so the drift report's input never shrank"
+    phase: HIS
+    status: planned
+    epic: home-integrity-sync
+    github_issue: 239
+    added_in_schedule_revision: 8
+    wave: 7
+    depends_on: [HIS-2, HIS-4]
+    blocks: [HIS-13, HIS-5, HIS-6, HIS-8]
+    promotion_order: 13
+    promotion_predecessor: HIS-16
+    conflict_keys:
+      production: [ChildHomeMaterializer.digest, Rederivable, UnitDigest, GitIgnoreRules]
+      tla: []
+      adapters: []
+      test_graph: [sync-settles/ScaffoldTreeDoesNotStrandTheBaseline]
+      workflow_data: []
+    found_by: >
+      HIS-4, ON ITSELF, and then corrected by HIS-4 a second time. It first
+      reported the shortfall as a PLAN DEFECT ("the plan assumed the digest
+      question and the git question are one"); review showed the plan states
+      both halves separately and one simply was not done. The ticket agent
+      rewrote it in its own words rather than being overruled:
+
+        "'The plan was wrong' invites amending the plan, and 'a slice was not
+         delivered' invites finishing the work. Only the second is true here."
+
+      The plan stayed as written. This ticket is the work. The owner asked for
+      it directly at the wave-5 status review, having read exactly that line.
+    root_cause: >
+      A unit's scaffolded, re-derivable trees -- test_graph/build-logic,
+      test_graph/sdk, test_graph/standard-nodes -- are HASHED AS CONTENT. Once
+      ChildHomeMaterializer dereferences the in-unit symlinks into real
+      directories, the child copy's digest diverges from the store's and every
+      later read reports the difference.
+
+      That is the INPUT to the drift report. HIS-2 bounded the RENDERING --
+      896 lines to 8 -- and the underlying record is untouched:
+
+        13 and 12 entries against the root store's 10   UNCHANGED
+        776 of the baseline's 889 lines are one unit's dereferenced trees
+        GOAL-sync-quiet's enabling contribution            NOT DELIVERED
+
+      So the goal reads as met on the surface it renders and is short on the
+      surface it measures. That is this epic's recurring shape -- a reading
+      narrower than the condition it is trusted to decide -- and it must not
+      reach the terminal evaluation unnamed.
+    slice: >
+      HIS-4's slice (1), unchanged. Decide whether a unit's own .gitignore, or
+      an extension to Rederivable, or both, keeps scaffolded re-derivable trees
+      out of the digest.
+
+      PREFER THE UNIT'S DECLARATION OVER A GLOBAL NAME LIST. `sdk` and
+      `standard-nodes` are generic enough to be real content in some other unit
+      -- the plan's own argument, and the reason HIS-4 deliberately left
+      Rederivable untouched. #180 already establishes that gitignored paths
+      should be honoured on a neighbouring surface.
+
+      WHATEVER IS CHOSEN, THE SKIP IS ON BOTH SIDES: not hashed, not copied, and
+      NOT DELETED. Excluding a path must make it INVISIBLE, not DISPOSABLE.
+
+      ALREADY DELIVERED, DO NOT REDO: the git-surface half of "not deleted" --
+      HIS-4's MaterializationEscrow and carryOverUnownedTrees. What is missing
+      is the digest half.
+      NOT IN SCOPE: the rendering bound (HIS-2, delivered), merge atomicity
+      (HIS-4 slice 2, delivered), detect-and-repair (HIS-13).
+    acceptance:
+      assertions:
+        - "An excluded path is NOT HASHED — the child copy's digest matches the store's across a dereference — and the fixture FAILS when the exclusion is removed."
+        - An excluded path is NOT COPIED.
+        - "An excluded path is NOT DELETED: the exclusion makes it invisible to the digest without making it disposable. This is the assertion HIS-4's acceptance carried and did not get."
+        - "MEASURED AGAINST THE COMMITTED BASELINE, not a fixture alone: re-render baseline/root-home-drift.json and report the new per-unit entry counts against `13 and 12 against 10`, and the new line count against `776 of 889`."
+        - "A unit that legitimately contains a directory named `sdk` or `standard-nodes` is NOT excluded — the reason a global name list was rejected, asserted rather than argued."
+    where_the_assertions_go: >
+      THREE SEPARATE UNIT CASES -- hashed, copied, deleted -- because one
+      assertion covering all three cannot say which half broke, and the "not
+      deleted" half has a DELIVERED SIBLING (the escrow) that could mask it.
+
+      Then sync-settles, which already drives the project-tier dereference HIS-4
+      made red and then green; its fixture is the closest thing in the suite to
+      this defect's real shape.
+
+      AND THE GOAL MEASUREMENT IS PART OF THIS TICKET, not the evaluation's
+      problem. HIS-6 should inherit a number, not an exercise.
+    goals:
+      - goal: GOAL-sync-quiet
+        contribution: enabling
+        expected_effect: >
+          the record's INPUT shrinks, so the rollup describes fewer real changes
+          rather than the same changes more briefly; 776 of 889 lines and the
+          13/12-against-10 entry counts both move
+        local_signal: "python skills/test_graph/scripts/run.py sync-settles"
+      - goal: GOAL-no-spurious-holdback
+        contribution: guard
+        expected_effect: "an excluded path must not become a new reason to hold a unit back"
+        local_signal: "jbang RunTests.java"
