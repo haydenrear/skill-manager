@@ -7,7 +7,17 @@ that carries the merge.
 
 | worktree | branch | ticket | created | close-out gate | standing |
 | --- | --- | --- | --- | --- | --- |
-| `../wt-227-his-10` | `feature/227-his-10` | HIS-10 (#227) | 2026-08-21, wave 3 | **clean** — *"holds nothing that removing it would destroy"*, run `22b947c`+ against the project home | **stands** |
+| `../wt-227-his-10` | `feature/227-his-10` | HIS-10 (#227) | 2026-08-21, wave 3 | **clean** | **stands** |
+| `../wt-216-his-4` | `feature/216-his-4` | HIS-4 (#216) | 2026-08-21, wave 4 | **clean** | **stands** |
+| `../wt-226-his-9` | `feature/226-his-9` | HIS-9 (#226) | 2026-08-21, wave 4 | **clean** | **stands** |
+| `../wt-161-his-12` | `feature/161-his-12` | HIS-12 (#161) | 2026-08-21, wave 4 | pending — PR not yet merged | **stands** |
+
+All gates re-run 2026-08-21 after the wave-4 merges, verbatim: *"holds nothing
+that removing it would destroy."* Every ticket in waves 3 and 4 delivered
+**product code**, which the PR carries; none edited a skill unit, so nothing had
+to reach the project home through `home sync`. That is the expected shape for
+this epic and it is worth stating rather than assuming — the gate exists because
+the opposite shape is silent.
 
 ## Waves 1 and 2 created no worktrees
 
