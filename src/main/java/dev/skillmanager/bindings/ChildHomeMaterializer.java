@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import dev.skillmanager.model.UnitKind;
 import dev.skillmanager.shared.util.Fs;
+import dev.skillmanager.shared.util.GitIgnoreRules;
 import dev.skillmanager.shared.util.Rederivable;
 import dev.skillmanager.source.GitOps;
 import dev.skillmanager.store.SkillStore;
@@ -2810,6 +2811,43 @@ public final class ChildHomeMaterializer {
     }
 
     /**
+     * The same question with the unit's OWN declaration added: the global
+     * re-derivable names, plus whatever this unit's {@code .gitignore} says is
+     * not content and its index does not track.
+     *
+     * <p>The name list alone could not answer it. The trees that made this
+     * necessary are {@code test_graph/build-logic}, {@code test_graph/sdk} and
+     * {@code test_graph/standard-nodes}: the test-graph scaffolder writes them
+     * into a consuming unit as symlinks into the provider's store copy and
+     * writes the {@code .gitignore} block declaring them generated in the same
+     * pass, {@link #walk} dereferences them into real directories so the child
+     * home is independent (CHM-5), and from then on the child copy's digest
+     * differs from the store's forever. Adding {@code sdk} and
+     * {@code standard-nodes} to {@link Rederivable} would have hidden them in
+     * every unit that authors a directory by those ordinary names, which is why
+     * the declaration is per-unit and the name list is not. See
+     * {@link GitIgnoreRules}, whose javadoc carries the tracked-path clause
+     * that keeps committed content visible.
+     *
+     * <p>{@code directory} is passed rather than derived here because
+     * {@code build/} names a directory only and a symlink is not one — the
+     * state a scaffolded binding is in on the source side, before the
+     * dereference. Both walkers ask at the top, so the answer is the same on
+     * the source side and the destination side by construction, which is what
+     * makes the skip invisible rather than disposable: not fingerprinted, not
+     * copied, and carried across the swap by {@link #carryOverUnownedTrees}
+     * rather than deleted.
+     */
+    private static boolean isUnowned(GitIgnoreRules rules, String rel, boolean directory) {
+        return Rederivable.isDerived(rel) || rules.ignores(rel, directory);
+    }
+
+    /** Whether {@code path} is a real directory — a symlink to one is not. */
+    private static boolean isRealDirectory(Path path) {
+        return Files.isDirectory(path, LinkOption.NOFOLLOW_LINKS);
+    }
+
+    /**
      * Move every unowned tree out of {@code dest} and into {@code staged}, at
      * the same relative path, immediately before the two are swapped.
      *
@@ -2848,40 +2886,52 @@ public final class ChildHomeMaterializer {
     /** Top-most unowned entries under {@code root}, as unit-relative paths. */
     private static List<String> unownedRoots(Path root) throws IOException {
         List<String> out = new ArrayList<>();
-        collectUnownedRoots(root, "", out);
+        // The DESTINATION's own declaration, read from the destination. It is a
+        // copy of the source and carries the same .gitignore, and reading it
+        // here rather than passing the source's is what keeps "not hashed" and
+        // "not deleted" the same rule: whatever the walk declined to fingerprint
+        // is exactly what this carries across the swap.
+        collectUnownedRoots(root, "", GitIgnoreRules.forUnit(root), out);
         return out;
     }
 
-    private static void collectUnownedRoots(Path dir, String rel, List<String> out)
-            throws IOException {
+    private static void collectUnownedRoots(Path dir, String rel, GitIgnoreRules rules,
+                                            List<String> out) throws IOException {
         if (!Files.isDirectory(dir, LinkOption.NOFOLLOW_LINKS)) return;
         for (Path child : listSorted(dir)) {
             String childRel = join(rel, child.getFileName().toString());
-            if (isUnowned(childRel)) {
+            if (isUnowned(rules, childRel, isRealDirectory(child))) {
                 out.add(childRel);
                 continue;
             }
-            collectUnownedRoots(child, childRel, out);
+            collectUnownedRoots(child, childRel, rules, out);
         }
     }
 
     /** The parent tree as it would look once materialized (store links dereferenced). */
     private List<ViewEntry> materializedView(Path source) throws IOException {
         List<ViewEntry> out = new ArrayList<>();
-        walk(source, "", realOrNormalized(source), new ArrayDeque<>(), out);
+        // The SOURCE unit's declaration, so a path this unit calls generated is
+        // never dereferenced into the child home in the first place. Read once
+        // per view rather than per entry: it opens the index, and this walk
+        // visits every file in the unit.
+        walk(source, "", realOrNormalized(source), GitIgnoreRules.forUnit(source),
+                new ArrayDeque<>(), out);
         return out;
     }
 
     /** A tree exactly as it is on disk (every symlink stays a symlink). */
     private static List<ViewEntry> plainView(Path root) throws IOException {
         List<ViewEntry> out = new ArrayList<>();
-        if (Files.exists(root, LinkOption.NOFOLLOW_LINKS)) walkPlain(root, "", out);
+        if (Files.exists(root, LinkOption.NOFOLLOW_LINKS)) {
+            walkPlain(root, "", GitIgnoreRules.forUnit(root), out);
+        }
         return out;
     }
 
-    private void walk(Path src, String rel, Path unitRootReal, Deque<Path> expanding,
-                      List<ViewEntry> out) throws IOException {
-        if (isUnowned(rel)) return;
+    private void walk(Path src, String rel, Path unitRootReal, GitIgnoreRules rules,
+                      Deque<Path> expanding, List<ViewEntry> out) throws IOException {
+        if (isUnowned(rules, rel, isRealDirectory(src))) return;
         if (Files.isSymbolicLink(src)) {
             Path raw = Files.readSymbolicLink(src);
             Path resolved = raw.isAbsolute()
@@ -2905,7 +2955,11 @@ public final class ChildHomeMaterializer {
             }
             expanding.push(real);
             try {
-                walk(real, rel, unitRootReal, expanding, out);
+                // The CONSUMER's rules stay in force across the dereference:
+                // `rel` is still relative to the consuming unit, so its
+                // declaration is the one that governs what arrives under that
+                // path. The provider's own rules are its business.
+                walk(real, rel, unitRootReal, rules, expanding, out);
             } finally {
                 expanding.pop();
             }
@@ -2915,8 +2969,8 @@ public final class ChildHomeMaterializer {
             List<Path> children = listSorted(src);
             List<ViewEntry> below = new ArrayList<>();
             for (Path child : children) {
-                walk(child, join(rel, child.getFileName().toString()), unitRootReal, expanding,
-                        below);
+                walk(child, join(rel, child.getFileName().toString()), unitRootReal, rules,
+                        expanding, below);
             }
             if (!rel.isEmpty() && emitDirectory(children, below)) {
                 out.add(new ViewEntry(rel, EntryKind.DIR, src, null, false));
@@ -2927,8 +2981,9 @@ public final class ChildHomeMaterializer {
         out.add(new ViewEntry(rel, EntryKind.FILE, src, null, Files.isExecutable(src)));
     }
 
-    private static void walkPlain(Path src, String rel, List<ViewEntry> out) throws IOException {
-        if (isUnowned(rel)) return;
+    private static void walkPlain(Path src, String rel, GitIgnoreRules rules, List<ViewEntry> out)
+            throws IOException {
+        if (isUnowned(rules, rel, isRealDirectory(src))) return;
         if (Files.isSymbolicLink(src)) {
             out.add(new ViewEntry(rel, EntryKind.LINK, src, Files.readSymbolicLink(src), false));
             return;
@@ -2937,7 +2992,7 @@ public final class ChildHomeMaterializer {
             List<Path> children = listSorted(src);
             List<ViewEntry> below = new ArrayList<>();
             for (Path child : children) {
-                walkPlain(child, join(rel, child.getFileName().toString()), below);
+                walkPlain(child, join(rel, child.getFileName().toString()), rules, below);
             }
             if (!rel.isEmpty() && emitDirectory(children, below)) {
                 out.add(new ViewEntry(rel, EntryKind.DIR, src, null, false));
