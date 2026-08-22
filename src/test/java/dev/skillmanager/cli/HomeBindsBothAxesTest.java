@@ -133,28 +133,30 @@ public final class HomeBindsBothAxesTest {
                     "the root tier is a home like any other: naming another one leaves it alone");
         });
 
-        suite.test("every verb that declares --home is bound, not a list of seven", () -> {
+        suite.test("EVERY verb that declares --home is bound, and the list is derived", () -> {
             // The contract is enforced at the one place the flag is read, so
-            // the coverage question is "which commands declare it" rather than
-            // "which commands were remembered". This asserts the seven the
-            // slice names are all still declaring it -- if one is renamed, the
-            // binding silently stops applying to it and this says so.
-            for (String[] verb : List.of(
-                    new String[]{"sync"},
-                    new String[]{"project", "sync"},
-                    new String[]{"home", "drift"},
-                    new String[]{"home", "shims"},
-                    new String[]{"home", "close-out"},
-                    new String[]{"unit", "publish"},
-                    new String[]{"exec"})) {
-                assertTrue(declaresHome(verb),
-                        String.join(" ", verb) + " declares --home, so --home binds it");
+            // the coverage question is "which commands declare it". The first
+            // version of this case LISTED SEVEN, taken from the ticket's slice
+            // -- and the CLI declares ELEVEN. The four it missed are
+            // `home describe`, `home policy`, `home refresh-plugins` and
+            // `home verify`, which are precisely the read-shaped ones the
+            // ungated reconcile landed on. A hand-written list is a claim
+            // about the tree; this walks it. Review of #234 (MED-6).
+            List<String> declaring = verbsDeclaring("--home");
+            assertTrue(declaring.size() >= 11,
+                    "the CLI still declares --home on at least the eleven known verbs, found "
+                            + declaring.size() + ": " + declaring);
+            for (String verb : List.of("sync", "project sync", "home drift", "home shims",
+                    "home close-out", "unit publish", "exec", "home describe", "home policy",
+                    "home refresh-plugins", "home verify")) {
+                assertTrue(declaring.contains(verb),
+                        verb + " declares --home, so --home binds it; declaring=" + declaring);
             }
-            // COMPANION, or the loop above is satisfiable by a probe that
+            // COMPANION, or the walk above is satisfiable by a probe that
             // always says yes: `home sync` is CLASS 1 under HIS-12's per-verb
             // contract -- it names its target with --from / --to and declares
             // no --home at all.
-            assertFalse(declaresHome("home", "sync"),
+            assertFalse(declaring.contains("home sync"),
                     "`home sync` names its own target and takes no --home");
         });
 
@@ -224,6 +226,14 @@ public final class HomeBindsBothAxesTest {
             Fx fx = Fx.create("claude-home");
             Map<String, Path> displaced = null;
             try {
+                // setUnset, not "leave it alone". This case is about the
+                // CLAUDE_CONFIG_DIR-unset branch of the precedence, and its
+                // precondition therefore has to STATE that the variable is
+                // unset. It used to rely on the developer's shell not
+                // exporting one, so with a real CLAUDE_CONFIG_DIR set the
+                // suite went 9/1 on the PRECONDITION -- trap (a), inside the
+                // file written to close trap (b). Review of #234 (MED-4).
+                AgentHomes.setUnset(AgentHomes.CLAUDE_CONFIG_DIR);
                 AgentHomes.setOverride(AgentHomes.CLAUDE_HOME, fx.otherRoot);
                 assertEquals(fx.otherRoot.resolve(".claude"), AgentHomes.claude().configDir(),
                         "precondition: an ambient CLAUDE_HOME decides the config dir");
@@ -235,6 +245,160 @@ public final class HomeBindsBothAxesTest {
             } finally {
                 if (displaced != null) AgentHomes.restoreOverrides(displaced);
                 AgentHomes.clearOverrides();
+            }
+        });
+
+        suite.test("a home whose agent dirs are NOT beside the store keeps the ones it has", () -> {
+            // HIGH-1 from the review of #234, and the sharpest finding in it:
+            // the first version of this fix DERIVED all three agent dirs from
+            // the store path and installed them over whatever was set. Right
+            // for the default layout, wrong for every other one, and it
+            // discards a correct answer to install a guess.
+            //
+            // A profile home is that other layout:
+            // ProjectChildHomeScaffolder.layoutFor puts its agent homes at
+            // <profileRoot>/agents/{claude,codex,gemini}. Measured with the
+            // correct CLAUDE_CONFIG_DIR exported, sync --home <profileRoot>
+            // created <profileRoot>/.claude and left agents/claude stale --
+            // DEF-029's own shape, produced by DEF-029's fix.
+            Path root = Files.createTempDirectory("his14-profile-");
+            Path profile = Files.createDirectories(root.resolve(".skill-manager/profiles/dev"));
+            Path agents = Files.createDirectories(profile.resolve("agents/claude"));
+            Files.createDirectories(profile.resolve("agents/codex"));
+            Files.createDirectories(profile.resolve("agents/gemini"));
+
+            Map<String, Path> displaced = AgentHomes.snapshotOverrides();
+            try {
+                AgentHomes.setOverride(AgentHomes.CLAUDE_CONFIG_DIR, agents);
+                AgentHomes.setOverride(AgentHomes.CODEX_HOME, profile.resolve("agents/codex"));
+                AgentHomes.setOverride(AgentHomes.GEMINI_HOME, profile.resolve("agents/gemini"));
+
+                Map<String, String> binding = AgentHomes.binding(profile);
+
+                assertEquals(agents.toString(), binding.get(AgentHomes.CLAUDE_CONFIG_DIR),
+                        "an explicitly-set agent dir INSIDE this home is a more precise "
+                                + "statement about its layout than a derivation, and is kept");
+                assertEquals(profile.resolve("agents/codex").toString(),
+                        binding.get(AgentHomes.CODEX_HOME), "codex too");
+                assertEquals(profile.toString(), binding.get(AgentHomes.SKILL_MANAGER_HOME),
+                        "and the store axis is still the home that was named");
+
+                AgentHomes.bind(profile);
+                assertEquals(agents, AgentHomes.claude().configDir(),
+                        "so the projector writes agents/claude, not a fresh .claude beside it");
+            } finally {
+                AgentHomes.restoreOverrides(displaced);
+            }
+        });
+
+        suite.test("COMPANION: an explicit agent dir OUTSIDE the home is still replaced", () -> {
+            // Without this the case above is satisfiable by "the environment
+            // always wins", which is DEF-029 restored in full.
+            Fx fx = Fx.create("explicit-outside");
+            Map<String, Path> displaced = AgentHomes.snapshotOverrides();
+            try {
+                fx.nameOtherAmbiently();
+
+                Map<String, String> binding = AgentHomes.binding(fx.namedStore);
+
+                assertEquals(fx.namedRoot.resolve(".claude").toString(),
+                        binding.get(AgentHomes.CLAUDE_CONFIG_DIR),
+                        "an explicit variable naming ANOTHER home is a statement about that "
+                                + "home, and this command is not about it");
+            } finally {
+                AgentHomes.restoreOverrides(displaced);
+            }
+        });
+
+        suite.test("a read-shaped verb does not reconcile the home it was asked to inspect", () -> {
+            // HIGH-2. `tryReconcile` ran ahead of every parsed command with no
+            // gate on the read-only classification and none on the home
+            // policy, so `home verify --home <X>` and `home close-out --home
+            // <X>` MUTATED X: a legacy sources/ record migrated and the
+            // directory deleted, on a home declared FROZEN. close-out's own
+            // description reads "Writes nothing; safe to run repeatedly", and
+            // close-change.sh runs it as the `wt close` gate.
+            Fx fx = Fx.create("read-shaped");
+            Path frozen = fx.namedStore;
+            freeze(frozen);
+            Path legacy = Files.createDirectories(frozen.resolve("sources"));
+            Files.writeString(legacy.resolve("legacy-probe.json"),
+                    "{\"name\":\"legacy-probe\",\"source\":\"file:///nowhere\"}\n");
+            Map<String, String> before = snapshot(frozen);
+
+            Run r = fx.runNamingOther("home", "verify", "--home", frozen.toString());
+
+            assertTrue(r.rc == 0 || r.rc == 1, "verify reached a verdict: rc=" + r.rc);
+            assertFalse(r.output.contains("migrated"),
+                    "and migrated nothing on the way: " + r.output);
+            assertTrue(Files.isDirectory(legacy),
+                    "the legacy directory a reconcile would have deleted is still there");
+            otherHomeIsUntouched(before, frozen,
+                    "a verb that reports on a home writes nothing into it");
+        });
+
+        suite.test("a WRITING verb does not reconcile a FROZEN home either", () -> {
+            // The second of HIGH-2's two gates, with its own probe because the
+            // read-only gate returns first and would otherwise hide it: the
+            // case above is frozen AND read-shaped, so it reddens if either
+            // gate is removed and proves neither on its own.
+            //
+            // `exec` already refuses to reconcile a frozen home
+            // (ExecCommand.refreshHome). This is the same reconciliation
+            // reached by a different door, and it was not gated -- two
+            // spellings of one decision, in the file that exists to remove
+            // one.
+            Fx fx = Fx.create("frozen-writer");
+            Path frozen = fx.namedStore;
+            freeze(frozen);
+            Path legacy = Files.createDirectories(frozen.resolve("sources"));
+            Files.writeString(legacy.resolve("legacy-probe.json"),
+                    "{\"name\":\"legacy-probe\",\"source\":\"file:///nowhere\"}\n");
+
+            Run r = fx.runNamingOther("home", "shims", "--home", frozen.toString());
+
+            assertTrue(Files.isDirectory(legacy),
+                    "a frozen home is not reconciled, whoever asked: rc=" + r.rc
+                            + "\n" + r.output);
+        });
+
+        suite.test("COMPANION: a writing verb on a LIVE home still reconciles", () -> {
+            // The gate must stop the read-shaped verbs and nothing else. A
+            // WRITES_HOME verb against a home that is not frozen still does the
+            // migration, so the gate is not simply "never reconcile".
+            Fx fx = Fx.create("still-reconciles");
+            Path live = fx.namedStore;
+            Path legacy = Files.createDirectories(live.resolve("sources"));
+            Files.writeString(legacy.resolve("legacy-probe.json"),
+                    "{\"name\":\"legacy-probe\",\"source\":\"file:///nowhere\"}\n");
+
+            fx.runNamingOther("home", "shims", "--home", live.toString());
+
+            assertFalse(Files.isDirectory(legacy),
+                    "a writing verb against a live home still migrates the legacy record");
+        });
+
+        suite.test("`--home-root` on its own binds the agent axis and NOT the store", () -> {
+            // MED-3. It used to derive <root>/.skill-manager and bind that
+            // too, so `home describe --home-root <r>` silently moved the store
+            // to a home the operator had not named. --home-root is a statement
+            // about a directory layout, not about a different home.
+            Fx fx = Fx.create("home-root-only");
+            Path layout = Files.createDirectories(fx.root.resolve("layout"));
+            for (String dir : AGENT_DIRS) Files.createDirectories(layout.resolve(dir));
+            Map<String, Path> displaced = AgentHomes.snapshotOverrides();
+            try {
+                fx.nameOtherAmbiently();
+
+                AgentHomes.bindAgents(layout);
+
+                assertEquals(layout.resolve(".claude"), AgentHomes.claude().configDir(),
+                        "the agent axis moved to the stated root");
+                assertEquals(fx.otherStore, SkillStore.defaultStore().root(),
+                        "and the store axis is untouched — it is still whatever the "
+                                + "environment named, because --home-root said nothing about it");
+            } finally {
+                AgentHomes.restoreOverrides(displaced);
             }
         });
 
@@ -262,6 +426,26 @@ public final class HomeBindsBothAxesTest {
                     "and where that variable actually lands");
             otherHomeIsUntouched(before, fx.otherRoot,
                     "a refusal writes nothing, which is the point of refusing");
+        });
+
+        suite.test("REFUSAL: a DANGLING agent dir pointing out of the home is refused too", () -> {
+            // MED-9. `unbindable` asked Files.exists(dir), which FOLLOWS the
+            // link -- so a .claude symlinked to a path that does not exist read
+            // as "nothing to judge", was declared bindable, and the sync behind
+            // it then failed three ways at exit 0. A dangling link out of the
+            // home makes the same statement as a live one.
+            Fx fx = Fx.create("dangling");
+            deleteRecursively(fx.namedRoot.resolve(".claude"));
+            Files.createSymbolicLink(fx.namedRoot.resolve(".claude"),
+                    fx.otherRoot.resolve("never-created/.claude"));
+
+            Run r = fx.runNamingOther("home", "drift", "--home", fx.namedStore.toString());
+
+            assertEquals(SkillManagerCli.UNBINDABLE_HOME_EXIT_CODE, r.rc,
+                    "a link that does not resolve is still a link out of the home: " + r.output);
+            assertContains(r.output, AgentHomes.CLAUDE_CONFIG_DIR, "and it is named");
+            assertContains(r.output, "does not exist",
+                    "and the reader is told the target is missing as well as foreign");
         });
 
         suite.test("COMPANION: a real agent directory inside the home is bound, not refused", () -> {
@@ -370,15 +554,24 @@ public final class HomeBindsBothAxesTest {
         }
     }
 
-    /** Whether the command at {@code path} declares a {@code --home} option. */
-    private static boolean declaresHome(String... path) {
-        picocli.CommandLine cmd = new picocli.CommandLine(new SkillManagerCli());
-        for (String segment : path) {
-            picocli.CommandLine sub = cmd.getSubcommands().get(segment);
-            if (sub == null) return false;
-            cmd = sub;
+    /**
+     * Every command path in the tree that declares {@code option}, derived by
+     * walking picocli rather than written down. See the coverage case for why
+     * that distinction cost four verbs.
+     */
+    private static List<String> verbsDeclaring(String option) {
+        List<String> found = new ArrayList<>();
+        walk(new picocli.CommandLine(new SkillManagerCli()), "", option, found);
+        return found;
+    }
+
+    private static void walk(picocli.CommandLine cmd, String path, String option,
+                             List<String> found) {
+        for (Map.Entry<String, picocli.CommandLine> child : cmd.getSubcommands().entrySet()) {
+            String here = path.isEmpty() ? child.getKey() : path + " " + child.getKey();
+            if (child.getValue().getCommandSpec().findOption(option) != null) found.add(here);
+            walk(child.getValue(), here, option, found);
         }
-        return cmd.getCommandSpec().findOption("--home") != null;
     }
 
     // --------------------------------------------------------------- fixtures
@@ -664,6 +857,26 @@ public final class HomeBindsBothAxesTest {
             if (value == null) System.clearProperty(key);
             else System.setProperty(key, value);
         });
+    }
+
+    /**
+     * Declare {@code store} FROZEN, through {@link dev.skillmanager.policy.HomePolicy}
+     * rather than by writing a file this test believes in.
+     *
+     * <p>Both frozen fixtures first wrote {@code policy.toml} by hand. The file
+     * is {@code home.policy.toml}, so neither home was frozen and the frozen
+     * half of HIGH-2 had no probe at all — the read-only gate returns first, so
+     * the case passed on the other gate and looked like evidence for both.
+     * Found by V8, which disabled ONLY the frozen gate and got a failure whose
+     * message was the product doing exactly what the case said it must not.
+     * A fixture that states a precondition through a string literal is a
+     * fixture that can be wrong about it.
+     */
+    private static void freeze(Path store) throws Exception {
+        dev.skillmanager.policy.HomePolicy.write(
+                new SkillStore(store), dev.skillmanager.policy.HomePolicy.FROZEN);
+        assertTrue(dev.skillmanager.policy.HomePolicy.load(new SkillStore(store)).frozen(),
+                "precondition: the fixture home really is frozen");
     }
 
     private static void deleteRecursively(Path path) throws Exception {

@@ -404,6 +404,14 @@ public final class LazyHomeScaffoldTest {
         m.put("search", new String[]{"search", "no-such-unit"});
         m.put("show", new String[]{"show", "no-such-unit"});
         m.put("unit", new String[]{"unit"});
+        // Narrowed from WRITES_HOME by HIS-14 (review of #234, HIGH-2): both
+        // inspect a home and neither declares --init, and while they were
+        // classified as writers `tryReconcile` ran ahead of them and mutated
+        // the home they were asked to report on. Probed with no arguments,
+        // which is the refusal path for each -- the point of the probe is that
+        // the CLI reached the classification, not that the command succeeded.
+        m.put("home verify", new String[]{"home", "verify"});
+        m.put("home close-out", new String[]{"home", "close-out"});
         return m;
     }
 

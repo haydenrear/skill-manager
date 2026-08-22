@@ -290,19 +290,25 @@ public final class SkillManagerCli implements Runnable {
             }
         }
         if (store == null && root == null) return null;
-        // --home-root names the directory holding .claude/.codex/.gemini when
-        // it is not the store's parent (the profile layout). It decides the
-        // agent axis; --home still decides the store.
-        java.nio.file.Path storeRoot = store != null
-                ? store
-                : root.resolve(dev.skillmanager.agent.AgentHomes.STORE_DIR_NAME);
-        java.util.Map<String, String> unbindable = root == null
-                ? dev.skillmanager.agent.AgentHomes.unbindable(storeRoot)
-                : dev.skillmanager.agent.AgentHomes.unbindable(root, root);
+        // --home-root names the directory holding the agent config dirs when
+        // that is not the store's parent (the profile layout). It decides the
+        // AGENT axis and says nothing about where the units live.
+        //
+        // The first version derived a store from it -- <root>/.skill-manager --
+        // and bound that too, so `home describe --home-root <r>` silently moved
+        // the store to a home the operator had not named. A command about a
+        // directory layout is not a command about a different home. Found in
+        // review of #234 (MED-3).
+        java.nio.file.Path agentRoot = root != null
+                ? root
+                : dev.skillmanager.agent.AgentHomes.homeRootFor(store);
+        java.nio.file.Path named = store != null ? store : agentRoot;
+        java.util.Map<String, String> unbindable =
+                dev.skillmanager.agent.AgentHomes.unbindable(named, agentRoot);
         if (!unbindable.isEmpty()) {
             Log.error("refusing: this command names the home at %s, but %d of its agent "
                             + "config director%s cannot be bound to it.",
-                    storeRoot, unbindable.size(), unbindable.size() == 1 ? "y" : "ies");
+                    named, unbindable.size(), unbindable.size() == 1 ? "y" : "ies");
             unbindable.forEach((var, why) -> Log.error("  %s: %s", var, why));
             Log.error("  A home has two axes: SKILL_MANAGER_HOME says where the units live and "
                     + "CLAUDE_CONFIG_DIR / CODEX_HOME / GEMINI_HOME say where the agent configs "
@@ -311,9 +317,10 @@ public final class SkillManagerCli implements Runnable {
                     + "inside the home, or run the command against the home the link points at.");
             return UNBINDABLE_HOME_EXIT_CODE;
         }
-        displaced[0] = root == null
-                ? dev.skillmanager.agent.AgentHomes.bind(storeRoot)
-                : dev.skillmanager.agent.AgentHomes.bind(storeRoot, root);
+        displaced[0] = store == null
+                // --home-root alone: the agent axis only. See above.
+                ? dev.skillmanager.agent.AgentHomes.bindAgents(agentRoot)
+                : dev.skillmanager.agent.AgentHomes.bind(store, agentRoot);
         return null;
     }
 
@@ -533,8 +540,39 @@ public final class SkillManagerCli implements Runnable {
      */
     private static void tryReconcile() {
         try {
+            // HIS-14, from review of #234 (HIGH-2). TWO GATES THAT WERE NOT
+            // HERE, and the second one is written down correctly ten lines
+            // away in ExecCommand.refreshHome -- two spellings of one
+            // decision, again, in the file that exists to remove one.
+            //
+            // (1) READ-ONLY. This ran before every parsed command, so a
+            //     command CommandHomeAccess classifies READ_ONLY reconciled
+            //     anyway. That gate governs SkillStore.init() and the
+            //     reconcile's writes are not init: UnitStore.migrateFromLegacy
+            //     moves a legacy sources/ tree and DELETES the directory,
+            //     BindingBackfill writes the ledger, and ReconcileUseCase
+            //     rewrites every projection. `home verify --home <X>` and
+            //     `home close-out --home <X>` -- whose own description reads
+            //     "Writes nothing; safe to run repeatedly", and which
+            //     close-change.sh runs as the `wt close` gate -- therefore
+            //     MUTATED the home they were asked to inspect.
+            //
+            // (2) FROZEN. A frozen home is not reconciled by `exec`, on the
+            //     reasoning that reconciliation writes. It is the same
+            //     reconciliation.
+            //
+            // Measured, not assumed: home-integrity is 15/15 with or without
+            // this gate, because no fixture plants a home whose reconcile has
+            // work to do. 15/15 was evidence that nothing asks.
+            //
+            // Before HIS-14 this aimed at the AMBIENT home. HIS-14 aims it at
+            // the home the operator named, which is what makes an ungated
+            // write this ticket's problem rather than an inherited one.
+            if (dev.skillmanager.store.HomeScaffold.declared()
+                    != dev.skillmanager.store.HomeScaffold.Access.WRITES_HOME) return;
             dev.skillmanager.store.SkillStore store = dev.skillmanager.store.SkillStore.defaultStore();
             if (!store.isHome()) return;
+            if (dev.skillmanager.policy.HomePolicy.load(store).frozen()) return;
             store.init();
             dev.skillmanager.mcp.GatewayConfig gw = dev.skillmanager.mcp.GatewayConfig.resolve(store, null);
             dev.skillmanager.lifecycle.SkillReconciler.reconcile(store, gw);

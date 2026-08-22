@@ -794,7 +794,16 @@ public record HomeDescriptor(
      * own project and worktree fixtures have an empty {@code bin/cli}.
      */
     public static String homeArg(Path storeRoot) {
-        return storeRoot == null ? "" : "--home " + shellQuote(storeRoot.toString());
+        // Absolute and normalized, which is what AgentHomes.binding does with
+        // the same path when homeEnvPrefix renders it. They used not to agree:
+        // a relative --home printed one spelling in the env prefix and another
+        // in the flag, so one line named one home twice in two ways -- and a
+        // remedy is pasted into whatever directory the reader happens to be
+        // in, where a relative path is a different home again. Review of #234
+        // (MED-7).
+        return storeRoot == null
+                ? ""
+                : "--home " + shellQuote(storeRoot.toAbsolutePath().normalize().toString());
     }
 
     /**
