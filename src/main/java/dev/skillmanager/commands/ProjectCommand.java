@@ -6,6 +6,7 @@ import dev.skillmanager.mcp.GatewayConfig;
 import dev.skillmanager.project.ProjectDependencyResolver;
 import dev.skillmanager.project.ProjectLibResolver;
 import dev.skillmanager.project.ProjectRemoveUseCase;
+import dev.skillmanager.project.ProjectRoot;
 import dev.skillmanager.project.ProjectSyncUseCase;
 import dev.skillmanager.project.SkillProjectRegistration;
 import dev.skillmanager.project.SkillProjectRegistry;
@@ -60,10 +61,9 @@ public final class ProjectCommand {
             SkillStore store = SkillStore.defaultStore();
             store.init();
 
-            Path root = projectDir == null || projectDir.isBlank()
-                    ? Path.of(System.getProperty("user.dir"))
-                    : Path.of(projectDir);
-            root = root.toAbsolutePath().normalize();
+            // One resolver for every verb, and it is where the CWD axis is
+            // checked against a declared confinement (#237). See ProjectRoot.
+            Path root = ProjectRoot.resolve(projectDir, "project register");
             SkillProject project = manifest == null || manifest.isBlank()
                     ? SkillProjectParser.load(root)
                     : SkillProjectParser.loadManifest(resolveManifestPath(root, manifest), root);
@@ -148,10 +148,9 @@ public final class ProjectCommand {
         public Integer call() throws Exception {
             SkillStore store = SkillStore.defaultStore();
             store.init();
-            Path root = projectDir == null || projectDir.isBlank()
-                    ? Path.of(System.getProperty("user.dir"))
-                    : Path.of(projectDir);
-            root = root.toAbsolutePath().normalize();
+            // One resolver for every verb, and it is where the CWD axis is
+            // checked against a declared confinement (#237). See ProjectRoot.
+            Path root = ProjectRoot.resolve(projectDir, "project resolve");
             SkillProject project = manifest == null || manifest.isBlank()
                     ? SkillProjectParser.load(root)
                     : SkillProjectParser.loadManifest(resolveManifestPath(root, manifest), root);
@@ -417,10 +416,9 @@ public final class ProjectCommand {
                         ? new SkillStore(home.toAbsolutePath().normalize())
                         : SkillStore.defaultStore();
             store.init();
-            Path root = projectDir == null || projectDir.isBlank()
-                    ? Path.of(System.getProperty("user.dir"))
-                    : Path.of(projectDir);
-            root = root.toAbsolutePath().normalize();
+            // One resolver for every verb, and it is where the CWD axis is
+            // checked against a declared confinement (#237). See ProjectRoot.
+            Path root = ProjectRoot.resolve(projectDir, "project sync");
             SkillProject project = manifest == null || manifest.isBlank()
                     ? SkillProjectParser.load(root)
                     : SkillProjectParser.loadManifest(resolveManifestPath(root, manifest), root);
@@ -530,10 +528,9 @@ public final class ProjectCommand {
             if (name != null && !name.isBlank()) {
                 result = remover.remove(name);
             } else {
-                Path root = projectDir == null || projectDir.isBlank()
-                        ? Path.of(System.getProperty("user.dir"))
-                        : Path.of(projectDir);
-                root = root.toAbsolutePath().normalize();
+                // One resolver for every verb, and it is where the CWD axis is
+                // checked against a declared confinement (#237). See ProjectRoot.
+                Path root = ProjectRoot.resolve(projectDir, "project remove");
                 SkillProject project = manifest == null || manifest.isBlank()
                         ? SkillProjectParser.load(root)
                         : SkillProjectParser.loadManifest(resolveManifestPath(root, manifest), root);
@@ -645,10 +642,9 @@ public final class ProjectCommand {
 
             @Override
             public Integer call() throws Exception {
-                Path root = projectDir == null || projectDir.isBlank()
-                        ? Path.of(System.getProperty("user.dir"))
-                        : Path.of(projectDir);
-                root = root.toAbsolutePath().normalize();
+                // One resolver for every verb, and it is where the CWD axis is
+                // checked against a declared confinement (#237). See ProjectRoot.
+                Path root = ProjectRoot.resolve(projectDir, "project profiles list");
                 SkillProject project = manifest == null || manifest.isBlank()
                         ? SkillProjectParser.load(root)
                         : SkillProjectParser.loadManifest(resolveManifestPath(root, manifest), root);

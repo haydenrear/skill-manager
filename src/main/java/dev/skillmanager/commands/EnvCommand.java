@@ -3,6 +3,7 @@ package dev.skillmanager.commands;
 import dev.skillmanager.model.SkillProject;
 import dev.skillmanager.model.SkillProjectParser;
 import dev.skillmanager.project.ProjectEnvMaterializer;
+import dev.skillmanager.project.ProjectRoot;
 import dev.skillmanager.store.SkillStore;
 import dev.skillmanager.util.Log;
 import picocli.CommandLine.Command;
@@ -116,10 +117,10 @@ public final class EnvCommand implements Runnable {
     }
 
     private static SkillProject loadProject(String projectDir, String manifest, String profile) throws Exception {
-        Path root = projectDir == null || projectDir.isBlank()
-                ? Path.of(System.getProperty("user.dir"))
-                : Path.of(projectDir);
-        root = root.toAbsolutePath().normalize();
+        // The sixth copy of the three-line CWD fallback, and the one nobody
+        // would have thought to change when fixing the `project` family. See
+        // ProjectRoot: the rule lives in one place now, CWD axis included.
+        Path root = ProjectRoot.resolve(projectDir, "env");
         SkillProject project = manifest == null || manifest.isBlank()
                 ? SkillProjectParser.load(root)
                 : SkillProjectParser.loadManifest(ProjectCommand.resolveManifestPath(root, manifest), root);

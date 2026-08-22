@@ -22,6 +22,7 @@ import dev.skillmanager.commands.OnboardCommand;
 import dev.skillmanager.commands.PmCommand;
 import dev.skillmanager.commands.PolicyCommand;
 import dev.skillmanager.commands.ProjectCommand;
+import dev.skillmanager.commands.SandboxCommand;
 import dev.skillmanager.commands.PublishCommand;
 import dev.skillmanager.commands.RebindCommand;
 import dev.skillmanager.commands.RegistryCommand;
@@ -91,6 +92,7 @@ import picocli.CommandLine.Option;
                 HarnessCommand.class,
                 HomeCommand.class,
                 ProjectCommand.class,
+                SandboxCommand.class,
                 UnitCommand.class
         })
 public final class SkillManagerCli implements Runnable {
@@ -409,6 +411,19 @@ public final class SkillManagerCli implements Runnable {
         if (gitErr != null) {
             return completeExecution(rootCommand(pr), pr, printGitFetcherBanner(gitErr));
         }
+        // A confined process asked for a target outside its confinement
+        // (#237). Handled here rather than at each of the six call sites so
+        // that adding a seventh command whose target comes from the working
+        // directory gets the typed exit for free -- the alternative is an
+        // enumeration that is correct for the cases someone imagined, which
+        // this file's own javadoc already calls out as a repeat defect.
+        dev.skillmanager.sandbox.ConfinementEscapeException escape =
+                unwrapCause(ex, dev.skillmanager.sandbox.ConfinementEscapeException.class);
+        if (escape != null) {
+            Log.error("%s", escape.getMessage());
+            return completeExecution(rootCommand(pr), pr,
+                    dev.skillmanager.sandbox.ConfinementEscapeException.EXIT_CODE);
+        }
         // Everything else, which is where the REFUSALS live. This used to
         // `throw ex` into picocli's default handler.
         return completeExecution(rootCommand(pr), pr, printFailure(ex, c, pr));
@@ -476,6 +491,9 @@ public final class SkillManagerCli implements Runnable {
         }
         if (unwrapCause(ex, dev.skillmanager.store.NotAHomeException.class) != null) {
             return "not_a_home";
+        }
+        if (unwrapCause(ex, dev.skillmanager.sandbox.ConfinementEscapeException.class) != null) {
+            return dev.skillmanager.sandbox.ConfinementEscapeException.ERROR_CODE;
         }
         if (unwrapCause(ex, AuthenticationRequiredException.class) != null) {
             return "authentication_required";
