@@ -269,10 +269,11 @@ $ jbang RunHis11.java            # four suites, ~10s
   [PASS] a commit into an EMPTY destination still rolls back to absent
   [PASS] a held escrow says what it is holding and where it goes back
   [PASS] an exception escaping the program releases the escrow instead of stranding it
+  [PASS] a renderer that throws does not strand the escrow either
   [PASS] a HALT after the commit keeps the new bytes and discards the pre-image, deliberately
   [PASS] a second program against the same home WAITS, and says so before it waits
   [PASS] a second program that will not get the home REFUSES, naming it
-   → 9 passed, 0 failed     CommitPreImageRestoreTest
+   → 10 passed, 0 failed    CommitPreImageRestoreTest
    → 12 passed, 0 failed    CompensationPairingTest
    → 9 passed, 0 failed     FailureInjectionSweepTest
    → 22 passed, 0 failed    ProjectChildHomeMaterializationTest  (CLAUSE 3)
@@ -298,7 +299,7 @@ HIS-6, which owns the one terminal sweep with the goal scorecard (owner's
 instruction, 2026-08-21). All graph runs went through the wave's shared
 `graph-run.sh` lock.
 
-### Vacuity, eight ways
+### Vacuity, nine ways
 
 Full transcripts in `results/epic-home-integrity-sync/probes/his-11/vacuity-checks.txt`;
 re-runnable, because `RunHis11.java` is in the repository rather than described
@@ -314,6 +315,7 @@ in a file. Summary of what reddened, and with what message:
 | V6 | the last-resort `drain` neutered | `expected <[]> but was <[.materialization-escrow-5446657473548208461]>` — the escaping-exception cell |
 | V7 | the post-commit HALT decision inverted (`discard` → `restore`) | the success cell **and** the HALT cell — the argued line now has a check |
 | V8 | the manifest's slot lines removed | `expected <# skill-manager escrow …` — the marker finding #4 asked for is itself checked |
+| V9 | the pre-state journalled *after* the effect again (as it shipped) | the throwing-renderer cell — **V6's `finally` does not cover this one**, and vice versa |
 
 **The fixture is able to fail, and I checked that specifically**, because #187 in
 this same epic is the standing counter-example: an empty `previousLock` there
@@ -343,6 +345,7 @@ I had claimed and got wrong.
 | # | finding | disposition |
 | --- | --- | --- |
 | 1 | **an exception escaping `runStaged` strands an escrow with the process alive** — `commit` and `walkBack` are the only drains and both are ordinary control flow; the trigger is `staged.stage2().apply(ctx)`, a caller-supplied lambda | **fixed in this PR.** `finally { drain(journal) }` on both entry points; the drain discards. Cell + **V6** |
+| 1b | …and the `renderer.onReceipt` point the review listed alongside it turned out **not** to be fixed by that `finally`: `runOne` catches around `execute` but calls `onReceipt` outside the catch, so the escape happened before `journal.recordAll(preState)` and the drain had nothing to find | **also fixed.** The pre-state is journalled *before* the effect runs. Separate cell + **V9**, because neither mutation reddens the other's assertion |
 | 3 | DEF-032's `what_this_is_NOT` claimed "not a regression … did not widen" — false for **availability**: the lift moves the whole closure aside before any copy, where `commitUnits` was per-unit, so a `^C` now leaves a wider hole | **corrected in the backlog**, and in §2 and §3 above |
 | — | §2 claimed "no behaviour change for HIS-4's two call sites" — false: warning text, absent-path handling, and now the manifest | **corrected in §2** |
 | 4 | nothing can **detect** a stranded escrow; moving the bytes out of `skills/` fixed the namespace half of #231 and left the detection half | **partly fixed in this PR** — `escrow.txt` manifest, so HIS-13 has a marker to key on. Cell + **V8**. The reader stays in DEF-032 |

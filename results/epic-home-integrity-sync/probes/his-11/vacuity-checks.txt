@@ -181,6 +181,26 @@ MaterializationEscrow.liftPaths, inside the move loop:
   existence: a manifest that names no slots cannot put anything back, and
   "the file is there" would have passed.
 
+================================================================ V9
+THE PRE-STATE JOURNALLED AFTER THE EFFECT AGAIN (the ordering as it shipped).
+Executor.runStage -- move `journal.recordAll(preState)` from before `runOne`
+back to after it:
+
+  [FAIL] a renderer that throws does not strand the escrow either — the journal learns about it before the effect runs: the escrow was released, not parked with nothing referencing it: expected <[]> but was <[.materialization-escrow-12991446087162508044]>
+  FAILURES: 1
+
+  This is the fourth escape point #233's review named, and the one the
+  `finally` of V6 does NOT fix, which is why it gets its own number. A drain can
+  only release what the journal knows about. `LiveInterpreter.runOne` catches
+  around `execute` but calls `ctx.renderer().onReceipt(r)` OUTSIDE that catch,
+  so a renderer that throws escapes with the pre-image already lifted and
+  `journal.recordAll(preState)` not yet reached.
+
+  Note that V6 stays GREEN under this mutation and V9 stays green under V6's:
+  two different holes, two different fixes, and neither assertion covers the
+  other. The cell asserts the escape happened (`threw`) as its precondition and
+  the absent residue as its claim.
+
 ================================================================ NOT A VACUITY CHECK
 The cell "a commit into an EMPTY destination still rolls back to absent" has no
 V-number and is not claimed as one. It is a NON-REGRESSION guard against the
