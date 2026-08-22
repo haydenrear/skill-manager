@@ -1,0 +1,393 @@
+package dev.skillmanager.bindings;
+
+import dev.skillmanager._lib.test.Tests;
+import dev.skillmanager.model.UnitKind;
+import dev.skillmanager.shared.util.Fs;
+import dev.skillmanager.store.SkillStore;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.LinkOption;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
+
+import static dev.skillmanager._lib.test.Tests.assertEquals;
+import static dev.skillmanager._lib.test.Tests.assertFalse;
+import static dev.skillmanager._lib.test.Tests.assertTrue;
+
+/**
+ * A unit's scaffolded, re-derivable trees are not its content — HIS-18, and
+ * HIS-4's slice (1), which HIS-4 did not deliver.
+ *
+ * <h2>The defect</h2>
+ *
+ * <p>The test-graph scaffolder writes {@code test_graph/build-logic},
+ * {@code test_graph/sdk} and {@code test_graph/standard-nodes} into a consuming
+ * unit as symlinks into the provider's store copy, and in the same pass writes
+ * the {@code .gitignore} block that declares all three generated.
+ * {@link ChildHomeMaterializer} dereferences those links into real directories
+ * so the child home is independent (CHM-5) — correct — but they were still
+ * <b>hashed as content</b>, so from that moment the child copy's digest
+ * diverges from the store's and every later read reports the difference. That
+ * is the INPUT to the drift report: HIS-2 bounded the rendering, and on the
+ * committed baseline {@code spec-double-compiler} still contributed 776 of 889
+ * file lines.
+ *
+ * <h2>Three cases, deliberately, and not one</h2>
+ *
+ * <p>The rule is that excluding a path makes it <b>invisible</b>, not
+ * <b>disposable</b> — not hashed, not copied, not deleted. One assertion over
+ * all three cannot say which half broke, and the third half has a delivered
+ * sibling ({@code carryOverUnownedTrees}, HIS-4) that could carry it while the
+ * digest half is still absent. So each is its own case.
+ *
+ * <h2>The negative control is the exclusion's own falsifier</h2>
+ *
+ * <p>"A unit that legitimately contains a directory named {@code sdk} is not
+ * excluded" and "the fixture fails when the exclusion is removed" are the same
+ * assertion read from two ends, so they are one case: the SAME fixture with the
+ * scaffolder's ignore block absent keeps the dereferenced trees AND its digest
+ * moves. Without that case the first three could all pass over a fixture whose
+ * digest never moved in the first place, which is the shape this epic's vacuity
+ * ledger records five times.
+ *
+ * <h2>The ignore block is READ FROM THE SCAFFOLDER, not typed here</h2>
+ *
+ * <p>Those lines are GENERATED at bind time and are not checked in: the repo's
+ * own {@code test_graph/.gitignore} names none of the three, and the installed
+ * copy in a consuming unit names all three. A fixture that hand-wrote a
+ * plausible block would be testing the fixture. {@link #scaffoldedIgnorePaths}
+ * scrapes them out of {@code ensure_provider_binding_ignores} so that renaming
+ * them in the scaffolder moves this fixture with it.
+ */
+public final class ScaffoldedTreeIsNotContentTest {
+
+    private static final String UNIT = "graph-consumer";
+    private static final String PROVIDER = "graph-provider";
+
+    public static int run() throws Exception {
+        List<String> scaffolded = scaffoldedIgnorePaths();
+        return Tests.suite("ScaffoldedTreeIsNotContentTest")
+
+                // Vacuity mechanism B: assert the fixture's own inputs. If the
+                // scrape silently returned nothing, every case below would
+                // build a unit with an empty .gitignore and pass for the wrong
+                // reason -- which is exactly how HIS-1's assertion passed.
+                .test("the ignore block under test is the one the scaffolder emits", () -> {
+                    assertEquals(List.of("/build-logic", "/sdk", "/standard-nodes"), scaffolded,
+                            "ensure_provider_binding_ignores still declares these three paths; "
+                                    + "if it changed, this fixture changed with it and the "
+                                    + "expectation here is what needs updating");
+                })
+
+                // ------------------------------------------------------ (1) not hashed
+                .test("an excluded path is NOT HASHED — a dereference leaves the child copy's "
+                        + "digest equal to the store's", () -> {
+                    try (Fixture f = Fixture.scaffolded(scaffolded)) {
+                        // Preconditions, asserted rather than assumed.
+                        for (String name : f.treeNames) {
+                            Path link = f.sourceUnit.resolve("test_graph").resolve(name);
+                            assertTrue(Files.isSymbolicLink(link),
+                                    "precondition: " + name + " is a symlink in the store");
+                            assertTrue(Files.isRegularFile(
+                                            link.toRealPath().resolve("generated.txt")),
+                                    "precondition: " + name + " resolves to a real tree with "
+                                            + "content in it");
+                        }
+
+                        ChildHomeMaterializer.UnitOutcome outcome = f.materialize();
+                        assertFalse(outcome.heldBack(),
+                                "precondition: the unit was materialized, not held back");
+                        for (String name : f.treeNames) {
+                            assertFalse(Files.exists(f.childUnit.resolve("test_graph")
+                                            .resolve(name), LinkOption.NOFOLLOW_LINKS),
+                                    "precondition for the digest claim: " + name + " is not in "
+                                            + "the child copy at all");
+                        }
+
+                        assertEquals(ChildHomeMaterializer.treeDigest(f.sourceUnit),
+                                ChildHomeMaterializer.treeDigest(f.childUnit),
+                                "the child copy's digest matches the store's across the "
+                                        + "dereference, so nothing downstream reports drift");
+                    }
+                })
+
+                // ------------------------------------------------------ (2) not copied
+                .test("an excluded path is NOT COPIED", () -> {
+                    try (Fixture f = Fixture.scaffolded(scaffolded)) {
+                        f.materialize();
+                        Path childGraph = f.childUnit.resolve("test_graph");
+                        for (String name : f.treeNames) {
+                            assertFalse(Files.exists(childGraph.resolve(name),
+                                            LinkOption.NOFOLLOW_LINKS),
+                                    "the scaffolded tree " + name + " is not written into the "
+                                            + "child home, as a directory or as a link back into "
+                                            + "the parent store");
+                        }
+                        // And the exclusion is not "nothing was copied": the
+                        // unit's real test_graph content still arrives.
+                        assertTrue(Files.isRegularFile(childGraph.resolve("build.gradle.kts")),
+                                "the unit's own test_graph content is still copied");
+                        assertTrue(Files.isRegularFile(childGraph.resolve(".gitignore")),
+                                "and so is the declaration itself — a child home that lost it "
+                                        + "would stop agreeing with the store on the next pass");
+                    }
+                })
+
+                // ----------------------------------------------------- (3) not deleted
+                .test("an excluded path is NOT DELETED — a wholesale refresh carries it across "
+                        + "the swap", () -> {
+                    try (Fixture f = Fixture.scaffolded(scaffolded)) {
+                        f.materialize();
+
+                        // The child home binds its own copy of the generated
+                        // tree, at the path the exclusion covers. Not a
+                        // Rederivable name -- `sdk` is not in that list -- so
+                        // only the new rule can save it, and the delivered
+                        // sibling cannot mask the result.
+                        Path bound = f.childUnit.resolve("test_graph/sdk");
+                        Fs.ensureDir(bound);
+                        Files.writeString(bound.resolve("bound-here.txt"), "THE CHILD'S BINDING\n");
+
+                        Files.writeString(f.sourceUnit.resolve("SKILL.md"), "STORE v2\n");
+                        ChildHomeMaterializer.UnitOutcome outcome = f.materialize();
+
+                        assertEquals("STORE v2\n",
+                                Files.readString(f.childUnit.resolve("SKILL.md")),
+                                "precondition: the refresh really replaced the tree, so the "
+                                        + "swap this claim is about actually happened");
+                        assertFalse(outcome.heldBack(),
+                                "and writing into an excluded path is not a new reason to hold "
+                                        + "the unit back (GOAL-no-spurious-holdback)");
+                        assertEquals("THE CHILD'S BINDING\n",
+                                Files.readString(bound.resolve("bound-here.txt")),
+                                "the excluded tree survives the wholesale replace — excluding a "
+                                        + "path makes it invisible, not disposable");
+                    }
+                })
+
+                // ------------------------------- the falsifier, from both ends at once
+                .test("a unit that legitimately contains sdk and standard-nodes keeps them — and "
+                        + "the same fixture without the exclusion moves its digest", () -> {
+                    try (Fixture f = Fixture.authored()) {
+                        f.materialize();
+                        for (String name : f.treeNames) {
+                            Path materialized = f.childUnit.resolve("test_graph").resolve(name);
+                            assertTrue(Files.isDirectory(materialized, LinkOption.NOFOLLOW_LINKS),
+                                    "a unit that never declared " + name + " generated keeps it, "
+                                            + "dereferenced into the child home as content");
+                            assertTrue(Files.isRegularFile(materialized.resolve("generated.txt")),
+                                    "with its bytes: a global name list would have hidden these");
+                        }
+                        assertFalse(ChildHomeMaterializer.treeDigest(f.sourceUnit)
+                                        .equals(ChildHomeMaterializer.treeDigest(f.childUnit)),
+                                "and the digests DIVERGE — which is what the exclusion prevents "
+                                        + "in the case above, so that case is not passing over a "
+                                        + "fixture whose digest never moved");
+                    }
+                })
+
+                // -------------------------------------- the clause that keeps it honest
+                .test("a path the unit TRACKS is content even when its own .gitignore matches it",
+                        () -> {
+                    try (Fixture f = Fixture.trackedButIgnored()) {
+                        f.materialize();
+                        assertTrue(Files.isRegularFile(
+                                        f.childUnit.resolve("generated/committed.txt")),
+                                "a committed file its own .gitignore matches still reaches the "
+                                        + "child home — measured on the operator's store, one "
+                                        + "unit tracks 14 such files");
+                        assertFalse(Files.exists(f.childUnit.resolve("generated/scratch.txt"),
+                                        LinkOption.NOFOLLOW_LINKS),
+                                "and its untracked neighbour under the same ignored directory "
+                                        + "is still excluded, so the clause is narrow");
+                    }
+                })
+                .runAll();
+    }
+
+    // ------------------------------------------------------------------ fixture
+
+    /**
+     * A parent store holding a provider unit with three generated trees, a
+     * consumer unit linking to them from {@code test_graph/}, and an empty
+     * child home to materialize into.
+     *
+     * <p>The links are absolute and point INSIDE the parent store and OUTSIDE
+     * the unit, because {@code walk} dereferences only those — a fixture whose
+     * links point anywhere else is inert, which is the mistake HIS-4 recorded
+     * costing it two reproductions.
+     */
+    private static final class Fixture implements AutoCloseable {
+
+        private final Path base;
+        private final SkillStore parent;
+        private final SkillStore child;
+        final Path sourceUnit;
+        final Path childUnit;
+        final List<String> treeNames;
+
+        private Fixture(Path base, SkillStore parent, SkillStore child, List<String> treeNames) {
+            this.base = base;
+            this.parent = parent;
+            this.child = child;
+            this.sourceUnit = parent.unitDir(UNIT, UnitKind.SKILL);
+            this.childUnit = child.unitDir(UNIT, UnitKind.SKILL);
+            this.treeNames = treeNames;
+        }
+
+        /** The real shape: the scaffolder's links AND the scaffolder's ignore block. */
+        static Fixture scaffolded(List<String> ignorePaths) throws Exception {
+            return build(ignorePaths, true);
+        }
+
+        /** The same shape with no declaration — a unit that authored those names. */
+        static Fixture authored() throws Exception {
+            return build(scaffoldedIgnorePaths(), false);
+        }
+
+        private static Fixture build(List<String> ignorePaths, boolean declare) throws Exception {
+            List<String> names = new ArrayList<>();
+            for (String p : ignorePaths) names.add(p.startsWith("/") ? p.substring(1) : p);
+
+            Path base = Files.createTempDirectory("his18-");
+            SkillStore parent = store(base.resolve("parent/.skill-manager"));
+            SkillStore child = store(base.resolve("child/.skill-manager"));
+
+            Path providerUnit = parent.unitDir(PROVIDER, UnitKind.SKILL);
+            Fs.ensureDir(providerUnit);
+            Files.writeString(providerUnit.resolve("SKILL.md"), "PROVIDER\n");
+
+            Path consumerUnit = parent.unitDir(UNIT, UnitKind.SKILL);
+            Path graph = consumerUnit.resolve("test_graph");
+            Fs.ensureDir(graph);
+            Files.writeString(consumerUnit.resolve("SKILL.md"), "STORE v1\n");
+            Files.writeString(graph.resolve("build.gradle.kts"), "// the unit's own content\n");
+
+            StringBuilder ignore = new StringBuilder("# Gradle\nbuild/\n");
+            if (declare) {
+                ignore.append("\n# TEST-GRAPH-MANAGED-BINDINGS-BEGIN\n");
+                for (String p : ignorePaths) ignore.append(p).append('\n');
+                ignore.append("# TEST-GRAPH-MANAGED-BINDINGS-END\n");
+            }
+            Files.writeString(graph.resolve(".gitignore"), ignore.toString());
+
+            for (String name : names) {
+                Path target = providerUnit.resolve("project_sdk_sources").resolve(name);
+                Fs.ensureDir(target);
+                Files.writeString(target.resolve("generated.txt"),
+                        "regenerated by the scaffolder: " + name + "\n");
+                Files.createSymbolicLink(graph.resolve(name), target.toAbsolutePath());
+            }
+            return new Fixture(base, parent, child, List.copyOf(names));
+        }
+
+        /**
+         * A git-backed unit that COMMITTED a file its own {@code .gitignore}
+         * matches, alongside an untracked neighbour under the same rule.
+         */
+        static Fixture trackedButIgnored() throws Exception {
+            Path base = Files.createTempDirectory("his18-tracked-");
+            SkillStore parent = store(base.resolve("parent/.skill-manager"));
+            SkillStore child = store(base.resolve("child/.skill-manager"));
+
+            Path unit = parent.unitDir(UNIT, UnitKind.SKILL);
+            Fs.ensureDir(unit);
+            Files.writeString(unit.resolve("SKILL.md"), "STORE v1\n");
+            Files.writeString(unit.resolve(".gitignore"), "generated/\n");
+            Path generated = unit.resolve("generated");
+            Fs.ensureDir(generated);
+            Files.writeString(generated.resolve("committed.txt"), "COMMITTED ANYWAY\n");
+            Files.writeString(generated.resolve("scratch.txt"), "NOT COMMITTED\n");
+
+            git(unit, "init", "-b", "main", "--quiet");
+            git(unit, "add", "-A");
+            git(unit, "add", "-f", "generated/committed.txt");
+            git(unit, "-c", "user.email=fixture@localhost", "-c", "user.name=fixture",
+                    "commit", "--quiet", "-m", "fixture: commit an ignored path on purpose");
+            return new Fixture(base, parent, child, List.of());
+        }
+
+        ChildHomeMaterializer.UnitOutcome materialize() throws IOException {
+            return new ChildHomeMaterializer(parent, child)
+                    .materializeUnit(UNIT, UnitKind.SKILL, MaterializationMode.COPY);
+        }
+
+        @Override
+        public void close() throws IOException {
+            Fs.deleteRecursive(base);
+        }
+    }
+
+    private static SkillStore store(Path root) throws IOException {
+        SkillStore store = new SkillStore(root);
+        store.init();
+        return store;
+    }
+
+    // ------------------------------------------------------------ the scaffolder
+
+    /**
+     * The ignore lines {@code ensure_provider_binding_ignores} writes, read out
+     * of the scaffolder's own source.
+     *
+     * <p>Scraped rather than typed because the block is generated at bind time
+     * and appears in no checked-in file: the repository's own
+     * {@code test_graph/.gitignore} names none of these paths, and only an
+     * installed consuming unit carries them. Typing them here would make the
+     * fixture agree with itself for as long as nobody changed the scaffolder.
+     */
+    private static List<String> scaffoldedIgnorePaths() throws IOException {
+        Path common = locate("skills/test_graph/scripts/_common.py");
+        String source = Files.readString(common);
+        int at = source.indexOf("def ensure_provider_binding_ignores");
+        if (at < 0) {
+            throw new AssertionError("ensure_provider_binding_ignores is gone from " + common
+                    + " — the scaffolder this fixture mirrors has moved");
+        }
+        int end = source.indexOf("\ndef ", at + 1);
+        String body = end < 0 ? source.substring(at) : source.substring(at, end);
+        List<String> paths = new ArrayList<>();
+        for (String line : body.split("\\R")) {
+            String trimmed = line.trim();
+            if (!trimmed.startsWith("\"/")) continue;
+            int close = trimmed.indexOf('"', 1);
+            if (close > 1) paths.add(trimmed.substring(1, close));
+        }
+        return List.copyOf(paths);
+    }
+
+    /** {@code rel} under the repository root, found by walking up from the cwd. */
+    private static Path locate(String rel) {
+        Path here = Path.of("").toAbsolutePath();
+        for (Path dir = here; dir != null; dir = dir.getParent()) {
+            Path candidate = dir.resolve(rel);
+            if (Files.isRegularFile(candidate)) return candidate;
+        }
+        throw new AssertionError("could not find " + rel + " from " + here
+                + " — this fixture reads the scaffolder's own source");
+    }
+
+    // ------------------------------------------------------------------- git
+
+    private static void git(Path dir, String... args) throws Exception {
+        List<String> argv = new ArrayList<>();
+        argv.add("git");
+        argv.addAll(List.of(args));
+        Process process = new ProcessBuilder(argv)
+                .directory(dir.toFile())
+                .redirectErrorStream(true)
+                .start();
+        String out;
+        try (InputStream in = process.getInputStream()) {
+            out = new String(in.readAllBytes());
+        }
+        int exit = process.waitFor();
+        if (exit != 0) {
+            throw new IOException("fixture git " + String.join(" ", args) + " failed in " + dir
+                    + " (rc=" + exit + "): " + out);
+        }
+    }
+}
