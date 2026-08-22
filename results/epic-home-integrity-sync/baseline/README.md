@@ -98,3 +98,47 @@ Not separately captured here: the pending record in `root-home-drift.json`
 carries `"acknowledged": true` with an `acknowledgedAt` 79 seconds after
 `detectedAt`, which is the shape #213 describes — the gate is acked and
 the same report is still re-emitted by the next pass.
+
+---
+
+## CORRECTION, 2026-08-22 — the 776 lines are not what this file said they were
+
+Found by HIS-18 (#239) and **verified independently by the epic agent against the
+committed record**, not against memory.
+
+This file has said since kickoff that `spec-double-compiler`'s 776 "removed files"
+are *"the dereferenced in-unit symlink trees (`test_graph/build-logic`,
+`test_graph/sdk`, `test_graph/standard-nodes`) being read as deletions"*, and drew a
+conclusion from it: that `GOAL-sync-quiet` and `GOAL-symlink-merge-settles`
+*"are suspected to share a root cause rather than being two independent numbers."*
+
+**Counted, over the 871 path-like strings in `root-home-drift.json`:**
+
+| | count |
+| --- | ---: |
+| mentioning `build-logic`, `sdk` or `standard-nodes` | **3** |
+| under `examples/distributed_history/` | **745** |
+| under `specs/.history/` | **24** |
+
+Top prefixes: `examples` 750, `specs` 25, `test_graph` 20, `src` 18.
+
+So the bulk is **untracked generated content**, not dereferenced symlink trees.
+749 of them were confirmed ignored by `git check-ignore` and independently by
+HIS-18's own predicate.
+
+**What this changes.** The *number* is unaffected — 776 lines were emitted and
+that is what the goal is measured against. What is wrong is the **explanation**,
+and the inference drawn from it: the two goals do **not** demonstrably share a
+root cause, and this file should never have said they were suspected to. HIS-18's
+fix removes most of those lines, but by honouring the unit's own `.gitignore` —
+not by fixing a dereference.
+
+**The record is not edited.** `root-home-drift.json` is untouched and this section
+is appended, for the same reason the earlier "889 vs 896" correction above was
+appended: a baseline quietly amended after the fact is worth nothing, and the
+value here is that it is visible *which* claim moved and why.
+
+**For HIS-6:** read the 776 as *"untracked generated content in one unit"*. The
+`GOAL-sync-quiet` / `GOAL-symlink-merge-settles` shared-cause suspicion is
+**withdrawn** — it was an inference from a misread record, and no measurement
+supports it.
