@@ -159,7 +159,7 @@ one thing it cannot cover: see DEF-046.
 ```
 jbang RunTests.java     ALL PASSED
 uv run pytest specs/    38 passed
-jbang RunHis15.java     35 passed, 0 failed
+jbang RunHis15.java     36 passed, 0 failed
 ```
 
 `tlc` — **N/A** per the assignment; HIS-5 carries the model work.
@@ -167,10 +167,18 @@ jbang RunHis15.java     35 passed, 0 failed
 ### The graph this ticket exists to clear
 
 ```
-ticket-lifecycle   BUILD SUCCESSFUL in 6m 20s   status: passed
+ticket-lifecycle   BUILD SUCCESSFUL in 6m 11s   status: passed
                    13/13 nodes, 117 assertions, 0 not passed
-                   runId 20260822-171850
+                   runId 20260822-173805        ON THE INTEGRATED TIP
 ```
+
+**Measured after rebasing onto HIS-14, not before.** An earlier run
+(`20260822-171850`) was green on this branch alone, and it is deliberately not
+the one recorded: HIS-14 changed `close-out`'s policy gating and the execution
+strategy underneath it. **This ticket exists because HIS-11 was merged on a
+branch-measured green**, so signing HIS-15 off on one would be the same mistake
+with the same shape, one wave later. Only the integrated-tip pair is in
+`probes/`.
 
 The two that decide the ticket:
 

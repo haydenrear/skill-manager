@@ -1,7 +1,7 @@
 VACUITY CHECKS — HIS-15 (#235)
 
 Every assertion this ticket adds, run against the code with its own fix
-disabled. RUNNER: `jbang RunHis15.java` — JsonContractTest, 35 cases. That file
+disabled. RUNNER: `jbang RunHis15.java` — JsonContractTest, 36 cases. That file
 IS IN THE REPOSITORY, shipped for the reason RunHis11/RunHis12 are: a record
 naming a file that does not exist is a claim, not evidence.
 

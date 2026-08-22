@@ -1,8 +1,8 @@
-{"runId":"20260822-171850","status":"passed","traceId":"7c21fe7cd8e75fbdbb9eb101e00c5b69","execution":{"mode":"full","graphName":"ticket-lifecycle","complete":true,"expectedNodeIds":["env.prepared","ticket.lifecycle.fixture.built","ticket.lifecycle.provisioned","ticket.lifecycle.first.launch","ticket.lifecycle.caches","ticket.lifecycle.agent.edits","ticket.lifecycle.concurrent.close.out","ticket.lifecycle.conflict","ticket.lifecycle.teardown","ticket.lifecycle.next.agent","ticket.lifecycle.publish","ticket.lifecycle.global.home.untouched","home.fixpoint.law"],"observedNodeIds":["env.prepared","home.fixpoint.law","ticket.lifecycle.agent.edits","ticket.lifecycle.caches","ticket.lifecycle.concurrent.close.out","ticket.lifecycle.conflict","ticket.lifecycle.first.launch","ticket.lifecycle.fixture.built","ticket.lifecycle.global.home.untouched","ticket.lifecycle.next.agent","ticket.lifecycle.provisioned","ticket.lifecycle.publish","ticket.lifecycle.teardown"],"missingNodeIds":[],"invalidEnvelopeFiles":[],"duplicateNodeIds":[],"unexpectedNodeIds":[],"unknownStatusNodeIds":[],"missingTraceNodeIds":[],"invalidTraceNodeIds":[],"mismatchedTraceNodeIds":[],"observedContextNodeIds":["env.prepared","ticket.lifecycle.fixture.built","ticket.lifecycle.provisioned","ticket.lifecycle.first.launch","ticket.lifecycle.caches","ticket.lifecycle.agent.edits","ticket.lifecycle.concurrent.close.out","ticket.lifecycle.conflict","ticket.lifecycle.teardown","ticket.lifecycle.next.agent","ticket.lifecycle.publish","ticket.lifecycle.global.home.untouched","home.fixpoint.law"],"missingContextNodeIds":[],"invalidContextFiles":[],"unexpectedContextNodeIds":[],"contextProvenanceViolationNodeIds":[],"replaySourceContextMismatchNodeIds":[],"contextFileCountExceeded":false,"aggregateContextBytesExceeded":false,"envelopeFileCountExceeded":false,"aggregateEnvelopeBytesExceeded":false,"aggregateJsonStructureExceeded":false,"unknownExecutionScope":false},"nodes":[{
+{"runId":"20260822-173805","status":"passed","traceId":"ef794da0a18fa7fbe633aa298c5889b2","execution":{"mode":"full","graphName":"ticket-lifecycle","complete":true,"expectedNodeIds":["env.prepared","ticket.lifecycle.fixture.built","ticket.lifecycle.provisioned","ticket.lifecycle.first.launch","ticket.lifecycle.caches","ticket.lifecycle.agent.edits","ticket.lifecycle.concurrent.close.out","ticket.lifecycle.conflict","ticket.lifecycle.teardown","ticket.lifecycle.next.agent","ticket.lifecycle.publish","ticket.lifecycle.global.home.untouched","home.fixpoint.law"],"observedNodeIds":["env.prepared","home.fixpoint.law","ticket.lifecycle.agent.edits","ticket.lifecycle.caches","ticket.lifecycle.concurrent.close.out","ticket.lifecycle.conflict","ticket.lifecycle.first.launch","ticket.lifecycle.fixture.built","ticket.lifecycle.global.home.untouched","ticket.lifecycle.next.agent","ticket.lifecycle.provisioned","ticket.lifecycle.publish","ticket.lifecycle.teardown"],"missingNodeIds":[],"invalidEnvelopeFiles":[],"duplicateNodeIds":[],"unexpectedNodeIds":[],"unknownStatusNodeIds":[],"missingTraceNodeIds":[],"invalidTraceNodeIds":[],"mismatchedTraceNodeIds":[],"observedContextNodeIds":["env.prepared","ticket.lifecycle.fixture.built","ticket.lifecycle.provisioned","ticket.lifecycle.first.launch","ticket.lifecycle.caches","ticket.lifecycle.agent.edits","ticket.lifecycle.concurrent.close.out","ticket.lifecycle.conflict","ticket.lifecycle.teardown","ticket.lifecycle.next.agent","ticket.lifecycle.publish","ticket.lifecycle.global.home.untouched","home.fixpoint.law"],"missingContextNodeIds":[],"invalidContextFiles":[],"unexpectedContextNodeIds":[],"contextProvenanceViolationNodeIds":[],"replaySourceContextMismatchNodeIds":[],"contextFileCountExceeded":false,"aggregateContextBytesExceeded":false,"envelopeFileCountExceeded":false,"aggregateEnvelopeBytesExceeded":false,"aggregateJsonStructureExceeded":false,"unknownExecutionScope":false},"nodes":[{
   "nodeId" : "env.prepared",
   "status" : "passed",
-  "startedAt" : "2026-08-22T17:18:51.393414Z",
-  "endedAt" : "2026-08-22T17:18:51.417345Z",
+  "startedAt" : "2026-08-22T17:38:06.260823Z",
+  "endedAt" : "2026-08-22T17:38:06.286488Z",
   "assertions" : [ {
     "name" : "home_created",
     "status" : "passed"
@@ -22,24 +22,24 @@
   "artifacts" : [ ],
   "processes" : [ ],
   "metrics" : {
-    "registryPort" : 58074,
-    "gatewayPort" : 58075,
-    "durationMs" : 24
+    "registryPort" : 62898,
+    "gatewayPort" : 62899,
+    "durationMs" : 26
   },
   "logs" : [ ],
   "published" : {
-    "home" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2728165581087170254",
-    "claudeHome" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2728165581087170254/agent-home",
-    "codexHome" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2728165581087170254/agent-home/.codex",
-    "geminiHome" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2728165581087170254/agent-home/.gemini",
-    "registryPort" : "58074",
-    "gatewayPort" : "58075"
+    "home" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008",
+    "claudeHome" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/agent-home",
+    "codexHome" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/agent-home/.codex",
+    "geminiHome" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/agent-home/.gemini",
+    "registryPort" : "62898",
+    "gatewayPort" : "62899"
   }
-,"envelopeVersion":1,"executorStartedAt":"2026-08-22T17:18:50.752276Z","executorEndedAt":"2026-08-22T17:19:05.026125Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/env.prepared.stdout.log","inputContextFile":"context/env.prepared.input.json","traceId":"7c21fe7cd8e75fbdbb9eb101e00c5b69"},{
+,"envelopeVersion":1,"executorStartedAt":"2026-08-22T17:38:05.628039Z","executorEndedAt":"2026-08-22T17:38:19.528801Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/env.prepared.stdout.log","inputContextFile":"context/env.prepared.input.json","traceId":"ef794da0a18fa7fbe633aa298c5889b2"},{
   "nodeId" : "home.fixpoint.law",
   "status" : "passed",
-  "startedAt" : "2026-08-22T17:24:14.513919Z",
-  "endedAt" : "2026-08-22T17:24:27.888886Z",
+  "startedAt" : "2026-08-22T17:43:30.503538Z",
+  "endedAt" : "2026-08-22T17:43:44.578877Z",
   "assertions" : [ {
     "name" : "every_home_verifies_or_its_own_remedy_repairs_it",
     "status" : "passed"
@@ -50,18 +50,18 @@
     "homesChecked" : 3,
     "homesRepaired" : 0,
     "homesOutsideSandbox" : 1,
-    "durationMs" : 13375
+    "durationMs" : 14075
   },
-  "logs" : [ "PASS  /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2728165581087170254/ticket-lifecycle/proj/.skill-manager\nPASS  /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2728165581087170254/ticket-lifecycle/root-home\nPASS  /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2728165581087170254/ticket-lifecycle/proj-TICKET-C/.skill-manager\nSKIPPED (outside the sandbox, never mutated): /Users/hayde/.skill-manager/skills/git-issue-workflow/scripts" ],
+  "logs" : [ "PASS  /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj/.skill-manager\nPASS  /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/root-home\nPASS  /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj-TICKET-C/.skill-manager\nSKIPPED (outside the sandbox, never mutated): /Users/hayde/.skill-manager/skills/git-issue-workflow/scripts" ],
   "published" : {
-    "homesChecked" : "/private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2728165581087170254/ticket-lifecycle/proj/.skill-manager,/private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2728165581087170254/ticket-lifecycle/root-home,/private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2728165581087170254/ticket-lifecycle/proj-TICKET-C/.skill-manager",
+    "homesChecked" : "/private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj/.skill-manager,/private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/root-home,/private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj-TICKET-C/.skill-manager",
     "homesRepaired" : ""
   }
-,"envelopeVersion":1,"executorStartedAt":"2026-08-22T17:24:13.865359Z","executorEndedAt":"2026-08-22T17:24:40.763471Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/home.fixpoint.law.stdout.log","inputContextFile":"context/home.fixpoint.law.input.json","traceId":"7c21fe7cd8e75fbdbb9eb101e00c5b69"},{
+,"envelopeVersion":1,"executorStartedAt":"2026-08-22T17:43:29.801030Z","executorEndedAt":"2026-08-22T17:43:58.055670Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/home.fixpoint.law.stdout.log","inputContextFile":"context/home.fixpoint.law.input.json","traceId":"ef794da0a18fa7fbe633aa298c5889b2"},{
   "nodeId" : "ticket.lifecycle.agent.edits",
   "status" : "passed",
-  "startedAt" : "2026-08-22T17:21:26.285180Z",
-  "endedAt" : "2026-08-22T17:21:26.384068Z",
+  "startedAt" : "2026-08-22T17:40:40.136145Z",
+  "endedAt" : "2026-08-22T17:40:40.246227Z",
   "assertions" : [ {
     "name" : "both_tickets_edited_the_shared_unit",
     "status" : "passed"
@@ -84,18 +84,18 @@
   "artifacts" : [ ],
   "processes" : [ ],
   "metrics" : {
-    "durationMs" : 99
+    "durationMs" : 110
   },
   "logs" : [ ],
   "published" : {
     "sharedContentA" : "---\nname: tl-shared\ndescription: ticket-lifecycle graph fixture\n---\nshared v1\nTICKET-A improved the shared skill\n",
     "sharedContentB" : "---\nname: tl-shared\ndescription: ticket-lifecycle graph fixture\n---\nshared v1\nTICKET-B improved the shared skill, differently\n"
   }
-,"envelopeVersion":1,"executorStartedAt":"2026-08-22T17:21:25.606533Z","executorEndedAt":"2026-08-22T17:21:40.474277Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/ticket.lifecycle.agent.edits.stdout.log","inputContextFile":"context/ticket.lifecycle.agent.edits.input.json","traceId":"7c21fe7cd8e75fbdbb9eb101e00c5b69"},{
+,"envelopeVersion":1,"executorStartedAt":"2026-08-22T17:40:39.441963Z","executorEndedAt":"2026-08-22T17:40:53.572658Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/ticket.lifecycle.agent.edits.stdout.log","inputContextFile":"context/ticket.lifecycle.agent.edits.input.json","traceId":"ef794da0a18fa7fbe633aa298c5889b2"},{
   "nodeId" : "ticket.lifecycle.caches",
   "status" : "passed",
-  "startedAt" : "2026-08-22T17:21:06.808598Z",
-  "endedAt" : "2026-08-22T17:21:09.339463Z",
+  "startedAt" : "2026-08-22T17:40:20.391130Z",
+  "endedAt" : "2026-08-22T17:40:23.054967Z",
   "assertions" : [ {
     "name" : "both_worktrees_launch_environments_were_read",
     "status" : "passed"
@@ -115,34 +115,34 @@
   "artifacts" : [ ],
   "processes" : [ {
     "label" : "print-env-a",
-    "command" : [ "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2728165581087170254/ticket-lifecycle/proj-TICKET-A/.skill-manager/bin/cli/skill-manager", "exec", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2728165581087170254/ticket-lifecycle/proj-TICKET-A/.skill-manager", "--home-root", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2728165581087170254/ticket-lifecycle/proj-TICKET-A", "--print-env" ],
-    "startedAt" : "2026-08-22T17:21:06.813220Z",
-    "endedAt" : "2026-08-22T17:21:08.059112Z",
+    "command" : [ "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj-TICKET-A/.skill-manager/bin/cli/skill-manager", "exec", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj-TICKET-A/.skill-manager", "--home-root", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj-TICKET-A", "--print-env" ],
+    "startedAt" : "2026-08-22T17:40:20.395910Z",
+    "endedAt" : "2026-08-22T17:40:21.696943Z",
     "exitCode" : 0,
-    "pid" : 8417,
+    "pid" : 20992,
     "log" : "node-logs/ticket.lifecycle.caches.print-env-a.log",
     "error" : null
   }, {
     "label" : "print-env-b",
-    "command" : [ "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2728165581087170254/ticket-lifecycle/proj-TICKET-B/.skill-manager/bin/cli/skill-manager", "exec", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2728165581087170254/ticket-lifecycle/proj-TICKET-B/.skill-manager", "--home-root", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2728165581087170254/ticket-lifecycle/proj-TICKET-B", "--print-env" ],
-    "startedAt" : "2026-08-22T17:21:08.059420Z",
-    "endedAt" : "2026-08-22T17:21:09.333048Z",
+    "command" : [ "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj-TICKET-B/.skill-manager/bin/cli/skill-manager", "exec", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj-TICKET-B/.skill-manager", "--home-root", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj-TICKET-B", "--print-env" ],
+    "startedAt" : "2026-08-22T17:40:21.697245Z",
+    "endedAt" : "2026-08-22T17:40:23.048489Z",
     "exitCode" : 0,
-    "pid" : 8436,
+    "pid" : 21022,
     "log" : "node-logs/ticket.lifecycle.caches.print-env-b.log",
     "error" : null
   } ],
   "metrics" : {
     "sharedStoresChecked" : 3,
-    "durationMs" : 2531
+    "durationMs" : 2663
   },
-  "logs" : [ "A: UV_CACHE_DIR=/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2728165581087170254/.cache/uv npm_config_cache=/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2728165581087170254/.npm PIP_CACHE_DIR=/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2728165581087170254/Library/Caches/pip  B: UV_CACHE_DIR=/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2728165581087170254/.cache/uv npm_config_cache=/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2728165581087170254/.npm PIP_CACHE_DIR=/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2728165581087170254/Library/Caches/pip" ],
+  "logs" : [ "A: UV_CACHE_DIR=/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/.cache/uv npm_config_cache=/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/.npm PIP_CACHE_DIR=/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/Library/Caches/pip  B: UV_CACHE_DIR=/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/.cache/uv npm_config_cache=/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/.npm PIP_CACHE_DIR=/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/Library/Caches/pip" ],
   "published" : { }
-,"envelopeVersion":1,"executorStartedAt":"2026-08-22T17:21:06.128969Z","executorEndedAt":"2026-08-22T17:21:25.581231Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/ticket.lifecycle.caches.stdout.log","inputContextFile":"context/ticket.lifecycle.caches.input.json","traceId":"7c21fe7cd8e75fbdbb9eb101e00c5b69"},{
+,"envelopeVersion":1,"executorStartedAt":"2026-08-22T17:40:19.705954Z","executorEndedAt":"2026-08-22T17:40:39.427222Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/ticket.lifecycle.caches.stdout.log","inputContextFile":"context/ticket.lifecycle.caches.input.json","traceId":"ef794da0a18fa7fbe633aa298c5889b2"},{
   "nodeId" : "ticket.lifecycle.concurrent.close.out",
   "status" : "passed",
-  "startedAt" : "2026-08-22T17:21:41.165471Z",
-  "endedAt" : "2026-08-22T17:22:04.937800Z",
+  "startedAt" : "2026-08-22T17:40:54.336354Z",
+  "endedAt" : "2026-08-22T17:41:18.562223Z",
   "assertions" : [ {
     "name" : "both_close_change_runs_were_refused_by_the_gate",
     "status" : "passed"
@@ -192,33 +192,33 @@
   "artifacts" : [ ],
   "processes" : [ {
     "label" : "lockprobe-selftest",
-    "command" : [ "python3", "/Users/hayde/IdeaProjects/wt-235-his-15/test_graph/sources/ticket-lifecycle/lockprobe.py", "selftest", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2728165581087170254/ticket-lifecycle/concurrency/selftest.lock" ],
-    "startedAt" : "2026-08-22T17:21:44.092165Z",
-    "endedAt" : "2026-08-22T17:21:44.243982Z",
+    "command" : [ "python3", "/Users/hayde/IdeaProjects/wt-235-his-15/test_graph/sources/ticket-lifecycle/lockprobe.py", "selftest", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/concurrency/selftest.lock" ],
+    "startedAt" : "2026-08-22T17:40:57.734053Z",
+    "endedAt" : "2026-08-22T17:40:57.867949Z",
     "exitCode" : 0,
-    "pid" : 8746,
+    "pid" : 22195,
     "log" : "node-logs/ticket.lifecycle.concurrent.close.out.lockprobe-selftest.log",
     "error" : null
   } ],
   "metrics" : {
-    "lockSamples" : 309,
+    "lockSamples" : 308,
     "heldSamples" : 13,
     "distinctHolders" : 2,
-    "processOverlapMillis" : 6192,
-    "durationMs" : 23772
+    "processOverlapMillis" : 6202,
+    "durationMs" : 24226
   },
-  "logs" : [ "real: holders=[8750, 8751] intervals=[Held[pid=8750, firstMillis=6001, lastMillis=6119], Held[pid=8751, firstMillis=6162, lastMillis=6268]] heldSamples=13", "unserialised control: holders=[] intervals=[] heldSamples=0", "serialised control: holders=[8841, 8840] intervals=[Held[pid=8841, firstMillis=5999, lastMillis=7001], Held[pid=8840, firstMillis=7020, lastMillis=8002]] heldSamples=101" ],
+  "logs" : [ "real: holders=[22212, 22213] intervals=[Held[pid=22212, firstMillis=5999, lastMillis=6102], Held[pid=22213, firstMillis=6167, lastMillis=6282]] heldSamples=13", "unserialised control: holders=[] intervals=[] heldSamples=0", "serialised control: holders=[23068, 23066] intervals=[Held[pid=23068, firstMillis=6002, lastMillis=6987], Held[pid=23066, firstMillis=7010, lastMillis=7995]] heldSamples=102" ],
   "published" : {
-    "syncLogA" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2728165581087170254/ticket-lifecycle/concurrency/real.a.log",
-    "syncLogB" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2728165581087170254/ticket-lifecycle/concurrency/real.b.log",
+    "syncLogA" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/concurrency/real.a.log",
+    "syncLogB" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/concurrency/real.b.log",
     "syncExitA" : "0",
     "syncExitB" : "0"
   }
-,"envelopeVersion":1,"executorStartedAt":"2026-08-22T17:21:40.486861Z","executorEndedAt":"2026-08-22T17:22:17.533959Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/ticket.lifecycle.concurrent.close.out.stdout.log","inputContextFile":"context/ticket.lifecycle.concurrent.close.out.input.json","traceId":"7c21fe7cd8e75fbdbb9eb101e00c5b69"},{
+,"envelopeVersion":1,"executorStartedAt":"2026-08-22T17:40:53.590612Z","executorEndedAt":"2026-08-22T17:41:32.540855Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/ticket.lifecycle.concurrent.close.out.stdout.log","inputContextFile":"context/ticket.lifecycle.concurrent.close.out.input.json","traceId":"ef794da0a18fa7fbe633aa298c5889b2"},{
   "nodeId" : "ticket.lifecycle.conflict",
   "status" : "passed",
-  "startedAt" : "2026-08-22T17:22:18.220308Z",
-  "endedAt" : "2026-08-22T17:22:24.167765Z",
+  "startedAt" : "2026-08-22T17:41:33.277280Z",
+  "endedAt" : "2026-08-22T17:41:39.929951Z",
   "assertions" : [ {
     "name" : "exactly_one_tickets_edit_landed_in_the_project_home",
     "status" : "passed"
@@ -262,55 +262,55 @@
   "artifacts" : [ ],
   "processes" : [ {
     "label" : "close-out-loser",
-    "command" : [ "/Users/hayde/IdeaProjects/wt-235-his-15/skill-manager", "home", "close-out", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2728165581087170254/ticket-lifecycle/proj-TICKET-B/.skill-manager", "--into", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2728165581087170254/ticket-lifecycle/proj/.skill-manager", "--json" ],
-    "startedAt" : "2026-08-22T17:22:18.227833Z",
-    "endedAt" : "2026-08-22T17:22:19.428298Z",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-235-his-15/skill-manager", "home", "close-out", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj-TICKET-B/.skill-manager", "--into", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj/.skill-manager", "--json" ],
+    "startedAt" : "2026-08-22T17:41:33.284849Z",
+    "endedAt" : "2026-08-22T17:41:34.710303Z",
     "exitCode" : 1,
-    "pid" : 8917,
+    "pid" : 24280,
     "log" : "node-logs/ticket.lifecycle.conflict.close-out-loser.log",
     "error" : null
   }, {
     "label" : "sync-after-resolve",
-    "command" : [ "/Users/hayde/IdeaProjects/wt-235-his-15/skill-manager", "home", "sync", "--from", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2728165581087170254/ticket-lifecycle/proj-TICKET-B/.skill-manager", "--to", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2728165581087170254/ticket-lifecycle/proj/.skill-manager", "--merge", "--json" ],
-    "startedAt" : "2026-08-22T17:22:20.618611Z",
-    "endedAt" : "2026-08-22T17:22:21.833136Z",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-235-his-15/skill-manager", "home", "sync", "--from", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj-TICKET-B/.skill-manager", "--to", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj/.skill-manager", "--merge", "--json" ],
+    "startedAt" : "2026-08-22T17:41:35.957909Z",
+    "endedAt" : "2026-08-22T17:41:37.273887Z",
     "exitCode" : 0,
-    "pid" : 8942,
+    "pid" : 24344,
     "log" : "node-logs/ticket.lifecycle.conflict.sync-after-resolve.log",
     "error" : null
   }, {
     "label" : "close-out-cleared-a",
-    "command" : [ "/Users/hayde/IdeaProjects/wt-235-his-15/skill-manager", "home", "close-out", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2728165581087170254/ticket-lifecycle/proj-TICKET-A/.skill-manager", "--into", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2728165581087170254/ticket-lifecycle/proj/.skill-manager", "--json" ],
-    "startedAt" : "2026-08-22T17:22:21.834016Z",
-    "endedAt" : "2026-08-22T17:22:22.999958Z",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-235-his-15/skill-manager", "home", "close-out", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj-TICKET-A/.skill-manager", "--into", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj/.skill-manager", "--json" ],
+    "startedAt" : "2026-08-22T17:41:37.274784Z",
+    "endedAt" : "2026-08-22T17:41:38.613537Z",
     "exitCode" : 0,
-    "pid" : 8951,
+    "pid" : 24375,
     "log" : "node-logs/ticket.lifecycle.conflict.close-out-cleared-a.log",
     "error" : null
   }, {
     "label" : "close-out-cleared-b",
-    "command" : [ "/Users/hayde/IdeaProjects/wt-235-his-15/skill-manager", "home", "close-out", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2728165581087170254/ticket-lifecycle/proj-TICKET-B/.skill-manager", "--into", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2728165581087170254/ticket-lifecycle/proj/.skill-manager", "--json" ],
-    "startedAt" : "2026-08-22T17:22:23.000257Z",
-    "endedAt" : "2026-08-22T17:22:24.166449Z",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-235-his-15/skill-manager", "home", "close-out", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj-TICKET-B/.skill-manager", "--into", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj/.skill-manager", "--json" ],
+    "startedAt" : "2026-08-22T17:41:38.613875Z",
+    "endedAt" : "2026-08-22T17:41:39.928544Z",
     "exitCode" : 0,
-    "pid" : 8962,
+    "pid" : 24387,
     "log" : "node-logs/ticket.lifecycle.conflict.close-out-cleared-b.log",
     "error" : null
   } ],
   "metrics" : {
     "remedyRounds" : 1,
     "conflictsReported" : 1,
-    "durationMs" : 5947
+    "durationMs" : 6652
   },
-  "logs" : [ "loser was TICKET-B; remedies: [/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2728165581087170254/ticket-lifecycle/proj-TICKET-B/.skill-manager/bin/cli/skill-manager home sync --from /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2728165581087170254/ticket-lifecycle/proj-TICKET-B/.skill-manager --to /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2728165581087170254/ticket-lifecycle/proj/.skill-manager --merge  (then resolve: SKILL.md)]" ],
+  "logs" : [ "loser was TICKET-B; remedies: [/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj-TICKET-B/.skill-manager/bin/cli/skill-manager home sync --from /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj-TICKET-B/.skill-manager --to /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj/.skill-manager --merge  (then resolve: SKILL.md)]" ],
   "published" : {
     "resolvedShared" : "---\nname: tl-shared\ndescription: ticket-lifecycle graph fixture\n---\nshared v1\nTICKET-A improved the shared skill\nTICKET-B improved the shared skill, differently\n"
   }
-,"envelopeVersion":1,"executorStartedAt":"2026-08-22T17:22:17.560147Z","executorEndedAt":"2026-08-22T17:22:38.361696Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/ticket.lifecycle.conflict.stdout.log","inputContextFile":"context/ticket.lifecycle.conflict.input.json","traceId":"7c21fe7cd8e75fbdbb9eb101e00c5b69"},{
+,"envelopeVersion":1,"executorStartedAt":"2026-08-22T17:41:32.560137Z","executorEndedAt":"2026-08-22T17:41:53.926028Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/ticket.lifecycle.conflict.stdout.log","inputContextFile":"context/ticket.lifecycle.conflict.input.json","traceId":"ef794da0a18fa7fbe633aa298c5889b2"},{
   "nodeId" : "ticket.lifecycle.first.launch",
   "status" : "passed",
-  "startedAt" : "2026-08-22T17:20:43.414917Z",
-  "endedAt" : "2026-08-22T17:20:52.336403Z",
+  "startedAt" : "2026-08-22T17:39:57.184664Z",
+  "endedAt" : "2026-08-22T17:40:06.165422Z",
   "assertions" : [ {
     "name" : "the_drift_query_gives_a_machine_readable_answer",
     "status" : "passed"
@@ -354,65 +354,65 @@
   "artifacts" : [ ],
   "processes" : [ {
     "label" : "drift-fresh",
-    "command" : [ "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2728165581087170254/ticket-lifecycle/proj-TICKET-A/.skill-manager/bin/cli/skill-manager", "home", "drift", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2728165581087170254/ticket-lifecycle/proj-TICKET-A/.skill-manager", "--json" ],
-    "startedAt" : "2026-08-22T17:20:43.420157Z",
-    "endedAt" : "2026-08-22T17:20:44.662443Z",
+    "command" : [ "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj-TICKET-A/.skill-manager/bin/cli/skill-manager", "home", "drift", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj-TICKET-A/.skill-manager", "--json" ],
+    "startedAt" : "2026-08-22T17:39:57.190149Z",
+    "endedAt" : "2026-08-22T17:39:58.450660Z",
     "exitCode" : 0,
-    "pid" : 8162,
+    "pid" : 20481,
     "log" : "node-logs/ticket.lifecycle.first.launch.drift-fresh.log",
     "error" : null
   }, {
     "label" : "launch-fresh",
-    "command" : [ "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2728165581087170254/ticket-lifecycle/proj-TICKET-A/.skill-manager/bin/cli/skill-manager", "exec", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2728165581087170254/ticket-lifecycle/proj-TICKET-A/.skill-manager", "--home-root", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2728165581087170254/ticket-lifecycle/proj-TICKET-A", "--", "true" ],
-    "startedAt" : "2026-08-22T17:20:44.665043Z",
-    "endedAt" : "2026-08-22T17:20:45.945497Z",
+    "command" : [ "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj-TICKET-A/.skill-manager/bin/cli/skill-manager", "exec", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj-TICKET-A/.skill-manager", "--home-root", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj-TICKET-A", "--", "true" ],
+    "startedAt" : "2026-08-22T17:39:58.453418Z",
+    "endedAt" : "2026-08-22T17:39:59.743952Z",
     "exitCode" : 0,
-    "pid" : 8181,
+    "pid" : 20500,
     "log" : "node-logs/ticket.lifecycle.first.launch.launch-fresh.log",
     "error" : null
   }, {
     "label" : "drift-record",
-    "command" : [ "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2728165581087170254/ticket-lifecycle/proj-TICKET-A/.skill-manager/bin/cli/skill-manager", "home", "drift", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2728165581087170254/ticket-lifecycle/proj-TICKET-A/.skill-manager", "--record", "--json" ],
-    "startedAt" : "2026-08-22T17:20:45.946564Z",
-    "endedAt" : "2026-08-22T17:20:47.268713Z",
+    "command" : [ "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj-TICKET-A/.skill-manager/bin/cli/skill-manager", "home", "drift", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj-TICKET-A/.skill-manager", "--record", "--json" ],
+    "startedAt" : "2026-08-22T17:39:59.745071Z",
+    "endedAt" : "2026-08-22T17:40:01.026376Z",
     "exitCode" : 8,
-    "pid" : 8205,
+    "pid" : 20520,
     "log" : "node-logs/ticket.lifecycle.first.launch.drift-record.log",
     "error" : null
   }, {
     "label" : "launch-refused",
-    "command" : [ "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2728165581087170254/ticket-lifecycle/proj-TICKET-A/.skill-manager/bin/cli/skill-manager", "exec", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2728165581087170254/ticket-lifecycle/proj-TICKET-A/.skill-manager", "--home-root", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2728165581087170254/ticket-lifecycle/proj-TICKET-A", "--", "true" ],
-    "startedAt" : "2026-08-22T17:20:47.269243Z",
-    "endedAt" : "2026-08-22T17:20:48.537797Z",
+    "command" : [ "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj-TICKET-A/.skill-manager/bin/cli/skill-manager", "exec", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj-TICKET-A/.skill-manager", "--home-root", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj-TICKET-A", "--", "true" ],
+    "startedAt" : "2026-08-22T17:40:01.026923Z",
+    "endedAt" : "2026-08-22T17:40:02.318680Z",
     "exitCode" : 8,
-    "pid" : 8249,
+    "pid" : 20541,
     "log" : "node-logs/ticket.lifecycle.first.launch.launch-refused.log",
     "error" : null
   }, {
     "label" : "drift-ack",
-    "command" : [ "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2728165581087170254/ticket-lifecycle/proj-TICKET-A/.skill-manager/bin/cli/skill-manager", "home", "drift", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2728165581087170254/ticket-lifecycle/proj-TICKET-A/.skill-manager", "--ack", "--json" ],
-    "startedAt" : "2026-08-22T17:20:48.540426Z",
-    "endedAt" : "2026-08-22T17:20:49.804764Z",
+    "command" : [ "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj-TICKET-A/.skill-manager/bin/cli/skill-manager", "home", "drift", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj-TICKET-A/.skill-manager", "--ack", "--json" ],
+    "startedAt" : "2026-08-22T17:40:02.321328Z",
+    "endedAt" : "2026-08-22T17:40:03.593338Z",
     "exitCode" : 0,
-    "pid" : 8268,
+    "pid" : 20561,
     "log" : "node-logs/ticket.lifecycle.first.launch.drift-ack.log",
     "error" : null
   }, {
     "label" : "launch-after-ack",
-    "command" : [ "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2728165581087170254/ticket-lifecycle/proj-TICKET-A/.skill-manager/bin/cli/skill-manager", "exec", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2728165581087170254/ticket-lifecycle/proj-TICKET-A/.skill-manager", "--home-root", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2728165581087170254/ticket-lifecycle/proj-TICKET-A", "--", "true" ],
-    "startedAt" : "2026-08-22T17:20:49.805038Z",
-    "endedAt" : "2026-08-22T17:20:51.080652Z",
+    "command" : [ "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj-TICKET-A/.skill-manager/bin/cli/skill-manager", "exec", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj-TICKET-A/.skill-manager", "--home-root", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj-TICKET-A", "--", "true" ],
+    "startedAt" : "2026-08-22T17:40:03.593607Z",
+    "endedAt" : "2026-08-22T17:40:04.884711Z",
     "exitCode" : 0,
-    "pid" : 8294,
+    "pid" : 20582,
     "log" : "node-logs/ticket.lifecycle.first.launch.launch-after-ack.log",
     "error" : null
   }, {
     "label" : "exec-print-env",
-    "command" : [ "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2728165581087170254/ticket-lifecycle/proj-TICKET-A/.skill-manager/bin/cli/skill-manager", "exec", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2728165581087170254/ticket-lifecycle/proj-TICKET-A/.skill-manager", "--home-root", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2728165581087170254/ticket-lifecycle/proj-TICKET-A", "--print-env" ],
-    "startedAt" : "2026-08-22T17:20:51.080920Z",
-    "endedAt" : "2026-08-22T17:20:52.335032Z",
+    "command" : [ "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj-TICKET-A/.skill-manager/bin/cli/skill-manager", "exec", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj-TICKET-A/.skill-manager", "--home-root", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj-TICKET-A", "--print-env" ],
+    "startedAt" : "2026-08-22T17:40:04.884990Z",
+    "endedAt" : "2026-08-22T17:40:06.164071Z",
     "exitCode" : 0,
-    "pid" : 8315,
+    "pid" : 20602,
     "log" : "node-logs/ticket.lifecycle.first.launch.exec-print-env.log",
     "error" : null
   } ],
@@ -421,15 +421,15 @@
     "remedyIsAbsolutelyResolved" : 1,
     "freshDriftExit" : 0,
     "refusedLaunchExit" : 8,
-    "durationMs" : 8922
+    "durationMs" : 8981
   },
   "logs" : [ ],
   "published" : { }
-,"envelopeVersion":1,"executorStartedAt":"2026-08-22T17:20:42.765913Z","executorEndedAt":"2026-08-22T17:21:06.106212Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/ticket.lifecycle.first.launch.stdout.log","inputContextFile":"context/ticket.lifecycle.first.launch.input.json","traceId":"7c21fe7cd8e75fbdbb9eb101e00c5b69"},{
+,"envelopeVersion":1,"executorStartedAt":"2026-08-22T17:39:56.494793Z","executorEndedAt":"2026-08-22T17:40:19.687365Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/ticket.lifecycle.first.launch.stdout.log","inputContextFile":"context/ticket.lifecycle.first.launch.input.json","traceId":"ef794da0a18fa7fbe633aa298c5889b2"},{
   "nodeId" : "ticket.lifecycle.fixture.built",
   "status" : "passed",
-  "startedAt" : "2026-08-22T17:19:05.711883Z",
-  "endedAt" : "2026-08-22T17:19:42.547404Z",
+  "startedAt" : "2026-08-22T17:38:20.220138Z",
+  "endedAt" : "2026-08-22T17:38:56.076907Z",
   "assertions" : [ {
     "name" : "the_integration_scripts_under_test_were_found",
     "status" : "passed"
@@ -464,64 +464,64 @@
   "artifacts" : [ ],
   "processes" : [ {
     "label" : "install-tl-shared",
-    "command" : [ "/Users/hayde/IdeaProjects/wt-235-his-15/skill-manager", "install", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2728165581087170254/ticket-lifecycle/sources/tl-shared", "--yes" ],
-    "startedAt" : "2026-08-22T17:19:05.741642Z",
-    "endedAt" : "2026-08-22T17:19:16.191224Z",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-235-his-15/skill-manager", "install", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/sources/tl-shared", "--yes" ],
+    "startedAt" : "2026-08-22T17:38:20.249489Z",
+    "endedAt" : "2026-08-22T17:38:29.802158Z",
     "exitCode" : 0,
-    "pid" : 6293,
+    "pid" : 18559,
     "log" : "node-logs/ticket.lifecycle.fixture.built.install-tl-shared.log",
     "error" : null
   }, {
     "label" : "install-tl-x",
-    "command" : [ "/Users/hayde/IdeaProjects/wt-235-his-15/skill-manager", "install", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2728165581087170254/ticket-lifecycle/sources/tl-x", "--yes" ],
-    "startedAt" : "2026-08-22T17:19:16.191883Z",
-    "endedAt" : "2026-08-22T17:19:18.855248Z",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-235-his-15/skill-manager", "install", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/sources/tl-x", "--yes" ],
+    "startedAt" : "2026-08-22T17:38:29.803031Z",
+    "endedAt" : "2026-08-22T17:38:32.460324Z",
     "exitCode" : 0,
-    "pid" : 6329,
+    "pid" : 18600,
     "log" : "node-logs/ticket.lifecycle.fixture.built.install-tl-x.log",
     "error" : null
   }, {
     "label" : "install-tl-y",
-    "command" : [ "/Users/hayde/IdeaProjects/wt-235-his-15/skill-manager", "install", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2728165581087170254/ticket-lifecycle/sources/tl-y", "--yes" ],
-    "startedAt" : "2026-08-22T17:19:18.855867Z",
-    "endedAt" : "2026-08-22T17:19:21.504757Z",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-235-his-15/skill-manager", "install", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/sources/tl-y", "--yes" ],
+    "startedAt" : "2026-08-22T17:38:32.460883Z",
+    "endedAt" : "2026-08-22T17:38:35.076649Z",
     "exitCode" : 0,
-    "pid" : 6352,
+    "pid" : 18622,
     "log" : "node-logs/ticket.lifecycle.fixture.built.install-tl-y.log",
     "error" : null
   }, {
     "label" : "bootstrap-project-home",
-    "command" : [ "bash", "/Users/hayde/.skill-manager/skills/git-issue-workflow/scripts/bootstrap-home.sh", "--root", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2728165581087170254/ticket-lifecycle/proj", "--source", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2728165581087170254/ticket-lifecycle/root-home" ],
-    "startedAt" : "2026-08-22T17:19:21.659255Z",
-    "endedAt" : "2026-08-22T17:19:38.269797Z",
+    "command" : [ "bash", "/Users/hayde/.skill-manager/skills/git-issue-workflow/scripts/bootstrap-home.sh", "--root", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj", "--source", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/root-home" ],
+    "startedAt" : "2026-08-22T17:38:35.228414Z",
+    "endedAt" : "2026-08-22T17:38:51.874569Z",
     "exitCode" : 0,
-    "pid" : 6399,
+    "pid" : 18652,
     "log" : "node-logs/ticket.lifecycle.fixture.built.bootstrap-project-home.log",
     "error" : null
   } ],
   "metrics" : {
     "rootUnits" : 3,
-    "durationMs" : 36836
+    "durationMs" : 35856
   },
   "logs" : [ "scripts: the git-issue-workflow skill installed in /Users/hayde/.skill-manager" ],
   "published" : {
-    "workspace" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2728165581087170254/ticket-lifecycle",
-    "rootHome" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2728165581087170254/ticket-lifecycle/root-home",
-    "checkout" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2728165581087170254/ticket-lifecycle/proj",
-    "projectHome" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2728165581087170254/ticket-lifecycle/proj/.skill-manager",
-    "ambientHome" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2728165581087170254/ticket-lifecycle/ambient",
-    "sourcesDir" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2728165581087170254/ticket-lifecycle/sources",
+    "workspace" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle",
+    "rootHome" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/root-home",
+    "checkout" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj",
+    "projectHome" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj/.skill-manager",
+    "ambientHome" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/ambient",
+    "sourcesDir" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/sources",
     "scriptsDir" : "/Users/hayde/.skill-manager/skills/git-issue-workflow/scripts",
-    "sandboxGlobalHome" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2728165581087170254/.skill-manager",
-    "leakBaseline" : "/Users/hayde/IdeaProjects/wt-235-his-15/test_graph/build/validation-reports/20260822-171850/ticket-lifecycle.leak-baseline.txt",
-    "configBaseline" : "/Users/hayde/IdeaProjects/wt-235-his-15/test_graph/build/validation-reports/20260822-171850/ticket-lifecycle.config-baseline.txt",
+    "sandboxGlobalHome" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/.skill-manager",
+    "leakBaseline" : "/Users/hayde/IdeaProjects/wt-235-his-15/test_graph/build/validation-reports/20260822-173805/ticket-lifecycle.leak-baseline.txt",
+    "configBaseline" : "/Users/hayde/IdeaProjects/wt-235-his-15/test_graph/build/validation-reports/20260822-173805/ticket-lifecycle.config-baseline.txt",
     "leakRoots" : "/Users/hayde/.skill-manager:/Users/hayde/.claude:/Users/hayde/.codex:/Users/hayde/.gemini"
   }
-,"envelopeVersion":1,"executorStartedAt":"2026-08-22T17:19:05.053945Z","executorEndedAt":"2026-08-22T17:19:54.740615Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/ticket.lifecycle.fixture.built.stdout.log","inputContextFile":"context/ticket.lifecycle.fixture.built.input.json","traceId":"7c21fe7cd8e75fbdbb9eb101e00c5b69"},{
+,"envelopeVersion":1,"executorStartedAt":"2026-08-22T17:38:19.554093Z","executorEndedAt":"2026-08-22T17:39:08.502697Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/ticket.lifecycle.fixture.built.stdout.log","inputContextFile":"context/ticket.lifecycle.fixture.built.input.json","traceId":"ef794da0a18fa7fbe633aa298c5889b2"},{
   "nodeId" : "ticket.lifecycle.global.home.untouched",
   "status" : "passed",
-  "startedAt" : "2026-08-22T17:23:55.011449Z",
-  "endedAt" : "2026-08-22T17:23:59.226723Z",
+  "startedAt" : "2026-08-22T17:43:11.520114Z",
+  "endedAt" : "2026-08-22T17:43:15.856988Z",
   "assertions" : [ {
     "name" : "the_workflow_never_created_a_global_home",
     "status" : "passed"
@@ -565,15 +565,15 @@
     "baselineEntries" : 79311,
     "differencesFound" : 0,
     "worktreeRegistrationChanges" : 0,
-    "durationMs" : 4215
+    "durationMs" : 4336
   },
   "logs" : [ ],
   "published" : { }
-,"envelopeVersion":1,"executorStartedAt":"2026-08-22T17:23:54.340089Z","executorEndedAt":"2026-08-22T17:24:13.850078Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/ticket.lifecycle.global.home.untouched.stdout.log","inputContextFile":"context/ticket.lifecycle.global.home.untouched.input.json","traceId":"7c21fe7cd8e75fbdbb9eb101e00c5b69"},{
+,"envelopeVersion":1,"executorStartedAt":"2026-08-22T17:43:10.850901Z","executorEndedAt":"2026-08-22T17:43:29.787718Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/ticket.lifecycle.global.home.untouched.stdout.log","inputContextFile":"context/ticket.lifecycle.global.home.untouched.input.json","traceId":"ef794da0a18fa7fbe633aa298c5889b2"},{
   "nodeId" : "ticket.lifecycle.next.agent",
   "status" : "passed",
-  "startedAt" : "2026-08-22T17:23:04.522556Z",
-  "endedAt" : "2026-08-22T17:23:18.433318Z",
+  "startedAt" : "2026-08-22T17:42:20.597789Z",
+  "endedAt" : "2026-08-22T17:42:34.662926Z",
   "assertions" : [ {
     "name" : "a_third_ticket_worktree_provisions_after_the_first_two_are_gone",
     "status" : "passed"
@@ -597,26 +597,26 @@
   "processes" : [ {
     "label" : "new-change-c",
     "command" : [ "bash", "/Users/hayde/.skill-manager/skills/git-issue-workflow/scripts/new-change.sh", "TICKET-C" ],
-    "startedAt" : "2026-08-22T17:23:04.527491Z",
-    "endedAt" : "2026-08-22T17:23:18.423609Z",
+    "startedAt" : "2026-08-22T17:42:20.602222Z",
+    "endedAt" : "2026-08-22T17:42:34.652979Z",
     "exitCode" : 0,
-    "pid" : 9435,
+    "pid" : 24901,
     "log" : "node-logs/ticket.lifecycle.next.agent.new-change-c.log",
     "error" : null
   } ],
   "metrics" : {
-    "durationMs" : 13911
+    "durationMs" : 14065
   },
   "logs" : [ ],
   "published" : {
-    "worktreeC" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2728165581087170254/ticket-lifecycle/proj-TICKET-C",
-    "homeC" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2728165581087170254/ticket-lifecycle/proj-TICKET-C/.skill-manager"
+    "worktreeC" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj-TICKET-C",
+    "homeC" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj-TICKET-C/.skill-manager"
   }
-,"envelopeVersion":1,"executorStartedAt":"2026-08-22T17:23:03.865178Z","executorEndedAt":"2026-08-22T17:23:31.733437Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/ticket.lifecycle.next.agent.stdout.log","inputContextFile":"context/ticket.lifecycle.next.agent.input.json","traceId":"7c21fe7cd8e75fbdbb9eb101e00c5b69"},{
+,"envelopeVersion":1,"executorStartedAt":"2026-08-22T17:42:19.951227Z","executorEndedAt":"2026-08-22T17:42:47.636308Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/ticket.lifecycle.next.agent.stdout.log","inputContextFile":"context/ticket.lifecycle.next.agent.input.json","traceId":"ef794da0a18fa7fbe633aa298c5889b2"},{
   "nodeId" : "ticket.lifecycle.provisioned",
   "status" : "passed",
-  "startedAt" : "2026-08-22T17:19:55.490663Z",
-  "endedAt" : "2026-08-22T17:20:29.172832Z",
+  "startedAt" : "2026-08-22T17:39:09.241507Z",
+  "endedAt" : "2026-08-22T17:39:42.951371Z",
   "assertions" : [ {
     "name" : "new_change_sh_provisioned_both_ticket_worktrees",
     "status" : "passed"
@@ -652,75 +652,75 @@
   "processes" : [ {
     "label" : "new-change-a",
     "command" : [ "bash", "/Users/hayde/.skill-manager/skills/git-issue-workflow/scripts/new-change.sh", "TICKET-A" ],
-    "startedAt" : "2026-08-22T17:19:55.495321Z",
-    "endedAt" : "2026-08-22T17:20:10.313959Z",
+    "startedAt" : "2026-08-22T17:39:09.246108Z",
+    "endedAt" : "2026-08-22T17:39:24.153492Z",
     "exitCode" : 0,
-    "pid" : 6973,
+    "pid" : 19246,
     "log" : "node-logs/ticket.lifecycle.provisioned.new-change-a.log",
     "error" : null
   }, {
     "label" : "new-change-b",
     "command" : [ "bash", "/Users/hayde/.skill-manager/skills/git-issue-workflow/scripts/new-change.sh", "TICKET-B" ],
-    "startedAt" : "2026-08-22T17:20:10.314267Z",
-    "endedAt" : "2026-08-22T17:20:24.038670Z",
+    "startedAt" : "2026-08-22T17:39:24.153821Z",
+    "endedAt" : "2026-08-22T17:39:37.895088Z",
     "exitCode" : 0,
-    "pid" : 7510,
+    "pid" : 19804,
     "log" : "node-logs/ticket.lifecycle.provisioned.new-change-b.log",
     "error" : null
   }, {
     "label" : "pin-probe-proj-TICKET-A",
-    "command" : [ "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2728165581087170254/ticket-lifecycle/proj-TICKET-A/.skill-manager/bin/cli/skill-manager", "home", "close-out", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2728165581087170254/ticket-lifecycle/proj-TICKET-A/.skill-manager", "--help" ],
-    "startedAt" : "2026-08-22T17:20:24.110116Z",
-    "endedAt" : "2026-08-22T17:20:25.347887Z",
+    "command" : [ "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj-TICKET-A/.skill-manager/bin/cli/skill-manager", "home", "close-out", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj-TICKET-A/.skill-manager", "--help" ],
+    "startedAt" : "2026-08-22T17:39:37.962297Z",
+    "endedAt" : "2026-08-22T17:39:39.200714Z",
     "exitCode" : 0,
-    "pid" : 8043,
+    "pid" : 20344,
     "log" : "node-logs/ticket.lifecycle.provisioned.pin-probe-proj-TICKET-A.log",
     "error" : null
   }, {
     "label" : "pin-probe-proj-TICKET-B",
-    "command" : [ "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2728165581087170254/ticket-lifecycle/proj-TICKET-B/.skill-manager/bin/cli/skill-manager", "home", "close-out", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2728165581087170254/ticket-lifecycle/proj-TICKET-B/.skill-manager", "--help" ],
-    "startedAt" : "2026-08-22T17:20:25.348444Z",
-    "endedAt" : "2026-08-22T17:20:26.638684Z",
+    "command" : [ "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj-TICKET-B/.skill-manager/bin/cli/skill-manager", "home", "close-out", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj-TICKET-B/.skill-manager", "--help" ],
+    "startedAt" : "2026-08-22T17:39:39.201325Z",
+    "endedAt" : "2026-08-22T17:39:40.469612Z",
     "exitCode" : 0,
-    "pid" : 8062,
+    "pid" : 20368,
     "log" : "node-logs/ticket.lifecycle.provisioned.pin-probe-proj-TICKET-B.log",
     "error" : null
   }, {
     "label" : "verify-proj-TICKET-A",
-    "command" : [ "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2728165581087170254/ticket-lifecycle/proj-TICKET-A/.skill-manager/bin/cli/skill-manager", "home", "verify", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2728165581087170254/ticket-lifecycle/proj-TICKET-A/.skill-manager" ],
-    "startedAt" : "2026-08-22T17:20:26.639237Z",
-    "endedAt" : "2026-08-22T17:20:27.893062Z",
+    "command" : [ "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj-TICKET-A/.skill-manager/bin/cli/skill-manager", "home", "verify", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj-TICKET-A/.skill-manager" ],
+    "startedAt" : "2026-08-22T17:39:40.470140Z",
+    "endedAt" : "2026-08-22T17:39:41.706093Z",
     "exitCode" : 0,
-    "pid" : 8085,
+    "pid" : 20387,
     "log" : "node-logs/ticket.lifecycle.provisioned.verify-proj-TICKET-A.log",
     "error" : null
   }, {
     "label" : "verify-proj-TICKET-B",
-    "command" : [ "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2728165581087170254/ticket-lifecycle/proj-TICKET-B/.skill-manager/bin/cli/skill-manager", "home", "verify", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2728165581087170254/ticket-lifecycle/proj-TICKET-B/.skill-manager" ],
-    "startedAt" : "2026-08-22T17:20:27.893319Z",
-    "endedAt" : "2026-08-22T17:20:29.172416Z",
+    "command" : [ "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj-TICKET-B/.skill-manager/bin/cli/skill-manager", "home", "verify", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj-TICKET-B/.skill-manager" ],
+    "startedAt" : "2026-08-22T17:39:41.706352Z",
+    "endedAt" : "2026-08-22T17:39:42.950955Z",
     "exitCode" : 0,
-    "pid" : 8104,
+    "pid" : 20406,
     "log" : "node-logs/ticket.lifecycle.provisioned.verify-proj-TICKET-B.log",
     "error" : null
   } ],
   "metrics" : {
     "entriesScannedPerHome" : 31,
     "plantedReferencesFound" : 2,
-    "durationMs" : 33682
+    "durationMs" : 33710
   },
   "logs" : [ ],
   "published" : {
-    "worktreeA" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2728165581087170254/ticket-lifecycle/proj-TICKET-A",
-    "worktreeB" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2728165581087170254/ticket-lifecycle/proj-TICKET-B",
-    "homeA" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2728165581087170254/ticket-lifecycle/proj-TICKET-A/.skill-manager",
-    "homeB" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2728165581087170254/ticket-lifecycle/proj-TICKET-B/.skill-manager"
+    "worktreeA" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj-TICKET-A",
+    "worktreeB" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj-TICKET-B",
+    "homeA" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj-TICKET-A/.skill-manager",
+    "homeB" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj-TICKET-B/.skill-manager"
   }
-,"envelopeVersion":1,"executorStartedAt":"2026-08-22T17:19:54.758344Z","executorEndedAt":"2026-08-22T17:20:42.742817Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/ticket.lifecycle.provisioned.stdout.log","inputContextFile":"context/ticket.lifecycle.provisioned.input.json","traceId":"7c21fe7cd8e75fbdbb9eb101e00c5b69"},{
+,"envelopeVersion":1,"executorStartedAt":"2026-08-22T17:39:08.521454Z","executorEndedAt":"2026-08-22T17:39:56.473984Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/ticket.lifecycle.provisioned.stdout.log","inputContextFile":"context/ticket.lifecycle.provisioned.input.json","traceId":"ef794da0a18fa7fbe633aa298c5889b2"},{
   "nodeId" : "ticket.lifecycle.publish",
   "status" : "passed",
-  "startedAt" : "2026-08-22T17:23:32.407528Z",
-  "endedAt" : "2026-08-22T17:23:41.230191Z",
+  "startedAt" : "2026-08-22T17:42:48.340564Z",
+  "endedAt" : "2026-08-22T17:42:56.430007Z",
   "assertions" : [ {
     "name" : "a_unit_installed_from_git_is_a_checkout_in_the_home",
     "status" : "passed"
@@ -758,53 +758,53 @@
   "artifacts" : [ ],
   "processes" : [ {
     "label" : "install-publishable",
-    "command" : [ "/Users/hayde/IdeaProjects/wt-235-his-15/skill-manager", "install", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2728165581087170254/ticket-lifecycle/publish-sources/tl-pub", "--yes" ],
-    "startedAt" : "2026-08-22T17:23:32.637472Z",
-    "endedAt" : "2026-08-22T17:23:36.683276Z",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-235-his-15/skill-manager", "install", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/publish-sources/tl-pub", "--yes" ],
+    "startedAt" : "2026-08-22T17:42:48.571734Z",
+    "endedAt" : "2026-08-22T17:42:51.904903Z",
     "exitCode" : 0,
-    "pid" : 9997,
+    "pid" : 25486,
     "log" : "node-logs/ticket.lifecycle.publish.install-publishable.log",
     "error" : null
   }, {
     "label" : "publish-dry-run",
-    "command" : [ "/Users/hayde/IdeaProjects/wt-235-his-15/skill-manager", "unit", "publish", "tl-pub", "--ticket", "TICKET-C", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2728165581087170254/ticket-lifecycle/proj-TICKET-C/.skill-manager", "--dry-run", "--json" ],
-    "startedAt" : "2026-08-22T17:23:36.741116Z",
-    "endedAt" : "2026-08-22T17:23:38.158124Z",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-235-his-15/skill-manager", "unit", "publish", "tl-pub", "--ticket", "TICKET-C", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj-TICKET-C/.skill-manager", "--dry-run", "--json" ],
+    "startedAt" : "2026-08-22T17:42:51.964634Z",
+    "endedAt" : "2026-08-22T17:42:53.348209Z",
     "exitCode" : 0,
-    "pid" : 10048,
+    "pid" : 25531,
     "log" : "node-logs/ticket.lifecycle.publish.publish-dry-run.log",
     "error" : null
   }, {
     "label" : "publish-dry-run-text",
-    "command" : [ "/Users/hayde/IdeaProjects/wt-235-his-15/skill-manager", "unit", "publish", "tl-pub", "--ticket", "TICKET-C", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2728165581087170254/ticket-lifecycle/proj-TICKET-C/.skill-manager", "--dry-run" ],
-    "startedAt" : "2026-08-22T17:23:38.158928Z",
-    "endedAt" : "2026-08-22T17:23:39.516139Z",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-235-his-15/skill-manager", "unit", "publish", "tl-pub", "--ticket", "TICKET-C", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj-TICKET-C/.skill-manager", "--dry-run" ],
+    "startedAt" : "2026-08-22T17:42:53.349082Z",
+    "endedAt" : "2026-08-22T17:42:54.704759Z",
     "exitCode" : 0,
-    "pid" : 10063,
+    "pid" : 25546,
     "log" : "node-logs/ticket.lifecycle.publish.publish-dry-run-text.log",
     "error" : null
   }, {
     "label" : "publish-no-pr",
-    "command" : [ "/Users/hayde/IdeaProjects/wt-235-his-15/skill-manager", "unit", "publish", "tl-pub", "--ticket", "TICKET-C", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2728165581087170254/ticket-lifecycle/proj-TICKET-C/.skill-manager", "--no-pr", "--json" ],
-    "startedAt" : "2026-08-22T17:23:39.554292Z",
-    "endedAt" : "2026-08-22T17:23:41.114011Z",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-235-his-15/skill-manager", "unit", "publish", "tl-pub", "--ticket", "TICKET-C", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj-TICKET-C/.skill-manager", "--no-pr", "--json" ],
+    "startedAt" : "2026-08-22T17:42:54.741678Z",
+    "endedAt" : "2026-08-22T17:42:56.320604Z",
     "exitCode" : 0,
-    "pid" : 10080,
+    "pid" : 25563,
     "log" : "node-logs/ticket.lifecycle.publish.publish-no-pr.log",
     "error" : null
   } ],
   "metrics" : {
     "remoteBranches" : 2,
     "filesMoved" : 1,
-    "durationMs" : 8823
+    "durationMs" : 8090
   },
   "logs" : [ ],
   "published" : { }
-,"envelopeVersion":1,"executorStartedAt":"2026-08-22T17:23:31.752130Z","executorEndedAt":"2026-08-22T17:23:54.324520Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/ticket.lifecycle.publish.stdout.log","inputContextFile":"context/ticket.lifecycle.publish.input.json","traceId":"7c21fe7cd8e75fbdbb9eb101e00c5b69"},{
+,"envelopeVersion":1,"executorStartedAt":"2026-08-22T17:42:47.654599Z","executorEndedAt":"2026-08-22T17:43:10.837302Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/ticket.lifecycle.publish.stdout.log","inputContextFile":"context/ticket.lifecycle.publish.input.json","traceId":"ef794da0a18fa7fbe633aa298c5889b2"},{
   "nodeId" : "ticket.lifecycle.teardown",
   "status" : "passed",
-  "startedAt" : "2026-08-22T17:22:39.053536Z",
-  "endedAt" : "2026-08-22T17:22:50.122901Z",
+  "startedAt" : "2026-08-22T17:41:54.647876Z",
+  "endedAt" : "2026-08-22T17:42:06.239193Z",
   "assertions" : [ {
     "name" : "a_dry_run_runs_the_gate_and_removes_nothing",
     "status" : "passed"
@@ -840,52 +840,52 @@
   "processes" : [ {
     "label" : "close-change-dry-run",
     "command" : [ "bash", "/Users/hayde/.skill-manager/skills/git-issue-workflow/scripts/close-change.sh", "TICKET-A", "--dry-run" ],
-    "startedAt" : "2026-08-22T17:22:39.058223Z",
-    "endedAt" : "2026-08-22T17:22:41.504400Z",
+    "startedAt" : "2026-08-22T17:41:54.652461Z",
+    "endedAt" : "2026-08-22T17:41:57.343598Z",
     "exitCode" : 0,
-    "pid" : 8984,
+    "pid" : 24448,
     "log" : "node-logs/ticket.lifecycle.teardown.close-change-dry-run.log",
     "error" : null
   }, {
     "label" : "close-change-refused",
     "command" : [ "bash", "/Users/hayde/.skill-manager/skills/git-issue-workflow/scripts/close-change.sh", "TICKET-A" ],
-    "startedAt" : "2026-08-22T17:22:41.507434Z",
-    "endedAt" : "2026-08-22T17:22:43.963295Z",
+    "startedAt" : "2026-08-22T17:41:57.346733Z",
+    "endedAt" : "2026-08-22T17:41:59.891481Z",
     "exitCode" : 4,
-    "pid" : 9083,
+    "pid" : 24561,
     "log" : "node-logs/ticket.lifecycle.teardown.close-change-refused.log",
     "error" : null
   }, {
     "label" : "sync-planted-work",
-    "command" : [ "/Users/hayde/IdeaProjects/wt-235-his-15/skill-manager", "home", "sync", "--from", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2728165581087170254/ticket-lifecycle/proj-TICKET-A/.skill-manager", "--to", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-2728165581087170254/ticket-lifecycle/proj/.skill-manager", "--merge", "--json" ],
-    "startedAt" : "2026-08-22T17:22:43.964185Z",
-    "endedAt" : "2026-08-22T17:22:45.144763Z",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-235-his-15/skill-manager", "home", "sync", "--from", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj-TICKET-A/.skill-manager", "--to", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj/.skill-manager", "--merge", "--json" ],
+    "startedAt" : "2026-08-22T17:41:59.892451Z",
+    "endedAt" : "2026-08-22T17:42:01.097337Z",
     "exitCode" : 0,
-    "pid" : 9203,
+    "pid" : 24666,
     "log" : "node-logs/ticket.lifecycle.teardown.sync-planted-work.log",
     "error" : null
   }, {
     "label" : "close-change-remove-a",
     "command" : [ "bash", "/Users/hayde/.skill-manager/skills/git-issue-workflow/scripts/close-change.sh", "TICKET-A" ],
-    "startedAt" : "2026-08-22T17:22:45.145262Z",
-    "endedAt" : "2026-08-22T17:22:47.633021Z",
+    "startedAt" : "2026-08-22T17:42:01.097807Z",
+    "endedAt" : "2026-08-22T17:42:03.673527Z",
     "exitCode" : 0,
-    "pid" : 9214,
+    "pid" : 24677,
     "log" : "node-logs/ticket.lifecycle.teardown.close-change-remove-a.log",
     "error" : null
   }, {
     "label" : "close-change-remove-b",
     "command" : [ "bash", "/Users/hayde/.skill-manager/skills/git-issue-workflow/scripts/close-change.sh", "TICKET-B" ],
-    "startedAt" : "2026-08-22T17:22:47.633328Z",
-    "endedAt" : "2026-08-22T17:22:50.104Z",
+    "startedAt" : "2026-08-22T17:42:03.673863Z",
+    "endedAt" : "2026-08-22T17:42:06.218703Z",
     "exitCode" : 0,
-    "pid" : 9317,
+    "pid" : 24778,
     "log" : "node-logs/ticket.lifecycle.teardown.close-change-remove-b.log",
     "error" : null
   } ],
   "metrics" : {
-    "durationMs" : 11069
+    "durationMs" : 11592
   },
   "logs" : [ ],
   "published" : { }
-,"envelopeVersion":1,"executorStartedAt":"2026-08-22T17:22:38.376964Z","executorEndedAt":"2026-08-22T17:23:03.850602Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/ticket.lifecycle.teardown.stdout.log","inputContextFile":"context/ticket.lifecycle.teardown.input.json","traceId":"7c21fe7cd8e75fbdbb9eb101e00c5b69"}]}
+,"envelopeVersion":1,"executorStartedAt":"2026-08-22T17:41:53.946453Z","executorEndedAt":"2026-08-22T17:42:19.932905Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/ticket.lifecycle.teardown.stdout.log","inputContextFile":"context/ticket.lifecycle.teardown.input.json","traceId":"ef794da0a18fa7fbe633aa298c5889b2"}]}
