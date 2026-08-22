@@ -2690,3 +2690,67 @@ findings:
       it is the better fix, so doing (b) here would entrench the worse one.
     candidate_owner: HIS-6, or a follow-up on the project command family
     status: open
+
+  - id: DEF-047
+    found_by: epic agent, wave-5 close-out gate on wt-235-his-15
+    found_at: "2026-08-22"
+    severity: major
+    summary: >
+      DEF-046's blast radius was larger than reported. The `project` family
+      resolving from the working directory did not merely write
+      `.materialization` -- it RE-REALIZED the worktree home against this
+      repository's project manifest, removing a unit and installing two.
+    detail: >
+      HIS-15 reported that driving the `project` family in-process made
+      `project resolve --json` act on this repo and write the worktree home's
+      `.materialization`. That was the visible half. The close-out gate found
+      the rest:
+
+        worktree home BEFORE (a clone of the project home): deploy-helm,
+          spec-double-compiler, test-graph, tracing-observability
+        worktree home AFTER:  skill-manager, spec-double-compiler, test-graph,
+          tracing-observability
+
+      `deploy-helm` is GONE from skills/ (its .projections.json record survives,
+      orphaned). `skill-manager` (skill) and `skt` (plugin) were installed at
+      2026-08-22 13:06:18 -- neither is in the project home. That is this
+      repository's own project manifest being realized into a home that was
+      never meant to hold it.
+
+      NOT UNDER-REPORTED IN BAD FAITH: the agent saw the `.materialization`
+      write, which is what its probe surfaced. Unit churn in `skills/` is not
+      something a `--json` return value shows, and nothing asked. It took a
+      close-out gate -- a different instrument, run later, for another reason --
+      to see it.
+    what_was_NOT_damaged: >
+      Checked before concluding, not assumed:
+        - the main checkout is clean (`git status --porcelain` empty)
+        - the PROJECT home's .materialization was last written 2026-08-14, eight
+          days earlier -- it was not re-realized
+        - no writes under ~/.skill-manager in the window
+        - the worktree's spec-double-compiler is at the SAME commit as the
+          project home's (436c78c) with a clean tree, so the gate's
+          "histories have diverged" is `.git` bookkeeping, not content
+      So the escape was confined to one worktree home, and no authored work
+      exists anywhere in it.
+    the_lesson_that_generalises: >
+      A close-out gate found damage that the ticket's own probes, its reviewer,
+      and the epic agent's containment check all missed -- because all three
+      asked "did it write where it should not?" and the gate asks "does this
+      home hold something the tier above does not?". Those are different
+      questions and only the second sees a unit that quietly went away.
+
+      This is the epic's recurring shape once more, now in the instruments
+      rather than the product: a probe narrower than the condition it is trusted
+      to decide (DEF-012, DEF-015, DEF-032). The containment check I ran was
+      correct and answered a narrower question than the one that mattered.
+    disposition: >
+      NO SYNC. The three blockers are `deploy-helm` removed-upstream,
+      `skill-manager`/`skt` would-create, and `spec-double-compiler` conflicted
+      on `.git` history alone. None is authored work; all of it is residue of
+      the escape. Syncing would push two units into the project home that the
+      project home deliberately does not hold. The worktree stands until the
+      epic's sweep (rule 14) and is then discarded DELIBERATELY, with this entry
+      as the reason.
+    candidate_owner: HIS-13
+    status: open

@@ -10,7 +10,10 @@ that carries the merge.
 | `../wt-227-his-10` | `feature/227-his-10` | HIS-10 (#227) | 2026-08-21, wave 3 | **clean** | **stands** |
 | `../wt-216-his-4` | `feature/216-his-4` | HIS-4 (#216) | 2026-08-21, wave 4 | **clean** | **stands** |
 | `../wt-226-his-9` | `feature/226-his-9` | HIS-9 (#226) | 2026-08-21, wave 4 | **clean** | **stands** |
-| `../wt-161-his-12` | `feature/161-his-12` | HIS-12 (#161) | 2026-08-21, wave 4 | pending — PR not yet merged | **stands** |
+| `../wt-161-his-12` | `feature/161-his-12` | HIS-12 (#161) | 2026-08-21, wave 4 | **clean** | **stands** |
+| `../wt-186-his-11` | `feature/186-his-11` | HIS-11 (#186) | 2026-08-22, wave 5 | **clean** | **stands** |
+| `../wt-232-his-14` | `feature/232-his-14` | HIS-14 (#232) | 2026-08-22, wave 5 | **clean** | **stands** |
+| `../wt-235-his-15` | `feature/235-his-15` | HIS-15 (#235) | 2026-08-22, wave 6 | ✗ **3 units blocked** — see below | **stands** |
 
 All gates re-run 2026-08-21 after the wave-4 merges, verbatim: *"holds nothing
 that removing it would destroy."* Every ticket in waves 3 and 4 delivered
@@ -55,3 +58,45 @@ ticket, no branch worth keeping (`probe/def006`, deleted), and no unit edits.
 Recorded because rule 14 says the epic is not finished while a worktree it
 created is standing without a reason — and equally, a worktree it deleted needs a
 reason on the record.
+
+
+## `wt-235-his-15` — the one gate that refused, and why it is not synced
+
+```
+✗ removed-upstream  skill:deploy-helm            — not in the source home
+✗ would-create      skill:skill-manager          — the source holds it, the destination does not
+✗ would-create      plugin:skt                   — same
+✗ conflicted        skill:spec-double-compiler   — "the two git histories have diverged"
+✗ 3 unit(s) … would be lost if it were removed now
+```
+
+**The gate is right and the answer is still "do not sync."** This is residue of
+DEF-046's escape — the `project` family resolves from the working directory,
+which a JVM cannot change, so an in-process driver re-realized the worktree home
+against *this repository's* project manifest. `deploy-helm` went away;
+`skill-manager` and `skt` arrived. Neither belongs in the project home, which
+deliberately holds four units and not those.
+
+**Checked before concluding**, because "no authored work" is exactly the claim
+that must not be assumed:
+
+| | |
+| --- | --- |
+| main checkout | `git status --porcelain` empty |
+| project home `.materialization` | last written **2026-08-14** — not re-realized |
+| `~/.skill-manager` | no writes in the window |
+| worktree `spec-double-compiler` | **same commit** as the project home's (`436c78c`), clean tree |
+
+So the "diverged histories" verdict is `.git` bookkeeping, not content — the
+same shape as DEF-001, and the fix line the gate prints says so itself
+(`then resolve: .git (history)`).
+
+**Disposition:** discarded deliberately at the epic sweep, with DEF-047 as the
+written reason. Recorded here rather than resolved quietly, because rule 14's
+whole point is that a worktree is never deleted without one.
+
+**And the gate found what three other instruments missed.** The ticket's probes,
+its reviewer, and my own containment check all asked *"did it write where it
+should not?"*. The gate asks *"does this home hold something the tier above does
+not?"* — a different question, and the only one that sees a unit quietly going
+away.
