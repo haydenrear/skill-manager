@@ -297,12 +297,21 @@ HIS-5 carries the model work.
 
 | graph | why it was run |
 | --- | --- |
-| `home-integrity` | **declared** in the assignment. 15/15 nodes, `BUILD SUCCESSFUL in 5m 15s`, `status: passed`, runId `20260822-134928`. |
-| `smoke` | **not declared; run because of what I edited.** The home lock now sits on *every* `Executor` program, which is every mutating command, and `smoke` is the graph that drives real `install` / `resolve` / `sync` / `uninstall` end to end through the CLI. A unit fixture cannot tell me the lock does not deadlock a real command, or that it does not leave `.materialization/` somewhere another reader objects to. **52/52 nodes, `status: passed`, runId `20260822-135511`.** |
+| `home-integrity` | **declared** in the assignment. **15/15 nodes, `status: passed`, `BUILD SUCCESSFUL in 5m 3s`, runId `20260822-151047`.** |
+| `smoke` | **not declared; run because of what I edited.** The home lock now sits on *every* `Executor` program, which is every mutating command, and `smoke` is the graph that drives real `install` / `resolve` / `sync` / `uninstall` end to end through the CLI. A unit fixture cannot tell me the lock does not deadlock a real command, or that it does not leave `.materialization/` somewhere another reader objects to. **52/52 nodes, `status: passed`, `BUILD SUCCESSFUL in 17m 7s`, runId `20260822-151612`.** |
 
 Both summaries are copied into `probes/his-11/` (`home-integrity-summary.json`,
 `smoke-summary.json`) rather than described, so the counts above can be read
 rather than believed.
+
+**They were run three times, and the recorded pair is the last.** The first pair
+(`20260822-134928` / `20260822-135511`, both green) was measured before the
+review of #233. An intermediate pair (`20260822-144822` / `20260822-145400`,
+both green) came after the drain and the manifest. The pair in the table came
+after the **journal reordering** — a one-line change in the hot path of *every*
+effect, which is exactly the kind that should not be signed off on an earlier
+run. Only the last pair matches the tip, and only the last pair is in
+`probes/`.
 
 `python skills/test_graph/scripts/run.py --all` was **not** run: it belongs to
 HIS-6, which owns the one terminal sweep with the goal scorecard (owner's
