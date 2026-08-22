@@ -2863,8 +2863,32 @@ tickets:
   - id: HIS-4
     title: "a scaffolded gitignored tree strands the installed baseline, and the unit is never syncable again"
     phase: HIS
-    status: next
+    status: delivered
     epic: home-integrity-sync
+    status_note_delivered: >
+      DELIVERED, and the hard acceptance item was met -- the graph went RED
+      before it went green. The old node passed because THE ROOT TIER NEVER
+      DEREFERENCES ANYTHING; only ChildHomeMaterializer does, and only when a
+      home is materialized from another home, so no root-tier fixture could
+      reach it.
+
+      TWO DEFECTS THE DIFF ITSELF CREATED were found by review and fixed before
+      merge: `sync --from` began DESTROYING the materialization it had
+      previously refused to touch (exit 0, symlink restored, child bytes gone) --
+      MaterializationEscrow is now a shared class used by BOTH sync paths,
+      holding bytes under <home>/cache/ rather than inside the units namespace;
+      and every rolled-back conflict reported "0 file(s)" and "already clear"
+      with a record that erased itself on the next command.
+
+      CLAUSE 2 WAS ALREADY TRUE AND THAT IS THE DELIVERABLE. ReconcileUseCase ->
+      ValidateAndClearError re-derives the installed-record error on every
+      command; adding a `resolvedAt` field would have been a second answer to a
+      question the code already answers.
+
+      HONEST NEGATIVE, corrected in review: slice (1), the digest side, was NOT
+      DELIVERED and its acceptance assertion is unmet. The plan is not wrong;
+      the work is missing, and GOAL-sync-quiet is not advanced by this ticket.
+    delivered_in: "PR #231, merged into epic/home-integrity-sync as 15fd561"
     github_issue: 216
     wave: 4
     depends_on: [HIS-1, HIS-7, HIS-10]
@@ -3368,8 +3392,37 @@ tickets:
   - id: HIS-9
     title: "nothing refuses a write outside the home SKILL_MANAGER_HOME names -- the class behind repeated root-home damage"
     phase: HIS
-    status: planned
+    status: delivered
     epic: home-integrity-sync
+    status_note_delivered: >
+      DELIVERED. WriteConfinement + WriteOutsideHomeException, enforced at the
+      four sites where measured damage occurred. DEF-007: with the guard removed
+      homeA's bin/cli went 2 -> 0 entries at exit 0; with it in force, 2 -> 2 and
+      exit 1.
+
+      THE DESIGN POINT: writes, deletes and containers get DIFFERENT questions.
+      A write follows the final component, a delete does not, and a container
+      about to be listed through needs the write rule anyway. The first version
+      got that wrong and REFUSED NOTHING on the exact fixture it was written
+      for -- kept as a vacuity row rather than quietly fixed.
+
+      REVIEW CAUGHT TWO THAT WOULD HAVE SHIPPED: the refusal printed a --home
+      flag that did not exist on `sync`, and the refusal was swallowed by a
+      catch (Exception) so `sync` still exited 0 -- while the exception's own
+      javadoc claimed being unchecked prevented exactly that.
+
+      THREE INERT ENTRY POINTS WERE DELETED rather than documented. Acceptance
+      item 2 is met instead by HomeCloner.unsanctionedForeignHome -- the
+      predicate `home verify` itself uses, which cannot drift from what the gate
+      refuses.
+
+      DISCLOSED, NOT HIDDEN: a home whose bin/cli is a symlink at another home's
+      can no longer be synced at all and nothing here repairs it (HIS-13's test
+      case); --force-scripts in a child home now rebuilds locally, a deliberate
+      partial narrowing of HIS-10 for that flag; LAUNCHER_PIN declared cut;
+      acceptance (d)'s READ path uncovered; the three prune "tiers" run
+      byte-identical tier-blind code.
+    delivered_in: "PR #230, merged into epic/home-integrity-sync as 62e91ea"
     github_issue: 226
     added_in_schedule_revision: 4
     wave: 4
