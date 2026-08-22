@@ -10,11 +10,15 @@ b7d3253b7f5acdb80bfa67f0c16e66cd182ad9c82bafe012dc5830a4faebc4de  ~/.gemini/skil
 # Every line above matches real-homes.before.sha256 except ~/.claude.json,
 # which has no before-digest: the first snapshot omitted it (review of #234,
 # MED-5). It is also NOT a usable before/after subject in this session, and
-# that is measurable rather than asserted -- its digest moved from
-# e36940fdbb3f885f48a0d2ec394b5407d6b2b616896767022f91be5a9eab88dc to the
-# value above with no skill-manager command run in between, because the live
-# agent session hosting this ticket writes it continuously. A naive
-# before/after on it would have produced a false positive, not evidence.
+# that is measurable rather than asserted -- its digest has moved THREE times
+# during this ticket with no skill-manager command run in between:
+#     e36940fdbb3f885f48a0d2ec394b5407d6b2b616896767022f91be5a9eab88dc
+#  -> 4cb6a0a900a5f2fa1cfbaf411b329f61f1ae13507d1d9fbb60f4654b2687224c
+#  -> fd0bf7790d2af44ad6d7e294ff9afe8e74b2f14c35a8be1276e9ad0ffab64829
+# because the live agent session hosting this ticket writes it continuously.
+# A naive before/after on it would have produced a FALSE POSITIVE, not
+# evidence -- which is the reason to say so here rather than to quietly
+# re-baseline it and report seven clean lines.
 #
 # What covers it instead: ticket.lifecycle.global.home.untouched's
 # `the_config_check_covers_the_sibling_claude_json_file`, green on this branch,
