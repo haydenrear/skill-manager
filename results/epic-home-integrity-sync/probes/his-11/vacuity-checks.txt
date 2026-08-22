@@ -159,6 +159,28 @@ Executor.commit:
   checked, and that handler only ever returns ok or partial, and InstallUseCase
   puts both of its halting effects BEFORE the commit.
 
+================================================================ V8
+THE MANIFEST'S SLOT LINES REMOVED (#233's review, finding #4).
+MaterializationEscrow.liftPaths, inside the move loop:
+
+  -  Files.writeString(holding.resolve(MANIFEST), manifest.toString());
+  -  i++;
+  +  i++;
+
+  [FAIL] a held escrow says what it is holding and where it goes back: and the slot each held tree is in — enough to put it back by hand: expected <# skill-manager escrow — bytes moved aside by an operation that …
+  FAILURES: 1
+
+  Note WHERE this cell asserts. It drives MaterializationEscrow directly rather
+  than going through the Executor, because every executor path that SUCCEEDS
+  releases the escrow -- so a held one is never observable from outside, and a
+  manifest asserted only end-to-end would have shipped with nothing checking
+  it. The cell lifts, reads the manifest, and only then restores.
+
+  The header still lands under this mutation (it is written before the loop),
+  which is why the failing assertion is the SLOT line and not the file's
+  existence: a manifest that names no slots cannot put anything back, and
+  "the file is there" would have passed.
+
 ================================================================ NOT A VACUITY CHECK
 The cell "a commit into an EMPTY destination still rolls back to absent" has no
 V-number and is not claimed as one. It is a NON-REGRESSION guard against the

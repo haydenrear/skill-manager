@@ -7,6 +7,7 @@ import dev.skillmanager._lib.test.Tests;
 import dev.skillmanager.model.AgentUnit;
 import dev.skillmanager.model.UnitKind;
 import dev.skillmanager.resolve.ResolvedGraph;
+import dev.skillmanager.source.MaterializationEscrow;
 import dev.skillmanager.store.HomeLock;
 
 import java.io.ByteArrayOutputStream;
@@ -251,6 +252,50 @@ public final class CommitPreImageRestoreTest {
                         "the committed bytes stay — the halt was about what comes AFTER the commit");
                 assertEquals(List.of().toString(), escrowDirs(h.store().root()).toString(),
                         "and the superseded version is let go, not held forever");
+            }
+        });
+
+        suite.test("a held escrow says what it is holding and where it goes back", () -> {
+            // #233's review, finding #4: moving the bytes out of skills/ fixed
+            // the NAMESPACE half of #231's defect and left the DETECTION half
+            // untouched -- `.materialization-escrow-` appeared in exactly two
+            // places, the class that creates it and a test helper. HIS-13 is
+            // asked to name what is damaged in a home and what would repair it,
+            // and it cannot own a condition with no marker.
+            //
+            // This is asserted directly on the escrow rather than through the
+            // executor because every executor path that SUCCEEDS releases the
+            // escrow, so a stranded one is never observable from outside -- the
+            // fix would otherwise ship with nothing checking it.
+            try (TestHarness h = TestHarness.create()) {
+                Path dst = h.store().unitDir("gamma", UnitKind.SKILL);
+                installVersionA(dst, UnitKind.SKILL);
+
+                MaterializationEscrow escrow = MaterializationEscrow.liftPaths(
+                        dst.getParent(), h.store().root(), List.of("gamma"), false,
+                        "commit pre-image: gamma (SKILL)");
+                assertFalse(escrow.isEmpty(), "fixture precondition: something was actually lifted");
+                assertFalse(Files.exists(dst), "and it really left the units namespace");
+
+                List<String> dirs = escrowDirs(h.store().root());
+                assertEquals(1, dirs.size(), "exactly one holding directory");
+                Path manifest = h.store().root().resolve("cache")
+                        .resolve(dirs.get(0)).resolve(MaterializationEscrow.MANIFEST);
+                assertTrue(Files.isRegularFile(manifest),
+                        "the holding directory carries a manifest, so a stranded escrow is findable");
+                String text = Files.readString(manifest);
+                assertContains(text, "purpose=commit pre-image: gamma (SKILL)",
+                        "which says what took it and for which unit");
+                assertContains(text, "store-dir=" + dst.getParent(),
+                        "and which store directory the paths are relative to");
+                assertContains(text, "0=gamma",
+                        "and the slot each held tree is in — enough to put it back by hand");
+
+                escrow.restore();
+                assertEquals(List.of().toString(), escrowDirs(h.store().root()).toString(),
+                        "and the manifest goes with the holding directory it describes");
+                assertTrue(Files.isRegularFile(dst.resolve("nested").resolve("keepme.txt")),
+                        "and the bytes came back");
             }
         });
 
