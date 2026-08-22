@@ -100,13 +100,16 @@ public final class ScaffoldedTreeIsNotContentTest {
                         ChildHomeMaterializer.UnitOutcome outcome = f.materialize();
                         assertFalse(outcome.heldBack(),
                                 "precondition: the unit was materialized, not held back");
-                        for (String name : f.treeNames) {
-                            assertFalse(Files.exists(f.childUnit.resolve("test_graph")
-                                            .resolve(name), LinkOption.NOFOLLOW_LINKS),
-                                    "precondition for the digest claim: " + name + " is not in "
-                                            + "the child copy at all");
-                        }
+                        assertTrue(Files.isRegularFile(
+                                        f.childUnit.resolve("test_graph/build.gradle.kts")),
+                                "precondition: the copy really happened");
 
+                        // The claim, and NOTHING between it and the
+                        // preconditions above. "The tree is not in the child
+                        // copy" is case (2)'s claim, and asserting it here as a
+                        // precondition made this case redden on it instead of
+                        // on the digest -- vacuity mechanism A, caught by
+                        // probe V1 on the first run and moved out.
                         assertEquals(ChildHomeMaterializer.treeDigest(f.sourceUnit),
                                 ChildHomeMaterializer.treeDigest(f.childUnit),
                                 "the child copy's digest matches the store's across the "
