@@ -1,0 +1,97 @@
+VACUITY CHECKS — HIS-15 (#235)
+
+Every assertion this ticket adds, run against the code with its own fix
+disabled. RUNNER: `jbang RunHis15.java` — JsonContractTest, 36 cases. That file
+IS IN THE REPOSITORY, shipped for the reason RunHis11/RunHis12 are: a record
+naming a file that does not exist is a claim, not evidence.
+
+READ V1 FIRST. It is the one that found a hole in the guard, which is what the
+epic owner said to expect and what actually happened.
+
+=== V1  the json routing reverted — Log.console writes to stdout again
+  [FAIL] in json mode no Log level writes to stdout, and stderr still gets them: stdout is reserved for the document — this is the byte that broke #235: expected <> but was <info line
+  [FAIL] a CONTENDED close-out keeps stdout pure — #235's own case: and NOTHING else on stdout — THE CLAIM. The wait notice is a diagnostic and belongs on stderr: expected <> but was <home sync --dry-run: waiting for /var/…/proj — another operation in this process holds this home's lock>
+  [FAIL] `skill-manager home drift --json` succeeds silently (pinned): stdout holds NOTHING but the document: expected <> but was <✓ no unread change in /var/…/home>
+  FAILURES: 3
+
+  THE HOLE THIS RUN FOUND, BEFORE THE FIX ABOVE. The contended case is the only
+  one that reproduces the actual defect — a progress line on a run that
+  SUCCEEDS — and its first version asserted the wait notice was on STDERR as a
+  PRECONDITION:
+
+      assertTrue(run.stderr().contains("waiting for"), "fixture precondition: …")
+
+  Under this mutation the notice moves to stdout, so the precondition failed and
+  the case reddened THERE, never reaching its claim. That is HIS-4's probe 7a
+  exactly — a probe that reddens only on a precondition is not a probe of the
+  claim — reproduced one epic later inside the guard written to prevent it.
+
+  Fixed: the precondition is now stream-BLIND (the notice appeared on either
+  stream, which is all "contention happened" requires), the purity assertion is
+  the claim, and a third assertion checks the notice is still reported on stderr
+  so the fix cannot be "delete the diagnostic". The transcript above is from the
+  corrected version: it now reddens on the claim and quotes the contaminating
+  line.
+
+  Note the third failure too. `home drift --ack` is one of the PINNED silent
+  paths, and it reddens under this mutation without anyone having written a case
+  about drift at all. That is the pinning earning its place: the epic owner's
+  instruction to pin rather than defer turned an unasserted state into a
+  detector.
+
+=== V2  the JsonExitEnvelope net removed — `if (rc != 0 && …)` made unreachable
+  [FAIL] `skill-manager home clone --json` … exit 1 printed []: expected <1> but was <0>
+  [FAIL] `skill-manager show --json` … exit 1 printed []
+  [FAIL] `skill-manager artifacts show --json` … exit 1 printed []
+  [FAIL] `skill-manager bindings show --json` … exit 1 printed []
+  [FAIL] `skill-manager bind --json` … exit 1 printed []
+  [FAIL] `skill-manager build --json` … exit 2 printed []
+  [FAIL] `skill-manager harness show --json` … exit 1 printed []
+  [FAIL] `skill-manager harness instantiate --json` … exit 1 printed []
+  (8 shown; the run reports more)
+
+  This is the argument for a net instead of sixteen enumerated fixes, measured:
+  ONE removed mechanism reddens eight-plus commands, none of which anybody
+  edited for this ticket.
+
+=== V3  the parameter-exception handler's --json branch removed
+  [FAIL] `skill-manager project register --json` … exit 2 printed []: expected <1> but was <0>
+  [FAIL] `skill-manager project remove --json` … exit 2 printed []
+  [FAIL] `skill-manager project resolve --json` … exit 2 printed []
+  [FAIL] `skill-manager project sync --json` … exit 2 printed []
+  FAILURES: 4
+
+  Exactly the four commands driven on a parse error, and nothing else — which
+  is the right blast radius for a fix to the parse path specifically.
+
+=== V4  close-out's frozen `if (json)` arm reverted
+  [FAIL] a caught, typed refusal carries its OWN reason, not the generic one: not true: the reason is the TYPED one, not the generic "failed": [{"error":"failed","message":"home close-out --into refused: home is frozen (…)"…]
+  FAILURES: 1
+
+  The generic envelope still answers — the output stays PARSEABLE — so this
+  case is not about presence. It pins the distinction between parseable and
+  USEFUL: a caught exception never reaches the classifier, so only the explicit
+  arm can say `home_frozen` and carry the `safe` / `blockers` fields
+  close-change.sh reads. Without this case the arm would look redundant to the
+  next person and be deleted.
+
+=== V5  HIS-14's exit-13 refusal routed AROUND completeExecution again
+  [FAIL] exit 13 — HIS-14's unbindable-home refusal — emits a document too: a --json run that exits 13 says why, in JSON — got []: expected <1> but was <0>
+  FAILURES: 1
+
+  Added after rebasing onto HIS-14 (#232). Its unbindable-home refusal returns
+  UNBINDABLE_HOME_EXIT_CODE straight out of the execution strategy, which is the
+  one exit path in this CLI that goes AROUND completeExecution -- and therefore
+  around the --json envelope. Under --json it exited 13 with an empty stdout:
+  #235's exact shape on a path that DID NOT EXIST when #235 was filed.
+
+  This is the argument for a convention check rather than an enumerated list of
+  known-bad sites, and it is not hypothetical: the check landed, the next ticket
+  in the same wave grew a new failure path, and the check caught it. A list
+  could not have, because nobody had written the path yet.
+
+=== NOT A VACUITY CHECK
+`every_json_command_is_covered` has no V-number. It is a coverage gate, not a
+claim about behaviour: it fails when a --json command has no entry in the
+table. It was observed failing for real during development — 23 uncovered
+commands on the first run — which is the only demonstration it needs.

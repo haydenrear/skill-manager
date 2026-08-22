@@ -151,7 +151,13 @@ public final class SkillManagerCli implements Runnable {
         }
     }
 
-    private static int execute(String[] args) {
+    /**
+     * Package-private rather than private: {@code JsonContractTest} drives
+     * every {@code --json} command through this exact entry point, so the
+     * guard exercises the real execution strategy — the json latch, the
+     * envelope, the exception handler — and not a reconstruction of it.
+     */
+    static int execute(String[] args) {
         dev.skillmanager.effects.UnitReadProblemReporter.reset();
         CommandLine cmd = new CommandLine(new SkillManagerCli());
         // The mode this invocation displaced, so the finally below can put it
@@ -170,6 +176,13 @@ public final class SkillManagerCli implements Runnable {
         cmd.setExecutionStrategy(pr -> {
             SkillManagerCli root = rootCommand(pr);
             if (root != null) Log.setVerbose(root.verbose);
+            // Before anything can print: declare whether stdout belongs to a
+            // machine-readable document. Everything under this command --
+            // handlers, the store, HomeLock's contention notice -- routes its
+            // human lines to stderr from here on. #235.
+            Log.setJsonMode(jsonRequested(pr));
+            Log.clearLastError();
+            if (Log.isJsonMode()) JsonExitEnvelope.arm();
             // Armed as early as the parse allows, so the log holds everything
             // from here on. Lazy: no file exists until something is written.
             dev.skillmanager.util.RunLog.open(CliAgentContext.commandPath(pr));
@@ -184,7 +197,14 @@ public final class SkillManagerCli implements Runnable {
             // home, bind BOTH of that home's axes. Ahead of tryReconcile
             // deliberately — see bindNamedHome.
             Integer refused = bindNamedHome(pr, displacedBinding);
-            if (refused != null) return refused;
+            // THROUGH completeExecution, not around it. HIS-14 returned this
+            // refusal straight out of the strategy, which is the one exit path
+            // in the CLI that skips the --json envelope, the outstanding-error
+            // report, the observability close and the log naming. Under
+            // `--json` it therefore exited 13 with an empty stdout — the exact
+            // shape #235 is about, on a path that did not exist when #235 was
+            // filed. Asserted by JsonContractTest's exit-13 case.
+            if (refused != null) return completeExecution(root, pr, refused);
             tryReconcile();
             int rc = new CommandLine.RunLast().execute(pr);
             return completeExecution(root, pr, rc);
@@ -196,6 +216,20 @@ public final class SkillManagerCli implements Runnable {
         // {@link #printFailure}; only a failure with nothing to say still
         // prints a trace.
         cmd.setExecutionExceptionHandler(SkillManagerCli::handleExecutionException);
+        // A PARSE failure never reaches the execution strategy, so the --json
+        // latch above never runs and the envelope is never armed: `bind
+        // no-such-unit --json` exited 2 with an empty stdout. The flag is still
+        // in the raw argv whether or not the parse succeeded, so that is what
+        // this consults. Found by JsonContractTest while driving the commands
+        // whose working directory cannot be sandboxed in-process.
+        CommandLine.IParameterExceptionHandler defaultParams = cmd.getParameterExceptionHandler();
+        cmd.setParameterExceptionHandler((ex, params) -> {
+            int rc = defaultParams.handleParseException(ex, params);
+            if (declaresJson(params)) {
+                JsonExitEnvelope.emit(rc, "usage", String.valueOf(ex.getMessage()));
+            }
+            return rc;
+        });
         try {
             return cmd.execute(args);
         } finally {
@@ -203,10 +237,16 @@ public final class SkillManagerCli implements Runnable {
             // Without this, an embedded caller (the server, a test harness, an
             // out-of-tree library user) that ran one READ_ONLY command left
             // every later SkillStore.init() in the process a silent no-op.
+            JsonExitEnvelope.disarm();
             if (declared[0]) dev.skillmanager.store.HomeScaffold.restore(displaced[0]);
             if (displacedBinding[0] != null) {
                 dev.skillmanager.agent.AgentHomes.restoreOverrides(displacedBinding[0]);
             }
+            // Scoped to the invocation, not the JVM -- same reason the access
+            // mode above is restored. An embedded caller that ran one --json
+            // command must not have every later command's output silently
+            // moved to stderr.
+            Log.setJsonMode(false);
         }
     }
 
@@ -333,8 +373,20 @@ public final class SkillManagerCli implements Runnable {
      */
     public static final int UNBINDABLE_HOME_EXIT_CODE = 13;
 
+    /**
+     * The typed reason for the failure being handled, when there is one.
+     *
+     * <p>Set by {@link #handleExecutionException} from the exception's TYPE, so
+     * a {@code --json} consumer branches on {@code "home_locked"} rather than
+     * on a substring of an English sentence. Null for a command that returned
+     * a non-zero code without throwing — those get {@code "failed"}, which is
+     * honest: the CLI knows the command refused and does not know why.
+     */
+    private static String jsonErrorCode;
+
     static int handleExecutionException(Exception ex, CommandLine c, CommandLine.ParseResult pr)
             throws Exception {
+        jsonErrorCode = classify(ex);
         AuthenticationRequiredException auth = unwrapCause(ex, AuthenticationRequiredException.class);
         if (auth != null) {
             return completeExecution(rootCommand(pr), pr, printAuthBanner(auth.getMessage()));
@@ -407,6 +459,33 @@ public final class SkillManagerCli implements Runnable {
      *         default, i.e. the same non-zero the trace path produced. This
      *         changes what a refusal PRINTS, never what it returns.
      */
+    /**
+     * A stable machine-readable reason for an exception, or {@code null}.
+     *
+     * <p>By TYPE, never by message. Extend it when a caller has a reason to
+     * branch on a failure -- an unclassified failure is reported as
+     * {@code "failed"} with the human message, which is correct and merely
+     * less useful.
+     */
+    private static String classify(Exception ex) {
+        if (unwrapCause(ex, dev.skillmanager.store.HomeContendedException.class) != null) {
+            return dev.skillmanager.store.HomeContendedException.ERROR_CODE;
+        }
+        if (unwrapCause(ex, dev.skillmanager.policy.FrozenHomeException.class) != null) {
+            return "home_frozen";
+        }
+        if (unwrapCause(ex, dev.skillmanager.store.NotAHomeException.class) != null) {
+            return "not_a_home";
+        }
+        if (unwrapCause(ex, AuthenticationRequiredException.class) != null) {
+            return "authentication_required";
+        }
+        if (unwrapCause(ex, RegistryUnavailableException.class) != null) {
+            return "registry_unavailable";
+        }
+        return null;
+    }
+
     static int printFailure(Exception ex, CommandLine c, CommandLine.ParseResult pr) {
         int rc = c == null ? 1 : c.getCommandSpec().exitCodeOnExecutionException();
         String message = describe(ex);
@@ -458,6 +537,15 @@ public final class SkillManagerCli implements Runnable {
     }
 
     private static int completeExecution(SkillManagerCli root, CommandLine.ParseResult pr, int rc) {
+        // The --json safety net, before anything else prints: a failing
+        // --json invocation that produced no document gets one. See
+        // JsonExitEnvelope for why this is here and not at sixteen call sites.
+        if (rc != 0 && Log.isJsonMode() && !JsonExitEnvelope.wroteAnything()) {
+            String message = Log.lastError();
+            JsonExitEnvelope.emit(rc, jsonErrorCode == null ? "failed" : jsonErrorCode,
+                    message == null ? "the command failed and said nothing" : message);
+        }
+        jsonErrorCode = null;
         tryPrintOutstandingErrors();
         String commandPath = CliAgentContext.commandPath(pr);
         CliObservability.completeCurrent(commandPath, rc);
@@ -492,6 +580,22 @@ public final class SkillManagerCli implements Runnable {
         if (log == null) return;
         if (jsonRequested(pr)) return;
         System.err.println("  log: " + log);
+    }
+
+    /**
+     * Whether {@code --json} is present in the raw argv.
+     *
+     * <p>The parsed-result form below cannot be used on a parse FAILURE —
+     * there is no usable parse result, which is the whole reason that path
+     * emitted nothing. Reading argv is exact here: {@code --json} is a flag on
+     * every command that has it, so its presence as a token is unambiguous,
+     * and a value that merely equals the string cannot occur because no option
+     * in this CLI takes {@code --json} as an argument.
+     */
+    private static boolean declaresJson(String[] argv) {
+        if (argv == null) return false;
+        for (String arg : argv) if ("--json".equals(arg)) return true;
+        return false;
     }
 
     /** Whether {@code --json} was matched anywhere in the parsed command chain. */

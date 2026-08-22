@@ -28,10 +28,63 @@ package dev.skillmanager.util;
 public final class Log {
 
     private static boolean verbose = false;
+    private static boolean jsonMode = false;
+    private static String lastError = null;
 
     private Log() {}
 
     public static void setVerbose(boolean v) { verbose = v; }
+
+    /**
+     * Declare that this invocation's <b>stdout is a machine-readable
+     * document</b>, so every human line this class emits goes to stderr
+     * instead.
+     *
+     * <h2>The defect this closes (#235)</h2>
+     *
+     * <p>{@code --json} is a promise about stdout: one parseable document and
+     * nothing else. It was enforced nowhere. Any library code beneath a
+     * {@code --json} command that called {@link #info}, {@link #ok} or
+     * {@link #step} wrote a sentence onto the same stream — and the consumer,
+     * which is a script, got a parse error instead of a verdict.
+     *
+     * <p>MEASURED, and note the exit code:
+     *
+     * <pre>
+     * $ skill-manager home close-out --home &lt;wt&gt; --into &lt;proj&gt; --json
+     * exit=0
+     * home sync --dry-run: waiting for /…/proj-home — another skill-manager process holds this home's lock
+     * {"home":"/…","into":"/…","safe":true,"exitCode":0,"blockers":[],"units":[]}
+     *
+     * $ python3 -c 'import json,sys; json.load(sys.stdin)' &lt; stdout
+     * json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+     * </pre>
+     *
+     * <p>The command SUCCEEDED. The wait line is HomeLock announcing that it
+     * queued behind a peer — correct behaviour, added by HIS-11 (#186), on the
+     * wrong stream. {@code close-change.sh} parses that stdout, could not, and
+     * advised {@code --force}: discarding the work the gate had just refused to
+     * destroy.
+     *
+     * <h2>Why a latch here rather than a fix at the call site</h2>
+     *
+     * <p>The call site was {@code HomeLock.announceWait}. Fixing it there fixes
+     * one sentence. Every other {@code Log.info} under any of the thirty
+     * commands that declare {@code --json} is the same defect waiting, and a
+     * new one is written every time somebody adds a progress line to a shared
+     * code path — which is precisely how this one arrived. The stream a human
+     * line belongs on is a property of the INVOCATION, and this is the one
+     * place that knows it.
+     *
+     * <p>{@code BuildCommand} had already solved this for itself by
+     * redirecting {@link System#out} to {@code FileDescriptor.err} for the
+     * duration of its program. That is the same decision, taken privately by
+     * one command; this makes it the rule.
+     */
+    public static void setJsonMode(boolean v) { jsonMode = v; }
+
+    /** Whether stdout is reserved for a machine-readable document. */
+    public static boolean isJsonMode() { return jsonMode; }
 
     /**
      * Whether {@code --verbose} (or an embedding caller) asked for the
@@ -61,8 +114,27 @@ public final class Log {
     }
 
     public static void error(String msg, Object... args) {
-        consoleErr("✗ " + format(msg, args));
+        String line = format(msg, args);
+        lastError = line;
+        consoleErr("✗ " + line);
     }
+
+    /**
+     * The last sentence {@link #error} printed, or {@code null}.
+     *
+     * <p>Exists so the {@code --json} failure envelope can carry the SAME
+     * sentence the command already put on stderr rather than composing a
+     * second one. Two renderings of one refusal that can disagree is the
+     * defect #235 is about; this is the cheapest way to make them the same
+     * string by construction.
+     *
+     * <p>Per-invocation, cleared by the CLI, and deliberately not part of any
+     * command's logic — nothing branches on it.
+     */
+    public static String lastError() { return lastError; }
+
+    /** Forget the last error. Called once per CLI invocation. */
+    public static void clearLastError() { lastError = null; }
 
     /**
      * A line behind a verdict: it goes to the run log always, and to the
@@ -75,7 +147,8 @@ public final class Log {
     public static void detail(String msg, Object... args) {
         String line = format(msg, args);
         if (verbose) {
-            System.out.println(line);
+            if (jsonMode) System.err.println(line);
+            else System.out.println(line);
             RunLog.mirror(line);
         } else {
             RunLog.demote(line);
@@ -138,7 +211,9 @@ public final class Log {
     public static final int ERROR_SAMPLE = 12;
 
     private static void console(String line) {
-        System.out.println(line);
+        // Under --json stdout belongs to the document, not to us.
+        if (jsonMode) System.err.println(line);
+        else System.out.println(line);
         RunLog.mirror(line);
     }
 
