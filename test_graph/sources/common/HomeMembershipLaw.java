@@ -112,6 +112,21 @@ import java.util.stream.Stream;
  *
  * <h2>What this law deliberately does NOT decide</h2>
  *
+ * <p><b>It is a within-home consistency law, not a temporal one, and that has a
+ * measured limit.</b> On run {@code 20260822-223059} the {@code home-integrity}
+ * graph's own control deliberately reproduced the escape — a {@code project
+ * resolve} reached a checkout from an unconfined working directory and swapped
+ * that checkout's child home from one unit to another — and this law reported
+ * the resulting home as CLEAN. It was: the resolve rewrote the records to match
+ * what it had done, so disk and records agreed about a membership nobody asked
+ * for. What the law catches is the RESIDUE form, which is the form DEF-047
+ * actually took and the form no other instrument sees. The before/after form
+ * needs a before-image, and the only place a before-image exists is around a
+ * single operation — which is what
+ * {@code home-integrity/ProjectVerbStaysInItsHome} does, with a control.
+ * Recorded as a deferral; a post-condition that runs once cannot hold a
+ * snapshot of a home it never saw at the start.
+ *
  * <p>{@code home.runtime.json} carries a PERSISTED unit snapshot — the closest
  * thing a home has to a "first sight" image of itself. Its drift from the live
  * disk view is measured and logged as {@code descriptorDrift}, and it is
@@ -238,6 +253,17 @@ public final class HomeMembershipLaw {
             // records rather than against disk: disk-vs-records is already
             // stated above, and repeating it through a third path would double
             // one finding rather than add one.
+            //
+            // AN EMPTY LOCK ABSTAINS. Measured, run 20260822-223059: four
+            // root-tier homes had all three readers in exact agreement, and the
+            // one disagreement was a PROJECT CHILD home whose units.lock.toml
+            // is empty BY DESIGN -- a child home's resolved closure is recorded
+            // in the project registry, not in the child's own lock. A reader
+            // with nothing to say is not a reader that disagrees, and a law
+            // that fired on every child home in the repository would be turned
+            // off within a week. The claim above -- disk versus records -- is
+            // untouched by this and is what the law's sentence actually says.
+            if (lock.isEmpty()) return out;
             Set<String> lockOnly = minus(lock, records);
             Set<String> recordsOnly = minus(records, lock);
             if (!lockOnly.isEmpty() || !recordsOnly.isEmpty()) {
@@ -249,7 +275,7 @@ public final class HomeMembershipLaw {
         }
 
         String report(Path home) {
-            boolean ok = disk.equals(records) && records.equals(lock);
+            boolean ok = violations(home).isEmpty();
             return (ok ? "PASS  " : "FAIL  ") + home
                     + "\n    disk    " + disk
                     + "\n    records " + records
@@ -358,9 +384,7 @@ public final class HomeMembershipLaw {
     // ------------------------------------------------------------ self-test
 
     /** The outcome of running the detector over homes with known answers. */
-    record SelfTest(boolean ok, String why, String report) {
-        String report() { return report; }
-    }
+    record SelfTest(boolean ok, String why, String report) {}
 
     /**
      * Plant three homes with known membership and run the SAME comparison.
