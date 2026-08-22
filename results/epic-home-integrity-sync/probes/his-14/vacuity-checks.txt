@@ -1,0 +1,267 @@
+HIS-14 — vacuity checks
+=======================
+
+Every assertion in HomeBindsBothAxesTest, disabled-fix-first. Each block names
+what was disabled, and pastes the VERBATIM failure the suite printed. Run with
+`jbang RunTests.java` under a scratch $HOME (see probes/his-14/README.md for the
+runner), so no check could reach the operator's real agent homes.
+
+The known traps this pass had to survive, from the ticket:
+  (a) a probe that reddens only a PRECONDITION is not a probe of the claim;
+  (b) a fixture whose ambient environment already names the target home cannot
+      detect an unbound axis.
+Both bit, and both are recorded below as findings rather than elided.
+
+
+V1 — the CLI applier removed
+----------------------------
+Disabled: `SkillManagerCli.execute`'s call to `bindNamedHome`, i.e. `--home`
+binds SKILL_MANAGER_HOME only, exactly as it did before HIS-14.
+
+  [PASS] FLOOR: a projection into a home's agent dirs is observable
+  [FAIL] `sync --home <X>` writes nothing into the home the environment names:
+         a command carrying --home writes no byte outside that home
+           appeared: [.claude/skills, .claude/skills/his14-probe,
+                      .codex/skills, .codex/skills/his14-probe,
+                      .gemini/skills, .gemini/skills/his14-probe, ...]
+  [FAIL] the ROOT TIER, on a synthetic root-shaped home:
+         the root tier is a home like any other: naming another one leaves it alone
+  [PASS] every verb that declares --home is bound, not a list of seven
+  [PASS] the printed env prefix is a RENDERING of the binding --home applies
+  [PASS] --home makes every in-process reader answer with the named home
+  [PASS] an ambient CLAUDE_HOME naming another home does not survive the binding
+  [FAIL] REFUSAL: an agent dir that resolves out of the home is named, not bound:
+         its own status, not 1 and not 0: ✓ no unread change in
+         /var/folders/.../his14-refusal-14453697536235384924/named/.skill-manager
+  [PASS] COMPANION: a real agent directory inside the home is bound, not refused
+  [FAIL] the printed remedy RUNS, in a shell whose environment names another home:
+         and leaves the home the shell named entirely alone
+   → 6 passed, 4 failed
+
+The four that stayed green are the four that do not go through the CLI: three
+call `AgentHomes.bind` / `AgentHomes.binding` directly, and one reads the CLI
+surface. They are covered by V2 and V3.
+
+
+V2 — the binding reduced to the store axis
+------------------------------------------
+Disabled: `AgentHomes.binding` returns SKILL_MANAGER_HOME and nothing else —
+the half-binding `--home` used to be.
+
+  [FAIL] `sync --home <X>` writes nothing into the home the environment names:
+         a command carrying --home writes no byte outside that home
+  [FAIL] the ROOT TIER, on a synthetic root-shaped home:
+         the root tier is a home like any other: naming another one leaves it alone
+  [FAIL] the printed env prefix is a RENDERING of the binding --home applies:
+         the binding is four variables: expected <4> but was <1>
+  [FAIL] --home makes every in-process reader answer with the named home:
+         and so does the agent axis:
+         expected </var/folders/.../his14-readers-.../named/.claude>
+         but was  </var/folders/.../his14-readers-.../other/.claude>
+  [FAIL] an ambient CLAUDE_HOME naming another home does not survive the binding:
+         and the binding wins over it, without naming it:
+         expected </var/folders/.../his14-claude-home-.../named/.claude>
+         but was  </var/folders/.../his14-claude-home-.../other/.claude>
+  [FAIL] the printed remedy RUNS, in a shell whose environment names another home:
+         and leaves the home the shell named entirely alone
+   → 4 passed, 6 failed
+
+TRAP (b) FIRED HERE, TWICE, AND BOTH ARE FIXES TO THE FIXTURE:
+
+  1. `the printed env prefix is a RENDERING of the binding` derives its expected
+     string FROM `AgentHomes.binding`. With the binding shrunk to one variable
+     both sides shrink together and the containment still holds — the assertion
+     passes against a product that binds half. It is the explicit
+     `assertEquals(4, binding.size())` that reddens, and that line exists only
+     because this check was run. Without it the case would have been vacuous in
+     exactly the way this epic keeps finding.
+
+  2. `the printed remedy RUNS` PASSED on its first V2 run. Its shell removed
+     CLAUDE_CONFIG_DIR / CODEX_HOME / GEMINI_HOME, and with all four unset the
+     agent axis falls back to the STORE axis — so a binding that pinned only
+     SKILL_MANAGER_HOME still landed everything in the right place. The fixture
+     now EXPORTS the three agent variables naming the other home, which is both
+     the discriminating case and the case an operator is actually in.
+
+TRAP (a) ALSO FIRED, in the first V2 run: the shell case reddened on
+`the other home has content to be damaged (3 entries)` — its own floor guard,
+not the claim, because the other home was three empty directories. The fixture
+now builds a POPULATED other home (a store plus the three config files the real
+damage edited), and the same run then reddens on the claim itself.
+
+
+V3 — the printed prefix drifts from the binding
+-----------------------------------------------
+Disabled: `HomeCommand.homeEnvPrefix` builds its own list again instead of
+rendering `AgentHomes.binding`, and drifts by one variable (GEMINI_HOME
+dropped) — the exact shape of "two spellings of one decision".
+
+  [FAIL] the printed env prefix is a RENDERING of the binding --home applies:
+         the remedy's env prefix is this binding, variable for variable and in
+         the same order
+   → 9 passed, 1 failed
+
+AND, independently, the pre-existing HIS-12-era guard:
+
+  [FAIL] no remedy pins SKILL_MANAGER_HOME without the agent-home variables:
+         and gemini
+
+Two readers, one drift. That the inherited guard also fires is the reason this
+new case is a check on the SHARED SOURCE rather than a second copy of it.
+
+
+V4 — the refusal removed
+------------------------
+Disabled: the `unbindable` branch of `SkillManagerCli.bindNamedHome`, so a home
+whose .claude symlinks out of it is bound anyway.
+
+  [FAIL] REFUSAL: an agent dir that resolves out of the home is named, not bound:
+         its own status, not 1 and not 0: ✓ no unread change in
+         /var/folders/.../his14-refusal-16397813560711002954/named/.skill-manager
+   → 9 passed, 1 failed
+
+The COMPANION case (`a real agent directory inside the home is bound, not
+refused`) stays green under V4 by construction — it is the case that proves the
+refusal is not simply "refuse every home", which a rc==13 assertion alone would
+be satisfied by.
+
+
+FLOOR — the case that is deliberately not a claim
+-------------------------------------------------
+`FLOOR: a projection into a home's agent dirs is observable` passes under every
+V above, and that is correct: it exists so that "nothing appeared in the other
+home" cannot pass by nothing having happened anywhere. It is a probe of the
+FIXTURE, and it is labelled that way rather than counted as evidence.
+
+The same role is played inside `otherHomeIsUntouched`, which refuses a
+before-snapshot with fewer than six entries — the mechanised form of trap (a),
+since an empty snapshot makes every later comparison trivially true.
+
+
+================================================================
+SECOND ROUND — the review of #234 (V5…V8)
+================================================================
+
+Same discipline, four more, plus one finding the checks made about the
+checks themselves. Run with the agent variables UNSET unless a block says
+otherwise; the suite is now green either way (see MED-4 below), which it
+was not in the first round.
+
+
+V5 — the HIGH-1 fix removed (always derive, discard what is set)
+---------------------------------------------------------------
+  [FAIL] a home whose agent dirs are NOT beside the store keeps the ones it has:
+         an explicitly-set agent dir INSIDE this home is a more precise
+         statement about its layout than a derivation, and is kept:
+         expected <…/profiles/dev/agents/claude>
+         but was  <…/profiles/dev/.claude>
+   → 15 passed, 1 failed
+
+The same thing end to end, with the real CLI and a real profile home,
+CLAUDE_CONFIG_DIR correctly exported:
+
+  before   ✓ agents: 1 unit(s) linked into claude, codex, gemini
+             ADDED claude (<profileRoot>/.claude/.claude.json)
+             ADDED codex  (<profileRoot>/.codex/config.toml)
+             ADDED gemini (<profileRoot>/.gemini/settings.json)
+           <profileRoot>/.claude/skills: his14-profile-probe
+           <profileRoot>/agents/claude/skills:            <- STALE, empty
+  after    <profileRoot>/.claude exists? NO
+           <profileRoot>/agents/claude/skills: his14-profile-probe
+
+
+V6 — the ownership TEST removed (an explicit variable always wins)
+-----------------------------------------------------------------
+The other side of V5, and the one that matters: "keep what is set" on its
+own is DEF-029 restored in full.
+
+   → 4 passed, 12 failed
+
+including
+
+  [FAIL] COMPANION: an explicit agent dir OUTSIDE the home is still replaced:
+         expected <…/named/.claude> but was <…/other/.claude>
+  [FAIL] `sync --home <X>` writes nothing into the home the environment names
+  [FAIL] the ROOT TIER, on a synthetic root-shaped home
+  [FAIL] --home makes every in-process reader answer with the named home
+
+Twelve of sixteen, because `unbindable` reads the same binding: with the
+ownership test gone it judges the foreign directories unbindable and the
+refusal fires everywhere. The two halves are one predicate, and this is
+what that looks like when it is removed.
+
+
+V7 — the HIGH-2 gates removed (read-only + frozen)
+--------------------------------------------------
+  [FAIL] a read-shaped verb does not reconcile the home it was asked to inspect:
+         expected false: and migrated nothing on the way:
+         migrated installed-unit record: legacy-probe.json
+   → 15 passed, 1 failed
+
+End to end, with the real CLI, on a home declared frozen through
+`home policy frozen` and carrying a planted legacy record:
+
+  before   $ home verify --home <frozen>
+           migrated installed-unit record: legacy-probe.json
+           reconcile: migrated 1 legacy source records
+           sources/ still there? DELETED
+           => MUTATED  (27d2feeb… -> 88a93abd…)
+  after    sources/ still there? yes; legacy record still there? yes
+           => BYTE-IDENTICAL  (33850cdb… -> 33850cdb…)
+
+
+V8 — the FROZEN gate alone removed
+----------------------------------
+**THIS ONE FOUND A DEFECT IN THE FIXTURE, NOT IN THE PRODUCT, AND IT IS THE
+REASON THE FROZEN HALF HAS A PROBE AT ALL.**
+
+The HIGH-2 case is frozen AND read-shaped, so it reddens if EITHER gate is
+removed and proves neither on its own. V8 removed only the frozen gate and
+got:
+
+  [FAIL] a WRITING verb does not reconcile a FROZEN home either:
+         not true: a frozen home is not reconciled, whoever asked: rc=127
+         migrated installed-unit record: legacy-probe.json
+
+— the product doing exactly what the new case says it must not. Except the
+case was RIGHT and the fixture was wrong: both frozen fixtures wrote
+`policy.toml` by hand, and the file is `home.policy.toml`. Neither home was
+ever frozen. The read-only gate returns first, so the earlier case passed on
+the OTHER gate and looked like evidence for both.
+
+A fixture that states a precondition through a string literal is a fixture
+that can be wrong about it. Both now go through `HomePolicy.write` and assert
+`HomePolicy.load(...).frozen()` as an explicit precondition. Re-run against
+the corrected fixture, V8 reddens on the claim:
+
+  [FAIL] a WRITING verb does not reconcile a FROZEN home either
+  [FAIL] the printed remedy RUNS, in a shell whose environment names another home
+   → 15 passed, 2 failed
+
+
+MED-4 — the suite no longer depends on the shell
+------------------------------------------------
+In the first round `runtests.sh` passed `env -u CLAUDE_CONFIG_DIR …` and the
+suite went 9/1 without it:
+
+  [FAIL] an ambient CLAUDE_HOME naming another home does not survive the binding:
+         precondition: an ambient CLAUDE_HOME decides the config dir:
+         expected <…/other/.claude> but was <…/his14b/fake/.claude>
+
+Trap (a) — reddening on a PRECONDITION — inside the file written to close
+trap (b). The case is about the CLAUDE_CONFIG_DIR-UNSET branch of the
+precedence, and `setOverride` could say "this variable is X" and "stop
+overriding this variable" but not "this variable is not set", so the
+assertion silently depended on the developer's shell.
+
+`AgentHomes.setUnset` is the third state. With it, measured both ways on the
+same tree:
+
+  CLAUDE_CONFIG_DIR / CODEX_HOME / GEMINI_HOME / SKILL_MANAGER_HOME unset
+      HomeBindsBothAxesTest  → 17 passed, 0 failed;  whole suite ALL PASSED
+  all four EXPORTED, naming a scratch home
+      HomeBindsBothAxesTest  → 17 passed, 0 failed;  19 pre-existing failures
+      elsewhere (AgentHomesTest, HomeDescriptorTest, LauncherShimsTest, the
+      #145 test) — the same 19, in the same suites, as on the BASE commit
+      before any of this ticket's code. Filed as DEF-042; they are the same
+      "cannot say unset" gap, and `setUnset` is the fix they need.
