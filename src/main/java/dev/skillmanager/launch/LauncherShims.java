@@ -616,4 +616,111 @@ public final class LauncherShims {
             """.replace("@SKILL_MANAGER_HOME_MISMATCH_EXIT@",
                     String.valueOf(HOME_MISMATCH_EXIT_CODE));
 
+    /**
+     * The prefix of the one line in a generated entrypoint that carries the
+     * pin, up to the default-value {@code :-}.
+     *
+     * <p>This shape is already a contract with a second reader:
+     * {@code git-integration-repo}'s {@code ensure_cli_pin} finds the first
+     * line with this prefix, strips the closing brace and quote, and asserts
+     * the result is executable. See the comment inside {@link #CLI_TEMPLATE}
+     * for why nothing above that line may spell the prefix out. Named here so
+     * a third reader does not invent a fourth spelling of it.
+     */
+    public static final String PIN_PREFIX = "cli=\"${SKILL_MANAGER_CLI:-";
+
+    /**
+     * The absolute build a generated entrypoint pins, or empty when
+     * {@code entrypoint} is not one of ours or carries no readable pin.
+     *
+     * <h2>Why anything reads this back</h2>
+     *
+     * <p>DEF-012, measured 2026-08-21: the pin is an absolute VERSIONED path
+     * into the Homebrew Cellar
+     * ({@code /opt/homebrew/Cellar/skill-manager/0.23.0/libexec/bin/skill-manager}),
+     * and {@code brew upgrade} to 0.24.0 deleted that directory. The shim
+     * itself still exists and is still executable, so every caller that tests
+     * {@code -x <home>/bin/cli/skill-manager} — including
+     * {@link dev.skillmanager.store.HomeDescriptor#locateCli} — sees a healthy
+     * home entrypoint, while running it can only produce exit 127. A REMEDY
+     * naming that file reads as authoritative and cannot run, which is the
+     * defect of issue #161 in its purest form.
+     *
+     * <p>Empty rather than throwing for a file that is not ours, or is ours
+     * and unreadable: "cannot tell" must not be reported as "broken". Only a
+     * pin that is present AND names something absent is a finding.
+     */
+    public static java.util.Optional<Path> pinnedCliIn(Path entrypoint) {
+        if (entrypoint == null || !Files.isRegularFile(entrypoint)) {
+            return java.util.Optional.empty();
+        }
+        List<String> lines;
+        try {
+            lines = Files.readAllLines(entrypoint);
+        } catch (IOException unreadable) {
+            return java.util.Optional.empty();
+        }
+        if (lines.stream().noneMatch(l -> l.contains(PIN_MARKER))) {
+            return java.util.Optional.empty();
+        }
+        // EVERY matching line, not the first. `ensure_cli_pin` takes the first
+        // and the template's own comment warns that nothing above it may spell
+        // the prefix out — a warning is not an invariant, and a file with two
+        // assignment lines that disagree is a file this cannot read. Two
+        // agreeing lines are fine; two disagreeing ones are "cannot tell".
+        java.util.Set<String> found = new java.util.LinkedHashSet<>();
+        for (String line : lines) {
+            String trimmed = line.strip();
+            if (!trimmed.startsWith(PIN_PREFIX)) continue;
+            String rest = trimmed.substring(PIN_PREFIX.length());
+            // The CLOSING `}"` must be on this line. It is what makes a line
+            // continuation unreadable rather than truncated: a wrapped pin
+            // leaves the brace on the next line, so the search fails and this
+            // reports "cannot tell". Falling back to end-of-line here would
+            // return a truncated path and call a healthy home dangling.
+            //
+            // A separate `endsWith("\\")` guard stood here and was REMOVED: the
+            // epic's vacuity rule could not make it fail, because every
+            // continuation it was meant to catch is already caught by this
+            // search. A guard that cannot fail is not a guard.
+            int end = rest.indexOf("}\"");
+            if (end < 0) return java.util.Optional.empty();
+            String pin = rest.substring(0, end);
+            if (pin.isBlank()) return java.util.Optional.empty();
+            // NOT A LITERAL PATH. A pin carrying `$`, a backtick or `$(` is
+            // computed by the shell at run time, and the text is not what will
+            // be exec'd. Reading it literally makes a HEALTHY home look
+            // dangling — and the caller's response to "dangling" is to push
+            // that home off its own working front door, so a false positive
+            // here is worse than no check at all.
+            if (pin.indexOf('$') >= 0 || pin.indexOf('`') >= 0) {
+                return java.util.Optional.empty();
+            }
+            found.add(pin);
+        }
+        return found.size() == 1
+                ? java.util.Optional.of(Path.of(found.iterator().next()))
+                : java.util.Optional.empty();
+    }
+
+    /**
+     * Whether {@code entrypoint}'s pin names something that is gone.
+     *
+     * <p>False when there is no readable literal pin — see
+     * {@link #pinnedCliIn}, and note that "cannot tell" must never be reported
+     * as "broken" here.
+     *
+     * <p>{@code isRegularFile} as well as {@code isExecutable}, because a
+     * DIRECTORY is executable on POSIX (that is what the execute bit means for
+     * one): a pin naming a directory would otherwise pass as a live build. The
+     * link is followed, so a pin through a symlink to a real build is live and
+     * a pin through a dangling symlink is not.
+     */
+    public static java.util.Optional<Path> danglingPinIn(Path entrypoint) {
+        Path pin = pinnedCliIn(entrypoint).orElse(null);
+        if (pin == null) return java.util.Optional.empty();
+        return Files.isRegularFile(pin) && Files.isExecutable(pin)
+                ? java.util.Optional.empty()
+                : java.util.Optional.of(pin);
+    }
 }

@@ -263,6 +263,25 @@ public final class ProjectCommand {
      */
     private static int reportClosureImportViolations(
             dev.skillmanager.project.ProjectImportViolationException imports, boolean json) {
+        return reportClosureImportViolations(imports, json, "project resolve");
+    }
+
+    /**
+     * As above, naming the command that was refused.
+     *
+     * <p>{@code project sync} reaches the same resolver and can be refused by
+     * the same validation, and until issue #187 it had no catch at all: the
+     * typed refusal arrived at picocli as a bare {@link java.io.IOException}
+     * with a generic exit, so a caller that handled 11 from {@code resolve}
+     * got an unclassifiable failure from {@code sync} for the identical
+     * condition. Everything except the leading command name is the same
+     * rendering and the same {@link MarkdownImportValidator#EXIT_CODE},
+     * deliberately — the condition is one condition, and two spellings of it
+     * would be a second thing for a caller to learn.
+     */
+    private static int reportClosureImportViolations(
+            dev.skillmanager.project.ProjectImportViolationException imports, boolean json,
+            String command) {
         List<MarkdownImportValidator.Violation> violations = imports.violations();
         if (json) {
             StringBuilder sb = new StringBuilder();
@@ -277,7 +296,7 @@ public final class ProjectCommand {
                     "closureImportViolations":[%s]}""".formatted(sb));
         } else {
             System.err.println();
-            System.err.println("project resolve refused — declared closure has " + violations.size()
+            System.err.println(command + " refused — declared closure has " + violations.size()
                     + " unresolved markdown skill-import(s); nothing was installed:");
             for (MarkdownImportValidator.Violation v : violations) {
                 System.err.println("  - " + v.render());
@@ -407,12 +426,28 @@ public final class ProjectCommand {
                     : SkillProjectParser.loadManifest(resolveManifestPath(root, manifest), root);
             project = project.withProfile(profile);
             GatewayConfig gw = skipGateway ? null : GatewayConfig.resolve(store, null);
-            ProjectSyncUseCase.Result result = new ProjectSyncUseCase(store, gw)
-                    .sync(project,
-                            new ProjectDependencyResolver.Options(true, !skipGateway,
-                                    new LinkedHashSet<>(checkout), repairVendored),
-                            new ProjectSyncUseCase.Options(!noPull, rebuild,
-                                    new UnitTrunkPull.Options(merge, ref, gitLatest, from)));
+            ProjectSyncUseCase.Result result;
+            try {
+                result = new ProjectSyncUseCase(store, gw)
+                        .sync(project,
+                                new ProjectDependencyResolver.Options(true, !skipGateway,
+                                        new LinkedHashSet<>(checkout), repairVendored),
+                                new ProjectSyncUseCase.Options(!noPull, rebuild,
+                                        new UnitTrunkPull.Options(merge, ref, gitLatest, from)));
+            } catch (dev.skillmanager.project.ProjectImportViolationException imports) {
+                // Issue #187. The reconcile and rebuild call sites both reach
+                // the resolver that throws this, and neither used to catch it
+                // — so `project resolve` exited 11 with per-violation evidence
+                // while `project sync`, refused by the same validation for the
+                // same reason, exited generically with a stack-shaped message.
+                //
+                // Nothing was installed either way: validation runs before any
+                // commit. Under --rebuild the realization HAS been torn down
+                // by this point, and ProjectSyncUseCase.rebuild's
+                // ProjectRealizationSnapshot has already put it back before
+                // this catch is reached.
+                return reportClosureImportViolations(imports, json, "project sync");
+            }
             if (json) {
                 System.out.println("""
                         {"name":"%s","profile":"%s","mode":"%s","pulled":%d,"pullHeldBack":%s,\

@@ -180,9 +180,26 @@ public record DriftGate(
      * characters.
      */
     public String stillUnreadLine(String cliInvocation) {
+        return stillUnreadLine(cliInvocation, "");
+    }
+
+    /**
+     * As above, naming the home the gate is about.
+     *
+     * <p>{@code home drift} is a CLASS 2 remedy verb (#161): it takes
+     * {@code --home}, so that is where the binding goes. The reminder is the
+     * only thing a second and later surfacing prints, so a reminder that names
+     * no home sends the reader to acknowledge drift in whichever home their
+     * shell happens to carry — which unset is the operator's root.
+     *
+     * @param homeArg {@code --home <path>}, or empty
+     */
+    public String stillUnreadLine(String cliInvocation, String homeArg) {
         int units = report == null ? 0 : report.units().size();
-        return "%d unit%s still unread — `%s home drift --ack` to clear, `%s home drift` to re-read"
-                .formatted(units, units == 1 ? "" : "s", cliInvocation, cliInvocation);
+        String ack = (cliInvocation + " home drift --ack " + homeArg).strip();
+        String read = (cliInvocation + " home drift " + homeArg).strip();
+        return "%d unit%s still unread — `%s` to clear, `%s` to re-read"
+                .formatted(units, units == 1 ? "" : "s", ack, read);
     }
 
     /**
