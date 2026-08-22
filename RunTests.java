@@ -84,6 +84,7 @@ import dev.skillmanager.validation.MarkdownImportValidatorTest;
 import dev.skillmanager.effects.CompensationLogicTest;
 import dev.skillmanager.effects.ProjectSyncErrorReportingTest;
 import dev.skillmanager.effects.CompensationOrphanTest;
+import dev.skillmanager.effects.CommitPreImageRestoreTest;
 import dev.skillmanager.effects.CompensationPairingTest;
 import dev.skillmanager.effects.FailureInjectionSweepTest;
 import dev.skillmanager.lock.LockAtomicityTest;
@@ -201,6 +202,7 @@ public class RunTests {
         failures += UninstallScenarioTest.run();
         failures += UninstallCliCleanupTest.run();
         failures += FailureInjectionSweepTest.run();
+        failures += CommitPreImageRestoreTest.run();
         failures += LockReadWriteTest.run();
         failures += RequestedVersionTest.run();
         failures += LockDiffTest.run();

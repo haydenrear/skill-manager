@@ -1,0 +1,1890 @@
+{"runId":"20260822-151612","status":"passed","traceId":"5dd8b24615e5a4d6c6eafa88f68dbd9a","execution":{"mode":"full","graphName":"smoke","complete":true,"expectedNodeIds":["env.prepared","resolver.cycles.verified","postgres.up","registry.up","ci.logged.in","jwt.valid","gateway.python.venv.ready","gateway.up","echo.http.up","hello.published","hello.installed","search.finds","ownership.recorded","semver.enforced","immutability.enforced","markdown.import.violations.reported","markdown.imports.cross_kind.targets","umbrella.installed","transitive.clis.present","skill.script.installed","skill.script.transitive.installed","skill.script.reruns.on.change","skill.script.force.rerun","skill.script.force.sync.with.mcp","skill.script.uninstall.prunes.cli","env.script.reports","mcp.tool.loads.installed","mcp.tool.loads.bundled","echo.http.skill.installed","echo.http.deployed","mcp.tools.visible","mcp.tool.search.finds","mcp.tool.invoked","echo.http.redeployed","echo.session_skill.installed","mcp.session_scope.isolated","echo.global_skill.installed","mcp.global_scope.visible","echo.stdio.skill.installed","mcp.stdio.tool.invoked","mcp.stdio.parallel.global_sticky","echo.stdio.session_skill.installed","mcp.stdio.parallel.session","skill.synced","skill.bind.unbind.cycle","skill.uninstalled","agent.configs.correct","agent.skill.symlinks","smoke.report","servers.down","postgres.down","home.fixpoint.law"],"observedNodeIds":["agent.configs.correct","agent.skill.symlinks","ci.logged.in","echo.global_skill.installed","echo.http.deployed","echo.http.redeployed","echo.http.skill.installed","echo.http.up","echo.session_skill.installed","echo.stdio.session_skill.installed","echo.stdio.skill.installed","env.prepared","env.script.reports","gateway.python.venv.ready","gateway.up","hello.installed","hello.published","home.fixpoint.law","immutability.enforced","jwt.valid","markdown.import.violations.reported","markdown.imports.cross_kind.targets","mcp.global_scope.visible","mcp.session_scope.isolated","mcp.stdio.parallel.global_sticky","mcp.stdio.parallel.session","mcp.stdio.tool.invoked","mcp.tool.invoked","mcp.tool.loads.bundled","mcp.tool.loads.installed","mcp.tool.search.finds","mcp.tools.visible","ownership.recorded","postgres.down","postgres.up","registry.up","resolver.cycles.verified","search.finds","semver.enforced","servers.down","skill.bind.unbind.cycle","skill.script.force.rerun","skill.script.force.sync.with.mcp","skill.script.installed","skill.script.reruns.on.change","skill.script.transitive.installed","skill.script.uninstall.prunes.cli","skill.synced","skill.uninstalled","smoke.report","transitive.clis.present","umbrella.installed"],"missingNodeIds":[],"invalidEnvelopeFiles":[],"duplicateNodeIds":[],"unexpectedNodeIds":[],"unknownStatusNodeIds":[],"missingTraceNodeIds":[],"invalidTraceNodeIds":[],"mismatchedTraceNodeIds":[],"observedContextNodeIds":["env.prepared","resolver.cycles.verified","postgres.up","registry.up","ci.logged.in","jwt.valid","gateway.python.venv.ready","gateway.up","echo.http.up","hello.published","hello.installed","search.finds","ownership.recorded","semver.enforced","immutability.enforced","markdown.import.violations.reported","markdown.imports.cross_kind.targets","umbrella.installed","transitive.clis.present","skill.script.installed","skill.script.transitive.installed","skill.script.reruns.on.change","skill.script.force.rerun","skill.script.force.sync.with.mcp","skill.script.uninstall.prunes.cli","env.script.reports","mcp.tool.loads.installed","mcp.tool.loads.bundled","echo.http.skill.installed","echo.http.deployed","mcp.tools.visible","mcp.tool.search.finds","mcp.tool.invoked","echo.http.redeployed","echo.session_skill.installed","mcp.session_scope.isolated","echo.global_skill.installed","mcp.global_scope.visible","echo.stdio.skill.installed","mcp.stdio.tool.invoked","mcp.stdio.parallel.global_sticky","echo.stdio.session_skill.installed","mcp.stdio.parallel.session","skill.synced","skill.bind.unbind.cycle","skill.uninstalled","agent.configs.correct","agent.skill.symlinks","smoke.report","servers.down","postgres.down","home.fixpoint.law"],"missingContextNodeIds":[],"invalidContextFiles":[],"unexpectedContextNodeIds":[],"contextProvenanceViolationNodeIds":[],"replaySourceContextMismatchNodeIds":[],"contextFileCountExceeded":false,"aggregateContextBytesExceeded":false,"envelopeFileCountExceeded":false,"aggregateEnvelopeBytesExceeded":false,"aggregateJsonStructureExceeded":false,"unknownExecutionScope":false},"nodes":[{
+  "nodeId" : "agent.configs.correct",
+  "status" : "passed",
+  "startedAt" : "2026-08-22T15:30:42.858086Z",
+  "endedAt" : "2026-08-22T15:30:48.753716Z",
+  "assertions" : [ {
+    "name" : "install_ok",
+    "status" : "passed"
+  }, {
+    "name" : "second_install_ok",
+    "status" : "passed"
+  }, {
+    "name" : "codex_marketplace_ops_succeeded_when_available",
+    "status" : "passed"
+  }, {
+    "name" : "codex_marketplace_ops_still_succeed_when_available",
+    "status" : "passed"
+  }, {
+    "name" : "codex_marketplace_isolated_when_available",
+    "status" : "passed"
+  }, {
+    "name" : "codex_marketplace_remains_isolated_when_available",
+    "status" : "passed"
+  }, {
+    "name" : "claude_json_has_gateway_entry",
+    "status" : "passed"
+  }, {
+    "name" : "claude_json_points_at_gateway_url",
+    "status" : "passed"
+  }, {
+    "name" : "codex_toml_has_gateway_table",
+    "status" : "passed"
+  }, {
+    "name" : "codex_toml_points_at_gateway_url",
+    "status" : "passed"
+  }, {
+    "name" : "gemini_settings_has_gateway_entry",
+    "status" : "passed"
+  }, {
+    "name" : "gemini_settings_points_at_gateway_url",
+    "status" : "passed"
+  }, {
+    "name" : "gemini_settings_uses_httpUrl",
+    "status" : "passed"
+  }, {
+    "name" : "claude_entry_not_duplicated",
+    "status" : "passed"
+  }, {
+    "name" : "codex_entry_not_duplicated",
+    "status" : "passed"
+  }, {
+    "name" : "gemini_entry_not_duplicated",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ ],
+  "metrics" : {
+    "codexCliAvailable" : 1,
+    "claudeGatewayMentions" : 1,
+    "codexGatewayMentions" : 1,
+    "geminiGatewayMentions" : 1,
+    "durationMs" : 5895
+  },
+  "logs" : [ ],
+  "published" : { }
+,"envelopeVersion":1,"executorStartedAt":"2026-08-22T15:30:42.159327Z","executorEndedAt":"2026-08-22T15:31:04.845639Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/agent.configs.correct.stdout.log","inputContextFile":"context/agent.configs.correct.input.json","traceId":"5dd8b24615e5a4d6c6eafa88f68dbd9a"},{
+  "nodeId" : "agent.skill.symlinks",
+  "status" : "passed",
+  "startedAt" : "2026-08-22T15:31:05.502105Z",
+  "endedAt" : "2026-08-22T15:31:05.506143Z",
+  "assertions" : [ {
+    "name" : "claude_hello_skill_symlinked",
+    "status" : "passed"
+  }, {
+    "name" : "claude_hello_skill_targets_store",
+    "status" : "passed"
+  }, {
+    "name" : "codex_hello_skill_symlinked",
+    "status" : "passed"
+  }, {
+    "name" : "codex_hello_skill_targets_store",
+    "status" : "passed"
+  }, {
+    "name" : "gemini_hello_skill_symlinked",
+    "status" : "passed"
+  }, {
+    "name" : "gemini_hello_skill_targets_store",
+    "status" : "passed"
+  }, {
+    "name" : "claude_umbrella_skill_symlinked",
+    "status" : "passed"
+  }, {
+    "name" : "claude_umbrella_skill_targets_store",
+    "status" : "passed"
+  }, {
+    "name" : "codex_umbrella_skill_symlinked",
+    "status" : "passed"
+  }, {
+    "name" : "codex_umbrella_skill_targets_store",
+    "status" : "passed"
+  }, {
+    "name" : "gemini_umbrella_skill_symlinked",
+    "status" : "passed"
+  }, {
+    "name" : "gemini_umbrella_skill_targets_store",
+    "status" : "passed"
+  }, {
+    "name" : "claude_pip_cli_skill_symlinked",
+    "status" : "passed"
+  }, {
+    "name" : "claude_pip_cli_skill_targets_store",
+    "status" : "passed"
+  }, {
+    "name" : "codex_pip_cli_skill_symlinked",
+    "status" : "passed"
+  }, {
+    "name" : "codex_pip_cli_skill_targets_store",
+    "status" : "passed"
+  }, {
+    "name" : "gemini_pip_cli_skill_symlinked",
+    "status" : "passed"
+  }, {
+    "name" : "gemini_pip_cli_skill_targets_store",
+    "status" : "passed"
+  }, {
+    "name" : "claude_npm_cli_skill_symlinked",
+    "status" : "passed"
+  }, {
+    "name" : "claude_npm_cli_skill_targets_store",
+    "status" : "passed"
+  }, {
+    "name" : "codex_npm_cli_skill_symlinked",
+    "status" : "passed"
+  }, {
+    "name" : "codex_npm_cli_skill_targets_store",
+    "status" : "passed"
+  }, {
+    "name" : "gemini_npm_cli_skill_symlinked",
+    "status" : "passed"
+  }, {
+    "name" : "gemini_npm_cli_skill_targets_store",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ ],
+  "metrics" : {
+    "durationMs" : 4
+  },
+  "logs" : [ ],
+  "published" : { }
+,"envelopeVersion":1,"executorStartedAt":"2026-08-22T15:31:04.864876Z","executorEndedAt":"2026-08-22T15:31:19.511615Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/agent.skill.symlinks.stdout.log","inputContextFile":"context/agent.skill.symlinks.input.json","traceId":"5dd8b24615e5a4d6c6eafa88f68dbd9a"},{
+  "nodeId" : "ci.logged.in",
+  "status" : "passed",
+  "startedAt" : "2026-08-22T15:17:24.805234Z",
+  "endedAt" : "2026-08-22T15:17:26.185306Z",
+  "assertions" : [ {
+    "name" : "token_cached",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "login",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-186-his-11/skill-manager", "login", "--client-id", "skill-manager-ci", "--client-secret", "dev-ci-secret-change-me", "--scope", "skill:publish ad:manage", "--registry", "http://127.0.0.1:65504" ],
+    "startedAt" : "2026-08-22T15:17:24.809619Z",
+    "endedAt" : "2026-08-22T15:17:26.185039Z",
+    "exitCode" : 0,
+    "pid" : 11796,
+    "log" : "node-logs/ci.logged.in.login.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "durationMs" : 1380
+  },
+  "logs" : [ ],
+  "published" : {
+    "clientId" : "skill-manager-ci"
+  }
+,"envelopeVersion":1,"executorStartedAt":"2026-08-22T15:17:24.138559Z","executorEndedAt":"2026-08-22T15:17:42.993142Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/ci.logged.in.stdout.log","inputContextFile":"context/ci.logged.in.input.json","traceId":"5dd8b24615e5a4d6c6eafa88f68dbd9a"},{
+  "nodeId" : "echo.global_skill.installed",
+  "status" : "passed",
+  "startedAt" : "2026-08-22T15:27:36.072156Z",
+  "endedAt" : "2026-08-22T15:27:39.248109Z",
+  "assertions" : [ {
+    "name" : "install_ok",
+    "status" : "passed"
+  }, {
+    "name" : "status_deployed_at_install",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ ],
+  "metrics" : {
+    "stdoutBytes" : 666,
+    "durationMs" : 3176
+  },
+  "logs" : [ ],
+  "published" : {
+    "serverId" : "echo-http-global"
+  }
+,"envelopeVersion":1,"executorStartedAt":"2026-08-22T15:27:35.340458Z","executorEndedAt":"2026-08-22T15:27:54.639492Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/echo.global_skill.installed.stdout.log","inputContextFile":"context/echo.global_skill.installed.input.json","traceId":"5dd8b24615e5a4d6c6eafa88f68dbd9a"},{
+  "nodeId" : "echo.http.deployed",
+  "status" : "passed",
+  "startedAt" : "2026-08-22T15:25:46.671622Z",
+  "endedAt" : "2026-08-22T15:25:47.182810Z",
+  "assertions" : [ {
+    "name" : "server_deployed_globally",
+    "status" : "passed"
+  }, {
+    "name" : "echo_tool_in_active_tools",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ ],
+  "metrics" : {
+    "durationMs" : 511
+  },
+  "logs" : [ ],
+  "published" : {
+    "toolPath" : "echo-http/echo"
+  }
+,"envelopeVersion":1,"executorStartedAt":"2026-08-22T15:25:45.984484Z","executorEndedAt":"2026-08-22T15:26:00.171565Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/echo.http.deployed.stdout.log","inputContextFile":"context/echo.http.deployed.input.json","traceId":"5dd8b24615e5a4d6c6eafa88f68dbd9a"},{
+  "nodeId" : "echo.http.redeployed",
+  "status" : "passed",
+  "startedAt" : "2026-08-22T15:26:45.719349Z",
+  "endedAt" : "2026-08-22T15:26:46.230188Z",
+  "assertions" : [ {
+    "name" : "initialized_at_advanced",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ ],
+  "metrics" : {
+    "initializedAtBefore" : 1.787412327283502E9,
+    "initializedAtAfter" : 1.787412406206134E9,
+    "durationMs" : 511
+  },
+  "logs" : [ ],
+  "published" : { }
+,"envelopeVersion":1,"executorStartedAt":"2026-08-22T15:26:45.041531Z","executorEndedAt":"2026-08-22T15:26:59.980227Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/echo.http.redeployed.stdout.log","inputContextFile":"context/echo.http.redeployed.input.json","traceId":"5dd8b24615e5a4d6c6eafa88f68dbd9a"},{
+  "nodeId" : "echo.http.skill.installed",
+  "status" : "passed",
+  "startedAt" : "2026-08-22T15:25:25.811973Z",
+  "endedAt" : "2026-08-22T15:25:28.543221Z",
+  "assertions" : [ {
+    "name" : "install_ok",
+    "status" : "passed"
+  }, {
+    "name" : "mcp_dep_deployed_transitively",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ ],
+  "metrics" : {
+    "stdoutBytes" : 664,
+    "durationMs" : 2732
+  },
+  "logs" : [ ],
+  "published" : {
+    "serverId" : "echo-http"
+  }
+,"envelopeVersion":1,"executorStartedAt":"2026-08-22T15:25:25.153024Z","executorEndedAt":"2026-08-22T15:25:45.963748Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/echo.http.skill.installed.stdout.log","inputContextFile":"context/echo.http.skill.installed.input.json","traceId":"5dd8b24615e5a4d6c6eafa88f68dbd9a"},{
+  "nodeId" : "echo.http.up",
+  "status" : "passed",
+  "startedAt" : "2026-08-22T15:18:33.390042Z",
+  "endedAt" : "2026-08-22T15:18:34.019375Z",
+  "assertions" : [ {
+    "name" : "fixture_healthy",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ ],
+  "metrics" : {
+    "port" : 50262,
+    "pid" : 12076,
+    "durationMs" : 629
+  },
+  "logs" : [ ],
+  "published" : {
+    "mcpUrl" : "http://127.0.0.1:50262/mcp"
+  }
+,"envelopeVersion":1,"executorStartedAt":"2026-08-22T15:18:32.729534Z","executorEndedAt":"2026-08-22T15:18:47.045794Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/echo.http.up.stdout.log","inputContextFile":"context/echo.http.up.input.json","traceId":"5dd8b24615e5a4d6c6eafa88f68dbd9a"},{
+  "nodeId" : "echo.session_skill.installed",
+  "status" : "passed",
+  "startedAt" : "2026-08-22T15:27:00.737511Z",
+  "endedAt" : "2026-08-22T15:27:03.575264Z",
+  "assertions" : [ {
+    "name" : "install_ok",
+    "status" : "passed"
+  }, {
+    "name" : "status_registered_not_deployed",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ ],
+  "metrics" : {
+    "stdoutBytes" : 704,
+    "durationMs" : 2838
+  },
+  "logs" : [ ],
+  "published" : {
+    "serverId" : "echo-http-session"
+  }
+,"envelopeVersion":1,"executorStartedAt":"2026-08-22T15:26:59.999317Z","executorEndedAt":"2026-08-22T15:27:20.566419Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/echo.session_skill.installed.stdout.log","inputContextFile":"context/echo.session_skill.installed.input.json","traceId":"5dd8b24615e5a4d6c6eafa88f68dbd9a"},{
+  "nodeId" : "echo.stdio.session_skill.installed",
+  "status" : "passed",
+  "startedAt" : "2026-08-22T15:29:01.264935Z",
+  "endedAt" : "2026-08-22T15:29:04.214478Z",
+  "assertions" : [ {
+    "name" : "install_ok",
+    "status" : "passed"
+  }, {
+    "name" : "status_registered_not_deployed",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ ],
+  "metrics" : {
+    "stdoutBytes" : 711,
+    "durationMs" : 2950
+  },
+  "logs" : [ ],
+  "published" : {
+    "serverId" : "echo-stdio-session"
+  }
+,"envelopeVersion":1,"executorStartedAt":"2026-08-22T15:29:00.479385Z","executorEndedAt":"2026-08-22T15:29:19.087853Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/echo.stdio.session_skill.installed.stdout.log","inputContextFile":"context/echo.stdio.session_skill.installed.input.json","traceId":"5dd8b24615e5a4d6c6eafa88f68dbd9a"},{
+  "nodeId" : "echo.stdio.skill.installed",
+  "status" : "passed",
+  "startedAt" : "2026-08-22T15:28:09.802819Z",
+  "endedAt" : "2026-08-22T15:28:13.262988Z",
+  "assertions" : [ {
+    "name" : "install_ok",
+    "status" : "passed"
+  }, {
+    "name" : "stdio_mcp_deployed_transitively",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ ],
+  "metrics" : {
+    "stdoutBytes" : 666,
+    "durationMs" : 3460
+  },
+  "logs" : [ ],
+  "published" : {
+    "serverId" : "echo-stdio"
+  }
+,"envelopeVersion":1,"executorStartedAt":"2026-08-22T15:28:09.086793Z","executorEndedAt":"2026-08-22T15:28:29.733501Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/echo.stdio.skill.installed.stdout.log","inputContextFile":"context/echo.stdio.skill.installed.input.json","traceId":"5dd8b24615e5a4d6c6eafa88f68dbd9a"},{
+  "nodeId" : "env.prepared",
+  "status" : "passed",
+  "startedAt" : "2026-08-22T15:16:13.280140Z",
+  "endedAt" : "2026-08-22T15:16:13.307027Z",
+  "assertions" : [ {
+    "name" : "home_created",
+    "status" : "passed"
+  }, {
+    "name" : "agent_home_created",
+    "status" : "passed"
+  }, {
+    "name" : "codex_home_created",
+    "status" : "passed"
+  }, {
+    "name" : "gemini_home_created",
+    "status" : "passed"
+  }, {
+    "name" : "ports_allocated",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ ],
+  "metrics" : {
+    "registryPort" : 65504,
+    "gatewayPort" : 65505,
+    "durationMs" : 27
+  },
+  "logs" : [ ],
+  "published" : {
+    "home" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-12452952578011379320",
+    "claudeHome" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-12452952578011379320/agent-home",
+    "codexHome" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-12452952578011379320/agent-home/.codex",
+    "geminiHome" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-12452952578011379320/agent-home/.gemini",
+    "registryPort" : "65504",
+    "gatewayPort" : "65505"
+  }
+,"envelopeVersion":1,"executorStartedAt":"2026-08-22T15:16:12.653577Z","executorEndedAt":"2026-08-22T15:16:27.049123Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/env.prepared.stdout.log","inputContextFile":"context/env.prepared.input.json","traceId":"5dd8b24615e5a4d6c6eafa88f68dbd9a"},{
+  "nodeId" : "env.script.reports",
+  "status" : "passed",
+  "startedAt" : "2026-08-22T15:24:36.127687Z",
+  "endedAt" : "2026-08-22T15:24:36.392339Z",
+  "assertions" : [ {
+    "name" : "env_script_exists",
+    "status" : "passed"
+  }, {
+    "name" : "home_matches",
+    "status" : "passed"
+  }, {
+    "name" : "pip_skill_resolved",
+    "status" : "passed"
+  }, {
+    "name" : "npm_skill_resolved",
+    "status" : "passed"
+  }, {
+    "name" : "unknown_skill_reported",
+    "status" : "passed"
+  }, {
+    "name" : "pycowsay_installed_under_bin_cli",
+    "status" : "passed"
+  }, {
+    "name" : "pycowsay_backend_pip",
+    "status" : "passed"
+  }, {
+    "name" : "pycowsay_from_pip_skill",
+    "status" : "passed"
+  }, {
+    "name" : "cowsay_installed_under_bin_cli",
+    "status" : "passed"
+  }, {
+    "name" : "cowsay_backend_npm",
+    "status" : "passed"
+  }, {
+    "name" : "cowsay_from_npm_skill",
+    "status" : "passed"
+  }, {
+    "name" : "uv_bundled_under_home_pm",
+    "status" : "passed"
+  }, {
+    "name" : "npm_bundled_under_home_pm",
+    "status" : "passed"
+  }, {
+    "name" : "node_bundled_under_home_pm",
+    "status" : "passed"
+  }, {
+    "name" : "brew_not_bundled",
+    "status" : "passed"
+  }, {
+    "name" : "missing_array_empty",
+    "status" : "passed"
+  }, {
+    "name" : "dumpall_skills_requested_null",
+    "status" : "passed"
+  }, {
+    "name" : "dumpall_includes_pip_skill",
+    "status" : "passed"
+  }, {
+    "name" : "dumpall_includes_npm_skill",
+    "status" : "passed"
+  }, {
+    "name" : "dumpall_clis_has_pycowsay",
+    "status" : "passed"
+  }, {
+    "name" : "dumpall_clis_has_cowsay",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "env-run1",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-186-his-11/skill-manager-skill/scripts/env.sh", "--skills", "pip-cli-skill", "npm-cli-skill", "nonexistent-skill" ],
+    "startedAt" : "2026-08-22T15:24:36.194783Z",
+    "endedAt" : "2026-08-22T15:24:36.312647Z",
+    "exitCode" : 0,
+    "pid" : 24768,
+    "log" : "node-logs/env.script.reports.env-run1.log",
+    "error" : null
+  }, {
+    "label" : "env-run2",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-186-his-11/skill-manager-skill/scripts/env.sh" ],
+    "startedAt" : "2026-08-22T15:24:36.329846Z",
+    "endedAt" : "2026-08-22T15:24:36.390664Z",
+    "exitCode" : 0,
+    "pid" : 24783,
+    "log" : "node-logs/env.script.reports.env-run2.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "durationMs" : 265
+  },
+  "logs" : [ ],
+  "published" : { }
+,"envelopeVersion":1,"executorStartedAt":"2026-08-22T15:24:35.443146Z","executorEndedAt":"2026-08-22T15:24:50.436253Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/env.script.reports.stdout.log","inputContextFile":"context/env.script.reports.input.json","traceId":"5dd8b24615e5a4d6c6eafa88f68dbd9a"},{
+  "nodeId" : "gateway.python.venv.ready",
+  "status" : "passed",
+  "startedAt" : "2026-08-22T15:17:58.369012Z",
+  "endedAt" : "2026-08-22T15:17:58.486157Z",
+  "assertions" : [ {
+    "name" : "uv_sync_ok",
+    "status" : "passed"
+  }, {
+    "name" : "venv_python_present",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "uv-sync",
+    "command" : [ "uv", "sync", "--locked", "--all-extras" ],
+    "startedAt" : "2026-08-22T15:17:58.372418Z",
+    "endedAt" : "2026-08-22T15:17:58.485659Z",
+    "exitCode" : 0,
+    "pid" : 11929,
+    "log" : "node-logs/gateway.python.venv.ready.uv-sync.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "durationMs" : 117
+  },
+  "logs" : [ ],
+  "published" : {
+    "venvPython" : "/Users/hayde/IdeaProjects/wt-186-his-11/virtual-mcp-gateway/.venv/bin/python"
+  }
+,"envelopeVersion":1,"executorStartedAt":"2026-08-22T15:17:57.721987Z","executorEndedAt":"2026-08-22T15:18:12.759628Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/gateway.python.venv.ready.stdout.log","inputContextFile":"context/gateway.python.venv.ready.input.json","traceId":"5dd8b24615e5a4d6c6eafa88f68dbd9a"},{
+  "nodeId" : "gateway.up",
+  "status" : "passed",
+  "startedAt" : "2026-08-22T15:18:13.440863Z",
+  "endedAt" : "2026-08-22T15:18:16.775973Z",
+  "assertions" : [ {
+    "name" : "gateway_healthy",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "gateway-up",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-186-his-11/skill-manager", "gateway", "up", "--port", "65505", "--wait-seconds", "45" ],
+    "startedAt" : "2026-08-22T15:18:13.467967Z",
+    "endedAt" : "2026-08-22T15:18:16.773552Z",
+    "exitCode" : 0,
+    "pid" : 11993,
+    "log" : "node-logs/gateway.up.gateway-up.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "port" : 65505,
+    "durationMs" : 3335
+  },
+  "logs" : [ ],
+  "published" : {
+    "baseUrl" : "http://127.0.0.1:65505"
+  }
+,"envelopeVersion":1,"executorStartedAt":"2026-08-22T15:18:12.779626Z","executorEndedAt":"2026-08-22T15:18:32.710301Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/gateway.up.stdout.log","inputContextFile":"context/gateway.up.input.json","traceId":"5dd8b24615e5a4d6c6eafa88f68dbd9a"},{
+  "nodeId" : "hello.installed",
+  "status" : "passed",
+  "startedAt" : "2026-08-22T15:19:06.525946Z",
+  "endedAt" : "2026-08-22T15:19:11.581482Z",
+  "assertions" : [ {
+    "name" : "add_ok",
+    "status" : "passed"
+  }, {
+    "name" : "skill_md_present",
+    "status" : "passed"
+  }, {
+    "name" : "skill_manager_toml_present",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "install",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-186-his-11/skill-manager", "install", "hello-skill", "--registry", "http://127.0.0.1:65504", "--yes" ],
+    "startedAt" : "2026-08-22T15:19:06.529953Z",
+    "endedAt" : "2026-08-22T15:19:11.581098Z",
+    "exitCode" : 0,
+    "pid" : 13064,
+    "log" : "node-logs/hello.installed.install.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "exitCode" : 0,
+    "durationMs" : 5056
+  },
+  "logs" : [ ],
+  "published" : {
+    "skillDir" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-12452952578011379320/skills/hello-skill"
+  }
+,"envelopeVersion":1,"executorStartedAt":"2026-08-22T15:19:05.853296Z","executorEndedAt":"2026-08-22T15:19:29.282303Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/hello.installed.stdout.log","inputContextFile":"context/hello.installed.input.json","traceId":"5dd8b24615e5a4d6c6eafa88f68dbd9a"},{
+  "nodeId" : "hello.published",
+  "status" : "passed",
+  "startedAt" : "2026-08-22T15:18:47.754759Z",
+  "endedAt" : "2026-08-22T15:18:49.552204Z",
+  "assertions" : [ {
+    "name" : "published_ok",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "publish",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-186-his-11/skill-manager", "publish", "/Users/hayde/IdeaProjects/wt-186-his-11/examples/hello-skill", "--upload-tarball", "--registry", "http://127.0.0.1:65504" ],
+    "startedAt" : "2026-08-22T15:18:47.758835Z",
+    "endedAt" : "2026-08-22T15:18:49.551915Z",
+    "exitCode" : 0,
+    "pid" : 12457,
+    "log" : "node-logs/hello.published.publish.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "exitCode" : 0,
+    "durationMs" : 1798
+  },
+  "logs" : [ ],
+  "published" : {
+    "skillName" : "hello-skill"
+  }
+,"envelopeVersion":1,"executorStartedAt":"2026-08-22T15:18:47.063340Z","executorEndedAt":"2026-08-22T15:19:05.835814Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/hello.published.stdout.log","inputContextFile":"context/hello.published.input.json","traceId":"5dd8b24615e5a4d6c6eafa88f68dbd9a"},{
+  "nodeId" : "home.fixpoint.law",
+  "status" : "passed",
+  "startedAt" : "2026-08-22T15:32:15.650281Z",
+  "endedAt" : "2026-08-22T15:32:24.558504Z",
+  "assertions" : [ {
+    "name" : "every_home_verifies_or_its_own_remedy_repairs_it",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ ],
+  "metrics" : {
+    "homesChecked" : 1,
+    "homesRepaired" : 0,
+    "homesOutsideSandbox" : 0,
+    "durationMs" : 8908
+  },
+  "logs" : [ "PASS  /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-12452952578011379320" ],
+  "published" : {
+    "homesChecked" : "/private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-12452952578011379320",
+    "homesRepaired" : ""
+  }
+,"envelopeVersion":1,"executorStartedAt":"2026-08-22T15:32:14.983687Z","executorEndedAt":"2026-08-22T15:32:38.517496Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/home.fixpoint.law.stdout.log","inputContextFile":"context/home.fixpoint.law.input.json","traceId":"5dd8b24615e5a4d6c6eafa88f68dbd9a"},{
+  "nodeId" : "immutability.enforced",
+  "status" : "passed",
+  "startedAt" : "2026-08-22T15:20:22.232942Z",
+  "endedAt" : "2026-08-22T15:20:24.028289Z",
+  "assertions" : [ {
+    "name" : "republish_rejected",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ ],
+  "metrics" : {
+    "exitCode" : 1,
+    "durationMs" : 1796
+  },
+  "logs" : [ ],
+  "published" : { }
+,"envelopeVersion":1,"executorStartedAt":"2026-08-22T15:20:21.507688Z","executorEndedAt":"2026-08-22T15:20:40.893917Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/immutability.enforced.stdout.log","inputContextFile":"context/immutability.enforced.input.json","traceId":"5dd8b24615e5a4d6c6eafa88f68dbd9a"},{
+  "nodeId" : "jwt.valid",
+  "status" : "passed",
+  "startedAt" : "2026-08-22T15:17:43.662234Z",
+  "endedAt" : "2026-08-22T15:17:43.820969Z",
+  "assertions" : [ {
+    "name" : "authed_me_is_200",
+    "status" : "passed"
+  }, {
+    "name" : "identity_matches_expected_user",
+    "status" : "passed"
+  }, {
+    "name" : "unauthed_publish_is_401",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ ],
+  "metrics" : {
+    "me_status" : 200,
+    "unauth_publish_status" : 401,
+    "durationMs" : 158
+  },
+  "logs" : [ ],
+  "published" : { }
+,"envelopeVersion":1,"executorStartedAt":"2026-08-22T15:17:43.012536Z","executorEndedAt":"2026-08-22T15:17:57.703953Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/jwt.valid.stdout.log","inputContextFile":"context/jwt.valid.input.json","traceId":"5dd8b24615e5a4d6c6eafa88f68dbd9a"},{
+  "nodeId" : "markdown.import.violations.reported",
+  "status" : "passed",
+  "startedAt" : "2026-08-22T15:20:41.635969Z",
+  "endedAt" : "2026-08-22T15:20:56.137461Z",
+  "assertions" : [ {
+    "name" : "skill_install_commits_and_reports",
+    "status" : "passed"
+  }, {
+    "name" : "plugin_install_commits_and_reports",
+    "status" : "passed"
+  }, {
+    "name" : "doc_install_commits_and_reports",
+    "status" : "passed"
+  }, {
+    "name" : "harness_install_commits_and_reports",
+    "status" : "passed"
+  }, {
+    "name" : "all_installs_exit_import_violation_code",
+    "status" : "passed"
+  }, {
+    "name" : "all_violations_rendered",
+    "status" : "passed"
+  }, {
+    "name" : "all_units_still_committed",
+    "status" : "passed"
+  }, {
+    "name" : "COMPANION_resolving_import_exits_zero",
+    "status" : "passed"
+  }, {
+    "name" : "COMPANION_resolving_import_reports_nothing",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "install-skill",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-186-his-11/skill-manager", "install", "file:///var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-12452952578011379320/markdown-import-violation-fixtures/skill", "--yes" ],
+    "startedAt" : "2026-08-22T15:20:41.644449Z",
+    "endedAt" : "2026-08-22T15:20:44.369055Z",
+    "exitCode" : 11,
+    "pid" : 16617,
+    "log" : "node-logs/markdown.import.violations.reported.install-skill.log",
+    "error" : null
+  }, {
+    "label" : "install-plugin",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-186-his-11/skill-manager", "install", "file:///var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-12452952578011379320/markdown-import-violation-fixtures/plugin", "--yes" ],
+    "startedAt" : "2026-08-22T15:20:44.371428Z",
+    "endedAt" : "2026-08-22T15:20:47.947690Z",
+    "exitCode" : 11,
+    "pid" : 16670,
+    "log" : "node-logs/markdown.import.violations.reported.install-plugin.log",
+    "error" : null
+  }, {
+    "label" : "install-doc",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-186-his-11/skill-manager", "install", "file:///var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-12452952578011379320/markdown-import-violation-fixtures/doc", "--yes" ],
+    "startedAt" : "2026-08-22T15:20:47.949012Z",
+    "endedAt" : "2026-08-22T15:20:50.638466Z",
+    "exitCode" : 11,
+    "pid" : 16755,
+    "log" : "node-logs/markdown.import.violations.reported.install-doc.log",
+    "error" : null
+  }, {
+    "label" : "install-harness",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-186-his-11/skill-manager", "install", "file:///var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-12452952578011379320/markdown-import-violation-fixtures/harness", "--yes" ],
+    "startedAt" : "2026-08-22T15:20:50.639408Z",
+    "endedAt" : "2026-08-22T15:20:53.412572Z",
+    "exitCode" : 11,
+    "pid" : 16845,
+    "log" : "node-logs/markdown.import.violations.reported.install-harness.log",
+    "error" : null
+  }, {
+    "label" : "install-clean",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-186-his-11/skill-manager", "install", "file:///var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-12452952578011379320/markdown-import-violation-fixtures/clean", "--yes" ],
+    "startedAt" : "2026-08-22T15:20:53.413540Z",
+    "endedAt" : "2026-08-22T15:20:56.135387Z",
+    "exitCode" : 0,
+    "pid" : 16931,
+    "log" : "node-logs/markdown.import.violations.reported.install-clean.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "durationMs" : 14502
+  },
+  "logs" : [ ],
+  "published" : { }
+,"envelopeVersion":1,"executorStartedAt":"2026-08-22T15:20:40.918372Z","executorEndedAt":"2026-08-22T15:21:08.884715Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/markdown.import.violations.reported.stdout.log","inputContextFile":"context/markdown.import.violations.reported.input.json","traceId":"5dd8b24615e5a4d6c6eafa88f68dbd9a"},{
+  "nodeId" : "markdown.imports.cross_kind.targets",
+  "status" : "passed",
+  "startedAt" : "2026-08-22T15:21:09.589786Z",
+  "endedAt" : "2026-08-22T15:21:27.892057Z",
+  "assertions" : [ {
+    "name" : "all_installs_exit_zero",
+    "status" : "passed"
+  }, {
+    "name" : "source_imports_validate_cleanly",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "install-plugin",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-186-his-11/skill-manager", "install", "file:///var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-12452952578011379320/cross-kind-import-fixtures/mk-target-plugin", "--yes" ],
+    "startedAt" : "2026-08-22T15:21:09.603518Z",
+    "endedAt" : "2026-08-22T15:21:19.892705Z",
+    "exitCode" : 0,
+    "pid" : 17991,
+    "log" : "node-logs/markdown.imports.cross_kind.targets.install-plugin.log",
+    "error" : null
+  }, {
+    "label" : "install-doc",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-186-his-11/skill-manager", "install", "file:///var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-12452952578011379320/cross-kind-import-fixtures/mk-target-doc", "--yes" ],
+    "startedAt" : "2026-08-22T15:21:19.892978Z",
+    "endedAt" : "2026-08-22T15:21:22.567619Z",
+    "exitCode" : 0,
+    "pid" : 18540,
+    "log" : "node-logs/markdown.imports.cross_kind.targets.install-doc.log",
+    "error" : null
+  }, {
+    "label" : "install-harness",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-186-his-11/skill-manager", "install", "file:///var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-12452952578011379320/cross-kind-import-fixtures/mk-target-harness", "--yes" ],
+    "startedAt" : "2026-08-22T15:21:22.567890Z",
+    "endedAt" : "2026-08-22T15:21:25.231350Z",
+    "exitCode" : 0,
+    "pid" : 18700,
+    "log" : "node-logs/markdown.imports.cross_kind.targets.install-harness.log",
+    "error" : null
+  }, {
+    "label" : "install-source",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-186-his-11/skill-manager", "install", "file:///var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-12452952578011379320/cross-kind-import-fixtures/mk-source-skill", "--yes" ],
+    "startedAt" : "2026-08-22T15:21:25.235651Z",
+    "endedAt" : "2026-08-22T15:21:27.890404Z",
+    "exitCode" : 0,
+    "pid" : 18876,
+    "log" : "node-logs/markdown.imports.cross_kind.targets.install-source.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "durationMs" : 18303
+  },
+  "logs" : [ ],
+  "published" : { }
+,"envelopeVersion":1,"executorStartedAt":"2026-08-22T15:21:08.900660Z","executorEndedAt":"2026-08-22T15:21:41.854063Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/markdown.imports.cross_kind.targets.stdout.log","inputContextFile":"context/markdown.imports.cross_kind.targets.input.json","traceId":"5dd8b24615e5a4d6c6eafa88f68dbd9a"},{
+  "nodeId" : "mcp.global_scope.visible",
+  "status" : "passed",
+  "startedAt" : "2026-08-22T15:27:55.327854Z",
+  "endedAt" : "2026-08-22T15:27:55.862098Z",
+  "assertions" : [ {
+    "name" : "session_X_sees_global",
+    "status" : "passed"
+  }, {
+    "name" : "session_Y_sees_global",
+    "status" : "passed"
+  }, {
+    "name" : "session_X_not_session_scoped",
+    "status" : "passed"
+  }, {
+    "name" : "session_Y_not_session_scoped",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ ],
+  "metrics" : {
+    "durationMs" : 535
+  },
+  "logs" : [ ],
+  "published" : { }
+,"envelopeVersion":1,"executorStartedAt":"2026-08-22T15:27:54.661584Z","executorEndedAt":"2026-08-22T15:28:09.066928Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/mcp.global_scope.visible.stdout.log","inputContextFile":"context/mcp.global_scope.visible.input.json","traceId":"5dd8b24615e5a4d6c6eafa88f68dbd9a"},{
+  "nodeId" : "mcp.session_scope.isolated",
+  "status" : "passed",
+  "startedAt" : "2026-08-22T15:27:21.242171Z",
+  "endedAt" : "2026-08-22T15:27:21.781086Z",
+  "assertions" : [ {
+    "name" : "deploy_returned_session_scope",
+    "status" : "passed"
+  }, {
+    "name" : "session_A_sees_deployed",
+    "status" : "passed"
+  }, {
+    "name" : "not_deployed_globally",
+    "status" : "passed"
+  }, {
+    "name" : "session_B_does_not_see_deployed",
+    "status" : "passed"
+  }, {
+    "name" : "session_B_does_not_see_global",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ ],
+  "metrics" : {
+    "durationMs" : 539
+  },
+  "logs" : [ ],
+  "published" : { }
+,"envelopeVersion":1,"executorStartedAt":"2026-08-22T15:27:20.584670Z","executorEndedAt":"2026-08-22T15:27:35.322736Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/mcp.session_scope.isolated.stdout.log","inputContextFile":"context/mcp.session_scope.isolated.input.json","traceId":"5dd8b24615e5a4d6c6eafa88f68dbd9a"},{
+  "nodeId" : "mcp.stdio.parallel.global_sticky",
+  "status" : "passed",
+  "startedAt" : "2026-08-22T15:28:46.049278Z",
+  "endedAt" : "2026-08-22T15:28:46.678994Z",
+  "assertions" : [ {
+    "name" : "all_invocations_round_tripped",
+    "status" : "passed"
+  }, {
+    "name" : "server_still_deployed",
+    "status" : "passed"
+  }, {
+    "name" : "tools_list_parsed",
+    "status" : "passed"
+  }, {
+    "name" : "final_invoke_returns_expected_payload",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ ],
+  "metrics" : {
+    "concurrency" : 10,
+    "hits" : 10,
+    "toolCount" : 1,
+    "durationMs" : 629
+  },
+  "logs" : [ ],
+  "published" : { }
+,"envelopeVersion":1,"executorStartedAt":"2026-08-22T15:28:45.387074Z","executorEndedAt":"2026-08-22T15:29:00.460850Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/mcp.stdio.parallel.global_sticky.stdout.log","inputContextFile":"context/mcp.stdio.parallel.global_sticky.input.json","traceId":"5dd8b24615e5a4d6c6eafa88f68dbd9a"},{
+  "nodeId" : "mcp.stdio.parallel.session",
+  "status" : "passed",
+  "startedAt" : "2026-08-22T15:29:19.824384Z",
+  "endedAt" : "2026-08-22T15:29:20.942059Z",
+  "assertions" : [ {
+    "name" : "all_session_invocations_round_tripped",
+    "status" : "passed"
+  }, {
+    "name" : "session_A_still_deployed",
+    "status" : "passed"
+  }, {
+    "name" : "not_widened_to_global",
+    "status" : "passed"
+  }, {
+    "name" : "session_B_isolated",
+    "status" : "passed"
+  }, {
+    "name" : "tools_list_parsed_in_session",
+    "status" : "passed"
+  }, {
+    "name" : "final_invoke_returns_expected_payload",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ ],
+  "metrics" : {
+    "concurrency" : 8,
+    "hits" : 8,
+    "toolCount" : 1,
+    "durationMs" : 1118
+  },
+  "logs" : [ ],
+  "published" : { }
+,"envelopeVersion":1,"executorStartedAt":"2026-08-22T15:29:19.103132Z","executorEndedAt":"2026-08-22T15:29:37.363189Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/mcp.stdio.parallel.session.stdout.log","inputContextFile":"context/mcp.stdio.parallel.session.input.json","traceId":"5dd8b24615e5a4d6c6eafa88f68dbd9a"},{
+  "nodeId" : "mcp.stdio.tool.invoked",
+  "status" : "passed",
+  "startedAt" : "2026-08-22T15:28:30.437392Z",
+  "endedAt" : "2026-08-22T15:28:30.976400Z",
+  "assertions" : [ {
+    "name" : "describe_ok",
+    "status" : "passed"
+  }, {
+    "name" : "invoke_roundtrip_ok",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ ],
+  "metrics" : {
+    "durationMs" : 539
+  },
+  "logs" : [ ],
+  "published" : { }
+,"envelopeVersion":1,"executorStartedAt":"2026-08-22T15:28:29.752081Z","executorEndedAt":"2026-08-22T15:28:45.371827Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/mcp.stdio.tool.invoked.stdout.log","inputContextFile":"context/mcp.stdio.tool.invoked.input.json","traceId":"5dd8b24615e5a4d6c6eafa88f68dbd9a"},{
+  "nodeId" : "mcp.tool.invoked",
+  "status" : "passed",
+  "startedAt" : "2026-08-22T15:26:30.817465Z",
+  "endedAt" : "2026-08-22T15:26:31.340957Z",
+  "assertions" : [ {
+    "name" : "describe_ok",
+    "status" : "passed"
+  }, {
+    "name" : "invoke_roundtrip_ok",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ ],
+  "metrics" : {
+    "durationMs" : 523
+  },
+  "logs" : [ ],
+  "published" : { }
+,"envelopeVersion":1,"executorStartedAt":"2026-08-22T15:26:30.156522Z","executorEndedAt":"2026-08-22T15:26:45.028493Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/mcp.tool.invoked.stdout.log","inputContextFile":"context/mcp.tool.invoked.input.json","traceId":"5dd8b24615e5a4d6c6eafa88f68dbd9a"},{
+  "nodeId" : "mcp.tool.loads.bundled",
+  "status" : "passed",
+  "startedAt" : "2026-08-22T15:25:10.836446Z",
+  "endedAt" : "2026-08-22T15:25:11.342919Z",
+  "assertions" : [ {
+    "name" : "uv_bundled_under_pm",
+    "status" : "passed"
+  }, {
+    "name" : "node_bundled_under_pm",
+    "status" : "passed"
+  }, {
+    "name" : "npm_bundled_under_pm",
+    "status" : "passed"
+  }, {
+    "name" : "npx_bundled_under_pm",
+    "status" : "passed"
+  }, {
+    "name" : "docker_on_path_recorded",
+    "status" : "passed"
+  }, {
+    "name" : "npm_mcp_registered",
+    "status" : "passed"
+  }, {
+    "name" : "uv_mcp_registered",
+    "status" : "passed"
+  }, {
+    "name" : "docker_mcp_registered",
+    "status" : "passed"
+  }, {
+    "name" : "npm_mcp_load_type_npm",
+    "status" : "passed"
+  }, {
+    "name" : "uv_mcp_load_type_uv",
+    "status" : "passed"
+  }, {
+    "name" : "docker_mcp_load_type_docker",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ ],
+  "metrics" : {
+    "dockerOnPath" : 1,
+    "durationMs" : 506
+  },
+  "logs" : [ ],
+  "published" : { }
+,"envelopeVersion":1,"executorStartedAt":"2026-08-22T15:25:10.134110Z","executorEndedAt":"2026-08-22T15:25:25.137703Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/mcp.tool.loads.bundled.stdout.log","inputContextFile":"context/mcp.tool.loads.bundled.input.json","traceId":"5dd8b24615e5a4d6c6eafa88f68dbd9a"},{
+  "nodeId" : "mcp.tool.loads.installed",
+  "status" : "passed",
+  "startedAt" : "2026-08-22T15:24:51.124863Z",
+  "endedAt" : "2026-08-22T15:24:53.983805Z",
+  "assertions" : [ {
+    "name" : "install_ok",
+    "status" : "passed"
+  }, {
+    "name" : "skill_md_present",
+    "status" : "passed"
+  }, {
+    "name" : "skill_manager_toml_present",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "install",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-186-his-11/skill-manager", "install", "/Users/hayde/IdeaProjects/wt-186-his-11/test_graph/fixtures/mcp-tool-loads-skill", "--yes" ],
+    "startedAt" : "2026-08-22T15:24:51.129275Z",
+    "endedAt" : "2026-08-22T15:24:53.983448Z",
+    "exitCode" : 0,
+    "pid" : 25669,
+    "log" : "node-logs/mcp.tool.loads.installed.install.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "exitCode" : 0,
+    "durationMs" : 2859
+  },
+  "logs" : [ ],
+  "published" : {
+    "skillDir" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-12452952578011379320/skills/mcp-tool-loads-skill"
+  }
+,"envelopeVersion":1,"executorStartedAt":"2026-08-22T15:24:50.449750Z","executorEndedAt":"2026-08-22T15:25:10.117104Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/mcp.tool.loads.installed.stdout.log","inputContextFile":"context/mcp.tool.loads.installed.input.json","traceId":"5dd8b24615e5a4d6c6eafa88f68dbd9a"},{
+  "nodeId" : "mcp.tool.search.finds",
+  "status" : "passed",
+  "startedAt" : "2026-08-22T15:26:15.599306Z",
+  "endedAt" : "2026-08-22T15:26:16.114668Z",
+  "assertions" : [ {
+    "name" : "matches_array_present",
+    "status" : "passed"
+  }, {
+    "name" : "echo_in_results",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ ],
+  "metrics" : {
+    "durationMs" : 515
+  },
+  "logs" : [ ],
+  "published" : { }
+,"envelopeVersion":1,"executorStartedAt":"2026-08-22T15:26:14.896559Z","executorEndedAt":"2026-08-22T15:26:30.137133Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/mcp.tool.search.finds.stdout.log","inputContextFile":"context/mcp.tool.search.finds.input.json","traceId":"5dd8b24615e5a4d6c6eafa88f68dbd9a"},{
+  "nodeId" : "mcp.tools.visible",
+  "status" : "passed",
+  "startedAt" : "2026-08-22T15:26:00.917724Z",
+  "endedAt" : "2026-08-22T15:26:01.466086Z",
+  "assertions" : [ {
+    "name" : "server_listed_via_mcp",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ ],
+  "metrics" : {
+    "durationMs" : 549
+  },
+  "logs" : [ ],
+  "published" : { }
+,"envelopeVersion":1,"executorStartedAt":"2026-08-22T15:26:00.187215Z","executorEndedAt":"2026-08-22T15:26:14.875979Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/mcp.tools.visible.stdout.log","inputContextFile":"context/mcp.tools.visible.input.json","traceId":"5dd8b24615e5a4d6c6eafa88f68dbd9a"},{
+  "nodeId" : "ownership.recorded",
+  "status" : "passed",
+  "startedAt" : "2026-08-22T15:19:49.422529Z",
+  "endedAt" : "2026-08-22T15:19:49.576104Z",
+  "assertions" : [ {
+    "name" : "name_owned_by_publisher",
+    "status" : "passed"
+  }, {
+    "name" : "version_published_by_same",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ ],
+  "metrics" : {
+    "durationMs" : 154
+  },
+  "logs" : [ ],
+  "published" : { }
+,"envelopeVersion":1,"executorStartedAt":"2026-08-22T15:19:48.751938Z","executorEndedAt":"2026-08-22T15:20:02.889062Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/ownership.recorded.stdout.log","inputContextFile":"context/ownership.recorded.input.json","traceId":"5dd8b24615e5a4d6c6eafa88f68dbd9a"},{
+  "nodeId" : "postgres.down",
+  "status" : "passed",
+  "startedAt" : "2026-08-22T15:32:01.148615Z",
+  "endedAt" : "2026-08-22T15:32:01.496509Z",
+  "assertions" : [ {
+    "name" : "stopped",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "compose-stop",
+    "command" : [ "docker", "compose", "-f", "/Users/hayde/IdeaProjects/wt-186-his-11/docker-compose.yml", "stop", "postgres" ],
+    "startedAt" : "2026-08-22T15:32:01.152753Z",
+    "endedAt" : "2026-08-22T15:32:01.496198Z",
+    "exitCode" : 0,
+    "pid" : 38774,
+    "log" : "node-logs/postgres.down.compose-stop.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "durationMs" : 348
+  },
+  "logs" : [ ],
+  "published" : { }
+,"envelopeVersion":1,"executorStartedAt":"2026-08-22T15:32:00.446805Z","executorEndedAt":"2026-08-22T15:32:14.968811Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/postgres.down.stdout.log","inputContextFile":"context/postgres.down.input.json","traceId":"5dd8b24615e5a4d6c6eafa88f68dbd9a"},{
+  "nodeId" : "postgres.up",
+  "status" : "passed",
+  "startedAt" : "2026-08-22T15:16:52.389211Z",
+  "endedAt" : "2026-08-22T15:16:52.882272Z",
+  "assertions" : [ {
+    "name" : "reachable",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "compose-up",
+    "command" : [ "docker", "compose", "-f", "/Users/hayde/IdeaProjects/wt-186-his-11/docker-compose.yml", "up", "-d", "postgres" ],
+    "startedAt" : "2026-08-22T15:16:52.471753Z",
+    "endedAt" : "2026-08-22T15:16:52.686658Z",
+    "exitCode" : 0,
+    "pid" : 11582,
+    "log" : "node-logs/postgres.up.compose-up.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "durationMs" : 493
+  },
+  "logs" : [ ],
+  "published" : {
+    "dbUrl" : "jdbc:postgresql://localhost:5432/skill_registry_test",
+    "dbUser" : "postgres",
+    "dbPassword" : "postgres"
+  }
+,"envelopeVersion":1,"executorStartedAt":"2026-08-22T15:16:51.734709Z","executorEndedAt":"2026-08-22T15:17:05.664960Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/postgres.up.stdout.log","inputContextFile":"context/postgres.up.input.json","traceId":"5dd8b24615e5a4d6c6eafa88f68dbd9a"},{
+  "nodeId" : "registry.up",
+  "status" : "passed",
+  "startedAt" : "2026-08-22T15:17:06.343890Z",
+  "endedAt" : "2026-08-22T15:17:10.092960Z",
+  "assertions" : [ {
+    "name" : "health_ok",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ ],
+  "metrics" : {
+    "pid" : 11670,
+    "port" : 65504,
+    "durationMs" : 3749
+  },
+  "logs" : [ ],
+  "published" : {
+    "baseUrl" : "http://127.0.0.1:65504"
+  }
+,"envelopeVersion":1,"executorStartedAt":"2026-08-22T15:17:05.682788Z","executorEndedAt":"2026-08-22T15:17:24.120145Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/registry.up.stdout.log","inputContextFile":"context/registry.up.input.json","traceId":"5dd8b24615e5a4d6c6eafa88f68dbd9a"},{
+  "nodeId" : "resolver.cycles.verified",
+  "status" : "passed",
+  "startedAt" : "2026-08-22T15:16:27.705789Z",
+  "endedAt" : "2026-08-22T15:16:38.050838Z",
+  "assertions" : [ {
+    "name" : "self-cycle.terminated",
+    "status" : "passed"
+  }, {
+    "name" : "self-cycle.install_exit_zero",
+    "status" : "passed"
+  }, {
+    "name" : "self-cycle.cycle_path_reported",
+    "status" : "passed"
+  }, {
+    "name" : "self-cycle.each_unit_installed_once",
+    "status" : "passed"
+  }, {
+    "name" : "self-cycle.no_stage_dirs_leaked",
+    "status" : "passed"
+  }, {
+    "name" : "self-cycle.gateway_stopped",
+    "status" : "passed"
+  }, {
+    "name" : "two-skill-cycle.terminated",
+    "status" : "passed"
+  }, {
+    "name" : "two-skill-cycle.install_exit_zero",
+    "status" : "passed"
+  }, {
+    "name" : "two-skill-cycle.cycle_path_reported",
+    "status" : "passed"
+  }, {
+    "name" : "two-skill-cycle.each_unit_installed_once",
+    "status" : "passed"
+  }, {
+    "name" : "two-skill-cycle.no_stage_dirs_leaked",
+    "status" : "passed"
+  }, {
+    "name" : "two-skill-cycle.gateway_stopped",
+    "status" : "passed"
+  }, {
+    "name" : "three-skill-cycle.terminated",
+    "status" : "passed"
+  }, {
+    "name" : "three-skill-cycle.install_exit_zero",
+    "status" : "passed"
+  }, {
+    "name" : "three-skill-cycle.cycle_path_reported",
+    "status" : "passed"
+  }, {
+    "name" : "three-skill-cycle.each_unit_installed_once",
+    "status" : "passed"
+  }, {
+    "name" : "three-skill-cycle.no_stage_dirs_leaked",
+    "status" : "passed"
+  }, {
+    "name" : "three-skill-cycle.gateway_stopped",
+    "status" : "passed"
+  }, {
+    "name" : "skill-plugin-cycle.terminated",
+    "status" : "passed"
+  }, {
+    "name" : "skill-plugin-cycle.install_exit_zero",
+    "status" : "passed"
+  }, {
+    "name" : "skill-plugin-cycle.cycle_path_reported",
+    "status" : "passed"
+  }, {
+    "name" : "skill-plugin-cycle.each_unit_installed_once",
+    "status" : "passed"
+  }, {
+    "name" : "skill-plugin-cycle.no_stage_dirs_leaked",
+    "status" : "passed"
+  }, {
+    "name" : "skill-plugin-cycle.gateway_stopped",
+    "status" : "passed"
+  }, {
+    "name" : "plugin-plugin-cycle.terminated",
+    "status" : "passed"
+  }, {
+    "name" : "plugin-plugin-cycle.install_exit_zero",
+    "status" : "passed"
+  }, {
+    "name" : "plugin-plugin-cycle.cycle_path_reported",
+    "status" : "passed"
+  }, {
+    "name" : "plugin-plugin-cycle.each_unit_installed_once",
+    "status" : "passed"
+  }, {
+    "name" : "plugin-plugin-cycle.no_stage_dirs_leaked",
+    "status" : "passed"
+  }, {
+    "name" : "plugin-plugin-cycle.gateway_stopped",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ ],
+  "metrics" : {
+    "cases" : 5,
+    "durationMs" : 10345
+  },
+  "logs" : [ "self-cycle terminated=true exit=0 cycle=true installedOnce=true noStages=true gatewayStopped=true output=! reference cycle: semantic-self-unit -> semantic-self-unit | ✓ units.lock.toml: wrote 1 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-12452952578011379320/resolver-cycle-matrix/self-cycle/home/units.lock.toml", "two-skill-cycle terminated=true exit=0 cycle=true installedOnce=true noStages=true gatewayStopped=true output=! reference cycle: semantic-alpha-unit -> semantic-beta-unit -> semantic-alpha-unit | ✓ units.lock.toml: wrote 2 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-12452952578011379320/resolver-cycle-matrix/two-skill-cycle/home/units.lock.toml", "three-skill-cycle terminated=true exit=0 cycle=true installedOnce=true noStages=true gatewayStopped=true output=! reference cycle: semantic-first-unit -> semantic-second-unit -> semantic-third-unit -> semantic-first-unit | ✓ units.lock.toml: wrote 3 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-12452952578011379320/resolver-cycle-matrix/three-skill-cycle/home/units.lock.toml", "skill-plugin-cycle terminated=true exit=0 cycle=true installedOnce=true noStages=true gatewayStopped=true output=! reference cycle: semantic-skill-unit -> semantic-plugin-unit -> semantic-skill-unit | ✓ units.lock.toml: wrote 2 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-12452952578011379320/resolver-cycle-matrix/skill-plugin-cycle/home/units.lock.toml", "plugin-plugin-cycle terminated=true exit=0 cycle=true installedOnce=true noStages=true gatewayStopped=true output=! reference cycle: semantic-left-plugin -> semantic-right-plugin -> semantic-left-plugin | ✓ units.lock.toml: wrote 2 unit(s) → /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-12452952578011379320/resolver-cycle-matrix/plugin-plugin-cycle/home/units.lock.toml" ],
+  "published" : { }
+,"envelopeVersion":1,"executorStartedAt":"2026-08-22T15:16:27.068056Z","executorEndedAt":"2026-08-22T15:16:51.711878Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/resolver.cycles.verified.stdout.log","inputContextFile":"context/resolver.cycles.verified.input.json","traceId":"5dd8b24615e5a4d6c6eafa88f68dbd9a"},{
+  "nodeId" : "search.finds",
+  "status" : "passed",
+  "startedAt" : "2026-08-22T15:19:29.960205Z",
+  "endedAt" : "2026-08-22T15:19:31.728626Z",
+  "assertions" : [ {
+    "name" : "exit_zero",
+    "status" : "passed"
+  }, {
+    "name" : "hello_skill_listed",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ ],
+  "metrics" : {
+    "outputBytes" : 247,
+    "durationMs" : 1768
+  },
+  "logs" : [ ],
+  "published" : { }
+,"envelopeVersion":1,"executorStartedAt":"2026-08-22T15:19:29.296766Z","executorEndedAt":"2026-08-22T15:19:48.739192Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/search.finds.stdout.log","inputContextFile":"context/search.finds.input.json","traceId":"5dd8b24615e5a4d6c6eafa88f68dbd9a"},{
+  "nodeId" : "semver.enforced",
+  "status" : "passed",
+  "startedAt" : "2026-08-22T15:20:03.540228Z",
+  "endedAt" : "2026-08-22T15:20:05.303725Z",
+  "assertions" : [ {
+    "name" : "non_semver_publish_rejected",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ ],
+  "metrics" : {
+    "exitCode" : 1,
+    "durationMs" : 1763
+  },
+  "logs" : [ ],
+  "published" : { }
+,"envelopeVersion":1,"executorStartedAt":"2026-08-22T15:20:02.903628Z","executorEndedAt":"2026-08-22T15:20:21.492808Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/semver.enforced.stdout.log","inputContextFile":"context/semver.enforced.input.json","traceId":"5dd8b24615e5a4d6c6eafa88f68dbd9a"},{
+  "nodeId" : "servers.down",
+  "status" : "passed",
+  "startedAt" : "2026-08-22T15:31:34.998863Z",
+  "endedAt" : "2026-08-22T15:31:46.292897Z",
+  "assertions" : [ {
+    "name" : "gateway_down",
+    "status" : "passed"
+  }, {
+    "name" : "registry_down",
+    "status" : "passed"
+  }, {
+    "name" : "echo_fixture_down",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "gateway-down",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-186-his-11/skill-manager", "gateway", "down" ],
+    "startedAt" : "2026-08-22T15:31:35.002888Z",
+    "endedAt" : "2026-08-22T15:31:36.744606Z",
+    "exitCode" : 0,
+    "pid" : 38044,
+    "log" : "node-logs/servers.down.gateway-down.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "durationMs" : 11294
+  },
+  "logs" : [ ],
+  "published" : { }
+,"envelopeVersion":1,"executorStartedAt":"2026-08-22T15:31:34.292830Z","executorEndedAt":"2026-08-22T15:32:00.427843Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/servers.down.stdout.log","inputContextFile":"context/servers.down.input.json","traceId":"5dd8b24615e5a4d6c6eafa88f68dbd9a"},{
+  "nodeId" : "skill.bind.unbind.cycle",
+  "status" : "passed",
+  "startedAt" : "2026-08-22T15:30:00.265041Z",
+  "endedAt" : "2026-08-22T15:30:03.344357Z",
+  "assertions" : [ {
+    "name" : "bind_ok",
+    "status" : "passed"
+  }, {
+    "name" : "explicit_symlink_present",
+    "status" : "passed"
+  }, {
+    "name" : "ledger_carries_explicit_and_default",
+    "status" : "passed"
+  }, {
+    "name" : "unbind_ok",
+    "status" : "passed"
+  }, {
+    "name" : "explicit_symlink_removed",
+    "status" : "passed"
+  }, {
+    "name" : "default_agent_bindings_survive",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "bind",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-186-his-11/skill-manager", "bind", "hello-skill", "--to", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-12452952578011379320/explicit-bind-12108640370534760957" ],
+    "startedAt" : "2026-08-22T15:30:00.287316Z",
+    "endedAt" : "2026-08-22T15:30:01.920498Z",
+    "exitCode" : 0,
+    "pid" : 35104,
+    "log" : "node-logs/skill.bind.unbind.cycle.bind.log",
+    "error" : null
+  }, {
+    "label" : "unbind",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-186-his-11/skill-manager", "unbind", "explicit-bind-12108640370534760957:hello-skill:bind" ],
+    "startedAt" : "2026-08-22T15:30:01.925073Z",
+    "endedAt" : "2026-08-22T15:30:03.343743Z",
+    "exitCode" : 0,
+    "pid" : 35164,
+    "log" : "node-logs/skill.bind.unbind.cycle.unbind.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "bindExitCode" : 0,
+    "unbindExitCode" : 0,
+    "durationMs" : 3079
+  },
+  "logs" : [ ],
+  "published" : { }
+,"envelopeVersion":1,"executorStartedAt":"2026-08-22T15:29:59.560639Z","executorEndedAt":"2026-08-22T15:30:19.680680Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/skill.bind.unbind.cycle.stdout.log","inputContextFile":"context/skill.bind.unbind.cycle.input.json","traceId":"5dd8b24615e5a4d6c6eafa88f68dbd9a"},{
+  "nodeId" : "skill.script.force.rerun",
+  "status" : "passed",
+  "startedAt" : "2026-08-22T15:23:24.766362Z",
+  "endedAt" : "2026-08-22T15:23:38.141294Z",
+  "assertions" : [ {
+    "name" : "initial_install_ran_script",
+    "status" : "passed"
+  }, {
+    "name" : "force_install_ran_script",
+    "status" : "passed"
+  }, {
+    "name" : "noop_sync_skipped_script",
+    "status" : "passed"
+  }, {
+    "name" : "force_sync_ran_script",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "install_initial",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-186-his-11/skill-manager", "install", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-12452952578011379320/skill-script-force-home/fixture", "--yes" ],
+    "startedAt" : "2026-08-22T15:23:24.773653Z",
+    "endedAt" : "2026-08-22T15:23:28.003772Z",
+    "exitCode" : 0,
+    "pid" : 22482,
+    "log" : "node-logs/skill.script.force.rerun.install_initial.log",
+    "error" : null
+  }, {
+    "label" : "uninstall_keep_mcp",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-186-his-11/skill-manager", "uninstall", "skill-script-skill", "--keep-mcp" ],
+    "startedAt" : "2026-08-22T15:23:28.006800Z",
+    "endedAt" : "2026-08-22T15:23:29.829866Z",
+    "exitCode" : 0,
+    "pid" : 22701,
+    "log" : "node-logs/skill.script.force.rerun.uninstall_keep_mcp.log",
+    "error" : null
+  }, {
+    "label" : "install_force",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-186-his-11/skill-manager", "install", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-12452952578011379320/skill-script-force-home/fixture", "--yes", "--force-scripts" ],
+    "startedAt" : "2026-08-22T15:23:29.830144Z",
+    "endedAt" : "2026-08-22T15:23:32.665678Z",
+    "exitCode" : 0,
+    "pid" : 22807,
+    "log" : "node-logs/skill.script.force.rerun.install_force.log",
+    "error" : null
+  }, {
+    "label" : "sync_noop",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-186-his-11/skill-manager", "sync", "--from", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-12452952578011379320/skill-script-force-home/fixture", "skill-script-skill", "--yes" ],
+    "startedAt" : "2026-08-22T15:23:32.666530Z",
+    "endedAt" : "2026-08-22T15:23:35.411474Z",
+    "exitCode" : 0,
+    "pid" : 22978,
+    "log" : "node-logs/skill.script.force.rerun.sync_noop.log",
+    "error" : null
+  }, {
+    "label" : "sync_force",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-186-his-11/skill-manager", "sync", "--from", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-12452952578011379320/skill-script-force-home/fixture", "skill-script-skill", "--yes", "--force-scripts" ],
+    "startedAt" : "2026-08-22T15:23:35.413130Z",
+    "endedAt" : "2026-08-22T15:23:38.139742Z",
+    "exitCode" : 0,
+    "pid" : 23060,
+    "log" : "node-logs/skill.script.force.rerun.sync_force.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "scriptRunsAfterInstall" : 1,
+    "scriptRunsAfterForceInstall" : 2,
+    "scriptRunsAfterNoopSync" : 2,
+    "scriptRunsAfterForceSync" : 3,
+    "durationMs" : 13375
+  },
+  "logs" : [ ],
+  "published" : { }
+,"envelopeVersion":1,"executorStartedAt":"2026-08-22T15:23:24.076787Z","executorEndedAt":"2026-08-22T15:23:51.345709Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/skill.script.force.rerun.stdout.log","inputContextFile":"context/skill.script.force.rerun.input.json","traceId":"5dd8b24615e5a4d6c6eafa88f68dbd9a"},{
+  "nodeId" : "skill.script.force.sync.with.mcp",
+  "status" : "passed",
+  "startedAt" : "2026-08-22T15:23:52.127708Z",
+  "endedAt" : "2026-08-22T15:24:01.041101Z",
+  "assertions" : [ {
+    "name" : "install_exit_zero",
+    "status" : "passed"
+  }, {
+    "name" : "sync_noop_exit_zero",
+    "status" : "passed"
+  }, {
+    "name" : "sync_force_exit_zero",
+    "status" : "passed"
+  }, {
+    "name" : "initial_script_run_count_one",
+    "status" : "passed"
+  }, {
+    "name" : "declared_binary_executable",
+    "status" : "passed"
+  }, {
+    "name" : "noop_sync_skipped_script",
+    "status" : "passed"
+  }, {
+    "name" : "noop_sync_did_not_increment_counter",
+    "status" : "passed"
+  }, {
+    "name" : "force_sync_incremented_counter",
+    "status" : "passed"
+  }, {
+    "name" : "noop_sync_emitted_mcp_results",
+    "status" : "passed"
+  }, {
+    "name" : "force_sync_emitted_mcp_results",
+    "status" : "passed"
+  }, {
+    "name" : "force_sync_mcp_result_deployed",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "install",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-186-his-11/skill-manager", "install", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-12452952578011379320/skill-script-force-sync-mcp/fixture", "--yes" ],
+    "startedAt" : "2026-08-22T15:23:52.137804Z",
+    "endedAt" : "2026-08-22T15:23:55.548139Z",
+    "exitCode" : 0,
+    "pid" : 23168,
+    "log" : "node-logs/skill.script.force.sync.with.mcp.install.log",
+    "error" : null
+  }, {
+    "label" : "sync_noop",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-186-his-11/skill-manager", "sync", "--from", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-12452952578011379320/skill-script-force-sync-mcp/fixture", "skill-script-skill", "--yes" ],
+    "startedAt" : "2026-08-22T15:23:55.548945Z",
+    "endedAt" : "2026-08-22T15:23:58.244561Z",
+    "exitCode" : 0,
+    "pid" : 23321,
+    "log" : "node-logs/skill.script.force.sync.with.mcp.sync_noop.log",
+    "error" : null
+  }, {
+    "label" : "sync_force",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-186-his-11/skill-manager", "sync", "--from", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-12452952578011379320/skill-script-force-sync-mcp/fixture", "skill-script-skill", "--yes", "--force-scripts" ],
+    "startedAt" : "2026-08-22T15:23:58.246161Z",
+    "endedAt" : "2026-08-22T15:24:01.039980Z",
+    "exitCode" : 0,
+    "pid" : 23489,
+    "log" : "node-logs/skill.script.force.sync.with.mcp.sync_force.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "scriptRunCountAfterInstall" : 1,
+    "scriptRunCountAfterNoopSync" : 1,
+    "scriptRunCountAfterForceSync" : 2,
+    "durationMs" : 8914
+  },
+  "logs" : [ ],
+  "published" : { }
+,"envelopeVersion":1,"executorStartedAt":"2026-08-22T15:23:51.363224Z","executorEndedAt":"2026-08-22T15:24:14.360017Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/skill.script.force.sync.with.mcp.stdout.log","inputContextFile":"context/skill.script.force.sync.with.mcp.input.json","traceId":"5dd8b24615e5a4d6c6eafa88f68dbd9a"},{
+  "nodeId" : "skill.script.installed",
+  "status" : "passed",
+  "startedAt" : "2026-08-22T15:22:22.409811Z",
+  "endedAt" : "2026-08-22T15:22:25.380573Z",
+  "assertions" : [ {
+    "name" : "install_ok",
+    "status" : "passed"
+  }, {
+    "name" : "skill_in_store",
+    "status" : "passed"
+  }, {
+    "name" : "skill_script_touched",
+    "status" : "passed"
+  }, {
+    "name" : "skill_script_executable",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "install",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-186-his-11/skill-manager", "install", "/Users/hayde/IdeaProjects/wt-186-his-11/test_graph/fixtures/skill-script-skill", "--yes" ],
+    "startedAt" : "2026-08-22T15:22:22.414006Z",
+    "endedAt" : "2026-08-22T15:22:25.379963Z",
+    "exitCode" : 0,
+    "pid" : 19860,
+    "log" : "node-logs/skill.script.installed.install.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "exitCode" : 0,
+    "durationMs" : 2971
+  },
+  "logs" : [ ],
+  "published" : {
+    "touchPath" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-12452952578011379320/bin/cli/skill-script-touched"
+  }
+,"envelopeVersion":1,"executorStartedAt":"2026-08-22T15:22:21.740487Z","executorEndedAt":"2026-08-22T15:22:41.199671Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/skill.script.installed.stdout.log","inputContextFile":"context/skill.script.installed.input.json","traceId":"5dd8b24615e5a4d6c6eafa88f68dbd9a"},{
+  "nodeId" : "skill.script.reruns.on.change",
+  "status" : "passed",
+  "startedAt" : "2026-08-22T15:23:01.902927Z",
+  "endedAt" : "2026-08-22T15:23:10.749120Z",
+  "assertions" : [ {
+    "name" : "install_ok",
+    "status" : "passed"
+  }, {
+    "name" : "initial_sentinel_dropped",
+    "status" : "passed"
+  }, {
+    "name" : "initial_install_logged_script_run",
+    "status" : "passed"
+  }, {
+    "name" : "noop_sync_ok",
+    "status" : "passed"
+  }, {
+    "name" : "noop_sync_skipped_script",
+    "status" : "passed"
+  }, {
+    "name" : "noop_sync_did_not_rerun_script",
+    "status" : "passed"
+  }, {
+    "name" : "post_edit_sync_ok",
+    "status" : "passed"
+  }, {
+    "name" : "post_edit_sentinel_dropped",
+    "status" : "passed"
+  }, {
+    "name" : "post_edit_logged_script_run",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "install",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-186-his-11/skill-manager", "install", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-12452952578011379320/skill-script-rerun-home/fixture", "--yes" ],
+    "startedAt" : "2026-08-22T15:23:01.910994Z",
+    "endedAt" : "2026-08-22T15:23:05.179670Z",
+    "exitCode" : 0,
+    "pid" : 21105,
+    "log" : "node-logs/skill.script.reruns.on.change.install.log",
+    "error" : null
+  }, {
+    "label" : "sync_noop",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-186-his-11/skill-manager", "sync", "--from", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-12452952578011379320/skill-script-rerun-home/fixture", "skill-script-skill", "--yes" ],
+    "startedAt" : "2026-08-22T15:23:05.182596Z",
+    "endedAt" : "2026-08-22T15:23:07.839310Z",
+    "exitCode" : 0,
+    "pid" : 21332,
+    "log" : "node-logs/skill.script.reruns.on.change.sync_noop.log",
+    "error" : null
+  }, {
+    "label" : "sync_after_edit",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-186-his-11/skill-manager", "sync", "--from", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-12452952578011379320/skill-script-rerun-home/fixture", "skill-script-skill", "--yes" ],
+    "startedAt" : "2026-08-22T15:23:07.842060Z",
+    "endedAt" : "2026-08-22T15:23:10.748289Z",
+    "exitCode" : 0,
+    "pid" : 21516,
+    "log" : "node-logs/skill.script.reruns.on.change.sync_after_edit.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "scriptRunsAfterInstall" : 1,
+    "scriptRunsAfterNoop" : 1,
+    "scriptRunsAfterEdit" : 2,
+    "durationMs" : 8847
+  },
+  "logs" : [ ],
+  "published" : { }
+,"envelopeVersion":1,"executorStartedAt":"2026-08-22T15:23:01.180762Z","executorEndedAt":"2026-08-22T15:23:24.060568Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/skill.script.reruns.on.change.stdout.log","inputContextFile":"context/skill.script.reruns.on.change.input.json","traceId":"5dd8b24615e5a4d6c6eafa88f68dbd9a"},{
+  "nodeId" : "skill.script.transitive.installed",
+  "status" : "passed",
+  "startedAt" : "2026-08-22T15:22:41.930033Z",
+  "endedAt" : "2026-08-22T15:22:45.008467Z",
+  "assertions" : [ {
+    "name" : "install_ok",
+    "status" : "passed"
+  }, {
+    "name" : "umbrella_in_store",
+    "status" : "passed"
+  }, {
+    "name" : "inner_transitive_in_store",
+    "status" : "passed"
+  }, {
+    "name" : "transitive_skill_script_touched",
+    "status" : "passed"
+  }, {
+    "name" : "transitive_skill_script_executable",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "install",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-186-his-11/skill-manager", "install", "/Users/hayde/IdeaProjects/wt-186-his-11/test_graph/fixtures/skill-script-umbrella-skill", "--yes" ],
+    "startedAt" : "2026-08-22T15:22:41.934893Z",
+    "endedAt" : "2026-08-22T15:22:45.007804Z",
+    "exitCode" : 0,
+    "pid" : 20398,
+    "log" : "node-logs/skill.script.transitive.installed.install.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "exitCode" : 0,
+    "durationMs" : 3078
+  },
+  "logs" : [ ],
+  "published" : {
+    "touchPath" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-12452952578011379320/bin/cli/skill-script-transitive-touched"
+  }
+,"envelopeVersion":1,"executorStartedAt":"2026-08-22T15:22:41.216214Z","executorEndedAt":"2026-08-22T15:23:01.163686Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/skill.script.transitive.installed.stdout.log","inputContextFile":"context/skill.script.transitive.installed.input.json","traceId":"5dd8b24615e5a4d6c6eafa88f68dbd9a"},{
+  "nodeId" : "skill.script.uninstall.prunes.cli",
+  "status" : "passed",
+  "startedAt" : "2026-08-22T15:24:15.042607Z",
+  "endedAt" : "2026-08-22T15:24:20.359354Z",
+  "assertions" : [ {
+    "name" : "install_ok",
+    "status" : "passed"
+  }, {
+    "name" : "uninstall_ok",
+    "status" : "passed"
+  }, {
+    "name" : "skill_installed_before_uninstall",
+    "status" : "passed"
+  }, {
+    "name" : "cli_bin_installed_before_uninstall",
+    "status" : "passed"
+  }, {
+    "name" : "cli_lock_row_installed_before_uninstall",
+    "status" : "passed"
+  }, {
+    "name" : "skill_removed_after_uninstall",
+    "status" : "passed"
+  }, {
+    "name" : "cli_bin_removed_after_uninstall",
+    "status" : "passed"
+  }, {
+    "name" : "cli_lock_row_removed_after_uninstall",
+    "status" : "passed"
+  }, {
+    "name" : "skill_script_cache_tree_installed_before_uninstall",
+    "status" : "passed"
+  }, {
+    "name" : "skill_script_cache_tree_removed_after_uninstall",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "install_skill_script",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-186-his-11/skill-manager", "install", "/Users/hayde/IdeaProjects/wt-186-his-11/test_graph/fixtures/skill-script-skill", "--yes" ],
+    "startedAt" : "2026-08-22T15:24:15.047337Z",
+    "endedAt" : "2026-08-22T15:24:18.437478Z",
+    "exitCode" : 0,
+    "pid" : 24156,
+    "log" : "node-logs/skill.script.uninstall.prunes.cli.install_skill_script.log",
+    "error" : null
+  }, {
+    "label" : "uninstall_skill_script",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-186-his-11/skill-manager", "uninstall", "skill-script-skill", "--keep-mcp" ],
+    "startedAt" : "2026-08-22T15:24:18.439774Z",
+    "endedAt" : "2026-08-22T15:24:20.358427Z",
+    "exitCode" : 0,
+    "pid" : 24211,
+    "log" : "node-logs/skill.script.uninstall.prunes.cli.uninstall_skill_script.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "durationMs" : 5317
+  },
+  "logs" : [ ],
+  "published" : { }
+,"envelopeVersion":1,"executorStartedAt":"2026-08-22T15:24:14.375172Z","executorEndedAt":"2026-08-22T15:24:35.430196Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/skill.script.uninstall.prunes.cli.stdout.log","inputContextFile":"context/skill.script.uninstall.prunes.cli.input.json","traceId":"5dd8b24615e5a4d6c6eafa88f68dbd9a"},{
+  "nodeId" : "skill.synced",
+  "status" : "passed",
+  "startedAt" : "2026-08-22T15:29:38.033211Z",
+  "endedAt" : "2026-08-22T15:29:45.864578Z",
+  "assertions" : [ {
+    "name" : "symlink_was_drifted",
+    "status" : "passed"
+  }, {
+    "name" : "symlink_restored_to_store",
+    "status" : "passed"
+  }, {
+    "name" : "mcp_register_results_emitted",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ ],
+  "metrics" : {
+    "durationMs" : 7831
+  },
+  "logs" : [ ],
+  "published" : { }
+,"envelopeVersion":1,"executorStartedAt":"2026-08-22T15:29:37.376150Z","executorEndedAt":"2026-08-22T15:29:59.535280Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/skill.synced.stdout.log","inputContextFile":"context/skill.synced.input.json","traceId":"5dd8b24615e5a4d6c6eafa88f68dbd9a"},{
+  "nodeId" : "skill.uninstalled",
+  "status" : "passed",
+  "startedAt" : "2026-08-22T15:30:20.367036Z",
+  "endedAt" : "2026-08-22T15:30:25.909976Z",
+  "assertions" : [ {
+    "name" : "uninstall_exit_zero",
+    "status" : "passed"
+  }, {
+    "name" : "store_entry_removed",
+    "status" : "passed"
+  }, {
+    "name" : "claude_symlink_removed",
+    "status" : "passed"
+  }, {
+    "name" : "codex_symlink_removed",
+    "status" : "passed"
+  }, {
+    "name" : "mcp_server_was_listed_before",
+    "status" : "passed"
+  }, {
+    "name" : "orphan_mcp_unregistered",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ ],
+  "metrics" : {
+    "durationMs" : 5542
+  },
+  "logs" : [ ],
+  "published" : { }
+,"envelopeVersion":1,"executorStartedAt":"2026-08-22T15:30:19.694204Z","executorEndedAt":"2026-08-22T15:30:42.136529Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/skill.uninstalled.stdout.log","inputContextFile":"context/skill.uninstalled.input.json","traceId":"5dd8b24615e5a4d6c6eafa88f68dbd9a"},{
+  "nodeId" : "smoke.report",
+  "status" : "passed",
+  "startedAt" : "2026-08-22T15:31:20.204215Z",
+  "endedAt" : "2026-08-22T15:31:20.310298Z",
+  "assertions" : [ {
+    "name" : "report_written",
+    "status" : "passed"
+  }, {
+    "name" : "no_failed_nodes",
+    "status" : "passed"
+  }, {
+    "name" : "no_errored_nodes",
+    "status" : "passed"
+  }, {
+    "name" : "no_failed_assertions",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ ],
+  "metrics" : {
+    "total_nodes" : 48,
+    "passed_nodes" : 48,
+    "failed_nodes" : 0,
+    "errored_nodes" : 0,
+    "passed_assertions" : 246,
+    "failed_assertions" : 0,
+    "durationMs" : 106
+  },
+  "logs" : [ ],
+  "published" : { }
+,"envelopeVersion":1,"executorStartedAt":"2026-08-22T15:31:19.534554Z","executorEndedAt":"2026-08-22T15:31:34.263472Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/smoke.report.stdout.log","inputContextFile":"context/smoke.report.input.json","traceId":"5dd8b24615e5a4d6c6eafa88f68dbd9a"},{
+  "nodeId" : "transitive.clis.present",
+  "status" : "passed",
+  "startedAt" : "2026-08-22T15:22:08.265687Z",
+  "endedAt" : "2026-08-22T15:22:08.269040Z",
+  "assertions" : [ {
+    "name" : "pip_binary_in_bin_cli",
+    "status" : "passed"
+  }, {
+    "name" : "npm_binary_in_bin_cli",
+    "status" : "passed"
+  }, {
+    "name" : "pip_entry_in_cli_lock",
+    "status" : "passed"
+  }, {
+    "name" : "npm_entry_in_cli_lock",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ ],
+  "metrics" : {
+    "durationMs" : 4
+  },
+  "logs" : [ ],
+  "published" : { }
+,"envelopeVersion":1,"executorStartedAt":"2026-08-22T15:22:07.501392Z","executorEndedAt":"2026-08-22T15:22:21.720438Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/transitive.clis.present.stdout.log","inputContextFile":"context/transitive.clis.present.input.json","traceId":"5dd8b24615e5a4d6c6eafa88f68dbd9a"},{
+  "nodeId" : "umbrella.installed",
+  "status" : "passed",
+  "startedAt" : "2026-08-22T15:21:42.520401Z",
+  "endedAt" : "2026-08-22T15:21:53.260320Z",
+  "assertions" : [ {
+    "name" : "add_ok",
+    "status" : "passed"
+  }, {
+    "name" : "umbrella_in_store",
+    "status" : "passed"
+  }, {
+    "name" : "pip_transitive_in_store",
+    "status" : "passed"
+  }, {
+    "name" : "npm_transitive_in_store",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "install",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-186-his-11/skill-manager", "install", "/Users/hayde/IdeaProjects/wt-186-his-11/test_graph/fixtures/umbrella-skill", "--yes" ],
+    "startedAt" : "2026-08-22T15:21:42.524052Z",
+    "endedAt" : "2026-08-22T15:21:53.259502Z",
+    "exitCode" : 0,
+    "pid" : 19272,
+    "log" : "node-logs/umbrella.installed.install.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "exitCode" : 0,
+    "durationMs" : 10740
+  },
+  "logs" : [ ],
+  "published" : {
+    "umbrellaDir" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-12452952578011379320/skills/umbrella-skill"
+  }
+,"envelopeVersion":1,"executorStartedAt":"2026-08-22T15:21:41.877254Z","executorEndedAt":"2026-08-22T15:22:07.483483Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/umbrella.installed.stdout.log","inputContextFile":"context/umbrella.installed.input.json","traceId":"5dd8b24615e5a4d6c6eafa88f68dbd9a"}]}

@@ -20,6 +20,7 @@ import dev.skillmanager.source.InstalledUnit;
  *
  * <pre>
  * CommitUnitsToStore (per committed unit) → DeleteUnitDir(name, kind)
+ * CommitUnitsToStore (per OVERWRITTEN unit, pre-state) → RestoreUnitDir(name, kind, escrow)
  * RecordSourceProvenance / OnboardUnit    → RestoreInstalledUnit(prev) or DeleteInstalledUnit(name)
  * RunCliInstall                           → UninstallCliIfOrphan(name, dep)
  * RegisterMcpServer                       → UnregisterMcpIfOrphan(name, dep, gw)
@@ -41,6 +42,7 @@ import dev.skillmanager.source.InstalledUnit;
  */
 public sealed interface Compensation permits
         Compensation.DeleteUnitDir,
+        Compensation.RestoreUnitDir,
         Compensation.RestoreInstalledUnit,
         Compensation.DeleteInstalledUnit,
         Compensation.UninstallCliIfOrphan,
@@ -52,6 +54,37 @@ public sealed interface Compensation permits
 
     /** Reverse of one {@link SkillEffect.CommitUnitsToStore} entry. */
     record DeleteUnitDir(String unitName, UnitKind kind) implements Compensation {}
+
+    /**
+     * Put back the unit directory {@link SkillEffect.CommitUnitsToStore}
+     * <b>overwrote</b>, from the pre-image
+     * {@code Executor.preStateCompensations} moved aside before the commit ran.
+     *
+     * <h3>The hole this closes (#186)</h3>
+     *
+     * <p>{@link DeleteUnitDir} alone is the right inverse of a commit into an
+     * <em>empty</em> destination and the wrong one for every other case. The
+     * commit handler is delete-destination-then-copy; the walk-back deleted
+     * what it found and restored nothing, because
+     * {@code preStateCompensations} paired {@code CommitUnitsToStore} with
+     * {@code List.of()}. A resolve that failed after the commit — a downstream
+     * {@code UpdateUnitsLock}, an MCP register, anything — therefore left the
+     * previously installed version <em>absent</em> rather than as it was.
+     *
+     * <p>Ordering is what makes the pair work and it is not incidental. The
+     * journal is walked LIFO and the executor records pre-state before
+     * post-state, so the walk applies {@code DeleteUnitDir} (drop what the
+     * commit wrote) and then {@code RestoreUnitDir} (move the pre-image back)
+     * — in that order, at the same path.
+     *
+     * <p>The escrow is a live handle, not a value: it owns bytes parked under
+     * {@code <home>/cache/}. Exactly one of {@code restore()} (walk-back) or
+     * {@code discard()} (the program committed) must reach it, or the home
+     * grows a held tree per resolve.
+     */
+    record RestoreUnitDir(String unitName, UnitKind kind,
+                          dev.skillmanager.source.MaterializationEscrow escrow)
+            implements Compensation {}
 
     /** Restore an {@link InstalledUnit} record to its pre-program value. */
     record RestoreInstalledUnit(String unitName, InstalledUnit previous) implements Compensation {}

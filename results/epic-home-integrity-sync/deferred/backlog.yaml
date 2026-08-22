@@ -1891,6 +1891,165 @@ findings:
       running agents are executing; rename a new one into place.
     candidate_owner: epic agent (wave-4 machinery) -- fixed by them, no action outstanding
 
+  - id: DEF-031
+    found_by: HIS-11 (#186)
+    found_at: "2026-08-22"
+    severity: minor
+    summary: >
+      A pre-image escrow whose Files.move fails leaves the commit destructive
+      again, and the only trace is a warning on a console nobody is reading.
+    detail: >
+      `MaterializationEscrow.liftPaths` is best-effort by design -- it warns and
+      "proceeds with them in place" -- which HIS-4 chose because a sync that
+      cannot lift its dereferenced trees is still better run than not run. For
+      HIS-11's caller that default has the opposite sign: proceeding in place
+      means the commit deletes the very bytes the lift existed to protect, so a
+      failed lift converts the fix back into the defect. `Executor
+      .escrowOverwrittenUnits` names the unit in a second warning so an operator
+      can at least tell WHICH unit is unprotected, and that is all it does.
+    reproduction: >
+      Not reproduced. `<home>/cache/` and `<home>/skills/` are in the same home
+      and therefore the same filesystem, so the rename does not fail for the
+      ordinary reason a move fails; making it fail means a read-only or full
+      `cache/`, or a `cache/` symlinked to another device. No such case has been
+      observed.
+    the_two_shapes_considered: >
+      (a) COPY FALLBACK -- on a failed move, copy the tree into the holding
+      directory instead. Correct, and restore() is identical either way. Rejected
+      for HIS-11 because it adds a branch that this ticket cannot make fail on
+      demand, and this epic's rule is that an untested branch is not coverage;
+      shipping one inside a data-loss guard is the worst place to start.
+      (b) REFUSE THE COMMIT when the pre-image cannot be taken. Strictly safest,
+      and out of slice: it converts an install into a refusal on a condition the
+      operator never asked about, which is the hold-back shape CLAUSE 3 of
+      GOAL-no-destructive-recovery exists to prevent.
+    why_deferred: >
+      Neither shape fits inside "capture the pre-image before the destructive
+      commit and restore it on walk-back". Both are decisions about what the
+      escrow owes its callers, which is the compensation-framework question the
+      slice explicitly excludes.
+    candidate_owner: HIS-5 or a follow-up on MaterializationEscrow
+    status: open
+
+  - id: DEF-032
+    found_by: HIS-11 (#186)
+    found_at: "2026-08-22"
+    severity: minor
+    summary: >
+      Nothing sweeps an escrow the JVM died on. A crash between the lift and
+      either restore() or discard() strands one holding directory under
+      <home>/cache/ forever.
+    detail: >
+      The escrow's lifecycle is in-process: `Executor.commit` discards on
+      success and `walkBack` restores on failure, and both need the process to
+      still be alive. A SIGKILL, an OOM, or the operator's ^C between the two
+      leaves `<home>/cache/.materialization-escrow-*` holding a whole unit tree.
+      Two consequences, in opposite directions -- the home grows by one unit
+      per crash, AND that unit is missing from `skills/` with nothing pointing
+      at where its bytes went.
+    what_this_is_NOT: >
+      CORRECTED after the adversarial review of #233 -- the original text
+      claimed "not a regression ... did not widen", and the reviewer's verdict
+      was that "the `did not widen` claim in DEF-032 is not supported by what I
+      can verify". They are right, and the correction is worth more than the
+      original claim.
+
+      For BYTES it stands: before HIS-11 the same crash left those bytes
+      DELETED rather than parked, so parked is strictly better and recoverable.
+
+      For AVAILABILITY it does not. `commitUnits` was per-unit
+      delete-then-copy, so a ^C midway left the units it had already processed
+      present and the rest untouched. HIS-11's lift moves EVERY unit in the
+      closure aside before ANY copy runs, so the same ^C now leaves the WHOLE
+      closure missing from `skills/` -- and readers take no lock, so a
+      concurrent reader sees a home with a hole in it that is wider than it used
+      to be. That is a widening, in a dimension the original entry did not
+      consider, and it makes the stranded-escrow sweep more valuable rather than
+      less.
+    detection_is_the_other_half: >
+      Added for #233's finding #4. `.materialization-escrow-` appeared in
+      exactly two places -- the class that creates it and a test helper --
+      so nothing could FIND a stranded escrow even in principle. Moving the
+      bytes out of `skills/` fixed the namespace half of #231's defect and left
+      the detection half exactly where it was.
+
+      Partly closed in this PR: each holding directory now carries an
+      `escrow.txt` manifest (purpose, store dir, one `<slot>=<relative path>`
+      line per held tree, appended as each is taken so a process killed mid-loop
+      still leaves a readable one). That gives HIS-13 a marker to key on, which
+      it needs -- a repair command cannot own a condition with no marker. What
+      is still deferred is the reader: nothing enumerates `cache/` for these,
+      nothing reports them, nothing sweeps them.
+    reproduction: >
+      kill -9 a `skill-manager install <unit>` between CommitUnitsToStore and
+      the end of the program, against a home where <unit> is already installed.
+      `ls <home>/cache/` then shows one `.materialization-escrow-*` directory
+      holding the previous version.
+    why_deferred: >
+      The fix is a startup sweep with an age or liveness rule, and choosing that
+      rule is a home-hygiene decision (what counts as abandoned? does `home
+      verify` report it? does prune own it?) that belongs with the
+      detect-and-repair command CLAUSE 2 asks for, not with a compensation
+      pairing. It is also the natural place to REPORT the stranded bytes rather
+      than silently delete them.
+    candidate_owner: HIS-13 (detect-and-repair) -- the repair that names this is
+      the same repair that names a mis-anchored home
+    status: open
+
+  - id: DEF-033
+    found_by: HIS-11 (#186)
+    found_at: "2026-08-22"
+    severity: minor
+    summary: >
+      Every effect other than CommitUnitsToStore that overwrites bytes still has
+      a delete-only or absent compensation. #186 is fixed for one arm of an
+      exhaustive switch, not for the shape.
+    detail: >
+      `Executor.preStateCompensations` still yields `List.of()` for
+      `SyncDocRepo` ("forward-only: it rewrites tracked-copy bytes ... the dest
+      bytes themselves are the only rollback target and we don't capture them"
+      -- its own comment says so), for `SyncHarness`, for `SyncFromLocalDir` and
+      for `SyncGit`, whose rollback lives in the handler as stash/pop and
+      merge-abort rather than as a compensation. `RemoveUnitFromStore` states
+      outright that it "can't un-remove without the bytes". Each is the same
+      sentence #186 was: a destructive step whose inverse restores nothing.
+    why_deferred: >
+      The ticket's slice says so in as many words -- "NOT IN SCOPE: any other
+      effect's compensation, and the shape of the compensation framework
+      itself". Widening it would be the third time in this epic that a ticket
+      grew to cover the family instead of the instance.
+    candidate_owner: a follow-up ticket over Executor's compensation table, or
+      HIS-6 if the terminal evaluation wants the family closed
+    status: open
+
+  - id: DEF-034
+    found_by: HIS-11 (#186)
+    found_at: "2026-08-22"
+    severity: minor
+    summary: >
+      The home lock now sits on every Executor program, which means every
+      mutating command, and the refusal edge is only exercised at 200ms in a
+      test. Nobody has watched a real CLI queue for two minutes.
+    detail: >
+      `Executor.runStaged`/`runWithContext` take `HomeLock` with
+      `HomeLock.DEFAULT_TIMEOUT` (120s). The unit fixture proves the wait, the
+      announcement, and the refusal, but it proves the refusal through a
+      package-private `withHomeLockTimeout(200ms)` seam. What is NOT measured is
+      an operator's experience of the real 120s edge: whether 120 seconds is the
+      right patience for an install queued behind a `home sync`, and whether the
+      refusal's exit code (1, via `printFailure`) should instead be a typed one
+      the way the resolve and policy refusals are.
+    reproduction: >
+      Two `skill-manager install` runs against one home, started together, with
+      the first made slow.
+    why_deferred: >
+      Choosing a timeout and a typed exit code for contention is a CLI-contract
+      decision with its own surface (help text, agent-parseable banner, the
+      typed-exit-code table), not part of "take the home lock for the
+      resolve/install path".
+    candidate_owner: HIS-6, or whoever owns the typed-exit-code table
+    status: open
+
   - id: DEF-035
     found_by: HIS-11, on itself, mid-ticket
     found_at: "2026-08-22"
@@ -1944,3 +2103,97 @@ findings:
       A separate agent (HIS-14) independently avoided it by mutating file
       backups rather than reverting, and said so unprompted -- so the technique
       that works is already in use and simply undocumented.
+    the_loop_that_worked_third_time: >
+      Added by HIS-11, which is the only agent to have hit this twice, so that
+      the fix is a procedure rather than a warning.
+
+      TWO changes, and BOTH are needed -- either alone still loses work:
+
+        1. The harness snapshots the file's CONTENT before mutating and writes
+           that content back in a `finally`. Never `git checkout -- <path>`.
+           This is the load-bearing one, because it removes the appeal to HEAD
+           entirely: the restore target is the exact bytes the mutation was
+           applied to, whatever their commit state.
+        2. Commit the fix before the first mutation anyway. This is the belt to
+           (1)'s braces: it makes HEAD a correct restore target too, so a
+           harness someone writes in a hurry, an interrupted run, or a `git
+           checkout` typed by hand all still land somewhere safe.
+
+      A ~15-line Python driver is enough:
+
+        saved = {}
+        for path, old, new in edits:
+            s = (root/path).read_text()
+            saved.setdefault(path, s)
+            assert s.count(old) == 1        # a mutation that matches 0 or 2
+            (root/path).write_text(s.replace(old, new))   # sites is a bug
+        try:
+            run the suite
+        finally:
+            for path, content in saved.items():
+                (root/path).write_text(content)
+
+      The `assert s.count(old) == 1` earns its place separately: a mutation
+      string that matches nothing produces a GREEN run that looks like a passing
+      vacuity check and is actually no check at all -- the same false negative
+      the discipline exists to prevent, arriving through the tooling instead of
+      through the assertion.
+
+      Why (1) matters more than the rule above it: "commit first" is advice you
+      have to remember at the moment you are thinking about something else,
+      which is exactly when this ticket forgot it -- twice, hours apart, having
+      filed the entry in between. A restore that cannot consult HEAD cannot be
+      wrong about HEAD.
+
+  - id: DEF-041
+    found_by: HIS-11 (#186), from the adversarial review of #233
+    found_at: "2026-08-22"
+    severity: major
+    summary: >
+      The home lock's hold time is unbounded and its patience is fixed at 120s,
+      so a slow-but-healthy peer makes the next command REFUSE rather than queue.
+    detail: >
+      `Executor` now takes `HomeLock` around the whole program, and the program
+      includes `RunInstallPlan`, which runs arbitrary skill-script installers.
+      `HomeLock.DEFAULT_TIMEOUT` is 120 seconds and nothing scales it to the work
+      being done. An agent installing `deploy-helm` into the project home --
+      three venvs, roughly 530 MB each -- holds the lock for far longer than
+      that, so a peer's `home close-out` -> `home sync` refuses.
+
+      Worktree close-out contending with the project home is the EXACT scenario
+      HomeLock was written for, so this is not a hypothetical pairing.
+    renumbered: >
+      Filed as DEF-035 by HIS-11 and re-issued as DEF-041 on rebase: the epic
+      branch had already allocated DEF-035 to the mutation-testing hazard, which
+      was pushed and referenced from a commit message first. Two different
+      findings, one id, and the one with a reference outside this file keeps it.
+    why_this_is_its_own_entry_and_not_part_of_DEF_034: >
+      DEF-034 is about the refusal's exit code and about nobody having watched
+      the real edge. This is a different claim: that the DURATION MISMATCH makes
+      the refusal fire on healthy runs. Folding it in would lose it.
+    the_uncomfortable_part: >
+      Recorded because it is a consistency failure in this ticket's own
+      reasoning, not just a defect. DEF-031 rejects its option (b) -- refuse the
+      commit when the pre-image cannot be taken -- on the grounds that it
+      "converts an install into a refusal on a condition the operator never
+      asked about, which is the hold-back shape CLAUSE 3 exists to prevent".
+      The lock does the same thing one layer up, and HIS-11 applied the standard
+      to the escrow and not to the lock. The reviewer found that; the ticket did
+      not.
+    candidate_shapes: >
+      (a) Scale the wait with what the holder is doing -- the holder knows, the
+      waiter does not, so this needs the lock file to carry the holder's
+      operation and a heartbeat.
+      (b) Wait indefinitely while the holder is demonstrably ALIVE (pid liveness,
+      as the wave's own graph-run.sh lock does), and refuse only when it is not.
+      (c) Narrow what the lock covers so RunInstallPlan is outside it -- rejected
+      on sight here: the commit and the plan run are the two halves of one
+      install, and unlocking between them is the interleaving the lock exists to
+      stop.
+    why_deferred: >
+      Choosing between those is a CLI-contract decision with a surface of its own
+      (help text, the typed-exit-code table, an agent-parseable banner), and it
+      needs the measurement DEF-034 asks for before the number can be argued.
+      Out of "take the home lock for the resolve/install path".
+    candidate_owner: HIS-6, or whoever owns HomeLock after this epic
+    status: open
