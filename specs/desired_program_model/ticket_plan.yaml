@@ -3665,7 +3665,19 @@ tickets:
     promotion_order: 9
     promotion_predecessor: HIS-12
     conflict_keys:
-      production: [Executor.preStateCompensations, HomeLock]
+      production: [Executor.preStateCompensations, Executor.runStaged, Executor.runWithContext,
+                   Compensation, MaterializationEscrow, HomeLock, LiveInterpreter.runOne]
+      # CORRECTED after HIS-11's review. The declared pair under-described the
+      # change in two ways the reviewer found and the author extended:
+      #   Compensation gained a record IN A SEALED PERMITS CLAUSE, so anything
+      #     switching exhaustively on it breaks -- the sharpest omission;
+      #   MaterializationEscrow is HIS-4's class, extended here, and it was the
+      #     one surface the review was asked to attack;
+      #   `preStateCompensations` alone under-described a change to eight
+      #     members of Executor.
+      # The epic agent's declared keys have now been wrong in BOTH directions in
+      # every wave of this epic. See the wave-4 review; this is the instance that
+      # made it a pattern rather than a slip.
       tla: []
       adapters: []
       test_graph: []

@@ -1301,7 +1301,12 @@ tickets:
   conflict_keys:
     production:
     - Executor.preStateCompensations
+    - Executor.runStaged
+    - Executor.runWithContext
+    - Compensation
+    - MaterializationEscrow
     - HomeLock
+    - LiveInterpreter.runOne
     tla: []
     adapters: []
     test_graph: []

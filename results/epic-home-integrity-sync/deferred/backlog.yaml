@@ -411,7 +411,29 @@ findings:
       restored backup rather than by the product's own path. That is why it is
       recorded as blocking-severity rather than stopping HIS-10.
     candidate_owner: HIS-9
-    status: open
+    status: closed
+    resolution: >
+      CLOSED by HIS-9 (#226), delivered in PR #230 as 62e91ea. The finding was
+      absorbed as instance (0) of that ticket and is the reason HIS-9 stopped
+      being purely preventative: a DELETE that follows a link out of the home is
+      the same defect as a WRITE that does, so the confinement guard covers
+      deletes and the pruner counts as a writer for that purpose.
+
+      Measured on the delivered branch, the same two-home fixture that produced
+      this finding:
+
+        guard removed  -> homeA/bin/cli 2 -> 0 entries, sync exit 0
+        guard in force -> 2 -> 2, exit 1 with the refusal
+
+      BOTH call sites are covered -- CliShimPruner.prune and
+      InstallerRegistry.takeOwnershipOfShim -- which mattered because HIS-10
+      made the second one reachable by keeping a sanctioned inherited link alive
+      through every sync.
+
+      What is NOT closed by this and is tracked separately: nothing REPAIRS a
+      home already in this shape, and a home whose bin/cli is a link at another
+      home's can now not be synced at all until a person fixes it by hand. That
+      is HIS-13's (#159), and this entry is its sharpest test case.
     also_reported_by: >
       #228 review, MED-9 second half, and it WIDENS this entry rather than
       repeating it. Before HIS-10 a clone's inherited link was pruned on the
@@ -1224,6 +1246,7 @@ findings:
       which is exactly what happened: the "NOT DESTROYED" promise is what made a
       second sync path look already-handled.
     candidate_owner: unassigned
+    status: open
   - id: DEF-013
     # RENUMBERING AID: HIS-12 filed a different DEF-013 in a separate worktree.
     # This one is: HIS-4 / the exact MERGE_CONFLICT index stages were not reproduced.
@@ -1898,9 +1921,26 @@ findings:
       throw away. Alternatives that also work: copy the file aside first, or
       mutate a scratch copy of `src/` rather than the tree under test. What does
       NOT work is reverting to HEAD while HEAD predates your work.
-    candidate_owner: unassigned
-    status: open
+    candidate_owner: HIS-8
+    status: triaged
     disposition: >
-      Not product work. Filed so it reaches HIS-8 (#224), which owns the
-      documentation an agent reads before working in this repository -- the
-      vacuity loop belongs there next to the discipline it protects.
+      Not product work. Routed to HIS-8 (#224), which owns the documentation an
+      agent reads before working in this repository -- the vacuity loop belongs
+      there next to the discipline it protects.
+    recurred_after_filing: >
+      IT HAPPENED AGAIN, TO THE SAME AGENT, HOURS AFTER THIS ENTRY WAS WRITTEN.
+      HIS-11 lost its whole `Executor` change to `git checkout --` a second time
+      while mutation-testing the drain fix. Both times it reapplied and
+      re-verified before pushing and nothing was lost.
+
+      That recurrence is the argument. A backlog entry is not a guard: the agent
+      that FILED this hazard walked into it again the same day, because the
+      revert is the natural gesture and the entry is not in front of you at the
+      moment you reach for it. HIS-8 should treat this as documentation that has
+      to sit where the loop is performed, not as a note in a list -- and the
+      stronger fix is mechanical: mutate a scratch copy of `src/`, or refuse to
+      mutate a file whose working-tree state differs from HEAD.
+
+      A separate agent (HIS-14) independently avoided it by mutating file
+      backups rather than reverting, and said so unprompted -- so the technique
+      that works is already in use and simply undocumented.
