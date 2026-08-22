@@ -372,6 +372,8 @@ public final class SkillManagerCli implements Runnable {
      * {@code LauncherShims.HOME_MISMATCH_EXIT_CODE} is not 1.
      */
     public static final int UNBINDABLE_HOME_EXIT_CODE = 13;
+
+    /**
      * The typed reason for the failure being handled, when there is one.
      *
      * <p>Set by {@link #handleExecutionException} from the exception's TYPE, so

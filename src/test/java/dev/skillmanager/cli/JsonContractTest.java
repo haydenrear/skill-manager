@@ -228,6 +228,16 @@ public final class JsonContractTest {
             assertTrue(run.stderr().contains("waiting for"),
                     "and the notice is not merely deleted: it is still reported, on stderr, "
                             + "because a silent 120s wait looks like a hang");
+            // WHICH operation contended, not merely that something did. HIS-14
+            // gated tryReconcile on WRITES_HOME, and `home close-out` is
+            // READ_ONLY, so the reconcile no longer runs before this command --
+            // if this case had been measuring THAT contention it would now be
+            // measuring nothing and would go green for the wrong reason. The
+            // label proves the wait is the command's own dry-run sync into the
+            // named project home, which is the path #235 travelled.
+            assertTrue(run.stderr().contains("home sync --dry-run: waiting for"),
+                    "the contended operation is close-out's own dry-run sync, not an ambient "
+                            + "reconcile: " + preview(run.stderr()));
         });
 
         suite.test("a caught, typed refusal carries its OWN reason, not the generic one", () -> {
@@ -254,6 +264,40 @@ public final class JsonContractTest {
                     "the reason is the TYPED one, not the generic \"failed\": " + preview(doc));
             assertTrue(doc.contains("\"safe\":false") && doc.contains("\"blockers\":[]"),
                     "and it carries the fields the gate reads: " + preview(doc));
+        });
+
+        suite.test("exit 13 — HIS-14's unbindable-home refusal — emits a document too", () -> {
+            // THE ARGUMENT FOR A CONVENTION CHECK, tested on the first command
+            // to grow a new failure path after the check landed. HIS-14 (#232)
+            // added a refusal that returns UNBINDABLE_HOME_EXIT_CODE straight
+            // out of the execution strategy — the one exit path in this CLI
+            // that went AROUND completeExecution, and therefore around the
+            // --json envelope. Under --json it exited 13 with an empty stdout:
+            // #235's exact shape, on a path that did not exist when #235 was
+            // filed. An enumerated list of known-bad sites would not have
+            // covered it, because nobody had written it yet.
+            Path sandbox = Files.createTempDirectory("json-unbindable-");
+            Path worktree = sandbox.resolve("wt");
+            Path store = home(worktree.resolve(".skill-manager"));
+            Path proj = home(sandbox.resolve("proj"));
+            // The home's .claude is a symlink OUT of the home, so --home
+            // cannot be honoured on the agent axis and the bind refuses.
+            Path outside = Files.createDirectories(sandbox.resolve("outside"));
+            Files.createSymbolicLink(worktree.resolve(".claude"), outside);
+
+            Invocation run = invokeIn(sandbox, List.of("home", "close-out",
+                    "--home", store.toString(), "--into", proj.toString()));
+
+            assertEquals(13, run.exitCode(),
+                    "fixture precondition: this really is HIS-14's unbindable refusal and not "
+                            + "some other failure; stderr=" + preview(run.stderr()));
+            List<String> docs = documentsIn(run.stdout().strip());
+            assertEquals(1, docs.size(),
+                    "a --json run that exits 13 says why, in JSON — got " + preview(run.stdout()));
+            assertEquals("", nonJsonRemainder(run.stdout().strip(), docs),
+                    "and the refusal's own prose stays on stderr");
+            assertTrue(run.stderr().contains("refusing:"),
+                    "the human rendering is not deleted, only moved");
         });
 
         // ------------------------------------------------------ the convention
