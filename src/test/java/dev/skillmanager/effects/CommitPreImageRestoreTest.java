@@ -299,6 +299,42 @@ public final class CommitPreImageRestoreTest {
             }
         });
 
+        suite.test("a renderer that throws does not strand the escrow either — the journal "
+                + "learns about it before the effect runs", () -> {
+            // The narrowest of the four escape points #233's review named, and
+            // the one a `finally` alone does NOT fix: a drain can only release
+            // what the journal knows about. `LiveInterpreter.runOne` catches
+            // around `execute` but calls `renderer.onReceipt` OUTSIDE that
+            // catch, so a renderer that throws escaped with the bytes already
+            // lifted and the journal still empty. Fixed by journalling the
+            // pre-state compensation before the effect runs rather than after.
+            try (TestHarness h = TestHarness.create()) {
+                Path dst = h.store().unitDir("gamma", UnitKind.SKILL);
+                installVersionA(dst, UnitKind.SKILL);
+
+                ResolvedGraph graph = versionB(UnitKind.SKILL);
+                ProgramRenderer exploding = new ProgramRenderer() {
+                    @Override public void onReceipt(EffectReceipt receipt) {
+                        throw new IllegalStateException("renderer blew up on " + receipt.status());
+                    }
+                    @Override public void onComplete() {}
+                };
+                Program<Void> program = new Program<>("preimage-renderer",
+                        List.of(new SkillEffect.CommitUnitsToStore(graph)), receipts -> null);
+
+                boolean threw = false;
+                try {
+                    new Executor(h.store(), null).runWithContext(
+                            program, new EffectContext(h.store(), null, exploding));
+                } catch (RuntimeException expected) {
+                    threw = true;
+                }
+                assertTrue(threw, "fixture precondition: the renderer really did escape");
+                assertEquals(List.of().toString(), escrowDirs(h.store().root()).toString(),
+                        "the escrow was released, not parked with nothing referencing it");
+            }
+        });
+
         // ------------------------------------------- half two: the home lock
 
         suite.test("a second program against the same home WAITS, and says so before it waits", () -> {

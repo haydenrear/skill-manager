@@ -252,6 +252,14 @@ public final class Executor {
      * enumeration and this project has shipped several that were correct only
      * for the cases someone imagined.
      *
+     * <p><b>A drain can only release what the journal knows about</b>, which is
+     * why {@link #runStage} now records the pre-state compensation
+     * <em>before</em> running the effect rather than after. The gap that
+     * closes is real and narrow: {@code LiveInterpreter.runOne} catches around
+     * {@code execute} but calls {@code renderer.onReceipt} outside that catch,
+     * so a renderer that throws used to escape with the bytes already lifted
+     * and the journal still empty.
+     *
      * <h3>Why the drain DISCARDS rather than restores</h3>
      *
      * <p>Discarding makes the escape path byte-for-byte what it was before this
@@ -366,7 +374,21 @@ public final class Executor {
             // Snapshot prior installed-record state before mutation effects so
             // RestoreInstalledUnit has the pre-image to roll back to. Done
             // pre-execution; no-op for effects that don't touch records.
+            //
+            // JOURNALLED IMMEDIATELY, not after the effect runs. For a value
+            // compensation the difference is invisible, but
+            // CommitUnitsToStore's pre-state has already MOVED BYTES by the
+            // time it is returned, and anything that throws between here and
+            // the record would leave those bytes parked with nothing —
+            // journal, drain, or caller — holding a reference to them.
+            // `LiveInterpreter.runOne` is exactly that gap: it catches around
+            // `execute`, but the `ctx.renderer().onReceipt(r)` after the catch
+            // is unguarded. Recording first costs nothing: a compensation is
+            // recorded regardless of the receipt's status anyway, and the
+            // pre-state-before-post-state order the LIFO walk depends on is
+            // unchanged.
             List<Compensation> preState = preStateCompensations(effect, ctx);
+            journal.recordAll(preState);
 
             EffectReceipt r;
             if (faultInjector != null && faultInjector.test(idx)) {
@@ -386,7 +408,8 @@ public final class Executor {
             // failing — handlers that emit per-item facts (e.g.
             // CommitUnitsToStore's mid-copy failure) still surface what
             // they touched, so rollback walks every successful item back.
-            journal.recordAll(preState);
+            // (The pre-state half was journalled above, before the effect
+            // ran.)
             journal.recordAll(compensationsFor(effect, r, ctx));
 
             // Halt decision is now exclusively the receipt's continuation.
