@@ -7,14 +7,38 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
+import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
 
 /**
- * The {@linkplain DereferencedStoreLinks dereferenced store links} of one store
- * copy, moved aside for the duration of an operation that would destroy them,
- * and moved back afterwards.
+ * Bytes of one store copy, moved aside for the duration of an operation that
+ * would destroy them, and afterwards either moved back or dropped.
+ *
+ * <h2>Two callers, one mechanism</h2>
+ *
+ * <p>Which bytes are lifted and when they come back is the caller's decision;
+ * park-restore-clean is not, so it is one class:
+ *
+ * <ul>
+ *   <li>{@link #lift} — the {@linkplain DereferencedStoreLinks dereferenced
+ *       store links} of a unit, lifted over a sync (git merge, or the wholesale
+ *       replace of {@code sync --from}) and {@linkplain #restore restored
+ *       unconditionally} at the end of it. HIS-4 / #231.</li>
+ *   <li>{@link #liftPaths} — the pre-image of a unit directory that
+ *       {@code CommitUnitsToStore} is about to delete and overwrite, lifted
+ *       before the commit and {@linkplain #restore restored only if the program
+ *       walks back}; {@linkplain #discard dropped} when it commits.
+ *       HIS-11 / #186.</li>
+ * </ul>
+ *
+ * <p>The second caller is the whole reason {@link #discard} exists. HIS-4's
+ * escrow always ends in a restore, so it never had a "the operation succeeded,
+ * let the held bytes go" edge. An escrow that only ever restores would leave
+ * one held tree per resolve under {@code <home>/cache/} — the same
+ * nothing-ever-cleans-it residue the review of #231 found in the first version
+ * of this class, one directory further down.
  *
  * <h2>Why this is its own class and not a helper inside one handler</h2>
  *
@@ -93,6 +117,30 @@ public final class MaterializationEscrow {
     public static MaterializationEscrow lift(Path storeDir, Path homeRoot,
                                              boolean restoreTrackedShape) {
         Set<String> paths = DereferencedStoreLinks.in(storeDir);
+        return liftPaths(storeDir, homeRoot, paths, restoreTrackedShape);
+    }
+
+    /**
+     * Move each of {@code relPaths} — relative to {@code storeDir} — aside.
+     *
+     * <p>Same park-and-hold as {@link #lift}; the caller names the paths
+     * instead of {@link DereferencedStoreLinks} deriving them. A path that is
+     * not there is skipped rather than failing the lift: "there was nothing to
+     * protect" and "the protection broke" are different, and only the second
+     * deserves a warning.
+     *
+     * <p>The move is a rename, not a copy — {@code <home>/cache/} and
+     * {@code <home>/skills/} are the same filesystem. Between the move and
+     * whatever the caller does next the bytes are only in the holding
+     * directory. That window is not a regression over the alternative: the
+     * caller in {@code Executor} is about to run a delete-then-copy that would
+     * have destroyed those bytes outright, so a crash inside the window leaves
+     * them recoverable under {@code cache/} where before it left them gone.
+     */
+    public static MaterializationEscrow liftPaths(Path storeDir, Path homeRoot,
+                                                  Collection<String> relPaths,
+                                                  boolean restoreTrackedShape) {
+        Collection<String> paths = relPaths == null ? Set.of() : relPaths;
         if (paths.isEmpty() || homeRoot == null) return empty(storeDir);
 
         Map<String, Path> held = new LinkedHashMap<>();
@@ -103,17 +151,40 @@ public final class MaterializationEscrow {
             holding = Files.createTempDirectory(cache, PREFIX);
             int i = 0;
             for (String rel : paths) {
+                Path from = storeDir.resolve(rel);
+                if (!Files.exists(from, LinkOption.NOFOLLOW_LINKS)
+                        && !Files.isSymbolicLink(from)) {
+                    continue;
+                }
                 Path to = holding.resolve(String.valueOf(i++));
-                Files.move(storeDir.resolve(rel), to);
+                Files.move(from, to);
                 held.put(rel, to);
             }
             if (restoreTrackedShape) GitOps.checkoutPaths(storeDir, held.keySet());
         } catch (IOException io) {
-            Log.warn("could not set aside the materialized tree(s) of %s (%s) — proceeding with "
+            Log.warn("could not set aside the tree(s) of %s (%s) — proceeding with "
                     + "them in place", storeDir, io.getMessage());
+        }
+        if (held.isEmpty() && holding != null) {
+            // Nothing was lifted after all — every named path was absent, or
+            // the very first move failed. Leaving the temp directory behind
+            // would be the unbounded-cache-residue defect with an empty
+            // directory instead of a full one.
+            try { Fs.deleteRecursive(holding); } catch (IOException ignored) { /* cache scratch */ }
+            holding = null;
         }
         return new MaterializationEscrow(storeDir, holding, held);
     }
+
+    /** The paths this escrow actually holds, relative to its store dir. */
+    public Set<String> heldPaths() { return Set.copyOf(held.keySet()); }
+
+    /**
+     * Where the bytes are parked, or {@code null} when nothing was lifted.
+     * Exists so a caller that could not restore can name the directory an
+     * operator would go looking in.
+     */
+    public Path holdingDir() { return holding; }
 
     /**
      * Put every escrowed tree back, replacing whatever now stands at its path.
@@ -150,6 +221,31 @@ public final class MaterializationEscrow {
         }
         if (holding != null) {
             try { Fs.deleteRecursive(holding); } catch (IOException ignored) { /* cache scratch */ }
+        }
+    }
+
+    /**
+     * Let the held bytes go without putting them back — the success edge.
+     *
+     * <p>For {@link #liftPaths}'s caller the destination now holds the bytes
+     * the operation meant to write, and the pre-image is exactly what was
+     * meant to be superseded. Keeping it would mean one held tree per resolve
+     * accumulating under {@code cache/} forever, which is the failure mode the
+     * review of #231 named: invisible to {@code list}, to {@code home verify}
+     * and to prune, cleaned up by nothing.
+     *
+     * <p>Idempotent, and safe to call after {@link #restore} — an escrow that
+     * has already given its bytes back is holding nothing.
+     */
+    public void discard() {
+        if (!held.isEmpty()) held.clear();
+        if (holding != null) {
+            try {
+                Fs.deleteRecursive(holding);
+            } catch (IOException io) {
+                Log.warn("could not clean up the escrowed pre-image at %s (%s) — it is scratch "
+                        + "under the home's cache and safe to delete by hand", holding, io.getMessage());
+            }
         }
     }
 

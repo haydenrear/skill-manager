@@ -10,6 +10,7 @@ import dev.skillmanager.model.Skill;
 import dev.skillmanager.model.UnitKind;
 import dev.skillmanager.source.InstalledUnit;
 import dev.skillmanager.source.UnitStore;
+import dev.skillmanager.store.HomeLock;
 import dev.skillmanager.store.SkillStore;
 import dev.skillmanager.util.Log;
 
@@ -62,6 +63,7 @@ public final class Executor {
     private final LiveInterpreter interpreter;
     private final boolean json;
     private java.util.function.IntPredicate faultInjector;
+    private java.time.Duration homeLockTimeout = HomeLock.DEFAULT_TIMEOUT;
 
     public Executor(SkillStore store, GatewayConfig gateway) {
         this(store, gateway, false);
@@ -96,10 +98,66 @@ public final class Executor {
         ConsoleProgramRenderer renderer = new ConsoleProgramRenderer(store, gateway, json);
         EffectContext ctx = new EffectContext(store, gateway, renderer);
         try {
+            // The home lock is taken by runWithContext, which every caller of
+            // this method reaches and which is public in its own right.
             return runWithContext(program, ctx);
         } finally {
             renderer.onComplete();
         }
+    }
+
+    /**
+     * Exclude every other writer of this home for the length of one program.
+     *
+     * <h3>Why the lock is here and not in five commands</h3>
+     *
+     * <p>Nothing on the resolve/install path held one. Two resolves into the
+     * same home interleaved staging and commit freely: each deletes the
+     * destination unit directory and copies its own tree in, so the loser's
+     * half-written unit and the winner's are the same bytes on disk, and each
+     * one's rollback journal describes a home the other has already moved
+     * past. That is the second half of #186, and it is per-home isolation —
+     * the same unit of exclusion {@link HomeLock} already serves for
+     * {@code home sync}.
+     *
+     * <p>Install, upgrade, sync, onboard, bind, uninstall and project-resolve
+     * all reach the store through this class, so taking it here is one
+     * spelling instead of six that can drift apart. {@link HomeLock} is
+     * re-entrant per thread, so a program that nests another (a child-home
+     * harness install runs an inner {@code Executor} against the parent store)
+     * does not deadlock on itself.
+     *
+     * <p>Read-only paths do not come through here — a dry run is a
+     * {@link DryRunInterpreter}, never an {@code Executor} — so this never
+     * turns a report into a write.
+     *
+     * @throws java.io.UncheckedIOException when the home stays contended past
+     *         the timeout. A refusal naming the home, in preference to waiting
+     *         forever behind a peer that may have crashed;
+     *         {@code SkillManagerCli.printFailure} renders it as the message
+     *         it is rather than as a stack trace.
+     */
+    private HomeLock homeLock(String operationId) {
+        try {
+            return HomeLock.acquire(store.root(),
+                    operationId == null ? "program" : operationId, homeLockTimeout);
+        } catch (IOException io) {
+            throw new java.io.UncheckedIOException(io.getMessage(), io);
+        }
+    }
+
+    /**
+     * How long a program waits for a peer holding this home before refusing.
+     *
+     * <p>Package-private seam for {@code CommitPreImageRestoreTest}, which has
+     * to observe the refusal edge and cannot spend {@link
+     * HomeLock#DEFAULT_TIMEOUT} doing it. Deliberately not public: no command
+     * has any business shortening the wait, and one that did would turn an
+     * ordinary queue behind a peer into a spurious failure.
+     */
+    Executor withHomeLockTimeout(java.time.Duration timeout) {
+        this.homeLockTimeout = timeout;
+        return this;
     }
 
     /**
@@ -119,7 +177,7 @@ public final class Executor {
     public <R> Outcome<R> runStaged(StagedProgram<R> staged) {
         ConsoleProgramRenderer renderer = new ConsoleProgramRenderer(store, gateway, json);
         EffectContext ctx = new EffectContext(store, gateway, renderer);
-        try {
+        try (HomeLock ignored = homeLock(staged.operationId())) {
             RollbackJournal journal = new RollbackJournal();
             List<EffectReceipt> all = new ArrayList<>();
 
@@ -139,7 +197,7 @@ public final class Executor {
             if (failed) {
                 applied = walkBack(journal, ctx);
             } else {
-                journal.clear();
+                commit(journal);
             }
             R result = staged.decoder().decode(all);
             return new Outcome<>(result, failed, applied);
@@ -149,16 +207,43 @@ public final class Executor {
     }
 
     public <R> Outcome<R> runWithContext(Program<R> program, EffectContext ctx) {
-        RollbackJournal journal = new RollbackJournal();
-        StageOutcome s = runStage(program, ctx, journal);
-        List<Compensation> applied = List.of();
-        if (s.failed) {
-            applied = walkBack(journal, ctx);
-        } else {
-            journal.clear();
+        try (HomeLock ignored = homeLock(program.operationId())) {
+            RollbackJournal journal = new RollbackJournal();
+            StageOutcome s = runStage(program, ctx, journal);
+            List<Compensation> applied = List.of();
+            if (s.failed) {
+                applied = walkBack(journal, ctx);
+            } else {
+                commit(journal);
+            }
+            R result = program.decoder().decode(s.receipts);
+            return new Outcome<>(result, s.failed, applied);
         }
-        R result = program.decoder().decode(s.receipts);
-        return new Outcome<>(result, s.failed, applied);
+    }
+
+    /**
+     * Drop the journal after a program that is not going to be walked back.
+     *
+     * <h3>Why this is not just {@code journal.clear()}</h3>
+     *
+     * <p>Most compensations are values — a name, a record, a path — and
+     * forgetting one costs nothing. {@link Compensation.RestoreUnitDir} is not:
+     * it holds a live {@link dev.skillmanager.source.MaterializationEscrow}
+     * over real bytes parked under {@code <home>/cache/}. Dropping the
+     * reference without telling the escrow would leave one held tree per
+     * resolve in the home, growing without bound, invisible to {@code list} and
+     * to {@code home verify} — the exact residue the review of #231 caught the
+     * first version of that class leaving behind, one directory further down.
+     *
+     * <p>Called on the success edge AND the HALTED edge: a cooperative stop is
+     * not a rollback, so bytes a commit superseded before the halt are equally
+     * not coming back.
+     */
+    private void commit(RollbackJournal journal) {
+        for (Compensation c : journal.pendingLifo()) {
+            if (c instanceof Compensation.RestoreUnitDir r) r.escrow().discard();
+        }
+        journal.clear();
     }
 
     /**
@@ -252,6 +337,11 @@ public final class Executor {
     static List<Compensation> preStateCompensations(SkillEffect effect, EffectContext ctx) {
         return switch (effect) {
             // ---- effects that need pre-state snapshotting ----
+            // The commit is delete-destination-then-copy. For a destination
+            // that already holds a unit, that delete is the only record of
+            // what was there, so the pre-image has to be taken here or it does
+            // not exist at all. See escrowOverwrittenUnits.
+            case SkillEffect.CommitUnitsToStore e -> escrowOverwrittenUnits(e, ctx);
             case SkillEffect.AddUnitError e -> snapshotInstalled(e.unitName(), ctx);
             case SkillEffect.ClearUnitError e -> snapshotInstalled(e.unitName(), ctx);
             case SkillEffect.OnboardUnit e -> {
@@ -304,7 +394,6 @@ public final class Executor {
             case SkillEffect.CleanupResolvedGraph e -> List.of();
             case SkillEffect.PrintInstalledSummary e -> List.of();
             case SkillEffect.SyncFromLocalDir e -> List.of();
-            case SkillEffect.CommitUnitsToStore e -> List.of();
             case SkillEffect.RecordAuditPlan e -> List.of();
             case SkillEffect.RecordSourceProvenance e -> List.of();
             case SkillEffect.EnsureTool e -> List.of();
@@ -356,6 +445,75 @@ public final class Executor {
             case SkillEffect.CheckBuildPolicyGate e -> List.of();
             case SkillEffect.RebuildCliArtifact e -> List.of();
         };
+    }
+
+    /**
+     * Move aside the bytes {@link SkillEffect.CommitUnitsToStore} is about to
+     * overwrite, and hand back the compensation that puts them back.
+     *
+     * <h3>The defect (#186)</h3>
+     *
+     * <p>This arm read {@code List.of()} — an EMPTY pre-state compensation, in
+     * an exhaustive switch, for the one effect that overwrites bytes already in
+     * the home. The commit deletes the destination and copies the new tree in;
+     * on a downstream failure the walk-back deleted what it found and restored
+     * nothing, because nothing had been captured. A publish or resolve that
+     * failed partway into a NON-EMPTY home left that unit absent rather than as
+     * it was. Severity scaled with the tier: the root home has the most
+     * installed units and the least coverage.
+     *
+     * <h3>Why a move and not a copy</h3>
+     *
+     * <p>{@code <home>/cache/} and {@code <home>/skills/} are the same
+     * filesystem, so {@link java.nio.file.Files#move} is a rename: constant
+     * time, and no second copy of a unit that can be hundreds of megabytes on a
+     * disk that is routinely near full. It also makes the commit's own
+     * {@code deleteRecursive(dst)} a no-op, so the destructive step stops being
+     * destructive rather than being raced.
+     *
+     * <p>This method has a SIDE EFFECT, which the rest of
+     * {@link #preStateCompensations} does not: it moves bytes. That is
+     * inherent. A pre-image of a directory cannot be a value read out of the
+     * store the way an installed-record or a lock file can, and taking it after
+     * the commit is taking it after the delete. The call site already runs
+     * immediately before the effect, which is exactly when the move must
+     * happen.
+     *
+     * <h3>What is deliberately not covered</h3>
+     *
+     * <p>Only the destination of a commit. Every other effect's compensation is
+     * out of scope for #186 and stays as it was.
+     */
+    private static List<Compensation> escrowOverwrittenUnits(
+            SkillEffect.CommitUnitsToStore e, EffectContext ctx) {
+        dev.skillmanager.resolve.ResolvedGraph graph = e.graph() != null
+                ? e.graph()
+                : (ctx == null ? null : ctx.resolvedGraph().orElse(null));
+        if (graph == null || ctx == null) return List.of();
+
+        List<Compensation> out = new ArrayList<>();
+        for (var resolved : graph.resolved()) {
+            UnitKind kind = resolved.unit().kind();
+            Path dst = ctx.store().unitDir(resolved.name(), kind);
+            if (!Files.exists(dst)) continue;              // nothing there to lose
+            Path parent = dst.getParent();
+            if (parent == null) continue;
+            dev.skillmanager.source.MaterializationEscrow escrow =
+                    dev.skillmanager.source.MaterializationEscrow.liftPaths(
+                            parent, ctx.store().root(),
+                            List.of(dst.getFileName().toString()), false);
+            if (escrow.isEmpty()) {
+                // The lift warned already. Say which unit is now unprotected:
+                // "could not set aside <some directory>" does not tell an
+                // operator which of their installed units a rollback would now
+                // delete outright.
+                Log.warn("no pre-image taken for %s — if this run rolls back, the version "
+                        + "already installed at %s cannot be restored", resolved.name(), dst);
+                continue;
+            }
+            out.add(new Compensation.RestoreUnitDir(resolved.name(), kind, escrow));
+        }
+        return out;
     }
 
     private static List<Compensation> snapshotLedger(String unitName, EffectContext ctx) {
@@ -590,6 +748,17 @@ public final class Executor {
                 if (Files.exists(dir)) {
                     dev.skillmanager.shared.util.Fs.deleteRecursive(dir);
                 }
+            }
+            case Compensation.RestoreUnitDir r -> {
+                // Runs AFTER the DeleteUnitDir for the same unit — the journal
+                // records pre-state before post-state and is walked LIFO — so
+                // the destination is already clear of what the commit wrote.
+                // restore() removes whatever is left there anyway, because a
+                // commit that failed mid-copy leaves a partial tree that no
+                // SkillCommitted fact accounts for.
+                r.escrow().restore();
+                Log.info("rollback: restored the previously installed %s at %s",
+                        r.unitName(), ctx.store().unitDir(r.unitName(), r.kind()));
             }
             case Compensation.RestoreInstalledUnit r -> {
                 ctx.writeSource(r.previous());
