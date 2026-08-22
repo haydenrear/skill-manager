@@ -1867,3 +1867,40 @@ findings:
       predicate that can be wrong about it. And do not edit a script several
       running agents are executing; rename a new one into place.
     candidate_owner: epic agent (wave-4 machinery) -- fixed by them, no action outstanding
+
+  - id: DEF-035
+    found_by: HIS-11, on itself, mid-ticket
+    found_at: "2026-08-22"
+    severity: minor
+    summary: >
+      Mutation testing with `git checkout -- <path>` destroys uncommitted work.
+      An agent reverting a deliberate mutation wiped every edit it had made to
+      the same file, because the fix was not committed yet.
+    detail: >
+      The vacuity discipline this epic runs on is: disable the fix, run the
+      assertion, confirm it reddens, re-enable. The natural way to "re-enable"
+      is `git checkout -- <file>` -- and that restores the file to HEAD, not to
+      the pre-mutation state. If the fix is still uncommitted, HEAD does not
+      contain it, and the revert silently deletes the ticket's work along with
+      the mutation.
+
+      HIS-11 hit this on `Executor.java`, reapplied the edits, verified green,
+      and committed BEFORE running any further mutations. Nothing was lost.
+    why_it_matters: >
+      Nine assertions in this epic have been caught passing against broken code,
+      so mutation testing is not optional here -- every ticket does it, several
+      times, and the loop that makes it safe is not written down anywhere. The
+      hazard grows with the discipline.
+    the_rule: >
+      COMMIT THE FIX BEFORE MUTATING IT. Then a mutation is a dirty working tree
+      over a good commit, `git checkout --` restores exactly the fix, and the
+      worst case is losing the mutation -- which is the thing you wanted to
+      throw away. Alternatives that also work: copy the file aside first, or
+      mutate a scratch copy of `src/` rather than the tree under test. What does
+      NOT work is reverting to HEAD while HEAD predates your work.
+    candidate_owner: unassigned
+    status: open
+    disposition: >
+      Not product work. Filed so it reaches HIS-8 (#224), which owns the
+      documentation an agent reads before working in this repository -- the
+      vacuity loop belongs there next to the discipline it protects.
