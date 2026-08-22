@@ -262,6 +262,170 @@ public final class AgentHomes {
     }
 
     /**
+     * The environment variable an agent directory is named by:
+     * {@code .claude} → {@code CLAUDE_CONFIG_DIR} (the variable the Claude CLI
+     * itself honours — see {@link #claude()}), {@code .codex} →
+     * {@code CODEX_HOME}, {@code .gemini} → {@code GEMINI_HOME}.
+     */
+    public static String variableFor(Path agentDir) {
+        String name = agentDir.getFileName() == null ? "" : agentDir.getFileName().toString();
+        return switch (name) {
+            case ".codex" -> CODEX_HOME;
+            case ".gemini" -> GEMINI_HOME;
+            default -> CLAUDE_CONFIG_DIR;
+        };
+    }
+
+    /**
+     * <b>What "this command is about home X" means, as an environment.</b>
+     *
+     * <p>A home has TWO AXES. {@code SKILL_MANAGER_HOME} says where the UNITS
+     * live; {@code CLAUDE_CONFIG_DIR} / {@code CODEX_HOME} / {@code GEMINI_HOME}
+     * say where the AGENT CONFIGS live, and they are a separate axis. Naming
+     * only the first sends the store half where it was told and resolves the
+     * agent half against whatever the ambient environment happens to export —
+     * issue #145, measured again as DEF-029: {@code sync <unit> --merge --home
+     * <scratch>} wrote {@code units.lock.toml} into the named home and then
+     * linked that unit into the operator's real {@code ~/.claude},
+     * {@code ~/.codex} and {@code ~/.gemini}, registering a marketplace in
+     * three real config files on the way.
+     *
+     * <p>This method is the ONE statement of that environment. Two callers
+     * consume it and they must not be able to disagree:
+     *
+     * <ul>
+     *   <li>{@code HomeCommand.homeEnvPrefix} RENDERS it, as the {@code env
+     *       NAME=value …} prefix of a printed remedy;</li>
+     *   <li>{@link #bind} APPLIES it, as the thread-local overrides
+     *       {@code --home} installs, so an in-process invocation resolves
+     *       exactly what that printed prefix would have resolved.</li>
+     * </ul>
+     *
+     * <p>So {@code --home <X>} and {@code env <prefix> <cli>} are one binding
+     * in two syntaxes rather than two answers to "which home is this command
+     * about" — which is what HIS-14 is, and what
+     * {@code GOAL-one-home-one-answer} measures.
+     *
+     * <h2>Why {@code CLAUDE_HOME} is not in the map</h2>
+     *
+     * <p>Because it would be a second way to say the first. {@code CLAUDE_HOME}
+     * is the PARENT spelling of {@code CLAUDE_CONFIG_DIR}, and
+     * {@link #claude()} consults the config dir FIRST — so a binding that
+     * declares {@code CLAUDE_CONFIG_DIR} already wins over any ambient
+     * {@code CLAUDE_HOME}, and adding it would put one directory in the map
+     * twice and give a future edit two places to be wrong.
+     * {@code HomeDescriptor.envFor} publishes both because a descriptor is read
+     * by consumers that know only one of the names; a binding is applied by
+     * this codebase, which knows the precedence.
+     *
+     * @param storeRoot the Skill Manager store — {@code <root>/.skill-manager}
+     *                  by convention; see {@link #homeRootFor}
+     */
+    public static Map<String, String> binding(Path storeRoot) {
+        return binding(storeRoot, homeRootFor(storeRoot));
+    }
+
+    /**
+     * {@link #binding(Path)} with the agent-home root stated rather than
+     * derived — the profile layout ({@code ProjectChildHomeScaffolder.layoutFor}
+     * with a named profile) keeps its agent homes under {@code agents/} instead
+     * of beside the store, and {@code --home-root} is how a caller says so.
+     */
+    public static Map<String, String> binding(Path storeRoot, Path homeRoot) {
+        Path store = storeRoot.toAbsolutePath().normalize();
+        Map<String, String> out = new java.util.LinkedHashMap<>();
+        out.put(SKILL_MANAGER_HOME, store.toString());
+        for (Path dir : agentDirsUnder(homeRoot)) {
+            out.put(variableFor(dir), dir.toString());
+        }
+        return out;
+    }
+
+    /**
+     * Apply {@link #binding} to this thread, and answer what was displaced so
+     * the caller can put it back.
+     *
+     * <p>A JVM cannot mutate its own environment, so the overrides ARE the
+     * binding as far as this process is concerned: {@link #resolve} consults
+     * them ahead of the real variables, {@code SkillStore.defaultStore()}
+     * resolves through it, and the two harness drivers that spawn a child
+     * ({@code claude plugin …}, {@code codex …}) pass the resolved value down
+     * explicitly rather than letting the child inherit the ambient one. Every
+     * reader therefore agrees, in-process and in the children.
+     *
+     * @return the overrides this call displaced, for {@link #restoreOverrides}
+     */
+    public static Map<String, Path> bind(Path storeRoot) {
+        return bind(storeRoot, homeRootFor(storeRoot));
+    }
+
+    /** {@link #bind(Path)} against {@link #binding(Path, Path)}. */
+    public static Map<String, Path> bind(Path storeRoot, Path homeRoot) {
+        Map<String, Path> displaced = snapshotOverrides();
+        binding(storeRoot, homeRoot).forEach((key, value) -> setOverride(key, Path.of(value)));
+        return displaced;
+    }
+
+    /**
+     * The variables {@link #bind} cannot honestly bind for {@code storeRoot},
+     * each with the reason, or empty when it can bind them all.
+     *
+     * <p>Setting a variable is not the same as confining a write. An agent
+     * directory that is a SYMLINK OUT of the home writes wherever the link
+     * points, so a caller that binds it has named one home and edited another —
+     * the very outcome the binding exists to prevent, and the shape the epic
+     * measured twice on the operator's own root home during HIS-7. This is the
+     * "or refuses and names the variable it cannot set" half of HIS-14's slice;
+     * there is no third option in which the command runs anyway.
+     *
+     * <p>Only directories that EXIST are judged. A home whose {@code .claude}
+     * has not been created yet is bindable — the projector will create it
+     * inside the home. And a symlink that stays INSIDE the home root is fine:
+     * the test is where it lands, not whether it is a link.
+     */
+    public static Map<String, String> unbindable(Path storeRoot) {
+        return unbindable(storeRoot, homeRootFor(storeRoot));
+    }
+
+    /** {@link #unbindable(Path)} against an explicitly stated agent-home root. */
+    public static Map<String, String> unbindable(Path storeRoot, Path homeRoot) {
+        Path root = homeRoot.toAbsolutePath().normalize();
+        Path real = dev.skillmanager.shared.util.Fs.realOrNormalized(root);
+        Map<String, String> out = new java.util.LinkedHashMap<>();
+        for (Path dir : agentDirsUnder(root)) {
+            if (!java.nio.file.Files.exists(dir)) continue;
+            Path target = dev.skillmanager.shared.util.Fs.realOrNormalized(dir);
+            if (target.startsWith(real)) continue;
+            out.put(variableFor(dir), dir + " resolves to " + target
+                    + ", which is outside the home at " + root);
+        }
+        return out;
+    }
+
+    /**
+     * Every override currently installed on this thread — a copy, so the
+     * caller holds a value rather than a view of a map that keeps changing.
+     */
+    public static Map<String, Path> snapshotOverrides() {
+        return new HashMap<>(OVERRIDES.get());
+    }
+
+    /**
+     * Put back exactly the overrides {@code snapshot} names, dropping any
+     * installed since it was taken.
+     *
+     * <p>Not {@link #clearOverrides()}: a binding applied by one CLI
+     * invocation must not delete the sandbox an embedding process (the server,
+     * a test harness) installed around it. That distinction is why
+     * {@link #bind} returns the displaced map rather than a boolean.
+     */
+    public static void restoreOverrides(Map<String, Path> snapshot) {
+        Map<String, Path> live = OVERRIDES.get();
+        live.clear();
+        if (snapshot != null) live.putAll(snapshot);
+    }
+
+    /**
      * The one Claude config location, in the three spellings callers need:
      * {@code root} is the parent directory, {@code configDir} is the
      * {@code .claude/} tree, and {@code configFile} is the {@code .claude.json}

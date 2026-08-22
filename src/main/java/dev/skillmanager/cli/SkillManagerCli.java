@@ -162,6 +162,11 @@ public final class SkillManagerCli implements Runnable {
         // would itself be a write to the global.
         dev.skillmanager.store.HomeScaffold.Access[] displaced = {null};
         boolean[] declared = {false};
+        // The agent-home overrides this invocation displaced, same shape and
+        // same reason as `displaced` above: scoped to the invocation, not to
+        // the JVM. Null until a --home was actually seen.
+        @SuppressWarnings("unchecked")
+        java.util.Map<String, java.nio.file.Path>[] displacedBinding = new java.util.Map[]{null};
         cmd.setExecutionStrategy(pr -> {
             SkillManagerCli root = rootCommand(pr);
             if (root != null) Log.setVerbose(root.verbose);
@@ -175,6 +180,11 @@ public final class SkillManagerCli implements Runnable {
             displaced[0] = dev.skillmanager.store.HomeScaffold
                     .declare(CommandHomeAccess.of(pr));
             declared[0] = true;
+            // And before anything can RESOLVE one: if this command named a
+            // home, bind BOTH of that home's axes. Ahead of tryReconcile
+            // deliberately — see bindNamedHome.
+            Integer refused = bindNamedHome(pr, displacedBinding);
+            if (refused != null) return refused;
             tryReconcile();
             int rc = new CommandLine.RunLast().execute(pr);
             return completeExecution(root, pr, rc);
@@ -194,8 +204,127 @@ public final class SkillManagerCli implements Runnable {
             // out-of-tree library user) that ran one READ_ONLY command left
             // every later SkillStore.init() in the process a silent no-op.
             if (declared[0]) dev.skillmanager.store.HomeScaffold.restore(displaced[0]);
+            if (displacedBinding[0] != null) {
+                dev.skillmanager.agent.AgentHomes.restoreOverrides(displacedBinding[0]);
+            }
         }
     }
+
+    /**
+     * <b>{@code --home <X>} means "this command is about X", on both of a
+     * home's axes.</b>
+     *
+     * <p>It used to mean it on one. {@code SKILL_MANAGER_HOME} says where the
+     * UNITS live and {@code CLAUDE_CONFIG_DIR} / {@code CODEX_HOME} /
+     * {@code GEMINI_HOME} say where the AGENT CONFIGS live; the flag set the
+     * first and left the second resolving against whatever the shell exported.
+     * So the store half went where it was told and the agent half went
+     * somewhere nobody named. Measured (DEF-029, this repository, 2026-08-21):
+     *
+     * <pre>{@code
+     * $ <build> sync probe-unit --merge --home <scratch>/project/.skill-manager
+     *   ✓ units.lock.toml: wrote 1 unit(s) → <scratch>/project/…
+     *   ✓ agents: 1 unit(s) linked into claude, codex, gemini
+     * }</pre>
+     *
+     * <p>…where "claude" was the operator's real {@code ~/.claude}. Three
+     * dangling symlinks and three edited config files later, the scratch unit
+     * was showing up in an unrelated agent session. That is how it was found —
+     * not by a check.
+     *
+     * <h2>Why here, and not in the seven verbs that take the flag</h2>
+     *
+     * <p>Because "N call sites, one rule" is the shape this epic keeps paying
+     * for, and the reason {@code HomeCommand.homeEnvPrefix} was right while
+     * every other remedy was wrong: the correct binding existed in ONE place
+     * and the flag was a second spelling of the same decision. There is now one
+     * applier, reading {@link dev.skillmanager.agent.AgentHomes#binding} — the
+     * same map that prefix renders — so a verb cannot be added to the tree with
+     * a {@code --home} that binds half. {@code sync}, {@code project sync},
+     * {@code home drift}, {@code home shims}, {@code home close-out},
+     * {@code unit publish} and {@code exec} are covered because they declare
+     * the option, not because they were listed.
+     *
+     * <h2>Why ahead of {@code tryReconcile}</h2>
+     *
+     * <p>{@link #tryReconcile()} projects the AMBIENT home's units into the
+     * AMBIENT agent directories, before the parsed command runs. Left after the
+     * binding it is unchanged in meaning — the ambient home IS the named home
+     * now, because {@code SkillStore.defaultStore()} resolves through the same
+     * override — so a {@code --home} invocation reconciles the home it named
+     * and touches no other. Left BEFORE it, a command carrying {@code --home}
+     * would still write into a home the operator never mentioned, which is
+     * most of what the flag is for.
+     *
+     * <h2>The refusal</h2>
+     *
+     * <p>Binding a variable is not the same as confining a write: an agent
+     * directory that symlinks OUT of the home writes wherever the link points.
+     * {@link dev.skillmanager.agent.AgentHomes#unbindable} finds those, and
+     * this refuses with {@link #UNBINDABLE_HOME_EXIT_CODE} naming each variable
+     * and where it actually lands, rather than running with a binding that is
+     * true of the environment and false of the filesystem.
+     *
+     * @param displaced one-element holder for the overrides displaced, so the
+     *                  caller's {@code finally} can put them back
+     * @return an exit code when the invocation must not proceed, else null
+     */
+    private static Integer bindNamedHome(CommandLine.ParseResult pr,
+                                         java.util.Map<String, java.nio.file.Path>[] displaced) {
+        java.nio.file.Path store = null;
+        java.nio.file.Path root = null;
+        for (CommandLine.ParseResult p = pr; p != null; p = p.subcommand()) {
+            try {
+                if (p.hasMatchedOption("--home")) {
+                    java.nio.file.Path v = p.matchedOptionValue("--home", (java.nio.file.Path) null);
+                    if (v != null) store = v;
+                }
+                if (p.hasMatchedOption("--home-root")) {
+                    java.nio.file.Path v =
+                            p.matchedOptionValue("--home-root", (java.nio.file.Path) null);
+                    if (v != null) root = v;
+                }
+            } catch (RuntimeException noSuchOption) {
+                // This level of the parse declares no such option. Not an
+                // error: most commands do not take a home.
+            }
+        }
+        if (store == null && root == null) return null;
+        // --home-root names the directory holding .claude/.codex/.gemini when
+        // it is not the store's parent (the profile layout). It decides the
+        // agent axis; --home still decides the store.
+        java.nio.file.Path storeRoot = store != null
+                ? store
+                : root.resolve(dev.skillmanager.agent.AgentHomes.STORE_DIR_NAME);
+        java.util.Map<String, String> unbindable = root == null
+                ? dev.skillmanager.agent.AgentHomes.unbindable(storeRoot)
+                : dev.skillmanager.agent.AgentHomes.unbindable(root, root);
+        if (!unbindable.isEmpty()) {
+            Log.error("refusing: this command names the home at %s, but %d of its agent "
+                            + "config director%s cannot be bound to it.",
+                    storeRoot, unbindable.size(), unbindable.size() == 1 ? "y" : "ies");
+            unbindable.forEach((var, why) -> Log.error("  %s: %s", var, why));
+            Log.error("  A home has two axes: SKILL_MANAGER_HOME says where the units live and "
+                    + "CLAUDE_CONFIG_DIR / CODEX_HOME / GEMINI_HOME say where the agent configs "
+                    + "live. Binding a variable that resolves outside the home would name one "
+                    + "home and edit another (#145). Replace the link with a real directory "
+                    + "inside the home, or run the command against the home the link points at.");
+            return UNBINDABLE_HOME_EXIT_CODE;
+        }
+        displaced[0] = root == null
+                ? dev.skillmanager.agent.AgentHomes.bind(storeRoot)
+                : dev.skillmanager.agent.AgentHomes.bind(storeRoot, root);
+        return null;
+    }
+
+    /**
+     * A command named a home whose agent config directories resolve outside
+     * it, so {@code --home} could not be honoured on both axes. Its own status
+     * because "the flag was refused" and "the command failed" are different
+     * things to an operator and to a script — the same reason
+     * {@code LauncherShims.HOME_MISMATCH_EXIT_CODE} is not 1.
+     */
+    public static final int UNBINDABLE_HOME_EXIT_CODE = 13;
 
     static int handleExecutionException(Exception ex, CommandLine c, CommandLine.ParseResult pr)
             throws Exception {

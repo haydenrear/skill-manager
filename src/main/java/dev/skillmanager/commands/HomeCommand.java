@@ -631,31 +631,25 @@ public final class HomeCommand {
          * remedy is for THAT home, and a home carries its own launcher.
          */
         private static String homeEnvPrefix(Path home) {
-            Path root = dev.skillmanager.agent.AgentHomes.homeRootFor(home);
             // A BARE `env`, exactly as this shipped. #229's first attempt
             // spelled it /usr/bin/env, arguing that made the remedy honest
             // under the graph assertions that require an absolute head token.
             // It does the opposite: /usr/bin/env is absolute and executable
             // forever, whatever the resolution behind it does, so three
             // readers go permanently green and stop asserting anything.
-            StringBuilder out = new StringBuilder("env SKILL_MANAGER_HOME=")
-                    .append(HomeDescriptor.shellQuote(home.toString()));
-            for (Path dir : dev.skillmanager.agent.AgentHomes.agentDirsUnder(root)) {
-                String name = dir.getFileName().toString();
-                String var = switch (name) {
-                    case ".codex" -> "CODEX_HOME";
-                    case ".gemini" -> "GEMINI_HOME";
-                    default -> "CLAUDE_CONFIG_DIR";
-                };
-                out.append(' ').append(var).append('=')
-                        .append(HomeDescriptor.shellQuote(dir.toString()));
-            }
-            // This method is its own binding, and it binds MORE than --home:
-            // SKILL_MANAGER_HOME says where the units are, the three agent
-            // roots say where the agent configs are, and a remedy that pinned
-            // only the first resolves the agent half against the operator's
-            // real ~/.claude (#145). So this is not a class-2 verb wearing an
-            // env prefix; it is the one remedy whose target is four variables.
+            StringBuilder out = new StringBuilder("env");
+            // HIS-14: the four variables are no longer written down here. This
+            // method used to be the ONLY place that knew a home has two axes,
+            // which is precisely why `--home` -- read by every other remedy --
+            // bound one of them and sent the agent half to the operator's real
+            // ~/.claude (DEF-029). AgentHomes.binding is now the single
+            // statement, RENDERED here and APPLIED by --home, so the printed
+            // remedy and the flag cannot mean two different things.
+            dev.skillmanager.agent.AgentHomes.binding(home).forEach((var, value) ->
+                    out.append(' ').append(var).append('=')
+                            .append(HomeDescriptor.shellQuote(value)));
+            // This is not a class-2 verb wearing an env prefix; it is the one
+            // remedy whose target is four variables.
             //
             // The caveat is appended here rather than left to the caller: this
             // is the exact line #161 quotes, and it was the surface where a

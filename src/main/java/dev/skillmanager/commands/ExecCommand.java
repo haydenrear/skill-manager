@@ -246,6 +246,12 @@ public final class ExecCommand implements Callable<Integer> {
             return;
         }
         Map<String, String> env = launch.env();
+        // Restored, not cleared. `exec --home <x>` now arrives here with the
+        // named home's binding already installed by the CLI (see
+        // SkillManagerCli.bindNamedHome), and clearing would delete it for
+        // everything that runs after this refresh — including, in an embedding
+        // process, the sandbox its harness installed. HIS-14.
+        Map<String, Path> displaced = AgentHomes.snapshotOverrides();
         try {
             applyOverride(env, AgentHomes.CLAUDE_CONFIG_DIR);
             applyOverride(env, AgentHomes.CLAUDE_HOME);
@@ -259,7 +265,7 @@ public final class ExecCommand implements Callable<Integer> {
             // dangerous cases (wrong home, frozen home) are handled above.
             Log.warn("could not refresh the agent symlinks for %s (%s)", store.root(), e.getMessage());
         } finally {
-            AgentHomes.clearOverrides();
+            AgentHomes.restoreOverrides(displaced);
         }
     }
 
