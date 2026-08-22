@@ -270,8 +270,9 @@ It is **not a defect the per-verb contract introduced** — a bare
 `sync <unit> --merge` had the same behaviour and no way to name any home. What
 the contract does is make the remedy *look* bound while binding half. I did not
 change what `--home` means unilaterally: HIS-9 added it too, and two tickets in
-this wave now depend on it. Filed as **DEF-029, blocking**, with the fix
-(derive the agent roots from `--home`, as `HomeDescriptor.envFor` already does).
+this wave now depend on it. Filed as **DEF-029**, with the fix
+(derive the agent roots from `--home`, as `HomeDescriptor.envFor` already does),
+and now **triaged and scheduled as HIS-14 (#232)**.
 
 **The damage is repaired.** I removed the three dangling skill symlinks I
 created. I did *not* edit `~/.claude/settings.json`,
