@@ -307,9 +307,9 @@ HIS-6 owns the terminal measurement; this contributes the remedy reader.
 | --- | --- |
 | `jbang RunTests.java` | **ALL PASSED** |
 | `uv run pytest specs/` | **38 passed** |
-| **`home-sync` (CORE)** | **passed — 18 of 18 nodes, complete** (re-run on the rebased tree) |
+| **`home-sync` (CORE)** | **passed — 18 of 18 nodes, complete**, on the integrated tip |
 | `home-integrity` (assigned) | **passed — 14 of 14 nodes, complete** |
-| **`ticket-lifecycle` (CORE)** | **passed — 13 of 13 nodes, complete** (re-run after `a4a95cb`) |
+| **`ticket-lifecycle` (CORE)** | passed 13/13 pre-merge; **red on the integrated tip until DEF-030 was fixed** — see below |
 
 **`home-sync` is H1, and it is the graph I owed and had not run.** With the
 `env` prefix it was red: `remedyArgs` strips token 0 only when it
@@ -342,6 +342,40 @@ also passes, which is the node that would have caught DEF-029 had the leak been
 inside a graph rather than in my own hand-run probe.
 
 `run.py --all` was not run; it belongs to HIS-6.
+
+**Integrating HIS-4 and HIS-9 cost two node-level fixes, and both were caught
+by something rather than noticed.**
+
+*DEF-026, caught by my own guard.* HIS-4's three `<cli> sync <name>` remedies
+were class 3 and unbound. I predicted it before HIS-4 merged; when it merged the
+guard turned it into a build failure, and I fixed it as the wave-4 merge
+resolution. It also exposed two things about my own work: the inherited tests
+for `mergeConflictRemedy` all pass `homeRoot = null`, so they could not have
+failed on it — a behavioural assertion was added — and the guard's own vacuity
+check found a **gap in the guard**: its pattern required a `+` before the CLI
+token, so an assignment form (`String syncRemedy = cli + " sync " + name`)
+walked past it. Widened.
+
+*DEF-030, caught by running the graph.* `ticket.lifecycle.provisioned` went red
+on the integrated tip and took 11 of 13 nodes with it:
+
+```
+each_worktree_home_has_a_pinned_cli_that_actually_runs   failed   (pins=false)
+
+skill-manager: refusing to run against a home you did not name.
+  you named:  .../ticket-lifecycle/ambient
+  this shim would have edited: .../proj-TICKET-A/.skill-manager
+  Say which one you mean:  --home <...>
+```
+
+HIS-9's home-mismatch refusal meeting a probe written before it. The refusal is
+right; the probe was wrong — "does this home's pinned CLI run" has to name the
+home now, which is what the refusal itself recommends. **Not caused by this
+ticket**, and measured rather than argued: my diff touches nothing under
+`test_graph/`, my `LauncherShims` change has zero removed lines and alters no
+part of the generated shim, and the pre-merge run passed this node 13/13. Fixed
+here because I am last in promotion order — there is no later ticket to hand a
+red core graph to.
 
 **What no graph covered:** DEF-029. `ticket.lifecycle.global.home.untouched`
 passes, and it is the node that would have caught the leak — but the leak
@@ -398,6 +432,8 @@ defect one level up. It resolves `{@link}`, `@see` and `@throws`. It cannot see
 - **DEF-026** — HIS-4's three merge-conflict remedies were class 3 and unbound.
   **Closed:** predicted before HIS-4 merged, caught by the guard as a build
   failure when it did, fixed here as the wave-4 merge resolution.
+- **DEF-030** — HIS-9's home-mismatch refusal meets a `ticket-lifecycle` probe
+  written before it. **Closed:** fixed here, for the same reason.
 - **DEF-028** — HIS-10's descent record read as a leak by `ticket-lifecycle`.
   **Closed: fixed upstream in `a4a95cb` from this finding**, before this PR.
 
