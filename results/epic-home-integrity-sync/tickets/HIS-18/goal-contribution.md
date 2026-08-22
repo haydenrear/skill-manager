@@ -257,6 +257,17 @@ are symlinks in the store, each resolving to a real tree with content — before
 it asserts anything, and case (0) asserts the scrape found the scaffolder's
 three lines and not an empty list.
 
+## One transitional effect HIS-6 will see, and should not read as a regression
+
+Every digest recorded before this change — `home.digest.json`, and the
+`sourceDigest` / `entryDigests` in existing `.materialization` records — was
+taken with the excluded paths in it. The first command after this lands
+recomputes without them, so **one** drift report will show those paths leaving.
+That report is the change landing, not drift; the next one is quiet. Hold-back
+is unaffected, because `copyUnit` asks the disk before it asks the record
+(`settledWithoutARecord`) and both sides of that question are filtered the same
+way.
+
 ## Homes
 
 Snapshotted before the first command and diffed at the end:
