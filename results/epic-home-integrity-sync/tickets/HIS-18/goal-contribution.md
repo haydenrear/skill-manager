@@ -246,7 +246,7 @@ Reproduced independently of the review, by `RenderBaseline.java`:
 | **total, whole store** | | **22** |
 
 Not one of `build-logic`, `sdk` or `standard-nodes`. Those bindings are gone
-from every consumer, which is also **DEF-053**: the baseline's attribution of
+from every consumer, which is also **DEF-058**: the baseline's attribution of
 the 776 was wrong about *which* paths, and this table is the separate point that
 they are *gone*.
 
