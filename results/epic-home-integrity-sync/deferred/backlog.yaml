@@ -3522,3 +3522,77 @@ findings:
       per-ticket close records to close over.
     candidate_owner: "HIS-6 to decide what it can still report; spec-double-compiler for (b)"
     status: open
+
+  - id: DEF-073
+    found_by: review of PR #244 (HIS-13), incidentally, while running the declared validation set
+    found_at: "2026-08-23"
+    severity: major
+    summary: >
+      THE UNIT SUITE LEAKS A SYMLINK INTO WHATEVER `.claude` THE ENVIRONMENT
+      NAMES. `jbang RunTests.java`, run with CLAUDE_CONFIG_DIR pinned, left a
+      link in the pinned `.claude/skills`:
+
+        one-forty-five -> /private/var/folders/.../T/sm-145-.../operator/.skill-manager/skills/one-forty-five
+
+      from `AgentProjectionFollowsHomeTest`. With the axes UNSET it aims at
+      whatever `$HOME/.claude` resolves to -- the operator's real one.
+    detail: >
+      This is THIS EPIC'S EXACT INCIDENT SHAPE, in the test suite that validates
+      the fixes for it. Twice in this epic a command that looked home-scoped
+      repointed the operator's real global agent skill links; both times it was
+      found by an agent noticing an odd path. Here the producer is a TEST, it
+      writes into the agent axis rather than the store axis, and nothing in the
+      suite asserts that it cleaned up.
+
+      It was contained on this run only because the reviewer had pinned all four
+      home variables as a matter of protocol. The reviewer removed the link it
+      created. Nobody running `jbang RunTests.java` the ordinary way -- which is
+      what the plan's `repository_unit` field tells every ticket agent to run --
+      has that pinning.
+    consequence: >
+      Every ticket in this epic ran `jbang RunTests.java`. Any of those runs
+      with an unpinned agent axis wrote into the operator's real ~/.claude. The
+      damage is a stray link rather than a repointed one, so it is low severity
+      per event and it is the same class the epic exists to close.
+    remedy: >
+      The test must bind its own agent axis and assert it cleaned up -- and
+      HIS-13's own `home repair` is the command that would NAME this link, which
+      makes it a natural fixture rather than an afterthought.
+    candidate_owner: "HIS-6 to triage; a follow-up on AgentProjectionFollowsHomeTest"
+    status: open
+
+  - id: DEF-074
+    found_by: review of PR #244 (HIS-13), attempting to reproduce the declared validation set
+    found_at: "2026-08-23"
+    severity: major
+    summary: >
+      THE SAFETY PROTOCOL AND THE VALIDATION COMMANDS ARE MUTUALLY
+      INCOMPATIBLE, so no agent in this epic could run both correctly. Pinning
+      `SKILL_MANAGER_HOME` -- which every ticket brief in this epic MANDATES,
+      for good reason -- reddens 10 unit cases and takes the whole
+      `checkout-home` graph red with `exit 79: refusing to run against a home
+      you did not name`.
+    detail: >
+      MEASURED by the #244 reviewer: with the four axes pinned to the worktree
+      home, `jbang RunTests.java` produced 24 failures; pinned to a throwaway,
+      21. Every failure message names one of the pinned values, or is
+      `ConfinementTest`'s `declared()` going true BECAUSE `SKILL_MANAGER_HOME`
+      is exported. `checkout.home.provisioned` fails for the same reason.
+
+      So the declared `repository_unit` and `spec_graph` commands require an
+      UNPINNED environment, and the containment rules require a PINNED one.
+      An agent obeying both gets reds it cannot distinguish from its own.
+    why_this_matters: >
+      It means "ALL PASSED" in this epic's ticket records was measured in the
+      unpinned configuration -- the one where DEF-073's symlink escapes. The
+      safety protocol and the evidence were never satisfied simultaneously, by
+      anyone, and nothing surfaced the conflict until a reviewer hit it head on.
+      HIS-6 should treat every unit-suite green in this epic as measured under
+      the unpinned configuration and say so.
+    remedy: >
+      The tests that depend on an unpinned environment should bind their own
+      homes explicitly rather than reading ambient state -- which is HIS-14's
+      and HIS-16's thesis applied to the test suite. Until then, state which
+      configuration each recorded green was measured in.
+    candidate_owner: HIS-6
+    status: open
