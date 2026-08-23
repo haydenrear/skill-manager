@@ -3452,3 +3452,57 @@ findings:
     candidate_owner: HIS-6
     also_relevant_to: [HIS-13, HIS-8]
     status: open
+
+  - id: DEF-072
+    found_by: epic agent, acting on DEF-069's half (a)
+    found_at: "2026-08-23"
+    severity: major
+    summary: >
+      DEF-069's half (a) is FIXED and half (b) is NOT, and the difference is the
+      whole finding. Normalising the three wrapped flow sequences in
+      ticket_plan.yaml makes the spec toolchain parse the file again -- but the
+      reason it could not is still there, in a different repository, and it will
+      break the next file anyone wraps.
+    detail: >
+      MEASURED, same parser, same file, one commit apart. The parser is
+      `parse_simple_yaml` in the spec-double-compiler skill's
+      extract_spec_manifest.py, loaded directly and run over the plan:
+
+        BEFORE: ValueError: unexpected indentation at:
+                'Compensation, MaterializationEscrow, HomeLock, LiveInterpreter.runOne]'
+        AFTER:  parsed; top-level keys read
+
+      Three sequences were wrapped, all three introduced by conflict-key
+      CORRECTIONS after wave reviews (HIS-11's, HIS-16's, HIS-18's). They are
+      valid YAML. `parse_simple_yaml` is a hand-rolled line-oriented reader that
+      treats a continuation line as a dict key at unexpected indentation.
+
+      CONFIRMED CONSEQUENCE, and it is worse than "a command errored":
+      `specs/tickets/` holds ONE directory, `SMVENV-001`, and NOT ONE HIS
+      TICKET. No ticket in this epic ever ran its declared spec lifecycle. Every
+      assignment block printed the command; every agent that ran it got a
+      traceback; HIS-14 recorded the skip without a cause and the rest recorded
+      nothing. `skt status` reads the same `status:` field, so the one
+      instrument an agent uses to orient itself has said "not open" for
+      eighteen tickets, correctly, for a reason nobody diagnosed until ticket
+      seventeen of eighteen.
+    what_is_still_broken: >
+      Half (b). A hand-rolled YAML reader in the toolchain that decides whether
+      a spec ticket may be opened. It accepts a subset of YAML nobody has
+      written down, so the plan file is now carrying an UNSTATED FORMAT
+      CONSTRAINT that the next `yq`, formatter, or hand-edit will violate
+      silently. That is this epic's signature defect exactly -- two readers of
+      one file, one of which is narrower than the format it is trusted to
+      decide -- living in the instrument that gates the epic's own process.
+    remedy: >
+      spec-double-compiler should use a real YAML parser, or state its subset
+      and validate against it. Until then, ticket_plan.yaml must keep every
+      flow sequence on one line, and nothing enforces that.
+    consequence_for_this_epic: >
+      HIS-5 and HIS-6 both need the spec workflow. HIS-6 additionally cannot
+      report "the workflow was closed" as evidence of anything, because it was
+      never opened. The finalization step in git-epic-workflow rule 8 -- "the
+      finalizer promotes the accepted model and closes the workflow" -- has no
+      per-ticket close records to close over.
+    candidate_owner: "HIS-6 to decide what it can still report; spec-double-compiler for (b)"
+    status: open

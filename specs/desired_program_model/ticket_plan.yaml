@@ -3701,8 +3701,7 @@ tickets:
     promotion_order: 9
     promotion_predecessor: HIS-12
     conflict_keys:
-      production: [Executor.preStateCompensations, Executor.runStaged, Executor.runWithContext,
-                   Compensation, MaterializationEscrow, HomeLock, LiveInterpreter.runOne]
+      production: [Executor.preStateCompensations, Executor.runStaged, Executor.runWithContext, Compensation, MaterializationEscrow, HomeLock, LiveInterpreter.runOne]
       # CORRECTED after HIS-11's review. The declared pair under-described the
       # change in two ways the reviewer found and the author extended:
       #   Compensation gained a record IN A SEALED PERMITS CLAUSE, so anything
@@ -4172,8 +4171,7 @@ tickets:
     promotion_order: 12
     promotion_predecessor: HIS-15
     conflict_keys:
-      production: [ProjectCommand, ProjectRoot.resolve, Confinement, SandboxCommand,
-                   EnvCommand, SkillManagerCli, CommandHomeAccess, RunTests.java]
+      production: [ProjectCommand, ProjectRoot.resolve, Confinement, SandboxCommand, EnvCommand, SkillManagerCli, CommandHomeAccess, RunTests.java]
       # CORRECTED after HIS-16's review. Over-declared: AgentHomes.binding --
       # AgentHomes.java is not in the diff. Under-declared: ~13 of 31 touched
       # files, INCLUDING all four with real collision risk -- SkillManagerCli
@@ -4403,8 +4401,7 @@ tickets:
     promotion_order: 13
     promotion_predecessor: HIS-16
     conflict_keys:
-      production: [ChildHomeMaterializer.digest, ChildHomeMaterializer.plainView,
-                   ChildHomeMaterializer.isLocallyModified, GitIgnoreRules, RunTests.java]
+      production: [ChildHomeMaterializer.digest, ChildHomeMaterializer.plainView, ChildHomeMaterializer.isLocallyModified, GitIgnoreRules, RunTests.java]
       # CORRECTED after HIS-18's review. Over-declared: Rederivable and UnitDigest
       # are untouched (deliberately, and the PR says so). Under-declared:
       # RunTests.java and deferred/backlog.yaml, BOTH of which HIS-16 also
