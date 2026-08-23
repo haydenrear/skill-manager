@@ -535,13 +535,23 @@ public final class HomeRepair {
      * this, its javadoc having reserved it for "reporting and repair (HIS-13)"
      * since HIS-10 demoted it from deciding anything.
      *
-     * <p>Neither alone is enough, and that is the whole check. "This home
-     * declares an entry it does not have" is a normal state — every home with
-     * lazy artifacts is in it, and reporting it would recreate the failure mode
-     * {@link HomeCloner.Verification#declaredNotBuilt()} exists to avoid. "The
-     * parent has a tool this home does not" is normal too; a child home is not
-     * a copy of its parent's toolchain. The conjunction is not normal: it is a
-     * shim that was here, was inherited, and is gone.
+     * <p><b>THE PARAGRAPH THAT USED TO BE HERE WAS FALSE, and the review of
+     * PR #244 measured it false.</b> It said: <i>"'This home declares an entry
+     * it does not have' is a normal state … 'the parent has a tool this home
+     * does not' is normal too … the conjunction is not normal: it is a shim
+     * that was here, was inherited, and is gone."</i> <b>A lazy home satisfies
+     * the conjunction from birth.</b> Every clone this program makes is in
+     * exactly that state for every artifact it deferred, and the first thing
+     * this check did on a stock clone was call it damaged.
+     *
+     * <p>So there is a THIRD condition, and it is the one that decides:
+     * {@link HomePolicy#lazyArtifacts} must be FALSE. In a home that deferred
+     * nothing, a declared entry point that is absent is abnormal. In a home
+     * that deferred, it is the whole point. That is
+     * {@link HomeCloner#partitionDeclared}'s rule read in the accusing
+     * direction, and it is production's existing answer rather than a fourth
+     * one — which is what {@code GOAL-one-home-one-answer} asks of this class
+     * and what the first version of this method did not do.
      *
      * <h3>Fail closed on a store that will not re-derive</h3>
      *
@@ -553,6 +563,54 @@ public final class HomeRepair {
      * what it names.
      */
     private static int prunedInheritedEntries(Path store, List<Finding> findings) {
+        // THE POLICY GATE, AND IT IS THE HALF THIS SHIPPED WITHOUT.
+        //
+        // Review of PR #244, blocker 1, measured on stock `home clone` output:
+        // a freshly cloned, untouched, healthy home was reported DAMAGED.
+        //
+        //   home clone            exit 0  "no path in it reaches another home"
+        //   home verify --home C  exit 0
+        //   home repair --home C  exit 1  PRUNED_INHERITED_ENTRY bin/cli/tofu
+        //
+        // The javadoc below used to argue that "declared AND missing AND the
+        // parent has it" was not a normal state. IT IS: a LAZY HOME satisfies
+        // that conjunction FROM BIRTH. `bin/cli/tofu` was never in that clone
+        // and was never pruned; the clone deferred it on purpose, and the
+        // clone's own policy file says so in prose.
+        //
+        // Worse, the verdict depended on the OPERATOR'S MACHINE. Eight
+        // artifacts were declared-only in that clone and exactly one fired,
+        // because the root store happened to hold that one binary. On a
+        // machine where helm/docker/k3d had been built, the same untouched
+        // clone reports five.
+        //
+        // So this asks the question `HomeCloner.partitionDeclared` already
+        // asks, in its words: "BOTH conditions, and neither alone... without
+        // the policy test it would excuse them in the operator root, where
+        // nothing deferred anything". Read the other way round, which is this
+        // method's direction: without the policy test it ACCUSES them in every
+        // home that deferred something, which is every home but the root.
+        //
+        // WHAT THIS COSTS, stated rather than hidden: on a lazy home this
+        // check now says nothing, and a genuinely pruned inherited shim there
+        // -- HIS-9's measured incident -- is INDISTINGUISHABLE from a deferred
+        // one with the records that exist. Neither the ledger, the lock file
+        // nor the descent record remembers that a path was once present.
+        // Filed as DEF-073. A check that cannot tell the two apart must not
+        // guess, and guessing in the direction of "damage" is the spurious
+        // hold-back this ticket's own clause 3 forbids.
+        try {
+            if (HomePolicy.lazyArtifacts(new SkillStore(store))) return 0;
+        } catch (IOException unreadablePolicy) {
+            // Symmetrical with partitionDeclared's "an unreadable policy is not
+            // a licence to excuse anything", inverted for a method that
+            // accuses: an unreadable policy is not a licence to ACCUSE
+            // anything. Fail towards silence -- this is the arm that produces
+            // a repair which writes links into another store.
+            Log.detail("home repair: could not read %s's policy (%s); not reporting "
+                    + "declared-and-absent entry points", store, unreadablePolicy.getMessage());
+            return 0;
+        }
         List<Path> parents = new ArrayList<>();
         for (Path recorded : HomeProvenance.recordedParentStores(store)) {
             // THE SAME DISJUNCTION `sanctionedParentShim` DECIDES ON, and not
@@ -671,20 +729,53 @@ public final class HomeRepair {
         List<Finding> repaired = new ArrayList<>();
         List<String> failed = new ArrayList<>();
 
+        // ONE REPAIR, THEN RE-DETECT. Not a pass over a list taken once.
+        //
+        // Review of PR #244, blocker 2, second half. Two findings named two
+        // paths in ONE file; repairing the first rewrote the second's subject,
+        // and the loop then carried on and reported on a finding whose subject
+        // no longer existed. A snapshot list is a claim about a home that is
+        // being changed underneath it — the same "read once, act later" shape
+        // this epic keeps finding, inside the repairer.
+        //
+        // So the list is re-derived after every action, and a finding is only
+        // ever applied if THIS pass still reports it. A repair that consumes
+        // another finding's subject now simply makes that finding disappear
+        // (or change), which the next detection reports honestly instead of
+        // the loop acting on stale prose.
+        //
+        // Bounded, because the loop's termination depends on detection
+        // shrinking and detection is not this method's to trust: an oscillating
+        // pair of findings would otherwise spin forever holding a write scope.
+        // The cap is generous and its exhaustion is REPORTED, never silent.
+        Set<String> attempted = new LinkedHashSet<>();
+        int cap = Math.max(8, before.findings().size() * 4);
         WriteConfinement.Scope previous = WriteConfinement.declare(ownedAxesOf(root));
+        Report current = before;
         try {
-            for (Finding finding : before.repairable()) {
+            for (int pass = 0; pass < cap; pass++) {
+                Finding next = null;
+                for (Finding candidate : current.repairable()) {
+                    if (attempted.add(key(candidate))) { next = candidate; break; }
+                }
+                if (next == null) break;
                 try {
-                    apply(root, finding);
-                    repaired.add(finding);
+                    apply(root, next);
+                    repaired.add(next);
                 } catch (IOException | RuntimeException refused) {
-                    failed.add(finding.subject() + ": " + refused.getMessage());
+                    failed.add(next.subject() + ": " + refused.getMessage());
+                }
+                current = detect(root, cliPin);
+                if (pass == cap - 1 && !current.repairable().isEmpty()) {
+                    failed.add("gave up after " + cap + " passes with "
+                            + current.repairable().size() + " repairable finding(s) left — "
+                            + "detection is not converging; re-run and report this");
                 }
             }
         } finally {
             WriteConfinement.restore(previous);
         }
-        return new Outcome(before, repaired, failed, detect(root, cliPin));
+        return new Outcome(before, repaired, failed, current);
     }
 
     /**
@@ -706,6 +797,11 @@ public final class HomeRepair {
         return new WriteConfinement.Scope(store, List.copyOf(roots), WHAT);
     }
 
+    /** A finding's identity for the attempted-set: kind, subject and the path it names. */
+    private static String key(Finding finding) {
+        return finding.kind() + "|" + finding.subject() + "|" + finding.detail();
+    }
+
     private static void apply(Path store, Finding finding) throws IOException {
         switch (finding.kind()) {
             case MISANCHORED_AGENT_LINK -> relink(
@@ -713,7 +809,7 @@ public final class HomeRepair {
             case PRUNED_INHERITED_ENTRY -> relink(
                     store.resolve(finding.subject()), finding.target());
             case FOREIGN_PATH_IN_SHIM -> rewrite(
-                    store.resolve(finding.subject()), finding);
+                    store.resolve(finding.subject()), store, finding);
             // The same call `home shims` makes, on the same home, with the pin
             // detection already resolved. Rewriting the line by hand here would
             // be a second writer for a generated file that has one.
@@ -754,18 +850,108 @@ public final class HomeRepair {
      * non-executability is a shim that stops working, which is the repair being
      * worse than the damage.
      */
-    private static void rewrite(Path file, Finding finding) throws IOException {
+    private static void rewrite(Path file, Path store, Finding finding) throws IOException {
         WriteConfinement.checkWrite(file, WHAT);
         String text = Files.readString(file, StandardCharsets.UTF_8);
-        String from = finding.detail();
         // The path is carried on the finding, not re-parsed out of its prose.
         Path candidate = foreignPathOf(finding);
-        if (candidate == null) throw new IOException("finding names no path to rewrite: " + from);
-        String replaced = text.replace(candidate.toString(), finding.target().toString());
+        if (candidate == null) {
+            throw new IOException("finding names no path to rewrite: " + finding.detail());
+        }
+        String replaced = replaceWholePath(text, candidate.toString(),
+                finding.target().toString());
         if (replaced.equals(text)) throw new IOException("the path is no longer in " + file);
+
+        // THE POSTCONDITION, checked before the bytes are kept.
+        //
+        // Review of PR #244, blocker 2. `String.replace` on a path string IS a
+        // prefix replace, so rewriting `<F>/skills` also rewrote
+        // `<F>/skills/foo/run` -- a path this same run had already REPORTED as
+        // unrepairable, on a line no finding named. Measured: a wrapper that
+        // ran (exit 0) became one that resolves nowhere (exit 126), and
+        // detection afterwards said the home was clean.
+        //
+        // `replaceWholePath` closes that specific hole. This closes the CLASS.
+        // Whatever the replacement rule turns out to get wrong, a rewrite may
+        // not leave this file naming a path under THIS home that is not there:
+        // #142's remedy-that-does-not-work, produced by the remedy. Compared
+        // as sets rather than counts, so a rewrite cannot swap one broken path
+        // for another and pass.
+        //
+        // It is checked HERE and not by `home verify`, which cannot see it:
+        // `missingReferencesIn` only considers paths under a PROVISIONABLE
+        // root ({@code cache,venvs,tools,npm,pm}), and the measured casualty
+        // was under {@code skills/}. I am the writer, so I verify what I wrote.
+        Set<String> brokenBefore = missingPathsUnderHome(text, store);
+        Set<String> brokenAfter = missingPathsUnderHome(replaced, store);
+        brokenAfter.removeAll(brokenBefore);
+        if (!brokenAfter.isEmpty()) {
+            throw new IOException("refusing the rewrite: it would leave " + file
+                    + " naming " + brokenAfter.size() + " path(s) under this home that do not "
+                    + "exist (" + brokenAfter.iterator().next() + ") — a shim that runs and "
+                    + "points at the wrong home is repairable; one that resolves nowhere is not");
+        }
         boolean executable = Files.isExecutable(file);
         Files.writeString(file, replaced, StandardCharsets.UTF_8);
         if (executable) file.toFile().setExecutable(true);
+    }
+
+    /**
+     * Characters that continue a path, for deciding where one ends.
+     *
+     * <p>The whole of blocker 2 lives in this predicate. {@code /a/b} occurs in
+     * {@code /a/bc} and in {@code /a/b/c} as a SUBSTRING and in neither as a
+     * PATH, and {@link String#replace} cannot tell the difference.
+     */
+    private static boolean pathChar(char c) {
+        return Character.isLetterOrDigit(c) || c == '/' || c == '.' || c == '_' || c == '-';
+    }
+
+    /**
+     * {@code text} with every whole-path occurrence of {@code from} replaced by
+     * {@code to}, and substring occurrences left alone.
+     *
+     * <p>An occurrence counts when neither side continues a path: not preceded
+     * by a path character (so {@code /x/a/b} does not match {@code /a/b}) and
+     * not followed by one (so neither {@code /a/bc} nor {@code /a/b/c} does).
+     */
+    static String replaceWholePath(String text, String from, String to) {
+        if (from == null || from.isEmpty()) return text;
+        StringBuilder out = new StringBuilder(text.length());
+        int at = 0;
+        while (true) {
+            int hit = text.indexOf(from, at);
+            if (hit < 0) break;
+            int end = hit + from.length();
+            boolean whole = (hit == 0 || !pathChar(text.charAt(hit - 1)))
+                    && (end == text.length() || !pathChar(text.charAt(end)));
+            out.append(text, at, hit).append(whole ? to : from);
+            at = end;
+        }
+        return out.append(text, at, text.length()).toString();
+    }
+
+    /**
+     * Every path-shaped token in {@code text} that is under {@code store} and
+     * is not on disk.
+     *
+     * <p>Scanned from the candidate TEXT rather than from the file, because the
+     * point is to judge bytes that have not been written yet.
+     */
+    private static Set<String> missingPathsUnderHome(String text, Path store) {
+        HomePaths paths = HomePaths.of(store);
+        Set<String> missing = new LinkedHashSet<>();
+        for (String token : pathTokensIn(text)) {
+            Path candidate;
+            try {
+                candidate = Path.of(token);
+            } catch (RuntimeException notAPath) {
+                continue;
+            }
+            if (!paths.isInsideHome(candidate)) continue;
+            if (!Files.exists(candidate, LinkOption.NOFOLLOW_LINKS)) missing.add(token);
+        }
+        return missing;
     }
 
     /**
@@ -857,6 +1043,18 @@ public final class HomeRepair {
         } catch (IOException | RuntimeException notText) {
             return List.of();
         }
+        return pathTokensIn(text);
+    }
+
+    /**
+     * {@link #absolutePathTokens} over a string.
+     *
+     * <p>Split out so the detector (which reads a file) and the rewrite's
+     * postcondition (which judges bytes not yet written) cannot disagree about
+     * what a path token is. Two scanners would be this epic's own defect
+     * inside the guard against it.
+     */
+    static List<String> pathTokensIn(String text) {
         Set<String> found = new LinkedHashSet<>();
         for (int at = text.indexOf('/'); at >= 0; at = text.indexOf('/', at + 1)) {
             if (at > 0 && "\"' \n\r\t:;,()=$".indexOf(text.charAt(at - 1)) < 0) continue;

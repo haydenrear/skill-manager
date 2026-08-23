@@ -1,5 +1,5 @@
 # G2 -- branch moved: DEF-067's hazard PLANTED at the process boundary: detection repairs.
-# runId: 20260823-210756
+# runId: 20260823-222138
 node status: failed
   pass  the_planted_damage_resolves_and_is_therefore_the_right_shape
   RED   bare_home_repair_refuses_a_damaged_home
@@ -11,6 +11,7 @@ node status: failed
   pass  the_wrapper_runs_this_homes_own_tree
   pass  running_the_repair_twice_changes_nothing_the_second_time
   pass  the_other_home_is_byte_identical_throughout
+  pass  the_decoy_agent_dir_exists_and_has_content_to_be_changed
   pass  the_agent_dir_the_environment_names_is_untouched
 message: None
-metrics: {'repair.detectRunsBeforeRepair': 2, 'repair.findingsAtFirstDetect': 0, 'repair.findingsAfterRepair': 0, 'durationMs': 7004}
+metrics: {'repair.detectRunsBeforeRepair': 2, 'repair.findingsAtFirstDetect': 0, 'repair.findingsAfterRepair': 0, 'durationMs': 6865}

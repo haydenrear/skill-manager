@@ -201,6 +201,14 @@ public class DamagedHomeIsRepairable {
         boolean wrapperRepaired = Files.readString(wrapper, StandardCharsets.UTF_8)
                 .contains(subject.toString());
         boolean otherHomeUntouched = otherBefore.equals(snapshot(other));
+        // ASSERTED, not assumed. Review of PR #244: with `claudeHome` absent
+        // from the fixture context this resolves to null, `snapshot(null)`
+        // returns an empty list, and "untouched" is then two empty lists
+        // comparing equal -- a green assertion over no subject at all, which is
+        // mechanism B in the control for the two-axis defect.
+        boolean sandboxIsReal = sandboxClaude != null
+                && Files.isDirectory(sandboxClaude)
+                && !sandboxBefore.isEmpty();
         boolean sandboxUntouched = sandboxBefore.equals(snapshot(sandboxClaude));
 
         List<String> failures = new ArrayList<>();
@@ -228,6 +236,11 @@ public class DamagedHomeIsRepairable {
         if (!otherHomeUntouched) {
             failures.add("the OTHER home changed — a repair wrote outside the home it was given");
         }
+        if (!sandboxIsReal) {
+            failures.add("the sandbox agent directory named by env.prepared/claudeHome is "
+                    + "absent or empty (" + sandboxClaude + "), so the decoy assertion below "
+                    + "has no subject and proves nothing");
+        }
         if (!sandboxUntouched) {
             failures.add("the agent directory the ENVIRONMENT names changed — the repair took "
                     + "the agent axis from CLAUDE_CONFIG_DIR instead of from the home");
@@ -253,6 +266,8 @@ public class DamagedHomeIsRepairable {
                 .assertion("running_the_repair_twice_changes_nothing_the_second_time",
                         repairIsIdempotent)
                 .assertion("the_other_home_is_byte_identical_throughout", otherHomeUntouched)
+                .assertion("the_decoy_agent_dir_exists_and_has_content_to_be_changed",
+                        sandboxIsReal)
                 .assertion("the_agent_dir_the_environment_names_is_untouched", sandboxUntouched)
                 .log("detect=" + detect1.exitCode() + "," + detect2.exitCode()
                         + " repair=" + repair.exitCode()
@@ -310,11 +325,23 @@ public class DamagedHomeIsRepairable {
         return out;
     }
 
+    /**
+     * A real digest, not a 32-bit hash.
+     *
+     * <p>Review of PR #244. This was {@code Arrays.hashCode}, which is 32 bits
+     * and not collision-resistant, used to decide the node's strongest claim —
+     * that a detection run changed NOTHING. A hash collision there reads as
+     * "byte-identical" and greens the DEF-067 control. The cost of SHA-256 over
+     * a home's worth of small files is nothing next to five CLI forks.
+     */
     private static String hash(Path file) {
         try {
             byte[] bytes = Files.readAllBytes(file);
-            return Integer.toHexString(java.util.Arrays.hashCode(bytes)) + ":" + bytes.length;
-        } catch (IOException unreadable) {
+            byte[] digest = java.security.MessageDigest.getInstance("SHA-256").digest(bytes);
+            StringBuilder sb = new StringBuilder(digest.length * 2);
+            for (byte b : digest) sb.append(String.format("%02x", b));
+            return sb.append(':').append(bytes.length).toString();
+        } catch (IOException | java.security.NoSuchAlgorithmException unreadable) {
             return "unreadable";
         }
     }
@@ -349,6 +376,7 @@ public class DamagedHomeIsRepairable {
                 .assertion("the_wrapper_runs_this_homes_own_tree", false)
                 .assertion("running_the_repair_twice_changes_nothing_the_second_time", false)
                 .assertion("the_other_home_is_byte_identical_throughout", false)
+                .assertion("the_decoy_agent_dir_exists_and_has_content_to_be_changed", false)
                 .assertion("the_agent_dir_the_environment_names_is_untouched", false);
     }
 }

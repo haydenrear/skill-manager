@@ -1,5 +1,5 @@
 # G1 -- branch moved: the repair itself -- every action suppressed, detection unchanged
-# runId: 20260823-210607
+# runId: 20260823-222900
 node status: failed
   pass  the_planted_damage_resolves_and_is_therefore_the_right_shape
   pass  bare_home_repair_refuses_a_damaged_home
@@ -11,6 +11,7 @@ node status: failed
   RED   the_wrapper_runs_this_homes_own_tree
   RED   running_the_repair_twice_changes_nothing_the_second_time
   pass  the_other_home_is_byte_identical_throughout
+  pass  the_decoy_agent_dir_exists_and_has_content_to_be_changed
   pass  the_agent_dir_the_environment_names_is_untouched
 message: None
-metrics: {'repair.detectRunsBeforeRepair': 2, 'repair.findingsAtFirstDetect': 2, 'repair.findingsAfterRepair': 2, 'durationMs': 7062}
+metrics: {'repair.detectRunsBeforeRepair': 2, 'repair.findingsAtFirstDetect': 2, 'repair.findingsAfterRepair': 2, 'durationMs': 7162}

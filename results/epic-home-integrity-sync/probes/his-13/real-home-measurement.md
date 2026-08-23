@@ -1,104 +1,124 @@
-# The measurement that is not a fixture
+# The measurements that are not fixtures
 
-Run 2026-08-23 on `feature/159-his-13` rebased onto epic tip `0f1a9a4`, with the
-checkout's own CLI (`./skill-manager`, not the 0.24.0 shim on PATH — DEF-068/DEF-006)
-and all four home variables pinned at this worktree.
+Run 2026-08-23 on `feature/159-his-13`, rebased onto epic tip `576fa0b`, with
+the checkout's own CLI (`./skill-manager`, never the shim on PATH — DEF-006 /
+DEF-068) and all four home variables pinned at this worktree.
 
-## Subject 1 — this worktree's OWN home, read-only
+**This file was rewritten after the review of PR #244. Its original headline was
+a FALSE POSITIVE, and that is recorded below rather than deleted.**
 
-```
-$ ./skill-manager home repair --home <wt>/.skill-manager
-✗ 1 finding(s) in <wt>/.skill-manager, of 30 entries examined
-✗   PRUNED_INHERITED_ENTRY bin/cli/tofu — is declared here, is gone, and the
-      parent store /Users/hayde/.skill-manager this home records still holds it
-✗       repair: re-link it at /Users/hayde/.skill-manager/bin/cli/tofu
-exit 1
-```
+---
 
-**Verified genuine before believing it**, because a detector's first real finding
-is exactly where a false positive hides:
+## WITHDRAWN — "a real finding on this worktree's own home"
 
-```
-artifacts.lock.toml   id = "cli-shim:brew/opentofu", owner = "deploy-helm",
-                      outputs = ["bin/cli/tofu"]          <- this home DECLARES it
-<wt>/.skill-manager/bin/cli/tofu                          <- absent
-~/.skill-manager/bin/cli/tofu -> /opt/homebrew/opt/opentofu/bin/tofu
-                                                          <- the recorded parent HAS it
-home.provenance.json  parentStores: ["/Users/hayde/.skill-manager"], and it
-                      still re-derives (home verify says so, below)
-```
+The first version led with:
 
-This answers §8's own "unsure #3" — *whether `PRUNED_INHERITED_ENTRY` will fire
-in the wild*. It fired on the first real home it was pointed at, and the home was
-not constructed to make it.
+> `home repair --home <wt>/.skill-manager`
+> `✗ PRUNED_INHERITED_ENTRY bin/cli/tofu — is declared here, is gone, and the
+> parent store /Users/hayde/.skill-manager this home records still holds it`
+>
+> …which answers §8's own "unsure #3" — the shape fires in the wild, on a home
+> nobody constructed to make it.
 
-**Not repaired.** The worktree home is the epic agent's to reconcile, and the
-close-out gate had already passed on it.
+**It was not a real finding.** The worktree home is a LAZY clone: it declares
+`bin/cli/tofu` and deferred building it, exactly as every home this program
+clones defers everything under the trees it skips. The artifact was never there
+and was never pruned. The reviewer measured the same thing on a stock
+`home clone` — a freshly created, untouched, healthy home reported as damaged —
+and the verdict depended on which binaries happened to exist in the operator's
+root store.
 
-## Subject 2 — a `cp -a` copy of that home, which is the shape the epic warned about
+I presented it as proof of real-world value. It was proof of a false positive,
+and it was 1 of the 5 findings in this file's own `cp -a` headline.
 
-`HomeCloner.sanctionedParentShim`'s javadoc names the case this class cannot
-help: *"a byte copy taken with `cp -a`, an rsync, a clone by an older
-skill-manager … repairing such a home so it stands on its own record is
-HIS-13's."* So the subject is literally that.
+The check now also requires `lazy_artifacts = false` (production's own rule from
+`HomeCloner.partitionDeclared`, read in the accusing direction). Both homes are
+now reported clean:
 
 ```
-$ cp -a <wt>/.skill-manager  <probe>/home2/.skill-manager
-$ cp -a <wt>/.claude         <probe>/home2/.claude
+home verify --home <fresh clone>   exit 0
+home repair --home <fresh clone>   exit 0    (was: exit 1, PRUNED_INHERITED_ENTRY)
+home repair --home <wt>/.skill-manager   exit 0
 ```
 
-### The two instruments, on the same home, at the same moment
+DEF-073 records what that costs: no record on disk distinguishes "was here and
+was pruned" from "was declared and never built", so HIS-9's measured prune
+residue is undetectable on a lazy home, and a later "improvement" that drops the
+policy condition will reintroduce this exact false positive.
+
+---
+
+## STANDS — a `cp -a` copy of a real home
+
+Literally the case `HomeCloner.sanctionedParentShim`'s javadoc defers to HIS-13:
+*"a byte copy taken with `cp -a`, an rsync, a clone by an older skill-manager …
+repairing such a home so it stands on its own record is HIS-13's."*
 
 ```
-$ ./skill-manager home verify --home <probe>/home2/.skill-manager
-✓ every reference in … resolves, and no path in it reaches any other Skill
-  Manager home except the 5 sanctioned parent-store shim(s) above
-exit 0
+$ cp -a <wt>/.skill-manager  <probe>/h/.skill-manager
+$ cp -a <wt>/.claude         <probe>/h/.claude
 
-$ ./skill-manager home repair --home <probe>/home2/.skill-manager
-✗ 5 finding(s)
-exit 1
+home verify --home <copy>      exit 0    "every reference resolves, and no path in it
+                                          reaches any other Skill Manager home"
+home repair --home <copy>      exit 1    4 findings, all MISANCHORED_AGENT_LINK —
+                                          the copy's .claude/skills/* still resolve
+                                          into the SOURCE home's store
+home repair … --fix            exit 0    repaired 4 of 4
+home repair … --fix (again)    exit 0    repaired 0 of 0, nothing changed
+home repair --home <copy>      exit 0    a separate process, and it agrees
 ```
 
-**Exit 0 and exit 1 about one home, one minute apart.** Four of the five are
-`MISANCHORED_AGENT_LINK` — the copy's `.claude/skills/{test-graph,
-spec-double-compiler, …}` still resolve into the SOURCE home's store, which is
-precisely what `cp -a` leaves behind and precisely what `verify` cannot see,
-because `verifyRoots` walks the store and the agent directories are the home's
-other axis.
+Re-measured after the blocker-1 fix: **four findings, not the five originally
+reported.** The fifth was `tofu`.
 
-That disagreement is filed as **DEF-070**. It is not a defect in either command;
-it is two questions, and the epic has to decide which one `home verify` is for.
+Exit 0 and exit 1 about one home a minute apart is the half of DEF-070 that
+survives review as separation rather than conflict: `home verify` walks the
+STORE, and these four are on the home's other axis. The half that WAS a
+conflict — three readers giving three answers about `bin/cli/tofu` — is gone.
 
-### Detect -> repair -> detect, three processes
+---
 
-```
-$ ./skill-manager home repair --home <probe>/home1/.skill-manager          exit 1, 5 findings
-$ ./skill-manager home repair --home <probe>/home1/.skill-manager --fix    ✓ repaired 5 of 5
-                                                                           exit 0
-$ ./skill-manager home repair --home <probe>/home1/.skill-manager --fix    ✓ repaired 0 of 0
-                                                                           ✓ nothing … is damaged
-                                                                             (22 entries examined)
-$ ./skill-manager home repair --home <probe>/home2/.skill-manager          exit 0 after its own fix
-```
+## STANDS, and it replaces the withdrawn headline — real damage, found unprompted
 
-Idempotent on a real 489 MB home, not only on a fixture.
-
-### The source home was not touched
-
-Re-run after every repair above:
+The FIXED command, on the same worktree home, reported two findings I had not
+planted and did not expect:
 
 ```
-$ ./skill-manager home repair --home <wt>/.skill-manager
-✗ 1 finding(s) … PRUNED_INHERITED_ENTRY bin/cli/tofu
+MISANCHORED_AGENT_LINK .codex/skills/one-forty-five
+  -> resolves into the store at /private/var/.../sm-145-<n>/operator/.skill-manager
+MISANCHORED_AGENT_LINK .gemini/skills/one-forty-five   -> same
 ```
 
-Unchanged — same one finding, and `<wt>/.claude/skills` still carries its
-bootstrap mtime. A repair that had "helpfully" fixed the home its subject's links
-pointed into would have cleared this.
+The writer is **`AgentProjectionFollowsHomeTest`** — the #145 regression test,
+whose subject is that an operation on one home must not write another home's
+agent directories. Reproduced deterministically: with all five variables pinned
+at a scratch directory, running that test alone leaves a dangling projection in
+whatever `CODEX_HOME` / `GEMINI_HOME` name. The temp `operator` home it points
+into is deleted when the run ends.
 
-## Cleanup
+**Scope, measured rather than assumed.** My first draft of DEF-074 said this hits
+the operator's real `~/.codex` in a normal environment. It does not: a full
+`jbang RunTests.java` with all five variables UNSET wrote nothing into
+`~/.codex`, `~/.gemini` or `~/.claude` — checked immediately, no
+`one-forty-five` link and no link into any temp directory. The clause was
+withdrawn before the entry shipped. What is true is narrower and more pointed:
+the leak follows an **explicitly set** `CODEX_HOME` / `GEMINI_HOME`, which is
+exactly what this epic's containment protocol tells every agent to set. Filed as
+**DEF-074**.
 
-`<probe>/` was deleted immediately (`rm -rf`), and the disk was checked before
-and after. Nothing under `~/.skill-manager`, `~/.claude`, `~/.codex`,
-`~/.gemini` or the project home was written at any point.
+This is what the withdrawn headline was reaching for, and unlike the withdrawn
+headline it is real: a defect in a home, on the axis this epic exists for, that
+no other instrument in the repository could see.
+
+---
+
+## Containment
+
+Every probe directory (`<wt>/probe/`) was deleted after use, and the disk was
+checked before and after. The operator's `~/.skill-manager`, `~/.claude`,
+`~/.codex`, `~/.gemini` and the project home were checked for writes after every
+run and after the clean-environment suite: no mtime inside the window, and every
+link under the three agent directories still resolves into
+`~/.skill-manager/skills`. The two leaked `one-forty-five` links in THIS
+worktree's home were removed by hand, which is what the finding's own remedy
+line says to do.

@@ -3667,3 +3667,123 @@ findings:
     candidate_owner: HIS-6 to triage; HIS-9 owns WriteConfinement's contract
     related: [DEF-007, DEF-029]
     status: open
+
+  - id: DEF-073
+    found_by: HIS-13, fixing blocker 1 of the PR #244 review
+    found_at: "2026-08-23"
+    severity: major
+    short_label: "nothing on disk remembers that an entry point was once present, so 'pruned' and 'deferred' are the same state"
+    summary: >
+      HIS-9 measured a real incident: a sync's shim pruner DELETED five
+      inherited entry points from a cloned home. HIS-13 set out to detect that
+      residue and CANNOT, because no record in a home distinguishes "this entry
+      point was here and was removed" from "this entry point was declared and
+      never built". They are byte-identical states.
+    detail: >
+      The three records that could have carried it, and what each actually says:
+
+        artifacts.lock.toml   DECLARES the artifact. A lazy clone carries rows
+                              for artifacts it never built (Artifact.Origin.LEDGER
+                              exists for exactly that), so a row is not evidence
+                              the output was ever produced HERE.
+        cli-lock.toml         records the INSTALL, keyed by package name; for an
+                              INHERITED shim there was no install in this home.
+        home.provenance.json  records which STORES this home descends from. Not
+                              which entries it received from them.
+
+      So the first version of this check used the only conjunction available --
+      declared, absent, and the recorded parent still holds it -- and the review
+      measured what that costs: a stock `home clone` reported as damaged, with
+      the verdict depending on which binaries happened to exist in the
+      operator's root store (eight artifacts declared-only, one finding, because
+      root held that one binary; on another machine, five findings).
+    what_shipped_instead: >
+      The check now also requires `lazy_artifacts = false` -- production's own
+      rule from HomeCloner.partitionDeclared, read in the accusing direction. A
+      home that deferred nothing and is missing an entry point it declares is
+      damaged; a home that deferred is not. That is correct and it is NARROW:
+      `lazyArtifactsDefault` is "on for every home except the operator root", so
+      the check is silent on exactly the homes HIS-9's incident happened in.
+    consequence: >
+      The HIS-9 prune residue on a lazy home is UNDETECTABLE by this command,
+      and saying so is the point of this entry. It is not detectable by a
+      cleverer conjunction either -- the information is not on disk. Anyone who
+      later "improves" the check by dropping the policy condition will
+      reintroduce a false positive on every clone this program makes.
+    candidate_fix: >
+      Record materialization at the moment it happens: when CliShimPruner
+      removes an entry, or when a clone declines to carry one, write which. One
+      line in the ledger turns an undecidable question into a lookup. That is a
+      change to what the ledger MEANS, so it is not a HIS-13-shaped change.
+    candidate_owner: HIS-6 to triage; HIS-9 owns the pruner
+    related: [DEF-070]
+    status: open
+
+  - id: DEF-074
+    found_by: HIS-13, by running `home repair` against its own worktree home
+    found_at: "2026-08-23"
+    severity: major
+    short_label: "AgentProjectionFollowsHomeTest writes a dangling projection into an explicitly-set CODEX_HOME / GEMINI_HOME"
+    summary: >
+      `AgentProjectionFollowsHomeTest` -- the #145 regression test, whose subject
+      is that an operation on one home must not write another home's agent
+      directories -- leaves a DANGLING skill projection in whatever `CODEX_HOME`
+      and `GEMINI_HOME` name, pointing into a temp home the run then deletes.
+      Nothing cleans it up and nothing fails.
+    detail: >
+      FOUND BY THE COMMAND THIS TICKET SHIPS, unprompted, on its own worktree
+      home:
+
+        MISANCHORED_AGENT_LINK .codex/skills/one-forty-five
+          -> resolves into the store at /private/var/.../sm-145-<n>/operator/.skill-manager
+        MISANCHORED_AGENT_LINK .gemini/skills/one-forty-five   -> same
+
+      REPRODUCED DETERMINISTICALLY: with all five home variables pinned at a
+      scratch directory, running that test alone left
+
+        <scratch>/.codex/skills/one-forty-five  -> <temp>/operator/.skill-manager/skills/...
+        <scratch>/.gemini/skills/one-forty-five -> <temp>/operator/.skill-manager/skills/...
+
+      and the temp `operator` home is removed when the run ends, so what remains
+      is a dangling link in a directory every agent session loads skills from.
+    the_scope_correction_i_had_to_make_before_filing: >
+      MY FIRST DRAFT OF THIS ENTRY SAID "with those unset -- the normal
+      developer environment -- that is the operator's real ~/.codex/skills". I
+      then measured it instead of asserting it: a full `jbang RunTests.java`
+      with CODEX_HOME, GEMINI_HOME, CLAUDE_HOME, CLAUDE_CONFIG_DIR and
+      SKILL_MANAGER_HOME all UNSET wrote NOTHING into ~/.codex or ~/.gemini --
+      no `one-forty-five` link, and no link into any temp directory anywhere
+      under the operator's three agent dirs. So the unset case is NOT affected,
+      and the clause is withdrawn before it was ever shipped.
+
+      Recorded because the correction is the point. DEF-069 was filed at
+      `blocking` on exactly this kind of one-observation generalisation and had
+      to be withdrawn by a reviewer. This is the same reflex, caught by the
+      author this time, and the check that caught it took ninety seconds.
+    what_is_actually_true_and_why_it_still_matters: >
+      The leak follows an EXPLICITLY SET `CODEX_HOME` / `GEMINI_HOME`. That is
+      precisely the configuration this epic's own containment protocol
+      mandates -- every ticket agent is told to pin all four home variables at
+      its worktree before running anything, and `bootstrap-home.sh` exports
+      them. So the population affected is not "developers with an unusual
+      setup"; it is "every agent following the rule", and the thing that
+      protects the operator's global config is the ABSENCE of the variable the
+      protocol exists to make you set. That is backwards, and it is worth
+      fixing for that reason rather than for blast radius.
+    consequence: >
+      Every ticket worktree that runs the unit suite accumulates a dangling
+      projection in its own `.codex/skills` and `.gemini/skills`. Measured on
+      this one. It is invisible to `home verify` (the agent axis is outside its
+      walk) and was invisible to everything else until `home repair` existed.
+      It also means the epic cannot claim "no test writes outside its sandbox"
+      of `RunTests.java` as it stands.
+    candidate_fix: >
+      The test should pin its own agent directories the way it already pins its
+      store, through AgentHomes.setOverride, and assert its own teardown. The
+      general form is a suite-level guard: snapshot the three agent directories
+      before and after `RunTests.java` and fail on any difference -- the same
+      assertion HIS-13's graph node makes about `home repair`, and one nothing
+      makes about the suite itself.
+    candidate_owner: HIS-6 to triage; HIS-14 owns the two-axis contract
+    related: [DEF-029]
+    status: open

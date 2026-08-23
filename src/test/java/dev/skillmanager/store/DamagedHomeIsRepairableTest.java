@@ -4,6 +4,7 @@ import dev.skillmanager._lib.test.Tests;
 import dev.skillmanager.agent.AgentHomes;
 import dev.skillmanager.commands.HomeCommand;
 import dev.skillmanager.launch.LauncherShims;
+import dev.skillmanager.policy.HomePolicy;
 import picocli.CommandLine;
 
 import java.io.ByteArrayOutputStream;
@@ -113,6 +114,91 @@ public final class DamagedHomeIsRepairableTest {
                                     + "nothing about staleness");
                 })
 
+                .test("BLOCKER 1: one disk state, two policies, and the verdict follows the policy", () -> {
+                    // The regression for the review's first blocker, stated as
+                    // sharply as it can be: the SAME bytes, judged twice.
+                    //
+                    // A fresh `home clone` was reported damaged. The finding
+                    // was `PRUNED_INHERITED_ENTRY` on an artifact the clone had
+                    // DEFERRED and that had never been in it. Worse, the
+                    // verdict depended on the operator's machine -- eight
+                    // artifacts were declared-only and exactly one fired,
+                    // because the root store happened to hold that binary.
+                    Fixture fx = Fixture.build("blocker1");
+                    fx.damagePrunedEntry();
+
+                    HomePolicy.writeLazyArtifacts(new SkillStore(fx.store), false);
+                    HomeRepair.Report eager = HomeRepair.detect(fx.store, fx.pin);
+                    assertTrue(eager.findings().stream()
+                                    .anyMatch(f -> f.kind()
+                                            == HomeRepair.Kind.PRUNED_INHERITED_ENTRY),
+                            "a home that deferred NOTHING and is missing an entry point it "
+                                    + "declares is damaged; got " + eager.findings());
+
+                    // Not one byte of the home changed between these two calls
+                    // except the policy line, which is a statement ABOUT the
+                    // home rather than a fact in it.
+                    HomePolicy.writeLazyArtifacts(new SkillStore(fx.store), true);
+                    HomeRepair.Report lazy = HomeRepair.detect(fx.store, fx.pin);
+                    assertTrue(lazy.findings().stream()
+                                    .noneMatch(f -> f.kind()
+                                            == HomeRepair.Kind.PRUNED_INHERITED_ENTRY),
+                            "and the identical home that DID defer is not damaged at all — "
+                                    + "this is the state every clone this program makes is in "
+                                    + "from birth; got " + lazy.findings());
+
+                    // And the answer agrees with the reader that already had
+                    // one, which is the guard goal rather than a nicety.
+                    assertTrue(HomePolicy.lazyArtifacts(new SkillStore(fx.store)),
+                            "precondition: production's own policy reader sees the change "
+                                    + "this test made — otherwise both halves above are the "
+                                    + "same run twice");
+                })
+
+                .test("an EAGER home missing an entry no parent holds is not a repair this command can make", () -> {
+                    // The other half of shape 3's conjunction, which had no
+                    // assertion until probe V11 came back GREEN and the harness
+                    // said so. V11 removes "and the recorded parent still holds
+                    // it"; with the policy gate added for blocker 1, the stale
+                    // fixture returns before that line is reached, so the
+                    // mutation stopped being reachable — mechanism C, caught by
+                    // the harness rather than by me reading a transcript.
+                    //
+                    // What the conjunction is FOR: without it, an entry no
+                    // parent holds is reported as repairable and `--fix` builds
+                    // a symlink at a path that does not exist. That is the same
+                    // failure as blocker 2 on the third arm — a remedy that
+                    // makes things worse — and #142 is the rule it breaks.
+                    // Whether an eager home SHOULD hear about such an entry at
+                    // all is a real question, and the answer is not "from the
+                    // command that repairs by re-linking": there is nothing to
+                    // re-link at. `home verify` and `build` own it.
+                    Fixture fx = Fixture.build("no-parent-copy");
+                    HomePolicy.writeLazyArtifacts(new SkillStore(fx.store), false);
+                    Files.writeString(fx.store.resolve("artifacts.lock.toml"),
+                            Files.readString(fx.store.resolve("artifacts.lock.toml"),
+                                    StandardCharsets.UTF_8)
+                                    .replace("outputs = [\"bin/cli/" + TOOL + "\"]",
+                                            "outputs = [\"bin/cli/" + TOOL
+                                                    + "\", \"bin/cli/orphan\"]"),
+                            StandardCharsets.UTF_8);
+                    assertFalse(Files.exists(fx.other.resolve("bin/cli/orphan"),
+                                    LinkOption.NOFOLLOW_LINKS),
+                            "precondition: no recorded parent holds it — otherwise this is "
+                                    + "the reportable case and asserts the opposite");
+
+                    HomeRepair.Report report = HomeRepair.detect(fx.store, fx.pin);
+                    assertTrue(report.findings().stream()
+                                    .noneMatch(f -> f.subject().equals("bin/cli/orphan")),
+                            "not reported: there is nothing to re-link at, so naming this a "
+                                    + "PRUNED_INHERITED_ENTRY would name a repair that does "
+                                    + "not exist; got " + report.findings());
+                    HomeRepair.repair(fx.store, fx.pin);
+                    assertFalse(Files.exists(fx.store.resolve("bin/cli/orphan"),
+                                    LinkOption.NOFOLLOW_LINKS),
+                            "and --fix created no link at a path nothing stands at");
+                })
+
                 .test("all four damage shapes are reported, one line each, naming the repair", () -> {
                     Fixture fx = Fixture.build("all-four");
                     fx.damageAll();
@@ -130,6 +216,83 @@ public final class DamagedHomeIsRepairableTest {
                     }
                 })
 
+                .test("BLOCKER 2: a rewrite replaces a PATH, not a substring, and keeps the shim running", () -> {
+                    // The review measured, on stock output: a wrapper naming a
+                    // foreign home twice -- once as a base, once as a longer
+                    // path under it -- had BOTH rewritten by one repair, because
+                    // `String.replace` on a path string is a prefix replace. The
+                    // second occurrence was a path this same run had already
+                    // REPORTED AS UNREPAIRABLE. A shim that ran (exit 0) became
+                    // one that resolved nowhere (exit 126), on a line no finding
+                    // named, and detection afterwards called the home clean.
+                    Fixture fx = Fixture.build("blocker2");
+                    // A real file under the OTHER home, at a path this home has
+                    // no counterpart for — so the longer occurrence resolves
+                    // (it is a live foreign path, not a dangling one) and is
+                    // NOT repairable, which is the reviewer's arrangement.
+                    Path deep = fx.other.resolve("skills").resolve(UNIT).resolve("bin/run");
+                    Files.createDirectories(deep.getParent());
+                    Files.writeString(deep, "#!/bin/sh\necho other\n");
+                    deep.toFile().setExecutable(true);
+
+                    Path wrapper = fx.store.resolve("bin/cli").resolve("prefix");
+                    Files.writeString(wrapper, "#!/usr/bin/env bash\n# base: "
+                            + fx.other.resolve("skills") + "\nexec \"" + deep + "\"\n");
+                    wrapper.toFile().setExecutable(true);
+
+                    // PRECONDITIONS, asserted, because this fixture is only the
+                    // right one if the two paths really are a base and a longer
+                    // path under it, and only the base is repairable here.
+                    HomeRepair.Report before = HomeRepair.detect(fx.store, fx.pin);
+                    List<HomeRepair.Finding> onIt = before.findings().stream()
+                            .filter(f -> f.subject().equals("bin/cli/prefix")).toList();
+                    assertEquals(2, onIt.size(),
+                            "two foreign paths in one shim; got " + onIt);
+                    assertEquals(1, (int) onIt.stream().filter(HomeRepair.Finding::repairable).count(),
+                            "exactly one of them is repairable — if both were, the defect "
+                                    + "could not be expressed here; got " + onIt);
+                    String longer = deep.toString();
+
+                    HomeRepair.repair(fx.store, fx.pin);
+
+                    String after = Files.readString(wrapper);
+                    assertContains(after, longer,
+                            "the UNREPAIRABLE path is untouched — a repair may not rewrite a "
+                                    + "line no finding named, and least of all one it had just "
+                                    + "declared it could not fix");
+                    assertContains(after, fx.store.resolve("skills").toString(),
+                            "while the repairable base path WAS rewritten, so this is not "
+                                    + "passing by doing nothing");
+                    assertFalse(HomeRepair.detect(fx.store, fx.pin).clean(),
+                            "and detection afterwards is still RED about the path that is "
+                                    + "still wrong — a green verdict over surviving damage is "
+                                    + "the failure that made this a blocker");
+                })
+
+                .test("BLOCKER 2 postcondition: a rewrite that would break the shim is REFUSED", () -> {
+                    // The class-level guard behind the specific fix. Whatever
+                    // the replacement rule gets wrong, a rewrite may not leave
+                    // the file naming a path under THIS home that is not there:
+                    // #142's remedy-that-does-not-work, produced by the remedy.
+                    //
+                    // Driven through the seam directly, because producing the
+                    // state through the fixed `replaceWholePath` is exactly what
+                    // is now impossible -- so the branch would otherwise have
+                    // no coverage at all, which is M3's complaint one method over.
+                    String text = "#!/bin/sh\nexec \"" + "/nowhere/x" + "\"\n";
+                    assertEquals(text, HomeRepair.replaceWholePath(text, "/nowhere/xy", "/other"),
+                            "a longer path does not match a shorter occurrence");
+                    assertEquals("#!/bin/sh\nexec \"/other\"\n",
+                            HomeRepair.replaceWholePath(text, "/nowhere/x", "/other"),
+                            "and the whole-path occurrence does");
+                    assertEquals("a /p/q/r b", HomeRepair.replaceWholePath("a /p/q/r b", "/p/q", "/Z"),
+                            "a base path inside a longer one is NOT replaced — the blocker");
+                    assertEquals("a /Z b", HomeRepair.replaceWholePath("a /p/q b", "/p/q", "/Z"),
+                            "the same base standing alone IS");
+                    assertEquals("x/p/q y", HomeRepair.replaceWholePath("x/p/q y", "/p/q", "/Z"),
+                            "and an occurrence that is the TAIL of another path is not one");
+                })
+
                 .test("DETECTION REPAIRS NOTHING — run it twice and the damage is still there", () -> {
                     // DEF-067, as a property of the command rather than a
                     // promise in its javadoc. An observer that repairs is no
@@ -142,12 +305,31 @@ public final class DamagedHomeIsRepairableTest {
                     HomeRepair.Report first = HomeRepair.detect(fx.store, fx.pin);
                     HomeRepair.Report second = HomeRepair.detect(fx.store, fx.pin);
 
-                    assertFalse(first.clean(), "precondition: the first run sees the damage");
-                    assertEquals(first.findings().size(), second.findings().size(),
-                            "detection must reach the same verdict twice — a detector whose "
-                                    + "second answer differs repaired something");
+                    // THE CLAIM IS FIRST, and the order is the correction.
+                    //
+                    // Review of PR #244, M4: my vacuity table credited V5 --
+                    // the probe that PLANTS DEF-067's hazard by making `detect`
+                    // call `repair` -- with reddening this assertion "on its
+                    // claim". It did not. It reddened `precondition: the first
+                    // run sees the damage`, because a detector that repairs
+                    // leaves nothing to see. Mechanism A, undeclared, on the
+                    // keystone assertion of the hazard this ticket exists to
+                    // avoid.
+                    //
+                    // The fix is not a better label. "The first run sees the
+                    // damage" was never a precondition: it IS the claim, stated
+                    // in the weaker of its two forms. The strong form is that
+                    // the bytes did not move, and it is now evaluated first, so
+                    // the probe reddens what it is credited with.
                     assertEquals(String.join("\n", before), String.join("\n", fx.snapshot()),
-                            "and it changed no bytes at all");
+                            "two bare detection runs changed NOTHING — asserted over every "
+                                    + "file's content and every link's target, on both axes");
+                    assertFalse(first.clean(),
+                            "and the damage is still being reported: a detector that had "
+                                    + "quietly repaired it would be clean here, which is "
+                                    + "DEF-067's third consequence — it can green a real defect");
+                    assertEquals(first.findings().size(), second.findings().size(),
+                            "and the verdict is the same twice, so nothing moved between them");
                 })
 
                 .test("REPAIR makes detection clean, and it is DETECTION that says so", () -> {
@@ -191,6 +373,73 @@ public final class DamagedHomeIsRepairableTest {
                     assertEquals(String.join("\n", afterFirst), String.join("\n", fx.snapshot()),
                             "and it wrote nothing — asserted over bytes and link targets, not "
                                     + "over the command's own report of itself");
+                })
+
+                .test("M3: a projection this home cannot back is reported UNREPAIRABLE, not relinked", () -> {
+                    // The review found `boolean held = Files.exists(...)` could
+                    // be forced TRUE with the whole 13-case suite still green.
+                    // That branch decides whether a MISANCHORED_AGENT_LINK is
+                    // repairable and which remedy prints; forced true, `--fix`
+                    // relinks at a path that does not exist — turning a link
+                    // into the wrong home into a link into nothing, which is
+                    // the same class as blocker 2 on the other axis.
+                    Fixture fx = Fixture.build("m3-held");
+                    Path orphan = fx.claudeSkills().resolve("not-here");
+                    Path theirs = fx.other.resolve("skills").resolve("not-here");
+                    Files.createDirectories(theirs);
+                    Files.writeString(theirs.resolve("SKILL.md"), "---\nname: not-here\n---\n");
+                    Files.createSymbolicLink(orphan, theirs);
+                    assertFalse(Files.exists(fx.store.resolve("skills").resolve("not-here")),
+                            "precondition: this home really does NOT hold the unit");
+
+                    HomeRepair.Report report = HomeRepair.detect(fx.store, fx.pin);
+                    HomeRepair.Finding f = report.findings().stream()
+                            .filter(x -> x.subject().endsWith("/not-here")).findFirst()
+                            .orElseThrow(() -> new AssertionError(
+                                    "the mis-anchored link was not reported at all: "
+                                            + report.findings()));
+                    assertFalse(f.repairable(),
+                            "a projection this home cannot back is NOT repairable");
+                    assertContains(f.remedy(), "this home does not hold",
+                            "and the remedy says which of the two things to do");
+
+                    HomeRepair.repair(fx.store, fx.pin);
+                    assertEquals(theirs, Files.readSymbolicLink(orphan),
+                            "and --fix left it exactly as it was rather than relinking it at "
+                                    + "a path that does not exist");
+                })
+
+                .test("M3: a broken CLI pin with no locatable build is reported, with the runnable remedy", () -> {
+                    // The other branch the review found uncovered:
+                    // `DANGLING_CLI_PIN`'s `live == null` arm. V4 discarded the
+                    // finding list, so nothing ever read what this arm prints —
+                    // and what it prints is the ONLY thing an operator gets when
+                    // the CLI cannot locate itself, which is exactly the
+                    // situation DEF-012 leaves a machine in.
+                    Fixture fx = Fixture.build("m3-pin");
+                    fx.damageCliPin();
+
+                    HomeRepair.Report unlocatable = HomeRepair.detect(fx.store, null);
+                    HomeRepair.Finding f = unlocatable.findings().stream()
+                            .filter(x -> x.kind() == HomeRepair.Kind.DANGLING_CLI_PIN)
+                            .findFirst().orElseThrow(() -> new AssertionError(
+                                    "the dead pin was not reported: " + unlocatable.findings()));
+                    assertFalse(f.repairable(),
+                            "with no build to re-pin at, this is not repairable — inventing "
+                                    + "one is the remedy-that-does-not-work class");
+                    assertContains(f.remedy(), "home shims --home",
+                            "so the remedy is the command a person can actually type, and it "
+                                    + "names the home");
+
+                    // The SAME home, the SAME bytes, with a build located: the
+                    // arm flips. Without this the assertion above would also
+                    // pass on a build where nothing is ever repairable.
+                    HomeRepair.Report locatable = HomeRepair.detect(fx.store, fx.pin);
+                    HomeRepair.Finding g = locatable.findings().stream()
+                            .filter(x -> x.kind() == HomeRepair.Kind.DANGLING_CLI_PIN)
+                            .findFirst().orElseThrow();
+                    assertTrue(g.repairable(), "with a build located, it is repairable");
+                    assertEquals(fx.pin, g.target(), "at the build that was located");
                 })
 
                 .test("the agent axis comes from the HOME and not from the ENVIRONMENT", () -> {
@@ -532,6 +781,17 @@ public final class DamagedHomeIsRepairableTest {
                     outputs = ["bin/cli/%s"]
                     source = "cli-lock.toml"
                     """.formatted(TOOL, UNIT, TOOL));
+            // THIS HOME DEFERRED NOTHING, declared rather than assumed.
+            //
+            // Review of PR #244, blocker 1. `PRUNED_INHERITED_ENTRY` is only a
+            // finding in a home where a declared-and-absent entry point is
+            // ABNORMAL, and `lazyArtifactsDefault` is "on for every home except
+            // the operator root". A fixture that left the default in place
+            // would model a LAZY home, where the state is normal, and then
+            // assert that the state is damage -- which is precisely the false
+            // positive the review measured on stock `home clone` output.
+            HomePolicy.writeLazyArtifacts(new SkillStore(store), false);
+
             // And the descent record, so the recorded parent store re-derives.
             HomeProvenance.write(store, new HomeProvenance.Descent(
                     HomeProvenance.SCHEMA_VERSION, other.toString(),
@@ -620,14 +880,23 @@ public final class DamagedHomeIsRepairableTest {
             Files.writeString(store.resolve("skills").resolve(UNIT).resolve("SKILL.md"),
                     "---\nname: " + UNIT + "\ndescription: moved\n---\n");
             DriftGate.recordSince(s, HomeDigest.read(s).orElse(null), "fixture");
-            // A declared-but-unbuilt entry point, the OTHER normal staleness:
-            // every home with lazy artifacts ships these and reporting them is
-            // the failure mode `declaredNotBuilt` exists to avoid.
-            Files.writeString(store.resolve("artifacts.lock.toml"),
-                    Files.readString(store.resolve("artifacts.lock.toml"), StandardCharsets.UTF_8)
-                            .replace("outputs = [\"bin/cli/" + TOOL + "\"]",
-                                    "outputs = [\"bin/cli/" + TOOL + "\", \"bin/cli/never-built\"]"),
-                    StandardCharsets.UTF_8);
+            // THE DECLARED-BUT-UNBUILT ENTRY POINT -- and it is the variant
+            // that CAN trip the check, which is the whole point.
+            //
+            // This used to plant `bin/cli/never-built`, a name NO PARENT STORE
+            // HOLDS. That is the one flavour of staleness `prunedInheritedEntries`
+            // could never have reported, because its second condition is "and
+            // the recorded parent still holds it" -- so the assertion for the
+            // clause this ticket is graded on was tested against the only case
+            // that cannot fail it. DEF-046's shape, inside clause 3's own
+            // oracle, and the review of PR #244 found it by finding the false
+            // positive it was supposed to have caught.
+            //
+            // So: the SAME entry the damaged fixture prunes, whose parent DOES
+            // hold it -- byte-for-byte the state that produces a finding above
+            // -- with the one thing that makes it normal: this home deferred.
+            HomePolicy.writeLazyArtifacts(new SkillStore(store), true);
+            Files.delete(store.resolve("bin/cli").resolve(TOOL));
         }
 
         /** A child home made by the real cloner, which records its own descent. */

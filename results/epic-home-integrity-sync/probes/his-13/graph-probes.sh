@@ -46,7 +46,7 @@ PY
   echo "$id done -> $OUT/$id.out"
 }
 
-probe G1 's = s.replace("""                    apply(root, finding);""", """                    if (false) apply(root, finding);""", 1); assert s.count("if (false) apply") == 1; p.write_text(s)' \
+probe G1 's = s.replace("""                    apply(root, next);""", """                    if (false) apply(root, next);""", 1); assert s.count("if (false) apply") == 1; p.write_text(s)' \
       "the repair itself -- every action suppressed, detection unchanged"
 
 probe G2 's = s.replace("""public final class HomeRepair {""", """public final class HomeRepair {\n\n    private static final ThreadLocal<Boolean> R = ThreadLocal.withInitial(() -> false);""", 1);

@@ -1,3 +1,12 @@
+# KEPT DELIBERATELY. This probe reddened NOTHING -- 12 passed, 0 failed --
+# and is ledger row 12: mechanism D, in this ticket's own harness, one ticket
+# after the ledger named it. Restored by hand after a `rm V*.out` sweep during
+# the PR #244 rework, which is its own small lesson about globs.
+#
+# It is NOT regenerable from the current probes.py: the branch it mutated
+# (rewrite's no-op guard) and the loop it ran against have both been rewritten
+# since. It is a historical record, and it is labelled as one.
+#
 # V6 -- branch moved: the rewrite arm's no-op guard -- idempotence.
 # mutation:
 #   String replaced = text.replace(candidate.toString(), finding.target().toString());

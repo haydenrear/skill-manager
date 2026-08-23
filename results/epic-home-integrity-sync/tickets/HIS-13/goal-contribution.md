@@ -14,48 +14,104 @@ and, for the guard:
 
 ---
 
-## 0. What this ticket does NOT deliver, up front
+## 0. What the review of PR #244 found, and what it cost
 
-1. **It does not change `home verify`.** So this epic — whose second goal is
-   that one home has one answer — now ships two commands that inspect one home
-   and disagree: `home verify` exits 0 on a home `home repair` calls damaged.
-   That is a real cost, it is deliberate, and it is filed as **DEF-070** rather
-   than left for a reviewer to find. Folding four new checks into the command
-   `HomeFixpointLaw` runs over every home in 24 graphs, in the last
-   implementation wave, behind no flag, is how a guard becomes the hold-back
-   `GOAL-no-spurious-holdback` forbids.
+**Two blockers, both measured on stock output, both aimed at the goal this
+ticket claims to decide outright. Both were real.** They are recorded here
+first, above the claims, because the first version of this document put a false
+positive in its headline.
 
-2. **It repairs three of the five conditions it detects.** A `bin/cli` that is
-   itself a link out of the home, and a foreign path with no counterpart in this
-   home, are **reported and not repaired** — see §3 and §4. Both say so on the
-   line a person reads.
+### Blocker 1 — a fresh, untouched, healthy clone was reported as damaged
 
-3. **The `tla-spec-dev` ticket open/close was not run**, because it cannot run:
-   `open ticket HIS-13` aborts parsing `ticket_plan.yaml` before it does
-   anything. Measured, root-caused, and filed as **DEF-069** — see §7. HIS-14
-   recorded the same skip without the cause; this is the cause, and it has been
-   blocking every ticket in the epic.
+```
+home clone …            exit 0   "no path in it reaches another Skill Manager home"
+home verify --home C1   exit 0
+home repair --home C1   exit 1   PRUNED_INHERITED_ENTRY bin/cli/tofu     <- WRONG
+```
 
-4. **The unit suite is where the coverage is.** The graph node adds one thing
-   the unit test cannot express — five separate CLI processes — and covers two
-   of the five conditions. Said in the node's own javadoc too.
+Reproduced verbatim on this branch before touching anything.
+`prunedInheritedEntries` read raw ledger outputs and never asked
+`home.policy.toml`'s `lazy_artifacts` nor `Artifact.Materialization`. My javadoc
+argued that "declared AND absent AND the parent has it" was not a normal state.
+**A lazy home satisfies that conjunction from birth.** `bin/cli/tofu` was never
+in that clone and was never pruned.
 
----
+Two things make it worse and both are the reviewer's:
+
+1. **The verdict depended on the operator's machine.** Eight artifacts were
+   `declared-only` in that clone and exactly one fired, because the root store
+   happened to hold that one binary. On a machine where helm/docker/k3d had been
+   built, the same untouched clone reports five.
+2. **My PR presented this false positive as its proof of real-world value.**
+   *"found a real finding on this worktree's own home unprompted… which
+   falsified my own written doubt"* — the worktree home is itself a lazy clone
+   whose recorded parent holds `tofu`. Same false positive, and 1 of the 5 in
+   the headline `cp -a` measurement. **That claim is withdrawn; see §2 for what
+   replaced it.**
+
+And the reason my suite could not catch it is worse than the bug:
+`makeStale()` planted `bin/cli/never-built`, a name **no parent store holds** —
+the one flavour of staleness the check could never report. The oracle for the
+clause I am graded on was the only case that cannot fail it. **Ledger row 13.**
+
+**Fixed** by asking production's own rule (`HomeCloner.partitionDeclared`'s
+"both conditions, and neither alone") read in the accusing direction, and by
+replacing the oracle with a discriminating pair. Measurement in §2.
+
+### Blocker 2 — `--fix` broke a working entry point and then reported the home clean
+
+`rewrite`'s javadoc said *"textual and exact — the whole absolute path, not a
+prefix"*. `String.replace` on a path string **is** a prefix replace. Reproduced:
+
+```
+before  wrapper → "I am F foo run"                      run_exit=0
+detect  2 findings; the second DECLARED UNREPAIRABLE
+--fix   "repaired 1 of 2"
+after   exec "D1/…/skills/foo/run"   <- no finding named this line
+        run_exit=126, No such file or directory
+detect  ✓ nothing is damaged                             <- green over the damage
+```
+
+Four failures in one run, and the fourth is the one that matters: **detection
+afterwards was green**, so the entire safety story — "the check that was red is
+now green" — could not see it. Against the goal's own words, *never destroys
+bytes it did not itself create*, it overwrote bytes in a file it did not create,
+on a line no finding named.
+
+**Fixed in three layers** (whole-path occurrence, a postcondition on every
+rewrite, and a re-scan between repairs), each with its own probe. Measurement in
+§2.
+
+### What this ticket still does NOT deliver
+
+1. **It does not change `home verify`.** Two commands inspect one home and
+   reach different verdicts. DEF-070, **rewritten** after M9: the agent-axis
+   half is defensible separation and my first entry described *that* half as
+   the finding. The half that was real — three readers, three answers about
+   `bin/cli/tofu` — is fixed by blocker 1, and what remains is smaller.
+2. **`PRUNED_INHERITED_ENTRY` is now narrow, and silent where HIS-9's incident
+   happened.** No record on disk distinguishes "was here and was pruned" from
+   "was declared and never built". **DEF-073**, with the candidate fix.
+3. **Four of five conditions are repairable** (§1), not three — MINOR, corrected.
+4. **The `tla-spec-dev` lifecycle still did not run**, and my explanation of why
+   was substantially wrong. **DEF-069 is marked `corrected`, three clauses
+   withdrawn, superseded by the epic agent's DEF-072.** §7.
 
 ## 1. What changed
 
 | file | what |
 | --- | --- |
-| `src/main/java/dev/skillmanager/store/HomeRepair.java` | **new.** Detection and repair. 5 conditions, 4 repairable kinds. |
+| `src/main/java/dev/skillmanager/store/HomeRepair.java` | **new.** Detection and repair: **five conditions, four of them repairable.** |
 | `src/main/java/dev/skillmanager/commands/HomeCommand.java` | **new subcommand** `home repair`. Reports by default; `--fix` is the only spelling that writes. |
 | `src/main/java/dev/skillmanager/cli/CliMetadata.java` | the command catalog row (forced by `CliMetadataTest`, see §5). |
 | `src/main/java/dev/skillmanager/cli/CommandHomeAccess.java` | `home repair` is **READ**, narrowed to WRITE only under `--fix` via the existing `INIT_GATED` mechanism. |
-| `src/test/java/dev/skillmanager/store/DamagedHomeIsRepairableTest.java` | **new**, 13 cases, root-tier fixture. |
+| `src/test/java/dev/skillmanager/store/DamagedHomeIsRepairableTest.java` | **new**, 19 cases, root-tier fixture. |
 | `src/test/java/dev/skillmanager/cli/JsonContractTest.java` | the `--json` contract row (forced by HIS-15's guard, §5). |
 | `src/test/java/dev/skillmanager/cli/LazyHomeScaffoldTest.java` | the read-only decoy probe (forced by HIS-14's guard, §5). |
 | `test_graph/sources/home-integrity/DamagedHomeIsRepairable.java` | **new node**, five CLI processes. |
 | `test_graph/build.gradle.kts` | one line, inside the `home-integrity` block. |
 | `RunTests.java`, `RunHis13.java` | registration, and the one-suite runner the probes name. |
+| `results/…/validation/vacuity-ledger.md` | **rows 12 and 13**, the counts, the mechanism-D section and three new work-list entries (M8). |
 
 `HomeCloner` was **not** modified. My declared production conflict keys were
 `HomeCommand.repair` and `HomeCloner.verifyRoots`; I used the first and did not
@@ -118,37 +174,93 @@ operator noticing.*
 | detection is separable from repair | n/a | **asserted**, 3 places |
 | repair confined to the home given | n/a | store + its three agent dirs, and nothing else |
 
-### The measurement that is not a fixture
+### The two blockers, measured after the fix
 
-Everything above could be true of a detector that only works on homes I built.
-So it was pointed at a real one. Full transcript:
-`probes/his-13/real-home-measurement.md`.
+Same subjects, same commands, this branch.
 
-**This worktree's own home, read-only:** one finding, on the first try —
-`PRUNED_INHERITED_ENTRY bin/cli/tofu`. Verified genuine before being believed:
-`artifacts.lock.toml` declares `outputs = ["bin/cli/tofu"]` for `deploy-helm`,
-the home does not hold it, and `~/.skill-manager/bin/cli/tofu` (the recorded
-parent store, which still re-derives) does. **That answers §8's own "unsure #3"**
-— the shape fires in the wild, on a home nobody constructed to make it.
-
-**A `cp -a` copy of that home** — literally the case
-`sanctionedParentShim`'s javadoc names as *"repairing such a home … is
-HIS-13's"*:
+**Blocker 1 — the same fresh clone `C1`, not one byte changed on disk:**
 
 ```
-home verify --home <copy>    exit 0   "every reference resolves, and no path in
-                                       it reaches any other Skill Manager home"
-home repair --home <copy>    exit 1   5 findings, 4 of them agent projections
-                                       still resolving into the SOURCE home
-home repair … --fix          exit 0   repaired 5 of 5
-home repair … --fix (again)  exit 0   repaired 0 of 0, nothing changed
-home repair --home <copy>    exit 0   a separate process, and it agrees
+home verify --home C1   exit 0
+home repair --home C1   exit 0   "nothing … is damaged in a way this command knows about"
 ```
 
-Exit 0 and exit 1 about one home a minute apart. That is clause 2 decided on a
-real subject, and it is **DEF-070 measured live** rather than argued.
+Before the fix, `home repair` exited 1 on that home. The two instruments now
+agree, which is the guard goal rather than a nicety.
 
-The source home was re-checked after every repair and is unchanged.
+And the regression is an assertion, in the sharpest form available — **one disk
+state, judged twice**, with only the policy line differing:
+
+```
+lazy_artifacts = false   ->   PRUNED_INHERITED_ENTRY reported     (a home that deferred nothing)
+lazy_artifacts = true    ->   not reported at all                 (the state every clone is in)
+```
+
+Three probes redden that assertion on its claim (V3, V5, V13).
+
+**Blocker 2 — the reviewer's wrapper, rebuilt here:**
+
+```
+before  wrapper runs                                        run_exit=0
+detect  2 findings: one repairable base, one UNREPAIRABLE longer path
+--fix   "repaired 1 of 2"
+after   wrapper still runs                                  run_exit=0     (was 126)
+        exec line still names F/…/skills/foo/run                            (untouched)
+detect  exit 1, still naming the path that is still wrong                   (was: green)
+```
+
+Every clause of the blocker is inverted: the unrepairable path is untouched, the
+shim still runs, and detection afterwards is **red about what remains** instead
+of green over it. Four probes redden that assertion on its claim (V2, V5, V14,
+V19).
+
+### The real-home measurement, corrected
+
+The first version of this document led with *"`home repair` found a real finding
+on this worktree's own home unprompted — `PRUNED_INHERITED_ENTRY bin/cli/tofu` —
+which falsified my own written doubt about whether that shape occurs outside a
+fixture."*
+
+**That was the false positive.** The worktree home is a lazy clone whose
+recorded parent holds `tofu`. **Withdrawn.**
+
+What replaced it is better, and I did not go looking for it — it is what the
+FIXED command reported on the same home:
+
+```
+MISANCHORED_AGENT_LINK .codex/skills/one-forty-five
+  -> resolves into the store at /private/var/…/sm-145-<n>/operator/.skill-manager
+MISANCHORED_AGENT_LINK .gemini/skills/one-forty-five   -> same
+```
+
+Real damage, in a real home, on the axis this epic is about — and the writer is
+**`AgentProjectionFollowsHomeTest`, the #145 regression test**, whose subject is
+that an operation on one home must not write another home's agent directories.
+Reproduced deterministically with all five variables pinned at a scratch
+directory: running that test alone leaves a dangling projection in whatever
+`CODEX_HOME` and `GEMINI_HOME` name. Unset — the normal developer environment —
+that is the operator's real `~/.codex/skills` and `~/.gemini/skills`. Filed as
+**DEF-074**.
+
+The operator's real agent directories were checked immediately and are clean
+(mtime 2026-08-21, no link into any temp directory), because every run in this
+session had those variables exported at the worktree. **That is luck of the
+environment, not a guard**, and DEF-074 says so.
+
+### The `cp -a` measurement, re-run
+
+The headline measurement the reviewer reproduced exactly still holds, minus the
+`tofu` line:
+
+```
+home verify --home <copy>     exit 0   "no path in it reaches any other home"
+home repair --home <copy>     exit 1   4 agent projections still resolving into the SOURCE
+home repair … --fix           exit 0   repaired 4 of 4
+home repair … --fix (again)   exit 0   repaired 0 of 0
+home repair --home <copy>     exit 0   a separate process, and it agrees
+```
+
+Four findings, not five. The fifth was the false positive.
 
 Clause 3, the anti-regression: `a merely STALE home is not reported as damaged`
 is an assertion, over a fixture carrying an **unacknowledged drift record**, a
@@ -234,229 +346,320 @@ It also asserts the other home is byte-identical after a repair run.
 
 ---
 
-## 5. Vacuity — thirteen assertions, fourteen probes, one confession
+## 5. Vacuity — 19 assertions, 19 probes, and a table that is now generated
 
-Every probe: copy the production file aside, mutate, run `jbang RunHis13.java`,
-restore **by copying the saved file back** (never `git checkout --`; DEF-035 has
-now bitten four agents in this epic). The harness is
-`results/epic-home-integrity-sync/probes/his-13/probes.py`; each probe's observed
-output is `V<n>.out` beside it.
+**The first version of this section was the least trustworthy thing in the PR,
+and the review was right about every clause of it.** It credited probes with
+reddening claims when they had reddened preconditions (M4, on the keystone
+DEF-067 assertion); it undercounted the precondition-reds by three assertions
+and five events (M5); it counted 37 reds in V7 where 9 were this suite's (M6);
+and its `.out` files could not have been produced by the committed harness (M7).
 
-**Mechanism C is mechanised here:** the harness asserts each mutation's pattern
-matched **exactly once** before applying it. It caught itself on its first run —
-the four suppression probes were first written as `0 * f(...)`, which does not
-compile (the methods return `int`), and jbang's failure reads exactly like a
-suite of reds. They are now `f(root, new ArrayList<>())`, so the mutated path is
-demonstrably **reached** and only its findings are dropped.
+So the table below is **generated from the `.out` files**, not written by hand,
+and the harness classifies each red rather than leaving that to my reading.
 
-| probe | branch it moves | reddened |
+### Mechanism A, moved from convention to code
+
+`probes.py` now labels every red **CLAIM** or **PRECONDITION** and writes both
+counts into each probe's header. A precondition-red proves nothing about the
+branch — the run failed on setup and the claim was never evaluated — and the
+ledger has three instances of exactly that being counted as evidence. A probe
+whose `claims` count is zero is printed with a warning and treated as a **failed
+probe**, and `EXPECTED_GREEN` declares in advance the one probe that should
+redden nothing.
+
+**It found something on its first run.** `V11` had reddened before; after
+blocker 1's fix it came back `claims=0`, because the new policy gate returns
+before V11's line is reached. **Mechanism C** — the mutation stopped being
+reachable, and a green run reads exactly like a passing check. It was re-aimed
+and the assertion it should have had was written (`an EAGER home missing an
+entry no parent holds…`). No careful transcript-reading was involved.
+
+Two further countermeasures, both from review findings:
+
+- an assertion line is matched against `labels.txt`, captured from a clean
+  baseline run, so text matched *inside a failure message* is reported as
+  `[NOTE] not an assertion of this suite` rather than counted. That is M6's 28
+  phantom copies, structurally;
+- the verdict is found by looking for it, so `BASELINE.out` and every `V<n>.out`
+  carry a real one. That is M7.
+
+### The matrix
+
+**19 of 19 assertions have a claim-red.** The precondition column is recorded
+and **not** counted as coverage.
+
+| assertion | reddened on its CLAIM by | also reddened on a PRECONDITION by |
 | --- | --- | --- |
-| **V1** | shape 1 — the agent-axis walk (the pre-HIS-13 world for that surface) | 5 of 13, incl. `all four damage shapes`, `REPAIR makes detection clean`, `the agent axis comes from the HOME`, the CLI test — **all claims** |
-| **V2** | shape 2 — the regular-file shim TEXT scan | 3, incl. `detection uses HIS-10's reader` **on its claim** (*"with the record gone the SAME bytes are damage"*) |
-| **V3** | shape 3 — ledger × descent record | 3; the forgery test reddens on a **precondition** here (mechanism A — counted as such, not as a claim) |
-| **V4** | shape 4 — DEF-012's pinned-build reader | 1, `all four damage shapes` — the claim, and the only assertion that names this kind |
-| **V5** | **DEF-067's hazard, planted**: `detect` calls `repair` | 8 of 13, incl. `DETECTION REPAIRS NOTHING` **on its claim** |
-| **V6** | repair's convergence — one finding per pass instead of all of them | 4, incl. `REPAIR IS IDEMPOTENT` **on its claim** |
-| **V7** | the agent-axis derivation — HIS-14's defect planted in the repairer | 37 (see below) incl. `the agent axis comes from the HOME`, `a repair cannot write outside the two axes` |
-| **V8** | the confinement roots — enclosing home root instead of the two axes | 1, `a repair cannot write outside the two axes` — the claim |
-| **V9** | shape 3's sanction gate — the recorded snapshot trusted as a grant (#228) | 1, `a FORGED descent record buys no repair` — **the claim** |
-| **V10** | `HomeCloner.unsanctionedForeignHome`'s sanction arm — the canonical reader | 3; `detection uses HIS-10's reader` reddens on a **precondition** here (mechanism A) |
-| **V11** | shape 3's conjunction — "declared and missing" without "the parent holds it" | 1, `a merely STALE home is not reported as damaged` — the claim |
-| **V12** | the `bin/cli`-is-a-link guard | `HIS-9's measurement target` — **the claim** (*"ONE finding about the directory, not one per entry seen through it"*; without the guard the walk descends and reports the other home's entries) |
-| ~~**V6 (first version)**~~ | ~~`rewrite`'s no-op guard~~ | **VACUOUS — 12 passed, 0 failed.** Kept as `V6-VACUOUS.out`. |
+| `BLOCKER 1: one disk state, two policies, and the verdict follows the policy` | V3, V5, V13 | — |
+| `BLOCKER 2 postcondition: a rewrite that would break the shim is REFUSED` | V19 | — |
+| `BLOCKER 2: a rewrite replaces a PATH, not a substring, and keeps the shim running` | V2, V5, V14, V19 | — |
+| `DETECTION REPAIRS NOTHING — run it twice and the damage is still there` | V5 | — |
+| `HIS-9's measurement target: a home whose bin/cli IS a link is NAMED` | V2, V12 | — |
+| `M3: a broken CLI pin with no locatable build is reported, with the runnable remedy` | V4, V5, V17 | — |
+| `M3: a projection this home cannot back is reported UNREPAIRABLE, not relinked` | V1, V7, V16 | — |
+| `REPAIR IS IDEMPOTENT — the second run changes no bytes` | V6 | — |
+| `REPAIR makes detection clean, and it is DETECTION that says so` | V1, V2, V3, V6, V7, V18 | V5 |
+| ``home repair` reports and exits 1; `--fix` repairs and exits 0` | V1, V5, V6, V7, V18 | — |
+| `a FORGED descent record buys no repair — the chain it names must re-derive` | V9 | V3, V5 |
+| `a healthy ROOT-TIER home is reported clean, over a non-zero subject count` | V7, V10 | — |
+| `a home damaged AFTER a repair goes red again — the verdict is not sticky` | V1, V5 | V6, V7 |
+| `a merely STALE home is not reported as damaged` | V7, V10, V13 | — |
+| `a repair cannot write outside the two axes of the home it was given` | V7, V8 | — |
+| `all four damage shapes are reported, one line each, naming the repair` | V1, V2, V3, V4, V5 | — |
+| `an EAGER home missing an entry no parent holds is not a repair this command can make` | V11 | — |
+| `detection uses HIS-10's reader: a SANCTIONED inherited shim is not damage` | V2, V5 | V7, V10 |
+| `the agent axis comes from the HOME and not from the ENVIRONMENT` | V1, V5, V7 | — |
 
-### The graph node's own two probes — and they redden DISJOINT sets
+### The probes
 
-The unit probes redden the unit suite. These redden the NODE, and they are
-separate because the node asserts one thing the unit suite cannot: that
-detection and repair are separate PROCESSES. Harness:
-`probes/his-13/graph-probes.sh`; outputs `G1.out`, `G2.out`.
+| probe | branch it moves |
+| --- | --- |
+| V1–V4 | one per damage shape: the agent-axis walk, the shim-text scan, the ledger×descent conjunction, DEF-012's pinned-build reader. Each still CALLS the branch it disables (`f(root, new ArrayList<>())`), so the mutated path is demonstrably reached |
+| **V5** | **DEF-067's hazard, planted**: `detect` calls `repair` |
+| V6 | repair's convergence — one repair per invocation instead of all |
+| **V7** | the agent-axis derivation — HIS-14's defect planted in the repairer |
+| V8 | the confinement roots — enclosing home root instead of the two axes |
+| V9 | shape 3's sanction gate — the recorded snapshot trusted as a grant (#228) |
+| V10 | `HomeCloner.unsanctionedForeignHome`'s sanction arm — the canonical reader |
+| V11 | shape 3's "and the parent holds it" conjunction |
+| V12 | the `bin/cli`-is-a-link guard (HIS-9's limitation) |
+| **V13** | **blocker 1's fix**: the `lazy_artifacts` gate |
+| **V14** | **blocker 2's fix, layer 1**: whole-path replacement, at the call site |
+| V15 | **blocker 2's fix, layer 2 alone**: the postcondition. **Declared EXPECTED_GREEN** |
+| V16 | M3: the branch deciding whether a mis-anchored projection is repairable |
+| V17 | M3: `DANGLING_CLI_PIN`'s `live == null` arm |
+| **V18** | **blocker 2's fix, layer 3**: the re-scan between repairs |
+| V19 | `replaceWholePath`'s boundary predicate itself, inside the function |
 
-| probe | branch it moves | node assertions reddened |
-| --- | --- | --- |
-| **G1** | the repair itself — `apply` suppressed, detection untouched | `a_separate_detection_run_after_the_repair_is_clean`, `the_projection_points_at_this_homes_own_store`, `the_wrapper_runs_this_homes_own_tree`, `running_the_repair_twice_changes_nothing_the_second_time`. `findingsAfterRepair` **0 → 2**. `DETECTION_ALONE_REPAIRS_NOTHING` correctly stays **green**. |
-| **G2** | **DEF-067's hazard planted at the process boundary** — `detect` calls `repair` | `DETECTION_ALONE_REPAIRS_NOTHING`, `bare_home_repair_refuses_a_damaged_home`, `bare_home_repair_names_each_damage_shape`, `every_finding_names_the_repair_for_it`. `findingsAtFirstDetect` **2 → 0**. The four repair-outcome assertions correctly stay **green** — *because the home did get repaired, by the observer.* |
+### Three layers, and a probe that proves they are three
 
-**G2 is the whole ticket in one table.** With the hazard planted, the home ends
-up healthy and every outcome assertion passes; what fails is that the
-*detection* run reported nothing, having quietly fixed what it was asked to
-look at. That is DEF-067's third consequence — *"it can green a real defect"* —
-reproduced deliberately, and the node catches it.
+Blocker 2 is fixed in depth, and V14/V15/V18 show each layer separately:
 
-The two sets are **disjoint**. That is the per-branch control discipline
-(mechanism D) satisfied rather than claimed: each probe reddens the assertions
-downstream of the branch it moved and none of the others.
+- **V14** restores `String.replace` at the call site. The rewrite is then
+  *refused by the postcondition* rather than shipping a broken shim — layer 2
+  catching layer 1's failure, visibly.
+- **V15** removes the postcondition alone and reddens **nothing**, because layer
+  1 is correct and there is nothing for layer 2 to catch. Declared in advance as
+  `EXPECTED_GREEN` rather than explained afterwards, which is the sentence a
+  vacuous probe always gets written for it.
+- **V18** removes the re-scan and reddens two claims: a repair loop acting on a
+  list taken before the home changed.
 
-### The V6 confession, because it is mechanism D on my own harness
+### The V6 confession stands, and is now in the ledger where it belongs
 
-The first V6 removed `rewrite`'s "the path is no longer in this file" guard and
-made it append a byte. **It reddened nothing.** `rewrite` only runs for findings,
-and on the second repair the report is clean, so the branch is never reached.
-Idempotence in this design is not held by a no-op guard at all — it is held by
-detection coming back clean — so the mutation moved a branch the assertion is not
-downstream of. That is precisely the mechanism HIS-17 was blocked on, one ticket
-later, in the harness written by the agent who had just read the ledger entry
-about it.
+The first V6 removed `rewrite`'s no-op guard and **reddened nothing** —
+mechanism D, in this ticket's own harness, one ticket after the ledger named it.
+Kept as `V6-VACUOUS.out`. **M8: it is now row 12 of
+`validation/vacuity-ledger.md`**, with the counts, the self-caught ratio and the
+mechanism-D section updated, rather than confessed only in this document. Row 13
+is the reviewer's finding about `makeStale()`, and the two are written to be read
+together: *a probe suite can be large, honest, and entirely blind, when every
+probe is read against one oracle and that oracle cannot express the defect.* Six
+probes reddened on the arm blocker 1 lived in. All six were reading the same
+degenerate oracle.
 
-The re-aimed V6 moves **convergence** (one finding per pass) and reddens the
-idempotence claim.
+### The byte-equality half is still unfalsified, and one thing is now covered
 
-**And the byte-equality half is still unfalsified.** `REPAIR IS IDEMPOTENT`
-asserts two things: the second run reports nothing to do, *and* the bytes did not
-move. The first has V6. **The second has no mutation that reddens it alone**,
-because production performs no writes when the report is clean, so there is no
-branch to break. It is a guard against a *future* repairer that writes
-unconditionally, and it is worth exactly that and no more. Said here rather than
-counted as covered.
+`REPAIR IS IDEMPOTENT` asserts the second run reports nothing to do (V6 reddens
+it) *and* that the bytes did not move. The second half still has **no mutation
+that reddens it alone**, because production performs no writes when the report
+is clean. Unchanged from the first submission, and still stated rather than
+counted.
 
-### Two assertions whose claim never reddened
+What is no longer true is the claim that two assertions redden only on
+preconditions. After M4's correction to `DETECTION REPAIRS NOTHING` — where the
+byte-equality assertion now runs *before* the verdict assertion, so V5 reddens
+the claim it was always credited with — every assertion has a claim-red.
 
-- `a home damaged AFTER a repair goes red again` reddens under four probes, and
-  **every one of them reddens its precondition** (`precondition: repaired`), not
-  its claim. There is no mutation for the claim, because production keeps no
-  verdict to be sticky. Mechanism A, self-declared: it is a guard against a
-  future cached verdict.
-- `every finding names its repair` (inside `all four damage shapes`) is a
-  structural assertion over the record; no mutation targets it specifically.
-
-### The probes that were not mine — three mechanised guards caught this ticket
-
-Worth recording, because the ledger's honest read is that eleven of twelve
-countermeasures are enforced by care rather than by code. Three that *are* code
-fired on this change, unprompted:
+### Three mechanised guards caught this change, and a fourth caught the fix
 
 | guard | what it caught | owner |
 | --- | --- | --- |
 | `JsonContractTest.every_json_command_is_covered` | `home repair` declared `--json` with no contract row | HIS-15 |
-| `CliMetadataTest.metadata_command_catalog_matches_picocli` | the command catalog had no row for it | pre-epic |
-| `LazyHomeScaffoldTest.every_read_only_command_has_a_probe` | a READ command with no decoy probe proving it scaffolds nothing | HIS-14 (#241 H1) |
-
-The third is the sharpest: it forced an assertion that bare `home repair`
-creates nothing in the home it is pointed at, which is the DEF-067 contract
-restated at the CLI boundary. I would not have written it.
-
----
+| `CliMetadataTest.metadata_command_catalog_matches_picocli` | no catalog row for it | pre-epic |
+| `LazyHomeScaffoldTest.every_read_only_command_has_a_probe` | a READ command with no decoy probe proving it scaffolds nothing | HIS-14 |
+| `probes.py`'s zero-claims warning | **V11 going vacuous as a side effect of blocker 1's fix** | this ticket |
 
 ## 6. Validation
+
+Every number below was produced on this branch after the rework, rebased onto
+epic tip `576fa0b`.
 
 ### Declared
 
 ```
-uv run pytest specs/                                     38 passed in 1.92s
-jbang RunTests.java                                      ALL PASSED (0 failures)
-python skills/test_graph/scripts/run.py home-integrity    BUILD SUCCESSFUL, 18/18 nodes
-                                                          run 20260823-211025
-tla-spec-dev --spec-root specs open/close ticket HIS-13   CANNOT RUN — DEF-069
+uv run pytest specs/                                      38 passed
+jbang RunTests.java                                       ALL PASSED, 0 failures
+                                                          (CLEAN ENVIRONMENT — see below)
+python skills/test_graph/scripts/run.py home-integrity     18/18   run 20260823-222322
+tla-spec-dev --spec-root specs open/close ticket HIS-13    not run — DEF-069 / DEF-072
 ```
 
-The new node, `home.integrity.damaged.home.is.repairable`, in that run:
-**11 of 11 assertions passed**, `findingsAtFirstDetect = 2`,
-`findingsAfterRepair = 0`, `detectRunsBeforeRepair = 2`.
+The node `home.integrity.damaged.home.is.repairable`, in that run:
+**12 of 12 assertions passed**, `findingsAtFirstDetect = 2`,
+`findingsAfterRepair = 0`, `detectRunsBeforeRepair = 2`,
+`detect=1,1 repair=0 detect-after=0 repair-again=0`.
 
-TLC: **N/A** per the assignment — this ticket states no new invariant, and HIS-5
-carries the model work for the epic.
+TLC: **N/A** per the assignment — no new invariant; HIS-5 carries the model work.
 
-`jbang RunTests.java` was **red twice before it was green**, and both reds were
-mechanised guards catching this change rather than flakes:
+### `RunTests.java` and `checkout-home`, which the review could not reproduce
+
+The coordinator's note was right about the cause: the review protocol's
+mandatory env pinning reddens unit cases that expect an unpinned environment,
+which is not a property of this diff. Both were re-run here **with all five home
+variables explicitly unset** (`env -u SKILL_MANAGER_HOME -u CLAUDE_CONFIG_DIR -u
+CLAUDE_HOME -u CODEX_HOME -u GEMINI_HOME`):
 
 ```
-run 1   FAILURES: 2   JsonContractTest  — `home repair` declares --json, no contract row
-                      CliMetadataTest   — no catalog row for `home repair`
-run 2   FAILURES: 1   LazyHomeScaffoldTest — a READ command with no decoy probe
-run 3   ALL PASSED
+jbang RunTests.java          ALL PASSED, 0 failures
+run.py checkout-home         8/8      run 20260823-222706
 ```
+
+So the number is mine and it is green. **And running it that way produced a
+finding**: it is the run that let me establish DEF-074's real scope — with those
+variables unset the #145 test writes nothing into the operator's agent
+directories, which is the opposite of what my first draft of that entry claimed.
+The env-pinning artefact is not just noise; it is the difference between two
+behaviours, and only running both told me which.
 
 ### The second set, and why these graphs
 
-`home-clone` and `checkout-home`.
-
-**Why these two and not others.** The production files this ticket edits are
+`home-clone` and `checkout-home`. The production files this ticket edits are
 `HomeCommand` (a new subcommand), `CliMetadata` and `CommandHomeAccess` (one row
-each), plus the new `HomeRepair`. `CommandHomeAccess` is the one with reach
-beyond the new command: it decides, for **every** CLI invocation in **every**
-graph, whether `HomeScaffold` lays a home out before the command runs. Adding a
-row cannot change another command's row, but the `INIT_GATED` map it narrows is
-consulted on every parse, so the two graphs that drive `home clone` /
-`home verify` / `home close-out` end-to-end over real multi-tier homes are the
-ones whose fixtures exercise what I touched.
+each), plus the new `HomeRepair`. `CommandHomeAccess` is the one with reach: it
+decides, for **every** CLI invocation in **every** graph, whether `HomeScaffold`
+lays a home out before the command runs, and this ticket narrows its
+`INIT_GATED` map. The two graphs that drive `home clone` / `home verify` /
+`home close-out` end to end over real multi-tier homes are the ones whose
+fixtures exercise it.
 
 ```
-python skills/test_graph/scripts/run.py home-clone       BUILD SUCCESSFUL, 14/14
-                                                          run 20260823-211248
-python skills/test_graph/scripts/run.py checkout-home    BUILD SUCCESSFUL, 8/8
-                                                          run 20260823-211434
+run.py home-clone            14/14    run 20260823-222529
+run.py checkout-home          8/8     run 20260823-222706
 ```
 
-### `--all` was NOT run
+**`--all` was NOT run** — owner's instruction; it belongs to HIS-6.
 
-Owner's instruction: it is multi-hour and belongs to HIS-6, which owns the one
-terminal sweep with the goal scorecard.
+### The graph node's own two probes, re-run against the reworked source
+
+| probe | branch it moves | node assertions reddened |
+| --- | --- | --- |
+| **G1** | the repair itself — `apply` suppressed, detection untouched | the four repair-outcome assertions. `findingsAfterRepair` **0 → 2**. `DETECTION_ALONE_REPAIRS_NOTHING` correctly stays green |
+| **G2** | **DEF-067's hazard planted at the process boundary** — `detect` calls `repair` | `DETECTION_ALONE_REPAIRS_NOTHING` and the three "bare detect refuses / names" assertions. `findingsAtFirstDetect` **2 → 0**. The four repair-outcome assertions correctly stay green — *because the home did get repaired, by the observer* |
+
+Still **disjoint**, which is the per-branch control discipline rather than one
+control claimed for two. G1's mutation had to be re-aimed after the repair loop
+was rewritten for blocker 2, and the harness's `count == 1` assertion is what
+caught that it no longer matched — mechanism C, again, mechanically.
 
 ### Homes
 
-Checked immediately after the V7 probe, which is the run that could have done
-damage (see DEF-071), and again before commit:
+Checked after every probe run, after the clean-environment suite, and before
+commit:
 
 ```
 find ~/.skill-manager ~/.claude ~/.codex ~/.gemini \
      /Users/hayde/IdeaProjects/skill-manager/.skill-manager \
-     -maxdepth 3 -newermt "-60 minutes"          ->  no output
+     -maxdepth 3 -newermt "-N minutes"                     ->  no output
 ```
 
-and issue #159's own detection snippet — every link under `~/.claude/skills`,
-`~/.codex/skills` and `~/.gemini/skills` must resolve into
-`~/.skill-manager/skills` — printed nothing. `~/.claude/skills` still carries its
-Aug 21 mtime. **No write to the ROOT home, the PROJECT home, the operator's three
-real agent directories, or any sibling `wt-*` worktree, at any point in this
-ticket.**
+plus issue #159's own detection snippet (every link under the three agent
+directories must resolve into `~/.skill-manager/skills`) — silent. `~/.codex/skills`
+still carries its 2026-08-21 mtime. **No write to the ROOT home, the PROJECT
+home, the operator's three real agent directories, or any sibling `wt-*`
+worktree, at any point.**
 
-Every experiment ran in a temp directory under `$TMPDIR` (unit fixtures) or under
-the graph's own sandbox (node). `specs/desired_program_model/ticket_plan.yaml` was
-edited once, to test DEF-069's cause, and restored from a copy taken first;
-`git status` shows it unmodified.
+`<wt>/probe/` was deleted after every use; disk went 22% → 23% → 23%. The two
+leaked `one-forty-five` links in THIS worktree's home (DEF-074) were removed by
+hand, which is what the finding's own remedy says to do, and `home repair` on
+that home now exits 0.
 
 ## 7. Deferred
 
-| id | severity | what | owner |
+Budget 5. **Five used**, and one of the five is my own correction rather than a
+new finding.
+
+| id | severity | status | what |
 | --- | --- | --- | --- |
-| **DEF-069** | **blocking** | `tla-spec-dev open/close ticket` cannot parse `ticket_plan.yaml` — wrapped flow sequences. **No ticket in this epic can run its declared spec lifecycle**, and `skt status` has been reporting every HIS ticket as not-open for the whole epic as a consequence. | epic owner / spec-double-compiler |
-| **DEF-070** | major | `home verify` and `home repair` now disagree about the same home. The cut is deliberate; the question is a goal question. | HIS-6 |
-| **DEF-071** | major | A confinement whose roots come from the same function as its targets protects nothing. Measured from probe V7. | HIS-6 / HIS-9 |
+| **DEF-069** | major | **corrected** | `tla-spec-dev` could not parse `ticket_plan.yaml`. The MECHANISM was real and is fixed on the epic branch. **Three clauses were false and are withdrawn**: it was not "all epic" (the parser broke 2026-08-22; waves 1–5 parsed), it is not why HIS-14 skipped (that document names a different cause), and `skt status` uses its own reader. Superseded by **DEF-072**. |
+| **DEF-070** | major | rewritten | `home verify` vs `home repair`. **M9 was right that my entry described the wrong half.** The agent-axis case is defensible separation; the real conflict was three readers giving three answers about `bin/cli/tofu`, and blocker 1's fix removes it. What remains is smaller and is stated as such. |
+| **DEF-071** | major | open | A confinement whose roots come from the same function as its targets protects nothing. From probe V7. Unchanged. |
+| **DEF-073** | major | open | **New.** Nothing on disk distinguishes "this entry point was pruned" from "it was declared and never built", so shape 3 is now correctly narrow and silent exactly where HIS-9's incident happened. Carries the candidate fix and a warning to whoever later "improves" the check. |
+| **DEF-074** | major | open | **New.** `AgentProjectionFollowsHomeTest` leaves a dangling projection in an explicitly-set `CODEX_HOME`/`GEMINI_HOME` — the configuration this epic's own protocol mandates. Found by `home repair` on its own worktree home. |
 
-Budget was 5; **three used**. DEF-069 is `blocking`, and the deferment policy for
-this epic is `escalate` — it is escalated here in §0 and in the report to the
-epic owner, not merely filed.
+### On DEF-069, since the coordinator asked me to argue where I disagree
 
----
+**I do not disagree. The reviewer is right and the finding is worse than a
+mistake — it is this epic's signature failure, committed by the agent shipping
+the detector for it.** I hit a parse error on the current tip, found HIS-14's
+document saying "the workflow was not run", and inferred one cause for both. I
+never ran the parser against an earlier commit (a two-minute check) and never
+opened HIS-14's document to see it names a different cause. Then I filed it at
+`blocking` and escalated it.
 
-## 8. What I am unsure about
+My own ticket's rule is *"an assertion whose red you have not personally seen
+does not count as delivered."* A backlog entry is an assertion. I did not apply
+the rule to my own prose. That reflex is recorded in the entry itself, under
+`how_i_got_it_wrong`, because the count of these is the thing HIS-6 reports.
 
-1. **`DANGLING_CLI_PIN`'s repair is the widest thing this command does.**
-   `LauncherShims.write` rewrites all three agent launchers as well as the CLI
-   entrypoint. It is confined to the store and it is exactly what `home shims`
-   does, but it is the one repair that touches files the finding did not name.
-   A reviewer may reasonably want it split.
+**And it recurred while fixing the review.** My first draft of DEF-074 claimed
+the test writes the operator's real `~/.codex` in a normal environment. I
+measured instead of asserting: with all five variables unset, it writes nothing
+there. The clause was withdrawn before the entry shipped. Same reflex, ninety
+seconds of measurement, caught this time.
 
-2. **`absolutePathTokens` is a scanner I wrote.** The *verdict* is production's
-   in every case, but the extraction is new, and its stop set is copied from
-   `HomeCloner.scanFor` rather than shared with it. A shim that quotes a path in
-   a way neither anticipates is a false negative, silently. I could not think of
-   a way to assert its completeness that was not itself a second scanner.
+## 8. What I am unsure about, and where I disagree
 
-3. ~~**Whether `PRUNED_INHERITED_ENTRY` will fire in the wild.**~~
-   **ANSWERED, and it falsified the doubt.** It fired on the first real home it
-   was pointed at — this worktree's own, `bin/cli/tofu`, declared by
-   `deploy-helm` and absent — and the `cp -a` copy produced four
-   `MISANCHORED_AGENT_LINK` findings that `home verify` called clean. See §2.
-   The residual doubt is smaller and different: **a false-positive rate I cannot
-   bound.** One real home, five real findings, all five verifiable by hand. That
-   is one home.
+### Where I disagree with the review — one place, and it is small
 
-4. **The graph node covers two shapes of four.** Deliberate and disclosed, but if
-   the epic wants `home-integrity` to be the instrument that decides clause 2,
-   the node is narrower than the claim — which is the DEF-046 shape, in my own
-   node, and I would rather a reviewer decided that than me.
+**MINOR: "PR/doc say base `6ee45b1`; `git merge-base` says `0f1a9a4`."** Both
+were true when written and neither is now: the branch has been rebased twice
+since, and the base is `576fa0b`. I have made the document name the tip it was
+last rebased onto rather than a base sha at all, because on a serialized
+promotion branch that number is stale the moment the predecessor merges. If the
+epic wants a fixed base recorded, it should come from the assignment block,
+which says `76434c7`.
 
-5. **DEF-069 means this ticket's spec lifecycle is unclosed.** I did not edit the
-   plan file to unblock myself. If the epic wants it closed, the plan file needs
-   normalising first, and that is the epic agent's file.
+Everything else in the review I accept, including both blockers, M2's withdrawal
+of three of my own clauses, and M9's finding that my DEF-070 described the wrong
+half of its own disagreement.
+
+### What I am still unsure about
+
+1. **`PRUNED_INHERITED_ENTRY` is now nearly dead, and I cannot prove it is
+   useful.** It fires only on a home with `lazy_artifacts = false` — the
+   operator root by default, which has no recorded parent store, so in practice
+   only a home whose operator explicitly turned laziness off. I have a passing
+   assertion for it and no field sighting. The honest options were "narrow it"
+   or "delete it"; I narrowed it and filed DEF-073 rather than delete a shape
+   the ticket named. **A reviewer may reasonably say delete it.**
+
+2. **`absolutePathTokens` is still a scanner I wrote.** The verdict is
+   production's in every case, and the rewrite now has a postcondition behind
+   it, but the extraction is mine and its stop set is copied from
+   `HomeCloner.scanFor` rather than shared with it. A shim quoting a path in a
+   way neither anticipates is a silent false negative. I still cannot think of a
+   completeness assertion that is not itself a second scanner.
+
+3. **The graph node covers two conditions of five.** Disclosed in its javadoc.
+   Unchanged, and it is the DEF-046 shape in my own node.
+
+4. **`replaceWholePath`'s boundary class is a judgement call.** Letters, digits,
+   `.`, `_`, `-`, `/`. A path containing a space, or a `+`, or a unicode
+   letter — `Character.isLetterOrDigit` handles the last — sits outside what I
+   reasoned about. V19 reddens the predicate; nothing establishes that the
+   predicate is *right*, only that it is load-bearing.
+
+5. **Blocker 1 is the second time this ticket's shape-3 arm has been wrong.**
+   First the sanction disjunction (found by my own test), now the policy gate
+   (found by a reviewer, on stock output, after six of my probes reddened
+   against it). I do not have a reason to believe the third version is right
+   beyond "I now consult both records production consults". That arm has the
+   worst track record in the change and it is the one I would look at first.
+
+6. **What the `cp -a` repair actually leaves behind.** It re-points four agent
+   projections at this home's own store, and detection then agrees. I have not
+   verified that an agent session in that home *loads* those skills — only that
+   the links resolve where they should. "The link is right" and "the harness
+   works" are different claims, and I am only making the first.
