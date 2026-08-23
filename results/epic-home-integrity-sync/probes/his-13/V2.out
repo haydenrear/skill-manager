@@ -1,0 +1,20 @@
+# V2 -- branch moved: shape 2 -- the regular-file shim TEXT scan.
+# mutation:
+#   examined += foreignPathsInShims(root, findings);
+# ->
+#   examined += foreignPathsInShims(root, new ArrayList<>());
+
+[PASS] a healthy ROOT-TIER home is reported clean, over a non-zero subject count
+[PASS] a merely STALE home is not reported as damaged
+[FAIL] all four damage shapes are reported, one line each, naming the repair: not true: FOREIGN_PATH_IN_SHIM was planted and not reported; got: [MISANCHORED_AGENT_LINK .claude/skills/alpha — resolves into the store at /private/var/folders/b  …[truncated]
+[PASS] DETECTION REPAIRS NOTHING — run it twice and the damage is still there
+[FAIL] REPAIR makes detection clean, and it is DETECTION that says so: the wrapper runs this home's tree: expected <#!/usr/bin/env bash
+[PASS] REPAIR IS IDEMPOTENT — the second run changes no bytes
+[PASS] the agent axis comes from the HOME and not from the ENVIRONMENT
+[PASS] a repair cannot write outside the two axes of the home it was given
+[PASS] `home repair` reports and exits 1; `--fix` repairs and exits 0
+[PASS] a home damaged AFTER a repair goes red again — the verdict is not sticky
+[PASS] a FORGED descent record buys no repair — the chain it names must re-derive
+[FAIL] detection uses HIS-10's reader: a SANCTIONED inherited shim is not damage: not true: and with the record gone the SAME bytes are damage — so the verdict above came from production's sanction and not from this detector being blind. go  …[truncated]
+
+Note: Recompile with -Xlint:deprecation for details.

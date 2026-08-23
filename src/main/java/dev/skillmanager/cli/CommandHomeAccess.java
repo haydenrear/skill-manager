@@ -274,6 +274,13 @@ public final class CommandHomeAccess {
         m.put("home sync", WRITE);
         m.put("home refresh-plugins", WRITE);
         m.put("home close-out", READ);
+        // HIS-13. READ by default and WRITE only with --fix -- the same
+        // invocation-dependent row `home describe` needed, and for a sharper
+        // reason: the bare command is the OBSERVER (DEF-067), so classifying it
+        // WRITE would have every detection run scaffold the home it was pointed
+        // at, which is a mutation performed by the thing whose whole contract
+        // is that it performs none.
+        m.put("home repair", READ);
         m.put("install", WRITE);
         // `login` bare is the browser OAuth flow, not a usage print: it
         // caches the bearer token under the home. Only `login show` reads.
@@ -337,7 +344,16 @@ public final class CommandHomeAccess {
      * and each needs its own measurement of what it writes without the flag.
      */
     private static final Map<String, String> INIT_GATED =
-            Map.of("home describe", "--init");
+            Map.of("home describe", "--init",
+                   // Not an --init at all, which is why the NAME of this map is
+                   // now narrower than what it holds. Kept rather than renamed:
+                   // the mechanism is exactly right -- "READ unless the
+                   // invocation matched the option that makes it write" -- and
+                   // a rename would touch every reader of a constant this
+                   // ticket has no other business in. `home repair` writes only
+                   // under --fix; see HomeRepair's class javadoc for why that
+                   // separation is load-bearing rather than cosmetic.
+                   "home repair", "--fix");
 
     /**
      * The mode for a parsed invocation: {@link HomeScaffold.Access#READ_ONLY}

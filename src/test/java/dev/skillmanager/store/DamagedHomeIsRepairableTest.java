@@ -1,0 +1,727 @@
+package dev.skillmanager.store;
+
+import dev.skillmanager._lib.test.Tests;
+import dev.skillmanager.agent.AgentHomes;
+import dev.skillmanager.commands.HomeCommand;
+import dev.skillmanager.launch.LauncherShims;
+import picocli.CommandLine;
+
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.PrintStream;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.LinkOption;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
+
+import static dev.skillmanager._lib.test.Tests.assertContains;
+import static dev.skillmanager._lib.test.Tests.assertEquals;
+import static dev.skillmanager._lib.test.Tests.assertFalse;
+import static dev.skillmanager._lib.test.Tests.assertTrue;
+
+/**
+ * <b>A home that is ALREADY damaged can be told apart from a healthy one, and
+ * repaired.</b>
+ *
+ * <p>HIS-13 / issue #159. {@code GOAL-no-destructive-recovery} clause 2, whose
+ * baseline is <i>"NO detection and NO repair exist"</i>.
+ *
+ * <h2>The fixture is ROOT-SHAPED, and that is an acceptance criterion</h2>
+ *
+ * <p>"Detection covers the root tier, and there is a test that runs it there."
+ * The root tier is the one that keeps taking the damage — 24 links, then 38 —
+ * and it is structurally different from every other tier in three ways that all
+ * matter here:
+ *
+ * <ul>
+ *   <li>it has <b>no descent record</b>, so {@link HomeProvenance#sanctions}
+ *       sanctions nothing and every foreign path is unsanctioned. A detector
+ *       tested only against clones would be tested only against the branch that
+ *       has a record to read;</li>
+ *   <li>its agent directories are {@code <root>/.claude} and siblings, i.e. the
+ *       parent of the store rather than a profile directory; and</li>
+ *   <li>{@code $HOME} is its home root, so a repair confined to "the enclosing
+ *       directory" would be confined to the whole of {@code $HOME}.</li>
+ * </ul>
+ *
+ * <p>{@link Fixture} builds one under a temp directory and NEVER touches the
+ * real {@code $HOME}: the store path is what the detector derives the agent
+ * directories from, so pointing it at a scratch root is sufficient — and
+ * {@code the_agent_axis_comes_from_the_home_and_not_the_environment} is the
+ * test that proves that is true rather than assumed.
+ *
+ * <h2>Every assertion here has a mutation that reddens it</h2>
+ *
+ * <p>Recorded in {@code results/epic-home-integrity-sync/tickets/HIS-13/} with
+ * the observed output. Mechanism D of the vacuity ledger is the trap this
+ * ticket is most exposed to — damaged-home fixtures come in symlink,
+ * regular-file and missing-file flavours and production branches on exactly
+ * that — so the four damage shapes are deliberately one of each:
+ *
+ * <pre>
+ *   MISANCHORED_AGENT_LINK   a SYMLINK, outside the store, resolving fine
+ *   FOREIGN_PATH_IN_SHIM     a REGULAR FILE whose TEXT names another home
+ *   PRUNED_INHERITED_ENTRY   a MISSING file the ledger says should be here
+ *   DANGLING_CLI_PIN         a REGULAR FILE naming a path that is not there
+ * </pre>
+ *
+ * <p>They are decided by four different branches of {@link HomeRepair#detect},
+ * and no probe below is counted against a branch it does not exercise.
+ */
+public final class DamagedHomeIsRepairableTest {
+
+    /** The unit a projection names, and the tool a shim carries. */
+    private static final String UNIT = "alpha";
+    private static final String TOOL = "alpha-tool";
+
+    public static int run() throws Exception {
+        return Tests.suite("DamagedHomeIsRepairableTest")
+
+                .test("a healthy ROOT-TIER home is reported clean, over a non-zero subject count", () -> {
+                    Fixture fx = Fixture.build("healthy");
+
+                    HomeRepair.Report report = HomeRepair.detect(fx.store, fx.pin);
+
+                    // The precondition is asserted before the claim, and it is
+                    // the one mechanism B is about: "clean" over zero subjects
+                    // is a check that ran out of scope, not a healthy home.
+                    assertTrue(report.examined() > 0,
+                            "the detector must have LOOKED at something; examined="
+                                    + report.examined());
+                    assertTrue(report.clean(),
+                            "a home this test just built is not damaged; got: "
+                                    + report.findings());
+                })
+
+                .test("a merely STALE home is not reported as damaged", () -> {
+                    // GOAL-no-spurious-holdback's clause, restated as an
+                    // assertion rather than as an intention. A guard that turns
+                    // a normal state into a finding is a guard somebody
+                    // switches off, and this epic has the receipts.
+                    Fixture fx = Fixture.build("stale");
+                    fx.makeStale();
+
+                    HomeRepair.Report report = HomeRepair.detect(fx.store, fx.pin);
+                    assertTrue(report.clean(),
+                            "an unacknowledged drift record, an out-of-date unit and a "
+                                    + "declared-but-unbuilt artifact are all NORMAL. got: "
+                                    + report.findings());
+                    assertTrue(DriftGate.pending(new SkillStore(fx.store)).isPresent(),
+                            "precondition: the home really is stale — otherwise this asserts "
+                                    + "nothing about staleness");
+                })
+
+                .test("all four damage shapes are reported, one line each, naming the repair", () -> {
+                    Fixture fx = Fixture.build("all-four");
+                    fx.damageAll();
+
+                    HomeRepair.Report report = HomeRepair.detect(fx.store, fx.pin);
+
+                    assertFalse(report.clean(), "a home damaged four ways is not clean");
+                    for (HomeRepair.Kind kind : HomeRepair.Kind.values()) {
+                        assertTrue(report.findings().stream().anyMatch(f -> f.kind() == kind),
+                                kind + " was planted and not reported; got: " + report.findings());
+                    }
+                    for (HomeRepair.Finding finding : report.findings()) {
+                        assertTrue(finding.remedy() != null && !finding.remedy().isBlank(),
+                                "every finding names its repair; " + finding + " named none");
+                    }
+                })
+
+                .test("DETECTION REPAIRS NOTHING — run it twice and the damage is still there", () -> {
+                    // DEF-067, as a property of the command rather than a
+                    // promise in its javadoc. An observer that repairs is no
+                    // longer an observer, and this ticket ships the repairer,
+                    // so the separation is asserted where it can fail.
+                    Fixture fx = Fixture.build("observer");
+                    fx.damageAll();
+                    List<String> before = fx.snapshot();
+
+                    HomeRepair.Report first = HomeRepair.detect(fx.store, fx.pin);
+                    HomeRepair.Report second = HomeRepair.detect(fx.store, fx.pin);
+
+                    assertFalse(first.clean(), "precondition: the first run sees the damage");
+                    assertEquals(first.findings().size(), second.findings().size(),
+                            "detection must reach the same verdict twice — a detector whose "
+                                    + "second answer differs repaired something");
+                    assertEquals(String.join("\n", before), String.join("\n", fx.snapshot()),
+                            "and it changed no bytes at all");
+                })
+
+                .test("REPAIR makes detection clean, and it is DETECTION that says so", () -> {
+                    Fixture fx = Fixture.build("repair");
+                    fx.damageAll();
+                    assertFalse(HomeRepair.detect(fx.store, fx.pin).clean(), "precondition: damaged");
+
+                    HomeRepair.Outcome outcome = HomeRepair.repair(fx.store, fx.pin);
+
+                    assertTrue(outcome.failed().isEmpty(),
+                            "no repair was refused; " + outcome.failed());
+                    assertTrue(outcome.after().clean(),
+                            "detection re-run AFTER the repair must be clean — the repairer's "
+                                    + "own opinion of how it went is not evidence (#142). got: "
+                                    + outcome.after().findings());
+                    assertEquals(outcome.before().findings().size(), outcome.repaired().size(),
+                            "and every finding it reported is one it carried out");
+
+                    // The repairs are the right ones, not merely absences.
+                    assertEquals(fx.store.resolve("skills").resolve(UNIT),
+                            Files.readSymbolicLink(fx.claudeSkills().resolve(UNIT)),
+                            "the projection points at THIS home's store now");
+                    assertContains(Files.readString(fx.store.resolve("bin/cli/wrapper")),
+                            fx.store.toString(),
+                            "the wrapper runs this home's tree");
+                    assertTrue(Files.isSymbolicLink(fx.store.resolve("bin/cli").resolve(TOOL)),
+                            "the pruned inherited entry is a link at the parent again");
+                })
+
+                .test("REPAIR IS IDEMPOTENT — the second run changes no bytes", () -> {
+                    Fixture fx = Fixture.build("idempotent");
+                    fx.damageAll();
+                    HomeRepair.repair(fx.store, fx.pin);
+                    List<String> afterFirst = fx.snapshot();
+
+                    HomeRepair.Outcome again = HomeRepair.repair(fx.store, fx.pin);
+
+                    assertTrue(again.noop(),
+                            "the second repair had nothing to do; repaired=" + again.repaired()
+                                    + " failed=" + again.failed());
+                    assertEquals(String.join("\n", afterFirst), String.join("\n", fx.snapshot()),
+                            "and it wrote nothing — asserted over bytes and link targets, not "
+                                    + "over the command's own report of itself");
+                })
+
+                .test("the agent axis comes from the HOME and not from the ENVIRONMENT", () -> {
+                    // HIS-14's defect, aimed at the command that rewrites agent
+                    // links for a living. `SKILL_MANAGER_HOME` binds the store
+                    // axis only; a repair that reads CLAUDE_CONFIG_DIR for the
+                    // other half repairs one home and rewrites another's links,
+                    // which is how 24 and then 38 of the operator's global
+                    // skill links came to be repointed.
+                    Fixture fx = Fixture.build("axes");
+                    fx.damageAll();
+                    Fixture decoy = Fixture.build("axes-decoy");
+                    decoy.damageAgentLink();
+                    List<String> decoyBefore = decoy.snapshot();
+
+                    var saved = AgentHomes.snapshotOverrides();
+                    try {
+                        AgentHomes.setOverride(AgentHomes.CLAUDE_CONFIG_DIR, decoy.claudeDir());
+                        AgentHomes.setOverride(AgentHomes.CODEX_HOME, decoy.root.resolve(".codex"));
+                        AgentHomes.setOverride(AgentHomes.GEMINI_HOME, decoy.root.resolve(".gemini"));
+
+                        HomeRepair.Report report = HomeRepair.detect(fx.store, fx.pin);
+                        assertTrue(report.findings().stream()
+                                        .anyMatch(f -> f.kind()
+                                                == HomeRepair.Kind.MISANCHORED_AGENT_LINK
+                                                && f.subject().startsWith(".claude/")),
+                                "detection found the damage in the home it was GIVEN, with the "
+                                        + "environment naming a different one; got: "
+                                        + report.findings());
+                        HomeRepair.repair(fx.store, fx.pin);
+                    } finally {
+                        AgentHomes.restoreOverrides(saved);
+                    }
+
+                    assertEquals(String.join("\n", decoyBefore), String.join("\n", decoy.snapshot()),
+                            "and the home the ENVIRONMENT named is byte-for-byte untouched — "
+                                    + "including its own planted damage, which is still there");
+                    assertFalse(HomeRepair.detect(decoy.store, decoy.pin).clean(),
+                            "the decoy is still damaged: a repair that 'helpfully' fixed it "
+                                    + "would have escaped the home it was given");
+                })
+
+                .test("a repair cannot write outside the two axes of the home it was given", () -> {
+                    // The confinement is the home's STORE plus its own three
+                    // agent directories, and nothing else. Not `forHome`, whose
+                    // single root is the store — an agent-link repair writes
+                    // outside that by design — and not the enclosing home root,
+                    // which for a ROOT-tier home is the whole of $HOME.
+                    Fixture fx = Fixture.build("confinement");
+                    WriteConfinement.Scope scope = HomeRepair.ownedAxesOf(fx.store);
+
+                    assertEquals(4, scope.roots().size(),
+                            "one store and three agent directories; got " + scope.roots());
+                    assertFalse(scope.roots().contains(fx.root),
+                            "the enclosing root is NOT a permitted root — for a root-tier home "
+                                    + "that is $HOME; got " + scope.roots());
+
+                    WriteConfinement.Scope previous = WriteConfinement.declare(scope);
+                    try {
+                        boolean refused = false;
+                        try {
+                            WriteConfinement.checkWrite(
+                                    fx.root.resolve("sibling/.claude/skills/x"), "probe");
+                        } catch (WriteOutsideHomeException expected) {
+                            refused = true;
+                        }
+                        assertTrue(refused,
+                                "a write into a SIBLING home's agent directory is refused");
+                        // And the two things it must permit, or the repair
+                        // cannot do its job at all.
+                        WriteConfinement.checkWrite(fx.store.resolve("bin/cli/x"), "probe");
+                        WriteConfinement.checkWrite(fx.claudeSkills().resolve("x"), "probe");
+                    } finally {
+                        WriteConfinement.restore(previous);
+                    }
+                })
+
+                .test("`home repair` reports and exits 1; `--fix` repairs and exits 0", () -> {
+                    // The CLI surface, because that is what an operator and a
+                    // graph node run. Three separate invocations, in the order
+                    // the graph runs them.
+                    Fixture fx = Fixture.build("cli");
+                    fx.damageAll();
+
+                    Result detect = cli(fx.pin, "--home", fx.store.toString());
+                    assertEquals(1, detect.rc, "detection on a damaged home exits 1:\n" + detect.err);
+                    assertContains(detect.err, "MISANCHORED_AGENT_LINK",
+                            "and names the damage by kind");
+                    assertContains(detect.err, "repair:",
+                            "and names the repair for each finding");
+                    assertContains(detect.err, "--fix",
+                            "and names the command that carries them out");
+
+                    Result fix = cli(fx.pin, "--home", fx.store.toString(), "--fix");
+                    assertEquals(0, fix.rc, "the repair exits 0:\n" + fix.err + fix.out);
+
+                    Result after = cli(fx.pin, "--home", fx.store.toString());
+                    assertEquals(0, after.rc,
+                            "and detection, run on its own afterwards, agrees:\n" + after.err);
+                    assertContains(after.out, "examined",
+                            "the clean verdict states how much it looked at");
+                })
+
+                .test("a home damaged AFTER a repair goes red again — the verdict is not sticky", () -> {
+                    // Cheap, and it closes the reading where `--fix` writes a
+                    // "repaired" marker that later runs read instead of the
+                    // filesystem. Two of this epic's eleven vacuity instances
+                    // are a check that stopped examining its subject.
+                    Fixture fx = Fixture.build("re-damage");
+                    fx.damageAll();
+                    HomeRepair.repair(fx.store, fx.pin);
+                    assertTrue(HomeRepair.detect(fx.store, fx.pin).clean(), "precondition: repaired");
+
+                    fx.damageAgentLink();
+                    assertFalse(HomeRepair.detect(fx.store, fx.pin).clean(),
+                            "fresh damage after a repair is still damage");
+                })
+
+                .test("HIS-9's measurement target: a home whose bin/cli IS a link is NAMED", () -> {
+                    // HIS-9 disclosed: "a home whose bin/cli is a symlink at
+                    // another home's can no longer be synced at all until a
+                    // person repairs it by hand -- and nothing this ticket
+                    // ships will repair it for them." That sentence is this
+                    // ticket's declared measurement target, so it is measured
+                    // rather than asserted about.
+                    //
+                    // The answer after HIS-13 is: STILL TRUE about the repair,
+                    // NO LONGER TRUE about the detection. It is reported, as
+                    // ONE finding about the directory, with the two exits a
+                    // person can take -- and, critically, the walk does not
+                    // descend through it and start describing the other home's
+                    // files as this home's damage.
+                    Fixture fx = Fixture.build("his9-shape");
+                    Path cli = fx.store.resolve("bin/cli");
+                    List<String> otherBefore = fx.snapshotOf(fx.other);
+                    HomeIntegrityDelete.deleteRecursive(cli);
+                    Files.createSymbolicLink(cli, fx.other.resolve("bin/cli"));
+
+                    HomeRepair.Report report = HomeRepair.detect(fx.store, fx.pin);
+                    List<HomeRepair.Finding> aboutTheDir = report.findings().stream()
+                            .filter(f -> f.subject().equals("bin/cli")).toList();
+                    assertEquals(1, aboutTheDir.size(),
+                            "ONE finding about the directory, not one per entry seen through "
+                                    + "it; got " + report.findings());
+                    assertFalse(aboutTheDir.get(0).repairable(),
+                            "and it is NOT offered as repairable — the only mechanical repair "
+                                    + "discards every entry point the home can reach, which is "
+                                    + "the destructive recovery this goal forbids");
+                    assertContains(aboutTheDir.get(0).remedy(), "no command repairs this",
+                            "the finding says so in the line a person reads");
+                    assertTrue(report.findings().stream()
+                                    .noneMatch(f -> f.subject().startsWith("bin/cli/")),
+                            "and nothing under it was reported: the walk must not descend "
+                                    + "through the link and describe the OTHER home's files as "
+                                    + "this home's damage; got " + report.findings());
+
+                    HomeRepair.repair(fx.store, fx.pin);
+                    assertEquals(String.join("\n", otherBefore),
+                            String.join("\n", fx.snapshotOf(fx.other)),
+                            "and a repair run against this home changed nothing in the home "
+                                    + "its bin/cli points into");
+                })
+
+                .test("a FORGED descent record buys no repair — the chain it names must re-derive", () -> {
+                    // The #228 review's finding, on the REPAIR side, which is
+                    // where it bites hardest: `parentStores` is a SNAPSHOT kept
+                    // "for reporting and repair", and a repair that trusted it
+                    // would take one file written into the home being judged as
+                    // an instruction to link that home at an arbitrary store.
+                    // That is worse than the read-side hole the review closed —
+                    // there it switched a gate off, here it would create paths.
+                    Fixture fx = Fixture.build("forged");
+                    fx.damagePrunedEntry();
+                    assertFalse(HomeRepair.detect(fx.store, fx.pin).clean(),
+                            "precondition: with the REAL claim in place the pruned entry is "
+                                    + "reported, so this fixture can express the finding");
+
+                    // Revoke the real claim — what ChildHomeRegistry.delete
+                    // does on teardown — and leave the record naming the store.
+                    Files.delete(fx.other.resolve("child-homes/root/child-home.json"));
+                    Files.delete(fx.other.resolve("child-homes/root"));
+
+                    HomeRepair.Report report = HomeRepair.detect(fx.store, fx.pin);
+                    assertTrue(report.findings().stream()
+                                    .noneMatch(f -> f.kind()
+                                            == HomeRepair.Kind.PRUNED_INHERITED_ENTRY),
+                            "a record that names a store nothing claims re-derives to nothing, "
+                                    + "so it sanctions nothing and repairs nothing; got: "
+                                    + report.findings());
+                    HomeRepair.Outcome outcome = HomeRepair.repair(fx.store, fx.pin);
+                    assertFalse(Files.exists(fx.store.resolve("bin/cli").resolve(TOOL),
+                                    LinkOption.NOFOLLOW_LINKS),
+                            "and no link into that store was created; repaired="
+                                    + outcome.repaired());
+                })
+
+                .test("detection uses HIS-10's reader: a SANCTIONED inherited shim is not damage", () -> {
+                    // GOAL-one-home-one-answer, as a guard. If detection asked
+                    // its own question about "is that another home", it would
+                    // report every child home's legitimately inherited
+                    // toolchain as damaged — the FOREIGN_HOME false positive
+                    // HIS-10 spent a ticket removing, reintroduced by a fourth
+                    // reader.
+                    //
+                    // THE BRANCH THIS EXERCISES, stated because mechanism D is
+                    // this ticket's likeliest trap: `bin/cli/mirror` is a
+                    // REGULAR-FILE wrapper whose TEXT names the parent's
+                    // identically-named entry, so the subject travels the
+                    // FOREIGN_PATH_IN_SHIM arm and lands on
+                    // `sanctionedParentShim`'s three conditions — the same
+                    // three the symlink form is judged by, reached from the
+                    // other side. A symlink decoy here would exercise a branch
+                    // `verifyRoots` decides earlier and this detector does not
+                    // decide at all, which is exactly HIS-17's blocker.
+                    //
+                    // The subject is a CLONE, i.e. a GRANDCHILD, because the
+                    // one-level `isChildOf` relation can answer for the middle
+                    // tier without the record. Only the descent record can
+                    // sanction a grandchild, so deleting it is a control with
+                    // nothing else holding the verdict up.
+                    Fixture fx = Fixture.build("sanctioned");
+                    assertTrue(HomeRepair.detect(fx.store, fx.pin).clean(),
+                            "precondition: the middle tier's mirror wrapper is sanctioned by "
+                                    + "the parent's own claim");
+                    Path child = fx.cloneToChild("child");
+                    assertContains(Files.readString(child.resolve("bin/cli/mirror")),
+                            fx.other.toString(),
+                            "precondition: the clone still carries the wrapper naming the "
+                                    + "grandparent store — if re-anchoring rewrote it there is "
+                                    + "no foreign path here and this test asserts nothing");
+
+                    HomeRepair.Report sanctioned = HomeRepair.detect(child, fx.pin);
+                    assertTrue(sanctioned.clean(),
+                            "a clone's inherited wrapper is sanctioned by the descent record "
+                                    + "the clone wrote; got " + sanctioned.findings());
+
+                    Files.delete(child.resolve(HomeProvenance.FILENAME));
+                    HomeRepair.Report unsanctioned = HomeRepair.detect(child, fx.pin);
+                    assertTrue(unsanctioned.findings().stream()
+                                    .anyMatch(f -> f.kind() == HomeRepair.Kind.FOREIGN_PATH_IN_SHIM
+                                            && f.subject().equals("bin/cli/mirror")),
+                            "and with the record gone the SAME bytes are damage — so the "
+                                    + "verdict above came from production's sanction and not "
+                                    + "from this detector being blind. got: "
+                                    + unsanctioned.findings());
+                })
+
+                .runAll();
+    }
+
+    // ------------------------------------------------------------- fixture
+
+    /**
+     * A ROOT-SHAPED home: {@code <root>/.skill-manager} beside
+     * {@code <root>/.claude}, with a second home nearby to be damaged INTO.
+     *
+     * <p>Two homes, because every one of the four shapes is about a path
+     * belonging to a home other than the one under test, and a one-home fixture
+     * cannot express any of them — mechanism B, which cost this epic four of
+     * its eleven instances.
+     */
+    private static final class Fixture {
+        private final Path root;
+        private final Path store;
+        private final Path other;
+        /**
+         * The LIVE build — what {@code RunningCli} would answer if this were a
+         * real invocation. Supplied rather than located, because an in-process
+         * test cannot be found as a running CLI. NOT the build the home is
+         * pinned at: that one is deleted by {@link #damageCliPin()}.
+         */
+        private final Path pin;
+
+        private Fixture(Path root, Path store, Path other, Path pin) {
+            this.root = root;
+            this.store = store;
+            this.other = other;
+            this.pin = pin;
+        }
+
+        static Fixture build(String label) throws Exception {
+            Path tmp = Files.createTempDirectory("home-repair-" + label + "-");
+            Path root = tmp.resolve("root");
+            Path store = newHome(root.resolve(AgentHomes.STORE_DIR_NAME));
+            Path other = newHome(tmp.resolve("other").resolve(AgentHomes.STORE_DIR_NAME));
+
+            // A unit in BOTH stores, so a mis-anchored projection is a link
+            // that RESOLVES — the whole point of the shape. A projection at a
+            // path that is simply missing is a dangling link, which
+            // `home verify` has always found.
+            for (Path s : List.of(store, other)) {
+                Path unit = Files.createDirectories(s.resolve("skills").resolve(UNIT));
+                Files.writeString(unit.resolve("SKILL.md"), "---\nname: " + UNIT + "\n---\n");
+            }
+
+            // The healthy projection: this home's agent dir at this home's unit.
+            Path skills = Files.createDirectories(root.resolve(".claude").resolve("skills"));
+            Files.createSymbolicLink(skills.resolve(UNIT), store.resolve("skills").resolve(UNIT));
+
+            // A generated WRAPPER, the regular-file shim shape, naming its own
+            // home. And the tree it names, in both homes, so a wrapper pointed
+            // at the wrong one still RESOLVES.
+            for (Path s : List.of(store, other)) {
+                Path venv = Files.createDirectories(s.resolve("venvs").resolve("v").resolve("bin"));
+                Files.writeString(venv.resolve("wrapper"), "#!/bin/sh\nexit 0\n");
+                venv.resolve("wrapper").toFile().setExecutable(true);
+                Path shim = Files.createDirectories(s.resolve("bin/cli")).resolve("wrapper");
+                Files.writeString(shim, "#!/usr/bin/env bash\nexec \""
+                        + venv.resolve("wrapper") + "\" \"$@\"\n");
+                shim.toFile().setExecutable(true);
+            }
+
+            // An inherited entry: the OTHER home holds the tool, this one
+            // mirrors it, the parent claims this home, and the ledger records
+            // that this home is meant to have it.
+            Path parentEntry = other.resolve("bin/cli").resolve(TOOL);
+            Files.writeString(parentEntry, "#!/bin/sh\nexit 0\n");
+            parentEntry.toFile().setExecutable(true);
+            Files.createSymbolicLink(store.resolve("bin/cli").resolve(TOOL), parentEntry);
+            Path claim = Files.createDirectories(other.resolve("child-homes/root"));
+            Files.writeString(claim.resolve("child-home.json"), """
+                    {
+                      "id" : "root",
+                      "parentHome" : "%s",
+                      "childHome" : "%s",
+                      "units" : [ ],
+                      "createdAt" : "2026-01-01T00:00:00Z"
+                    }
+                    """.formatted(other, store));
+            Files.writeString(store.resolve("artifacts.lock.toml"), """
+                    schema = 1
+                    recorded_at = "2026-01-01T00:00:00Z"
+
+                    [[artifact]]
+                    id = "cli-shim:test/%s"
+                    kind = "cli-shim"
+                    owner = "%s"
+                    inputs = []
+                    outputs = ["bin/cli/%s"]
+                    source = "cli-lock.toml"
+                    """.formatted(TOOL, UNIT, TOOL));
+            // And the descent record, so the recorded parent store re-derives.
+            HomeProvenance.write(store, new HomeProvenance.Descent(
+                    HomeProvenance.SCHEMA_VERSION, other.toString(),
+                    "2026-01-01T00:00:00Z", List.of(other.toString())));
+
+            // The home's own front door, pinned at a build that exists — and
+            // a SECOND, newer build beside it. That is DEF-012's arrangement
+            // exactly: `brew upgrade skill-manager 0.23.0 -> 0.24.0` leaves a
+            // home pinned at a VERSIONED Cellar path the upgrade deleted, and
+            // the live build is the other directory. A one-build fixture cannot
+            // express it: re-pinning at a build that is also gone repairs
+            // nothing, which is what the first run of this suite measured.
+            Path oldBuild = tmp.resolve("build").resolve("0.1.0").resolve("skill-manager");
+            Path newBuild = tmp.resolve("build").resolve("0.2.0").resolve("skill-manager");
+            for (Path build : List.of(oldBuild, newBuild)) {
+                Files.createDirectories(build.getParent());
+                Files.writeString(build, "#!/bin/sh\nexit 0\n");
+                build.toFile().setExecutable(true);
+            }
+            LauncherShims.write(new SkillStore(store), oldBuild);
+
+            // A SANCTIONED inherited wrapper: a regular file at bin/cli/mirror
+            // whose text execs the parent's identically-named entry. Legitimate
+            // (the parent claims this home), and the control for the
+            // GOAL-one-home-one-answer guard below.
+            Path parentMirror = other.resolve("bin/cli").resolve("mirror");
+            Files.writeString(parentMirror, "#!/bin/sh\nexit 0\n");
+            parentMirror.toFile().setExecutable(true);
+            Path mirror = store.resolve("bin/cli").resolve("mirror");
+            Files.writeString(mirror, "#!/usr/bin/env bash\nexec \"" + parentMirror + "\" \"$@\"\n");
+            mirror.toFile().setExecutable(true);
+
+            return new Fixture(root, store, other, newBuild);
+        }
+
+        Path claudeDir() { return root.resolve(".claude"); }
+
+        Path claudeSkills() { return claudeDir().resolve("skills"); }
+
+        /** Shape 1: the projection now resolves into the OTHER home's store. */
+        void damageAgentLink() throws IOException {
+            Path link = claudeSkills().resolve(UNIT);
+            Files.deleteIfExists(link);
+            Files.createSymbolicLink(link, other.resolve("skills").resolve(UNIT));
+        }
+
+        /** Shape 2: the wrapper's TEXT names the other home's tree. It still runs. */
+        void damageShimText() throws IOException {
+            Path shim = store.resolve("bin/cli/wrapper");
+            Files.writeString(shim, Files.readString(shim, StandardCharsets.UTF_8)
+                    .replace(store.toString(), other.toString()), StandardCharsets.UTF_8);
+            shim.toFile().setExecutable(true);
+        }
+
+        /** Shape 3: the inherited entry is pruned. The ledger still declares it. */
+        void damagePrunedEntry() throws IOException {
+            Files.delete(store.resolve("bin/cli").resolve(TOOL));
+        }
+
+        /** Shape 4: DEF-012 — the pinned build is deleted out from under it. */
+        void damageCliPin() throws IOException {
+            Path pinned = LauncherShims.pinnedCliIn(
+                    LauncherShims.cliEntrypoint(new SkillStore(store))).orElseThrow();
+            // What `brew upgrade` does: the versioned directory the home names
+            // is removed and a newer one takes its place. The shim FILE stays
+            // executable, which is why every reader testing -x on it called the
+            // home healthy.
+            Files.delete(pinned);
+            Files.delete(pinned.getParent());
+        }
+
+        void damageAll() throws IOException {
+            damageAgentLink();
+            damageShimText();
+            damagePrunedEntry();
+            damageCliPin();
+        }
+
+        /**
+         * Stale, and nothing else: an unacknowledged drift record and a unit
+         * whose bytes moved after it was recorded. Neither is damage.
+         */
+        void makeStale() throws Exception {
+            SkillStore s = new SkillStore(store);
+            DriftGate.recordSince(s, HomeDigest.read(s).orElse(null), "fixture");
+            Files.writeString(store.resolve("skills").resolve(UNIT).resolve("SKILL.md"),
+                    "---\nname: " + UNIT + "\ndescription: moved\n---\n");
+            DriftGate.recordSince(s, HomeDigest.read(s).orElse(null), "fixture");
+            // A declared-but-unbuilt entry point, the OTHER normal staleness:
+            // every home with lazy artifacts ships these and reporting them is
+            // the failure mode `declaredNotBuilt` exists to avoid.
+            Files.writeString(store.resolve("artifacts.lock.toml"),
+                    Files.readString(store.resolve("artifacts.lock.toml"), StandardCharsets.UTF_8)
+                            .replace("outputs = [\"bin/cli/" + TOOL + "\"]",
+                                    "outputs = [\"bin/cli/" + TOOL + "\", \"bin/cli/never-built\"]"),
+                    StandardCharsets.UTF_8);
+        }
+
+        /** A child home made by the real cloner, which records its own descent. */
+        Path cloneToChild(String name) throws Exception {
+            Path dest = root.getParent().resolve(name).resolve(AgentHomes.STORE_DIR_NAME);
+            HomeCloner.cloneHome(store, dest, false, false);
+            return dest;
+        }
+
+        /**
+         * Every byte and every link target this home holds on either axis.
+         *
+         * <p>Link targets as TEXT and file contents as text, because "did the
+         * repair change anything" is a question about both and a
+         * content-only snapshot would call a repointed symlink unchanged.
+         */
+        /** {@link #snapshot()} for an arbitrary root, for the other home. */
+        List<String> snapshotOf(Path root) {
+            List<String> out = new ArrayList<>();
+            if (!Files.exists(root, LinkOption.NOFOLLOW_LINKS)) return out;
+            try (var walk = Files.walk(root)) {
+                for (Path p : (Iterable<Path>) walk.sorted()::iterator) {
+                    if (Files.isSymbolicLink(p)) out.add(p + " -> " + Files.readSymbolicLink(p));
+                    else if (Files.isRegularFile(p, LinkOption.NOFOLLOW_LINKS)) {
+                        out.add(p + " :: " + Files.readString(p, StandardCharsets.UTF_8));
+                    }
+                }
+            } catch (IOException | RuntimeException unreadable) {
+                out.add(root + " !! " + unreadable);
+            }
+            return out;
+        }
+
+        List<String> snapshot() {
+            List<String> out = new ArrayList<>();
+            List<Path> roots = new ArrayList<>();
+            roots.add(store);
+            roots.addAll(HomeRepair.agentDirsOf(store));
+            for (Path r : roots) {
+                if (!Files.exists(r, LinkOption.NOFOLLOW_LINKS)) continue;
+                try (var walk = Files.walk(r)) {
+                    for (Path p : (Iterable<Path>) walk.sorted()::iterator) {
+                        if (Files.isSymbolicLink(p)) {
+                            out.add(p + " -> " + Files.readSymbolicLink(p));
+                        } else if (Files.isRegularFile(p, LinkOption.NOFOLLOW_LINKS)) {
+                            out.add(p + " :: " + Files.readString(p, StandardCharsets.UTF_8));
+                        }
+                    }
+                } catch (IOException | RuntimeException unreadable) {
+                    out.add(r + " !! " + unreadable);
+                }
+            }
+            return out;
+        }
+    }
+
+    /** A recursive delete that does not follow links, for the fixture only. */
+    private static final class HomeIntegrityDelete {
+        static void deleteRecursive(Path root) throws IOException {
+            if (!Files.exists(root, LinkOption.NOFOLLOW_LINKS)) return;
+            if (Files.isSymbolicLink(root) || !Files.isDirectory(root, LinkOption.NOFOLLOW_LINKS)) {
+                Files.delete(root);
+                return;
+            }
+            try (var entries = Files.list(root)) {
+                for (Path e : (Iterable<Path>) entries::iterator) deleteRecursive(e);
+            }
+            Files.delete(root);
+        }
+    }
+
+    private static Path newHome(Path root) throws Exception {
+        SkillStore store = new SkillStore(root);
+        store.init();
+        return root;
+    }
+
+    // ------------------------------------------------------------ plumbing
+
+    private record Result(int rc, String out, String err) {}
+
+    private static Result cli(Path pin, String... args) {
+        PrintStream realOut = System.out;
+        PrintStream realErr = System.err;
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        ByteArrayOutputStream err = new ByteArrayOutputStream();
+        try {
+            System.setOut(new PrintStream(out, true));
+            System.setErr(new PrintStream(err, true));
+            int rc = new CommandLine(new HomeCommand.RepairCmd(null, pin)).execute(args);
+            return new Result(rc, out.toString(), err.toString());
+        } finally {
+            System.setOut(realOut);
+            System.setErr(realErr);
+        }
+    }
+}

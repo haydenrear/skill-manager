@@ -1,0 +1,20 @@
+# V6 -- branch moved: repair's CONVERGENCE: one finding per pass instead of all of them.
+# mutation:
+#   for (Finding finding : before.repairable()) {
+# ->
+#   for (Finding finding : before.repairable().subList(0, Math.min(1, before.repairable().size()))) {
+
+[PASS] a healthy ROOT-TIER home is reported clean, over a non-zero subject count
+[PASS] a merely STALE home is not reported as damaged
+[PASS] all four damage shapes are reported, one line each, naming the repair
+[PASS] DETECTION REPAIRS NOTHING — run it twice and the damage is still there
+[FAIL] REPAIR makes detection clean, and it is DETECTION that says so: not true: detection re-run AFTER the repair must be clean — the repairer's own opinion of how it went is not evidence (#142). got: [FOREIGN_PATH_IN_SHIM bin/cli/wrapper   …[truncated]
+[FAIL] REPAIR IS IDEMPOTENT — the second run changes no bytes: not true: the second repair had nothing to do; repaired=[FOREIGN_PATH_IN_SHIM bin/cli/wrapper — runs /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/home-repair-idempotent-6727  …[truncated]
+[PASS] the agent axis comes from the HOME and not from the ENVIRONMENT
+[PASS] a repair cannot write outside the two axes of the home it was given
+[FAIL] `home repair` reports and exits 1; `--fix` repairs and exits 0: the repair exits 0:
+[FAIL] a home damaged AFTER a repair goes red again — the verdict is not sticky: not true: precondition: repaired
+[PASS] a FORGED descent record buys no repair — the chain it names must re-derive
+[PASS] detection uses HIS-10's reader: a SANCTIONED inherited shim is not damage
+
+Note: Recompile with -Xlint:deprecation for details.

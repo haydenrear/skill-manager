@@ -1,0 +1,20 @@
+# V1 -- branch moved: shape 1 -- the agent-axis walk. The pre-HIS-13 world for that surface.
+# mutation:
+#   examined += misanchoredAgentLinks(root, findings);
+# ->
+#   examined += misanchoredAgentLinks(root, new ArrayList<>());
+
+[PASS] a healthy ROOT-TIER home is reported clean, over a non-zero subject count
+[PASS] a merely STALE home is not reported as damaged
+[FAIL] all four damage shapes are reported, one line each, naming the repair: not true: MISANCHORED_AGENT_LINK was planted and not reported; got: [FOREIGN_PATH_IN_SHIM bin/cli/wrapper — runs /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/  …[truncated]
+[PASS] DETECTION REPAIRS NOTHING — run it twice and the damage is still there
+[FAIL] REPAIR makes detection clean, and it is DETECTION that says so: the projection points at THIS home's store now: expected </var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/home-repair-repair-13288694762446185444/root/.skill-manager/sk  …[truncated]
+[PASS] REPAIR IS IDEMPOTENT — the second run changes no bytes
+[FAIL] the agent axis comes from the HOME and not from the ENVIRONMENT: not true: detection found the damage in the home it was GIVEN, with the environment naming a different one; got: [FOREIGN_PATH_IN_SHIM bin/cli/wrapper — runs /var/folde  …[truncated]
+[PASS] a repair cannot write outside the two axes of the home it was given
+[FAIL] `home repair` reports and exits 1; `--fix` repairs and exits 0: and names the damage by kind: expected <✗ 3 finding(s) in /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/home-repair-cli-10637847359421589516/root/.skill-manager, of 6  …[truncated]
+[FAIL] a home damaged AFTER a repair goes red again — the verdict is not sticky: expected false: fresh damage after a repair is still damage
+[PASS] a FORGED descent record buys no repair — the chain it names must re-derive
+[PASS] detection uses HIS-10's reader: a SANCTIONED inherited shim is not damage
+
+Note: Recompile with -Xlint:deprecation for details.

@@ -13,6 +13,7 @@ import dev.skillmanager.store.HomeCloner;
 import dev.skillmanager.store.HomeDescriptor;
 import dev.skillmanager.store.HomeDigest;
 import dev.skillmanager.store.HomeProvenance;
+import dev.skillmanager.store.HomeRepair;
 import dev.skillmanager.store.HomeSync;
 import dev.skillmanager.store.NotAHomeException;
 import dev.skillmanager.artifacts.ArtifactBuild;
@@ -45,6 +46,7 @@ import java.util.concurrent.Callable;
                 HomeCommand.DriftCmd.class,
                 HomeCommand.SyncCmd.class,
                 HomeCommand.CloseOutCmd.class,
+                HomeCommand.RepairCmd.class,
                 HomeCommand.RefreshPluginsCmd.class
         })
 public final class HomeCommand {
@@ -1673,6 +1675,212 @@ public final class HomeCommand {
             List<String> leaks = new java.util.ArrayList<>();
             for (HomeCloner.Leak leak : report.leaks()) leaks.add(leak.toString());
             Log.errorList("    ", leaks);
+        }
+    }
+
+    /**
+     * {@code home repair} — name what is damaged in a home, and (only when
+     * asked) fix it.
+     *
+     * <h2>The command that did not exist</h2>
+     *
+     * <p>HIS-13 / issue #159. This subcommand list held {@code clone},
+     * {@code verify}, {@code describe}, {@code policy}, {@code shims},
+     * {@code drift}, {@code sync}, {@code close-out} and
+     * {@code refresh-plugins}, and <b>nothing that repaired</b>. Every guard in
+     * this program prevents the NEXT instance; a home that already took the
+     * damage stayed damaged until a person noticed an odd path in a file. That
+     * happened twice to the operator's root home inside one epic, and both
+     * times a person is what found it.
+     *
+     * <h2>Why the verb is {@code repair} and the default is DETECT</h2>
+     *
+     * <p>DEF-067: an observer that repairs is no longer an observer.
+     * {@code HomeFixpointLaw} parses the remedy out of a refusal and runs it,
+     * so it can silently repair the condition it was checking and report PASS
+     * — and the evidence for telling "the product is broken" from "a fixture
+     * left that there" is exactly what it destroys.
+     *
+     * <p>This command ships the repairer, so the split is a property of the
+     * command rather than a convention: <b>the bare command mutates nothing.</b>
+     * It prints one line per finding, each naming what would repair that
+     * finding, and exits 1. {@code --fix} is the only spelling that writes.
+     * A caller that wants an observer gets one by not passing a flag, and
+     * running detection any number of times on a damaged home leaves it damaged
+     * and leaves the verdict red. There is a graph node that asserts exactly
+     * that, and it runs detect, repair and detect as three separate processes.
+     *
+     * <p>{@code --fix} re-runs detection AFTER repairing and exits on the
+     * second verdict, not on its own opinion of how it went. A repairer that
+     * reports its own success has asserted nothing (#142).
+     */
+    @Command(name = "repair",
+            description = "Report what is damaged in a home — mis-anchored agent skill links, "
+                    + "shims pointing into another home, entry points pruned that this home's "
+                    + "descent record says were inherited, and a CLI pin naming a build that is "
+                    + "gone. Reports only; pass --fix to repair.")
+    public static final class RepairCmd implements Callable<Integer> {
+
+        /**
+         * {@code --root} is a synonym here for the reason it is on
+         * {@code verify}: {@code bootstrap-home.sh} spells its home argument
+         * {@code --root}, and a remedy an agent cannot type is not a remedy.
+         */
+        @Option(names = {"--home", "--root"},
+                description = "Skill Manager home. Defaults to $SKILL_MANAGER_HOME.")
+        Path home;
+
+        @Option(names = "--fix",
+                description = "Carry out the repairs. WITHOUT THIS THE COMMAND WRITES NOTHING — "
+                        + "it reports, and a damaged home stays damaged.")
+        boolean fix;
+
+        @Option(names = "--json", description = "Emit machine-readable JSON.")
+        boolean json;
+
+        private final SkillStore injectedStore;
+
+        /**
+         * The build a broken CLI pin is re-pinned at, when the caller already
+         * knows it; {@code RunningCli} answers when nothing is injected.
+         *
+         * <p>The seam exists because an in-process test cannot be located as a
+         * running CLI, and a {@code DANGLING_CLI_PIN} finding that silently
+         * downgraded to unrepairable would let an idempotence assertion pass
+         * over a repair that never ran — mechanism C of the vacuity ledger.
+         * Same argument, and the same shape, as
+         * {@link LauncherShims#write(SkillStore, Path)}.
+         */
+        private final Path injectedPin;
+
+        public RepairCmd() { this(null, null); }
+
+        public RepairCmd(SkillStore injectedStore) { this(injectedStore, null); }
+
+        public RepairCmd(SkillStore injectedStore, Path injectedPin) {
+            this.injectedStore = injectedStore;
+            this.injectedPin = injectedPin;
+        }
+
+        @Override
+        public Integer call() throws Exception {
+            SkillStore store;
+            try {
+                store = requireHome(injectedStore, home, false,
+                        home != null
+                                ? "home repair --home"
+                                : "home repair (no --home; home taken from $"
+                                        + SkillStore.HOME_ENV + ")",
+                        null);
+            } catch (NotAHomeException notAHome) {
+                if (json) System.out.println(errorJson(notAHome));
+                Log.error("%s", notAHome.getMessage());
+                return NotAHomeException.EXIT_CODE;
+            }
+            Path root = store.root();
+            Path pin = injectedPin != null
+                    ? injectedPin
+                    : dev.skillmanager.launch.RunningCli.locateOrNull();
+            if (!fix) {
+                HomeRepair.Report report = HomeRepair.detect(root, pin);
+                if (json) {
+                    System.out.println(reportJson(report, null));
+                    return report.clean() ? 0 : 1;
+                }
+                render(report, root);
+                return report.clean() ? 0 : 1;
+            }
+            HomeRepair.Outcome outcome;
+            try {
+                outcome = HomeRepair.repair(root, pin);
+            } catch (FrozenHomeException frozen) {
+                if (json) System.out.println("""
+                        {"home":"%s","error":"frozen"}""".formatted(esc(root.toString())));
+                Log.error("%s", frozen.getMessage());
+                return FrozenHomeException.EXIT_CODE;
+            }
+            if (json) {
+                System.out.println(reportJson(outcome.after(), outcome));
+                return outcome.after().clean() ? 0 : 1;
+            }
+            Log.ok("repaired %d of %d finding(s) in %s",
+                    outcome.repaired().size(), outcome.before().findings().size(), root);
+            for (HomeRepair.Finding finding : outcome.repaired()) {
+                Log.detail("  %s %s -> %s", finding.kind(), finding.subject(), finding.target());
+            }
+            if (!outcome.failed().isEmpty()) {
+                Log.error("%d repair(s) were refused", outcome.failed().size());
+                Log.errorList("    ", outcome.failed());
+            }
+            // The verdict is DETECTION's, taken after the repair ran. Saying
+            // "repaired 3" and exiting 0 would be the remedy-that-does-not-work
+            // class (#142) with a nicer message.
+            render(outcome.after(), root);
+            return outcome.after().clean() ? 0 : 1;
+        }
+
+        /**
+         * One line per finding, and the repair on the line under it.
+         *
+         * <p>Not one line per finding with the repair appended: the paths in
+         * both halves are absolute and long, and the measured failure mode for
+         * this shape of output is that the reader stops at the first wrap. The
+         * remedy is indented under the finding it belongs to, so a finding and
+         * its repair cannot be read apart.
+         */
+        private static void render(HomeRepair.Report report, Path root) {
+            if (report.clean()) {
+                // The scope is stated, because a clean verdict over zero
+                // subjects is not a clean home. Same discipline as `verify`'s
+                // NOT CHECKED clause.
+                Log.ok("nothing in %s is damaged in a way this command knows about "
+                        + "(%d entr%s examined)", root, report.examined(),
+                        report.examined() == 1 ? "y" : "ies");
+                return;
+            }
+            Log.error("%d finding(s) in %s, of %d entr%s examined",
+                    report.findings().size(), root, report.examined(),
+                    report.examined() == 1 ? "y" : "ies");
+            for (HomeRepair.Finding finding : report.findings()) {
+                Log.error("  %s %s — %s",
+                        finding.kind(), finding.subject(), finding.detail());
+                Log.error("      repair: %s", finding.remedy());
+            }
+            int repairable = report.repairable().size();
+            if (repairable > 0) {
+                Log.error("  %d of these can be repaired by: skill-manager home repair "
+                        + "--home %s --fix", repairable, root);
+            }
+            if (repairable < report.findings().size()) {
+                // Named rather than silently folded in, so nobody runs --fix
+                // and reads a non-zero exit as a failed repair.
+                Log.error("  %d cannot be repaired by this command — the lines above say why",
+                        report.findings().size() - repairable);
+            }
+        }
+
+        private static String reportJson(HomeRepair.Report report, HomeRepair.Outcome outcome) {
+            StringBuilder sb = new StringBuilder("{\"home\":\"")
+                    .append(esc(report.home().toString()))
+                    .append("\",\"examined\":").append(report.examined())
+                    .append(",\"clean\":").append(report.clean())
+                    .append(",\"findings\":[");
+            for (int i = 0; i < report.findings().size(); i++) {
+                HomeRepair.Finding f = report.findings().get(i);
+                if (i > 0) sb.append(',');
+                sb.append("{\"kind\":\"").append(f.kind())
+                        .append("\",\"subject\":\"").append(esc(f.subject()))
+                        .append("\",\"detail\":\"").append(esc(f.detail()))
+                        .append("\",\"repair\":\"").append(esc(f.remedy()))
+                        .append("\",\"repairable\":").append(f.repairable()).append('}');
+            }
+            sb.append(']');
+            if (outcome != null) {
+                sb.append(",\"repaired\":").append(outcome.repaired().size())
+                        .append(",\"failed\":").append(outcome.failed().size())
+                        .append(",\"wasDamaged\":").append(!outcome.before().clean());
+            }
+            return sb.append('}').toString();
         }
     }
 

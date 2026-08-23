@@ -1,0 +1,22 @@
+# V5 -- branch moved: DEF-067's hazard, PLANTED: the observer repairs what it finds.
+# mutation:
+#   public static Report detect(Path store, Path cliPin) {
+        Path root = store.toAbsolutePath().normalize();
+# ->
+#   public static Report detect(Path store, Path cliPin) {
+        Path root = store.toAbsolutePath().normalize();
+
+[PASS] a healthy ROOT-TIER home is reported clean, over a non-zero subject count
+[PASS] a merely STALE home is not reported as damaged
+[FAIL] all four damage shapes are reported, one line each, naming the repair: expected false: a home damaged four ways is not clean
+[FAIL] DETECTION REPAIRS NOTHING — run it twice and the damage is still there: expected false: precondition: the first run sees the damage
+[FAIL] REPAIR makes detection clean, and it is DETECTION that says so: expected false: precondition: damaged
+[PASS] REPAIR IS IDEMPOTENT — the second run changes no bytes
+[FAIL] the agent axis comes from the HOME and not from the ENVIRONMENT: not true: detection found the damage in the home it was GIVEN, with the environment naming a different one; got: []
+[PASS] a repair cannot write outside the two axes of the home it was given
+[FAIL] `home repair` reports and exits 1; `--fix` repairs and exits 0: detection on a damaged home exits 1:
+[FAIL] a home damaged AFTER a repair goes red again — the verdict is not sticky: expected false: fresh damage after a repair is still damage
+[FAIL] a FORGED descent record buys no repair — the chain it names must re-derive: expected false: precondition: with the REAL claim in place the pruned entry is reported, so this fixture can express the finding
+[FAIL] detection uses HIS-10's reader: a SANCTIONED inherited shim is not damage: not true: and with the record gone the SAME bytes are damage — so the verdict above came from production's sanction and not from this detector being blind. go  …[truncated]
+
+Note: Recompile with -Xlint:deprecation for details.

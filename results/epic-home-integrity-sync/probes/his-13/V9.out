@@ -1,0 +1,21 @@
+# V9 -- branch moved: shape 3's SANCTION GATE: the recorded snapshot trusted as a grant (#228).
+# mutation:
+#   if (dev.skillmanager.bindings.ChildHomeLink.isChildOf(store, recorded)
+                    || HomeProvenance.s
+# ->
+#   parents.add(recorded);
+
+[PASS] a healthy ROOT-TIER home is reported clean, over a non-zero subject count
+[PASS] a merely STALE home is not reported as damaged
+[PASS] all four damage shapes are reported, one line each, naming the repair
+[PASS] DETECTION REPAIRS NOTHING — run it twice and the damage is still there
+[PASS] REPAIR makes detection clean, and it is DETECTION that says so
+[PASS] REPAIR IS IDEMPOTENT — the second run changes no bytes
+[PASS] the agent axis comes from the HOME and not from the ENVIRONMENT
+[PASS] a repair cannot write outside the two axes of the home it was given
+[PASS] `home repair` reports and exits 1; `--fix` repairs and exits 0
+[PASS] a home damaged AFTER a repair goes red again — the verdict is not sticky
+[FAIL] a FORGED descent record buys no repair — the chain it names must re-derive: not true: a record that names a store nothing claims re-derives to nothing, so it sanctions nothing and repairs nothing; got: [FOREIGN_PATH_IN_SHIM bin/cli/m  …[truncated]
+[PASS] detection uses HIS-10's reader: a SANCTIONED inherited shim is not damage
+
+Note: Recompile with -Xlint:deprecation for details.

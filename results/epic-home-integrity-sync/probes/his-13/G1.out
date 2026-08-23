@@ -1,0 +1,16 @@
+# G1 -- branch moved: the repair itself -- every action suppressed, detection unchanged
+# runId: 20260823-210607
+node status: failed
+  pass  the_planted_damage_resolves_and_is_therefore_the_right_shape
+  pass  bare_home_repair_refuses_a_damaged_home
+  pass  bare_home_repair_names_each_damage_shape
+  pass  every_finding_names_the_repair_for_it
+  pass  DETECTION_ALONE_REPAIRS_NOTHING
+  RED   a_separate_detection_run_after_the_repair_is_clean
+  RED   the_projection_points_at_this_homes_own_store
+  RED   the_wrapper_runs_this_homes_own_tree
+  RED   running_the_repair_twice_changes_nothing_the_second_time
+  pass  the_other_home_is_byte_identical_throughout
+  pass  the_agent_dir_the_environment_names_is_untouched
+message: None
+metrics: {'repair.detectRunsBeforeRepair': 2, 'repair.findingsAtFirstDetect': 2, 'repair.findingsAfterRepair': 2, 'durationMs': 7062}

@@ -1,0 +1,21 @@
+# V10 -- branch moved: the CANONICAL READER's sanction arm -- HomeCloner.unsanctionedForeignHome.
+# mutation:
+#   return sanctionedParentShim(rel, link, foreign, root, null,
+                new java.util.HashMap<>(), new jav
+# ->
+#   return foreign;
+
+[FAIL] a healthy ROOT-TIER home is reported clean, over a non-zero subject count: not true: a home this test just built is not damaged; got: [FOREIGN_PATH_IN_SHIM bin/cli/mirror — runs /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/home-r  …[truncated]
+[FAIL] a merely STALE home is not reported as damaged: not true: an unacknowledged drift record, an out-of-date unit and a declared-but-unbuilt artifact are all NORMAL. got: [FOREIGN_PATH_IN_SHIM bin/cli/mirror — runs /var/folders/b7/rsz3g6  …[truncated]
+[PASS] all four damage shapes are reported, one line each, naming the repair
+[PASS] DETECTION REPAIRS NOTHING — run it twice and the damage is still there
+[PASS] REPAIR makes detection clean, and it is DETECTION that says so
+[PASS] REPAIR IS IDEMPOTENT — the second run changes no bytes
+[PASS] the agent axis comes from the HOME and not from the ENVIRONMENT
+[PASS] a repair cannot write outside the two axes of the home it was given
+[PASS] `home repair` reports and exits 1; `--fix` repairs and exits 0
+[PASS] a home damaged AFTER a repair goes red again — the verdict is not sticky
+[PASS] a FORGED descent record buys no repair — the chain it names must re-derive
+[FAIL] detection uses HIS-10's reader: a SANCTIONED inherited shim is not damage: not true: precondition: the middle tier's mirror wrapper is sanctioned by the parent's own claim
+
+Note: Recompile with -Xlint:deprecation for details.

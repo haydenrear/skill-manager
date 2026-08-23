@@ -1,0 +1,78 @@
+# REDACTED AND TRUNCATED.
+#
+# This probe's raw output was 900 KB and contained the CONTENTS of the
+# operator's real ~/.claude, ~/.codex and ~/.gemini skill trees, because the
+# mutation redirects `agentDirsOf` at them and the fixture's own byte-snapshot
+# then read every file it was pointed at. Lines are truncated to 240 characters.
+#
+# THAT IS THE PROBE'S FINDING, not an accident of it: with the agent axis taken
+# from the ENVIRONMENT rather than from the home, `home repair` run against a
+# temp-directory home READ 60 of the operator's global agent skill links and
+# reported all 60 as damaged.
+#
+# NOTHING WAS WRITTEN. Verified immediately after the run:
+#   find ~/.skill-manager ~/.claude ~/.codex ~/.gemini <project>/.skill-manager \
+#        -maxdepth 3 -newermt "-60 minutes"   ->   no output
+#   every link under ~/.claude/skills, ~/.codex/skills, ~/.gemini/skills still
+#   resolves into ~/.skill-manager/skills (issue #159's own detection snippet,
+#   run by hand)
+# and the reason is visible in the finding text above: `and this home does not
+# hold skills/<unit>`, so every one of the 60 was reported UNREPAIRABLE and
+# `repair` skipped it.
+#
+# READ THAT AS A WARNING RATHER THAN AS A SECOND GUARD. It held because the
+# fixture home happened to hold none of those units. Under this mutation the
+# WriteConfinement scope moves too -- it is derived from the same
+# `agentDirsOf` -- so confinement would NOT have refused a write. The
+# structural derivation of the agent axis from the store path is the only thing
+# standing between `home repair --fix` and the operator's global links, which is
+# why that assertion is the one this ticket cares most about.
+
+# V7 -- branch moved: the AGENT-AXIS DERIVATION: HIS-14's defect, planted in the repairer.
+# mutation:
+#   return AgentHomes.agentDirsUnder(AgentHomes.homeRootFor(store.toAbsolutePath().normalize()));
+# ->
+#   return AgentHomes.agentDirsUnder(AgentHomes.agentHomeRoot());
+
+[FAIL] a healthy ROOT-TIER home is reported clean, over a non-zero subject count: not true: a home this test just built is not damaged; got: [MISANCHORED_AGENT_LINK ../../../../../../../Users/hayde/.claude/skills/plugin-repository — resolve  …[truncated]
+[FAIL] a merely STALE home is not reported as damaged: not true: an unacknowledged drift record, an out-of-date unit and a declared-but-unbuilt artifact are all NORMAL. got: [MISANCHORED_AGENT_LINK ../../../../../../../Users/hayde/.claude/s  …[truncated]
+[PASS] all four damage shapes are reported, one line each, naming the repair
+[FAIL] DETECTION REPAIRS NOTHING — run it twice and the damage is still there: and it changed no bytes at all: expected </var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/home-repair-observer-12087643567887148498/root/.skill-manager/artifact  …[truncated]
+[FAIL] every printed remedy that names a class-2/3 verb also names its
+[FAIL] every printed remedy that names a class-2/3 verb also names its
+[FAIL] every printed remedy that names a class-2/3 verb also names its
+[FAIL] every printed remedy that names a class-2/3 verb also names its
+[FAIL] every printed remedy that names a class-2/3 verb also names its
+[FAIL] every printed remedy that names a class-2/3 verb also names its
+[FAIL] every printed remedy that names a class-2/3 verb also names its
+[FAIL] every printed remedy that names a class-2/3 verb also names its
+[FAIL] every printed remedy that names a class-2/3 verb also names its
+[FAIL] every printed remedy that names a class-2/3 verb also names its
+[FAIL] every printed remedy that names a class-2/3 verb also names its
+[FAIL] every printed remedy that names a class-2/3 verb also names its
+[FAIL] every printed remedy that names a class-2/3 verb also names its
+[FAIL] every printed remedy that names a class-2/3 verb also names its
+[FAIL] every printed remedy that names a class-2/3 verb also names its
+[FAIL] every printed remedy that names a class-2/3 verb also names its
+[FAIL] every printed remedy that names a class-2/3 verb also names its
+[FAIL] every printed remedy that names a class-2/3 verb also names its
+[FAIL] every printed remedy that names a class-2/3 verb also names its
+[FAIL] every printed remedy that names a class-2/3 verb also names its
+[FAIL] every printed remedy that names a class-2/3 verb also names its
+[FAIL] every printed remedy that names a class-2/3 verb also names its
+[FAIL] every printed remedy that names a class-2/3 verb also names its
+[FAIL] every printed remedy that names a class-2/3 verb also names its
+[FAIL] every printed remedy that names a class-2/3 verb also names its
+[FAIL] every printed remedy that names a class-2/3 verb also names its
+[FAIL] every printed remedy that names a class-2/3 verb also names its
+[FAIL] every printed remedy that names a class-2/3 verb also names its
+[FAIL] REPAIR makes detection clean, and it is DETECTION that says so: not true: detection re-run AFTER the repair must be clean — the repairer's own opinion of how it went is not evidence (#142). got: [MISANCHORED_AGENT_LINK ../../../../..  …[truncated]
+[PASS] REPAIR IS IDEMPOTENT — the second run changes no bytes
+[FAIL] the agent axis comes from the HOME and not from the ENVIRONMENT: not true: detection found the damage in the home it was GIVEN, with the environment naming a different one; got: [MISANCHORED_AGENT_LINK ../../../../../../../Users/hayd  …[truncated]
+[FAIL] a repair cannot write outside the two axes of the home it was given: refused: probe would write a path outside the home it was given
+[FAIL] `home repair` reports and exits 1; `--fix` repairs and exits 0: the repair exits 0:
+[FAIL] a home damaged AFTER a repair goes red again — the verdict is not sticky: not true: precondition: repaired
+[PASS] a FORGED descent record buys no repair — the chain it names must re-derive
+[FAIL] detection uses HIS-10's reader: a SANCTIONED inherited shim is not damage: not true: precondition: the middle tier's mirror wrapper is sanctioned by the parent's own claim
+
+Note: Recompile with -Xlint:deprecation for details.

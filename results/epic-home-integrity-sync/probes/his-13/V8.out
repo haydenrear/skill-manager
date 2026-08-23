@@ -1,0 +1,22 @@
+# V8 -- branch moved: the CONFINEMENT ROOTS: the enclosing home root instead of the two axes.
+# mutation:
+#   List<Path> roots = new ArrayList<>();
+        roots.add(Fs.realOrNormalized(store));
+        for (Path agentDi
+# ->
+#   return WriteConfinement.forHome(AgentHomes.homeRootFor(store), WHAT);
+
+[PASS] a healthy ROOT-TIER home is reported clean, over a non-zero subject count
+[PASS] a merely STALE home is not reported as damaged
+[PASS] all four damage shapes are reported, one line each, naming the repair
+[PASS] DETECTION REPAIRS NOTHING — run it twice and the damage is still there
+[PASS] REPAIR makes detection clean, and it is DETECTION that says so
+[PASS] REPAIR IS IDEMPOTENT — the second run changes no bytes
+[PASS] the agent axis comes from the HOME and not from the ENVIRONMENT
+[FAIL] a repair cannot write outside the two axes of the home it was given: one store and three agent directories; got [/private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/home-repair-confinement-15258735215253855317/root]: expected <4  …[truncated]
+[PASS] `home repair` reports and exits 1; `--fix` repairs and exits 0
+[PASS] a home damaged AFTER a repair goes red again — the verdict is not sticky
+[PASS] a FORGED descent record buys no repair — the chain it names must re-derive
+[PASS] detection uses HIS-10's reader: a SANCTIONED inherited shim is not damage
+
+Note: Recompile with -Xlint:deprecation for details.

@@ -569,6 +569,13 @@ public final class JsonContractTest {
                 "--from", "/nonexistent/sm-guard/a", "--to", "/nonexistent/sm-guard/b");
         expect("skill-manager home describe", Mode.FAILS,
                 "the named path is not a home", "--home", "/nonexistent/sm-guard/x");
+        // HIS-13. The DETECT spelling, deliberately: it is the default and it
+        // is the one an operator and a graph node run. `--fix` shares the
+        // document shape and adds three fields, and pinning the read-only form
+        // is what keeps a future change from making the reporting path depend
+        // on having written something first.
+        expect("skill-manager home repair", Mode.FAILS,
+                "the named path is not a home", "--home", "/nonexistent/sm-guard/x");
         expect("skill-manager show", Mode.FAILS, "no such unit is installed", "no-such-unit");
         expect("skill-manager artifacts show", Mode.FAILS, "no such artifact", "no-such-unit");
         expect("skill-manager bindings show", Mode.FAILS, "no such binding", "no-such-unit");

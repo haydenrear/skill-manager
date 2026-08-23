@@ -3522,3 +3522,148 @@ findings:
       per-ticket close records to close over.
     candidate_owner: "HIS-6 to decide what it can still report; spec-double-compiler for (b)"
     status: open
+
+  - id: DEF-069
+    found_by: HIS-13, running its own declared toolchain step
+    found_at: "2026-08-23"
+    severity: major
+    status: corrected
+    superseded_by: DEF-072
+    corrected_at: "2026-08-23"
+    corrected_by: "review of PR #244; re-measured by the epic agent; accepted by HIS-13"
+    short_label: "tla-spec-dev could not parse ticket_plan.yaml -- real mechanism, THREE FALSE CLAUSES, now withdrawn"
+    summary: >
+      I filed this at severity `blocking` claiming the spec toolchain had been
+      unusable "all epic" and that this explained HIS-14's skipped lifecycle and
+      `skt status`'s reporting. THE MECHANISM IS REAL AND THREE OF THE CLAUSES
+      ARE FALSE. They are withdrawn here rather than quietly dropped, and the
+      whole entry is superseded by DEF-072, which carries the corrected onset
+      and the part that survives.
+    what_was_true: >
+      `parse_simple_yaml` in the spec-double-compiler skill is a hand-rolled
+      line-oriented reader that cannot read a WRAPPED FLOW SEQUENCE, and
+      ticket_plan.yaml contained three. `open ticket HIS-13` aborted with
+      ValueError before doing anything. That is a parser bug, not a data bug --
+      PyYAML reads the same file and all 52 tickets -- and it is fixed on the
+      epic branch at 6d4c6a4.
+    what_was_FALSE_and_is_withdrawn: >
+      (1) "No ticket in this epic can run its declared spec lifecycle" and "for
+      the whole epic". Re-measured over three commits with the same parser:
+      ddca9be (2026-08-21 20:34) PARSES; 65942a3 (2026-08-22 11:18) FAILS;
+      6ee45b1 (2026-08-23 16:17) FAILS. Kickoff was 2026-08-20, so waves 1-5
+      parsed fine and the parser explains waves 6-9 only.
+      (2) "This is why HIS-14 recorded the same skip." HIS-14's own document
+      gives a DIFFERENT reason -- the only `tla-spec-dev` on PATH resolving
+      through the ROOT home's CLI pin.
+      (3) "`skt status` has been reporting every HIS ticket as not-open all
+      epic as a consequence." `skt status` uses its own regex reader, which the
+      wrap does not affect.
+    how_i_got_it_wrong: >
+      RECORDED BECAUSE IT IS THIS EPIC'S OWN SIGNATURE FAILURE, committed by the
+      agent shipping the detector for it. I hit the parse error on the CURRENT
+      tip, found HIS-14's document already saying "the workflow was not run",
+      and inferred one cause for both. I never ran the parser against an earlier
+      commit -- a two-minute check -- and never opened HIS-14's document to see
+      that it names a different cause. A single observation was generalised
+      across eighteen tickets and three weeks. That is an unmeasured claim in a
+      backlog entry filed at `blocking`, in a ticket whose vacuity discipline is
+      "an assertion whose red you have not personally seen does not count".
+      The same discipline applies to a finding, and I did not apply it.
+    candidate_owner: superseded -- see DEF-072
+    related: [DEF-072]
+
+  - id: DEF-070
+    found_by: HIS-13, after shipping `home repair`
+    found_at: "2026-08-23"
+    revised_at: "2026-08-23"
+    revised_by: "review of PR #244 (M9), which found the entry described the wrong half"
+    severity: major
+    short_label: "`home verify` and `home repair` disagree about a home, and one half of that is a real reader conflict"
+    summary: >
+      HIS-13 added detection for conditions `home verify` does not check, and
+      deliberately did not change `home verify`. Two commands now inspect one
+      home and reach different verdicts. AS ORIGINALLY FILED THIS ENTRY WAS
+      WRONG ABOUT WHICH DISAGREEMENT MATTERS.
+    the_half_that_is_NOT_a_defect: >
+      The agent-axis case. `home verify` walks the STORE; a projection under
+      `<home>/.claude/skills` is the home's other axis and is outside the
+      question `verify` asks. Two commands asking two questions and answering
+      each correctly is separation, not conflict. The original entry presented
+      this as the finding. It is not one.
+    the_half_that_IS_a_defect: >
+      One path, one home, THREE READERS, THREE ANSWERS -- measured on a fresh
+      lazy clone, on `bin/cli/tofu`:
+
+        artifacts list          declared-only
+        home verify             declared, "and not a failure"
+        home repair             PRUNED_INHERITED_ENTRY -- damage
+
+      GOAL-one-home-one-answer's baseline is "FOUR READERS, THREE ANSWERS on one
+      cloned home". This made it FIVE readers and three answers, and the new
+      reader was the one that WRITES: `--fix` would have linked that home at its
+      parent store over an artifact that was never pruned and was never there.
+    resolution: >
+      LARGELY FIXED IN HIS-13 ITSELF, as Blocker 1 of the PR #244 review.
+      `prunedInheritedEntries` now asks the same question `home verify` asks --
+      `Artifact.Materialization.DECLARED_ONLY` and the home's `lazy_artifacts`
+      policy -- so a declared-but-unbuilt entry point is a normal state to all
+      three readers and `home repair` no longer reports it.
+      WHAT REMAINS is the general question this entry should have asked from the
+      start: nothing enumerates the readers of "is this entry point supposed to
+      be here", so the next one added will have to rediscover the same two
+      records. That is HIS-6's to decide, and it is a smaller finding than the
+      one originally filed.
+    candidate_owner: HIS-6
+    related: [DEF-012, DEF-015]
+    status: open
+
+  - id: DEF-071
+    found_by: HIS-13, from its own V7 vacuity probe
+    found_at: "2026-08-23"
+    severity: major
+    short_label: "a confinement whose roots are derived from the same function as its targets protects nothing"
+    summary: >
+      WriteConfinement cannot defend a command that derives BOTH the paths it
+      touches AND the roots it may touch them under from one function. Break
+      that function and the gate moves with the damage, agreeing with it
+      perfectly.
+    detail: >
+      MEASURED, HIS-13 probe V7. The mutation is HIS-14's defect planted in the
+      new repairer: HomeRepair.agentDirsOf switched from
+      AgentHomes.agentDirsUnder(homeRootFor(store)) -- structural, from the
+      store path -- to AgentHomes.agentHomeRoot(), which reads the environment.
+
+      Run against a home under /var/folders/.../home-repair-stale-*, the
+      mutated build produced 60 findings naming
+      ~/.claude/skills/*, ~/.codex/skills/* and ~/.gemini/skills/* -- the
+      OPERATOR'S REAL GLOBAL LINKS, read by a command pointed at a temp
+      directory. The probe's own byte-snapshot then read the contents of all
+      three trees, which is why V7.out was 900 KB before truncation.
+
+      NOTHING WAS WRITTEN, verified immediately: no path under ~/.skill-manager,
+      ~/.claude, ~/.codex, ~/.gemini or the project home had an mtime inside the
+      window, and every link still resolved into ~/.skill-manager/skills. The
+      reason is incidental: every finding was UNREPAIRABLE ("this home does not
+      hold skills/<unit>") because the temp fixture held none of those units, so
+      the repair loop skipped all 60.
+
+      THE POINT IS WHAT DID NOT SAVE IT. WriteConfinement was in force, and it
+      would not have refused, because HomeRepair.ownedAxesOf builds its
+      permitted roots from the SAME agentDirsOf call. The mutation moved the
+      targets and the fence together. Had the fixture home held a unit of the
+      same name, the mutated build would have repointed the operator's real
+      global link and the gate would have agreed.
+    the_generalisation: >
+      This is not a HomeRepair bug -- production derives the axis structurally
+      and there is an assertion (`the_agent_axis_comes_from_the_HOME_and_not_
+      from_the_ENVIRONMENT`) that reddens under exactly this mutation. It is a
+      statement about what the guard is worth: WriteConfinement is a defence
+      against a caller that computes the wrong TARGET, and no defence at all
+      against one that computes the wrong HOME. Every existing call site should
+      be read with that question -- does anything independent of this operation
+      decide its roots? -- and today, for the home axis, nothing does.
+      Candidate: the confinement takes the roots from an ambient declaration
+      made once, by the CLI, from the argv, rather than from the operation.
+    candidate_owner: HIS-6 to triage; HIS-9 owns WriteConfinement's contract
+    related: [DEF-007, DEF-029]
+    status: open
