@@ -3126,7 +3126,7 @@ findings:
     candidate_owner: HIS-13
     status: open
 
-  - id: DEF-056
+  - id: DEF-061
     found_by: review of PR #240 (HIS-18), reproduced by the HIS-18 agent
     found_at: "2026-08-22"
     severity: major
@@ -3160,7 +3160,7 @@ findings:
     candidate_owner: HIS-13
     status: open
 
-  - id: DEF-057
+  - id: DEF-062
     found_by: review of PR #240 (HIS-18)
     found_at: "2026-08-22"
     severity: minor

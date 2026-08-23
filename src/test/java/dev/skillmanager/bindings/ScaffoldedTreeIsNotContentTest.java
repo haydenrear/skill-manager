@@ -455,7 +455,7 @@ public final class ScaffoldedTreeIsNotContentTest {
                                 "and upstream's content is what stands there. THE CHILD'S COPY IS "
                                         + "GONE. This case pins the loss so it is a known one, "
                                         + "and the swap now WARNS by name instead of taking it "
-                                        + "silently — see DEF-056, which owns preserving it");
+                                        + "silently — see DEF-061, which owns preserving it");
                     }
                 })
                 .runAll();

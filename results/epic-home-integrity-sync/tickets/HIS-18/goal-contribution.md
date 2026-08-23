@@ -128,7 +128,7 @@ evidence about a corpus with no case-mismatched pair in it.
 destination's copy is abandoned and destroyed by the swap. Case (14) reaches it —
 upstream stops declaring a path generated and puts its own content there — and
 the branch now **warns by name** instead of taking it silently. Preserving it is
-**DEF-056**.
+**DEF-061**.
 
 **GOAL-no-spurious-holdback clause 2 had no case at all.** It does now (case 12):
 a unit that genuinely differs is still held back, excluded paths or not.
@@ -277,7 +277,7 @@ and the bytes survive. Full `jbang RunTests.java` is green, including
 
 | gate | result |
 | --- | --- |
-| `jbang RunTests.java` | **ALL PASSED** — 144 suites, **1350** cases, including the **14** `ScaffoldedTreeIsNotContentTest` cases |
+| `jbang RunTests.java` | **ALL PASSED** — 144 suites, 1350 cases on my own tip, and **145 suites / 1363 cases after rebasing onto HIS-16's merge** (`a527221`), including the **14** `ScaffoldedTreeIsNotContentTest` cases |
 | `uv run pytest specs/` | **38 passed** in 1.83s |
 | `run.py sync-settles` | **RED then GREEN, on this change.** Red at runId `20260822-223718`, `BUILD FAILED in 59s` — the node's own vacuity guard, see below. Green at runId `20260822-224910`, `BUILD SUCCESSFUL in 1m 2s`. **Re-run after the review fixes: `BUILD SUCCESSFUL in 1m 38s`, runId `20260823-001706`** |
 | `run.py project-child-home` | `BUILD SUCCESSFUL in 3m 53s`, runId `20260822-232315` — 12 nodes, 73/73. **Re-run after the review fixes: `BUILD SUCCESSFUL in 4m 1s`, runId `20260823-001855`, 12 nodes, 73/73** |
@@ -402,6 +402,27 @@ is unaffected, because `copyUnit` asks the disk before it asks the record
 (`settledWithoutARecord`) and both sides of that question are filtered the same
 way.
 
+## The rebase onto HIS-16, and the one piece of evidence it invalidates
+
+Rebased onto `a527221` (HIS-16 merged). **One conflict, exactly where the review
+predicted it: `deferred/backlog.yaml`.** `RunTests.java` auto-merged — the two
+additions are 28 lines apart.
+
+**`sync-settles` evidence STANDS.** Composition is byte-identical (same two
+nodes), the node's own source is unchanged, and the only change to shared
+plumbing (`SmEnv.java`) is additive — `CONFINE_ROOT`, `confineTo`, `unconfine` —
+with `apply()` untouched, deliberately, per its own javadoc.
+
+**`project-child-home` evidence DOES NOT COVER THE GRAPH ANY MORE, and I am not
+claiming it does.** HIS-16 added `HomeMembershipLaw.java` and wired it into that
+graph: **12 nodes when I ran it, 13 now.** My `73/73` is a run of a graph that
+did not contain the new node. Worse for the claim, the new node is the one that
+drives `home describe` — the command HIS-16 changed from `WRITE` to
+`INIT_GATED`, so `tryReconcile` no longer runs ahead of it. My own fixtures
+never invoke the CLI at all, so nothing of mine depended on that reconcile, but
+"my second-set graph is green" is no longer something my evidence says. Reported
+to the epic owner rather than re-run unilaterally, per the instruction.
+
 ## Homes
 
 Snapshotted before the first command and diffed at the end:
@@ -443,7 +464,7 @@ edit could route the cloner through `GitIgnoreRules` and hand over a home whose
 undefended asymmetry today, so this is one guard for both, not a new one for
 mine.
 
-**DEF-056 — a carry-over collision destroys the child's copy, and now says so.**
+**DEF-061 — a carry-over collision destroys the child's copy, and now says so.**
 `carryOverUnownedTrees`' `if (Files.exists(to)) continue;` is reached when
 upstream STOPS declaring a path generated and puts its own content there: the
 staged tree already holds the path, the destination's copy cannot be carried
@@ -453,7 +474,7 @@ before — the review found it. It now **warns by name**; preserving the bytes
 is HIS-4's surface and the fix belongs with whoever owns it. Case (14) pins the
 loss so it is a known one rather than a silent one.
 
-**DEF-057 — the baseline README says 88,308 characters and today's renderer
+**DEF-062 — the baseline README says 88,308 characters and today's renderer
 emits 88,309 over the same record**, and `HomeDriftGateTest` asserts the README
 figure. One character, and I have deliberately changed neither: a baseline
 edited after the fact is worth nothing, and a test quietly re-pointed at a new

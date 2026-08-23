@@ -3001,7 +3001,7 @@ public final class ChildHomeMaterializer {
                     // swap is about to destroy it. Reached when upstream STOPS
                     // declaring a path generated and puts its own content
                     // there. Reported rather than silent -- preserving it is
-                    // DEF-056, and a loss nobody is told about is the shape
+                    // DEF-061, and a loss nobody is told about is the shape
                     // this epic keeps finding.
                     Log.warn("child home: %s in %s is being replaced by the source's own copy — "
                             + "the source no longer treats it as generated, so this home's "
