@@ -514,7 +514,86 @@ public final class ChildHomeMaterializer {
         if (record != null && MaterializationMode.CHECKOUT.name().equals(record.mode())) {
             return checkoutIsModified(dest, record);
         }
+        if (holdsUndeclaredWork(name, kind, dest)) return true;
         return !disposalOf(name, kind, record, dest, treeDigest(dest)).disposable();
+    }
+
+    /**
+     * Whether the destination holds anything <b>under a path its own
+     * declaration hides</b> that the source cannot be shown to have.
+     *
+     * <h2>Why the digest cannot answer this, and what it cost</h2>
+     *
+     * <p>{@link #treeDigest} applies {@link GitIgnoreRules}, and this method's
+     * caller is — in its own javadoc — "the predicate a prune, a teardown and a
+     * close-out consult before destroying it". So excluding a path from the
+     * digest made an agent's authored file <b>disposable</b>: a worktree agent
+     * writes {@code results/findings.md} into a unit whose {@code .gitignore}
+     * has {@code results/}, {@code home sync} reports the unit UNCHANGED and
+     * never sends it up, {@code home close-out} finds no blocker, and
+     * {@code wt close} deletes the child home outright — with an empty preserve
+     * set, so no per-unit preservation and no report naming the path. All three
+     * steps saw that file before this change. Review of #240, blocker 1.
+     *
+     * <p>{@code carryOverUnownedTrees} is the other half of "not deleted" and it
+     * guards the SWAP. Nothing guarded the TEARDOWN, and the ticket's own
+     * acceptance line — <em>invisible, not disposable</em> — is what failed.
+     *
+     * <p>Not hypothetical: {@code acp-cdc-ai-python/scripts/sources/logs/*.jsonl}
+     * in the operator's root store are ACP session transcripts — agent output —
+     * and they are one of only three genuinely-new exclusions this change adds.
+     *
+     * <h2>Why it does not hold every unit back</h2>
+     *
+     * <p>Because the exclusion also means "not copied": a freshly materialized
+     * child home has NOTHING at those paths, so this returns false and the
+     * pre-existing disposal answer stands unchanged. It fires only where the
+     * child home itself put something there, which is exactly the authored-work
+     * case — and where the source holds the same bytes at the same path, it
+     * stays false, because then the work exists somewhere else too.
+     *
+     * <p>{@link Rederivable}'s own paths are deliberately NOT included. Those
+     * are re-derivable by definition and have always been outside this
+     * question; including them would hold a unit back for a {@code build/}
+     * directory, which is a hold-back protecting nothing.
+     */
+    private boolean holdsUndeclaredWork(String name, UnitKind kind, Path dest)
+            throws IOException {
+        java.util.Map<String, String> here = declaredOnlyEntries(dest);
+        if (here.isEmpty()) return false;
+        Path source = parentStore.unitDir(name, kind).toAbsolutePath().normalize();
+        java.util.Map<String, String> there =
+                Files.isDirectory(source, LinkOption.NOFOLLOW_LINKS)
+                        ? declaredOnlyEntries(source)
+                        : java.util.Map.of();
+        for (java.util.Map.Entry<String, String> entry : here.entrySet()) {
+            if (!entry.getValue().equals(there.get(entry.getKey()))) return true;
+        }
+        return false;
+    }
+
+    /**
+     * Per-entry digests for everything the unit's own declaration hides and
+     * {@link Rederivable} does not — the paths {@link #treeDigest} cannot see.
+     *
+     * <p>Costs one pruned walk plus a walk of the excluded subtrees only.
+     * {@link #unownedRoots} already prunes at exactly the boundary this needs,
+     * so the expensive part is shared with the walk the caller was doing anyway,
+     * and the extra descent happens only where there is something to descend
+     * into. A child home that never wrote under an excluded path pays for the
+     * top-most enumeration and nothing else.
+     */
+    private static java.util.LinkedHashMap<String, String> declaredOnlyEntries(Path root)
+            throws IOException {
+        if (!Files.isDirectory(root, LinkOption.NOFOLLOW_LINKS)) {
+            return new java.util.LinkedHashMap<>();
+        }
+        List<ViewEntry> declared = new ArrayList<>();
+        for (String rel : unownedRoots(root)) {
+            if (Rederivable.isDerived(rel)) continue;
+            walkPlain(root.resolve(rel), rel, GitIgnoreRules.NONE, declared);
+        }
+        return fingerprintOf(declared, java.util.Set.of()).entries();
     }
 
     /**
@@ -2842,9 +2921,39 @@ public final class ChildHomeMaterializer {
         return Rederivable.isDerived(rel) || rules.ignores(rel, directory);
     }
 
-    /** Whether {@code path} is a real directory — a symlink to one is not. */
-    private static boolean isRealDirectory(Path path) {
-        return Files.isDirectory(path, LinkOption.NOFOLLOW_LINKS);
+    /**
+     * Directory-ness <b>as the materialized view will have it</b>: links are
+     * FOLLOWED, deliberately.
+     *
+     * <h2>Why this is not {@code NOFOLLOW_LINKS}, and why that is a divergence
+     * from {@code git check-ignore} taken on purpose</h2>
+     *
+     * <p>Git reads a symlink as a file, so a directory-only rule ({@code sdk/},
+     * {@code build/}, {@code dist/} — the dominant convention) does not match
+     * one. Taking git's answer here makes the exclusion decision depend on a
+     * shape that <b>materialization changes</b>: the parent store holds
+     * {@code test_graph/sdk} as a LINK and the child home holds the same path as
+     * a real DIRECTORY, so the store's walk would keep it and the child's would
+     * drop it — one side hashing a path the other does not have, permanently, in
+     * every later drift report. That is the divergence this whole change exists
+     * to remove, arriving through the {@code directory} argument. Review of
+     * #240, blocker 2, reproduced.
+     *
+     * <p>Following the link makes the answer <b>invariant under the
+     * dereference</b>, which is the property the two walkers need and the one
+     * git's reading cannot provide. A link the materializer PRESERVES is
+     * unaffected — it resolves to the same thing on both sides — and a broken
+     * link answers false on both sides.
+     *
+     * <p>The divergence is narrow and one-directional: a symlink to a DIRECTORY
+     * matching a directory-only rule is excluded here where git would keep it. A
+     * symlink to a FILE is not, and no rule that is not directory-only is
+     * affected at all. Excluded still means invisible and not disposable — the
+     * carry-over holds it across a swap and {@link #isLocallyModified} still
+     * reports an agent's work under it.
+     */
+    private static boolean asMaterializedDirectory(Path path) {
+        return Files.isDirectory(path);
     }
 
     /**
@@ -2900,7 +3009,7 @@ public final class ChildHomeMaterializer {
         if (!Files.isDirectory(dir, LinkOption.NOFOLLOW_LINKS)) return;
         for (Path child : listSorted(dir)) {
             String childRel = join(rel, child.getFileName().toString());
-            if (isUnowned(rules, childRel, isRealDirectory(child))) {
+            if (isUnowned(rules, childRel, asMaterializedDirectory(child))) {
                 out.add(childRel);
                 continue;
             }
@@ -2931,7 +3040,27 @@ public final class ChildHomeMaterializer {
 
     private void walk(Path src, String rel, Path unitRootReal, GitIgnoreRules rules,
                       Deque<Path> expanding, List<ViewEntry> out) throws IOException {
-        if (isUnowned(rules, rel, isRealDirectory(src))) return;
+        // ASKED ONCE PER PATH, AT THE SHAPE THE PATH HAS ON DISK HERE, and then
+        // never again for that path. Asking a second time after a dereference
+        // is what made the two walkers disagree: `walkPlain` sees the store's
+        // SYMLINK and asks with directory=false, while the dereferenced frame
+        // below is a real directory and asks with directory=true. A dir-only
+        // rule -- `sdk/`, `build/`, `dist/`, the dominant convention -- matches
+        // the second and not the first, so this walker emitted neither the link
+        // nor its target while `walkPlain` still emitted the LINK: a permanent
+        // one-sided entry in every later drift report. Review of #240,
+        // blocker 2.
+        if (isUnowned(rules, rel, asMaterializedDirectory(src))) return;
+        walkDecided(src, rel, unitRootReal, rules, expanding, out);
+    }
+
+    /**
+     * {@link #walk} once the path itself has been decided to be content. Its
+     * CHILDREN are still asked about individually, each at its own shape, which
+     * is the same question {@code walkPlain} asks of the copy on the other side.
+     */
+    private void walkDecided(Path src, String rel, Path unitRootReal, GitIgnoreRules rules,
+                             Deque<Path> expanding, List<ViewEntry> out) throws IOException {
         if (Files.isSymbolicLink(src)) {
             Path raw = Files.readSymbolicLink(src);
             Path resolved = raw.isAbsolute()
@@ -2955,11 +3084,11 @@ public final class ChildHomeMaterializer {
             }
             expanding.push(real);
             try {
-                // The CONSUMER's rules stay in force across the dereference:
-                // `rel` is still relative to the consuming unit, so its
-                // declaration is the one that governs what arrives under that
-                // path. The provider's own rules are its business.
-                walk(real, rel, unitRootReal, rules, expanding, out);
+                // The CONSUMER's rules stay in force across the dereference
+                // for the CHILDREN -- `rel` is still relative to the consuming
+                // unit -- but the path itself was decided at the link frame and
+                // is not re-asked. The provider's own rules are its business.
+                walkDecided(real, rel, unitRootReal, rules, expanding, out);
             } finally {
                 expanding.pop();
             }
@@ -2983,7 +3112,7 @@ public final class ChildHomeMaterializer {
 
     private static void walkPlain(Path src, String rel, GitIgnoreRules rules, List<ViewEntry> out)
             throws IOException {
-        if (isUnowned(rules, rel, isRealDirectory(src))) return;
+        if (isUnowned(rules, rel, asMaterializedDirectory(src))) return;
         if (Files.isSymbolicLink(src)) {
             out.add(new ViewEntry(rel, EntryKind.LINK, src, Files.readSymbolicLink(src), false));
             return;

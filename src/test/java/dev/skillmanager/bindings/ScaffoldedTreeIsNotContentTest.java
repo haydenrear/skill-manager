@@ -329,13 +329,27 @@ public final class ScaffoldedTreeIsNotContentTest {
                                         + "entry in every later drift report — the exact failure "
                                         + "the case above names, arriving through the `directory` "
                                         + "argument instead");
-                        assertTrue(inSource,
-                                "and both sides KEEP it: git's own dir-only rule does not match a "
-                                        + "symlink, so this path is content and HIS-4's git "
-                                        + "surface owns what the dereference then makes of it");
-                        assertTrue(Files.isRegularFile(
-                                        f.childUnit.resolve("test_graph/sdk/generated.txt")),
-                                "which means the tree really is materialized, not dropped");
+                        assertFalse(inSource,
+                                "and both sides EXCLUDE it. Directory-ness is read as the "
+                                        + "MATERIALIZED view will have it, so the answer cannot "
+                                        + "move when the dereference turns the link into the "
+                                        + "directory the rule names — a narrow, deliberate "
+                                        + "divergence from `git check-ignore`, which reads a "
+                                        + "symlink as a file");
+                        assertFalse(Files.exists(f.childUnit.resolve("test_graph/sdk"),
+                                        LinkOption.NOFOLLOW_LINKS),
+                                "so it is not copied either, the same as every other excluded "
+                                        + "path");
+                    }
+                })
+                .test("a directory-only rule over a link to a FILE is not excluded — the "
+                        + "divergence is narrow", () -> {
+                    try (Fixture f = Fixture.dirOnlyRuleOverStoreLinkToFile()) {
+                        f.materialize();
+                        assertTrue(ChildHomeMaterializer.entryDigests(f.childUnit,
+                                        java.util.Set.of(".git")).containsKey("test_graph/sdk"),
+                                "`sdk/` names a directory, and a link that resolves to a FILE is "
+                                        + "not one on either side of the dereference");
                     }
                 })
 
@@ -477,6 +491,31 @@ public final class ScaffoldedTreeIsNotContentTest {
             git(unit, "-c", "user.email=fixture@localhost", "-c", "user.name=fixture",
                     "commit", "--quiet", "-m", "fixture: commit an ignored path on purpose");
             return new Fixture(base, parent, child, List.of());
+        }
+
+        /**
+         * The same dir-only rule over a link that resolves to a FILE. The
+         * divergence taken in {@code asMaterializedDirectory} must not reach
+         * this one, or "directory-only" would have stopped meaning anything.
+         */
+        static Fixture dirOnlyRuleOverStoreLinkToFile() throws Exception {
+            Path base = Files.createTempDirectory("his18-dironly-file-");
+            SkillStore parent = store(base.resolve("parent/.skill-manager"));
+            SkillStore child = store(base.resolve("child/.skill-manager"));
+
+            Path providerUnit = parent.unitDir(PROVIDER, UnitKind.SKILL);
+            Fs.ensureDir(providerUnit.resolve("project_sdk_sources"));
+            Files.writeString(providerUnit.resolve("SKILL.md"), "PROVIDER\n");
+            Path target = providerUnit.resolve("project_sdk_sources/sdk");
+            Files.writeString(target, "a generated FILE, not a tree\n");
+
+            Path unit = parent.unitDir(UNIT, UnitKind.SKILL);
+            Path graph = unit.resolve("test_graph");
+            Fs.ensureDir(graph);
+            Files.writeString(unit.resolve("SKILL.md"), "STORE v1\n");
+            Files.writeString(graph.resolve(".gitignore"), "sdk/\n");
+            Files.createSymbolicLink(graph.resolve("sdk"), target.toAbsolutePath());
+            return new Fixture(base, parent, child, List.of("sdk"));
         }
 
         /**
