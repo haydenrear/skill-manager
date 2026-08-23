@@ -1,4 +1,5 @@
 //SOURCES ../lib/SmEnv.java
+//SOURCES ../lib/HomeIsolation.java
 
 import com.hayden.testgraphsdk.sdk.NodeContext;
 import com.hayden.testgraphsdk.sdk.ProcessRecord;
@@ -293,12 +294,55 @@ final class HomeCloneSupport {
     }
 
     /**
+     * The sanctioned descent record, and the surface class this walk reports it
+     * under.
+     *
+     * <h2>Why the walk had to catch up with a contract that moved</h2>
+     *
+     * <p>This walk used to say "nothing skill-manager wrote in the copy names
+     * the original", full stop. HIS-10 (#227) changed that on purpose: a clone
+     * now records its DESCENT so the sanction for an inherited parent-store
+     * shim is a fact in the copy rather than a flag an operator types. The
+     * record names the source BY DESIGN, and production exempts exactly that
+     * path from its own isolation rule under byte accounting
+     * ({@code HomeProvenance.mentionsOnlyRecordedDescent}).
+     *
+     * <p>So this is not a loosening; it is the walk catching up. The FILENAME
+     * comes from {@link HomeIsolation#DESCENT_RECORD} rather than being spelled
+     * again here — spelling it a fifth time is the defect HIS-17 exists to
+     * stop — and the exemption is that single name at the SCANNED ROOT, never a
+     * pattern. A {@code home.provenance.json} anywhere below is still whatever
+     * {@link #surfaceOf} says it is, and still a leak.
+     *
+     * <h2>Reported, not dropped</h2>
+     *
+     * <p>The hit is RECLASSIFIED rather than skipped, so the caller can require
+     * that the exempted record was actually there. A {@code continue} would
+     * make "0 leaks" and "the clone recorded no descent at all" the same
+     * reading — the shape this node already refuses for tolerated content
+     * references ("either one alone is satisfiable by the wrong
+     * implementation").
+     *
+     * <p>The narrow half of production's rule — that every occurrence of the
+     * needle in the record is accounted for by the parsed {@code clonedFrom} /
+     * {@code parentStores} fields, so a path smuggled into a new field is still
+     * a leak — is deliberately NOT re-implemented here. That byte accounting is
+     * production's, and copying it would be one more spelling of the thing this
+     * ticket exists to remove. The caller's cross-check carries it instead.
+     */
+    static final String DESCENT_SURFACE = "DESCENT";
+
+    /**
      * Every path at or below {@code root} that still mentions {@code needle} in
      * its bytes or in a symlink target, with the surface class it falls under.
      *
      * <p>This is an INDEPENDENT scan, not a reading of the clone's own report.
      * The distinction is the whole point: `home clone` exiting 0 is a claim, and
      * the acceptance criterion for the clone is the filesystem, not the claim.
+     *
+     * <p>The sanctioned descent record comes back under
+     * {@link #DESCENT_SURFACE}; see that constant for why it is
+     * neither a leak nor silently dropped.
      */
     static List<String> referencesTo(Path root, String needle) throws IOException {
         List<String> hits = new ArrayList<>();
@@ -324,10 +368,43 @@ final class HomeCloneSupport {
         try {
             if (Files.size(current) > 4L * 1024 * 1024) return;
             String text = new String(Files.readAllBytes(current), StandardCharsets.UTF_8);
-            if (text.contains(needle)) hits.add(surfaceOf(rel) + " " + rel);
+            if (text.contains(needle)) hits.add(classOf(rel, current, needle) + " " + rel);
         } catch (IOException ignored) {
             // unreadable file; nothing to assert about its bytes
         }
+    }
+
+    /**
+     * {@link #surfaceOf}, with the one sanctioned exception folded in: the
+     * descent record AT THE SCANNED ROOT is reported as {@link #DESCENT_SURFACE}
+     * rather than as the {@code STATE} file it otherwise is.
+     *
+     * <h2>Two conditions, and the second one was missing</h2>
+     *
+     * <p><b>Path.</b> Root-relative depth is half the test — {@code rel} must be
+     * exactly the record's name, one component deep. A record nested anywhere
+     * below falls through to {@link #surfaceOf} and stays a leak.
+     *
+     * <p><b>Accounting.</b> The first version of this shipped with the path test
+     * ALONE, deferring the byte accounting to production on the grounds that the
+     * caller's cross-check carried it. Review of #242 measured that it did not:
+     * the cross-check is a SYMLINK decoy, and {@code verifyRoots} decides that
+     * branch before the regular-file walk runs and without consulting descent at
+     * all. So the widened branch had no oracle in either direction, and a record
+     * carrying one extra unaccounted path would have passed every reader.
+     *
+     * <p>{@link HomeIsolation#mentionsOnlyRecordedDescent} is therefore asked
+     * here too. It is the graph's OWN derivation of the rule, not production's
+     * imported — see that method for why a second implementation is correct in
+     * this one place — and the caller asserts the two AGREE on every run.
+     */
+    static String classOf(String rel, Path file, String needle) {
+        String n = rel.replace('\\', '/');
+        if (HomeIsolation.DESCENT_RECORD.equals(n)
+                && HomeIsolation.mentionsOnlyRecordedDescent(file, needle)) {
+            return DESCENT_SURFACE;
+        }
+        return surfaceOf(rel);
     }
 
     /**

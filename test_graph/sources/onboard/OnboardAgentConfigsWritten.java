@@ -38,7 +38,18 @@ public class OnboardAgentConfigsWritten {
             .kind(NodeSpec.Kind.ASSERTION)
             .dependsOn("onboard.completed")
             .tags("onboard", "agent")
-            .timeout("10s")
+            .timeout("90s")
+            // HIS-17 / DEF-065. Was 10s. That budget is BELOW this graph's
+            // own fixed per-node cost: measured over 14 node gaps in run
+            // 20260823-165545, 13.15-17.66s, mean 14.65s, and jbang startup
+            // alone is 5.68s on an idle machine with a warm cache. This node's
+            // BODY is milliseconds. It could do nothing at all and still time
+            // out, and .retries(2) turned that into flake rather than a verdict.
+            //
+            // 90s is not a measurement of this node -- nothing here takes 90s.
+            // It is headroom over a fixed cost nobody has attacked yet. The
+            // number that matters is the 14s floor and the OTLP exporter
+            // failing on every node of every graph; DEF-065 stays OPEN on it.
             .retries(2);
     private static final ObjectMapper JSON = new ObjectMapper();
     private static final String GATEWAY_ENTRY = "virtual-mcp-gateway";
