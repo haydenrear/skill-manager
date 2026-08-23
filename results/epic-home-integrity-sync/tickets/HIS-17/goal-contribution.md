@@ -33,17 +33,30 @@ and reasoning in the class javadoc. That is an assertion deleted from a graph by
 a ticket that does not own that ticket's contract, and a reviewer should look at
 it directly.
 
-**The independent-scan assertion cannot fail when production's exemption is
-removed, and no probe here makes it.** V1 proves it: the mutation reddens the
-node, through the cross-check and through `home clone`'s own report, while
-`independent_scan_finds_no_owned_surface_naming_the_source` stays green. The
-clone still writes the record; the scan still exempts it; the bytes are
-identical either way. This is the ticket's own defect reproduced, not a gap in
-the probe — but it means the acceptance's *"each fixed assertion must fail when
-the exemption is removed"* is satisfied **at node level, not per assertion**.
+**Review of #242 found the first version's substitute oracle was on a disjoint
+branch, and that was a miss, not a disclosure.** The walk was widened on the
+**regular-file** branch; the decoy added for it was a **symlink**, which
+`verifyRoots` decides *before* the regular-file walk runs and *without*
+consulting descent records or byte accounting. So the descent-record accounting
+was exercised in **neither direction**, and "asserted in both directions on
+every run" read as if it covered the widening. It did not. **V5 now runs the
+exact failure that got through** — production's accounting loosened to a
+filename check, *the same shape the graph itself had shipped* — and every
+assertion in the first version of this PR is in the pass column. Fixed two ways
+(§2), and V5/V6 measure both.
 
-**`artifact-dag` and `onboard` are still red at hand-off**, for causes that are
-not mine and are filed with measurements: DEF-066 and DEF-065.
+**The independent-scan assertion still cannot fail when production's exemption is
+removed** — V1 proves it, and that is this ticket's own defect reproduced rather
+than a gap in the probe. What changed after review: the acceptance is no longer
+satisfied only *at node level*. `the_walk_and_production_agree_about_this_clone`
+reddens **by name** under V1, so the disagreement is asserted rather than
+deduced from two separate reds.
+
+**`artifact-dag` is still red at hand-off**, on a node that is not mine and is
+ARTI-08's declared red: DEF-066. **`onboard` is green** — review of #242
+overturned the first version's decision to file-and-revert the budget fix, and
+all four budgets ship here with DEF-065 left open on the ~14 s floor beneath
+them.
 
 ---
 
@@ -87,8 +100,16 @@ not about, and the only repair for that is widening the fixture until it stops
 saying anything.
 
 So the cross-check reads the **isolation verdict** out of the report text.
-`home verify` has no `--json` and this ticket declares no `production` conflict
-keys, so there was no third option. **A text expectation is exactly what broke
+`home verify` has no `--json`.
+**Strike the sentence that said "there was no third option"** — review of #242
+named three, and it was right. `home clone --json` already emits `"clean"` from
+**the same `verifyRoots` call**, and this node already asserts it as
+`home_clone_reports_clean`; the fixture could have been split; or the exit code
+could have been checked more narrowly. What the text read buys over the JSON one
+is that it is **re-askable of a standing home** rather than produced once at
+clone time — but **no probe here shows it catching anything the JSON reading
+misses.** Across V1, V2b, V3, V5 and V6 the two move together in every run
+except V5, where *both* stay green and the tamper control is what fires. **A text expectation is exactly what broke
 `artifact-dag`**, which is not lost on me — the mitigation is that this one is
 asserted in **both directions on every run**. If production's sentence ever
 moves, the planted-decoy assertion reddens the same day rather than the clean
@@ -231,7 +252,7 @@ the model work plus every regression cfg.
 | `home-clone` | **FAILED**, 1 node red, **9 skipped** | **14/14, 96 assertions** |
 | `checkout-home` | **FAILED**, same node | **8/8, 55 assertions** |
 | `artifact-dag` | FAILED at `lazy.clone…`, **4 skipped** | `lazy.clone…` **12/12**; `cold.artifact…` **green**; fails 2 nodes later on DEF-066 |
-| `onboard` | FAILED, 6 skipped | unchanged — DEF-065, filed with a verified remedy |
+| `onboard` | FAILED, 6 skipped | **15/15 green** — four budgets raised; DEF-065 open on the floor |
 
 ### Homes
 
@@ -277,10 +298,19 @@ assertion added here.
 | --- | --- | --- | --- |
 | DEF-063 | minor | `surfaceOf` omits production's `PROVISIONED_SEGMENTS` — latent second spelling of `classify` | HIS-6 |
 | DEF-064 | minor | `HomeFixpointLaw` never passes `--against`, so the source-reference half is unchecked in 24 graphs | HIS-6 |
-| DEF-065 | major | three `onboard` budgets are below the graph's ~13.3–14.7 s fixed per-node cost; remedy verified, not shipped | HIS-6 |
+| DEF-065 | major | the ~14 s fixed per-node cost itself, and the OTLP `Connection refused` retries inside every budget. **The four budgets are FIXED in this PR**; this stays open on the floor | HIS-6 |
 | DEF-066 | minor | `artifact-dag`'s `uninstall.prunes.the.subgraph` — ARTI-08's declared red, revealed by unblocking the node in front of it | HIS-6 |
+| DEF-067 | minor | `HomeFixpointLaw` would **launder** a surviving decoy rather than report it — it parses the `FOREIGN_HOME` remedy, runs it, and the pruner deletes the evidence | HIS-6 |
 
-Budget was 5; four used.
+Budget was 5; **five used** — DEF-067 came from review of #242.
+
+**Plan note for the epic owner:** `test_graph/sources/lib/HomeIsolation.java` is
+a **new file in the shared `sources/lib/`** that both touched nodes `//SOURCES`,
+and it is **not** in this ticket's `conflict_keys.test_graph` (which names
+`home-clone/HomeClonedIntoProject`, `home-clone/HomeCloneSupport`,
+`artifact-dag/LazyCloneDeclaresWithoutBuilding`). Any concurrent ticket adding to
+`sources/lib/` would not have been warned. Flagged by review; the owner is
+fixing the plan.
 
 ## 8. What I am unsure about
 
@@ -300,11 +330,19 @@ Budget was 5; four used.
    *this* defect and consolidating three graphs' helpers is not this ticket's
    slice — but a reviewer may read that as the same "patch it when it reddens"
    posture #238 criticises.
-4. **`onboard` filed rather than fixed.** Acceptance allows either. I chose
-   filed because shipping three numbers hides a ~14 s fixed cost that a
-   29-graph sweep pays ~15 times per graph. If the owner wants the graph green
-   now, the change is three characters and is verified.
-5. **The decoy plants into a live fixture.** Removal is in a `finally` and
+4. **~~`onboard` filed rather than fixed.~~ Overturned by review of #242, and
+   the reviewer was right.** `onboard` is in CORE; leaving a CORE graph red to
+   preserve a datapoint costs a signal this epic has already shown it does not
+   otherwise get. All four budgets ship; DEF-065 stays open on the floor. The
+   revert had also left the fourth budget — `onboard.seeded.by.server`, 15 s
+   with `retries(2)`, which my own table mis-recorded as 60 s — in place, and
+   that is the one that fails *intermittently*.
+5. **Whether a second implementation of the byte accounting is right.** V5 and
+   V6 justify it — each side reddens alone while the other is correct, which a
+   shared implementation could not do — but it is a fifth spelling of a rule in
+   the ticket about spellings, and the defence rests entirely on the agreement
+   assertion holding them together.
+6. **The decoy and the tamper both mutate a live fixture.** Removal is in a `finally` and
    asserted, and it has never survived across five runs — but a node that
    crashes between plant and revert would leave a symlink for eight downstream
    nodes. It is named `his17-decoy-into-source` so that is attributable on

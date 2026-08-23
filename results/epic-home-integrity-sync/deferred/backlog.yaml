@@ -3242,10 +3242,10 @@ findings:
     found_at: "2026-08-23"
     severity: major
     summary: >
-      Three `onboard` nodes carry a 10s budget that is BELOW the graph's fixed
-      per-node process cost (~13.3-14.7s measured). They cannot pass whatever
-      they do. onboard.skills.installed does 41ms of useful work and pays 14.49s
-      of jbang/JVM/SDK/OTel startup; six nodes skip behind it, both laws included.
+      The ~14s FIXED per-node process cost of a jbang graph node, and the OTLP
+      exporter failing inside every budget. Retitled after review of #242: the
+      four onboard budgets that sat below that floor are FIXED in this PR; what
+      stays open is the floor itself.
     detail: >
       Measured, not inferred -- probes/his-17/onboard-budget.md.
       jbang startup alone on an idle machine with a warm cache is 5.68s (3 runs,
@@ -3258,16 +3258,26 @@ findings:
       (Connection refused localhost:4318) with retries and a shutdown flush
       inside the budget.
     what_was_done: >
-      Cause established and remedy VERIFIED: with the three budgets at 120s,
-      `onboard` is BUILD SUCCESSFUL in 4m45s, 15/15 nodes, run 20260823-165545.
-      Reverted rather than shipped.
+      FOUR budgets raised to 90s and shipped, not three: review of #242 caught
+      that onboard.seeded.by.server is 15s with retries(2), not the 60s this
+      ticket's first probe table recorded, and that the per-node gaps recomputed
+      from the cited run are 13.15-17.66s (mean 14.65s over 14 gaps) -- so the
+      floor was crossed twice in that same run and the fourth budget was failing
+      INTERMITTENTLY, masked by its retries. `onboard` is now BUILD SUCCESSFUL,
+      15/15. 90s is headroom over the floor, not a measurement of any node, and
+      each node's javadoc says so.
     why_deferred: >
-      Raising three numbers makes one graph green and hides the number that
-      matters: ~14s of fixed cost per node, at ~15 nodes x 29 graphs, is where a
-      ~7-minute sweep goes. That is the "widen it until it stops saying
-      anything" move this ticket refused twice elsewhere. Which to pay -- three
-      budgets, or the 13s floor -- belongs to the ticket that owns the terminal
-      sweep and the runtime number the goal is read against.
+      The budgets were a symptom. The floor is the defect: a no-op node costs
+      ~14s, jbang startup alone is 5.68s idle and warm, and the OTLP exporter
+      fails on every node of every graph (Connection refused localhost:4318)
+      with retries and a shutdown flush inside the budget. At ~15 nodes x 29
+      graphs that is where a ~7-minute sweep goes. Attacking it belongs to the
+      ticket that owns the terminal sweep and the runtime number the goal is
+      read against.
+      NOTE: the first version of this entry argued for reverting the budget fix
+      to avoid hiding the floor. Review of #242 overturned that and was right --
+      onboard is in CORE, and leaving a CORE graph red to preserve a datapoint
+      costs the epic a signal it has already shown it does not otherwise get.
     candidate_owner: HIS-6
     status: open
 
@@ -3298,5 +3308,36 @@ findings:
       It is ARTI-08's acceptance criterion, deliberately asserted red, and
       quietly repairing another ticket's declared red from a test-graph ticket
       is how a graph comes to report a ticket done.
+    candidate_owner: HIS-6
+    status: open
+
+  - id: DEF-067
+    found_by: review of PR #242 (HIS-17)
+    found_at: "2026-08-23"
+    severity: minor
+    summary: >
+      If a test-graph node ever leaves an isolation decoy behind, HomeFixpointLaw
+      does not report it -- it LAUNDERS it. Bare `home verify` refuses the link
+      FOREIGN_HOME and prints `complete it with: ... sync --force-scripts`; the
+      law parses that remedy and RUNS it; CliShimPruner deletes the decoy;
+      re-verify exits 0; the law records homesRepaired and PASSES.
+    detail: >
+      So the epic's own post-condition would silently destroy the evidence that
+      a node failed to clean up -- and re-provision the clone's toolchains while
+      doing it, which is the ~90s pruner behaviour GOAL-one-home-one-answer's
+      clause 3 exists to stop. Not hypothetical in shape: the law running a
+      printed remedy is exactly what it is for. It is the interaction with a
+      graph that plants things that nobody had considered.
+    what_was_done: >
+      Documented in HomeIsolation's javadoc, and both planting nodes remove in a
+      finally with the removal ASSERTED in the planting node itself rather than
+      left to anything downstream to notice. No plant has survived a run across
+      eight measured runs.
+    why_deferred: >
+      The general question -- should a law that REPAIRS also report what it
+      repaired away, loudly enough that a graph's own residue is not mistaken
+      for a home that was merely stale -- is the law's contract, and HIS-16 owns
+      the law. Changing it from a ticket that merely plants things would be a
+      second opinion about a shared instrument.
     candidate_owner: HIS-6
     status: open

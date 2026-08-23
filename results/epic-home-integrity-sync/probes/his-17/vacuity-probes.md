@@ -8,8 +8,8 @@ prints that assertion; a mutation that matched zero or two sites aborts.
 
 Graph: `home-clone`, on `feature/238-his-17`.
 
-**Baseline (unmutated), run `20260823-162727`:** 14/14 nodes pass, 13/13
-assertions in `home.cloned.into.project` pass. Metrics: `leakCount=0`,
+**Baseline (unmutated), run `20260823-174248`:** 14/14 nodes, **100 assertions**,
+all pass. `home.cloned.into.project` carries **17**. Metrics: `leakCount=0`,
 `toleratedContentReferences=1`, `sanctionedDescentRecords=1`, `verifyExitCode=1`.
 
 ---
@@ -35,6 +35,7 @@ Run `20260823-164916`.
 | `the_clone_records_its_descent_and_the_scan_counts_it` | pass | pass *(precondition, correctly blind)* |
 | `production_still_refuses_a_planted_path_into_the_source` | pass | pass *(different branch)* |
 | `independent_scan_finds_no_owned_surface_naming_the_source` | pass | **pass** — see below |
+| `the_walk_and_production_agree_about_this_clone` | pass | **RED — added by review of #242** |
 
 **The finding, stated rather than smoothed over.** The acceptance criterion asks
 that each fixed assertion *"fails when the exemption is removed from
@@ -46,6 +47,13 @@ so the bytes the scan walks are identical either way and `leaks=[]` in both
 runs. A test that owns its own copy of a rule cannot notice the rule moving.
 **That is the whole defect of this ticket, reproduced under laboratory
 conditions, and the assertion that caught it is the one added here.**
+
+**Made per-assertion after review.** The first version stopped there and
+disclosed the node-level gap. `the_walk_and_production_agree_about_this_clone`
+— `leaks.isEmpty() == verdictIsClean(...)` — closes it: under V1 the walk says
+clean and production says leak, so the equality is false and the disagreement is
+reddened **by name** rather than deduced from two separate reds. Re-measured on
+`6ac5e11`, run `20260823-174809`: RED, alongside the three above.
 
 ## V2 — FIRST ATTEMPT WAS VACUOUS, and this is why it is on the record
 
@@ -128,6 +136,55 @@ The exemption did not absorb it. The descent record is still classified
 one depth, not widened into uselessness. Both readers refused the same file,
 which is the agreement `GOAL-one-home-one-answer` asks for.
 
+## V5 — the failure the first version of this PR would NOT have caught
+
+Review of #242's HIGH-1: the walk was widened on the **regular-file** branch and
+the only oracle added was a **symlink** decoy, which `verifyRoots` decides
+*before* the regular-file walk runs and *without* consulting descent or byte
+accounting. So the descent-record accounting was exercised in neither direction.
+This is the reviewer's stated scenario, run.
+
+**Mutation.** Production's accounting loosened to a filename check — *the same
+shape the graph itself first shipped*:
+
+```java
+Descent descent = read(file.getParent());
+if (descent == null) return false;
+if (true) return true;      // accounting gone; the filename is enough
+```
+
+**Reached?** Yes — the tampered record was accepted by production. Run
+`20260823-174949`.
+
+**Exactly one assertion reddened:**
+
+| assertion | after |
+| --- | --- |
+| `production_refuses_a_descent_record_carrying_an_unaccounted_path` | **RED — the claim** |
+| `production_still_refuses_a_planted_path_into_the_source` | pass — **the symlink decoy sees nothing** |
+| `production_agrees_no_path_in_the_clone_names_the_source` | pass |
+| `home_clone_reports_clean` / `home_clone_exits_zero` | pass |
+| `the_walk_and_production_agree_about_this_clone` | pass |
+| `independent_scan_finds_no_owned_surface_naming_the_source` | pass |
+
+**That is "four readers, one wrong answer" in a single table** — and every
+assertion the first version of this PR shipped is in the pass column. The one
+that catches it is the tamper control added on the branch that was actually
+widened.
+
+## V6 — and the graph's own accounting is live, not decorative
+
+**Mutation.** The same loosening applied to
+`HomeIsolation.mentionsOnlyRecordedDescent` — the graph's side.
+
+**Result.** Run `20260823-175134`, **exactly one assertion reddened**:
+`the_walk_refuses_a_descent_record_carrying_an_unaccounted_path`.
+`production_refuses_…` stayed green, because production still has its accounting.
+
+V5 and V6 together are the point of keeping two implementations: **each one
+reddens alone when the other is still correct.** A single shared implementation
+would have gone green in both runs.
+
 ## Preconditions asserted, and their blindness
 
 Per mechanism A, these are declared as preconditions and are blind to the
@@ -140,6 +197,16 @@ mutations above:
   no decoy has ever survived into a downstream node.
 * `home.clone.fixture.built`'s eight assertions — the fixture proving it can
   express the defect. They are what exposed V2 as vacuous.
+* `the_tampered_descent_record_is_restored` — byte-for-byte comparison against
+  the bytes read before tampering. Passed in every run above; no tampered record
+  has ever reached a downstream node.
+* `HomeIsolation.tamperDescentRecord` throws if the tamper did not RAISE the
+  needle's occurrence count, so a control that changed nothing fails loudly
+  instead of being asserted around. It also tampers the **timestamp** rather
+  than adding a field, because `clonedAt` is free text and `usable()` checks
+  only the schema version — the record stays parseable and BELIEVED, so a
+  refusal cannot come from unreadability instead of from the accounting. That is
+  mechanism C avoided by construction.
 * `HomeIsolation.plantDecoy` refuses a target that does not exist, so a control
   cannot silently degrade into testing the dangling-reference branch. **It fired
   for real** on the first `artifact-dag` attempt: `home.policy.toml` does not
