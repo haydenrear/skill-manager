@@ -3375,6 +3375,22 @@ findings:
     found_by: epic agent, bootstrapping the HIS-13 worktree on epic tip 6ee45b1
     found_at: "2026-08-23"
     severity: major
+    duplicate_of: DEF-006
+    correction: >
+      FILED AS NEW, AND IT IS NOT. DEF-006 recorded this exact mechanism on
+      2026-08-21 against Homebrew 0.23.0, with the same five FOREIGN_HOME shims
+      and the same SKILL_MANAGER_CLI workaround. The epic agent hit it again two
+      days later and wrote it up from scratch without checking the backlog it
+      maintains -- which is itself the epic's recurring shape (an enumerated list
+      nobody re-reads) turned on its own bookkeeping. Keep this entry for the ONE
+      fact DEF-006 could not have: the release cut SINCE then still has it.
+    what_is_new_here: >
+      DEF-006 measured 0.23.0. This is 0.24.0 -- the CURRENT PUBLIC RELEASE, cut
+      from main on 2026-08-21 AFTER most of this epic's fixes existed on the epic
+      branch but before any of them merged to main. So the defect is not merely
+      historical: it is in the artifact users install today, and it will stay
+      there until this epic's PR merges and ships. That makes it a DEPLOY-RISK
+      item for the epic PR rather than a provisioning annoyance.
     summary: >
       THE RELEASED CLI CANNOT BOOTSTRAP A WORKTREE HOME FOR THIS REPOSITORY.
       `bootstrap-home.sh` picks a CLI off PATH before the checkout's own, so it
