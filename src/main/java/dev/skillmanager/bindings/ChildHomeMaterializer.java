@@ -583,6 +583,19 @@ public final class ChildHomeMaterializer {
      * into. A child home that never wrote under an excluded path pays for the
      * top-most enumeration and nothing else.
      */
+    /**
+     * {@link #declaredOnlyEntries} for the HIS-18 measurement probe, which needs
+     * to report what this change hides that {@link Rederivable} did not already
+     * hide. Public because that probe is a separate program, and the
+     * alternative is a second implementation of the same walk living in it —
+     * which is the defect this epic keeps meeting, not a thing to do on
+     * purpose.
+     */
+    public static java.util.LinkedHashMap<String, String> declaredOnlyEntriesForReview(Path root)
+            throws IOException {
+        return declaredOnlyEntries(root);
+    }
+
     private static java.util.LinkedHashMap<String, String> declaredOnlyEntries(Path root)
             throws IOException {
         if (!Files.isDirectory(root, LinkOption.NOFOLLOW_LINKS)) {

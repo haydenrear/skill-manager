@@ -147,6 +147,12 @@ public class RenderBaseline {
         System.out.println("\n--- render() over the projected record ---");
         now.render().forEach(System.out::println);
 
+        System.out.println("\n--- NET NEW EXCLUSIONS ON THE LIVE TREE, per unit ---");
+        System.out.println("(what this change hides that Rederivable did not already hide, "
+                + "TODAY, on trees that still exist — the forward-going number, which is NOT "
+                + "the baseline projection above)");
+        netNewExclusions(home);
+
         System.out.println("\n--- test_graph/ entries, as the digest counts them ---");
         entryCounts(home, Path.of(args.length > 1 ? args[1]
                 : System.getProperty("user.dir") + "/.skill-manager"));
@@ -211,6 +217,40 @@ public class RenderBaseline {
         counts.forEach((name, c) -> System.out.printf("%-24s %10s %10s%s%n", name,
                 c[0] < 0 ? "-" : c[0], c[1] < 0 ? "-" : c[1],
                 c[0] >= 0 && c[1] >= 0 && c[0] != c[1] ? "   DIVERGES" : ""));
+    }
+
+    /**
+     * What {@link GitIgnoreRules} hides on the LIVE tree that {@link Rederivable}
+     * did not already hide. The baseline projection above scores paths that were
+     * DELETED — that is why they are in {@code removedFiles} — so it is a
+     * retrodiction. This is the same predicate asked about trees that are still
+     * there, and it is the number a record generated today would move by.
+     */
+    private static void netNewExclusions(Path home) throws Exception {
+        int total = 0;
+        for (String kind : List.of("skills", "plugins")) {
+            Path dir = home.resolve(kind);
+            if (!Files.isDirectory(dir)) continue;
+            try (var units = Files.list(dir)) {
+                for (Path unit : units.sorted().toList()) {
+                    if (!Files.isDirectory(unit, java.nio.file.LinkOption.NOFOLLOW_LINKS)) continue;
+                    Map<String, String> now =
+                            ChildHomeMaterializer.entryDigests(unit, HomeDigest.EXCLUDED);
+                    Map<String, String> declaredOnly =
+                            ChildHomeMaterializer.declaredOnlyEntriesForReview(unit);
+                    if (declaredOnly.isEmpty()) continue;
+                    total += declaredOnly.size();
+                    System.out.printf("  %-28s %6d entries digested, %4d NET NEW exclusions%n",
+                            unit.getFileName(), now.size(), declaredOnly.size());
+                    declaredOnly.keySet().stream().limit(6)
+                            .forEach(r -> System.out.println("       " + r));
+                    if (declaredOnly.size() > 6) {
+                        System.out.println("       … " + (declaredOnly.size() - 6) + " more");
+                    }
+                }
+            }
+        }
+        System.out.println("  TOTAL NET NEW EXCLUSIONS ACROSS THE STORE: " + total);
     }
 
     private static void line(String what, int was, int now) {
