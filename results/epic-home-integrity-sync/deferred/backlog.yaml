@@ -3314,30 +3314,59 @@ findings:
   - id: DEF-067
     found_by: review of PR #242 (HIS-17)
     found_at: "2026-08-23"
-    severity: minor
+    severity: major
     summary: >
-      If a test-graph node ever leaves an isolation decoy behind, HomeFixpointLaw
-      does not report it -- it LAUNDERS it. Bare `home verify` refuses the link
-      FOREIGN_HOME and prints `complete it with: ... sync --force-scripts`; the
-      law parses that remedy and RUNS it; CliShimPruner deletes the decoy;
-      re-verify exits 0; the law records homesRepaired and PASSES.
+      A SELF-HEALING INSTRUMENT. HomeFixpointLaw does not merely observe a home
+      -- it parses the remedy out of a refusal and RUNS it. So the law can
+      silently repair the condition it was checking for, mutate 24 graphs' homes
+      mid-run, and report PASS. That is a category of hazard nobody in this epic
+      had named, and the decoy case below is one instance of it, not the whole
+      of it.
     detail: >
-      So the epic's own post-condition would silently destroy the evidence that
-      a node failed to clean up -- and re-provision the clone's toolchains while
-      doing it, which is the ~90s pruner behaviour GOAL-one-home-one-answer's
-      clause 3 exists to stop. Not hypothetical in shape: the law running a
-      printed remedy is exactly what it is for. It is the interaction with a
-      graph that plants things that nobody had considered.
+      The general shape: an instrument that acts on what it finds cannot
+      distinguish "this home was stale" from "another node in this graph put
+      that there and failed to clean up" from "the product is broken in the way
+      this law exists to detect". It converts all three into PASS plus a
+      homesRepaired count, and the evidence for telling them apart is exactly
+      what it destroys. An observer that repairs is no longer an observer, and
+      every graph carrying the law (24 of 29) inherits that.
+
+      Three consequences, in ascending order of how badly they read:
+
+      1. EVIDENCE DESTRUCTION. Measured concretely for HIS-17's decoy: bare
+         `home verify` refuses the planted link FOREIGN_HOME and prints
+         `complete it with: ... sync --force-scripts`; the law parses that,
+         runs it; CliShimPruner deletes the decoy; re-verify exits 0; the law
+         records homesRepaired and PASSES. A node that crashed between plant and
+         revert would leave NO trace by the end of the graph.
+
+      2. UNDECLARED MUTATION OF A SHARED FIXTURE. That same remedy re-provisions
+         the clone's toolchains -- the ~90s CliShimPruner prune-and-rebuild that
+         GOAL-one-home-one-answer's CLAUSE 3 exists to stop -- inside a graph
+         run, to homes later nodes then read. The law is a WRITER wearing an
+         assertion's name.
+
+      3. IT CAN GREEN A REAL DEFECT. Nothing distinguishes a foreign shim the
+         PRODUCT wrongly created from one a fixture planted. If a regression
+         made `home clone` inherit foreign shims again, the law would find them,
+         run the remedy, and pass -- which is this epic's founding defect being
+         repaired away by the instrument built to catch it.
     what_was_done: >
-      Documented in HomeIsolation's javadoc, and both planting nodes remove in a
-      finally with the removal ASSERTED in the planting node itself rather than
-      left to anything downstream to notice. No plant has survived a run across
-      eight measured runs.
+      Documented in HomeIsolation's class javadoc so the next author planting
+      anything into a graph home meets it before the hazard does. Both planting
+      nodes remove in a finally, with the removal ASSERTED in the planting node
+      itself rather than left to anything downstream to notice -- precisely
+      because the law downstream would NOT notice. No plant has survived a run
+      across eight measured runs.
     why_deferred: >
-      The general question -- should a law that REPAIRS also report what it
-      repaired away, loudly enough that a graph's own residue is not mistaken
-      for a home that was merely stale -- is the law's contract, and HIS-16 owns
-      the law. Changing it from a ticket that merely plants things would be a
-      second opinion about a shared instrument.
+      The contract question -- may an assertion repair, and if so must it report
+      what it repaired loudly enough that a graph's own residue and a product
+      defect are distinguishable -- is the law's own, and HIS-16 owns the law.
+      Changing it from a ticket that merely plants things would be a second
+      opinion about a shared instrument, which is the defect HIS-17 exists to
+      remove. The cheap first move is not to stop repairing but to make the law
+      FAIL, not pass, when the thing it repaired was an isolation leak rather
+      than an unbuilt artifact -- the two are already separate categories in
+      HomeCloner.Verification.
     candidate_owner: HIS-6
     status: open

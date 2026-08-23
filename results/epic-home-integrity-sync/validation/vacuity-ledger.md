@@ -12,7 +12,7 @@ whether it exists yet.
 
 ---
 
-## The ten instances
+## The eleven instances
 
 | # | ticket | what happened | caught by |
 | --- | --- | --- | --- |
@@ -26,15 +26,19 @@ whether it exists yet.
 | 8 | HIS-14 | V8: **neither "frozen" fixture was frozen** — both wrote `policy.toml`; the file is `home.policy.toml` | author |
 | 9 | HIS-15 | V1 reddened a precondition — **inside the guard written to stop exactly that** | author |
 | 10 | HIS-11 | the escrow probe reddened "something was taken", not "it came back" | author |
+| 11 | HIS-17 | the walk was widened on the **regular-file** branch and the only control added was a **symlink** decoy — a branch production decides earlier and by different rules. The claim reddened under every probe, and the widening was tested by none of them | **reviewer** |
 
-**Eight of ten were caught by the ticket's own author**, two by a reviewer or the
-epic agent. That ratio is the process working. The rate not falling is the finding.
+**Eight of eleven were caught by the ticket's own author**, three by a reviewer or
+the epic agent. That ratio is the process working. The rate not falling is the
+finding — and row 11 is the first one no existing mechanism describes.
 
 ---
 
-## Three mechanisms, not ten accidents
+## Four mechanisms, not eleven accidents
 
-Grouping them is what turns anecdotes into assertions.
+Grouping them is what turns anecdotes into assertions. **D was added by HIS-17**,
+because row 11 fits none of A, B or C — see below for why that matters more than
+the count does.
 
 ### A — the probe reddens a *precondition*, not the *claim*
 Rows **5, 9, 10**. The mutation makes the test fail, so it looks like a passing
@@ -63,6 +67,58 @@ and the probe asserts the mutated path was **reached** — not merely that the s
 stayed green. HIS-15's exit-13 case is the model: it proves the code ran before it
 proves what the code did.
 
+### D — the probe exercises a *different branch* than the change
+Row **11**. **The newest, and the one that hides best**, because it passes every
+test the first three impose: the mutation compiles and runs, the fixture is rich
+enough to express the defect, the mutated path is demonstrably reached, and the
+claim genuinely reddens. All four readings are true and the change is still
+untested — because the assertion that reddened is downstream of a *different*
+branch than the one that moved.
+
+HIS-17's blocker is the worked example. The walk was widened on the
+**regular-file** branch of `HomeCloner.verifyRoots` — "this filename at this depth
+is not a leak". The control added for it was a **symlink** decoy, and
+`verifyRoots` decides symlinks *earlier in the same walk* and *without consulting
+descent records or byte accounting at all*. So:
+
+| probe | mutation | reddened | and yet |
+| --- | --- | --- | --- |
+| V1 | production's exemption removed | the cross-check | never touched the accounting |
+| V2b | the isolation gate emptied | the decoy control | the symlink branch |
+| V3 | a real state leak planted | the independent walk | the un-widened path |
+
+Three probes, three genuine reds, and **the widened branch tested by none of
+them**. It took a reviewer reading `plantDecoy`'s own javadoc — which *says* it
+targets the branch decided "without consulting descent records… or byte
+accounting" — to notice the control named its own disjointness out loud.
+
+**V5 is what the mechanism looks like when you finally aim at the right branch.**
+Production's accounting was loosened to a filename check, and:
+
+```
+production_refuses_a_descent_record_carrying_an_unaccounted_path   RED   <- the claim
+production_still_refuses_a_planted_path_into_the_source            pass  <- the decoy sees nothing
+production_agrees_no_path_in_the_clone_names_the_source            pass
+home_clone_reports_clean / home_clone_exits_zero                   pass
+independent_scan_finds_no_owned_surface_naming_the_source          pass
+the_walk_and_production_agree_about_this_clone                     pass
+```
+
+**Every assertion the pre-review version shipped is in the pass column.** Four
+readers, one wrong answer, one table.
+
+**The assertion:** a probe names **which branch** it exercises, and a change names
+**which branch** it moved; a probe is only counted against a change when the two
+are the same. Where a rule has branches that are decided separately — different
+inputs, different order, different evidence — each branch needs its own control,
+and a control whose javadoc explains that it deliberately avoids the evidence
+under test is naming a gap, not a strength.
+
+**Why this is not just B with extra words.** B is a fixture too poor to express
+the defect. Here the fixture expressed the defect fine — the descent record was
+present, correct, and read on every run. The probe simply pointed somewhere else.
+A richer fixture would not have helped; a differently-aimed probe was the only fix.
+
 ---
 
 ## Work list — assertions to add, and where
@@ -79,6 +135,8 @@ new graphs.
 | B | a tier fixture asserts the tier count it needs actually exists | `home-integrity` | HIS-7's node does; **not general** |
 | C | the mutation harness asserts its pattern matched exactly once | every `RunHis*` | **DEF-035**, routed to HIS-8 |
 | C | a probe asserts the mutated path was reached | unit suites | HIS-15 did it; **not general** |
+| D | a probe names which BRANCH it exercises, and it is the branch the change moved | every `RunHis*` + probe record | **HIS-17** wrote it down; **convention only** |
+| D | a rule with separately-decided branches has a control per branch | `home-clone` (done: symlink decoy + descent tamper) | **HIS-17**; not general |
 | — | a home's **unit membership** is what the graph intended | new law beside `HomeFixpointLaw` | **HIS-16** |
 | — | every private "does anything name another home" scan cross-checks production | `home-clone`, `checkout-home`, `artifact-dag` | **HIS-17** |
 
@@ -91,11 +149,16 @@ the `--json` guard caught a failure path **created one promotion slot earlier**.
 
 **Not mechanised:** every row above marked *convention only*. They are real practice
 and they are held by discipline rather than by a check, which is precisely the
-condition that produced ten instances.
+condition that produced eleven instances.
 
-**The honest read for HIS-6:** the discipline is working — eight of ten self-caught
-— and the count is not falling, because nine of the ten mechanisms are still
-enforced by care rather than by code.
+**The honest read for HIS-6:** the discipline is working — eight of eleven
+self-caught — and the count is not falling, because eleven of the twelve
+countermeasures are still enforced by care rather than by code.
+
+**And the taxonomy was incomplete for ten instances before anyone noticed.** D was
+not a new failure; it was a failure mode that had no name, so nothing looked for
+it. That is worth more to HIS-6 than the count: a ledger of mechanisms is itself
+an enumerated list, and enumerated lists are what this epic keeps catching out.
 
 ---
 
