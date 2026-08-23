@@ -3453,6 +3453,151 @@ findings:
     also_relevant_to: [HIS-13, HIS-8]
     status: open
 
+  - id: DEF-069
+    found_by: HIS-13, running its own declared toolchain step
+    found_at: "2026-08-23"
+    severity: major
+    status: corrected
+    superseded_by: DEF-072
+    corrected_at: "2026-08-23"
+    corrected_by: "review of PR #244; re-measured by the epic agent; accepted by HIS-13"
+    short_label: "tla-spec-dev could not parse ticket_plan.yaml -- real mechanism, THREE FALSE CLAUSES, now withdrawn"
+    summary: >
+      I filed this at severity `blocking` claiming the spec toolchain had been
+      unusable "all epic" and that this explained HIS-14's skipped lifecycle and
+      `skt status`'s reporting. THE MECHANISM IS REAL AND THREE OF THE CLAUSES
+      ARE FALSE. They are withdrawn here rather than quietly dropped, and the
+      whole entry is superseded by DEF-072, which carries the corrected onset
+      and the part that survives.
+    what_was_true: >
+      `parse_simple_yaml` in the spec-double-compiler skill is a hand-rolled
+      line-oriented reader that cannot read a WRAPPED FLOW SEQUENCE, and
+      ticket_plan.yaml contained three. `open ticket HIS-13` aborted with
+      ValueError before doing anything. That is a parser bug, not a data bug --
+      PyYAML reads the same file and all 52 tickets -- and it is fixed on the
+      epic branch at 6d4c6a4.
+    what_was_FALSE_and_is_withdrawn: >
+      (1) "No ticket in this epic can run its declared spec lifecycle" and "for
+      the whole epic". Re-measured over three commits with the same parser:
+      ddca9be (2026-08-21 20:34) PARSES; 65942a3 (2026-08-22 11:18) FAILS;
+      6ee45b1 (2026-08-23 16:17) FAILS. Kickoff was 2026-08-20, so waves 1-5
+      parsed fine and the parser explains waves 6-9 only.
+      (2) "This is why HIS-14 recorded the same skip." HIS-14's own document
+      gives a DIFFERENT reason -- the only `tla-spec-dev` on PATH resolving
+      through the ROOT home's CLI pin.
+      (3) "`skt status` has been reporting every HIS ticket as not-open all
+      epic as a consequence." `skt status` uses its own regex reader, which the
+      wrap does not affect.
+    how_i_got_it_wrong: >
+      RECORDED BECAUSE IT IS THIS EPIC'S OWN SIGNATURE FAILURE, committed by the
+      agent shipping the detector for it. I hit the parse error on the CURRENT
+      tip, found HIS-14's document already saying "the workflow was not run",
+      and inferred one cause for both. I never ran the parser against an earlier
+      commit -- a two-minute check -- and never opened HIS-14's document to see
+      that it names a different cause. A single observation was generalised
+      across eighteen tickets and three weeks. That is an unmeasured claim in a
+      backlog entry filed at `blocking`, in a ticket whose vacuity discipline is
+      "an assertion whose red you have not personally seen does not count".
+      The same discipline applies to a finding, and I did not apply it.
+    candidate_owner: superseded -- see DEF-072
+    related: [DEF-072]
+
+  - id: DEF-070
+    found_by: HIS-13, after shipping `home repair`
+    found_at: "2026-08-23"
+    revised_at: "2026-08-23"
+    revised_by: "review of PR #244 (M9), which found the entry described the wrong half"
+    severity: major
+    short_label: "`home verify` and `home repair` disagree about a home, and one half of that is a real reader conflict"
+    summary: >
+      HIS-13 added detection for conditions `home verify` does not check, and
+      deliberately did not change `home verify`. Two commands now inspect one
+      home and reach different verdicts. AS ORIGINALLY FILED THIS ENTRY WAS
+      WRONG ABOUT WHICH DISAGREEMENT MATTERS.
+    the_half_that_is_NOT_a_defect: >
+      The agent-axis case. `home verify` walks the STORE; a projection under
+      `<home>/.claude/skills` is the home's other axis and is outside the
+      question `verify` asks. Two commands asking two questions and answering
+      each correctly is separation, not conflict. The original entry presented
+      this as the finding. It is not one.
+    the_half_that_IS_a_defect: >
+      One path, one home, THREE READERS, THREE ANSWERS -- measured on a fresh
+      lazy clone, on `bin/cli/tofu`:
+
+        artifacts list          declared-only
+        home verify             declared, "and not a failure"
+        home repair             PRUNED_INHERITED_ENTRY -- damage
+
+      GOAL-one-home-one-answer's baseline is "FOUR READERS, THREE ANSWERS on one
+      cloned home". This made it FIVE readers and three answers, and the new
+      reader was the one that WRITES: `--fix` would have linked that home at its
+      parent store over an artifact that was never pruned and was never there.
+    resolution: >
+      LARGELY FIXED IN HIS-13 ITSELF, as Blocker 1 of the PR #244 review.
+      `prunedInheritedEntries` now asks the same question `home verify` asks --
+      `Artifact.Materialization.DECLARED_ONLY` and the home's `lazy_artifacts`
+      policy -- so a declared-but-unbuilt entry point is a normal state to all
+      three readers and `home repair` no longer reports it.
+      WHAT REMAINS is the general question this entry should have asked from the
+      start: nothing enumerates the readers of "is this entry point supposed to
+      be here", so the next one added will have to rediscover the same two
+      records. That is HIS-6's to decide, and it is a smaller finding than the
+      one originally filed.
+    candidate_owner: HIS-6
+    related: [DEF-012, DEF-015]
+    status: open
+
+  - id: DEF-071
+    found_by: HIS-13, from its own V7 vacuity probe
+    found_at: "2026-08-23"
+    severity: major
+    short_label: "a confinement whose roots are derived from the same function as its targets protects nothing"
+    summary: >
+      WriteConfinement cannot defend a command that derives BOTH the paths it
+      touches AND the roots it may touch them under from one function. Break
+      that function and the gate moves with the damage, agreeing with it
+      perfectly.
+    detail: >
+      MEASURED, HIS-13 probe V7. The mutation is HIS-14's defect planted in the
+      new repairer: HomeRepair.agentDirsOf switched from
+      AgentHomes.agentDirsUnder(homeRootFor(store)) -- structural, from the
+      store path -- to AgentHomes.agentHomeRoot(), which reads the environment.
+
+      Run against a home under /var/folders/.../home-repair-stale-*, the
+      mutated build produced 60 findings naming
+      ~/.claude/skills/*, ~/.codex/skills/* and ~/.gemini/skills/* -- the
+      OPERATOR'S REAL GLOBAL LINKS, read by a command pointed at a temp
+      directory. The probe's own byte-snapshot then read the contents of all
+      three trees, which is why V7.out was 900 KB before truncation.
+
+      NOTHING WAS WRITTEN, verified immediately: no path under ~/.skill-manager,
+      ~/.claude, ~/.codex, ~/.gemini or the project home had an mtime inside the
+      window, and every link still resolved into ~/.skill-manager/skills. The
+      reason is incidental: every finding was UNREPAIRABLE ("this home does not
+      hold skills/<unit>") because the temp fixture held none of those units, so
+      the repair loop skipped all 60.
+
+      THE POINT IS WHAT DID NOT SAVE IT. WriteConfinement was in force, and it
+      would not have refused, because HomeRepair.ownedAxesOf builds its
+      permitted roots from the SAME agentDirsOf call. The mutation moved the
+      targets and the fence together. Had the fixture home held a unit of the
+      same name, the mutated build would have repointed the operator's real
+      global link and the gate would have agreed.
+    the_generalisation: >
+      This is not a HomeRepair bug -- production derives the axis structurally
+      and there is an assertion (`the_agent_axis_comes_from_the_HOME_and_not_
+      from_the_ENVIRONMENT`) that reddens under exactly this mutation. It is a
+      statement about what the guard is worth: WriteConfinement is a defence
+      against a caller that computes the wrong TARGET, and no defence at all
+      against one that computes the wrong HOME. Every existing call site should
+      be read with that question -- does anything independent of this operation
+      decide its roots? -- and today, for the home axis, nothing does.
+      Candidate: the confinement takes the roots from an ambient declaration
+      made once, by the CLI, from the argv, rather than from the operation.
+    candidate_owner: HIS-6 to triage; HIS-9 owns WriteConfinement's contract
+    related: [DEF-007, DEF-029]
+    status: open
+
   - id: DEF-072
     found_by: epic agent, acting on DEF-069's half (a)
     found_at: "2026-08-23"
@@ -3595,4 +3740,131 @@ findings:
       and HIS-16's thesis applied to the test suite. Until then, state which
       configuration each recorded green was measured in.
     candidate_owner: HIS-6
+
+  - id: DEF-075
+    # RENUMBERING AID: filed by HIS-13 as DEF-073 in its own worktree while the
+    # epic agent was filing a DIFFERENT DEF-073 on the epic branch. Renumbered at
+    # merge by the epic agent, who caused the collision. Contents unchanged.
+    found_by: HIS-13, fixing blocker 1 of the PR #244 review
+    found_at: "2026-08-23"
+    severity: major
+    short_label: "nothing on disk remembers that an entry point was once present, so 'pruned' and 'deferred' are the same state"
+    summary: >
+      HIS-9 measured a real incident: a sync's shim pruner DELETED five
+      inherited entry points from a cloned home. HIS-13 set out to detect that
+      residue and CANNOT, because no record in a home distinguishes "this entry
+      point was here and was removed" from "this entry point was declared and
+      never built". They are byte-identical states.
+    detail: >
+      The three records that could have carried it, and what each actually says:
+
+        artifacts.lock.toml   DECLARES the artifact. A lazy clone carries rows
+                              for artifacts it never built (Artifact.Origin.LEDGER
+                              exists for exactly that), so a row is not evidence
+                              the output was ever produced HERE.
+        cli-lock.toml         records the INSTALL, keyed by package name; for an
+                              INHERITED shim there was no install in this home.
+        home.provenance.json  records which STORES this home descends from. Not
+                              which entries it received from them.
+
+      So the first version of this check used the only conjunction available --
+      declared, absent, and the recorded parent still holds it -- and the review
+      measured what that costs: a stock `home clone` reported as damaged, with
+      the verdict depending on which binaries happened to exist in the
+      operator's root store (eight artifacts declared-only, one finding, because
+      root held that one binary; on another machine, five findings).
+    what_shipped_instead: >
+      The check now also requires `lazy_artifacts = false` -- production's own
+      rule from HomeCloner.partitionDeclared, read in the accusing direction. A
+      home that deferred nothing and is missing an entry point it declares is
+      damaged; a home that deferred is not. That is correct and it is NARROW:
+      `lazyArtifactsDefault` is "on for every home except the operator root", so
+      the check is silent on exactly the homes HIS-9's incident happened in.
+    consequence: >
+      The HIS-9 prune residue on a lazy home is UNDETECTABLE by this command,
+      and saying so is the point of this entry. It is not detectable by a
+      cleverer conjunction either -- the information is not on disk. Anyone who
+      later "improves" the check by dropping the policy condition will
+      reintroduce a false positive on every clone this program makes.
+    candidate_fix: >
+      Record materialization at the moment it happens: when CliShimPruner
+      removes an entry, or when a clone declines to carry one, write which. One
+      line in the ledger turns an undecidable question into a lookup. That is a
+      change to what the ledger MEANS, so it is not a HIS-13-shaped change.
+    candidate_owner: HIS-6 to triage; HIS-9 owns the pruner
+    related: [DEF-070]
+    status: open
+
+  - id: DEF-076
+    # RENUMBERING AID: filed by HIS-13 as DEF-074; collided with the epic agent's
+    # DEF-074. Renumbered at merge. It concerns the SAME test as DEF-073 --
+    # AgentProjectionFollowsHomeTest -- but a different measured escape: a
+    # DANGLING projection in an explicitly-set CODEX_HOME/GEMINI_HOME, found by
+    # `home repair` rather than by a stat sweep. Read the two together.
+    found_by: HIS-13, by running `home repair` against its own worktree home
+    found_at: "2026-08-23"
+    severity: major
+    short_label: "AgentProjectionFollowsHomeTest writes a dangling projection into an explicitly-set CODEX_HOME / GEMINI_HOME"
+    summary: >
+      `AgentProjectionFollowsHomeTest` -- the #145 regression test, whose subject
+      is that an operation on one home must not write another home's agent
+      directories -- leaves a DANGLING skill projection in whatever `CODEX_HOME`
+      and `GEMINI_HOME` name, pointing into a temp home the run then deletes.
+      Nothing cleans it up and nothing fails.
+    detail: >
+      FOUND BY THE COMMAND THIS TICKET SHIPS, unprompted, on its own worktree
+      home:
+
+        MISANCHORED_AGENT_LINK .codex/skills/one-forty-five
+          -> resolves into the store at /private/var/.../sm-145-<n>/operator/.skill-manager
+        MISANCHORED_AGENT_LINK .gemini/skills/one-forty-five   -> same
+
+      REPRODUCED DETERMINISTICALLY: with all five home variables pinned at a
+      scratch directory, running that test alone left
+
+        <scratch>/.codex/skills/one-forty-five  -> <temp>/operator/.skill-manager/skills/...
+        <scratch>/.gemini/skills/one-forty-five -> <temp>/operator/.skill-manager/skills/...
+
+      and the temp `operator` home is removed when the run ends, so what remains
+      is a dangling link in a directory every agent session loads skills from.
+    the_scope_correction_i_had_to_make_before_filing: >
+      MY FIRST DRAFT OF THIS ENTRY SAID "with those unset -- the normal
+      developer environment -- that is the operator's real ~/.codex/skills". I
+      then measured it instead of asserting it: a full `jbang RunTests.java`
+      with CODEX_HOME, GEMINI_HOME, CLAUDE_HOME, CLAUDE_CONFIG_DIR and
+      SKILL_MANAGER_HOME all UNSET wrote NOTHING into ~/.codex or ~/.gemini --
+      no `one-forty-five` link, and no link into any temp directory anywhere
+      under the operator's three agent dirs. So the unset case is NOT affected,
+      and the clause is withdrawn before it was ever shipped.
+
+      Recorded because the correction is the point. DEF-069 was filed at
+      `blocking` on exactly this kind of one-observation generalisation and had
+      to be withdrawn by a reviewer. This is the same reflex, caught by the
+      author this time, and the check that caught it took ninety seconds.
+    what_is_actually_true_and_why_it_still_matters: >
+      The leak follows an EXPLICITLY SET `CODEX_HOME` / `GEMINI_HOME`. That is
+      precisely the configuration this epic's own containment protocol
+      mandates -- every ticket agent is told to pin all four home variables at
+      its worktree before running anything, and `bootstrap-home.sh` exports
+      them. So the population affected is not "developers with an unusual
+      setup"; it is "every agent following the rule", and the thing that
+      protects the operator's global config is the ABSENCE of the variable the
+      protocol exists to make you set. That is backwards, and it is worth
+      fixing for that reason rather than for blast radius.
+    consequence: >
+      Every ticket worktree that runs the unit suite accumulates a dangling
+      projection in its own `.codex/skills` and `.gemini/skills`. Measured on
+      this one. It is invisible to `home verify` (the agent axis is outside its
+      walk) and was invisible to everything else until `home repair` existed.
+      It also means the epic cannot claim "no test writes outside its sandbox"
+      of `RunTests.java` as it stands.
+    candidate_fix: >
+      The test should pin its own agent directories the way it already pins its
+      store, through AgentHomes.setOverride, and assert its own teardown. The
+      general form is a suite-level guard: snapshot the three agent directories
+      before and after `RunTests.java` and fail on any difference -- the same
+      assertion HIS-13's graph node makes about `home repair`, and one nothing
+      makes about the suite itself.
+    candidate_owner: HIS-6 to triage; HIS-14 owns the two-axis contract
+    related: [DEF-029]
     status: open

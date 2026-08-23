@@ -85,6 +85,7 @@ public final class CliMetadata {
             command("home sync"),
             command("home refresh-plugins"),
             command("home close-out"),
+            command("home repair"),
             command("install"),
             command("list", "ls"),
             command("lock"),

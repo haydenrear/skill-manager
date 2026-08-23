@@ -419,6 +419,18 @@ public final class LazyHomeScaffoldTest {
         // the CLI reached the classification, not that the command succeeded.
         m.put("home verify", new String[]{"home", "verify"});
         m.put("home close-out", new String[]{"home", "close-out"});
+        // HIS-13. The sharpest case for this guard in the CLI, because the
+        // command's contract IS that it writes nothing: DEF-067 is that an
+        // observer which repairs stops being an observer, and a `home repair`
+        // classified WRITE would have `tryReconcile` scaffold the home it was
+        // asked to inspect BEFORE detection ever ran -- so the bare command
+        // would mutate a home for the crime of being asked about it. Probed
+        // with no arguments, the refusal path, because what the probe asserts
+        // is that the CLI reached the classification and the decoy stayed
+        // empty. `--fix` is deliberately NOT probed here: it is a writer, it
+        // is classified WRITE by the INIT_GATED row, and asserting that it
+        // scaffolds nothing would be asserting the opposite of its contract.
+        m.put("home repair", new String[]{"home", "repair"});
         return m;
     }
 

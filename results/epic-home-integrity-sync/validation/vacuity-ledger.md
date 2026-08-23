@@ -1,6 +1,7 @@
 # Vacuity ledger — every assertion this epic caught passing against broken code
 
-**Tracked for HIS-6.** The owner's instruction at the wave-6 status review:
+**Tracked for HIS-6.** Thirteen instances, four mechanisms. The owner's
+instruction at the wave-6 status review:
 
 > *"Each of them should have updated assertions so that the test graph catches. It's
 > an opportunity to fix as well as a hole in the process. The great thing about
@@ -12,7 +13,7 @@ whether it exists yet.
 
 ---
 
-## The eleven instances
+## The thirteen instances
 
 | # | ticket | what happened | caught by |
 | --- | --- | --- | --- |
@@ -27,10 +28,37 @@ whether it exists yet.
 | 9 | HIS-15 | V1 reddened a precondition — **inside the guard written to stop exactly that** | author |
 | 10 | HIS-11 | the escrow probe reddened "something was taken", not "it came back" | author |
 | 11 | HIS-17 | the walk was widened on the **regular-file** branch and the only control added was a **symlink** decoy — a branch production decides earlier and by different rules. The claim reddened under every probe, and the widening was tested by none of them | **reviewer** |
+| 12 | HIS-13 | probe V6 removed `rewrite`'s no-op guard and **reddened nothing**: the branch only runs for a finding, and on the second repair the report is clean, so the idempotence claim is not downstream of it. Mechanism **D**, in the harness of the ticket that had just read row 11 | author |
+| 13 | HIS-13 | `makeStale()` planted `bin/cli/never-built` — a name **no parent store holds** — as the oracle for clause 3 of the ticket's own goal. That is the one flavour of staleness the check under test could never report, so the assertion could not fail. A stock `home clone` was meanwhile being called damaged | **reviewer** |
 
-**Eight of eleven were caught by the ticket's own author**, three by a reviewer or
-the epic agent. That ratio is the process working. The rate not falling is the
-finding — and row 11 is the first one no existing mechanism describes.
+**Nine of thirteen were caught by the ticket's own author**, four by a reviewer
+or the epic agent. That ratio is the process working. The rate not falling is
+the finding — and row 11 was the first one no existing mechanism described.
+
+**Rows 12 and 13 are the more useful pair, and they should be read together.**
+Both are HIS-13's, the ticket that shipped the epic's only *repairer*, written
+by an agent who had read this file before writing its first assertion.
+
+- **Row 12 is mechanism D recurring one ticket after it was named.** Naming a
+  mechanism does not make it visible; the author looked for it, wrote a probe,
+  and the probe still pointed at a branch the claim was not downstream of. It
+  was self-caught only because the probe came back **all green**, which is the
+  one signal a vacuous probe cannot hide. That is an argument for running every
+  probe and reading its colour, not for trusting the taxonomy.
+- **Row 13 is what row 12 costs when nothing comes back green.** The fixture was
+  degenerate (mechanism **B**) in the single respect that mattered, so the
+  assertion for the clause the ticket was *graded on* could not fail — and the
+  defect it was meant to catch was live in the shipped command: a fresh,
+  untouched `home clone` was reported as damaged, with the verdict depending on
+  which binaries happened to exist in the operator's root store. Six probes ran
+  against that method. All six reddened. None of them could see it, because they
+  all reddened *the same degenerate oracle*.
+
+**The composite lesson, which neither row states alone:** a probe suite can be
+large, honest, and entirely blind, when every probe is read against one oracle
+and that oracle cannot express the defect. HIS-13 ran twelve mutations and
+observed twelve reds on the arm this bug lived in. The count of probes is not a
+measure of coverage; the count of *distinct oracles* is closer.
 
 ---
 
@@ -114,6 +142,15 @@ inputs, different order, different evidence — each branch needs its own contro
 and a control whose javadoc explains that it deliberately avoids the evidence
 under test is naming a gap, not a strength.
 
+**AND IT RECURRED IMMEDIATELY (row 12).** HIS-13 read this section before
+writing an assertion, wrote a probe against its repair path, and the probe
+moved a no-op guard that the idempotence claim is not downstream of. It came
+back 12-pass/0-fail and was kept as `probes/his-13/V6-VACUOUS.out` rather than
+quietly re-aimed. So the honest status of D is: **written down, and not yet
+prevented by writing it down.** The check that caught it was procedural — every
+probe is run, and an all-green probe is treated as a failed probe rather than as
+a passing test.
+
 **Why this is not just B with extra words.** B is a fixture too poor to express
 the defect. Here the fixture expressed the defect fine — the descent record was
 present, correct, and read on every run. The probe simply pointed somewhere else.
@@ -139,6 +176,9 @@ new graphs.
 | D | a rule with separately-decided branches has a control per branch | `home-clone` (done: symlink decoy + descent tamper) | **HIS-17**; not general |
 | — | a home's **unit membership** is what the graph intended | new law beside `HomeFixpointLaw` | **HIS-16** |
 | — | every private "does anything name another home" scan cross-checks production | `home-clone`, `checkout-home`, `artifact-dag` | **HIS-17** |
+| A | a probe records WHICH assertion reddened, and whether it was the claim or a precondition | probe harnesses | **HIS-13** — mechanised in `probes/his-13/probes.py`, which classifies every red and prints the two counts. The review of #244 found five undeclared precondition-reds in the hand-written table it replaced |
+| B | a clause-3 / non-detection oracle plants the variant that CAN trip the check | `home-integrity`, unit suites | **HIS-13** (row 13) — the discriminating pair is now one disk state judged under two policies |
+| D | an all-green probe is reported as a FAILED probe, never omitted | every `RunHis*` | **HIS-13** — how row 12 was caught at all |
 
 ### What is already mechanised, and what is not
 
@@ -151,9 +191,17 @@ the `--json` guard caught a failure path **created one promotion slot earlier**.
 and they are held by discipline rather than by a check, which is precisely the
 condition that produced eleven instances.
 
-**The honest read for HIS-6:** the discipline is working — eight of eleven
-self-caught — and the count is not falling, because eleven of the twelve
-countermeasures are still enforced by care rather than by code.
+**The honest read for HIS-6:** the discipline is working — nine of thirteen
+self-caught — and the count is not falling. It has now recurred **inside the
+ticket that read the entry about it**, which is the strongest evidence in this
+file that writing a mechanism down does not prevent it. Three of the fifteen
+countermeasures are mechanised; the rest are still enforced by care.
+
+**One thing did change, and it is worth more than the count.** HIS-13's harness
+now classifies each red as landing on the CLAIM or on a PRECONDITION and prints
+both counts into the probe record. That is mechanism A moved from convention to
+code, and it immediately found five reds that had been credited as claims in a
+hand-written table.
 
 **And the taxonomy was incomplete for ten instances before anyone noticed.** D was
 not a new failure; it was a failure mode that had no name, so nothing looked for

@@ -1638,6 +1638,15 @@ validationGraph {
         // assertion is shown to be live rather than assumed to be.
         node("sources/home-integrity/ProjectVerbStaysInItsHome.java")
 
+        // HIS-13 (#159) / GOAL-no-destructive-recovery clause 2: a home that
+        // has ALREADY been damaged is told apart from a healthy one and
+        // repaired. FIVE separate CLI invocations -- detect, detect, repair,
+        // detect, repair -- because DEF-067 is that an observer which repairs
+        // is no longer an observer, and this ticket ships the repairer. The
+        // two bare detections before the repair are the control: they must
+        // both go red AND leave the home byte-identical.
+        node("sources/home-integrity/DamagedHomeIsRepairable.java")
+
         // THE FIXPOINT LAW, as every home-producing graph ends. FAILS if it
         // finds no home.
         //
