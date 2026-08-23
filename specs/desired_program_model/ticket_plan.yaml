@@ -3853,7 +3853,22 @@ tickets:
   - id: HIS-13
     title: "no command can tell a damaged home from a healthy one, so homes already damaged stay damaged"
     phase: HIS
-    status: planned
+    status: delivered
+    delivered_in: "PR #244, merged into epic/home-integrity-sync as 2b19163"
+    delivery_note: >
+      Two BLOCKERS were found by adversarial review and both were real,
+      reproduced verbatim by the ticket agent before it changed anything:
+      (1) a freshly-cloned HEALTHY home was reported as damaged, because
+      prunedInheritedEntries read raw ledger outputs and never consulted
+      `lazy_artifacts` -- so a lazy clone satisfied the "was here, was
+      inherited, is gone" conjunction FROM BIRTH, and the PR's own
+      real-world-value proof was that false positive; (2) `--fix` used
+      String.replace on a path, i.e. a prefix replace, so it rewrote text no
+      finding named -- including a path it had itself declared unrepairable --
+      turned a shim that RAN into exit 126, and then reported the home clean.
+      Both fixed and re-measured. The graph node's own metrics carry the
+      detect/repair separation: detectRunsBeforeRepair 2, findingsAtFirstDetect
+      2, findingsAfterRepair 0.
     epic: home-integrity-sync
     github_issue: 159
     added_in_schedule_revision: 4
