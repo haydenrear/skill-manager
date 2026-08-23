@@ -1,0 +1,15 @@
+ RunHis15.java                                      |  45 ++
+ RunTests.java                                      |   2 +
+ .../epic-home-integrity-sync/deferred/backlog.yaml | 134 ++++
+ .../probes/his-15/probe-1-root-cause.txt           |  56 ++
+ .../probes/his-15/ticket-lifecycle-summary.json    | 891 +++++++++++++++++++++
+ .../probes/his-15/vacuity-checks.txt               |  97 +++
+ .../tickets/HIS-15/goal-contribution.md            | 295 +++++++
+ .../dev/skillmanager/cli/JsonExitEnvelope.java     | 140 ++++
+ .../java/dev/skillmanager/cli/SkillManagerCli.java | 108 ++-
+ .../dev/skillmanager/commands/HomeCommand.java     |  18 +
+ .../skillmanager/store/HomeContendedException.java |  43 +
+ src/main/java/dev/skillmanager/store/HomeLock.java |   6 +-
+ src/main/java/dev/skillmanager/util/Log.java       |  81 +-
+ .../dev/skillmanager/cli/JsonContractTest.java     | 594 ++++++++++++++
+ 14 files changed, 2502 insertions(+), 8 deletions(-)

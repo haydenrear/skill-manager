@@ -1,0 +1,2740 @@
+diff --git a/RunHis15.java b/RunHis15.java
+new file mode 100644
+index 0000000..3cb49a1
+--- /dev/null
++++ b/RunHis15.java
+@@ -0,0 +1,45 @@
++///usr/bin/env jbang "$0" "$@" ; exit $?
++//JAVA 21+
++//SOURCES src/main/java/**/*.java
++//SOURCES src/test/java/**/*.java
++//SOURCES ServerObservabilityContractTest.java
++//SOURCES server-java/src/main/java/dev/skillmanager/server/observability/ServerObservability.java
++//SOURCES server-java/src/main/java/dev/skillmanager/server/observability/ServerObservabilityFilter.java
++//JAVA_OPTIONS -Dorg.slf4j.simpleLogger.defaultLogLevel=warn
++//DEPS org.slf4j:slf4j-api:2.0.16
++//DEPS info.picocli:picocli:4.7.6
++//DEPS org.yaml:snakeyaml:2.3
++//DEPS com.fasterxml.jackson.core:jackson-annotations:2.20
++//DEPS com.fasterxml.jackson.core:jackson-databind:2.20.2
++//DEPS com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.20.2
++//DEPS org.tomlj:tomlj:1.1.1
++//DEPS org.apache.commons:commons-compress:1.27.1
++//DEPS org.eclipse.jgit:org.eclipse.jgit:6.10.0.202406032230-r
++//DEPS io.modelcontextprotocol.sdk:mcp:1.1.1
++//DEPS org.slf4j:slf4j-simple:2.0.16
++//DEPS io.opentelemetry:opentelemetry-sdk-extension-autoconfigure:1.62.0
++//DEPS io.opentelemetry:opentelemetry-exporter-otlp:1.62.0
++//DEPS org.springframework:spring-webmvc:6.1.13
++//DEPS org.springframework:spring-test:6.1.13
++//DEPS jakarta.servlet:jakarta.servlet-api:6.0.0
++/**
++ * The suite HIS-15 (#235) added, on its own.
++ *
++ * <p>SHIPPED ON PURPOSE, for the reason RunHis11.java and RunHis12.java are:
++ * every record in results/epic-home-integrity-sync/probes/his-15/
++ * vacuity-checks.txt names this runner, and a record naming a file that does
++ * not exist is a claim rather than evidence. Apply the mutation a V-number
++ * names, run this, revert.
++ *
++ * <p>jbang RunTests.java remains the full suite and the ticket's declared
++ * local signal; this is the one suite, seconds instead of minutes. It drives
++ * all 31 commands that declare --json through the real CLI entry point, so it
++ * is slower than a pure unit test and still far faster than the graph.
++ */
++public class RunHis15 {
++    public static void main(String[] a) throws Exception {
++        int f = dev.skillmanager.cli.JsonContractTest.run();
++        System.out.println(f == 0 ? "\nALL PASSED" : "\nFAILURES: " + f);
++        if (f != 0) System.exit(1);
++    }
++}
+diff --git a/RunTests.java b/RunTests.java
+index 5f91c54..681e9da 100755
+--- a/RunTests.java
++++ b/RunTests.java
+@@ -46,6 +46,7 @@ import dev.skillmanager.plan.MixedKindTopoOrderTest;
+ import dev.skillmanager.cli.CliAgentContextExecutionTest;
+ import dev.skillmanager.cli.CliRefusalsAreMessagesTest;
+ import dev.skillmanager.cli.HomeBindsBothAxesTest;
++import dev.skillmanager.cli.JsonContractTest;
+ import dev.skillmanager.cli.LazyHomeScaffoldTest;
+ import dev.skillmanager.command.CliAgentContextTest;
+ import dev.skillmanager.command.CliHelpProgressiveDisclosureTest;
+@@ -238,6 +239,7 @@ public class RunTests {
+         failures += ServerObservabilityContractTest.run();
+         failures += CliAgentContextExecutionTest.run();
+         failures += CliRefusalsAreMessagesTest.run();
++        failures += JsonContractTest.run();
+         failures += LazyHomeScaffoldTest.run();
+         failures += HomeBindsBothAxesTest.run();
+         failures += CliAgentContextTest.run();
+diff --git a/results/epic-home-integrity-sync/deferred/backlog.yaml b/results/epic-home-integrity-sync/deferred/backlog.yaml
+index 078fbf6..327b553 100644
+--- a/results/epic-home-integrity-sync/deferred/backlog.yaml
++++ b/results/epic-home-integrity-sync/deferred/backlog.yaml
+@@ -2556,3 +2556,137 @@ findings:
+       rather than refuse.
+     candidate_owner: HIS-11's surface — HIS-13, or whoever takes DEF-041
+     status: open
++
++  - id: DEF-044
++    found_by: HIS-15 (#235)
++    found_at: "2026-08-22"
++    severity: minor
++    summary: >
++      Three --json paths exit 0 having printed nothing, and whether that is
++      right is a design question nobody has answered.
++    detail: >
++      `harness rm` with no matching binding, `harness instantiate
++      --child-home-dir --dry-run`, and `home drift --record` / `--ack` all
++      succeed and emit no document. A consumer that ran them with --json gets
++      an empty stdout and has to infer "nothing happened" from an exit code.
++
++      An {"error":…} envelope would be a LIE about them -- nothing failed --
++      which is why HIS-15's generic net deliberately fires only on non-zero
++      exits. The honest options are an empty-result document
++      ({"removed":[],"exitCode":0}) or a documented "silence means no-op", and
++      choosing between them is a contract decision, not a bug fix.
++    what_is_NOT_deferred: >
++      Their CURRENT behaviour, which is pinned. `JsonContractTest` asserts each
++      of them prints exactly nothing today. A change that starts writing prose
++      there fails the guard, and a change that starts writing a document fails
++      it too and forces whoever makes it to move the case out of SILENT
++      deliberately. The epic owner's instruction, and it is the right one: a
++      deferred gap is an unasserted state, which is the shape this epic has
++      been bitten by repeatedly. This is a known state with a test on it.
++    candidate_owner: HIS-6, or whoever owns the CLI's machine-readable contract
++    status: open
++
++  - id: DEF-045
++    found_by: HIS-15 (#235)
++    found_at: "2026-08-22"
++    severity: minor
++    summary: >
++      close-change.sh should distinguish "the gate refused and told me why"
++      from "the gate produced nothing" in its UNPARSEABLE branch too. Defence
++      in depth against a future cause, not a live defect.
++    detail: >
++      WHICH BRANCH IS WHICH, written down because the output is confusing and
++      the epic owner and this ticket both mis-read it once:
++
++        BRANCH 1  `if [ -z "$VERDICT" ]` -- stdout was EMPTY.
++                  ALREADY CORRECT. It refuses with
++                  REFUSE_FIX="$CLI home close-out --home … --into …", i.e.
++                  re-run the gate by hand without --json so its stderr is
++                  visible. It does NOT say --force.
++
++        BRANCH 2  stdout was NON-EMPTY but json.load() raised.
++                  This is the one that printed
++                  `could not parse the verdict: …`, then found no `run:` lines
++                  in the rendered output, and fell back to
++                  REFUSE_FIX="$0 $TARGET --force" -- advising the operator to
++                  DISCARD the work the gate had just refused to destroy.
++
++      #235 travelled through BRANCH 2, because HomeLock's wait notice made
++      stdout non-empty and unparseable. HIS-15 fixes that at the source: under
++      --json nothing but the document reaches stdout, so this cause cannot
++      produce branch 2 again.
++    why_this_is_deferred_and_not_fixed_here: >
++      close-change.sh lives in a DIFFERENT REPOSITORY
++      (github.com/haydenrear/git-issue-workflow-skill; the copy the graph runs
++      is the one installed in the root home, which this ticket must not write).
++      Cross-repo publishing is HIS-8's (#224) declared path, and opening a
++      second PR from here was ruled out by the epic owner.
++    what_remains: >
++      Branch 2 is still reachable by a DIFFERENT future cause -- any command
++      that emits malformed JSON rather than none. The hardening is: on a parse
++      failure, refuse with the same re-run fix branch 1 uses, and never
++      synthesise --force as a remedy. `--force` is the only fix that is always
++      available and the worst one to lead with, because it is the one that
++      throws the work away.
++    candidate_owner: HIS-8 (#224)
++    status: open
++
++  - id: DEF-046
++    found_by: HIS-15 (#235)
++    found_at: "2026-08-22"
++    severity: minor
++    summary: >
++      The four `project` commands cannot be driven under test, because they
++      resolve their project from the working directory and a JVM cannot change
++      its own.
++    detail: >
++      `project register|remove|resolve|sync` walk UP FROM THE WORKING DIRECTORY
++      to find `skill-project.toml`. A unit test in this repository therefore
++      cannot make them operate on a fixture: they find THIS project. MEASURED
++      while writing JsonContractTest -- `project resolve --json` returned a real
++      report for skill-manager itself ("installed":3,"bindings":3) and wrote the
++      worktree home's `.materialization`, from a test that believed it was
++      sandboxed. The root and project homes were not touched, and the guard's
++      sandbox assertion now covers the home; it cannot cover the CWD.
++    the_general_lesson: >
++      Bigger than the four commands, and the reason JsonContractTest's driver
++      ASSERTS its sandbox instead of establishing one and trusting it:
++
++        AN IN-PROCESS DRIVER CANNOT SANDBOX A COMMAND THAT RESOLVES FROM THE
++        WORKING DIRECTORY.
++
++      A JVM cannot change its own working directory, so every override
++      mechanism this repository has -- AgentHomes' thread-locals, the
++      HomeScaffold access latch, SKILL_MANAGER_HOME -- covers the HOME axis and
++      none of them covers the CWD axis. A test that pins the first and believes
++      it is sandboxed is wrong in exactly one direction, silently, and the
++      command it drives writes real state. That is what happened here: the
++      driver pinned five variables, asserted the default home resolved inside
++      the temp dir, and `project resolve` still acted on this repository,
++      because it never asked the home where the project was.
++
++      So the assertion is not an apology for a near-miss. It is the only thing
++      that can distinguish "sandboxed" from "sandboxed on the axis I thought
++      of", and any future in-process driver in this repository needs the same
++      check plus an explicit decision about the working directory.
++    containment_verified: >
++      Root home and project home untouched: no writes under ~/.skill-manager in
++      the window, main checkout clean, its .skill-manager/.materialization last
++      written 2026-08-14. Confirmed independently by the epic agent before the
++      finding was relayed. The one write was the worktree's own home, which the
++      ticket is entitled to.
++    consequence: >
++      Those four commands are guarded only on their parse-error path, which
++      executes nothing. Their real execution paths have no --json coverage, and
++      more generally nothing in the unit lane can test project behaviour
++      end-to-end -- which is why it all lives in graphs.
++    candidate_shapes: >
++      (a) An explicit `--project-dir` on the family, which makes them testable
++      and is also what an agent operating outside a checkout needs.
++      (b) Drive them in a subprocess with cwd set; correct but costs a JVM
++      start per case in the unit lane.
++    why_deferred: >
++      (a) is a CLI surface change well outside "--json always emits JSON", and
++      it is the better fix, so doing (b) here would entrench the worse one.
++    candidate_owner: HIS-6, or a follow-up on the project command family
++    status: open
+diff --git a/results/epic-home-integrity-sync/probes/his-15/probe-1-root-cause.txt b/results/epic-home-integrity-sync/probes/his-15/probe-1-root-cause.txt
+new file mode 100644
+index 0000000..58ce506
+--- /dev/null
++++ b/results/epic-home-integrity-sync/probes/his-15/probe-1-root-cause.txt
+@@ -0,0 +1,56 @@
++PROBE 1 — the actual root cause of #235, measured on epic tip 854f2ea
++
++Setup: a healthy worktree home and project home, no blockers at all. A peer
++holds the project home's lock file for 8s. One close-out --json runs against it.
++
++$ skill-manager home close-out --home <wt> --into <proj> --json
++exit=0        <-- THE COMMAND SUCCEEDED
++
++stdout:
++  home sync --dry-run: waiting for /private/tmp/claude-501/-Users-hayde-IdeaProjects-skill-manager/dcb6a969-c6fd-484c-873c-6d6175b7d220/scratchpad/his15/proj-home — another skill-manager process holds this home's lock
++  {"home":"/private/tmp/claude-501/-Users-hayde-IdeaProjects-skill-manager/dcb6a969-c6fd-484c-873c-6d6175b7d220/scratchpad/his15/wt-home","into":"/private/tmp/claude-501/-Users-hayde-IdeaProjects-skill-manager/dcb6a969-c6fd-484c-873c-6d6175b7d220/scratchpad/his15/proj-home","safe":true,"exitCode":0,"blockers":[],"units":[]}
++
++python json.load(stdout):
++  json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
++  ^ byte-identical to the message the red graph node reports
++
++
++PROBE 2 — close-out's OWN failure paths already honour the contract
++
++  $ skill-manager home close-out --home <nonexistent> --into <proj> --json
++  exit=2
++  stdout: {"error":"not_a_home","path":"...","message":"...","safe":false,
++           "clean":false,"blockers":[],"units":[],"exitCode":2}
++  stderr: the same sentence, human-rendered
++
++  Same for a bad --into. So slice item 1 as the issue words it -- "--json
++  always emits JSON, including on every failure path" -- is ALREADY TRUE for
++  the failure paths close-out knows about. That is not where the hole is.
++
++
++PROBE 3 — an exception escaping the command emits NOTHING on stdout
++
++  A unit directory made unreadable under the worktree home, so HomeSync
++  throws AccessDeniedException out of the command:
++
++  $ skill-manager home close-out --home <wt> --into <proj> --json
++  exit=1
++  stdout: (empty)
++  stderr: ✗ <path>
++            (re-run with --verbose for the stack trace)
++
++  THIS is the defect the issue describes, and it is real. It is simply not
++  the one that reddened the graph.
++
++
++WHAT THE THREE ADD UP TO
++
++  The contract that is broken is not "emit JSON when you fail". It is:
++
++    under --json, stdout carries EXACTLY ONE JSON document and nothing else,
++    on every exit path.
++
++  Probe 1 breaks it by writing something EXTRA to stdout (exit 0, no failure
++  at all). Probe 3 breaks it by writing NOTHING. Probe 2 is the shape both
++  should have. A fix aimed only at failure paths closes probe 3 and leaves
++  probe 1 -- the one the graph is red on -- exactly as it is.
+diff --git a/results/epic-home-integrity-sync/probes/his-15/ticket-lifecycle-summary.json b/results/epic-home-integrity-sync/probes/his-15/ticket-lifecycle-summary.json
+new file mode 100644
+index 0000000..fe81ac7
+--- /dev/null
++++ b/results/epic-home-integrity-sync/probes/his-15/ticket-lifecycle-summary.json
+@@ -0,0 +1,891 @@
++{"runId":"20260822-173805","status":"passed","traceId":"ef794da0a18fa7fbe633aa298c5889b2","execution":{"mode":"full","graphName":"ticket-lifecycle","complete":true,"expectedNodeIds":["env.prepared","ticket.lifecycle.fixture.built","ticket.lifecycle.provisioned","ticket.lifecycle.first.launch","ticket.lifecycle.caches","ticket.lifecycle.agent.edits","ticket.lifecycle.concurrent.close.out","ticket.lifecycle.conflict","ticket.lifecycle.teardown","ticket.lifecycle.next.agent","ticket.lifecycle.publish","ticket.lifecycle.global.home.untouched","home.fixpoint.law"],"observedNodeIds":["env.prepared","home.fixpoint.law","ticket.lifecycle.agent.edits","ticket.lifecycle.caches","ticket.lifecycle.concurrent.close.out","ticket.lifecycle.conflict","ticket.lifecycle.first.launch","ticket.lifecycle.fixture.built","ticket.lifecycle.global.home.untouched","ticket.lifecycle.next.agent","ticket.lifecycle.provisioned","ticket.lifecycle.publish","ticket.lifecycle.teardown"],"missingNodeIds":[],"invalidEnvelopeFiles":[],"duplicateNodeIds":[],"unexpectedNodeIds":[],"unknownStatusNodeIds":[],"missingTraceNodeIds":[],"invalidTraceNodeIds":[],"mismatchedTraceNodeIds":[],"observedContextNodeIds":["env.prepared","ticket.lifecycle.fixture.built","ticket.lifecycle.provisioned","ticket.lifecycle.first.launch","ticket.lifecycle.caches","ticket.lifecycle.agent.edits","ticket.lifecycle.concurrent.close.out","ticket.lifecycle.conflict","ticket.lifecycle.teardown","ticket.lifecycle.next.agent","ticket.lifecycle.publish","ticket.lifecycle.global.home.untouched","home.fixpoint.law"],"missingContextNodeIds":[],"invalidContextFiles":[],"unexpectedContextNodeIds":[],"contextProvenanceViolationNodeIds":[],"replaySourceContextMismatchNodeIds":[],"contextFileCountExceeded":false,"aggregateContextBytesExceeded":false,"envelopeFileCountExceeded":false,"aggregateEnvelopeBytesExceeded":false,"aggregateJsonStructureExceeded":false,"unknownExecutionScope":false},"nodes":[{
++  "nodeId" : "env.prepared",
++  "status" : "passed",
++  "startedAt" : "2026-08-22T17:38:06.260823Z",
++  "endedAt" : "2026-08-22T17:38:06.286488Z",
++  "assertions" : [ {
++    "name" : "home_created",
++    "status" : "passed"
++  }, {
++    "name" : "agent_home_created",
++    "status" : "passed"
++  }, {
++    "name" : "codex_home_created",
++    "status" : "passed"
++  }, {
++    "name" : "gemini_home_created",
++    "status" : "passed"
++  }, {
++    "name" : "ports_allocated",
++    "status" : "passed"
++  } ],
++  "artifacts" : [ ],
++  "processes" : [ ],
++  "metrics" : {
++    "registryPort" : 62898,
++    "gatewayPort" : 62899,
++    "durationMs" : 26
++  },
++  "logs" : [ ],
++  "published" : {
++    "home" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008",
++    "claudeHome" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/agent-home",
++    "codexHome" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/agent-home/.codex",
++    "geminiHome" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/agent-home/.gemini",
++    "registryPort" : "62898",
++    "gatewayPort" : "62899"
++  }
++,"envelopeVersion":1,"executorStartedAt":"2026-08-22T17:38:05.628039Z","executorEndedAt":"2026-08-22T17:38:19.528801Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/env.prepared.stdout.log","inputContextFile":"context/env.prepared.input.json","traceId":"ef794da0a18fa7fbe633aa298c5889b2"},{
++  "nodeId" : "home.fixpoint.law",
++  "status" : "passed",
++  "startedAt" : "2026-08-22T17:43:30.503538Z",
++  "endedAt" : "2026-08-22T17:43:44.578877Z",
++  "assertions" : [ {
++    "name" : "every_home_verifies_or_its_own_remedy_repairs_it",
++    "status" : "passed"
++  } ],
++  "artifacts" : [ ],
++  "processes" : [ ],
++  "metrics" : {
++    "homesChecked" : 3,
++    "homesRepaired" : 0,
++    "homesOutsideSandbox" : 1,
++    "durationMs" : 14075
++  },
++  "logs" : [ "PASS  /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj/.skill-manager\nPASS  /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/root-home\nPASS  /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj-TICKET-C/.skill-manager\nSKIPPED (outside the sandbox, never mutated): /Users/hayde/.skill-manager/skills/git-issue-workflow/scripts" ],
++  "published" : {
++    "homesChecked" : "/private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj/.skill-manager,/private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/root-home,/private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj-TICKET-C/.skill-manager",
++    "homesRepaired" : ""
++  }
++,"envelopeVersion":1,"executorStartedAt":"2026-08-22T17:43:29.801030Z","executorEndedAt":"2026-08-22T17:43:58.055670Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/home.fixpoint.law.stdout.log","inputContextFile":"context/home.fixpoint.law.input.json","traceId":"ef794da0a18fa7fbe633aa298c5889b2"},{
++  "nodeId" : "ticket.lifecycle.agent.edits",
++  "status" : "passed",
++  "startedAt" : "2026-08-22T17:40:40.136145Z",
++  "endedAt" : "2026-08-22T17:40:40.246227Z",
++  "assertions" : [ {
++    "name" : "both_tickets_edited_the_shared_unit",
++    "status" : "passed"
++  }, {
++    "name" : "the_two_edits_to_the_shared_unit_are_different",
++    "status" : "passed"
++  }, {
++    "name" : "each_ticket_also_edited_a_unit_only_it_touches",
++    "status" : "passed"
++  }, {
++    "name" : "neither_tickets_edit_reached_the_others_home",
++    "status" : "passed"
++  }, {
++    "name" : "an_agents_edit_does_not_reach_the_project_home_by_itself",
++    "status" : "passed"
++  }, {
++    "name" : "every_edit_is_invisible_to_every_git_working_tree",
++    "status" : "passed"
++  } ],
++  "artifacts" : [ ],
++  "processes" : [ ],
++  "metrics" : {
++    "durationMs" : 110
++  },
++  "logs" : [ ],
++  "published" : {
++    "sharedContentA" : "---\nname: tl-shared\ndescription: ticket-lifecycle graph fixture\n---\nshared v1\nTICKET-A improved the shared skill\n",
++    "sharedContentB" : "---\nname: tl-shared\ndescription: ticket-lifecycle graph fixture\n---\nshared v1\nTICKET-B improved the shared skill, differently\n"
++  }
++,"envelopeVersion":1,"executorStartedAt":"2026-08-22T17:40:39.441963Z","executorEndedAt":"2026-08-22T17:40:53.572658Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/ticket.lifecycle.agent.edits.stdout.log","inputContextFile":"context/ticket.lifecycle.agent.edits.input.json","traceId":"ef794da0a18fa7fbe633aa298c5889b2"},{
++  "nodeId" : "ticket.lifecycle.caches",
++  "status" : "passed",
++  "startedAt" : "2026-08-22T17:40:20.391130Z",
++  "endedAt" : "2026-08-22T17:40:23.054967Z",
++  "assertions" : [ {
++    "name" : "both_worktrees_launch_environments_were_read",
++    "status" : "passed"
++  }, {
++    "name" : "the_package_stores_are_shared_across_both_live_worktrees",
++    "status" : "passed"
++  }, {
++    "name" : "no_install_target_is_smuggled_into_the_shared_block",
++    "status" : "passed"
++  }, {
++    "name" : "the_cache_oracle_detects_a_private_per_home_cache",
++    "status" : "passed"
++  }, {
++    "name" : "the_cache_oracle_leaves_the_unmutated_pair_clean",
++    "status" : "passed"
++  } ],
++  "artifacts" : [ ],
++  "processes" : [ {
++    "label" : "print-env-a",
++    "command" : [ "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj-TICKET-A/.skill-manager/bin/cli/skill-manager", "exec", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj-TICKET-A/.skill-manager", "--home-root", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj-TICKET-A", "--print-env" ],
++    "startedAt" : "2026-08-22T17:40:20.395910Z",
++    "endedAt" : "2026-08-22T17:40:21.696943Z",
++    "exitCode" : 0,
++    "pid" : 20992,
++    "log" : "node-logs/ticket.lifecycle.caches.print-env-a.log",
++    "error" : null
++  }, {
++    "label" : "print-env-b",
++    "command" : [ "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj-TICKET-B/.skill-manager/bin/cli/skill-manager", "exec", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj-TICKET-B/.skill-manager", "--home-root", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj-TICKET-B", "--print-env" ],
++    "startedAt" : "2026-08-22T17:40:21.697245Z",
++    "endedAt" : "2026-08-22T17:40:23.048489Z",
++    "exitCode" : 0,
++    "pid" : 21022,
++    "log" : "node-logs/ticket.lifecycle.caches.print-env-b.log",
++    "error" : null
++  } ],
++  "metrics" : {
++    "sharedStoresChecked" : 3,
++    "durationMs" : 2663
++  },
++  "logs" : [ "A: UV_CACHE_DIR=/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/.cache/uv npm_config_cache=/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/.npm PIP_CACHE_DIR=/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/Library/Caches/pip  B: UV_CACHE_DIR=/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/.cache/uv npm_config_cache=/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/.npm PIP_CACHE_DIR=/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/Library/Caches/pip" ],
++  "published" : { }
++,"envelopeVersion":1,"executorStartedAt":"2026-08-22T17:40:19.705954Z","executorEndedAt":"2026-08-22T17:40:39.427222Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/ticket.lifecycle.caches.stdout.log","inputContextFile":"context/ticket.lifecycle.caches.input.json","traceId":"ef794da0a18fa7fbe633aa298c5889b2"},{
++  "nodeId" : "ticket.lifecycle.concurrent.close.out",
++  "status" : "passed",
++  "startedAt" : "2026-08-22T17:40:54.336354Z",
++  "endedAt" : "2026-08-22T17:41:18.562223Z",
++  "assertions" : [ {
++    "name" : "both_close_change_runs_were_refused_by_the_gate",
++    "status" : "passed"
++  }, {
++    "name" : "each_refusal_names_its_own_units_and_not_the_others",
++    "status" : "passed"
++  }, {
++    "name" : "a_refused_close_change_removes_no_worktree",
++    "status" : "passed"
++  }, {
++    "name" : "the_close_out_gate_writes_nothing_at_all",
++    "status" : "passed"
++  }, {
++    "name" : "every_remedy_the_gate_printed_is_an_absolute_runnable_command",
++    "status" : "passed"
++  }, {
++    "name" : "the_lock_probe_can_observe_a_holder_before_it_is_believed",
++    "status" : "passed"
++  }, {
++    "name" : "both_concurrent_syncs_ran_to_completion",
++    "status" : "passed"
++  }, {
++    "name" : "the_two_syncs_were_genuinely_alive_at_the_same_time",
++    "status" : "passed"
++  }, {
++    "name" : "both_syncs_took_the_project_homes_lock",
++    "status" : "passed"
++  }, {
++    "name" : "their_locked_sections_do_not_overlap",
++    "status" : "passed"
++  }, {
++    "name" : "one_sync_waited_for_the_other_rather_than_interleaving",
++    "status" : "passed"
++  }, {
++    "name" : "the_destination_is_still_coherent_as_a_home",
++    "status" : "passed"
++  }, {
++    "name" : "the_concurrent_pass_left_no_staging_leftovers",
++    "status" : "passed"
++  }, {
++    "name" : "the_lock_oracle_detects_a_genuinely_unserialised_pair",
++    "status" : "passed"
++  }, {
++    "name" : "the_lock_oracle_accepts_a_properly_locked_pair",
++    "status" : "passed"
++  } ],
++  "artifacts" : [ ],
++  "processes" : [ {
++    "label" : "lockprobe-selftest",
++    "command" : [ "python3", "/Users/hayde/IdeaProjects/wt-235-his-15/test_graph/sources/ticket-lifecycle/lockprobe.py", "selftest", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/concurrency/selftest.lock" ],
++    "startedAt" : "2026-08-22T17:40:57.734053Z",
++    "endedAt" : "2026-08-22T17:40:57.867949Z",
++    "exitCode" : 0,
++    "pid" : 22195,
++    "log" : "node-logs/ticket.lifecycle.concurrent.close.out.lockprobe-selftest.log",
++    "error" : null
++  } ],
++  "metrics" : {
++    "lockSamples" : 308,
++    "heldSamples" : 13,
++    "distinctHolders" : 2,
++    "processOverlapMillis" : 6202,
++    "durationMs" : 24226
++  },
++  "logs" : [ "real: holders=[22212, 22213] intervals=[Held[pid=22212, firstMillis=5999, lastMillis=6102], Held[pid=22213, firstMillis=6167, lastMillis=6282]] heldSamples=13", "unserialised control: holders=[] intervals=[] heldSamples=0", "serialised control: holders=[23068, 23066] intervals=[Held[pid=23068, firstMillis=6002, lastMillis=6987], Held[pid=23066, firstMillis=7010, lastMillis=7995]] heldSamples=102" ],
++  "published" : {
++    "syncLogA" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/concurrency/real.a.log",
++    "syncLogB" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/concurrency/real.b.log",
++    "syncExitA" : "0",
++    "syncExitB" : "0"
++  }
++,"envelopeVersion":1,"executorStartedAt":"2026-08-22T17:40:53.590612Z","executorEndedAt":"2026-08-22T17:41:32.540855Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/ticket.lifecycle.concurrent.close.out.stdout.log","inputContextFile":"context/ticket.lifecycle.concurrent.close.out.input.json","traceId":"ef794da0a18fa7fbe633aa298c5889b2"},{
++  "nodeId" : "ticket.lifecycle.conflict",
++  "status" : "passed",
++  "startedAt" : "2026-08-22T17:41:33.277280Z",
++  "endedAt" : "2026-08-22T17:41:39.929951Z",
++  "assertions" : [ {
++    "name" : "exactly_one_tickets_edit_landed_in_the_project_home",
++    "status" : "passed"
++  }, {
++    "name" : "the_ticket_that_lost_the_race_is_blocked_on_the_shared_unit",
++    "status" : "passed"
++  }, {
++    "name" : "the_shared_unit_is_reported_conflicted",
++    "status" : "passed"
++  }, {
++    "name" : "every_reported_conflict_is_a_path_inside_the_unit",
++    "status" : "passed"
++  }, {
++    "name" : "the_remedys_tail_lists_the_files_to_resolve_and_nothing_else",
++    "status" : "passed"
++  }, {
++    "name" : "the_winning_tickets_bytes_were_not_silently_clobbered",
++    "status" : "passed"
++  }, {
++    "name" : "the_clobber_oracle_detects_a_planted_silent_clobber",
++    "status" : "passed"
++  }, {
++    "name" : "the_planted_clobber_was_reverted",
++    "status" : "passed"
++  }, {
++    "name" : "the_units_that_are_not_in_conflict_landed_clean",
++    "status" : "passed"
++  }, {
++    "name" : "resolving_the_file_on_both_sides_ends_the_conflict",
++    "status" : "passed"
++  }, {
++    "name" : "the_other_edit_to_the_conflicted_unit_survives_the_conflict",
++    "status" : "passed"
++  }, {
++    "name" : "both_worktrees_can_be_torn_down_once_the_conflict_is_resolved",
++    "status" : "passed"
++  }, {
++    "name" : "both_tickets_contributions_survived_the_resolution",
++    "status" : "passed"
++  } ],
++  "artifacts" : [ ],
++  "processes" : [ {
++    "label" : "close-out-loser",
++    "command" : [ "/Users/hayde/IdeaProjects/wt-235-his-15/skill-manager", "home", "close-out", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj-TICKET-B/.skill-manager", "--into", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj/.skill-manager", "--json" ],
++    "startedAt" : "2026-08-22T17:41:33.284849Z",
++    "endedAt" : "2026-08-22T17:41:34.710303Z",
++    "exitCode" : 1,
++    "pid" : 24280,
++    "log" : "node-logs/ticket.lifecycle.conflict.close-out-loser.log",
++    "error" : null
++  }, {
++    "label" : "sync-after-resolve",
++    "command" : [ "/Users/hayde/IdeaProjects/wt-235-his-15/skill-manager", "home", "sync", "--from", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj-TICKET-B/.skill-manager", "--to", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj/.skill-manager", "--merge", "--json" ],
++    "startedAt" : "2026-08-22T17:41:35.957909Z",
++    "endedAt" : "2026-08-22T17:41:37.273887Z",
++    "exitCode" : 0,
++    "pid" : 24344,
++    "log" : "node-logs/ticket.lifecycle.conflict.sync-after-resolve.log",
++    "error" : null
++  }, {
++    "label" : "close-out-cleared-a",
++    "command" : [ "/Users/hayde/IdeaProjects/wt-235-his-15/skill-manager", "home", "close-out", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj-TICKET-A/.skill-manager", "--into", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj/.skill-manager", "--json" ],
++    "startedAt" : "2026-08-22T17:41:37.274784Z",
++    "endedAt" : "2026-08-22T17:41:38.613537Z",
++    "exitCode" : 0,
++    "pid" : 24375,
++    "log" : "node-logs/ticket.lifecycle.conflict.close-out-cleared-a.log",
++    "error" : null
++  }, {
++    "label" : "close-out-cleared-b",
++    "command" : [ "/Users/hayde/IdeaProjects/wt-235-his-15/skill-manager", "home", "close-out", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj-TICKET-B/.skill-manager", "--into", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj/.skill-manager", "--json" ],
++    "startedAt" : "2026-08-22T17:41:38.613875Z",
++    "endedAt" : "2026-08-22T17:41:39.928544Z",
++    "exitCode" : 0,
++    "pid" : 24387,
++    "log" : "node-logs/ticket.lifecycle.conflict.close-out-cleared-b.log",
++    "error" : null
++  } ],
++  "metrics" : {
++    "remedyRounds" : 1,
++    "conflictsReported" : 1,
++    "durationMs" : 6652
++  },
++  "logs" : [ "loser was TICKET-B; remedies: [/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj-TICKET-B/.skill-manager/bin/cli/skill-manager home sync --from /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj-TICKET-B/.skill-manager --to /var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj/.skill-manager --merge  (then resolve: SKILL.md)]" ],
++  "published" : {
++    "resolvedShared" : "---\nname: tl-shared\ndescription: ticket-lifecycle graph fixture\n---\nshared v1\nTICKET-A improved the shared skill\nTICKET-B improved the shared skill, differently\n"
++  }
++,"envelopeVersion":1,"executorStartedAt":"2026-08-22T17:41:32.560137Z","executorEndedAt":"2026-08-22T17:41:53.926028Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/ticket.lifecycle.conflict.stdout.log","inputContextFile":"context/ticket.lifecycle.conflict.input.json","traceId":"ef794da0a18fa7fbe633aa298c5889b2"},{
++  "nodeId" : "ticket.lifecycle.first.launch",
++  "status" : "passed",
++  "startedAt" : "2026-08-22T17:39:57.184664Z",
++  "endedAt" : "2026-08-22T17:40:06.165422Z",
++  "assertions" : [ {
++    "name" : "the_drift_query_gives_a_machine_readable_answer",
++    "status" : "passed"
++  }, {
++    "name" : "a_freshly_cloned_worktree_home_is_not_reported_as_drifted",
++    "status" : "passed"
++  }, {
++    "name" : "a_clean_worktree_homes_first_launch_is_not_refused",
++    "status" : "passed"
++  }, {
++    "name" : "recording_a_change_reports_it_pending_and_exits_like_the_gate",
++    "status" : "passed"
++  }, {
++    "name" : "a_launch_against_an_unread_change_is_refused_with_exit_8",
++    "status" : "passed"
++  }, {
++    "name" : "the_refusal_names_the_unit_that_moved",
++    "status" : "passed"
++  }, {
++    "name" : "every_remedy_the_refusal_prints_names_an_existing_executable",
++    "status" : "passed"
++  }, {
++    "name" : "the_refusal_names_the_subcommand_that_clears_it",
++    "status" : "passed"
++  }, {
++    "name" : "running_the_remedy_opens_the_gate",
++    "status" : "passed"
++  }, {
++    "name" : "the_launch_environment_resolves_to_this_worktrees_own_home",
++    "status" : "passed"
++  }, {
++    "name" : "this_homes_own_cli_is_first_on_the_launch_path",
++    "status" : "passed"
++  }, {
++    "name" : "all_three_launch_shims_are_executable",
++    "status" : "passed"
++  }, {
++    "name" : "every_remedy_names_a_resolved_cli_not_a_bare_skill_manager",
++    "status" : "passed"
++  } ],
++  "artifacts" : [ ],
++  "processes" : [ {
++    "label" : "drift-fresh",
++    "command" : [ "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj-TICKET-A/.skill-manager/bin/cli/skill-manager", "home", "drift", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj-TICKET-A/.skill-manager", "--json" ],
++    "startedAt" : "2026-08-22T17:39:57.190149Z",
++    "endedAt" : "2026-08-22T17:39:58.450660Z",
++    "exitCode" : 0,
++    "pid" : 20481,
++    "log" : "node-logs/ticket.lifecycle.first.launch.drift-fresh.log",
++    "error" : null
++  }, {
++    "label" : "launch-fresh",
++    "command" : [ "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj-TICKET-A/.skill-manager/bin/cli/skill-manager", "exec", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj-TICKET-A/.skill-manager", "--home-root", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj-TICKET-A", "--", "true" ],
++    "startedAt" : "2026-08-22T17:39:58.453418Z",
++    "endedAt" : "2026-08-22T17:39:59.743952Z",
++    "exitCode" : 0,
++    "pid" : 20500,
++    "log" : "node-logs/ticket.lifecycle.first.launch.launch-fresh.log",
++    "error" : null
++  }, {
++    "label" : "drift-record",
++    "command" : [ "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj-TICKET-A/.skill-manager/bin/cli/skill-manager", "home", "drift", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj-TICKET-A/.skill-manager", "--record", "--json" ],
++    "startedAt" : "2026-08-22T17:39:59.745071Z",
++    "endedAt" : "2026-08-22T17:40:01.026376Z",
++    "exitCode" : 8,
++    "pid" : 20520,
++    "log" : "node-logs/ticket.lifecycle.first.launch.drift-record.log",
++    "error" : null
++  }, {
++    "label" : "launch-refused",
++    "command" : [ "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj-TICKET-A/.skill-manager/bin/cli/skill-manager", "exec", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj-TICKET-A/.skill-manager", "--home-root", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj-TICKET-A", "--", "true" ],
++    "startedAt" : "2026-08-22T17:40:01.026923Z",
++    "endedAt" : "2026-08-22T17:40:02.318680Z",
++    "exitCode" : 8,
++    "pid" : 20541,
++    "log" : "node-logs/ticket.lifecycle.first.launch.launch-refused.log",
++    "error" : null
++  }, {
++    "label" : "drift-ack",
++    "command" : [ "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj-TICKET-A/.skill-manager/bin/cli/skill-manager", "home", "drift", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj-TICKET-A/.skill-manager", "--ack", "--json" ],
++    "startedAt" : "2026-08-22T17:40:02.321328Z",
++    "endedAt" : "2026-08-22T17:40:03.593338Z",
++    "exitCode" : 0,
++    "pid" : 20561,
++    "log" : "node-logs/ticket.lifecycle.first.launch.drift-ack.log",
++    "error" : null
++  }, {
++    "label" : "launch-after-ack",
++    "command" : [ "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj-TICKET-A/.skill-manager/bin/cli/skill-manager", "exec", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj-TICKET-A/.skill-manager", "--home-root", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj-TICKET-A", "--", "true" ],
++    "startedAt" : "2026-08-22T17:40:03.593607Z",
++    "endedAt" : "2026-08-22T17:40:04.884711Z",
++    "exitCode" : 0,
++    "pid" : 20582,
++    "log" : "node-logs/ticket.lifecycle.first.launch.launch-after-ack.log",
++    "error" : null
++  }, {
++    "label" : "exec-print-env",
++    "command" : [ "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj-TICKET-A/.skill-manager/bin/cli/skill-manager", "exec", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj-TICKET-A/.skill-manager", "--home-root", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj-TICKET-A", "--print-env" ],
++    "startedAt" : "2026-08-22T17:40:04.884990Z",
++    "endedAt" : "2026-08-22T17:40:06.164071Z",
++    "exitCode" : 0,
++    "pid" : 20602,
++    "log" : "node-logs/ticket.lifecycle.first.launch.exec-print-env.log",
++    "error" : null
++  } ],
++  "metrics" : {
++    "remediesChecked" : 2,
++    "remedyIsAbsolutelyResolved" : 1,
++    "freshDriftExit" : 0,
++    "refusedLaunchExit" : 8,
++    "durationMs" : 8981
++  },
++  "logs" : [ ],
++  "published" : { }
++,"envelopeVersion":1,"executorStartedAt":"2026-08-22T17:39:56.494793Z","executorEndedAt":"2026-08-22T17:40:19.687365Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/ticket.lifecycle.first.launch.stdout.log","inputContextFile":"context/ticket.lifecycle.first.launch.input.json","traceId":"ef794da0a18fa7fbe633aa298c5889b2"},{
++  "nodeId" : "ticket.lifecycle.fixture.built",
++  "status" : "passed",
++  "startedAt" : "2026-08-22T17:38:20.220138Z",
++  "endedAt" : "2026-08-22T17:38:56.076907Z",
++  "assertions" : [ {
++    "name" : "the_integration_scripts_under_test_were_found",
++    "status" : "passed"
++  }, {
++    "name" : "every_install_into_the_root_home_exited_zero",
++    "status" : "passed"
++  }, {
++    "name" : "the_root_home_holds_all_three_units_including_a_nested_file",
++    "status" : "passed"
++  }, {
++    "name" : "the_checkout_is_a_real_git_repository",
++    "status" : "passed"
++  }, {
++    "name" : "the_checkout_is_clean_so_new_change_will_not_refuse_it",
++    "status" : "passed"
++  }, {
++    "name" : "bootstrap_home_sh_gave_the_checkout_a_project_home",
++    "status" : "passed"
++  }, {
++    "name" : "the_project_home_is_its_own_copy_of_the_root_home",
++    "status" : "passed"
++  }, {
++    "name" : "bootstrapping_a_home_leaves_the_checkout_clean",
++    "status" : "passed"
++  }, {
++    "name" : "no_global_home_exists_in_the_sandbox_yet",
++    "status" : "passed"
++  }, {
++    "name" : "the_leak_oracle_is_armed_over_the_operators_real_homes",
++    "status" : "passed"
++  } ],
++  "artifacts" : [ ],
++  "processes" : [ {
++    "label" : "install-tl-shared",
++    "command" : [ "/Users/hayde/IdeaProjects/wt-235-his-15/skill-manager", "install", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/sources/tl-shared", "--yes" ],
++    "startedAt" : "2026-08-22T17:38:20.249489Z",
++    "endedAt" : "2026-08-22T17:38:29.802158Z",
++    "exitCode" : 0,
++    "pid" : 18559,
++    "log" : "node-logs/ticket.lifecycle.fixture.built.install-tl-shared.log",
++    "error" : null
++  }, {
++    "label" : "install-tl-x",
++    "command" : [ "/Users/hayde/IdeaProjects/wt-235-his-15/skill-manager", "install", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/sources/tl-x", "--yes" ],
++    "startedAt" : "2026-08-22T17:38:29.803031Z",
++    "endedAt" : "2026-08-22T17:38:32.460324Z",
++    "exitCode" : 0,
++    "pid" : 18600,
++    "log" : "node-logs/ticket.lifecycle.fixture.built.install-tl-x.log",
++    "error" : null
++  }, {
++    "label" : "install-tl-y",
++    "command" : [ "/Users/hayde/IdeaProjects/wt-235-his-15/skill-manager", "install", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/sources/tl-y", "--yes" ],
++    "startedAt" : "2026-08-22T17:38:32.460883Z",
++    "endedAt" : "2026-08-22T17:38:35.076649Z",
++    "exitCode" : 0,
++    "pid" : 18622,
++    "log" : "node-logs/ticket.lifecycle.fixture.built.install-tl-y.log",
++    "error" : null
++  }, {
++    "label" : "bootstrap-project-home",
++    "command" : [ "bash", "/Users/hayde/.skill-manager/skills/git-issue-workflow/scripts/bootstrap-home.sh", "--root", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj", "--source", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/root-home" ],
++    "startedAt" : "2026-08-22T17:38:35.228414Z",
++    "endedAt" : "2026-08-22T17:38:51.874569Z",
++    "exitCode" : 0,
++    "pid" : 18652,
++    "log" : "node-logs/ticket.lifecycle.fixture.built.bootstrap-project-home.log",
++    "error" : null
++  } ],
++  "metrics" : {
++    "rootUnits" : 3,
++    "durationMs" : 35856
++  },
++  "logs" : [ "scripts: the git-issue-workflow skill installed in /Users/hayde/.skill-manager" ],
++  "published" : {
++    "workspace" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle",
++    "rootHome" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/root-home",
++    "checkout" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj",
++    "projectHome" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj/.skill-manager",
++    "ambientHome" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/ambient",
++    "sourcesDir" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/sources",
++    "scriptsDir" : "/Users/hayde/.skill-manager/skills/git-issue-workflow/scripts",
++    "sandboxGlobalHome" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/.skill-manager",
++    "leakBaseline" : "/Users/hayde/IdeaProjects/wt-235-his-15/test_graph/build/validation-reports/20260822-173805/ticket-lifecycle.leak-baseline.txt",
++    "configBaseline" : "/Users/hayde/IdeaProjects/wt-235-his-15/test_graph/build/validation-reports/20260822-173805/ticket-lifecycle.config-baseline.txt",
++    "leakRoots" : "/Users/hayde/.skill-manager:/Users/hayde/.claude:/Users/hayde/.codex:/Users/hayde/.gemini"
++  }
++,"envelopeVersion":1,"executorStartedAt":"2026-08-22T17:38:19.554093Z","executorEndedAt":"2026-08-22T17:39:08.502697Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/ticket.lifecycle.fixture.built.stdout.log","inputContextFile":"context/ticket.lifecycle.fixture.built.input.json","traceId":"ef794da0a18fa7fbe633aa298c5889b2"},{
++  "nodeId" : "ticket.lifecycle.global.home.untouched",
++  "status" : "passed",
++  "startedAt" : "2026-08-22T17:43:11.520114Z",
++  "endedAt" : "2026-08-22T17:43:15.856988Z",
++  "assertions" : [ {
++    "name" : "the_workflow_never_created_a_global_home",
++    "status" : "passed"
++  }, {
++    "name" : "the_leak_baseline_is_readable",
++    "status" : "passed"
++  }, {
++    "name" : "the_leak_baseline_watched_a_non_trivial_tree",
++    "status" : "passed"
++  }, {
++    "name" : "the_operators_real_agent_homes_did_not_move",
++    "status" : "passed"
++  }, {
++    "name" : "an_unchanged_tree_reports_clean",
++    "status" : "passed"
++  }, {
++    "name" : "the_leak_oracle_detects_a_planted_unit_directory",
++    "status" : "passed"
++  }, {
++    "name" : "the_leak_oracle_detects_a_planted_symlink",
++    "status" : "passed"
++  }, {
++    "name" : "the_leak_oracle_detects_an_in_place_rewrite",
++    "status" : "passed"
++  }, {
++    "name" : "the_config_check_covers_the_sibling_claude_json_file",
++    "status" : "passed"
++  }, {
++    "name" : "the_agent_config_registrations_are_unchanged",
++    "status" : "passed"
++  }, {
++    "name" : "an_unchanged_agent_home_reports_clean",
++    "status" : "passed"
++  }, {
++    "name" : "the_leak_oracle_detects_a_repointed_agent_skill_link",
++    "status" : "passed"
++  } ],
++  "artifacts" : [ ],
++  "processes" : [ ],
++  "metrics" : {
++    "baselineEntries" : 79311,
++    "differencesFound" : 0,
++    "worktreeRegistrationChanges" : 0,
++    "durationMs" : 4336
++  },
++  "logs" : [ ],
++  "published" : { }
++,"envelopeVersion":1,"executorStartedAt":"2026-08-22T17:43:10.850901Z","executorEndedAt":"2026-08-22T17:43:29.787718Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/ticket.lifecycle.global.home.untouched.stdout.log","inputContextFile":"context/ticket.lifecycle.global.home.untouched.input.json","traceId":"ef794da0a18fa7fbe633aa298c5889b2"},{
++  "nodeId" : "ticket.lifecycle.next.agent",
++  "status" : "passed",
++  "startedAt" : "2026-08-22T17:42:20.597789Z",
++  "endedAt" : "2026-08-22T17:42:34.662926Z",
++  "assertions" : [ {
++    "name" : "a_third_ticket_worktree_provisions_after_the_first_two_are_gone",
++    "status" : "passed"
++  }, {
++    "name" : "the_next_agent_inherits_the_first_tickets_unit",
++    "status" : "passed"
++  }, {
++    "name" : "the_next_agent_inherits_the_second_tickets_unit",
++    "status" : "passed"
++  }, {
++    "name" : "the_next_agent_inherits_the_resolved_shared_unit",
++    "status" : "passed"
++  }, {
++    "name" : "every_unit_arrived_byte_for_byte",
++    "status" : "passed"
++  }, {
++    "name" : "the_third_worktrees_home_is_still_its_own_copy",
++    "status" : "passed"
++  } ],
++  "artifacts" : [ ],
++  "processes" : [ {
++    "label" : "new-change-c",
++    "command" : [ "bash", "/Users/hayde/.skill-manager/skills/git-issue-workflow/scripts/new-change.sh", "TICKET-C" ],
++    "startedAt" : "2026-08-22T17:42:20.602222Z",
++    "endedAt" : "2026-08-22T17:42:34.652979Z",
++    "exitCode" : 0,
++    "pid" : 24901,
++    "log" : "node-logs/ticket.lifecycle.next.agent.new-change-c.log",
++    "error" : null
++  } ],
++  "metrics" : {
++    "durationMs" : 14065
++  },
++  "logs" : [ ],
++  "published" : {
++    "worktreeC" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj-TICKET-C",
++    "homeC" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj-TICKET-C/.skill-manager"
++  }
++,"envelopeVersion":1,"executorStartedAt":"2026-08-22T17:42:19.951227Z","executorEndedAt":"2026-08-22T17:42:47.636308Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/ticket.lifecycle.next.agent.stdout.log","inputContextFile":"context/ticket.lifecycle.next.agent.input.json","traceId":"ef794da0a18fa7fbe633aa298c5889b2"},{
++  "nodeId" : "ticket.lifecycle.provisioned",
++  "status" : "passed",
++  "startedAt" : "2026-08-22T17:39:09.241507Z",
++  "endedAt" : "2026-08-22T17:39:42.951371Z",
++  "assertions" : [ {
++    "name" : "new_change_sh_provisioned_both_ticket_worktrees",
++    "status" : "passed"
++  }, {
++    "name" : "each_worktree_exists_and_carries_its_own_home",
++    "status" : "passed"
++  }, {
++    "name" : "each_worktree_is_on_its_own_feature_branch",
++    "status" : "passed"
++  }, {
++    "name" : "all_four_home_roots_are_distinct_inodes",
++    "status" : "passed"
++  }, {
++    "name" : "a_file_the_agent_will_edit_is_a_distinct_inode_per_home",
++    "status" : "passed"
++  }, {
++    "name" : "no_path_in_a_worktree_home_resolves_back_to_the_homes_above_it",
++    "status" : "passed"
++  }, {
++    "name" : "the_reference_walk_read_the_tree_it_claims_to_have_read",
++    "status" : "passed"
++  }, {
++    "name" : "the_reference_walk_finds_a_planted_reference_to_another_home",
++    "status" : "passed"
++  }, {
++    "name" : "each_worktree_home_has_a_pinned_cli_that_actually_runs",
++    "status" : "passed"
++  }, {
++    "name" : "production_agrees_the_worktree_home_reaches_no_other_home",
++    "status" : "passed"
++  } ],
++  "artifacts" : [ ],
++  "processes" : [ {
++    "label" : "new-change-a",
++    "command" : [ "bash", "/Users/hayde/.skill-manager/skills/git-issue-workflow/scripts/new-change.sh", "TICKET-A" ],
++    "startedAt" : "2026-08-22T17:39:09.246108Z",
++    "endedAt" : "2026-08-22T17:39:24.153492Z",
++    "exitCode" : 0,
++    "pid" : 19246,
++    "log" : "node-logs/ticket.lifecycle.provisioned.new-change-a.log",
++    "error" : null
++  }, {
++    "label" : "new-change-b",
++    "command" : [ "bash", "/Users/hayde/.skill-manager/skills/git-issue-workflow/scripts/new-change.sh", "TICKET-B" ],
++    "startedAt" : "2026-08-22T17:39:24.153821Z",
++    "endedAt" : "2026-08-22T17:39:37.895088Z",
++    "exitCode" : 0,
++    "pid" : 19804,
++    "log" : "node-logs/ticket.lifecycle.provisioned.new-change-b.log",
++    "error" : null
++  }, {
++    "label" : "pin-probe-proj-TICKET-A",
++    "command" : [ "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj-TICKET-A/.skill-manager/bin/cli/skill-manager", "home", "close-out", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj-TICKET-A/.skill-manager", "--help" ],
++    "startedAt" : "2026-08-22T17:39:37.962297Z",
++    "endedAt" : "2026-08-22T17:39:39.200714Z",
++    "exitCode" : 0,
++    "pid" : 20344,
++    "log" : "node-logs/ticket.lifecycle.provisioned.pin-probe-proj-TICKET-A.log",
++    "error" : null
++  }, {
++    "label" : "pin-probe-proj-TICKET-B",
++    "command" : [ "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj-TICKET-B/.skill-manager/bin/cli/skill-manager", "home", "close-out", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj-TICKET-B/.skill-manager", "--help" ],
++    "startedAt" : "2026-08-22T17:39:39.201325Z",
++    "endedAt" : "2026-08-22T17:39:40.469612Z",
++    "exitCode" : 0,
++    "pid" : 20368,
++    "log" : "node-logs/ticket.lifecycle.provisioned.pin-probe-proj-TICKET-B.log",
++    "error" : null
++  }, {
++    "label" : "verify-proj-TICKET-A",
++    "command" : [ "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj-TICKET-A/.skill-manager/bin/cli/skill-manager", "home", "verify", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj-TICKET-A/.skill-manager" ],
++    "startedAt" : "2026-08-22T17:39:40.470140Z",
++    "endedAt" : "2026-08-22T17:39:41.706093Z",
++    "exitCode" : 0,
++    "pid" : 20387,
++    "log" : "node-logs/ticket.lifecycle.provisioned.verify-proj-TICKET-A.log",
++    "error" : null
++  }, {
++    "label" : "verify-proj-TICKET-B",
++    "command" : [ "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj-TICKET-B/.skill-manager/bin/cli/skill-manager", "home", "verify", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj-TICKET-B/.skill-manager" ],
++    "startedAt" : "2026-08-22T17:39:41.706352Z",
++    "endedAt" : "2026-08-22T17:39:42.950955Z",
++    "exitCode" : 0,
++    "pid" : 20406,
++    "log" : "node-logs/ticket.lifecycle.provisioned.verify-proj-TICKET-B.log",
++    "error" : null
++  } ],
++  "metrics" : {
++    "entriesScannedPerHome" : 31,
++    "plantedReferencesFound" : 2,
++    "durationMs" : 33710
++  },
++  "logs" : [ ],
++  "published" : {
++    "worktreeA" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj-TICKET-A",
++    "worktreeB" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj-TICKET-B",
++    "homeA" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj-TICKET-A/.skill-manager",
++    "homeB" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj-TICKET-B/.skill-manager"
++  }
++,"envelopeVersion":1,"executorStartedAt":"2026-08-22T17:39:08.521454Z","executorEndedAt":"2026-08-22T17:39:56.473984Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/ticket.lifecycle.provisioned.stdout.log","inputContextFile":"context/ticket.lifecycle.provisioned.input.json","traceId":"ef794da0a18fa7fbe633aa298c5889b2"},{
++  "nodeId" : "ticket.lifecycle.publish",
++  "status" : "passed",
++  "startedAt" : "2026-08-22T17:42:48.340564Z",
++  "endedAt" : "2026-08-22T17:42:56.430007Z",
++  "assertions" : [ {
++    "name" : "a_unit_installed_from_git_is_a_checkout_in_the_home",
++    "status" : "passed"
++  }, {
++    "name" : "a_dry_run_publish_reports_the_branch_and_base_it_would_use",
++    "status" : "passed"
++  }, {
++    "name" : "a_dry_run_publish_names_the_pull_request_it_would_open",
++    "status" : "passed"
++  }, {
++    "name" : "a_dry_run_publish_pushes_nothing",
++    "status" : "passed"
++  }, {
++    "name" : "publish_pushes_the_home_edit_to_the_units_own_repository",
++    "status" : "passed"
++  }, {
++    "name" : "the_branch_is_named_skill_ticket_unit",
++    "status" : "passed"
++  }, {
++    "name" : "the_branch_is_based_on_the_trunk",
++    "status" : "passed"
++  }, {
++    "name" : "publish_never_moves_the_trunk",
++    "status" : "passed"
++  }, {
++    "name" : "the_branch_carries_the_agents_exact_bytes",
++    "status" : "passed"
++  }, {
++    "name" : "only_the_files_the_agent_edited_moved",
++    "status" : "passed"
++  }, {
++    "name" : "publish_leaves_the_homes_checkout_clean",
++    "status" : "passed"
++  } ],
++  "artifacts" : [ ],
++  "processes" : [ {
++    "label" : "install-publishable",
++    "command" : [ "/Users/hayde/IdeaProjects/wt-235-his-15/skill-manager", "install", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/publish-sources/tl-pub", "--yes" ],
++    "startedAt" : "2026-08-22T17:42:48.571734Z",
++    "endedAt" : "2026-08-22T17:42:51.904903Z",
++    "exitCode" : 0,
++    "pid" : 25486,
++    "log" : "node-logs/ticket.lifecycle.publish.install-publishable.log",
++    "error" : null
++  }, {
++    "label" : "publish-dry-run",
++    "command" : [ "/Users/hayde/IdeaProjects/wt-235-his-15/skill-manager", "unit", "publish", "tl-pub", "--ticket", "TICKET-C", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj-TICKET-C/.skill-manager", "--dry-run", "--json" ],
++    "startedAt" : "2026-08-22T17:42:51.964634Z",
++    "endedAt" : "2026-08-22T17:42:53.348209Z",
++    "exitCode" : 0,
++    "pid" : 25531,
++    "log" : "node-logs/ticket.lifecycle.publish.publish-dry-run.log",
++    "error" : null
++  }, {
++    "label" : "publish-dry-run-text",
++    "command" : [ "/Users/hayde/IdeaProjects/wt-235-his-15/skill-manager", "unit", "publish", "tl-pub", "--ticket", "TICKET-C", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj-TICKET-C/.skill-manager", "--dry-run" ],
++    "startedAt" : "2026-08-22T17:42:53.349082Z",
++    "endedAt" : "2026-08-22T17:42:54.704759Z",
++    "exitCode" : 0,
++    "pid" : 25546,
++    "log" : "node-logs/ticket.lifecycle.publish.publish-dry-run-text.log",
++    "error" : null
++  }, {
++    "label" : "publish-no-pr",
++    "command" : [ "/Users/hayde/IdeaProjects/wt-235-his-15/skill-manager", "unit", "publish", "tl-pub", "--ticket", "TICKET-C", "--home", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj-TICKET-C/.skill-manager", "--no-pr", "--json" ],
++    "startedAt" : "2026-08-22T17:42:54.741678Z",
++    "endedAt" : "2026-08-22T17:42:56.320604Z",
++    "exitCode" : 0,
++    "pid" : 25563,
++    "log" : "node-logs/ticket.lifecycle.publish.publish-no-pr.log",
++    "error" : null
++  } ],
++  "metrics" : {
++    "remoteBranches" : 2,
++    "filesMoved" : 1,
++    "durationMs" : 8090
++  },
++  "logs" : [ ],
++  "published" : { }
++,"envelopeVersion":1,"executorStartedAt":"2026-08-22T17:42:47.654599Z","executorEndedAt":"2026-08-22T17:43:10.837302Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/ticket.lifecycle.publish.stdout.log","inputContextFile":"context/ticket.lifecycle.publish.input.json","traceId":"ef794da0a18fa7fbe633aa298c5889b2"},{
++  "nodeId" : "ticket.lifecycle.teardown",
++  "status" : "passed",
++  "startedAt" : "2026-08-22T17:41:54.647876Z",
++  "endedAt" : "2026-08-22T17:42:06.239193Z",
++  "assertions" : [ {
++    "name" : "a_dry_run_runs_the_gate_and_removes_nothing",
++    "status" : "passed"
++  }, {
++    "name" : "the_gate_refuses_while_the_home_still_holds_work",
++    "status" : "passed"
++  }, {
++    "name" : "a_refused_teardown_destroys_nothing",
++    "status" : "passed"
++  }, {
++    "name" : "the_refusal_names_the_unit_whose_work_would_be_lost",
++    "status" : "passed"
++  }, {
++    "name" : "clearing_the_blocker_moves_the_work_to_the_project_home",
++    "status" : "passed"
++  }, {
++    "name" : "both_worktrees_are_removed_once_the_gate_is_clear",
++    "status" : "passed"
++  }, {
++    "name" : "the_gate_ran_before_each_removal",
++    "status" : "passed"
++  }, {
++    "name" : "both_worktree_directories_are_gone",
++    "status" : "passed"
++  }, {
++    "name" : "each_worktrees_home_went_with_it",
++    "status" : "passed"
++  }, {
++    "name" : "git_no_longer_registers_either_worktree",
++    "status" : "passed"
++  } ],
++  "artifacts" : [ ],
++  "processes" : [ {
++    "label" : "close-change-dry-run",
++    "command" : [ "bash", "/Users/hayde/.skill-manager/skills/git-issue-workflow/scripts/close-change.sh", "TICKET-A", "--dry-run" ],
++    "startedAt" : "2026-08-22T17:41:54.652461Z",
++    "endedAt" : "2026-08-22T17:41:57.343598Z",
++    "exitCode" : 0,
++    "pid" : 24448,
++    "log" : "node-logs/ticket.lifecycle.teardown.close-change-dry-run.log",
++    "error" : null
++  }, {
++    "label" : "close-change-refused",
++    "command" : [ "bash", "/Users/hayde/.skill-manager/skills/git-issue-workflow/scripts/close-change.sh", "TICKET-A" ],
++    "startedAt" : "2026-08-22T17:41:57.346733Z",
++    "endedAt" : "2026-08-22T17:41:59.891481Z",
++    "exitCode" : 4,
++    "pid" : 24561,
++    "log" : "node-logs/ticket.lifecycle.teardown.close-change-refused.log",
++    "error" : null
++  }, {
++    "label" : "sync-planted-work",
++    "command" : [ "/Users/hayde/IdeaProjects/wt-235-his-15/skill-manager", "home", "sync", "--from", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj-TICKET-A/.skill-manager", "--to", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-11962605121418294008/ticket-lifecycle/proj/.skill-manager", "--merge", "--json" ],
++    "startedAt" : "2026-08-22T17:41:59.892451Z",
++    "endedAt" : "2026-08-22T17:42:01.097337Z",
++    "exitCode" : 0,
++    "pid" : 24666,
++    "log" : "node-logs/ticket.lifecycle.teardown.sync-planted-work.log",
++    "error" : null
++  }, {
++    "label" : "close-change-remove-a",
++    "command" : [ "bash", "/Users/hayde/.skill-manager/skills/git-issue-workflow/scripts/close-change.sh", "TICKET-A" ],
++    "startedAt" : "2026-08-22T17:42:01.097807Z",
++    "endedAt" : "2026-08-22T17:42:03.673527Z",
++    "exitCode" : 0,
++    "pid" : 24677,
++    "log" : "node-logs/ticket.lifecycle.teardown.close-change-remove-a.log",
++    "error" : null
++  }, {
++    "label" : "close-change-remove-b",
++    "command" : [ "bash", "/Users/hayde/.skill-manager/skills/git-issue-workflow/scripts/close-change.sh", "TICKET-B" ],
++    "startedAt" : "2026-08-22T17:42:03.673863Z",
++    "endedAt" : "2026-08-22T17:42:06.218703Z",
++    "exitCode" : 0,
++    "pid" : 24778,
++    "log" : "node-logs/ticket.lifecycle.teardown.close-change-remove-b.log",
++    "error" : null
++  } ],
++  "metrics" : {
++    "durationMs" : 11592
++  },
++  "logs" : [ ],
++  "published" : { }
++,"envelopeVersion":1,"executorStartedAt":"2026-08-22T17:41:53.946453Z","executorEndedAt":"2026-08-22T17:42:19.932905Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/ticket.lifecycle.teardown.stdout.log","inputContextFile":"context/ticket.lifecycle.teardown.input.json","traceId":"ef794da0a18fa7fbe633aa298c5889b2"}]}
+\ No newline at end of file
+diff --git a/results/epic-home-integrity-sync/probes/his-15/vacuity-checks.txt b/results/epic-home-integrity-sync/probes/his-15/vacuity-checks.txt
+new file mode 100644
+index 0000000..fef941e
+--- /dev/null
++++ b/results/epic-home-integrity-sync/probes/his-15/vacuity-checks.txt
+@@ -0,0 +1,97 @@
++VACUITY CHECKS — HIS-15 (#235)
++
++Every assertion this ticket adds, run against the code with its own fix
++disabled. RUNNER: `jbang RunHis15.java` — JsonContractTest, 36 cases. That file
++IS IN THE REPOSITORY, shipped for the reason RunHis11/RunHis12 are: a record
++naming a file that does not exist is a claim, not evidence.
++
++READ V1 FIRST. It is the one that found a hole in the guard, which is what the
++epic owner said to expect and what actually happened.
++
++=== V1  the json routing reverted — Log.console writes to stdout again
++  [FAIL] in json mode no Log level writes to stdout, and stderr still gets them: stdout is reserved for the document — this is the byte that broke #235: expected <> but was <info line
++  [FAIL] a CONTENDED close-out keeps stdout pure — #235's own case: and NOTHING else on stdout — THE CLAIM. The wait notice is a diagnostic and belongs on stderr: expected <> but was <home sync --dry-run: waiting for /var/…/proj — another operation in this process holds this home's lock>
++  [FAIL] `skill-manager home drift --json` succeeds silently (pinned): stdout holds NOTHING but the document: expected <> but was <✓ no unread change in /var/…/home>
++  FAILURES: 3
++
++  THE HOLE THIS RUN FOUND, BEFORE THE FIX ABOVE. The contended case is the only
++  one that reproduces the actual defect — a progress line on a run that
++  SUCCEEDS — and its first version asserted the wait notice was on STDERR as a
++  PRECONDITION:
++
++      assertTrue(run.stderr().contains("waiting for"), "fixture precondition: …")
++
++  Under this mutation the notice moves to stdout, so the precondition failed and
++  the case reddened THERE, never reaching its claim. That is HIS-4's probe 7a
++  exactly — a probe that reddens only on a precondition is not a probe of the
++  claim — reproduced one epic later inside the guard written to prevent it.
++
++  Fixed: the precondition is now stream-BLIND (the notice appeared on either
++  stream, which is all "contention happened" requires), the purity assertion is
++  the claim, and a third assertion checks the notice is still reported on stderr
++  so the fix cannot be "delete the diagnostic". The transcript above is from the
++  corrected version: it now reddens on the claim and quotes the contaminating
++  line.
++
++  Note the third failure too. `home drift --ack` is one of the PINNED silent
++  paths, and it reddens under this mutation without anyone having written a case
++  about drift at all. That is the pinning earning its place: the epic owner's
++  instruction to pin rather than defer turned an unasserted state into a
++  detector.
++
++=== V2  the JsonExitEnvelope net removed — `if (rc != 0 && …)` made unreachable
++  [FAIL] `skill-manager home clone --json` … exit 1 printed []: expected <1> but was <0>
++  [FAIL] `skill-manager show --json` … exit 1 printed []
++  [FAIL] `skill-manager artifacts show --json` … exit 1 printed []
++  [FAIL] `skill-manager bindings show --json` … exit 1 printed []
++  [FAIL] `skill-manager bind --json` … exit 1 printed []
++  [FAIL] `skill-manager build --json` … exit 2 printed []
++  [FAIL] `skill-manager harness show --json` … exit 1 printed []
++  [FAIL] `skill-manager harness instantiate --json` … exit 1 printed []
++  (8 shown; the run reports more)
++
++  This is the argument for a net instead of sixteen enumerated fixes, measured:
++  ONE removed mechanism reddens eight-plus commands, none of which anybody
++  edited for this ticket.
++
++=== V3  the parameter-exception handler's --json branch removed
++  [FAIL] `skill-manager project register --json` … exit 2 printed []: expected <1> but was <0>
++  [FAIL] `skill-manager project remove --json` … exit 2 printed []
++  [FAIL] `skill-manager project resolve --json` … exit 2 printed []
++  [FAIL] `skill-manager project sync --json` … exit 2 printed []
++  FAILURES: 4
++
++  Exactly the four commands driven on a parse error, and nothing else — which
++  is the right blast radius for a fix to the parse path specifically.
++
++=== V4  close-out's frozen `if (json)` arm reverted
++  [FAIL] a caught, typed refusal carries its OWN reason, not the generic one: not true: the reason is the TYPED one, not the generic "failed": [{"error":"failed","message":"home close-out --into refused: home is frozen (…)"…]
++  FAILURES: 1
++
++  The generic envelope still answers — the output stays PARSEABLE — so this
++  case is not about presence. It pins the distinction between parseable and
++  USEFUL: a caught exception never reaches the classifier, so only the explicit
++  arm can say `home_frozen` and carry the `safe` / `blockers` fields
++  close-change.sh reads. Without this case the arm would look redundant to the
++  next person and be deleted.
++
++=== V5  HIS-14's exit-13 refusal routed AROUND completeExecution again
++  [FAIL] exit 13 — HIS-14's unbindable-home refusal — emits a document too: a --json run that exits 13 says why, in JSON — got []: expected <1> but was <0>
++  FAILURES: 1
++
++  Added after rebasing onto HIS-14 (#232). Its unbindable-home refusal returns
++  UNBINDABLE_HOME_EXIT_CODE straight out of the execution strategy, which is the
++  one exit path in this CLI that goes AROUND completeExecution -- and therefore
++  around the --json envelope. Under --json it exited 13 with an empty stdout:
++  #235's exact shape on a path that DID NOT EXIST when #235 was filed.
++
++  This is the argument for a convention check rather than an enumerated list of
++  known-bad sites, and it is not hypothetical: the check landed, the next ticket
++  in the same wave grew a new failure path, and the check caught it. A list
++  could not have, because nobody had written the path yet.
++
++=== NOT A VACUITY CHECK
++`every_json_command_is_covered` has no V-number. It is a coverage gate, not a
++claim about behaviour: it fails when a --json command has no entry in the
++table. It was observed failing for real during development — 23 uncovered
++commands on the first run — which is the only demonstration it needs.
+diff --git a/results/epic-home-integrity-sync/tickets/HIS-15/goal-contribution.md b/results/epic-home-integrity-sync/tickets/HIS-15/goal-contribution.md
+new file mode 100644
+index 0000000..6f7f328
+--- /dev/null
++++ b/results/epic-home-integrity-sync/tickets/HIS-15/goal-contribution.md
+@@ -0,0 +1,295 @@
++# HIS-15 — goal contribution
++
++Issue #235. Branch `feature/235-his-15`, base `epic/home-integrity-sync` at
++`854f2ea`. Wave 6, promotion order 11, predecessor HIS-14.
++
++Goals: **GOAL-one-home-one-answer** (`direct`) and
++**GOAL-no-destructive-recovery** (`guard`).
++
++Declared expected effects: *"a machine-readable verdict and a human-readable
++refusal are currently two answers and one of them is empty; after, one answer in
++two renderings"*, and *"the gate stops recommending `--force`, which discards
++work it just refused to destroy."*
++
++---
++
++## 1. The issue's root cause was wrong, and the correction is the ticket
++
++The issue said the losing side of a concurrent close-out *"exits non-zero with
++its explanation on stderr and nothing on stdout."* Measured on the epic tip,
++with a peer holding the project home's lock:
++
++```
++$ skill-manager home close-out --home <wt> --into <proj> --json
++exit=0                                    <-- THE COMMAND SUCCEEDED
++home sync --dry-run: waiting for /…/proj-home — another skill-manager process holds this home's lock
++{"home":"/…","into":"/…","safe":true,"exitCode":0,"blockers":[],"units":[]}
++
++json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
++```
++
++That error is **byte-identical to the one in the red graph node**, and the run
++did not fail at all. The cause is `HomeLock.announceWait` — the line HIS-11
++added so a wait would not look like a hang — reaching **stdout** through
++`Log.info`. It corrupts the document on any contended run, whether or not that
++run then fails.
++
++Three distinct breaks of one contract, all measured
++(`probes/his-15/probe-1-root-cause.txt`):
++
++| # | what happens | exit | stdout | which defect |
++| --- | --- | --- | --- | --- |
++| 1 | an **extra** non-JSON line | **0** | unparseable | **the red graph** |
++| 2 | `not_a_home` paths | 2 | correct JSON already | none — this is the shape the others should have |
++| 3 | an exception escapes the command | 1 | **empty** | the one the issue describes; real |
++| 4 | `FrozenHomeException` caught in-command | 9 | **empty** | found while reading; see §3 |
++
++**So the contract is not "emit JSON when you fail."** It is:
++
++> under `--json`, stdout carries **exactly one JSON document and nothing else**,
++> on every exit path.
++
++A fix aimed only at failure paths closes #3 and #4 and leaves #1 — the red one —
++untouched. That restatement is the whole ticket, and the epic owner has adopted
++it into #235 and the plan entry.
++
++---
++
++## 2. What I built
++
++**`Log.setJsonMode`**, latched from the parsed command before anything can
++print. Every human line — `info`, `ok`, `step`, `detail` — goes to stderr for
++the duration. One choke point covers all thirty-one `--json` commands and every
++library path beneath them, present and future.
++
++Two properties worth stating because both are load-bearing:
++
++- **The diagnostic is moved, not deleted.** `announceWait` exists because a
++  silent 120-second wait is indistinguishable from a hang, and that reason has
++  not gone away. A guard assertion pins it: the notice must still appear on
++  stderr, so "fix it by deleting it" fails.
++- **`BuildCommand` had already solved this privately**, by redirecting
++  `System.out` to `FileDescriptor.err` for the length of its program. That is
++  this epic's signature defect again — one command solving alone what every
++  command needed — and it is why the fix is a latch rather than a second
++  private redirect.
++
++**`JsonExitEnvelope`**: the CLI counts the bytes a command wrote to stdout, and
++if a `--json` run is about to exit non-zero having written none, the CLI writes
++the document the command did not. It never fires when the command wrote its own,
++so a richer payload always wins.
++
++> **Why a net and not sixteen fixes.** Sixteen silent failure paths were
++> enumerated — and the argument is not the count, it is *where two of them sit*:
++> `HomeCommand.CloseOutCmd` catches `NotAHomeException` and answers a `--json`
++> caller with a proper error document, and **one arm below**, catches
++> `FrozenHomeException` and answers nothing at all. Nobody decided that. The
++> second catch was written later than its sibling by someone with no reason to
++> read the first. Fixing sixteen sites leaves the seventeenth to whoever writes
++> it next; **V2 measures this** — removing the net alone reddens eight-plus
++> commands that nobody edited for this ticket.
++
++**`HomeContendedException`**: the lock refusal is now a type, so a consumer
++branches on `error:"home_locked"` instead of matching a substring of English.
++Classification is by type, never by message.
++
++**Two further production defects the guard found while being written**, neither
++in the issue:
++
++- **A parse failure never reaches the execution strategy**, so the `--json`
++  latch never ran and the envelope was never armed: `bind no-such-unit --json`
++  exited 2 with an empty stdout. The flag is in the raw argv whether or not the
++  parse succeeded, so the parameter-exception handler consults that. **V3.**
++- **`close-out`'s frozen arm** now answers in its sibling's shape
++  (`error:"home_frozen"`, with `safe` / `blockers`), because a *caught*
++  exception never reaches the classifier and the generic net can only say
++  `"failed"`. **V4** pins parseable-vs-useful so the arm is not deleted as
++  redundant later.
++
++---
++
++## 3. The guard, and the hole its own vacuity check found
++
++`JsonContractTest` enumerates the `--json` surface by **walking the live picocli
++tree** — deduplicated by command-spec identity, because picocli exposes an alias
++(`list` / `ls`) as two map entries. A hard-coded list goes stale the day someone
++adds the thirty-second command, silently, which is the failure mode being fixed.
++A `--json` command with no table entry fails `every_json_command_is_covered`;
++that gate fired for real on the first run, naming 23 uncovered commands.
++
++Three rules, per the epic owner's instruction:
++
++- **PURITY**, all 31: stdout holds zero or one document and no other bytes.
++- **PRESENCE**, non-zero exits: a failing run emits a document.
++- **THE PINNED SILENT PATHS**, by name: `harness rm` with no match and
++  `home drift --ack` assert they print **nothing** today. Not deferred — a
++  deferred gap is an unasserted state, and a change that starts writing either
++  prose *or* a document there now fails and forces a deliberate decision.
++  This earned its keep immediately: `home drift --ack` reddens under V1 without
++  anyone having written a case about drift.
++
++### The hole
++
++**V1 found my guard reddening on a precondition instead of on its claim.**
++
++The contended close-out case is the only one that reproduces the actual defect —
++a progress line on a run that *succeeds*. Its first version asserted the wait
++notice was on **stderr** as its *precondition*. Revert the routing and the notice
++moves to stdout, so the precondition failed and the case never reached its claim.
++That is **HIS-4's probe 7a**, one epic later, inside the guard written to prevent
++exactly this.
++
++Corrected: the precondition is now **stream-blind** — the notice appeared on
++either stream, which is all "contention happened" requires — the purity check is
++the claim, and a third assertion holds the notice on stderr so the fix cannot be
++"delete the diagnostic". It now reddens on the claim and quotes the contaminating
++line.
++
++### Sandbox
++
++The driver runs commands in-process through the real entry point, against a
++throwaway home pinned via `AgentHomes` — and **asserts the sandbox held** before
++running anything, rather than assuming it. That assertion is why I noticed the
++one thing it cannot cover: see DEF-046.
++
++---
++
++## 4. Validation
++
++```
++jbang RunTests.java     ALL PASSED
++uv run pytest specs/    38 passed
++jbang RunHis15.java     36 passed, 0 failed
++```
++
++`tlc` — **N/A** per the assignment; HIS-5 carries the model work.
++
++### The graph this ticket exists to clear
++
++```
++ticket-lifecycle   BUILD SUCCESSFUL in 6m 11s   status: passed
++                   13/13 nodes, 117 assertions, 0 not passed
++                   runId 20260822-173805        ON THE INTEGRATED TIP
++```
++
++**Measured after rebasing onto HIS-14, not before.** An earlier run
++(`20260822-171850`) was green on this branch alone, and it is deliberately not
++the one recorded: HIS-14 changed `close-out`'s policy gating and the execution
++strategy underneath it. **This ticket exists because HIS-11 was merged on a
++branch-measured green**, so signing HIS-15 off on one would be the same mistake
++with the same shape, one wave later. Only the integrated-tip pair is in
++`probes/`.
++
++The two that decide the ticket:
++
++- `ticket.lifecycle.concurrent.close.out` — **passed**, all 15 assertions,
++  including `every_remedy_the_gate_printed_is_an_absolute_runnable_command`,
++  which is the one that was failing because `remediesB` was empty.
++- `home.fixpoint.law` — **passed**. It was one of the six nodes skipping behind
++  the red one; all six now run.
++
++Summary copied to `probes/his-15/ticket-lifecycle-summary.json` rather than
++described.
++
++> **A reading error worth recording**, because it nearly became a false report.
++> My first pass over the node envelope asked each assertion for a `passed`
++> field. The schema names it `status`, so every assertion came back `None` and
++> printed as FAIL — a node reporting `status: passed` with fifteen failed
++> assertions under it. **That shape is impossible, which is what stopped me.**
++> The lesson is the epic's own: read the artifact's schema, do not assume its
++> field names, and treat a self-contradictory measurement as a bug in the
++> measurement until proven otherwise.
++>
++> Three tickets in this epic have now been bitten by a measurement rather than
++> by the thing measured, and nobody had written this down.
++
++| # | mutation | what reddened |
++| --- | --- | --- |
++| V1 | the json routing reverted | the Log unit, **the contended case (on its claim, after correction)**, and pinned `home drift` |
++| V2 | the `JsonExitEnvelope` net removed | 8+ commands nobody edited — the argument for a net |
++| V3 | the parse-error branch removed | exactly the four `project` entries |
++| V4 | `close-out`'s frozen `if (json)` reverted | the typed-payload case, showing the generic `"failed"` fallback |
++| V5 | HIS-14's exit 13 routed around `completeExecution` again | the exit-13 case, `got []` |
++
++---
++
++## 4b. Rebasing onto HIS-14, and the case that justifies the whole design
++
++HIS-14 (#232) and this ticket both insert into `SkillManagerCli`'s execution
++strategy and both read the parsed command, so the merge was taken deliberately.
++
++**Ordering, verified rather than assumed.** `Log.setJsonMode` latches at the top
++of the strategy, ahead of `bindNamedHome`. HIS-14's unbindable refusal prints
++through `Log.error`, which is stderr in every mode, so it cannot contaminate the
++document — but only because the latch is already set by the time it runs.
++
++**The gap it exposed.** `bindNamedHome`'s refusal returned
++`UNBINDABLE_HOME_EXIT_CODE` straight out of the strategy — the one exit path in
++this CLI that went **around** `completeExecution`, and therefore around the
++`--json` envelope, the outstanding-error report, the observability close and the
++log naming. Under `--json` it exited 13 with an empty stdout: **#235's exact
++shape, on a path that did not exist when #235 was filed.** It now returns
++through `completeExecution`.
++
++> **This is the argument for a convention check over an enumerated list, and it
++> is not hypothetical.** The check landed; the next ticket in the same wave grew
++> a new failure path; the check caught it. A list of known-bad sites could not
++> have, because nobody had written the path yet. **V5.**
++
++**The contended fixture, checked rather than assumed.** HIS-14 gated
++`tryReconcile` on `WRITES_HOME`, and `home close-out` is `READ_ONLY`, so the
++reconcile no longer runs ahead of it. A fixture that had been measuring *that*
++contention would now measure nothing and **go green for the wrong reason** —
++the trap this whole ticket is about. It was not measuring that: the wait is
++`HomeSync`'s dry-run into the named project home, which is the command's own
++path and the one #235 travelled. The fixture now **asserts the operation label**
++so it cannot silently start measuring something else.
++
++---
++
++## 5. What I cut
++
++- **`close-change.sh`.** Different repository; cross-repo publishing is HIS-8's
++  path and a second PR was ruled out. **DEF-045** records precisely which branch
++  is which, because the output misled two readers already: its *empty-verdict*
++  branch was **already correct** (re-run fix, no `--force`); the `--force`
++  advice came from the *non-empty-but-unparseable* branch, which this ticket's
++  stdout fix eliminates **for this cause**. What remains is defence in depth
++  against a future cause, not a live defect.
++- **The lock's scope and its 120 s patience** — DEF-041, still open, explicitly
++  out of scope.
++- **A contract for the three silent success paths** — **DEF-044**, with their
++  current behaviour pinned rather than deferred.
++- **Making the `project` family testable** — **DEF-046**, whose body now carries
++  the general lesson rather than an apology: *an in-process driver cannot
++  sandbox a command that resolves from the working directory.* A JVM cannot
++  change its own CWD, so every override this repository has covers the HOME axis
++  and none covers the CWD axis. A test that pins the first and believes it is
++  sandboxed is wrong in exactly one direction, silently. That is why the
++  driver's sandbox is **asserted** and not merely established — it is the only
++  thing that distinguishes "sandboxed" from "sandboxed on the axis I thought
++  of".
++
++Three deferrals against a budget of five.
++
++---
++
++## 6. What I am unsure about
++
++**The envelope's `"failed"` is honest but thin.** For a command that catches its
++own exception and returns a code, the CLI genuinely does not know the reason, so
++the envelope carries `error:"failed"` plus the human sentence. That is correct
++and less useful than a typed code. The right long-term shape is for commands to
++throw typed refusals rather than catch-and-return — a much larger change than
++this ticket.
++
++**`Log.lastError()` is a latch, and latches are stateful.** It exists so the
++envelope repeats the *same* sentence the command already put on stderr rather
++than composing a second one that could disagree. Nothing branches on it and it
++is cleared per invocation, but it is global mutable state and I would rather it
++were not.
++
++**I did not measure the graph's six skipped nodes individually.** The claim
++"`ticket.lifecycle.concurrent.close.out` is green and the six behind it run" is
++decided by the graph run recorded in §4, not by my reasoning about the node's
++assertions.
+diff --git a/src/main/java/dev/skillmanager/cli/JsonExitEnvelope.java b/src/main/java/dev/skillmanager/cli/JsonExitEnvelope.java
+new file mode 100644
+index 0000000..f931636
+--- /dev/null
++++ b/src/main/java/dev/skillmanager/cli/JsonExitEnvelope.java
+@@ -0,0 +1,140 @@
++package dev.skillmanager.cli;
++
++import java.io.ByteArrayOutputStream;
++import java.io.PrintStream;
++import java.nio.charset.StandardCharsets;
++
++/**
++ * The safety net that makes {@code --json} a promise instead of a habit:
++ * <b>a {@code --json} invocation that fails always leaves one parseable JSON
++ * document on stdout, whatever went wrong.</b>
++ *
++ * <h2>The hole this closes (#235)</h2>
++ *
++ * <p>{@code --json} is declared by thirty commands. Each renders its own
++ * document on the paths its author thought about, and on the paths they did
++ * not, stdout is empty and the reason is a sentence on stderr. Sixteen such
++ * paths were enumerated while writing this, including two <em>adjacent catch
++ * blocks in one method</em> — {@code home close-out} answers a
++ * {@code NotAHomeException} with a JSON error and a {@code FrozenHomeException}
++ * with nothing at all. Nobody wrote that difference on purpose; the second
++ * catch was simply added later.
++ *
++ * <p>Fixing sixteen sites leaves the seventeenth to whoever writes it next.
++ * This makes the contract structural: the CLI counts the bytes the command put
++ * on stdout, and if a {@code --json} run is about to exit non-zero having
++ * written none, the CLI writes the document the command did not.
++ *
++ * <h2>What it deliberately does NOT do</h2>
++ *
++ * <p>It does not fire on <b>success</b>. A command that exits 0 having printed
++ * nothing is a different defect ({@code harness rm} with no matching bindings
++ * does exactly that) and a {@code {"error":…}} envelope would be a lie about
++ * it. That gap is recorded rather than papered over.
++ *
++ * <p>It does not <b>replace</b> a command's own document. Whenever the command
++ * printed one, the net sees bytes and stays out of the way — so a richer,
++ * command-specific payload always wins over this generic one.
++ */
++public final class JsonExitEnvelope {
++
++    private static PrintStream realOut;
++    private static CountingStream counting;
++
++    private JsonExitEnvelope() {}
++
++    /** stdout, wrapped so we can ask whether the command wrote to it. */
++    private static final class CountingStream extends PrintStream {
++        private final ByteArrayOutputStream unused = new ByteArrayOutputStream(0);
++        private volatile boolean wrote;
++
++        CountingStream(PrintStream delegate) {
++            super(delegate, true, StandardCharsets.UTF_8);
++        }
++
++        @Override public void write(int b) { wrote = true; super.write(b); }
++
++        @Override public void write(byte[] buf, int off, int len) {
++            if (len > 0) wrote = true;
++            super.write(buf, off, len);
++        }
++    }
++
++    /**
++     * Start counting stdout for this invocation. Idempotent and cheap; only
++     * called when {@code --json} was actually requested.
++     */
++    public static void arm() {
++        if (counting != null) return;
++        realOut = System.out;
++        counting = new CountingStream(realOut);
++        System.setOut(counting);
++    }
++
++    /** Whether the command has put any byte on stdout. */
++    public static boolean wroteAnything() {
++        return counting != null && counting.wrote;
++    }
++
++    /** Put the real stdout back. Safe to call when never armed. */
++    public static void disarm() {
++        if (counting == null) return;
++        System.out.flush();
++        System.setOut(realOut);
++        counting = null;
++        realOut = null;
++    }
++
++    /**
++     * Write the envelope the failing command did not.
++     *
++     * @param exitCode the non-zero code the invocation is about to return
++     * @param error    a stable machine-readable reason, e.g. {@code home_locked}
++     * @param message  the human sentence, which is whatever the command already
++     *                 said on stderr — repeated here rather than re-derived, so
++     *                 the two renderings cannot disagree
++     */
++    public static void emit(int exitCode, String error, String message) {
++        StringBuilder json = new StringBuilder(128);
++        json.append("{\"error\":").append(quote(error))
++                .append(",\"message\":").append(quote(message))
++                .append(",\"exitCode\":").append(exitCode)
++                .append('}');
++        PrintStream out = counting != null ? counting : System.out;
++        out.println(json);
++        out.flush();
++    }
++
++    /**
++     * JSON string escaping that handles control characters.
++     *
++     * <p>The four hand-rolled {@code esc()} copies this CLI already carries
++     * escape only {@code \\} and {@code "}, so any message with a newline in it
++     * produces invalid JSON — which is the same class of defect as emitting no
++     * JSON at all, and this envelope exists precisely to be the thing that
++     * always parses. A refusal message containing a path with a newline is
++     * unlikely; an envelope that is only conditionally valid is not worth
++     * shipping.
++     */
++    static String quote(String raw) {
++        if (raw == null) return "null";
++        StringBuilder b = new StringBuilder(raw.length() + 8).append('"');
++        for (int i = 0; i < raw.length(); i++) {
++            char c = raw.charAt(i);
++            switch (c) {
++                case '"' -> b.append("\\\"");
++                case '\\' -> b.append("\\\\");
++                case '\n' -> b.append("\\n");
++                case '\r' -> b.append("\\r");
++                case '\t' -> b.append("\\t");
++                case '\b' -> b.append("\\b");
++                case '\f' -> b.append("\\f");
++                default -> {
++                    if (c < 0x20) b.append(String.format("\\u%04x", (int) c));
++                    else b.append(c);
++                }
++            }
++        }
++        return b.append('"').toString();
++    }
++}
+diff --git a/src/main/java/dev/skillmanager/cli/SkillManagerCli.java b/src/main/java/dev/skillmanager/cli/SkillManagerCli.java
+index 0ef37e5..eae8ad6 100644
+--- a/src/main/java/dev/skillmanager/cli/SkillManagerCli.java
++++ b/src/main/java/dev/skillmanager/cli/SkillManagerCli.java
+@@ -151,7 +151,13 @@ public final class SkillManagerCli implements Runnable {
+         }
+     }
+ 
+-    private static int execute(String[] args) {
++    /**
++     * Package-private rather than private: {@code JsonContractTest} drives
++     * every {@code --json} command through this exact entry point, so the
++     * guard exercises the real execution strategy — the json latch, the
++     * envelope, the exception handler — and not a reconstruction of it.
++     */
++    static int execute(String[] args) {
+         dev.skillmanager.effects.UnitReadProblemReporter.reset();
+         CommandLine cmd = new CommandLine(new SkillManagerCli());
+         // The mode this invocation displaced, so the finally below can put it
+@@ -170,6 +176,13 @@ public final class SkillManagerCli implements Runnable {
+         cmd.setExecutionStrategy(pr -> {
+             SkillManagerCli root = rootCommand(pr);
+             if (root != null) Log.setVerbose(root.verbose);
++            // Before anything can print: declare whether stdout belongs to a
++            // machine-readable document. Everything under this command --
++            // handlers, the store, HomeLock's contention notice -- routes its
++            // human lines to stderr from here on. #235.
++            Log.setJsonMode(jsonRequested(pr));
++            Log.clearLastError();
++            if (Log.isJsonMode()) JsonExitEnvelope.arm();
+             // Armed as early as the parse allows, so the log holds everything
+             // from here on. Lazy: no file exists until something is written.
+             dev.skillmanager.util.RunLog.open(CliAgentContext.commandPath(pr));
+@@ -184,7 +197,14 @@ public final class SkillManagerCli implements Runnable {
+             // home, bind BOTH of that home's axes. Ahead of tryReconcile
+             // deliberately — see bindNamedHome.
+             Integer refused = bindNamedHome(pr, displacedBinding);
+-            if (refused != null) return refused;
++            // THROUGH completeExecution, not around it. HIS-14 returned this
++            // refusal straight out of the strategy, which is the one exit path
++            // in the CLI that skips the --json envelope, the outstanding-error
++            // report, the observability close and the log naming. Under
++            // `--json` it therefore exited 13 with an empty stdout — the exact
++            // shape #235 is about, on a path that did not exist when #235 was
++            // filed. Asserted by JsonContractTest's exit-13 case.
++            if (refused != null) return completeExecution(root, pr, refused);
+             tryReconcile();
+             int rc = new CommandLine.RunLast().execute(pr);
+             return completeExecution(root, pr, rc);
+@@ -196,6 +216,20 @@ public final class SkillManagerCli implements Runnable {
+         // {@link #printFailure}; only a failure with nothing to say still
+         // prints a trace.
+         cmd.setExecutionExceptionHandler(SkillManagerCli::handleExecutionException);
++        // A PARSE failure never reaches the execution strategy, so the --json
++        // latch above never runs and the envelope is never armed: `bind
++        // no-such-unit --json` exited 2 with an empty stdout. The flag is still
++        // in the raw argv whether or not the parse succeeded, so that is what
++        // this consults. Found by JsonContractTest while driving the commands
++        // whose working directory cannot be sandboxed in-process.
++        CommandLine.IParameterExceptionHandler defaultParams = cmd.getParameterExceptionHandler();
++        cmd.setParameterExceptionHandler((ex, params) -> {
++            int rc = defaultParams.handleParseException(ex, params);
++            if (declaresJson(params)) {
++                JsonExitEnvelope.emit(rc, "usage", String.valueOf(ex.getMessage()));
++            }
++            return rc;
++        });
+         try {
+             return cmd.execute(args);
+         } finally {
+@@ -203,10 +237,16 @@ public final class SkillManagerCli implements Runnable {
+             // Without this, an embedded caller (the server, a test harness, an
+             // out-of-tree library user) that ran one READ_ONLY command left
+             // every later SkillStore.init() in the process a silent no-op.
++            JsonExitEnvelope.disarm();
+             if (declared[0]) dev.skillmanager.store.HomeScaffold.restore(displaced[0]);
+             if (displacedBinding[0] != null) {
+                 dev.skillmanager.agent.AgentHomes.restoreOverrides(displacedBinding[0]);
+             }
++            // Scoped to the invocation, not the JVM -- same reason the access
++            // mode above is restored. An embedded caller that ran one --json
++            // command must not have every later command's output silently
++            // moved to stderr.
++            Log.setJsonMode(false);
+         }
+     }
+ 
+@@ -333,8 +373,20 @@ public final class SkillManagerCli implements Runnable {
+      */
+     public static final int UNBINDABLE_HOME_EXIT_CODE = 13;
+ 
++    /**
++     * The typed reason for the failure being handled, when there is one.
++     *
++     * <p>Set by {@link #handleExecutionException} from the exception's TYPE, so
++     * a {@code --json} consumer branches on {@code "home_locked"} rather than
++     * on a substring of an English sentence. Null for a command that returned
++     * a non-zero code without throwing — those get {@code "failed"}, which is
++     * honest: the CLI knows the command refused and does not know why.
++     */
++    private static String jsonErrorCode;
++
+     static int handleExecutionException(Exception ex, CommandLine c, CommandLine.ParseResult pr)
+             throws Exception {
++        jsonErrorCode = classify(ex);
+         AuthenticationRequiredException auth = unwrapCause(ex, AuthenticationRequiredException.class);
+         if (auth != null) {
+             return completeExecution(rootCommand(pr), pr, printAuthBanner(auth.getMessage()));
+@@ -407,6 +459,33 @@ public final class SkillManagerCli implements Runnable {
+      *         default, i.e. the same non-zero the trace path produced. This
+      *         changes what a refusal PRINTS, never what it returns.
+      */
++    /**
++     * A stable machine-readable reason for an exception, or {@code null}.
++     *
++     * <p>By TYPE, never by message. Extend it when a caller has a reason to
++     * branch on a failure -- an unclassified failure is reported as
++     * {@code "failed"} with the human message, which is correct and merely
++     * less useful.
++     */
++    private static String classify(Exception ex) {
++        if (unwrapCause(ex, dev.skillmanager.store.HomeContendedException.class) != null) {
++            return dev.skillmanager.store.HomeContendedException.ERROR_CODE;
++        }
++        if (unwrapCause(ex, dev.skillmanager.policy.FrozenHomeException.class) != null) {
++            return "home_frozen";
++        }
++        if (unwrapCause(ex, dev.skillmanager.store.NotAHomeException.class) != null) {
++            return "not_a_home";
++        }
++        if (unwrapCause(ex, AuthenticationRequiredException.class) != null) {
++            return "authentication_required";
++        }
++        if (unwrapCause(ex, RegistryUnavailableException.class) != null) {
++            return "registry_unavailable";
++        }
++        return null;
++    }
++
+     static int printFailure(Exception ex, CommandLine c, CommandLine.ParseResult pr) {
+         int rc = c == null ? 1 : c.getCommandSpec().exitCodeOnExecutionException();
+         String message = describe(ex);
+@@ -458,6 +537,15 @@ public final class SkillManagerCli implements Runnable {
+     }
+ 
+     private static int completeExecution(SkillManagerCli root, CommandLine.ParseResult pr, int rc) {
++        // The --json safety net, before anything else prints: a failing
++        // --json invocation that produced no document gets one. See
++        // JsonExitEnvelope for why this is here and not at sixteen call sites.
++        if (rc != 0 && Log.isJsonMode() && !JsonExitEnvelope.wroteAnything()) {
++            String message = Log.lastError();
++            JsonExitEnvelope.emit(rc, jsonErrorCode == null ? "failed" : jsonErrorCode,
++                    message == null ? "the command failed and said nothing" : message);
++        }
++        jsonErrorCode = null;
+         tryPrintOutstandingErrors();
+         String commandPath = CliAgentContext.commandPath(pr);
+         CliObservability.completeCurrent(commandPath, rc);
+@@ -494,6 +582,22 @@ public final class SkillManagerCli implements Runnable {
+         System.err.println("  log: " + log);
+     }
+ 
++    /**
++     * Whether {@code --json} is present in the raw argv.
++     *
++     * <p>The parsed-result form below cannot be used on a parse FAILURE —
++     * there is no usable parse result, which is the whole reason that path
++     * emitted nothing. Reading argv is exact here: {@code --json} is a flag on
++     * every command that has it, so its presence as a token is unambiguous,
++     * and a value that merely equals the string cannot occur because no option
++     * in this CLI takes {@code --json} as an argument.
++     */
++    private static boolean declaresJson(String[] argv) {
++        if (argv == null) return false;
++        for (String arg : argv) if ("--json".equals(arg)) return true;
++        return false;
++    }
++
+     /** Whether {@code --json} was matched anywhere in the parsed command chain. */
+     private static boolean jsonRequested(CommandLine.ParseResult pr) {
+         try {
+diff --git a/src/main/java/dev/skillmanager/commands/HomeCommand.java b/src/main/java/dev/skillmanager/commands/HomeCommand.java
+index 09913b3..8b79925 100644
+--- a/src/main/java/dev/skillmanager/commands/HomeCommand.java
++++ b/src/main/java/dev/skillmanager/commands/HomeCommand.java
+@@ -1209,6 +1209,17 @@ public final class HomeCommand {
+                 // exit code, not a stack trace — a teardown script branches on
+                 // this, and 9 ("refused, nothing attempted") is not 1 ("this
+                 // worktree still holds work").
++                //
++                // The `if (json)` line is #235's: this catch sat immediately
++                // below one that DID answer a --json caller and it answered
++                // nothing, so a frozen project home produced exit 9 with an
++                // empty stdout. Nobody decided that; the catch was simply added
++                // later than its sibling. The generic envelope in
++                // JsonExitEnvelope would now cover it, but only with
++                // error="failed" — a caught exception never reaches the
++                // classifier — and this command's consumer reads `safe` and
++                // `blockers`, so it gets the same shape as its sibling.
++                if (json) System.out.println(frozenJson(frozen));
+                 Log.error("%s", frozen.getMessage());
+                 return FrozenHomeException.EXIT_CODE;
+             }
+@@ -1358,6 +1369,13 @@ public final class HomeCommand {
+                 + NotAHomeException.EXIT_CODE + "}";
+     }
+ 
++    private static String frozenJson(FrozenHomeException frozen) {
++        return "{\"error\":\"home_frozen\",\"path\":\"" + esc(String.valueOf(frozen.homeRoot()))
++                + "\",\"message\":\"" + esc(frozen.getMessage())
++                + "\",\"safe\":false,\"clean\":false,\"blockers\":[],\"units\":[],\"exitCode\":"
++                + FrozenHomeException.EXIT_CODE + "}";
++    }
++
+     private static String strings(List<String> values) {
+         return values.stream()
+                 .map(value -> "\"" + esc(value) + "\"")
+diff --git a/src/main/java/dev/skillmanager/store/HomeContendedException.java b/src/main/java/dev/skillmanager/store/HomeContendedException.java
+new file mode 100644
+index 0000000..1e41028
+--- /dev/null
++++ b/src/main/java/dev/skillmanager/store/HomeContendedException.java
+@@ -0,0 +1,43 @@
++package dev.skillmanager.store;
++
++import java.io.IOException;
++import java.nio.file.Path;
++
++/**
++ * Refused because another operation holds this home's lock and did not let go
++ * within the wait.
++ *
++ * <h2>Why a type and not a sentence</h2>
++ *
++ * <p>{@link HomeLock#acquire} threw a plain {@link IOException} whose message
++ * said "is locked by another …". A consumer that wanted to tell "the home is
++ * busy, try again" apart from "the home is broken" had to match on that
++ * sentence — and #235 is the ticket about consumers of this CLI getting text
++ * where they asked for structure. A caller can now branch on the type, and
++ * {@code --json} can name the reason as {@code home_locked} without a regex
++ * over someone else's prose.
++ *
++ * <p>It stays an {@link IOException} on purpose: every existing catch site
++ * keeps working, and this is a subclass rather than a new checked type in the
++ * signatures of {@code HomeSync}, {@code HomeCloseOut} and {@code Executor}.
++ */
++public final class HomeContendedException extends IOException {
++
++    /** The machine-readable reason a {@code --json} consumer branches on. */
++    public static final String ERROR_CODE = "home_locked";
++
++    private final transient Path home;
++    private final String operation;
++
++    HomeContendedException(String operation, Path home, String detail) {
++        super(operation + ": " + home + " " + detail);
++        this.home = home;
++        this.operation = operation;
++    }
++
++    /** The contended home. */
++    public Path home() { return home; }
++
++    /** The operation that gave up waiting for it. */
++    public String operation() { return operation; }
++}
+diff --git a/src/main/java/dev/skillmanager/store/HomeLock.java b/src/main/java/dev/skillmanager/store/HomeLock.java
+index 1b14dd4..ca5cb46 100644
+--- a/src/main/java/dev/skillmanager/store/HomeLock.java
++++ b/src/main/java/dev/skillmanager/store/HomeLock.java
+@@ -140,7 +140,7 @@ public final class HomeLock implements AutoCloseable {
+             throw new IOException("interrupted waiting for the home lock on " + root, interrupted);
+         }
+         if (!held) {
+-            throw new IOException(operation + ": " + root + " is locked by another "
++            throw new HomeContendedException(operation, root, "is locked by another "
+                     + "operation in this process and did not free up within "
+                     + DEFAULT_TIMEOUT.toMillis() + "ms");
+         }
+@@ -174,7 +174,7 @@ public final class HomeLock implements AutoCloseable {
+             }
+         }
+         if (!held) {
+-            throw new IOException(operation + ": " + root + " is locked by another "
++            throw new HomeContendedException(operation, root, "is locked by another "
+                     + "operation in this process and did not free up within " + waitMillis + "ms");
+         }
+         // The outer acquisition owns the OS lock; a nested one is already
+@@ -200,7 +200,7 @@ public final class HomeLock implements AutoCloseable {
+                     announced = true;
+                 }
+                 if (System.currentTimeMillis() >= deadline) {
+-                    throw new IOException(operation + ": " + root + " is locked by another "
++                    throw new HomeContendedException(operation, root, "is locked by another "
+                             + "skill-manager process (" + lockFile + ") and did not free up within "
+                             + waitMillis + "ms");
+                 }
+diff --git a/src/main/java/dev/skillmanager/util/Log.java b/src/main/java/dev/skillmanager/util/Log.java
+index 0d09967..afd1042 100644
+--- a/src/main/java/dev/skillmanager/util/Log.java
++++ b/src/main/java/dev/skillmanager/util/Log.java
+@@ -28,11 +28,64 @@ package dev.skillmanager.util;
+ public final class Log {
+ 
+     private static boolean verbose = false;
++    private static boolean jsonMode = false;
++    private static String lastError = null;
+ 
+     private Log() {}
+ 
+     public static void setVerbose(boolean v) { verbose = v; }
+ 
++    /**
++     * Declare that this invocation's <b>stdout is a machine-readable
++     * document</b>, so every human line this class emits goes to stderr
++     * instead.
++     *
++     * <h2>The defect this closes (#235)</h2>
++     *
++     * <p>{@code --json} is a promise about stdout: one parseable document and
++     * nothing else. It was enforced nowhere. Any library code beneath a
++     * {@code --json} command that called {@link #info}, {@link #ok} or
++     * {@link #step} wrote a sentence onto the same stream — and the consumer,
++     * which is a script, got a parse error instead of a verdict.
++     *
++     * <p>MEASURED, and note the exit code:
++     *
++     * <pre>
++     * $ skill-manager home close-out --home &lt;wt&gt; --into &lt;proj&gt; --json
++     * exit=0
++     * home sync --dry-run: waiting for /…/proj-home — another skill-manager process holds this home's lock
++     * {"home":"/…","into":"/…","safe":true,"exitCode":0,"blockers":[],"units":[]}
++     *
++     * $ python3 -c 'import json,sys; json.load(sys.stdin)' &lt; stdout
++     * json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
++     * </pre>
++     *
++     * <p>The command SUCCEEDED. The wait line is HomeLock announcing that it
++     * queued behind a peer — correct behaviour, added by HIS-11 (#186), on the
++     * wrong stream. {@code close-change.sh} parses that stdout, could not, and
++     * advised {@code --force}: discarding the work the gate had just refused to
++     * destroy.
++     *
++     * <h2>Why a latch here rather than a fix at the call site</h2>
++     *
++     * <p>The call site was {@code HomeLock.announceWait}. Fixing it there fixes
++     * one sentence. Every other {@code Log.info} under any of the thirty
++     * commands that declare {@code --json} is the same defect waiting, and a
++     * new one is written every time somebody adds a progress line to a shared
++     * code path — which is precisely how this one arrived. The stream a human
++     * line belongs on is a property of the INVOCATION, and this is the one
++     * place that knows it.
++     *
++     * <p>{@code BuildCommand} had already solved this for itself by
++     * redirecting {@link System#out} to {@code FileDescriptor.err} for the
++     * duration of its program. That is the same decision, taken privately by
++     * one command; this makes it the rule.
++     */
++    public static void setJsonMode(boolean v) { jsonMode = v; }
++
++    /** Whether stdout is reserved for a machine-readable document. */
++    public static boolean isJsonMode() { return jsonMode; }
++
+     /**
+      * Whether {@code --verbose} (or an embedding caller) asked for the
+      * diagnostic half of the output.
+@@ -61,9 +114,28 @@ public final class Log {
+     }
+ 
+     public static void error(String msg, Object... args) {
+-        consoleErr("✗ " + format(msg, args));
++        String line = format(msg, args);
++        lastError = line;
++        consoleErr("✗ " + line);
+     }
+ 
++    /**
++     * The last sentence {@link #error} printed, or {@code null}.
++     *
++     * <p>Exists so the {@code --json} failure envelope can carry the SAME
++     * sentence the command already put on stderr rather than composing a
++     * second one. Two renderings of one refusal that can disagree is the
++     * defect #235 is about; this is the cheapest way to make them the same
++     * string by construction.
++     *
++     * <p>Per-invocation, cleared by the CLI, and deliberately not part of any
++     * command's logic — nothing branches on it.
++     */
++    public static String lastError() { return lastError; }
++
++    /** Forget the last error. Called once per CLI invocation. */
++    public static void clearLastError() { lastError = null; }
++
+     /**
+      * A line behind a verdict: it goes to the run log always, and to the
+      * console only under {@code --verbose}.
+@@ -75,7 +147,8 @@ public final class Log {
+     public static void detail(String msg, Object... args) {
+         String line = format(msg, args);
+         if (verbose) {
+-            System.out.println(line);
++            if (jsonMode) System.err.println(line);
++            else System.out.println(line);
+             RunLog.mirror(line);
+         } else {
+             RunLog.demote(line);
+@@ -138,7 +211,9 @@ public final class Log {
+     public static final int ERROR_SAMPLE = 12;
+ 
+     private static void console(String line) {
+-        System.out.println(line);
++        // Under --json stdout belongs to the document, not to us.
++        if (jsonMode) System.err.println(line);
++        else System.out.println(line);
+         RunLog.mirror(line);
+     }
+ 
+diff --git a/src/test/java/dev/skillmanager/cli/JsonContractTest.java b/src/test/java/dev/skillmanager/cli/JsonContractTest.java
+new file mode 100644
+index 0000000..8c98b84
+--- /dev/null
++++ b/src/test/java/dev/skillmanager/cli/JsonContractTest.java
+@@ -0,0 +1,594 @@
++package dev.skillmanager.cli;
++
++import dev.skillmanager._lib.test.Tests;
++import dev.skillmanager.agent.AgentHomes;
++import dev.skillmanager.store.HomeLock;
++import dev.skillmanager.store.SkillStore;
++import dev.skillmanager.util.Log;
++import picocli.CommandLine;
++
++import java.io.ByteArrayOutputStream;
++import java.io.PrintStream;
++import java.nio.charset.StandardCharsets;
++import java.nio.file.Files;
++import java.nio.file.Path;
++import java.util.ArrayList;
++import java.util.Arrays;
++import java.util.IdentityHashMap;
++import java.util.LinkedHashMap;
++import java.util.List;
++import java.util.Map;
++import java.util.Set;
++import java.util.TreeSet;
++import java.util.concurrent.CountDownLatch;
++import java.util.concurrent.TimeUnit;
++
++import static dev.skillmanager._lib.test.Tests.assertEquals;
++import static dev.skillmanager._lib.test.Tests.assertFalse;
++import static dev.skillmanager._lib.test.Tests.assertTrue;
++
++/**
++ * <b>Under {@code --json}, stdout carries only JSON — exactly one document, or
++ * none, and never anything else — on every exit path.</b>
++ *
++ * <h2>Why this is a check over the CONVENTION and not over one command</h2>
++ *
++ * <p>#235 was found as a red integration graph in a later wave than the one
++ * that caused it. The graph node that caught it asserts about
++ * {@code home close-out} specifically, and somebody had to have written that
++ * node; nothing asserted the contract itself, so all thirty-one commands
++ * declaring {@code --json} were each a fresh chance to break it silently.
++ *
++ * <p>The evidence that this is a convention problem rather than a bug is two
++ * ADJACENT CATCH BLOCKS in {@code HomeCommand.CloseOutCmd}: a
++ * {@code NotAHomeException} is answered with a JSON error document, and a
++ * {@code FrozenHomeException} one arm below it is answered with nothing at
++ * all. Nobody decided that. The second catch was simply written later than
++ * its sibling, by someone who had no reason to look at the first.
++ *
++ * <h2>The three rules, and why the third one is not a deferral</h2>
++ *
++ * <ol>
++ *   <li><b>PURITY</b>, for every command: stdout holds zero or one parseable
++ *       JSON document and no other bytes. This is the rule the regression
++ *       broke — {@code HomeLock.announceWait} wrote a progress line to stdout
++ *       on a run that <em>succeeded</em>.</li>
++ *   <li><b>PRESENCE</b>, for non-zero exits: a {@code --json} run that fails
++ *       emits a document saying why.</li>
++ *   <li><b>THE PINNED SILENT PATHS</b>: three commands legitimately print
++ *       nothing on some successful runs. Inventing an {@code {"error":…}} for
++ *       them would be a lie. They are asserted to print <em>nothing</em>, by
++ *       name — so a change that starts writing prose there fails this guard,
++ *       and a change that starts writing a document fails it too and forces
++ *       someone to decide on purpose. A gap that is merely deferred is an
++ *       unasserted state, and this epic has been bitten by that shape
++ *       repeatedly.</li>
++ * </ol>
++ *
++ * <h2>The enumeration is reflective, deliberately</h2>
++ *
++ * <p>{@link #jsonCommands()} walks the live picocli tree. A hard-coded list
++ * would go stale the day someone adds the thirty-second command — silently,
++ * which is the exact failure mode this file exists to end. Adding a
++ * {@code --json} command with no entry in {@link #TABLE} fails
++ * {@code every_json_command_is_covered}.
++ */
++public final class JsonContractTest {
++
++    /** What a command is expected to do on the invocation the table declares. */
++    private enum Mode {
++        /** Exits non-zero: must print exactly one JSON document. */
++        FAILS,
++        /** Exits zero and prints one JSON document. */
++        SUCCEEDS,
++        /** Exits zero and prints NOTHING — pinned, see the class javadoc. */
++        SILENT
++    }
++
++    private record Expect(Mode mode, List<String> args, String why) {}
++
++    /**
++     * One entry per {@code --json} command. The args are chosen to reach the
++     * declared outcome <b>without touching the network, the gateway, or any
++     * home outside the sandbox</b> — every run happens against a throwaway
++     * home pinned through {@link AgentHomes}.
++     */
++    private static final Map<String, Expect> TABLE = new LinkedHashMap<>();
++
++    /**
++     * An option no command declares, so the parse fails before anything runs.
++     * The only invocation that is safe for a command whose working directory
++     * this test cannot pin.
++     */
++    private static final String GUARD_BAD_OPTION = "--sm-json-guard-not-an-option";
++
++    private static void expect(String path, Mode mode, String why, String... args) {
++        TABLE.put(path, new Expect(mode, List.of(args), why));
++    }
++
++    public static int run() throws Exception {
++        Tests.Suite suite = Tests.suite("JsonContractTest");
++
++        // ---------------------------------------------- the enumeration itself
++        suite.test("every --json command is covered by this guard's table", () -> {
++            Set<String> live = jsonCommands();
++            assertFalse(live.isEmpty(), "the reflective walk found the --json commands at all");
++            Set<String> declared = new TreeSet<>(TABLE.keySet());
++            Set<String> missing = new TreeSet<>(live);
++            missing.removeAll(declared);
++            Set<String> stale = new TreeSet<>(declared);
++            stale.removeAll(live);
++            assertEquals("[]", missing.toString(),
++                    "a --json command with no entry here is an unguarded contract; add one");
++            assertEquals("[]", stale.toString(),
++                    "an entry for a command that no longer declares --json");
++        });
++
++        // ------------------------------------------------- the mechanism itself
++        suite.test("in json mode no Log level writes to stdout, and stderr still gets them", () -> {
++            Streams s = capture(() -> {
++                Log.setJsonMode(true);
++                Log.setVerbose(true);
++                try {
++                    Log.info("info line");
++                    Log.ok("ok line");
++                    Log.step("step line");
++                    Log.detail("detail line");
++                    Log.warn("warn line");
++                    Log.error("error line");
++                } finally {
++                    Log.setJsonMode(false);
++                    Log.setVerbose(false);
++                }
++                return 0;
++            });
++            assertEquals("", s.out().strip(),
++                    "stdout is reserved for the document — this is the byte that broke #235");
++            for (String level : List.of("info", "ok", "step", "detail", "warn", "error")) {
++                assertTrue(s.err().contains(level + " line"),
++                        "the " + level + " line is still reported, on stderr — routing is not "
++                                + "deleting the diagnostic, and a silent 120s wait was the "
++                                + "reason announceWait exists");
++            }
++        });
++
++        suite.test("outside json mode the same lines go to stdout, so the latch is what moved them",
++                () -> {
++                    Streams s = capture(() -> {
++                        Log.setJsonMode(false);
++                        Log.info("plain line");
++                        return 0;
++                    });
++                    assertTrue(s.out().contains("plain line"),
++                            "without --json stdout is the human's stream, unchanged");
++                });
++
++        // ---------------------------------- the regression itself, end to end
++        suite.test("a CONTENDED close-out keeps stdout pure — #235's own case", () -> {
++            // WITHOUT THIS CASE THE GUARD IS VACUOUS FOR THE BUG IT EXISTS
++            // FOR. Every table entry above drives a command that fails through
++            // Log.error, which has always gone to stderr; none of them makes
++            // any code emit Log.info, so none of them would redden if the json
++            // routing were reverted. The defect was a PROGRESS line on a
++            // SUCCEEDING run, and that is what this reproduces: a peer thread
++            // holds the destination home's lock, so HomeLock.announceWait
++            // fires, and the command still exits 0.
++            Path sandbox = Files.createTempDirectory("json-contended-");
++            Path wt = home(sandbox.resolve("wt"));
++            Path proj = home(sandbox.resolve("proj"));
++            // acquireWithoutCreating only reaches the OS lock when the file is
++            // already there, which is what a home that has been synced once
++            // looks like. Without this the peer is never even contended with.
++            Files.createDirectories(HomeLock.file(proj).getParent());
++            Files.createTempFile(HomeLock.file(proj).getParent(), "seed", "");
++            Files.write(HomeLock.file(proj), new byte[0]);
++
++            CountDownLatch held = new CountDownLatch(1);
++            CountDownLatch release = new CountDownLatch(1);
++            Thread peer = new Thread(() -> {
++                try (HomeLock ignored = HomeLock.acquire(proj, "peer")) {
++                    held.countDown();
++                    release.await(30, TimeUnit.SECONDS);
++                } catch (Exception ignored) {
++                    held.countDown();
++                }
++            });
++            peer.setDaemon(true);
++            peer.start();
++            assertTrue(held.await(10, TimeUnit.SECONDS), "the peer took the lock");
++
++            Invocation run;
++            try {
++                run = invokeIn(sandbox, List.of("home", "close-out",
++                        "--home", wt.toString(), "--into", proj.toString()));
++            } finally {
++                release.countDown();
++            }
++
++            assertEquals(0, run.exitCode(),
++                    "fixture precondition: the contended run still SUCCEEDS — the defect was "
++                            + "never on a failure path; stderr=" + preview(run.stderr()));
++            // THE PRECONDITION IS DELIBERATELY STREAM-BLIND. Its job is to
++            // prove contention happened at all; asking for the notice on
++            // STDERR specifically would make it fail whenever the routing is
++            // broken -- which is the mutation this case exists to detect. The
++            // first version did exactly that, and the vacuity run caught it
++            // reddening on its precondition instead of on its claim: HIS-4's
++            // probe 7a, one epic later, in the guard written to prevent it.
++            assertTrue(run.stdout().contains("waiting for")
++                            || run.stderr().contains("waiting for"),
++                    "fixture precondition: the wait really was announced somewhere, or this "
++                            + "case is measuring an uncontended run and proves nothing");
++
++            List<String> docs = documentsIn(run.stdout().strip());
++            assertEquals(1, docs.size(), "exactly one document on stdout");
++            assertEquals("", nonJsonRemainder(run.stdout().strip(), docs),
++                    "and NOTHING else on stdout — THE CLAIM. The wait notice is a diagnostic "
++                            + "and belongs on stderr");
++            assertTrue(run.stderr().contains("waiting for"),
++                    "and the notice is not merely deleted: it is still reported, on stderr, "
++                            + "because a silent 120s wait looks like a hang");
++            // WHICH operation contended, not merely that something did. HIS-14
++            // gated tryReconcile on WRITES_HOME, and `home close-out` is
++            // READ_ONLY, so the reconcile no longer runs before this command --
++            // if this case had been measuring THAT contention it would now be
++            // measuring nothing and would go green for the wrong reason. The
++            // label proves the wait is the command's own dry-run sync into the
++            // named project home, which is the path #235 travelled.
++            assertTrue(run.stderr().contains("home sync --dry-run: waiting for"),
++                    "the contended operation is close-out's own dry-run sync, not an ambient "
++                            + "reconcile: " + preview(run.stderr()));
++        });
++
++        suite.test("a caught, typed refusal carries its OWN reason, not the generic one", () -> {
++            // The generic envelope would already answer this path -- but with
++            // error="failed", because a CAUGHT exception never reaches the
++            // classifier. close-change.sh reads `safe` and `blockers`, so the
++            // command answers in its own shape. This case is what keeps the
++            // explicit arm from being deleted as redundant: the net makes the
++            // output PARSEABLE, and only the arm makes it USEFUL.
++            Path sandbox = Files.createTempDirectory("json-frozen-");
++            Path wt = home(sandbox.resolve("wt"));
++            Path proj = home(sandbox.resolve("proj"));
++            Files.writeString(proj.resolve("home.policy.toml"), "policy = \"frozen\"\n");
++
++            Invocation run = invokeIn(sandbox, List.of("home", "close-out",
++                    "--home", wt.toString(), "--into", proj.toString()));
++
++            assertTrue(run.exitCode() != 0,
++                    "fixture precondition: a frozen destination really does refuse");
++            List<String> docs = documentsIn(run.stdout().strip());
++            assertEquals(1, docs.size(), "one document");
++            String doc = docs.get(0);
++            assertTrue(doc.contains("\"error\":\"home_frozen\""),
++                    "the reason is the TYPED one, not the generic \"failed\": " + preview(doc));
++            assertTrue(doc.contains("\"safe\":false") && doc.contains("\"blockers\":[]"),
++                    "and it carries the fields the gate reads: " + preview(doc));
++        });
++
++        suite.test("exit 13 — HIS-14's unbindable-home refusal — emits a document too", () -> {
++            // THE ARGUMENT FOR A CONVENTION CHECK, tested on the first command
++            // to grow a new failure path after the check landed. HIS-14 (#232)
++            // added a refusal that returns UNBINDABLE_HOME_EXIT_CODE straight
++            // out of the execution strategy — the one exit path in this CLI
++            // that went AROUND completeExecution, and therefore around the
++            // --json envelope. Under --json it exited 13 with an empty stdout:
++            // #235's exact shape, on a path that did not exist when #235 was
++            // filed. An enumerated list of known-bad sites would not have
++            // covered it, because nobody had written it yet.
++            Path sandbox = Files.createTempDirectory("json-unbindable-");
++            Path worktree = sandbox.resolve("wt");
++            Path store = home(worktree.resolve(".skill-manager"));
++            Path proj = home(sandbox.resolve("proj"));
++            // The home's .claude is a symlink OUT of the home, so --home
++            // cannot be honoured on the agent axis and the bind refuses.
++            Path outside = Files.createDirectories(sandbox.resolve("outside"));
++            Files.createSymbolicLink(worktree.resolve(".claude"), outside);
++
++            Invocation run = invokeIn(sandbox, List.of("home", "close-out",
++                    "--home", store.toString(), "--into", proj.toString()));
++
++            assertEquals(13, run.exitCode(),
++                    "fixture precondition: this really is HIS-14's unbindable refusal and not "
++                            + "some other failure; stderr=" + preview(run.stderr()));
++            List<String> docs = documentsIn(run.stdout().strip());
++            assertEquals(1, docs.size(),
++                    "a --json run that exits 13 says why, in JSON — got " + preview(run.stdout()));
++            assertEquals("", nonJsonRemainder(run.stdout().strip(), docs),
++                    "and the refusal's own prose stays on stderr");
++            assertTrue(run.stderr().contains("refusing:"),
++                    "the human rendering is not deleted, only moved");
++        });
++
++        // ------------------------------------------------------ the convention
++        for (Map.Entry<String, Expect> entry : TABLE.entrySet()) {
++            String path = entry.getKey();
++            Expect expect = entry.getValue();
++            suite.test("`" + path + " --json` " + label(expect.mode()) + " — " + expect.why(),
++                    () -> {
++                        Invocation run = invoke(path, expect.args());
++                        String out = run.stdout().strip();
++
++                        // PURITY, asserted for every mode.
++                        List<String> docs = documentsIn(out);
++                        assertTrue(docs.size() <= 1,
++                                "stdout holds at most one JSON document, got " + docs.size()
++                                        + ": " + preview(out));
++                        assertEquals("", nonJsonRemainder(out, docs),
++                                "stdout holds NOTHING but the document; this is the assertion "
++                                        + "HomeLock.announceWait broke, on a run that exited 0");
++
++                        switch (expect.mode()) {
++                            case FAILS -> {
++                                assertTrue(run.exitCode() != 0,
++                                        "fixture precondition: this invocation really does fail, "
++                                                + "got exit 0 with " + preview(out));
++                                assertEquals(1, docs.size(),
++                                        "a failing --json run says why, in JSON — exit "
++                                                + run.exitCode() + " printed " + preview(out));
++                            }
++                            case SUCCEEDS -> {
++                                assertEquals(0, run.exitCode(),
++                                        "fixture precondition: this invocation really does "
++                                                + "succeed; stderr=" + preview(run.stderr()));
++                                assertEquals(1, docs.size(),
++                                        "a succeeding --json run emits its document");
++                            }
++                            case SILENT -> {
++                                assertEquals(0, run.exitCode(),
++                                        "fixture precondition: this pinned path really does "
++                                                + "succeed; stderr=" + preview(run.stderr()));
++                                assertEquals("", out,
++                                        "PINNED: this path prints nothing today. If you are "
++                                                + "reading this because it failed, you changed "
++                                                + "what it prints — decide deliberately and "
++                                                + "move it out of SILENT, do not delete the case");
++                            }
++                        }
++                    });
++        }
++
++        return suite.runAll();
++    }
++
++    private static String label(Mode mode) {
++        return switch (mode) {
++            case FAILS -> "fails with one document";
++            case SUCCEEDS -> "succeeds with one document";
++            case SILENT -> "succeeds silently (pinned)";
++        };
++    }
++
++    // ------------------------------------------------------------ enumeration
++
++    /**
++     * Every command path declaring {@code --json}, from the live picocli tree.
++     *
++     * <p>Deduplicated by command <em>spec identity</em>, because picocli
++     * exposes an alias as a second entry in the subcommand map — {@code list}
++     * and {@code ls} are one command and must not be two rows here.
++     */
++    static Set<String> jsonCommands() {
++        Set<String> out = new TreeSet<>();
++        Map<CommandLine.Model.CommandSpec, String> seen = new IdentityHashMap<>();
++        walk(new CommandLine(new SkillManagerCli()), "skill-manager", out, seen);
++        return out;
++    }
++
++    private static void walk(CommandLine cl, String path, Set<String> out,
++                             Map<CommandLine.Model.CommandSpec, String> seen) {
++        CommandLine.Model.CommandSpec spec = cl.getCommandSpec();
++        boolean firstSpelling = seen.putIfAbsent(spec, path) == null;
++        boolean declaresJson = spec.options().stream()
++                .anyMatch(o -> Arrays.asList(o.names()).contains("--json"));
++        if (declaresJson && firstSpelling) out.add(path);
++        for (Map.Entry<String, CommandLine> sub : cl.getSubcommands().entrySet()) {
++            walk(sub.getValue(), path + " " + sub.getKey(), out, seen);
++        }
++    }
++
++    // -------------------------------------------------------------- the driver
++
++    private record Invocation(int exitCode, String stdout, String stderr) {}
++
++    private record Streams(String out, String err) {}
++
++    /**
++     * Run one command in-process against a throwaway home.
++     *
++     * <p>All five home variables are pinned through {@link AgentHomes}'
++     * thread-local overrides before anything runs, and the sandbox is
++     * <b>asserted</b> rather than assumed: if {@code SkillStore.defaultStore()}
++     * does not resolve inside the temp directory the test fails instead of
++     * running a command that could write the operator's real home. This
++     * repository has damaged a real home more than once during this epic.
++     */
++    private static Invocation invoke(String path, List<String> extra) throws Exception {
++        Path sandbox = Files.createTempDirectory("json-contract-");
++        List<String> argv = new ArrayList<>(Arrays.asList(path.split(" ")));
++        argv.remove(0);                       // drop the "skill-manager" head
++        argv.addAll(extra);
++        return invokeIn(sandbox, argv);
++    }
++
++    /** A home directory shaped enough to be recognised as one. */
++    private static Path home(Path root) throws Exception {
++        Files.createDirectories(root.resolve("skills"));
++        Files.createDirectories(root.resolve("installed"));
++        return root;
++    }
++
++    private static Invocation invokeIn(Path sandbox, List<String> argv) throws Exception {
++        Path home = sandbox.resolve("home");
++        Files.createDirectories(home.resolve("skills"));
++        Files.createDirectories(home.resolve("installed"));
++        Map<String, Path> overrides = new LinkedHashMap<>();
++        overrides.put(SkillStore.HOME_ENV, home);
++        overrides.put(AgentHomes.CLAUDE_HOME, sandbox.resolve("agents"));
++        overrides.put(AgentHomes.CLAUDE_CONFIG_DIR, sandbox.resolve("agents/.claude"));
++        overrides.put(AgentHomes.CODEX_HOME, sandbox.resolve("agents/.codex"));
++        overrides.put(AgentHomes.GEMINI_HOME, sandbox.resolve("agents/.gemini"));
++        for (Map.Entry<String, Path> o : overrides.entrySet()) {
++            Files.createDirectories(o.getValue());
++            AgentHomes.setOverride(o.getKey(), o.getValue());
++        }
++        try {
++            Path resolved = SkillStore.defaultStore().root().toAbsolutePath().normalize();
++            assertTrue(resolved.startsWith(sandbox.toAbsolutePath().normalize()),
++                    "SANDBOX: the default home must resolve inside the temp dir, got " + resolved);
++
++            List<String> full = new ArrayList<>(argv);
++            full.add("--json");
++            String[] args = full.toArray(new String[0]);
++            int[] rc = {0};
++            Streams s = capture(() -> rc[0] = SkillManagerCli.execute(args));
++            return new Invocation(rc[0], s.out(), s.err());
++        } finally {
++            AgentHomes.clearOverrides();
++        }
++    }
++
++    private interface Body { int run() throws Exception; }
++
++    private static Streams capture(Body body) throws Exception {
++        ByteArrayOutputStream out = new ByteArrayOutputStream();
++        ByteArrayOutputStream err = new ByteArrayOutputStream();
++        PrintStream realOut = System.out;
++        PrintStream realErr = System.err;
++        try {
++            System.setOut(new PrintStream(out, true, StandardCharsets.UTF_8));
++            System.setErr(new PrintStream(err, true, StandardCharsets.UTF_8));
++            body.run();
++        } finally {
++            System.out.flush();
++            System.err.flush();
++            System.setOut(realOut);
++            System.setErr(realErr);
++        }
++        return new Streams(out.toString(StandardCharsets.UTF_8),
++                err.toString(StandardCharsets.UTF_8));
++    }
++
++    // ------------------------------------------------------- the JSON scanner
++
++    /**
++     * Every complete JSON document in {@code text}, scanned by brace/bracket
++     * depth outside string literals.
++     *
++     * <p>Not a line-based split and not a regex: a pretty-printed document
++     * spans lines, and "the output starts with {" is exactly the weak check
++     * that would pass on {@code {"a":1} trailing prose}. What this returns is
++     * used together with {@link #nonJsonRemainder} so the two questions —
++     * "how many documents" and "what else is there" — are both answered.
++     */
++    static List<String> documentsIn(String text) {
++        List<String> docs = new ArrayList<>();
++        int depth = 0;
++        int start = -1;
++        boolean inString = false;
++        boolean escaped = false;
++        for (int i = 0; i < text.length(); i++) {
++            char c = text.charAt(i);
++            if (inString) {
++                if (escaped) escaped = false;
++                else if (c == '\\') escaped = true;
++                else if (c == '"') inString = false;
++                continue;
++            }
++            switch (c) {
++                case '"' -> inString = true;
++                case '{', '[' -> { if (depth++ == 0) start = i; }
++                case '}', ']' -> {
++                    if (depth > 0 && --depth == 0 && start >= 0) {
++                        docs.add(text.substring(start, i + 1));
++                        start = -1;
++                    }
++                }
++                default -> { }
++            }
++        }
++        return docs;
++    }
++
++    /** Whatever is on stdout that is not one of the documents. */
++    static String nonJsonRemainder(String text, List<String> docs) {
++        String rest = text;
++        for (String doc : docs) rest = rest.replace(doc, "");
++        return rest.strip();
++    }
++
++    private static String preview(String text) {
++        String one = text.replace("\n", "\\n").strip();
++        return one.length() <= 160 ? "[" + one + "]" : "[" + one.substring(0, 160) + "…]";
++    }
++
++    static {
++        // ---- the pinned silent three (see the class javadoc, rule 3) --------
++        expect("skill-manager harness rm", Mode.SILENT,
++                "no binding matches, so there is nothing to report", "no-such-instance");
++        expect("skill-manager home drift", Mode.SILENT,
++                "--ack writes a record and reports through its exit code", "--ack");
++
++        // ---- failure paths --------------------------------------------------
++        expect("skill-manager home close-out", Mode.FAILS,
++                "the --home is not a home at all",
++                "--home", "/nonexistent/sm-guard/wt", "--into", "/nonexistent/sm-guard/proj");
++        expect("skill-manager home sync", Mode.FAILS,
++                "the --from is not a home",
++                "--from", "/nonexistent/sm-guard/a", "--to", "/nonexistent/sm-guard/b");
++        expect("skill-manager home clone", Mode.FAILS,
++                "the source home does not exist",
++                "--from", "/nonexistent/sm-guard/a", "--to", "/nonexistent/sm-guard/b");
++        expect("skill-manager home describe", Mode.FAILS,
++                "the named path is not a home", "--home", "/nonexistent/sm-guard/x");
++        expect("skill-manager show", Mode.FAILS, "no such unit is installed", "no-such-unit");
++        expect("skill-manager artifacts show", Mode.FAILS, "no such artifact", "no-such-unit");
++        expect("skill-manager bindings show", Mode.FAILS, "no such binding", "no-such-unit");
++        expect("skill-manager bind", Mode.FAILS, "no such unit to bind",
++                "no-such-unit", "--to", "/nonexistent/sm-guard/target");
++        expect("skill-manager build", Mode.FAILS, "no such unit to build", "no-such-unit");
++        expect("skill-manager harness show", Mode.FAILS, "no such template", "no-such-harness");
++        expect("skill-manager harness instantiate", Mode.FAILS, "no such template",
++                "no-such-harness");
++        expect("skill-manager install", Mode.FAILS,
++                "a local path that is not there — no registry is contacted",
++                "/nonexistent/sm-guard/unit");
++        // The `project` family resolves its project by walking UP FROM THE
++        // WORKING DIRECTORY, and a JVM cannot change its own working
++        // directory. Run in this repository they therefore find THIS project
++        // and act on it — measured: `project resolve --json` returned a real
++        // report for skill-manager itself and wrote the worktree home's
++        // .materialization. So they are driven on a deliberate parse error,
++        // which provably executes nothing, and which asserts the contract on
++        // the path that had no document at all until this ticket.
++        expect("skill-manager project register", Mode.FAILS,
++                "a parse error, because its working directory cannot be sandboxed",
++                GUARD_BAD_OPTION);
++        expect("skill-manager project remove", Mode.FAILS,
++                "a parse error, because its working directory cannot be sandboxed",
++                GUARD_BAD_OPTION);
++        expect("skill-manager project resolve", Mode.FAILS,
++                "a parse error, because its working directory cannot be sandboxed",
++                GUARD_BAD_OPTION);
++        expect("skill-manager project sync", Mode.FAILS,
++                "a parse error, because its working directory cannot be sandboxed",
++                GUARD_BAD_OPTION);
++        expect("skill-manager unit publish", Mode.FAILS, "no such unit is installed",
++                "no-such-unit");
++
++        // ---- success paths, which must still emit exactly one document ------
++        expect("skill-manager list", Mode.SUCCEEDS, "an empty home lists nothing, in JSON");
++        expect("skill-manager artifacts list", Mode.SUCCEEDS, "empty ledger, in JSON");
++        expect("skill-manager artifacts stale", Mode.SUCCEEDS, "nothing stale, in JSON");
++        expect("skill-manager artifacts prune", Mode.SUCCEEDS, "nothing to prune, in JSON");
++        expect("skill-manager artifacts record", Mode.SUCCEEDS, "records nothing, in JSON");
++        expect("skill-manager bindings list", Mode.SUCCEEDS, "no bindings, in JSON");
++        expect("skill-manager harness list", Mode.SUCCEEDS, "no templates, in JSON");
++        expect("skill-manager lock status", Mode.SUCCEEDS, "an empty lock, in JSON");
++        expect("skill-manager home shims", Mode.FAILS,
++                "refuses: nothing honest to pin when the running build cannot be named");
++        expect("skill-manager home refresh-plugins", Mode.SUCCEEDS,
++                "nothing installed, so nothing to refresh");
++        expect("skill-manager env sync", Mode.FAILS, "no project env is declared here");
++    }
++}

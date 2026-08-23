@@ -1,0 +1,36 @@
+e35e4a5 Merge pull request #243 from haydenrear/feature/238-his-17-followup
+de3554b docs(his-17): mechanism D, the self-healing-instrument hazard, and the rule the ticket was actually about
+d548f62 Merge pull request #242 from haydenrear/feature/238-his-17
+1abbc5b docs(his-17): re-measured validation after the review fixes
+9c36cb7 docs(his-17): the sweep enumeration was falsified; the budget table was wrong; both corrected
+6ac5e11 fix(test-graph): the decoy covered a different branch than the one the walk widened
+99f675c docs(his-17): goal contribution, with what it does not deliver stated first
+5e4a3e2 docs(his-17): vacuity probes, the onboard budget measurement, and four deferrals
+7546e81 docs(his-17): the sweep -- every private 'does anything here name another home' in test_graph/sources
+c8c539b fix(test-graph): the artifact-dag decoy target must exist, and HomeIsolation said so
+7cb321c fix(test-graph): four graphs each kept their own copy of "nothing here names another home"
+a978bb0 chore(epic): HIS-16 and HIS-18 delivered, with what did not land recorded beside what did
+3a4ce09 Merge pull request #240 from haydenrear/feature/239-his-18
+cc7575b fix(epic): the DEF-053 citation in the plan is HIS-18's finding, now DEF-058
+048dc80 docs(his-18): the last stale DEF-053 reference, added after the renumber pass
+a8cf50b docs(his-18): rebase onto HIS-16, renumber the deferrals, and say what the rebase invalidated
+6f1c417 docs(his-18): record both graphs re-run on the head that carries the review fixes
+b564496 docs(his-18): refresh the change table for the review fixes
+1721509 docs(his-18): the headline carries its disclaimer, and the review is answered
+581f813 docs(his-18): the vacuity record states its substitutions and its collateral
+b5b7228 test(goal): measure the FORWARD-GOING exclusions, not only the retrodiction
+013d42a fix(digest): a carry-over collision is reported, not silent; MED-4 recorded
+a5ae73c fix(digest): no readable index means nothing is ignored
+880ede9 fix(digest): excluding a path hides it from the digest, never from the teardown
+0271eb2 test(digest): reproduce review blockers 1 and 2 as failing cases
+4d527e0 docs(his-18): record project-child-home green — 12 nodes, 73/73
+b4918b6 docs(his-18): name the one transitional drift report this change causes
+2ccf7f1 docs(his-18): close-out, the vacuity record, and DEF-053..055
+4be6799 test(goal): project the committed baseline through the production predicate
+8e9131e docs(digest): name the two readings of tracked, and what the wrong one cost
+299675f fix(digest): an ancestor the index holds a blob for does not ignore its subtree
+19fab8b test(digest): the not-deleted case names its claim when the file is gone
+cef94f6 test(digest): the not-hashed case reddens on the digest, not on a precondition
+3bdbbaa test(digest): ship the one-suite runner the vacuity record names
+85bf13b test(digest): not hashed, not copied, not deleted — three cases and a falsifier
+7a7c93e feat(digest): a unit's own .gitignore decides what its digest contains
