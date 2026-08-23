@@ -196,6 +196,13 @@ public final class CommandHomeAccess {
         m.put("project profiles list", READ);
         m.put("registry", READ);
         m.put("registry status", READ);
+        // `sandbox status` reads the ENVIRONMENT, never the store: it answers
+        // "is this process confined?" from the five home variables and the
+        // working directory. Classified READ rather than given a fourth
+        // level, because READ here means "does not scaffold", which is the
+        // property this table decides.
+        m.put("sandbox", READ);
+        m.put("sandbox status", READ);
         m.put("search", READ);
         m.put("show", READ);
         m.put("unit", READ);                // parent; `unit publish` writes
@@ -240,7 +247,27 @@ public final class CommandHomeAccess {
         // HIGH-2. Neither declares --init, so nothing legitimate loses the
         // permission to scaffold.
         m.put("home verify", READ);
-        m.put("home describe", WRITE);
+        // READ unless --init, and the narrowing is #234's HIGH-2 re-entering
+        // through the one `home` subcommand nobody narrowed. Measured in review
+        // of #241, against a home holding one unit and an EMPTY installed/:
+        //
+        //   BEFORE installed/: []
+        //   $ skill-manager home describe --home $H --json
+        //   AFTER  installed/: [intruder.json]
+        //
+        // WRITES_HOME let tryReconcile run ahead of DescribeCmd.call(), and it
+        // reaches ReconcileUseCase -> OnboardUnit -> writeSource. So the
+        // command documented as printing an interop descriptor was MANUFACTURING
+        // the installed-unit records it then reported -- which also made
+        // `home.membership.law`'s "a unit nobody installed" direction
+        // structurally unreachable, because the only reader it had created the
+        // missing record microseconds before comparing against it.
+        //
+        // Unlike `home verify` and `home close-out`, this row cannot simply be
+        // READ: `home describe --init` exists precisely to lay a home out
+        // first. Hence INIT_GATED -- read by default, write when the invocation
+        // asks to create. Nothing legitimate loses the permission to scaffold.
+        m.put("home describe", READ);
         m.put("home policy", WRITE);
         m.put("home shims", WRITE);
         m.put("home drift", WRITE);
@@ -295,9 +322,28 @@ public final class CommandHomeAccess {
     }
 
     /**
+     * Command paths whose row is READ <em>unless</em> the invocation matched
+     * the option that asks to create a home.
+     *
+     * <p>A third state was needed because the two existing ones cannot express
+     * {@code home describe}: classified WRITE it mutates every home it is
+     * pointed at (review of #241, H1), and classified READ outright it would
+     * break {@code --init}, which exists to lay a home out. The row is a
+     * property of the INVOCATION, not of the command.
+     *
+     * <p>{@code home policy} and {@code home shims} declare {@code --init} too
+     * and are still flat WRITE. Narrowing them is the same one-line change and
+     * is deliberately NOT made here: neither is on any path this ticket reads,
+     * and each needs its own measurement of what it writes without the flag.
+     */
+    private static final Map<String, String> INIT_GATED =
+            Map.of("home describe", "--init");
+
+    /**
      * The mode for a parsed invocation: {@link HomeScaffold.Access#READ_ONLY}
      * whenever help or version was requested at any level, otherwise the leaf
-     * command path's row.
+     * command path's row — narrowed by {@link #INIT_GATED} where the row
+     * depends on an option.
      *
      * <p>A null parse result is {@link HomeScaffold.Access#WRITES_HOME}, the
      * same answer {@link #of(String)} gives an unknown path. It shipped as
@@ -314,7 +360,26 @@ public final class CommandHomeAccess {
     public static HomeScaffold.Access of(CommandLine.ParseResult parseResult) {
         if (parseResult == null) return WRITE;
         if (helpRequested(parseResult)) return READ;
-        return of(CliAgentContext.commandPath(parseResult));
+        String path = CliAgentContext.commandPath(parseResult);
+        String creates = path == null ? null : INIT_GATED.get(path.trim());
+        if (creates != null && matchedAtLeaf(parseResult, creates)) return WRITE;
+        return of(path);
+    }
+
+    /** Whether the LEAF parse matched {@code option}. */
+    private static boolean matchedAtLeaf(CommandLine.ParseResult parseResult, String option) {
+        CommandLine.ParseResult leaf = parseResult;
+        while (leaf.hasSubcommand()) leaf = leaf.subcommand();
+        return leaf.hasMatchedOption(option);
+    }
+
+    /**
+     * {@link #helpRequested} for callers outside this class — the confinement
+     * gate in {@code SkillManagerCli} exempts the same invocations this class
+     * does, and it must ask the same question rather than spell a second one.
+     */
+    public static boolean helpOrVersionRequested(CommandLine.ParseResult parseResult) {
+        return parseResult != null && helpRequested(parseResult);
     }
 
     /** True when {@code --help} or {@code --version} was asked for at any level. */

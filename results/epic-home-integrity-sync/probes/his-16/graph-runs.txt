@@ -1,0 +1,22 @@
+HIS-16 graph runs, RE-RUN IN FULL after review of #241.
+Every run through scratchpad/graph-run.sh -- one docker stack, one runner at a
+time, shared with HIS-18. `run.py --all` is HIS-6's and was NOT run.
+
+home-integrity is on the final tip and carries the H4 assertion
+`a_per_checkout_home_arms_the_guard_with_no_variable_set`; the other six are on
+b71a253, which differs only by that assertion and the exact-match sandbox
+exemption. Stated rather than smoothed over.
+
+`project-manifest` shows withMembership=0 -- review M5. That graph registers a
+manifest and installs nothing, so its one home is empty and the three readers
+agree about nothing. It is reported as a number, not turned into a failure:
+an empty home that is still empty is a real post-condition, and reddening a
+graph for installing nothing would be inventing a defect.
+
+smoke               20260823-004523 53 nodes  ALL PASSED  law=passed homes=1 units=22  withMembership=1
+home-integrity      20260823-010440 17 nodes  ALL PASSED  law=passed homes=5 units=12  withMembership=5
+project-child-home  20260823-003147 13 nodes  ALL PASSED  law=passed homes=2 units=8   withMembership=2
+project-smoke       20260823-003554  8 nodes  ALL PASSED  law=passed homes=3 units=9   withMembership=3
+home-tripwire       20260823-003903  8 nodes  ALL PASSED  law=passed homes=1 units=1   withMembership=1
+project-manifest    20260823-004147  4 nodes  ALL PASSED  law=passed homes=1 units=0   withMembership=0
+project-resolve     20260823-004318  4 nodes  ALL PASSED  law=passed homes=1 units=5   withMembership=1

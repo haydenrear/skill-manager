@@ -275,6 +275,7 @@ public class RunTests {
         failures += dev.skillmanager.store.WriteConfinementTest.run();
         failures += dev.skillmanager.store.PruneStaysInsideItsHomeTest.run();
         failures += dev.skillmanager.cli.installer.ProducerStaysInsideItsHomeTest.run();
+        failures += dev.skillmanager.sandbox.ConfinementTest.run();
         failures += dev.skillmanager.cli.BuildIdentityTest.run();
         failures += dev.skillmanager.store.HomeDescriptorTest.run();
         failures += dev.skillmanager.store.HomeDescriptorCliRemedyTest.run();

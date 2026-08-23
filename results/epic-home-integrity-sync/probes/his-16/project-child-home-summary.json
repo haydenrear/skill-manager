@@ -1,0 +1,520 @@
+{"runId":"20260822-233526","status":"passed","traceId":"c1d1a850fd92ead00854120dd8b5e5c3","execution":{"mode":"full","graphName":"project-child-home","complete":true,"expectedNodeIds":["env.prepared","child.home.project.fixture","child.home.resolved","child.home.units.independent","child.home.unit.edited","child.home.edit.stays.in.child.home","child.home.resolve.preserves.edits","child.home.sync.preserves.edits","child.home.prune.preserves.edits","child.home.converges.on.source","child.home.materialization.atomic","home.fixpoint.law","home.membership.law"],"observedNodeIds":["child.home.converges.on.source","child.home.edit.stays.in.child.home","child.home.materialization.atomic","child.home.project.fixture","child.home.prune.preserves.edits","child.home.resolve.preserves.edits","child.home.resolved","child.home.sync.preserves.edits","child.home.unit.edited","child.home.units.independent","env.prepared","home.fixpoint.law","home.membership.law"],"missingNodeIds":[],"invalidEnvelopeFiles":[],"duplicateNodeIds":[],"unexpectedNodeIds":[],"unknownStatusNodeIds":[],"missingTraceNodeIds":[],"invalidTraceNodeIds":[],"mismatchedTraceNodeIds":[],"observedContextNodeIds":["env.prepared","child.home.project.fixture","child.home.resolved","child.home.units.independent","child.home.unit.edited","child.home.edit.stays.in.child.home","child.home.resolve.preserves.edits","child.home.sync.preserves.edits","child.home.prune.preserves.edits","child.home.converges.on.source","child.home.materialization.atomic","home.fixpoint.law","home.membership.law"],"missingContextNodeIds":[],"invalidContextFiles":[],"unexpectedContextNodeIds":[],"contextProvenanceViolationNodeIds":[],"replaySourceContextMismatchNodeIds":[],"contextFileCountExceeded":false,"aggregateContextBytesExceeded":false,"envelopeFileCountExceeded":false,"aggregateEnvelopeBytesExceeded":false,"aggregateJsonStructureExceeded":false,"unknownExecutionScope":false},"nodes":[{
+  "nodeId" : "child.home.converges.on.source",
+  "status" : "passed",
+  "startedAt" : "2026-08-22T23:37:57.199426Z",
+  "endedAt" : "2026-08-22T23:38:01.277883Z",
+  "assertions" : [ {
+    "name" : "both_resolves_after_parent_upgrades_ok",
+    "status" : "passed"
+  }, {
+    "name" : "unmodified_child_unit_picks_up_new_parent_bytes",
+    "status" : "passed"
+  }, {
+    "name" : "unmodified_child_unit_picks_up_bytes_behind_the_store_link",
+    "status" : "passed"
+  }, {
+    "name" : "refreshed_link_content_is_still_dereferenced",
+    "status" : "passed"
+  }, {
+    "name" : "next_pass_agrees_the_refreshed_unit_is_unmodified",
+    "status" : "passed"
+  }, {
+    "name" : "convergence_did_not_cost_the_hold_back_rule",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "resolve-after-linked-upgrade",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-237-his-16/skill-manager", "project", "resolve", "--skip-gateway", "--json", "--project-dir", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-17608659512425726005/chm-fixture/project" ],
+    "startedAt" : "2026-08-22T23:37:57.206245Z",
+    "endedAt" : "2026-08-22T23:37:58.553428Z",
+    "exitCode" : 0,
+    "pid" : 50679,
+    "log" : "node-logs/child.home.converges.on.source.resolve-after-linked-upgrade.log",
+    "error" : null
+  }, {
+    "label" : "resolve-after-body-upgrade",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-237-his-16/skill-manager", "project", "resolve", "--skip-gateway", "--json", "--project-dir", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-17608659512425726005/chm-fixture/project" ],
+    "startedAt" : "2026-08-22T23:37:58.554720Z",
+    "endedAt" : "2026-08-22T23:37:59.936329Z",
+    "exitCode" : 0,
+    "pid" : 50688,
+    "log" : "node-logs/child.home.converges.on.source.resolve-after-body-upgrade.log",
+    "error" : null
+  }, {
+    "label" : "resolve-settled",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-237-his-16/skill-manager", "project", "resolve", "--skip-gateway", "--json", "--project-dir", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-17608659512425726005/chm-fixture/project" ],
+    "startedAt" : "2026-08-22T23:37:59.937010Z",
+    "endedAt" : "2026-08-22T23:38:01.276408Z",
+    "exitCode" : 0,
+    "pid" : 50726,
+    "log" : "node-logs/child.home.converges.on.source.resolve-settled.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "linkedResolveExitCode" : 0,
+    "resolveExitCode" : 0,
+    "durationMs" : 4078
+  },
+  "logs" : [ ],
+  "published" : {
+    "projectDir" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-17608659512425726005/chm-fixture/project"
+  }
+,"envelopeVersion":1,"executorStartedAt":"2026-08-22T23:37:56.550012Z","executorEndedAt":"2026-08-22T23:38:16.218035Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/child.home.converges.on.source.stdout.log","inputContextFile":"context/child.home.converges.on.source.input.json","traceId":"c1d1a850fd92ead00854120dd8b5e5c3"},{
+  "nodeId" : "child.home.edit.stays.in.child.home",
+  "status" : "passed",
+  "startedAt" : "2026-08-22T23:36:47.723432Z",
+  "endedAt" : "2026-08-22T23:36:47.750358Z",
+  "assertions" : [ {
+    "name" : "parent_store_tree_is_byte_identical_after_child_edit",
+    "status" : "passed"
+  }, {
+    "name" : "edited_child_unit_bytes_did_not_reach_the_parent_unit",
+    "status" : "passed"
+  }, {
+    "name" : "edit_behind_the_link_did_not_reach_the_linked_parent_unit",
+    "status" : "passed"
+  }, {
+    "name" : "no_symlink_in_a_child_unit_resolves_into_the_parent_store",
+    "status" : "passed"
+  }, {
+    "name" : "in_unit_store_link_is_dereferenced_content",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ ],
+  "metrics" : {
+    "durationMs" : 27
+  },
+  "logs" : [ ],
+  "published" : { }
+,"envelopeVersion":1,"executorStartedAt":"2026-08-22T23:36:47.078551Z","executorEndedAt":"2026-08-22T23:37:01.447499Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/child.home.edit.stays.in.child.home.stdout.log","inputContextFile":"context/child.home.edit.stays.in.child.home.input.json","traceId":"c1d1a850fd92ead00854120dd8b5e5c3"},{
+  "nodeId" : "child.home.materialization.atomic",
+  "status" : "passed",
+  "startedAt" : "2026-08-22T23:38:16.933252Z",
+  "endedAt" : "2026-08-22T23:38:19.653913Z",
+  "assertions" : [ {
+    "name" : "failure_injection_is_effective_not_running_as_root",
+    "status" : "passed"
+  }, {
+    "name" : "materialization_failed_as_intended",
+    "status" : "passed"
+  }, {
+    "name" : "failed_materialization_left_the_child_unit_present",
+    "status" : "passed"
+  }, {
+    "name" : "failed_materialization_left_the_child_unit_bytes_intact",
+    "status" : "passed"
+  }, {
+    "name" : "failed_materialization_left_the_child_unit_tree_intact",
+    "status" : "passed"
+  }, {
+    "name" : "failed_materialization_left_no_displaced_sibling_unit",
+    "status" : "passed"
+  }, {
+    "name" : "child_home_recovers_on_the_next_resolve",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "resolve-with-broken-staging",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-237-his-16/skill-manager", "project", "resolve", "--skip-gateway", "--json", "--project-dir", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-17608659512425726005/chm-fixture/project" ],
+    "startedAt" : "2026-08-22T23:38:16.961886Z",
+    "endedAt" : "2026-08-22T23:38:18.264835Z",
+    "exitCode" : 1,
+    "pid" : 50939,
+    "log" : "node-logs/child.home.materialization.atomic.resolve-with-broken-staging.log",
+    "error" : null
+  }, {
+    "label" : "resolve-after-repair",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-237-his-16/skill-manager", "project", "resolve", "--skip-gateway", "--json", "--project-dir", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-17608659512425726005/chm-fixture/project" ],
+    "startedAt" : "2026-08-22T23:38:18.267471Z",
+    "endedAt" : "2026-08-22T23:38:19.652851Z",
+    "exitCode" : 0,
+    "pid" : 50963,
+    "log" : "node-logs/child.home.materialization.atomic.resolve-after-repair.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "failedResolveExitCode" : 1,
+    "recoveredResolveExitCode" : 0,
+    "durationMs" : 2720
+  },
+  "logs" : [ ],
+  "published" : { }
+,"envelopeVersion":1,"executorStartedAt":"2026-08-22T23:38:16.239206Z","executorEndedAt":"2026-08-22T23:38:36.638990Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/child.home.materialization.atomic.stdout.log","inputContextFile":"context/child.home.materialization.atomic.input.json","traceId":"c1d1a850fd92ead00854120dd8b5e5c3"},{
+  "nodeId" : "child.home.project.fixture",
+  "status" : "passed",
+  "startedAt" : "2026-08-22T23:35:41.509712Z",
+  "endedAt" : "2026-08-22T23:35:44.559263Z",
+  "assertions" : [ {
+    "name" : "fixture_units_scaffolded",
+    "status" : "passed"
+  }, {
+    "name" : "project_manifest_written",
+    "status" : "passed"
+  }, {
+    "name" : "link_target_unit_installed_in_parent_store",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "install-linked-source",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-237-his-16/skill-manager", "install", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-17608659512425726005/chm-fixture/units/chm-linked-source", "--yes" ],
+    "startedAt" : "2026-08-22T23:35:41.519034Z",
+    "endedAt" : "2026-08-22T23:35:44.558269Z",
+    "exitCode" : 0,
+    "pid" : 49156,
+    "log" : "node-logs/child.home.project.fixture.install-linked-source.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "installExitCode" : 0,
+    "durationMs" : 3050
+  },
+  "logs" : [ ],
+  "published" : {
+    "projectDir" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-17608659512425726005/chm-fixture/project",
+    "unitsDir" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-17608659512425726005/chm-fixture/units",
+    "childHome" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-17608659512425726005/chm-fixture/project/.skill-manager"
+  }
+,"envelopeVersion":1,"executorStartedAt":"2026-08-22T23:35:40.869878Z","executorEndedAt":"2026-08-22T23:36:01.048740Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/child.home.project.fixture.stdout.log","inputContextFile":"context/child.home.project.fixture.input.json","traceId":"c1d1a850fd92ead00854120dd8b5e5c3"},{
+  "nodeId" : "child.home.prune.preserves.edits",
+  "status" : "passed",
+  "startedAt" : "2026-08-22T23:37:38.601686Z",
+  "endedAt" : "2026-08-22T23:37:40.006322Z",
+  "assertions" : [ {
+    "name" : "resolve_after_dropping_dependencies_ok",
+    "status" : "passed"
+  }, {
+    "name" : "prune_did_not_destroy_the_agent_edit",
+    "status" : "passed"
+  }, {
+    "name" : "prune_did_not_destroy_the_edit_behind_the_link",
+    "status" : "passed"
+  }, {
+    "name" : "prune_removed_the_unmodified_dropped_unit",
+    "status" : "passed"
+  }, {
+    "name" : "prune_reports_exactly_the_held_back_units",
+    "status" : "passed"
+  }, {
+    "name" : "child_home_holds_only_claimed_or_held_back_units",
+    "status" : "passed"
+  }, {
+    "name" : "still_claimed_unit_survives_prune",
+    "status" : "passed"
+  }, {
+    "name" : "prune_left_the_parent_store_untouched",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "resolve-after-drop",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-237-his-16/skill-manager", "project", "resolve", "--skip-gateway", "--json", "--project-dir", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-17608659512425726005/chm-fixture/project" ],
+    "startedAt" : "2026-08-22T23:37:38.608301Z",
+    "endedAt" : "2026-08-22T23:37:39.995961Z",
+    "exitCode" : 0,
+    "pid" : 50514,
+    "log" : "node-logs/child.home.prune.preserves.edits.resolve-after-drop.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "resolveExitCode" : 0,
+    "heldBackCount" : 2,
+    "durationMs" : 1405
+  },
+  "logs" : [ ],
+  "published" : { }
+,"envelopeVersion":1,"executorStartedAt":"2026-08-22T23:37:37.952657Z","executorEndedAt":"2026-08-22T23:37:56.534240Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/child.home.prune.preserves.edits.stdout.log","inputContextFile":"context/child.home.prune.preserves.edits.input.json","traceId":"c1d1a850fd92ead00854120dd8b5e5c3"},{
+  "nodeId" : "child.home.resolve.preserves.edits",
+  "status" : "passed",
+  "startedAt" : "2026-08-22T23:37:02.136461Z",
+  "endedAt" : "2026-08-22T23:37:05.433419Z",
+  "assertions" : [ {
+    "name" : "resolve_over_modified_child_home_ok",
+    "status" : "passed"
+  }, {
+    "name" : "resolve_did_not_destroy_the_agent_edit",
+    "status" : "passed"
+  }, {
+    "name" : "resolve_did_not_destroy_the_edit_behind_the_link",
+    "status" : "passed"
+  }, {
+    "name" : "resolve_reports_exactly_the_held_back_units",
+    "status" : "passed"
+  }, {
+    "name" : "default_output_names_the_held_back_units_and_how_to_take_the_parent_version",
+    "status" : "passed"
+  }, {
+    "name" : "resolve_still_claims_the_unmodified_units",
+    "status" : "passed"
+  }, {
+    "name" : "resolve_left_the_parent_store_untouched",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "resolve-after-edit",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-237-his-16/skill-manager", "project", "resolve", "--skip-gateway", "--json", "--project-dir", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-17608659512425726005/chm-fixture/project" ],
+    "startedAt" : "2026-08-22T23:37:02.141190Z",
+    "endedAt" : "2026-08-22T23:37:03.739484Z",
+    "exitCode" : 0,
+    "pid" : 50034,
+    "log" : "node-logs/child.home.resolve.preserves.edits.resolve-after-edit.log",
+    "error" : null
+  }, {
+    "label" : "resolve-human-report",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-237-his-16/skill-manager", "project", "resolve", "--skip-gateway", "--project-dir", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-17608659512425726005/chm-fixture/project" ],
+    "startedAt" : "2026-08-22T23:37:03.742352Z",
+    "endedAt" : "2026-08-22T23:37:05.420920Z",
+    "exitCode" : 0,
+    "pid" : 50044,
+    "log" : "node-logs/child.home.resolve.preserves.edits.resolve-human-report.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "resolveExitCode" : 0,
+    "heldBackCount" : 2,
+    "durationMs" : 3297
+  },
+  "logs" : [ ],
+  "published" : { }
+,"envelopeVersion":1,"executorStartedAt":"2026-08-22T23:37:01.461070Z","executorEndedAt":"2026-08-22T23:37:19.905379Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/child.home.resolve.preserves.edits.stdout.log","inputContextFile":"context/child.home.resolve.preserves.edits.input.json","traceId":"c1d1a850fd92ead00854120dd8b5e5c3"},{
+  "nodeId" : "child.home.resolved",
+  "status" : "passed",
+  "startedAt" : "2026-08-22T23:36:01.704050Z",
+  "endedAt" : "2026-08-22T23:36:05.162273Z",
+  "assertions" : [ {
+    "name" : "initial_resolve_ok",
+    "status" : "passed"
+  }, {
+    "name" : "resolve_after_store_link_injection_ok",
+    "status" : "passed"
+  }, {
+    "name" : "store_link_injected_into_parent_units",
+    "status" : "passed"
+  }, {
+    "name" : "resolve_json_summary_carries_a_held_back_field",
+    "status" : "passed"
+  }, {
+    "name" : "clean_child_home_holds_back_nothing",
+    "status" : "passed"
+  }, {
+    "name" : "all_claimed_units_materialized",
+    "status" : "passed"
+  }, {
+    "name" : "in_unit_store_link_materialized_as_content",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "resolve-initial",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-237-his-16/skill-manager", "project", "resolve", "--skip-gateway", "--json", "--project-dir", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-17608659512425726005/chm-fixture/project" ],
+    "startedAt" : "2026-08-22T23:36:01.708505Z",
+    "endedAt" : "2026-08-22T23:36:03.767980Z",
+    "exitCode" : 0,
+    "pid" : 49391,
+    "log" : "node-logs/child.home.resolved.resolve-initial.log",
+    "error" : null
+  }, {
+    "label" : "resolve-with-store-link",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-237-his-16/skill-manager", "project", "resolve", "--skip-gateway", "--json", "--project-dir", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-17608659512425726005/chm-fixture/project" ],
+    "startedAt" : "2026-08-22T23:36:03.770846Z",
+    "endedAt" : "2026-08-22T23:36:05.152966Z",
+    "exitCode" : 0,
+    "pid" : 49454,
+    "log" : "node-logs/child.home.resolved.resolve-with-store-link.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "initialResolveExitCode" : 0,
+    "secondResolveExitCode" : 0,
+    "durationMs" : 3458
+  },
+  "logs" : [ ],
+  "published" : {
+    "projectDir" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-17608659512425726005/chm-fixture/project",
+    "parentSkillsDigest" : "f9b5d2eed323a0d0feded4c7ecf1fd9393614e9dea240600f2e49c871d6472a1"
+  }
+,"envelopeVersion":1,"executorStartedAt":"2026-08-22T23:36:01.067485Z","executorEndedAt":"2026-08-22T23:36:18.859611Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/child.home.resolved.stdout.log","inputContextFile":"context/child.home.resolved.input.json","traceId":"c1d1a850fd92ead00854120dd8b5e5c3"},{
+  "nodeId" : "child.home.sync.preserves.edits",
+  "status" : "passed",
+  "startedAt" : "2026-08-22T23:37:20.589880Z",
+  "endedAt" : "2026-08-22T23:37:22.095546Z",
+  "assertions" : [ {
+    "name" : "sync_over_modified_child_home_ok",
+    "status" : "passed"
+  }, {
+    "name" : "sync_did_not_destroy_the_agent_edit",
+    "status" : "passed"
+  }, {
+    "name" : "sync_did_not_destroy_the_edit_behind_the_link",
+    "status" : "passed"
+  }, {
+    "name" : "sync_reports_exactly_the_held_back_units",
+    "status" : "passed"
+  }, {
+    "name" : "sync_left_the_parent_store_untouched",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ {
+    "label" : "sync-after-edit",
+    "command" : [ "/Users/hayde/IdeaProjects/wt-237-his-16/skill-manager", "project", "sync", "--skip-gateway", "--json", "--project-dir", "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-17608659512425726005/chm-fixture/project" ],
+    "startedAt" : "2026-08-22T23:37:20.594519Z",
+    "endedAt" : "2026-08-22T23:37:22.085565Z",
+    "exitCode" : 0,
+    "pid" : 50286,
+    "log" : "node-logs/child.home.sync.preserves.edits.sync-after-edit.log",
+    "error" : null
+  } ],
+  "metrics" : {
+    "syncExitCode" : 0,
+    "heldBackCount" : 2,
+    "durationMs" : 1506
+  },
+  "logs" : [ ],
+  "published" : { }
+,"envelopeVersion":1,"executorStartedAt":"2026-08-22T23:37:19.920930Z","executorEndedAt":"2026-08-22T23:37:37.933499Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/child.home.sync.preserves.edits.stdout.log","inputContextFile":"context/child.home.sync.preserves.edits.input.json","traceId":"c1d1a850fd92ead00854120dd8b5e5c3"},{
+  "nodeId" : "child.home.unit.edited",
+  "status" : "passed",
+  "startedAt" : "2026-08-22T23:36:34.046599Z",
+  "endedAt" : "2026-08-22T23:36:34.075871Z",
+  "assertions" : [ {
+    "name" : "agent_edit_written_into_child_unit",
+    "status" : "passed"
+  }, {
+    "name" : "agent_edit_written_behind_dereferenced_link",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ ],
+  "metrics" : {
+    "durationMs" : 29
+  },
+  "logs" : [ ],
+  "published" : {
+    "projectDir" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-17608659512425726005/chm-fixture/project",
+    "parentSkillsDigestBeforeEdit" : "f9b5d2eed323a0d0feded4c7ecf1fd9393614e9dea240600f2e49c871d6472a1",
+    "editedUnitContent" : "---\nname: chm-unit-a\ndescription: child-home graph fixture\n---\nbody rev1\nAGENT-EDIT-402dfea4-759b-4a5d-a25a-0a4f40b09ed6\n",
+    "editedLinkedContent" : "AGENT-EDIT-402dfea4-759b-4a5d-a25a-0a4f40b09ed6 through the dereferenced link\n",
+    "editMarker" : "AGENT-EDIT-402dfea4-759b-4a5d-a25a-0a4f40b09ed6"
+  }
+,"envelopeVersion":1,"executorStartedAt":"2026-08-22T23:36:33.397662Z","executorEndedAt":"2026-08-22T23:36:47.063221Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/child.home.unit.edited.stdout.log","inputContextFile":"context/child.home.unit.edited.input.json","traceId":"c1d1a850fd92ead00854120dd8b5e5c3"},{
+  "nodeId" : "child.home.units.independent",
+  "status" : "passed",
+  "startedAt" : "2026-08-22T23:36:19.571565Z",
+  "endedAt" : "2026-08-22T23:36:19.577548Z",
+  "assertions" : [ {
+    "name" : "child_unit_dirs_are_real_directories_not_symlinks",
+    "status" : "passed"
+  }, {
+    "name" : "child_unit_dirs_do_not_resolve_into_the_parent_store",
+    "status" : "passed"
+  }, {
+    "name" : "child_unit_files_are_real_files_not_symlinks",
+    "status" : "passed"
+  }, {
+    "name" : "materialization_records_declare_copy_mode",
+    "status" : "passed"
+  }, {
+    "name" : "materialization_records_name_their_parent_source",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ ],
+  "metrics" : {
+    "durationMs" : 6
+  },
+  "logs" : [ ],
+  "published" : { }
+,"envelopeVersion":1,"executorStartedAt":"2026-08-22T23:36:18.874376Z","executorEndedAt":"2026-08-22T23:36:33.381654Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/child.home.units.independent.stdout.log","inputContextFile":"context/child.home.units.independent.input.json","traceId":"c1d1a850fd92ead00854120dd8b5e5c3"},{
+  "nodeId" : "env.prepared",
+  "status" : "passed",
+  "startedAt" : "2026-08-22T23:35:27.685880Z",
+  "endedAt" : "2026-08-22T23:35:27.710335Z",
+  "assertions" : [ {
+    "name" : "home_created",
+    "status" : "passed"
+  }, {
+    "name" : "agent_home_created",
+    "status" : "passed"
+  }, {
+    "name" : "codex_home_created",
+    "status" : "passed"
+  }, {
+    "name" : "gemini_home_created",
+    "status" : "passed"
+  }, {
+    "name" : "ports_allocated",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ ],
+  "metrics" : {
+    "registryPort" : 52898,
+    "gatewayPort" : 52899,
+    "durationMs" : 25
+  },
+  "logs" : [ ],
+  "published" : {
+    "home" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-17608659512425726005",
+    "claudeHome" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-17608659512425726005/agent-home",
+    "codexHome" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-17608659512425726005/agent-home/.codex",
+    "geminiHome" : "/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-17608659512425726005/agent-home/.gemini",
+    "registryPort" : "52898",
+    "gatewayPort" : "52899"
+  }
+,"envelopeVersion":1,"executorStartedAt":"2026-08-22T23:35:27.043680Z","executorEndedAt":"2026-08-22T23:35:40.846058Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/env.prepared.stdout.log","inputContextFile":"context/env.prepared.input.json","traceId":"c1d1a850fd92ead00854120dd8b5e5c3"},{
+  "nodeId" : "home.fixpoint.law",
+  "status" : "passed",
+  "startedAt" : "2026-08-22T23:38:37.333876Z",
+  "endedAt" : "2026-08-22T23:38:46.081266Z",
+  "assertions" : [ {
+    "name" : "every_home_verifies_or_its_own_remedy_repairs_it",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ ],
+  "metrics" : {
+    "homesChecked" : 2,
+    "homesRepaired" : 0,
+    "homesOutsideSandbox" : 0,
+    "durationMs" : 8748
+  },
+  "logs" : [ "PASS  /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-17608659512425726005\nPASS  /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-17608659512425726005/chm-fixture/project/.skill-manager" ],
+  "published" : {
+    "homesChecked" : "/private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-17608659512425726005,/private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-17608659512425726005/chm-fixture/project/.skill-manager",
+    "homesRepaired" : ""
+  }
+,"envelopeVersion":1,"executorStartedAt":"2026-08-22T23:38:36.656547Z","executorEndedAt":"2026-08-22T23:38:59.878218Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/home.fixpoint.law.stdout.log","inputContextFile":"context/home.fixpoint.law.input.json","traceId":"c1d1a850fd92ead00854120dd8b5e5c3"},{
+  "nodeId" : "home.membership.law",
+  "status" : "passed",
+  "startedAt" : "2026-08-22T23:39:00.537262Z",
+  "endedAt" : "2026-08-22T23:39:08.443294Z",
+  "assertions" : [ {
+    "name" : "every_home_holds_exactly_what_was_installed_into_it",
+    "status" : "passed"
+  }, {
+    "name" : "the_detector_flags_a_planted_gain_and_a_planted_loss",
+    "status" : "passed"
+  }, {
+    "name" : "at_least_one_home_was_actually_checked",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ ],
+  "metrics" : {
+    "homesChecked" : 2,
+    "unitsObserved" : 8,
+    "homesOutsideSandbox" : 0,
+    "descriptorDrift" : 0,
+    "durationMs" : 7906
+  },
+  "logs" : [ "SELF-TEST (runs before any real home):\n  consistent home -> 0 violation(s)\n  gained a unit   -> 1 violation(s)\n  lost  a unit    -> 2 violation(s)\nPASS  /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-17608659512425726005\n    disk    [chm-linked-source, chm-unit-a, chm-unit-b, chm-unit-c, chm-unit-d]\n    records [chm-linked-source, chm-unit-a, chm-unit-b, chm-unit-c, chm-unit-d]\n    lock    [chm-linked-source, chm-unit-a, chm-unit-b, chm-unit-c, chm-unit-d]\nPASS  /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-17608659512425726005/chm-fixture/project/.skill-manager\n    disk    [chm-unit-a, chm-unit-b, chm-unit-d]\n    records [chm-unit-a, chm-unit-b, chm-unit-d]\n    lock    []" ],
+  "published" : {
+    "homesChecked" : "/private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-17608659512425726005,/private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-17608659512425726005/chm-fixture/project/.skill-manager",
+    "unitsObserved" : "8"
+  }
+,"envelopeVersion":1,"executorStartedAt":"2026-08-22T23:38:59.891208Z","executorEndedAt":"2026-08-22T23:39:22.572945Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/home.membership.law.stdout.log","inputContextFile":"context/home.membership.law.input.json","traceId":"c1d1a850fd92ead00854120dd8b5e5c3"}]}

@@ -1,0 +1,232 @@
+=== HOME /Users/hayde/.skill-manager
+-- skills:
+acp-cdc-ai-python
+debugging
+deploy-helm
+discovery
+git-epic-workflow
+git-integration-repo
+git-issue
+git-issue-workflow
+hyper-experiments
+hyper-experiments-finance
+llm-wiki
+plugin-repository
+skill-dev-skill
+skill-manager
+slm-agent
+spec-double-compiler
+test-graph
+tracer-agent
+tracing-observability
+vision-toolbelt-skill
+-- top-level:
+.
+..
+.materialization
+audit.log
+auth.token
+bin
+cache
+child-homes
+cli-lock.toml
+docs
+gateway-config.json
+gateway-data
+gateway.log
+gateway.pid
+gateway.properties
+harnesses
+home.digest.json
+home.drift.json
+home.runtime.json
+installed
+logs
+npm
+plugin-marketplace
+plugins
+pm
+policy.toml
+projects
+registry.properties
+skills
+tmp
+tools
+units.lock.toml
+venvs
+-- config hashes:
+  ad6bd7de598a1833  cli-lock.toml
+  c84b5b790e9a1404  gateway-config.json
+  9440733ea6ec2c36  home.digest.json
+  f8f047d8707a3806  home.drift.json
+  7d900f9cf25e9e8e  home.runtime.json
+  b0149a57d10b980f  policy.toml
+  c004dd015a31c669  units.lock.toml
+-- .materialization mtime:
+Aug  7 18:54:12 2026 /Users/hayde/.skill-manager/.materialization
+=== HOME /Users/hayde/IdeaProjects/skill-manager/.skill-manager
+-- skills:
+deploy-helm
+spec-double-compiler
+test-graph
+tracing-observability
+-- top-level:
+.
+..
+.materialization
+audit.log
+bin
+cache
+cli-lock.toml
+docs
+harnesses
+installed
+logs
+npm
+plugin-marketplace
+plugins
+pm
+projects
+skills
+units.lock.toml
+venvs
+-- config hashes:
+  6bd5d30c2505567f  cli-lock.toml
+  20651ba40ff61945  units.lock.toml
+-- .materialization mtime:
+Aug 14 18:34:37 2026 /Users/hayde/IdeaProjects/skill-manager/.skill-manager/.materialization
+=== HOME /Users/hayde/IdeaProjects/wt-237-his-16/.skill-manager
+-- skills:
+deploy-helm
+spec-double-compiler
+test-graph
+tracing-observability
+-- top-level:
+.
+..
+.materialization
+artifacts.lock.toml
+bin
+cache
+cli-lock.toml
+docs
+gateway.properties
+harnesses
+home.digest.json
+home.policy.toml
+home.provenance.json
+home.runtime.json
+installed
+npm
+plugin-marketplace
+plugins
+pm
+projects
+skills
+units.lock.toml
+venvs
+-- config hashes:
+  ec61c22511a2d97c  artifacts.lock.toml
+  6bd5d30c2505567f  cli-lock.toml
+  37255425703074e3  home.digest.json
+  3a06cbc6e9570e3f  home.policy.toml
+  35552061e924ec48  home.provenance.json
+  83b17b86e9e04b45  home.runtime.json
+  20651ba40ff61945  units.lock.toml
+-- .materialization mtime:
+Aug 22 17:56:52 2026 /Users/hayde/IdeaProjects/wt-237-his-16/.skill-manager/.materialization
+=== REAL AGENT DIRS
+-- /Users/hayde/.claude:
+.
+..
+.claude.json
+.last-cleanup
+.last-update-result.json
+.update.lock
+backups
+cache
+daemon
+debug
+file-history
+history.jsonl
+ide
+jobs
+mcp-needs-auth-cache.json
+paste-cache
+plans
+plugins
+projects
+session-env
+sessions
+settings.json
+settings.json.bak
+settings.json.pre-repair-20260821
+shell-snapshots
+skills
+stats-cache.json
+tasks
+-- /Users/hayde/.codex:
+.
+..
+.codex-global-state.json
+.codex-global-state.json.bak
+.personality_migration
+.sandbox_migration
+.tmp
+ambient-suggestions
+auth.json
+cache
+computer-use
+config.toml
+config.toml.pre-repair-20260821
+dictation-history
+goals_1.sqlite
+goals_1.sqlite-shm
+goals_1.sqlite-wal
+history.jsonl
+installation_id
+ipc
+log
+logs_2.sqlite
+logs_2.sqlite-shm
+logs_2.sqlite-wal
+mcp-oauth-locks
+memories
+memories_1.sqlite
+memories_1.sqlite-shm
+memories_1.sqlite-wal
+models_cache.json
+plugins
+queue_1.sqlite
+queue_1.sqlite-shm
+queue_1.sqlite-wal
+rules
+sessions
+shell_snapshots
+skills
+sqlite
+state_5.sqlite
+state_5.sqlite-shm
+state_5.sqlite-wal
+thread_history_1.sqlite
+thread-writer-locks
+tmp
+transcription-history.jsonl
+vendor_imports
+version.json
+-- /Users/hayde/.gemini:
+.
+..
+.DS_Store
+antigravity-cli
+config
+google_accounts.json
+history
+installation_id
+projects.json
+settings.json
+settings.json.bak
+skills
+state.json
+tmp
+trustedFolders.json

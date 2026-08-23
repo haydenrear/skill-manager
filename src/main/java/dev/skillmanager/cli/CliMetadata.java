@@ -118,6 +118,8 @@ public final class CliMetadata {
             command("rebind"),
             command("remove", "rm"),
             command("reset-password"),
+            command("sandbox"),
+            command("sandbox status"),
             command("search"),
             command("show"),
             command("sync"),

@@ -366,8 +366,47 @@ public final class AgentHomes {
         Map<String, String> out = new java.util.LinkedHashMap<>();
         out.put(SKILL_MANAGER_HOME, store.toString());
         out.putAll(agentBinding(homeRoot));
+        // THE CONFINEMENT, DECLARED WHERE THE BINDING IS. See below.
+        out.put(CONFINE_ROOT, homeRoot.toAbsolutePath().normalize().toString());
         return out;
     }
+
+    /**
+     * The variable that declares "everything this process touches lives under
+     * this directory" — {@code dev.skillmanager.sandbox.Confinement}'s root.
+     *
+     * <h2>Why it belongs in the binding and not in a caller</h2>
+     *
+     * <p>Review of #241, H4: the confinement shipped with a guard that nothing
+     * armed. {@code grep} found three hits for the variable — the constant, the
+     * test-graph helper, and the prose — so re-running DEF-046/DEF-047's shape
+     * with the guard merged still went through: an agent session pinned
+     * {@code SKILL_MANAGER_HOME}, declared no confinement, ran
+     * {@code project resolve} from an unnamed checkout, and the home was
+     * re-realized at exit 0 with nothing firing. A default that is right and an
+     * arming mechanism nobody uses is a guard that protects no one.
+     *
+     * <p>It is declared HERE because this map is already the answer to "what
+     * must a process export to be bound to this home", and this class's own
+     * comment calls {@code --home <X>} and {@code env <prefix> <cli>} <b>one
+     * binding applied two ways</b>. Every consumer of that one answer is now
+     * armed by construction: {@code home describe --json}'s {@code env} block
+     * (which is what the epic's bootstrap and {@code skt} front doors read),
+     * {@code exec}, {@code env run}, the printed export block, and the
+     * in-process {@code --home} path through {@link #bind}.
+     *
+     * <p><b>The root is the HOME root, not the store.</b> A per-checkout home
+     * is {@code <checkout>/.skill-manager}, so its home root is the checkout —
+     * which is exactly the boundary DEF-047 crossed. Binding the store instead
+     * would confine a process to a directory it is not allowed to have its
+     * project in, and would refuse the ordinary layout.
+     *
+     * <p>An operator who genuinely wants a command to reach outside the home it
+     * named still can: the variable is an ordinary override, so exporting a
+     * wider {@code SKILL_MANAGER_CONFINE_ROOT} — or unsetting it — wins over
+     * the binding in the child, exactly like every other variable here.
+     */
+    public static final String CONFINE_ROOT = "SKILL_MANAGER_CONFINE_ROOT";
 
     /**
      * The AGENT half of {@link #binding}, on its own — the three variables and

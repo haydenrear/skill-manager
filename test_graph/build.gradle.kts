@@ -145,6 +145,12 @@ validationGraph {
         // node so it runs last, and FAILS if it finds no home — a law
         // that quietly checks nothing is the failure mode being closed.
         node("sources/common/HomeFixpointLaw.java").dependsOn("postgres.down")
+        // THE MEMBERSHIP LAW, the second post-condition and the one a
+        // re-realized home does NOT satisfy: `home verify` passes on a
+        // home that is internally consistent and wrong about what it
+        // holds (DEF-047). Same structural discovery, same "zero homes
+        // is a FAILURE" rule, and it carries its own self-test.
+        node("sources/common/HomeMembershipLaw.java").dependsOn("postgres.down")
     }
 
     /*
@@ -368,6 +374,12 @@ validationGraph {
         // node so it runs last, and FAILS if it finds no home — a law
         // that quietly checks nothing is the failure mode being closed.
         node("sources/common/HomeFixpointLaw.java").dependsOn("postgres.down")
+        // THE MEMBERSHIP LAW, the second post-condition and the one a
+        // re-realized home does NOT satisfy: `home verify` passes on a
+        // home that is internally consistent and wrong about what it
+        // holds (DEF-047). Same structural discovery, same "zero homes
+        // is a FAILURE" rule, and it carries its own self-test.
+        node("sources/common/HomeMembershipLaw.java").dependsOn("postgres.down")
     }
 
     testGraph("sponsored") {
@@ -451,6 +463,12 @@ validationGraph {
         // node so it runs last, and FAILS if it finds no home — a law
         // that quietly checks nothing is the failure mode being closed.
         node("sources/common/HomeFixpointLaw.java").dependsOn("servers.down")
+        // THE MEMBERSHIP LAW, the second post-condition and the one a
+        // re-realized home does NOT satisfy: `home verify` passes on a
+        // home that is internally consistent and wrong about what it
+        // holds (DEF-047). Same structural discovery, same "zero homes
+        // is a FAILURE" rule, and it carries its own self-test.
+        node("sources/common/HomeMembershipLaw.java").dependsOn("servers.down")
     }
 
     /*
@@ -497,6 +515,12 @@ validationGraph {
         // node so it runs last, and FAILS if it finds no home — a law
         // that quietly checks nothing is the failure mode being closed.
         node("sources/common/HomeFixpointLaw.java").dependsOn("servers.down")
+        // THE MEMBERSHIP LAW, the second post-condition and the one a
+        // re-realized home does NOT satisfy: `home verify` passes on a
+        // home that is internally consistent and wrong about what it
+        // holds (DEF-047). Same structural discovery, same "zero homes
+        // is a FAILURE" rule, and it carries its own self-test.
+        node("sources/common/HomeMembershipLaw.java").dependsOn("servers.down")
     }
 
     /**
@@ -576,6 +600,12 @@ validationGraph {
         // node so it runs last, and FAILS if it finds no home — a law
         // that quietly checks nothing is the failure mode being closed.
         node("sources/common/HomeFixpointLaw.java").dependsOn("postgres.down")
+        // THE MEMBERSHIP LAW, the second post-condition and the one a
+        // re-realized home does NOT satisfy: `home verify` passes on a
+        // home that is internally consistent and wrong about what it
+        // holds (DEF-047). Same structural discovery, same "zero homes
+        // is a FAILURE" rule, and it carries its own self-test.
+        node("sources/common/HomeMembershipLaw.java").dependsOn("postgres.down")
     }
 
     // -------------------------------------------------------- doc-smoke
@@ -616,6 +646,12 @@ validationGraph {
         // node so it runs last, and FAILS if it finds no home — a law
         // that quietly checks nothing is the failure mode being closed.
         node("sources/common/HomeFixpointLaw.java").dependsOn("servers.down")
+        // THE MEMBERSHIP LAW, the second post-condition and the one a
+        // re-realized home does NOT satisfy: `home verify` passes on a
+        // home that is internally consistent and wrong about what it
+        // holds (DEF-047). Same structural discovery, same "zero homes
+        // is a FAILURE" rule, and it carries its own self-test.
+        node("sources/common/HomeMembershipLaw.java").dependsOn("servers.down")
     }
 
     testGraph("doc-smoke") {
@@ -657,6 +693,12 @@ validationGraph {
         // node so it runs last, and FAILS if it finds no home — a law
         // that quietly checks nothing is the failure mode being closed.
         node("sources/common/HomeFixpointLaw.java").dependsOn("doc.repo.uninstalled")
+        // THE MEMBERSHIP LAW, the second post-condition and the one a
+        // re-realized home does NOT satisfy: `home verify` passes on a
+        // home that is internally consistent and wrong about what it
+        // holds (DEF-047). Same structural discovery, same "zero homes
+        // is a FAILURE" rule, and it carries its own self-test.
+        node("sources/common/HomeMembershipLaw.java").dependsOn("doc.repo.uninstalled")
     }
 
     testGraph("project-manifest") {
@@ -671,6 +713,12 @@ validationGraph {
         // node so it runs last, and FAILS if it finds no home — a law
         // that quietly checks nothing is the failure mode being closed.
         node("sources/common/HomeFixpointLaw.java").dependsOn("project.manifest.registered")
+        // THE MEMBERSHIP LAW, the second post-condition and the one a
+        // re-realized home does NOT satisfy: `home verify` passes on a
+        // home that is internally consistent and wrong about what it
+        // holds (DEF-047). Same structural discovery, same "zero homes
+        // is a FAILURE" rule, and it carries its own self-test.
+        node("sources/common/HomeMembershipLaw.java").dependsOn("project.manifest.registered")
     }
 
     testGraph("project-resolve") {
@@ -685,6 +733,12 @@ validationGraph {
         // node so it runs last, and FAILS if it finds no home — a law
         // that quietly checks nothing is the failure mode being closed.
         node("sources/common/HomeFixpointLaw.java").dependsOn("project.dependencies.resolved")
+        // THE MEMBERSHIP LAW, the second post-condition and the one a
+        // re-realized home does NOT satisfy: `home verify` passes on a
+        // home that is internally consistent and wrong about what it
+        // holds (DEF-047). Same structural discovery, same "zero homes
+        // is a FAILURE" rule, and it carries its own self-test.
+        node("sources/common/HomeMembershipLaw.java").dependsOn("project.dependencies.resolved")
     }
 
     testGraph("project-smoke") {
@@ -706,6 +760,15 @@ validationGraph {
             "project.local.sync.cli.refresh",
             "project.pinned.sync.revision.coherent",
         )
+        // THE MEMBERSHIP LAW, the second post-condition and the one a
+        // re-realized home does NOT satisfy: `home verify` passes on a
+        // home that is internally consistent and wrong about what it
+        // holds (DEF-047). Same structural discovery, same "zero homes
+        // is a FAILURE" rule, and it carries its own self-test.
+        node("sources/common/HomeMembershipLaw.java").dependsOn(
+            "project.local.sync.cli.refresh",
+            "project.pinned.sync.revision.coherent",
+        )
     }
 
     // Public CLI adapter for the bounded External model's named-sync action.
@@ -715,6 +778,12 @@ validationGraph {
         node("sources/common/EnvPrepared.java")
         node("sources/project/ProjectPinnedSyncRevisionCoherent.java")
         node("sources/common/HomeFixpointLaw.java").dependsOn("project.pinned.sync.revision.coherent")
+        // THE MEMBERSHIP LAW, the second post-condition and the one a
+        // re-realized home does NOT satisfy: `home verify` passes on a
+        // home that is internally consistent and wrong about what it
+        // holds (DEF-047). Same structural discovery, same "zero homes
+        // is a FAILURE" rule, and it carries its own self-test.
+        node("sources/common/HomeMembershipLaw.java").dependsOn("project.pinned.sync.revision.coherent")
     }
 
     // Child-home materialization contract, driven end to end through the real
@@ -752,6 +821,12 @@ validationGraph {
         // node so it runs last, and FAILS if it finds no home — a law
         // that quietly checks nothing is the failure mode being closed.
         node("sources/common/HomeFixpointLaw.java").dependsOn("child.home.materialization.atomic")
+        // THE MEMBERSHIP LAW, the second post-condition and the one a
+        // re-realized home does NOT satisfy: `home verify` passes on a
+        // home that is internally consistent and wrong about what it
+        // holds (DEF-047). Same structural discovery, same "zero homes
+        // is a FAILURE" rule, and it carries its own self-test.
+        node("sources/common/HomeMembershipLaw.java").dependsOn("child.home.materialization.atomic")
     }
 
     // ---------------------------------------------------------------------
@@ -855,6 +930,12 @@ validationGraph {
         // node so it runs last, and FAILS if it finds no home — a law
         // that quietly checks nothing is the failure mode being closed.
         node("sources/common/HomeFixpointLaw.java").dependsOn("extent.probe.is.sound")
+        // THE MEMBERSHIP LAW, the second post-condition and the one a
+        // re-realized home does NOT satisfy: `home verify` passes on a
+        // home that is internally consistent and wrong about what it
+        // holds (DEF-047). Same structural discovery, same "zero homes
+        // is a FAILURE" rule, and it carries its own self-test.
+        node("sources/common/HomeMembershipLaw.java").dependsOn("extent.probe.is.sound")
     }
 
     /**
@@ -901,6 +982,12 @@ validationGraph {
         // node so it runs last, and FAILS if it finds no home — a law
         // that quietly checks nothing is the failure mode being closed.
         node("sources/common/HomeFixpointLaw.java").dependsOn("home.tripwire.checked")
+        // THE MEMBERSHIP LAW, the second post-condition and the one a
+        // re-realized home does NOT satisfy: `home verify` passes on a
+        // home that is internally consistent and wrong about what it
+        // holds (DEF-047). Same structural discovery, same "zero homes
+        // is a FAILURE" rule, and it carries its own self-test.
+        node("sources/common/HomeMembershipLaw.java").dependsOn("home.tripwire.checked")
     }
 
     /**
@@ -928,6 +1015,12 @@ validationGraph {
         // node so it runs last, and FAILS if it finds no home — a law
         // that quietly checks nothing is the failure mode being closed.
         node("sources/common/HomeFixpointLaw.java").dependsOn("checkout.home.launch.isolated")
+        // THE MEMBERSHIP LAW, the second post-condition and the one a
+        // re-realized home does NOT satisfy: `home verify` passes on a
+        // home that is internally consistent and wrong about what it
+        // holds (DEF-047). Same structural discovery, same "zero homes
+        // is a FAILURE" rule, and it carries its own self-test.
+        node("sources/common/HomeMembershipLaw.java").dependsOn("checkout.home.launch.isolated")
     }
 
     /**
@@ -1036,6 +1129,12 @@ validationGraph {
         // node so it runs last, and FAILS if it finds no home — a law
         // that quietly checks nothing is the failure mode being closed.
         node("sources/common/HomeFixpointLaw.java").dependsOn("home.sync.authored.agent.tree")
+        // THE MEMBERSHIP LAW, the second post-condition and the one a
+        // re-realized home does NOT satisfy: `home verify` passes on a
+        // home that is internally consistent and wrong about what it
+        // holds (DEF-047). Same structural discovery, same "zero homes
+        // is a FAILURE" rule, and it carries its own self-test.
+        node("sources/common/HomeMembershipLaw.java").dependsOn("home.sync.authored.agent.tree")
     }
 
     /**
@@ -1120,6 +1219,12 @@ validationGraph {
         // node so it runs last, and FAILS if it finds no home — a law
         // that quietly checks nothing is the failure mode being closed.
         node("sources/common/HomeFixpointLaw.java").dependsOn("ticket.lifecycle.global.home.untouched")
+        // THE MEMBERSHIP LAW, the second post-condition and the one a
+        // re-realized home does NOT satisfy: `home verify` passes on a
+        // home that is internally consistent and wrong about what it
+        // holds (DEF-047). Same structural discovery, same "zero homes
+        // is a FAILURE" rule, and it carries its own self-test.
+        node("sources/common/HomeMembershipLaw.java").dependsOn("ticket.lifecycle.global.home.untouched")
     }
 
     testGraph("project-env") {
@@ -1134,6 +1239,12 @@ validationGraph {
         // node so it runs last, and FAILS if it finds no home — a law
         // that quietly checks nothing is the failure mode being closed.
         node("sources/common/HomeFixpointLaw.java").dependsOn("project.env.materialized")
+        // THE MEMBERSHIP LAW, the second post-condition and the one a
+        // re-realized home does NOT satisfy: `home verify` passes on a
+        // home that is internally consistent and wrong about what it
+        // holds (DEF-047). Same structural discovery, same "zero homes
+        // is a FAILURE" rule, and it carries its own self-test.
+        node("sources/common/HomeMembershipLaw.java").dependsOn("project.env.materialized")
     }
 
     testGraph("project-libs") {
@@ -1148,6 +1259,12 @@ validationGraph {
         // node so it runs last, and FAILS if it finds no home — a law
         // that quietly checks nothing is the failure mode being closed.
         node("sources/common/HomeFixpointLaw.java").dependsOn("project.libs.resolved")
+        // THE MEMBERSHIP LAW, the second post-condition and the one a
+        // re-realized home does NOT satisfy: `home verify` passes on a
+        // home that is internally consistent and wrong about what it
+        // holds (DEF-047). Same structural discovery, same "zero homes
+        // is a FAILURE" rule, and it carries its own self-test.
+        node("sources/common/HomeMembershipLaw.java").dependsOn("project.libs.resolved")
     }
 
     testGraph("project-profiles") {
@@ -1162,6 +1279,12 @@ validationGraph {
         // node so it runs last, and FAILS if it finds no home — a law
         // that quietly checks nothing is the failure mode being closed.
         node("sources/common/HomeFixpointLaw.java").dependsOn("project.profiles.resolved")
+        // THE MEMBERSHIP LAW, the second post-condition and the one a
+        // re-realized home does NOT satisfy: `home verify` passes on a
+        // home that is internally consistent and wrong about what it
+        // holds (DEF-047). Same structural discovery, same "zero homes
+        // is a FAILURE" rule, and it carries its own self-test.
+        node("sources/common/HomeMembershipLaw.java").dependsOn("project.profiles.resolved")
     }
 
     /*
@@ -1229,6 +1352,12 @@ validationGraph {
         // node so it runs last, and FAILS if it finds no home — a law
         // that quietly checks nothing is the failure mode being closed.
         node("sources/common/HomeFixpointLaw.java").dependsOn("uninstall.prunes.the.subgraph")
+        // THE MEMBERSHIP LAW, the second post-condition and the one a
+        // re-realized home does NOT satisfy: `home verify` passes on a
+        // home that is internally consistent and wrong about what it
+        // holds (DEF-047). Same structural discovery, same "zero homes
+        // is a FAILURE" rule, and it carries its own self-test.
+        node("sources/common/HomeMembershipLaw.java").dependsOn("uninstall.prunes.the.subgraph")
     }
 
     testGraph("skill-dev-smoke") {
@@ -1263,6 +1392,12 @@ validationGraph {
         // node so it runs last, and FAILS if it finds no home — a law
         // that quietly checks nothing is the failure mode being closed.
         node("sources/common/HomeFixpointLaw.java").dependsOn("postgres.down")
+        // THE MEMBERSHIP LAW, the second post-condition and the one a
+        // re-realized home does NOT satisfy: `home verify` passes on a
+        // home that is internally consistent and wrong about what it
+        // holds (DEF-047). Same structural discovery, same "zero homes
+        // is a FAILURE" rule, and it carries its own self-test.
+        node("sources/common/HomeMembershipLaw.java").dependsOn("postgres.down")
     }
 
     /*
@@ -1377,6 +1512,12 @@ validationGraph {
         // node so it runs last, and FAILS if it finds no home — a law
         // that quietly checks nothing is the failure mode being closed.
         node("sources/common/HomeFixpointLaw.java").dependsOn("onboarding.global.home.untouched")
+        // THE MEMBERSHIP LAW, the second post-condition and the one a
+        // re-realized home does NOT satisfy: `home verify` passes on a
+        // home that is internally consistent and wrong about what it
+        // holds (DEF-047). Same structural discovery, same "zero homes
+        // is a FAILURE" rule, and it carries its own self-test.
+        node("sources/common/HomeMembershipLaw.java").dependsOn("onboarding.global.home.untouched")
     }
 
     /**
@@ -1475,6 +1616,16 @@ validationGraph {
         // the same sync without the link must NOT refuse.
         node("sources/home-integrity/SyncStaysInsideItsHome.java")
 
+        // HIS-16 (#237) / DEF-046+DEF-047: a `project` verb run from a working
+        // directory inside ANOTHER repository does not touch that repository's
+        // home. SKILL_MANAGER_HOME names the driver's home, the confinement
+        // covers the driver's root, and cwd is the victim checkout -- the exact
+        // arrangement that re-realized a worktree home, removing one unit and
+        // installing two. Carries its own control: the byte-identical run with
+        // the confinement REMOVED must reproduce the escape, so the claim
+        // assertion is shown to be live rather than assumed to be.
+        node("sources/home-integrity/ProjectVerbStaysInItsHome.java")
+
         // THE FIXPOINT LAW, as every home-producing graph ends. FAILS if it
         // finds no home.
         //
@@ -1494,6 +1645,13 @@ validationGraph {
         // published a home path. The last of those now does; the other two are
         // DEF-020.
         node("sources/common/HomeFixpointLaw.java")
+                .dependsOn("home.integrity.bootstrap.projects.target")
+        // THE MEMBERSHIP LAW, the second post-condition and the one a
+        // re-realized home does NOT satisfy: `home verify` passes on a
+        // home that is internally consistent and wrong about what it
+        // holds (DEF-047). Same structural discovery, same "zero homes
+        // is a FAILURE" rule, and it carries its own self-test.
+        node("sources/common/HomeMembershipLaw.java")
                 .dependsOn("home.integrity.bootstrap.projects.target")
     }
 

@@ -1,0 +1,32 @@
+{
+  "nodeId" : "home.membership.law",
+  "status" : "passed",
+  "startedAt" : "2026-08-23T01:09:49.982719Z",
+  "endedAt" : "2026-08-23T01:10:02.888146Z",
+  "assertions" : [ {
+    "name" : "every_home_holds_exactly_what_was_installed_into_it",
+    "status" : "passed"
+  }, {
+    "name" : "the_detector_flags_a_planted_gain_and_a_planted_loss",
+    "status" : "passed"
+  }, {
+    "name" : "at_least_one_home_was_actually_checked",
+    "status" : "passed"
+  } ],
+  "artifacts" : [ ],
+  "processes" : [ ],
+  "metrics" : {
+    "homesChecked" : 5,
+    "unitsObserved" : 12,
+    "homesOutsideSandbox" : 0,
+    "descriptorDrift" : 0,
+    "homesWithMembership" : 5,
+    "durationMs" : 12906
+  },
+  "logs" : [ "SELF-TEST (runs before any real home):\n  consistent home -> 0 violation(s)\n  gained a unit   -> 1 violation(s)\n  lost  a unit    -> 2 violation(s)\nPASS  /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16601088897594455006/home-integrity/home\n    disk    [hi-unit, hi-unit-b, hi-unit-external]\n    records [hi-unit, hi-unit-b, hi-unit-external]\n    lock    [hi-unit, hi-unit-b, hi-unit-external]\nPASS  /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16601088897594455006/home-integrity/scratch/his9/victim-home/.skill-manager\n    disk    [hi-unit, hi-unit-b, hi-unit-external]\n    records [hi-unit, hi-unit-b, hi-unit-external]\n    lock    [hi-unit, hi-unit-b, hi-unit-external]\nPASS  /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16601088897594455006/home-integrity/scratch/his9/syncing-home/.skill-manager\n    disk    [hi-unit, hi-unit-b, hi-unit-external]\n    records [hi-unit, hi-unit-b, hi-unit-external]\n    lock    [hi-unit, hi-unit-b, hi-unit-external]\nPASS  /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16601088897594455006/his16-confinement/victim/.skill-manager\n    disk    [his16-unit-claimed-later]\n    records [his16-unit-claimed-later]\n    lock    []\nPASS  /private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16601088897594455006/his16-confinement/driver/home\n    disk    [his16-unit-claimed-later, his16-unit-kept]\n    records [his16-unit-claimed-later, his16-unit-kept]\n    lock    [his16-unit-claimed-later, his16-unit-kept]" ],
+  "published" : {
+    "homesWithMembership" : "5",
+    "homesChecked" : "/private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16601088897594455006/home-integrity/home,/private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16601088897594455006/home-integrity/scratch/his9/victim-home/.skill-manager,/private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16601088897594455006/home-integrity/scratch/his9/syncing-home/.skill-manager,/private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16601088897594455006/his16-confinement/victim/.skill-manager,/private/var/folders/b7/rsz3g6wn4hg8zl2bwmdx61q00000gn/T/sm-testgraph-16601088897594455006/his16-confinement/driver/home",
+    "unitsObserved" : "12"
+  }
+,"envelopeVersion":1,"executorStartedAt":"2026-08-23T01:09:49.326417Z","executorEndedAt":"2026-08-23T01:10:16.126646Z","spawnExitCode":0,"capturedStdoutLog":"node-logs/home.membership.law.stdout.log","inputContextFile":"context/home.membership.law.input.json","traceId":"01d91dbb2c38a351064f081ce4288fdf"}
