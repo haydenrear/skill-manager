@@ -50,8 +50,8 @@ regenerating a baseline the README forbids regenerating.
 | file | what |
 | --- | --- |
 | `shared/util/GitIgnoreRules.java` (new) | the unit's OWN declaration: its `.gitignore` files, its index, and the two clauses that keep the rule honest |
-| `bindings/ChildHomeMaterializer.java` | `isUnowned` gains the declaration alongside `Rederivable`; both walkers and `collectUnownedRoots` ask it, so the skip is on both sides |
-| `ScaffoldedTreeIsNotContentTest` (new) | 7 cases: *not hashed*, *not copied*, *not deleted*, separately; the falsifier; the tracked clause; the tracked ancestor |
+| `bindings/ChildHomeMaterializer.java` | `isUnowned` gains the declaration alongside `Rederivable`; both walkers and `collectUnownedRoots` ask it, at a shape the dereference cannot move, so the skip is on both sides — plus `holdsUndeclaredWork`, which is what keeps invisible from meaning disposable on the teardown |
+| `ScaffoldedTreeIsNotContentTest` (new) | **14 cases**: *not hashed*, *not copied*, *not deleted*, separately; the falsifier; the tracked clause and the tracked ancestor; the teardown guard and its narrowness; the two walkers agreeing and the narrowness of that; hold-back clause 2; the missing index; the carry-over collision |
 | `RunHis18.java` (new) | the one-suite runner the vacuity record names |
 | `probes/his-18/RenderBaseline.java` (new) | the goal measurement, through the product's own renderer |
 
