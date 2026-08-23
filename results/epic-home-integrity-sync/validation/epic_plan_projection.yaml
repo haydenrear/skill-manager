@@ -1946,7 +1946,20 @@ tickets:
   epic: home-integrity-sync
   github_issue: 239
   added_in_schedule_revision: 8
-  wave: 7
+  wave: 8
+  rescheduled_in_revision_8: 'MOVED FROM WAVE 7 BY ITS OWN VALIDATOR, and the finding is the epic agent''s.
+    HIS-16 and HIS-18 were scheduled into wave 7 as disjoint. They are not: both touch RunTests.java and
+    deferred/backlog.yaml. That was invisible while the declared conflict_keys were wrong -- correcting
+    them after both reviews made validate_epic_plan.py refuse the schedule, which is the check doing exactly
+    its job one wave late.
+
+    Rule 6 says tickets may share a wave only when their conflict keys are disjoint. They shared one.
+    The measured cost was small -- the reviewer confirmed RunTests.java auto-merges with additions 28
+    lines apart and no semantic conflict, and backlog.yaml is an append/append conflict that HIS-18 resolves
+    on rebase, since promotion_order 12 -> 13 already serialized them. Small is not the same as declared,
+    and the wave is corrected rather than the rule bent.
+
+    '
   depends_on:
   - HIS-2
   - HIS-4
