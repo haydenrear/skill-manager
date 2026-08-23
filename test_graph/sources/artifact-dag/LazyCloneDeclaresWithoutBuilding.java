@@ -172,7 +172,18 @@ public class LazyCloneDeclaresWithoutBuilding {
                     HomeIsolation.verdictIsClean(verifyOut, clone);
             boolean production_still_refuses_a_planted_path_into_the_source = false;
             try {
-                HomeIsolation.plantDecoy(clone, store.resolve("home.policy.toml"));
+                // The source home's own shim for TOOL_A: a file this node
+                // installed itself two steps up, so the decoy target exists for
+                // the same reason the fixture does. `home.policy.toml` was the
+                // first choice and HomeIsolation REFUSED it -- this graph's
+                // workspace helper writes `policy.toml`, not the home-scoped
+                // spelling. Exactly the HIS-14 V8 finding (neither "frozen"
+                // fixture was frozen, for that filename), caught here by the
+                // guard instead of by a control that passed for the wrong
+                // reason.
+                HomeIsolation.plantDecoy(clone,
+                        store.resolve("bin").resolve("cli")
+                                .resolve(ArtifactDagSupport.TOOL_A));
                 ProcessRecord verifyDecoy = ArtifactDagSupport.sm(ctx, "home-verify-decoy",
                         clone, "home", "verify", "--home", clone.toString(),
                         "--against", store.toString());
